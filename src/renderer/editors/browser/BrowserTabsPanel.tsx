@@ -113,10 +113,10 @@ const BrowserTabsPanelRoot = styled.div({
         borderLeft: "none",
         backgroundColor: color.background.light,
         "& .tab-extension-title": {
+            flex: "1 1 auto",
             fontSize: 12,
             color: color.text.default,
             whiteSpace: "nowrap",
-            maxWidth: 200,
             overflow: "hidden",
             textOverflow: "ellipsis",
         },

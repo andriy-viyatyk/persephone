@@ -11,6 +11,7 @@ Current work in progress and planned tasks.
 
 | ID | Title | Priority | Link |
 |----|-------|----------|------|
+| US-032 | Browser Integration — Link Opening & Context Menu | Medium | [README](US-032-browser-integration/README.md) |
 | US-028 | Browser Bookmarks (Links Editor Integration) | Low | [README](US-028-browser-bookmarks/README.md) |
 | US-030 | Download Manager | Medium | [README](US-030-download-manager/README.md) |
 
