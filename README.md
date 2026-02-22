@@ -23,8 +23,13 @@
 
 ### JavaScript Scripting Engine
 * **Standalone Runner:** Write and execute JavaScript directly in a tab. Results are automatically displayed in a grouped "output" page.
-* **Context-Aware Scripting:** Open the "Script Panel" on any text file to manipulate data using the `page` variable. 
+* **Context-Aware Scripting:** Open the "Script Panel" on any text file to manipulate data using the `page` variable.
   * *Example:* `return JSON.parse(page.content).map(i => i.name);`
+
+### Built-in Web Browser
+* **Browse Without Leaving the Editor:** Open web pages in a dedicated browser tab — no need to switch to an external app for quick lookups, API docs, or testing.
+* **Profiles & Incognito:** Create isolated browser profiles with separate cookies and storage, or use incognito mode for throwaway sessions.
+* **Internal Tabs & Smart Routing:** Multiple browser tabs within a single editor tab, with external links from Markdown and Monaco automatically routed to the nearest browser tab.
 
 ## Download (Windows)
 
