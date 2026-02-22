@@ -46,6 +46,8 @@ import { WithPopupMenu } from "../../components/overlay/WithPopupMenu";
 import { pagesModel } from "../../store/pages-store";
 import { newTextFileModel } from "../text/TextPageModel";
 import type { ImageViewerModelState } from "../image/ImageViewer";
+import { UrlSuggestionsDropdown } from "./UrlSuggestionsDropdown";
+import { searchHistoryManager } from "./browser-search-history";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const WEBVIEW_PRELOAD_URL = (window as any).webviewPreloadUrl as string;
@@ -289,7 +291,7 @@ interface BrowserPageViewProps {
 }
 
 function BrowserPageView({ model }: BrowserPageViewProps) {
-    const { url, loading, canGoBack, canGoForward, tabs, activeTabId, tabsPanelWidth, homeUrl, searchEngineId } =
+    const { url, loading, canGoBack, canGoForward, tabs, activeTabId, tabsPanelWidth, homeUrl, searchEngineId, navHistory, isIncognito, profileName } =
         model.state.use((s) => {
             const activeTab = s.tabs.find((t) => t.id === s.activeTabId);
             return {
@@ -302,6 +304,9 @@ function BrowserPageView({ model }: BrowserPageViewProps) {
                 tabsPanelWidth: s.tabsPanelWidth,
                 homeUrl: activeTab?.homeUrl ?? "",
                 searchEngineId: s.searchEngineId,
+                navHistory: activeTab?.navHistory ?? [],
+                isIncognito: s.isIncognito,
+                profileName: s.profileName,
             };
         });
 
@@ -340,9 +345,45 @@ function BrowserPageView({ model }: BrowserPageViewProps) {
      *  fire on the renderer DOM and dismiss the open popup menu. */
     const [popupOpen, setPopupOpen] = useState(false);
 
+    // -- URL suggestions dropdown state --
+    const [suggestionsOpen, setSuggestionsOpen] = useState(false);
+    const [userHasTyped, setUserHasTyped] = useState(false);
+    const [hoveredIndex, setHoveredIndex] = useState(-1);
+    const [searchEntries, setSearchEntries] = useState<string[]>([]);
+
+    const searchStorage = useMemo(
+        () => searchHistoryManager.get(profileName, isIncognito),
+        [profileName, isIncognito],
+    );
+
+    useEffect(() => {
+        if (suggestionsOpen && searchStorage) {
+            setSearchEntries(searchStorage.getAll());
+        }
+    }, [suggestionsOpen, searchStorage]);
+
+    const suggestionsMode =
+        (!userHasTyped && urlInput && urlInput !== "about:blank")
+            ? "navigation" as const
+            : "search" as const;
+
+    const suggestionsItems = useMemo(() => {
+        if (!suggestionsOpen) return [];
+        if (suggestionsMode === "navigation") return navHistory;
+        const text = urlInput.trim();
+        if (!text) return searchEntries;
+        const words = text.toLowerCase().split(/\s+/).filter(s => s);
+        if (!words.length) return searchEntries;
+        return searchEntries.filter(entry => {
+            const lower = entry.toLowerCase();
+            return words.every(w => lower.includes(w));
+        });
+    }, [suggestionsOpen, suggestionsMode, navHistory, searchEntries, urlInput]);
+
     // Keep urlInput in sync when URL changes externally (navigation, tab switch)
     useEffect(() => {
         setUrlInput(url);
+        setSuggestionsOpen(false);
     }, [url]);
 
     // Global IPC event handler — routes events to the correct internal tab
@@ -372,6 +413,7 @@ function BrowserPageView({ model }: BrowserPageViewProps) {
                         canGoForward: data.canGoForward,
                         favicon: cached,
                     });
+                    model.addNavHistory(internalTabId, data.url || "");
                     break;
                 }
                 case "did-navigate-in-page": {
@@ -384,6 +426,7 @@ function BrowserPageView({ model }: BrowserPageViewProps) {
                         canGoBack: data.canGoBack,
                         canGoForward: data.canGoForward,
                     });
+                    model.addNavHistory(internalTabId, data.url || "");
                     break;
                 }
                 case "did-start-loading":
@@ -672,19 +715,49 @@ function BrowserPageView({ model }: BrowserPageViewProps) {
 
     const handleUrlKeyDown = useCallback(
         (e: KeyboardEvent<HTMLInputElement>) => {
+            if (suggestionsOpen && suggestionsItems.length > 0) {
+                switch (e.key) {
+                    case "ArrowDown":
+                        e.preventDefault();
+                        setHoveredIndex(i => Math.min(i + 1, suggestionsItems.length - 1));
+                        return;
+                    case "ArrowUp":
+                        e.preventDefault();
+                        setHoveredIndex(i => Math.max(i - 1, -1));
+                        return;
+                    case "Enter":
+                        if (hoveredIndex >= 0 && hoveredIndex < suggestionsItems.length) {
+                            e.preventDefault();
+                            const value = suggestionsItems[hoveredIndex];
+                            setUrlInput(value);
+                            setSuggestionsOpen(false);
+                            model.navigate(value);
+                            urlInputRef.current?.blur();
+                            return;
+                        }
+                        break;
+                    case "Escape":
+                        e.preventDefault();
+                        setSuggestionsOpen(false);
+                        return;
+                }
+            }
             if (e.key === "Enter") {
                 e.preventDefault();
+                setSuggestionsOpen(false);
                 model.navigate(urlInput);
                 urlInputRef.current?.blur();
             } else if (e.key === "Escape") {
+                setSuggestionsOpen(false);
                 setUrlInput(url);
                 urlInputRef.current?.blur();
             }
         },
-        [model, urlInput, url],
+        [model, urlInput, url, suggestionsOpen, suggestionsItems, hoveredIndex],
     );
 
     const handleNavigate = useCallback(() => {
+        setSuggestionsOpen(false);
         model.navigate(urlInput);
         urlInputRef.current?.blur();
     }, [model, urlInput]);
@@ -711,7 +784,33 @@ function BrowserPageView({ model }: BrowserPageViewProps) {
 
     const handleUrlFocus = useCallback(() => {
         setTimeout(() => urlInputRef.current?.select(), 0);
+        setSuggestionsOpen(true);
+        setUserHasTyped(false);
+        setHoveredIndex(-1);
     }, []);
+
+    const handleUrlBlur = useCallback(() => {
+        setSuggestionsOpen(false);
+    }, []);
+
+    const handleUrlChange = useCallback((value: string) => {
+        setUrlInput(value);
+        setUserHasTyped(true);
+        setHoveredIndex(-1);
+    }, []);
+
+    const handleSuggestionSelect = useCallback((value: string) => {
+        setUrlInput(value);
+        setSuggestionsOpen(false);
+        model.navigate(value);
+        urlInputRef.current?.blur();
+    }, [model]);
+
+    const handleClearVisible = useCallback(() => {
+        if (!searchStorage) return;
+        searchStorage.removeMany(suggestionsItems);
+        setSearchEntries(searchStorage.getAll());
+    }, [searchStorage, suggestionsItems]);
 
     const handleGoHome = useCallback(() => {
         model.goHome();
@@ -838,9 +937,10 @@ function BrowserPageView({ model }: BrowserPageViewProps) {
                         ref={urlInputRef}
                         className="url-bar"
                         value={urlInput}
-                        onChange={setUrlInput}
+                        onChange={handleUrlChange}
                         onKeyDown={handleUrlKeyDown}
                         onFocus={handleUrlFocus}
+                        onBlur={handleUrlBlur}
                         onContextMenu={handleUrlContextMenu}
                         placeholder="Enter URL or search term..."
                         startButtons={(() => {
@@ -935,6 +1035,17 @@ function BrowserPageView({ model }: BrowserPageViewProps) {
                     {popupOpen && <div className="webview-click-overlay" />}
                 </div>
             </div>
+            <UrlSuggestionsDropdown
+                anchorEl={urlInputRef.current?.closest('.url-bar') ?? null}
+                open={suggestionsOpen}
+                items={suggestionsItems}
+                mode={suggestionsMode}
+                searchText={suggestionsMode === "search" ? urlInput : undefined}
+                hoveredIndex={hoveredIndex}
+                onHoveredIndexChange={setHoveredIndex}
+                onSelect={handleSuggestionSelect}
+                onClearVisible={suggestionsMode === "search" ? handleClearVisible : undefined}
+            />
         </BrowserPageViewRoot>
     );
 }

@@ -108,15 +108,27 @@ A built-in web browser for viewing documentation, APIs, and web resources withou
 **Opening:** Click the dropdown arrow (&#9662;) next to the **+** button in the tab bar → **Browser**.
 
 **Features:**
-- **URL bar** — type a URL and press Enter to navigate; type a search term to search Google; navigate button at the end of the input
+- **URL bar** — type a URL and press Enter to navigate; type a search term to search with the selected engine; navigate button at the end of the input
+- **URL suggestions** — dropdown appears when you focus or type in the URL bar
+  - On focus: shows navigation history (URLs visited in the current tab)
+  - On typing: shows filtered search history with highlighted matches
+  - Navigate with arrow keys, select with Enter, dismiss with Escape
+  - "Clear" button removes visible filtered entries from search history
+- **Search engine selector** — clickable label in the URL bar on blank pages and search result pages
+  - 11 engines: Google (default), Bing, DuckDuckGo, Yahoo, Ecosia, Brave, Startpage, Qwant, Baidu, Perplexity, Gibiru
+  - Switch engines on a search results page to re-search the same query on a different engine
 - **Paste and Go** — right-click the URL bar for a "Paste and Go" option that pastes clipboard text and navigates immediately
-- **Navigation** — Back, Forward, Reload/Stop buttons in the toolbar
+- **Navigation** — Home, Back, Forward, Reload/Stop buttons in the toolbar
+  - **Home button** — each tab remembers its "home" URL (first URL navigated to); tooltip shows the URL
 - **Internal tabs** — multiple browser tabs within a single js-notepad tab, shown on a left-side panel
-  - Clicking `target="_blank"` links or `window.open()` opens a new internal tab
-  - New tab button at the bottom of the tabs panel
-  - Close button on each tab (visible when panel is wide enough)
+  - Clicking `target="_blank"` links opens a new internal tab; `window.open()` from JavaScript opens a real popup window (for OAuth/auth flows)
+  - Close Tab button in the toolbar; new tab button at the bottom of the tabs panel
   - Right-click tab for context menu: Close Tab, Close Other Tabs, Close Tabs Below
-  - Resizable tabs panel with splitter
+  - Resizable tabs panel with splitter; starts collapsed to icon-only mode
+  - Active tab styled with dark background and blue border
+  - **Compact mode** — when the panel is narrow, hovering a tab shows a floating popup with title and close button
+  - **Audio mute** — volume icon on tabs playing audio; click to mute/unmute individual tabs or all tabs at once (via the page tab icon)
+  - Closing the last tab opens a fresh blank page
 - **Browser Profiles** — isolated browsing sessions with separate cookies, storage, and cache
   - Create named profiles with custom colors in **Settings → Browser Profiles**
   - Open a profiled browser via &#9662; → **Browser profile...** submenu
@@ -129,6 +141,7 @@ A built-in web browser for viewing documentation, APIs, and web resources withou
   - Open via &#9662; → **Browser profile...** → **Incognito**
   - Incognito icon on the page tab and inside the URL bar
   - All data is automatically discarded when the tab closes
+  - Search history is not saved in incognito mode
 - **Context menu** — right-click in the web page for contextual actions:
   - On a link: "Open Link in New Tab", "Copy Link Address"
   - On an image: "Open Image in New Tab" (opens in Image Viewer), "Copy Image Address"
@@ -144,7 +157,7 @@ A built-in web browser for viewing documentation, APIs, and web resources withou
 - **Find in page** — `Ctrl+F` to search text within the web page
 - **Focus URL bar** — `Ctrl+L` to quickly jump to the URL bar
 - **DevTools** — click the gear icon to open the webview's developer tools
-- **Session restore** — all internal tabs, URLs, and profile selection saved and restored across app restarts
+- **Session restore** — all internal tabs, URLs, navigation history, and profile selection saved and restored across app restarts
 - **Isolated storage** — each profile has its own cookies, storage, and cache, separated from the main application
 
 **Security:** Navigation to local file protocols (`file://`, `app-asset://`) is blocked.

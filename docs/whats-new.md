@@ -14,16 +14,30 @@ Release notes and changelog for js-notepad.
   - Open via the dropdown arrow next to the **+** button → **Browser**
   - URL bar with Enter to navigate; plain text searches Google automatically
   - Back, Forward, Reload/Stop navigation buttons
+  - **Home button** — each tab remembers its "home" URL (first URL navigated to); click to return
   - **Internal tabs** — multiple browser tabs within a single js-notepad tab
-    - Left-side tabs panel with favicon and title
-    - `target="_blank"` links and `window.open()` open as new internal tabs
-    - New tab button, close button (width-dependent visibility)
+    - Left-side tabs panel with favicon and title (starts collapsed to icon-only mode)
+    - `target="_blank"` links open as new internal tabs; `window.open()` from JavaScript opens real popup windows (preserving OAuth/auth flows)
+    - Close Tab button in toolbar; new tab button at the bottom of the tabs panel
     - Tab context menu: Close Tab, Close Other Tabs, Close Tabs Below
-    - Resizable tabs panel with splitter
+    - Resizable tabs panel with splitter (transparent, minimal visual weight)
+    - Active tab styled with dark background and blue border
+    - **Compact mode** — when tabs panel is narrow, hovering a tab shows a floating extension popup with title and close button
+    - **Audio mute** — volume icon on tabs playing audio; click to mute/unmute individual tabs or all tabs at once (page-level mute on the js-notepad tab)
+    - Closing the last tab opens a fresh blank page
   - Page title and favicon displayed in the js-notepad tab
   - Loading indicator bar below the toolbar
   - Find in page with `Ctrl+F`
   - Focus URL bar with `Ctrl+L`
+  - **Search engine selector** — Firefox-style engine picker in the URL bar on blank pages and search result pages
+    - 11 engines: Google (default), Bing, DuckDuckGo, Yahoo, Ecosia, Brave, Startpage, Qwant, Baidu, Perplexity, Gibiru
+    - Switch engines on a search results page to re-search the same query
+  - **URL suggestions dropdown** — autocomplete in the URL bar
+    - On focus: shows navigation history (URLs visited in the current tab)
+    - On typing: shows filtered search history with multi-word matching and highlighted matches
+    - Keyboard navigation (Arrow keys, Enter, Escape)
+    - "Clear" button removes visible filtered entries from search history
+    - Search history persisted per profile; skipped for incognito
   - **Context menu** — right-click in the web page for contextual actions
     - On links: Open Link in New Tab, Copy Link Address
     - On images: Open Image in New Tab (opens in Image Viewer), Copy Image Address
@@ -46,7 +60,7 @@ Release notes and changelog for js-notepad.
     - Incognito icon on page tab and inside the URL bar
     - Data is automatically discarded when the tab closes
   - DevTools access via gear icon in toolbar
-  - Session restore — all internal tabs, URLs, and profile selection persisted across app restarts
+  - Session restore — all internal tabs, URLs, navigation history, and profile selection persisted across app restarts
   - Isolated storage — cookies and site data separated from the main application
   - Security: navigation to `file://` and `app-asset://` protocols is blocked
 

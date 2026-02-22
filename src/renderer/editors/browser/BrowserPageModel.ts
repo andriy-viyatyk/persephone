@@ -8,6 +8,7 @@ import { GlobeIcon } from "../../theme/icons";
 import { appSettings, BrowserProfile } from "../../store/app-settings";
 import { DEFAULT_BROWSER_COLOR } from "../../theme/palette-colors";
 import { BrowserChannel } from "../../../ipc/browser-ipc";
+import { searchHistoryManager } from "./browser-search-history";
 
 // ============================================================================
 // Search Engines
@@ -146,6 +147,8 @@ export interface BrowserTabData {
     muted: boolean;
     /** The "home" URL for this tab — set on user-initiated navigation or tab creation with a URL. */
     homeUrl: string;
+    /** Navigation history for this tab — most recent URL first. */
+    navHistory: string[];
 }
 
 export interface BrowserPageState extends IPage {
@@ -196,6 +199,7 @@ function createTab(url = DEFAULT_URL): BrowserTabData {
         audible: false,
         muted: false,
         homeUrl: url !== DEFAULT_URL ? url : "",
+        navHistory: [],
     };
 }
 
@@ -409,6 +413,8 @@ export class BrowserPageModel extends PageModel<BrowserPageState, void> {
             } else {
                 const engine = this.getSearchEngine();
                 this.state.update((s) => { s.lastSearchQuery = normalizedUrl; });
+                const st = this.state.get();
+                searchHistoryManager.get(st.profileName, st.isIncognito)?.add(normalizedUrl);
                 normalizedUrl = engine.searchUrl.replace(
                     "%s",
                     encodeURIComponent(normalizedUrl),
@@ -470,6 +476,29 @@ export class BrowserPageModel extends PageModel<BrowserPageState, void> {
                 if (updates.favicon !== undefined) s.favicon = updates.favicon;
             }
         });
+    };
+
+    /** Record a navigation in the tab's history and add hostname to search history. */
+    addNavHistory = (internalTabId: string, url: string) => {
+        if (!url || url === DEFAULT_URL) return;
+        this.state.update((s) => {
+            const tab = s.tabs.find((t) => t.id === internalTabId);
+            if (!tab) return;
+            tab.navHistory = [
+                url,
+                ...tab.navHistory.filter((u) => u !== url),
+            ].slice(0, 100);
+        });
+        // Add hostname to search history (unless incognito)
+        const s = this.state.get();
+        if (!s.isIncognito) {
+            try {
+                const hostname = new URL(url).hostname;
+                if (hostname) {
+                    searchHistoryManager.get(s.profileName, false)?.add(hostname);
+                }
+            } catch { /* invalid URL */ }
+        }
     };
 
     /** Add a new internal tab and switch to it. Returns the new tab's ID. */

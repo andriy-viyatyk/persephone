@@ -6,7 +6,6 @@ Current work in progress and planned tasks.
 
 | ID | Title | Priority | Link |
 |----|-------|----------|------|
-| US-031 | Browser Enhancement #1 | Medium | [README](US-031-browser-enhancement-1/README.md) |
 
 ## Planned (Next)
 
@@ -19,6 +18,7 @@ Current work in progress and planned tasks.
 
 | ID | Title | Notes |
 |----|-------|-------|
+| US-031 | Browser Enhancement #1 | OAuth popup support, toolbar changes, active tab styling, transparent splitter, compact tab extension popup, tab audio mute controls, home button, tabs panel initially collapsed, search engine selector, URL bar suggestions dropdown with search/navigation history |
 | US-027 | Browser Profiles & Incognito Mode | Named browser profiles with isolated sessions (cookies/storage/cache per profile), incognito mode (ephemeral partition), profile management in Settings (add/remove/color/default/clear data), incognito icon in URL bar, profile-colored globe icons on page tabs, quick-add submenu for profiles |
 | US-029 | Browser Web Page Context Menu | Contextual right-click menu for webview content (links, images, text, SVG), View Source/Actual DOM, Open Image/SVG in editor, URL bar with navigate button and Paste and Go, dynamic webview background |
 | US-026 | Browser Internal Tabs | Multi-tab browsing within a browser page, left-side tabs panel, target="_blank"/window.open() open new internal tabs, tab context menu (close/close others/close below), resizable panel, session restore for all tabs |

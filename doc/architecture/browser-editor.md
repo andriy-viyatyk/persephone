@@ -154,11 +154,12 @@ The renderer builds the menu dynamically based on `params` fields from the `cont
 
 | File | Process | Purpose |
 |------|---------|---------|
-| `src/renderer/editors/browser/BrowserPageView.tsx` | Renderer | UI component: toolbar, URL bar, multi-webview management |
-| `src/renderer/editors/browser/BrowserPageModel.ts` | Renderer | Multi-tab state management, navigation logic, favicon caching |
-| `src/renderer/editors/browser/BrowserTabsPanel.tsx` | Renderer | Left-side internal tabs panel with context menu |
-| `src/renderer/editors/browser/BrowserToolbar.tsx` | Renderer | URL bar, navigation buttons, loading indicator |
-| `src/main/browser-service.ts` | Main | Attaches to webContents, relays events via IPC |
+| `src/renderer/editors/browser/BrowserPageView.tsx` | Renderer | UI component: toolbar, URL bar, multi-webview management, URL suggestions |
+| `src/renderer/editors/browser/BrowserPageModel.ts` | Renderer | Multi-tab state management, navigation logic, favicon caching, search engines |
+| `src/renderer/editors/browser/BrowserTabsPanel.tsx` | Renderer | Left-side internal tabs panel with compact extension popup |
+| `src/renderer/editors/browser/UrlSuggestionsDropdown.tsx` | Renderer | URL bar dropdown with search history and navigation history |
+| `src/renderer/editors/browser/browser-search-history.ts` | Renderer | Per-profile persistent search history storage (file-based) |
+| `src/main/browser-service.ts` | Main | Attaches to webContents, relays events via IPC, audio state, popups |
 | `src/preload-webview.ts` | Guest | MutationObserver for title/favicon in guest DOM |
 | `src/ipc/browser-ipc.ts` | Shared | IPC channel names and type definitions |
 
@@ -214,6 +215,8 @@ The main preload (`src/preload.ts`) exposes the path to the webview preload:
 ## Session Restore
 
 `getRestoreData()` saves all internal tabs with their actual current URLs (from `currentUrls` map, which tracks post-redirect URLs). `applyRestoreData()` restores them with fresh internal tab IDs (since IDs are ephemeral). The active tab is identified by index position during restore. Profile name and incognito flag are also saved/restored.
+
+Navigation history (`navHistory` on each `BrowserTabData`) is persisted as part of the tab state via `getRestoreData()`. Search history is stored separately per profile in the app data folder using `SearchHistoryStorage` (file-based, max 2000 entries). Incognito profiles skip search history persistence.
 
 ## Profiles & Incognito
 

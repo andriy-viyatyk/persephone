@@ -2,7 +2,7 @@
 
 ## Status
 
-**Status:** In Progress
+**Status:** Completed
 **Priority:** Medium
 **Started:** 2026-02-22
 **Depends on:** US-029 (Browser Web Page Context Menu)
@@ -168,138 +168,15 @@ Hidden on all other pages (regular websites).
 - [x] 11 search engines supported (Google, Bing, DuckDuckGo, Yahoo, Ecosia, Brave, Startpage, Qwant, Baidu, Perplexity, Gibiru)
 - [x] Path-based redirect engines (Perplexity) handled via `searchPathPrefix` + `lastSearchQuery` fallback
 - [x] Selector hides when navigating away from search results (uses `urlInput` not stale state)
-- [ ] Documentation updated
-- [ ] No regressions in existing functionality
-
-## Pending Items
-
-### 11. URL Bar Suggestions Dropdown
-
-#### Description
-
-When the user clicks in the URL input, a dropdown appears below it with suggestions. Two types of suggestions:
-
-**Search History** — a global per-profile persistent list of all search queries the user has ever typed. Shown when:
-- The current page is `about:blank` (initial blank page)
-- The user is typing text that looks like a search (not a URL)
-
-Filtered as the user types: the input text is split by whitespace and all entries where **every word** appears are shown. Matching words are **highlighted** in the results.
-
-**Navigation History (per tab)** — a list of all URLs the tab has navigated to, stored in page state and restored after app restart. Shown when:
-- The URL input contains a URL (current page URL)
-
-Most recent URL on top, with the current URL as the first entry.
-
-#### Rules
-
-The dropdown shows **one section at a time** (mutually exclusive):
-
-| Condition | Dropdown shows |
-|-----------|---------------|
-| User clicks URL input, hasn't typed anything (URL unchanged) | **Navigation History** — full list, most recent on top |
-| `about:blank` / empty input, or user starts typing | **Search History** — filtered by all words in input (unfiltered if input is empty) |
-
-As soon as the user modifies the input text, the dropdown switches from Navigation History to Search History.
-
-#### Storage
-
-**Search History:**
-- Global per browser profile (not per page/tab)
-- Follows the `recent-files.ts` pattern: stored as `browserSearchHistory-{profileName}.txt`
-- Uses `filesModel.saveDataFile()` / `filesModel.getDataFile()`
-- Singleton service (like `recentFiles`), but keyed by profile name
-- Max 2000 entries, deduplicated (new searches move to top)
-- **Incognito mode:** no search history is saved or shown
-- **Entries include two types:**
-  1. User-typed search queries (added on navigate via search branch)
-  2. Hostnames from visited sites (added on every `did-navigate`, e.g. `www.google.com`, `www.youtube.com`)
-- This allows the user to search for both past queries and previously visited hosts
-
-**Navigation History (per tab):**
-- Stored as `navHistory: string[]` on `BrowserTabData`
-- Updated on every `did-navigate` / `did-navigate-in-page` event (deduplicated — if URL already in history, moves to top)
-- Persisted via `getRestoreData()` / `applyRestoreData()` — survives app restart
-- Max 100 entries per tab
-
-#### Implementation Plan
-
-**Step 1: Search History Service** (`src/renderer/editors/browser/browser-search-history.ts`)
-
-Two classes — a per-profile storage and a lazy manager:
-
-**`SearchHistoryStorage`** — one instance per profile, created on demand:
-- Follows `recent-files.ts` pattern with `TModel` + `TGlobalState`
-- Methods: `add(query)`, `load()`, `getAll()`, `removeMany(queries)`, `clear()`
-- File: `browserSearchHistory-{profileName || "default"}.txt`
-- Max **2000** entries, dedup on add
-- Uses `FileWatcher` to watch the file for external changes (e.g. from a second js-notepad window) and reloads automatically
-- `dispose()` method to clean up `FileWatcher`
-- `skipNextFileChange` flag (like app-settings) to avoid reloading after own writes
-
-**`SearchHistoryManager`** — singleton, lazy factory:
-- Methods: `get(profileName)` → returns `SearchHistoryStorage` (creates on first access, caches by profile name)
-- `isIncognito(profileName)` check — returns a no-op stub or skips creation for incognito profiles
-- No storage objects created at app startup — zero startup cost
-- Storage objects created only when the browser editor first needs search history for a profile
-
-**Step 2: Navigation History on BrowserTabData** (`BrowserPageModel.ts`)
-- Add `navHistory: string[]` field to `BrowserTabData` interface (default: `[]`)
-- Add `addNavHistory(internalTabId, url)` method on `BrowserPageModel` — prepends URL, deduplicates, caps at 100
-- Call `addNavHistory` from BrowserPageView when handling `did-navigate` and `did-navigate-in-page` events
-- Already persisted automatically via `getRestoreData` (tabs are serialized in full)
-- **Also in `addNavHistory`:** extract hostname from the URL (e.g. `www.youtube.com`) and call `browserSearchHistory.add(profileName, hostname)` — skips `about:blank` and incognito. This way visited hosts accumulate in search history alongside user-typed queries.
-
-**Step 3: Hook search history into navigate** (`BrowserPageModel.ts`)
-- In `navigate()`, when the input goes through the search branch (not a URL), call `browserSearchHistory.add(profileName, rawQuery)` — but only if not incognito
-
-**Step 4: URL Suggestions Dropdown component** (`src/renderer/editors/browser/UrlSuggestionsDropdown.tsx`)
-- New component using `Popper` (from `@floating-ui/react` via our `Popper.tsx`) for positioning below the URL input
-- Props: `anchorEl`, `open`, `onClose`, `onSelect(value: string)`, `onClearVisible`, `items`, `mode: "search" | "navigation"`
-- Renders a styled list with **one section** depending on mode:
-  - **Search History** mode: items with highlighted matching words. Selecting an item navigates (triggers a search). Header row with "Search History" label on the left and a "Clear" button (top-right) that removes all currently visible (filtered) entries from the search history file.
-  - **Navigation History** mode: items as plain URL text. Selecting an item navigates directly to that URL. No clear button.
-  - Keyboard navigation: ArrowDown/ArrowUp to move, Enter to select, Escape to close
-  - Click to select
-- Uses the app's `color` tokens for styling, single styled root component pattern
-- Max height ~400px with overflow scroll
-
-**Step 5: Word-based filtering and highlighting**
-- Reuse existing `useHighlightedText.tsx` module (`src/renderer/components/basic/useHighlightedText.tsx`):
-  - `searchMatch(item, substringsLower, [getProps])` — multi-word case-insensitive filtering (every word must appear)
-  - `highlightText(substring, text)` — renders text with `<span className="highlighted-text">` around matching words, recursively handles multiple words split by space
-- No new filtering/highlighting code needed — just wire these into the dropdown
-
-**Step 6: Integrate into BrowserPageView** (`BrowserPageView.tsx`)
-- Add state: `suggestionsOpen: boolean`, `userHasTyped: boolean`
-- On URL input focus → set `suggestionsOpen = true`, `userHasTyped = false`
-- On URL input change → set `userHasTyped = true`, re-filter search history
-- On URL input blur → close dropdown (with small delay to allow click-on-item)
-- On Enter → close dropdown, navigate as before
-- On Escape → close dropdown, revert URL as before
-- On ArrowDown when dropdown open → move highlight in dropdown list
-- Mode logic:
-  - If `!userHasTyped` and URL is not blank → **Navigation History** mode (show tab's `navHistory`)
-  - Otherwise → **Search History** mode (filtered by input text)
-- On suggestion select → set `urlInput` to selected value, call `model.navigate()`, close dropdown
-- On "Clear" button click → call `browserSearchHistory.removeMany(profileName, visibleItems)`, refresh dropdown (visible items disappear, remaining items stay)
-
-**Step 7: Persist and restore**
-- Navigation history: already handled by `BrowserTabData` serialization in `getRestoreData()`
-- Search history: file-based, independent of page state
-
-#### Concerns
-
-1. **PopupMenu is not ideal for this.** PopupMenu has its own search field, fixed row height, and click-outside handling that would conflict with the URL input. A custom lightweight dropdown component (`UrlSuggestionsDropdown`) is better — we reuse `Popper` for positioning and build a simple list with highlighting.
-
-2. **Focus management is tricky.** The dropdown must not steal focus from the URL input (user must keep typing). Keyboard events (ArrowDown/Up/Enter/Escape) must be intercepted in the URL input's `onKeyDown` and forwarded to the dropdown logic — the dropdown itself should not be focusable.
-
-3. **Blur timing.** Clicking a dropdown item triggers URL input blur before the click registers. Solution: use `onMouseDown` with `e.preventDefault()` on dropdown items to prevent blur, then handle selection in `onClick`.
-
-4. **Mode switching.** Navigation History is shown only on focus (before user types). As soon as user modifies the input, it switches to Search History. The `userHasTyped` flag tracks this — reset on focus, set on first change.
-
-5. **Multiple windows sharing search history.** `SearchHistoryStorage` uses `FileWatcher` to detect external file changes (e.g. from a second js-notepad window) and reloads automatically, similar to how `app-settings.ts` works. Within the same window, all browser pages of the same profile share one `SearchHistoryStorage` instance via `SearchHistoryManager`.
-
-6. **Large navigation histories.** Capped at 100 per tab. With many tabs this could add to restore data size, but 100 URLs × ~100 chars × ~10 tabs ≈ 100KB which is negligible.
+- [x] URL bar suggestions dropdown with search history and navigation history
+- [x] Search history persisted per profile, skipped for incognito
+- [x] Navigation history per tab, persisted across restarts
+- [x] Multi-word filtering with highlighted matches
+- [x] Keyboard navigation (ArrowDown/Up, Enter, Escape)
+- [x] "Clear" button removes visible filtered entries
+- [x] Hostnames added to search history on navigation
+- [x] Documentation updated
+- [x] No regressions in existing functionality
 
 ## Notes
 
