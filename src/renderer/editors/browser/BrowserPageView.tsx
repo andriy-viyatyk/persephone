@@ -219,6 +219,12 @@ function BrowserWebviewItem({
             };
             ipcRenderer.send(BrowserChannel.register, request);
             registered = true;
+
+            // If the page is muted, mute this new webview immediately
+            if (model.state.get().pageMuted) {
+                const key = `${tabId}/${internalTabId}`;
+                ipcRenderer.send(BrowserChannel.setAudioMuted, key, true);
+            }
         };
 
         webview.addEventListener("dom-ready", onDomReady);
