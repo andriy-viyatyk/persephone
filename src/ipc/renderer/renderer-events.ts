@@ -82,6 +82,10 @@ class RendererEvents implements EventApi {
     [EventEndpoint.eUpdateAvailable] = new RendererEventObject<UpdateCheckResult>(
         EventEndpoint.eUpdateAvailable
     );
+
+    [EventEndpoint.eOpenUrl] = new RendererEventObject<string>(
+        EventEndpoint.eOpenUrl
+    );
 }
 
 const rendererEvents = new RendererEvents();

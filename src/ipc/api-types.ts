@@ -86,6 +86,7 @@ export enum EventEndpoint {
     eMovePageOut = "eMovePageOut",
     eZoomChanged = "eZoomChanged",
     eUpdateAvailable = "eUpdateAvailable",
+    eOpenUrl = "eOpenUrl",
 }
 
 export interface EventSubscription {
@@ -107,6 +108,7 @@ export type EventApi = {
     [EventEndpoint.eMovePageOut]: EventObject<string>;
     [EventEndpoint.eZoomChanged]: EventObject<number>;
     [EventEndpoint.eUpdateAvailable]: EventObject<UpdateCheckResult>;
+    [EventEndpoint.eOpenUrl]: EventObject<string>;
 };
 
 export enum RendererEvent {

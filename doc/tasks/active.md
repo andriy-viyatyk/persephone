@@ -11,7 +11,6 @@ Current work in progress and planned tasks.
 
 | ID | Title | Priority | Link |
 |----|-------|----------|------|
-| US-032 | Browser Integration — Link Opening & Context Menu | Medium | [README](US-032-browser-integration/README.md) |
 | US-028 | Browser Bookmarks (Links Editor Integration) | Low | [README](US-028-browser-bookmarks/README.md) |
 | US-030 | Download Manager | Medium | [README](US-030-download-manager/README.md) |
 
@@ -19,6 +18,7 @@ Current work in progress and planned tasks.
 
 | ID | Title | Notes |
 |----|-------|-------|
+| US-032 | Browser Integration — Link Opening & Context Menu | Link open behavior setting (default browser vs internal), smart browser tab routing (right→left→create new), Markdown link context menu (Open in Default/Internal Browser, Incognito), Settings page UI |
 | US-031 | Browser Enhancement #1 | OAuth popup support, toolbar changes, active tab styling, transparent splitter, compact tab extension popup, tab audio mute controls, home button, tabs panel initially collapsed, search engine selector, URL bar suggestions dropdown with search/navigation history |
 | US-027 | Browser Profiles & Incognito Mode | Named browser profiles with isolated sessions (cookies/storage/cache per profile), incognito mode (ephemeral partition), profile management in Settings (add/remove/color/default/clear data), incognito icon in URL bar, profile-colored globe icons on page tabs, quick-add submenu for profiles |
 | US-029 | Browser Web Page Context Menu | Contextual right-click menu for webview content (links, images, text, SVG), View Source/Actual DOM, Open Image/SVG in editor, URL bar with navigate button and Paste and Go, dynamic webview background |

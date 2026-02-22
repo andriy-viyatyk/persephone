@@ -14,7 +14,7 @@ export interface BrowserProfile {
     color: string;
 }
 
-export type AppSettingsKey = "tab-recent-languages" | "theme" | "search-extensions" | "search-max-file-size" | "browser-profiles" | "browser-default-profile";
+export type AppSettingsKey = "tab-recent-languages" | "theme" | "search-extensions" | "search-max-file-size" | "browser-profiles" | "browser-default-profile" | "link-open-behavior";
 
 const settingsComments: Partial<Record<AppSettingsKey, string>> = {
     "tab-recent-languages":
@@ -24,6 +24,7 @@ const settingsComments: Partial<Record<AppSettingsKey, string>> = {
     "search-max-file-size": "Maximum file size (in bytes) for file content search.\nFiles larger than this are skipped. Default: 1048576 (1 MB).",
     "browser-profiles": "Browser profiles for isolated browsing sessions.\nEach profile has its own cookies, storage, and cache.",
     "browser-default-profile": "Default browser profile name used when opening a new browser tab.\nEmpty string means the built-in default profile.",
+    "link-open-behavior": "How external links open from editors.\n\"default-browser\" opens in the OS default browser, \"internal-browser\" opens in the nearest Browser tab.",
 };
 
 const defaultAppSettingsState = {
@@ -34,6 +35,7 @@ const defaultAppSettingsState = {
         "search-max-file-size": defaultMaxFileSize,
         "browser-profiles": [] as BrowserProfile[],
         "browser-default-profile": "",
+        "link-open-behavior": "default-browser" as "default-browser" | "internal-browser",
     },
 };
 

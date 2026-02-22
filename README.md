@@ -48,6 +48,7 @@
 | **PDF Viewer** | `.pdf` | Integrated pdf.js document viewer |
 | **Notebook** | `.note.json` | Structured notes with categories, tags, and search |
 | **Todo** | `.todo.json` | Task lists with multiple lists, drag-to-reorder, and search |
+| **Browser** | — | Built-in web browser with profiles, incognito, internal tabs |
 | **Compare** | any two files | Side-by-side diff view |
 
 ---

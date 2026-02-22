@@ -21,9 +21,11 @@ import { alertError } from "../features/dialogs/alerts/AlertsBar";
 import { editorRegistry } from "../editors/registry";
 import { getLanguageByExtension } from "./language-mapping";
 import { NavPanelModel } from "../features/navigation/nav-panel-store";
+import { appSettings } from "./app-settings";
 
 const path = require("path");
 const fs = require("fs");
+const { shell } = require("electron");
 
 const defaultOpenFilesState = {
     pages: [] as PageModel[],
@@ -337,6 +339,7 @@ export class PagesModel extends TModel<OpenFilesState> {
         rendererEvents.eShowPage.subscribe(this.showPage);
         rendererEvents.eMovePageIn.subscribe(this.movePageIn);
         rendererEvents.eMovePageOut.subscribe(this.movePageOut);
+        rendererEvents.eOpenUrl.subscribe(this.handleOpenUrl);
 
         setTimeout(() => {
             api.windowReady();
@@ -349,6 +352,16 @@ export class PagesModel extends TModel<OpenFilesState> {
         );
         await this.saveState();
         api.setCanQuit(true);
+    };
+
+    handleOpenUrl = async (url: string) => {
+        const behavior = appSettings.get("link-open-behavior");
+        if (behavior === "internal-browser") {
+            const { openUrlInBrowserTab } = await import("./page-actions");
+            openUrlInBrowserTab(url);
+        } else {
+            shell.openExternal(url);
+        }
     };
 
     restoreModel = async (data: Partial<IPage>): Promise<PageModel | null> => {

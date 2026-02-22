@@ -53,6 +53,7 @@ For `.md` and `.markdown` files — click **Preview** in the toolbar:
 - **Inline Mermaid diagrams** — ` ```mermaid ` code blocks render as SVG diagrams
 - **Live preview** updates as you type
 - **Minimap** navigation on the right side
+- **Link context menu** — right-click a link for: "Copy Link", "Open in Default Browser", "Open in Internal Browser", "Open in Incognito"
 
 ## PDF Viewer
 
@@ -159,6 +160,8 @@ A built-in web browser for viewing documentation, APIs, and web resources withou
 - **DevTools** — click the gear icon to open the webview's developer tools
 - **Session restore** — all internal tabs, URLs, navigation history, and profile selection saved and restored across app restarts
 - **Isolated storage** — each profile has its own cookies, storage, and cache, separated from the main application
+
+**Link open behavior:** External links clicked in Monaco or Markdown editors can open in the default OS browser or in the nearest internal Browser tab. Configure in **Settings → Links**. When set to "internal browser", links open in the closest browser tab (searching right, then left from the active page); if none exists, a new browser page is created.
 
 **Security:** Navigation to local file protocols (`file://`, `app-asset://`) is blocked.
 

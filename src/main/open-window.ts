@@ -1,4 +1,4 @@
-import { BrowserWindow, screen, shell } from "electron";
+import { BrowserWindow, screen } from "electron";
 import path from "node:path";
 
 import { EventEndpoint } from "../ipc/api-types";
@@ -112,8 +112,7 @@ export class OpenWindow {
         });
 
         this.window.webContents.setWindowOpenHandler(({ url }) => {
-            // todo: open in browser tab when implemented
-            shell.openExternal(url);
+            this.send(EventEndpoint.eOpenUrl, url);
             return { action: "deny" };
         });
 
@@ -163,9 +162,9 @@ export class OpenWindow {
                 return;
             }
 
-            // Block and open external links in browser
+            // Block and send to renderer for routing
             event.preventDefault();
-            shell.openExternal(url);
+            this.send(EventEndpoint.eOpenUrl, url);
         });
 
         if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {

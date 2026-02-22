@@ -256,6 +256,46 @@ The renderer can clear all browsing data for a partition via `ipcRenderer.invoke
 - "Clear data" button on each profile row in Settings
 - Profile deletion (confirmation dialog, then clear + remove from settings)
 
+## Link Integration
+
+External links clicked in Monaco or Markdown editors are routed through an IPC event (`eOpenUrl`) from the main process to the renderer. The renderer checks the `link-open-behavior` app setting:
+
+- `"default-browser"` (default): Opens the URL via `shell.openExternal()`
+- `"internal-browser"`: Opens the URL in the nearest browser tab via `openUrlInBrowserTab()`
+
+### Link Routing Flow
+
+```
+Main Process                    IPC                    Renderer
+─────────────               ──────────         ─────────────────────
+will-navigate (http url)   →  eOpenUrl(url)  →  Check appSettings
+setWindowOpenHandler(url)  →  eOpenUrl(url)  →    → "default-browser": shell.openExternal(url)
+                                                  → "internal-browser": openUrlInBrowserTab(url)
+```
+
+### Smart Browser Tab Search (`openUrlInBrowserTab`)
+
+Located in `src/renderer/store/page-actions.ts`. Uses the active page as the reference point:
+
+1. Search pages to the **right** of the active page for `type === "browserPage"`
+2. If not found, search pages to the **left**
+3. If still not found: create a new Browser page (using the default profile) as the last tab
+
+For existing browser tabs, `addTab(url)` creates a new internal tab. For newly created browser pages, `navigate(url)` is called on the initial blank tab.
+
+### Markdown Link Context Menu
+
+Right-clicking a link in Markdown Preview (or Notebook embedded Markdown) shows additional items for external URLs (http/https):
+- "Open in Default Browser" — `shell.openExternal(href)`
+- "Open in Internal Browser" — `openUrlInBrowserTab(href)`
+- "Open in Incognito" — `openUrlInBrowserTab(href, { incognito: true })`
+
+### Exceptions
+
+- **About page links** always open in the OS default browser (direct `shell.openExternal()` call, bypasses IPC routing)
+- **HTML Preview** blocks all link navigation (unchanged)
+- **Browser Editor** has its own link handling (new internal tabs, context menu) — not affected
+
 ## Common Pitfalls
 
 1. **Never update `state.url` from navigation events.** Only update it from user-initiated `model.navigate()`. Use `model.currentUrls` map for tracking the actual URL per internal tab.

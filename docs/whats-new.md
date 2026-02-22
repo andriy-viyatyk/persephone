@@ -59,6 +59,11 @@ Release notes and changelog for js-notepad.
     - Open via **+** dropdown → **Browser profile...** → **Incognito**
     - Incognito icon on page tab and inside the URL bar
     - Data is automatically discarded when the tab closes
+  - **Link integration** — external links from editors can open in the internal browser instead of the OS default
+    - New setting in **Settings → Links**: "Open in default OS browser" or "Open in internal Browser tab"
+    - Smart routing: links open in the nearest browser tab (searches right, then left from the active page); creates a new one if none exists
+    - Markdown Preview link context menu: "Open in Default Browser", "Open in Internal Browser", "Open in Incognito"
+    - Monaco Ctrl+Click on links also respects the global setting
   - DevTools access via gear icon in toolbar
   - Session restore — all internal tabs, URLs, navigation history, and profile selection persisted across app restarts
   - Isolated storage — cookies and site data separated from the main application

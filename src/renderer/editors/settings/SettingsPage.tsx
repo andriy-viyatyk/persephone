@@ -328,6 +328,20 @@ const SettingsPageRoot = styled.div({
         fontStyle: "italic",
         marginBottom: 8,
     },
+
+    "& .settings-select": {
+        fontSize: 13,
+        padding: "6px 8px",
+        backgroundColor: color.background.dark,
+        border: `1px solid ${color.border.default}`,
+        borderRadius: 4,
+        color: color.text.default,
+        outline: "none",
+        cursor: "pointer",
+        "&:focus": {
+            borderColor: color.border.active,
+        },
+    },
 });
 
 // ============================================================================
@@ -560,6 +574,25 @@ function BrowserProfilesSection() {
 }
 
 // ============================================================================
+// Link Behavior Section
+// ============================================================================
+
+function LinkBehaviorSection() {
+    const linkBehavior = appSettings.use("link-open-behavior");
+
+    const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        appSettings.set("link-open-behavior", e.target.value as "default-browser" | "internal-browser");
+    };
+
+    return (
+        <select className="settings-select" value={linkBehavior} onChange={handleChange}>
+            <option value="default-browser">Open in default OS browser</option>
+            <option value="internal-browser">Open in internal Browser tab</option>
+        </select>
+    );
+}
+
+// ============================================================================
 // SettingsPage Component
 // ============================================================================
 
@@ -634,6 +667,14 @@ function SettingsPage({ model }: SettingsPageProps) {
                 <hr className="divider" />
 
                 <BrowserProfilesSection />
+
+                <hr className="divider" />
+
+                <div className="section-label">Links</div>
+                <div className="section-hint">
+                    How external links open from editors (Monaco, Markdown)
+                </div>
+                <LinkBehaviorSection />
 
                 <hr className="divider" />
 
