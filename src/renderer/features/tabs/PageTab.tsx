@@ -17,6 +17,8 @@ import {
     RenameIcon,
     SaveIcon,
     UnlockIcon,
+    VolumeIcon,
+    VolumeMutedIcon,
 } from "../../theme/icons";
 import { LanguageIcon } from "../../editors/base/LanguageIcon";
 import { TComponentModel, useComponentModel } from "../../core/state/model";
@@ -491,7 +493,7 @@ export function PageTab(props: PageTabProps) {
     tabModel.isGrouped = pagesModel.isGrouped(model.id);
     tabModel.isActive =
         pagesModel.activePage === model || pagesModel.groupedPage === model;
-    const { title, modified, language, id, filePath, deleted, temp, pinned } =
+    const { title, modified, language, id, filePath, deleted, temp, pinned, _anyTabAudible, _pageMuted } =
         model.state.use((s) => ({
             title: s.title,
             modified: s.modified,
@@ -505,6 +507,9 @@ export function PageTab(props: PageTabProps) {
             pinned: s.pinned ?? false,
             // Trigger re-render when favicon changes (for browser tabs with dynamic icons)
             _iconHint: (s as any).favicon ?? "",
+            // Browser audio state (for page-level mute toggle)
+            _anyTabAudible: (s as any)._anyTabAudible ?? false,
+            _pageMuted: (s as any).pageMuted ?? false,
         }));
 
     const [{ isDragging }, drag] = useDrag({
@@ -616,6 +621,20 @@ export function PageTab(props: PageTabProps) {
                 >
                     {filePath}
                 </Tooltip>
+            )}
+            {(_anyTabAudible || _pageMuted) && (
+                <Button
+                    size="small"
+                    type="icon"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        (model as any).toggleMuteAll?.();
+                    }}
+                    title={_pageMuted ? "Unmute Page" : "Mute Page"}
+                    background={tabModel.isActive ? "default" : "dark"}
+                >
+                    {_pageMuted ? <VolumeMutedIcon /> : <VolumeIcon />}
+                </Button>
             )}
             <Button
                 size="small"

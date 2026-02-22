@@ -37,6 +37,7 @@ const TextFieldRoot = styled(Input)({
 
 export interface TextFieldProps extends FieldProps<string>, Omit<InputProps, 'value' | 'onChange'> {
     startButtons?: ReactNode[];
+    startButtonsWidth?: number;
     endButtons?: ReactNode[];
     endButtonsWidth?: number;
     label?: string;
@@ -59,6 +60,7 @@ export const TextField = forwardRef(function TextFieldComponent(props: Readonly<
         onChange,
         className,
         startButtons,
+        startButtonsWidth: startButtonsWidthProp,
         endButtons,
         label,
         labelLeft,
@@ -77,9 +79,10 @@ export const TextField = forwardRef(function TextFieldComponent(props: Readonly<
         ? endButtons.length * (buttonWidth + buttonSpacing) + 1
         : undefined;
 
-    const startButtonsWidth = startButtons?.length
-        ? startButtons.length * (buttonWidth + buttonSpacing) + 1
-        : 0;
+    const startButtonsWidth = startButtonsWidthProp
+        ?? (startButtons?.length
+            ? startButtons.length * (buttonWidth + buttonSpacing) + 1
+            : 0);
     const innerLabelWidth = innerLabel ? innerLabel.length * 8 + 12 : 0;
 
     const startAddornment = (startButtons?.length || innerLabel) ? (

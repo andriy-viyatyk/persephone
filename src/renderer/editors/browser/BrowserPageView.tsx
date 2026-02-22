@@ -18,7 +18,8 @@ import { TextField } from "../../components/basic/TextField";
 import {
     ArrowLeftIcon,
     ArrowRightIcon,
-    PlusIcon,
+    CloseIcon,
+    HomeIcon,
     RefreshIcon,
     SettingsIcon,
     StopIcon,
@@ -28,7 +29,9 @@ import {
     BrowserPageModel,
     BrowserPageState,
     BrowserTabData,
+    detectSearchEngine,
     getDefaultBrowserPageState,
+    SEARCH_ENGINES,
 } from "./BrowserPageModel";
 import {
     BrowserChannel,
@@ -39,6 +42,7 @@ import { Splitter } from "../../components/layout/Splitter";
 import { BrowserTabsPanel } from "./BrowserTabsPanel";
 import { showAppPopupMenu } from "../../features/dialogs/poppers/showPopupMenu";
 import { MenuItem } from "../../components/overlay/PopupMenu";
+import { WithPopupMenu } from "../../components/overlay/WithPopupMenu";
 import { pagesModel } from "../../store/pages-store";
 import { newTextFileModel } from "../text/TextPageModel";
 import type { ImageViewerModelState } from "../image/ImageViewer";
@@ -68,6 +72,21 @@ const BrowserPageViewRoot = styled.div({
         flex: 1,
     },
 
+    "& .search-engine-btn": {
+        cursor: "pointer",
+        fontSize: 11,
+        color: color.text.light,
+        padding: "0 4px",
+        borderRadius: 3,
+        whiteSpace: "nowrap",
+        userSelect: "none",
+        lineHeight: "20px",
+        "&:hover": {
+            color: color.text.default,
+            backgroundColor: color.background.light,
+        },
+    },
+
     "& .loading-bar": {
         height: 2,
         backgroundColor: color.border.active,
@@ -83,6 +102,7 @@ const BrowserPageViewRoot = styled.div({
         display: "flex",
         flexDirection: "row",
         overflow: "hidden",
+        position: "relative",
     },
 
     "& .webview-area": {
@@ -115,6 +135,19 @@ const BrowserPageViewRoot = styled.div({
     "& .tabs-panel": {
         flexShrink: 0,
         overflow: "hidden",
+        borderRight: `1px solid ${color.border.default}`,
+    },
+
+    "& .browser-body > .splitter": {
+        position: "absolute",
+        top: 0,
+        bottom: 0,
+        zIndex: 2,
+        backgroundColor: "transparent",
+        borderRight: "none",
+        "&:hover": {
+            backgroundColor: color.background.light,
+        },
     },
 
     "@keyframes loading-pulse": {
@@ -256,18 +289,48 @@ interface BrowserPageViewProps {
 }
 
 function BrowserPageView({ model }: BrowserPageViewProps) {
-    const { url, loading, canGoBack, canGoForward, tabs, activeTabId, tabsPanelWidth } =
-        model.state.use((s) => ({
-            url: s.url,
-            loading: s.loading,
-            canGoBack: s.canGoBack,
-            canGoForward: s.canGoForward,
-            tabs: s.tabs,
-            activeTabId: s.activeTabId,
-            tabsPanelWidth: s.tabsPanelWidth,
-        }));
+    const { url, loading, canGoBack, canGoForward, tabs, activeTabId, tabsPanelWidth, homeUrl, searchEngineId } =
+        model.state.use((s) => {
+            const activeTab = s.tabs.find((t) => t.id === s.activeTabId);
+            return {
+                url: s.url,
+                loading: s.loading,
+                canGoBack: s.canGoBack,
+                canGoForward: s.canGoForward,
+                tabs: s.tabs,
+                activeTabId: s.activeTabId,
+                tabsPanelWidth: s.tabsPanelWidth,
+                homeUrl: activeTab?.homeUrl ?? "",
+                searchEngineId: s.searchEngineId,
+            };
+        });
 
     const [urlInput, setUrlInput] = useState(url);
+
+    // Search engine detection — show selector on blank pages or search engine results
+    // Uses urlInput (kept in sync with actual webview URL via did-navigate) rather than
+    // state url which may be stale after clicking links within a page.
+    const detectedSearch = useMemo(() => detectSearchEngine(urlInput), [urlInput]);
+    const isBlankPage = !urlInput || urlInput === "about:blank";
+    const showSearchEngineSelector = isBlankPage || !!detectedSearch;
+    const currentEngineName = useMemo(() => {
+        if (detectedSearch) return detectedSearch.engine.label;
+        return SEARCH_ENGINES.find((e) => e.id === searchEngineId)?.label || "Google";
+    }, [detectedSearch, searchEngineId]);
+
+    const searchEngineMenuItems = useMemo((): MenuItem[] =>
+        SEARCH_ENGINES.map((engine) => ({
+            label: engine.label,
+            onClick: () => {
+                if (detectedSearch) {
+                    model.switchSearchEngine(engine.id);
+                } else {
+                    model.setSearchEngine(engine.id);
+                }
+            },
+        })),
+    [model, detectedSearch]);
+
     const urlInputRef = useRef<HTMLInputElement>(null);
     const isInitialLoad = useRef(true);
     const webviewRefs = useRef<Map<string, Electron.WebviewTag>>(new Map());
@@ -328,6 +391,9 @@ function BrowserPageView({ model }: BrowserPageViewProps) {
                     break;
                 case "did-stop-loading":
                     model.updateTab(internalTabId, { loading: false });
+                    break;
+                case "audio-state-changed":
+                    model.updateTab(internalTabId, { audible: !!data.audible });
                     break;
                 case "did-start-navigation": {
                     if (data.blocked) {
@@ -647,6 +713,10 @@ function BrowserPageView({ model }: BrowserPageViewProps) {
         setTimeout(() => urlInputRef.current?.select(), 0);
     }, []);
 
+    const handleGoHome = useCallback(() => {
+        model.goHome();
+    }, [model]);
+
     const handleGoBack = useCallback(() => {
         getActiveWebview()?.goBack();
     }, [getActiveWebview]);
@@ -691,10 +761,6 @@ function BrowserPageView({ model }: BrowserPageViewProps) {
         [getActiveWebview],
     );
 
-    const handleNewTab = useCallback(() => {
-        model.addTab();
-    }, [model]);
-
     const handleTabsPanelWidthChange = useCallback(
         (width: number) => {
             model.setTabsPanelWidth(width);
@@ -734,6 +800,15 @@ function BrowserPageView({ model }: BrowserPageViewProps) {
                     <Button
                         type="icon"
                         size="small"
+                        title={homeUrl ? `Go to ${homeUrl}` : "Home"}
+                        onClick={handleGoHome}
+                        disabled={!homeUrl}
+                    >
+                        <HomeIcon />
+                    </Button>
+                    <Button
+                        type="icon"
+                        size="small"
                         title="Back (Alt+Left)"
                         onClick={handleGoBack}
                         disabled={!canGoBack}
@@ -757,6 +832,8 @@ function BrowserPageView({ model }: BrowserPageViewProps) {
                     >
                         {loading ? <StopIcon /> : <RefreshIcon />}
                     </Button>
+                    <WithPopupMenu items={searchEngineMenuItems} offset={[-4, 4]}>
+                    {(openEngineMenu) => (
                     <TextField
                         ref={urlInputRef}
                         className="url-bar"
@@ -766,9 +843,27 @@ function BrowserPageView({ model }: BrowserPageViewProps) {
                         onFocus={handleUrlFocus}
                         onContextMenu={handleUrlContextMenu}
                         placeholder="Enter URL or search term..."
-                        startButtons={model.state.get().isIncognito ? [
-                            <IncognitoIcon key="incognito" color={color.icon.light} />,
-                        ] : undefined}
+                        startButtons={(() => {
+                            const btns = [
+                                ...(model.state.get().isIncognito ? [
+                                    <IncognitoIcon key="incognito" color={color.icon.light} />,
+                                ] : []),
+                                ...(showSearchEngineSelector ? [
+                                    <span
+                                        key="search-engine"
+                                        className="search-engine-btn"
+                                        onClick={(e: React.MouseEvent) => { e.stopPropagation(); openEngineMenu(e.currentTarget); }}
+                                        title="Change search engine"
+                                    >{currentEngineName} ▾</span>,
+                                ] : []),
+                            ];
+                            return btns.length ? btns : undefined;
+                        })()}
+                        startButtonsWidth={
+                            showSearchEngineSelector
+                                ? (currentEngineName.length * 7 + 20) + (model.state.get().isIncognito ? 20 : 0)
+                                : undefined
+                        }
                         endButtons={[
                             <Button
                                 key="go"
@@ -781,14 +876,8 @@ function BrowserPageView({ model }: BrowserPageViewProps) {
                             </Button>,
                         ]}
                     />
-                    <Button
-                        type="icon"
-                        size="small"
-                        title="New Tab"
-                        onClick={handleNewTab}
-                    >
-                        <PlusIcon />
-                    </Button>
+                    )}
+                    </WithPopupMenu>
                     <Button
                         type="icon"
                         size="small"
@@ -796,6 +885,14 @@ function BrowserPageView({ model }: BrowserPageViewProps) {
                         onClick={handleOpenDevTools}
                     >
                         <SettingsIcon />
+                    </Button>
+                    <Button
+                        type="icon"
+                        size="small"
+                        title="Close Tab"
+                        onClick={() => model.closeTab(activeTabId)}
+                    >
+                        <CloseIcon />
                     </Button>
                 </div>
             </PageToolbar>
@@ -821,6 +918,7 @@ function BrowserPageView({ model }: BrowserPageViewProps) {
                     initialWidth={tabsPanelWidth}
                     onChangeWidth={handleTabsPanelWidthChange}
                     borderSized="right"
+                    style={{ left: tabsPanelWidth }}
                 />
                 <div className="webview-area">
                     {tabs.map((tab) => (

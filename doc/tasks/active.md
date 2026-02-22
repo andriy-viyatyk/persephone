@@ -6,7 +6,7 @@ Current work in progress and planned tasks.
 
 | ID | Title | Priority | Link |
 |----|-------|----------|------|
-
+| US-031 | Browser Enhancement #1 | Medium | [README](US-031-browser-enhancement-1/README.md) |
 
 ## Planned (Next)
 

@@ -10,7 +10,7 @@
  * Registration key is `${tabId}/${internalTabId}` to support multiple
  * internal browser tabs per js-notepad page tab.
  */
-import { ipcMain, IpcMainEvent, session, webContents, WebContents } from "electron";
+import { BrowserWindow, ipcMain, IpcMainEvent, session, webContents, WebContents } from "electron";
 import {
     BrowserChannel,
     BrowserRegisterRequest,
@@ -18,6 +18,12 @@ import {
 } from "../ipc/browser-ipc";
 
 const BLOCKED_PROTOCOLS = ["file:", "app-asset:", "safe-file:"];
+
+/** Extract a numeric value from a window.open() features string (e.g. "width=500,height=600"). */
+function parseFeature(features: string, name: string): number | undefined {
+    const match = features.match(new RegExp(`${name}=(\\d+)`));
+    return match ? parseInt(match[1], 10) : undefined;
+}
 
 interface RegisteredWebview {
     tabId: string;
@@ -113,6 +119,12 @@ function registerWebview(event: IpcMainEvent, request: BrowserRegisterRequest) {
         sendEvent(sender, tabId, internalTabId, "did-stop-loading", {});
     });
 
+    on("audio-state-changed", (e: any) => {
+        sendEvent(sender, tabId, internalTabId, "audio-state-changed", {
+            audible: e.audible,
+        });
+    });
+
     on("did-start-navigation", (_e: any, url: string) => {
         // Block navigation to dangerous protocols
         try {
@@ -147,13 +159,42 @@ function registerWebview(event: IpcMainEvent, request: BrowserRegisterRequest) {
         });
     });
 
-    // Intercept window.open / target="_blank" — deny the popup and relay URL
-    wc.setWindowOpenHandler(({ url, disposition }) => {
-        sendEvent(sender, tabId, internalTabId, "new-window", {
-            url,
-            disposition,
-        });
-        return { action: "deny" };
+    // Intercept window.open / target="_blank"
+    wc.setWindowOpenHandler(({ url, disposition, features }) => {
+        // Link clicks (target="_blank") → open as internal tab
+        if (disposition === "foreground-tab" || disposition === "background-tab") {
+            sendEvent(sender, tabId, internalTabId, "new-window", {
+                url,
+                disposition,
+            });
+            return { action: "deny" };
+        }
+
+        // window.open() from JS (OAuth popups, etc.) → allow as real popup window.
+        // This preserves window.opener reference needed by auth flows.
+        // Center the popup on the parent window.
+        const parentWindow = BrowserWindow.fromWebContents(sender);
+        const parentBounds = parentWindow?.getBounds();
+
+        const popupWidth = parseFeature(features, "width") || 500;
+        const popupHeight = parseFeature(features, "height") || 600;
+
+        const overrideBrowserWindowOptions: Electron.BrowserWindowConstructorOptions = {
+            autoHideMenuBar: true,
+            width: popupWidth,
+            height: popupHeight,
+        };
+
+        if (parentBounds) {
+            overrideBrowserWindowOptions.x = Math.round(
+                parentBounds.x + (parentBounds.width - popupWidth) / 2,
+            );
+            overrideBrowserWindowOptions.y = Math.round(
+                parentBounds.y + (parentBounds.height - popupHeight) / 2,
+            );
+        }
+
+        return { action: "allow", overrideBrowserWindowOptions };
     });
 
     // Clean up if the webview's webContents is destroyed
@@ -206,6 +247,13 @@ export function initBrowserHandlers(): void {
 
     ipcMain.on(BrowserChannel.unregister, (_event, key: string) => {
         unregisterWebview(key);
+    });
+
+    ipcMain.on(BrowserChannel.setAudioMuted, (_event, key: string, muted: boolean) => {
+        const reg = registrations.get(key);
+        if (reg && !reg.webContents.isDestroyed()) {
+            reg.webContents.setAudioMuted(muted);
+        }
     });
 
     ipcMain.handle(BrowserChannel.clearProfileData, async (_event, partition: string) => {

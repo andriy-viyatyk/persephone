@@ -1,4 +1,5 @@
 import { createElement, ReactNode } from "react";
+const { ipcRenderer } = require("electron");
 import { IPage } from "../../../shared/types";
 import { getDefaultPageModelState, PageModel } from "../base";
 import { TComponentState } from "../../core/state/state";
@@ -6,6 +7,129 @@ import { IncognitoIcon } from "../../theme/language-icons";
 import { GlobeIcon } from "../../theme/icons";
 import { appSettings, BrowserProfile } from "../../store/app-settings";
 import { DEFAULT_BROWSER_COLOR } from "../../theme/palette-colors";
+import { BrowserChannel } from "../../../ipc/browser-ipc";
+
+// ============================================================================
+// Search Engines
+// ============================================================================
+
+export interface SearchEngine {
+    id: string;
+    label: string;
+    /** URL template — `%s` is replaced with the encoded search query. */
+    searchUrl: string;
+    /** Hostname(s) that identify this engine in the URL bar. */
+    hosts: string[];
+    /** URL search param that contains the query (e.g. "q" for Google). */
+    queryParam: string;
+    /** Optional path prefix to detect this engine even when query param is missing
+     *  (e.g. Perplexity redirects `/search?q=foo` to `/search/foo-<hash>`). */
+    searchPathPrefix?: string;
+}
+
+export const SEARCH_ENGINES: SearchEngine[] = [
+    {
+        id: "google",
+        label: "Google",
+        searchUrl: "https://www.google.com/search?q=%s",
+        hosts: ["www.google.com", "google.com"],
+        queryParam: "q",
+    },
+    {
+        id: "bing",
+        label: "Bing",
+        searchUrl: "https://www.bing.com/search?q=%s",
+        hosts: ["www.bing.com", "bing.com"],
+        queryParam: "q",
+    },
+    {
+        id: "duckduckgo",
+        label: "DuckDuckGo",
+        searchUrl: "https://duckduckgo.com/?q=%s",
+        hosts: ["duckduckgo.com", "www.duckduckgo.com"],
+        queryParam: "q",
+    },
+    {
+        id: "yahoo",
+        label: "Yahoo",
+        searchUrl: "https://search.yahoo.com/search?p=%s",
+        hosts: ["search.yahoo.com"],
+        queryParam: "p",
+    },
+    {
+        id: "ecosia",
+        label: "Ecosia",
+        searchUrl: "https://www.ecosia.org/search?q=%s",
+        hosts: ["www.ecosia.org", "ecosia.org"],
+        queryParam: "q",
+    },
+    {
+        id: "brave",
+        label: "Brave",
+        searchUrl: "https://search.brave.com/search?q=%s",
+        hosts: ["search.brave.com"],
+        queryParam: "q",
+    },
+    {
+        id: "startpage",
+        label: "Startpage",
+        searchUrl: "https://www.startpage.com/sp/search?query=%s",
+        hosts: ["www.startpage.com", "startpage.com"],
+        queryParam: "query",
+    },
+    {
+        id: "qwant",
+        label: "Qwant",
+        searchUrl: "https://www.qwant.com/?q=%s",
+        hosts: ["www.qwant.com", "qwant.com"],
+        queryParam: "q",
+    },
+    {
+        id: "baidu",
+        label: "Baidu",
+        searchUrl: "https://www.baidu.com/s?wd=%s",
+        hosts: ["www.baidu.com", "baidu.com"],
+        queryParam: "wd",
+    },
+    {
+        id: "perplexity",
+        label: "Perplexity",
+        searchUrl: "https://www.perplexity.ai/search?q=%s",
+        hosts: ["www.perplexity.ai", "perplexity.ai"],
+        queryParam: "q",
+        searchPathPrefix: "/search",
+    },
+    {
+        id: "gibiru",
+        label: "Gibiru",
+        searchUrl: "https://gibiru.com/results.html?q=%s",
+        hosts: ["gibiru.com", "www.gibiru.com"],
+        queryParam: "q",
+    },
+];
+
+/** Try to detect a search engine from a URL and extract the query string. */
+export function detectSearchEngine(url: string): { engine: SearchEngine; query: string } | null {
+    try {
+        const parsed = new URL(url);
+        for (const engine of SEARCH_ENGINES) {
+            if (engine.hosts.includes(parsed.hostname)) {
+                const query = parsed.searchParams.get(engine.queryParam);
+                if (query) {
+                    return { engine, query };
+                }
+                // Fallback: some engines redirect to a path-based URL (e.g. Perplexity
+                // rewrites /search?q=foo → /search/foo-<hash>). Detect by path prefix.
+                if (engine.searchPathPrefix && parsed.pathname.startsWith(engine.searchPathPrefix)) {
+                    return { engine, query: "" };
+                }
+            }
+        }
+    } catch {
+        // Invalid URL
+    }
+    return null;
+}
 
 /** State for a single internal browser tab. */
 export interface BrowserTabData {
@@ -16,6 +140,12 @@ export interface BrowserTabData {
     canGoBack: boolean;
     canGoForward: boolean;
     favicon: string;
+    /** Whether the webview is currently emitting audio. */
+    audible: boolean;
+    /** Whether the webview is muted by the user. */
+    muted: boolean;
+    /** The "home" URL for this tab — set on user-initiated navigation or tab creation with a URL. */
+    homeUrl: string;
 }
 
 export interface BrowserPageState extends IPage {
@@ -36,6 +166,14 @@ export interface BrowserPageState extends IPage {
     profileName: string;
     /** Whether this is an incognito session. */
     isIncognito: boolean;
+    /** Page-level mute — mutes all internal tabs. */
+    pageMuted: boolean;
+    /** True if any internal tab is currently emitting audio (for PageTab icon). */
+    _anyTabAudible: boolean;
+    /** Selected search engine ID (default: "google"). */
+    searchEngineId: string;
+    /** Last search query typed by the user (used when switching engines on path-based URLs). */
+    lastSearchQuery: string;
 }
 
 const DEFAULT_URL = "about:blank";
@@ -55,6 +193,9 @@ function createTab(url = DEFAULT_URL): BrowserTabData {
         canGoBack: false,
         canGoForward: false,
         favicon: "",
+        audible: false,
+        muted: false,
+        homeUrl: url !== DEFAULT_URL ? url : "",
     };
 }
 
@@ -73,9 +214,13 @@ export const getDefaultBrowserPageState = (): BrowserPageState => {
         favicon: "",
         tabs: [tab],
         activeTabId: tab.id,
-        tabsPanelWidth: 120,
+        tabsPanelWidth: 34,
         profileName: "",
         isIncognito: false,
+        pageMuted: false,
+        _anyTabAudible: false,
+        searchEngineId: "google",
+        lastSearchQuery: "",
     };
 };
 
@@ -127,6 +272,8 @@ export class BrowserPageModel extends PageModel<BrowserPageState, void> {
         data.pageTitle = s.pageTitle;
         data.profileName = s.profileName;
         data.isIncognito = s.isIncognito;
+        data.searchEngineId = s.searchEngineId;
+        data.lastSearchQuery = s.lastSearchQuery;
         // Top-level url = active tab's actual URL
         const activeTab = s.tabs.find((t) => t.id === s.activeTabId);
         data.url = activeTab
@@ -165,6 +312,8 @@ export class BrowserPageModel extends PageModel<BrowserPageState, void> {
             if (data.tabsPanelWidth) s.tabsPanelWidth = data.tabsPanelWidth;
             if (data.profileName !== undefined) s.profileName = data.profileName;
             if (data.isIncognito !== undefined) s.isIncognito = data.isIncognito;
+            if (data.searchEngineId) s.searchEngineId = data.searchEngineId;
+            if (data.lastSearchQuery) s.lastSearchQuery = data.lastSearchQuery;
         });
     }
 
@@ -209,6 +358,40 @@ export class BrowserPageModel extends PageModel<BrowserPageState, void> {
         }
     };
 
+    /** Get the currently selected search engine. */
+    getSearchEngine(): SearchEngine {
+        const id = this.state.get().searchEngineId;
+        return SEARCH_ENGINES.find((e) => e.id === id) || SEARCH_ENGINES[0];
+    }
+
+    /** Set the search engine by ID. */
+    setSearchEngine = (engineId: string) => {
+        this.state.update((s) => { s.searchEngineId = engineId; });
+    };
+
+    /** Switch the current search query to a different engine. Also updates the tab's homeUrl. */
+    switchSearchEngine = (engineId: string) => {
+        const s = this.state.get();
+        const currentUrl = this.currentUrls.get(s.activeTabId) || s.url;
+        const detected = detectSearchEngine(currentUrl);
+        this.setSearchEngine(engineId);
+        const query = detected?.query || s.lastSearchQuery;
+        if (detected && query) {
+            const newEngine = SEARCH_ENGINES.find((e) => e.id === engineId);
+            if (newEngine) {
+                const newUrl = newEngine.searchUrl.replace("%s", encodeURIComponent(query));
+                this.state.update((st) => {
+                    st.url = newUrl;
+                    const tab = st.tabs.find((t) => t.id === st.activeTabId);
+                    if (tab) {
+                        tab.url = newUrl;
+                        tab.homeUrl = newUrl;
+                    }
+                });
+            }
+        }
+    };
+
     navigate = (url: string) => {
         let normalizedUrl = url.trim();
         if (!normalizedUrl) return;
@@ -224,9 +407,12 @@ export class BrowserPageModel extends PageModel<BrowserPageState, void> {
             ) {
                 normalizedUrl = "https://" + normalizedUrl;
             } else {
-                normalizedUrl =
-                    "https://www.google.com/search?q=" +
-                    encodeURIComponent(normalizedUrl);
+                const engine = this.getSearchEngine();
+                this.state.update((s) => { s.lastSearchQuery = normalizedUrl; });
+                normalizedUrl = engine.searchUrl.replace(
+                    "%s",
+                    encodeURIComponent(normalizedUrl),
+                );
             }
         }
 
@@ -235,8 +421,18 @@ export class BrowserPageModel extends PageModel<BrowserPageState, void> {
             const tab = s.tabs.find((t) => t.id === s.activeTabId);
             if (tab) {
                 tab.url = normalizedUrl;
+                tab.homeUrl = normalizedUrl;
             }
         });
+    };
+
+    /** Navigate the active tab to its home URL. */
+    goHome = () => {
+        const s = this.state.get();
+        const tab = s.tabs.find((t) => t.id === s.activeTabId);
+        if (tab?.homeUrl) {
+            this.navigate(tab.homeUrl);
+        }
     };
 
     /** Update the active internal tab and sync top-level state. */
@@ -254,6 +450,11 @@ export class BrowserPageModel extends PageModel<BrowserPageState, void> {
             if (updates.canGoForward !== undefined)
                 tab.canGoForward = updates.canGoForward;
             if (updates.favicon !== undefined) tab.favicon = updates.favicon;
+            if (updates.audible !== undefined) {
+                tab.audible = updates.audible;
+                s._anyTabAudible = s.tabs.some((t) => t.audible);
+            }
+            if (updates.muted !== undefined) tab.muted = updates.muted;
 
             // Sync top-level state if this is the active tab
             if (internalTabId === s.activeTabId) {
@@ -289,12 +490,23 @@ export class BrowserPageModel extends PageModel<BrowserPageState, void> {
         return tab.id;
     };
 
-    /** Close an internal tab. If it's the active one, switch to adjacent tab. */
+    /** Close an internal tab. If it's the active one, switch to adjacent tab.
+     *  Closing the last tab replaces it with a fresh about:blank tab. */
     closeTab = (internalTabId: string) => {
         this.state.update((s) => {
-            if (s.tabs.length <= 1) return; // Keep at least one tab
             const idx = s.tabs.findIndex((t) => t.id === internalTabId);
             if (idx < 0) return;
+
+            if (s.tabs.length <= 1) {
+                // Replace the last tab with a fresh one
+                const fresh = createTab();
+                s.tabs = [fresh];
+                s.activeTabId = fresh.id;
+                this.currentUrls.delete(internalTabId);
+                this.syncTopLevelFromTab(s, fresh);
+                return;
+            }
+
             s.tabs.splice(idx, 1);
             this.currentUrls.delete(internalTabId);
 
@@ -351,6 +563,28 @@ export class BrowserPageModel extends PageModel<BrowserPageState, void> {
             s.activeTabId = internalTabId;
             this.syncTopLevelFromTab(s, tab);
         });
+    };
+
+    /** Toggle mute on an internal tab. Effective mute = tabMuted || pageMuted. */
+    toggleMute = (internalTabId: string) => {
+        const s = this.state.get();
+        const tab = s.tabs.find((t) => t.id === internalTabId);
+        if (!tab) return;
+        const newMuted = !tab.muted;
+        this.updateTab(internalTabId, { muted: newMuted });
+        const key = `${this.id}/${internalTabId}`;
+        ipcRenderer.send(BrowserChannel.setAudioMuted, key, newMuted || s.pageMuted);
+    };
+
+    /** Toggle page-level mute for all internal tabs. */
+    toggleMuteAll = () => {
+        const s = this.state.get();
+        const newPageMuted = !s.pageMuted;
+        this.state.update((st) => { st.pageMuted = newPageMuted; });
+        for (const tab of s.tabs) {
+            const key = `${this.id}/${tab.id}`;
+            ipcRenderer.send(BrowserChannel.setAudioMuted, key, tab.muted || newPageMuted);
+        }
     };
 
     setTabsPanelWidth = (width: number) => {

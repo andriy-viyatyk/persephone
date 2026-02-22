@@ -1,7 +1,8 @@
 import styled from "@emotion/styled";
-import { useCallback } from "react";
+import { useCallback, useRef, useState } from "react";
+import { useFloating, offset as floatingOffset, autoUpdate } from "@floating-ui/react";
 import color from "../../theme/color";
-import { CloseIcon, GlobeIcon, PlusIcon } from "../../theme/icons";
+import { CloseIcon, GlobeIcon, PlusIcon, VolumeIcon, VolumeMutedIcon } from "../../theme/icons";
 import { BrowserPageModel, BrowserTabData } from "./BrowserPageModel";
 import { Button } from "../../components/basic/Button";
 import { MenuItem } from "../../components/overlay/PopupMenu";
@@ -31,15 +32,17 @@ const BrowserTabsPanelRoot = styled.div({
         height: 28,
         boxSizing: "border-box",
         padding: "0 4px 0 8px",
+        margin: "0 4px",
         gap: 6,
         cursor: "pointer",
-        borderLeft: "2px solid transparent",
+        borderRadius: 4,
+        border: "1px solid transparent",
         "&:hover": {
             backgroundColor: color.background.light,
         },
         "&.active": {
-            backgroundColor: color.background.selection,
-            borderLeftColor: color.border.active,
+            backgroundColor: color.background.dark,
+            border: `1px solid ${color.border.active}`,
         },
         "&:hover .tab-close, &.active .tab-close": {
             opacity: 1,
@@ -49,12 +52,11 @@ const BrowserTabsPanelRoot = styled.div({
     "& .tab-item.compact": {
         justifyContent: "center",
         padding: "0 4px",
-        borderLeft: "none",
-        borderBottom: "2px solid transparent",
-        "&.active": {
-            borderLeftColor: "transparent",
-            borderBottomColor: color.border.active,
-        },
+        margin: "0 4px",
+    },
+
+    "& .tab-item.extended": {
+        borderRadius: "4px 0 0 4px",
     },
 
     "& .tab-favicon": {
@@ -97,6 +99,33 @@ const BrowserTabsPanelRoot = styled.div({
         justifyContent: "center",
         padding: "0 4px",
     },
+
+    "& .tab-extension": {
+        display: "flex",
+        alignItems: "center",
+        width: 140,
+        height: 28,
+        boxSizing: "border-box",
+        padding: "0 4px 0 6px",
+        gap: 6,
+        borderRadius: "0 4px 4px 0",
+        border: `1px solid ${color.border.default}`,
+        borderLeft: "none",
+        backgroundColor: color.background.light,
+        "& .tab-extension-title": {
+            fontSize: 12,
+            color: color.text.default,
+            whiteSpace: "nowrap",
+            maxWidth: 200,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+        },
+        "&.active": {
+            backgroundColor: color.background.dark,
+            border: `1px solid ${color.border.active}`,
+            borderLeft: "none",
+        },
+    },
 });
 
 interface BrowserTabsPanelProps {
@@ -115,6 +144,48 @@ export function BrowserTabsPanel({
     const compact = width < COMPACT_THRESHOLD;
     const showClose = !compact && width >= CLOSE_BUTTON_THRESHOLD;
 
+    const [hoveredTabId, setHoveredTabId] = useState<string | null>(null);
+    const hoveredTabRef = useRef<HTMLDivElement | null>(null);
+    const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const { refs, floatingStyles } = useFloating({
+        placement: "right-start",
+        middleware: [floatingOffset({ mainAxis: -1 })],
+        strategy: "fixed",
+        whileElementsMounted: autoUpdate,
+    });
+
+    const hoveredTab = hoveredTabId
+        ? tabs.find((t) => t.id === hoveredTabId) ?? null
+        : null;
+
+    const handleTabHover = useCallback(
+        (e: React.MouseEvent<HTMLDivElement>, tabId: string) => {
+            if (closeTimeoutRef.current) {
+                clearTimeout(closeTimeoutRef.current);
+                closeTimeoutRef.current = null;
+            }
+            hoveredTabRef.current = e.currentTarget;
+            refs.setReference(e.currentTarget);
+            setHoveredTabId(tabId);
+        },
+        [refs],
+    );
+
+    const scheduleClose = useCallback(() => {
+        closeTimeoutRef.current = setTimeout(() => {
+            setHoveredTabId(null);
+            closeTimeoutRef.current = null;
+        }, 100);
+    }, []);
+
+    const cancelClose = useCallback(() => {
+        if (closeTimeoutRef.current) {
+            clearTimeout(closeTimeoutRef.current);
+            closeTimeoutRef.current = null;
+        }
+    }, []);
+
     const handleNewTab = useCallback(() => {
         model.addTab();
     }, [model]);
@@ -130,6 +201,23 @@ export function BrowserTabsPanel({
         (e: React.MouseEvent, tabId: string) => {
             e.stopPropagation();
             model.closeTab(tabId);
+        },
+        [model],
+    );
+
+    const handleToggleMute = useCallback(
+        (e: React.MouseEvent, tabId: string) => {
+            e.stopPropagation();
+            model.toggleMute(tabId);
+        },
+        [model],
+    );
+
+    const handleExtensionClose = useCallback(
+        (e: React.MouseEvent, tabId: string) => {
+            e.stopPropagation();
+            model.closeTab(tabId);
+            setHoveredTabId(null);
         },
         [model],
     );
@@ -173,10 +261,11 @@ export function BrowserTabsPanel({
                 {tabs.map((tab) => (
                     <div
                         key={tab.id}
-                        className={`tab-item${tab.id === activeTabId ? " active" : ""}${compact ? " compact" : ""}`}
+                        className={`tab-item${tab.id === activeTabId ? " active" : ""}${compact ? " compact" : ""}${tab.id === hoveredTabId ? " extended" : ""}`}
                         onClick={() => handleSwitchTab(tab.id)}
                         onContextMenu={(e) => handleContextMenu(e, tab.id)}
-                        title={compact ? (tab.pageTitle || tab.url || "New Tab") : undefined}
+                        onMouseEnter={compact ? (e) => handleTabHover(e, tab.id) : undefined}
+                        onMouseLeave={compact ? scheduleClose : undefined}
                     >
                         <div className="tab-favicon">
                             {tab.favicon ? (
@@ -189,6 +278,16 @@ export function BrowserTabsPanel({
                             <div className="tab-title">
                                 {tab.pageTitle || tab.url || "New Tab"}
                             </div>
+                        )}
+                        {!compact && (tab.audible || tab.muted) && (
+                            <Button
+                                type="icon"
+                                size="small"
+                                title={tab.muted ? "Unmute Tab" : "Mute Tab"}
+                                onClick={(e) => handleToggleMute(e, tab.id)}
+                            >
+                                {tab.muted ? <VolumeMutedIcon /> : <VolumeIcon />}
+                            </Button>
                         )}
                         {showClose && (
                             <div className="tab-close">
@@ -217,6 +316,38 @@ export function BrowserTabsPanel({
                     </Button>
                 </div>
             </div>
+            {compact && hoveredTab && (
+                <div
+                    ref={refs.setFloating}
+                    className={`tab-extension${hoveredTabId === activeTabId ? " active" : ""}`}
+                    style={{ ...floatingStyles, zIndex: 1000 }}
+                    onMouseEnter={cancelClose}
+                    onMouseLeave={scheduleClose}
+                    onClick={() => handleSwitchTab(hoveredTabId!)}
+                >
+                    <span className="tab-extension-title">
+                        {hoveredTab.pageTitle || hoveredTab.url || "New Tab"}
+                    </span>
+                    {(hoveredTab.audible || hoveredTab.muted) && (
+                        <Button
+                            type="icon"
+                            size="small"
+                            title={hoveredTab.muted ? "Unmute Tab" : "Mute Tab"}
+                            onClick={(e) => handleToggleMute(e, hoveredTabId!)}
+                        >
+                            {hoveredTab.muted ? <VolumeMutedIcon /> : <VolumeIcon />}
+                        </Button>
+                    )}
+                    <Button
+                        type="icon"
+                        size="small"
+                        title="Close Tab"
+                        onClick={(e) => handleExtensionClose(e, hoveredTabId!)}
+                    >
+                        <CloseIcon />
+                    </Button>
+                </div>
+            )}
         </BrowserTabsPanelRoot>
     );
 }

@@ -16,6 +16,8 @@ export const BrowserChannel = {
     unregister: "browser:unregister",
     /** Clear all storage data + cache for a given partition. Returns when done. */
     clearProfileData: "browser:clear-profile-data",
+    /** Renderer → Main: mute/unmute a webview's audio. Args: (key: string, muted: boolean) */
+    setAudioMuted: "browser:set-audio-muted",
 
     // Main → Renderer
     event: "browser:event",
@@ -45,7 +47,8 @@ export type BrowserEventType =
     | "did-stop-loading"
     | "did-start-navigation"
     | "new-window"
-    | "context-menu";
+    | "context-menu"
+    | "audio-state-changed";
 
 export interface BrowserEventData {
     url?: string;
@@ -65,4 +68,6 @@ export interface BrowserEventData {
     editFlags?: { canCopy: boolean; canPaste: boolean; canCut: boolean };
     x?: number;
     y?: number;
+    /** Whether the webview is currently emitting audio. */
+    audible?: boolean;
 }

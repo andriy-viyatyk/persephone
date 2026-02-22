@@ -16,12 +16,12 @@ The browser editor uses three levels of tab nesting:
 
 ### New Window Handling
 
-| Source | Behavior |
-|--------|----------|
-| `target="_blank"` link click | Opens as new internal tab in same browser page |
-| `window.open()` from JavaScript | Opens as new internal tab in same browser page |
+| Source | Disposition | Behavior |
+|--------|------------|----------|
+| `target="_blank"` link click | `foreground-tab` / `background-tab` | Opens as new internal tab in same browser page |
+| `window.open()` from JavaScript | `default` / `new-window` | Opens as real popup BrowserWindow |
 
-The main process intercepts these via `setWindowOpenHandler()` on the webContents, denies the popup, and relays the URL to the renderer as a `"new-window"` event. The renderer then calls `model.addTab(url)`.
+The main process intercepts these via `setWindowOpenHandler()` on the webContents. **Link clicks** (`target="_blank"`) are denied and relayed to the renderer as a `"new-window"` event, which calls `model.addTab(url)`. **JavaScript `window.open()` calls** (OAuth popups, login dialogs, etc.) are allowed as real Electron BrowserWindows — this preserves the `window.opener` reference that auth flows need to communicate back to the parent page. The popup inherits the webview's session partition, so cookies and auth state are shared.
 
 **Important:** The `<webview>` element requires `allowpopups="true"` for `setWindowOpenHandler` to fire on `target="_blank"` link clicks.
 

@@ -1060,3 +1060,26 @@ export const CaseSensitiveIcon = createIcon(16)(
         Aa
     </text>,
 );
+
+export const HomeIcon = createIcon(24)(
+    <g fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 10.5L12 3l9 7.5" />
+        <path d="M5 9.5V19a1 1 0 0 0 1 1h4v-5h4v5h4a1 1 0 0 0 1-1V9.5" />
+    </g>,
+);
+
+export const VolumeIcon = createIcon(24)(
+    <g fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M11 5L6 9H2v6h4l5 4V5z" fill="currentColor" stroke="none" />
+        <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+        <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+    </g>,
+);
+
+export const VolumeMutedIcon = createIcon(24)(
+    <g fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M11 5L6 9H2v6h4l5 4V5z" fill="currentColor" stroke="none" />
+        <line x1="22" y1="9" x2="16" y2="15" />
+        <line x1="16" y1="9" x2="22" y2="15" />
+    </g>,
+);
