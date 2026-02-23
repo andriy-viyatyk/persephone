@@ -36,6 +36,7 @@ import {
     MermaidIcon,
     NotebookIcon,
     TodoIcon,
+    LinkIcon,
     PascalIcon,
     PerlIcon,
     PhpIcon,
@@ -120,6 +121,7 @@ const filePatternIcons: Array<{ pattern: RegExp; icon: SvgIconComponent }> = [
     { pattern: /\.todo\.json$/i, icon: TodoIcon },
     { pattern: /\.grid\.json$/i, icon: GridIcon },
     { pattern: /\.grid\.csv$/i, icon: GridIcon },
+    { pattern: /\.link\.json$/i, icon: LinkIcon },
 ];
 
 function getFilePatternIcon(fileName: string): SvgIconComponent | undefined {

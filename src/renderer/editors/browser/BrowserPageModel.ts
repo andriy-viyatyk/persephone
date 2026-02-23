@@ -9,6 +9,10 @@ import { appSettings, BrowserProfile } from "../../store/app-settings";
 import { DEFAULT_BROWSER_COLOR } from "../../theme/palette-colors";
 import { BrowserChannel } from "../../../ipc/browser-ipc";
 import { searchHistoryManager } from "./browser-search-history";
+import { BrowserBookmarks } from "./BrowserBookmarks";
+import { BrowserWebviewModel } from "./BrowserWebviewModel";
+import { BrowserUrlBarModel } from "./BrowserUrlBarModel";
+import { BrowserBookmarksUIModel } from "./BrowserBookmarksUIModel";
 
 // ============================================================================
 // Search Engines
@@ -177,6 +181,29 @@ export interface BrowserPageState extends IPage {
     searchEngineId: string;
     /** Last search query typed by the user (used when switching engines on path-based URLs). */
     lastSearchQuery: string;
+
+    // -- Ephemeral state (managed by sub-models, not persisted) --
+
+    /** Current text in URL input (managed by BrowserUrlBarModel). */
+    urlInput: string;
+    /** Whether the URL suggestions dropdown is visible. */
+    suggestionsOpen: boolean;
+    /** Whether the user has typed in the URL bar (vs just focused it). */
+    userHasTyped: boolean;
+    /** Keyboard-navigated suggestion index (-1 = none). */
+    hoveredIndex: number;
+    /** Loaded search history entries for the suggestions dropdown. */
+    searchEntries: string[];
+    /** Whether a context menu popup is open (shows transparent overlay). */
+    popupOpen: boolean;
+    /** Whether the bookmarks drawer is visible. */
+    bookmarksOpen: boolean;
+    /** Bookmarks drawer width in pixels. */
+    bookmarksWidth: number;
+    /** Whether the current URL is bookmarked (star button state). */
+    isBookmarked: boolean;
+    /** Whether bookmarks have been initialized. */
+    bookmarksReady: boolean;
 }
 
 const DEFAULT_URL = "about:blank";
@@ -225,6 +252,17 @@ export const getDefaultBrowserPageState = (): BrowserPageState => {
         _anyTabAudible: false,
         searchEngineId: "google",
         lastSearchQuery: "",
+        // Ephemeral state (managed by sub-models)
+        urlInput: DEFAULT_URL,
+        suggestionsOpen: false,
+        userHasTyped: false,
+        hoveredIndex: -1,
+        searchEntries: [],
+        popupOpen: false,
+        bookmarksOpen: false,
+        bookmarksWidth: 0,
+        isBookmarked: false,
+        bookmarksReady: false,
     };
 };
 
@@ -240,6 +278,20 @@ export class BrowserPageModel extends PageModel<BrowserPageState, void> {
     noLanguage = true;
     skipSave = true;
 
+    /** Sub-model: webview refs, IPC events, context menu, keyboard shortcuts. */
+    readonly webview: BrowserWebviewModel;
+    /** Sub-model: URL input, suggestions, search engine selector. */
+    readonly urlBar: BrowserUrlBarModel;
+    /** Sub-model: bookmarks drawer, star button, image discovery. */
+    readonly bookmarksUI: BrowserBookmarksUIModel;
+
+    constructor(state: TComponentState<BrowserPageState>) {
+        super(state);
+        this.webview = new BrowserWebviewModel(this);
+        this.urlBar = new BrowserUrlBarModel(this);
+        this.bookmarksUI = new BrowserBookmarksUIModel(this);
+    }
+
     /** Stable random ID for incognito partitions (generated once per model instance). */
     private incognitoId = crypto.randomUUID();
 
@@ -252,6 +304,54 @@ export class BrowserPageModel extends PageModel<BrowserPageState, void> {
     /** Per-tab actual current URL (may differ from state after redirects). Keyed by internalTabId. */
     currentUrls = new Map<string, string>();
     private faviconCache = new Map<string, string>();
+
+    /** Lazily initialized bookmarks model (null until user opens bookmarks). */
+    bookmarks: BrowserBookmarks | null = null;
+
+    /** Get the bookmarks file path for the current profile from settings. */
+    getBookmarksFilePath(): string {
+        const { profileName, isIncognito } = this.state.get();
+        if (isIncognito) {
+            return appSettings.get("browser-incognito-bookmarks-file") || "";
+        }
+        if (profileName) {
+            const profiles = appSettings.get("browser-profiles");
+            const profile = profiles.find((p: BrowserProfile) => p.name === profileName);
+            return profile?.bookmarksFile || "";
+        }
+        // Default profile — check if current default-profile setting points to a named profile
+        const defaultName = appSettings.get("browser-default-profile");
+        if (defaultName) {
+            const profiles = appSettings.get("browser-profiles");
+            const profile = profiles.find((p: BrowserProfile) => p.name === defaultName);
+            return profile?.bookmarksFile || "";
+        }
+        return appSettings.get("browser-default-bookmarks-file") || "";
+    }
+
+    /** Initialize bookmarks from a file path. Returns null if user cancels (e.g. encrypted file). */
+    async initBookmarks(filePath: string): Promise<BrowserBookmarks | null> {
+        if (this.bookmarks) {
+            await this.bookmarks.dispose();
+        }
+        const bm = new BrowserBookmarks(filePath);
+        const ok = await bm.init();
+        if (!ok) {
+            await bm.dispose();
+            return null;
+        }
+        this.bookmarks = bm;
+        return this.bookmarks;
+    }
+
+    async dispose(): Promise<void> {
+        this.bookmarksUI.dispose();
+        if (this.bookmarks) {
+            await this.bookmarks.dispose();
+            this.bookmarks = null;
+        }
+        await super.dispose();
+    }
 
     async restore() {
         await super.restore();

@@ -73,6 +73,7 @@ function ImageViewer({ model }: ImageViewerProps) {
                         title="File Explorer"
                         onClick={() => {
                             if (model.navPanel) {
+                                model.navPanel.reinitIfEmpty(path.dirname(filePath), filePath);
                                 model.navPanel.toggle();
                             } else {
                                 const navPanel = new NavPanelModel(path.dirname(filePath), filePath);

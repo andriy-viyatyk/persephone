@@ -180,6 +180,9 @@ export const showAppPopupMenu = async (
     // (e.g. right-click inside a webview goes through IPC, not DOM).
     closePopper(showAppPopupMenuId);
 
+    // Save focused element to restore after menu closes
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+
     // Support both legacy PopperProps and new options object
     const opts: ShowAppPopupMenuOptions =
         options && "skipInspect" in options
@@ -203,4 +206,7 @@ export const showAppPopupMenu = async (
         viewId: showAppPopupMenuId,
         model,
     });
+
+    // Restore focus after menu closes
+    previouslyFocused?.focus();
 };

@@ -7,7 +7,6 @@ import { TextToolbar } from "./TextToolbar";
 import { ScriptPanel } from "./ScriptPanel";
 import { TextFooter } from "./TextFooter";
 import color from "../../theme/color";
-import { EncryptionPanel } from "./EncryptionPanel";
 import { ActiveEditor } from "./ActiveEditor";
 import { FlexSpace } from "../../components/layout/Elements";
 import { pagesModel } from "../../store/pages-store";
@@ -56,8 +55,7 @@ interface TextPageViewProps {
 }
 
 export function TextPageView({ model }: TextPageViewProps) {
-    const { showEncryptionPanel, restored } = model.state.use((s) => ({
-        showEncryptionPanel: s.showEncryptionPanel,
+    const { restored } = model.state.use((s) => ({
         restored: s.restored,
     }));
     const rootRef = useRef<HTMLDivElement>(null);
@@ -98,13 +96,6 @@ export function TextPageView({ model }: TextPageViewProps) {
                 ref={model.setEditorOverlayRef}
                 className="editor-overlay"
             />
-            {showEncryptionPanel && (
-                <EncryptionPanel
-                    model={model}
-                    onSubmit={model.onSubmitPassword}
-                    onCancel={model.onCancelPassword}
-                />
-            )}
         </TextPageViewRoot>
     );
 }

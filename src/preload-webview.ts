@@ -76,6 +76,34 @@ function observeHead() {
     });
 }
 
+// ── Clicked Image Tracking (Phase 3.1) ──────────────────────────────
+// When the user clicks an <a> that contains images (e.g. a video tile),
+// send ALL image URLs to the host so they can be offered for bookmark selection.
+
+document.addEventListener("click", (e) => {
+    const target = e.target as HTMLElement;
+    if (!target) return;
+
+    // Only track clicks that will navigate (inside an <a> with href)
+    const link = target.closest("a") as HTMLAnchorElement | null;
+    if (!link || !link.href) return;
+
+    // Collect ALL images inside the link (thumbnails, overlays, icons, etc.)
+    const imgs = link.querySelectorAll("img");
+    const urls: string[] = [];
+    const seen = new Set<string>();
+    imgs.forEach((img) => {
+        if (img.src && !seen.has(img.src)) {
+            seen.add(img.src);
+            urls.push(img.src);
+        }
+    });
+
+    if (urls.length > 0) {
+        ipcRenderer.sendToHost("clicked-images", urls);
+    }
+}, true); // Capture phase: fires before page scripts that may stopPropagation
+
 // ── Bootstrap ────────────────────────────────────────────────────────
 
 if (document.readyState === "loading") {

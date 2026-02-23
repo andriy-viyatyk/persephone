@@ -14,7 +14,10 @@ import { WithPopupMenu } from "../../components/overlay/WithPopupMenu";
 import { MenuItem } from "../../components/overlay/PopupMenu";
 import { showConfirmationDialog } from "../../features/dialogs/ConfirmationDialog";
 import { getPartitionString } from "../browser/BrowserPageModel";
+import { IncognitoIcon } from "../../theme/language-icons";
+import { api } from "../../../ipc/renderer/api";
 const { ipcRenderer } = require("electron");
+const path = require("path");
 import { BrowserChannel } from "../../../ipc/browser-ipc";
 
 // ============================================================================
@@ -173,12 +176,6 @@ const SettingsPageRoot = styled.div({
         alignItems: "center",
         gap: 8,
         padding: "6px 8px",
-        borderRadius: 4,
-        backgroundColor: color.background.dark,
-
-        "&:hover .profile-remove, &:hover .profile-clear-data": {
-            opacity: 1,
-        },
     },
 
     "& .profile-color-dot": {
@@ -329,6 +326,56 @@ const SettingsPageRoot = styled.div({
         marginBottom: 8,
     },
 
+    "& .profile-row-group": {
+        display: "flex",
+        flexDirection: "column",
+        borderRadius: 4,
+        backgroundColor: color.background.dark,
+        "&:hover .profile-remove, &:hover .profile-clear-data": {
+            opacity: 1,
+        },
+    },
+
+    "& .profile-bookmarks-line": {
+        display: "flex",
+        alignItems: "center",
+        gap: 6,
+        padding: "2px 8px 6px 28px",
+        fontSize: 11,
+        color: color.text.light,
+    },
+
+    "& .profile-bookmarks-path": {
+        cursor: "pointer",
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+        whiteSpace: "nowrap",
+        "&:hover": {
+            color: color.text.default,
+        },
+    },
+
+    "& .profile-bookmarks-placeholder": {
+        fontStyle: "italic",
+        cursor: "pointer",
+        "&:hover": {
+            color: color.text.default,
+        },
+    },
+
+    "& .profile-bookmarks-clear": {
+        fontSize: 11,
+        color: color.text.light,
+        background: "none",
+        border: "none",
+        cursor: "pointer",
+        padding: "0 2px",
+        flexShrink: 0,
+        "&:hover": {
+            color: color.text.default,
+        },
+    },
+
     "& .settings-select": {
         fontSize: 13,
         padding: "6px 8px",
@@ -406,9 +453,46 @@ function clearPartitionData(partition: string): Promise<void> {
     return ipcRenderer.invoke(BrowserChannel.clearProfileData, partition);
 }
 
+const BOOKMARKS_FILE_FILTER = { name: "Link Files", extensions: ["link.json"] };
+
+async function browseBookmarksFile(): Promise<string | undefined> {
+    const result = await api.showOpenFileDialog({
+        title: "Select Bookmarks File",
+        filters: [BOOKMARKS_FILE_FILTER],
+    });
+    return result?.[0];
+}
+
+function BookmarksFileLine({ filePath, onBrowse, onClear }: {
+    filePath: string;
+    onBrowse: () => void;
+    onClear: () => void;
+}) {
+    const filename = filePath ? path.basename(filePath) : "";
+    return (
+        <div className="profile-bookmarks-line">
+            <span>📁</span>
+            {filename ? (
+                <span className="profile-bookmarks-path" title={filePath} onClick={onBrowse}>
+                    {filename}
+                </span>
+            ) : (
+                <span className="profile-bookmarks-placeholder" onClick={onBrowse}>
+                    No bookmarks file
+                </span>
+            )}
+            {filename && (
+                <button className="profile-bookmarks-clear" onClick={onClear} title="Remove bookmarks file">×</button>
+            )}
+        </div>
+    );
+}
+
 function BrowserProfilesSection() {
     const profiles = appSettings.use("browser-profiles");
     const defaultProfile = appSettings.use("browser-default-profile");
+    const defaultBookmarksFile = appSettings.use("browser-default-bookmarks-file");
+    const incognitoBookmarksFile = appSettings.use("browser-incognito-bookmarks-file");
     const [newName, setNewName] = useState("");
     const [newColor, setNewColor] = useState(TAG_COLORS[0].hex);
     const [clearedProfile, setClearedProfile] = useState<string | null>(null);
@@ -476,6 +560,31 @@ function BrowserProfilesSection() {
             selected: currentColor === c.hex,
         }));
 
+    const handleBrowseDefaultBookmarks = async () => {
+        const filePath = await browseBookmarksFile();
+        if (filePath) appSettings.set("browser-default-bookmarks-file", filePath);
+    };
+
+    const handleBrowseProfileBookmarks = async (profileName: string) => {
+        const filePath = await browseBookmarksFile();
+        if (filePath) {
+            appSettings.set("browser-profiles", profiles.map((p) =>
+                p.name === profileName ? { ...p, bookmarksFile: filePath } : p,
+            ));
+        }
+    };
+
+    const handleBrowseIncognitoBookmarks = async () => {
+        const filePath = await browseBookmarksFile();
+        if (filePath) appSettings.set("browser-incognito-bookmarks-file", filePath);
+    };
+
+    const handleClearProfileBookmarks = (profileName: string) => {
+        appSettings.set("browser-profiles", profiles.map((p) =>
+            p.name === profileName ? { ...p, bookmarksFile: undefined } : p,
+        ));
+    };
+
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === "Enter") {
             handleAddProfile();
@@ -493,54 +602,79 @@ function BrowserProfilesSection() {
             </div>
 
             <div className="profile-list">
-                <div className="profile-row">
-                    <span className="profile-color-dot" style={{ backgroundColor: DEFAULT_BROWSER_COLOR }} />
-                    <span className="profile-name">Default</span>
-                    {defaultProfile === "" ? (
-                        <span className="profile-default-badge">default</span>
-                    ) : (
-                        <button className="profile-set-default" onClick={() => handleSetDefault("")}>
-                            set default
-                        </button>
-                    )}
-                    {clearedProfile === "" && (
-                        <span className="profile-cleared">Cleared</span>
-                    )}
-                    <button className="profile-clear-data" onClick={() => handleClearData("")}>
-                        clear data
-                    </button>
-                </div>
-                {profiles.map((profile) => (
-                    <div key={profile.name} className="profile-row">
-                        <WithPopupMenu items={getColorMenuItems(profile.name, profile.color)}>
-                            {(openMenu) => (
-                                <span
-                                    className="profile-color-dot clickable"
-                                    style={{ backgroundColor: profile.color }}
-                                    title="Change color"
-                                    onClick={(e) => openMenu(e.currentTarget)}
-                                />
-                            )}
-                        </WithPopupMenu>
-                        <span className="profile-name">{profile.name}</span>
-                        {defaultProfile === profile.name ? (
+                <div className="profile-row-group">
+                    <div className="profile-row">
+                        <span className="profile-color-dot" style={{ backgroundColor: DEFAULT_BROWSER_COLOR }} />
+                        <span className="profile-name">Default</span>
+                        {defaultProfile === "" ? (
                             <span className="profile-default-badge">default</span>
                         ) : (
-                            <button className="profile-set-default" onClick={() => handleSetDefault(profile.name)}>
+                            <button className="profile-set-default" onClick={() => handleSetDefault("")}>
                                 set default
                             </button>
                         )}
-                        {clearedProfile === profile.name && (
+                        {clearedProfile === "" && (
                             <span className="profile-cleared">Cleared</span>
                         )}
-                        <button className="profile-clear-data" onClick={() => handleClearData(profile.name)}>
+                        <button className="profile-clear-data" onClick={() => handleClearData("")}>
                             clear data
                         </button>
-                        <button className="profile-remove" onClick={() => handleRemoveProfile(profile.name)}>
-                            ×
-                        </button>
+                    </div>
+                    <BookmarksFileLine
+                        filePath={defaultBookmarksFile}
+                        onBrowse={handleBrowseDefaultBookmarks}
+                        onClear={() => appSettings.set("browser-default-bookmarks-file", "")}
+                    />
+                </div>
+                {profiles.map((profile) => (
+                    <div key={profile.name} className="profile-row-group">
+                        <div className="profile-row">
+                            <WithPopupMenu items={getColorMenuItems(profile.name, profile.color)}>
+                                {(openMenu) => (
+                                    <span
+                                        className="profile-color-dot clickable"
+                                        style={{ backgroundColor: profile.color }}
+                                        title="Change color"
+                                        onClick={(e) => openMenu(e.currentTarget)}
+                                    />
+                                )}
+                            </WithPopupMenu>
+                            <span className="profile-name">{profile.name}</span>
+                            {defaultProfile === profile.name ? (
+                                <span className="profile-default-badge">default</span>
+                            ) : (
+                                <button className="profile-set-default" onClick={() => handleSetDefault(profile.name)}>
+                                    set default
+                                </button>
+                            )}
+                            {clearedProfile === profile.name && (
+                                <span className="profile-cleared">Cleared</span>
+                            )}
+                            <button className="profile-clear-data" onClick={() => handleClearData(profile.name)}>
+                                clear data
+                            </button>
+                            <button className="profile-remove" onClick={() => handleRemoveProfile(profile.name)}>
+                                ×
+                            </button>
+                        </div>
+                        <BookmarksFileLine
+                            filePath={profile.bookmarksFile || ""}
+                            onBrowse={() => handleBrowseProfileBookmarks(profile.name)}
+                            onClear={() => handleClearProfileBookmarks(profile.name)}
+                        />
                     </div>
                 ))}
+                <div className="profile-row-group">
+                    <div className="profile-row">
+                        <IncognitoIcon style={{ width: 14, height: 14, flexShrink: 0 }} />
+                        <span className="profile-name">Incognito</span>
+                    </div>
+                    <BookmarksFileLine
+                        filePath={incognitoBookmarksFile}
+                        onBrowse={handleBrowseIncognitoBookmarks}
+                        onClear={() => appSettings.set("browser-incognito-bookmarks-file", "")}
+                    />
+                </div>
             </div>
 
             <div className="profile-add-form">

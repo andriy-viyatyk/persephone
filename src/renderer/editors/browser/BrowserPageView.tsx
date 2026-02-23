@@ -1,12 +1,5 @@
 import styled from "@emotion/styled";
-import {
-    KeyboardEvent,
-    useCallback,
-    useEffect,
-    useMemo,
-    useRef,
-    useState,
-} from "react";
+import { useEffect, useRef } from "react";
 const { ipcRenderer } = require("electron");
 import { IPage, PageType } from "../../../shared/types";
 import { PageModel, PageToolbar } from "../base";
@@ -18,10 +11,13 @@ import { TextField } from "../../components/basic/TextField";
 import {
     ArrowLeftIcon,
     ArrowRightIcon,
+    BookmarkIcon,
     CloseIcon,
     HomeIcon,
     RefreshIcon,
     SettingsIcon,
+    StarFilledIcon,
+    StarIcon,
     StopIcon,
 } from "../../theme/icons";
 import { IncognitoIcon } from "../../theme/language-icons";
@@ -29,25 +25,17 @@ import {
     BrowserPageModel,
     BrowserPageState,
     BrowserTabData,
-    detectSearchEngine,
     getDefaultBrowserPageState,
-    SEARCH_ENGINES,
 } from "./BrowserPageModel";
 import {
     BrowserChannel,
-    BrowserEvent,
     BrowserRegisterRequest,
 } from "../../../ipc/browser-ipc";
 import { Splitter } from "../../components/layout/Splitter";
 import { BrowserTabsPanel } from "./BrowserTabsPanel";
-import { showAppPopupMenu } from "../../features/dialogs/poppers/showPopupMenu";
-import { MenuItem } from "../../components/overlay/PopupMenu";
 import { WithPopupMenu } from "../../components/overlay/WithPopupMenu";
-import { pagesModel } from "../../store/pages-store";
-import { newTextFileModel } from "../text/TextPageModel";
-import type { ImageViewerModelState } from "../image/ImageViewer";
 import { UrlSuggestionsDropdown } from "./UrlSuggestionsDropdown";
-import { searchHistoryManager } from "./browser-search-history";
+import { BookmarksDrawer } from "./BookmarksDrawer";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const WEBVIEW_PRELOAD_URL = (window as any).webviewPreloadUrl as string;
@@ -169,10 +157,6 @@ interface BrowserWebviewItemProps {
     isActive: boolean;
     /** Electron session partition string for this browser page. */
     partition: string;
-    /** Map from internalTabId → webview ref, kept in parent for toolbar operations */
-    webviewRefs: React.RefObject<Map<string, Electron.WebviewTag>>;
-    /** Set of internalTabIds whose webview has fired dom-ready */
-    webviewReady: React.RefObject<Set<string>>;
 }
 
 function BrowserWebviewItem({
@@ -180,8 +164,6 @@ function BrowserWebviewItem({
     tab,
     isActive,
     partition,
-    webviewRefs,
-    webviewReady,
 }: BrowserWebviewItemProps) {
     const webviewRef = useRef<Electron.WebviewTag | null>(null);
     const tabId = model.id;
@@ -196,11 +178,11 @@ function BrowserWebviewItem({
     useEffect(() => {
         const webview = webviewRef.current;
         if (!webview) return;
-        webviewRefs.current.set(internalTabId, webview);
+        model.webview.webviewRefs.set(internalTabId, webview);
         return () => {
-            webviewRefs.current.delete(internalTabId);
+            model.webview.webviewRefs.delete(internalTabId);
         };
-    }, [internalTabId, webviewRefs]);
+    }, [model, internalTabId]);
 
     // Register with main process on dom-ready and listen for preload messages
     useEffect(() => {
@@ -210,7 +192,7 @@ function BrowserWebviewItem({
         let registered = false;
 
         const onDomReady = () => {
-            webviewReady.current.add(internalTabId);
+            model.webview.webviewReady.add(internalTabId);
             const webContentsId = webview.getWebContentsId();
             const request: BrowserRegisterRequest = {
                 tabId,
@@ -245,13 +227,18 @@ function BrowserWebviewItem({
                     model.cacheFavicon(currentUrl, faviconUrl);
                     model.updateTab(internalTabId, { favicon: faviconUrl });
                 }
+            } else if (channel === "clicked-images") {
+                const imgUrls = args[0] as string[];
+                if (Array.isArray(imgUrls) && imgUrls.length > 0) {
+                    model.bookmarksUI.trackClickedImages(internalTabId, imgUrls);
+                }
             }
         };
 
         webview.addEventListener("ipc-message", onIpcMessage);
 
         return () => {
-            webviewReady.current.delete(internalTabId);
+            model.webview.webviewReady.delete(internalTabId);
             webview.removeEventListener("dom-ready", onDomReady);
             webview.removeEventListener("ipc-message", onIpcMessage);
             if (registered) {
@@ -262,7 +249,7 @@ function BrowserWebviewItem({
         // Note: tab.url is intentionally excluded — this effect manages IPC
         // registration which doesn't depend on URL changes. Including it would
         // cause webviewReady to be cleared on every navigation, breaking loadURL.
-    }, [model, tabId, internalTabId, webviewRefs, webviewReady]);
+    }, [model, tabId, internalTabId]);
 
     return (
         <div className={`webview-wrapper${isActive ? "" : " hidden"}`}>
@@ -297,616 +284,89 @@ interface BrowserPageViewProps {
 }
 
 function BrowserPageView({ model }: BrowserPageViewProps) {
-    const { url, loading, canGoBack, canGoForward, tabs, activeTabId, tabsPanelWidth, homeUrl, searchEngineId, navHistory, isIncognito, profileName } =
-        model.state.use((s) => {
-            const activeTab = s.tabs.find((t) => t.id === s.activeTabId);
-            return {
-                url: s.url,
-                loading: s.loading,
-                canGoBack: s.canGoBack,
-                canGoForward: s.canGoForward,
-                tabs: s.tabs,
-                activeTabId: s.activeTabId,
-                tabsPanelWidth: s.tabsPanelWidth,
-                homeUrl: activeTab?.homeUrl ?? "",
-                searchEngineId: s.searchEngineId,
-                navHistory: activeTab?.navHistory ?? [],
-                isIncognito: s.isIncognito,
-                profileName: s.profileName,
-            };
-        });
+    const {
+        url, loading, canGoBack, canGoForward,
+        tabs, activeTabId, tabsPanelWidth,
+        homeUrl, isIncognito,
+        urlInput, suggestionsOpen, hoveredIndex,
+        popupOpen, bookmarksOpen, bookmarksWidth,
+        bookmarksReady, isBookmarked,
+    } = model.state.use((s) => {
+        const activeTab = s.tabs.find((t) => t.id === s.activeTabId);
+        return {
+            url: s.url,
+            loading: s.loading,
+            canGoBack: s.canGoBack,
+            canGoForward: s.canGoForward,
+            tabs: s.tabs,
+            activeTabId: s.activeTabId,
+            tabsPanelWidth: s.tabsPanelWidth,
+            homeUrl: activeTab?.homeUrl ?? "",
+            isIncognito: s.isIncognito,
+            // Ephemeral state from sub-models
+            urlInput: s.urlInput,
+            suggestionsOpen: s.suggestionsOpen,
+            hoveredIndex: s.hoveredIndex,
+            popupOpen: s.popupOpen,
+            bookmarksOpen: s.bookmarksOpen,
+            bookmarksWidth: s.bookmarksWidth,
+            bookmarksReady: s.bookmarksReady,
+            isBookmarked: s.isBookmarked,
+            // Included for re-render triggers (used by sub-model computed getters)
+            searchEngineId: s.searchEngineId,
+            userHasTyped: s.userHasTyped,
+            searchEntries: s.searchEntries,
+        };
+    });
 
-    const [urlInput, setUrlInput] = useState(url);
-
-    // Search engine detection — show selector on blank pages or search engine results
-    // Uses urlInput (kept in sync with actual webview URL via did-navigate) rather than
-    // state url which may be stale after clicking links within a page.
-    const detectedSearch = useMemo(() => detectSearchEngine(urlInput), [urlInput]);
-    const isBlankPage = !urlInput || urlInput === "about:blank";
-    const showSearchEngineSelector = isBlankPage || !!detectedSearch;
-    const currentEngineName = useMemo(() => {
-        if (detectedSearch) return detectedSearch.engine.label;
-        return SEARCH_ENGINES.find((e) => e.id === searchEngineId)?.label || "Google";
-    }, [detectedSearch, searchEngineId]);
-
-    const searchEngineMenuItems = useMemo((): MenuItem[] =>
-        SEARCH_ENGINES.map((engine) => ({
-            label: engine.label,
-            onClick: () => {
-                if (detectedSearch) {
-                    model.switchSearchEngine(engine.id);
-                } else {
-                    model.setSearchEngine(engine.id);
-                }
-            },
-        })),
-    [model, detectedSearch]);
-
-    const urlInputRef = useRef<HTMLInputElement>(null);
     const isInitialLoad = useRef(true);
-    const webviewRefs = useRef<Map<string, Electron.WebviewTag>>(new Map());
-    /** Tracks which internal tabs have fired dom-ready (safe to call loadURL). */
-    const webviewReady = useRef<Set<string>>(new Set());
-    /** When true, a transparent overlay covers the webview area so clicks
-     *  fire on the renderer DOM and dismiss the open popup menu. */
-    const [popupOpen, setPopupOpen] = useState(false);
 
-    // -- URL suggestions dropdown state --
-    const [suggestionsOpen, setSuggestionsOpen] = useState(false);
-    const [userHasTyped, setUserHasTyped] = useState(false);
-    const [hoveredIndex, setHoveredIndex] = useState(-1);
-    const [searchEntries, setSearchEntries] = useState<string[]>([]);
-
-    const searchStorage = useMemo(
-        () => searchHistoryManager.get(profileName, isIncognito),
-        [profileName, isIncognito],
-    );
-
+    // IPC event handler lifecycle
     useEffect(() => {
-        if (suggestionsOpen && searchStorage) {
-            setSearchEntries(searchStorage.getAll());
-        }
-    }, [suggestionsOpen, searchStorage]);
-
-    const suggestionsMode =
-        (!userHasTyped && urlInput && urlInput !== "about:blank")
-            ? "navigation" as const
-            : "search" as const;
-
-    const suggestionsItems = useMemo(() => {
-        if (!suggestionsOpen) return [];
-        if (suggestionsMode === "navigation") return navHistory;
-        const text = urlInput.trim();
-        if (!text) return searchEntries;
-        const words = text.toLowerCase().split(/\s+/).filter(s => s);
-        if (!words.length) return searchEntries;
-        return searchEntries.filter(entry => {
-            const lower = entry.toLowerCase();
-            return words.every(w => lower.includes(w));
-        });
-    }, [suggestionsOpen, suggestionsMode, navHistory, searchEntries, urlInput]);
-
-    // Keep urlInput in sync when URL changes externally (navigation, tab switch)
-    useEffect(() => {
-        setUrlInput(url);
-        setSuggestionsOpen(false);
-    }, [url]);
-
-    // Global IPC event handler — routes events to the correct internal tab
-    useEffect(() => {
-        const pageTabId = model.id;
-
-        const onBrowserEvent = async (
-            _event: Electron.IpcRendererEvent,
-            browserEvent: BrowserEvent,
-        ) => {
-            if (browserEvent.tabId !== pageTabId) return;
-            const { internalTabId, type, data } = browserEvent;
-
-            switch (type) {
-                case "did-navigate": {
-                    model.currentUrls.set(internalTabId, data.url || "");
-                    // Update urlInput only if this is the active tab
-                    if (internalTabId === model.state.get().activeTabId) {
-                        setUrlInput(data.url || "");
-                    }
-                    const cached = model.getCachedFavicon(data.url || "");
-                    // Update tab.url so it reflects reality (prevents
-                    // stale URL reload when switching tabs)
-                    model.updateTab(internalTabId, {
-                        url: data.url,
-                        canGoBack: data.canGoBack,
-                        canGoForward: data.canGoForward,
-                        favicon: cached,
-                    });
-                    model.addNavHistory(internalTabId, data.url || "");
-                    break;
-                }
-                case "did-navigate-in-page": {
-                    model.currentUrls.set(internalTabId, data.url || "");
-                    if (internalTabId === model.state.get().activeTabId) {
-                        setUrlInput(data.url || "");
-                    }
-                    model.updateTab(internalTabId, {
-                        url: data.url,
-                        canGoBack: data.canGoBack,
-                        canGoForward: data.canGoForward,
-                    });
-                    model.addNavHistory(internalTabId, data.url || "");
-                    break;
-                }
-                case "did-start-loading":
-                    model.updateTab(internalTabId, { loading: true });
-                    break;
-                case "did-stop-loading":
-                    model.updateTab(internalTabId, { loading: false });
-                    break;
-                case "audio-state-changed":
-                    model.updateTab(internalTabId, { audible: !!data.audible });
-                    break;
-                case "did-start-navigation": {
-                    if (data.blocked) {
-                        const webview = webviewRefs.current.get(internalTabId);
-                        const tabData = model.state
-                            .get()
-                            .tabs.find((t) => t.id === internalTabId);
-                        if (webview && tabData && tabData.url !== data.url) {
-                            webview.goBack();
-                        }
-                    }
-                    break;
-                }
-                case "new-window": {
-                    // Open the URL in a new internal tab
-                    if (data.url) {
-                        model.addTab(data.url);
-                    }
-                    break;
-                }
-                case "context-menu": {
-                    const webview = webviewRefs.current.get(internalTabId);
-                    if (!webview) break;
-
-                    // params.x/y from the webview context-menu event are
-                    // already in the host window's coordinate space.
-                    const menuX = data.x || 0;
-                    const menuY = data.y || 0;
-
-                    // Probe whether the click target is inside an SVG element.
-                    // Uses webview-relative coordinates for elementFromPoint.
-                    const wvRect = webview.getBoundingClientRect();
-                    const probeX = menuX - wvRect.left;
-                    const probeY = menuY - wvRect.top;
-                    const svgSource: string | null = await webview.executeJavaScript(`
-                        (() => {
-                            const el = document.elementFromPoint(${probeX}, ${probeY});
-                            const svg = el?.closest('svg');
-                            if (!svg) return null;
-
-                            // Clone so we don't mutate the live DOM
-                            const clone = svg.cloneNode(true);
-
-                            // Add xmlns if missing (required for standalone SVG)
-                            if (!clone.getAttribute('xmlns')) {
-                                clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-                            }
-
-                            // Add viewBox if missing — use getBBox() for the coordinate space
-                            if (!clone.getAttribute('viewBox')) {
-                                try {
-                                    const bb = svg.getBBox();
-                                    if (bb.width > 0 && bb.height > 0) {
-                                        clone.setAttribute('viewBox',
-                                            bb.x + ' ' + bb.y + ' ' + bb.width + ' ' + bb.height);
-                                    }
-                                } catch (e) {}
-                            }
-
-                            // Set width/height if missing so it has intrinsic size
-                            if (!clone.getAttribute('width') && !clone.getAttribute('height')) {
-                                const vb = clone.getAttribute('viewBox');
-                                if (vb) {
-                                    const parts = vb.split(/[\\s,]+/);
-                                    if (parts.length === 4) {
-                                        clone.setAttribute('width', parts[2]);
-                                        clone.setAttribute('height', parts[3]);
-                                    }
-                                }
-                            }
-
-                            // Strip HTML comments (framework artifacts like Vue's <!--[-->)
-                            let html = clone.outerHTML;
-                            html = html.replace(/<!--[\\s\\S]*?-->/g, '');
-                            return html;
-                        })()
-                    `);
-
-                    const items: MenuItem[] = [];
-
-                    // Link items
-                    if (data.linkURL) {
-                        const linkURL = data.linkURL;
-                        items.push({
-                            label: "Open Link in New Tab",
-                            onClick: () => model.addTab(linkURL),
-                        });
-                        items.push({
-                            label: "Copy Link Address",
-                            onClick: () => navigator.clipboard.writeText(linkURL),
-                        });
-                    }
-
-                    // Image items
-                    if (data.srcURL && data.mediaType === "image") {
-                        const srcURL = data.srcURL;
-                        items.push({
-                            label: "Open Image in New Tab",
-                            startGroup: items.length > 0,
-                            onClick: async () => {
-                                const imgModule = await import("../image/ImageViewer");
-                                const imgModel = await imgModule.default.newEmptyPageModel("imageFile");
-                                if (imgModel) {
-                                    imgModel.state.update((s: ImageViewerModelState) => {
-                                        s.title = srcURL.split("/").pop()?.split("?")[0] || "Image";
-                                        s.url = srcURL;
-                                    });
-                                    await imgModel.restore();
-                                    pagesModel.addPage(imgModel);
-                                }
-                            },
-                        });
-                        items.push({
-                            label: "Copy Image Address",
-                            onClick: () => navigator.clipboard.writeText(srcURL),
-                        });
-                    }
-
-                    // Selection items
-                    if (data.selectionText) {
-                        const selectionText = data.selectionText;
-                        items.push({
-                            label: "Copy",
-                            startGroup: items.length > 0,
-                            onClick: () => {
-                                navigator.clipboard.writeText(selectionText);
-                                webview.focus();
-                            },
-                        });
-                    }
-
-                    // Editable field items
-                    if (data.isEditable) {
-                        if (data.editFlags?.canCut) {
-                            items.push({
-                                label: "Cut",
-                                startGroup: !data.selectionText && items.length > 0,
-                                onClick: () => {
-                                    webview.focus();
-                                    webview.cut();
-                                },
-                            });
-                        }
-                        if (!data.selectionText && data.editFlags?.canCopy) {
-                            items.push({
-                                label: "Copy",
-                                onClick: () => {
-                                    webview.focus();
-                                    webview.copy();
-                                },
-                            });
-                        }
-                        if (data.editFlags?.canPaste) {
-                            items.push({
-                                label: "Paste",
-                                onClick: () => {
-                                    webview.focus();
-                                    webview.paste();
-                                },
-                            });
-                        }
-                    }
-
-                    // Navigation items
-                    const state = model.state.get();
-                    const tab = state.tabs.find((t) => t.id === internalTabId);
-                    items.push({
-                        label: "Back",
-                        startGroup: true,
-                        disabled: !tab?.canGoBack,
-                        onClick: () => webview.goBack(),
-                    });
-                    items.push({
-                        label: "Forward",
-                        disabled: !tab?.canGoForward,
-                        onClick: () => webview.goForward(),
-                    });
-                    items.push({
-                        label: "Reload",
-                        onClick: () => webview.reload(),
-                    });
-
-                    // View Source (raw HTML from server)
-                    const pageUrl = tab?.url || "";
-                    items.push({
-                        label: "View Source",
-                        startGroup: true,
-                        disabled: !pageUrl || pageUrl === "about:blank",
-                        onClick: async () => {
-                            const resp = await webview.executeJavaScript(
-                                `fetch(location.href).then(r => r.text())`,
-                            );
-                            const page = newTextFileModel();
-                            page.state.update((s) => {
-                                s.title = "Source: " + (tab?.pageTitle || pageUrl);
-                                s.language = "html";
-                                s.content = resp;
-                            });
-                            page.restore();
-                            pagesModel.addPage(page as unknown as PageModel);
-                        },
-                    });
-
-                    // View actual DOM (live rendered DOM)
-                    items.push({
-                        label: "View Actual DOM",
-                        onClick: async () => {
-                            const html = await webview.executeJavaScript(
-                                "document.documentElement.outerHTML",
-                            );
-                            const page = newTextFileModel();
-                            page.state.update((s) => {
-                                s.title = "DOM: " + (tab?.pageTitle || pageUrl);
-                                s.language = "html";
-                                s.content = html;
-                            });
-                            page.restore();
-                            pagesModel.addPage(page as unknown as PageModel);
-                        },
-                    });
-
-                    // SVG item — only when right-click target is inside an <svg>
-                    if (svgSource) {
-                        items.push({
-                            label: "Open SVG in Editor",
-                            onClick: () => {
-                                const page = newTextFileModel();
-                                page.state.update((s) => {
-                                    s.title = "untitled.svg";
-                                    s.language = "xml";
-                                    s.content = svgSource;
-                                });
-                                page.restore();
-                                pagesModel.addPage(page as unknown as PageModel);
-                            },
-                        });
-                    }
-
-                    // Inspect Element — probeX/probeY are already webview-relative
-                    items.push({
-                        label: "Inspect Element",
-                        onClick: () => webview.inspectElement(probeX, probeY),
-                    });
-
-                    setPopupOpen(true);
-                    showAppPopupMenu(menuX, menuY, items, {
-                        skipInspect: true,
-                    }).then(() => {
-                        setPopupOpen(false);
-                    });
-                    break;
-                }
-            }
-        };
-
-        ipcRenderer.on(BrowserChannel.event, onBrowserEvent);
-        return () => {
-            ipcRenderer.removeListener(BrowserChannel.event, onBrowserEvent);
-        };
+        model.webview.initIpcHandler();
+        return () => model.webview.disposeIpcHandler();
     }, [model]);
+
+    // Sync URL input when URL changes externally (navigation, tab switch)
+    useEffect(() => {
+        model.urlBar.syncFromUrl(url);
+    }, [url, model]);
 
     // Focus URL bar on initial load when URL is blank
     useEffect(() => {
         if (isInitialLoad.current) {
             isInitialLoad.current = false;
             if (!url || url === "about:blank") {
-                setTimeout(() => urlInputRef.current?.focus(), 100);
+                setTimeout(() => model.urlBar.focusUrlInput(), 100);
             }
         }
-    }, [url]);
+    }, [url, model]);
 
-    // Get the active tab's webview for toolbar operations
-    const getActiveWebview = useCallback((): Electron.WebviewTag | undefined => {
-        return webviewRefs.current.get(activeTabId);
-    }, [activeTabId]);
-
-    const handleUrlKeyDown = useCallback(
-        (e: KeyboardEvent<HTMLInputElement>) => {
-            if (suggestionsOpen && suggestionsItems.length > 0) {
-                switch (e.key) {
-                    case "ArrowDown":
-                        e.preventDefault();
-                        setHoveredIndex(i => Math.min(i + 1, suggestionsItems.length - 1));
-                        return;
-                    case "ArrowUp":
-                        e.preventDefault();
-                        setHoveredIndex(i => Math.max(i - 1, -1));
-                        return;
-                    case "Enter":
-                        if (hoveredIndex >= 0 && hoveredIndex < suggestionsItems.length) {
-                            e.preventDefault();
-                            const value = suggestionsItems[hoveredIndex];
-                            setUrlInput(value);
-                            setSuggestionsOpen(false);
-                            model.navigate(value);
-                            urlInputRef.current?.blur();
-                            return;
-                        }
-                        break;
-                    case "Escape":
-                        e.preventDefault();
-                        setSuggestionsOpen(false);
-                        return;
-                }
-            }
-            if (e.key === "Enter") {
-                e.preventDefault();
-                setSuggestionsOpen(false);
-                model.navigate(urlInput);
-                urlInputRef.current?.blur();
-            } else if (e.key === "Escape") {
-                setSuggestionsOpen(false);
-                setUrlInput(url);
-                urlInputRef.current?.blur();
-            }
-        },
-        [model, urlInput, url, suggestionsOpen, suggestionsItems, hoveredIndex],
-    );
-
-    const handleNavigate = useCallback(() => {
-        setSuggestionsOpen(false);
-        model.navigate(urlInput);
-        urlInputRef.current?.blur();
-    }, [model, urlInput]);
-
-    const handleUrlContextMenu = useCallback(
-        (e: React.MouseEvent) => {
-            if (!e.nativeEvent.menuItems) {
-                e.nativeEvent.menuItems = [];
-            }
-            e.nativeEvent.menuItems.push({
-                label: "Paste and Go",
-                startGroup: true,
-                onClick: async () => {
-                    const text = await navigator.clipboard.readText();
-                    if (text) {
-                        setUrlInput(text);
-                        model.navigate(text);
-                    }
-                },
-            });
-        },
-        [model],
-    );
-
-    const handleUrlFocus = useCallback(() => {
-        setTimeout(() => urlInputRef.current?.select(), 0);
-        setSuggestionsOpen(true);
-        setUserHasTyped(false);
-        setHoveredIndex(-1);
-    }, []);
-
-    const handleUrlBlur = useCallback(() => {
-        setSuggestionsOpen(false);
-    }, []);
-
-    const handleUrlChange = useCallback((value: string) => {
-        setUrlInput(value);
-        setUserHasTyped(true);
-        setHoveredIndex(-1);
-    }, []);
-
-    const handleSuggestionSelect = useCallback((value: string) => {
-        setUrlInput(value);
-        setSuggestionsOpen(false);
-        model.navigate(value);
-        urlInputRef.current?.blur();
-    }, [model]);
-
-    const handleClearVisible = useCallback(() => {
-        if (!searchStorage) return;
-        searchStorage.removeMany(suggestionsItems);
-        setSearchEntries(searchStorage.getAll());
-    }, [searchStorage, suggestionsItems]);
-
-    const handleGoHome = useCallback(() => {
-        model.goHome();
-    }, [model]);
-
-    const handleGoBack = useCallback(() => {
-        getActiveWebview()?.goBack();
-    }, [getActiveWebview]);
-
-    const handleGoForward = useCallback(() => {
-        getActiveWebview()?.goForward();
-    }, [getActiveWebview]);
-
-    const handleReloadOrStop = useCallback(() => {
-        const wv = getActiveWebview();
-        if (!wv) return;
-        if (loading) {
-            wv.stop();
-        } else {
-            wv.reload();
-        }
-    }, [loading, getActiveWebview]);
-
-    const handleOpenDevTools = useCallback(() => {
-        getActiveWebview()?.openDevTools();
-    }, [getActiveWebview]);
-
-    const handleKeyDown = useCallback(
-        (e: KeyboardEvent<HTMLDivElement>) => {
-            if (e.ctrlKey && e.key === "l") {
-                e.preventDefault();
-                urlInputRef.current?.focus();
-            }
-            if (e.ctrlKey && e.key === "f") {
-                e.preventDefault();
-                const webview = getActiveWebview();
-                if (webview) {
-                    const term = prompt("Find in page:");
-                    if (term) {
-                        webview.findInPage(term);
-                    } else {
-                        webview.stopFindInPage("clearSelection");
-                    }
-                }
-            }
-        },
-        [getActiveWebview],
-    );
-
-    const handleTabsPanelWidthChange = useCallback(
-        (width: number) => {
-            model.setTabsPanelWidth(width);
-        },
-        [model],
-    );
-
-    // Navigate active tab's webview when url changes (user typed in URL bar)
-    const activeTab = useMemo(
-        () => tabs.find((t) => t.id === activeTabId),
-        [tabs, activeTabId],
-    );
-    const prevActiveUrl = useRef(activeTab?.url || "");
-
+    // Navigate active tab's webview when URL changes
+    const activeTab = tabs.find((t) => t.id === activeTabId);
     useEffect(() => {
-        if (!activeTab) return;
-        const newUrl = activeTab.url;
-        if (newUrl !== prevActiveUrl.current && newUrl !== "about:blank") {
-            const webview = webviewRefs.current.get(activeTabId);
-            // Only call loadURL after the webview has fired dom-ready.
-            // New tabs already get their URL via the src attribute; calling
-            // loadURL before dom-ready crashes the app.
-            if (webview && webviewReady.current.has(activeTabId)) {
-                const actualUrl = model.currentUrls.get(activeTabId) || "";
-                if (actualUrl !== newUrl) {
-                    webview.loadURL(newUrl);
-                }
-            }
+        if (activeTab) {
+            model.webview.navigateWebview(activeTabId, activeTab.url);
         }
-        prevActiveUrl.current = newUrl;
     }, [activeTab?.url, activeTabId, model]);
 
+    // Read computed values from sub-models (re-computed on each render)
+    const { urlBar, bookmarksUI, webview } = model;
+    const showSearchEngineSelector = urlBar.showSearchEngineSelector;
+    const currentEngineName = urlBar.currentEngineName;
+    const searchEngineMenuItems = urlBar.searchEngineMenuItems;
+    const suggestionsMode = urlBar.suggestionsMode;
+    const suggestionsItems = urlBar.suggestionsItems;
+
     return (
-        <BrowserPageViewRoot onKeyDown={handleKeyDown} tabIndex={-1}>
+        <BrowserPageViewRoot onKeyDown={webview.handleKeyDown} tabIndex={-1}>
             <PageToolbar borderBottom>
                 <div className="browser-toolbar-content">
                     <Button
                         type="icon"
                         size="small"
                         title={homeUrl ? `Go to ${homeUrl}` : "Home"}
-                        onClick={handleGoHome}
+                        onClick={model.goHome}
                         disabled={!homeUrl}
                     >
                         <HomeIcon />
@@ -915,7 +375,7 @@ function BrowserPageView({ model }: BrowserPageViewProps) {
                         type="icon"
                         size="small"
                         title="Back (Alt+Left)"
-                        onClick={handleGoBack}
+                        onClick={webview.goBack}
                         disabled={!canGoBack}
                     >
                         <ArrowLeftIcon />
@@ -924,7 +384,7 @@ function BrowserPageView({ model }: BrowserPageViewProps) {
                         type="icon"
                         size="small"
                         title="Forward (Alt+Right)"
-                        onClick={handleGoForward}
+                        onClick={webview.goForward}
                         disabled={!canGoForward}
                     >
                         <ArrowRightIcon />
@@ -933,32 +393,32 @@ function BrowserPageView({ model }: BrowserPageViewProps) {
                         type="icon"
                         size="small"
                         title={loading ? "Stop" : "Reload"}
-                        onClick={handleReloadOrStop}
+                        onClick={webview.reloadOrStop}
                     >
                         {loading ? <StopIcon /> : <RefreshIcon />}
                     </Button>
                     <WithPopupMenu items={searchEngineMenuItems} offset={[-4, 4]}>
                     {(openEngineMenu) => (
                     <TextField
-                        ref={urlInputRef}
+                        ref={urlBar.setUrlInputRef}
                         className="url-bar"
                         value={urlInput}
-                        onChange={handleUrlChange}
-                        onKeyDown={handleUrlKeyDown}
-                        onFocus={handleUrlFocus}
-                        onBlur={handleUrlBlur}
-                        onContextMenu={handleUrlContextMenu}
+                        onChange={urlBar.handleUrlChange}
+                        onKeyDown={urlBar.handleUrlKeyDown}
+                        onFocus={urlBar.handleUrlFocus}
+                        onBlur={urlBar.handleUrlBlur}
+                        onContextMenu={urlBar.handleUrlContextMenu}
                         placeholder="Enter URL or search term..."
                         startButtons={(() => {
                             const btns = [
-                                ...(model.state.get().isIncognito ? [
+                                ...(isIncognito ? [
                                     <IncognitoIcon key="incognito" color={color.icon.light} />,
                                 ] : []),
                                 ...(showSearchEngineSelector ? [
                                     <span
                                         key="search-engine"
                                         className="search-engine-btn"
-                                        onClick={(e: React.MouseEvent) => { e.stopPropagation(); openEngineMenu(e.currentTarget); }}
+                                        onClick={(e) => { e.stopPropagation(); openEngineMenu(e.currentTarget); }}
                                         title="Change search engine"
                                     >{currentEngineName} ▾</span>,
                                 ] : []),
@@ -967,7 +427,7 @@ function BrowserPageView({ model }: BrowserPageViewProps) {
                         })()}
                         startButtonsWidth={
                             showSearchEngineSelector
-                                ? (currentEngineName.length * 7 + 20) + (model.state.get().isIncognito ? 20 : 0)
+                                ? (currentEngineName.length * 7 + 20) + (isIncognito ? 20 : 0)
                                 : undefined
                         }
                         endButtons={[
@@ -976,9 +436,19 @@ function BrowserPageView({ model }: BrowserPageViewProps) {
                                 size="small"
                                 type="icon"
                                 title="Navigate"
-                                onClick={handleNavigate}
+                                onClick={urlBar.handleNavigate}
                             >
                                 <ArrowRightIcon />
+                            </Button>,
+                            <Button
+                                key="star"
+                                size="small"
+                                type="icon"
+                                title={isBookmarked ? "Edit Bookmark" : "Add Bookmark"}
+                                onClick={bookmarksUI.handleStarClick}
+                                style={isBookmarked ? { color: color.misc.blue } : undefined}
+                            >
+                                {isBookmarked ? <StarFilledIcon /> : <StarIcon />}
                             </Button>,
                         ]}
                     />
@@ -987,8 +457,16 @@ function BrowserPageView({ model }: BrowserPageViewProps) {
                     <Button
                         type="icon"
                         size="small"
+                        title="Open Bookmarks"
+                        onClick={bookmarksUI.handleOpenBookmarks}
+                    >
+                        <BookmarkIcon />
+                    </Button>
+                    <Button
+                        type="icon"
+                        size="small"
                         title="Open DevTools"
-                        onClick={handleOpenDevTools}
+                        onClick={webview.openDevTools}
                     >
                         <SettingsIcon />
                     </Button>
@@ -1022,7 +500,7 @@ function BrowserPageView({ model }: BrowserPageViewProps) {
                 <Splitter
                     type="vertical"
                     initialWidth={tabsPanelWidth}
-                    onChangeWidth={handleTabsPanelWidthChange}
+                    onChangeWidth={model.setTabsPanelWidth}
                     borderSized="right"
                     style={{ left: tabsPanelWidth }}
                 />
@@ -1034,23 +512,31 @@ function BrowserPageView({ model }: BrowserPageViewProps) {
                             tab={tab}
                             isActive={tab.id === activeTabId}
                             partition={model.partition}
-                            webviewRefs={webviewRefs}
-                            webviewReady={webviewReady}
                         />
                     ))}
                     {popupOpen && <div className="webview-click-overlay" />}
                 </div>
+                {bookmarksReady && model.bookmarks && (
+                    <BookmarksDrawer
+                        open={bookmarksOpen}
+                        bookmarks={model.bookmarks}
+                        width={bookmarksWidth}
+                        onChangeWidth={(w) => model.state.update((s) => { s.bookmarksWidth = w; })}
+                        onLinkClick={bookmarksUI.handleBookmarkLinkClick}
+                        onClose={bookmarksUI.handleCloseBookmarks}
+                    />
+                )}
             </div>
             <UrlSuggestionsDropdown
-                anchorEl={urlInputRef.current?.closest('.url-bar') ?? null}
+                anchorEl={urlBar.urlInputRef?.closest('.url-bar') ?? null}
                 open={suggestionsOpen}
                 items={suggestionsItems}
                 mode={suggestionsMode}
                 searchText={suggestionsMode === "search" ? urlInput : undefined}
                 hoveredIndex={hoveredIndex}
-                onHoveredIndexChange={setHoveredIndex}
-                onSelect={handleSuggestionSelect}
-                onClearVisible={suggestionsMode === "search" ? handleClearVisible : undefined}
+                onHoveredIndexChange={(i) => model.state.update((s) => { s.hoveredIndex = i; })}
+                onSelect={urlBar.handleSuggestionSelect}
+                onClearVisible={suggestionsMode === "search" ? urlBar.handleClearVisible : undefined}
             />
         </BrowserPageViewRoot>
     );

@@ -8,7 +8,33 @@ Release notes and changelog for js-notepad.
 
 ## Version 1.0.14 (Upcoming)
 
-*No changes yet.*
+### New Features
+
+- **Browser Bookmarks** — Per-profile bookmark management integrated into the browser editor
+  - **Star button (☆)** in the URL bar for quick bookmarking
+    - Empty star when URL is not bookmarked; filled star when already bookmarked
+    - Click to open Edit Link Dialog with URL and title prefilled
+    - Discovered images from page meta tags and click tracking available for selection
+  - **Bookmarks panel** — "Open Links" toolbar button opens a sliding overlay drawer with the full Link Editor
+    - Right-anchored overlay with semi-transparent backdrop
+    - Browse, search, edit, and manage all bookmarks with categories, tags, and multiple view modes
+    - Click a link to navigate (opens in current tab if blank, otherwise new internal tab)
+    - Resizable panel (initial width 60%, max 90%), Categories/Tags panel on the right
+    - Closes on Escape, backdrop click, or after link click navigation
+  - **Context menu bookmarking** — right-click a link or tile on a web page → "Add to Bookmarks" with captured URL, title, and image
+  - **Image discovery** — collects candidate images from multiple sources:
+    - Page meta tags (`og:image`, `twitter:image`, etc.)
+    - Images inside clicked `<a>` elements (captured before navigation)
+    - "Use Image for Bookmark" context menu on right-clicked images
+    - Per-tab image tracking with navigation levels (remembers images from previous pages)
+  - **Per-profile bookmarks files** — each browser profile (Default, named, Incognito) can have its own `.link.json` bookmarks file, configured in **Settings → Browser Profiles**
+  - Bookmarks fully functional in incognito mode
+  - Supports encrypted `.link.json` files with async password dialog
+  - All edits auto-save to the bookmarks file
+
+### Improvements
+
+- **Async Password Dialog** — The file encryption/decryption password prompt is now a standalone async dialog (`showPasswordDialog`) that can be used from any code path, replacing the previous inline panel in the text editor. Same dialog pattern as other app dialogs (confirmation, input).
 
 ---
 
@@ -74,6 +100,25 @@ Release notes and changelog for js-notepad.
   - Session restore — all internal tabs, URLs, navigation history, and profile selection persisted across app restarts
   - Isolated storage — cookies and site data separated from the main application
   - Security: navigation to `file://` and `app-asset://` protocols is blocked
+
+- **Link Editor** — A structured link manager for `.link.json` files
+  - Organize links with **categories** (hierarchical tree) and **tags**
+  - **5 view modes**: List, Landscape tiles, Landscape (Large) tiles, Portrait tiles, Portrait (Large) tiles
+  - View mode remembered per category and per tag independently
+  - Custom view mode icons in toolbar and mode selector menu
+  - Tile views display preview images with "no image" placeholder
+  - **Edit/Create dialog** with auto-growing title field, URL, category with autocomplete, tag chips with autocomplete, image URL with preview
+  - Discovered images section in dialog (prepared for future browser bookmark integration)
+  - **Context menu**: Edit, Open in Default Browser, Open in Internal Browser, Open in Incognito, Copy URL, Delete
+  - Conditional image items: Copy Image URL, Open Image in New Tab (opens in Image Viewer)
+  - Search/filter links by title or URL
+  - Delete confirmation with Ctrl+click bypass
+  - Double-click to edit in both list and tile views
+  - Selection overlay using semi-transparent pseudo-elements
+  - Distinctive file icon for `.link.json`
+  - Can switch to Monaco for raw JSON editing
+
+- **Quick Add: Links** — The dropdown menu next to the "+" tab button now includes a "Links" option to create a new `.link.json` file
 
 ---
 
@@ -215,6 +260,7 @@ Release notes and changelog for js-notepad.
   - Grid (CSV) — new `.grid.csv` file with Grid editor active
   - Notebook — new `.note.json` file with Notebook editor active
   - Todo — new `.todo.json` file with Todo editor active
+  - Links — new `.link.json` file with Link editor active
 
 ---
 

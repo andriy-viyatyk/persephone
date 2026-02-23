@@ -154,13 +154,15 @@ The renderer builds the menu dynamically based on `params` fields from the `cont
 
 | File | Process | Purpose |
 |------|---------|---------|
-| `src/renderer/editors/browser/BrowserPageView.tsx` | Renderer | UI component: toolbar, URL bar, multi-webview management, URL suggestions |
+| `src/renderer/editors/browser/BrowserPageView.tsx` | Renderer | UI component: toolbar, URL bar, multi-webview management, URL suggestions, bookmarks |
 | `src/renderer/editors/browser/BrowserPageModel.ts` | Renderer | Multi-tab state management, navigation logic, favicon caching, search engines |
 | `src/renderer/editors/browser/BrowserTabsPanel.tsx` | Renderer | Left-side internal tabs panel with compact extension popup |
+| `src/renderer/editors/browser/BrowserBookmarks.ts` | Renderer | Wraps TextFileModel + LinkEditorModel for bookmark file I/O |
+| `src/renderer/editors/browser/BookmarksDrawer.tsx` | Renderer | Sliding overlay drawer rendering the Link Editor for bookmarks |
 | `src/renderer/editors/browser/UrlSuggestionsDropdown.tsx` | Renderer | URL bar dropdown with search history and navigation history |
 | `src/renderer/editors/browser/browser-search-history.ts` | Renderer | Per-profile persistent search history storage (file-based) |
 | `src/main/browser-service.ts` | Main | Attaches to webContents, relays events via IPC, audio state, popups |
-| `src/preload-webview.ts` | Guest | MutationObserver for title/favicon in guest DOM |
+| `src/preload-webview.ts` | Guest | MutationObserver for title/favicon, image tracking on link clicks |
 | `src/ipc/browser-ipc.ts` | Shared | IPC channel names and type definitions |
 
 ## Why the Main Process Bridge?
@@ -295,6 +297,58 @@ Right-clicking a link in Markdown Preview (or Notebook embedded Markdown) shows 
 - **About page links** always open in the OS default browser (direct `shell.openExternal()` call, bypasses IPC routing)
 - **HTML Preview** blocks all link navigation (unchanged)
 - **Browser Editor** has its own link handling (new internal tabs, context menu) — not affected
+
+## Bookmarks
+
+Each browser profile can be associated with a `.link.json` bookmarks file. Bookmarks are lazily initialized on first user action (star button or "Open Links") and reused for the lifetime of the browser page.
+
+### Architecture
+
+```
+BrowserBookmarks (stored on BrowserPageModel.bookmarks)
+    ├─ TextFileModel     — file I/O, encryption, FileWatcher, auto-save
+    └─ LinkEditorModel   — parsed link data, categories, tags, filters
+```
+
+`BrowserBookmarks` wraps both models. `TextFileModel` handles reading/writing the `.link.json` file (including encryption/decryption), while `LinkEditorModel` provides the structured data layer. Every mutation flows through `LinkEditorModel.onDataChanged()` → `TextFileModel.changeContent()` → debounced save to disk.
+
+### Lazy Initialization Flow
+
+1. User clicks ☆ (star) or "Open Links" → check `model.bookmarks !== null`
+2. If null → read profile's bookmarks file path from settings
+3. If no file path (or file missing on disk) → show "Associate Bookmarks File" dialog ("Select a file" / "Create a file" / Cancel)
+4. Create `BrowserBookmarks(filePath)` → `textModel.restore()` → if encrypted, show async password dialog → `linkModel.updateContent(content)`
+5. If password cancelled → abort, return null
+6. Store on `BrowserPageModel.bookmarks`, proceed with action
+
+### Two Entry Points
+
+- **Star button (☆)** in the URL bar — quick bookmark add/edit. Empty star when URL not bookmarked, filled star when bookmarked. Opens Edit Link Dialog with URL/title prefilled and discovered images.
+- **"Open Links" button** on the toolbar — opens the `BookmarksDrawer`, a right-anchored overlay with the full Link Editor. Link clicks navigate to the URL (in current tab if `about:blank`, otherwise new internal tab) and close the drawer.
+
+### Image Discovery
+
+Images for bookmarks are collected from multiple sources:
+
+1. **Meta tags** — `og:image`, `twitter:image`, `meta[name="thumbnail"]` extracted via `executeJavaScript` on the webview
+2. **Click tracking** — the preload script captures all `<img>` URLs inside clicked `<a>` elements and sends them via `ipcRenderer.sendToHost("clicked-images", urls)`
+3. **Per-tab image tracking** — `trackedImagesRef` stores discovered images per internal tab with navigation levels (level 0 = current page, level 1 = previous page, level 2 = two pages back; levels > 2 are dropped)
+4. **Context menu** — "Use Image for Bookmark" pushes an image URL to level 0; "Add to Bookmarks" captures href, imgSrc, and title from the right-clicked element
+
+All discovered images are merged (deduplicated) and passed to the Edit Link Dialog.
+
+### BookmarksDrawer
+
+A right-anchored overlay that renders the Link Editor with a `swapLayout` prop (Categories/Tags panel on the right). Key behaviors:
+
+- Initial width = 60% of browser page, max 90%, resizable via Splitter
+- Width persisted in component state
+- Renders portal placeholder divs for the Link Editor's toolbar/footer portals
+- Closes on Escape, backdrop click, or link click navigation
+
+### Encrypted Bookmarks
+
+If the `.link.json` file is encrypted, `BrowserBookmarks.init()` detects this via `isEncrypted(content)` and calls `showPasswordDialog({ mode: "decrypt" })`. This is the same async password dialog used by the text editor's encryption feature. If the user cancels, `init()` returns `false` and the bookmarks are not loaded.
 
 ## Common Pitfalls
 

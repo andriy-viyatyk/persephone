@@ -1,0 +1,320 @@
+const fs = require("fs");
+import { BrowserBookmarks, createEmptyLinkFile } from "./BrowserBookmarks";
+import { showEditLinkDialog } from "../link-editor/EditLinkDialog";
+import { showConfirmationDialog } from "../../features/dialogs/ConfirmationDialog";
+import { api } from "../../../ipc/renderer/api";
+import { appSettings, BrowserProfile } from "../../store/app-settings";
+import type { BrowserPageModel } from "./BrowserPageModel";
+
+/** Tracked image URLs from a specific navigation level. */
+export interface TrackedImageLevel {
+    level: number;
+    imgUrls: string[];
+}
+
+const BOOKMARKS_FILE_FILTER = { name: "Link Files", extensions: ["link.json"] };
+
+/**
+ * Manages bookmarks UI: drawer visibility, star button, image discovery,
+ * and tracked images for the browser editor.
+ */
+export class BrowserBookmarksUIModel {
+    readonly model: BrowserPageModel;
+
+    /** Per-tab tracked images for bookmark image discovery. */
+    trackedImagesRef = new Map<string, TrackedImageLevel[]>();
+
+    /** Cleanup function for linkModel state subscription. */
+    private bookmarksSub: (() => void) | null = null;
+    /** Cleanup function for model state subscription (urlInput tracking). */
+    private urlTrackingSub: (() => void) | null = null;
+
+    constructor(model: BrowserPageModel) {
+        this.model = model;
+    }
+
+    /** Unsubscribe from all state subscriptions. */
+    dispose = () => {
+        this.bookmarksSub?.();
+        this.bookmarksSub = null;
+        this.urlTrackingSub?.();
+        this.urlTrackingSub = null;
+    };
+
+    // =====================================================================
+    // Bookmarks Initialization
+    // =====================================================================
+
+    /** Ensure bookmarks are loaded, prompting user to associate a file if needed. */
+    ensureBookmarks = async (): Promise<BrowserBookmarks | null> => {
+        if (this.model.bookmarks) {
+            return this.model.bookmarks;
+        }
+
+        let filePath = this.model.getBookmarksFilePath();
+
+        // If the configured file no longer exists, treat as unconfigured
+        if (filePath && !fs.existsSync(filePath)) {
+            filePath = "";
+        }
+
+        if (!filePath) {
+            const choice = await showConfirmationDialog({
+                title: "Bookmarks File",
+                message: "This profile has no bookmarks file associated.\nChoose an option:",
+                buttons: ["Select a file", "Create new file", "Cancel"],
+            });
+
+            if (choice === "Select a file") {
+                const result = await api.showOpenFileDialog({
+                    title: "Select Bookmarks File",
+                    filters: [BOOKMARKS_FILE_FILTER],
+                });
+                filePath = result?.[0] || "";
+            } else if (choice === "Create new file") {
+                const result = await api.showSaveFileDialog({
+                    title: "Create Bookmarks File",
+                    defaultPath: "bookmarks.link.json",
+                    filters: [BOOKMARKS_FILE_FILTER],
+                });
+                if (result) {
+                    filePath = result.endsWith(".link.json") ? result : result + ".link.json";
+                    createEmptyLinkFile(filePath);
+                }
+            }
+
+            if (!filePath) return null;
+
+            // Persist the file path in settings for this profile
+            const { profileName: pName, isIncognito: isInc } = this.model.state.get();
+            if (isInc) {
+                appSettings.set("browser-incognito-bookmarks-file", filePath);
+            } else if (pName) {
+                const profiles = appSettings.get("browser-profiles");
+                appSettings.set("browser-profiles", profiles.map((p: BrowserProfile) =>
+                    p.name === pName ? { ...p, bookmarksFile: filePath } : p,
+                ));
+            } else {
+                const defaultName = appSettings.get("browser-default-profile");
+                if (defaultName) {
+                    const profiles = appSettings.get("browser-profiles");
+                    appSettings.set("browser-profiles", profiles.map((p: BrowserProfile) =>
+                        p.name === defaultName ? { ...p, bookmarksFile: filePath } : p,
+                    ));
+                } else {
+                    appSettings.set("browser-default-bookmarks-file", filePath);
+                }
+            }
+        }
+
+        const bm = await this.model.initBookmarks(filePath);
+        if (bm) {
+            this.model.state.update((s) => { s.bookmarksReady = true; });
+            this.startBookmarkTracking(bm);
+        }
+        return bm;
+    };
+
+    // =====================================================================
+    // Bookmark Tracking (isBookmarked state)
+    // =====================================================================
+
+    /** Subscribe to linkModel state changes to track whether current URL is bookmarked. */
+    private startBookmarkTracking = (bm: BrowserBookmarks) => {
+        // Clean up previous subscriptions
+        this.dispose();
+
+        // Track changes in the link model (add/remove/edit bookmarks)
+        this.bookmarksSub = bm.linkModel.state.subscribe(() => {
+            this.updateIsBookmarked();
+        });
+
+        // Track urlInput changes to re-check isBookmarked
+        let prevUrlInput = this.model.state.get().urlInput;
+        this.urlTrackingSub = this.model.state.subscribe(() => {
+            const current = this.model.state.get().urlInput;
+            if (current !== prevUrlInput) {
+                prevUrlInput = current;
+                this.updateIsBookmarked();
+            }
+        });
+
+        this.updateIsBookmarked();
+    };
+
+    private updateIsBookmarked = () => {
+        const bm = this.model.bookmarks;
+        if (!bm) {
+            this.model.state.update((s) => { s.isBookmarked = false; });
+            return;
+        }
+        const { urlInput } = this.model.state.get();
+        const found = !!bm.findByUrl(urlInput);
+        const current = this.model.state.get().isBookmarked;
+        if (found !== current) {
+            this.model.state.update((s) => { s.isBookmarked = found; });
+        }
+    };
+
+    // =====================================================================
+    // Drawer Handlers
+    // =====================================================================
+
+    handleOpenBookmarks = async () => {
+        const bm = await this.ensureBookmarks();
+        if (bm) {
+            this.model.state.update((s) => { s.bookmarksOpen = true; });
+        }
+    };
+
+    handleBookmarkLinkClick = (url: string) => {
+        const s = this.model.state.get();
+        const currentTab = s.tabs.find((t) => t.id === s.activeTabId);
+        const currentUrl = currentTab?.url || "";
+        if (!currentUrl || currentUrl === "about:blank") {
+            this.model.navigate(url);
+        } else {
+            this.model.addTab(url);
+        }
+        this.model.state.update((st) => { st.bookmarksOpen = false; });
+    };
+
+    handleCloseBookmarks = () => {
+        this.model.state.update((s) => { s.bookmarksOpen = false; });
+    };
+
+    // =====================================================================
+    // Star Button
+    // =====================================================================
+
+    /** Star button click: add or edit bookmark for the current URL. */
+    handleStarClick = async () => {
+        const bm = await this.ensureBookmarks();
+        if (!bm) return;
+
+        const { urlInput, activeTabId, tabs } = this.model.state.get();
+        const existingLink = bm.findByUrl(urlInput);
+        const metaImages = await this.discoverImages();
+        const tracked = this.getTrackedImages(activeTabId);
+        // Merge: meta-tag images first, then tracked images, deduplicated
+        const seen = new Set(metaImages);
+        const allImages = [...metaImages];
+        for (const url of tracked) {
+            if (!seen.has(url)) {
+                allImages.push(url);
+            }
+        }
+        const bmState = bm.linkModel.state.get();
+
+        if (existingLink) {
+            const result = await showEditLinkDialog({
+                title: "Edit Bookmark",
+                link: existingLink,
+                categories: bmState.categories,
+                tags: bmState.tags,
+                discoveredImages: allImages,
+            });
+            if (result) {
+                bm.linkModel.updateLink(existingLink.id, result);
+            }
+        } else {
+            const activeTab = tabs.find((t) => t.id === activeTabId);
+            const result = await showEditLinkDialog({
+                title: "Add Bookmark",
+                link: {
+                    title: activeTab?.pageTitle || "",
+                    href: urlInput,
+                },
+                categories: bmState.categories,
+                tags: bmState.tags,
+                discoveredImages: allImages,
+            });
+            if (result) {
+                bm.linkModel.addLink(result);
+            }
+        }
+    };
+
+    // =====================================================================
+    // Image Discovery
+    // =====================================================================
+
+    /** Extract og:image, twitter:image, and similar meta tag images from the active webview. */
+    discoverImages = async (): Promise<string[]> => {
+        const webview = this.model.webview.getActiveWebview();
+        if (!webview) return [];
+        try {
+            const images: string[] = await webview.executeJavaScript(`
+                (() => {
+                    const imgs = [];
+                    const seen = new Set();
+                    const add = (u) => {
+                        try {
+                            const abs = new URL(u, document.baseURI).href;
+                            if (abs.startsWith('http') && !seen.has(abs)) {
+                                seen.add(abs);
+                                imgs.push(abs);
+                            }
+                        } catch {}
+                    };
+                    const og = document.querySelector('meta[property="og:image"]');
+                    if (og) add(og.content);
+                    const ogUrl = document.querySelector('meta[property="og:image:url"]');
+                    if (ogUrl) add(ogUrl.content);
+                    const tw = document.querySelector('meta[name="twitter:image"]')
+                        || document.querySelector('meta[property="twitter:image"]');
+                    if (tw) add(tw.content);
+                    const schema = document.querySelector('meta[itemprop="image"]');
+                    if (schema) add(schema.content);
+                    const touch = document.querySelector('link[rel="apple-touch-icon"]');
+                    if (touch) add(touch.href);
+                    return imgs;
+                })()
+            `);
+            return images || [];
+        } catch {
+            return [];
+        }
+    };
+
+    /** Collect all tracked images for a tab across all levels, deduplicated. */
+    getTrackedImages = (tabId: string): string[] => {
+        const tracked = this.trackedImagesRef.get(tabId) || [];
+        const urls: string[] = [];
+        const seen = new Set<string>();
+        for (const entry of tracked) {
+            for (const url of entry.imgUrls) {
+                if (!seen.has(url)) {
+                    seen.add(url);
+                    urls.push(url);
+                }
+            }
+        }
+        return urls;
+    };
+
+    /** Add clicked images to a tab's level 0 tracking. Called from webview model. */
+    trackClickedImages = (tabId: string, imgUrls: string[]) => {
+        const tracked = this.trackedImagesRef.get(tabId) || [];
+        let level0 = tracked.find((e) => e.level === 0);
+        if (!level0) {
+            level0 = { level: 0, imgUrls: [] };
+            tracked.unshift(level0);
+            this.trackedImagesRef.set(tabId, tracked);
+        }
+        for (const url of imgUrls) {
+            if (url && !level0.imgUrls.includes(url)) {
+                level0.imgUrls.push(url);
+            }
+        }
+    };
+
+    /** Shift tracked images on navigation: increment levels, drop > 2, add fresh level 0. */
+    shiftTrackedImages = (tabId: string) => {
+        const prev = this.trackedImagesRef.get(tabId) || [];
+        const shifted = prev
+            .map((e) => ({ level: e.level + 1, imgUrls: e.imgUrls }))
+            .filter((e) => e.level <= 2);
+        this.trackedImagesRef.set(tabId, [{ level: 0, imgUrls: [] }, ...shifted]);
+    };
+}

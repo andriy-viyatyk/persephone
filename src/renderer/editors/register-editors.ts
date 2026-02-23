@@ -20,6 +20,7 @@ const matchesPattern = (fileName: string, pattern: RegExp): boolean => {
 const SPECIALIZED_JSON_PATTERNS = [
     /\.note\.json$/i,
     /\.todo\.json$/i,
+    /\.link\.json$/i,
 ];
 
 const isSpecializedJson = (fileName?: string): boolean => {
@@ -294,6 +295,33 @@ editorRegistry.register({
         const module = await import("./todo/TodoEditor");
         return {
             Editor: module.TodoEditor,
+            newPageModel: textEditorModule.newPageModel,
+            newEmptyPageModel: textEditorModule.newEmptyPageModel,
+            newPageModelFromState: textEditorModule.newPageModelFromState,
+        };
+    },
+});
+
+// Link editor (content-view for .link.json files)
+editorRegistry.register({
+    id: "link-view",
+    name: "Links",
+    pageType: "textFile",
+    category: "content-view",
+    acceptFile: (fileName) => {
+        if (matchesPattern(fileName, /\.link\.json$/i)) return 20;
+        return -1;
+    },
+    validForLanguage: (languageId) => languageId === "json",
+    switchOption: (languageId, fileName) => {
+        if (languageId !== "json") return -1;
+        if (!fileName || !matchesPattern(fileName, /\.link\.json$/i)) return -1;
+        return 10;
+    },
+    loadModule: async () => {
+        const module = await import("./link-editor/LinkEditor");
+        return {
+            Editor: module.LinkEditor,
             newPageModel: textEditorModule.newPageModel,
             newEmptyPageModel: textEditorModule.newEmptyPageModel,
             newPageModelFromState: textEditorModule.newPageModelFromState,

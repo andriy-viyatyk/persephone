@@ -22,7 +22,6 @@ export interface TextFilePageModelState extends IPage {
     encoding?: string;
     password?: string;
     encripted?: boolean;
-    showEncryptionPanel?: boolean;
     restored: boolean;
     compareMode: boolean;
     temp: boolean;
@@ -40,7 +39,6 @@ export const getDefaultTextFilePageModelState = (): TextFilePageModelState => ({
     deleted: false,
     password: undefined,
     encripted: false,
-    showEncryptionPanel: false,
     restored: false,
 });
 
@@ -105,7 +103,6 @@ export class TextFileModel extends PageModel<TextFilePageModelState, void> {
             deleted,
             password,
             encripted,
-            showEncryptionPanel,
             restored,
             ...pageData
         } = this.state.get();
@@ -511,40 +508,18 @@ export class TextFileModel extends PageModel<TextFilePageModelState, void> {
         }
     };
 
-    onSubmitPassword = async (password: string) => {
-        if (this.encripted) {
+    showEncryptionDialog = async () => {
+        const mode = this.encripted && !this.decripted ? "decrypt" : "encrypt";
+        const { showPasswordDialog } = await import("../../features/dialogs/PasswordDialog");
+        const password = await showPasswordDialog({ mode });
+        if (!password) return;
+
+        if (mode === "decrypt") {
             await this.decript(password);
-            if (this.decripted) {
-                this.state.update((s) => {
-                    s.showEncryptionPanel = false;
-                });
-                this.editor.focusEditor();
-            }
-            return;
-        }
-
-        if (!this.encripted) {
+        } else {
             await this.encript(password);
-            if (this.encripted) {
-                this.state.update((s) => {
-                    s.showEncryptionPanel = false;
-                });
-                this.editor.focusEditor();
-            }
         }
-    };
-
-    onCancelPassword = () => {
-        this.state.update((s) => {
-            s.showEncryptionPanel = false;
-        });
         this.editor.focusEditor();
-    };
-
-    showEncryptionDialog = () => {
-        this.state.update((s) => {
-            s.showEncryptionPanel = true;
-        });
     };
 
     makeUnencrypted = () => {

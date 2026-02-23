@@ -66,6 +66,7 @@ function PdfViewer({ model }: PdfViewerProps) {
                         title="File Explorer"
                         onClick={() => {
                             if (model.navPanel) {
+                                model.navPanel.reinitIfEmpty(path.dirname(filePath), filePath);
                                 model.navPanel.toggle();
                             } else {
                                 const navPanel = new NavPanelModel(path.dirname(filePath), filePath);

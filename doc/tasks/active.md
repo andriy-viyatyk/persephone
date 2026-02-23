@@ -4,20 +4,20 @@ Current work in progress and planned tasks.
 
 ## In Progress
 
-| ID | Title | Priority | Link |
-|----|-------|----------|------|
+*No tasks in progress.*
 
 ## Planned (Next)
 
 | ID | Title | Priority | Link |
 |----|-------|----------|------|
-| US-028 | Browser Bookmarks (Links Editor Integration) | Low | [README](US-028-browser-bookmarks/README.md) |
 | US-030 | Download Manager | Medium | [README](US-030-download-manager/README.md) |
 
 ## Recently Completed
 
 | ID | Title | Notes |
 |----|-------|-------|
+| US-028 | Browser Bookmarks (Links Editor Integration) | Per-profile bookmarks with star button, sliding drawer with full Link Editor, image discovery (meta tags + click tracking + context menu), encrypted bookmarks support via async password dialog, auto-save |
+| US-033 | Link Editor | Structured link manager for `.link.json` files with categories, tags, 5 view modes (list + 4 tile variants), edit dialog, image context menu, per-category and per-tag view mode, quick-add menu |
 | US-032 | Browser Integration — Link Opening & Context Menu | Link open behavior setting (default browser vs internal), smart browser tab routing (right→left→create new), Markdown link context menu (Open in Default/Internal Browser, Incognito), Settings page UI |
 | US-031 | Browser Enhancement #1 | OAuth popup support, toolbar changes, active tab styling, transparent splitter, compact tab extension popup, tab audio mute controls, home button, tabs panel initially collapsed, search engine selector, URL bar suggestions dropdown with search/navigation history |
 | US-027 | Browser Profiles & Incognito Mode | Named browser profiles with isolated sessions (cookies/storage/cache per profile), incognito mode (ephemeral partition), profile management in Settings (add/remove/color/default/clear data), incognito icon in URL bar, profile-colored globe icons on page tabs, quick-add submenu for profiles |

@@ -26,6 +26,7 @@ export async function showSettingsPage(): Promise<void> {
 export interface ShowBrowserPageOptions {
     profileName?: string;
     incognito?: boolean;
+    url?: string;
 }
 
 /**
@@ -41,15 +42,37 @@ export async function showBrowserPage(options?: ShowBrowserPageOptions): Promise
                 if (options.incognito) s.isIncognito = true;
             });
         }
+        if (options?.url) {
+            model.state.update((s: any) => {
+                s.url = options.url;
+                const tab = s.tabs?.[0];
+                if (tab) {
+                    tab.url = options.url;
+                    tab.homeUrl = options.url;
+                }
+            });
+        }
         await model.restore();
         pagesModel.addPage(model);
     }
 }
 
 /**
- * Opens a URL in the nearest browser tab (search right, then left from active page).
- * If no browser tab exists (or incognito requested), creates a new browser page.
+ * Opens an image URL in a new Image Viewer tab.
  */
+export async function openImageInNewTab(imageUrl: string): Promise<void> {
+    const imgModule = await import("../editors/image/ImageViewer");
+    const imgModel = await imgModule.default.newEmptyPageModel("imageFile");
+    if (imgModel) {
+        imgModel.state.update((s: { title: string; url?: string }) => {
+            s.title = imageUrl.split("/").pop()?.split("?")[0] || "Image";
+            s.url = imageUrl;
+        });
+        await imgModel.restore();
+        pagesModel.addPage(imgModel);
+    }
+}
+
 export async function openUrlInBrowserTab(url: string, options?: {
     incognito?: boolean;
 }): Promise<void> {
@@ -76,13 +99,14 @@ export async function openUrlInBrowserTab(url: string, options?: {
         }
     }
 
-    // No browser tab found (or incognito requested) — create new one as last tab
+    // No browser tab found (or incognito requested) — create new one as last tab.
+    // Pass the URL directly so the initial tab's webview src is set before React mounts
+    // the component — avoids a race condition where navigate() is called before the
+    // webview is ready, causing the page to stay blank.
     const profileName = options?.incognito ? undefined : appSettings.get("browser-default-profile") || undefined;
-    await showBrowserPage(options?.incognito ? { incognito: true } : profileName ? { profileName } : undefined);
-    // Navigate the newly created browser page's initial tab to the URL
-    const newPages = pagesModel.state.get().pages;
-    const lastPage = newPages[newPages.length - 1];
-    if (lastPage?.state.get().type === "browserPage") {
-        (lastPage as any).navigate(url);
-    }
+    const showOptions: ShowBrowserPageOptions = {
+        url,
+        ...(options?.incognito ? { incognito: true } : profileName ? { profileName } : {}),
+    };
+    await showBrowserPage(showOptions);
 }

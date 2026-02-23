@@ -160,6 +160,23 @@ A built-in web browser for viewing documentation, APIs, and web resources withou
 - **DevTools** — click the gear icon to open the webview's developer tools
 - **Session restore** — all internal tabs, URLs, navigation history, and profile selection saved and restored across app restarts
 - **Isolated storage** — each profile has its own cookies, storage, and cache, separated from the main application
+- **Bookmarks** — per-profile bookmark management using `.link.json` files
+  - **Star button (☆)** in the URL bar — quick-add or edit a bookmark for the current page
+    - Empty star when URL is not bookmarked; filled star when already bookmarked
+    - Opens Edit Link Dialog with URL and title prefilled
+    - Discovered images from meta tags and click tracking shown in the dialog
+  - **"Open Links" button** on the toolbar — opens a sliding bookmarks panel with the full Link Editor
+    - Right-anchored overlay drawer with backdrop
+    - Categories, tags, search, and all view modes (list and tile variants)
+    - Click a link to navigate (in current tab if blank, otherwise new internal tab)
+    - Drawer closes automatically after link click
+    - Resizable width, Categories/Tags panel on the right side
+  - **Context menu bookmarking** — right-click a link or tile on a web page → "Add to Bookmarks" with captured URL, title, and image
+  - **Image discovery** — collects images from page meta tags, clicked link elements, and context menu for bookmark thumbnails
+  - Each profile can have a different bookmarks file — configure in **Settings → Browser Profiles**
+  - Bookmarks fully functional in incognito mode (persisted to file, only browsing data is ephemeral)
+  - Supports encrypted `.link.json` files — password dialog appears on first access
+  - All edits auto-save to the `.link.json` file
 
 **Link open behavior:** External links clicked in Monaco or Markdown editors can open in the default OS browser or in the nearest internal Browser tab. Configure in **Settings → Links**. When set to "internal browser", links open in the closest browser tab (searching right, then left from the active page); if none exists, a new browser page is created.
 
@@ -214,6 +231,22 @@ For `.note.json` files — a structured notes interface:
 
 See **[Notebook Editor](./notebook.md)** for detailed documentation.
 
+## Link Editor
+
+For `.link.json` files — a structured link manager:
+
+- **Categories** and **tags** for organizing links
+- **Multiple view modes** — List, Landscape tiles, Portrait tiles (normal and large variants)
+- **View mode per category and per tag** — each category or tag remembers its preferred layout
+- **Image tiles** — tile views display preview images with "no image" placeholder for links without images
+- **Edit/Create dialog** — title (auto-growing), URL, category (with autocomplete), tags (chip-based with autocomplete), image URL with preview
+- **Search** — toolbar search filters links by title or URL
+- **Context menu** — Edit, Open in Default Browser, Open in Internal Browser, Open in Incognito, Copy URL, Delete
+  - For links with images: Copy Image URL, Open Image in New Tab (opens in Image Viewer)
+- **Delete confirmation** — with Ctrl+click bypass for quick delete
+- **Double-click** to edit in both list and tile views
+- Can switch to Monaco for raw JSON editing
+
 ## Switching Editors
 
 Some files support multiple editors:
@@ -223,6 +256,7 @@ Some files support multiple editors:
 | `.json` | Text, Grid |
 | `.note.json` | Text, Notebook |
 | `.todo.json` | Text, ToDo |
+| `.link.json` | Text, Links |
 | `.csv` | Text, Grid |
 | `.md` | Text, Preview |
 | `.svg` | Text, Preview |
@@ -234,4 +268,4 @@ Some files support multiple editors:
 
 Use the buttons in the toolbar to switch between available editors.
 
-**Quick Add:** Click the dropdown arrow (&#9662;) next to the **+** button in the tab bar to create a new page with a specific editor: Script (JS), Grid (JSON), Grid (CSV), Notebook, Todo, Browser, or Browser profile (with Incognito and named profiles).
+**Quick Add:** Click the dropdown arrow (&#9662;) next to the **+** button in the tab bar to create a new page with a specific editor: Script (JS), Grid (JSON), Grid (CSV), Notebook, Todo, Links, Browser, or Browser profile (with Incognito and named profiles).

@@ -8,7 +8,7 @@ import {
     GlobeIcon,
     PlusIcon,
 } from "../../theme/icons";
-import { IncognitoIcon, GridIcon, JavascriptIcon, NotebookIcon, TodoIcon } from "../../theme/language-icons";
+import { IncognitoIcon, GridIcon, JavascriptIcon, LinkIcon, NotebookIcon, TodoIcon } from "../../theme/language-icons";
 import { DEFAULT_BROWSER_COLOR } from "../../theme/palette-colors";
 import { Button } from "../../components/basic/Button";
 import { WithPopupMenu } from "../../components/overlay/WithPopupMenu";
@@ -218,6 +218,11 @@ export function PageTabs(props: object) {
                 label: "Todo",
                 icon: <TodoIcon />,
                 onClick: () => pagesModel.addEditorPage("todo-view", "json", "untitled.todo.json"),
+            },
+            {
+                label: "Links",
+                icon: <LinkIcon />,
+                onClick: () => pagesModel.addEditorPage("link-view", "json", "untitled.link.json"),
             },
             {
                 label: "Browser",

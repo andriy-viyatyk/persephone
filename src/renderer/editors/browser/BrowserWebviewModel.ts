@@ -1,0 +1,461 @@
+const { ipcRenderer } = require("electron");
+import { KeyboardEvent } from "react";
+import {
+    BrowserChannel,
+    BrowserEvent,
+} from "../../../ipc/browser-ipc";
+import { showAppPopupMenu } from "../../features/dialogs/poppers/showPopupMenu";
+import { MenuItem } from "../../components/overlay/PopupMenu";
+import { pagesModel } from "../../store/pages-store";
+import { newTextFileModel } from "../text/TextPageModel";
+import { PageModel } from "../base";
+import { showEditLinkDialog } from "../link-editor/EditLinkDialog";
+import type { BrowserPageModel } from "./BrowserPageModel";
+
+/**
+ * Manages webview references, IPC event handling, context menu,
+ * and keyboard shortcuts for the browser editor.
+ */
+export class BrowserWebviewModel {
+    readonly model: BrowserPageModel;
+
+    /** Map from internalTabId → webview element. */
+    webviewRefs = new Map<string, Electron.WebviewTag>();
+    /** Set of internalTabIds whose webview has fired dom-ready. */
+    webviewReady = new Set<string>();
+
+    /** Tracks the previous active tab URL for navigation change detection. */
+    private prevActiveUrl = "";
+
+    constructor(model: BrowserPageModel) {
+        this.model = model;
+    }
+
+    /** Get the active tab's webview element. */
+    getActiveWebview = (): Electron.WebviewTag | undefined => {
+        const { activeTabId } = this.model.state.get();
+        return this.webviewRefs.get(activeTabId);
+    };
+
+    goBack = () => {
+        this.getActiveWebview()?.goBack();
+    };
+
+    goForward = () => {
+        this.getActiveWebview()?.goForward();
+    };
+
+    reloadOrStop = () => {
+        const wv = this.getActiveWebview();
+        if (!wv) return;
+        if (this.model.state.get().loading) {
+            wv.stop();
+        } else {
+            wv.reload();
+        }
+    };
+
+    openDevTools = () => {
+        this.getActiveWebview()?.openDevTools();
+    };
+
+    /** Handle keyboard shortcuts on the root browser div. */
+    handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+        if (e.ctrlKey && e.key === "l") {
+            e.preventDefault();
+            this.model.urlBar.focusUrlInput();
+        }
+        if (e.ctrlKey && e.key === "f") {
+            e.preventDefault();
+            const webview = this.getActiveWebview();
+            if (webview) {
+                const term = prompt("Find in page:");
+                if (term) {
+                    webview.findInPage(term);
+                } else {
+                    webview.stopFindInPage("clearSelection");
+                }
+            }
+        }
+    };
+
+    /**
+     * Navigate the active tab's webview when the tab URL changes.
+     * Called from the view's useEffect when activeTab.url changes.
+     */
+    navigateWebview = (activeTabId: string, url: string) => {
+        if (url !== this.prevActiveUrl && url !== "about:blank") {
+            const webview = this.webviewRefs.get(activeTabId);
+            if (webview && this.webviewReady.has(activeTabId)) {
+                const actualUrl = this.model.currentUrls.get(activeTabId) || "";
+                if (actualUrl !== url) {
+                    webview.loadURL(url);
+                }
+            }
+        }
+        this.prevActiveUrl = url;
+    };
+
+    // =====================================================================
+    // IPC Event Handler
+    // =====================================================================
+
+    /** Set up the global IPC event listener. Call from useEffect. */
+    initIpcHandler = () => {
+        ipcRenderer.on(BrowserChannel.event, this.handleBrowserEvent);
+    };
+
+    /** Remove the IPC event listener. Call from useEffect cleanup. */
+    disposeIpcHandler = () => {
+        ipcRenderer.removeListener(BrowserChannel.event, this.handleBrowserEvent);
+    };
+
+    private handleBrowserEvent = async (
+        _event: Electron.IpcRendererEvent,
+        browserEvent: BrowserEvent,
+    ) => {
+        const pageTabId = this.model.id;
+        if (browserEvent.tabId !== pageTabId) return;
+        const { internalTabId, type, data } = browserEvent;
+
+        switch (type) {
+            case "did-navigate": {
+                this.model.currentUrls.set(internalTabId, data.url || "");
+                if (internalTabId === this.model.state.get().activeTabId) {
+                    this.model.urlBar.syncFromUrl(data.url || "");
+                }
+                const cached = this.model.getCachedFavicon(data.url || "");
+                this.model.updateTab(internalTabId, {
+                    url: data.url,
+                    canGoBack: data.canGoBack,
+                    canGoForward: data.canGoForward,
+                    favicon: cached,
+                });
+                this.model.addNavHistory(internalTabId, data.url || "");
+                this.model.bookmarksUI.shiftTrackedImages(internalTabId);
+                break;
+            }
+            case "did-navigate-in-page": {
+                this.model.currentUrls.set(internalTabId, data.url || "");
+                if (internalTabId === this.model.state.get().activeTabId) {
+                    this.model.urlBar.syncFromUrl(data.url || "");
+                }
+                this.model.updateTab(internalTabId, {
+                    url: data.url,
+                    canGoBack: data.canGoBack,
+                    canGoForward: data.canGoForward,
+                });
+                this.model.addNavHistory(internalTabId, data.url || "");
+                break;
+            }
+            case "did-start-loading":
+                this.model.updateTab(internalTabId, { loading: true });
+                break;
+            case "did-stop-loading":
+                this.model.updateTab(internalTabId, { loading: false });
+                break;
+            case "audio-state-changed":
+                this.model.updateTab(internalTabId, { audible: !!data.audible });
+                break;
+            case "did-start-navigation": {
+                if (data.blocked) {
+                    const webview = this.webviewRefs.get(internalTabId);
+                    const tabData = this.model.state
+                        .get()
+                        .tabs.find((t) => t.id === internalTabId);
+                    if (webview && tabData && tabData.url !== data.url) {
+                        webview.goBack();
+                    }
+                }
+                break;
+            }
+            case "new-window": {
+                if (data.url) {
+                    this.model.addTab(data.url);
+                }
+                break;
+            }
+            case "context-menu": {
+                const webview = this.webviewRefs.get(internalTabId);
+                if (!webview) break;
+                await this.handleContextMenu(webview, internalTabId, data);
+                break;
+            }
+        }
+    };
+
+    // =====================================================================
+    // Context Menu
+    // =====================================================================
+
+    private handleContextMenu = async (
+        webview: Electron.WebviewTag,
+        internalTabId: string,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        data: any,
+    ) => {
+        const menuX = data.x || 0;
+        const menuY = data.y || 0;
+
+        const wvRect = webview.getBoundingClientRect();
+        const probeX = menuX - wvRect.left;
+        const probeY = menuY - wvRect.top;
+        const svgSource: string | null = await webview.executeJavaScript(`
+            (() => {
+                const el = document.elementFromPoint(${probeX}, ${probeY});
+                const svg = el?.closest('svg');
+                if (!svg) return null;
+
+                const clone = svg.cloneNode(true);
+
+                if (!clone.getAttribute('xmlns')) {
+                    clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+                }
+
+                if (!clone.getAttribute('viewBox')) {
+                    try {
+                        const bb = svg.getBBox();
+                        if (bb.width > 0 && bb.height > 0) {
+                            clone.setAttribute('viewBox',
+                                bb.x + ' ' + bb.y + ' ' + bb.width + ' ' + bb.height);
+                        }
+                    } catch (e) {}
+                }
+
+                if (!clone.getAttribute('width') && !clone.getAttribute('height')) {
+                    const vb = clone.getAttribute('viewBox');
+                    if (vb) {
+                        const parts = vb.split(/[\\s,]+/);
+                        if (parts.length === 4) {
+                            clone.setAttribute('width', parts[2]);
+                            clone.setAttribute('height', parts[3]);
+                        }
+                    }
+                }
+
+                let html = clone.outerHTML;
+                html = html.replace(/<!--[\\s\\S]*?-->/g, '');
+                return html;
+            })()
+        `);
+
+        const items: MenuItem[] = [];
+
+        // Link items
+        if (data.linkURL) {
+            const linkURL = data.linkURL;
+            items.push({
+                label: "Open Link in New Tab",
+                onClick: () => this.model.addTab(linkURL),
+            });
+            items.push({
+                label: "Copy Link Address",
+                onClick: () => navigator.clipboard.writeText(linkURL),
+            });
+            items.push({
+                label: "Add to Bookmarks",
+                onClick: async () => {
+                    const bm = await this.model.bookmarksUI.ensureBookmarks();
+                    if (!bm) return;
+                    const linkInfo: { title: string; imgSrc: string } = await webview.executeJavaScript(`
+                        (() => {
+                            const el = document.elementFromPoint(${probeX}, ${probeY});
+                            const link = el?.closest('a');
+                            const img = link?.querySelector('img') || el?.querySelector('img');
+                            return {
+                                title: link?.textContent?.trim()?.substring(0, 200) || '',
+                                imgSrc: img?.src || '',
+                            };
+                        })()
+                    `);
+                    const existingLink = bm.findByUrl(linkURL);
+                    const bmState = bm.linkModel.state.get();
+                    const discoveredImages = linkInfo.imgSrc ? [linkInfo.imgSrc] : [];
+                    if (existingLink) {
+                        const result = await showEditLinkDialog({
+                            title: "Edit Bookmark",
+                            link: existingLink,
+                            categories: bmState.categories,
+                            tags: bmState.tags,
+                            discoveredImages,
+                        });
+                        if (result) {
+                            bm.linkModel.updateLink(existingLink.id, result);
+                        }
+                    } else {
+                        const result = await showEditLinkDialog({
+                            title: "Add Bookmark",
+                            link: {
+                                title: linkInfo.title,
+                                href: linkURL,
+                                imgSrc: linkInfo.imgSrc || undefined,
+                            },
+                            categories: bmState.categories,
+                            tags: bmState.tags,
+                            discoveredImages,
+                        });
+                        if (result) {
+                            bm.linkModel.addLink(result);
+                        }
+                    }
+                },
+            });
+        }
+
+        // Image items
+        if (data.srcURL && data.mediaType === "image") {
+            const srcURL = data.srcURL;
+            items.push({
+                label: "Open Image in New Tab",
+                startGroup: items.length > 0,
+                onClick: async () => {
+                    const { openImageInNewTab } = await import("../../store/page-actions");
+                    openImageInNewTab(srcURL);
+                },
+            });
+            items.push({
+                label: "Copy Image Address",
+                onClick: () => navigator.clipboard.writeText(srcURL),
+            });
+            items.push({
+                label: "Use Image for Bookmark",
+                onClick: () => {
+                    this.model.bookmarksUI.trackClickedImages(internalTabId, [srcURL]);
+                },
+            });
+        }
+
+        // Selection items
+        if (data.selectionText) {
+            const selectionText = data.selectionText;
+            items.push({
+                label: "Copy",
+                startGroup: items.length > 0,
+                onClick: () => {
+                    navigator.clipboard.writeText(selectionText);
+                    webview.focus();
+                },
+            });
+        }
+
+        // Editable field items
+        if (data.isEditable) {
+            if (data.editFlags?.canCut) {
+                items.push({
+                    label: "Cut",
+                    startGroup: !data.selectionText && items.length > 0,
+                    onClick: () => {
+                        webview.focus();
+                        webview.cut();
+                    },
+                });
+            }
+            if (!data.selectionText && data.editFlags?.canCopy) {
+                items.push({
+                    label: "Copy",
+                    onClick: () => {
+                        webview.focus();
+                        webview.copy();
+                    },
+                });
+            }
+            if (data.editFlags?.canPaste) {
+                items.push({
+                    label: "Paste",
+                    onClick: () => {
+                        webview.focus();
+                        webview.paste();
+                    },
+                });
+            }
+        }
+
+        // Navigation items
+        const state = this.model.state.get();
+        const tab = state.tabs.find((t) => t.id === internalTabId);
+        items.push({
+            label: "Back",
+            startGroup: true,
+            disabled: !tab?.canGoBack,
+            onClick: () => webview.goBack(),
+        });
+        items.push({
+            label: "Forward",
+            disabled: !tab?.canGoForward,
+            onClick: () => webview.goForward(),
+        });
+        items.push({
+            label: "Reload",
+            onClick: () => webview.reload(),
+        });
+
+        // View Source
+        const pageUrl = tab?.url || "";
+        items.push({
+            label: "View Source",
+            startGroup: true,
+            disabled: !pageUrl || pageUrl === "about:blank",
+            onClick: async () => {
+                const resp = await webview.executeJavaScript(
+                    `fetch(location.href).then(r => r.text())`,
+                );
+                const page = newTextFileModel();
+                page.state.update((s) => {
+                    s.title = "Source: " + (tab?.pageTitle || pageUrl);
+                    s.language = "html";
+                    s.content = resp;
+                });
+                page.restore();
+                pagesModel.addPage(page as unknown as PageModel);
+            },
+        });
+
+        // View actual DOM
+        items.push({
+            label: "View Actual DOM",
+            onClick: async () => {
+                const html = await webview.executeJavaScript(
+                    "document.documentElement.outerHTML",
+                );
+                const page = newTextFileModel();
+                page.state.update((s) => {
+                    s.title = "DOM: " + (tab?.pageTitle || pageUrl);
+                    s.language = "html";
+                    s.content = html;
+                });
+                page.restore();
+                pagesModel.addPage(page as unknown as PageModel);
+            },
+        });
+
+        // SVG item
+        if (svgSource) {
+            items.push({
+                label: "Open SVG in Editor",
+                onClick: () => {
+                    const page = newTextFileModel();
+                    page.state.update((s) => {
+                        s.title = "untitled.svg";
+                        s.language = "xml";
+                        s.content = svgSource;
+                    });
+                    page.restore();
+                    pagesModel.addPage(page as unknown as PageModel);
+                },
+            });
+        }
+
+        // Inspect Element
+        items.push({
+            label: "Inspect Element",
+            onClick: () => webview.inspectElement(probeX, probeY),
+        });
+
+        this.model.state.update((s) => { s.popupOpen = true; });
+        showAppPopupMenu(menuX, menuY, items, {
+            skipInspect: true,
+        }).then(() => {
+            this.model.state.update((s) => { s.popupOpen = false; });
+        });
+    };
+}

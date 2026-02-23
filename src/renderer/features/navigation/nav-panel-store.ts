@@ -114,6 +114,16 @@ export class NavPanelModel {
         });
     };
 
+    /** Reinitialize rootFilePath if empty (e.g. after cache was cleared). */
+    reinitIfEmpty = (rootFilePath: string, currentFilePath?: string) => {
+        if (!this.state.get().rootFilePath) {
+            this.state.update((s) => {
+                s.rootFilePath = rootFilePath;
+                s.currentFilePath = currentFilePath || rootFilePath;
+            });
+        }
+    };
+
     setWidth = (width: number) => {
         this.state.update((s) => {
             s.width = Math.max(120, width);

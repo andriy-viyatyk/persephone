@@ -1037,6 +1037,69 @@ export const GlobeIcon = createIcon(24)(
     </>,
 );
 
+export const OpenLinkIcon = createIcon(24)(
+    <path
+        d="M14 4l6 5-6 5V10c-5 0-9 2-11 7 1-7 5-11 11-12V4z"
+        fill="currentColor"
+    />,
+);
+
+// View mode icons for Link Editor
+export const ViewListIcon = createIcon(24)(
+    <path d="M3,5h18 M3,9h18 M3,13h18 M3,17h18 M3,21h18" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none" />,
+);
+
+export const ViewLandscapeIcon = createIcon(24)(
+    <>
+        <rect x="2" y="3" width="6" height="4" rx="1" fill="currentColor" />
+        <rect x="9" y="3" width="6" height="4" rx="1" fill="currentColor" />
+        <rect x="16" y="3" width="6" height="4" rx="1" fill="currentColor" />
+        <rect x="2" y="9" width="6" height="4" rx="1" fill="currentColor" />
+        <rect x="9" y="9" width="6" height="4" rx="1" fill="currentColor" />
+        <rect x="16" y="9" width="6" height="4" rx="1" fill="currentColor" />
+        <rect x="2" y="15" width="6" height="4" rx="1" fill="currentColor" />
+        <rect x="9" y="15" width="6" height="4" rx="1" fill="currentColor" />
+        <rect x="16" y="15" width="6" height="4" rx="1" fill="currentColor" />
+    </>,
+);
+
+export const ViewLandscapeBigIcon = createIcon(24)(
+    <>
+        <rect x="2" y="3" width="9" height="7" rx="1" fill="currentColor" />
+        <rect x="13" y="3" width="9" height="7" rx="1" fill="currentColor" />
+        <rect x="2" y="12" width="9" height="7" rx="1" fill="currentColor" />
+        <rect x="13" y="12" width="9" height="7" rx="1" fill="currentColor" />
+    </>,
+);
+
+export const ViewPortraitIcon = createIcon(24)(
+    <>
+        <rect x="2" y="2" width="4" height="6" rx="1" fill="currentColor" />
+        <rect x="7.5" y="2" width="4" height="6" rx="1" fill="currentColor" />
+        <rect x="13" y="2" width="4" height="6" rx="1" fill="currentColor" />
+        <rect x="18" y="2" width="4" height="6" rx="1" fill="currentColor" />
+        <rect x="2" y="10" width="4" height="6" rx="1" fill="currentColor" />
+        <rect x="7.5" y="10" width="4" height="6" rx="1" fill="currentColor" />
+        <rect x="13" y="10" width="4" height="6" rx="1" fill="currentColor" />
+        <rect x="18" y="10" width="4" height="6" rx="1" fill="currentColor" />
+        <rect x="2" y="18" width="4" height="6" rx="1" fill="currentColor" />
+        <rect x="7.5" y="18" width="4" height="6" rx="1" fill="currentColor" />
+        <rect x="13" y="18" width="4" height="6" rx="1" fill="currentColor" />
+        <rect x="18" y="18" width="4" height="6" rx="1" fill="currentColor" />
+    </>,
+);
+
+export const ViewPortraitBigIcon = createIcon(24)(
+    <>
+        <rect x="2" y="2" width="6" height="9" rx="1" fill="currentColor" />
+        <rect x="10" y="2" width="6" height="9" rx="1" fill="currentColor" />
+        <rect x="18" y="2" width="6" height="9" rx="1" fill="currentColor" />
+        <rect x="2" y="13" width="6" height="9" rx="1" fill="currentColor" />
+        <rect x="10" y="13" width="6" height="9" rx="1" fill="currentColor" />
+        <rect x="18" y="13" width="6" height="9" rx="1" fill="currentColor" />
+    </>,
+);
+
 export const StopIcon = createIcon(24)(
     <path
         d="M6 6H18V18H6V6Z"
@@ -1082,4 +1145,44 @@ export const VolumeMutedIcon = createIcon(24)(
         <line x1="22" y1="9" x2="16" y2="15" />
         <line x1="16" y1="9" x2="22" y2="15" />
     </g>,
+);
+
+export const BookmarkIcon = createIcon(24)(
+    <path
+        d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+    />,
+);
+
+export const BookmarkFilledIcon = createIcon(24)(
+    <path
+        d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z"
+        fill="currentColor"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+    />,
+);
+
+export const StarIcon = createIcon(24)(
+    <path
+        d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.86L12 17.27 5.82 21 7 14.14l-5-4.87 6.91-1.01L12 2z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+    />,
+);
+
+export const StarFilledIcon = createIcon(24)(
+    <path
+        d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.86L12 17.27 5.82 21 7 14.14l-5-4.87 6.91-1.01L12 2z"
+        fill="currentColor"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+    />,
 );

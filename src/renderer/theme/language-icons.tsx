@@ -518,6 +518,16 @@ export const TodoIcon = createIconWithViewBox("0 0 32 32")(
     </g>
 );
 
+export const LinkIcon = createIconWithViewBox("0 0 32 32")(
+    <g>
+        {/* Chain link — two interlocking rounded rectangles */}
+        <rect x="4" y="10" width="14" height="12" rx="6" stroke="#4DD0E1" strokeWidth="2" fill="none" />
+        <rect x="14" y="10" width="14" height="12" rx="6" stroke="#4DD0E1" strokeWidth="2" fill="none" opacity="0.7" />
+        {/* Center overlap bar */}
+        <rect x="14" y="12" width="4" height="8" rx="1" fill="#4DD0E1" opacity="0.3" />
+    </g>
+);
+
 export const BrowserIcon = createIconWithViewBox("0 0 32 32")(
     <g>
         <circle cx="16" cy="16" r="12" stroke="#4DD0E1" strokeWidth="2" fill="none" />
