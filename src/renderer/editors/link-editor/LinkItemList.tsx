@@ -73,7 +73,9 @@ const LinkItemListRoot = styled(RenderGrid)({
             },
         },
         "& .link-title": {
-            flex: "0 1 auto",
+            width: "fit-content",
+            maxWidth: "60%",
+            flexShrink: 0,
             overflow: "hidden",
             textOverflow: "ellipsis",
             whiteSpace: "nowrap",
