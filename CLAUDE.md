@@ -52,6 +52,17 @@ When user says "let's work on tasks" or similar:
 
 This step-by-step approach ensures user understands what's happening and can review changes properly.
 
+## Release Workflow
+
+When user says **"let's publish new build"** (or similar), follow [/doc/standards/release-process.md](doc/standards/release-process.md):
+
+1. Commit any uncommitted changes to the working branch
+2. Merge working branch into `main`
+3. Update `docs/whats-new.md` — mark current version as released, add next upcoming section
+4. Commit, tag, and push `main` with the version tag
+5. **Wait** for user to confirm the GitHub build is published
+6. Bump `package.json` version, create new `upcoming-vN` branch, commit and push
+
 ## Documentation Map
 
 | Need to...                    | Read...                                                |
@@ -67,6 +78,7 @@ This step-by-step approach ensures user understands what's happening and can rev
 | Check coding style            | [/doc/standards/coding-style.md](doc/standards/coding-style.md) |
 | See current tasks             | [/doc/tasks/active.md](doc/tasks/active.md) |
 | See future ideas              | [/doc/tasks/backlog.md](doc/tasks/backlog.md) |
+| Publish a new build           | [/doc/standards/release-process.md](doc/standards/release-process.md) |
 | User documentation            | [/docs/index.md](docs/index.md) |
 
 ## Project Overview
