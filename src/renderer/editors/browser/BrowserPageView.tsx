@@ -223,9 +223,27 @@ function BrowserWebviewItem({
                 const faviconUrl = args[0] as string;
                 if (faviconUrl) {
                     const currentUrl =
-                        model.currentUrls.get(internalTabId) || "";
+                        webview.getURL() || model.currentUrls.get(internalTabId) || "";
                     model.cacheFavicon(currentUrl, faviconUrl);
                     model.updateTab(internalTabId, { favicon: faviconUrl });
+                    // Save favicon to disk cache when not incognito
+                    if (!model.state.get().isIncognito) {
+                        import("../link-editor/favicon-cache").then(({ getHostname, saveFavicon, consumeFaviconSaveRequest }) => {
+                            const hostname = getHostname(currentUrl);
+                            if (!hostname) return;
+                            // Save if explicitly requested (e.g. "Open in Internal Browser" from Link Editor)
+                            if (consumeFaviconSaveRequest(hostname)) {
+                                saveFavicon(hostname, faviconUrl);
+                                return;
+                            }
+                            // Save if bookmarks contain a link with this hostname
+                            if (model.bookmarks) {
+                                const links = model.bookmarks!.linkModel.state.get().data.links;
+                                const hasLink = links.some((l: { href: string }) => getHostname(l.href) === hostname);
+                                if (hasLink) saveFavicon(hostname, faviconUrl);
+                            }
+                        });
+                    }
                 }
             } else if (channel === "clicked-images") {
                 const imgUrls = args[0] as string[];

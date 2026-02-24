@@ -192,7 +192,17 @@ export class BrowserBookmarksUIModel {
         const bm = await this.ensureBookmarks();
         if (!bm) return;
 
-        const { urlInput, activeTabId, tabs } = this.model.state.get();
+        const { urlInput, activeTabId, tabs, isIncognito } = this.model.state.get();
+
+        // Cache the favicon for this hostname before showing the dialog
+        if (!isIncognito) {
+            const activeTab = tabs.find((t) => t.id === activeTabId);
+            if (activeTab?.favicon) {
+                const { getHostname, saveFavicon } = await import("../link-editor/favicon-cache");
+                const hostname = getHostname(urlInput);
+                if (hostname) saveFavicon(hostname, activeTab.favicon);
+            }
+        }
         const existingLink = bm.findByUrl(urlInput);
         const metaImages = await this.discoverImages();
         const tracked = this.getTrackedImages(activeTabId);

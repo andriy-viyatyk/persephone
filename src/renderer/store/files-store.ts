@@ -5,10 +5,13 @@ import { TGlobalState } from "../core/state/state";
 import { nodeUtils } from "../core/utils/node-utils";
 import { LoadedTextFile } from "../core/utils/types";
 
+const fs = require("fs");
+
 const defaultFilesModelState = {
     windowIndex: 0,
     dataPath: "",
     cachePath: "",
+    cacheMiscPath: "",
 }
 
 type FilesModelState = typeof defaultFilesModelState;
@@ -17,6 +20,7 @@ class FilesModel extends TModel<FilesModelState> {
     private _windowIndex: number | null = null;
     private dataPath: string | null = null;
     private cachePath: string | null = null;
+    private cacheMiscPath: string | null = null;
     private initPromise: Promise<void> | null = null;
 
     constructor() {
@@ -46,9 +50,11 @@ class FilesModel extends TModel<FilesModelState> {
         this._windowIndex = await api.getWindowIndex();
         this.dataPath = path.join(userData, "data");
         this.cachePath = path.join(this.dataPath, "cache");
+        this.cacheMiscPath = path.join(this.dataPath, "cache-misc");
         this.state.update(s => {
             s.dataPath = this.dataPath;
             s.cachePath = this.cachePath;
+            s.cacheMiscPath = this.cacheMiscPath;
             s.windowIndex = this._windowIndex;
         });
         console.log("dataPath:", this.dataPath);
@@ -139,6 +145,50 @@ class FilesModel extends TModel<FilesModelState> {
             await this.dataFileName(fileName),
             defaultContent
         );
+
+    // =====================================================================
+    // Cache-misc (general-purpose cache: favicons, etc.)
+    // =====================================================================
+
+    private cacheMiscFileName = async (subPath: string) => {
+        await this.wait();
+        return path.join(this.cacheMiscPath, subPath);
+    };
+
+    getCacheMiscFile = async (subPath: string): Promise<string | undefined> =>
+        (await this.getFile(await this.cacheMiscFileName(subPath)))?.content;
+
+    saveCacheMiscFile = async (subPath: string, content: string): Promise<void> =>
+        await this.saveFile(await this.cacheMiscFileName(subPath), content);
+
+    deleteCacheMiscFile = async (subPath: string): Promise<void> =>
+        await this.deleteFile(await this.cacheMiscFileName(subPath));
+
+    // =====================================================================
+    // Binary file operations
+    // =====================================================================
+
+    saveBinaryFile = async (filePath: string, buffer: Buffer): Promise<void> => {
+        await this.wait();
+        const dirPath = path.dirname(filePath);
+        nodeUtils.preparePath(dirPath);
+        fs.writeFileSync(filePath, buffer);
+    };
+
+    getBinaryFile = async (filePath: string): Promise<Buffer | undefined> => {
+        if (nodeUtils.fileExists(filePath)) {
+            return fs.readFileSync(filePath);
+        }
+        return undefined;
+    };
+
+    fileExists = async (filePath: string): Promise<boolean> => {
+        await this.wait();
+        return nodeUtils.fileExists(filePath);
+    };
+
+    cacheMiscFilePath = async (subPath: string): Promise<string> =>
+        await this.cacheMiscFileName(subPath);
 }
 
 export const filesModel = new FilesModel();

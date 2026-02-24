@@ -8,7 +8,12 @@ Release notes and changelog for js-notepad.
 
 ## Version 1.0.15 (Upcoming)
 
-*No changes yet.*
+### Improvements
+
+- **Link Editor Enhancements**
+  - **Favicons** — cached favicons from the internal browser displayed next to links in list view and as tile fallback; favicons also saved when opening links via "Open in Internal Browser" from standalone `.link.json` files
+  - **Drag-and-drop** — drag links onto categories to reassign them; drag categories onto other categories to reparent (with confirmation dialog showing affected link count)
+  - **Pinned links panel** — pin important links via right-click → "Pin"; pinned panel on the right edge shows favicon + title, auto-hides when empty, resizable via splitter, with drag-to-reorder support
 
 ---
 

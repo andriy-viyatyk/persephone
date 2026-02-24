@@ -241,10 +241,13 @@ For `.link.json` files — a structured link manager:
 - **Image tiles** — tile views display preview images with "no image" placeholder for links without images
 - **Edit/Create dialog** — title (auto-growing), URL, category (with autocomplete), tags (chip-based with autocomplete), image URL with preview
 - **Search** — toolbar search filters links by title or URL
-- **Context menu** — Edit, Open in Default Browser, Open in Internal Browser, Open in Incognito, Copy URL, Delete
+- **Context menu** — Edit, Open in Default Browser, Open in Internal Browser, Open in Incognito, Copy URL, Pin/Unpin, Delete
   - For links with images: Copy Image URL, Open Image in New Tab (opens in Image Viewer)
 - **Delete confirmation** — with Ctrl+click bypass for quick delete
 - **Double-click** to edit in both list and tile views
+- **Favicons** — cached favicons from the internal browser are displayed next to links in list view and as fallback in tile view
+- **Drag-and-drop** — drag links onto categories to reassign them; drag categories onto other categories to reparent (with confirmation)
+- **Pinned links panel** — pin important links for quick access; pinned panel appears on the right edge, auto-hides when empty, resizable, with drag-to-reorder support
 - Can switch to Monaco for raw JSON editing
 
 ## Switching Editors

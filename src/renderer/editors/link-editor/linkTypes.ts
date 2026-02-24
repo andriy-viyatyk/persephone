@@ -1,6 +1,14 @@
 import { TextFileModel } from "../text/TextPageModel";
 
 // =============================================================================
+// Drag Types
+// =============================================================================
+
+export const LINK_DRAG = "LINK_DRAG";
+export const LINK_CATEGORY_DRAG = "LINK_CATEGORY_DRAG";
+export const LINK_PIN_DRAG = "LINK_PIN_DRAG";
+
+// =============================================================================
 // Link Item
 // =============================================================================
 
@@ -38,6 +46,10 @@ export interface LinkEditorData {
         categoryViewMode?: Record<string, LinkViewMode>;
         /** View mode per tag (empty string = all) */
         tagViewMode?: Record<string, LinkViewMode>;
+        /** Ordered array of pinned link IDs */
+        pinnedLinks?: string[];
+        /** Width of the pinned links panel */
+        pinnedPanelWidth?: number;
     };
 }
 

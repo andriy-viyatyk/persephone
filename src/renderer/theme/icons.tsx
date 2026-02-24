@@ -1186,3 +1186,23 @@ export const StarFilledIcon = createIcon(24)(
         strokeLinejoin="round"
     />,
 );
+
+export const PinIcon = createIcon(24)(
+    <path
+        d="M16 3l-4 4-4-1-4 4 5 5-4 5h2l3-3 5 5 4-4-1-4 4-4z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+    />,
+);
+
+export const PinFilledIcon = createIcon(24)(
+    <path
+        d="M16 3l-4 4-4-1-4 4 5 5-4 5h2l3-3 5 5 4-4-1-4 4-4z"
+        fill="currentColor"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+    />,
+);

@@ -4,7 +4,8 @@ Current work in progress and planned tasks.
 
 ## In Progress
 
-*No tasks in progress.*
+| ID | Title | Priority | Link |
+|----|-------|----------|------|
 
 ## Planned (Next)
 
@@ -16,6 +17,7 @@ Current work in progress and planned tasks.
 
 | ID | Title | Notes |
 |----|-------|-------|
+| US-034 | Link Editor Enhancement | Favicon caching & display, drag-and-drop (links→categories, categories→categories with reparenting), pinned links panel with drag-to-reorder |
 | US-028 | Browser Bookmarks (Links Editor Integration) | Per-profile bookmarks with star button, sliding drawer with full Link Editor, image discovery (meta tags + click tracking + context menu), encrypted bookmarks support via async password dialog, auto-save |
 | US-033 | Link Editor | Structured link manager for `.link.json` files with categories, tags, 5 view modes (list + 4 tile variants), edit dialog, image context menu, per-category and per-tag view mode, quick-add menu |
 | US-032 | Browser Integration — Link Opening & Context Menu | Link open behavior setting (default browser vs internal), smart browser tab routing (right→left→create new), Markdown link context menu (Open in Default/Internal Browser, Incognito), Settings page UI |

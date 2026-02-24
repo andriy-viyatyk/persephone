@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import clsx from "clsx";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Breadcrumb } from "../../components/basic/Breadcrumb";
 import { Button } from "../../components/basic/Button";
@@ -19,9 +19,10 @@ import {
     ViewLandscapeBigIcon, ViewLandscapeIcon, ViewListIcon, ViewPortraitBigIcon, ViewPortraitIcon,
 } from "../../theme/icons";
 import { defaultLinkEditorState, LinkEditorModel } from "./LinkEditorModel";
-import { LinkEditorProps, LinkViewMode } from "./linkTypes";
+import { LinkEditorProps, LinkViewMode, LINK_DRAG, LINK_CATEGORY_DRAG } from "./linkTypes";
 import { LinkItemList } from "./LinkItemList";
 import { LinkItemTiles } from "./LinkItemTiles";
+import { PinnedLinksPanel } from "./PinnedLinksPanel";
 import { EditorError } from "../base/EditorError";
 
 // =============================================================================
@@ -147,6 +148,12 @@ export function LinkEditor(props: LinkEditorProps) {
     const allLinks = pageState.data.links;
     const links = pageState.filteredLinks;
     const viewMode = pageModel.getViewMode();
+    const pinnedLinks = pageModel.getPinnedLinks();
+    const pinnedLinkIds = useMemo(
+        () => new Set(pageState.data.state.pinnedLinks ?? []),
+        [pageState.data.state.pinnedLinks],
+    );
+    const pinnedPanelWidth = pageState.data.state.pinnedPanelWidth ?? 100;
 
     const containerRef = useRef<HTMLDivElement>(null);
 
@@ -293,6 +300,10 @@ export function LinkEditor(props: LinkEditorProps) {
                                 getSelected={pageModel.getCategoryItemSelected}
                                 getLabel={getTreeItemLabel}
                                 refreshKey={pageState.selectedCategory}
+                                dropTypes={[LINK_DRAG, LINK_CATEGORY_DRAG]}
+                                onDrop={pageModel.categoryDrop}
+                                dragType={LINK_CATEGORY_DRAG}
+                                getDragItem={pageModel.getCategoryDragItem}
                             />
                         </div>
                     </CollapsiblePanel>
@@ -322,6 +333,7 @@ export function LinkEditor(props: LinkEditorProps) {
                                 links={links}
                                 model={pageModel}
                                 selectedLinkId={pageState.selectedLinkId}
+                                pinnedLinkIds={pinnedLinkIds}
                             />
                         ) : (
                             <LinkItemTiles
@@ -329,10 +341,26 @@ export function LinkEditor(props: LinkEditorProps) {
                                 model={pageModel}
                                 viewMode={viewMode}
                                 selectedLinkId={pageState.selectedLinkId}
+                                pinnedLinkIds={pinnedLinkIds}
                             />
                         )}
                     </div>
                 </HighlightedTextProvider>
+                {pinnedLinks.length > 0 && (
+                    <>
+                        <Splitter
+                            type="vertical"
+                            initialWidth={pinnedPanelWidth}
+                            onChangeWidth={pageModel.setPinnedPanelWidth}
+                            borderSized={swapLayout ? "right" : "left"}
+                        />
+                        <PinnedLinksPanel
+                            pinnedLinks={pinnedLinks}
+                            model={pageModel}
+                            style={{ width: pinnedPanelWidth }}
+                        />
+                    </>
+                )}
             </LinkEditorRoot>
             {Boolean(model.editorFooterRefLast) &&
                 createPortal(

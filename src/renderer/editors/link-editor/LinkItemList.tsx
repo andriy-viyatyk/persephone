@@ -1,16 +1,18 @@
 import styled from "@emotion/styled";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useDrag } from "react-dnd";
 import RenderGrid from "../../components/virtualization/RenderGrid/RenderGrid";
 import RenderGridModel from "../../components/virtualization/RenderGrid/RenderGridModel";
 import { RenderCellParams, RenderSizeOptional } from "../../components/virtualization/RenderGrid/types";
 import { highlightText, useHighlightedText } from "../../components/basic/useHighlightedText";
 import { Button } from "../../components/basic/Button";
 import color from "../../theme/color";
-import { CopyIcon, DeleteIcon, GlobeIcon, OpenFileIcon, OpenLinkIcon, RenameIcon } from "../../theme/icons";
+import { CopyIcon, DeleteIcon, GlobeIcon, OpenFileIcon, OpenLinkIcon, PinFilledIcon, PinIcon, RenameIcon } from "../../theme/icons";
 import { IncognitoIcon } from "../../theme/language-icons";
 import { pagesModel } from "../../store/pages-store";
-import { LinkItem } from "./linkTypes";
+import { LinkItem, LINK_DRAG } from "./linkTypes";
 import { LinkEditorModel } from "./LinkEditorModel";
+import { getHostname, getFaviconPathSync, useFavicons, requestFaviconSave } from "./favicon-cache";
 
 const { shell, clipboard } = require("electron");
 
@@ -57,20 +59,40 @@ const LinkItemListRoot = styled(RenderGrid)({
         },
         "& .link-open-btn": {
             flexShrink: 0,
-            "& .icon-default": {
-                display: "flex",
+            position: "relative",
+            "& .favicon-img": {
+                width: 16,
+                height: 16,
+                objectFit: "contain",
             },
             "& .icon-open": {
                 display: "none",
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                alignItems: "center",
+                justifyContent: "center",
+                borderRadius: 4,
+                "& .icon-open-bg": {
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: color.background.default,
+                    opacity: 0.7,
+                    borderRadius: 4,
+                },
+                "& svg": {
+                    position: "relative",
+                    color: color.misc.blue,
+                },
             },
         },
-        "&:hover .link-open-btn": {
-            "& .icon-default": {
-                display: "none",
-            },
-            "& .icon-open": {
-                display: "flex",
-            },
+        "&:hover .link-open-btn .icon-open": {
+            display: "flex",
         },
         "& .link-title": {
             width: "fit-content",
@@ -93,6 +115,14 @@ const LinkItemListRoot = styled(RenderGrid)({
             fontSize: 12,
             minWidth: 0,
         },
+        "& .link-pin-icon": {
+            flexShrink: 0,
+            display: "flex",
+            alignItems: "center",
+            color: color.misc.blue,
+            opacity: 0.6,
+            "& svg": { width: 14, height: 14 },
+        },
         "& .link-actions": {
             display: "flex",
             alignItems: "center",
@@ -108,6 +138,101 @@ const LinkItemListRoot = styled(RenderGrid)({
 });
 
 // =============================================================================
+// Link Row (extracted for useDrag hook)
+// =============================================================================
+
+interface LinkRowProps {
+    link: LinkItem;
+    model: LinkEditorModel;
+    isSelected: boolean;
+    isPinned: boolean;
+    searchText: string;
+    onLinkClick: (link: LinkItem) => void;
+    onContextMenu: (e: React.MouseEvent, link: LinkItem) => void;
+}
+
+function LinkRow({ link, model, isSelected, isPinned, searchText, onLinkClick, onContextMenu }: LinkRowProps) {
+    const hostname = getHostname(link.href);
+    const faviconPath = getFaviconPathSync(hostname);
+
+    const [{ isDragging }, drag] = useDrag({
+        type: LINK_DRAG,
+        item: { type: LINK_DRAG, linkId: link.id },
+        collect: (monitor) => ({
+            isDragging: monitor.isDragging(),
+        }),
+    });
+
+    return (
+        <div
+            ref={(node) => { drag(node); }}
+            className={isSelected ? "link-row selected" : "link-row"}
+            style={isDragging ? { opacity: 0.4 } : undefined}
+            onClick={() => model.selectLink(link.id)}
+            onDoubleClick={() => model.showLinkDialog(link.id)}
+            onContextMenu={(e) => onContextMenu(e, link)}
+        >
+            <Button
+                className="link-open-btn"
+                size="small"
+                type="flat"
+                title="Open link"
+                onClick={(e) => {
+                    e.stopPropagation();
+                    model.selectLink(link.id);
+                    onLinkClick(link);
+                }}
+            >
+                {faviconPath
+                    ? <img className="favicon-img" src={`file://${faviconPath}`} alt="" />
+                    : <GlobeIcon />}
+                <span className="icon-open"><div className="icon-open-bg" /><OpenLinkIcon /></span>
+            </Button>
+            <span
+                className="link-title"
+                title={link.href || link.title}
+            >
+                {searchText ? highlightText(searchText, link.title || "Untitled") : (link.title || "Untitled")}
+            </span>
+            <span className="link-href">
+                {link.href}
+            </span>
+            {isPinned && (
+                <span className="link-pin-icon" title="Pinned">
+                    <PinFilledIcon />
+                </span>
+            )}
+            <span className="link-actions">
+                <Button
+                    size="small"
+                    type="flat"
+                    title="Edit"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        model.selectLink(link.id);
+                        model.showLinkDialog(link.id);
+                    }}
+                >
+                    <RenameIcon />
+                </Button>
+                <Button
+                    size="small"
+                    type="flat"
+                    title="Delete"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        model.selectLink(link.id);
+                        model.deleteLink(link.id, e.ctrlKey);
+                    }}
+                >
+                    <DeleteIcon />
+                </Button>
+            </span>
+        </div>
+    );
+}
+
+// =============================================================================
 // Component
 // =============================================================================
 
@@ -115,12 +240,14 @@ interface LinkItemListProps {
     links: LinkItem[];
     model: LinkEditorModel;
     selectedLinkId: string;
+    pinnedLinkIds: Set<string>;
 }
 
-export function LinkItemList({ links, model, selectedLinkId }: LinkItemListProps) {
+export function LinkItemList({ links, model, selectedLinkId, pinnedLinkIds }: LinkItemListProps) {
     const gridRef = useRef<RenderGridModel>(null);
     const [gridWidth, setGridWidth] = useState<number | undefined>(undefined);
     const searchText = useHighlightedText();
+    const faviconVersion = useFavicons(links);
 
     useEffect(() => {
         model.setGridModel(gridRef.current);
@@ -139,6 +266,7 @@ export function LinkItemList({ links, model, selectedLinkId }: LinkItemListProps
 
     const handleLinkClick = useCallback((link: LinkItem) => {
         if (link.href) {
+            requestFaviconSave(getHostname(link.href));
             pagesModel.handleOpenUrl(link.href);
         }
     }, []);
@@ -171,6 +299,7 @@ export function LinkItemList({ links, model, selectedLinkId }: LinkItemListProps
                 icon: <GlobeIcon />,
                 onClick: async () => {
                     if (link.href) {
+                        requestFaviconSave(getHostname(link.href));
                         const { openUrlInBrowserTab } = await import("../../store/page-actions");
                         openUrlInBrowserTab(link.href);
                     }
@@ -214,12 +343,18 @@ export function LinkItemList({ links, model, selectedLinkId }: LinkItemListProps
                 },
             );
         }
+        const isPinned = model.isLinkPinned(link.id);
         nativeEvent.menuItems.push(
+            {
+                label: isPinned ? "Unpin" : "Pin",
+                icon: isPinned ? <PinFilledIcon /> : <PinIcon />,
+                onClick: () => model.togglePinLink(link.id),
+                startGroup: true,
+            },
             {
                 label: "Delete",
                 icon: <DeleteIcon />,
                 onClick: () => model.deleteLink(link.id),
-                startGroup: true,
             },
         );
     }, [model, handleCopyUrl]);
@@ -228,69 +363,21 @@ export function LinkItemList({ links, model, selectedLinkId }: LinkItemListProps
         (p: RenderCellParams) => {
             const link = links[p.row];
             if (!link) return null;
-            const isSelected = link.id === selectedLinkId;
             return (
                 <div key={p.key} style={p.style} className="link-row-cell">
-                    <div
-                        className={isSelected ? "link-row selected" : "link-row"}
-                        onClick={() => model.selectLink(link.id)}
-                        onDoubleClick={() => model.showLinkDialog(link.id)}
-                        onContextMenu={(e) => handleContextMenu(e, link)}
-                    >
-                        <Button
-                            className="link-open-btn"
-                            size="small"
-                            type="flat"
-                            title="Open link"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                model.selectLink(link.id);
-                                handleLinkClick(link);
-                            }}
-                        >
-                            <span className="icon-default"><GlobeIcon /></span>
-                            <span className="icon-open"><OpenLinkIcon /></span>
-                        </Button>
-                        <span
-                            className="link-title"
-                            title={link.href || link.title}
-                        >
-                            {searchText ? highlightText(searchText, link.title || "Untitled") : (link.title || "Untitled")}
-                        </span>
-                        <span className="link-href">
-                            {link.href}
-                        </span>
-                        <span className="link-actions">
-                            <Button
-                                size="small"
-                                type="flat"
-                                title="Edit"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    model.selectLink(link.id);
-                                    model.showLinkDialog(link.id);
-                                }}
-                            >
-                                <RenameIcon />
-                            </Button>
-                            <Button
-                                size="small"
-                                type="flat"
-                                title="Delete"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    model.selectLink(link.id);
-                                    model.deleteLink(link.id, e.ctrlKey);
-                                }}
-                            >
-                                <DeleteIcon />
-                            </Button>
-                        </span>
-                    </div>
+                    <LinkRow
+                        link={link}
+                        model={model}
+                        isSelected={link.id === selectedLinkId}
+                        isPinned={pinnedLinkIds.has(link.id)}
+                        searchText={searchText}
+                        onLinkClick={handleLinkClick}
+                        onContextMenu={handleContextMenu}
+                    />
                 </div>
             );
         },
-        [links, model, searchText, selectedLinkId, handleLinkClick, handleContextMenu],
+        [links, model, searchText, selectedLinkId, pinnedLinkIds, handleLinkClick, handleContextMenu, faviconVersion],
     );
 
     return (

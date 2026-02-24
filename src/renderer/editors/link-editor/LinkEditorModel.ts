@@ -1,10 +1,10 @@
 import { debounce } from "../../../shared/utils";
 import { TComponentModel } from "../../core/state/model";
-import { CategoryTreeItem } from "../../components/TreeView";
+import { CategoryTreeItem, DragItem } from "../../components/TreeView";
 import RenderGridModel from "../../components/virtualization/RenderGrid/RenderGridModel";
 import { uuid } from "../../core/utils/node-utils";
 import { splitWithSeparators } from "../../core/utils/utils";
-import { LinkItem, LinkEditorData, LinkEditorProps, LinkViewMode } from "./linkTypes";
+import { LinkItem, LinkEditorData, LinkEditorProps, LinkViewMode, LINK_DRAG, LINK_CATEGORY_DRAG } from "./linkTypes";
 import { showEditLinkDialog } from "./EditLinkDialog";
 import { showConfirmationDialog } from "../../features/dialogs";
 
@@ -415,6 +415,9 @@ export class LinkEditorModel extends TComponentModel<
         }
         this.state.update((s) => {
             s.data.links = s.data.links.filter((l) => l.id !== id);
+            if (s.data.state.pinnedLinks) {
+                s.data.state.pinnedLinks = s.data.state.pinnedLinks.filter((pid) => pid !== id);
+            }
         });
         this.loadCategories();
         this.loadTags();
@@ -423,6 +426,131 @@ export class LinkEditorModel extends TComponentModel<
 
     getLinkById = (id: string): LinkItem | undefined => {
         return this.state.get().data.links.find((l) => l.id === id);
+    };
+
+    // =========================================================================
+    // Drag-and-drop
+    // =========================================================================
+
+    categoryDrop = (dropItem: CategoryTreeItem, dragItem: DragItem) => {
+        if (dragItem.type === LINK_DRAG) {
+            this.moveLinkToCategory(dragItem.linkId, dropItem.category);
+        } else if (dragItem.type === LINK_CATEGORY_DRAG) {
+            this.moveCategory(dragItem.category, dropItem.category);
+        }
+    };
+
+    getCategoryDragItem = (item: CategoryTreeItem): DragItem | null => {
+        if (!item.category) return null;
+        return { type: LINK_CATEGORY_DRAG, category: item.category };
+    };
+
+    moveLinkToCategory = (linkId: string, category: string) => {
+        const link = this.getLinkById(linkId);
+        if (!link || link.category === category) return;
+        this.updateLink(linkId, { category });
+    };
+
+    moveCategory = async (fromCategory: string, toCategory: string) => {
+        if (!fromCategory) return;
+        if (fromCategory === toCategory) return;
+        if (toCategory.startsWith(fromCategory + "/")) return;
+
+        const leafName = fromCategory.split("/").pop() || "";
+        const newCategory = toCategory ? `${toCategory}/${leafName}` : leafName;
+
+        if (newCategory === fromCategory) return;
+
+        const links = this.state.get().data.links;
+        const count = links.filter(
+            (l) => l.category === fromCategory || l.category.startsWith(fromCategory + "/")
+        ).length;
+
+        const result = await showConfirmationDialog({
+            title: "Move Category",
+            message: `Move ${count} link${count !== 1 ? "s" : ""} from "${fromCategory}" to "${newCategory}"?`,
+            buttons: ["Move", "Cancel"],
+        });
+
+        if (result !== "Move") return;
+
+        this.state.update((s) => {
+            for (const link of s.data.links) {
+                if (link.category === fromCategory) {
+                    link.category = newCategory;
+                } else if (link.category.startsWith(fromCategory + "/")) {
+                    link.category = newCategory + link.category.slice(fromCategory.length);
+                }
+            }
+            const sel = s.selectedCategory;
+            if (sel === fromCategory) {
+                s.selectedCategory = newCategory;
+            } else if (sel.startsWith(fromCategory + "/")) {
+                s.selectedCategory = newCategory + sel.slice(fromCategory.length);
+            }
+        });
+        this.loadCategories();
+        this.applyFilters();
+    };
+
+    // =========================================================================
+    // Pinned Links
+    // =========================================================================
+
+    isLinkPinned = (id: string): boolean => {
+        return this.state.get().data.state.pinnedLinks?.includes(id) ?? false;
+    };
+
+    pinLink = (id: string) => {
+        this.state.update((s) => {
+            if (!s.data.state.pinnedLinks) {
+                s.data.state.pinnedLinks = [];
+            }
+            if (!s.data.state.pinnedLinks.includes(id)) {
+                s.data.state.pinnedLinks.push(id);
+            }
+        });
+    };
+
+    unpinLink = (id: string) => {
+        this.state.update((s) => {
+            if (s.data.state.pinnedLinks) {
+                s.data.state.pinnedLinks = s.data.state.pinnedLinks.filter((pid) => pid !== id);
+            }
+        });
+    };
+
+    togglePinLink = (id: string) => {
+        if (this.isLinkPinned(id)) {
+            this.unpinLink(id);
+        } else {
+            this.pinLink(id);
+        }
+    };
+
+    reorderPinnedLink = (fromIndex: number, toIndex: number) => {
+        this.state.update((s) => {
+            const pinned = s.data.state.pinnedLinks;
+            if (!pinned) return;
+            const [moved] = pinned.splice(fromIndex, 1);
+            pinned.splice(toIndex, 0, moved);
+        });
+    };
+
+    getPinnedLinks = (): LinkItem[] => {
+        const { data } = this.state.get();
+        const pinnedIds = data.state.pinnedLinks;
+        if (!pinnedIds?.length) return [];
+        const linkMap = new Map(data.links.map((l) => [l.id, l]));
+        return pinnedIds.map((id) => linkMap.get(id)).filter(Boolean) as LinkItem[];
+    };
+
+    setPinnedPanelWidth = (width: number) => {
+        this.state.update((s) => {
+            if (!s.data.state.pinnedPanelWidth || s.data.state.pinnedPanelWidth !== width) {
+                s.data.state.pinnedPanelWidth = width;
+            }
+        });
     };
 
     // =========================================================================

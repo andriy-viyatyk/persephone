@@ -1,14 +1,16 @@
 import styled from "@emotion/styled";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useDrag } from "react-dnd";
 import RenderGrid from "../../components/virtualization/RenderGrid/RenderGrid";
 import RenderGridModel from "../../components/virtualization/RenderGrid/RenderGridModel";
 import { RenderCellParams, RenderSizeOptional } from "../../components/virtualization/RenderGrid/types";
 import color from "../../theme/color";
-import { CopyIcon, DeleteIcon, GlobeIcon, OpenFileIcon, OpenLinkIcon, RenameIcon } from "../../theme/icons";
+import { CopyIcon, DeleteIcon, GlobeIcon, OpenFileIcon, OpenLinkIcon, PinFilledIcon, PinIcon, RenameIcon } from "../../theme/icons";
 import { IncognitoIcon } from "../../theme/language-icons";
 import { pagesModel } from "../../store/pages-store";
-import { LinkItem, LinkViewMode } from "./linkTypes";
+import { LinkItem, LinkViewMode, LINK_DRAG } from "./linkTypes";
 import { LinkEditorModel } from "./LinkEditorModel";
+import { getHostname, getFaviconPathSync, useFavicons, requestFaviconSave } from "./favicon-cache";
 
 const { shell, clipboard } = require("electron");
 
@@ -132,6 +134,21 @@ const LinkItemTilesRoot = styled(RenderGrid)({
             },
         },
     },
+    "& .tile-pin-icon": {
+        position: "absolute",
+        top: 4,
+        left: 4,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 2,
+        backgroundColor: color.background.overlay,
+        border: `1px solid ${color.border.default}`,
+        borderRadius: 6,
+        color: color.misc.blue,
+        opacity: 0.8,
+        "& svg": { width: 14, height: 14 },
+    },
     "& .tile-actions": {
         position: "absolute",
         top: 4,
@@ -159,6 +176,99 @@ const LinkItemTilesRoot = styled(RenderGrid)({
 });
 
 // =============================================================================
+// Tile Cell (extracted for useDrag hook)
+// =============================================================================
+
+interface TileCellProps {
+    link: LinkItem;
+    model: LinkEditorModel;
+    isSelected: boolean;
+    isPinned: boolean;
+    imageHeight: number;
+    onOpenLink: (link: LinkItem) => void;
+    onContextMenu: (e: React.MouseEvent, link: LinkItem) => void;
+}
+
+function TileCell({ link, model, isSelected, isPinned, imageHeight, onOpenLink, onContextMenu }: TileCellProps) {
+    const [{ isDragging }, drag] = useDrag({
+        type: LINK_DRAG,
+        item: { type: LINK_DRAG, linkId: link.id },
+        collect: (monitor) => ({
+            isDragging: monitor.isDragging(),
+        }),
+    });
+
+    return (
+        <div
+            ref={(node) => { drag(node); }}
+            className={isSelected ? "tile-inner selected" : "tile-inner"}
+            style={isDragging ? { opacity: 0.4 } : undefined}
+            title={link.href || link.title}
+            onClick={() => model.selectLink(link.id)}
+            onDoubleClick={() => model.showLinkDialog(link.id)}
+            onContextMenu={(e) => onContextMenu(e, link)}
+        >
+            <div
+                className={link.imgSrc ? "tile-image" : "tile-image tile-no-image"}
+                style={{ height: imageHeight }}
+            >
+                {link.imgSrc ? (
+                    <img src={link.imgSrc} alt={link.title} loading="lazy" />
+                ) : (() => {
+                    const fp = getFaviconPathSync(getHostname(link.href));
+                    return fp
+                        ? <img src={`file://${fp}`} alt="" />
+                        : <GlobeIcon />;
+                })()}
+            </div>
+            <div className="tile-title">
+                <span>{link.title || "Untitled"}</span>
+                {link.href && (
+                    <span
+                        className="tile-open-link"
+                        title="Open link"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            model.selectLink(link.id);
+                            onOpenLink(link);
+                        }}
+                    >
+                        <OpenLinkIcon />
+                    </span>
+                )}
+            </div>
+            {isPinned && (
+                <span className="tile-pin-icon" title="Pinned">
+                    <PinFilledIcon />
+                </span>
+            )}
+            <div className="tile-actions">
+                <button
+                    title="Edit"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        model.selectLink(link.id);
+                        model.showLinkDialog(link.id);
+                    }}
+                >
+                    <RenameIcon />
+                </button>
+                <button
+                    title="Delete"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        model.selectLink(link.id);
+                        model.deleteLink(link.id, e.ctrlKey);
+                    }}
+                >
+                    <DeleteIcon />
+                </button>
+            </div>
+        </div>
+    );
+}
+
+// =============================================================================
 // Component
 // =============================================================================
 
@@ -167,14 +277,16 @@ interface LinkItemTilesProps {
     model: LinkEditorModel;
     viewMode: Exclude<LinkViewMode, "list">;
     selectedLinkId: string;
+    pinnedLinkIds: Set<string>;
 }
 
-export function LinkItemTiles({ links, model, viewMode, selectedLinkId }: LinkItemTilesProps) {
+export function LinkItemTiles({ links, model, viewMode, selectedLinkId, pinnedLinkIds }: LinkItemTilesProps) {
     const gridRef = useRef<RenderGridModel>(null);
     const [gridSize, setGridSize] = useState<RenderSizeOptional>({
         width: undefined,
         height: undefined,
     });
+    const faviconVersion = useFavicons(links);
 
     const dims = TILE_DIMENSIONS[viewMode];
 
@@ -209,6 +321,7 @@ export function LinkItemTiles({ links, model, viewMode, selectedLinkId }: LinkIt
 
     const handleOpenLink = useCallback((link: LinkItem) => {
         if (link.href) {
+            requestFaviconSave(getHostname(link.href));
             pagesModel.handleOpenUrl(link.href);
         }
     }, []);
@@ -235,6 +348,7 @@ export function LinkItemTiles({ links, model, viewMode, selectedLinkId }: LinkIt
                 icon: <GlobeIcon />,
                 onClick: async () => {
                     if (link.href) {
+                        requestFaviconSave(getHostname(link.href));
                         const { openUrlInBrowserTab } = await import("../../store/page-actions");
                         openUrlInBrowserTab(link.href);
                     }
@@ -280,12 +394,18 @@ export function LinkItemTiles({ links, model, viewMode, selectedLinkId }: LinkIt
                 },
             );
         }
+        const isPinned = model.isLinkPinned(link.id);
         nativeEvent.menuItems.push(
+            {
+                label: isPinned ? "Unpin" : "Pin",
+                icon: isPinned ? <PinFilledIcon /> : <PinIcon />,
+                onClick: () => model.togglePinLink(link.id),
+                startGroup: true,
+            },
             {
                 label: "Delete",
                 icon: <DeleteIcon />,
                 onClick: () => model.deleteLink(link.id),
-                startGroup: true,
             },
         );
     }, [model]);
@@ -296,70 +416,21 @@ export function LinkItemTiles({ links, model, viewMode, selectedLinkId }: LinkIt
             const link = links[index];
             if (!link) return <div key={p.key} style={p.style} />;
 
-            const isSelected = link.id === selectedLinkId;
-
             return (
                 <div key={p.key} style={p.style} className="tile-cell">
-                    <div
-                        className={isSelected ? "tile-inner selected" : "tile-inner"}
-                        title={link.href || link.title}
-                        onClick={() => model.selectLink(link.id)}
-                        onDoubleClick={() => model.showLinkDialog(link.id)}
-                        onContextMenu={(e) => handleContextMenu(e, link)}
-                    >
-                        <div
-                            className={link.imgSrc ? "tile-image" : "tile-image tile-no-image"}
-                            style={{ height: dims.imageHeight }}
-                        >
-                            {link.imgSrc ? (
-                                <img src={link.imgSrc} alt={link.title} loading="lazy" />
-                            ) : (
-                                <GlobeIcon />
-                            )}
-                        </div>
-                        <div className="tile-title">
-                            <span>{link.title || "Untitled"}</span>
-                            {link.href && (
-                                <span
-                                    className="tile-open-link"
-                                    title="Open link"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        model.selectLink(link.id);
-                                        handleOpenLink(link);
-                                    }}
-                                >
-                                    <OpenLinkIcon />
-                                </span>
-                            )}
-                        </div>
-                        <div className="tile-actions">
-                            <button
-                                title="Edit"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    model.selectLink(link.id);
-                                    model.showLinkDialog(link.id);
-                                }}
-                            >
-                                <RenameIcon />
-                            </button>
-                            <button
-                                title="Delete"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    model.selectLink(link.id);
-                                    model.deleteLink(link.id, e.ctrlKey);
-                                }}
-                            >
-                                <DeleteIcon />
-                            </button>
-                        </div>
-                    </div>
+                    <TileCell
+                        link={link}
+                        model={model}
+                        isSelected={link.id === selectedLinkId}
+                        isPinned={pinnedLinkIds.has(link.id)}
+                        imageHeight={dims.imageHeight}
+                        onOpenLink={handleOpenLink}
+                        onContextMenu={handleContextMenu}
+                    />
                 </div>
             );
         },
-        [links, counts.colCount, model, dims, selectedLinkId, handleOpenLink, handleContextMenu],
+        [links, counts.colCount, model, dims, selectedLinkId, pinnedLinkIds, handleOpenLink, handleContextMenu, faviconVersion],
     );
 
     return (
