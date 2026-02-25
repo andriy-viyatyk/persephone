@@ -16,6 +16,8 @@ export const BrowserChannel = {
     unregister: "browser:unregister",
     /** Clear all storage data + cache for a given partition. Returns when done. */
     clearProfileData: "browser:clear-profile-data",
+    /** Clear only HTTP cache (not cookies/storage) for a given partition. Returns when done. */
+    clearCache: "browser:clear-cache",
     /** Renderer → Main: mute/unmute a webview's audio. Args: (key: string, muted: boolean) */
     setAudioMuted: "browser:set-audio-muted",
 

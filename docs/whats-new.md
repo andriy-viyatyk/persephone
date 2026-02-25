@@ -8,7 +8,22 @@ Release notes and changelog for js-notepad.
 
 ## Version 1.0.16 (Upcoming)
 
-*No changes yet.*
+### Improvements
+
+- **Browser Editor — Keyboard Shortcuts** — standard browser hotkeys now work regardless of focus location:
+  - `F5` — Reload page
+  - `Ctrl+F5` / `Ctrl+Shift+R` — Hard reload (bypass cache)
+  - `Ctrl+R` — Reload (alias)
+  - `F12` — Open DevTools
+  - `Alt+Left` / `Alt+Right` — Back / Forward
+  - `Alt+Home` — Navigate to the tab's home page
+  - `Escape` — Stop loading
+
+- **Browser Editor — Automatic Cache Cleanup** — when a browser page is closed, HTTP cache, compiled code cache, and service worker caches are automatically cleared to save disk space. Cookies, localStorage, and other site data are preserved so you stay logged in.
+
+- **Link Editor — Browser Selector Button** — toolbar button to choose where links open: OS default browser, internal browser, a specific browser profile, or incognito mode. Initialized from the app setting, adjustable per session.
+
+- **Link Context Menu — Browser Profiles** — right-click context menu on links in Link Editor, Markdown Preview, and pinned links now includes all configured browser profiles (not just Default/Internal/Incognito).
 
 ---
 

@@ -161,9 +161,11 @@ The renderer builds the menu dynamically based on `params` fields from the `cont
 | `src/renderer/editors/browser/BookmarksDrawer.tsx` | Renderer | Sliding overlay drawer rendering the Link Editor for bookmarks |
 | `src/renderer/editors/browser/UrlSuggestionsDropdown.tsx` | Renderer | URL bar dropdown with search history and navigation history |
 | `src/renderer/editors/browser/browser-search-history.ts` | Renderer | Per-profile persistent search history storage (file-based) |
-| `src/main/browser-service.ts` | Main | Attaches to webContents, relays events via IPC, audio state, popups |
+| `src/main/browser-service.ts` | Main | Attaches to webContents, relays events via IPC, audio state, hotkeys, cache cleanup |
 | `src/preload-webview.ts` | Guest | MutationObserver for title/favicon, image tracking on link clicks |
 | `src/ipc/browser-ipc.ts` | Shared | IPC channel names and type definitions |
+| `src/renderer/store/link-open-menu.tsx` | Renderer | Shared helper for "Open in..." browser menu items |
+| `src/renderer/core/state/events.ts` | Renderer | `globalKeyDown` Subscription for keyboard event broadcasting |
 
 ## Why the Main Process Bridge?
 
@@ -258,6 +260,19 @@ The renderer can clear all browsing data for a partition via `ipcRenderer.invoke
 - "Clear data" button on each profile row in Settings
 - Profile deletion (confirmation dialog, then clear + remove from settings)
 
+### Automatic Cache Cleanup on Page Close
+
+When a browser page is closed (disposed), its HTTP cache, V8 code cache, and service worker caches are automatically cleared via `BrowserChannel.clearCache`. This prevents Chromium's disk caches from growing indefinitely. Cookies, localStorage, IndexedDB, and sessionStorage are preserved — users stay logged in.
+
+The `clearCache` IPC handler runs three operations in parallel:
+- `session.clearCache()` — HTTP disk cache (scripts, images, stylesheets)
+- `session.clearCodeCaches({})` — V8 compiled bytecode cache
+- `session.clearStorageData({ storages: ["serviceworkers", "cachestorage"] })` — service worker scripts and CacheStorage
+
+Skipped for incognito pages since they use non-persistent partitions (no `persist:` prefix = memory-only).
+
+**Disposal lifecycle:** `page.dispose()` is called from the `onClose` callback in `pages-store.ts`, which fires when the user closes a tab. The `movePageOut` flow (tab transfer to another window) calls `detachPage()` first, which clears `onClose`, preventing disposal of transferred pages.
+
 ## Link Integration
 
 External links clicked in Monaco or Markdown editors are routed through an IPC event (`eOpenUrl`) from the main process to the renderer. The renderer checks the `link-open-behavior` app setting:
@@ -287,9 +302,10 @@ For existing browser tabs, `addTab(url)` creates a new internal tab. For newly c
 
 ### Markdown Link Context Menu
 
-Right-clicking a link in Markdown Preview (or Notebook embedded Markdown) shows additional items for external URLs (http/https):
+Right-clicking a link in Markdown Preview (or Notebook embedded Markdown) shows additional items for external URLs (http/https) via the shared `appendLinkOpenMenuItems()` helper:
 - "Open in Default Browser" — `shell.openExternal(href)`
 - "Open in Internal Browser" — `openUrlInBrowserTab(href)`
+- Per-profile items — `openUrlInBrowserTab(href, { profileName })` for each configured browser profile
 - "Open in Incognito" — `openUrlInBrowserTab(href, { incognito: true })`
 
 ### Exceptions
@@ -349,6 +365,40 @@ A right-anchored overlay that renders the Link Editor with a `swapLayout` prop (
 ### Encrypted Bookmarks
 
 If the `.link.json` file is encrypted, `BrowserBookmarks.init()` detects this via `isEncrypted(content)` and calls `showPasswordDialog({ mode: "decrypt" })`. This is the same async password dialog used by the text editor's encryption feature. If the user cancels, `init()` returns `false` and the bookmarks are not loaded.
+
+## Keyboard Shortcuts
+
+Browser hotkeys (F5, F12, Alt+Left/Right, etc.) must work regardless of where focus is — inside the webview, on the toolbar, or elsewhere. This requires a three-layer approach:
+
+### Layer 1: Main Process (`before-input-event`)
+
+When focus is inside a `<webview>`, keyboard events are consumed by the guest page and never reach the renderer's DOM. The main process intercepts these via `webContents.on("before-input-event")` in `browser-service.ts`, handling F5, Ctrl+R, F12, Escape, and Alt+Left/Right directly on the webContents.
+
+### Layer 2: Global Key Event Bus (`globalKeyDown` Subscription)
+
+When focus is on any renderer element (toolbar, URL bar, tab panel, or no specific focus), the browser editor subscribes to a global keyboard event bus. `MainPage` broadcasts all `keydown` events via `globalKeyDown.send(e)` (defined in `events.ts`). `BrowserPageModel` subscribes in its constructor and handles browser hotkeys only when it's the active page. This keeps browser-specific logic out of MainPage.
+
+### Layer 3: Root div `onKeyDown` (`BrowserWebviewModel`)
+
+The root browser `<div>` handles `Ctrl+L` (focus URL bar) and `Ctrl+F` (find in page) — shortcuts specific to the browser UI that don't need global reach.
+
+### Supported Hotkeys
+
+| Shortcut | Action | Layers |
+|----------|--------|--------|
+| `F5` | Reload | Main process + global |
+| `Ctrl+F5` / `Ctrl+Shift+R` | Hard reload | Main process + global |
+| `Ctrl+R` | Reload | Main process + global |
+| `F12` | Open DevTools | Main process + global |
+| `Alt+Left` / `Alt+Right` | Back / Forward | Main process + global |
+| `Alt+Home` | Go to home page | Global only |
+| `Escape` | Stop loading | Main process + global |
+| `Ctrl+L` | Focus URL bar | Root div only |
+| `Ctrl+F` | Find in page | Root div only |
+
+## Link Open Menu Helper
+
+`appendLinkOpenMenuItems()` in `src/renderer/store/link-open-menu.tsx` is a reusable function that appends "Open in..." browser menu items to a `MenuItem[]` array. It generates items for: OS default browser, internal browser, all configured user profiles, and incognito. Used by Link Editor (list, tiles, pinned links) and Markdown Preview link context menus.
 
 ## Common Pitfalls
 

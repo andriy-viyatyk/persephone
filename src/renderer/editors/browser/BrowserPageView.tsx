@@ -184,6 +184,20 @@ function BrowserWebviewItem({
         };
     }, [model, internalTabId]);
 
+    // Close host-page popups when the webview gains focus.
+    // Clicks inside a <webview> don't bubble to the host document, so Popper's
+    // click-outside detection never fires. Dispatching a synthetic mousedown
+    // on document.body bridges that gap.
+    useEffect(() => {
+        const webview = webviewRef.current;
+        if (!webview) return;
+        const handleFocus = () => {
+            document.body.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+        };
+        webview.addEventListener("focus", handleFocus);
+        return () => webview.removeEventListener("focus", handleFocus);
+    }, []);
+
     // Register with main process on dom-ready and listen for preload messages
     useEffect(() => {
         const webview = webviewRef.current;

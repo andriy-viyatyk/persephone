@@ -69,6 +69,7 @@ export class PagesModel extends TModel<OpenFilesState> {
         page.onClose = () => {
             this.detachPage(page);
             this.removePage(page);
+            page.dispose();
         };
     };
 
@@ -652,7 +653,9 @@ export class PagesModel extends TModel<OpenFilesState> {
             this.saveStateDebounced();
             api.closeWindow();
         } else {
-            page.close(undefined);
+            // Detach first to prevent dispose — the page is being transferred, not closed.
+            this.detachPage(page);
+            this.removePage(page);
         }
     };
 

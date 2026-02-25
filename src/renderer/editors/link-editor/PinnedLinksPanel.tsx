@@ -3,7 +3,6 @@ import { useCallback } from "react";
 import { useDrag, useDrop } from "react-dnd";
 import color from "../../theme/color";
 import { GlobeIcon, OpenLinkIcon, PinFilledIcon } from "../../theme/icons";
-import { pagesModel } from "../../store/pages-store";
 import { LinkItem, LINK_PIN_DRAG } from "./linkTypes";
 import { LinkEditorModel } from "./LinkEditorModel";
 import { getHostname, getFaviconPathSync, requestFaviconSave } from "./favicon-cache";
@@ -216,9 +215,9 @@ export function PinnedLinksPanel({ pinnedLinks, model, style }: PinnedLinksPanel
     const handleOpenLink = useCallback((link: LinkItem) => {
         if (link.href) {
             requestFaviconSave(getHostname(link.href));
-            pagesModel.handleOpenUrl(link.href);
+            model.openLink(link.href);
         }
-    }, []);
+    }, [model]);
 
     return (
         <PinnedLinksPanelRoot style={style}>

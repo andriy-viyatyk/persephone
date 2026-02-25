@@ -7,6 +7,7 @@ import { splitWithSeparators } from "../../core/utils/utils";
 import { LinkItem, LinkEditorData, LinkEditorProps, LinkViewMode, LINK_DRAG, LINK_CATEGORY_DRAG } from "./linkTypes";
 import { showEditLinkDialog } from "./EditLinkDialog";
 import { showConfirmationDialog } from "../../features/dialogs";
+import { appSettings } from "../../store/app-settings";
 
 // =============================================================================
 // State
@@ -32,6 +33,11 @@ export const defaultLinkEditorState = {
     filteredLinks: [] as LinkItem[],
     // Selection
     selectedLinkId: "" as string,
+    // Browser selection for link opening.
+    // "": use pagesModel.handleOpenUrl (BookmarksDrawer), "os-default": OS browser,
+    // "internal-default": built-in default profile, "profile:<name>": named profile,
+    // "incognito": incognito mode.
+    selectedBrowser: "" as string,
 };
 
 export type LinkEditorState = typeof defaultLinkEditorState;
@@ -59,6 +65,7 @@ export class LinkEditorModel extends TComponentModel<
         this.stateChangeSubscription = this.state.subscribe(() => {
             this.onDataChangedDebounced();
         });
+        this.initBrowserSelection();
     };
 
     dispose = () => {
@@ -604,5 +611,55 @@ export class LinkEditorModel extends TComponentModel<
                 this.applyFilters();
             }
         }
+    };
+
+    // =========================================================================
+    // Browser Selection
+    // =========================================================================
+
+    private initBrowserSelection = () => {
+        if (this.props.swapLayout) return; // keep "" for BookmarksDrawer monkey-patching
+        const behavior = appSettings.get("link-open-behavior");
+        if (behavior === "default-browser") {
+            this.state.update((s) => { s.selectedBrowser = "os-default"; });
+        } else {
+            this.state.update((s) => { s.selectedBrowser = "internal-default"; });
+        }
+    };
+
+    setSelectedBrowser = (value: string) => {
+        this.state.update((s) => { s.selectedBrowser = value; });
+    };
+
+    openLink = async (url: string) => {
+        const { selectedBrowser } = this.state.get();
+        const { shell } = require("electron");
+
+        if (!selectedBrowser) {
+            const { pagesModel } = await import("../../store/pages-store");
+            pagesModel.handleOpenUrl(url);
+            return;
+        }
+
+        if (selectedBrowser === "os-default") {
+            shell.openExternal(url);
+            return;
+        }
+
+        const { openUrlInBrowserTab } = await import("../../store/page-actions");
+
+        if (selectedBrowser === "incognito") {
+            openUrlInBrowserTab(url, { incognito: true });
+            return;
+        }
+
+        if (selectedBrowser.startsWith("profile:")) {
+            const profileName = selectedBrowser.slice("profile:".length);
+            openUrlInBrowserTab(url, { profileName });
+            return;
+        }
+
+        // "internal-default" — pass empty profileName to match only default-profile tabs
+        openUrlInBrowserTab(url, { profileName: "" });
     };
 }

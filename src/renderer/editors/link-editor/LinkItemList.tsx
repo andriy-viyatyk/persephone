@@ -8,13 +8,12 @@ import { highlightText, useHighlightedText } from "../../components/basic/useHig
 import { Button } from "../../components/basic/Button";
 import color from "../../theme/color";
 import { CopyIcon, DeleteIcon, GlobeIcon, OpenFileIcon, OpenLinkIcon, PinFilledIcon, PinIcon, RenameIcon } from "../../theme/icons";
-import { IncognitoIcon } from "../../theme/language-icons";
-import { pagesModel } from "../../store/pages-store";
+import { appendLinkOpenMenuItems } from "../../store/link-open-menu";
 import { LinkItem, LINK_DRAG } from "./linkTypes";
 import { LinkEditorModel } from "./LinkEditorModel";
 import { getHostname, getFaviconPathSync, useFavicons, requestFaviconSave } from "./favicon-cache";
 
-const { shell, clipboard } = require("electron");
+const { clipboard } = require("electron");
 
 const ROW_HEIGHT = 28;
 
@@ -267,9 +266,9 @@ export function LinkItemList({ links, model, selectedLinkId, pinnedLinkIds }: Li
     const handleLinkClick = useCallback((link: LinkItem) => {
         if (link.href) {
             requestFaviconSave(getHostname(link.href));
-            pagesModel.handleOpenUrl(link.href);
+            model.openLink(link.href);
         }
-    }, []);
+    }, [model]);
 
     const handleCopyUrl = useCallback((link: LinkItem) => {
         if (link.href) {
@@ -287,36 +286,11 @@ export function LinkItemList({ links, model, selectedLinkId, pinnedLinkIds }: Li
                 icon: <RenameIcon />,
                 onClick: () => model.showLinkDialog(link.id),
             },
-            {
-                label: "Open in Default Browser",
-                icon: <OpenFileIcon />,
-                onClick: () => { if (link.href) shell.openExternal(link.href); },
-                disabled: !link.href,
-                startGroup: true,
-            },
-            {
-                label: "Open in Internal Browser",
-                icon: <GlobeIcon />,
-                onClick: async () => {
-                    if (link.href) {
-                        requestFaviconSave(getHostname(link.href));
-                        const { openUrlInBrowserTab } = await import("../../store/page-actions");
-                        openUrlInBrowserTab(link.href);
-                    }
-                },
-                disabled: !link.href,
-            },
-            {
-                label: "Open in Incognito",
-                icon: <IncognitoIcon />,
-                onClick: async () => {
-                    if (link.href) {
-                        const { openUrlInBrowserTab } = await import("../../store/page-actions");
-                        openUrlInBrowserTab(link.href, { incognito: true });
-                    }
-                },
-                disabled: !link.href,
-            },
+        );
+        if (link.href) {
+            appendLinkOpenMenuItems(nativeEvent.menuItems, link.href, { startGroup: true });
+        }
+        nativeEvent.menuItems.push(
             {
                 label: "Copy URL",
                 icon: <CopyIcon />,

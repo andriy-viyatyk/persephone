@@ -140,7 +140,15 @@ All navigation keys (except Tab) support **Shift** to extend selection.
 | `Ctrl+L` | Focus URL bar |
 | `Ctrl+F` | Find in page |
 | `Enter` | Navigate to URL (when URL bar is focused) |
-| `Escape` | Revert URL bar to current URL |
+| `F5` | Reload page |
+| `Ctrl+F5` | Hard reload (bypass cache) |
+| `Ctrl+R` | Reload page |
+| `Ctrl+Shift+R` | Hard reload (bypass cache) |
+| `F12` | Open DevTools |
+| `Alt+Left` | Go back |
+| `Alt+Right` | Go forward |
+| `Alt+Home` | Go to tab's home page |
+| `Escape` | Stop loading / revert URL bar |
 
 ## Notebook Editor
 

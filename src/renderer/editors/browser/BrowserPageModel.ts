@@ -3,6 +3,8 @@ const { ipcRenderer } = require("electron");
 import { IPage } from "../../../shared/types";
 import { getDefaultPageModelState, PageModel } from "../base";
 import { TComponentState } from "../../core/state/state";
+import { globalKeyDown, SubscriptionObject } from "../../core/state/events";
+import { pagesModel } from "../../store/pages-store";
 import { IncognitoIcon } from "../../theme/language-icons";
 import { GlobeIcon } from "../../theme/icons";
 import { appSettings, BrowserProfile } from "../../store/app-settings";
@@ -285,11 +287,14 @@ export class BrowserPageModel extends PageModel<BrowserPageState, void> {
     /** Sub-model: bookmarks drawer, star button, image discovery. */
     readonly bookmarksUI: BrowserBookmarksUIModel;
 
+    private keyDownSub: SubscriptionObject;
+
     constructor(state: TComponentState<BrowserPageState>) {
         super(state);
         this.webview = new BrowserWebviewModel(this);
         this.urlBar = new BrowserUrlBarModel(this);
         this.bookmarksUI = new BrowserBookmarksUIModel(this);
+        this.keyDownSub = globalKeyDown.subscribe((e) => this.handleGlobalKeyDown(e!));
     }
 
     /** Stable random ID for incognito partitions (generated once per model instance). */
@@ -345,13 +350,67 @@ export class BrowserPageModel extends PageModel<BrowserPageState, void> {
     }
 
     async dispose(): Promise<void> {
+        this.keyDownSub.unsubscribe();
         this.bookmarksUI.dispose();
         if (this.bookmarks) {
             await this.bookmarks.dispose();
             this.bookmarks = null;
         }
         await super.dispose();
+
+        // Clear HTTP cache for this partition to free disk space.
+        // Skip incognito — no persist: prefix means no disk storage.
+        if (!this.state.get().isIncognito) {
+            ipcRenderer.invoke(BrowserChannel.clearCache, this.partition);
+        }
     }
+
+    /** Handle global keyboard shortcuts when this browser page is active. */
+    private handleGlobalKeyDown = (e: KeyboardEvent) => {
+        if (e.defaultPrevented) return;
+        if (pagesModel.activePage !== this) return;
+
+        const keyLower = e.key.toLowerCase();
+
+        // F5 / Ctrl+F5 / Ctrl+R / Ctrl+Shift+R — reload
+        if (e.key === "F5" || (keyLower === "r" && e.ctrlKey)) {
+            e.preventDefault();
+            if (e.key === "F5" ? e.ctrlKey : e.shiftKey) {
+                this.webview.getActiveWebview()?.reloadIgnoringCache();
+            } else {
+                this.webview.reloadOrStop();
+            }
+            return;
+        }
+        // F12 — devtools
+        if (e.key === "F12") {
+            e.preventDefault();
+            this.webview.openDevTools();
+            return;
+        }
+        // Escape — stop loading
+        if (e.key === "Escape") {
+            e.preventDefault();
+            this.webview.getActiveWebview()?.stop();
+            return;
+        }
+        // Alt+Left / Alt+Right — back / forward
+        if (e.altKey && (e.key === "ArrowLeft" || e.key === "ArrowRight")) {
+            e.preventDefault();
+            if (e.key === "ArrowLeft") {
+                this.webview.goBack();
+            } else {
+                this.webview.goForward();
+            }
+            return;
+        }
+        // Alt+Home — go to home page
+        if (e.altKey && e.key === "Home") {
+            e.preventDefault();
+            this.goHome();
+            return;
+        }
+    };
 
     async restore() {
         await super.restore();

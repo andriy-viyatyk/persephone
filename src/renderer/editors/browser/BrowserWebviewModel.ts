@@ -59,7 +59,7 @@ export class BrowserWebviewModel {
         this.getActiveWebview()?.openDevTools();
     };
 
-    /** Handle keyboard shortcuts on the root browser div. */
+    /** Handle keyboard shortcuts on the root browser div (Ctrl+L, Ctrl+F). */
     handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
         if (e.ctrlKey && e.key === "l") {
             e.preventDefault();

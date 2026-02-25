@@ -75,25 +75,38 @@ export async function openImageInNewTab(imageUrl: string): Promise<void> {
 
 export async function openUrlInBrowserTab(url: string, options?: {
     incognito?: boolean;
+    profileName?: string;
 }): Promise<void> {
     const pages = pagesModel.state.get().pages;
     const activePage = pagesModel.activePage;
     const activeIndex = activePage ? pages.indexOf(activePage) : -1;
 
     if (!options?.incognito) {
+        // When a specific profile is requested, only match browser tabs with that profile.
+        // When no profile is specified (undefined), match any browser tab.
+        const targetProfile = options?.profileName !== undefined
+            ? (options.profileName || "")
+            : undefined;
+
+        const matchesProfile = (pageState: any) =>
+            !pageState.isIncognito &&
+            (targetProfile === undefined || (pageState.profileName ?? "") === targetProfile);
+
         // Search right for existing browser tab
         for (let i = activeIndex + 1; i < pages.length; i++) {
-            if (pages[i].state.get().type === "browserPage") {
+            const pageState = pages[i].state.get();
+            if (pageState.type === "browserPage" && matchesProfile(pageState)) {
                 (pages[i] as any).addTab(url);
-                pagesModel.showPage(pages[i].state.get().id);
+                pagesModel.showPage(pageState.id);
                 return;
             }
         }
         // Search left for existing browser tab
         for (let i = activeIndex - 1; i >= 0; i--) {
-            if (pages[i].state.get().type === "browserPage") {
+            const pageState = pages[i].state.get();
+            if (pageState.type === "browserPage" && matchesProfile(pageState)) {
                 (pages[i] as any).addTab(url);
-                pagesModel.showPage(pages[i].state.get().id);
+                pagesModel.showPage(pageState.id);
                 return;
             }
         }
@@ -103,7 +116,9 @@ export async function openUrlInBrowserTab(url: string, options?: {
     // Pass the URL directly so the initial tab's webview src is set before React mounts
     // the component — avoids a race condition where navigate() is called before the
     // webview is ready, causing the page to stay blank.
-    const profileName = options?.incognito ? undefined : appSettings.get("browser-default-profile") || undefined;
+    const profileName = options?.incognito
+        ? undefined
+        : (options?.profileName ?? appSettings.get("browser-default-profile")) || undefined;
     const showOptions: ShowBrowserPageOptions = {
         url,
         ...(options?.incognito ? { incognito: true } : profileName ? { profileName } : {}),

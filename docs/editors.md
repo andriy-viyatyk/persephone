@@ -53,7 +53,7 @@ For `.md` and `.markdown` files — click **Preview** in the toolbar:
 - **Inline Mermaid diagrams** — ` ```mermaid ` code blocks render as SVG diagrams
 - **Live preview** updates as you type
 - **Minimap** navigation on the right side
-- **Link context menu** — right-click a link for: "Copy Link", "Open in Default Browser", "Open in Internal Browser", "Open in Incognito"
+- **Link context menu** — right-click a link for: "Copy Link", "Open in Default Browser", "Open in Internal Browser", browser profiles, "Open in Incognito"
 
 ## PDF Viewer
 
@@ -157,9 +157,11 @@ A built-in web browser for viewing documentation, APIs, and web resources withou
 - **Loading indicator** — animated bar below the toolbar while a page is loading
 - **Find in page** — `Ctrl+F` to search text within the web page
 - **Focus URL bar** — `Ctrl+L` to quickly jump to the URL bar
-- **DevTools** — click the gear icon to open the webview's developer tools
+- **Keyboard shortcuts** — standard browser hotkeys work regardless of focus: `F5` reload, `Ctrl+F5`/`Ctrl+Shift+R` hard reload, `F12` DevTools, `Alt+Left`/`Alt+Right` back/forward, `Alt+Home` go to home page, `Escape` stop loading
+- **DevTools** — click the gear icon or press `F12` to open the webview's developer tools
 - **Session restore** — all internal tabs, URLs, navigation history, and profile selection saved and restored across app restarts
 - **Isolated storage** — each profile has its own cookies, storage, and cache, separated from the main application
+- **Automatic cache cleanup** — HTTP cache, compiled code cache, and service worker caches are cleared when a browser page is closed to save disk space; cookies and site data are preserved
 - **Bookmarks** — per-profile bookmark management using `.link.json` files
   - **Star button (☆)** in the URL bar — quick-add or edit a bookmark for the current page
     - Empty star when URL is not bookmarked; filled star when already bookmarked
@@ -241,7 +243,8 @@ For `.link.json` files — a structured link manager:
 - **Image tiles** — tile views display preview images with "no image" placeholder for links without images
 - **Edit/Create dialog** — title (auto-growing), URL, category (with autocomplete), tags (chip-based with autocomplete), image URL with preview
 - **Search** — toolbar search filters links by title or URL
-- **Context menu** — Edit, Open in Default Browser, Open in Internal Browser, Open in Incognito, Copy URL, Pin/Unpin, Delete
+- **Browser selector button** — toolbar button to choose where links open: OS default browser, internal browser, a specific browser profile, or incognito. Initialized from the app setting, adjustable per session.
+- **Context menu** — Edit, Open in Default Browser, Open in Internal Browser, browser profiles, Open in Incognito, Copy URL, Pin/Unpin, Delete
   - For links with images: Copy Image URL, Open Image in New Tab (opens in Image Viewer)
 - **Delete confirmation** — with Ctrl+click bypass for quick delete
 - **Double-click** to edit in both list and tile views

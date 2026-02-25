@@ -39,3 +39,6 @@ export class Subscription<D = undefined> {
 }
 
 export const logoutSubscription = new Subscription<void>();
+
+/** Global keyboard event broadcast. Sent from MainPage's window keydown listener. */
+export const globalKeyDown = new Subscription<KeyboardEvent>();
