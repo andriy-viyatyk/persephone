@@ -81,34 +81,35 @@ export async function openUrlInBrowserTab(url: string, options?: {
     const activePage = pagesModel.activePage;
     const activeIndex = activePage ? pages.indexOf(activePage) : -1;
 
-    if (!options?.incognito) {
-        // When a specific profile is requested, only match browser tabs with that profile.
-        // When no profile is specified (undefined), match any browser tab.
+    // When a specific profile is requested, only match browser tabs with that profile.
+    // When no profile is specified (undefined), match any non-incognito browser tab.
+    // When incognito is requested, match any incognito browser tab.
+    const matchesBrowser = (pageState: any) => {
+        if (pageState.type !== "browserPage") return false;
+        if (options?.incognito) return !!pageState.isIncognito;
         const targetProfile = options?.profileName !== undefined
             ? (options.profileName || "")
             : undefined;
-
-        const matchesProfile = (pageState: any) =>
-            !pageState.isIncognito &&
+        return !pageState.isIncognito &&
             (targetProfile === undefined || (pageState.profileName ?? "") === targetProfile);
+    };
 
-        // Search right for existing browser tab
-        for (let i = activeIndex + 1; i < pages.length; i++) {
-            const pageState = pages[i].state.get();
-            if (pageState.type === "browserPage" && matchesProfile(pageState)) {
-                (pages[i] as any).addTab(url);
-                pagesModel.showPage(pageState.id);
-                return;
-            }
+    // Search right for existing browser tab
+    for (let i = activeIndex + 1; i < pages.length; i++) {
+        const pageState = pages[i].state.get();
+        if (matchesBrowser(pageState)) {
+            (pages[i] as any).addTab(url);
+            pagesModel.showPage(pageState.id);
+            return;
         }
-        // Search left for existing browser tab
-        for (let i = activeIndex - 1; i >= 0; i--) {
-            const pageState = pages[i].state.get();
-            if (pageState.type === "browserPage" && matchesProfile(pageState)) {
-                (pages[i] as any).addTab(url);
-                pagesModel.showPage(pageState.id);
-                return;
-            }
+    }
+    // Search left for existing browser tab
+    for (let i = activeIndex - 1; i >= 0; i--) {
+        const pageState = pages[i].state.get();
+        if (matchesBrowser(pageState)) {
+            (pages[i] as any).addTab(url);
+            pagesModel.showPage(pageState.id);
+            return;
         }
     }
 
