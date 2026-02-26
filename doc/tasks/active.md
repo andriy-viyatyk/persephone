@@ -10,6 +10,8 @@ Current work in progress and planned tasks.
 
 | ID | Title | Priority | Link |
 |----|-------|----------|------|
+| US-037 | Lightweight Rust Launcher | High | [README](US-037-rust-launcher/README.md) |
+| US-038 | Switch to electron-builder + NSIS | High | [README](US-038-nsis-installer/README.md) |
 | US-036 | Register as Default Browser | Medium | [README](US-036-default-browser-registration/README.md) |
 | US-030 | Download Manager | Medium | [README](US-030-download-manager/README.md) |
 
