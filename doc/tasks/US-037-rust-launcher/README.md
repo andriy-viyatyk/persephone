@@ -59,14 +59,15 @@ Add to `src/main/` — a Named Pipe server that listens for incoming file/URL re
 
 **Protocol:** Simple line-based text protocol:
 ```
-OPEN <path-or-url>\n
-CWD <working-directory>\n
+OPEN <absolute-path-or-url>\n
 END\n
 ```
 
+All paths sent over the pipe are **already absolute** — the launcher resolves relative paths before sending (see Component 2). This avoids the need to send a CWD message and eliminates path resolution logic in the main process.
+
 **Message handling:**
 - If argument starts with `http://` or `https://` → route to browser editor (`openUrlInBrowserTab`)
-- Otherwise → treat as file path, resolve relative to CWD, open in text editor
+- Otherwise → treat as absolute file path, open in text editor
 
 **Lifecycle:**
 - Create pipe server in `app.whenReady()` callback
@@ -82,27 +83,35 @@ A standalone Rust project (separate directory, e.g., `/launcher/`).
 **Logic:**
 ```
 1. Collect command-line arguments (skip argv[0])
-2. Get current working directory
+2. Resolve arguments:
+   - URLs (http:// or https://) → keep as-is
+   - Relative file paths → resolve to absolute using std::env::current_dir()
+   - Absolute file paths → keep as-is
 3. Try to connect to \\.\pipe\js-notepad (timeout: 100ms)
 4. If connected:
-   a. Send: "CWD <cwd>\n"
-   b. For each argument: Send "OPEN <arg>\n"
-   c. Send: "END\n"
-   d. Exit with code 0
+   a. For each resolved argument: Send "OPEN <absolute-path-or-url>\n"
+   b. Send: "END\n"
+   c. Exit with code 0
 5. If pipe not found (app not running):
    a. Resolve path to js-notepad.exe (relative to launcher location)
-   b. Spawn js-notepad.exe with all original arguments
+   b. Spawn js-notepad.exe with resolved absolute arguments
    c. Set working directory to current CWD
    d. Detach child process (don't wait)
    e. Exit with code 0
 6. If pipe connection fails (other error):
-   a. Fall back to spawning js-notepad.exe
+   a. Fall back to spawning js-notepad.exe (same as step 5)
 ```
+
+**Important:** The launcher resolves all relative paths to absolute **before** sending over the pipe or passing to `js-notepad.exe`. This is necessary because:
+- The running js-notepad instance has its own working directory (cannot be changed)
+- Tools like Git Extensions pass relative paths with a custom working directory
+- The launcher's working directory is the only context available for resolution
 
 **Rust dependencies (minimal):**
 - `std::os::windows::io` — Named Pipe client
 - `std::process::Command` — spawn child process
 - `std::env` — args, current_dir
+- `std::path::Path` / `std::fs::canonicalize` — resolve relative paths to absolute
 - No async runtime needed (synchronous pipe I/O is fine for a launcher)
 
 ### Component 3: Integration
