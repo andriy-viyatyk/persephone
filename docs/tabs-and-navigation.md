@@ -55,6 +55,7 @@ Pin tabs to keep them compact and always visible at the left side of the tab bar
 - Can be grouped with other tabs for side-by-side view (including script output)
 - Can be reordered among other pinned tabs by dragging
 - Show language icon, encryption icon (if applicable), and modification indicator
+- **File path tooltip** — hover over a pinned tab to see the full file path (1.5s delay)
 - Content can be replaced via the File Explorer panel (in-tab navigation)
 - Pinned state is preserved across app restarts
 - A window with pinned tabs is preserved on close (can be reopened from "Open Tabs" in sidebar)

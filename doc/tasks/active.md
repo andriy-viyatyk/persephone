@@ -4,19 +4,20 @@ Current work in progress and planned tasks.
 
 ## In Progress
 
-| ID | Title | Priority | Link |
-|----|-------|----------|------|
+(none)
 
 ## Planned (Next)
 
 | ID | Title | Priority | Link |
 |----|-------|----------|------|
+| US-036 | Register as Default Browser | Medium | [README](US-036-default-browser-registration/README.md) |
 | US-030 | Download Manager | Medium | [README](US-030-download-manager/README.md) |
 
 ## Recently Completed
 
 | ID | Title | Notes |
 |----|-------|-------|
+| US-035 | Miscellaneous Enhancements | Link Editor hostnames panel, Link/ToDo Editor session state persistence, pinned tab file path tooltip, browser popup/tab spam blocking |
 | US-034 | Link Editor Enhancement | Favicon caching & display, drag-and-drop (links→categories, categories→categories with reparenting), pinned links panel with drag-to-reorder |
 | US-028 | Browser Bookmarks (Links Editor Integration) | Per-profile bookmarks with star button, sliding drawer with full Link Editor, image discovery (meta tags + click tracking + context menu), encrypted bookmarks support via async password dialog, auto-save |
 | US-033 | Link Editor | Structured link manager for `.link.json` files with categories, tags, 5 view modes (list + 4 tile variants), edit dialog, image context menu, per-category and per-tag view mode, quick-add menu |

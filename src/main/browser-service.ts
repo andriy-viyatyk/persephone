@@ -16,6 +16,7 @@ import {
     BrowserRegisterRequest,
     BrowserEvent,
 } from "../ipc/browser-ipc";
+import { PopupRateLimiter } from "../ipc/popup-rate-limiter";
 
 const BLOCKED_PROTOCOLS = ["file:", "app-asset:", "safe-file:"];
 
@@ -35,6 +36,9 @@ interface RegisteredWebview {
 
 // Active registrations: `${tabId}/${internalTabId}` → registration
 const registrations = new Map<string, RegisteredWebview>();
+
+// Rate limiter for popup windows (window.open calls)
+const popupRateLimiter = new PopupRateLimiter();
 
 function regKey(tabId: string, internalTabId: string): string {
     return `${tabId}/${internalTabId}`;
@@ -199,6 +203,13 @@ function registerWebview(event: IpcMainEvent, request: BrowserRegisterRequest) {
 
         // window.open() from JS (OAuth popups, etc.) → allow as real popup window.
         // This preserves window.opener reference needed by auth flows.
+        // Rate-limit to prevent popup spam.
+        const limiterKey = regKey(tabId, internalTabId);
+        if (!popupRateLimiter.isAllowed(tabId) && !popupRateLimiter.check(limiterKey)) {
+            sendEvent(sender, tabId, internalTabId, "popups-blocked", { url });
+            return { action: "deny" };
+        }
+
         // Center the popup on the parent window.
         const parentWindow = BrowserWindow.fromWebContents(sender);
         const parentBounds = parentWindow?.getBounds();
@@ -281,6 +292,10 @@ export function initBrowserHandlers(): void {
         if (reg && !reg.webContents.isDestroyed()) {
             reg.webContents.setAudioMuted(muted);
         }
+    });
+
+    ipcMain.on(BrowserChannel.allowPopups, (_event, tabId: string) => {
+        popupRateLimiter.allowByPrefix(tabId);
     });
 
     ipcMain.handle(BrowserChannel.clearProfileData, async (_event, partition: string) => {

@@ -20,6 +20,8 @@ export const BrowserChannel = {
     clearCache: "browser:clear-cache",
     /** Renderer → Main: mute/unmute a webview's audio. Args: (key: string, muted: boolean) */
     setAudioMuted: "browser:set-audio-muted",
+    /** Renderer → Main: allow popups for a given tabId (disable rate limiting). Args: (tabId: string) */
+    allowPopups: "browser:allow-popups",
 
     // Main → Renderer
     event: "browser:event",
@@ -50,7 +52,8 @@ export type BrowserEventType =
     | "did-start-navigation"
     | "new-window"
     | "context-menu"
-    | "audio-state-changed";
+    | "audio-state-changed"
+    | "popups-blocked";
 
 export interface BrowserEventData {
     url?: string;

@@ -281,6 +281,12 @@ export function LinkEditor(props: LinkEditorProps) {
                             separators=":"
                             trailingParentSeparator
                         />
+                    ) : pageState.expandedPanel === "hostnames" ? (
+                        <Breadcrumb
+                            rootLabel="Hostnames"
+                            value={pageState.selectedHostname}
+                            onChange={pageModel.setSelectedHostname}
+                        />
                     ) : (
                         <Breadcrumb
                             rootLabel="Categories"
@@ -358,6 +364,18 @@ export function LinkEditor(props: LinkEditorProps) {
                                 value={pageState.selectedTag}
                                 onChange={pageModel.setSelectedTag}
                                 getCount={pageModel.getTagCount}
+                            />
+                        </div>
+                    </CollapsiblePanel>
+                    <CollapsiblePanel id="hostnames" title="Hostnames">
+                        <div className="tags-list-container">
+                            <TagsList
+                                tags={pageState.hostnames}
+                                value={pageState.selectedHostname}
+                                onChange={pageModel.setSelectedHostname}
+                                getCount={pageModel.getHostnameCount}
+                                separator={"\0"}
+                                rootLabel="All"
                             />
                         </div>
                     </CollapsiblePanel>

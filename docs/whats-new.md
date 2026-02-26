@@ -21,9 +21,19 @@ Release notes and changelog for js-notepad.
 
 - **Browser Editor — Automatic Cache Cleanup** — when a browser page is closed, HTTP cache, compiled code cache, and service worker caches are automatically cleared to save disk space. Cookies, localStorage, and other site data are preserved so you stay logged in.
 
+- **Browser Editor — Popup Blocking** — sites that try to spam popup windows or internal tabs are now rate-limited (max 3 within 2 seconds). A notification bar appears when popups are blocked, with an "Allow" button to temporarily permit popups for that page.
+
 - **Link Editor — Browser Selector Button** — toolbar button to choose where links open: OS default browser, internal browser, a specific browser profile, or incognito mode. Initialized from the app setting, adjustable per session.
 
+- **Link Editor — Hostnames Panel** — new collapsible panel in the sidebar showing hostnames extracted from all links, allowing quick filtering by hostname.
+
 - **Link Context Menu — Browser Profiles** — right-click context menu on links in Link Editor, Markdown Preview, and pinned links now includes all configured browser profiles (not just Default/Internal/Incognito).
+
+- **Link Editor — Session State Persistence** — selected category, tag, hostname, and expanded panel are remembered across app restarts (restored when reopening the same file).
+
+- **Todo Editor — Session State Persistence** — selected list and tag are remembered across app restarts.
+
+- **Pinned Tab Tooltip** — hovering over a pinned tab now shows the full file path in a tooltip (with a 1.5s delay), making it easy to identify pinned files without unpinning them.
 
 ---
 

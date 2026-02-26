@@ -140,6 +140,20 @@ const BrowserPageViewRoot = styled.div({
         },
     },
 
+    "& .popup-blocked-bar": {
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        padding: "3px 8px",
+        fontSize: 13,
+        color: color.text.default,
+        backgroundColor: color.background.light,
+        borderBottom: `1px solid ${color.border.default}`,
+        "& .popup-blocked-message": {
+            flex: 1,
+        },
+    },
+
     "@keyframes loading-pulse": {
         "0%": { opacity: 0.3 },
         "50%": { opacity: 1 },
@@ -322,7 +336,7 @@ function BrowserPageView({ model }: BrowserPageViewProps) {
         homeUrl, isIncognito,
         urlInput, suggestionsOpen, hoveredIndex,
         popupOpen, bookmarksOpen, bookmarksWidth,
-        bookmarksReady, isBookmarked,
+        bookmarksReady, isBookmarked, blockedPopupCount,
     } = model.state.use((s) => {
         const activeTab = s.tabs.find((t) => t.id === s.activeTabId);
         return {
@@ -344,6 +358,7 @@ function BrowserPageView({ model }: BrowserPageViewProps) {
             bookmarksWidth: s.bookmarksWidth,
             bookmarksReady: s.bookmarksReady,
             isBookmarked: s.isBookmarked,
+            blockedPopupCount: s.blockedPopupCount,
             // Included for re-render triggers (used by sub-model computed getters)
             searchEngineId: s.searchEngineId,
             userHasTyped: s.userHasTyped,
@@ -516,6 +531,21 @@ function BrowserPageView({ model }: BrowserPageViewProps) {
                 <div className="loading-bar" />
             ) : (
                 <div className="loading-bar-placeholder" />
+            )}
+            {blockedPopupCount > 0 && (
+                <div className="popup-blocked-bar">
+                    <span className="popup-blocked-message">
+                        {blockedPopupCount === 1
+                            ? "A popup was blocked on this page"
+                            : `${blockedPopupCount} popups were blocked on this page`}
+                    </span>
+                    <Button size="small" type="flat" onClick={model.allowPopups}>
+                        Allow
+                    </Button>
+                    <Button size="small" type="icon" onClick={model.dismissBlockedPopups}>
+                        <CloseIcon />
+                    </Button>
+                </div>
             )}
             <div className="browser-body">
                 <div

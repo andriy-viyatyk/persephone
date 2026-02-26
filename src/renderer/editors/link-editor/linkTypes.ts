@@ -46,6 +46,8 @@ export interface LinkEditorData {
         categoryViewMode?: Record<string, LinkViewMode>;
         /** View mode per tag (empty string = all) */
         tagViewMode?: Record<string, LinkViewMode>;
+        /** View mode per hostname (empty string = all) */
+        hostnameViewMode?: Record<string, LinkViewMode>;
         /** Ordered array of pinned link IDs */
         pinnedLinks?: string[];
         /** Width of the pinned links panel */

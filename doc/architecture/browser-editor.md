@@ -25,6 +25,17 @@ The main process intercepts these via `setWindowOpenHandler()` on the webContent
 
 **Important:** The `<webview>` element requires `allowpopups="true"` for `setWindowOpenHandler` to fire on `target="_blank"` link clicks.
 
+### Popup/Tab Rate Limiting
+
+Both code paths (internal tabs and real popup windows) are protected by `PopupRateLimiter` — a time-window rate limiter allowing max 3 requests within 2 seconds per internal tab. When exceeded:
+
+- **Internal tabs** (renderer): blocked in `BrowserWebviewModel.handleBrowserEvent("new-window")`; increments `blockedPopupCount` in state
+- **Popup windows** (main process): blocked in `setWindowOpenHandler`; sends `"popups-blocked"` IPC event to renderer
+
+A notification bar appears below the loading indicator showing the blocked count. The user can click "Allow" to permanently whitelist the page for the session (sends `BrowserChannel.allowPopups` IPC to also unblock main process rate limiting), or dismiss the bar.
+
+The rate limiter (`src/ipc/popup-rate-limiter.ts`) is shared between main and renderer processes (separate instances, same logic). It supports per-key tracking, permanent allow-listing, and prefix-based operations for cleanup.
+
 ## Process Architecture
 
 ```
@@ -164,6 +175,7 @@ The renderer builds the menu dynamically based on `params` fields from the `cont
 | `src/main/browser-service.ts` | Main | Attaches to webContents, relays events via IPC, audio state, hotkeys, cache cleanup |
 | `src/preload-webview.ts` | Guest | MutationObserver for title/favicon, image tracking on link clicks |
 | `src/ipc/browser-ipc.ts` | Shared | IPC channel names and type definitions |
+| `src/ipc/popup-rate-limiter.ts` | Shared | Time-window rate limiter for popup/tab spam blocking |
 | `src/renderer/store/link-open-menu.tsx` | Renderer | Shared helper for "Open in..." browser menu items |
 | `src/renderer/core/state/events.ts` | Renderer | `globalKeyDown` Subscription for keyboard event broadcasting |
 

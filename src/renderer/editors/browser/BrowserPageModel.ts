@@ -206,6 +206,9 @@ export interface BrowserPageState extends IPage {
     isBookmarked: boolean;
     /** Whether bookmarks have been initialized. */
     bookmarksReady: boolean;
+
+    /** Number of popups/tabs blocked by rate limiting since last dismiss. */
+    blockedPopupCount: number;
 }
 
 const DEFAULT_URL = "about:blank";
@@ -265,6 +268,7 @@ export const getDefaultBrowserPageState = (): BrowserPageState => {
         bookmarksWidth: 0,
         isBookmarked: false,
         bookmarksReady: false,
+        blockedPopupCount: 0,
     };
 };
 
@@ -773,6 +777,19 @@ export class BrowserPageModel extends PageModel<BrowserPageState, void> {
             const key = `${this.id}/${tab.id}`;
             ipcRenderer.send(BrowserChannel.setAudioMuted, key, tab.muted || newPageMuted);
         }
+    };
+
+    /** Dismiss the "popups blocked" notification bar. */
+    dismissBlockedPopups = () => {
+        this.state.update((s) => { s.blockedPopupCount = 0; });
+    };
+
+    /** Allow popups for this page (disables rate limiting). */
+    allowPopups = () => {
+        this.webview.popupsAllowed = true;
+        this.webview.tabRateLimiter.allowByPrefix("");
+        ipcRenderer.send(BrowserChannel.allowPopups, this.id);
+        this.state.update((s) => { s.blockedPopupCount = 0; });
     };
 
     setTabsPanelWidth = (width: number) => {

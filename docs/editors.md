@@ -162,6 +162,7 @@ A built-in web browser for viewing documentation, APIs, and web resources withou
 - **Session restore** — all internal tabs, URLs, navigation history, and profile selection saved and restored across app restarts
 - **Isolated storage** — each profile has its own cookies, storage, and cache, separated from the main application
 - **Automatic cache cleanup** — HTTP cache, compiled code cache, and service worker caches are cleared when a browser page is closed to save disk space; cookies and site data are preserved
+- **Popup blocking** — sites that try to open excessive popups or tabs are rate-limited; a notification bar appears with "Allow" to temporarily permit popups for the page, or dismiss to hide the bar
 - **Bookmarks** — per-profile bookmark management using `.link.json` files
   - **Star button (☆)** in the URL bar — quick-add or edit a bookmark for the current page
     - Empty star when URL is not bookmarked; filled star when already bookmarked
@@ -217,6 +218,7 @@ For `.todo.json` files — a structured task list interface:
 - **Inline editing** — edit titles and comments for both done and undone items
 - **List management** — add, rename, and delete lists
 - **Tag management** — add, rename, delete tags; assign colors from a predefined palette
+- **Session state persistence** — selected list and tag are remembered across app restarts
 - Can switch to Monaco for raw JSON editing
 
 ## Notebook Editor
@@ -237,9 +239,10 @@ See **[Notebook Editor](./notebook.md)** for detailed documentation.
 
 For `.link.json` files — a structured link manager:
 
-- **Categories** and **tags** for organizing links
+- **Categories**, **tags**, and **hostnames** for organizing and filtering links
+- **Hostnames panel** — collapsible sidebar panel showing hostnames extracted from all links, with link counts; click to filter
 - **Multiple view modes** — List, Landscape tiles, Portrait tiles (normal and large variants)
-- **View mode per category and per tag** — each category or tag remembers its preferred layout
+- **View mode per category, per tag, and per hostname** — each filter remembers its preferred layout
 - **Image tiles** — tile views display preview images with "no image" placeholder for links without images
 - **Edit/Create dialog** — title (auto-growing), URL, category (with autocomplete), tags (chip-based with autocomplete), image URL with preview
 - **Search** — toolbar search filters links by title or URL
@@ -251,6 +254,7 @@ For `.link.json` files — a structured link manager:
 - **Favicons** — cached favicons from the internal browser are displayed next to links in list view and as fallback in tile view
 - **Drag-and-drop** — drag links onto categories to reassign them; drag categories onto other categories to reparent (with confirmation)
 - **Pinned links panel** — pin important links for quick access; pinned panel appears on the right edge, auto-hides when empty, resizable, with drag-to-reorder support
+- **Session state persistence** — selected category, tag, hostname, and expanded panel are remembered across app restarts
 - Can switch to Monaco for raw JSON editing
 
 ## Switching Editors
