@@ -23,6 +23,13 @@ Release notes and changelog for js-notepad.
 
 ### Improvements
 
+- **Browser Editor — Find in Page** — `Ctrl+F` now opens a proper inline search bar (replacing the `prompt()` dialog):
+  - Match counter showing "3 of 15" or "No results"
+  - Next/Previous navigation with `Enter`/`Shift+Enter` or `F3`/`Shift+F3`
+  - Close with `Escape` or close button — clears all highlights
+  - Works when focus is inside the web page (via main process key interception)
+  - Auto-closes on page navigation or tab switch
+
 - **Browser Editor — Keyboard Shortcuts** — standard browser hotkeys now work regardless of focus location:
   - `F5` — Reload page
   - `Ctrl+F5` / `Ctrl+Shift+R` — Hard reload (bypass cache)

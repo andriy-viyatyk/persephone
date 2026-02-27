@@ -209,6 +209,15 @@ export interface BrowserPageState extends IPage {
 
     /** Number of popups/tabs blocked by rate limiting since last dismiss. */
     blockedPopupCount: number;
+
+    /** Whether the find-in-page bar is visible. */
+    findBarVisible: boolean;
+    /** Current find-in-page search text. */
+    findText: string;
+    /** Active match ordinal (0-based). */
+    findActiveMatch: number;
+    /** Total number of matches found. */
+    findTotalMatches: number;
 }
 
 const DEFAULT_URL = "about:blank";
@@ -269,6 +278,10 @@ export const getDefaultBrowserPageState = (): BrowserPageState => {
         isBookmarked: false,
         bookmarksReady: false,
         blockedPopupCount: 0,
+        findBarVisible: false,
+        findText: "",
+        findActiveMatch: 0,
+        findTotalMatches: 0,
     };
 };
 
@@ -392,10 +405,20 @@ export class BrowserPageModel extends PageModel<BrowserPageState, void> {
             this.webview.openDevTools();
             return;
         }
-        // Escape — stop loading
+        // Ctrl+F — open find bar
+        if (keyLower === "f" && e.ctrlKey) {
+            e.preventDefault();
+            this.webview.openFind();
+            return;
+        }
+        // Escape — close find bar first, then stop loading
         if (e.key === "Escape") {
             e.preventDefault();
-            this.webview.getActiveWebview()?.stop();
+            if (this.state.get().findBarVisible) {
+                this.webview.closeFind();
+            } else {
+                this.webview.getActiveWebview()?.stop();
+            }
             return;
         }
         // Alt+Left / Alt+Right — back / forward
@@ -754,6 +777,13 @@ export class BrowserPageModel extends PageModel<BrowserPageState, void> {
             if (!tab) return;
             s.activeTabId = internalTabId;
             this.syncTopLevelFromTab(s, tab);
+            // Close find bar — search context changes with the tab
+            if (s.findBarVisible) {
+                s.findBarVisible = false;
+                s.findText = "";
+                s.findActiveMatch = 0;
+                s.findTotalMatches = 0;
+            }
         });
     };
 

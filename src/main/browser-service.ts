@@ -180,6 +180,10 @@ function registerWebview(event: IpcMainEvent, request: BrowserRegisterRequest) {
         } else if (input.key === "Escape") {
             _e.preventDefault();
             wc.stop();
+            sendEvent(sender, tabId, internalTabId, "hide-find-bar", {});
+        } else if (keyLower === "f" && input.control) {
+            _e.preventDefault();
+            sendEvent(sender, tabId, internalTabId, "show-find-bar", {});
         } else if (input.alt && (input.key === "ArrowLeft" || input.key === "ArrowRight")) {
             _e.preventDefault();
             if (input.key === "ArrowLeft") {

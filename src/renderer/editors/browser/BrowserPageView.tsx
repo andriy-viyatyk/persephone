@@ -38,6 +38,7 @@ import { UrlSuggestionsDropdown } from "./UrlSuggestionsDropdown";
 import { BookmarksDrawer } from "./BookmarksDrawer";
 import { DownloadButton } from "./DownloadButton";
 import { BrowserDownloadsPopup } from "./BrowserDownloadsPopup";
+import { BrowserFindBar } from "./BrowserFindBar";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const WEBVIEW_PRELOAD_URL = (window as any).webviewPreloadUrl as string;
@@ -280,15 +281,29 @@ function BrowserWebviewItem({
                 if (Array.isArray(imgUrls) && imgUrls.length > 0) {
                     model.bookmarksUI.trackClickedImages(internalTabId, imgUrls);
                 }
+            } else if (channel === "show-find-bar") {
+                model.webview.openFind();
+            } else if (channel === "hide-find-bar") {
+                if (model.state.get().findBarVisible) {
+                    model.webview.closeFind();
+                }
             }
         };
 
         webview.addEventListener("ipc-message", onIpcMessage);
 
+        const onFoundInPage = (event: Electron.FoundInPageEvent) => {
+            if (isActive) {
+                model.webview.handleFoundInPage(event.result);
+            }
+        };
+        webview.addEventListener("found-in-page", onFoundInPage);
+
         return () => {
             model.webview.webviewReady.delete(internalTabId);
             webview.removeEventListener("dom-ready", onDomReady);
             webview.removeEventListener("ipc-message", onIpcMessage);
+            webview.removeEventListener("found-in-page", onFoundInPage);
             if (registered) {
                 const key = `${tabId}/${internalTabId}`;
                 ipcRenderer.send(BrowserChannel.unregister, key);
@@ -339,6 +354,7 @@ function BrowserPageView({ model }: BrowserPageViewProps) {
         urlInput, suggestionsOpen, hoveredIndex,
         popupOpen, bookmarksOpen, bookmarksWidth,
         bookmarksReady, isBookmarked, blockedPopupCount,
+        findBarVisible, findText, findActiveMatch, findTotalMatches,
     } = model.state.use((s) => {
         const activeTab = s.tabs.find((t) => t.id === s.activeTabId);
         return {
@@ -361,6 +377,10 @@ function BrowserPageView({ model }: BrowserPageViewProps) {
             bookmarksReady: s.bookmarksReady,
             isBookmarked: s.isBookmarked,
             blockedPopupCount: s.blockedPopupCount,
+            findBarVisible: s.findBarVisible,
+            findText: s.findText,
+            findActiveMatch: s.findActiveMatch,
+            findTotalMatches: s.findTotalMatches,
             // Included for re-render triggers (used by sub-model computed getters)
             searchEngineId: s.searchEngineId,
             userHasTyped: s.userHasTyped,
@@ -585,6 +605,17 @@ function BrowserPageView({ model }: BrowserPageViewProps) {
                         />
                     ))}
                     {popupOpen && <div className="webview-click-overlay" />}
+                    {findBarVisible && (
+                        <BrowserFindBar
+                            findText={findText}
+                            activeMatch={findActiveMatch}
+                            totalMatches={findTotalMatches}
+                            onFindTextChange={webview.setFindText}
+                            onNext={webview.findNext}
+                            onPrev={webview.findPrev}
+                            onClose={webview.closeFind}
+                        />
+                    )}
                 </div>
                 {bookmarksReady && model.bookmarks && (
                     <BookmarksDrawer

@@ -14,6 +14,7 @@ Current work in progress and planned tasks.
 
 | ID | Title | Notes |
 |----|-------|-------|
+| US-039 | Browser Find in Page | Inline search bar with match counter, Ctrl+F interception via main process + preload script + renderer keydown, webview.findInPage() API |
 | US-030 | Browser Download Progress & History | Toolbar download button with SVG progress ring, Popper popup with download list, main-process DownloadService with IPC broadcasting, native save dialog for reliable path capture, global state shared across windows, last 5 completed persisted. Also fixed external URL routing (left-to-right search, default profile only). |
 | US-036 | Register as Default Browser | HKCU registry management (no admin), Settings page UI, deep-link to Windows Default Apps, separate eOpenExternalUrl event for OS URLs, launcher version info for proper app name/icon |
 | US-038 | Switch to electron-builder + NSIS | electron-builder replaces Forge makers, NSIS installer with custom options page (shortcuts, context menu, file associations, browser registration), AllowSetForegroundWindow for bring-to-front, GitHub Actions with Rust toolchain |

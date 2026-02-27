@@ -53,7 +53,9 @@ export type BrowserEventType =
     | "new-window"
     | "context-menu"
     | "audio-state-changed"
-    | "popups-blocked";
+    | "popups-blocked"
+    | "show-find-bar"
+    | "hide-find-bar";
 
 export interface BrowserEventData {
     url?: string;
