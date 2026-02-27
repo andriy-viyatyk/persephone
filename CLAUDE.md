@@ -197,3 +197,5 @@ See [/doc/standards/coding-style.md](doc/standards/coding-style.md) for complete
 | Color tokens             | `/src/renderer/theme/color.ts`                    |
 | Theme definitions        | `/src/renderer/theme/themes/`                     |
 | App settings             | `/src/renderer/store/app-settings.ts`             |
+| Named Pipe server        | `/src/main/pipe-server.ts`                        |
+| Rust launcher            | `/launcher/src/main.rs`                           |

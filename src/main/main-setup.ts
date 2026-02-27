@@ -10,6 +10,7 @@ import { setupTray } from "./tray-setup";
 import { versionService } from "./version-service";
 import { initSearchHandlers } from "./search-service";
 import { initBrowserHandlers } from "./browser-service";
+import { startPipeServer, stopPipeServer } from "./pipe-server";
 
 export function setupMainProcess() {
     protocol.registerSchemesAsPrivileged([
@@ -98,11 +99,16 @@ export function setupMainProcess() {
         registerAssetProtocol(fileAccessPersistPartition);
         openWindows.restoreState();
         setupTray();
+        startPipeServer();
 
         // Check for updates after a short delay to not slow down startup
         setTimeout(() => {
             versionService.checkForUpdates();
         }, 5000);
+    });
+
+    app.on("will-quit", () => {
+        stopPipeServer();
     });
 
     app.on("window-all-closed", () => {

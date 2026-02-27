@@ -118,6 +118,14 @@ class OpenWindows {
         }
     }
 
+    handleOpenUrl = (url: string) => {
+        const mainWin = this.mainWindow;
+        if (mainWin) {
+            mainWin.send(EventEndpoint.eOpenUrl, url);
+            mainWin.focus();
+        }
+    }
+
     private saveState = (): void => {
         const state: OpenWindowData[] = this.windows.map((w) => ({
             index: w.index,

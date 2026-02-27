@@ -1,0 +1,18 @@
+[package]
+name = "js-notepad-launcher"
+version = "1.0.0"
+edition = "2021"
+
+[[bin]]
+name = "js-notepad-launcher"
+path = "src/main.rs"
+
+[build-dependencies]
+winres = "0.1"
+
+[profile.release]
+opt-level = "z"     # Optimize for size
+lto = true          # Link-time optimization
+codegen-units = 1   # Single codegen unit for better optimization
+strip = true        # Strip debug symbols
+panic = "abort"     # Abort on panic (smaller binary)

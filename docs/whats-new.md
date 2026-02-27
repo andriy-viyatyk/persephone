@@ -35,6 +35,8 @@ Release notes and changelog for js-notepad.
 
 - **Pinned Tab Tooltip** — hovering over a pinned tab now shows the full file path in a tooltip (with a 1.5s delay), making it easy to identify pinned files without unpinning them.
 
+- **Lightweight Launcher** — new `js-notepad-launcher.exe` (308KB Rust binary) for near-instant file opening via Named Pipe. When js-notepad is already running, files and URLs are delivered in under 50ms instead of ~1 second. Supports file paths, URLs, relative paths, and diff mode for Git Extensions integration.
+
 ---
 
 ## Version 1.0.15

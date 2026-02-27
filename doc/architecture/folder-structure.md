@@ -12,6 +12,10 @@ js-notepad/
 │   ├── ipc/                # IPC communication
 │   ├── shared/             # Shared code
 │   └── preload.ts          # Preload script
+├── launcher/               # Rust launcher (Named Pipe client)
+│   ├── src/main.rs         # Launcher source
+│   ├── build.rs            # Icon embedding build script
+│   └── Cargo.toml          # Rust project config
 ├── assets/                 # Static assets
 ├── patches/                # Dependency patches
 ├── doc/                    # Developer documentation

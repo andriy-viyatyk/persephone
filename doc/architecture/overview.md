@@ -21,7 +21,8 @@ js-notepad is an **Electron desktop application** - a Windows Notepad replacemen
 │ - Window management │ - React UI                            │
 │ - System tray       │ - Monaco Editor                       │
 │ - File dialogs      │ - State management                    │
-│ - Native menus      │ - Script execution                    │
+│ - Named Pipe server │ - Script execution                    │
+│ - Native menus      │                                       │
 └─────────────────────┴───────────────────────────────────────┘
          │                           │
          └───────── IPC ─────────────┘

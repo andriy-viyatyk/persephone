@@ -10,7 +10,6 @@ Current work in progress and planned tasks.
 
 | ID | Title | Priority | Link |
 |----|-------|----------|------|
-| US-037 | Lightweight Rust Launcher | High | [README](US-037-rust-launcher/README.md) |
 | US-038 | Switch to electron-builder + NSIS | High | [README](US-038-nsis-installer/README.md) |
 | US-036 | Register as Default Browser | Medium | [README](US-036-default-browser-registration/README.md) |
 | US-030 | Download Manager | Medium | [README](US-030-download-manager/README.md) |
@@ -19,6 +18,7 @@ Current work in progress and planned tasks.
 
 | ID | Title | Notes |
 |----|-------|-------|
+| US-037 | Lightweight Rust Launcher | 308KB Rust launcher with Named Pipe IPC for instant file/URL/diff opening, pipe server in main process, concurrent connection support |
 | US-035 | Miscellaneous Enhancements | Link Editor hostnames panel, Link/ToDo Editor session state persistence, pinned tab file path tooltip, browser popup/tab spam blocking |
 | US-034 | Link Editor Enhancement | Favicon caching & display, drag-and-drop (links→categories, categories→categories with reparenting), pinned links panel with drag-to-reorder |
 | US-028 | Browser Bookmarks (Links Editor Integration) | Per-profile bookmarks with star button, sliding drawer with full Link Editor, image discovery (meta tags + click tracking + context menu), encrypted bookmarks support via async password dialog, auto-save |

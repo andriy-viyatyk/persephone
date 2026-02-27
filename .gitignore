@@ -94,3 +94,6 @@ out/
 
 /data/
 /temp/
+
+# Rust launcher build artifacts
+launcher/target/
