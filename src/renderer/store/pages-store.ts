@@ -333,6 +333,10 @@ export class PagesModel extends TModel<OpenFilesState> {
         if (fileToOpen) {
             await this.openFile(fileToOpen);
         }
+        const urlToOpen = await api.getUrlToOpen();
+        if (urlToOpen) {
+            await this.handleExternalUrl(urlToOpen);
+        }
         this.checkEmptyPage();
 
         rendererEvents.eOpenFile.subscribe(this.openFile);
@@ -341,6 +345,7 @@ export class PagesModel extends TModel<OpenFilesState> {
         rendererEvents.eMovePageIn.subscribe(this.movePageIn);
         rendererEvents.eMovePageOut.subscribe(this.movePageOut);
         rendererEvents.eOpenUrl.subscribe(this.handleOpenUrl);
+        rendererEvents.eOpenExternalUrl.subscribe(this.handleExternalUrl);
 
         setTimeout(() => {
             api.windowReady();
@@ -363,6 +368,11 @@ export class PagesModel extends TModel<OpenFilesState> {
         } else {
             shell.openExternal(url);
         }
+    };
+
+    handleExternalUrl = async (url: string) => {
+        const { openUrlInBrowserTab } = await import("./page-actions");
+        openUrlInBrowserTab(url);
     };
 
     restoreModel = async (data: Partial<IPage>): Promise<PageModel | null> => {

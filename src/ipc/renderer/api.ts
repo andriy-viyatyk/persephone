@@ -166,6 +166,26 @@ class ApiCalls implements Api {
     setNativeTheme = async (mode: "light" | "dark") => {
         return executeOnce<void>(Endpoint.setNativeTheme, mode);
     }
+
+    getUrlToOpen = async () => {
+        return executeOnce<string | undefined>(Endpoint.getUrlToOpen);
+    }
+
+    registerAsDefaultBrowser = async () => {
+        return executeOnce<void>(Endpoint.registerAsDefaultBrowser);
+    }
+
+    unregisterAsDefaultBrowser = async () => {
+        return executeOnce<void>(Endpoint.unregisterAsDefaultBrowser);
+    }
+
+    isRegisteredAsDefaultBrowser = async () => {
+        return executeOnce<boolean>(Endpoint.isRegisteredAsDefaultBrowser);
+    }
+
+    openDefaultAppsSettings = async () => {
+        return executeOnce<void>(Endpoint.openDefaultAppsSettings);
+    }
 }
 
 export const api = new ApiCalls();

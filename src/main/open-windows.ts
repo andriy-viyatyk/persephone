@@ -121,7 +121,7 @@ class OpenWindows {
     handleOpenUrl = (url: string) => {
         const mainWin = this.mainWindow;
         if (mainWin) {
-            mainWin.send(EventEndpoint.eOpenUrl, url);
+            mainWin.send(EventEndpoint.eOpenExternalUrl, url);
             mainWin.focus();
         }
     }

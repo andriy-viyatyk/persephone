@@ -118,10 +118,18 @@ export function setupMainProcess() {
     });
 
     app.on("second-instance", (event, commandLine, workingDirectory) => {
-        const filePath = commandLine[2];
+        const arg = commandLine[2];
         openWindows.bringToFront();
 
-        if (filePath?.toLowerCase().trim() === "diff") {
+        if (!arg) return;
+
+        // URL from browser registration (http:// or https://)
+        if (arg.startsWith("http://") || arg.startsWith("https://")) {
+            openWindows.handleOpenUrl(arg);
+            return;
+        }
+
+        if (arg.toLowerCase().trim() === "diff") {
             const firstPath = commandLine[3];
             const secondPath = commandLine[4];
             const resolvedFirstPath = path.isAbsolute(firstPath)
@@ -141,13 +149,13 @@ export function setupMainProcess() {
                     resolvedSecondPath,
                 );
             }
-        } else if (filePath && !path.isAbsolute(filePath)) {
-            const resolvedPath = path.resolve(workingDirectory, filePath);
+        } else if (!path.isAbsolute(arg)) {
+            const resolvedPath = path.resolve(workingDirectory, arg);
             if (isValidFilePath(resolvedPath)) {
                 openWindows.handleOpenFile(resolvedPath);
             }
-        } else if (filePath && isValidFilePath(filePath)) {
-            openWindows.handleOpenFile(filePath);
+        } else if (isValidFilePath(arg)) {
+            openWindows.handleOpenFile(arg);
         }
     });
 }

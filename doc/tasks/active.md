@@ -4,19 +4,19 @@ Current work in progress and planned tasks.
 
 ## In Progress
 
-*No tasks in progress.*
+(none)
 
 ## Planned (Next)
 
 | ID | Title | Priority | Link |
 |----|-------|----------|------|
-| US-036 | Register as Default Browser | Medium | [README](US-036-default-browser-registration/README.md) |
 | US-030 | Download Manager | Medium | [README](US-030-download-manager/README.md) |
 
 ## Recently Completed
 
 | ID | Title | Notes |
 |----|-------|-------|
+| US-036 | Register as Default Browser | HKCU registry management (no admin), Settings page UI, deep-link to Windows Default Apps, separate eOpenExternalUrl event for OS URLs, launcher version info for proper app name/icon |
 | US-038 | Switch to electron-builder + NSIS | electron-builder replaces Forge makers, NSIS installer with custom options page (shortcuts, context menu, file associations, browser registration), AllowSetForegroundWindow for bring-to-front, GitHub Actions with Rust toolchain |
 | US-037 | Lightweight Rust Launcher | 308KB Rust launcher with Named Pipe IPC for instant file/URL/diff opening, pipe server in main process, concurrent connection support |
 | US-035 | Miscellaneous Enhancements | Link Editor hostnames panel, Link/ToDo Editor session state persistence, pinned tab file path tooltip, browser popup/tab spam blocking |

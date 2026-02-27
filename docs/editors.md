@@ -183,6 +183,8 @@ A built-in web browser for viewing documentation, APIs, and web resources withou
 
 **Link open behavior:** External links clicked in Monaco or Markdown editors can open in the default OS browser or in the nearest internal Browser tab. Configure in **Settings → Links**. When set to "internal browser", links open in the closest browser tab (searching right, then left from the active page); if none exists, a new browser page is created.
 
+**Default browser registration:** js-notepad can register itself as the Windows default browser so that clicking links in other applications (email, chat, documents) opens them in js-notepad's browser editor. Go to **Settings → Default Browser** to register or unregister. After registering, click "Open Windows Default Apps" to set js-notepad as the default in Windows Settings. URLs received from the OS always open in the internal browser tab using the default profile, regardless of the "Link open behavior" setting. No admin privileges required — registry keys are written to HKCU (per-user).
+
 **Security:** Navigation to local file protocols (`file://`, `app-asset://`) is blocked.
 
 ## Compare Mode

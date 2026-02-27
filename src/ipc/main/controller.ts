@@ -2,7 +2,7 @@ import { app, BrowserWindow, ipcMain, IpcMainEvent, nativeTheme, shell } from "e
 import { Api, Endpoint, EventEndpoint } from "../api-types";
 import { getAssetPath, getAppRootPath } from "../../main/utils";
 import { showOpenFileDialog, showOpenFolderDialog, showSaveFileDialog } from "./dialog-handlers";
-import { getFileToOpen, windowReady } from "./window-handlers";
+import { getFileToOpen, getUrlToOpen, windowReady } from "./window-handlers";
 import { OpenFileDialogParams, RuntimeVersions, SaveFileDialogParams, UpdateCheckResult } from "../api-param-types";
 import { openWindows } from "../../main/open-windows";
 import { initRendererEvents } from "./renderer-events";
@@ -10,6 +10,7 @@ import { WindowPages } from "../../shared/types";
 import { dragModel } from "../../main/drag-model";
 import { fileIconCache } from "../../main/fileIconCache";
 import { versionService } from "../../main/version-service";
+import * as browserRegistration from "../../main/browser-registration";
 
 type AddEventParam<T> = T extends (...args: infer Args) => infer Return
     ? (event: IpcMainEvent, ...args: Args) => Return
@@ -102,6 +103,10 @@ class Controller implements MainApi {
         return getFileToOpen();
     }
 
+    getUrlToOpen = async (event: IpcMainEvent): Promise<string | undefined> => {
+        return getUrlToOpen();
+    }
+
     getWindowIndex = async (event: IpcMainEvent): Promise<number> => {
         const window = BrowserWindow.fromWebContents(event.sender);
         return openWindows.findByWindow(window)?.index ?? -1;
@@ -146,6 +151,22 @@ class Controller implements MainApi {
     setNativeTheme = async (event: IpcMainEvent, mode: "light" | "dark"): Promise<void> => {
         nativeTheme.themeSource = mode;
     }
+
+    registerAsDefaultBrowser = async (event: IpcMainEvent): Promise<void> => {
+        browserRegistration.registerAsDefaultBrowser();
+    }
+
+    unregisterAsDefaultBrowser = async (event: IpcMainEvent): Promise<void> => {
+        browserRegistration.unregisterAsDefaultBrowser();
+    }
+
+    isRegisteredAsDefaultBrowser = async (event: IpcMainEvent): Promise<boolean> => {
+        return browserRegistration.isRegisteredAsDefaultBrowser();
+    }
+
+    openDefaultAppsSettings = async (event: IpcMainEvent): Promise<void> => {
+        browserRegistration.openDefaultAppsSettings();
+    }
 }
 
 const controllerInstance = new Controller();
@@ -182,6 +203,7 @@ const init = () => {
     bindEndpoint(Endpoint.showFolder, controllerInstance.showFolder);
     bindEndpoint(Endpoint.windowReady, controllerInstance.windowReady);
     bindEndpoint(Endpoint.getFileToOpen, controllerInstance.getFileToOpen);
+    bindEndpoint(Endpoint.getUrlToOpen, controllerInstance.getUrlToOpen);
     bindEndpoint(Endpoint.getWindowIndex, controllerInstance.getWindowIndex);
     bindEndpoint(Endpoint.openNewWindow, controllerInstance.openNewWindow);
     bindEndpoint(Endpoint.getWindowPages, controllerInstance.getWindowPages);
@@ -192,6 +214,10 @@ const init = () => {
     bindEndpoint(Endpoint.getAppVersion, controllerInstance.getAppVersion);
     bindEndpoint(Endpoint.getRuntimeVersions, controllerInstance.getRuntimeVersions);
     bindEndpoint(Endpoint.setNativeTheme, controllerInstance.setNativeTheme);
+    bindEndpoint(Endpoint.registerAsDefaultBrowser, controllerInstance.registerAsDefaultBrowser);
+    bindEndpoint(Endpoint.unregisterAsDefaultBrowser, controllerInstance.unregisterAsDefaultBrowser);
+    bindEndpoint(Endpoint.isRegisteredAsDefaultBrowser, controllerInstance.isRegisteredAsDefaultBrowser);
+    bindEndpoint(Endpoint.openDefaultAppsSettings, controllerInstance.openDefaultAppsSettings);
 
     initRendererEvents();
 }

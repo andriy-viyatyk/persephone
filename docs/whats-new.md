@@ -37,6 +37,15 @@ Release notes and changelog for js-notepad.
 
 - **Lightweight Launcher** — new `js-notepad-launcher.exe` (308KB Rust binary) for near-instant file opening via Named Pipe. When js-notepad is already running, files and URLs are delivered in under 50ms instead of ~1 second. Supports file paths, URLs, relative paths, and diff mode for Git Extensions integration.
 
+- **Register as Default Browser** — js-notepad can now register itself as a Windows default browser, so clicking links in other applications (email, chat, documents) opens them in js-notepad's built-in browser editor.
+  - **Settings → Default Browser** section with Register / Unregister buttons and status indicator
+  - "Open Windows Default Apps" button navigates directly to the JS-Notepad page in Windows Settings
+  - Registry keys written to HKCU (no admin required)
+  - URLs from the OS always open in the internal browser tab using the default profile
+  - Works on cold start and when js-notepad is already running (via the launcher's named pipe)
+
+- **NSIS Installer** — production builds now use electron-builder with a custom NSIS installer featuring an options page: desktop/start menu shortcuts, Explorer context menu ("Open with js-notepad"), file associations, and browser registration.
+
 ---
 
 ## Version 1.0.15

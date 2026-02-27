@@ -376,6 +376,21 @@ const SettingsPageRoot = styled.div({
         },
     },
 
+    "& .browser-reg-row": {
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        flexWrap: "wrap",
+    },
+
+    "& .browser-reg-status": {
+        fontSize: 12,
+        color: color.text.light,
+        "&.registered": {
+            color: color.misc.green,
+        },
+    },
+
     "& .settings-select": {
         fontSize: 13,
         padding: "6px 8px",
@@ -727,6 +742,74 @@ function LinkBehaviorSection() {
 }
 
 // ============================================================================
+// Default Browser Section
+// ============================================================================
+
+function DefaultBrowserSection() {
+    const [registered, setRegistered] = useState<boolean | null>(null);
+    const [busy, setBusy] = useState(false);
+
+    const checkStatus = useCallback(async () => {
+        const result = await api.isRegisteredAsDefaultBrowser();
+        setRegistered(result);
+    }, []);
+
+    // Check on mount
+    useState(() => { checkStatus(); });
+
+    const handleRegister = async () => {
+        setBusy(true);
+        try {
+            await api.registerAsDefaultBrowser();
+            await checkStatus();
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    const handleUnregister = async () => {
+        setBusy(true);
+        try {
+            await api.unregisterAsDefaultBrowser();
+            await checkStatus();
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    const handleOpenSettings = () => {
+        api.openDefaultAppsSettings();
+    };
+
+    return (
+        <>
+            <div className="section-hint">
+                Register js-notepad as a browser so it appears in Windows Default Apps
+            </div>
+            <div className="browser-reg-row">
+                {registered === null ? (
+                    <span className="browser-reg-status">Checking...</span>
+                ) : registered ? (
+                    <>
+                        <span className="browser-reg-status registered">Registered</span>
+                        <button className="link-button" disabled={busy} onClick={handleUnregister}>
+                            Unregister
+                        </button>
+                    </>
+                ) : (
+                    <button className="link-button" disabled={busy} onClick={handleRegister}>
+                        Register as Default Browser
+                    </button>
+                )}
+                <button className="link-button" onClick={handleOpenSettings}>
+                    Open Windows Default Apps
+                </button>
+            </div>
+        </>
+    );
+}
+
+// ============================================================================
 // SettingsPage Component
 // ============================================================================
 
@@ -809,6 +892,11 @@ function SettingsPage({ model }: SettingsPageProps) {
                     How external links open from editors (Monaco, Markdown)
                 </div>
                 <LinkBehaviorSection />
+
+                <hr className="divider" />
+
+                <div className="section-label">Default Browser</div>
+                <DefaultBrowserSection />
 
                 <hr className="divider" />
 

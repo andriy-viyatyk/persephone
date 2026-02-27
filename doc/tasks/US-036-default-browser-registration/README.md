@@ -2,7 +2,7 @@
 
 ## Status
 
-**Status:** Planned
+**Status:** Completed
 **Priority:** Medium
 
 ## Summary
@@ -96,15 +96,15 @@ For Electron apps:
 
 ## Acceptance Criteria
 
-- [ ] js-notepad appears in Windows Settings > Default Apps > Web browser list
-- [ ] Clicking a URL in another app opens it in js-notepad's browser editor
-- [ ] Works when js-notepad is already running (single instance, URL routed to existing window)
-- [ ] Works on cold start (URL parsed from `process.argv`)
-- [ ] Settings page has "Register as Default Browser" / "Unregister" option
-- [ ] Registry keys written to HKCU (no admin required)
-- [ ] Registry keys cleaned up on unregister
-- [ ] No regressions to existing functionality (file opening, command-line args)
-- [ ] Documentation updated
+- [x] js-notepad appears in Windows Settings > Default Apps > Web browser list
+- [x] Clicking a URL in another app opens it in js-notepad's browser editor
+- [x] Works when js-notepad is already running (single instance, URL routed to existing window)
+- [x] Works on cold start (URL parsed from `process.argv`)
+- [x] Settings page has "Register as Default Browser" / "Unregister" option
+- [x] Registry keys written to HKCU (no admin required)
+- [x] Registry keys cleaned up on unregister
+- [x] No regressions to existing functionality (file opening, command-line args)
+- [x] Documentation updated
 
 ## Technical Approach
 
@@ -161,37 +161,48 @@ Handle `.html`/`.htm` file associations:
 
 ## Implementation Progress
 
-### Phase 1: Registry Management
-- [ ] Choose registry access method (reg.exe vs npm package)
-- [ ] Implement `registerAsDefaultBrowser()`
-- [ ] Implement `unregisterAsDefaultBrowser()`
-- [ ] Implement `isRegisteredAsDefaultBrowser()`
-- [ ] Call `SHChangeNotify` after registry changes
+### Phase 1: Registry Management ✅
+- [x] Using `reg.exe` via `child_process` — simplest, no npm packages needed
+- [x] `registerAsDefaultBrowser()` — writes all HKCU keys (StartMenuInternet, ProgIDs, RegisteredApplications)
+- [x] `unregisterAsDefaultBrowser()` — removes all registry keys
+- [x] `isRegisteredAsDefaultBrowser()` — checks StartMenuInternet key existence
+- [x] `openDefaultAppsSettings()` — opens `ms-settings:defaultapps`
+- [x] `SHChangeNotify` called via PowerShell after registry changes
+- [x] All registry entries point to `js-notepad-launcher.exe` (consistent with NSIS installer)
 
-### Phase 2: URL Handling
-- [ ] Add URL detection in `process.argv` parsing
-- [ ] Handle `second-instance` event with URL routing
-- [ ] Ensure `requestSingleInstanceLock()` is active
-- [ ] Route URL to browser editor (new tab or existing)
+### Phase 2: URL Handling ✅
+- [x] URL detection in `process.argv` parsing (cold start via `window-handlers.ts`)
+- [x] `getUrlToOpen()` IPC endpoint for renderer to get URL on init
+- [x] `second-instance` handler routes URLs to `handleOpenUrl()` (not `handleOpenFile()`)
+- [x] Pipe server already handles URLs via OPEN command (from US-037)
+- [x] `requestSingleInstanceLock()` already active
 
-### Phase 3: Settings UI
-- [ ] Add IPC channels for register/unregister/status
-- [ ] Add Settings UI with register/unregister buttons
-- [ ] Add "Open Default Apps Settings" button
-- [ ] Show registration status
+### Phase 3: Settings UI ✅
+- [x] IPC endpoints: `registerAsDefaultBrowser`, `unregisterAsDefaultBrowser`, `isRegisteredAsDefaultBrowser`, `openDefaultAppsSettings`
+- [x] Settings page "Default Browser" section between Links and File Search
+- [x] Registration status indicator (green "Registered" / register button)
+- [x] "Open Windows Default Apps" button
+- [x] Unregister button when registered
 
-### Phase 4: File Associations (Optional)
-- [ ] Evaluate `.html`/`.htm` handling (text vs browser)
-- [ ] Implement if decided
+### Phase 4: File Associations — Skipped
+- Skipped — `.html`/`.htm` file associations would conflict with existing text editor behavior
 
 ## Notes
+
+### 2026-02-27
+- Implementation completed. Registry keys mirror NSIS installer section 5 exactly.
+- All paths point to launcher exe for consistent behavior with pipe IPC
+- Cold start URL handling added (was missing — `process.argv` only checked for file paths before)
+- `second-instance` handler now checks for URLs before file path logic
+- Added `eOpenExternalUrl` event to separate OS URLs from editor link clicks — OS URLs always open in internal browser tab, editor links respect `link-open-behavior` setting
+- Launcher `build.rs` updated with ProductName/FileDescription so Windows Default Apps shows "JS-Notepad" instead of "Electron"
+- `openDefaultAppsSettings()` deep-links to `ms-settings:defaultapps?registeredAppUser=js-notepad` to open directly to the JS-Notepad page
 
 ### 2026-02-26
 - Task created based on research into Windows default browser registration
 - Key finding: cannot programmatically set as default — must guide user to Windows Settings
 - Decided on HKCU approach (no admin) over installer-based HKLM approach
 - File associations (`.html`/`.htm`) marked as optional — may conflict with existing text editor behavior
-- Need to evaluate registry access packages before implementation
 
 ## Related
 
