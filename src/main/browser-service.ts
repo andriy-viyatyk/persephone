@@ -16,6 +16,7 @@ import {
     BrowserRegisterRequest,
     BrowserEvent,
 } from "../ipc/browser-ipc";
+import { PopupRateLimiter } from "../ipc/popup-rate-limiter";
 
 const BLOCKED_PROTOCOLS = ["file:", "app-asset:", "safe-file:"];
 
@@ -35,6 +36,9 @@ interface RegisteredWebview {
 
 // Active registrations: `${tabId}/${internalTabId}` → registration
 const registrations = new Map<string, RegisteredWebview>();
+
+// Rate limiter for popup windows (window.open calls)
+const popupRateLimiter = new PopupRateLimiter();
 
 function regKey(tabId: string, internalTabId: string): string {
     return `${tabId}/${internalTabId}`;
@@ -159,6 +163,37 @@ function registerWebview(event: IpcMainEvent, request: BrowserRegisterRequest) {
         });
     });
 
+    // Intercept browser hotkeys before the webview consumes them
+    on("before-input-event", (_e: Electron.Event, input: Electron.Input) => {
+        if (input.type !== "keyDown") return;
+        const keyLower = input.key.toLowerCase();
+        if (input.key === "F5" || (keyLower === "r" && input.control)) {
+            _e.preventDefault();
+            if (input.key === "F5" ? input.control : input.shift) {
+                wc.reloadIgnoringCache();
+            } else {
+                wc.reload();
+            }
+        } else if (input.key === "F12") {
+            _e.preventDefault();
+            wc.openDevTools();
+        } else if (input.key === "Escape") {
+            _e.preventDefault();
+            wc.stop();
+            sendEvent(sender, tabId, internalTabId, "hide-find-bar", {});
+        } else if (keyLower === "f" && input.control) {
+            _e.preventDefault();
+            sendEvent(sender, tabId, internalTabId, "show-find-bar", {});
+        } else if (input.alt && (input.key === "ArrowLeft" || input.key === "ArrowRight")) {
+            _e.preventDefault();
+            if (input.key === "ArrowLeft") {
+                wc.goBack();
+            } else {
+                wc.goForward();
+            }
+        }
+    });
+
     // Intercept window.open / target="_blank"
     wc.setWindowOpenHandler(({ url, disposition, features }) => {
         // Link clicks (target="_blank") → open as internal tab
@@ -172,6 +207,13 @@ function registerWebview(event: IpcMainEvent, request: BrowserRegisterRequest) {
 
         // window.open() from JS (OAuth popups, etc.) → allow as real popup window.
         // This preserves window.opener reference needed by auth flows.
+        // Rate-limit to prevent popup spam.
+        const limiterKey = regKey(tabId, internalTabId);
+        if (!popupRateLimiter.isAllowed(tabId) && !popupRateLimiter.check(limiterKey)) {
+            sendEvent(sender, tabId, internalTabId, "popups-blocked", { url });
+            return { action: "deny" };
+        }
+
         // Center the popup on the parent window.
         const parentWindow = BrowserWindow.fromWebContents(sender);
         const parentBounds = parentWindow?.getBounds();
@@ -256,9 +298,22 @@ export function initBrowserHandlers(): void {
         }
     });
 
+    ipcMain.on(BrowserChannel.allowPopups, (_event, tabId: string) => {
+        popupRateLimiter.allowByPrefix(tabId);
+    });
+
     ipcMain.handle(BrowserChannel.clearProfileData, async (_event, partition: string) => {
         const ses = session.fromPartition(partition);
         await ses.clearStorageData();
         await ses.clearCache();
+    });
+
+    ipcMain.handle(BrowserChannel.clearCache, async (_event, partition: string) => {
+        const ses = session.fromPartition(partition);
+        await Promise.all([
+            ses.clearCache(),
+            ses.clearCodeCaches({}),
+            ses.clearStorageData({ storages: ["serviceworkers", "cachestorage"] }),
+        ]);
     });
 }

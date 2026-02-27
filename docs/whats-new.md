@@ -8,7 +8,67 @@ Release notes and changelog for js-notepad.
 
 ## Version 1.0.16 (Upcoming)
 
-*No changes yet.*
+### New Features
+
+- **Browser Editor — Download Manager** — download progress tracking and history in the browser toolbar
+  - **Download button** with circular progress ring that animates while downloads are active (icon turns active color)
+  - Click the button to open a **Downloads popup** listing all downloads (most recent first)
+  - Active downloads show a progress bar with received/total bytes and a **Cancel** button
+  - Completed downloads show **Open** (launches file with default app) and **Show in Folder** (opens Explorer with file selected) buttons
+  - Failed or cancelled downloads display status text
+  - **Clear** button to dismiss completed and failed entries
+  - Global download list — shared across all browser pages and windows
+  - Last 5 completed downloads are persisted and restored on app restart
+  - Uses the native OS save dialog for choosing download location
+
+### Improvements
+
+- **Browser Editor — Find in Page** — `Ctrl+F` now opens a proper inline search bar (replacing the `prompt()` dialog):
+  - Match counter showing "3 of 15" or "No results"
+  - Next/Previous navigation with `Enter`/`Shift+Enter` or `F3`/`Shift+F3`
+  - Close with `Escape` or close button — clears all highlights
+  - Works when focus is inside the web page (via main process key interception)
+  - Auto-closes on page navigation or tab switch
+
+- **Browser Editor — Keyboard Shortcuts** — standard browser hotkeys now work regardless of focus location:
+  - `F5` — Reload page
+  - `Ctrl+F5` / `Ctrl+Shift+R` — Hard reload (bypass cache)
+  - `Ctrl+R` — Reload (alias)
+  - `F12` — Open DevTools
+  - `Alt+Left` / `Alt+Right` — Back / Forward
+  - `Alt+Home` — Navigate to the tab's home page
+  - `Escape` — Stop loading
+
+- **Browser Editor — Automatic Cache Cleanup** — when a browser page is closed, HTTP cache, compiled code cache, and service worker caches are automatically cleared to save disk space. Cookies, localStorage, and other site data are preserved so you stay logged in.
+
+- **Browser Editor — Popup Blocking** — sites that try to spam popup windows or internal tabs are now rate-limited (max 3 within 2 seconds). A notification bar appears when popups are blocked, with an "Allow" button to temporarily permit popups for that page.
+
+- **Link Editor — Browser Selector Button** — toolbar button to choose where links open: OS default browser, internal browser, a specific browser profile, or incognito mode. Initialized from the app setting, adjustable per session.
+
+- **Link Editor — Hostnames Panel** — new collapsible panel in the sidebar showing hostnames extracted from all links, allowing quick filtering by hostname.
+
+- **Link Context Menu — Browser Profiles** — right-click context menu on links in Link Editor, Markdown Preview, and pinned links now includes all configured browser profiles (not just Default/Internal/Incognito).
+
+- **Link Editor — Session State Persistence** — selected category, tag, hostname, and expanded panel are remembered across app restarts (restored when reopening the same file).
+
+- **Todo Editor — Session State Persistence** — selected list and tag are remembered across app restarts.
+
+- **Pinned Tab Tooltip** — hovering over a pinned tab now shows the full file path in a tooltip (with a 1.5s delay), making it easy to identify pinned files without unpinning them.
+
+- **Lightweight Launcher** — new `js-notepad-launcher.exe` (308KB Rust binary) for near-instant file opening via Named Pipe. When js-notepad is already running, files and URLs are delivered in under 50ms instead of ~1 second. Supports file paths, URLs, relative paths, and diff mode for Git Extensions integration.
+
+- **Register as Default Browser** — js-notepad can now register itself as a Windows default browser, so clicking links in other applications (email, chat, documents) opens them in js-notepad's built-in browser editor.
+  - **Settings → Default Browser** section with Register / Unregister buttons and status indicator
+  - "Open Windows Default Apps" button navigates directly to the JS-Notepad page in Windows Settings
+  - Registry keys written to HKCU (no admin required)
+  - URLs from the OS always open in the internal browser tab using the default profile
+  - Works on cold start and when js-notepad is already running (via the launcher's named pipe)
+
+- **NSIS Installer** — production builds now use electron-builder with a custom NSIS installer featuring an options page: desktop/start menu shortcuts, Explorer context menu ("Open with js-notepad"), file associations, and browser registration.
+
+### Bug Fixes
+
+- **Default Browser — External URL Routing** — fixed an issue where clicking links in external applications (when js-notepad is the default browser) could create duplicate browser pages instead of reusing the existing one. External URLs now correctly find the first browser page with the default profile and add a new internal tab there.
 
 ---
 

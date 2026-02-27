@@ -1206,3 +1206,11 @@ export const PinFilledIcon = createIcon(24)(
         strokeLinejoin="round"
     />,
 );
+
+export const DownloadIcon = createIcon(24)(
+    <g fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 3v12" />
+        <path d="M8 11l4 4 4-4" />
+        <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
+    </g>,
+);

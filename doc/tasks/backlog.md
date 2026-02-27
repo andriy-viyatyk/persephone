@@ -269,12 +269,59 @@ Frontend developers occasionally need to inspect fonts. Could show glyph table, 
 
 ---
 
+### Custom Editor Plugins (Single-File HTML)
+
+**Goal:** Allow loading external React (or any web) applications as custom editors inside js-notepad, enabling a plugin-like extensibility model without a full plugin framework.
+
+**Concept:**
+- Any React application bundled into a single `.html` file (via `vite-plugin-singlefile` or similar) can be loaded as a custom editor
+- The editor host loads the HTML file in an Electron `<webview>` tag
+- A preload script injects a `window.jsNotepad` API into the guest page, giving it access to page content, settings, and editor lifecycle
+
+**Architecture:**
+```
+js-notepad
+  └─ CustomEditorHost (registered as a page-editor)
+       └─ <webview src="file:///path/to/editor.html" preload="custom-editor-api.js">
+            └─ Custom React/HTML App
+                 └─ uses window.jsNotepad API
+```
+
+**API Surface (injected via preload):**
+- `jsNotepad.getContent()` / `jsNotepad.setContent(value)` — read/write page content
+- `jsNotepad.getLanguage()` — current language mode
+- `jsNotepad.onContentChanged(callback)` — subscribe to external content changes
+- `jsNotepad.getTheme()` — current theme info for visual consistency
+- `jsNotepad.showMessage(text)` / `jsNotepad.showConfirm(text)` — basic UI dialogs
+
+**Key Decisions:**
+- **`<webview>` vs `<iframe>`**: `<webview>` preferred — native preload support, better isolation, proper IPC bridge
+- **Single-file bundling**: Eliminates asset management; one `.html` file = one editor plugin
+- **Registration**: Could register by file extension pattern (e.g., `*.xyz` → custom editor) or via a manifest file
+
+**Use Cases:**
+- Domain-specific editors (diagram editors, form builders, visual config editors)
+- Third-party integrations without modifying js-notepad core
+- User-created tools that need richer UI than the scripting system provides
+
+**Tasks:**
+- [ ] Design the `jsNotepad` API contract (TypeScript interface)
+- [ ] Create preload script that bridges webview ↔ js-notepad stores
+- [ ] Create `CustomEditorHost` component with `<webview>` management
+- [ ] Register custom editors in EditorRegistry (manifest or settings-based)
+- [ ] Build a sample custom editor as a proof of concept
+- [ ] Document how to create and register custom editor plugins
+- [ ] Handle theme synchronization between host and guest
+
+**Complexity:** High
+
+---
+
 ### Other Feature Ideas
 
 | Idea | Description | Complexity |
 |------|-------------|------------|
 | Settings UI | Visual settings editor | Medium |
-| Plugin System | Load external editor plugins | Very High |
 
 ---
 

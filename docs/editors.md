@@ -53,7 +53,7 @@ For `.md` and `.markdown` files — click **Preview** in the toolbar:
 - **Inline Mermaid diagrams** — ` ```mermaid ` code blocks render as SVG diagrams
 - **Live preview** updates as you type
 - **Minimap** navigation on the right side
-- **Link context menu** — right-click a link for: "Copy Link", "Open in Default Browser", "Open in Internal Browser", "Open in Incognito"
+- **Link context menu** — right-click a link for: "Copy Link", "Open in Default Browser", "Open in Internal Browser", browser profiles, "Open in Incognito"
 
 ## PDF Viewer
 
@@ -108,79 +108,20 @@ A built-in web browser for viewing documentation, APIs, and web resources withou
 
 **Opening:** Click the dropdown arrow (&#9662;) next to the **+** button in the tab bar → **Browser**.
 
-**Features:**
-- **URL bar** — type a URL and press Enter to navigate; type a search term to search with the selected engine; navigate button at the end of the input
-- **URL suggestions** — dropdown appears when you focus or type in the URL bar
-  - On focus: shows navigation history (URLs visited in the current tab)
-  - On typing: shows filtered search history with highlighted matches
-  - Navigate with arrow keys, select with Enter, dismiss with Escape
-  - "Clear" button removes visible filtered entries from search history
-- **Search engine selector** — clickable label in the URL bar on blank pages and search result pages
-  - 11 engines: Google (default), Bing, DuckDuckGo, Yahoo, Ecosia, Brave, Startpage, Qwant, Baidu, Perplexity, Gibiru
-  - Switch engines on a search results page to re-search the same query on a different engine
-- **Paste and Go** — right-click the URL bar for a "Paste and Go" option that pastes clipboard text and navigates immediately
-- **Navigation** — Home, Back, Forward, Reload/Stop buttons in the toolbar
-  - **Home button** — each tab remembers its "home" URL (first URL navigated to); tooltip shows the URL
-- **Internal tabs** — multiple browser tabs within a single js-notepad tab, shown on a left-side panel
-  - Clicking `target="_blank"` links opens a new internal tab; `window.open()` from JavaScript opens a real popup window (for OAuth/auth flows)
-  - Close Tab button in the toolbar; new tab button at the bottom of the tabs panel
-  - Right-click tab for context menu: Close Tab, Close Other Tabs, Close Tabs Below
-  - Resizable tabs panel with splitter; starts collapsed to icon-only mode
-  - Active tab styled with dark background and blue border
-  - **Compact mode** — when the panel is narrow, hovering a tab shows a floating popup with title and close button
-  - **Audio mute** — volume icon on tabs playing audio; click to mute/unmute individual tabs or all tabs at once (via the page tab icon)
-  - Closing the last tab opens a fresh blank page
-- **Browser Profiles** — isolated browsing sessions with separate cookies, storage, and cache
-  - Create named profiles with custom colors in **Settings → Browser Profiles**
-  - Open a profiled browser via &#9662; → **Browser profile...** submenu
-  - Set a default profile — the **Browser** quick-add item uses it
-  - Profile color is shown on the page tab icon (tinted globe)
-  - Change profile color by clicking the color dot in Settings
-  - Clear browsing data per profile via the "clear data" button in Settings
-  - Deleting a profile shows a confirmation dialog and also clears all data from disk
+**Key features:**
+- **URL bar** with search, suggestions, and 11 search engines
+- **Internal tabs** — multiple browser tabs within a single js-notepad tab
+- **Browser Profiles** — isolated sessions with separate cookies, storage, and cache
 - **Incognito mode** — ephemeral browsing with no persistent data
-  - Open via &#9662; → **Browser profile...** → **Incognito**
-  - Incognito icon on the page tab and inside the URL bar
-  - All data is automatically discarded when the tab closes
-  - Search history is not saved in incognito mode
-- **Context menu** — right-click in the web page for contextual actions:
-  - On a link: "Open Link in New Tab", "Copy Link Address"
-  - On an image: "Open Image in New Tab" (opens in Image Viewer), "Copy Image Address"
-  - On selected text: "Copy"
-  - On an editable field: "Cut", "Copy", "Paste"
-  - On an SVG element: "Open SVG in Editor" (opens in text editor with XML syntax)
-  - Always available: "Back", "Forward", "Reload", "View Source", "View Actual DOM", "Inspect Element"
-- **View Source** — view the raw HTML as fetched from the server
-- **View Actual DOM** — view the live rendered DOM (post-JavaScript execution)
-- **Page title** — shown in the js-notepad tab (reflects the active internal tab)
-- **Favicon** — website icon displayed in internal tabs panel
-- **Loading indicator** — animated bar below the toolbar while a page is loading
-- **Find in page** — `Ctrl+F` to search text within the web page
-- **Focus URL bar** — `Ctrl+L` to quickly jump to the URL bar
-- **DevTools** — click the gear icon to open the webview's developer tools
-- **Session restore** — all internal tabs, URLs, navigation history, and profile selection saved and restored across app restarts
-- **Isolated storage** — each profile has its own cookies, storage, and cache, separated from the main application
-- **Bookmarks** — per-profile bookmark management using `.link.json` files
-  - **Star button (☆)** in the URL bar — quick-add or edit a bookmark for the current page
-    - Empty star when URL is not bookmarked; filled star when already bookmarked
-    - Opens Edit Link Dialog with URL and title prefilled
-    - Discovered images from meta tags and click tracking shown in the dialog
-  - **"Open Links" button** on the toolbar — opens a sliding bookmarks panel with the full Link Editor
-    - Right-anchored overlay drawer with backdrop
-    - Categories, tags, search, and all view modes (list and tile variants)
-    - Click a link to navigate (in current tab if blank, otherwise new internal tab)
-    - Drawer closes automatically after link click
-    - Resizable width, Categories/Tags panel on the right side
-  - **Context menu bookmarking** — right-click a link or tile on a web page → "Add to Bookmarks" with captured URL, title, and image
-  - **Image discovery** — collects images from page meta tags, clicked link elements, and context menu for bookmark thumbnails
-  - Each profile can have a different bookmarks file — configure in **Settings → Browser Profiles**
-  - Bookmarks fully functional in incognito mode (persisted to file, only browsing data is ephemeral)
-  - Supports encrypted `.link.json` files — password dialog appears on first access
-  - All edits auto-save to the `.link.json` file
+- **Bookmarks** — per-profile bookmark management with star button and bookmarks panel
+- **Downloads** — toolbar button with progress tracking, download history popup
+- **Context menu** — contextual actions for links, images, text, SVG elements, and developer tools
+- **Default browser registration** — set js-notepad as your Windows default browser
+- **Session restore** — all tabs, URLs, history, and profile selection saved across restarts
+- **Find in page** — `Ctrl+F` opens inline search bar with match counter and navigation
+- **Keyboard shortcuts** — `Ctrl+L` URL bar, `Ctrl+F` find, `F5` reload, `F12` DevTools, `Alt+Left/Right` back/forward, and more
 
-**Link open behavior:** External links clicked in Monaco or Markdown editors can open in the default OS browser or in the nearest internal Browser tab. Configure in **Settings → Links**. When set to "internal browser", links open in the closest browser tab (searching right, then left from the active page); if none exists, a new browser page is created.
-
-**Security:** Navigation to local file protocols (`file://`, `app-asset://`) is blocked.
+See **[Browser](./browser.md)** for complete documentation including profiles, bookmarks, downloads, and all keyboard shortcuts.
 
 ## Compare Mode
 
@@ -215,6 +156,7 @@ For `.todo.json` files — a structured task list interface:
 - **Inline editing** — edit titles and comments for both done and undone items
 - **List management** — add, rename, and delete lists
 - **Tag management** — add, rename, delete tags; assign colors from a predefined palette
+- **Session state persistence** — selected list and tag are remembered across app restarts
 - Can switch to Monaco for raw JSON editing
 
 ## Notebook Editor
@@ -235,19 +177,22 @@ See **[Notebook Editor](./notebook.md)** for detailed documentation.
 
 For `.link.json` files — a structured link manager:
 
-- **Categories** and **tags** for organizing links
+- **Categories**, **tags**, and **hostnames** for organizing and filtering links
+- **Hostnames panel** — collapsible sidebar panel showing hostnames extracted from all links, with link counts; click to filter
 - **Multiple view modes** — List, Landscape tiles, Portrait tiles (normal and large variants)
-- **View mode per category and per tag** — each category or tag remembers its preferred layout
+- **View mode per category, per tag, and per hostname** — each filter remembers its preferred layout
 - **Image tiles** — tile views display preview images with "no image" placeholder for links without images
 - **Edit/Create dialog** — title (auto-growing), URL, category (with autocomplete), tags (chip-based with autocomplete), image URL with preview
 - **Search** — toolbar search filters links by title or URL
-- **Context menu** — Edit, Open in Default Browser, Open in Internal Browser, Open in Incognito, Copy URL, Pin/Unpin, Delete
+- **Browser selector button** — toolbar button to choose where links open: OS default browser, internal browser, a specific browser profile, or incognito. Initialized from the app setting, adjustable per session.
+- **Context menu** — Edit, Open in Default Browser, Open in Internal Browser, browser profiles, Open in Incognito, Copy URL, Pin/Unpin, Delete
   - For links with images: Copy Image URL, Open Image in New Tab (opens in Image Viewer)
 - **Delete confirmation** — with Ctrl+click bypass for quick delete
 - **Double-click** to edit in both list and tile views
 - **Favicons** — cached favicons from the internal browser are displayed next to links in list view and as fallback in tile view
 - **Drag-and-drop** — drag links onto categories to reassign them; drag categories onto other categories to reparent (with confirmation)
 - **Pinned links panel** — pin important links for quick access; pinned panel appears on the right edge, auto-hides when empty, resizable, with drag-to-reorder support
+- **Session state persistence** — selected category, tag, hostname, and expanded panel are remembered across app restarts
 - Can switch to Monaco for raw JSON editing
 
 ## Switching Editors

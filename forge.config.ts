@@ -10,29 +10,7 @@ const config: ForgeConfig = {
         icon: "./assets/icon.ico",
     },
     rebuildConfig: {},
-    makers: [
-        {
-            name: "@electron-forge/maker-wix",
-            config: {
-                language: 1033,
-                manufacturer: "Andriy Viyatyk",
-                name: "JS-Notepad",
-                description: "JS-Notepad",
-                upgradeCode: "d2f1c1e4-5b6c-7c7d-9e0f-1a2b3c4d9e6f",
-                ui: {
-                    chooseDirectory: true,
-                },
-                associateExtensions:
-                    "txt,log,md,js,ts,jsx,tsx,json,xml,html,css,py,java,c,cpp",
-                shortcutFolderName: "JS-Notepad",
-            },
-        },
-        {
-            name: "@electron-forge/maker-zip",
-            platforms: ["win32"],
-            config: {},
-        },
-    ],
+    makers: [],
     plugins: [
         new VitePlugin({
             build: [
@@ -70,19 +48,6 @@ const config: ForgeConfig = {
             [FuseV1Options.EnableEmbeddedAsarIntegrityValidation]: true,
             [FuseV1Options.OnlyLoadAppFromAsar]: true,
         }),
-    ],
-    publishers: [
-        {
-            name: "@electron-forge/publisher-github",
-            config: {
-                repository: {
-                    owner: "andriy-viyatyk",
-                    name: "js-notepad",
-                },
-                prerelease: false,
-                draft: true, // Highly recommended: creates the release but doesn't show it to users until you check it
-            },
-        },
     ],
 };
 

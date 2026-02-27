@@ -7,7 +7,7 @@
 ### Windows
 
 1. Download the latest release from [GitHub Releases](https://github.com/andriy-viyatyk/js-notepad/releases)
-2. Run the installer (MSI) or extract the ZIP
+2. Run the installer or extract the ZIP
 3. Launch js-notepad
 
 ### From Source
@@ -36,6 +36,9 @@ The application looks like a simple notepad by default. To access additional fea
   - **Grid (JSON)** — Grid editor for JSON data
   - **Grid (CSV)** — Grid editor for CSV data
   - **Notebook** — Notebook editor for structured notes
+  - **Todo** — Task list editor
+  - **Links** — Link manager
+  - **Browser** — Built-in web browser (or pick a specific profile / incognito)
 
 ### Opening Files
 - Press `Ctrl+O` to open file dialog

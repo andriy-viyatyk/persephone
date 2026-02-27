@@ -16,8 +16,12 @@ export const BrowserChannel = {
     unregister: "browser:unregister",
     /** Clear all storage data + cache for a given partition. Returns when done. */
     clearProfileData: "browser:clear-profile-data",
+    /** Clear only HTTP cache (not cookies/storage) for a given partition. Returns when done. */
+    clearCache: "browser:clear-cache",
     /** Renderer → Main: mute/unmute a webview's audio. Args: (key: string, muted: boolean) */
     setAudioMuted: "browser:set-audio-muted",
+    /** Renderer → Main: allow popups for a given tabId (disable rate limiting). Args: (tabId: string) */
+    allowPopups: "browser:allow-popups",
 
     // Main → Renderer
     event: "browser:event",
@@ -48,7 +52,10 @@ export type BrowserEventType =
     | "did-start-navigation"
     | "new-window"
     | "context-menu"
-    | "audio-state-changed";
+    | "audio-state-changed"
+    | "popups-blocked"
+    | "show-find-bar"
+    | "hide-find-bar";
 
 export interface BrowserEventData {
     url?: string;

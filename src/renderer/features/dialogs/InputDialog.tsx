@@ -98,10 +98,15 @@ function InputDialog({ model }: ViewPropsRO<InputDialogModel>) {
     const inputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
-        if (state.selectAll) {
-            inputRef.current?.select();
-        }
-    }, [state.selectAll]);
+        // Delay focus to run after popup menu's focus-restore completes
+        setTimeout(() => {
+            if (state.selectAll) {
+                inputRef.current?.select();
+            } else {
+                inputRef.current?.focus();
+            }
+        }, 0);
+    }, []);
 
     return (
         <Dialog onKeyDown={model.handleKeyDown} autoFocus={false}>

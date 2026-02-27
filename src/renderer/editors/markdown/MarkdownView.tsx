@@ -4,8 +4,8 @@ import rehypeRaw from "rehype-raw";
 import styled from "@emotion/styled";
 import { TextFileModel } from "../text";
 import color from "../../theme/color";
-import { CheckedIcon, CompactViewIcon, CopyIcon, GlobeIcon, NormalViewIcon, OpenFileIcon, UncheckedIcon } from "../../theme/icons";
-import { IncognitoIcon } from "../../theme/language-icons";
+import { CheckedIcon, CompactViewIcon, CopyIcon, NormalViewIcon, UncheckedIcon } from "../../theme/icons";
+import { appendLinkOpenMenuItems } from "../../store/link-open-menu";
 import { useCallback, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { Minimap } from "../../components/layout/Minimap";
@@ -626,32 +626,7 @@ export function MarkdownView(props: MarkdownViewProps) {
                 });
                 const isExternal = href.startsWith("http://") || href.startsWith("https://");
                 if (isExternal) {
-                    e.nativeEvent.menuItems.push(
-                        {
-                            label: "Open in Default Browser",
-                            icon: <OpenFileIcon />,
-                            onClick: () => {
-                                const { shell } = require("electron");
-                                shell.openExternal(href);
-                            },
-                        },
-                        {
-                            label: "Open in Internal Browser",
-                            icon: <GlobeIcon />,
-                            onClick: async () => {
-                                const { openUrlInBrowserTab } = await import("../../store/page-actions");
-                                openUrlInBrowserTab(href);
-                            },
-                        },
-                        {
-                            label: "Open in Incognito",
-                            icon: <IncognitoIcon />,
-                            onClick: async () => {
-                                const { openUrlInBrowserTab } = await import("../../store/page-actions");
-                                openUrlInBrowserTab(href, { incognito: true });
-                            },
-                        },
-                    );
+                    appendLinkOpenMenuItems(e.nativeEvent.menuItems!, href);
                 }
             }
         }

@@ -12,7 +12,7 @@ import {
 import { TComponentModel, useComponentModel } from "../core/state/model";
 import { api } from "../../ipc/renderer/api";
 import rendererEvents from "../../ipc/renderer/renderer-events";
-import { SubscriptionObject } from "../core/state/events";
+import { globalKeyDown, SubscriptionObject } from "../core/state/events";
 import { useEffect } from "react";
 import { Pages } from "./Pages";
 import { PageTabs } from "../features/tabs/PageTabs";
@@ -154,6 +154,8 @@ class MainPageModel extends TComponentModel<MainPageState, undefined> {
     };
 
     handleKeyDown = (e: KeyboardEvent) => {
+        globalKeyDown.send(e);
+
         switch (e.code) {
             case "Tab":
                 {

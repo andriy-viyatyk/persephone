@@ -5,6 +5,7 @@ import { uuid } from "../../core/utils/node-utils";
 import { showConfirmationDialog } from "../../features/dialogs/ConfirmationDialog";
 import { alertWarning } from "../../features/dialogs/alerts/AlertsBar";
 import { TodoItem, TodoTag, TodoData, TodoEditorProps, ListCount } from "./todoTypes";
+import { filesModel } from "../../store/files-store";
 
 // =============================================================================
 // State
@@ -42,6 +43,8 @@ export class TodoEditorModel extends TComponentModel<
     gridModel: RenderGridModel | null = null;
     /** Previous filter state for incremental search optimization */
     private lastFilterState = { searchText: "", selectedList: "", selectedTag: "" };
+    private selectionRestored = false;
+    private static cacheName = "todo-editor";
 
     setGridModel = (model: RenderGridModel | null) => {
         this.gridModel = model;
@@ -80,6 +83,35 @@ export class TodoEditorModel extends TComponentModel<
     dispose = () => {
         this.stateChangeSubscription?.();
     };
+
+    // =========================================================================
+    // Selection state cache
+    // =========================================================================
+
+    private restoreSelectionState = async () => {
+        const id = this.props.model.state.get().id;
+        const data = await filesModel.getCacheFile(id, TodoEditorModel.cacheName);
+        if (!data) return;
+        try {
+            const saved = JSON.parse(data);
+            this.state.update((s) => {
+                if (saved.selectedList !== undefined) s.selectedList = saved.selectedList;
+                if (saved.selectedTag !== undefined) s.selectedTag = saved.selectedTag;
+            });
+            this.applyFilters();
+        } catch {
+            // ignore corrupted cache
+        }
+    };
+
+    private saveSelectionState = () => {
+        const { selectedList, selectedTag } = this.state.get();
+        const id = this.props.model.state.get().id;
+        const data = JSON.stringify({ selectedList, selectedTag });
+        filesModel.saveCacheFile(id, data, TodoEditorModel.cacheName);
+    };
+
+    private saveSelectionStateDebounced = debounce(this.saveSelectionState, 300);
 
     updateContent = (content: string) => {
         // Skip if this is our own serialized content
@@ -168,6 +200,10 @@ export class TodoEditorModel extends TComponentModel<
             });
             this.lastSerializedData = this.state.get().data;
             this.loadListCounts();
+            if (!this.selectionRestored) {
+                this.selectionRestored = true;
+                this.restoreSelectionState();
+            }
             this.applyFilters();
         } catch (e: unknown) {
             const message = e instanceof Error ? e.message : String(e);
@@ -246,6 +282,7 @@ export class TodoEditorModel extends TComponentModel<
             s.selectedList = listName;
         });
         this.applyFilters();
+        this.saveSelectionStateDebounced();
     };
 
     // =========================================================================
@@ -554,6 +591,7 @@ export class TodoEditorModel extends TComponentModel<
             s.selectedTag = tagName;
         });
         this.applyFilters();
+        this.saveSelectionStateDebounced();
     };
 
     // =========================================================================

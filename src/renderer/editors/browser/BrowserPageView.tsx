@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 const { ipcRenderer } = require("electron");
 import { IPage, PageType } from "../../../shared/types";
 import { PageModel, PageToolbar } from "../base";
@@ -36,6 +36,9 @@ import { BrowserTabsPanel } from "./BrowserTabsPanel";
 import { WithPopupMenu } from "../../components/overlay/WithPopupMenu";
 import { UrlSuggestionsDropdown } from "./UrlSuggestionsDropdown";
 import { BookmarksDrawer } from "./BookmarksDrawer";
+import { DownloadButton } from "./DownloadButton";
+import { BrowserDownloadsPopup } from "./BrowserDownloadsPopup";
+import { BrowserFindBar } from "./BrowserFindBar";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const WEBVIEW_PRELOAD_URL = (window as any).webviewPreloadUrl as string;
@@ -140,6 +143,20 @@ const BrowserPageViewRoot = styled.div({
         },
     },
 
+    "& .popup-blocked-bar": {
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        padding: "3px 8px",
+        fontSize: 13,
+        color: color.text.default,
+        backgroundColor: color.background.light,
+        borderBottom: `1px solid ${color.border.default}`,
+        "& .popup-blocked-message": {
+            flex: 1,
+        },
+    },
+
     "@keyframes loading-pulse": {
         "0%": { opacity: 0.3 },
         "50%": { opacity: 1 },
@@ -183,6 +200,20 @@ function BrowserWebviewItem({
             model.webview.webviewRefs.delete(internalTabId);
         };
     }, [model, internalTabId]);
+
+    // Close host-page popups when the webview gains focus.
+    // Clicks inside a <webview> don't bubble to the host document, so Popper's
+    // click-outside detection never fires. Dispatching a synthetic mousedown
+    // on document.body bridges that gap.
+    useEffect(() => {
+        const webview = webviewRef.current;
+        if (!webview) return;
+        const handleFocus = () => {
+            document.body.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+        };
+        webview.addEventListener("focus", handleFocus);
+        return () => webview.removeEventListener("focus", handleFocus);
+    }, []);
 
     // Register with main process on dom-ready and listen for preload messages
     useEffect(() => {
@@ -250,15 +281,29 @@ function BrowserWebviewItem({
                 if (Array.isArray(imgUrls) && imgUrls.length > 0) {
                     model.bookmarksUI.trackClickedImages(internalTabId, imgUrls);
                 }
+            } else if (channel === "show-find-bar") {
+                model.webview.openFind();
+            } else if (channel === "hide-find-bar") {
+                if (model.state.get().findBarVisible) {
+                    model.webview.closeFind();
+                }
             }
         };
 
         webview.addEventListener("ipc-message", onIpcMessage);
 
+        const onFoundInPage = (event: Electron.FoundInPageEvent) => {
+            if (isActive) {
+                model.webview.handleFoundInPage(event.result);
+            }
+        };
+        webview.addEventListener("found-in-page", onFoundInPage);
+
         return () => {
             model.webview.webviewReady.delete(internalTabId);
             webview.removeEventListener("dom-ready", onDomReady);
             webview.removeEventListener("ipc-message", onIpcMessage);
+            webview.removeEventListener("found-in-page", onFoundInPage);
             if (registered) {
                 const key = `${tabId}/${internalTabId}`;
                 ipcRenderer.send(BrowserChannel.unregister, key);
@@ -308,7 +353,8 @@ function BrowserPageView({ model }: BrowserPageViewProps) {
         homeUrl, isIncognito,
         urlInput, suggestionsOpen, hoveredIndex,
         popupOpen, bookmarksOpen, bookmarksWidth,
-        bookmarksReady, isBookmarked,
+        bookmarksReady, isBookmarked, blockedPopupCount,
+        findBarVisible, findText, findActiveMatch, findTotalMatches,
     } = model.state.use((s) => {
         const activeTab = s.tabs.find((t) => t.id === s.activeTabId);
         return {
@@ -330,6 +376,11 @@ function BrowserPageView({ model }: BrowserPageViewProps) {
             bookmarksWidth: s.bookmarksWidth,
             bookmarksReady: s.bookmarksReady,
             isBookmarked: s.isBookmarked,
+            blockedPopupCount: s.blockedPopupCount,
+            findBarVisible: s.findBarVisible,
+            findText: s.findText,
+            findActiveMatch: s.findActiveMatch,
+            findTotalMatches: s.findTotalMatches,
             // Included for re-render triggers (used by sub-model computed getters)
             searchEngineId: s.searchEngineId,
             userHasTyped: s.userHasTyped,
@@ -338,6 +389,11 @@ function BrowserPageView({ model }: BrowserPageViewProps) {
     });
 
     const isInitialLoad = useRef(true);
+    const [downloadsAnchor, setDownloadsAnchor] = useState<HTMLElement | null>(null);
+    const handleDownloadClick = useCallback((el: HTMLElement) => {
+        setDownloadsAnchor((prev) => (prev ? null : el));
+    }, []);
+    const handleDownloadsClose = useCallback(() => setDownloadsAnchor(null), []);
 
     // IPC event handler lifecycle
     useEffect(() => {
@@ -480,6 +536,7 @@ function BrowserPageView({ model }: BrowserPageViewProps) {
                     >
                         <BookmarkIcon />
                     </Button>
+                    <DownloadButton onClick={handleDownloadClick} />
                     <Button
                         type="icon"
                         size="small"
@@ -502,6 +559,21 @@ function BrowserPageView({ model }: BrowserPageViewProps) {
                 <div className="loading-bar" />
             ) : (
                 <div className="loading-bar-placeholder" />
+            )}
+            {blockedPopupCount > 0 && (
+                <div className="popup-blocked-bar">
+                    <span className="popup-blocked-message">
+                        {blockedPopupCount === 1
+                            ? "A popup was blocked on this page"
+                            : `${blockedPopupCount} popups were blocked on this page`}
+                    </span>
+                    <Button size="small" type="flat" onClick={model.allowPopups}>
+                        Allow
+                    </Button>
+                    <Button size="small" type="icon" onClick={model.dismissBlockedPopups}>
+                        <CloseIcon />
+                    </Button>
+                </div>
             )}
             <div className="browser-body">
                 <div
@@ -533,6 +605,17 @@ function BrowserPageView({ model }: BrowserPageViewProps) {
                         />
                     ))}
                     {popupOpen && <div className="webview-click-overlay" />}
+                    {findBarVisible && (
+                        <BrowserFindBar
+                            findText={findText}
+                            activeMatch={findActiveMatch}
+                            totalMatches={findTotalMatches}
+                            onFindTextChange={webview.setFindText}
+                            onNext={webview.findNext}
+                            onPrev={webview.findPrev}
+                            onClose={webview.closeFind}
+                        />
+                    )}
                 </div>
                 {bookmarksReady && model.bookmarks && (
                     <BookmarksDrawer
@@ -555,6 +638,10 @@ function BrowserPageView({ model }: BrowserPageViewProps) {
                 onHoveredIndexChange={(i) => model.state.update((s) => { s.hoveredIndex = i; })}
                 onSelect={urlBar.handleSuggestionSelect}
                 onClearVisible={suggestionsMode === "search" ? urlBar.handleClearVisible : undefined}
+            />
+            <BrowserDownloadsPopup
+                anchorEl={downloadsAnchor}
+                onClose={handleDownloadsClose}
             />
         </BrowserPageViewRoot>
     );

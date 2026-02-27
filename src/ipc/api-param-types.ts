@@ -56,3 +56,15 @@ export interface RuntimeVersions {
     node: string;
     chrome: string;
 }
+
+export interface DownloadEntry {
+    id: string;
+    filename: string;
+    url: string;
+    savePath: string;
+    totalBytes: number;
+    receivedBytes: number;
+    status: "downloading" | "completed" | "failed" | "cancelled";
+    startTime: number;
+    error?: string;
+}

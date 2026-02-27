@@ -1,6 +1,7 @@
 import { IPage, PageDragData, WindowPages } from "../shared/types";
 import {
     CommonFolder,
+    DownloadEntry,
     OpenFileDialogParams,
     OpenFolderDialogParams,
     RuntimeVersions,
@@ -26,6 +27,7 @@ export enum Endpoint {
     showFolder = "showFolder",
     windowReady = "windowReady",
     getFileToOpen = "getFileToOpen",
+    getUrlToOpen = "getUrlToOpen",
     getWindowIndex = "getWindowIndex",
     openNewWindow = "openNewWindow",
     getWindowPages = "getWindowPages",
@@ -37,6 +39,15 @@ export enum Endpoint {
     getAppVersion = "getAppVersion",
     getRuntimeVersions = "getRuntimeVersions",
     setNativeTheme = "setNativeTheme",
+    registerAsDefaultBrowser = "registerAsDefaultBrowser",
+    unregisterAsDefaultBrowser = "unregisterAsDefaultBrowser",
+    isRegisteredAsDefaultBrowser = "isRegisteredAsDefaultBrowser",
+    openDefaultAppsSettings = "openDefaultAppsSettings",
+    getDownloads = "getDownloads",
+    cancelDownload = "cancelDownload",
+    openDownload = "openDownload",
+    showDownloadInFolder = "showDownloadInFolder",
+    clearCompletedDownloads = "clearCompletedDownloads",
 }
 
 export type Api = {
@@ -63,6 +74,7 @@ export type Api = {
     [Endpoint.showFolder]: (path: string) => Promise<void>;
     [Endpoint.windowReady]: () => Promise<void>;
     [Endpoint.getFileToOpen]: () => Promise<string | undefined>;
+    [Endpoint.getUrlToOpen]: () => Promise<string | undefined>;
     [Endpoint.getWindowIndex]: () => Promise<number>;
     [Endpoint.openNewWindow]: (filePath?: string) => Promise<number>;
     [Endpoint.getWindowPages]: () => Promise<WindowPages[]>;
@@ -74,6 +86,15 @@ export type Api = {
     [Endpoint.getAppVersion]: () => Promise<string>;
     [Endpoint.getRuntimeVersions]: () => Promise<RuntimeVersions>;
     [Endpoint.setNativeTheme]: (mode: "light" | "dark") => Promise<void>;
+    [Endpoint.registerAsDefaultBrowser]: () => Promise<void>;
+    [Endpoint.unregisterAsDefaultBrowser]: () => Promise<void>;
+    [Endpoint.isRegisteredAsDefaultBrowser]: () => Promise<boolean>;
+    [Endpoint.openDefaultAppsSettings]: () => Promise<void>;
+    [Endpoint.getDownloads]: () => Promise<DownloadEntry[]>;
+    [Endpoint.cancelDownload]: (id: string) => Promise<void>;
+    [Endpoint.openDownload]: (id: string) => Promise<void>;
+    [Endpoint.showDownloadInFolder]: (id: string) => Promise<void>;
+    [Endpoint.clearCompletedDownloads]: () => Promise<void>;
 };
 
 export enum EventEndpoint {
@@ -87,6 +108,12 @@ export enum EventEndpoint {
     eZoomChanged = "eZoomChanged",
     eUpdateAvailable = "eUpdateAvailable",
     eOpenUrl = "eOpenUrl",
+    eOpenExternalUrl = "eOpenExternalUrl",
+    eDownloadStarted = "eDownloadStarted",
+    eDownloadProgress = "eDownloadProgress",
+    eDownloadCompleted = "eDownloadCompleted",
+    eDownloadFailed = "eDownloadFailed",
+    eDownloadCleared = "eDownloadCleared",
 }
 
 export interface EventSubscription {
@@ -109,6 +136,12 @@ export type EventApi = {
     [EventEndpoint.eZoomChanged]: EventObject<number>;
     [EventEndpoint.eUpdateAvailable]: EventObject<UpdateCheckResult>;
     [EventEndpoint.eOpenUrl]: EventObject<string>;
+    [EventEndpoint.eOpenExternalUrl]: EventObject<string>;
+    [EventEndpoint.eDownloadStarted]: EventObject<DownloadEntry>;
+    [EventEndpoint.eDownloadProgress]: EventObject<{ id: string; receivedBytes: number; totalBytes: number }>;
+    [EventEndpoint.eDownloadCompleted]: EventObject<{ id: string; savePath: string }>;
+    [EventEndpoint.eDownloadFailed]: EventObject<{ id: string; error: string }>;
+    [EventEndpoint.eDownloadCleared]: EventObject<DownloadEntry[]>;
 };
 
 export enum RendererEvent {

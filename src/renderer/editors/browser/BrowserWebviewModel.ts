@@ -10,6 +10,7 @@ import { pagesModel } from "../../store/pages-store";
 import { newTextFileModel } from "../text/TextPageModel";
 import { PageModel } from "../base";
 import { showEditLinkDialog } from "../link-editor/EditLinkDialog";
+import { PopupRateLimiter } from "../../../ipc/popup-rate-limiter";
 import type { BrowserPageModel } from "./BrowserPageModel";
 
 /**
@@ -23,6 +24,11 @@ export class BrowserWebviewModel {
     webviewRefs = new Map<string, Electron.WebviewTag>();
     /** Set of internalTabIds whose webview has fired dom-ready. */
     webviewReady = new Set<string>();
+
+    /** Rate limiter for internal tab creation from target="_blank" links. */
+    readonly tabRateLimiter = new PopupRateLimiter();
+    /** When true, rate limiting is disabled (user clicked "Allow"). */
+    popupsAllowed = false;
 
     /** Tracks the previous active tab URL for navigation change detection. */
     private prevActiveUrl = "";
@@ -59,7 +65,7 @@ export class BrowserWebviewModel {
         this.getActiveWebview()?.openDevTools();
     };
 
-    /** Handle keyboard shortcuts on the root browser div. */
+    /** Handle keyboard shortcuts on the root browser div (Ctrl+L, Ctrl+F). */
     handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
         if (e.ctrlKey && e.key === "l") {
             e.preventDefault();
@@ -67,15 +73,64 @@ export class BrowserWebviewModel {
         }
         if (e.ctrlKey && e.key === "f") {
             e.preventDefault();
-            const webview = this.getActiveWebview();
-            if (webview) {
-                const term = prompt("Find in page:");
-                if (term) {
-                    webview.findInPage(term);
-                } else {
-                    webview.stopFindInPage("clearSelection");
-                }
-            }
+            this.openFind();
+        }
+    };
+
+    // =====================================================================
+    // Find in Page
+    // =====================================================================
+
+    openFind = () => {
+        this.model.state.update((s) => { s.findBarVisible = true; });
+    };
+
+    closeFind = () => {
+        const webview = this.getActiveWebview();
+        webview?.stopFindInPage("clearSelection");
+        this.model.state.update((s) => {
+            s.findBarVisible = false;
+            s.findText = "";
+            s.findActiveMatch = 0;
+            s.findTotalMatches = 0;
+        });
+    };
+
+    setFindText = (text: string) => {
+        this.model.state.update((s) => { s.findText = text; });
+        const webview = this.getActiveWebview();
+        if (!webview) return;
+        if (text) {
+            webview.findInPage(text);
+        } else {
+            webview.stopFindInPage("clearSelection");
+            this.model.state.update((s) => {
+                s.findActiveMatch = 0;
+                s.findTotalMatches = 0;
+            });
+        }
+    };
+
+    findNext = () => {
+        const { findText } = this.model.state.get();
+        if (!findText) return;
+        const webview = this.getActiveWebview();
+        webview?.findInPage(findText, { forward: true, findNext: true });
+    };
+
+    findPrev = () => {
+        const { findText } = this.model.state.get();
+        if (!findText) return;
+        const webview = this.getActiveWebview();
+        webview?.findInPage(findText, { forward: false, findNext: true });
+    };
+
+    handleFoundInPage = (result: Electron.FoundInPageResult) => {
+        if (result.finalUpdate) {
+            this.model.state.update((s) => {
+                s.findActiveMatch = result.activeMatchOrdinal - 1;
+                s.findTotalMatches = result.matches;
+            });
         }
     };
 
@@ -123,6 +178,10 @@ export class BrowserWebviewModel {
                 this.model.currentUrls.set(internalTabId, data.url || "");
                 if (internalTabId === this.model.state.get().activeTabId) {
                     this.model.urlBar.syncFromUrl(data.url || "");
+                    // Close find bar on navigation — search context changed
+                    if (this.model.state.get().findBarVisible) {
+                        this.closeFind();
+                    }
                 }
                 const cached = this.model.getCachedFavicon(data.url || "");
                 this.model.updateTab(internalTabId, {
@@ -171,10 +230,26 @@ export class BrowserWebviewModel {
             }
             case "new-window": {
                 if (data.url) {
+                    if (!this.popupsAllowed && !this.tabRateLimiter.check(internalTabId)) {
+                        this.model.state.update((s) => { s.blockedPopupCount++; });
+                        break;
+                    }
                     this.model.addTab(data.url);
                 }
                 break;
             }
+            case "popups-blocked": {
+                this.model.state.update((s) => { s.blockedPopupCount++; });
+                break;
+            }
+            case "show-find-bar":
+                this.openFind();
+                break;
+            case "hide-find-bar":
+                if (this.model.state.get().findBarVisible) {
+                    this.closeFind();
+                }
+                break;
             case "context-menu": {
                 const webview = this.webviewRefs.get(internalTabId);
                 if (!webview) break;

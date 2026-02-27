@@ -76,6 +76,20 @@ function observeHead() {
     });
 }
 
+// ── Keyboard Shortcuts ───────────────────────────────────────────────
+// Intercept shortcuts that should be handled by the host renderer (find bar).
+// Capture phase ensures we fire before page scripts that may stopPropagation.
+
+document.addEventListener("keydown", (e) => {
+    if (e.ctrlKey && e.key === "f") {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        ipcRenderer.sendToHost("show-find-bar");
+    } else if (e.key === "Escape") {
+        ipcRenderer.sendToHost("hide-find-bar");
+    }
+}, true);
+
 // ── Clicked Image Tracking (Phase 3.1) ──────────────────────────────
 // When the user clicks an <a> that contains images (e.g. a video tile),
 // send ALL image URLs to the host so they can be offered for bookmark selection.

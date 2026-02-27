@@ -15,9 +15,12 @@ import { splitWithSeparators } from "../../core/utils/utils";
 import { showAppPopupMenu } from "../../features/dialogs";
 import color from "../../theme/color";
 import {
-    CloseIcon, PlusIcon,
+    CloseIcon, GlobeIcon, OpenFileIcon, PlusIcon,
     ViewLandscapeBigIcon, ViewLandscapeIcon, ViewListIcon, ViewPortraitBigIcon, ViewPortraitIcon,
 } from "../../theme/icons";
+import { IncognitoIcon } from "../../theme/language-icons";
+import { DEFAULT_BROWSER_COLOR } from "../../theme/palette-colors";
+import { appSettings, BrowserProfile } from "../../store/app-settings";
 import { defaultLinkEditorState, LinkEditorModel } from "./LinkEditorModel";
 import { LinkEditorProps, LinkViewMode, LINK_DRAG, LINK_CATEGORY_DRAG } from "./linkTypes";
 import { LinkItemList } from "./LinkItemList";
@@ -133,6 +136,28 @@ const VIEW_MODE_ORDER: LinkViewMode[] = [
 ];
 
 // =============================================================================
+// Browser selector helpers
+// =============================================================================
+
+function getBrowserSelectorIcon(selectedBrowser: string, profiles: BrowserProfile[]): React.ReactNode {
+    if (selectedBrowser === "os-default") return <OpenFileIcon />;
+    if (selectedBrowser === "incognito") return <IncognitoIcon />;
+    if (selectedBrowser.startsWith("profile:")) {
+        const name = selectedBrowser.slice("profile:".length);
+        const profile = profiles.find((p) => p.name === name);
+        return <GlobeIcon color={profile?.color || DEFAULT_BROWSER_COLOR} />;
+    }
+    return <GlobeIcon color={DEFAULT_BROWSER_COLOR} />;
+}
+
+function getBrowserSelectorLabel(selectedBrowser: string): string {
+    if (selectedBrowser === "os-default") return "OS Browser";
+    if (selectedBrowser === "incognito") return "Incognito";
+    if (selectedBrowser.startsWith("profile:")) return selectedBrowser.slice("profile:".length);
+    return "Browser";
+}
+
+// =============================================================================
 // Component
 // =============================================================================
 
@@ -173,6 +198,41 @@ export function LinkEditor(props: LinkEditorProps) {
     useEffect(() => {
         pageModel.gridModel?.update({ all: true });
     }, [links]);
+
+    const browserProfiles = appSettings.use("browser-profiles");
+
+    const showBrowserSelectorMenu = useCallback((e: React.MouseEvent) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        const items = [
+            {
+                label: "OS Default Browser",
+                icon: <OpenFileIcon />,
+                selected: pageState.selectedBrowser === "os-default",
+                onClick: () => pageModel.setSelectedBrowser("os-default"),
+            },
+            {
+                label: "Internal Browser",
+                icon: <GlobeIcon color={DEFAULT_BROWSER_COLOR} />,
+                selected: pageState.selectedBrowser === "internal-default",
+                onClick: () => pageModel.setSelectedBrowser("internal-default"),
+                startGroup: true,
+            },
+            ...browserProfiles.map((profile) => ({
+                label: profile.name,
+                icon: <GlobeIcon color={profile.color} />,
+                selected: pageState.selectedBrowser === `profile:${profile.name}`,
+                onClick: () => pageModel.setSelectedBrowser(`profile:${profile.name}`),
+            })),
+            {
+                label: "Incognito",
+                icon: <IncognitoIcon />,
+                selected: pageState.selectedBrowser === "incognito",
+                onClick: () => pageModel.setSelectedBrowser("incognito"),
+                startGroup: true,
+            },
+        ];
+        showAppPopupMenu(rect.left, rect.bottom + 2, items);
+    }, [pageState.selectedBrowser, browserProfiles, pageModel]);
 
     const showViewModeMenu = useCallback((e: React.MouseEvent) => {
         const rect = e.currentTarget.getBoundingClientRect();
@@ -221,6 +281,12 @@ export function LinkEditor(props: LinkEditorProps) {
                             separators=":"
                             trailingParentSeparator
                         />
+                    ) : pageState.expandedPanel === "hostnames" ? (
+                        <Breadcrumb
+                            rootLabel="Hostnames"
+                            value={pageState.selectedHostname}
+                            onChange={pageModel.setSelectedHostname}
+                        />
                     ) : (
                         <Breadcrumb
                             rootLabel="Categories"
@@ -233,6 +299,18 @@ export function LinkEditor(props: LinkEditorProps) {
             {Boolean(model.editorToolbarRefLast) &&
                 createPortal(
                     <>
+                        {!swapLayout && (
+                            <Button
+                                size="small"
+                                type="flat"
+                                title="Open links in..."
+                                onClick={showBrowserSelectorMenu}
+                            >
+                                {getBrowserSelectorIcon(pageState.selectedBrowser, browserProfiles)}
+                                {" "}
+                                {getBrowserSelectorLabel(pageState.selectedBrowser)}
+                            </Button>
+                        )}
                         <Button
                             size="small"
                             type="raised"
@@ -286,6 +364,18 @@ export function LinkEditor(props: LinkEditorProps) {
                                 value={pageState.selectedTag}
                                 onChange={pageModel.setSelectedTag}
                                 getCount={pageModel.getTagCount}
+                            />
+                        </div>
+                    </CollapsiblePanel>
+                    <CollapsiblePanel id="hostnames" title="Hostnames">
+                        <div className="tags-list-container">
+                            <TagsList
+                                tags={pageState.hostnames}
+                                value={pageState.selectedHostname}
+                                onChange={pageModel.setSelectedHostname}
+                                getCount={pageModel.getHostnameCount}
+                                separator={"\0"}
+                                rootLabel="All"
                             />
                         </div>
                     </CollapsiblePanel>

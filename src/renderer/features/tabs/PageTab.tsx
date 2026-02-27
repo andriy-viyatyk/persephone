@@ -28,11 +28,11 @@ import { monacoLanguages } from "../../core/utils/monaco-languages";
 import { useDrag, useDrop } from "react-dnd";
 import { useMemo } from "react";
 import { api } from "../../../ipc/renderer/api";
-import { Tooltip } from "../../components/basic/Tooltip";
 import {
     isTextFileModel,
     TextFileModel,
 } from "../../editors/text";
+import { Tooltip } from "../../components/basic/Tooltip";
 import { PageDragData } from "../../../shared/types";
 import { parseObject } from "../../core/utils/parse-utils";
 import { showInputDialog } from "../dialogs/InputDialog";
@@ -166,6 +166,14 @@ const PageTabRoot = styled.div({
     "&.pinned-encrypted": {
         width: pinnedTabEncryptedWidth,
         minWidth: pinnedTabEncryptedWidth,
+    },
+    "& .pinned-tooltip-trigger": {
+        position: "absolute",
+        inset: 0,
+    },
+    "&.pinned > *:not(.pinned-tooltip-trigger)": {
+        position: "relative",
+        zIndex: 1,
     },
 });
 
@@ -567,6 +575,9 @@ export function PageTab(props: PageTabProps) {
             onDragEnd={pinned ? undefined : tabModel.handleDragEnd}
             onDrop={pinned ? undefined : tabModel.handleDrop}
         >
+            {pinned && filePath && (
+                <span className="pinned-tooltip-trigger" data-tooltip-id={id} />
+            )}
             {model.noLanguage ? (
                 <span
                     className={clsx("empty-language", {
@@ -601,7 +612,7 @@ export function PageTab(props: PageTabProps) {
                     )}
                 </WithPopupMenu>
             )}
-            <span className="title-label" data-tooltip-id={id}>
+            <span className="title-label" data-tooltip-id={pinned ? undefined : id}>
                 {(encripted || decripted) && (
                     <span
                         className="encryption-icon"
@@ -613,15 +624,6 @@ export function PageTab(props: PageTabProps) {
                 )}
                 {!pinned && title}
             </span>
-            {Boolean(filePath) && !isDragging && (
-                <Tooltip
-                    id={id}
-                    place="bottom"
-                    delayShow={1500}
-                >
-                    {filePath}
-                </Tooltip>
-            )}
             {(_anyTabAudible || _pageMuted) && (
                 <Button
                     size="small"
@@ -651,6 +653,11 @@ export function PageTab(props: PageTabProps) {
                 )}
                 <CircleIcon className="modified-icon" />
             </Button>
+            {filePath && (
+                <Tooltip id={id} place="bottom" delayShow={1500}>
+                    {filePath}
+                </Tooltip>
+            )}
         </PageTabRoot>
     );
 }

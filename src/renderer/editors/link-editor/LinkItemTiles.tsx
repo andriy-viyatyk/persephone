@@ -6,13 +6,12 @@ import RenderGridModel from "../../components/virtualization/RenderGrid/RenderGr
 import { RenderCellParams, RenderSizeOptional } from "../../components/virtualization/RenderGrid/types";
 import color from "../../theme/color";
 import { CopyIcon, DeleteIcon, GlobeIcon, OpenFileIcon, OpenLinkIcon, PinFilledIcon, PinIcon, RenameIcon } from "../../theme/icons";
-import { IncognitoIcon } from "../../theme/language-icons";
-import { pagesModel } from "../../store/pages-store";
+import { appendLinkOpenMenuItems } from "../../store/link-open-menu";
 import { LinkItem, LinkViewMode, LINK_DRAG } from "./linkTypes";
 import { LinkEditorModel } from "./LinkEditorModel";
 import { getHostname, getFaviconPathSync, useFavicons, requestFaviconSave } from "./favicon-cache";
 
-const { shell, clipboard } = require("electron");
+const { clipboard } = require("electron");
 
 // =============================================================================
 // Tile dimensions per view mode
@@ -322,9 +321,9 @@ export function LinkItemTiles({ links, model, viewMode, selectedLinkId, pinnedLi
     const handleOpenLink = useCallback((link: LinkItem) => {
         if (link.href) {
             requestFaviconSave(getHostname(link.href));
-            pagesModel.handleOpenUrl(link.href);
+            model.openLink(link.href);
         }
-    }, []);
+    }, [model]);
 
     const handleContextMenu = useCallback((e: React.MouseEvent, link: LinkItem) => {
         model.selectLink(link.id);
@@ -336,36 +335,11 @@ export function LinkItemTiles({ links, model, viewMode, selectedLinkId, pinnedLi
                 icon: <RenameIcon />,
                 onClick: () => model.showLinkDialog(link.id),
             },
-            {
-                label: "Open in Default Browser",
-                icon: <OpenFileIcon />,
-                onClick: () => { if (link.href) shell.openExternal(link.href); },
-                disabled: !link.href,
-                startGroup: true,
-            },
-            {
-                label: "Open in Internal Browser",
-                icon: <GlobeIcon />,
-                onClick: async () => {
-                    if (link.href) {
-                        requestFaviconSave(getHostname(link.href));
-                        const { openUrlInBrowserTab } = await import("../../store/page-actions");
-                        openUrlInBrowserTab(link.href);
-                    }
-                },
-                disabled: !link.href,
-            },
-            {
-                label: "Open in Incognito",
-                icon: <IncognitoIcon />,
-                onClick: async () => {
-                    if (link.href) {
-                        const { openUrlInBrowserTab } = await import("../../store/page-actions");
-                        openUrlInBrowserTab(link.href, { incognito: true });
-                    }
-                },
-                disabled: !link.href,
-            },
+        );
+        if (link.href) {
+            appendLinkOpenMenuItems(nativeEvent.menuItems, link.href, { startGroup: true });
+        }
+        nativeEvent.menuItems.push(
             {
                 label: "Copy URL",
                 icon: <CopyIcon />,

@@ -10,6 +10,8 @@ import { setupTray } from "./tray-setup";
 import { versionService } from "./version-service";
 import { initSearchHandlers } from "./search-service";
 import { initBrowserHandlers } from "./browser-service";
+import { startPipeServer, stopPipeServer } from "./pipe-server";
+import { downloadService } from "./download-service";
 
 export function setupMainProcess() {
     protocol.registerSchemesAsPrivileged([
@@ -36,6 +38,7 @@ export function setupMainProcess() {
     controller.init();
     initSearchHandlers();
     initBrowserHandlers();
+    downloadService.init();
 
     function registerAssetProtocol(partition: string) {
         const customSession = session.fromPartition(partition);
@@ -98,11 +101,16 @@ export function setupMainProcess() {
         registerAssetProtocol(fileAccessPersistPartition);
         openWindows.restoreState();
         setupTray();
+        startPipeServer();
 
         // Check for updates after a short delay to not slow down startup
         setTimeout(() => {
             versionService.checkForUpdates();
         }, 5000);
+    });
+
+    app.on("will-quit", () => {
+        stopPipeServer();
     });
 
     app.on("window-all-closed", () => {
@@ -112,10 +120,18 @@ export function setupMainProcess() {
     });
 
     app.on("second-instance", (event, commandLine, workingDirectory) => {
-        const filePath = commandLine[2];
-        openWindows.makeVisible();
+        const arg = commandLine[2];
+        openWindows.bringToFront();
 
-        if (filePath?.toLowerCase().trim() === "diff") {
+        if (!arg) return;
+
+        // URL from browser registration (http:// or https://)
+        if (arg.startsWith("http://") || arg.startsWith("https://")) {
+            openWindows.handleOpenUrl(arg);
+            return;
+        }
+
+        if (arg.toLowerCase().trim() === "diff") {
             const firstPath = commandLine[3];
             const secondPath = commandLine[4];
             const resolvedFirstPath = path.isAbsolute(firstPath)
@@ -135,13 +151,13 @@ export function setupMainProcess() {
                     resolvedSecondPath,
                 );
             }
-        } else if (filePath && !path.isAbsolute(filePath)) {
-            const resolvedPath = path.resolve(workingDirectory, filePath);
+        } else if (!path.isAbsolute(arg)) {
+            const resolvedPath = path.resolve(workingDirectory, arg);
             if (isValidFilePath(resolvedPath)) {
                 openWindows.handleOpenFile(resolvedPath);
             }
-        } else if (filePath && isValidFilePath(filePath)) {
-            openWindows.handleOpenFile(filePath);
+        } else if (isValidFilePath(arg)) {
+            openWindows.handleOpenFile(arg);
         }
     });
 }

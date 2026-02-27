@@ -4,15 +4,18 @@ import { CategoryTreeItem, DragItem } from "../../components/TreeView";
 import RenderGridModel from "../../components/virtualization/RenderGrid/RenderGridModel";
 import { uuid } from "../../core/utils/node-utils";
 import { splitWithSeparators } from "../../core/utils/utils";
+import { getHostname } from "./favicon-cache";
 import { LinkItem, LinkEditorData, LinkEditorProps, LinkViewMode, LINK_DRAG, LINK_CATEGORY_DRAG } from "./linkTypes";
 import { showEditLinkDialog } from "./EditLinkDialog";
 import { showConfirmationDialog } from "../../features/dialogs";
+import { appSettings } from "../../store/app-settings";
+import { filesModel } from "../../store/files-store";
 
 // =============================================================================
 // State
 // =============================================================================
 
-export type ExpandedPanel = "tags" | "categories";
+export type ExpandedPanel = "tags" | "categories" | "hostnames";
 
 export const defaultLinkEditorState = {
     data: { links: [], state: {} } as LinkEditorData,
@@ -25,13 +28,22 @@ export const defaultLinkEditorState = {
     // Tags list
     tags: [] as string[],
     tagsSize: {} as { [key: string]: number },
+    // Hostnames list
+    hostnames: [] as string[],
+    hostnamesSize: {} as { [key: string]: number },
     // Filtering
     selectedCategory: "" as string,
     selectedTag: "" as string,
+    selectedHostname: "" as string,
     searchText: "" as string,
     filteredLinks: [] as LinkItem[],
     // Selection
     selectedLinkId: "" as string,
+    // Browser selection for link opening.
+    // "": use pagesModel.handleOpenUrl (BookmarksDrawer), "os-default": OS browser,
+    // "internal-default": built-in default profile, "profile:<name>": named profile,
+    // "incognito": incognito mode.
+    selectedBrowser: "" as string,
 };
 
 export type LinkEditorState = typeof defaultLinkEditorState;
@@ -47,9 +59,11 @@ export class LinkEditorModel extends TComponentModel<
     private lastSerializedData: LinkEditorData | null = null;
     private stateChangeSubscription: (() => void) | undefined;
     private skipNextContentUpdate = false;
+    private selectionRestored = false;
     gridModel: RenderGridModel | null = null;
     containerElement: HTMLElement | null = null;
-    private lastFilterState = { searchText: "", selectedCategory: "", selectedTag: "", expandedPanel: "" };
+    private lastFilterState = { searchText: "", selectedCategory: "", selectedTag: "", selectedHostname: "", expandedPanel: "" };
+    private static cacheName = "link-editor";
 
     // =========================================================================
     // Lifecycle
@@ -59,11 +73,43 @@ export class LinkEditorModel extends TComponentModel<
         this.stateChangeSubscription = this.state.subscribe(() => {
             this.onDataChangedDebounced();
         });
+        this.initBrowserSelection();
     };
 
     dispose = () => {
         this.stateChangeSubscription?.();
     };
+
+    // =========================================================================
+    // Selection state cache
+    // =========================================================================
+
+    private restoreSelectionState = async () => {
+        const id = this.props.model.state.get().id;
+        const data = await filesModel.getCacheFile(id, LinkEditorModel.cacheName);
+        if (!data) return;
+        try {
+            const saved = JSON.parse(data);
+            this.state.update((s) => {
+                if (saved.expandedPanel) s.expandedPanel = saved.expandedPanel;
+                if (saved.selectedCategory) s.selectedCategory = saved.selectedCategory;
+                if (saved.selectedTag) s.selectedTag = saved.selectedTag;
+                if (saved.selectedHostname) s.selectedHostname = saved.selectedHostname;
+            });
+            this.applyFilters();
+        } catch {
+            // ignore corrupted cache
+        }
+    };
+
+    private saveSelectionState = () => {
+        const { expandedPanel, selectedCategory, selectedTag, selectedHostname } = this.state.get();
+        const id = this.props.model.state.get().id;
+        const data = JSON.stringify({ expandedPanel, selectedCategory, selectedTag, selectedHostname });
+        filesModel.saveCacheFile(id, data, LinkEditorModel.cacheName);
+    };
+
+    private saveSelectionStateDebounced = debounce(this.saveSelectionState, 300);
 
     // =========================================================================
     // Sync: state → file content
@@ -107,6 +153,11 @@ export class LinkEditorModel extends TComponentModel<
             this.lastSerializedData = this.state.get().data;
             this.loadCategories();
             this.loadTags();
+            this.loadHostnames();
+            if (!this.selectionRestored) {
+                this.selectionRestored = true;
+                this.restoreSelectionState();
+            }
             this.applyFilters();
         } catch (e: unknown) {
             const message = e instanceof Error ? e.message : String(e);
@@ -143,6 +194,7 @@ export class LinkEditorModel extends TComponentModel<
             s.expandedPanel = panel as ExpandedPanel;
         });
         this.applyFilters();
+        this.saveSelectionStateDebounced();
     };
 
     setLeftPanelWidth = (width: number) => {
@@ -156,6 +208,7 @@ export class LinkEditorModel extends TComponentModel<
             s.selectedCategory = category;
         });
         this.applyFilters();
+        this.saveSelectionStateDebounced();
     };
 
     setSelectedTag = (tag: string) => {
@@ -163,6 +216,15 @@ export class LinkEditorModel extends TComponentModel<
             s.selectedTag = tag;
         });
         this.applyFilters();
+        this.saveSelectionStateDebounced();
+    };
+
+    setSelectedHostname = (hostname: string) => {
+        this.state.update((s) => {
+            s.selectedHostname = hostname;
+        });
+        this.applyFilters();
+        this.saveSelectionStateDebounced();
     };
 
     setSearchText = (text: string) => {
@@ -252,22 +314,52 @@ export class LinkEditorModel extends TComponentModel<
     };
 
     // =========================================================================
+    // Hostnames
+    // =========================================================================
+
+    loadHostnames = () => {
+        const links = this.state.get().data.links;
+        const hostnamesSize: { [key: string]: number } = {};
+
+        hostnamesSize[""] = links.length;
+
+        links.forEach((link) => {
+            const hostname = getHostname(link.href);
+            if (hostname) {
+                hostnamesSize[hostname] = (hostnamesSize[hostname] || 0) + 1;
+            }
+        });
+
+        const hostnames = Object.keys(hostnamesSize).filter((h) => h !== "").sort();
+
+        this.state.update((s) => {
+            s.hostnames = hostnames;
+            s.hostnamesSize = hostnamesSize;
+        });
+    };
+
+    getHostnameCount = (hostname: string): number => {
+        return this.state.get().hostnamesSize[hostname] ?? 0;
+    };
+
+    // =========================================================================
     // Filtering
     // =========================================================================
 
     applyFilters = () => {
-        const { data, selectedCategory, selectedTag, expandedPanel, searchText, filteredLinks } = this.state.get();
+        const { data, selectedCategory, selectedTag, selectedHostname, expandedPanel, searchText, filteredLinks } = this.state.get();
         const last = this.lastFilterState;
 
         const searchExtended = searchText.startsWith(last.searchText) && last.searchText !== "";
-        const categoryTagUnchanged =
+        const panelFilterUnchanged =
             selectedCategory === last.selectedCategory &&
             selectedTag === last.selectedTag &&
+            selectedHostname === last.selectedHostname &&
             expandedPanel === last.expandedPanel;
 
         let filtered: LinkItem[];
 
-        if (searchExtended && categoryTagUnchanged) {
+        if (searchExtended && panelFilterUnchanged) {
             filtered = filteredLinks;
         } else {
             filtered = data.links;
@@ -290,6 +382,12 @@ export class LinkEditorModel extends TComponentModel<
                     );
                 }
             }
+
+            if (expandedPanel === "hostnames" && selectedHostname) {
+                filtered = filtered.filter(
+                    (link) => getHostname(link.href) === selectedHostname
+                );
+            }
         }
 
         if (searchText.trim()) {
@@ -306,7 +404,7 @@ export class LinkEditorModel extends TComponentModel<
             });
         }
 
-        this.lastFilterState = { searchText, selectedCategory, selectedTag, expandedPanel };
+        this.lastFilterState = { searchText, selectedCategory, selectedTag, selectedHostname, expandedPanel };
 
         this.state.update((s) => {
             s.filteredLinks = filtered;
@@ -318,21 +416,29 @@ export class LinkEditorModel extends TComponentModel<
     // =========================================================================
 
     getViewMode = (): LinkViewMode => {
-        const { expandedPanel, selectedCategory, selectedTag, data } = this.state.get();
+        const { expandedPanel, selectedCategory, selectedTag, selectedHostname, data } = this.state.get();
         if (expandedPanel === "tags") {
             return data.state.tagViewMode?.[selectedTag] ?? "list";
+        }
+        if (expandedPanel === "hostnames") {
+            return data.state.hostnameViewMode?.[selectedHostname] ?? "list";
         }
         return data.state.categoryViewMode?.[selectedCategory] ?? "list";
     };
 
     setViewMode = (mode: LinkViewMode) => {
-        const { expandedPanel, selectedCategory, selectedTag } = this.state.get();
+        const { expandedPanel, selectedCategory, selectedTag, selectedHostname } = this.state.get();
         this.state.update((s) => {
             if (expandedPanel === "tags") {
                 if (!s.data.state.tagViewMode) {
                     s.data.state.tagViewMode = {};
                 }
                 s.data.state.tagViewMode[selectedTag] = mode;
+            } else if (expandedPanel === "hostnames") {
+                if (!s.data.state.hostnameViewMode) {
+                    s.data.state.hostnameViewMode = {};
+                }
+                s.data.state.hostnameViewMode[selectedHostname] = mode;
             } else {
                 if (!s.data.state.categoryViewMode) {
                     s.data.state.categoryViewMode = {};
@@ -381,6 +487,7 @@ export class LinkEditorModel extends TComponentModel<
         });
         this.loadCategories();
         this.loadTags();
+        this.loadHostnames();
         this.applyFilters();
         return newLink;
     };
@@ -398,6 +505,7 @@ export class LinkEditorModel extends TComponentModel<
         });
         if (updates.category !== undefined) this.loadCategories();
         if (updates.tags !== undefined) this.loadTags();
+        if (updates.href !== undefined) this.loadHostnames();
         this.applyFilters();
     };
 
@@ -421,6 +529,7 @@ export class LinkEditorModel extends TComponentModel<
         });
         this.loadCategories();
         this.loadTags();
+        this.loadHostnames();
         this.applyFilters();
     };
 
@@ -601,8 +710,59 @@ export class LinkEditorModel extends TComponentModel<
                 });
                 this.loadCategories();
                 this.loadTags();
+                this.loadHostnames();
                 this.applyFilters();
             }
         }
+    };
+
+    // =========================================================================
+    // Browser Selection
+    // =========================================================================
+
+    private initBrowserSelection = () => {
+        if (this.props.swapLayout) return; // keep "" for BookmarksDrawer monkey-patching
+        const behavior = appSettings.get("link-open-behavior");
+        if (behavior === "default-browser") {
+            this.state.update((s) => { s.selectedBrowser = "os-default"; });
+        } else {
+            this.state.update((s) => { s.selectedBrowser = "internal-default"; });
+        }
+    };
+
+    setSelectedBrowser = (value: string) => {
+        this.state.update((s) => { s.selectedBrowser = value; });
+    };
+
+    openLink = async (url: string) => {
+        const { selectedBrowser } = this.state.get();
+        const { shell } = require("electron");
+
+        if (!selectedBrowser) {
+            const { pagesModel } = await import("../../store/pages-store");
+            pagesModel.handleOpenUrl(url);
+            return;
+        }
+
+        if (selectedBrowser === "os-default") {
+            shell.openExternal(url);
+            return;
+        }
+
+        const { openUrlInBrowserTab } = await import("../../store/page-actions");
+
+        if (selectedBrowser === "incognito") {
+            openUrlInBrowserTab(url, { incognito: true });
+            return;
+        }
+
+        if (selectedBrowser.startsWith("profile:")) {
+            const profileName = selectedBrowser.slice("profile:".length);
+            openUrlInBrowserTab(url, { profileName });
+            return;
+        }
+
+        // "internal-default" — pass empty profileName to match only default-profile tabs
+        openUrlInBrowserTab(url, { profileName: "" });
     };
 }

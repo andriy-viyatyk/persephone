@@ -92,5 +92,11 @@ dist/
 # Electron-Forge
 out/
 
+# electron-builder
+release/
+
 /data/
 /temp/
+
+# Rust launcher build artifacts
+launcher/target/

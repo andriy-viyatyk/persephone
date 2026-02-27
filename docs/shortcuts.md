@@ -138,9 +138,19 @@ All navigation keys (except Tab) support **Shift** to extend selection.
 | Shortcut | Action |
 |----------|--------|
 | `Ctrl+L` | Focus URL bar |
-| `Ctrl+F` | Find in page |
-| `Enter` | Navigate to URL (when URL bar is focused) |
-| `Escape` | Revert URL bar to current URL |
+| `Ctrl+F` | Find in page (open search bar) |
+| `F3` | Next match (when find bar is open) |
+| `Shift+F3` | Previous match (when find bar is open) |
+| `Enter` | Navigate to URL (URL bar) / Next match (find bar) |
+| `F5` | Reload page |
+| `Ctrl+F5` | Hard reload (bypass cache) |
+| `Ctrl+R` | Reload page |
+| `Ctrl+Shift+R` | Hard reload (bypass cache) |
+| `F12` | Open DevTools |
+| `Alt+Left` | Go back |
+| `Alt+Right` | Go forward |
+| `Alt+Home` | Go to tab's home page |
+| `Escape` | Close find bar / stop loading / revert URL bar |
 
 ## Notebook Editor
 

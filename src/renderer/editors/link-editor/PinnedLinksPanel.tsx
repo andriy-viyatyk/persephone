@@ -3,7 +3,6 @@ import { useCallback } from "react";
 import { useDrag, useDrop } from "react-dnd";
 import color from "../../theme/color";
 import { GlobeIcon, OpenLinkIcon, PinFilledIcon } from "../../theme/icons";
-import { pagesModel } from "../../store/pages-store";
 import { LinkItem, LINK_PIN_DRAG } from "./linkTypes";
 import { LinkEditorModel } from "./LinkEditorModel";
 import { getHostname, getFaviconPathSync, requestFaviconSave } from "./favicon-cache";
@@ -71,19 +70,48 @@ const PinnedLinksPanelRoot = styled.div({
         "&.dragging": {
             opacity: 0.4,
         },
-        "& .pinned-favicon": {
+        "& .pinned-open-btn": {
             flexShrink: 0,
+            position: "relative",
             width: 16,
             height: 16,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
+            cursor: "pointer",
             "& img": {
                 width: 16,
                 height: 16,
                 objectFit: "contain",
             },
-            "& svg": { width: 16, height: 16, opacity: 0.5 },
+            "& .pinned-globe": { width: 16, height: 16, opacity: 0.5 },
+            "& .pinned-icon-open": {
+                display: "none",
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                alignItems: "center",
+                justifyContent: "center",
+                "& .pinned-icon-open-bg": {
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: color.background.default,
+                    opacity: 0.7,
+                    borderRadius: 4,
+                },
+                "& svg": {
+                    position: "relative",
+                    color: color.misc.blue,
+                },
+            },
+        },
+        "&:hover .pinned-open-btn .pinned-icon-open": {
+            display: "flex",
         },
         "& .pinned-title": {
             flex: 1,
@@ -92,24 +120,6 @@ const PinnedLinksPanelRoot = styled.div({
             whiteSpace: "nowrap",
             color: color.text.default,
             minWidth: 0,
-        },
-        "& .pinned-open": {
-            flexShrink: 0,
-            display: "flex",
-            alignItems: "center",
-            opacity: 0,
-            cursor: "pointer",
-            color: color.icon.default,
-            borderRadius: 4,
-            padding: 2,
-            transition: "opacity 0.15s ease",
-            "&:hover": {
-                color: color.misc.blue,
-            },
-            "& svg": { width: 16, height: 16 },
-        },
-        "&:hover .pinned-open": {
-            opacity: 1,
         },
     },
 });
@@ -177,27 +187,23 @@ function PinnedItem({ link, index, model, onOpenLink }: PinnedItemProps) {
             onClick={() => model.selectLink(link.id)}
             onDoubleClick={() => model.showLinkDialog(link.id)}
         >
-            <span className="pinned-favicon">
+            <span
+                className="pinned-open-btn"
+                title="Open link"
+                onClick={(e) => {
+                    e.stopPropagation();
+                    model.selectLink(link.id);
+                    onOpenLink(link);
+                }}
+            >
                 {faviconPath
                     ? <img src={`file://${faviconPath}`} alt="" />
-                    : <GlobeIcon />}
+                    : <GlobeIcon className="pinned-globe" />}
+                <span className="pinned-icon-open"><div className="pinned-icon-open-bg" /><OpenLinkIcon /></span>
             </span>
             <span className="pinned-title">
                 {link.title || "Untitled"}
             </span>
-            {link.href && (
-                <span
-                    className="pinned-open"
-                    title="Open link"
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        model.selectLink(link.id);
-                        onOpenLink(link);
-                    }}
-                >
-                    <OpenLinkIcon />
-                </span>
-            )}
         </div>
     );
 }
@@ -216,9 +222,9 @@ export function PinnedLinksPanel({ pinnedLinks, model, style }: PinnedLinksPanel
     const handleOpenLink = useCallback((link: LinkItem) => {
         if (link.href) {
             requestFaviconSave(getHostname(link.href));
-            pagesModel.handleOpenUrl(link.href);
+            model.openLink(link.href);
         }
-    }, []);
+    }, [model]);
 
     return (
         <PinnedLinksPanelRoot style={style}>
