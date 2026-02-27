@@ -2,16 +2,24 @@ name: Build and Release
 on:
   push:
     tags:
-      - 'v*' # Triggers only when you push a version tag like v1.0.0
+      - 'v*' # Triggers when you push a version tag like v1.0.0
+  workflow_dispatch: # Allows manual trigger from any branch via GitHub UI
 
 jobs:
   build:
-    runs-on: windows-latest # Use Windows to build your .msi
+    runs-on: windows-latest
     permissions:
-      contents: write # Important: gives the action permission to create a release
+      contents: write # Gives the action permission to create a release
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build Rust launcher
+        run: cargo build --release
+        working-directory: launcher
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -24,5 +32,5 @@ jobs:
 
       - name: Build and Publish
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Built-in secret, no manual setup needed
-        run: npm run publish
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run dist:publish
