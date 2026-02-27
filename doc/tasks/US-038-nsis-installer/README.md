@@ -2,7 +2,7 @@
 
 ## Status
 
-**Status:** In Progress
+**Status:** Completed
 **Priority:** High
 
 ## Summary
