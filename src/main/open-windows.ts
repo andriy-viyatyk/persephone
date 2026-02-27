@@ -270,6 +270,11 @@ class OpenWindows {
             }
         }
     }
+
+    bringToFront = (): void => {
+        this.makeVisible();
+        this.activateSomeWindow();
+    }
 }
 
 export const openWindows = new OpenWindows();

@@ -119,7 +119,7 @@ export function setupMainProcess() {
 
     app.on("second-instance", (event, commandLine, workingDirectory) => {
         const filePath = commandLine[2];
-        openWindows.makeVisible();
+        openWindows.bringToFront();
 
         if (filePath?.toLowerCase().trim() === "diff") {
             const firstPath = commandLine[3];

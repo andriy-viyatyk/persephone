@@ -25,6 +25,19 @@ use std::os::windows::process::CommandExt;
 
 const DETACHED_PROCESS: u32 = 0x00000008;
 const CREATE_NEW_PROCESS_GROUP: u32 = 0x00000200;
+const ASFW_ANY: u32 = 0xFFFFFFFF;
+
+#[link(name = "user32")]
+extern "system" {
+    fn AllowSetForegroundWindow(process_id: u32) -> i32;
+}
+
+/// Grant any process permission to steal foreground focus.
+/// The launcher is the foreground app (just launched by Explorer),
+/// so Windows allows it to pass this right to js-notepad.
+fn allow_foreground() {
+    unsafe { AllowSetForegroundWindow(ASFW_ANY); }
+}
 
 fn get_pipe_path() -> String {
     let username = env::var("USERNAME").unwrap_or_else(|_| "unknown".to_string());
@@ -115,6 +128,7 @@ fn main() {
     if raw_args.is_empty() {
         // No arguments — try to bring existing instance to front via pipe
         let pipe_path = get_pipe_path();
+        allow_foreground();
         if try_send_via_pipe(&pipe_path, "SHOW\nEND\n").is_ok() {
             return; // Existing instance activated
         }
@@ -143,6 +157,7 @@ fn main() {
 
     // Try to send via Named Pipe (app is running)
     let pipe_path = get_pipe_path();
+    allow_foreground();
     if try_send_via_pipe(&pipe_path, &message).is_ok() {
         // Success — message delivered, exit immediately
         return;

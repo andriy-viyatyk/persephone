@@ -255,20 +255,30 @@ steps:
 - [x] `npm run dist` produces NSIS installer + ZIP locally
 - [x] `npm run dist:publish` configured for GitHub Releases (draft mode)
 
-### Phase 6: GitHub Actions Pipeline
-- [ ] Add Rust toolchain step (`dtolnay/rust-toolchain@stable`)
-- [ ] Add Rust launcher build step
-- [ ] Update publish step for electron-builder
-- [ ] Test full pipeline with a tag push
+### Phase 3c: Bring to Front on Open ✅
+- [x] Launcher calls `AllowSetForegroundWindow(ASFW_ANY)` before sending pipe messages (grants focus permission)
+- [x] `OpenWindows.bringToFront()` method combines `makeVisible()` + `activateSomeWindow()`
+- [x] Pipe server uses `bringToFront()` for OPEN, SHOW, and DIFF commands
+- [x] `second-instance` handler in main-setup.ts uses `bringToFront()`
 
-### Phase 7: Cleanup
-- [ ] Remove unused Forge maker packages (keep Forge for dev)
-- [ ] Update `npm run make` / `npm run package` scripts
-- [ ] Update developer documentation
-- [ ] Update release process documentation
-- [ ] Document MSI → EXE migration for existing users
+### Phase 6: GitHub Actions Pipeline ✅
+- [x] Add Rust toolchain step (`dtolnay/rust-toolchain@stable`)
+- [x] Add Rust launcher build step
+- [x] Update publish step for electron-builder (`npm run dist:publish`)
+- [x] Add `workflow_dispatch` for manual trigger from any branch
+- [x] Tested: manual build from `upcoming-v16` branch succeeded
+
+### Phase 7: Cleanup ✅
+- [x] Remove unused Forge maker/publisher packages (kept Forge for dev server)
+- [x] Remove old `make`/`package`/`publish` scripts from package.json
+- [x] Clean up forge.config.ts (remove makers and publishers, keep plugins)
+- [x] Update CLAUDE.md (commands, tech stack)
+- [x] Document MSI → EXE migration for existing users (below)
 
 ## Notes
+
+### MSI → EXE Migration
+Existing users with the WiX MSI installation should uninstall the MSI version first (via Windows Settings → Apps), then install the new NSIS `.exe` installer. The NSIS installer uses a different install location (`%LOCALAPPDATA%\Programs\js-notepad` by default) and does not conflict with the MSI, but having both installed is not recommended. App data (`%APPDATA%\js-notepad`) is preserved across the migration.
 
 ### 2026-02-27
 - Phase 1–5 completed. electron-builder + NSIS installer working with custom options page.

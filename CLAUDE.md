@@ -104,16 +104,16 @@ JS-Notepad is a Windows Notepad replacement for developers. Built with Electron 
 - **Frontend:** React 19 with TypeScript
 - **Editor:** Monaco Editor
 - **State:** Zustand-style stores with custom primitives (TOneState, TComponentState)
-- **Build:** Vite + Electron Forge
+- **Build:** Vite + Electron Forge (dev), electron-builder (production)
 - **Styling:** Emotion (CSS-in-JS)
 
 ## Commands
 
 ```bash
-npm start       # Development mode
-npm run package # Package the app
-npm run make    # Create distributables (MSI, ZIP)
-npm run lint    # Run ESLint
+npm start           # Development mode (Electron Forge + Vite HMR)
+npm run dist        # Build NSIS installer + ZIP (electron-builder)
+npm run dist:publish # Build and publish to GitHub Releases (draft)
+npm run lint        # Run ESLint
 ```
 
 ## Folder Structure (Summary)

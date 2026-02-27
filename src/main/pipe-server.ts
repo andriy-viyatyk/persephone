@@ -21,7 +21,7 @@ function handleMessage(message: string): void {
             return;
         }
 
-        openWindows.makeVisible();
+        openWindows.bringToFront();
 
         if (isUrl(argument)) {
             openWindows.handleOpenUrl(argument);
@@ -29,8 +29,7 @@ function handleMessage(message: string): void {
             openWindows.handleOpenFile(argument);
         }
     } else if (trimmed === "SHOW") {
-        openWindows.makeVisible();
-        openWindows.activateSomeWindow();
+        openWindows.bringToFront();
     } else if (trimmed.startsWith("DIFF ")) {
         // DIFF <absolute-path1> <absolute-path2>
         // Paths are tab-separated to avoid issues with spaces in file paths
@@ -39,7 +38,7 @@ function handleMessage(message: string): void {
         const secondPath = args[1]?.trim();
 
         if (firstPath && secondPath && isValidFilePath(firstPath) && isValidFilePath(secondPath)) {
-            openWindows.makeVisible();
+            openWindows.bringToFront();
             openWindows.handleOpenDiff(firstPath, secondPath);
         }
     }
