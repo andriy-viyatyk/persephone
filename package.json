@@ -9,6 +9,10 @@
     "package": "electron-forge package",
     "make": "electron-forge make",
     "publish": "electron-forge publish",
+    "build-prod": "node scripts/build-prod.mjs",
+    "dist": "node scripts/build-prod.mjs && electron-builder --win",
+    "dist:zip": "node scripts/build-prod.mjs && electron-builder --win zip",
+    "dist:publish": "node scripts/build-prod.mjs && electron-builder --win --publish always",
     "lint": "eslint --ext .ts,.tsx .",
     "typecheck": "tsc --noEmit",
     "postinstall": "patch-package"
@@ -39,6 +43,7 @@
     "@typescript-eslint/eslint-plugin": "^5.62.0",
     "@typescript-eslint/parser": "^5.62.0",
     "electron": "39.2.4",
+    "electron-builder": "^26.8.1",
     "eslint": "^8.57.1",
     "eslint-plugin-import": "^2.32.0",
     "patch-package": "^8.0.1",

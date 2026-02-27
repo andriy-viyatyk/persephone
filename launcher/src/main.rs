@@ -4,11 +4,13 @@
 // When not running, spawns js-notepad.exe with the arguments.
 //
 // Protocol:
+//   SHOW\n                          — bring existing window to front
 //   OPEN <absolute-path-or-url>\n   — open a file or URL
 //   DIFF <absolute-path1>\t<absolute-path2>\n — open diff comparison
 //   END\n                           — signal end of messages
 //
 // Usage:
+//   js-notepad-launcher.exe                   (no args: show or launch)
 //   js-notepad-launcher.exe <file-or-url> ...
 //   js-notepad-launcher.exe diff <file1> <file2>
 
@@ -111,7 +113,12 @@ fn main() {
     let raw_args: Vec<String> = env::args().skip(1).collect();
 
     if raw_args.is_empty() {
-        // No arguments — just launch the app
+        // No arguments — try to bring existing instance to front via pipe
+        let pipe_path = get_pipe_path();
+        if try_send_via_pipe(&pipe_path, "SHOW\nEND\n").is_ok() {
+            return; // Existing instance activated
+        }
+        // No running instance — launch the app
         spawn_electron(&[]);
         return;
     }

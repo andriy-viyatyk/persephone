@@ -1,0 +1,50 @@
+appId: com.viyatyk.js-notepad
+productName: js-notepad
+copyright: Copyright © Andriy Viyatyk
+
+directories:
+  output: release
+
+# Files to include in the asar archive
+files:
+  - package.json
+  - .vite/**/*
+  - "!node_modules/**/{CHANGELOG.md,README.md,readme.md,LICENSE,license,LICENCE}"
+  - "!node_modules/**/*.{ts,map}"
+
+# Assets go into resources/ (outside asar), matching Forge behavior
+extraResources:
+  - from: assets
+    to: assets
+
+# Rust launcher sits next to the main exe (outside asar)
+extraFiles:
+  - from: launcher/target/release/js-notepad-launcher.exe
+    to: js-notepad-launcher.exe
+
+asar: true
+
+win:
+  icon: assets/icon.ico
+  target:
+    - target: nsis
+    - target: zip
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  perMachine: false
+  allowElevation: true
+  createDesktopShortcut: false
+  createStartMenuShortcut: false
+  menuCategory: JS-Notepad
+  shortcutName: JS-Notepad
+  runAfterFinish: true
+  deleteAppDataOnUninstall: false
+  include: build/installer.nsh
+
+publish:
+  provider: github
+  owner: andriy-viyatyk
+  repo: js-notepad
+  releaseType: draft

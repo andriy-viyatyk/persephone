@@ -28,6 +28,9 @@ function handleMessage(message: string): void {
         } else if (isValidFilePath(argument)) {
             openWindows.handleOpenFile(argument);
         }
+    } else if (trimmed === "SHOW") {
+        openWindows.makeVisible();
+        openWindows.activateSomeWindow();
     } else if (trimmed.startsWith("DIFF ")) {
         // DIFF <absolute-path1> <absolute-path2>
         // Paths are tab-separated to avoid issues with spaces in file paths

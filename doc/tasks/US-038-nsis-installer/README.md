@@ -2,7 +2,7 @@
 
 ## Status
 
-**Status:** Planned
+**Status:** In Progress
 **Priority:** High
 
 ## Summary
@@ -56,9 +56,15 @@ Replace the current Electron Forge + WiX MSI installer with electron-builder + N
 - [ ] Start menu shortcut created
 - [ ] Desktop shortcut (optional, user-selectable during install)
 - [ ] Custom install directory supported
+- [ ] Custom installer options page with checkboxes:
+  - [ ] "Add 'Open with js-notepad' to Explorer context menu" (checked by default) — registers `HKCU\Software\Classes\*\shell\js-notepad` for ALL file types (not just text), pointing to the launcher exe
+  - [ ] "Set as default app for text files" (unchecked by default) — file associations for .txt, .log, .md, .js, .ts, .jsx, .tsx, .json, .xml, .html, .css, .py, .java, .c, .cpp
+  - [ ] "Register js-notepad as default browser" (unchecked by default) — browser registration (for US-036)
+- [ ] Uninstaller cleans up only the options that were selected during install
 - [ ] ZIP portable build still available
 - [ ] `npm run make` produces NSIS installer
 - [ ] `npm run publish` uploads to GitHub Releases
+- [ ] GitHub Actions pipeline builds Rust launcher and Electron app
 - [ ] Upgrade from previous WiX MSI version is handled (or documented)
 - [ ] No regressions to existing functionality
 
@@ -103,11 +109,30 @@ fileAssociations:
 
 ### Phase 3: Custom NSIS Script
 
-`build/installer.nsh` — additional NSIS commands for:
-- Register file associations pointing to the launcher exe
-- "Open with js-notepad" shell context menu entry
-- Registry cleanup on uninstall
-- Optional: browser registration entries (for US-036)
+`build/installer.nsh` — custom installer options page and registry logic:
+
+**Custom Options Page (nsDialogs checkboxes):**
+- **Add "Open with js-notepad" to Explorer context menu** (checked by default) — registers for ALL file types via `HKCU\Software\Classes\*\shell\js-notepad`, pointing to the launcher exe. js-notepad can open text files, PDFs, images, and more.
+- **Set as default app for text files** (unchecked by default) — associates common extensions (.txt, .log, .md, .js, .ts, .jsx, .tsx, .json, .xml, .html, .css, .py, .java, .c, .cpp) with the launcher exe
+- **Register as default browser** (unchecked by default) — writes browser registration registry entries (prepares for US-036)
+
+**Registry entries for "Open with" context menu:**
+```nsis
+WriteRegStr HKCU "Software\Classes\*\shell\js-notepad" "" "Open with js-notepad"
+WriteRegStr HKCU "Software\Classes\*\shell\js-notepad" "Icon" "$INSTDIR\js-notepad-launcher.exe,0"
+WriteRegStr HKCU "Software\Classes\*\shell\js-notepad\command" "" '"$INSTDIR\js-notepad-launcher.exe" "%1"'
+```
+
+**Install actions (conditional on checkboxes):**
+- "Open with js-notepad" shell context menu for all files
+- File associations for specific extensions pointing to the launcher exe
+- Browser registration registry entries
+- Store selected options in registry for uninstaller to read
+
+**Uninstall actions:**
+- Read stored options from registry
+- Remove only the registry entries that were created during install
+- Clean up all files, shortcuts, and remaining registry keys
 
 ### Phase 4: Bundle Rust Launcher
 
@@ -121,14 +146,13 @@ extraFiles:
 
 The NSIS installer script registers this launcher as the handler for file associations instead of `js-notepad.exe`.
 
-### Phase 5: Build Pipeline
+### Phase 5: Build Pipeline (local)
 
 Update `package.json` scripts:
 ```json
 {
   "scripts": {
-    "start": "...",           // Development (electron-builder or keep Forge)
-    "build": "...",           // Vite build
+    "start": "electron-forge start",  // Development (keep Forge)
     "dist": "electron-builder --win",  // Build + NSIS installer
     "dist:zip": "electron-builder --win zip",  // Portable ZIP
     "publish": "electron-builder --win --publish always"
@@ -137,6 +161,32 @@ Update `package.json` scripts:
 ```
 
 Pre-build step: compile Rust launcher (`cargo build --release` in `/launcher/`)
+
+### Phase 6: GitHub Actions Pipeline
+
+Update `.github/workflows/publish.yml` to:
+1. Install Rust toolchain (`dtolnay/rust-toolchain@stable`)
+2. Build Rust launcher (`cargo build --release` in `/launcher/`)
+3. Install Node.js dependencies
+4. Build and publish with electron-builder
+
+```yaml
+steps:
+  - uses: actions/checkout@v4
+  - uses: dtolnay/rust-toolchain@stable
+  - name: Build Rust launcher
+    run: cargo build --release
+    working-directory: launcher
+  - uses: actions/setup-node@v4
+    with:
+      node-version: 20
+      cache: 'npm'
+  - run: npm install
+  - name: Build and Publish
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    run: npm run publish
+```
 
 ## Concerns
 
@@ -164,43 +214,69 @@ Pre-build step: compile Rust launcher (`cargo build --release` in `/launcher/`)
 
 ## Implementation Progress
 
-### Phase 1: electron-builder Setup
-- [ ] Install electron-builder and remove Forge maker packages
-- [ ] Create `electron-builder.yml` configuration
-- [ ] Configure Vite build integration
-- [ ] Verify `npm run dist` produces a working unpacked build
-- [ ] Verify preload scripts and webview preload work correctly
+### Phase 1: electron-builder Setup ✅
+- [x] Install electron-builder
+- [x] Create `electron-builder.yml` configuration
+- [x] Create standalone Vite build script (`scripts/build-prod.mjs`) replicating Forge VitePlugin output structure
+- [x] Add npm scripts: `build-prod`, `dist`, `dist:zip`, `dist:publish`
+- [x] Fix `when-exit` browser/node conditional export (resolve conditions: `["node"]` for main process)
+- [x] Fix renderer `buffer`/`string_decoder` resolution (don't externalize node builtins for ESM renderer)
+- [x] Verify `npm run dist` produces working unpacked build
+- [x] Verify preload scripts and webview preload work correctly
 
-### Phase 2: NSIS Installer
-- [ ] Configure NSIS options (install wizard, directories, shortcuts)
-- [ ] Add file associations matching current WiX config
-- [ ] Verify installer produces working `.exe` setup
-- [ ] Verify uninstaller removes all files and registry entries
-- [ ] Test upgrade installation (install over existing)
+### Phase 2: NSIS Installer ✅
+- [x] Configure NSIS options (install wizard, directories, per-user install)
+- [x] Verify installer produces working `.exe` setup
+- [x] Verify ZIP portable build still works
 
-### Phase 3: Custom Registry & Associations
-- [ ] Create `build/installer.nsh` with custom NSIS script
-- [ ] Register "Open with js-notepad" context menu
-- [ ] Point file associations to launcher exe (after US-037)
-- [ ] Clean up registry on uninstall
+### Phase 3: Custom NSIS Script (installer.nsh) ✅
+- [x] Create `build/installer.nsh` with custom "Additional Options" page
+- [x] nsDialogs checkboxes (5 options, upgrade-aware defaults from registry):
+  - [x] "Create desktop shortcut" (checked by default)
+  - [x] "Create Start menu shortcut" (checked by default)
+  - [x] "Add 'Open with js-notepad' to Explorer context menu" (checked by default) — all files via `HKCU\Software\Classes\*\shell\js-notepad`
+  - [x] "Set as default app for text files" (unchecked by default) — 15 extensions with previous association backup/restore
+  - [x] "Register js-notepad as default browser" (unchecked by default) — full Windows internet client + URL handler registration
+- [x] All shortcuts and file associations point to `js-notepad-launcher.exe`
+- [x] Store selected options in registry (`HKCU\Software\js-notepad\Install`) for uninstaller
+- [x] Uninstaller reads stored options and removes only what was installed
+- [x] SHChangeNotify call to refresh Explorer after changes
 
-### Phase 4: Bundle Launcher
-- [ ] Add `extraFiles` config to include Rust launcher
-- [ ] Add pre-build script to compile Rust launcher
-- [ ] Verify launcher is included in both installer and ZIP builds
+### Phase 3b: Launcher SHOW command ✅
+- [x] Launcher sends `SHOW` command via pipe when started without arguments (brings existing instance to front)
+- [x] Falls back to spawning `js-notepad.exe` if no running instance
+- [x] Pipe server handles `SHOW` → `makeVisible()` + `activateSomeWindow()`
 
-### Phase 5: Publishing
-- [ ] Configure GitHub publisher in electron-builder
-- [ ] Verify `npm run publish` uploads to GitHub Releases
-- [ ] Update release process documentation
+### Phase 4: Bundle Launcher ✅
+- [x] `extraFiles` config includes Rust launcher next to main exe
+- [x] Launcher included in both NSIS installer and ZIP builds
 
-### Phase 6: Cleanup
-- [ ] Remove unused Forge maker packages
+### Phase 5: Local Build Pipeline ✅
+- [x] `npm run dist` produces NSIS installer + ZIP locally
+- [x] `npm run dist:publish` configured for GitHub Releases (draft mode)
+
+### Phase 6: GitHub Actions Pipeline
+- [ ] Add Rust toolchain step (`dtolnay/rust-toolchain@stable`)
+- [ ] Add Rust launcher build step
+- [ ] Update publish step for electron-builder
+- [ ] Test full pipeline with a tag push
+
+### Phase 7: Cleanup
+- [ ] Remove unused Forge maker packages (keep Forge for dev)
 - [ ] Update `npm run make` / `npm run package` scripts
 - [ ] Update developer documentation
+- [ ] Update release process documentation
 - [ ] Document MSI → EXE migration for existing users
 
 ## Notes
+
+### 2026-02-27
+- Phase 1–5 completed. electron-builder + NSIS installer working with custom options page.
+- Kept Forge for dev (`npm start`), electron-builder for production builds (`npm run dist`)
+- Custom installer page has 5 checkboxes organized into "Shortcuts" and "System integration" sections
+- Launcher enhanced with SHOW command for instant window activation from shortcuts
+- File associations use per-extension backup/restore to be a good citizen with other programs
+- `!ifndef BUILD_UNINSTALLER` guards needed for installer-only variables and functions (NSIS two-pass compilation)
 
 ### 2026-02-26
 - Task created alongside US-037 (Rust Launcher) — they are tightly coupled

@@ -92,6 +92,9 @@ dist/
 # Electron-Forge
 out/
 
+# electron-builder
+release/
+
 /data/
 /temp/
 
