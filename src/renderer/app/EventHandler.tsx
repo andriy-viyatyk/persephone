@@ -12,6 +12,7 @@ import { nodeUtils } from "../core/utils/node-utils";
 import { EventEndpoint, RendererEvent } from "../../ipc/api-types";
 import rendererEvents from "../../ipc/renderer/renderer-events";
 import { UpdateCheckResult } from "../../ipc/api-param-types";
+import { downloadsStore } from "../store/downloads-store";
 
 class EventHandlerModel extends TModel<null> {
     private updateSubscription: SubscriptionObject | null = null;
@@ -26,6 +27,8 @@ class EventHandlerModel extends TModel<null> {
         this.updateSubscription = rendererEvents[EventEndpoint.eUpdateAvailable].subscribe(
             this.handleUpdateAvailable
         );
+
+        downloadsStore.init();
     }
 
     dispose = () => {

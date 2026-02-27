@@ -11,6 +11,7 @@ import { versionService } from "./version-service";
 import { initSearchHandlers } from "./search-service";
 import { initBrowserHandlers } from "./browser-service";
 import { startPipeServer, stopPipeServer } from "./pipe-server";
+import { downloadService } from "./download-service";
 
 export function setupMainProcess() {
     protocol.registerSchemesAsPrivileged([
@@ -37,6 +38,7 @@ export function setupMainProcess() {
     controller.init();
     initSearchHandlers();
     initBrowserHandlers();
+    downloadService.init();
 
     function registerAssetProtocol(partition: string) {
         const customSession = session.fromPartition(partition);

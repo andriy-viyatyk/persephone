@@ -158,6 +158,15 @@ A built-in web browser for viewing documentation, APIs, and web resources withou
 - **Find in page** — `Ctrl+F` to search text within the web page
 - **Focus URL bar** — `Ctrl+L` to quickly jump to the URL bar
 - **Keyboard shortcuts** — standard browser hotkeys work regardless of focus: `F5` reload, `Ctrl+F5`/`Ctrl+Shift+R` hard reload, `F12` DevTools, `Alt+Left`/`Alt+Right` back/forward, `Alt+Home` go to home page, `Escape` stop loading
+- **Downloads** — download button in the toolbar with progress tracking
+  - Circular progress ring around the button while downloads are active; icon turns active color
+  - Click the button to open a popup with the download list (most recent at top)
+  - Active downloads show a progress bar with received/total bytes and a cancel button
+  - Completed downloads show "Open" and "Show in Folder" buttons
+  - Failed/cancelled downloads show status text
+  - "Clear" button to dismiss completed and failed entries
+  - Download list is global — shared across all browser pages and windows
+  - Last 5 completed downloads are remembered across app restarts
 - **DevTools** — click the gear icon or press `F12` to open the webview's developer tools
 - **Session restore** — all internal tabs, URLs, navigation history, and profile selection saved and restored across app restarts
 - **Isolated storage** — each profile has its own cookies, storage, and cache, separated from the main application

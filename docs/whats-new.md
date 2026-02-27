@@ -8,6 +8,19 @@ Release notes and changelog for js-notepad.
 
 ## Version 1.0.16 (Upcoming)
 
+### New Features
+
+- **Browser Editor — Download Manager** — download progress tracking and history in the browser toolbar
+  - **Download button** with circular progress ring that animates while downloads are active (icon turns active color)
+  - Click the button to open a **Downloads popup** listing all downloads (most recent first)
+  - Active downloads show a progress bar with received/total bytes and a **Cancel** button
+  - Completed downloads show **Open** (launches file with default app) and **Show in Folder** (opens Explorer with file selected) buttons
+  - Failed or cancelled downloads display status text
+  - **Clear** button to dismiss completed and failed entries
+  - Global download list — shared across all browser pages and windows
+  - Last 5 completed downloads are persisted and restored on app restart
+  - Uses the native OS save dialog for choosing download location
+
 ### Improvements
 
 - **Browser Editor — Keyboard Shortcuts** — standard browser hotkeys now work regardless of focus location:
@@ -45,6 +58,10 @@ Release notes and changelog for js-notepad.
   - Works on cold start and when js-notepad is already running (via the launcher's named pipe)
 
 - **NSIS Installer** — production builds now use electron-builder with a custom NSIS installer featuring an options page: desktop/start menu shortcuts, Explorer context menu ("Open with js-notepad"), file associations, and browser registration.
+
+### Bug Fixes
+
+- **Default Browser — External URL Routing** — fixed an issue where clicking links in external applications (when js-notepad is the default browser) could create duplicate browser pages instead of reusing the existing one. External URLs now correctly find the first browser page with the default profile and add a new internal tab there.
 
 ---
 

@@ -76,44 +76,60 @@ export async function openImageInNewTab(imageUrl: string): Promise<void> {
 export async function openUrlInBrowserTab(url: string, options?: {
     incognito?: boolean;
     profileName?: string;
+    /** External URLs (from OS) use left-to-right search and match only the default profile. */
+    external?: boolean;
 }): Promise<void> {
     const pages = pagesModel.state.get().pages;
     const activePage = pagesModel.activePage;
     const activeIndex = activePage ? pages.indexOf(activePage) : -1;
 
     // When a specific profile is requested, only match browser tabs with that profile.
-    // When no profile is specified (undefined), match any non-incognito browser tab.
+    // For external URLs without explicit profile, match only the default profile.
+    // When no profile is specified on internal URLs, match any non-incognito browser tab.
     // When incognito is requested, match any incognito browser tab.
     const matchesBrowser = (pageState: any) => {
         if (pageState.type !== "browserPage") return false;
         if (options?.incognito) return !!pageState.isIncognito;
         const targetProfile = options?.profileName !== undefined
             ? (options.profileName || "")
-            : undefined;
+            : options?.external
+                ? (appSettings.get("browser-default-profile") || "")
+                : undefined;
         return !pageState.isIncognito &&
             (targetProfile === undefined || (pageState.profileName ?? "") === targetProfile);
     };
 
-    // Search right for existing browser tab
-    for (let i = activeIndex + 1; i < pages.length; i++) {
-        const pageState = pages[i].state.get();
-        if (matchesBrowser(pageState)) {
-            (pages[i] as any).addTab(url);
-            pagesModel.showPage(pageState.id);
-            return;
+    const addTabToPage = (index: number) => {
+        const pageState = pages[index].state.get();
+        (pages[index] as any).addTab(url);
+        pagesModel.showPage(pageState.id);
+    };
+
+    if (options?.external) {
+        // External URLs: simple left-to-right search for the first matching browser page
+        for (let i = 0; i < pages.length; i++) {
+            if (matchesBrowser(pages[i].state.get())) {
+                addTabToPage(i);
+                return;
+            }
         }
-    }
-    // Search left for existing browser tab
-    for (let i = activeIndex - 1; i >= 0; i--) {
-        const pageState = pages[i].state.get();
-        if (matchesBrowser(pageState)) {
-            (pages[i] as any).addTab(url);
-            pagesModel.showPage(pageState.id);
-            return;
+    } else {
+        // Internal URLs: search right from active page, then left
+        for (let i = activeIndex + 1; i < pages.length; i++) {
+            if (matchesBrowser(pages[i].state.get())) {
+                addTabToPage(i);
+                return;
+            }
+        }
+        for (let i = activeIndex - 1; i >= 0; i--) {
+            if (matchesBrowser(pages[i].state.get())) {
+                addTabToPage(i);
+                return;
+            }
         }
     }
 
-    // No browser tab found (or incognito requested) — create new one as last tab.
+    // No matching browser tab found — create new one as last tab.
     // Pass the URL directly so the initial tab's webview src is set before React mounts
     // the component — avoids a race condition where navigate() is called before the
     // webview is ready, causing the page to stay blank.

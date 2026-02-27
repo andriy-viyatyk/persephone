@@ -372,7 +372,7 @@ export class PagesModel extends TModel<OpenFilesState> {
 
     handleExternalUrl = async (url: string) => {
         const { openUrlInBrowserTab } = await import("./page-actions");
-        openUrlInBrowserTab(url);
+        openUrlInBrowserTab(url, { external: true });
     };
 
     restoreModel = async (data: Partial<IPage>): Promise<PageModel | null> => {

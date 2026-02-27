@@ -3,7 +3,7 @@ import { Api, Endpoint, EventEndpoint } from "../api-types";
 import { getAssetPath, getAppRootPath } from "../../main/utils";
 import { showOpenFileDialog, showOpenFolderDialog, showSaveFileDialog } from "./dialog-handlers";
 import { getFileToOpen, getUrlToOpen, windowReady } from "./window-handlers";
-import { OpenFileDialogParams, RuntimeVersions, SaveFileDialogParams, UpdateCheckResult } from "../api-param-types";
+import { DownloadEntry, OpenFileDialogParams, RuntimeVersions, SaveFileDialogParams, UpdateCheckResult } from "../api-param-types";
 import { openWindows } from "../../main/open-windows";
 import { initRendererEvents } from "./renderer-events";
 import { WindowPages } from "../../shared/types";
@@ -11,6 +11,7 @@ import { dragModel } from "../../main/drag-model";
 import { fileIconCache } from "../../main/fileIconCache";
 import { versionService } from "../../main/version-service";
 import * as browserRegistration from "../../main/browser-registration";
+import { downloadService } from "../../main/download-service";
 
 type AddEventParam<T> = T extends (...args: infer Args) => infer Return
     ? (event: IpcMainEvent, ...args: Args) => Return
@@ -167,6 +168,26 @@ class Controller implements MainApi {
     openDefaultAppsSettings = async (event: IpcMainEvent): Promise<void> => {
         browserRegistration.openDefaultAppsSettings();
     }
+
+    getDownloads = async (event: IpcMainEvent): Promise<DownloadEntry[]> => {
+        return downloadService.getDownloads();
+    }
+
+    cancelDownload = async (event: IpcMainEvent, id: string): Promise<void> => {
+        downloadService.cancelDownload(id);
+    }
+
+    openDownload = async (event: IpcMainEvent, id: string): Promise<void> => {
+        downloadService.openDownload(id);
+    }
+
+    showDownloadInFolder = async (event: IpcMainEvent, id: string): Promise<void> => {
+        downloadService.showInFolder(id);
+    }
+
+    clearCompletedDownloads = async (event: IpcMainEvent): Promise<void> => {
+        downloadService.clearCompleted();
+    }
 }
 
 const controllerInstance = new Controller();
@@ -218,6 +239,11 @@ const init = () => {
     bindEndpoint(Endpoint.unregisterAsDefaultBrowser, controllerInstance.unregisterAsDefaultBrowser);
     bindEndpoint(Endpoint.isRegisteredAsDefaultBrowser, controllerInstance.isRegisteredAsDefaultBrowser);
     bindEndpoint(Endpoint.openDefaultAppsSettings, controllerInstance.openDefaultAppsSettings);
+    bindEndpoint(Endpoint.getDownloads, controllerInstance.getDownloads);
+    bindEndpoint(Endpoint.cancelDownload, controllerInstance.cancelDownload);
+    bindEndpoint(Endpoint.openDownload, controllerInstance.openDownload);
+    bindEndpoint(Endpoint.showDownloadInFolder, controllerInstance.showDownloadInFolder);
+    bindEndpoint(Endpoint.clearCompletedDownloads, controllerInstance.clearCompletedDownloads);
 
     initRendererEvents();
 }

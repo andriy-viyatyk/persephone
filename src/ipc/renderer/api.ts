@@ -1,6 +1,7 @@
 import { PageDragData, WindowPages } from "../../shared/types";
 import {
     CommonFolder,
+    DownloadEntry,
     OpenFileDialogParams,
     OpenFolderDialogParams,
     RuntimeVersions,
@@ -185,6 +186,26 @@ class ApiCalls implements Api {
 
     openDefaultAppsSettings = async () => {
         return executeOnce<void>(Endpoint.openDefaultAppsSettings);
+    }
+
+    getDownloads = async () => {
+        return executeOnce<DownloadEntry[]>(Endpoint.getDownloads);
+    }
+
+    cancelDownload = async (id: string) => {
+        return executeOnce<void>(Endpoint.cancelDownload, id);
+    }
+
+    openDownload = async (id: string) => {
+        return executeOnce<void>(Endpoint.openDownload, id);
+    }
+
+    showDownloadInFolder = async (id: string) => {
+        return executeOnce<void>(Endpoint.showDownloadInFolder, id);
+    }
+
+    clearCompletedDownloads = async () => {
+        return executeOnce<void>(Endpoint.clearCompletedDownloads);
     }
 }
 

@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 const { ipcRenderer } = require("electron");
 import { IPage, PageType } from "../../../shared/types";
 import { PageModel, PageToolbar } from "../base";
@@ -36,6 +36,8 @@ import { BrowserTabsPanel } from "./BrowserTabsPanel";
 import { WithPopupMenu } from "../../components/overlay/WithPopupMenu";
 import { UrlSuggestionsDropdown } from "./UrlSuggestionsDropdown";
 import { BookmarksDrawer } from "./BookmarksDrawer";
+import { DownloadButton } from "./DownloadButton";
+import { BrowserDownloadsPopup } from "./BrowserDownloadsPopup";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const WEBVIEW_PRELOAD_URL = (window as any).webviewPreloadUrl as string;
@@ -367,6 +369,11 @@ function BrowserPageView({ model }: BrowserPageViewProps) {
     });
 
     const isInitialLoad = useRef(true);
+    const [downloadsAnchor, setDownloadsAnchor] = useState<HTMLElement | null>(null);
+    const handleDownloadClick = useCallback((el: HTMLElement) => {
+        setDownloadsAnchor((prev) => (prev ? null : el));
+    }, []);
+    const handleDownloadsClose = useCallback(() => setDownloadsAnchor(null), []);
 
     // IPC event handler lifecycle
     useEffect(() => {
@@ -509,6 +516,7 @@ function BrowserPageView({ model }: BrowserPageViewProps) {
                     >
                         <BookmarkIcon />
                     </Button>
+                    <DownloadButton onClick={handleDownloadClick} />
                     <Button
                         type="icon"
                         size="small"
@@ -599,6 +607,10 @@ function BrowserPageView({ model }: BrowserPageViewProps) {
                 onHoveredIndexChange={(i) => model.state.update((s) => { s.hoveredIndex = i; })}
                 onSelect={urlBar.handleSuggestionSelect}
                 onClearVisible={suggestionsMode === "search" ? urlBar.handleClearVisible : undefined}
+            />
+            <BrowserDownloadsPopup
+                anchorEl={downloadsAnchor}
+                onClose={handleDownloadsClose}
             />
         </BrowserPageViewRoot>
     );

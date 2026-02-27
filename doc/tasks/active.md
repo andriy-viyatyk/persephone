@@ -8,14 +8,13 @@ Current work in progress and planned tasks.
 
 ## Planned (Next)
 
-| ID | Title | Priority | Link |
-|----|-------|----------|------|
-| US-030 | Download Manager | Medium | [README](US-030-download-manager/README.md) |
+(none)
 
 ## Recently Completed
 
 | ID | Title | Notes |
 |----|-------|-------|
+| US-030 | Browser Download Progress & History | Toolbar download button with SVG progress ring, Popper popup with download list, main-process DownloadService with IPC broadcasting, native save dialog for reliable path capture, global state shared across windows, last 5 completed persisted. Also fixed external URL routing (left-to-right search, default profile only). |
 | US-036 | Register as Default Browser | HKCU registry management (no admin), Settings page UI, deep-link to Windows Default Apps, separate eOpenExternalUrl event for OS URLs, launcher version info for proper app name/icon |
 | US-038 | Switch to electron-builder + NSIS | electron-builder replaces Forge makers, NSIS installer with custom options page (shortcuts, context menu, file associations, browser registration), AllowSetForegroundWindow for bring-to-front, GitHub Actions with Rust toolchain |
 | US-037 | Lightweight Rust Launcher | 308KB Rust launcher with Named Pipe IPC for instant file/URL/diff opening, pipe server in main process, concurrent connection support |

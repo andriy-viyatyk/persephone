@@ -1,5 +1,5 @@
 import { IPage } from "../../shared/types";
-import { UpdateCheckResult } from "../api-param-types";
+import { DownloadEntry, UpdateCheckResult } from "../api-param-types";
 import { EventApi, EventEndpoint, EventObject } from "../api-types";
 
 class RendererEventObject<T> implements EventObject<T> {
@@ -89,6 +89,26 @@ class RendererEvents implements EventApi {
 
     [EventEndpoint.eOpenExternalUrl] = new RendererEventObject<string>(
         EventEndpoint.eOpenExternalUrl
+    );
+
+    [EventEndpoint.eDownloadStarted] = new RendererEventObject<DownloadEntry>(
+        EventEndpoint.eDownloadStarted
+    );
+
+    [EventEndpoint.eDownloadProgress] = new RendererEventObject<{ id: string; receivedBytes: number; totalBytes: number }>(
+        EventEndpoint.eDownloadProgress
+    );
+
+    [EventEndpoint.eDownloadCompleted] = new RendererEventObject<{ id: string; savePath: string }>(
+        EventEndpoint.eDownloadCompleted
+    );
+
+    [EventEndpoint.eDownloadFailed] = new RendererEventObject<{ id: string; error: string }>(
+        EventEndpoint.eDownloadFailed
+    );
+
+    [EventEndpoint.eDownloadCleared] = new RendererEventObject<DownloadEntry[]>(
+        EventEndpoint.eDownloadCleared
     );
 }
 
