@@ -3,7 +3,7 @@ import { MenuItem } from "../components/overlay/PopupMenu";
 import { GlobeIcon, OpenFileIcon } from "../theme/icons";
 import { IncognitoIcon } from "../theme/language-icons";
 import { DEFAULT_BROWSER_COLOR } from "../theme/palette-colors";
-import { appSettings } from "./app-settings";
+import { settings } from "../api/settings";
 
 const { shell } = require("electron");
 
@@ -36,7 +36,7 @@ export function appendLinkOpenMenuItems(
             },
             disabled,
         },
-        ...appSettings.get("browser-profiles").map((profile) => ({
+        ...settings.get("browser-profiles").map((profile) => ({
             label: `Open in ${profile.name}`,
             icon: <GlobeIcon color={profile.color} />,
             onClick: async () => {

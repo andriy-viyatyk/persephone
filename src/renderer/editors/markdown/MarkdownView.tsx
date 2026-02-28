@@ -15,7 +15,7 @@ import { pagesModel } from "../../store/pages-store";
 import { createRehypeHighlight } from "./rehypeHighlight";
 import { CodeBlock, createPreBlock } from "./CodeBlock";
 import { isCurrentThemeDark } from "../../theme/themes";
-import { appSettings } from "../../store/app-settings";
+import { settings } from "../../api/settings";
 import { resolveRelatedLink } from "../../core/utils/path-utils";
 import { Button } from "../../components/basic/Button";
 import { MarkdownSearchBar } from "./MarkdownSearchBar";
@@ -568,7 +568,7 @@ export function MarkdownView(props: MarkdownViewProps) {
     }));
 
     // Subscribe to theme changes — only affects mermaid diagram rendering
-    const themeId = appSettings.use("theme");
+    const themeId = settings.use("theme");
     const mermaidLightMode = !isCurrentThemeDark();
     const hasMermaid = content.includes("```mermaid");
 

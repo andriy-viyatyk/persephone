@@ -1,5 +1,7 @@
 # ISettings — `app.settings`
 
+**Status:** Implemented (Phase 1)
+
 Application configuration. Read and write settings with typed access and change notifications.
 
 ## Access

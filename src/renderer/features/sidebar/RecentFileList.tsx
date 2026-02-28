@@ -1,6 +1,7 @@
 const path = require("path");
 import { forwardRef, useCallback, useEffect, useMemo } from "react";
-import { recentFiles, pagesModel } from "../../store";
+import { pagesModel } from "../../store";
+import { recent } from "../../api/recent";
 import { FileListItem, FileList, FileListRef } from "./FileList";
 import { MenuItem } from "../../components/overlay/PopupMenu";
 import { api } from "../../../ipc/renderer/api";
@@ -18,10 +19,10 @@ interface RecentFileListProps {
 export const RecentFileList = forwardRef<FileListRef, RecentFileListProps>(
     function RecentFileList(props, ref) {
         useEffect(() => {
-            recentFiles.load();
+            recent.load();
         }, []);
 
-        const files = recentFiles.state.use((s) => s.files);
+        const files = recent.useFiles();
 
         const items = useMemo(() => {
             const fileItems: FileListItem[] = files.map((filePath) => ({
@@ -64,7 +65,7 @@ export const RecentFileList = forwardRef<FileListRef, RecentFileListProps>(
                     label: "Remove from Recent",
                     icon: <RemoveIcon />,
                     onClick: async () => {
-                        await recentFiles.remove(item.filePath);
+                        await recent.remove(item.filePath);
                     },
                 }
             ];

@@ -15,7 +15,7 @@ import { WithPopupMenu } from "../../components/overlay/WithPopupMenu";
 import { MenuItem } from "../../components/overlay/PopupMenu";
 import { TComponentModel, useComponentModel } from "../../core/state/model";
 import { useMemo } from "react";
-import { appSettings } from "../../store/app-settings";
+import { settings } from "../../api/settings";
 import { minTabWidth, PageTab, pinnedTabWidth, pinnedTabEncryptedWidth } from "./PageTab";
 import color from "../../theme/color";
 import { isTextFileModel } from "../../editors/text";
@@ -164,8 +164,8 @@ export function PageTabs(props: object) {
     const tabsState = model.state.use();
     const state = pagesModel.state.use();
 
-    const browserProfiles = appSettings.use("browser-profiles");
-    const defaultProfileName = appSettings.use("browser-default-profile");
+    const browserProfiles = settings.use("browser-profiles");
+    const defaultProfileName = settings.use("browser-default-profile");
     const defaultBrowserColor = browserProfiles.find((p) => p.name === defaultProfileName)?.color || DEFAULT_BROWSER_COLOR;
 
     const addPageMenuItems = useMemo((): MenuItem[] => {

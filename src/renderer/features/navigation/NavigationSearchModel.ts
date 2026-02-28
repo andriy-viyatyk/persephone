@@ -15,7 +15,7 @@ import {
     SearchError,
     SearchMatch,
 } from "../../../ipc/search-ipc";
-import { appSettings } from "../../store/app-settings";
+import { settings } from "../../api/settings";
 
 const { ipcRenderer } = require("electron");
 
@@ -135,8 +135,8 @@ export class NavigationSearchModel {
             includePattern,
             excludePattern,
             caseSensitive: false,
-            maxFileSize: appSettings.get("search-max-file-size"),
-            extensions: appSettings.get("search-extensions"),
+            maxFileSize: settings.get("search-max-file-size"),
+            extensions: settings.get("search-extensions"),
         };
 
         ipcRenderer.send(SearchChannel.start, request);

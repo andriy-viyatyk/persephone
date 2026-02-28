@@ -1,0 +1,66 @@
+/**
+ * Editor category distinguishes between two types of editors:
+ * - "page-editor": Standalone editors with their own page model (e.g., PDF viewer, Image viewer).
+ * - "content-view": Views of text-based content (e.g., Monaco, Grid, Markdown preview).
+ *   Content views can switch between each other (e.g., JSON text → Grid view).
+ */
+export type EditorCategory = "page-editor" | "content-view";
+
+/**
+ * Read-only information about a registered editor.
+ */
+export interface IEditorInfo {
+    /** Unique editor identifier (e.g. "monaco", "grid-json", "pdf-view"). */
+    readonly id: string;
+    /** Human-readable editor name (e.g. "Text Editor", "JSON Grid"). */
+    readonly name: string;
+    /** Whether this is a standalone page editor or a content view. */
+    readonly category: EditorCategory;
+}
+
+/**
+ * Options for the editor switch dropdown.
+ */
+export interface ISwitchOptions {
+    /** Available editor IDs. Empty if only one editor applies. */
+    readonly options: string[];
+    /** Get the display label for an editor option. */
+    getOptionLabel(option: string): string;
+}
+
+/**
+ * Read-only registry of all editors in the application.
+ * Query available editors, resolve the best editor for a file,
+ * and get switch options for the UI.
+ *
+ * Available as `app.editors`.
+ *
+ * @example
+ * const all = app.editors.getAll();
+ * const best = app.editors.resolve("data.json");
+ * console.log(best?.name); // "JSON Grid"
+ */
+export interface IEditorRegistry {
+    /** Get all registered editors. */
+    getAll(): IEditorInfo[];
+
+    /** Get editor info by ID. Returns `undefined` if not found. */
+    getById(id: string): IEditorInfo | undefined;
+
+    /**
+     * Resolve the best matching editor for a file path.
+     * Returns `undefined` if no editor matches.
+     */
+    resolve(filePath: string): IEditorInfo | undefined;
+
+    /** Resolve just the editor ID for a file path. */
+    resolveId(filePath: string): string | undefined;
+
+    /**
+     * Get available editor switch options for a language.
+     * Used to build "Switch Editor" dropdowns in the UI.
+     * @param languageId - Monaco language ID (e.g. "json", "markdown")
+     * @param filePath - Optional file path for context
+     */
+    getSwitchOptions(languageId: string, filePath?: string): ISwitchOptions;
+}

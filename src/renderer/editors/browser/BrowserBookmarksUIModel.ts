@@ -3,7 +3,7 @@ import { BrowserBookmarks, createEmptyLinkFile } from "./BrowserBookmarks";
 import { showEditLinkDialog } from "../link-editor/EditLinkDialog";
 import { showConfirmationDialog } from "../../features/dialogs/ConfirmationDialog";
 import { api } from "../../../ipc/renderer/api";
-import { appSettings, BrowserProfile } from "../../store/app-settings";
+import { settings, BrowserProfile } from "../../api/settings";
 import type { BrowserPageModel } from "./BrowserPageModel";
 
 /** Tracked image URLs from a specific navigation level. */
@@ -88,21 +88,21 @@ export class BrowserBookmarksUIModel {
             // Persist the file path in settings for this profile
             const { profileName: pName, isIncognito: isInc } = this.model.state.get();
             if (isInc) {
-                appSettings.set("browser-incognito-bookmarks-file", filePath);
+                settings.set("browser-incognito-bookmarks-file", filePath);
             } else if (pName) {
-                const profiles = appSettings.get("browser-profiles");
-                appSettings.set("browser-profiles", profiles.map((p: BrowserProfile) =>
+                const profiles = settings.get("browser-profiles");
+                settings.set("browser-profiles", profiles.map((p: BrowserProfile) =>
                     p.name === pName ? { ...p, bookmarksFile: filePath } : p,
                 ));
             } else {
-                const defaultName = appSettings.get("browser-default-profile");
+                const defaultName = settings.get("browser-default-profile");
                 if (defaultName) {
-                    const profiles = appSettings.get("browser-profiles");
-                    appSettings.set("browser-profiles", profiles.map((p: BrowserProfile) =>
+                    const profiles = settings.get("browser-profiles");
+                    settings.set("browser-profiles", profiles.map((p: BrowserProfile) =>
                         p.name === defaultName ? { ...p, bookmarksFile: filePath } : p,
                     ));
                 } else {
-                    appSettings.set("browser-default-bookmarks-file", filePath);
+                    settings.set("browser-default-bookmarks-file", filePath);
                 }
             }
         }

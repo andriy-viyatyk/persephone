@@ -12,12 +12,18 @@ Current work in progress and planned tasks.
 
 ## Planned (Next)
 
-(none)
+| ID | Title | Description |
+|----|-------|-------------|
+| US-045 | [Phase 3 — UI & Shell](US-045-phase3-ui-shell/README.md) | `app.ui` (IUserInterface: confirm, input, password, notify) + `app.shell` (IShell: openExternal, version service, encryption service). Defers: file search, scripting, spawn, browser registration, sidebar folders. |
 
 ## Recently Completed
 
 | ID | Title | Notes |
 |----|-------|-------|
+| US-046 | Phase 1 Revision — Move Logic into API | `app.settings`: moved logic from `app-settings.ts` to `api/settings.ts` (14 consumers). `app.editors`: confirmed facade pattern correct (no code change). `app.recent`: moved logic from `recent-files.ts` to `api/recent.ts` (4 consumers). Old stores deleted. |
+| US-044 | Phase 2 — File System & Window | `app.fs` (IFileSystem: read/readFile/write/readBinary/writeBinary/exists/delete, resolveDataPath/resolveCachePath, dialogs, showInExplorer/showFolder), `app.window` (IWindow: minimize/maximize/restore/close, isMaximized, zoom/resetZoom/zoomLevel, openNew). Dynamic `import()` in `initServices()`. API reference docs created. |
+| US-043 | Phase 1 — Independent Interfaces | `app.settings` (ISettings wrapping appSettings with onChanged event), `app.editors` (IEditorRegistry — read-only subset of editorRegistry), `app.recent` (IRecentFiles with lazy load()). Dynamic `import()` via `initServices()` in app.ts. API reference docs created. |
+| US-042 | Phase 0 — App Object Model Infrastructure | `/api/` folder with IDisposable, IEvent, IApp types. `app` singleton with async init (version via IPC). Script context wiring. Vite plugin auto-copies .d.ts to assets for Monaco IntelliSense. |
 | — | Phase -1: Pre-Migration Complete | Enhanced TComponentModel with effect()/memo()/auto init-dispose. Migrated all page editors (-1.3 through -1.8) and app shell (-1.1, -1.2). Views are now pure render functions. |
 | US-041 | Tabs & Navigation Migration to Enhanced Model-View | Pre-migration -1.2: TabsModel + MenuBarModel → effect()/memo(), refs and state moved to model. PageTabModel skipped (no lifecycle) |
 | US-040 | App Shell Migration to Enhanced Model-View | Pre-migration -1.1: MainPageModel + EventHandlerModel → effect() pattern, auto init/dispose, removed useEffect boilerplate from Views |

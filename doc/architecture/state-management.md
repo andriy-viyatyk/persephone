@@ -137,6 +137,50 @@ class MyDialog extends TDialogModel<State, Result> {
 }
 ```
 
+## Disposable Pattern
+
+Located in `/api/types/common.d.ts` and `/api/internal.ts`:
+
+### IDisposable
+
+Universal cleanup contract — one method, one pattern. Matches Monaco's own `IDisposable`.
+
+```typescript
+interface IDisposable {
+    dispose(): void;
+}
+```
+
+### IEvent\<T\>
+
+Subscribable event. Returns `IDisposable` for uniform cleanup (instead of raw functions or `{ unsubscribe() }`).
+
+```typescript
+interface IEvent<T> {
+    subscribe(handler: (data: T) => void): IDisposable;
+}
+```
+
+### DisposableCollection
+
+Groups multiple disposables for bulk cleanup. Used by API interface implementations.
+
+```typescript
+const disposables = new DisposableCollection();
+disposables.add(event.subscribe(handler));
+disposables.add(anotherEvent.subscribe(otherHandler));
+// Later: disposables.dispose(); — cleans up everything
+```
+
+### wrapSubscription
+
+Adapts existing `Subscription<T>` (from `/core/state/events.ts`) to the `IEvent<T>` interface.
+
+```typescript
+import { wrapSubscription } from "../api/internal";
+const onChanged: IEvent<string> = wrapSubscription(mySubscription);
+```
+
 ## Application Stores
 
 Located in `/store/`:

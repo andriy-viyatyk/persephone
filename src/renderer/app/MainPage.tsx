@@ -20,7 +20,7 @@ import { MenuBar } from "../features/sidebar/MenuBar";
 import { parseObject } from "../core/utils/parse-utils";
 import clsx from "clsx";
 import { cycleTheme, getCurrentThemeId } from "../theme/themes";
-import { appSettings } from "../store/app-settings";
+import { settings } from "../api/settings";
 
 const AppRoot = styled.div({
     backgroundColor: color.background.default,
@@ -202,7 +202,7 @@ class MainPageModel extends TComponentModel<MainPageState, undefined> {
                         e.preventDefault();
                         const direction = e.code === "BracketRight" ? 1 : -1;
                         cycleTheme(direction);
-                        appSettings.set("theme", getCurrentThemeId());
+                        settings.set("theme", getCurrentThemeId());
                     }
                 }
                 break;

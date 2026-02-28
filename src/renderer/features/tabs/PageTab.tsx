@@ -2,7 +2,8 @@ import styled from "@emotion/styled";
 import clsx from "clsx";
 
 import color from "../../theme/color";
-import { pagesModel, filesModel, appSettings } from "../../store";
+import { pagesModel, filesModel } from "../../store";
+import { settings } from "../../api/settings";
 import { PageModel } from "../../editors/base";
 import { Button } from "../../components/basic/Button";
 import {
@@ -187,17 +188,17 @@ class PageTabModel extends TComponentModel<null, PageTabProps> {
     isGrouped = false;
 
     private setActiveLanuage = (langId: string) => {
-        const currentActive = appSettings.get("tab-recent-languages");
+        const currentActive = settings.get("tab-recent-languages");
         const newActive = [
             langId,
             ...currentActive.filter((l) => l !== langId),
         ];
-        appSettings.set("tab-recent-languages", newActive);
+        settings.set("tab-recent-languages", newActive);
     };
 
     getLanguageMenuItems = (): MenuItem[] => {
         const currLang = this.props.model.state.get().language;
-        const activeLanguages = appSettings.get("tab-recent-languages");
+        const activeLanguages = settings.get("tab-recent-languages");
         const menuItems: MenuItem[] = monacoLanguages
             .map((lang) => ({
                 id: lang.id,
@@ -541,7 +542,7 @@ export function PageTab(props: PageTabProps) {
         canDrop: () => true,
     });
 
-    const activeLanguages = appSettings.use("tab-recent-languages");
+    const activeLanguages = settings.use("tab-recent-languages");
     const languageMenuItems = useMemo(
         () => tabModel.getLanguageMenuItems(),
         [language, activeLanguages]

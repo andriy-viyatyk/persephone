@@ -3,7 +3,8 @@ const fs = require("fs");
 import { TComponentState } from "../../core/state/state";
 import { showConfirmationDialog } from "../../features/dialogs/ConfirmationDialog";
 import { api } from "../../../ipc/renderer/api";
-import { filesModel, pagesModel, recentFiles, getLanguageByExtension } from "../../store";
+import { filesModel, pagesModel, getLanguageByExtension } from "../../store";
+import { recent } from "../../api/recent";
 import { FileWatcher } from "../../core/services/file-watcher";
 import { getDefaultPageModelState, PageModel } from "../base/PageModel";
 import { scriptRunner } from "../../core/services/scripting/ScriptRunner";
@@ -244,7 +245,7 @@ export class TextFileModel extends PageModel<TextFilePageModelState, void> {
             this.fileWatcher?.dispose();
             this.fileWatcher = new FileWatcher(savePath, this.onFileChanged);
             if (savePath !== filePath) {
-                recentFiles.add(savePath);
+                recent.add(savePath);
             }
             return true;
         }
@@ -287,8 +288,8 @@ export class TextFileModel extends PageModel<TextFilePageModelState, void> {
         this.fileWatcher?.dispose();
         this.fileWatcher = new FileWatcher(newPath, this.onFileChanged);
         if (oldPath && newPath !== oldPath) {
-            await recentFiles.remove(oldPath);
-            recentFiles.add(newPath);
+            await recent.remove(oldPath);
+            recent.add(newPath);
         }
     };
 

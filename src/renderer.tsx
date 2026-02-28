@@ -1,15 +1,20 @@
 import { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
+import { app } from "./renderer/api/app";
 
 function RootComponent() {
     const [content, setContent] = useState(null);
 
     useEffect(() => {
-        const importMainModule = async () => {
-        const cont = await import("./renderer/index");
+        const bootstrap = async () => {
+            const [cont] = await Promise.all([
+                import("./renderer/index"),  // load main bundle (stores init here)
+                app.init(),                  // init app version (IPC call)
+            ]);
+            await app.initServices();        // load interface wrappers (stores already cached)
             setContent(<cont.default />);
         };
-        importMainModule();
+        bootstrap();
     }, []);
 
     return content;

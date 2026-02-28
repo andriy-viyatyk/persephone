@@ -5,7 +5,8 @@ import { TComponentModel, useComponentModel } from "../../core/state/model";
 import { Button } from "../../components/basic/Button";
 import { List, ListOptionRenderer } from "../../components/form/List";
 import { api } from "../../../ipc/renderer/api";
-import { pagesModel, menuFolders, recentFiles, showAboutPage, showSettingsPage } from "../../store";
+import { pagesModel, menuFolders, showAboutPage, showSettingsPage } from "../../store";
+import { recent } from "../../api/recent";
 import type { MenuFolder } from "../../store";
 import color from "../../theme/color";
 import {
@@ -272,7 +273,7 @@ class MenuBarModel extends TComponentModel<MenuBarState, MenuBarProps> {
                     label: "Clear Recent Files",
                     icon: <ClearListIcon />,
                     onClick: async () => {
-                        await recentFiles.clear();
+                        await recent.clear();
                     },
                 },
             ];

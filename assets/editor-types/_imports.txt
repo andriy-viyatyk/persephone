@@ -1,2 +1,9 @@
-index.d.ts
+app.d.ts
+common.d.ts
+editors.d.ts
+fs.d.ts
 page.d.ts
+recent.d.ts
+settings.d.ts
+window.d.ts
+index.d.ts

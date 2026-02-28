@@ -13,7 +13,7 @@ import { openFilesNameTemplate } from "../../shared/constants";
 import { IPage, PageEditor, WindowState } from "../../shared/types";
 import { filesModel } from "./files-store";
 import { PageModel } from "../editors/base";
-import { recentFiles } from "./recent-files";
+import { recent } from "../api/recent";
 import { debounce } from "../../shared/utils";
 import { newEmptyPageModel, newPageModel, newPageModelFromState } from "./page-factory";
 import { uuid } from "../core/utils/node-utils";
@@ -21,7 +21,7 @@ import { alertError } from "../features/dialogs/alerts/AlertsBar";
 import { editorRegistry } from "../editors/registry";
 import { getLanguageByExtension } from "./language-mapping";
 import { NavPanelModel } from "../features/navigation/nav-panel-store";
-import { appSettings } from "./app-settings";
+import { settings } from "../api/settings";
 
 const path = require("path");
 const fs = require("fs");
@@ -361,7 +361,7 @@ export class PagesModel extends TModel<OpenFilesState> {
     };
 
     handleOpenUrl = async (url: string) => {
-        const behavior = appSettings.get("link-open-behavior");
+        const behavior = settings.get("link-open-behavior");
         if (behavior === "internal-browser") {
             const { openUrlInBrowserTab } = await import("./page-actions");
             openUrlInBrowserTab(url);
@@ -556,7 +556,7 @@ export class PagesModel extends TModel<OpenFilesState> {
 
         const pageModel = await this.createPageFromFile(filePath);
         this.addPage(pageModel);
-        recentFiles.add(filePath);
+        recent.add(filePath);
 
         this.closeFirstPageIfEmpty();
     };

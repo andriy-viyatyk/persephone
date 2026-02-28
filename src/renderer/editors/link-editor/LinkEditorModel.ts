@@ -8,7 +8,7 @@ import { getHostname } from "./favicon-cache";
 import { LinkItem, LinkEditorData, LinkEditorProps, LinkViewMode, LINK_DRAG, LINK_CATEGORY_DRAG } from "./linkTypes";
 import { showEditLinkDialog } from "./EditLinkDialog";
 import { showConfirmationDialog } from "../../features/dialogs";
-import { appSettings } from "../../store/app-settings";
+import { settings } from "../../api/settings";
 import { filesModel } from "../../store/files-store";
 
 // =============================================================================
@@ -731,7 +731,7 @@ export class LinkEditorModel extends TComponentModel<
 
     private initBrowserSelection = () => {
         if (this.props.swapLayout) return; // keep "" for BookmarksDrawer monkey-patching
-        const behavior = appSettings.get("link-open-behavior");
+        const behavior = settings.get("link-open-behavior");
         if (behavior === "default-browser") {
             this.state.update((s) => { s.selectedBrowser = "os-default"; });
         } else {

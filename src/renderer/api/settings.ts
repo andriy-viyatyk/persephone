@@ -1,13 +1,17 @@
 import { debounce } from "../../shared/utils";
-import { TModel } from "../core/state/model";
 import { TGlobalState } from "../core/state/state";
+import { Subscription } from "../core/state/events";
 import { parseJSON5 } from "../core/utils/parse-utils";
-import { filesModel } from "./files-store";
+import { filesModel } from "../store/files-store";
 import { FileWatcher } from "../core/services/file-watcher";
 import { applyTheme } from "../theme/themes";
 import { defaultSearchableExtensions, defaultMaxFileSize } from "../../ipc/search-ipc";
+import { wrapSubscription } from "./internal";
+import type { ISettings } from "./types/settings";
 
-const settingsFileName = "appSettings.json";
+// =============================================================================
+// Types
+// =============================================================================
 
 export interface BrowserProfile {
     name: string;
@@ -15,7 +19,22 @@ export interface BrowserProfile {
     bookmarksFile?: string;
 }
 
-export type AppSettingsKey = "tab-recent-languages" | "theme" | "search-extensions" | "search-max-file-size" | "browser-profiles" | "browser-default-profile" | "browser-default-bookmarks-file" | "browser-incognito-bookmarks-file" | "link-open-behavior";
+export type AppSettingsKey =
+    | "tab-recent-languages"
+    | "theme"
+    | "search-extensions"
+    | "search-max-file-size"
+    | "browser-profiles"
+    | "browser-default-profile"
+    | "browser-default-bookmarks-file"
+    | "browser-incognito-bookmarks-file"
+    | "link-open-behavior";
+
+// =============================================================================
+// State
+// =============================================================================
+
+const settingsFileName = "appSettings.json";
 
 const settingsComments: Partial<Record<AppSettingsKey, string>> = {
     "tab-recent-languages":
@@ -46,40 +65,56 @@ const defaultAppSettingsState = {
 
 type AppSettingsState = typeof defaultAppSettingsState;
 
-class AppSettings extends TModel<AppSettingsState> {
+// =============================================================================
+// Implementation
+// =============================================================================
+
+class Settings implements ISettings {
+    readonly onChanged;
+
+    private readonly state = new TGlobalState(defaultAppSettingsState);
     private fileWatcher: FileWatcher | undefined;
     private skipNextFileChange = false;
 
     constructor() {
-        super(new TGlobalState(defaultAppSettingsState));
+        this.onChanged = wrapSubscription(this._onChanged);
         this.init();
     }
 
-    get = <K extends AppSettingsKey>(
-        key: K
-    ): AppSettingsState["settings"][K] => {
-        return this.state.get().settings[key];
-    };
+    get theme(): string {
+        return this.state.get().settings["theme"];
+    }
 
-    set = <K extends AppSettingsKey>(
-        key: K,
-        value: AppSettingsState["settings"][K]
-    ): void => {
+    get<K extends AppSettingsKey>(key: K): AppSettingsState["settings"][K];
+    get<T = any>(key: string): T;
+    get(key: string) {
+        return this.state.get().settings[key as AppSettingsKey];
+    }
+
+    set<K extends AppSettingsKey>(key: K, value: AppSettingsState["settings"][K]): void;
+    set<T = any>(key: string, value: T): void;
+    set(key: string, value: any): void {
         this.state.update((s) => {
-            (s.settings[key] as AppSettingsState["settings"][K]) = value;
+            (s.settings as any)[key] = value;
         });
+        this._onChanged.send({ key, value });
         this.saveSettingsDebounced();
-    };
+    }
 
-    use = <K extends AppSettingsKey>(
-        key: K
-    ): AppSettingsState["settings"][K] => {
+    /** React hook for reactive reading. Not exposed in script .d.ts. */
+    use<K extends AppSettingsKey>(key: K): AppSettingsState["settings"][K] {
         return this.state.use((s) => s.settings[key]);
-    };
+    }
 
     get settingsFilePath(): string {
         return this.fileWatcher?.filePath || "";
     }
+
+    // -------------------------------------------------------------------------
+    // Internal
+    // -------------------------------------------------------------------------
+
+    private readonly _onChanged = new Subscription<{ key: string; value: any }>();
 
     private init = async () => {
         await filesModel.prepareDataFile(settingsFileName, "{}");
@@ -118,32 +153,28 @@ class AppSettings extends TModel<AppSettingsState> {
         const content = JSON.stringify(this.state.get().settings, null, 4);
         const lines = content.split("\n");
 
-        // Loop backward through lines
+        // Loop backward through lines to insert comments
         for (let i = lines.length - 1; i >= 0; i--) {
             const line = lines[i];
             const trimmedLine = line.trimStart();
 
-            // Check if line starts with any setting key
             for (const key of Object.keys(
                 settingsComments
             ) as AppSettingsKey[]) {
-                // Check if trimmed line starts with "key":
                 if (trimmedLine.startsWith(`"${key}":`)) {
                     const comment = settingsComments[key];
                     if (!comment) break;
-                    // Get the indentation from the original line
                     const indent = line.substring(
                         0,
                         line.length - trimmedLine.length
                     );
 
-                    // Split comment by newlines and insert each line
                     const commentLines = comment.split("\n");
                     for (let j = commentLines.length - 1; j >= 0; j--) {
                         lines.splice(i, 0, `${indent}// ${commentLines[j]}`);
                     }
 
-                    break; // Found a match, no need to check other keys
+                    break;
                 }
             }
         }
@@ -155,4 +186,4 @@ class AppSettings extends TModel<AppSettingsState> {
     private saveSettingsDebounced = debounce(this.saveSettings, 300);
 }
 
-export const appSettings = new AppSettings();
+export const settings = new Settings();

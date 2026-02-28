@@ -2,19 +2,26 @@
 
 Core migration plan. Each phase has a detailed subdocument linked below.
 
+## Goal
+
+**Refactor the application to the new architecture.** The App Object Model (`app.settings`, `app.fs`, `app.window`, etc.) is the target code structure — not a scripting API layer on top of old code. Scripting readiness is a natural byproduct, not the primary goal.
+
+This means: when implementing an interface, **move the actual logic** into the new location, **update all consumers** to use the new interface, and **remove the old module** (or slim it down). No thin wrappers that delegate back to old code — the interface IS the implementation.
+
 ## Approach
 
 For each interface object, the workflow is:
 
-1. **API Reference first** — Define the contract in `api-reference/`. This is the source of truth.
-2. **Create interface + implementation** — In `/src/renderer/api/`. Start as a thin wrapper over existing stores/services.
-3. **Wire into `app` root** — Register on the singleton `app` object.
-4. **Expose to scripts** — Ensure the interface is accessible via `app.xxx` in script context.
-5. **Switch consumers gradually** — Not mandatory immediately. Existing direct store imports keep working. Migrate consumers file-by-file over time.
+1. **Define the interface** — In `/src/renderer/api/types/`. Only include methods required by existing application logic. Don't add methods "for future scripting" — refactor what exists.
+2. **Move implementation code** — Into `/src/renderer/api/`. The actual logic moves here from old locations (`/store/`, `/core/`, etc.). The interface file IS the implementation, not a wrapper.
+3. **Update all consumers** — Switch every import that used the old module to use the new interface. Do this in the same phase, not "gradually later".
+4. **Remove or slim the old module** — If all logic moved out, delete the old file. If some unrelated logic remains, keep just that.
+5. **Wire into `app` root** — Register on the singleton `app` object.
 
 **What we DON'T do:**
+- No thin wrappers that delegate to old code — move the logic itself
+- No new methods "for future scripting" — only refactor existing functionality
 - No big-bang folder restructuring — code moves gradually alongside interface work
-- No forced consumer migration — wrappers delegate to existing stores, so both paths coexist
 - No breaking changes to existing `page` object in scripts — backward compatible
 
 **Implementation order** follows the dependency chain (bottom-up): start with interfaces that depend on nothing, work up to `app.pages` which depends on everything.
@@ -39,7 +46,7 @@ For each interface object, the workflow is:
 
 | Doc | Status |
 |-----|--------|
-| [0.infrastructure.md](0.infrastructure.md) | Planned |
+| [0.infrastructure.md](0.infrastructure.md) | Complete |
 
 ---
 
@@ -49,9 +56,11 @@ No dependencies on other interface objects. Can be done in any order.
 
 | # | Interface | Doc | Status |
 |---|-----------|-----|--------|
-| 1 | `app.settings` — ISettings | [1.app-settings.md](1.app-settings.md) | Planned |
-| 2 | `app.editors` — IEditorRegistry | [2.app-editors.md](2.app-editors.md) | Planned |
-| 3 | `app.recent` — IRecentFiles | [3.app-recent.md](3.app-recent.md) | Planned |
+| 1 | `app.settings` — ISettings | [1.app-settings.md](1.app-settings.md) | Complete |
+| 2 | `app.editors` — IEditorRegistry | [2.app-editors.md](2.app-editors.md) | Complete |
+| 3 | `app.recent` — IRecentFiles | [3.app-recent.md](3.app-recent.md) | Complete |
+
+**Revised (US-046):** `app.settings` and `app.recent` — logic moved from old stores into `/api/` implementations, all consumers updated, old stores deleted. `app.editors` — confirmed as correct facade pattern (complex object, no code movement needed).
 
 ---
 
@@ -59,8 +68,10 @@ No dependencies on other interface objects. Can be done in any order.
 
 | # | Interface | Doc | Status |
 |---|-----------|-----|--------|
-| 4 | `app.fs` — IFileSystem | 4.app-fs.md | Planned |
-| 5 | `app.window` — IWindow | 5.app-window.md | Planned |
+| 4 | `app.fs` — IFileSystem | [4.app-fs.md](4.app-fs.md) | Revision Needed |
+| 5 | `app.window` — IWindow | [5.app-window.md](5.app-window.md) | Revision Needed |
+
+**Revision needed:** Current implementations are thin wrappers. Need to move actual logic into `/api/` and update all consumers.
 
 ---
 
@@ -78,6 +89,8 @@ No dependencies on other interface objects. Can be done in any order.
 | # | Interface | Doc | Status |
 |---|-----------|-----|--------|
 | 8 | `app.pages` — IPageCollection + IPage | 8.app-pages.md | Planned |
+
+**Note:** Phase 4 should also address the **bootstrap lifecycle**. Currently `pagesModel.init()` runs at module load time (fragile). In Phase 1 we discovered that `app.ts` must use lazy `require()` imports for interface wrappers — static imports pull the store chain into the initial chunk and break page state restoration. Phase 4 should introduce an explicit window lifecycle: `app.init()` → main bundle loads → `app.pages.restore()` → `api.windowReady()`, replacing the current module-level `pagesModel.init()`.
 
 ---
 
@@ -115,17 +128,17 @@ Phase -1: Pre-Migration (enhance TComponentModel with effect/memo, migrate page 
     │
 Phase 0: Infrastructure (base types, app singleton, ScriptContext wiring)
     │
-    ├── Phase 1a: app.settings (wraps appSettings store)
-    ├── Phase 1b: app.editors (wraps editorRegistry)
-    └── Phase 1c: app.recent (wraps recentFiles + filesModel for cache)
+    ├── Phase 1a: app.settings (absorbs appSettings store logic)
+    ├── Phase 1b: app.editors (absorbs editorRegistry logic)
+    └── Phase 1c: app.recent (absorbs recentFiles logic)
               │
-              ├── Phase 2a: app.fs (wraps filesModel + IPC dialogs)
-              └── Phase 2b: app.window (wraps IPC window calls)
+              ├── Phase 2a: app.fs (absorbs nodeUtils file I/O + filesModel paths)
+              └── Phase 2b: app.window (absorbs window IPC + event subscriptions)
                         │
-                        ├── Phase 3a: app.ui (wraps dialog components)
-                        └── Phase 3b: app.shell (wraps IPC + services)
+                        ├── Phase 3a: app.ui (absorbs dialog components)
+                        └── Phase 3b: app.shell (absorbs encryption, version services)
                                   │
-                                  └── Phase 4: app.pages + IPage (wraps pagesModel + PageModel)
+                                  └── Phase 4: app.pages + IPage (absorbs pagesModel + PageModel)
                                             │
                                             ├── Phase 5a: ITextEditor
                                             ├── Phase 5b: IBrowserEditor
@@ -143,6 +156,19 @@ Phase 0: Infrastructure (base types, app singleton, ScriptContext wiring)
 Code moves **alongside interface implementation**, not as a separate task. When implementing an interface, we move the related code into the new structure and update all imports in the same commit — so everything compiles and is testable at every step.
 
 As structured code moves out, the remaining old folders (`/store/`, `/core/`, `/features/`) gradually empty. What's left becomes visible and we can decide: does it fit into an existing interface, or do we need a new one?
+
+### Code Movement During Each Phase
+
+Old modules are absorbed **during** the phase that implements their interface — not deferred to a cleanup task:
+
+- **`appSettings`** (Phase 1a) → logic moves into `/api/settings.ts`. All 14 consumers updated.
+- **`editorRegistry`** (Phase 1b) → logic moves into `/api/editors.ts`. Consumers updated.
+- **`recentFiles`** (Phase 1c) → logic moves into `/api/recent.ts`. Consumers updated.
+- **`nodeUtils`** file I/O (Phase 2a) → `loadStringFile`, `saveStringFile`, `fileExists`, `deleteFile`, `preparePath` move into `/api/fs.ts`. Non-file utilities (`listFiles`, `watchFile`, `uuid`, etc.) stay in `/platform/utils/`.
+- **`filesModel`** path resolution (Phase 2a) → `dataPath`, `cachePath`, `windowIndex` move into `/api/fs.ts`. Cache helpers stay until consumers are migrated.
+- **`encryption.ts`** (Phase 3b) → moves into `/api/shell.ts` or `/api/shell/encryption.ts`.
+
+Goal: after each phase, old modules are slimmer or gone. No pass-through wrappers remain.
 
 ### Current Structure
 
@@ -175,7 +201,7 @@ As structured code moves out, the remaining old folders (`/store/`, `/core/`, `/
 
 | Folder | Layer | Purpose | What moves here |
 |--------|-------|---------|-----------------|
-| `/api/` | Object Model | Public interfaces + implementations | NEW. Wrappers + eventually store logic |
+| `/api/` | Object Model | Public interfaces + implementations | NEW. Actual logic moves here from old stores/services |
 | `/editors/` | Editors | Editor implementations | STAYS. Already well-organized |
 | `/ui/` | Presentation | React components, app shell, features | MERGES: `/app/` + `/components/` + `/features/` |
 | `/platform/` | Infrastructure | State primitives, IPC, services, utilities | MERGES: `/core/` + remaining `/store/` internals |
@@ -261,7 +287,41 @@ As structured code moves out, the remaining old folders (`/store/`, `/core/`, `/
 |--------|---------|
 | Planned | Document written, not started |
 | In Progress | Implementation underway |
-| Complete | Implemented, tested, API reference updated |
+| Revision Needed | Interface created as thin wrapper; needs code movement + consumer migration |
+| Complete | Logic moved, consumers updated, old module removed/slimmed, API reference updated |
+
+---
+
+## Design Decisions
+
+### React Hooks and Script Safety
+
+**Problem:** Some interface implementations expose `.use()` methods (React hooks from Zustand stores). These must not be called from scripts — React throws an error if hooks are called outside a component render.
+
+**Decision:** Hide from IntelliSense, don't guard at runtime.
+
+- `.d.ts` files (public interface for scripts) do NOT include `.use()` methods
+- Implementation classes keep `.use()` for internal React component use
+- If a script calls `.use()` despite no IntelliSense, React's own error fires — the script gets an exception, the app does not crash
+- No runtime guard flag — a global flag would break during async script execution (`await` yields to event loop, app renders, flag is still set)
+
+### Interface Scope
+
+**Principle:** Interfaces include only methods required by existing application logic. Do not add methods "for future scripting" or "nice to have". Each method on an interface should have at least one existing consumer in the codebase.
+
+New script-only methods (e.g., `showMessage()`, `showPick()`) can be added after the migration is complete, as separate enhancements.
+
+### Thin Wrappers for Complex Objects
+
+**Not all code should be moved into the interface implementation.** Complex objects like editors have heavy models with many internal methods. For these:
+
+- The interface exposes only what is currently used by **other parts of the code** (cross-component API)
+- Internal logic stays encapsulated inside the editor/model — the interface is a thin public API over a complex internal implementation
+- This is different from the "thin wrapper" anti-pattern: the wrapper delegates to code in the **same module/folder**, not to a distant old store
+
+Example: `IEditorRegistry` exposes `getAll()`, `getById()`, `resolve()` — what other code needs. The editor registration machinery, lazy loading, and module resolution stay internal to the editors folder.
+
+Later, when adding scripting support, we decide what additional methods to expose. But during migration: only what's needed now.
 
 ---
 

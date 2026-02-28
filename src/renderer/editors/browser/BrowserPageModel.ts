@@ -7,7 +7,7 @@ import { globalKeyDown, SubscriptionObject } from "../../core/state/events";
 import { pagesModel } from "../../store/pages-store";
 import { IncognitoIcon } from "../../theme/language-icons";
 import { GlobeIcon } from "../../theme/icons";
-import { appSettings, BrowserProfile } from "../../store/app-settings";
+import { settings, BrowserProfile } from "../../api/settings";
 import { DEFAULT_BROWSER_COLOR } from "../../theme/palette-colors";
 import { BrowserChannel } from "../../../ipc/browser-ipc";
 import { searchHistoryManager } from "./browser-search-history";
@@ -334,21 +334,21 @@ export class BrowserPageModel extends PageModel<BrowserPageState, void> {
     getBookmarksFilePath(): string {
         const { profileName, isIncognito } = this.state.get();
         if (isIncognito) {
-            return appSettings.get("browser-incognito-bookmarks-file") || "";
+            return settings.get("browser-incognito-bookmarks-file") || "";
         }
         if (profileName) {
-            const profiles = appSettings.get("browser-profiles");
+            const profiles = settings.get("browser-profiles");
             const profile = profiles.find((p: BrowserProfile) => p.name === profileName);
             return profile?.bookmarksFile || "";
         }
         // Default profile — check if current default-profile setting points to a named profile
-        const defaultName = appSettings.get("browser-default-profile");
+        const defaultName = settings.get("browser-default-profile");
         if (defaultName) {
-            const profiles = appSettings.get("browser-profiles");
+            const profiles = settings.get("browser-profiles");
             const profile = profiles.find((p: BrowserProfile) => p.name === defaultName);
             return profile?.bookmarksFile || "";
         }
-        return appSettings.get("browser-default-bookmarks-file") || "";
+        return settings.get("browser-default-bookmarks-file") || "";
     }
 
     /** Initialize bookmarks from a file path. Returns null if user cancels (e.g. encrypted file). */
@@ -519,13 +519,13 @@ export class BrowserPageModel extends PageModel<BrowserPageState, void> {
     get resolvedColor(): string {
         const profileName = this.state.get().profileName;
         if (profileName) {
-            const profiles = appSettings.get("browser-profiles");
+            const profiles = settings.get("browser-profiles");
             return profiles.find((p: BrowserProfile) => p.name === profileName)?.color || DEFAULT_BROWSER_COLOR;
         }
         // No explicit profile — resolve from the default profile setting
-        const defaultName = appSettings.get("browser-default-profile");
+        const defaultName = settings.get("browser-default-profile");
         if (defaultName) {
-            const profiles = appSettings.get("browser-profiles");
+            const profiles = settings.get("browser-profiles");
             return profiles.find((p: BrowserProfile) => p.name === defaultName)?.color || DEFAULT_BROWSER_COLOR;
         }
         return DEFAULT_BROWSER_COLOR;

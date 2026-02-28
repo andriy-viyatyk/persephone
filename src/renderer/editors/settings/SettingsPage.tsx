@@ -5,7 +5,7 @@ import { getDefaultPageModelState, PageModel } from "../base";
 import { TComponentState } from "../../core/state/state";
 import { EditorModule } from "../types";
 import color from "../../theme/color";
-import { appSettings } from "../../store/app-settings";
+import { settings } from "../../api/settings";
 import { pagesModel } from "../../store/pages-store";
 import { applyTheme, getAvailableThemes } from "../../theme/themes";
 import { TextAreaField, TextAreaFieldRef } from "../../components/basic/TextAreaField";
@@ -504,10 +504,10 @@ function BookmarksFileLine({ filePath, onBrowse, onClear }: {
 }
 
 function BrowserProfilesSection() {
-    const profiles = appSettings.use("browser-profiles");
-    const defaultProfile = appSettings.use("browser-default-profile");
-    const defaultBookmarksFile = appSettings.use("browser-default-bookmarks-file");
-    const incognitoBookmarksFile = appSettings.use("browser-incognito-bookmarks-file");
+    const profiles = settings.use("browser-profiles");
+    const defaultProfile = settings.use("browser-default-profile");
+    const defaultBookmarksFile = settings.use("browser-default-bookmarks-file");
+    const incognitoBookmarksFile = settings.use("browser-incognito-bookmarks-file");
     const [newName, setNewName] = useState("");
     const [newColor, setNewColor] = useState(TAG_COLORS[0].hex);
     const [clearedProfile, setClearedProfile] = useState<string | null>(null);
@@ -517,7 +517,7 @@ function BrowserProfilesSection() {
         if (!trimmed) return;
         const exists = profiles.some((p) => p.name.toLowerCase() === trimmed.toLowerCase());
         if (exists) return;
-        appSettings.set("browser-profiles", [...profiles, { name: trimmed, color: newColor }]);
+        settings.set("browser-profiles", [...profiles, { name: trimmed, color: newColor }]);
         setNewName("");
         setNewColor(TAG_COLORS[(profiles.length + 1) % TAG_COLORS.length].hex);
     };
@@ -531,9 +531,9 @@ function BrowserProfilesSection() {
         if (result !== "Delete") return;
         const partition = getPartitionString(name, false);
         await clearPartitionData(partition);
-        appSettings.set("browser-profiles", profiles.filter((p) => p.name !== name));
+        settings.set("browser-profiles", profiles.filter((p) => p.name !== name));
         if (defaultProfile === name) {
-            appSettings.set("browser-default-profile", "");
+            settings.set("browser-default-profile", "");
         }
     };
 
@@ -552,11 +552,11 @@ function BrowserProfilesSection() {
     };
 
     const handleSetDefault = (name: string) => {
-        appSettings.set("browser-default-profile", defaultProfile === name ? "" : name);
+        settings.set("browser-default-profile", defaultProfile === name ? "" : name);
     };
 
     const handleColorChange = (name: string, newColor: string) => {
-        appSettings.set("browser-profiles", profiles.map((p) =>
+        settings.set("browser-profiles", profiles.map((p) =>
             p.name === name ? { ...p, color: newColor } : p,
         ));
     };
@@ -577,13 +577,13 @@ function BrowserProfilesSection() {
 
     const handleBrowseDefaultBookmarks = async () => {
         const filePath = await browseBookmarksFile();
-        if (filePath) appSettings.set("browser-default-bookmarks-file", filePath);
+        if (filePath) settings.set("browser-default-bookmarks-file", filePath);
     };
 
     const handleBrowseProfileBookmarks = async (profileName: string) => {
         const filePath = await browseBookmarksFile();
         if (filePath) {
-            appSettings.set("browser-profiles", profiles.map((p) =>
+            settings.set("browser-profiles", profiles.map((p) =>
                 p.name === profileName ? { ...p, bookmarksFile: filePath } : p,
             ));
         }
@@ -591,11 +591,11 @@ function BrowserProfilesSection() {
 
     const handleBrowseIncognitoBookmarks = async () => {
         const filePath = await browseBookmarksFile();
-        if (filePath) appSettings.set("browser-incognito-bookmarks-file", filePath);
+        if (filePath) settings.set("browser-incognito-bookmarks-file", filePath);
     };
 
     const handleClearProfileBookmarks = (profileName: string) => {
-        appSettings.set("browser-profiles", profiles.map((p) =>
+        settings.set("browser-profiles", profiles.map((p) =>
             p.name === profileName ? { ...p, bookmarksFile: undefined } : p,
         ));
     };
@@ -638,7 +638,7 @@ function BrowserProfilesSection() {
                     <BookmarksFileLine
                         filePath={defaultBookmarksFile}
                         onBrowse={handleBrowseDefaultBookmarks}
-                        onClear={() => appSettings.set("browser-default-bookmarks-file", "")}
+                        onClear={() => settings.set("browser-default-bookmarks-file", "")}
                     />
                 </div>
                 {profiles.map((profile) => (
@@ -687,7 +687,7 @@ function BrowserProfilesSection() {
                     <BookmarksFileLine
                         filePath={incognitoBookmarksFile}
                         onBrowse={handleBrowseIncognitoBookmarks}
-                        onClear={() => appSettings.set("browser-incognito-bookmarks-file", "")}
+                        onClear={() => settings.set("browser-incognito-bookmarks-file", "")}
                     />
                 </div>
             </div>
@@ -727,10 +727,10 @@ function BrowserProfilesSection() {
 // ============================================================================
 
 function LinkBehaviorSection() {
-    const linkBehavior = appSettings.use("link-open-behavior");
+    const linkBehavior = settings.use("link-open-behavior");
 
     const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        appSettings.set("link-open-behavior", e.target.value as "default-browser" | "internal-browser");
+        settings.set("link-open-behavior", e.target.value as "default-browser" | "internal-browser");
     };
 
     return (
@@ -818,8 +818,8 @@ interface SettingsPageProps {
 }
 
 function SettingsPage({ model }: SettingsPageProps) {
-    const currentThemeId = appSettings.use("theme");
-    const searchExtensions = appSettings.use("search-extensions");
+    const currentThemeId = settings.use("theme");
+    const searchExtensions = settings.use("search-extensions");
     const themes = getAvailableThemes();
     const darkThemes = themes.filter((t) => t.isDark);
     const lightThemes = themes.filter((t) => !t.isDark);
@@ -829,7 +829,7 @@ function SettingsPage({ model }: SettingsPageProps) {
 
     const handleThemeChange = (themeId: string) => {
         applyTheme(themeId);
-        appSettings.set("theme", themeId);
+        settings.set("theme", themeId);
     };
 
     const handleExtensionsBlur = useCallback(() => {
@@ -838,11 +838,11 @@ function SettingsPage({ model }: SettingsPageProps) {
             .split(",")
             .map((s) => s.trim())
             .filter((s) => s.length > 0);
-        appSettings.set("search-extensions", extensions);
+        settings.set("search-extensions", extensions);
     }, []);
 
     const handleOpenSettingsFile = () => {
-        const filePath = appSettings.settingsFilePath;
+        const filePath = settings.settingsFilePath;
         if (filePath) {
             pagesModel.openFile(filePath);
         }

@@ -20,7 +20,7 @@ import {
 } from "../../theme/icons";
 import { IncognitoIcon } from "../../theme/language-icons";
 import { DEFAULT_BROWSER_COLOR } from "../../theme/palette-colors";
-import { appSettings, BrowserProfile } from "../../store/app-settings";
+import { settings, BrowserProfile } from "../../api/settings";
 import { defaultLinkEditorState, LinkEditorModel } from "./LinkEditorModel";
 import { LinkEditorProps, LinkViewMode, LINK_DRAG, LINK_CATEGORY_DRAG } from "./linkTypes";
 import { LinkItemList } from "./LinkItemList";
@@ -180,7 +180,7 @@ export function LinkEditor(props: LinkEditorProps) {
     );
     const pinnedPanelWidth = pageState.data.state.pinnedPanelWidth ?? 100;
 
-    const browserProfiles = appSettings.use("browser-profiles");
+    const browserProfiles = settings.use("browser-profiles");
 
     const showBrowserSelectorMenu = useCallback((e: React.MouseEvent) => {
         const rect = e.currentTarget.getBoundingClientRect();

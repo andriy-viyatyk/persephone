@@ -1,4 +1,4 @@
-import { appSettings } from "./app-settings";
+import { settings } from "../api/settings";
 import { pagesModel } from "./pages-store";
 
 /**
@@ -93,7 +93,7 @@ export async function openUrlInBrowserTab(url: string, options?: {
         const targetProfile = options?.profileName !== undefined
             ? (options.profileName || "")
             : options?.external
-                ? (appSettings.get("browser-default-profile") || "")
+                ? (settings.get("browser-default-profile") || "")
                 : undefined;
         return !pageState.isIncognito &&
             (targetProfile === undefined || (pageState.profileName ?? "") === targetProfile);
@@ -135,7 +135,7 @@ export async function openUrlInBrowserTab(url: string, options?: {
     // webview is ready, causing the page to stay blank.
     const profileName = options?.incognito
         ? undefined
-        : (options?.profileName ?? appSettings.get("browser-default-profile")) || undefined;
+        : (options?.profileName ?? settings.get("browser-default-profile")) || undefined;
     const showOptions: ShowBrowserPageOptions = {
         url,
         ...(options?.incognito ? { incognito: true } : profileName ? { profileName } : {}),

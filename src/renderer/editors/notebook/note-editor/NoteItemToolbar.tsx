@@ -9,7 +9,7 @@ import { LanguageIcon } from "../../base/LanguageIcon";
 import { WithPopupMenu } from "../../../components/overlay/WithPopupMenu";
 import { MenuItem } from "../../../components/overlay/PopupMenu";
 import { monacoLanguages } from "../../../core/utils/monaco-languages";
-import { appSettings } from "../../../store";
+import { settings } from "../../../api/settings";
 
 // =============================================================================
 // Styles
@@ -53,15 +53,15 @@ export function NoteItemToolbar({ model, children }: NoteItemToolbarProps) {
     }, [language]);
 
     // Language menu items
-    const activeLanguages = appSettings.use("tab-recent-languages");
+    const activeLanguages = settings.use("tab-recent-languages");
     const languageMenuItems = useMemo((): MenuItem[] => {
         const setActiveLanguage = (langId: string) => {
-            const currentActive = appSettings.get("tab-recent-languages");
+            const currentActive = settings.get("tab-recent-languages");
             const newActive = [
                 langId,
                 ...currentActive.filter((l) => l !== langId),
             ];
-            appSettings.set("tab-recent-languages", newActive);
+            settings.set("tab-recent-languages", newActive);
         };
 
         const menuItems: MenuItem[] = monacoLanguages
