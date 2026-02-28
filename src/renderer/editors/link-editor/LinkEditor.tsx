@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import clsx from "clsx";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { Breadcrumb } from "../../components/basic/Breadcrumb";
 import { Button } from "../../components/basic/Button";
@@ -168,7 +168,7 @@ export function LinkEditor(props: LinkEditorProps) {
         LinkEditorModel,
         defaultLinkEditorState,
     );
-    const state = model.state.use();
+    model.state.use(); // Subscribe to file content changes for effect re-evaluation
     const pageState = pageModel.state.use();
     const allLinks = pageState.data.links;
     const links = pageState.filteredLinks;
@@ -179,25 +179,6 @@ export function LinkEditor(props: LinkEditorProps) {
         [pageState.data.state.pinnedLinks],
     );
     const pinnedPanelWidth = pageState.data.state.pinnedPanelWidth ?? 100;
-
-    const containerRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        pageModel.init();
-        pageModel.containerElement = containerRef.current;
-        return () => {
-            pageModel.containerElement = null;
-            pageModel.dispose();
-        };
-    }, []);
-
-    useEffect(() => {
-        pageModel.updateContent(state.content || "");
-    }, [state.content]);
-
-    useEffect(() => {
-        pageModel.gridModel?.update({ all: true });
-    }, [links]);
 
     const browserProfiles = appSettings.use("browser-profiles");
 
@@ -350,7 +331,7 @@ export function LinkEditor(props: LinkEditorProps) {
                     </>,
                     model.editorToolbarRefLast,
                 )}
-            <LinkEditorRoot ref={containerRef} tabIndex={-1} className={clsx({ "swap-layout": swapLayout })}>
+            <LinkEditorRoot ref={(el) => { pageModel.containerElement = el; }} tabIndex={-1} className={clsx({ "swap-layout": swapLayout })}>
                 <CollapsiblePanelStack
                     className="left-panel"
                     style={{ width: pageState.leftPanelWidth }}

@@ -105,15 +105,23 @@ export class NotebookEditorModel extends TComponentModel<
 
     private onDataChangedDebounced = debounce(this.onDataChanged, 300);
 
-    init = () => {
+    init() {
         this.stateChangeSubscription = this.state.subscribe(() => {
             this.onDataChangedDebounced();
         });
-    };
 
-    dispose = () => {
+        this.effect(() => {
+            this.updateContent(this.props.model.state.get().content || "");
+        }, () => [this.props.model.state.get().content]);
+
+        this.effect(() => {
+            this.gridModel?.update({ all: true });
+        }, () => [this.state.get().filteredNotes]);
+    }
+
+    dispose() {
         this.stateChangeSubscription?.();
-    };
+    }
 
     updateContent = (content: string) => {
         // Skip if this is our own serialized content

@@ -1,5 +1,6 @@
 import styled from "@emotion/styled";
 import { forwardRef, useEffect, useImperativeHandle } from "react";
+// Note: useEffect kept for visibility-check effect (runs every render, no effect() equivalent)
 import { TComponentModel, useComponentModel } from "../../core/state/model";
 import color from "../../theme/color";
 
@@ -72,8 +73,9 @@ export const defaultImageViewState = {
 
 export type ImageViewState = typeof defaultImageViewState;
 
-// Props are empty - view model doesn't need external props
-interface ImageViewModelProps {}
+interface ImageViewModelProps {
+    src?: string;
+}
 
 export class ImageViewModel extends TComponentModel<ImageViewState, ImageViewModelProps> {
     containerRef: HTMLDivElement | null = null;
@@ -305,16 +307,26 @@ export class ImageViewModel extends TComponentModel<ImageViewState, ImageViewMod
     };
 
     // Lifecycle
-    init = () => {
+    init() {
         window.addEventListener("resize", this.handleResize);
         // Add wheel listener with passive: false to allow preventDefault
         this.containerRef?.addEventListener("wheel", this.handleWheel, { passive: false });
-    };
 
-    dispose = () => {
+        // Reset view when src changes (e.g., SVG content updated)
+        this.effect(() => {
+            const timeoutId = setTimeout(() => {
+                if (this.imageRef?.complete) {
+                    this.handleImageLoad();
+                }
+            }, 50);
+            return () => clearTimeout(timeoutId);
+        }, () => [this.props.src]);
+    }
+
+    dispose() {
         window.removeEventListener("resize", this.handleResize);
         this.containerRef?.removeEventListener("wheel", this.handleWheel);
-    };
+    }
 }
 
 // ============================================================================
@@ -331,7 +343,7 @@ export interface BaseImageViewProps {
 }
 
 export const BaseImageView = forwardRef<BaseImageViewRef, BaseImageViewProps>(function BaseImageView({ src, alt = "Image" }, ref) {
-    const viewModel = useComponentModel({}, ImageViewModel, defaultImageViewState);
+    const viewModel = useComponentModel({ src }, ImageViewModel, defaultImageViewState);
     // Subscribe to full state - all properties affect rendering
     const state = viewModel.state.use();
 
@@ -339,13 +351,8 @@ export const BaseImageView = forwardRef<BaseImageViewRef, BaseImageViewProps>(fu
         copyToClipboard: viewModel.copyToClipboard,
     }), [viewModel]);
 
-    // Initialize and cleanup
-    useEffect(() => {
-        viewModel.init();
-        return () => viewModel.dispose();
-    }, []);
-
     // Recalculate fit scale when tab becomes visible again (after being hidden during resize)
+    // Runs every render — no effect() equivalent for "no deps" useEffect
     useEffect(() => {
         if (state.scale === state.fitScale && viewModel.isContainerVisible()) {
             const currentFitScale = viewModel.calculateFitScale();
@@ -354,17 +361,6 @@ export const BaseImageView = forwardRef<BaseImageViewRef, BaseImageViewProps>(fu
             }
         }
     });
-
-    // Reset view when src changes (e.g., SVG content updated)
-    useEffect(() => {
-        // Small delay to let image load with new src
-        const timeoutId = setTimeout(() => {
-            if (viewModel.imageRef?.complete) {
-                viewModel.handleImageLoad();
-            }
-        }, 50);
-        return () => clearTimeout(timeoutId);
-    }, [src]);
 
     const imageStyle = viewModel.getImageStyle();
     const zoomPercent = viewModel.zoomPercent;

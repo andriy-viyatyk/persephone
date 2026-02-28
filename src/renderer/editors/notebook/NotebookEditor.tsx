@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { useCallback, useEffect } from "react";
+import { useCallback } from "react";
 import { createPortal } from "react-dom";
 import { Breadcrumb } from "../../components/basic/Breadcrumb";
 import { Button } from "../../components/basic/Button";
@@ -124,25 +124,10 @@ export function NotebookEditor(props: NotebookEditorProps) {
         NotebookEditorModel,
         defaultNotebookEditorState
     );
-    const state = model.state.use();
+    model.state.use(); // Subscribe to file content changes for effect re-evaluation
     const pageState = pageModel.state.use();
     const allNotes = pageState.data.notes;
     const notes = pageState.filteredNotes;
-
-    useEffect(() => {
-        pageModel.init();
-        return () => pageModel.dispose();
-    }, []);
-
-    useEffect(() => {
-        pageModel.updateContent(state.content || "");
-    }, [state.content]);
-
-    // Re-render all grid cells when notes array changes
-    // (handles add, delete, reorder, external data reload)
-    useEffect(() => {
-        pageModel.gridModel?.update({ all: true });
-    }, [notes]);
 
     const renderNoteCell = useCallback(
         (p: RenderFlexCellParams) => {

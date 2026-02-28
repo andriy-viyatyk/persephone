@@ -74,15 +74,23 @@ export class TodoEditorModel extends TComponentModel<
 
     private onDataChangedDebounced = debounce(this.onDataChanged, 300);
 
-    init = () => {
+    init() {
         this.stateChangeSubscription = this.state.subscribe(() => {
             this.onDataChangedDebounced();
         });
-    };
 
-    dispose = () => {
+        this.effect(() => {
+            this.updateContent(this.props.model.state.get().content || "");
+        }, () => [this.props.model.state.get().content]);
+
+        this.effect(() => {
+            this.gridModel?.update({ all: true });
+        }, () => [this.state.get().filteredItems, this.state.get().data.tags]);
+    }
+
+    dispose() {
         this.stateChangeSubscription?.();
-    };
+    }
 
     // =========================================================================
     // Selection state cache

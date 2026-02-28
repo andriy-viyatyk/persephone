@@ -2,6 +2,10 @@
 
 Current work in progress and planned tasks.
 
+> **Long-running migration in progress.** When there are no active tasks here, check
+> [/doc/future-architecture/migration/README.md](../future-architecture/migration/README.md)
+> for the next migration phase/task to pick up. Remove this notice when migration is complete.
+
 ## In Progress
 
 (none)
@@ -14,6 +18,9 @@ Current work in progress and planned tasks.
 
 | ID | Title | Notes |
 |----|-------|-------|
+| — | Phase -1: Pre-Migration Complete | Enhanced TComponentModel with effect()/memo()/auto init-dispose. Migrated all page editors (-1.3 through -1.8) and app shell (-1.1, -1.2). Views are now pure render functions. |
+| US-041 | Tabs & Navigation Migration to Enhanced Model-View | Pre-migration -1.2: TabsModel + MenuBarModel → effect()/memo(), refs and state moved to model. PageTabModel skipped (no lifecycle) |
+| US-040 | App Shell Migration to Enhanced Model-View | Pre-migration -1.1: MainPageModel + EventHandlerModel → effect() pattern, auto init/dispose, removed useEffect boilerplate from Views |
 | US-039 | Browser Find in Page | Inline search bar with match counter, Ctrl+F interception via main process + preload script + renderer keydown, webview.findInPage() API |
 | US-030 | Browser Download Progress & History | Toolbar download button with SVG progress ring, Popper popup with download list, main-process DownloadService with IPC broadcasting, native save dialog for reliable path capture, global state shared across windows, last 5 completed persisted. Also fixed external URL routing (left-to-right search, default profile only). |
 | US-036 | Register as Default Browser | HKCU registry management (no admin), Settings page UI, deep-link to Windows Default Apps, separate eOpenExternalUrl event for OS URLs, launcher version info for proper app name/icon |

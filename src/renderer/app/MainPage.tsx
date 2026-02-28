@@ -12,8 +12,7 @@ import {
 import { TComponentModel, useComponentModel } from "../core/state/model";
 import { api } from "../../ipc/renderer/api";
 import rendererEvents from "../../ipc/renderer/renderer-events";
-import { globalKeyDown, SubscriptionObject } from "../core/state/events";
-import { useEffect } from "react";
+import { globalKeyDown } from "../core/state/events";
 import { Pages } from "./Pages";
 import { PageTabs } from "../features/tabs/PageTabs";
 import { pagesModel, filesModel } from "../store";
@@ -106,36 +105,34 @@ const defaultMainPageState = {
 type MainPageState = typeof defaultMainPageState;
 
 class MainPageModel extends TComponentModel<MainPageState, undefined> {
-    maximizeSubscription: SubscriptionObject | null = null;
-    zoomSubscription: SubscriptionObject | null = null;
+    init() {
+        this.effect(() => {
+            const sub = rendererEvents.eWindowMaximized.subscribe(
+                (isMaximized) => {
+                    this.state.update((s) => {
+                        s.maximized = isMaximized;
+                    });
+                },
+            );
+            return () => sub.unsubscribe();
+        });
 
-    init = () => {
-        this.maximizeSubscription = rendererEvents.eWindowMaximized.subscribe(
-            (isMaximized) => {
-                this.state.update((s) => {
-                    s.maximized = isMaximized;
-                });
-            },
-        );
+        this.effect(() => {
+            const sub = rendererEvents.eZoomChanged.subscribe(
+                (zoomLevel) => {
+                    this.state.update((s) => {
+                        s.zoomLevel = zoomLevel;
+                    });
+                },
+            );
+            return () => sub.unsubscribe();
+        });
 
-        this.zoomSubscription = rendererEvents.eZoomChanged.subscribe(
-            (zoomLevel) => {
-                this.state.update((s) => {
-                    s.zoomLevel = zoomLevel;
-                });
-            },
-        );
-
-        window.addEventListener("keydown", this.handleKeyDown);
-    };
-
-    destroy = () => {
-        this.maximizeSubscription?.unsubscribe();
-        this.maximizeSubscription = null;
-        this.zoomSubscription?.unsubscribe();
-        this.zoomSubscription = null;
-        window.removeEventListener("keydown", this.handleKeyDown);
-    };
+        this.effect(() => {
+            window.addEventListener("keydown", this.handleKeyDown);
+            return () => window.removeEventListener("keydown", this.handleKeyDown);
+        });
+    }
 
     minimizeWindow = () => {
         api.minimizeWindow();
@@ -254,13 +251,6 @@ export function MainPage() {
         defaultMainPageState,
     );
     const state = model.state.use();
-
-    useEffect(() => {
-        model.init();
-        return () => {
-            model.destroy();
-        };
-    }, []);
 
     return (
         <AppRoot onWheel={model.handleWheel}>

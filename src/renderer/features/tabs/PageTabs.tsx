@@ -14,7 +14,7 @@ import { Button } from "../../components/basic/Button";
 import { WithPopupMenu } from "../../components/overlay/WithPopupMenu";
 import { MenuItem } from "../../components/overlay/PopupMenu";
 import { TComponentModel, useComponentModel } from "../../core/state/model";
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { appSettings } from "../../store/app-settings";
 import { minTabWidth, PageTab, pinnedTabWidth, pinnedTabEncryptedWidth } from "./PageTab";
 import color from "../../theme/color";
@@ -86,6 +86,19 @@ class TabsModel extends TComponentModel<TabsState, object> {
     scrollingDiv: HTMLDivElement | null = null;
     resizeObserver: ResizeObserver | null = null;
 
+    init() {
+        this.effect(() => {
+            this.checkScrollButtons();
+            this.scrollToActive();
+        }, () => [pagesModel.state.get().pages.length]);
+    }
+
+    dispose() {
+        this.scrollingDiv?.removeEventListener('wheel', this.handleWheel);
+        this.resizeObserver?.disconnect();
+        this.resizeObserver = null;
+    }
+
     setScrollingDiv = (el: HTMLDivElement | null) => {
         this.scrollingDiv = el;
         if (el) {
@@ -144,22 +157,12 @@ class TabsModel extends TComponentModel<TabsState, object> {
             inline: "center",
         });
     };
-
-    destroy = () => {
-        this.scrollingDiv?.removeEventListener('wheel', this.handleWheel);
-        this.resizeObserver?.disconnect();
-        this.resizeObserver = null;
-    };
 }
 
 export function PageTabs(props: object) {
     const model = useComponentModel(props, TabsModel, defaultTabsState);
     const tabsState = model.state.use();
     const state = pagesModel.state.use();
-
-    useEffect(() => {
-        return model.destroy;
-    }, []);
 
     const browserProfiles = appSettings.use("browser-profiles");
     const defaultProfileName = appSettings.use("browser-default-profile");
@@ -239,11 +242,6 @@ export function PageTabs(props: object) {
             },
         ];
     }, [browserProfiles, defaultBrowserColor]);
-
-    useEffect(() => {
-        model.checkScrollButtons();
-        model.scrollToActive();
-    }, [state.pages.length]);
 
     return (
         <PageTabsRoot className="page-tabs">

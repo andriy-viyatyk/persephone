@@ -6,7 +6,7 @@ import { TextFileModel } from "../text";
 import color from "../../theme/color";
 import { CheckedIcon, CompactViewIcon, CopyIcon, NormalViewIcon, UncheckedIcon } from "../../theme/icons";
 import { appendLinkOpenMenuItems } from "../../store/link-open-menu";
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { Minimap } from "../../components/layout/Minimap";
 import { TComponentModel, useComponentModel } from "../../core/state/model";
@@ -395,6 +395,21 @@ type MarkdownViewState = typeof defaultMarkdownViewState;
 class MarkdownViewModel extends TComponentModel<MarkdownViewState, MarkdownViewProps> {
     containerSrollTop = 0;
 
+    init() {
+        this.effect(() => {
+            const sub = pagesModel.onFocus.subscribe(this.pageFocused);
+            return () => sub.unsubscribe();
+        });
+
+        this.effect(() => {
+            const { searchVisible, searchText } = this.state.get();
+            if (searchVisible && searchText) {
+                const timer = setTimeout(() => this.updateMatchNavigation(), 0);
+                return () => clearTimeout(timer);
+            }
+        }, () => [this.state.get().searchText, this.state.get().searchVisible, this.props.model.state.get().content]);
+    }
+
     setContainer = (el: HTMLDivElement | null) => {
         this.state.update((s) => {
             s.container = el;
@@ -575,24 +590,6 @@ export function MarkdownView(props: MarkdownViewProps) {
         }
         return plugins;
     }, [highlightText]);
-
-    // Update match navigation after content renders with highlights
-    useEffect(() => {
-        if (pageState.searchVisible && pageState.searchText) {
-            // Defer to after React renders the highlighted spans
-            const timer = setTimeout(() => pageModel.updateMatchNavigation(), 0);
-            return () => clearTimeout(timer);
-        }
-    }, [pageState.searchText, pageState.searchVisible, content]);
-
-    useEffect(() => {
-        const focusSubscription = pagesModel.onFocus.subscribe(
-            pageModel.pageFocused,
-        );
-        return () => {
-            focusSubscription.unsubscribe();
-        };
-    }, []);
 
     // Keyboard handler for search shortcuts
     const onKeyDown = useCallback((e: React.KeyboardEvent) => {

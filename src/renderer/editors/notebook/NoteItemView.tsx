@@ -1,6 +1,5 @@
 import styled from "@emotion/styled";
 import clsx from "clsx";
-import { useEffect } from "react";
 import { useDrag } from "react-dnd";
 import { useComponentModel } from "../../core/state/model";
 import color from "../../theme/color";
@@ -377,22 +376,6 @@ export function NoteItemView(props: NoteItemViewProps) {
         notebookModel.getNoteState,
         notebookModel.setNoteState
     );
-
-    // Lifecycle
-    useEffect(() => {
-        model.init();
-        return () => model.dispose();
-    }, []);
-
-    // Sync edit model when note data changes externally
-    useEffect(() => {
-        model.syncEditModel();
-    }, [note.content.content, note.content.language, note.content.editor]);
-
-    // Sync category value when note category changes externally
-    useEffect(() => {
-        model.syncCategoryValue();
-    }, [note.category, editingCategory]);
 
     return (
         <NoteItemViewRoot ref={model.setRefs} tabIndex={0} className={clsx(searchText && "searching", isDragging && "dragging")}>

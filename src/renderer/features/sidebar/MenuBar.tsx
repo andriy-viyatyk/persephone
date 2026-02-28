@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import clsx from "clsx";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback } from "react";
 import { TComponentModel, useComponentModel } from "../../core/state/model";
 import { Button } from "../../components/basic/Button";
 import { List, ListOptionRenderer } from "../../components/form/List";
@@ -146,27 +146,61 @@ const isStaticFolder = (folder: MenuFolder) => {
 const defaultMenuBarState = {
     leftItemId: openTabsId,
     contentWidth: 600,
+    isAnimating: false,
 };
 
 type MenuBarState = typeof defaultMenuBarState;
 
 class MenuBarModel extends TComponentModel<MenuBarState, MenuBarProps> {
-    private initialized = false;
+    contentRef: HTMLDivElement | null = null;
+    fileListRef: FileListRef | null = null;
+    fileExplorerRef: FileExplorerRef | null = null;
+    expandStateMap = new Map<string, FileExplorerSavedState>();
 
-    init = () => {
-        if (this.initialized) {
-            return;
-        }
-        this.initialized = true;
-    };
+    setContentRef = (ref: HTMLDivElement | null) => { this.contentRef = ref; };
+    setFileListRef = (ref: FileListRef | null) => { this.fileListRef = ref; };
+    setFileExplorerRef = (ref: FileExplorerRef | null) => { this.fileExplorerRef = ref; };
+
+    allFolders = this.memo(
+        () => [...staticFolders, ...menuFolders.state.get().folders],
+        () => [menuFolders.state.get().folders]
+    );
+
+    init() {
+        this.effect(() => {
+            const selected = this.state.get().leftItemId;
+            if (!this.allFolders.value.find((f) => f.id === selected)) {
+                this.setLeftItem(staticFolders[0]);
+            }
+        }, () => [menuFolders.state.get().folders]);
+
+        this.effect(() => {
+            if (this.props.open) {
+                this.fileExplorerRef?.refresh();
+                const timer = setTimeout(() => {
+                    this.state.update((s) => { s.isAnimating = true; });
+                }, 10);
+                this.contentRef?.focus();
+                return () => clearTimeout(timer);
+            } else {
+                this.state.update((s) => { s.isAnimating = false; });
+            }
+        }, () => [this.props.open]);
+    }
 
     contentClick = (e: React.MouseEvent) => {
         e.stopPropagation();
     };
 
-    contentKeyDown = (e: React.KeyboardEvent) => {
+    handleContentKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === "Escape") {
             this.props.onClose?.();
+        } else if (e.ctrlKey && e.code === "KeyF") {
+            if (this.state.get().leftItemId !== openTabsId) {
+                e.preventDefault();
+                this.fileExplorerRef?.showSearch();
+                this.fileListRef?.showSearch();
+            }
         }
     };
 
@@ -306,47 +340,6 @@ class MenuBarModel extends TComponentModel<MenuBarState, MenuBarProps> {
 export function MenuBar(props: MenuBarProps) {
     const model = useComponentModel(props, MenuBarModel, defaultMenuBarState);
     const state = model.state.use();
-    const [isAnimating, setIsAnimating] = useState(false);
-    const contentRef = useRef<HTMLDivElement>(null);
-    const fileListRef = useRef<FileListRef>(null);
-    const fileExplorerRef = useRef<FileExplorerRef>(null);
-    const expandStateMap = useRef(new Map<string, FileExplorerSavedState>());
-    const fileFolders = menuFolders.state.use((s) => s.folders);
-
-    const allFolders = useMemo(() => {
-        return [...staticFolders, ...fileFolders];
-    }, [fileFolders]);
-
-    useEffect(() => {
-        const selected = model.state.get().leftItemId;
-        if (!allFolders.find((f) => f.id === selected)) {
-            model.setLeftItem(staticFolders[0]);
-        }
-    }, [allFolders]);
-
-    const handleContentKeyDown = useCallback((e: React.KeyboardEvent) => {
-        if (e.key === "Escape") {
-            props.onClose?.();
-        } else if (e.ctrlKey && e.code === "KeyF") {
-            if (state.leftItemId !== openTabsId) {
-                e.preventDefault();
-                fileExplorerRef.current?.showSearch();
-                fileListRef.current?.showSearch();
-            }
-        }
-    }, [props.onClose, state.leftItemId]);
-
-    useEffect(() => {
-        if (props.open) {
-            model.init();
-            fileExplorerRef.current?.refresh();
-            const timer = setTimeout(() => setIsAnimating(true), 10);
-            contentRef.current?.focus();
-            return () => clearTimeout(timer);
-        } else {
-            setIsAnimating(false);
-        }
-    }, [props.open]);
 
     const folderRowRenderer: ListOptionRenderer<MenuFolder> = useCallback(
         ({ row, index, style, onClick, selected, selectedIcon, itemMarginY, getTooltip, getContextMenu }) => {
@@ -380,20 +373,20 @@ export function MenuBar(props: MenuBarProps) {
                     <OpenTabsList onClose={props.onClose} open={props.open} />
                 );
             case recentFilesId:
-                return <RecentFileList ref={fileListRef} onClose={props.onClose} />;
+                return <RecentFileList ref={model.setFileListRef} onClose={props.onClose} />;
             default: {
                 const folder = menuFolders.find(state.leftItemId);
                 if (folder?.path) {
                     return (
                         <FileExplorer
-                            ref={fileExplorerRef}
+                            ref={model.setFileExplorerRef}
                             key={folder.id}
                             id={`sidebar-${folder.id}`}
                             rootPath={folder.path}
                             enableFileOperations
                             showOpenInNewTab={false}
-                            initialState={expandStateMap.current.get(folder.id!)}
-                            onStateChange={(s) => expandStateMap.current.set(folder.id!, s)}
+                            initialState={model.expandStateMap.get(folder.id!)}
+                            onStateChange={(s) => model.expandStateMap.set(folder.id!, s)}
                             onFileClick={(filePath) => {
                                 pagesModel.openFile(filePath);
                                 props.onClose?.();
@@ -410,16 +403,16 @@ export function MenuBar(props: MenuBarProps) {
         <MenuBarRoot
             key="menu-bar-root"
             className={clsx("menu-bar-backdrop", {
-                open: isAnimating,
+                open: state.isAnimating,
                 doDisplay: props.open,
             })}
             onClick={props.onClose}
         >
             <div
-                ref={contentRef}
+                ref={model.setContentRef}
                 className="menu-bar-content"
                 onClick={model.contentClick}
-                onKeyDown={handleContentKeyDown}
+                onKeyDown={model.handleContentKeyDown}
                 tabIndex={0}
                 style={{ width: state.contentWidth }}
             >
@@ -464,7 +457,7 @@ export function MenuBar(props: MenuBarProps) {
                         </Button>
                     </div>
                     <List
-                        options={allFolders}
+                        options={model.allFolders.value}
                         getLabel={model.getFolderLabel}
                         getSelected={model.getLeftItemsHovered}
                         onClick={model.setLeftItem}

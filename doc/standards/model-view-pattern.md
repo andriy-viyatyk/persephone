@@ -152,7 +152,7 @@ class MyViewModel extends TComponentModel<MyViewState, MyViewProps> {
 
 ```typescript
 function MyComponent(props: MyViewProps) {
-    // Create model
+    // Create model — init() and dispose() are called automatically
     const viewModel = useComponentModel(props, MyViewModel, defaultMyViewState);
 
     // Subscribe to state (only fields needed for rendering)
@@ -160,12 +160,6 @@ function MyComponent(props: MyViewProps) {
         isOpen: s.isOpen,
         selectedIndex: s.selectedIndex,
     }));
-
-    // Lifecycle via useEffect
-    useEffect(() => {
-        viewModel.init();
-        return () => viewModel.dispose();
-    }, []);
 
     // Render - no logic, just bind handlers and render
     return (
@@ -179,6 +173,79 @@ function MyComponent(props: MyViewProps) {
     );
 }
 ```
+
+**Note:** `useComponentModel` automatically calls `init()` after the first render and `dispose()` on unmount. No `useEffect` boilerplate is needed in the View.
+
+## Effect and Memo Primitives
+
+`TComponentModel` provides `effect()` and `memo()` — model-level equivalents of React's `useEffect` and `useMemo`. These allow ALL logic to live in the Model, making Views pure render functions.
+
+### effect(callback, depsFactory?)
+
+Register a side effect with dependency tracking. Call in `init()` to set up effects that react to prop/state changes.
+
+```typescript
+class MyViewModel extends TComponentModel<MyState, MyProps> {
+    init() {
+        // Effect with deps — re-runs when filePath changes
+        // Cleanup runs automatically before re-run and on unmount
+        this.effect(
+            () => {
+                const watcher = new FileWatcher(this.props.filePath, this.onChange);
+                return () => watcher.dispose(); // cleanup function
+            },
+            () => [this.props.filePath] // deps factory
+        );
+
+        // Effect with no deps — runs once (like useEffect(fn, []))
+        this.effect(() => {
+            window.addEventListener("resize", this.onResize);
+            return () => window.removeEventListener("resize", this.onResize);
+        });
+    }
+}
+```
+
+**How it works:**
+- Effects are registered in `init()` (called once after first render)
+- `setPropsInternal()` evaluates all effect deps on each render cycle
+- If deps changed: run cleanup of previous execution, then run callback
+- `onUnmountInternal()` runs all remaining cleanups
+- No deps = runs once on init, cleanup on unmount
+
+### memo(computeFn, depsFactory)
+
+Create a cached computation with dependency tracking. Recomputes only when dependencies change.
+
+```typescript
+class MyViewModel extends TComponentModel<MyState, MyProps> {
+    // Cached computation — recalculates only when items change
+    filteredItems = this.memo(
+        () => this.props.items.filter(i => i.active),
+        () => [this.props.items]
+    );
+
+    // In View: model.filteredItems.value
+}
+```
+
+**How it works:**
+- Returns an object with `.value` getter
+- On `.value` access, checks if deps changed since last computation
+- If changed: recompute, cache, return new value
+- If same: return cached value
+
+### Lifecycle Summary
+
+| Primitive | React Equivalent | Where to Define | When Evaluated |
+|-----------|-----------------|-----------------|----------------|
+| `this.effect(cb)` | `useEffect(cb, [])` | `init()` | Once on init, cleanup on unmount |
+| `this.effect(cb, deps)` | `useEffect(cb, deps)` | `init()` | Each render cycle when deps change |
+| `this.memo(fn, deps)` | `useMemo(fn, deps)` | Class body or `init()` | On `.value` access when deps change |
+| `init()` | `useEffect(() => init(), [])` | Class | Once, after first render |
+| `dispose()` | `useEffect(() => () => dispose(), [])` | Class | Once, on unmount |
+
+---
 
 ## Migration Guide
 
@@ -226,19 +293,47 @@ setContainerRef = (ref: HTMLDivElement | null) => {
 };
 ```
 
-### Keep useEffect for Lifecycle
+### Move useEffect to Model Effects
 
 ```typescript
-// useEffect stays in component, calls model methods
+// Before — useEffect in View
 useEffect(() => {
     viewModel.init();
     return () => viewModel.dispose();
 }, []);
+
+useEffect(() => {
+    viewModel.updateFitScale();
+}, [src]);
+
+// After — auto init/dispose + this.effect() in Model
+class MyViewModel extends TComponentModel<State, Props> {
+    init() {
+        this.effect(
+            () => { this.updateFitScale(); },
+            () => [this.state.get().src]
+        );
+    }
+    dispose() { /* cleanup */ }
+}
+// View: no useEffect needed at all
 ```
 
-### Keep useMemo When Needed
+### Move useMemo to Model Memo
 
-Complex computations can stay as `useMemo` in the component, or become getters/methods in the model.
+```typescript
+// Before — useMemo in View
+const displaySize = useMemo(() => calcSize(zoom, src), [zoom, src]);
+
+// After — this.memo() in Model
+class MyViewModel extends TComponentModel<State, Props> {
+    displaySize = this.memo(
+        () => calcSize(this.state.get().zoom, this.state.get().src),
+        () => [this.state.get().zoom, this.state.get().src]
+    );
+}
+// View: model.displaySize.value
+```
 
 ## Examples in Codebase
 
@@ -262,4 +357,5 @@ Complex computations can stay as `useMemo` in the component, or become getters/m
 1. **Don't put rendering logic in model** - Model computes values, view renders them
 2. **Don't call hooks in model** - Hooks only in component function
 3. **Don't access DOM directly in model** - Use refs and methods
-4. **Don't forget init/dispose** - Always clean up event listeners
+4. **Don't use useEffect/useMemo in View for logic** - Use `this.effect()` and `this.memo()` in the Model instead
+5. **Don't register effects outside init()** - Effects should be registered in `init()`, not in `setProps()` or event handlers (would create duplicates on each call)

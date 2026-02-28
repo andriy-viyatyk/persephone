@@ -92,23 +92,38 @@ For component-specific models with props. Used with the `useComponentModel` hook
 ```typescript
 class MyComponentModel extends TComponentModel<State, Props> {
   init() {
-    // Called once on mount
+    // Called once after first render (auto-called by useComponentModel)
+    // Register effects here
+    this.effect(() => {
+      console.log("props changed:", this.props.value);
+    }, () => [this.props.value]);
   }
 
-  onPropsChange(prevProps: Props, props: Props) {
-    // Called when props change
+  dispose() {
+    // Called on unmount (auto-called by useComponentModel)
+  }
+
+  setProps(props: Props) {
+    // Called on each render with new props (optional)
   }
 }
 
-// In component:
+// In component — no useEffect boilerplate needed:
 const model = useComponentModel(props, MyComponentModel, defaultState);
 ```
 
 **How useComponentModel works:**
-1. On mount: creates model instance, stores it in React ref, calls `init()`
-2. On props change: calls `onPropsChange()` with previous and new props
-3. Throughout lifecycle: model instance persists in ref (not recreated on re-render)
-4. Model contains TComponentState for managing component state
+1. On mount: creates model instance, stores it in React ref
+2. On each render: calls `setPropsInternal(props)` — updates props and evaluates effects
+3. After first render: auto-calls `init()` (via useEffect) — model registers effects, initial effects run
+4. Throughout lifecycle: model instance persists in ref (not recreated on re-render)
+5. On unmount: auto-calls `dispose()`, cleans up all effects, calls `onUnmount`
+
+**Model primitives:**
+- `this.effect(callback, depsFactory?)` — register a side effect with dependency tracking (model equivalent of `useEffect`)
+- `this.memo(computeFn, depsFactory)` — register a cached computation (model equivalent of `useMemo`)
+
+See [Model-View Pattern](/doc/standards/model-view-pattern.md) for full documentation of these primitives.
 
 ### TDialogModel
 

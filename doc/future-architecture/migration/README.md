@@ -29,7 +29,7 @@ For each interface object, the workflow is:
 
 | Doc | Status |
 |-----|--------|
-| [-1.premigration.md](-1.premigration.md) | Planned |
+| [-1.premigration.md](-1.premigration.md) | Complete |
 
 ---
 

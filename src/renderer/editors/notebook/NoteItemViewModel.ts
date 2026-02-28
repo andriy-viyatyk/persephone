@@ -69,14 +69,22 @@ export class NoteItemViewModel extends TComponentModel<NoteItemViewState, NoteIt
     // Lifecycle
     // =========================================================================
 
-    init = () => {
+    init() {
         this.setupWheelHandler();
-    };
 
-    dispose = () => {
+        this.effect(() => {
+            this.syncEditModel();
+        }, () => [this.props.note.content.content, this.props.note.content.language, this.props.note.content.editor]);
+
+        this.effect(() => {
+            this.syncCategoryValue();
+        }, () => [this.props.note.category, this.state.get().editingCategory]);
+    }
+
+    dispose() {
         this._editModel?.dispose();
         this.teardownWheelHandler();
-    };
+    }
 
     // =========================================================================
     // Refs

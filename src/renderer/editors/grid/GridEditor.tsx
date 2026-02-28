@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import { useComponentModel } from "../../core/state/model";
 import { getRowKey } from "./utils/grid-utils";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import AVGrid from "../../components/data-grid/AVGrid/AVGrid";
 import { FiltersProvider } from "../../components/data-grid/AVGrid/filters/useFilters";
 import { FilterBar } from "../../components/data-grid/AVGrid/filters/FilterBar";
@@ -17,7 +17,6 @@ import {
     GridPageProps,
 } from "./GridPageModel";
 import { showCsvOptions } from "./components/CsvOptions";
-import { pagesModel } from "../../store/pages-store";
 import { useEditorConfig, useEditorStateStorage } from "../base";
 import { EditorError } from "../base/EditorError";
 
@@ -53,23 +52,6 @@ export function GridEditor(props: GridPageProps) {
     const state = model.state.use();
     const pageState = pageModel.state.use();
     const [, /* unused */ setRefresh] = useState(0);
-
-    useEffect(() => {
-        pageModel.init();
-        const focusSubscription = pagesModel.onFocus.subscribe(pageModel.pageFocused);
-        return () => {
-            focusSubscription.unsubscribe();
-            pageModel.dispose();
-        };
-    }, []);
-
-    useEffect(() => {
-        pageModel.reload();
-    }, [pageState.csvDelimiter, pageState.csvWithColumns]);
-
-    useEffect(() => {
-        pageModel.updateContent(state.content || "");
-    }, [state.content]);
 
     const onVisibleRowsChanged = useCallback(() => {
         Promise.resolve().then(() => {

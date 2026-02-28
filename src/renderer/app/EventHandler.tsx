@@ -1,7 +1,4 @@
-import { useEffect } from "react";
-import { TModel, useModel } from "../core/state/model";
-import { TComponentState } from "../core/state/state";
-import { SubscriptionObject } from "../core/state/events";
+import { TComponentModel, useComponentModel } from "../core/state/model";
 import { showAppPopupMenu } from "../features/dialogs/poppers/showPopupMenu";
 import { parseObject } from "../core/utils/parse-utils";
 import { filesModel, showAboutPage } from "../store";
@@ -14,31 +11,31 @@ import rendererEvents from "../../ipc/renderer/renderer-events";
 import { UpdateCheckResult } from "../../ipc/api-param-types";
 import { downloadsStore } from "../store/downloads-store";
 
-class EventHandlerModel extends TModel<null> {
-    private updateSubscription: SubscriptionObject | null = null;
+class EventHandlerModel extends TComponentModel<null, object> {
+    init() {
+        this.effect(() => {
+            document.addEventListener("contextmenu", this.handleContextMenu);
+            document.addEventListener("dragover", this.handleDragOver);
+            document.addEventListener("drop", this.captureDrop, true);
+            document.addEventListener("drop", this.handleDrop);
+            window.addEventListener("unhandledrejection", this.handleUnhandledRejection);
+            return () => {
+                document.removeEventListener("contextmenu", this.handleContextMenu);
+                document.removeEventListener("dragover", this.handleDragOver);
+                document.removeEventListener("drop", this.captureDrop, true);
+                document.removeEventListener("drop", this.handleDrop);
+                window.removeEventListener("unhandledrejection", this.handleUnhandledRejection);
+            };
+        });
 
-    init = () => {
-        document.addEventListener("contextmenu", this.handleContextMenu);
-        document.addEventListener("dragover", this.handleDragOver);
-        document.addEventListener("drop", this.captureDrop, true);
-        document.addEventListener("drop", this.handleDrop);
-        window.addEventListener("unhandledrejection", this.handleUnhandledRejection);
-
-        this.updateSubscription = rendererEvents[EventEndpoint.eUpdateAvailable].subscribe(
-            this.handleUpdateAvailable
-        );
+        this.effect(() => {
+            const sub = rendererEvents[EventEndpoint.eUpdateAvailable].subscribe(
+                this.handleUpdateAvailable
+            );
+            return () => sub.unsubscribe();
+        });
 
         downloadsStore.init();
-    }
-
-    dispose = () => {
-        document.removeEventListener("contextmenu", this.handleContextMenu);
-        document.removeEventListener("dragover", this.handleDragOver);
-        document.removeEventListener("drop", this.captureDrop, true);
-        document.removeEventListener("drop", this.handleDrop);
-        window.removeEventListener("unhandledrejection", this.handleUnhandledRejection);
-
-        this.updateSubscription?.unsubscribe();
     }
 
     private handleUpdateAvailable = async (result: UpdateCheckResult) => {
@@ -105,14 +102,6 @@ class EventHandlerModel extends TModel<null> {
 }
 
 export function EventHandler({ children }: { children?: React.ReactNode}) {
-    const model = useModel(EventHandlerModel, TComponentState, null);
-
-    useEffect(() => {
-        model.init();
-        return () => {
-            model.dispose();
-        };
-    }, [model]);
-
+    useComponentModel({}, EventHandlerModel, null);
     return <>{children}</>;
 }

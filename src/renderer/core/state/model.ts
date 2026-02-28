@@ -1,6 +1,26 @@
 import { useEffect, useRef } from "react";
 import { IState, TComponentState } from "./state";
 
+function depsChanged(
+    prev: unknown[] | undefined,
+    next: unknown[]
+): boolean {
+    if (!prev || prev.length !== next.length) return true;
+    return prev.some((v, i) => !Object.is(v, next[i]));
+}
+
+interface EffectRegistration {
+    callback: () => (() => void) | void;
+    depsFactory: (() => unknown[]) | undefined;
+    prevDeps: unknown[] | undefined;
+    cleanup: (() => void) | undefined;
+    hasRun: boolean;
+}
+
+export interface IMemo<V> {
+    readonly value: V;
+}
+
 export interface IModel<T> {
     state: IState<T>;
 }
@@ -68,15 +88,112 @@ export class TComponentModel<T, P> extends TModel<T> {
     setProps?: (props: P) => void | Promise<void>;
     mapProps?: (props: P) => P;
     onUnmount?: () => void;
+    init?(): void;
+    dispose?(): void;
+
+    private _effects: EffectRegistration[] = [];
+    private _initCalled = false;
+
+    /**
+     * Register a side effect with dependency tracking.
+     * Call in init() to set up effects that react to prop/state changes.
+     *
+     * @param callback - Effect function. May return a cleanup function.
+     * @param depsFactory - Returns dependency array. Effect re-runs when deps change.
+     *   If omitted, effect runs once (like useEffect with []).
+     */
+    effect(
+        callback: () => (() => void) | void,
+        depsFactory?: () => unknown[]
+    ): void {
+        this._effects.push({
+            callback,
+            depsFactory,
+            prevDeps: undefined,
+            cleanup: undefined,
+            hasRun: false,
+        });
+    }
+
+    /**
+     * Create a cached computation with dependency tracking.
+     * Recomputes only when dependencies change.
+     *
+     * @param computeFn - Computation function.
+     * @param depsFactory - Returns dependency array. Recomputes when deps change.
+     * @returns Object with .value getter that returns the cached result.
+     */
+    memo<V>(computeFn: () => V, depsFactory: () => unknown[]): IMemo<V> {
+        let prevDeps: unknown[] | undefined;
+        let cachedValue: V;
+        return {
+            get value() {
+                const newDeps = depsFactory();
+                if (depsChanged(prevDeps, newDeps)) {
+                    cachedValue = computeFn();
+                    prevDeps = [...newDeps];
+                }
+                return cachedValue;
+            },
+        };
+    }
+
+    /** Evaluate all registered effects, running those whose deps changed. */
+    _evaluateEffects = () => {
+        for (const effect of this._effects) {
+            if (!effect.depsFactory) {
+                // No deps — run once only
+                if (!effect.hasRun) {
+                    effect.hasRun = true;
+                    const result = effect.callback();
+                    if (typeof result === "function") {
+                        effect.cleanup = result;
+                    }
+                }
+                continue;
+            }
+
+            const newDeps = effect.depsFactory();
+            if (depsChanged(effect.prevDeps, newDeps)) {
+                // Clean up previous execution
+                effect.cleanup?.();
+                effect.cleanup = undefined;
+
+                // Run effect
+                effect.hasRun = true;
+                const result = effect.callback();
+                if (typeof result === "function") {
+                    effect.cleanup = result;
+                }
+                effect.prevDeps = [...newDeps];
+            }
+        }
+    };
 
     setPropsInternal = (props: P) => {
         this.oldProps = this.props;
         this.props = this.mapProps ? this.mapProps(props) : props;
+        this._evaluateEffects();
         return this.setProps?.(this.props);
+    };
+
+    /** Called by useComponentModel on first useEffect. */
+    _initInternal = () => {
+        if (this._initCalled) return;
+        this._initCalled = true;
+        this.init?.();
+        this._evaluateEffects();
     };
 
     onUnmountInternal = () => {
         this.isLive = false;
+        // Clean up all effects
+        for (const effect of this._effects) {
+            effect.cleanup?.();
+            effect.cleanup = undefined;
+        }
+        this._effects = [];
+        this.dispose?.();
         this.onUnmount?.();
     };
 }
@@ -132,12 +249,10 @@ export function useComponentModel<T, P, M extends TComponentModel<T, P>>(
     controlModel.setPropsInternal(props);
     controlModel.isFirstUse = false;
 
-    useEffect(
-        () => () => {
-            controlModel.onUnmountInternal();
-        },
-        []
-    );
+    useEffect(() => {
+        controlModel._initInternal();
+        return () => controlModel.onUnmountInternal();
+    }, []);
 
     return controlModel;
 }

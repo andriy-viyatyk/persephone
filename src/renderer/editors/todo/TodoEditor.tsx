@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import React, { useCallback, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "../../components/basic/Button";
 import { TextField } from "../../components/basic/TextField";
@@ -117,26 +117,12 @@ export function TodoEditor(props: TodoEditorProps) {
         TodoEditorModel,
         defaultTodoEditorState
     );
-    const state = model.state.use();
+    model.state.use(); // Subscribe to file content changes for effect re-evaluation
     const pageState = pageModel.state.use();
     const allItems = pageState.data.items;
     const tags = pageState.data.tags;
     const items = pageState.filteredItems;
     const quickAddRef = useRef<TextAreaFieldRef>(null);
-
-    useEffect(() => {
-        pageModel.init();
-        return () => pageModel.dispose();
-    }, []);
-
-    useEffect(() => {
-        pageModel.updateContent(state.content || "");
-    }, [state.content]);
-
-    // Re-render all grid cells when items or tags change
-    useEffect(() => {
-        pageModel.gridModel?.update({ all: true });
-    }, [items, tags]);
 
     // Compute separator position between undone and done items
     const separatorIndex = useMemo(() => {

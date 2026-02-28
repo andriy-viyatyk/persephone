@@ -28,6 +28,7 @@ export class TextEditorModel extends TModel<TextEditorState> {
     editorRef = null as monaco.editor.IStandaloneCodeEditor | null;
     private wheelListenerCleanup: (() => void) | null = null;
     private selectionListenerDisposable: monaco.IDisposable | null = null;
+    private focusSubscription: { unsubscribe: () => void } | null = null;
     /** Set before mount to scroll Monaco to a specific line after it initializes */
     pendingRevealLine: number | null = null;
     private highlightDecorations: monaco.editor.IEditorDecorationsCollection | null = null;
@@ -37,6 +38,14 @@ export class TextEditorModel extends TModel<TextEditorState> {
         super(new TComponentState(defaultTextEditorState));
         this.pageModel = pageModel;
     }
+
+    init = () => {
+        this.focusSubscription = pagesModel.onFocus.subscribe((focusedPage) => {
+            if (focusedPage === (this.pageModel as any)) {
+                setTimeout(() => { this.focusEditor(); }, 0);
+            }
+        });
+    };
 
     handleEditorDidMount = (editor: monaco.editor.IStandaloneCodeEditor) => {
         this.editorRef = editor;
@@ -162,7 +171,9 @@ export class TextEditorModel extends TModel<TextEditorState> {
         }
     };
 
-    onDispose = () => {
+    dispose = () => {
+        this.focusSubscription?.unsubscribe();
+        this.focusSubscription = null;
         this.highlightDecorations?.clear();
         this.highlightDecorations = null;
         this.selectionListenerDisposable?.dispose();
@@ -184,17 +195,8 @@ export function TextEditor({ model }: TextEditorProps) {
     }));
 
     useEffect(() => {
-        const subscription = pagesModel.onFocus.subscribe((pageModel) => {
-            if (pageModel === (model as any)) {
-                setTimeout(() => {
-                    editorModel.focusEditor();
-                }, 0);
-            }
-        });
-        return () => {
-            subscription.unsubscribe();
-            editorModel.onDispose();
-        };
+        editorModel.init();
+        return () => editorModel.dispose();
     }, []);
 
     return (

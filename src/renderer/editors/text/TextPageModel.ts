@@ -208,7 +208,7 @@ export class TextFileModel extends PageModel<TextFilePageModelState, void> {
     async dispose(): Promise<void> {
         this.fileWatcher?.dispose();
         this.fileWatcher = null;
-        this.editor.onDispose();
+        this.editor.dispose();
         this.script.dispose();
         await super.dispose();
     }

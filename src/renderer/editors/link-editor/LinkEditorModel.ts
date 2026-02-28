@@ -69,16 +69,25 @@ export class LinkEditorModel extends TComponentModel<
     // Lifecycle
     // =========================================================================
 
-    init = () => {
+    init() {
         this.stateChangeSubscription = this.state.subscribe(() => {
             this.onDataChangedDebounced();
         });
         this.initBrowserSelection();
-    };
 
-    dispose = () => {
+        this.effect(() => {
+            this.updateContent(this.props.model.state.get().content || "");
+        }, () => [this.props.model.state.get().content]);
+
+        this.effect(() => {
+            this.gridModel?.update({ all: true });
+        }, () => [this.state.get().filteredLinks]);
+    }
+
+    dispose() {
         this.stateChangeSubscription?.();
-    };
+        this.containerElement = null;
+    }
 
     // =========================================================================
     // Selection state cache

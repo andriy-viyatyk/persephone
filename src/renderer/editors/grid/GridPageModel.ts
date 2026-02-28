@@ -161,16 +161,29 @@ export class GridPageModel extends TComponentModel<
         }
     };
 
-    init = () => {
+    init() {
         this.stateChangeSubscription = this.state.subscribe(() => {
             this.saveStateDebounced();
         });
         this.restoreState();
-    };
 
-    dispose = () => {
+        this.effect(() => {
+            const sub = pagesModel.onFocus.subscribe(this.pageFocused);
+            return () => sub.unsubscribe();
+        });
+
+        this.effect(() => {
+            this.reload();
+        }, () => [this.state.get().csvDelimiter, this.state.get().csvWithColumns]);
+
+        this.effect(() => {
+            this.updateContent(this.props.model.state.get().content || "");
+        }, () => [this.props.model.state.get().content]);
+    }
+
+    dispose() {
         this.stateChangeSubscription?.();
-    };
+    }
 
     setGridRef = (ref: AVGridModel<any> | null) => {
         this.gridRef = ref ?? undefined;
