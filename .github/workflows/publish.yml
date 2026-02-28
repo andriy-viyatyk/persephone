@@ -42,4 +42,8 @@ jobs:
         run: |
           TAG="${GITHUB_REF#refs/tags/}"
           gh release delete-asset "$TAG" latest.yml --yes || true
+          # Delete blockmap files (pattern: *.blockmap)
+          for asset in $(gh release view "$TAG" --json assets -q '.assets[].name' | grep '\.blockmap$'); do
+            gh release delete-asset "$TAG" "$asset" --yes || true
+          done
         shell: bash

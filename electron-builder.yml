@@ -24,9 +24,6 @@ extraFiles:
 
 asar: true
 
-generateBlockmap: false
-generateUpdatesFilesForAllChannels: false
-
 win:
   icon: assets/icon.ico
   target:
