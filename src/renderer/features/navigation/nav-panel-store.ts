@@ -1,6 +1,6 @@
 import { TComponentState } from "../../core/state/state";
 import { FileExplorerSavedState } from "../../components/file-explorer";
-import { filesModel } from "../../store/files-store";
+import { fs } from "../../api/fs";
 import { parseObject } from "../../core/utils/parse-utils";
 import { debounce } from "../../../shared/utils";
 import { NavigationSearchModel } from "./NavigationSearchModel";
@@ -52,7 +52,7 @@ export class NavPanelModel {
     /** Restore NavPanel state from cache file */
     restore = async (id: string) => {
         this.id = id;
-        const data = await filesModel.getCacheFile(id, this.name);
+        const data = await fs.getCacheFile(id, this.name);
         const saved = parseObject(data) as NavPanelSavedState | undefined;
         if (saved) {
             this.skipSave = true;
@@ -81,7 +81,7 @@ export class NavPanelModel {
             currentFilePath,
             fileExplorerState: this.fileExplorerState,
         };
-        await filesModel.saveCacheFile(this.id, JSON.stringify(saved), this.name);
+        await fs.saveCacheFile(this.id, JSON.stringify(saved), this.name);
     };
 
     private saveStateDebounced = debounce(this.saveState, 300);

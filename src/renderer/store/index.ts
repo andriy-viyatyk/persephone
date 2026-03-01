@@ -1,6 +1,3 @@
-// Files and data management
-export { filesModel } from './files-store';
-
 // Pages management
 export { PagesModel, pagesModel } from './pages-store';
 export { newPageModel, newEmptyPageModel, newPageModelFromState } from './page-factory';

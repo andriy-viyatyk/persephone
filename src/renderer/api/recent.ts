@@ -1,5 +1,5 @@
 import { TGlobalState } from "../core/state/state";
-import { filesModel } from "../store/files-store";
+import { fs } from "./fs";
 import type { IRecentFiles } from "./types/recent";
 
 const recentFileName = "recentFiles.txt";
@@ -25,7 +25,7 @@ class RecentFiles implements IRecentFiles {
     }
 
     async load(): Promise<void> {
-        const data = await filesModel.getDataFile(recentFileName);
+        const data = await fs.getDataFile(recentFileName);
         const files = (data ?? "").split("\n").map((f) => f.trim()).filter((f) => f);
         this.state.update((s) => {
             s.files = files;
@@ -46,7 +46,7 @@ class RecentFiles implements IRecentFiles {
         this.state.update((s) => {
             s.files = newFiles;
         });
-        await filesModel.saveDataFile(recentFileName, newFiles.join("\n"));
+        await fs.saveDataFile(recentFileName, newFiles.join("\n"));
     }
 
     async remove(filePath: string): Promise<void> {
@@ -56,14 +56,14 @@ class RecentFiles implements IRecentFiles {
         this.state.update((s) => {
             s.files = newFiles;
         });
-        await filesModel.saveDataFile(recentFileName, newFiles.join("\n"));
+        await fs.saveDataFile(recentFileName, newFiles.join("\n"));
     }
 
     async clear(): Promise<void> {
         this.state.update((s) => {
             s.files = [];
         });
-        await filesModel.saveDataFile(recentFileName, "");
+        await fs.saveDataFile(recentFileName, "");
     }
 }
 

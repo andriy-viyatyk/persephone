@@ -2,8 +2,7 @@ const https = require("https");
 const http = require("http");
 
 import { useEffect, useRef, useState } from "react";
-import { filesModel } from "../../store/files-store";
-import { nodeUtils } from "../../core/utils/node-utils";
+import { fs } from "../../api/fs";
 import { LinkItem } from "./linkTypes";
 
 // =============================================================================
@@ -67,10 +66,10 @@ export async function getFaviconPath(hostname: string): Promise<string | null> {
     }
 
     // Try each known extension
-    const basePath = await filesModel.cacheMiscFilePath(`favicons/${hostname}`);
+    const basePath = await fs.cacheMiscFilePath(`favicons/${hostname}`);
     for (const ext of FAVICON_EXTENSIONS) {
         const filePath = basePath + ext;
-        if (nodeUtils.fileExists(filePath)) {
+        if (fs.fileExistsSync(filePath)) {
             memoryCache.set(hostname, filePath);
             return filePath;
         }
@@ -106,10 +105,10 @@ export async function saveFavicon(hostname: string, faviconUrl: string): Promise
     if (pendingFetches.has(hostname)) return;
 
     // Check if already on disk (any extension)
-    const basePath = await filesModel.cacheMiscFilePath(`favicons/${hostname}`);
+    const basePath = await fs.cacheMiscFilePath(`favicons/${hostname}`);
     for (const ext of FAVICON_EXTENSIONS) {
         const existing = basePath + ext;
-        if (nodeUtils.fileExists(existing)) {
+        if (fs.fileExistsSync(existing)) {
             memoryCache.set(hostname, existing);
             return;
         }
@@ -121,7 +120,7 @@ export async function saveFavicon(hostname: string, faviconUrl: string): Promise
         if (buffer && buffer.length > 0) {
             const ext = detectImageExtension(buffer);
             const filePath = basePath + ext;
-            await filesModel.saveBinaryFile(filePath, buffer);
+            await fs.saveBinaryFile(filePath, buffer);
             memoryCache.set(hostname, filePath);
             notifyListeners(hostname);
         } else {

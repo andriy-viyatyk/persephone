@@ -1,11 +1,12 @@
 import { TComponentModel, useComponentModel } from "../core/state/model";
-import { showAppPopupMenu } from "../features/dialogs/poppers/showPopupMenu";
+import { showAppPopupMenu } from "../ui/dialogs/poppers/showPopupMenu";
 import { parseObject } from "../core/utils/parse-utils";
-import { filesModel, showAboutPage } from "../store";
+import { showAboutPage } from "../store";
 import { api } from "../../ipc/renderer/api";
-import { alertError, alertInfo } from "../features/dialogs/alerts/AlertsBar";
+import { ui } from "../api/ui";
 import { scriptRunner } from "../core/services/scripting/ScriptRunner";
-import { nodeUtils } from "../core/utils/node-utils";
+import { fs } from "../api/fs";
+import { appWindow } from "../api/window";
 import { EventEndpoint, RendererEvent } from "../../ipc/api-types";
 import rendererEvents from "../../ipc/renderer/renderer-events";
 import { UpdateCheckResult } from "../../ipc/api-param-types";
@@ -40,8 +41,11 @@ class EventHandlerModel extends TComponentModel<null, object> {
 
     private handleUpdateAvailable = async (result: UpdateCheckResult) => {
         if (result.updateAvailable && result.releaseInfo) {
-            const closeResult = await alertInfo(`New version ${result.releaseInfo.version} is available! Click to open About page.`);
-            if (closeResult === 'clicked') {
+            const closeResult = await ui.notify(
+                `New version ${result.releaseInfo.version} is available! Click to open About page.`,
+                "info",
+            );
+            if (closeResult === "clicked") {
                 showAboutPage();
             }
         }
@@ -64,8 +68,8 @@ class EventHandlerModel extends TComponentModel<null, object> {
     private handleDrop = (e: DragEvent) => {
         const dataStr = e.dataTransfer?.getData('application/js-notepad-tab');
         const data = parseObject(dataStr);
-        if (data && data.sourceWindowIndex !== undefined && data.sourceWindowIndex !== filesModel.windowIndex) {
-            api.addDragEvent({ targetWindowIndex: filesModel.windowIndex });
+        if (data && data.sourceWindowIndex !== undefined && data.sourceWindowIndex !== appWindow.windowIndex) {
+            api.addDragEvent({ targetWindowIndex: appWindow.windowIndex });
         }
     }
 
@@ -87,7 +91,7 @@ class EventHandlerModel extends TComponentModel<null, object> {
             filePath = textData?.split("\n")[0]?.trim();
         }
 
-        if (filePath && nodeUtils.fileExists(filePath)) {
+        if (filePath && fs.fileExistsSync(filePath)) {
             e.preventDefault();
             e.stopPropagation();
             window.electron.ipcRenderer.sendMessage(RendererEvent.fileDropped, filePath);
@@ -96,7 +100,7 @@ class EventHandlerModel extends TComponentModel<null, object> {
 
     private handleUnhandledRejection = (e: PromiseRejectionEvent) => {
         if (scriptRunner.handlePromiseException) {
-            alertError(`'Unhandled promise rejection:', ${e.reason}`);
+            ui.notify(`'Unhandled promise rejection:', ${e.reason}`, "error");
         }
     }
 }

@@ -2,7 +2,8 @@ import styled from "@emotion/styled";
 import clsx from "clsx";
 
 import color from "../../theme/color";
-import { pagesModel, filesModel } from "../../store";
+import { pagesModel } from "../../store";
+import { appWindow } from "../../api/window";
 import { settings } from "../../api/settings";
 import { PageModel } from "../../editors/base";
 import { Button } from "../../components/basic/Button";
@@ -36,7 +37,7 @@ import {
 import { Tooltip } from "../../components/basic/Tooltip";
 import { PageDragData } from "../../../shared/types";
 import { parseObject } from "../../core/utils/parse-utils";
-import { showInputDialog } from "../dialogs/InputDialog";
+import { ui } from "../../api/ui";
 
 export const minTabWidth = 80;
 const ICON_SLOT = 20; // padding(2) + icon(16) + padding(2)
@@ -404,8 +405,8 @@ class PageTabModel extends TComponentModel<null, PageTabProps> {
 
     private getDragData = (drop = false): PageDragData => {
         return {
-            sourceWindowIndex: drop ? undefined : filesModel.windowIndex,
-            targetWindowIndex: drop ? filesModel.windowIndex : undefined,
+            sourceWindowIndex: drop ? undefined : appWindow.windowIndex,
+            targetWindowIndex: drop ? appWindow.windowIndex : undefined,
             page: this.props.model.getRestoreData(),
         };
     };
@@ -414,14 +415,13 @@ class PageTabModel extends TComponentModel<null, PageTabProps> {
         const model = this.props.model;
         if (isTextFileModel(model)) {
             const pageTitle = model.state.get().title;
-            const inputResult = await showInputDialog({
+            const inputResult = await ui.input("Enter new file name:", {
                 title: "Rename File",
-                message: "Enter new file name:",
                 value: pageTitle,
                 buttons: ["Rename", "Cancel"],
                 selectAll: true,
             });
-            if (inputResult.button === "Rename" && inputResult.value) {
+            if (inputResult?.button === "Rename" && inputResult.value) {
                 const newName = inputResult.value;
                 await model.renameFile(newName);
             }
@@ -455,7 +455,7 @@ class PageTabModel extends TComponentModel<null, PageTabProps> {
         if (
             data &&
             data.sourceWindowIndex !== undefined &&
-            data.sourceWindowIndex !== filesModel.windowIndex
+            data.sourceWindowIndex !== appWindow.windowIndex
         ) {
             api.addDragEvent(this.getDragData(true));
             e.preventDefault();

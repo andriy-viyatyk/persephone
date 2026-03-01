@@ -5,7 +5,7 @@ import { IncognitoIcon } from "../theme/language-icons";
 import { DEFAULT_BROWSER_COLOR } from "../theme/palette-colors";
 import { settings } from "../api/settings";
 
-const { shell } = require("electron");
+import { shell } from "../api/shell";
 
 /**
  * Appends "Open in ..." menu items for a URL to the given menu items array.

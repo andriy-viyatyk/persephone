@@ -68,10 +68,10 @@ No dependencies on other interface objects. Can be done in any order.
 
 | # | Interface | Doc | Status |
 |---|-----------|-----|--------|
-| 4 | `app.fs` — IFileSystem | [4.app-fs.md](4.app-fs.md) | Revision Needed |
-| 5 | `app.window` — IWindow | [5.app-window.md](5.app-window.md) | Revision Needed |
+| 4 | `app.fs` — IFileSystem | [4.app-fs.md](4.app-fs.md) | Complete |
+| 5 | `app.window` — IWindow | [5.app-window.md](5.app-window.md) | Complete |
 
-**Revision needed:** Current implementations are thin wrappers. Need to move actual logic into `/api/` and update all consumers.
+**Revised (US-047):** Full absorption — `nodeUtils` file I/O + `filesModel` data/cache/path ops merged into `api/fs.ts`. `windowIndex` moved to `IWindow`. `uuid()` replaced with `crypto.randomUUID()`. `files-store.ts` and `node-utils.ts` deleted. `watchFile`/`getFileStats` inlined into `file-watcher.ts`. 18 consumers updated.
 
 ---
 
@@ -79,8 +79,8 @@ No dependencies on other interface objects. Can be done in any order.
 
 | # | Interface | Doc | Status |
 |---|-----------|-----|--------|
-| 6 | `app.ui` — IUserInterface | 6.app-ui.md | Planned |
-| 7 | `app.shell` — IShell + services | 7.app-shell.md | Planned |
+| 6 | `app.ui` — IUserInterface | [6.app-ui.md](6.app-ui.md) | Complete |
+| 7 | `app.shell` — IShell + services | [7.app-shell.md](7.app-shell.md) | Complete |
 
 ---
 
@@ -164,9 +164,9 @@ Old modules are absorbed **during** the phase that implements their interface �
 - **`appSettings`** (Phase 1a) → logic moves into `/api/settings.ts`. All 14 consumers updated.
 - **`editorRegistry`** (Phase 1b) → logic moves into `/api/editors.ts`. Consumers updated.
 - **`recentFiles`** (Phase 1c) → logic moves into `/api/recent.ts`. Consumers updated.
-- **`nodeUtils`** file I/O (Phase 2a) → `loadStringFile`, `saveStringFile`, `fileExists`, `deleteFile`, `preparePath` move into `/api/fs.ts`. Non-file utilities (`listFiles`, `watchFile`, `uuid`, etc.) stay in `/platform/utils/`.
-- **`filesModel`** path resolution (Phase 2a) → `dataPath`, `cachePath`, `windowIndex` move into `/api/fs.ts`. Cache helpers stay until consumers are migrated.
-- **`encryption.ts`** (Phase 3b) → moves into `/api/shell.ts` or `/api/shell/encryption.ts`.
+- **`nodeUtils`** (Phase 2a) → Everything absorbed. File I/O (`loadStringFile`, `saveStringFile`, `fileExists`, `deleteFile`, `preparePath`) into `/api/fs.ts`. `watchFile`/`getFileStats` into `/core/services/file-watcher.ts`. `uuid()` eliminated (replaced with `crypto.randomUUID()`). `node-utils.ts` deleted.
+- **`filesModel`** (Phase 2a) → Everything absorbed into `/api/fs.ts`: init/wait, path resolution (`dataPath`/`cachePath`/`windowIndex`), all data/cache/binary operations. `files-store.ts` deleted.
+- **`encryption.ts`** (Phase 3b) → moves into `/api/shell/encryption.ts`.
 
 Goal: after each phase, old modules are slimmer or gone. No pass-through wrappers remain.
 
@@ -214,7 +214,7 @@ Goal: after each phase, old modules are slimmer or gone. No pass-through wrapper
 |-----|-------|------|
 | `/store/app-settings.ts` | `/api/settings.ts` (or internal to it) | Phase 1a |
 | `/store/recent-files.ts` | `/api/recent.ts` | Phase 1c |
-| `/store/files-store.ts` | `/api/fs.ts` (public parts) + `/platform/` (cache internals) | Phase 2a |
+| `/store/files-store.ts` | Deleted — fully absorbed into `/api/fs.ts` | Phase 2a (US-047) |
 | `/store/pages-store.ts` | `/api/pages.ts` + `/api/page.ts` | Phase 4 |
 | `/store/downloads-store.ts` | stays near browser editor | Phase 5b |
 | `/store/page-factory.ts` | `/api/pages.ts` (internal) | Phase 4 |
@@ -260,11 +260,12 @@ Goal: after each phase, old modules are slimmer or gone. No pass-through wrapper
 ├── pages.ts                          # IPageCollection implementation
 ├── page.ts                           # IPage implementation
 └── shell/                            # IShell + sub-services
-    ├── shell.ts                      # IShell root
-    ├── file-search.ts                # IFileSearchService
-    ├── version.ts                    # IVersionService
-    ├── encryption.ts                 # IEncryptionService
-    └── scripting.ts                  # IScriptingService
+    ├── index.ts                      # Shell class (IShell), composes sub-modules
+    ├── encryption.ts                 # IEncryptionService (absorbed from core/services/)
+    ├── version.ts                    # IVersionService (wraps IPC)
+    ├── shell-calls.ts                # Direct OS calls (openExternal)
+    ├── file-search.ts                # IFileSearchService (deferred)
+    └── scripting.ts                  # IScriptingService (deferred)
 
 /src/renderer/editors/text/api.ts     # ITextEditor (near its editor)
 /src/renderer/editors/browser/api.ts  # IBrowserEditor
@@ -276,8 +277,9 @@ Goal: after each phase, old modules are slimmer or gone. No pass-through wrapper
 1. **Move code when implementing its interface** — not as a separate "cleanup" task
 2. **Update imports in the same commit** — everything compiles at every step
 3. **Don't force-move files you're not refactoring** — let the structure emerge
-4. **Shared utilities** (formatting, parsing, etc.) consolidate into `/platform/utils/`
-5. **Subfolder details** are defined in each phase's subdocument, not upfront
+4. **Keep logic in focused modules** — don't merge unrelated concerns into one super-module. Use subfolders when an interface composes distinct, independent concerns. See [Module Organization](#module-organization--keep-logic-in-focused-modules) in Design Decisions.
+5. **Shared utilities** (formatting, parsing, etc.) consolidate into `/platform/utils/`
+6. **Subfolder details** are defined in each phase's subdocument, not upfront
 
 ---
 
@@ -322,6 +324,40 @@ New script-only methods (e.g., `showMessage()`, `showPick()`) can be added after
 Example: `IEditorRegistry` exposes `getAll()`, `getById()`, `resolve()` — what other code needs. The editor registration machinery, lazy loading, and module resolution stay internal to the editors folder.
 
 Later, when adding scripting support, we decide what additional methods to expose. But during migration: only what's needed now.
+
+### Module Organization — Keep Logic in Focused Modules
+
+**Don't merge everything into one large implementation file.** When an interface absorbs logic from existing modules, keep logically distinct concerns in separate files. The interface implementation composes them.
+
+**Principles:**
+
+1. **Keep already-consolidated logic in its own module** — If a source module encapsulates a specific concern (e.g., encryption, version checking), move it to a dedicated file under the interface folder, not into a catch-all implementation file.
+2. **Split by area of responsibility** — Each module should encapsulate code for a specific, logically related functionality. Individual modules stay small and focused.
+3. **Don't create super-modules** — Mixing unrelated concerns (crypto internals + IPC wrappers + Electron calls) in one file creates a mess. Separate them.
+4. **Interface implementation composes sub-modules** — The `index.ts` (or root implementation file) imports from focused sub-modules and wires them into the interface. It can be a thin composition layer or re-export.
+
+**Example: `app.shell` (IShell)**
+
+```
+api/shell/
+├── encryption.ts      # AES-GCM crypto logic (absorbed from core/services/encryption.ts)
+├── version.ts         # IPC wrappers for version/update service
+├── shell-calls.ts     # Direct Electron OS calls (openExternal)
+└── index.ts           # Shell class: composes encryption + version + shell-calls → IShell
+```
+
+`encryption.ts` stays self-contained — same crypto logic, same internal helpers, just a new home. `index.ts` creates the `Shell` class that implements `IShell` by composing `EncryptionService`, `VersionService`, and the `openExternal` call. Consumers import `{ shell }` from `api/shell` — they don't know about the internal structure.
+
+**Counter-example: `app.fs` (IFileSystem)**
+
+`api/fs.ts` is a single file because all its functionality (file read/write, path resolution, data/cache operations) is tightly interrelated — they share private fields (`_dataPath`, `_cachePath`, `_windowIndex`) and the init/wait pattern. Splitting would create artificial boundaries between code that naturally belongs together.
+
+**When to use a subfolder vs a single file:**
+
+| Structure | When to use |
+|-----------|------------|
+| Single file (`api/foo.ts`) | All functionality is tightly coupled, shares private state, or is small enough (~200-300 lines) |
+| Subfolder (`api/foo/`) | Interface composes distinct, independent concerns that don't share internal state |
 
 ---
 

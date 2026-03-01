@@ -52,4 +52,9 @@ export interface IWindow {
      * @returns The new window's index.
      */
     openNew(filePath?: string): Promise<number>;
+
+    // ── Window identity ───────────────────────────────────────────
+
+    /** Zero-based index of this window among all application windows. */
+    readonly windowIndex: number;
 }

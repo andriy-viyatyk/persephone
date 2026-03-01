@@ -2,7 +2,7 @@ import { debounce } from "../../shared/utils";
 import { TGlobalState } from "../core/state/state";
 import { Subscription } from "../core/state/events";
 import { parseJSON5 } from "../core/utils/parse-utils";
-import { filesModel } from "../store/files-store";
+import { fs } from "./fs";
 import { FileWatcher } from "../core/services/file-watcher";
 import { applyTheme } from "../theme/themes";
 import { defaultSearchableExtensions, defaultMaxFileSize } from "../../ipc/search-ipc";
@@ -117,9 +117,9 @@ class Settings implements ISettings {
     private readonly _onChanged = new Subscription<{ key: string; value: any }>();
 
     private init = async () => {
-        await filesModel.prepareDataFile(settingsFileName, "{}");
+        await fs.prepareDataFile(settingsFileName, "{}");
         this.fileWatcher = new FileWatcher(
-            await filesModel.dataFileName(settingsFileName),
+            await fs.dataFileName(settingsFileName),
             this.fileChanged
         );
         await this.loadSettings();
@@ -180,7 +180,7 @@ class Settings implements ISettings {
         }
 
         const contentWithComments = lines.join("\n");
-        filesModel.saveDataFile(settingsFileName, contentWithComments);
+        fs.saveDataFile(settingsFileName, contentWithComments);
     };
 
     private saveSettingsDebounced = debounce(this.saveSettings, 300);

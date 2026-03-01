@@ -25,8 +25,8 @@ Each interface document contains:
 | [IWindow](window.md) | `app.window` | [window.md](window.md) | Implemented (Phase 2) |
 | [IPageCollection](pages.md) | `app.pages` | [pages.md](pages.md) | Planned |
 | [IPage](page.md) | `page` / `app.pages.active` | [page.md](page.md) | Planned |
-| [IUserInterface](ui.md) | `app.ui` | [ui.md](ui.md) | Planned |
-| [IShell](shell.md) | `app.shell` | [shell.md](shell.md) | Planned |
+| [IUserInterface](ui.md) | `app.ui` | [ui.md](ui.md) | Implemented (Phase 3a) |
+| [IShell](shell.md) | `app.shell` | [shell.md](shell.md) | Implemented (Phase 3b) |
 
 ### Editor-Specific
 

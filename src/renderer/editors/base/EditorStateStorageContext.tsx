@@ -1,5 +1,5 @@
 import { createContext, useContext, ReactNode, useMemo } from "react";
-import { filesModel } from "../../store/files-store";
+import { fs } from "../../api/fs";
 
 // =============================================================================
 // Types
@@ -39,10 +39,10 @@ export interface EditorStateStorage {
  */
 const defaultStateStorage: EditorStateStorage = {
     getState: async (id: string, name: string) => {
-        return filesModel.getCacheFile(id, name);
+        return fs.getCacheFile(id, name);
     },
     setState: async (id: string, name: string, state: string) => {
-        await filesModel.saveCacheFile(id, state, name);
+        await fs.saveCacheFile(id, state, name);
     },
 };
 

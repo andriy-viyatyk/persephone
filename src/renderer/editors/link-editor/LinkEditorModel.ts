@@ -2,14 +2,15 @@ import { debounce } from "../../../shared/utils";
 import { TComponentModel } from "../../core/state/model";
 import { CategoryTreeItem, DragItem } from "../../components/TreeView";
 import RenderGridModel from "../../components/virtualization/RenderGrid/RenderGridModel";
-import { uuid } from "../../core/utils/node-utils";
+
 import { splitWithSeparators } from "../../core/utils/utils";
 import { getHostname } from "./favicon-cache";
 import { LinkItem, LinkEditorData, LinkEditorProps, LinkViewMode, LINK_DRAG, LINK_CATEGORY_DRAG } from "./linkTypes";
 import { showEditLinkDialog } from "./EditLinkDialog";
-import { showConfirmationDialog } from "../../features/dialogs";
+import { ui } from "../../api/ui";
 import { settings } from "../../api/settings";
-import { filesModel } from "../../store/files-store";
+import { fs } from "../../api/fs";
+import { shell } from "../../api/shell";
 
 // =============================================================================
 // State
@@ -95,7 +96,7 @@ export class LinkEditorModel extends TComponentModel<
 
     private restoreSelectionState = async () => {
         const id = this.props.model.state.get().id;
-        const data = await filesModel.getCacheFile(id, LinkEditorModel.cacheName);
+        const data = await fs.getCacheFile(id, LinkEditorModel.cacheName);
         if (!data) return;
         try {
             const saved = JSON.parse(data);
@@ -115,7 +116,7 @@ export class LinkEditorModel extends TComponentModel<
         const { expandedPanel, selectedCategory, selectedTag, selectedHostname } = this.state.get();
         const id = this.props.model.state.get().id;
         const data = JSON.stringify({ expandedPanel, selectedCategory, selectedTag, selectedHostname });
-        filesModel.saveCacheFile(id, data, LinkEditorModel.cacheName);
+        fs.saveCacheFile(id, data, LinkEditorModel.cacheName);
     };
 
     private saveSelectionStateDebounced = debounce(this.saveSelectionState, 300);
@@ -483,7 +484,7 @@ export class LinkEditorModel extends TComponentModel<
         }
 
         const newLink: LinkItem = {
-            id: uuid(),
+            id: crypto.randomUUID(),
             title,
             href: link?.href ?? "",
             category,
@@ -522,11 +523,10 @@ export class LinkEditorModel extends TComponentModel<
         if (!skipConfirm) {
             const link = this.getLinkById(id);
             const label = link?.title || link?.href || "this link";
-            const bt = await showConfirmationDialog({
-                title: "Delete Link",
-                message: `Are you sure you want to delete "${label}"?`,
-                buttons: ["Delete", "Cancel"],
-            });
+            const bt = await ui.confirm(
+                `Are you sure you want to delete "${label}"?`,
+                { title: "Delete Link", buttons: ["Delete", "Cancel"] },
+            );
             this.containerElement?.focus();
             if (bt !== "Delete") return;
         }
@@ -584,11 +584,10 @@ export class LinkEditorModel extends TComponentModel<
             (l) => l.category === fromCategory || l.category.startsWith(fromCategory + "/")
         ).length;
 
-        const result = await showConfirmationDialog({
-            title: "Move Category",
-            message: `Move ${count} link${count !== 1 ? "s" : ""} from "${fromCategory}" to "${newCategory}"?`,
-            buttons: ["Move", "Cancel"],
-        });
+        const result = await ui.confirm(
+            `Move ${count} link${count !== 1 ? "s" : ""} from "${fromCategory}" to "${newCategory}"?`,
+            { title: "Move Category", buttons: ["Move", "Cancel"] },
+        );
 
         if (result !== "Move") return;
 
@@ -707,7 +706,7 @@ export class LinkEditorModel extends TComponentModel<
                 this.updateLink(linkId, result);
             } else {
                 const newLink: LinkItem = {
-                    id: uuid(),
+                    id: crypto.randomUUID(),
                     title: result.title,
                     href: result.href,
                     category: result.category,
@@ -745,7 +744,6 @@ export class LinkEditorModel extends TComponentModel<
 
     openLink = async (url: string) => {
         const { selectedBrowser } = this.state.get();
-        const { shell } = require("electron");
 
         if (!selectedBrowser) {
             const { pagesModel } = await import("../../store/pages-store");

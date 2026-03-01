@@ -12,14 +12,15 @@ Current work in progress and planned tasks.
 
 ## Planned (Next)
 
-| ID | Title | Description |
-|----|-------|-------------|
-| US-045 | [Phase 3 — UI & Shell](US-045-phase3-ui-shell/README.md) | `app.ui` (IUserInterface: confirm, input, password, notify) + `app.shell` (IShell: openExternal, version service, encryption service). Defers: file search, scripting, spawn, browser registration, sidebar folders. |
+(none — check [migration README](../future-architecture/migration/README.md) for next phase)
 
 ## Recently Completed
 
 | ID | Title | Notes |
 |----|-------|-------|
+| US-048 | Phase 3a — `app.ui` (IUserInterface) | IUserInterface: wrap dialog functions (confirm, input, password) + absorb alert notification API (notify). `features/dialogs/` moved to `ui/dialogs/`. 11 consumer files (~38 call sites) migrated, old exports removed. |
+| US-045 | Phase 3b — `app.shell` (IShell) | IShell: absorb encryption logic into `api/shell/`, wrap version service IPC, add `openExternal()`. 6 consumer files migrated, `encryption.ts` deleted. |
+| US-047 | Phase 2 Revision — Full Absorption into API | Full absorption: `nodeUtils` file I/O + `filesModel` data/cache/path ops merged into `api/fs.ts`. `windowIndex` added to `IWindow`. `uuid()` replaced with `crypto.randomUUID()`. `files-store.ts` and `node-utils.ts` deleted. `watchFile`/`getFileStats` inlined into `file-watcher.ts`. 18+ consumers updated. |
 | US-046 | Phase 1 Revision — Move Logic into API | `app.settings`: moved logic from `app-settings.ts` to `api/settings.ts` (14 consumers). `app.editors`: confirmed facade pattern correct (no code change). `app.recent`: moved logic from `recent-files.ts` to `api/recent.ts` (4 consumers). Old stores deleted. |
 | US-044 | Phase 2 — File System & Window | `app.fs` (IFileSystem: read/readFile/write/readBinary/writeBinary/exists/delete, resolveDataPath/resolveCachePath, dialogs, showInExplorer/showFolder), `app.window` (IWindow: minimize/maximize/restore/close, isMaximized, zoom/resetZoom/zoomLevel, openNew). Dynamic `import()` in `initServices()`. API reference docs created. |
 | US-043 | Phase 1 — Independent Interfaces | `app.settings` (ISettings wrapping appSettings with onChanged event), `app.editors` (IEditorRegistry — read-only subset of editorRegistry), `app.recent` (IRecentFiles with lazy load()). Dynamic `import()` via `initServices()` in app.ts. API reference docs created. |

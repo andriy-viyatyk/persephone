@@ -1,9 +1,10 @@
 const path = require("path");
 const fs = require("fs");
 import { TComponentState } from "../../core/state/state";
-import { showConfirmationDialog } from "../../features/dialogs/ConfirmationDialog";
+import { ui } from "../../api/ui";
 import { api } from "../../../ipc/renderer/api";
-import { filesModel, pagesModel, getLanguageByExtension } from "../../store";
+import { pagesModel, getLanguageByExtension } from "../../store";
+import { fs as appFs } from "../../api/fs";
 import { recent } from "../../api/recent";
 import { FileWatcher } from "../../core/services/file-watcher";
 import { getDefaultPageModelState, PageModel } from "../base/PageModel";
@@ -12,8 +13,7 @@ import { IPage, PageEditor } from "../../../shared/types";
 import { ScriptPanelModel } from "./ScriptPanel";
 import { TextEditorModel } from "./TextEditor";
 import { debounce } from "../../../shared/utils";
-import { decryptText, encryptText, isEncrypted } from "../../core/services/encryption";
-import { alertWarning } from "../../features/dialogs/alerts/AlertsBar";
+import { shell } from "../../api/shell";
 import { editorRegistry } from "../registry";
 import { NavPanelModel } from "../../features/navigation/nav-panel-store";
 
@@ -70,7 +70,7 @@ export class TextFileModel extends PageModel<TextFilePageModelState, void> {
     };
 
     get encripted(): boolean {
-        return isEncrypted(this.state.get().content);
+        return shell.encryption.isEncrypted(this.state.get().content);
     }
 
     get decripted(): boolean {
@@ -85,7 +85,7 @@ export class TextFileModel extends PageModel<TextFilePageModelState, void> {
         this.state.update((state) => {
             state.content = newContent;
             state.modified = true;
-            state.encripted = isEncrypted(newContent);
+            state.encripted = shell.encryption.isEncrypted(newContent);
             state.temp = state.temp && !byUser;
         });
         this.modificationSaved = false;
@@ -118,7 +118,7 @@ export class TextFileModel extends PageModel<TextFilePageModelState, void> {
         const password = this.state.get().password;
         if (password) {
             try {
-                return await encryptText(text, password);
+                return await shell.encryption.encrypt(text, password);
             } catch (error) {
                 this.alertEncryptionError(error as Error);
                 return undefined;
@@ -131,9 +131,9 @@ export class TextFileModel extends PageModel<TextFilePageModelState, void> {
         text: string,
     ): Promise<string | undefined> => {
         const password = this.state.get().password;
-        if (isEncrypted(text) && password) {
+        if (shell.encryption.isEncrypted(text) && password) {
             try {
-                return await decryptText(text, password);
+                return await shell.encryption.decrypt(text, password);
             } catch (error) {
                 this.alertEncryptionError(error as Error);
                 return undefined;
@@ -178,11 +178,10 @@ export class TextFileModel extends PageModel<TextFilePageModelState, void> {
         }
 
         pagesModel.showPage(this.state.get().id);
-        const confirmBt = await showConfirmationDialog({
-            title: "Unsaved Changes",
-            message: `Do you want to save the changes you made to "${title}"?`,
-            buttons: ["Save", "Don't Save", "Cancel"],
-        });
+        const confirmBt = await ui.confirm(
+            `Do you want to save the changes you made to "${title}"?`,
+            { title: "Unsaved Changes", buttons: ["Save", "Don't Save", "Cancel"] },
+        );
 
         switch (confirmBt) {
             case "Save":
@@ -229,12 +228,12 @@ export class TextFileModel extends PageModel<TextFilePageModelState, void> {
             return false;
         }
         if (savePath) {
-            await filesModel.saveFile(
+            await appFs.write(
                 savePath,
                 text,
                 this.state.get().encoding,
             );
-            await filesModel.deleteCacheFile(id);
+            await appFs.deleteCacheFile(id);
             this.state.update((s) => {
                 s.modified = false;
                 s.temp = false;
@@ -265,13 +264,13 @@ export class TextFileModel extends PageModel<TextFilePageModelState, void> {
 
         const newPath = path.join(path.dirname(filePath), newName);
         if (fs.existsSync(newPath)) {
-            alertWarning("A file or folder with that name already exists.");
+            ui.notify("A file or folder with that name already exists.", "warning");
             return false;
         }
         try {
             fs.renameSync(filePath, newPath);
         } catch (err) {
-            alertWarning(err.message || "Failed to rename file.");
+            ui.notify(err.message || "Failed to rename file.", "warning");
             return false;
         }
         await this.applyRenamedPath(newPath);
@@ -300,7 +299,7 @@ export class TextFileModel extends PageModel<TextFilePageModelState, void> {
             this.fileWatcher = new FileWatcher(filePath, this.onFileChanged);
         }
         if (modified) {
-            const cachedContent = await filesModel.getCacheFile(id);
+            const cachedContent = await appFs.getCacheFile(id);
             if (cachedContent !== undefined) {
                 this.state.update((s) => {
                     s.content = cachedContent;
@@ -315,7 +314,7 @@ export class TextFileModel extends PageModel<TextFilePageModelState, void> {
             const encoding = this.fileWatcher.encoding;
             this.state.update((s) => {
                 s.content = fileContent || "";
-                s.encripted = isEncrypted(s.content);
+                s.encripted = shell.encryption.isEncrypted(s.content);
                 s.encoding = encoding;
                 s.title = path.basename(filePath);
                 s.language =
@@ -354,7 +353,7 @@ export class TextFileModel extends PageModel<TextFilePageModelState, void> {
             }
             this.state.update((s) => {
                 s.content = text;
-                s.encripted = isEncrypted(s.content);
+                s.encripted = shell.encryption.isEncrypted(s.content);
                 s.encoding = encoding;
             });
         }
@@ -378,7 +377,7 @@ export class TextFileModel extends PageModel<TextFilePageModelState, void> {
             return;
         }
 
-        await filesModel.saveCacheFile(id, text);
+        await appFs.saveCacheFile(id, text);
         this.isSavingModifications = false;
     };
 
@@ -451,11 +450,11 @@ export class TextFileModel extends PageModel<TextFilePageModelState, void> {
 
     encript = async (password: string): Promise<void> => {
         if (this.encripted) {
-            alertWarning("File is already encrypted");
+            ui.notify("File is already encrypted", "warning");
             return;
         }
         try {
-            const encryptedContent = await encryptText(
+            const encryptedContent = await shell.encryption.encrypt(
                 this.state.get().content,
                 password,
             );
@@ -472,21 +471,21 @@ export class TextFileModel extends PageModel<TextFilePageModelState, void> {
             this.modificationSaved = false;
             this.saveModifications();
         } catch (error) {
-            alertWarning((error as Error).message);
+            ui.notify((error as Error).message, "warning");
         }
     };
 
     encryptWithCurrentPassword = async (): Promise<void> => {
         const password = this.state.get().password;
         if (!password) {
-            alertWarning("No password set for encryption");
+            ui.notify("No password set for encryption", "warning");
             return;
         }
         await this.encript(password);
     };
 
     alertEncryptionError = (err: Error) => {
-        alertWarning(err.message || err.name || "Unknown encryption error");
+        ui.notify(err.message || err.name || "Unknown encryption error", "warning");
     };
 
     decript = async (password: string): Promise<boolean> => {
@@ -494,7 +493,7 @@ export class TextFileModel extends PageModel<TextFilePageModelState, void> {
             return false;
         }
         try {
-            const decrypted = await decryptText(
+            const decrypted = await shell.encryption.decrypt(
                 this.state.get().content,
                 password,
             );
@@ -511,8 +510,7 @@ export class TextFileModel extends PageModel<TextFilePageModelState, void> {
 
     showEncryptionDialog = async () => {
         const mode = this.encripted && !this.decripted ? "decrypt" : "encrypt";
-        const { showPasswordDialog } = await import("../../features/dialogs/PasswordDialog");
-        const password = await showPasswordDialog({ mode });
+        const password = await ui.password({ mode });
         if (!password) return;
 
         if (mode === "decrypt") {

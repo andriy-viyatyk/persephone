@@ -11,7 +11,7 @@ import { CloseIcon, RunAllIcon, RunIcon } from "../../theme/icons";
 import { Button } from "../../components/basic/Button";
 import { FlexSpace } from "../../components/layout/Elements";
 import { TComponentState } from "../../core/state/state";
-import { filesModel } from "../../store";
+import { fs } from "../../api/fs";
 import { parseObject } from "../../core/utils/parse-utils";
 import { debounce } from "../../../shared/utils";
 
@@ -61,7 +61,7 @@ export class ScriptPanelModel extends TModel<ScriptPanelState> {
 
     restore = async (id: string) => {
         this.id = id;
-        const data = await filesModel.getCacheFile(id, this.name);
+        const data = await fs.getCacheFile(id, this.name);
         const newState = parseObject(data) || defaultScriptPanelState;
         this.skipSave = true;
         this.state.set({
@@ -80,7 +80,7 @@ export class ScriptPanelModel extends TModel<ScriptPanelState> {
         }
 
         const state = this.state.get();
-        await filesModel.saveCacheFile(this.id, JSON.stringify(state), this.name);
+        await fs.saveCacheFile(this.id, JSON.stringify(state), this.name);
     }
 
     private saveStateDebounced = debounce(this.saveState, 300);

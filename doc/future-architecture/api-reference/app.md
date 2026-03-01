@@ -1,6 +1,6 @@
 # IApp — `app`
 
-**Status:** Implemented (Phase 0+1+2)
+**Status:** Implemented (Phase 0+1+2+3a+3b)
 
 Root application object. Entry point to all app functionality.
 
@@ -97,14 +97,39 @@ console.log(app.window.zoomLevel);
 
 ---
 
+### `shell` (read-only)
+
+OS integration: open URLs, encryption, version info. See [IShell](shell.md).
+
+```javascript
+await app.shell.openExternal("https://github.com");
+const encrypted = await app.shell.encryption.encrypt("data", "pass");
+const info = await app.shell.version.checkForUpdates();
+```
+
+**Type:** [`IShell`](shell.md)
+
+---
+
+### `ui` (read-only)
+
+Dialogs and notifications. See [IUserInterface](ui.md).
+
+```javascript
+const answer = await app.ui.confirm("Save changes?");
+app.ui.notify("File saved", "success");
+```
+
+**Type:** [`IUserInterface`](ui.md)
+
+---
+
 ## Planned Properties (Not Yet Implemented)
 
 The following will be added in subsequent migration phases:
 
 | Property | Type | Phase | Description |
 |----------|------|-------|-------------|
-| `app.ui` | `IUserInterface` | 3 | Dialogs and UI actions |
-| `app.shell` | `IShell` | 3 | Shell services (search, encryption, scripting) |
 | `app.pages` | `IPageCollection` | 4 | Open pages/tabs collection |
 
 ---
@@ -149,6 +174,22 @@ await app.fs.write("C:/data/output.json", data);
 ```javascript
 app.window.maximize();
 await app.window.openNew("C:/file.txt");
+```
+
+### Dialogs and notifications
+
+```javascript
+const answer = await app.ui.confirm("Delete?", { buttons: ["Delete", "Cancel"] });
+if (answer === "Delete") { /* proceed */ }
+
+app.ui.notify("Operation complete", "success");
+```
+
+### Open URL and check for updates
+
+```javascript
+await app.shell.openExternal("https://github.com");
+const info = await app.shell.version.checkForUpdates();
 ```
 
 ---

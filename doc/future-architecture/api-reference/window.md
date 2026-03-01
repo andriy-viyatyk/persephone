@@ -126,6 +126,20 @@ console.log(app.window.zoomLevel); // 1.0, 1.1, 0.9, etc.
 
 ---
 
+## Properties — Window Identity
+
+### `windowIndex` (read-only)
+
+Zero-based index of this window among all application windows. Set once during initialization.
+
+```javascript
+console.log(app.window.windowIndex); // 0, 1, 2, etc.
+```
+
+**Type:** `number`
+
+---
+
 ## Methods — Multi-Window
 
 ### `openNew(filePath?)`

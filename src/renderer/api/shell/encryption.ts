@@ -1,3 +1,5 @@
+import type { IEncryptionService } from "../types/shell";
+
 const algorithm = {
     name: "AES-GCM",
     length: 256,
@@ -5,17 +7,12 @@ const algorithm = {
 
 const ENCRYPTION_VERSION_V1 = "ENC-v001:";
 
-export function encryptionVersion(content: string): number | undefined {
+function encryptionVersion(content: string): number | undefined {
     const match = content.match(/^ENC-v(\d+):/);
     if (match) {
         return parseInt(match[1], 10);
     }
     return undefined;
-}
-
-export function isEncrypted(content?: string): boolean {
-    const version = content ? encryptionVersion(content) : undefined;
-    return version !== undefined && version > 0;
 }
 
 async function getKeyFromPassword(password: string): Promise<CryptoKey> {
@@ -50,7 +47,7 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
     return btoa(binary);
 }
 
-export async function encryptText(
+async function encryptText(
     text: string,
     password: string
 ): Promise<string> {
@@ -77,21 +74,6 @@ export async function encryptText(
     } catch (error) {
         console.error("Error in encryptText:", error);
         throw error;
-    }
-}
-
-export async function decryptText(
-    encryptedText: string,
-    password: string
-): Promise<string> {
-    const version = encryptionVersion(encryptedText);
-    switch (version) {
-        case 1:
-            return await decryptTextV1(encryptedText, password);
-        case undefined:
-            throw new Error("Text is not encrypted");
-        default:
-            throw new Error("Unsupported encryption version");
     }
 }
 
@@ -123,3 +105,35 @@ async function decryptTextV1(
 
     return new TextDecoder().decode(decrypted);
 }
+
+async function decryptText(
+    encryptedText: string,
+    password: string
+): Promise<string> {
+    const version = encryptionVersion(encryptedText);
+    switch (version) {
+        case 1:
+            return await decryptTextV1(encryptedText, password);
+        case undefined:
+            throw new Error("Text is not encrypted");
+        default:
+            throw new Error("Unsupported encryption version");
+    }
+}
+
+class EncryptionService implements IEncryptionService {
+    async encrypt(text: string, password: string): Promise<string> {
+        return encryptText(text, password);
+    }
+
+    async decrypt(encryptedText: string, password: string): Promise<string> {
+        return decryptText(encryptedText, password);
+    }
+
+    isEncrypted(text: string): boolean {
+        const version = text ? encryptionVersion(text) : undefined;
+        return version !== undefined && version > 0;
+    }
+}
+
+export const encryption = new EncryptionService();

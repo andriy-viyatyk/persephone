@@ -1,8 +1,8 @@
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
-import { AlertsBar } from "./features/dialogs/alerts/AlertsBar";
-import { Dialogs } from "./features/dialogs/Dialogs";
-import { Poppers } from "./features/dialogs/poppers/Poppers";
+import { AlertsBar } from "./ui/dialogs/alerts/AlertsBar";
+import { Dialogs } from "./ui/dialogs/Dialogs";
+import { Poppers } from "./ui/dialogs/poppers/Poppers";
 import { MainPage } from "./app/MainPage";
 import "./setup/configure-monaco";
 import "./editors/register-editors";

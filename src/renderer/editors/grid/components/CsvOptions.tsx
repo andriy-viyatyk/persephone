@@ -13,8 +13,8 @@ import { DefaultView, ViewPropsRO, Views } from "../../../core/state/view";
 import { useCallback, useEffect, useState } from "react";
 import { TComponentState } from "../../../core/state/state";
 import { TextField } from "../../../components/basic/TextField";
-import { TPopperModel } from "../../../features/dialogs/poppers/types";
-import { showPopper } from "../../../features/dialogs/poppers/Poppers";
+import { TPopperModel } from "../../../ui/dialogs/poppers/types";
+import { showPopper } from "../../../ui/dialogs/poppers/Poppers";
 import { GridPageModel } from "../GridPageModel";
 
 const CsvOptionsRoot = styled.div({

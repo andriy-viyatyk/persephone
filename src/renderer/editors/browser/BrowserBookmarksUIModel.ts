@@ -1,7 +1,7 @@
 const fs = require("fs");
 import { BrowserBookmarks, createEmptyLinkFile } from "./BrowserBookmarks";
 import { showEditLinkDialog } from "../link-editor/EditLinkDialog";
-import { showConfirmationDialog } from "../../features/dialogs/ConfirmationDialog";
+import { ui } from "../../api/ui";
 import { api } from "../../../ipc/renderer/api";
 import { settings, BrowserProfile } from "../../api/settings";
 import type { BrowserPageModel } from "./BrowserPageModel";
@@ -59,11 +59,10 @@ export class BrowserBookmarksUIModel {
         }
 
         if (!filePath) {
-            const choice = await showConfirmationDialog({
-                title: "Bookmarks File",
-                message: "This profile has no bookmarks file associated.\nChoose an option:",
-                buttons: ["Select a file", "Create new file", "Cancel"],
-            });
+            const choice = await ui.confirm(
+                "This profile has no bookmarks file associated.\nChoose an option:",
+                { title: "Bookmarks File", buttons: ["Select a file", "Create new file", "Cancel"] },
+            );
 
             if (choice === "Select a file") {
                 const result = await api.showOpenFileDialog({

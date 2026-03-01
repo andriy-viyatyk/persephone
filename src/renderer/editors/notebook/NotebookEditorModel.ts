@@ -1,9 +1,9 @@
 import { debounce } from "../../../shared/utils";
 import { TComponentModel } from "../../core/state/model";
 import RenderGridModel from "../../components/virtualization/RenderGrid/RenderGridModel";
-import { uuid } from "../../core/utils/node-utils";
+
 import { splitWithSeparators } from "../../core/utils/utils";
-import { showConfirmationDialog } from "../../features/dialogs/ConfirmationDialog";
+import { ui } from "../../api/ui";
 import { CategoryTreeItem, DragItem } from "../../components/TreeView";
 import { NoteItem, NotebookData, NotebookEditorProps, NOTE_DRAG, CATEGORY_DRAG } from "./notebookTypes";
 
@@ -196,7 +196,7 @@ export class NotebookEditorModel extends TComponentModel<
         }
 
         const newNote: NoteItem = {
-            id: uuid(),
+            id: crypto.randomUUID(),
             title,
             category,
             tags,
@@ -438,11 +438,10 @@ export class NotebookEditorModel extends TComponentModel<
         const note = this.getNote(id);
         const noteTitle = note?.title || "this note";
 
-        const result = await showConfirmationDialog({
-            title: "Delete Note",
-            message: `Are you sure you want to delete "${noteTitle}"?`,
-            buttons: ["Delete", "Cancel"],
-        });
+        const result = await ui.confirm(
+            `Are you sure you want to delete "${noteTitle}"?`,
+            { title: "Delete Note", buttons: ["Delete", "Cancel"] },
+        );
 
         if (result !== "Delete") {
             return;
@@ -659,11 +658,10 @@ export class NotebookEditorModel extends TComponentModel<
             (n) => n.category === fromCategory || n.category.startsWith(fromCategory + "/")
         ).length;
 
-        const result = await showConfirmationDialog({
-            title: "Move Category",
-            message: `Move ${count} note${count !== 1 ? "s" : ""} from "${fromCategory}" to "${newCategory}"?`,
-            buttons: ["Move", "Cancel"],
-        });
+        const result = await ui.confirm(
+            `Move ${count} note${count !== 1 ? "s" : ""} from "${fromCategory}" to "${newCategory}"?`,
+            { title: "Move Category", buttons: ["Move", "Cancel"] },
+        );
 
         if (result !== "Move") return;
 

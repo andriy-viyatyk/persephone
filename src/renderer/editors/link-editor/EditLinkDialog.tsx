@@ -1,10 +1,10 @@
 import styled from "@emotion/styled";
 import clsx from "clsx";
-import { Dialog, DialogContent } from "../../features/dialogs/Dialog";
+import { Dialog, DialogContent } from "../../ui/dialogs/Dialog";
 import { TDialogModel } from "../../core/state/model";
 import { DefaultView, ViewPropsRO, Views } from "../../core/state/view";
 import { TComponentState } from "../../core/state/state";
-import { showDialog } from "../../features/dialogs/Dialogs";
+import { showDialog } from "../../ui/dialogs/Dialogs";
 import { Button } from "../../components/basic/Button";
 import { TextAreaField } from "../../components/basic/TextAreaField";
 import { TextField } from "../../components/basic/TextField";

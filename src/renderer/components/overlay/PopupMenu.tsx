@@ -9,11 +9,11 @@ import { useSelectOptions } from "../form/utils";
 import { TextField } from "../basic/TextField";
 import { List, ListRef } from "../form/List";
 import { TComponentModel, useComponentModel } from "../../core/state/model";
-import { TPopperModel } from "../../features/dialogs/poppers/types";
+import { TPopperModel } from "../../ui/dialogs/poppers/types";
 import { DefaultView, ViewPropsRO, Views } from "../../core/state/view";
 import ReactDOM from "react-dom";
 import { TComponentState } from "../../core/state/state";
-import { showPopper } from "../../features/dialogs/poppers/Poppers";
+import { showPopper } from "../../ui/dialogs/poppers/Poppers";
 import { FlexSpace } from "../layout/Elements";
 
 const PopupMenuRoot = styled(PopperRoot)<{

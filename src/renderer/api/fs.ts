@@ -1,23 +1,247 @@
 const path = require("path");
 const nodefs = require("fs");
 
+import jschardet from "jschardet";
+import iconv from "iconv-lite";
 import { api } from "../../ipc/renderer/api";
-import { nodeUtils } from "../core/utils/node-utils";
-import { filesModel } from "../store/files-store";
 import type { IFileSystem, ITextFile } from "./types/fs";
 
 class FileSystem implements IFileSystem {
-    // ── File I/O — simple ────────────────────────────────────────────
+    // ── Init state ────────────────────────────────────────────────────
 
-    async read(filePath: string, encoding?: string): Promise<string> {
-        const result = nodeUtils.loadStringFile(filePath, encoding);
-        return result.content;
+    private _windowIndex: number | null = null;
+    private _dataPath: string | null = null;
+    private _cachePath: string | null = null;
+    private _cacheMiscPath: string | null = null;
+    private _initPromise: Promise<void>;
+
+    constructor() {
+        this._initPromise = this._init();
     }
 
-    // ── File I/O — full ──────────────────────────────────────────────
+    wait = async (): Promise<void> => {
+        await this._initPromise;
+    };
+
+    private _init = async (): Promise<void> => {
+        await new Promise((resolve) => setTimeout(resolve, 100)); // Allow other init tasks to complete
+        const userData = await api.getCommonFolder("userData");
+        this._windowIndex = await api.getWindowIndex();
+        this._dataPath = path.join(userData, "data");
+        this._cachePath = path.join(this._dataPath, "cache");
+        this._cacheMiscPath = path.join(this._dataPath, "cache-misc");
+        console.log("dataPath:", this._dataPath);
+    };
+
+    // ── Private sync file I/O (from nodeUtils) ───────────────────────
+
+    private _loadStringFile(filePath: string, encoding?: string): ITextFile {
+        const buffer = nodefs.readFileSync(filePath);
+
+        if (
+            buffer.length >= 3 &&
+            buffer[0] === 0xef &&
+            buffer[1] === 0xbb &&
+            buffer[2] === 0xbf
+        ) {
+            return {
+                content: buffer.slice(3).toString("utf-8"),
+                encoding: "utf-8-bom",
+            };
+        }
+
+        if (buffer.length >= 2 && buffer[0] === 0xff && buffer[1] === 0xfe) {
+            return {
+                content: iconv.decode(buffer.slice(2), "utf16le"),
+                encoding: "utf-16le",
+            };
+        }
+
+        if (buffer.length >= 2 && buffer[0] === 0xfe && buffer[1] === 0xff) {
+            return {
+                content: iconv.decode(buffer.slice(2), "utf16be"),
+                encoding: "utf-16be",
+            };
+        }
+
+        if (encoding) {
+            try {
+                return {
+                    content: iconv.decode(buffer, encoding),
+                    encoding: encoding,
+                };
+            } catch (error) {
+                console.warn(
+                    `Failed to decode with provided encoding ${encoding}:`,
+                    error
+                );
+            }
+        }
+
+        const detected = jschardet.detect(buffer);
+
+        if (detected && detected.encoding && detected.confidence > 0.7) {
+            try {
+                let detectedEncoding = detected.encoding.toLowerCase();
+
+                if (detectedEncoding === "ascii") {
+                    // ASCII is a subset of UTF-8
+                    detectedEncoding = "utf-8";
+                }
+
+                return {
+                    content: iconv.decode(buffer, detectedEncoding),
+                    encoding: detectedEncoding,
+                };
+            } catch (error) {
+                console.warn(
+                    `Failed to decode with ${detected.encoding}:`,
+                    error
+                );
+            }
+        }
+
+        try {
+            const utf8Text = buffer.toString("utf-8");
+            if (!utf8Text.includes("\ufffd")) {
+                return {
+                    content: utf8Text,
+                    encoding: "utf-8",
+                };
+            }
+        } catch (error) {
+            // UTF-8 failed
+        }
+
+        return {
+            content: iconv.decode(buffer, "windows-1251"),
+            encoding: "windows-1251",
+        };
+    }
+
+    private _saveStringFile(
+        filePath: string,
+        content: string,
+        encoding?: string
+    ): void {
+        const enc = encoding?.toLowerCase() || "utf-8";
+
+        if (enc === "utf-8" || enc === "utf8") {
+            nodefs.writeFileSync(filePath, content, "utf-8");
+        } else if (enc === "utf-8-bom" || enc === "utf8bom") {
+            const bom = Buffer.from([0xef, 0xbb, 0xbf]);
+            const textBuffer = Buffer.from(content, "utf-8");
+            nodefs.writeFileSync(filePath, Buffer.concat([bom, textBuffer]));
+        } else if (enc === "utf-16le" || enc === "utf16le") {
+            const bom = Buffer.from([0xff, 0xfe]);
+            const textBuffer = iconv.encode(content, "utf16le");
+            nodefs.writeFileSync(filePath, Buffer.concat([bom, textBuffer]));
+        } else if (enc === "utf-16be" || enc === "utf16be") {
+            const bom = Buffer.from([0xfe, 0xff]);
+            const textBuffer = iconv.encode(content, "utf16be");
+            nodefs.writeFileSync(filePath, Buffer.concat([bom, textBuffer]));
+        } else {
+            try {
+                const buffer = iconv.encode(content, enc);
+                nodefs.writeFileSync(filePath, buffer);
+            } catch (error) {
+                console.error(
+                    `Failed to encode with ${enc}, falling back to UTF-8:`,
+                    error
+                );
+                nodefs.writeFileSync(filePath, content, "utf-8");
+            }
+        }
+    }
+
+    fileExistsSync(filePath: string): boolean {
+        try {
+            nodefs.accessSync(filePath, nodefs.constants.F_OK);
+            return true;
+        } catch (err) {
+            return false;
+        }
+    }
+
+    private _unlinkFile(filePath: string): boolean {
+        if (!this.fileExistsSync(filePath)) {
+            return true;
+        }
+        try {
+            nodefs.unlinkSync(filePath);
+            return true;
+        } catch (err) {
+            return false;
+        }
+    }
+
+    private _ensureDir(dirPath: string): boolean {
+        if (!this.fileExistsSync(dirPath)) {
+            try {
+                nodefs.mkdirSync(dirPath, { recursive: true });
+            } catch (err) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private _listDirFiles(dirPath: string, pattern?: string | RegExp): string[] {
+        if (!this.fileExistsSync(dirPath)) {
+            return [];
+        }
+
+        const files: string[] = nodefs.readdirSync(dirPath);
+
+        if (!pattern) {
+            return files;
+        }
+
+        if (typeof pattern === "string") {
+            return files.filter(
+                (file: string) =>
+                    path.extname(file).toLowerCase() === pattern.toLowerCase()
+            );
+        }
+
+        return files.filter((file: string) => pattern.test(file));
+    }
+
+    // ── Internal async helpers (from filesModel) ─────────────────────
+
+    private async _getFile(filePath: string, encoding?: string): Promise<ITextFile | undefined> {
+        if (this.fileExistsSync(filePath)) {
+            return this._loadStringFile(filePath, encoding);
+        }
+        return undefined;
+    }
+
+    private async _writeFile(filePath: string, content: string, encoding?: string): Promise<void> {
+        await this.wait();
+        this._ensureDir(path.dirname(filePath));
+        this._saveStringFile(filePath, content, encoding);
+    }
+
+    private async _prepareFile(filePath: string, defaultContent: string): Promise<void> {
+        await this.wait();
+        if (!this.fileExistsSync(filePath)) {
+            await this._writeFile(filePath, defaultContent);
+        }
+    }
+
+    private async _removeFile(filePath: string): Promise<void> {
+        await this.wait();
+        this._unlinkFile(filePath);
+    }
+
+    // ── IFileSystem — File I/O ────────────────────────────────────────
+
+    async read(filePath: string, encoding?: string): Promise<string> {
+        return this._loadStringFile(filePath, encoding).content;
+    }
 
     async readFile(filePath: string, encoding?: string): Promise<ITextFile> {
-        return nodeUtils.loadStringFile(filePath, encoding);
+        return this._loadStringFile(filePath, encoding);
     }
 
     async readBinary(filePath: string): Promise<Buffer> {
@@ -25,46 +249,42 @@ class FileSystem implements IFileSystem {
     }
 
     async write(filePath: string, content: string, encoding?: string): Promise<void> {
-        const dirPath = path.dirname(filePath);
-        nodeUtils.preparePath(dirPath);
-        nodeUtils.saveStringFile(filePath, content, encoding);
+        this._ensureDir(path.dirname(filePath));
+        this._saveStringFile(filePath, content, encoding);
     }
 
     async writeBinary(filePath: string, data: Buffer): Promise<void> {
-        const dirPath = path.dirname(filePath);
-        nodeUtils.preparePath(dirPath);
+        this._ensureDir(path.dirname(filePath));
         nodefs.writeFileSync(filePath, data);
     }
 
     async exists(filePath: string): Promise<boolean> {
-        return nodeUtils.fileExists(filePath);
+        return this.fileExistsSync(filePath);
     }
 
     async delete(filePath: string): Promise<void> {
-        nodeUtils.deleteFile(filePath);
+        this._unlinkFile(filePath);
     }
 
-    // ── Path resolution ──────────────────────────────────────────────
+    // ── IFileSystem — Path resolution ─────────────────────────────────
 
     resolveDataPath(relativePath: string): string {
-        const state = filesModel.state.get();
         const resolved = relativePath.replace(
             "{windowIndex}",
-            String(state.windowIndex)
+            String(this._windowIndex)
         );
-        return path.join(state.dataPath, resolved);
+        return path.join(this._dataPath, resolved);
     }
 
     resolveCachePath(relativePath: string): string {
-        const state = filesModel.state.get();
-        return path.join(state.cachePath, relativePath);
+        return path.join(this._cachePath, relativePath);
     }
 
     async commonFolder(name: string): Promise<string> {
         return api.getCommonFolder(name as any);
     }
 
-    // ── Dialogs ──────────────────────────────────────────────────────
+    // ── IFileSystem — Dialogs ─────────────────────────────────────────
 
     async showOpenDialog(options?: {
         title?: string;
@@ -105,7 +325,7 @@ class FileSystem implements IFileSystem {
         return result ?? null;
     }
 
-    // ── OS integration ───────────────────────────────────────────────
+    // ── IFileSystem — OS integration ──────────────────────────────────
 
     showInExplorer(filePath: string): void {
         api.showItemInFolder(filePath);
@@ -114,6 +334,95 @@ class FileSystem implements IFileSystem {
     showFolder(folderPath: string): void {
         api.showFolder(folderPath);
     }
+
+    // ── Data file operations ──────────────────────────────────────────
+
+    dataFileName = async (fileName: string): Promise<string> => {
+        await this.wait();
+        return path.join(
+            this._dataPath!,
+            fileName.replace("{windowIndex}", String(this._windowIndex))
+        );
+    };
+
+    getDataFile = async (fileName: string): Promise<string | undefined> =>
+        (await this._getFile(await this.dataFileName(fileName)))?.content;
+
+    saveDataFile = async (fileName: string, content: string): Promise<void> =>
+        await this._writeFile(await this.dataFileName(fileName), content);
+
+    deleteDataFile = async (fileName: string): Promise<void> =>
+        await this._removeFile(await this.dataFileName(fileName));
+
+    prepareDataFile = async (fileName: string, defaultContent: string): Promise<void> =>
+        await this._prepareFile(
+            await this.dataFileName(fileName),
+            defaultContent
+        );
+
+    // ── Cache operations ──────────────────────────────────────────────
+
+    private async _cacheFileName(id: string, name?: string): Promise<string> {
+        await this.wait();
+        return path.join(
+            this._cachePath!,
+            id + (name ? "_" + name : "") + ".txt"
+        );
+    }
+
+    getCacheFile = async (id: string, name?: string): Promise<string | undefined> =>
+        (await this._getFile(await this._cacheFileName(id, name)))?.content;
+
+    saveCacheFile = async (id: string, content: string, name?: string): Promise<void> =>
+        await this._writeFile(await this._cacheFileName(id, name), content);
+
+    deleteCacheFile = async (id: string, name?: string): Promise<void> =>
+        await this._removeFile(await this._cacheFileName(id, name));
+
+    deleteCacheFiles = async (id: string): Promise<void> => {
+        await this.wait();
+        const files = this._listDirFiles(
+            this._cachePath!,
+            new RegExp(`^${id}`, "i")
+        );
+        for (const file of files) {
+            await this._removeFile(path.join(this._cachePath!, file));
+        }
+    };
+
+    // ── Cache-misc operations ─────────────────────────────────────────
+
+    private async _cacheMiscFileName(subPath: string): Promise<string> {
+        await this.wait();
+        return path.join(this._cacheMiscPath!, subPath);
+    }
+
+    getCacheMiscFile = async (subPath: string): Promise<string | undefined> =>
+        (await this._getFile(await this._cacheMiscFileName(subPath)))?.content;
+
+    saveCacheMiscFile = async (subPath: string, content: string): Promise<void> =>
+        await this._writeFile(await this._cacheMiscFileName(subPath), content);
+
+    deleteCacheMiscFile = async (subPath: string): Promise<void> =>
+        await this._removeFile(await this._cacheMiscFileName(subPath));
+
+    cacheMiscFilePath = async (subPath: string): Promise<string> =>
+        await this._cacheMiscFileName(subPath);
+
+    // ── Binary file operations ────────────────────────────────────────
+
+    saveBinaryFile = async (filePath: string, buffer: Buffer): Promise<void> => {
+        await this.wait();
+        this._ensureDir(path.dirname(filePath));
+        nodefs.writeFileSync(filePath, buffer);
+    };
+
+    getBinaryFile = async (filePath: string): Promise<Buffer | undefined> => {
+        if (this.fileExistsSync(filePath)) {
+            return nodefs.readFileSync(filePath);
+        }
+        return undefined;
+    };
 }
 
 export const fs = new FileSystem();

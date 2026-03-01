@@ -1,4 +1,4 @@
-import { showAppPopupMenu } from "../../../../features/dialogs/poppers/showPopupMenu";
+import { showAppPopupMenu } from "../../../../ui/dialogs/poppers/showPopupMenu";
 import { CopyIcon, DeleteIcon, PasteIcon, PlusIcon } from "../../../../theme/icons";
 import { MenuItem } from "../../../overlay/PopupMenu";
 import { AVGridModel } from "./AVGridModel";

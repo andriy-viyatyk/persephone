@@ -1,11 +1,10 @@
 import { debounce } from "../../../shared/utils";
 import { TComponentModel } from "../../core/state/model";
 import RenderGridModel from "../../components/virtualization/RenderGrid/RenderGridModel";
-import { uuid } from "../../core/utils/node-utils";
-import { showConfirmationDialog } from "../../features/dialogs/ConfirmationDialog";
-import { alertWarning } from "../../features/dialogs/alerts/AlertsBar";
+
+import { ui } from "../../api/ui";
 import { TodoItem, TodoTag, TodoData, TodoEditorProps, ListCount } from "./todoTypes";
-import { filesModel } from "../../store/files-store";
+import { fs } from "../../api/fs";
 
 // =============================================================================
 // State
@@ -98,7 +97,7 @@ export class TodoEditorModel extends TComponentModel<
 
     private restoreSelectionState = async () => {
         const id = this.props.model.state.get().id;
-        const data = await filesModel.getCacheFile(id, TodoEditorModel.cacheName);
+        const data = await fs.getCacheFile(id, TodoEditorModel.cacheName);
         if (!data) return;
         try {
             const saved = JSON.parse(data);
@@ -116,7 +115,7 @@ export class TodoEditorModel extends TComponentModel<
         const { selectedList, selectedTag } = this.state.get();
         const id = this.props.model.state.get().id;
         const data = JSON.stringify({ selectedList, selectedTag });
-        filesModel.saveCacheFile(id, data, TodoEditorModel.cacheName);
+        fs.saveCacheFile(id, data, TodoEditorModel.cacheName);
     };
 
     private saveSelectionStateDebounced = debounce(this.saveSelectionState, 300);
@@ -224,7 +223,7 @@ export class TodoEditorModel extends TComponentModel<
     /** Normalize a raw item from JSON, applying sensible defaults for missing fields */
     private normalizeItem = (raw: Partial<TodoItem>): TodoItem => {
         return {
-            id: raw.id || uuid(),
+            id: raw.id || crypto.randomUUID(),
             list: raw.list || "",
             title: raw.title || "",
             done: raw.done === true,
@@ -388,7 +387,7 @@ export class TodoEditorModel extends TComponentModel<
 
         const now = new Date().toISOString();
         const newItem: TodoItem = {
-            id: uuid(),
+            id: crypto.randomUUID(),
             list: selectedList,
             title,
             done: false,
@@ -463,11 +462,10 @@ export class TodoEditorModel extends TComponentModel<
         const item = this.state.get().data.items.find((i) => i.id === id);
         const itemTitle = item?.title || "this item";
 
-        const result = await showConfirmationDialog({
-            title: "Delete Todo Item",
-            message: `Are you sure you want to delete "${itemTitle}"?`,
-            buttons: ["Delete", "Cancel"],
-        });
+        const result = await ui.confirm(
+            `Are you sure you want to delete "${itemTitle}"?`,
+            { title: "Delete Todo Item", buttons: ["Delete", "Cancel"] },
+        );
 
         if (result !== "Delete") return;
 
@@ -492,11 +490,11 @@ export class TodoEditorModel extends TComponentModel<
         const { selectedList, selectedTag } = this.state.get();
 
         if (!selectedList) {
-            alertWarning("Select a specific list to reorder items");
+            ui.notify("Select a specific list to reorder items", "warning");
             return;
         }
         if (selectedTag) {
-            alertWarning("Deselect tag filter to reorder items");
+            ui.notify("Deselect tag filter to reorder items", "warning");
             return;
         }
 
@@ -569,11 +567,10 @@ export class TodoEditorModel extends TComponentModel<
     deleteList = async (name: string) => {
         const itemCount = this.state.get().data.items.filter((i) => i.list === name).length;
 
-        const result = await showConfirmationDialog({
-            title: "Delete List",
-            message: `Delete list "${name}" and all ${itemCount} item${itemCount !== 1 ? "s" : ""}?`,
-            buttons: ["Delete", "Cancel"],
-        });
+        const result = await ui.confirm(
+            `Delete list "${name}" and all ${itemCount} item${itemCount !== 1 ? "s" : ""}?`,
+            { title: "Delete List", buttons: ["Delete", "Cancel"] },
+        );
 
         if (result !== "Delete") return;
 
@@ -656,11 +653,10 @@ export class TodoEditorModel extends TComponentModel<
     deleteTag = async (name: string) => {
         const itemCount = this.state.get().data.items.filter((i) => i.tag === name).length;
 
-        const result = await showConfirmationDialog({
-            title: "Delete Tag",
-            message: `Delete tag "${name}"?${itemCount > 0 ? ` It will be removed from ${itemCount} item${itemCount !== 1 ? "s" : ""}.` : ""}`,
-            buttons: ["Delete", "Cancel"],
-        });
+        const result = await ui.confirm(
+            `Delete tag "${name}"?${itemCount > 0 ? ` It will be removed from ${itemCount} item${itemCount !== 1 ? "s" : ""}.` : ""}`,
+            { title: "Delete Tag", buttons: ["Delete", "Cancel"] },
+        );
 
         if (result !== "Delete") return;
 

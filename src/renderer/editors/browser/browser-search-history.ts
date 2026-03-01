@@ -1,7 +1,7 @@
 import { TModel } from "../../core/state/model";
 import { TGlobalState } from "../../core/state/state";
 import { FileWatcher } from "../../core/services/file-watcher";
-import { filesModel } from "../../store/files-store";
+import { fs } from "../../api/fs";
 
 const MAX_ENTRIES = 2000;
 
@@ -33,9 +33,9 @@ class SearchHistoryStorage extends TModel<SearchHistoryState> {
 
     private init = async () => {
         const fileName = getFileName(this.profileName);
-        await filesModel.prepareDataFile(fileName, "");
+        await fs.prepareDataFile(fileName, "");
         this.fileWatcher = new FileWatcher(
-            await filesModel.dataFileName(fileName),
+            await fs.dataFileName(fileName),
             this.fileChanged,
         );
         await this.load();
@@ -51,7 +51,7 @@ class SearchHistoryStorage extends TModel<SearchHistoryState> {
 
     load = async (): Promise<string[]> => {
         const fileName = getFileName(this.profileName);
-        const data = await filesModel.getDataFile(fileName);
+        const data = await fs.getDataFile(fileName);
         const entries = (data ?? "")
             .split("\n")
             .map((s) => s.trim())
@@ -66,7 +66,7 @@ class SearchHistoryStorage extends TModel<SearchHistoryState> {
     private save = async (entries: string[]) => {
         this.skipNextFileChange = true;
         const fileName = getFileName(this.profileName);
-        await filesModel.saveDataFile(fileName, entries.join("\n"));
+        await fs.saveDataFile(fileName, entries.join("\n"));
     };
 
     add = async (query: string): Promise<void> => {

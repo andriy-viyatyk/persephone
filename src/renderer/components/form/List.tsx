@@ -23,7 +23,7 @@ import color from "../../theme/color";
 import { OverflowTooltipText } from "../basic/OverflowTooltipText";
 import { highlightText, useHighlightedText } from "../basic/useHighlightedText";
 import { Tooltip } from "../basic/Tooltip";
-import { uuid } from "../../core/utils/node-utils";
+
 import { MenuItem } from "../overlay/PopupMenu";
 
 const NoRowsRoot = styled.div({
@@ -148,7 +148,7 @@ function DefaultCell({
     label?: React.ReactNode;
 }) {
     const highlight = useHighlightedText();
-    const id = useMemo(() => uuid(), []);
+    const id = useMemo(() => crypto.randomUUID(), []);
 
     const onMouseEnter = useCallback((e: React.MouseEvent<Element>) => {
         onMouseHover?.(row, index, e);

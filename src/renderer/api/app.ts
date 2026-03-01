@@ -5,6 +5,8 @@ import type { IEditorRegistry } from "./types/editors";
 import type { IRecentFiles } from "./types/recent";
 import type { IFileSystem } from "./types/fs";
 import type { IWindow } from "./types/window";
+import type { IShell } from "./types/shell";
+import type { IUserInterface } from "./types/ui";
 
 class App implements IApp {
     private _version = "";
@@ -15,6 +17,8 @@ class App implements IApp {
     private _recent = undefined as unknown as IRecentFiles;
     private _fs = undefined as unknown as IFileSystem;
     private _window = undefined as unknown as IWindow;
+    private _shell = undefined as unknown as IShell;
+    private _ui = undefined as unknown as IUserInterface;
 
     get version(): string {
         return this._version;
@@ -40,6 +44,14 @@ class App implements IApp {
         return this._window;
     }
 
+    get shell(): IShell {
+        return this._shell;
+    }
+
+    get ui(): IUserInterface {
+        return this._ui;
+    }
+
     /**
      * Initialize version. Called early in bootstrap (renderer.tsx).
      * Not exposed to scripts.
@@ -55,18 +67,22 @@ class App implements IApp {
      * Not exposed to scripts.
      */
     async initServices(): Promise<void> {
-        const [{ settings }, { editors }, { recent }, { fs }, win] = await Promise.all([
+        const [{ settings }, { editors }, { recent }, { fs }, win, { shell }, { ui }] = await Promise.all([
             import("./settings"),
             import("./editors"),
             import("./recent"),
             import("./fs"),
             import("./window"),
+            import("./shell"),
+            import("./ui"),
         ]);
         this._settings = settings;
         this._editors = editors;
         this._recent = recent;
         this._fs = fs;
-        this._window = win.window;
+        this._window = win.appWindow;
+        this._shell = shell;
+        this._ui = ui;
     }
 }
 

@@ -12,7 +12,7 @@ import { TextAreaField, TextAreaFieldRef } from "../../components/basic/TextArea
 import { DEFAULT_BROWSER_COLOR, TAG_COLORS } from "../../theme/palette-colors";
 import { WithPopupMenu } from "../../components/overlay/WithPopupMenu";
 import { MenuItem } from "../../components/overlay/PopupMenu";
-import { showConfirmationDialog } from "../../features/dialogs/ConfirmationDialog";
+import { ui } from "../../api/ui";
 import { getPartitionString } from "../browser/BrowserPageModel";
 import { IncognitoIcon } from "../../theme/language-icons";
 import { api } from "../../../ipc/renderer/api";
@@ -523,11 +523,10 @@ function BrowserProfilesSection() {
     };
 
     const handleRemoveProfile = async (name: string) => {
-        const result = await showConfirmationDialog({
-            title: "Delete Profile",
-            message: `Delete profile "${name}"? All browsing data (cookies, storage, cache) for this profile will be permanently removed.`,
-            buttons: ["Delete", "Cancel"],
-        });
+        const result = await ui.confirm(
+            `Delete profile "${name}"? All browsing data (cookies, storage, cache) for this profile will be permanently removed.`,
+            { title: "Delete Profile", buttons: ["Delete", "Cancel"] },
+        );
         if (result !== "Delete") return;
         const partition = getPartitionString(name, false);
         await clearPartitionData(partition);
@@ -539,11 +538,10 @@ function BrowserProfilesSection() {
 
     const handleClearData = async (profileName: string) => {
         const label = profileName || "Default";
-        const result = await showConfirmationDialog({
-            title: "Clear Profile Data",
-            message: `Clear all browsing data (cookies, storage, cache) for the "${label}" profile?`,
-            buttons: ["Clear", "Cancel"],
-        });
+        const result = await ui.confirm(
+            `Clear all browsing data (cookies, storage, cache) for the "${label}" profile?`,
+            { title: "Clear Profile Data", buttons: ["Clear", "Cancel"] },
+        );
         if (result !== "Clear") return;
         const partition = getPartitionString(profileName, false);
         await clearPartitionData(partition);

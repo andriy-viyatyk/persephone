@@ -1,9 +1,9 @@
 import { debounce } from "../../shared/utils";
 import { TModel } from "../core/state/model";
 import { TGlobalState } from "../core/state/state";
-import { uuid } from "../core/utils/node-utils";
+
 import { parseObject } from "../core/utils/parse-utils";
-import { filesModel } from "./files-store";
+import { fs } from "../api/fs";
 import { FileWatcher } from "../core/services/file-watcher";
 
 const menuFoldersFileName = "menuFolders.json";
@@ -30,9 +30,9 @@ class MenuFolders extends TModel<MenuFoldersState> {
     }
 
     private init = async () => {
-        await filesModel.prepareDataFile(menuFoldersFileName, "{}");
+        await fs.prepareDataFile(menuFoldersFileName, "{}");
         this.fileWatcher = new FileWatcher(
-            await filesModel.dataFileName(menuFoldersFileName),
+            await fs.dataFileName(menuFoldersFileName),
             this.fileChanged
         );
         await this.loadState();
@@ -67,13 +67,13 @@ class MenuFolders extends TModel<MenuFoldersState> {
 
     private saveState = () => {
         const content = JSON.stringify(this.state.get(), null, 4);
-        filesModel.saveDataFile(menuFoldersFileName, content);
+        fs.saveDataFile(menuFoldersFileName, content);
     }
 
     private saveStateDebounced = debounce(this.saveState, 200);
 
     addFolder = (folder: MenuFolder) => {
-        const id = uuid();
+        const id = crypto.randomUUID();
         this.state.update((s) => {
             s.folders.push({id, ...folder});
         });

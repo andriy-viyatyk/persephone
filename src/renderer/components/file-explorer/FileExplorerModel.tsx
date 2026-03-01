@@ -5,9 +5,7 @@ import { FileTreeItem, FileSortType, buildFileTree, loadFolderChildren, filterTr
 import { pagesModel } from "../../store";
 import { TextFileModel } from "../../editors/text/TextPageModel";
 import { api } from "../../../ipc/renderer/api";
-import { showInputDialog } from "../../features/dialogs/InputDialog";
-import { showConfirmationDialog } from "../../features/dialogs/ConfirmationDialog";
-import { alertWarning } from "../../features/dialogs/alerts/AlertsBar";
+import { ui } from "../../api/ui";
 import {
     CopyIcon,
     DeleteIcon,
@@ -591,21 +589,20 @@ export class FileExplorerModel extends TComponentModel<FileExplorerState, FileEx
     // --- File operations ---
 
     private createNewFile = async (dirPath: string) => {
-        const inputResult = await showInputDialog({
+        const inputResult = await ui.input("Enter file name:", {
             title: "New File",
-            message: "Enter file name:",
             buttons: ["Create", "Cancel"],
         });
         if (inputResult?.button === "Create" && inputResult.value.trim()) {
             const newPath = path.join(dirPath, inputResult.value.trim());
             if (fs.existsSync(newPath)) {
-                alertWarning("A file or folder with that name already exists.");
+                ui.notify("A file or folder with that name already exists.", "warning");
                 return;
             }
             try {
                 fs.writeFileSync(newPath, "");
             } catch (err: any) {
-                alertWarning(err.message || "Failed to create file.");
+                ui.notify(err.message || "Failed to create file.", "warning");
                 return;
             }
             this.buildTree();
@@ -613,21 +610,20 @@ export class FileExplorerModel extends TComponentModel<FileExplorerState, FileEx
     };
 
     private createNewFolder = async (dirPath: string) => {
-        const inputResult = await showInputDialog({
+        const inputResult = await ui.input("Enter folder name:", {
             title: "New Folder",
-            message: "Enter folder name:",
             buttons: ["Create", "Cancel"],
         });
         if (inputResult?.button === "Create" && inputResult.value.trim()) {
             const newPath = path.join(dirPath, inputResult.value.trim());
             if (fs.existsSync(newPath)) {
-                alertWarning("A file or folder with that name already exists.");
+                ui.notify("A file or folder with that name already exists.", "warning");
                 return;
             }
             try {
                 fs.mkdirSync(newPath);
             } catch (err: any) {
-                alertWarning(err.message || "Failed to create folder.");
+                ui.notify(err.message || "Failed to create folder.", "warning");
                 return;
             }
             this.buildTree();
@@ -635,9 +631,8 @@ export class FileExplorerModel extends TComponentModel<FileExplorerState, FileEx
     };
 
     private renameItem = async (item: FileTreeItem) => {
-        const inputResult = await showInputDialog({
+        const inputResult = await ui.input("Enter new name:", {
             title: `Rename ${item.isFolder ? "Folder" : "File"}`,
-            message: "Enter new name:",
             value: item.label,
             buttons: ["Rename", "Cancel"],
             selectAll: true,
@@ -645,13 +640,13 @@ export class FileExplorerModel extends TComponentModel<FileExplorerState, FileEx
         if (inputResult?.button === "Rename" && inputResult.value.trim()) {
             const newPath = path.join(path.dirname(item.filePath), inputResult.value.trim());
             if (fs.existsSync(newPath)) {
-                alertWarning("A file or folder with that name already exists.");
+                ui.notify("A file or folder with that name already exists.", "warning");
                 return;
             }
             try {
                 fs.renameSync(item.filePath, newPath);
             } catch (err: any) {
-                alertWarning(err.message || `Failed to rename ${item.isFolder ? "folder" : "file"}.`);
+                ui.notify(err.message || `Failed to rename ${item.isFolder ? "folder" : "file"}.`, "warning");
                 return;
             }
             if (!item.isFolder) {
@@ -667,11 +662,10 @@ export class FileExplorerModel extends TComponentModel<FileExplorerState, FileEx
     };
 
     private deleteItem = async (item: FileTreeItem) => {
-        const bt = await showConfirmationDialog({
-            title: "Delete Confirmation",
-            message: `Are you sure you want to delete "${item.label}" ${item.isFolder ? "folder" : "file"}?`,
-            buttons: ["Delete", "Cancel"],
-        });
+        const bt = await ui.confirm(
+            `Are you sure you want to delete "${item.label}" ${item.isFolder ? "folder" : "file"}?`,
+            { title: "Delete Confirmation", buttons: ["Delete", "Cancel"] },
+        );
         if (bt !== "Delete") return;
 
         try {
@@ -681,7 +675,7 @@ export class FileExplorerModel extends TComponentModel<FileExplorerState, FileEx
                 fs.unlinkSync(item.filePath);
             }
         } catch (err: any) {
-            alertWarning(err.message || "Failed to delete file or folder.");
+            ui.notify(err.message || "Failed to delete file or folder.", "warning");
             return;
         }
         this.buildTree();

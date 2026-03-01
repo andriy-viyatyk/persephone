@@ -11,13 +11,13 @@ import {
 } from "../editors/text";
 import { openFilesNameTemplate } from "../../shared/constants";
 import { IPage, PageEditor, WindowState } from "../../shared/types";
-import { filesModel } from "./files-store";
+import { fs as appFs } from "../api/fs";
 import { PageModel } from "../editors/base";
 import { recent } from "../api/recent";
 import { debounce } from "../../shared/utils";
 import { newEmptyPageModel, newPageModel, newPageModelFromState } from "./page-factory";
-import { uuid } from "../core/utils/node-utils";
-import { alertError } from "../features/dialogs/alerts/AlertsBar";
+
+import { ui } from "../api/ui";
 import { editorRegistry } from "../editors/registry";
 import { getLanguageByExtension } from "./language-mapping";
 import { NavPanelModel } from "../features/navigation/nav-panel-store";
@@ -25,7 +25,7 @@ import { settings } from "../api/settings";
 
 const path = require("path");
 const fs = require("fs");
-const { shell } = require("electron");
+import { shell } from "../api/shell";
 
 const defaultOpenFilesState = {
     pages: [] as PageModel[],
@@ -150,7 +150,7 @@ export class PagesModel extends TModel<OpenFilesState> {
 
         let newModel: PageModel;
         if (!fs.existsSync(newFilePath)) {
-            alertError(`File not found: ${path.basename(newFilePath)}`);
+            ui.notify(`File not found: ${path.basename(newFilePath)}`, "error");
             newModel = newTextFileModel("");
             newModel.state.update((s) => {
                 s.title = path.basename(newFilePath);
@@ -160,7 +160,7 @@ export class PagesModel extends TModel<OpenFilesState> {
             try {
                 newModel = await this.createPageFromFile(newFilePath);
             } catch (err) {
-                alertError(`Failed to open ${path.basename(newFilePath)}: ${(err as Error).message}`);
+                ui.notify(`Failed to open ${path.basename(newFilePath)}: ${(err as Error).message}`, "error");
                 newModel = newTextFileModel("");
                 await newModel.restore();
             }
@@ -396,7 +396,7 @@ export class PagesModel extends TModel<OpenFilesState> {
             activePageId,
         };
 
-        await filesModel.saveDataFile(
+        await appFs.saveDataFile(
             openFilesNameTemplate,
             JSON.stringify(storedState, null, 4)
         );
@@ -406,7 +406,7 @@ export class PagesModel extends TModel<OpenFilesState> {
 
     restoreState = async () => {
         const data = parseObject(
-            await filesModel.getDataFile(openFilesNameTemplate)
+            await appFs.getDataFile(openFilesNameTemplate)
         );
         if (!data || !data.pages || !Array.isArray(data.pages)) {
             return;
@@ -857,7 +857,7 @@ export class PagesModel extends TModel<OpenFilesState> {
         }
 
         const pageData: Partial<IPage> = page.getRestoreData();
-        pageData.id = uuid();
+        pageData.id = crypto.randomUUID();
         pageData.hasNavPanel = false;
         pageData.pinned = false;
         const newPage = await this.restoreModel(pageData);

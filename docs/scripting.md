@@ -138,6 +138,46 @@ const data = await new Promise((resolve, reject) => {
 return data;
 ```
 
+## The `app` Object
+
+Scripts also have access to `app` — the root application object with settings, file system, dialogs, and more:
+
+```javascript
+// Show a confirmation dialog
+const answer = await app.ui.confirm("Proceed?", { buttons: ["Yes", "No"] });
+if (answer === "Yes") { /* ... */ }
+
+// Show a notification
+app.ui.notify("Done!", "success");
+
+// Prompt for input
+const result = await app.ui.input("Enter name:", { value: "default" });
+if (result) { console.log(result.value); }
+
+// Read/write files
+const text = await app.fs.read("C:/data/file.txt");
+await app.fs.write("C:/data/out.txt", text);
+
+// Change settings
+app.settings.set("theme", "monokai");
+
+// Open URL in browser
+await app.shell.openExternal("https://github.com");
+```
+
+### Available services
+
+| Property | Description |
+|----------|-------------|
+| `app.version` | Application version string |
+| `app.settings` | Read/write application settings |
+| `app.editors` | Read-only editor registry |
+| `app.recent` | Recently opened files |
+| `app.fs` | File system operations and dialogs |
+| `app.window` | Window management (minimize, maximize, zoom) |
+| `app.ui` | Dialogs (confirm, input, password) and notifications |
+| `app.shell` | OS integration (open URLs, encryption, version info) |
+
 ## Node.js Access
 
 Scripts have full Node.js access:

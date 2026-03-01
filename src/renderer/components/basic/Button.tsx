@@ -5,7 +5,7 @@ import styled from '@emotion/styled';
 import { Tooltip } from './Tooltip';
 import color from '../../theme/color';
 import { CircularProgress } from './CircularProgress';
-import { uuid } from '../../core/utils/node-utils';
+
 
 const ButtonRoot = styled.button({
     display: 'flex',
@@ -155,7 +155,7 @@ export const Button = forwardRef(function ButtonComponent(props: Readonly<Button
         invisible,
         background,
     } = props;
-    const id = useMemo(() => uuid(), []);
+    const id = useMemo(() => crypto.randomUUID(), []);
     const [loading, setLoading] = React.useState(false);
 
     const onClickProxy = useMemo(() => {

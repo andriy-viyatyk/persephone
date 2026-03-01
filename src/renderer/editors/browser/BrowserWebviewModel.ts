@@ -4,7 +4,7 @@ import {
     BrowserChannel,
     BrowserEvent,
 } from "../../../ipc/browser-ipc";
-import { showAppPopupMenu } from "../../features/dialogs/poppers/showPopupMenu";
+import { showAppPopupMenu } from "../../ui/dialogs/poppers/showPopupMenu";
 import { MenuItem } from "../../components/overlay/PopupMenu";
 import { pagesModel } from "../../store/pages-store";
 import { newTextFileModel } from "../text/TextPageModel";

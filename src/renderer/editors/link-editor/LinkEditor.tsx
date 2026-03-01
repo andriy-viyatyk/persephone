@@ -12,7 +12,7 @@ import { Splitter } from "../../components/layout/Splitter";
 import { CategoryTree, CategoryTreeItem } from "../../components/TreeView";
 import { useComponentModel } from "../../core/state/model";
 import { splitWithSeparators } from "../../core/utils/utils";
-import { showAppPopupMenu } from "../../features/dialogs";
+import { showAppPopupMenu } from "../../ui/dialogs";
 import color from "../../theme/color";
 import {
     CloseIcon, GlobeIcon, OpenFileIcon, PlusIcon,

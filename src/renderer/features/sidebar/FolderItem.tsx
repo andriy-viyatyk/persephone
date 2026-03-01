@@ -5,7 +5,7 @@ import { useDrag, useDrop } from "react-dnd";
 import color from "../../theme/color";
 import { OverflowTooltipText } from "../../components/basic/OverflowTooltipText";
 import { Tooltip } from "../../components/basic/Tooltip";
-import { uuid } from "../../core/utils/node-utils";
+
 import { menuFolders } from "../../store";
 import type { MenuFolder } from "../../store";
 import { MenuItem } from "../../components/overlay/PopupMenu";
@@ -68,7 +68,7 @@ export function FolderItem(props: FolderItemProps) {
         canDrop = true,
     } = props;
 
-    const id = useMemo(() => uuid(), []);
+    const id = useMemo(() => crypto.randomUUID(), []);
     const ref = useRef<HTMLDivElement>(null);
 
     const [{ isDragging }, drag] = useDrag({

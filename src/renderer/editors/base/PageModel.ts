@@ -1,12 +1,12 @@
 import { TDialogModel } from "../../core/state/model";
-import { uuid } from "../../core/utils/node-utils";
+
 import { IPage } from "../../../shared/types";
 import { editorRegistry } from "../registry";
 import { NavPanelModel } from "../../features/navigation/nav-panel-store";
-import { filesModel } from "../../store/files-store";
+import { fs } from "../../api/fs";
 
 export const getDefaultPageModelState = (): IPage => ({
-    id: uuid(),
+    id: crypto.randomUUID(),
     type: "textFile",
     title: "untitled",
     modified: false,
@@ -38,7 +38,7 @@ export class PageModel<T extends IPage = IPage, R = any> extends TDialogModel<T,
 
     async dispose(): Promise<void> {
         this.navPanel?.dispose();
-        await filesModel.deleteCacheFiles(this.state.get().id);
+        await fs.deleteCacheFiles(this.state.get().id);
     }
 
     async restore(): Promise<void> {

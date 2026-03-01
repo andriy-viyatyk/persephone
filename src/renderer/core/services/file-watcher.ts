@@ -1,7 +1,41 @@
-import { nodeUtils } from "../utils/node-utils";
+const nodefs = require("fs");
+
 import { FileStats } from "../../../shared/types";
 import { debounce } from "../../../shared/utils";
-import { filesModel } from "../../store";
+import { fs } from "../../api/fs";
+
+function watchFile(filePath: string, callback: (event: string) => void): () => void {
+    try {
+        const watcher = nodefs.watch(filePath, (eventType: string) => {
+            callback(eventType);
+        });
+        return () => {
+            watcher.close();
+        };
+    } catch (err) {
+        console.error("Error watching file:", err);
+        return () => {
+            /**/
+        };
+    }
+}
+
+function getFileStats(filePath: string): FileStats {
+    try {
+        const stats = nodefs.statSync(filePath);
+        return {
+            size: stats.size,
+            mtime: stats.mtime.getTime(),
+            exists: true,
+        };
+    } catch (err) {
+        return {
+            size: 0,
+            mtime: 0,
+            exists: false,
+        };
+    }
+}
 
 export class FileWatcher {
     private path: string;
@@ -18,8 +52,8 @@ export class FileWatcher {
     constructor(filePath: string, onChange: () => void) {
         this.path = filePath;
         this.onChange = onChange;
-        this.unWatch = nodeUtils.watchFile(this.path, this.onFileChange);
-        this.stat = nodeUtils.getFileStats(this.path);
+        this.unWatch = watchFile(this.path, this.onFileChange);
+        this.stat = getFileStats(this.path);
     }
 
     dispose = () => {
@@ -27,9 +61,12 @@ export class FileWatcher {
     }
 
     getTextContent = async (encoding?: string): Promise<string | undefined> => {
-        const fileData = await filesModel.getFile(this.path, encoding);
-        this.encoding = fileData?.encoding || "utf-8";
-        return fileData?.content;
+        if (!fs.fileExistsSync(this.path)) {
+            return undefined;
+        }
+        const fileData = await fs.readFile(this.path, encoding);
+        this.encoding = fileData.encoding || "utf-8";
+        return fileData.content;
     }
 
     get filePath(): string {
@@ -37,7 +74,7 @@ export class FileWatcher {
     }
 
     private onFileChange = (eventType: string) => {
-        const newStat = nodeUtils.getFileStats(this.path);
+        const newStat = getFileStats(this.path);
         this.stat = newStat;
         this.onChangeDebounced();
     }

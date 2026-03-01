@@ -5,8 +5,8 @@ import { TextFileModel, getDefaultTextFilePageModelState } from "../text/TextPag
 import { LinkEditorModel, defaultLinkEditorState } from "../link-editor/LinkEditorModel";
 import { LinkItem, LinkEditorProps } from "../link-editor/linkTypes";
 import { PageEditor } from "../../../shared/types";
-import { isEncrypted } from "../../core/services/encryption";
-import { showPasswordDialog } from "../../features/dialogs/PasswordDialog";
+import { shell } from "../../api/shell";
+import { ui } from "../../api/ui";
 
 /**
  * Wraps TextFileModel + LinkEditorModel for browser bookmarks.
@@ -40,8 +40,8 @@ export class BrowserBookmarks {
         let content = this.textModel.state.get().content || "";
 
         // If the bookmarks file is encrypted, prompt for password
-        if (isEncrypted(content)) {
-            const password = await showPasswordDialog({ mode: "decrypt" });
+        if (shell.encryption.isEncrypted(content)) {
+            const password = await ui.password({ mode: "decrypt" });
             if (!password) return false; // user cancelled
             const ok = await this.textModel.decript(password);
             if (!ok) return false; // wrong password

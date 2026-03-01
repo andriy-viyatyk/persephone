@@ -13,10 +13,10 @@ import { TComponentState } from "../../../core/state/state";
 import { AVGridModel } from "../../../components/data-grid/AVGrid/model/AVGridModel";
 import AVGrid from "../../../components/data-grid/AVGrid/AVGrid";
 import color from "../../../theme/color";
-import { TPopperModel } from "../../../features/dialogs/poppers/types";
+import { TPopperModel } from "../../../ui/dialogs/poppers/types";
 import { resolveState } from "../../../core/utils/utils";
 import { parseBoolean, parseNumber, parseString } from "../../../core/utils/parse-utils";
-import { showPopper, visiblePoppers } from "../../../features/dialogs/poppers/Poppers";
+import { showPopper, visiblePoppers } from "../../../ui/dialogs/poppers/Poppers";
 import { FlexSpace } from "../../../components/layout/Elements";
 import { Button } from "../../../components/basic/Button";
 

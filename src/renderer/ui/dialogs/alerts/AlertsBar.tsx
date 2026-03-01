@@ -100,7 +100,7 @@ class AlertsBarModel extends TModel<AlertsBarState> {
     };
 }
 
-const alertsBarModel = new AlertsBarModel(
+export const alertsBarModel = new AlertsBarModel(
     new TGlobalState(defaultAlertsBarState),
 );
 
@@ -134,24 +134,3 @@ export function AlertsBar() {
         </>
     );
 }
-
-export const alertInfo = (message: string) =>
-    alertsBarModel.addAlert(message, 'info');
-export const alertSuccess = (message: string) =>
-    alertsBarModel.addAlert(message, 'success');
-export const alertWarning = (message: string) =>
-    alertsBarModel.addAlert(message, 'warning');
-export const alertError = (message: string) =>
-    alertsBarModel.addAlert(message, 'error');
-
-export const showWarning = (error: unknown): void => {
-    console.warn(error);
-    alertWarning(error instanceof Error ? error.message : error?.toString?.() ?? 'Unknown error');
-}
-
-export const showError = (error: unknown): void => {
-    console.error(error);
-    alertError(error instanceof Error ? error.message : error?.toString?.() ?? 'Unknown error');
-}
-
-export const hideError = (error: unknown): void => undefined;

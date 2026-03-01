@@ -2,7 +2,8 @@ import styled from "@emotion/styled";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { List } from "../../components/form/List";
 import { api } from "../../../ipc/renderer/api";
-import { filesModel, pagesModel } from "../../store";
+import { pagesModel } from "../../store";
+import { appWindow } from "../../api/window";
 import { IPage, WindowPages } from "../../../shared/types";
 import color from "../../theme/color";
 import { EmptyIcon } from "../../theme/icons";
@@ -49,7 +50,7 @@ interface OpenTabsListProps {
 export function OpenTabsList(props: OpenTabsListProps) {
     const [allWindowsPages, setAllWindowsPages] = useState<WindowPages[]>([]);
     const state = pagesModel.state.use();
-    const currentWindowIndex = filesModel.state.use(s => s.windowIndex);
+    const currentWindowIndex = appWindow.windowIndex;
 
     const loadWindowPages = useCallback(async () => {
         const windowsPages = await api.getWindowPages();

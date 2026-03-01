@@ -5,8 +5,11 @@ import type { IWindow } from "./types/window";
 class Window implements IWindow {
     private _isMaximized = false;
     private _zoomLevel = 1.0;
+    private _windowIndex: number | null = null;
 
     constructor() {
+        this._initWindowIndex();
+
         rendererEvents.eWindowMaximized.subscribe((maximized) => {
             this._isMaximized = maximized;
         });
@@ -14,6 +17,10 @@ class Window implements IWindow {
         rendererEvents.eZoomChanged.subscribe((zoom) => {
             this._zoomLevel = zoom;
         });
+    }
+
+    private async _initWindowIndex(): Promise<void> {
+        this._windowIndex = await api.getWindowIndex();
     }
 
     // ── Window actions ───────────────────────────────────────────────
@@ -59,6 +66,15 @@ class Window implements IWindow {
     async openNew(filePath?: string): Promise<number> {
         return api.openNewWindow(filePath);
     }
+
+    // ── Window identity ───────────────────────────────────────────
+
+    get windowIndex(): number {
+        if (this._windowIndex === null) {
+            throw new Error("Window not initialized yet");
+        }
+        return this._windowIndex;
+    }
 }
 
-export const window = new Window();
+export const appWindow = new Window();

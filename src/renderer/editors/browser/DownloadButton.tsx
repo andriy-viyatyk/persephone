@@ -3,7 +3,7 @@ import styled from "@emotion/styled";
 import { DownloadIcon } from "../../theme/icons";
 import color from "../../theme/color";
 import { Tooltip } from "../../components/basic/Tooltip";
-import { uuid } from "../../core/utils/node-utils";
+
 import { downloadsStore } from "../../store/downloads-store";
 
 const ICON_SIZE = 16;
@@ -68,7 +68,7 @@ interface DownloadButtonProps {
 }
 
 export function DownloadButton({ onClick }: DownloadButtonProps) {
-    const tooltipId = useRef(uuid()).current;
+    const tooltipId = useRef(crypto.randomUUID()).current;
     const buttonRef = useRef<HTMLButtonElement>(null);
 
     const { hasActive, progress } = downloadsStore.state.use((s) => {

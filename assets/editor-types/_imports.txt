@@ -5,5 +5,7 @@ fs.d.ts
 page.d.ts
 recent.d.ts
 settings.d.ts
+shell.d.ts
+ui.d.ts
 window.d.ts
 index.d.ts

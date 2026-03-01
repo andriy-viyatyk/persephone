@@ -2,7 +2,7 @@ import React from "react";
 
 import { TGlobalState } from "../../core/state/state";
 import { IDialogViewData, Views } from "../../core/state/view";
-import { uuid } from "../../core/utils/node-utils";
+
 
 export const dialogsState = new TGlobalState<IDialogViewData[]>([]);
 
@@ -28,7 +28,7 @@ export function Dialogs() {
 }
 
 export async function showDialog<R>(data: IDialogViewData): Promise<R> {
-	data.internalId = uuid();
+	data.internalId = crypto.randomUUID();
 	data.model.result = new Promise<R>(resolve => {
 		data.model.onClose = res => {
 			dialogsState.set(oldState => oldState.filter(item => item !== data));

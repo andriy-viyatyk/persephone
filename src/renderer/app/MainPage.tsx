@@ -15,7 +15,8 @@ import rendererEvents from "../../ipc/renderer/renderer-events";
 import { globalKeyDown } from "../core/state/events";
 import { Pages } from "./Pages";
 import { PageTabs } from "../features/tabs/PageTabs";
-import { pagesModel, filesModel } from "../store";
+import { pagesModel } from "../store";
+import { appWindow } from "../api/window";
 import { MenuBar } from "../features/sidebar/MenuBar";
 import { parseObject } from "../core/utils/parse-utils";
 import clsx from "clsx";
@@ -221,7 +222,7 @@ class MainPageModel extends TComponentModel<MainPageState, undefined> {
         if (
             data &&
             data.sourceWindowIndex !== undefined &&
-            data.sourceWindowIndex === filesModel.windowIndex &&
+            data.sourceWindowIndex === appWindow.windowIndex &&
             data.page?.id
         ) {
             const activePageId = pagesModel.activePage?.id;
