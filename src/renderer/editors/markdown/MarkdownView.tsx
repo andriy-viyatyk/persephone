@@ -11,7 +11,7 @@ import { createPortal } from "react-dom";
 import { Minimap } from "../../components/layout/Minimap";
 import { TComponentModel, useComponentModel } from "../../core/state/model";
 import { PageModel, useEditorConfig } from "../base";
-import { pagesModel } from "../../store/pages-store";
+import { pagesModel } from "../../api/pages";
 import { createRehypeHighlight } from "./rehypeHighlight";
 import { CodeBlock, createPreBlock } from "./CodeBlock";
 import { isCurrentThemeDark } from "../../theme/themes";

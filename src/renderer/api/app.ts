@@ -1,5 +1,4 @@
 import { api } from "../../ipc/renderer/api";
-import type { IApp } from "./types/app";
 import type { ISettings } from "./types/settings";
 import type { IEditorRegistry } from "./types/editors";
 import type { IRecentFiles } from "./types/recent";
@@ -8,8 +7,12 @@ import type { IWindow } from "./types/window";
 import type { IShell } from "./types/shell";
 import type { IUserInterface } from "./types/ui";
 import type { IDownloads } from "./types/downloads";
+import type { PagesModel } from "./pages/PagesModel";
 
-class App implements IApp {
+// Note: IApp (.d.ts) is the script-facing interface for Monaco IntelliSense.
+// App class has additional internal methods (init, initServices, initPages, initEvents)
+// and uses rich internal types (PagesModel instead of IPageCollection).
+class App {
     private _version = "";
     private _initialized = false;
     private _servicesInitialized = false;
@@ -26,6 +29,7 @@ class App implements IApp {
     private _shell = undefined as unknown as IShell;
     private _ui = undefined as unknown as IUserInterface;
     private _downloads = undefined as unknown as IDownloads;
+    private _pages = undefined as unknown as PagesModel;
 
     get version(): string {
         return this._version;
@@ -61,6 +65,10 @@ class App implements IApp {
 
     get downloads(): IDownloads {
         return this._downloads;
+    }
+
+    get pages(): PagesModel {
+        return this._pages;
     }
 
     /**
@@ -109,15 +117,23 @@ class App implements IApp {
 
     /**
      * Initialize pages. Called in bootstrap (renderer.tsx) after initServices().
-     * Restores persisted pages and handles command-line arguments.
+     * Ensures filesystem is ready, then restores persisted pages and handles CLI arguments.
      * Not exposed to scripts.
      */
-    async initPages(options?: { handleArgs?: boolean }): Promise<void> {
+    async initPages(): Promise<void> {
         if (this._pagesInitialized) return;
         this._pagesInitialized = true;
 
-        // TODO: Placeholder for US-050 Pages API
-        // For now, pagesModel.init() still runs at module load time
+        // Ensure filesystem paths are initialized before restoring pages.
+        // Previously, a 100ms setTimeout in fs.ts worked around this race condition.
+        // With explicit bootstrap, we properly await readiness.
+        const { fs: appFs } = await import("./fs");
+        await appFs.wait();
+
+        const { pages } = await import("./pages");
+        this._pages = pages;
+
+        await pages.init();
     }
 
     /**

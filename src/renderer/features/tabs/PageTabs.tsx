@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 
-import { pagesModel } from "../../store";
+import { pagesModel } from "../../api/pages";
 import {
     ArrowLeftIcon,
     ArrowRightIcon,
@@ -174,24 +174,21 @@ export function PageTabs(props: object) {
                 label: "Incognito",
                 icon: <IncognitoIcon />,
                 onClick: async () => {
-                    const { showBrowserPage } = await import("../../store/page-actions");
-                    showBrowserPage({ incognito: true });
+                    pagesModel.showBrowserPage({ incognito: true });
                 },
             },
             ...browserProfiles.map((profile) => ({
                 label: profile.name,
                 icon: <GlobeIcon color={profile.color} />,
                 onClick: async () => {
-                    const { showBrowserPage } = await import("../../store/page-actions");
-                    showBrowserPage({ profileName: profile.name });
+                    pagesModel.showBrowserPage({ profileName: profile.name });
                 },
             })),
             {
                 label: "Manage profiles...",
                 startGroup: true,
                 onClick: async () => {
-                    const { showSettingsPage } = await import("../../store/page-actions");
-                    showSettingsPage();
+                    pagesModel.showSettingsPage();
                 },
             },
         ];
@@ -231,8 +228,7 @@ export function PageTabs(props: object) {
                 label: "Browser",
                 icon: <GlobeIcon color={defaultBrowserColor} />,
                 onClick: async () => {
-                    const { showBrowserPage } = await import("../../store/page-actions");
-                    showBrowserPage();
+                    pagesModel.showBrowserPage();
                 },
             },
             {

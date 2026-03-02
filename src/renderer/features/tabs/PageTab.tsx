@@ -2,7 +2,7 @@ import styled from "@emotion/styled";
 import clsx from "clsx";
 
 import color from "../../theme/color";
-import { pagesModel } from "../../store";
+import { pagesModel } from "../../api/pages";
 import { appWindow } from "../../api/window";
 import { settings } from "../../api/settings";
 import { PageModel } from "../../editors/base";

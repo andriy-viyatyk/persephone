@@ -31,8 +31,8 @@ export function appendLinkOpenMenuItems(
             label: "Open in Internal Browser",
             icon: <GlobeIcon color={DEFAULT_BROWSER_COLOR} />,
             onClick: async () => {
-                const { openUrlInBrowserTab } = await import("./page-actions");
-                openUrlInBrowserTab(href, { profileName: "" });
+                const { pagesModel } = await import("../api/pages");
+                pagesModel.openUrlInBrowserTab(href, { profileName: "" });
             },
             disabled,
         },
@@ -40,8 +40,8 @@ export function appendLinkOpenMenuItems(
             label: `Open in ${profile.name}`,
             icon: <GlobeIcon color={profile.color} />,
             onClick: async () => {
-                const { openUrlInBrowserTab } = await import("./page-actions");
-                openUrlInBrowserTab(href, { profileName: profile.name });
+                const { pagesModel } = await import("../api/pages");
+                pagesModel.openUrlInBrowserTab(href, { profileName: profile.name });
             },
             disabled,
         })),
@@ -49,8 +49,8 @@ export function appendLinkOpenMenuItems(
             label: "Open in Incognito",
             icon: <IncognitoIcon />,
             onClick: async () => {
-                const { openUrlInBrowserTab } = await import("./page-actions");
-                openUrlInBrowserTab(href, { incognito: true });
+                const { pagesModel } = await import("../api/pages");
+                pagesModel.openUrlInBrowserTab(href, { incognito: true });
             },
             disabled,
         },

@@ -5,7 +5,7 @@ import styled from "@emotion/styled";
 import { TextFileModel } from "./TextPageModel";
 import { TModel } from "../../core/state/model";
 import { useEffect } from "react";
-import { pagesModel } from "../../store";
+import { pagesModel } from "../../api/pages";
 import { api } from "../../../ipc/renderer/api";
 import { TComponentState } from "../../core/state/state";
 

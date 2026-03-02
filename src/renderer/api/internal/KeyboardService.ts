@@ -1,5 +1,5 @@
 import { globalKeyDown } from "../../core/state/events";
-import { pagesModel } from "../../store";
+import { pagesModel } from "../pages";
 import { api } from "../../../ipc/renderer/api";
 import { cycleTheme, getCurrentThemeId } from "../../theme/themes";
 import { settings } from "../settings";

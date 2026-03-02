@@ -91,9 +91,13 @@ No dependencies on other interface objects. Can be done in any order.
 
 | # | Interface | Doc | Status |
 |---|-----------|-----|--------|
-| 8 | `app.pages` — IPageCollection + IPage | 8.app-pages.md | Planned |
+| 8 | `app.pages` — IPageCollection | [8.app-pages.md](8.app-pages.md) | Complete |
 
-**Note:** Phase 4 should also address the **bootstrap lifecycle**. Currently `pagesModel.init()` runs at module load time (fragile). In Phase 1 we discovered that `app.ts` must use lazy `require()` imports for interface wrappers — static imports pull the store chain into the initial chunk and break page state restoration. Phase 4 should introduce an explicit window lifecycle: `app.init()` → main bundle loads → `app.pages.restore()` → `api.windowReady()`, replacing the current module-level `pagesModel.init()`.
+**US-049 (Phase 4a):** Bootstrap lifecycle — explicit 3-layer sequence (`app.initServices()` → `app.initPages()` → `app.initEvents()` → `api.windowReady()`). Replaced fragile module-level `pagesModel.init()`. Removed `EventHandler` component — event subscriptions moved to 4 internal services (GlobalEventService, KeyboardService, WindowStateService, RendererEventsService). Downloads API (`IDownloads`) absorbed from store into `api/downloads.ts`.
+
+**US-050 (Phase 4b):** Pages API — all page management logic moved from `store/pages-store.ts` into 5 category submodels under `api/pages/` (Lifecycle, Navigation, Layout, Persistence, Query). `page-actions.ts` convenience functions absorbed. All 29 consumers migrated to import from `api/pages`. Bridge files (`pages-store.ts`, `page-actions.ts`) deleted. `IPageCollection` + `IPageInfo` added to `app.d.ts`.
+
+**Architecture reference:** [/doc/architecture/pages-architecture.md](../../architecture/pages-architecture.md)
 
 ---
 
@@ -177,7 +181,7 @@ Goal: after each phase, old modules are slimmer or gone. No pass-through wrapper
 
 ```
 /src/renderer/
-  /app/           → App shell (MainPage, Pages, RenderEditor, EventHandler)
+  /app/           → App shell (MainPage, Pages, RenderEditor)
   /components/    → Reusable UI (TreeView, data-grid, form, layout, overlay, virtualization)
   /core/          → Mixed bag: state primitives + services + utilities
   /editors/       → Editor implementations (17 editors, each in own folder)
@@ -218,10 +222,10 @@ Goal: after each phase, old modules are slimmer or gone. No pass-through wrapper
 | `/store/app-settings.ts` | `/api/settings.ts` (or internal to it) | Phase 1a |
 | `/store/recent-files.ts` | `/api/recent.ts` | Phase 1c |
 | `/store/files-store.ts` | Deleted — fully absorbed into `/api/fs.ts` | Phase 2a (US-047) |
-| `/store/pages-store.ts` | `/api/pages.ts` + `/api/page.ts` | Phase 4 |
-| `/store/downloads-store.ts` | `/api/downloads.ts` | Phase 3b (global infrastructure, not editor-specific) |
+| `/store/pages-store.ts` | Deleted — logic moved to `/api/pages/` submodels | Phase 4 (US-050) |
+| `/store/downloads-store.ts` | Deleted — logic moved to `/api/downloads.ts` | Phase 3b (US-049) |
 | `/store/page-factory.ts` | `/api/pages.ts` (internal) | Phase 4 |
-| `/store/page-actions.ts` | `/api/` (distributed to relevant interfaces) | Phase 4 |
+| `/store/page-actions.ts` | Deleted — functions absorbed into `PagesModel` methods | Phase 4 (US-050) |
 | `/core/state/` | `/platform/state/` | Phase 0 or 1 |
 | `/core/services/scripting/` | `/platform/services/scripting/` | Phase 1 |
 | `/core/services/encryption.ts` | `/api/shell/encryption.ts` | Phase 3b |

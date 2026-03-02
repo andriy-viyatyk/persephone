@@ -746,7 +746,7 @@ export class LinkEditorModel extends TComponentModel<
         const { selectedBrowser } = this.state.get();
 
         if (!selectedBrowser) {
-            const { pagesModel } = await import("../../store/pages-store");
+            const { pagesModel } = await import("../../api/pages");
             pagesModel.handleOpenUrl(url);
             return;
         }
@@ -756,20 +756,20 @@ export class LinkEditorModel extends TComponentModel<
             return;
         }
 
-        const { openUrlInBrowserTab } = await import("../../store/page-actions");
+        const { pagesModel } = await import("../../api/pages");
 
         if (selectedBrowser === "incognito") {
-            openUrlInBrowserTab(url, { incognito: true });
+            pagesModel.openUrlInBrowserTab(url, { incognito: true });
             return;
         }
 
         if (selectedBrowser.startsWith("profile:")) {
             const profileName = selectedBrowser.slice("profile:".length);
-            openUrlInBrowserTab(url, { profileName });
+            pagesModel.openUrlInBrowserTab(url, { profileName });
             return;
         }
 
         // "internal-default" — pass empty profileName to match only default-profile tabs
-        openUrlInBrowserTab(url, { profileName: "" });
+        pagesModel.openUrlInBrowserTab(url, { profileName: "" });
     };
 }

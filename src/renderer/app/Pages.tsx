@@ -3,7 +3,7 @@ import clsx from "clsx";
 import { CSSProperties, useCallback, useMemo, useRef, useState } from "react";
 import { Splitter } from "../components/layout/Splitter";
 import { PageModel } from "../editors/base";
-import { pagesModel } from "../store";
+import { pagesModel } from "../api/pages";
 import color from "../theme/color";
 import { RenderEditor } from "./RenderEditor";
 import { CompareEditor } from "../editors/compare";

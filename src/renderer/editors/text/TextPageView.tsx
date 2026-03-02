@@ -9,7 +9,7 @@ import { TextFooter } from "./TextFooter";
 import color from "../../theme/color";
 import { ActiveEditor } from "./ActiveEditor";
 import { FlexSpace } from "../../components/layout/Elements";
-import { pagesModel } from "../../store/pages-store";
+import { pagesModel } from "../../api/pages";
 import { PageModel } from "../base";
 
 const TextPageViewRoot = styled.div({

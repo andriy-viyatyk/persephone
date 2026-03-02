@@ -4,7 +4,7 @@ import { IPage } from "../../../shared/types";
 import { getDefaultPageModelState, PageModel } from "../base";
 import { TComponentState } from "../../core/state/state";
 import { globalKeyDown, SubscriptionObject } from "../../core/state/events";
-import { pagesModel } from "../../store/pages-store";
+import { pagesModel } from "../../api/pages";
 import { IncognitoIcon } from "../../theme/language-icons";
 import { GlobeIcon } from "../../theme/icons";
 import { settings, BrowserProfile } from "../../api/settings";

@@ -1,6 +1,6 @@
 # IApp — `app`
 
-**Status:** Implemented (Phase 0+1+2+3a+3b)
+**Status:** Implemented (Phase 0+1+2+3a+3b+4)
 
 Root application object. Entry point to all app functionality.
 
@@ -124,13 +124,30 @@ app.ui.notify("File saved", "success");
 
 ---
 
-## Planned Properties (Not Yet Implemented)
+### `downloads` (read-only)
 
-The following will be added in subsequent migration phases:
+Global download tracking. See [IDownloads](downloads.md).
 
-| Property | Type | Phase | Description |
-|----------|------|-------|-------------|
-| `app.pages` | `IPageCollection` | 4 | Open pages/tabs collection |
+```javascript
+app.downloads.downloads          // All download entries
+app.downloads.activeCount        // Number of active downloads
+```
+
+**Type:** [`IDownloads`](downloads.md)
+
+---
+
+### `pages` (read-only)
+
+Open pages (tabs) in the current window. See [IPageCollection — types/pages.d.ts](../../src/renderer/api/types/pages.d.ts).
+
+```javascript
+app.pages.all                    // All open pages
+app.pages.activePage             // Currently visible page
+await app.pages.openFile("C:/data.json")
+```
+
+**Type:** `IPageCollection`
 
 ---
 
@@ -197,7 +214,10 @@ const info = await app.shell.version.checkForUpdates();
 ## Implementation Notes
 
 - The `app` singleton is created in `/src/renderer/api/app.ts`
-- `init()` is called during bootstrap (before React renders) — not exposed to scripts
-- `initServices()` loads interface wrappers via dynamic `import()` after the main bundle (stores must be in the module cache first)
+- Bootstrap calls `app.init()` → `app.initServices()` → `app.initPages()` → `app.initEvents()` before React renders
+- `initServices()` loads 8 API modules via dynamic `import()` in parallel
+- `initPages()` restores persisted pages and processes CLI arguments
+- `initEvents()` initializes 4 internal event services (GlobalEventService, KeyboardService, WindowStateService, RendererEventsService)
 - Each window has its own `app` instance (Electron multi-window architecture)
 - `app` is added to script context in `ScriptContext.ts` alongside the existing `page` object
+- See [/doc/architecture/pages-architecture.md](../../architecture/pages-architecture.md) for bootstrap lifecycle diagram

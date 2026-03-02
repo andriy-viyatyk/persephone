@@ -107,61 +107,47 @@ openWindows.createWindow(index)
 
 Each window runs its own renderer process with independent stores and React tree.
 
-### Current Initialization Order
+### Initialization Order (Implemented)
 
 ```
-Module load (file scope — runs on import)
+renderer.tsx bootstrap()
   │
-  ├─ filesModel = new FilesModel()
-  │     └─ filesModel.init() — async, resolves data paths via IPC
+  ├─ Parallel: import("./renderer/index") + app.init()
+  │     ├─ Side effects: configure-monaco, register-editors
+  │     └─ IPC: getAppVersion
   │
-  ├─ appSettings = new AppSettings()
-  │     └─ constructor calls init() — async, waits for filesModel, reads settings file
+  ├─ await app.initServices()          ← Layer 1: 8 APIs loaded in parallel
+  │     ├─ settings, editors, recent, fs, window, shell, ui, downloads
+  │     └─ downloads.init() — subscribe to download events
   │
-  ├─ pagesModel = new PagesModel()
-  │     └─ pagesModel.init() — async, restores pages from disk
+  ├─ await app.initPages()             ← Layer 2: restore + CLI args
+  │     ├─ await fs.wait() — ensure data paths resolved
+  │     ├─ pagesModel restores pages from persistent storage
+  │     ├─ Handle CLI args (--file, --url, --diff)
+  │     └─ Ensure at least one page exists
   │
-  └─ React renders <AppContent>
-        ├─ <EventHandler> mounts → downloadsStore.init(), global listeners
-        ├─ <MainPage> mounts → keyboard shortcuts, window state subscriptions
-        └─ pagesModel.init() completes:
-              ├─ Pages restored from cache
-              ├─ IPC event subscriptions set up
-              └─ api.windowReady() → signals main process
+  ├─ await app.initEvents()            ← Layer 3: event subscriptions
+  │     ├─ GlobalEventService (contextmenu, drag, drop)
+  │     ├─ KeyboardService (Ctrl+Tab, Ctrl+W, etc.)
+  │     ├─ WindowStateService (maximize/zoom state cache)
+  │     └─ RendererEventsService (IPC: eOpenFile, eMovePageIn, etc.)
+  │
+  ├─ setTimeout(() => api.windowReady(), 0)  ← signal main process
+  │
+  └─ setContent(<AppContent />)        ← React renders with all systems ready
+        ├─ <MainPage> (render-only, no event logic)
+        ├─ Tab components render
+        └─ Active editor renders
 ```
 
-**Problem with current order:** Stores init asynchronously at module load. React may render before stores are ready. No guarantee of readiness.
-
-### New Initialization Order (with `app.init()`)
-
-```
-Module load
-  │
-  └─ React NOT rendered yet
-        │
-        ▼
-bootstrap()
-  │
-  ├─ await app.init()     ← all services init in parallel
-  │     ├─ filesModel paths resolved
-  │     ├─ appSettings loaded from disk
-  │     ├─ recentFiles loaded
-  │     ├─ pagesModel restores pages
-  │     └─ IPC events subscribed
-  │
-  ├─ React renders <AppContent>    ← safe to read app.settings.theme etc.
-  │     ├─ <EventHandler> mounts
-  │     ├─ <MainPage> mounts
-  │     └─ All stores are ready
-  │
-  └─ api.windowReady()    ← signal main process: renderer is ready
-```
-
-**Benefits:**
-- Deterministic initialization order
-- React renders only after all services are ready
-- `app.init()` parallelizes independent async work via `Promise.all`
+**Key properties:**
+- Deterministic 3-layer initialization order
+- React renders only after all services, pages, and events are ready
+- Each layer parallelizes independent async work via `Promise.all`
+- Guard code on all `initXxx()` prevents re-initialization
 - Main process knows exactly when window is ready to receive events
+- No `EventHandler` component — event logic in internal services
+- No `MainPage useEffect` — bootstrap runs before React
 
 ---
 

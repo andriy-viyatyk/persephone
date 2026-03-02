@@ -6,7 +6,7 @@ import { TComponentState } from "../../core/state/state";
 import { EditorModule } from "../types";
 import color from "../../theme/color";
 import { settings } from "../../api/settings";
-import { pagesModel } from "../../store/pages-store";
+import { pagesModel } from "../../api/pages";
 import { applyTheme, getAvailableThemes } from "../../theme/themes";
 import { TextAreaField, TextAreaFieldRef } from "../../components/basic/TextAreaField";
 import { DEFAULT_BROWSER_COLOR, TAG_COLORS } from "../../theme/palette-colors";

@@ -2,6 +2,8 @@
 
 Describes the complete lifecycle of a page (`IPage`) — from creation to disposal. Understanding this lifecycle is essential for deciding where new functionality hooks in and what events scripts/AI can listen to.
 
+**Implementation:** [`/src/renderer/api/pages/`](../../src/renderer/api/pages/) — see also [/doc/architecture/pages-architecture.md](../../architecture/pages-architecture.md) for diagrams and submodel overview.
+
 ---
 
 ## Lifecycle States

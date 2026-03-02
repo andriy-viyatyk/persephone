@@ -362,7 +362,7 @@ Documentation is the key — every interface object, property, and method must d
 
 **Functionality audit and gap resolution:**
 
-1. **Downloads** → part of `IBrowserEditor` (not standalone). Downloads are browser-initiated; expose as `page.asBrowser().downloads`.
+1. **Downloads** → `app.downloads` (IDownloads). Revised in US-049: downloads are global infrastructure (main process managed, shared across all windows), not editor-specific. `IDownloads` is a standalone interface on `app`, initialized in `app.initServices()`.
 
 2. **Recent files** → `app.recent` (IRecentFiles). Small interface: list, add, remove, clear.
 

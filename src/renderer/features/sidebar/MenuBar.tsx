@@ -5,7 +5,8 @@ import { TComponentModel, useComponentModel } from "../../core/state/model";
 import { Button } from "../../components/basic/Button";
 import { List, ListOptionRenderer } from "../../components/form/List";
 import { api } from "../../../ipc/renderer/api";
-import { pagesModel, menuFolders, showAboutPage, showSettingsPage } from "../../store";
+import { pagesModel } from "../../api/pages";
+import { menuFolders } from "../../store";
 import { recent } from "../../api/recent";
 import type { MenuFolder } from "../../store";
 import color from "../../theme/color";
@@ -216,13 +217,13 @@ class MenuBarModel extends TComponentModel<MenuBarState, MenuBarProps> {
     };
 
     openSettings = () => {
-        showSettingsPage();
+        pagesModel.showSettingsPage();
         this.props.onClose?.();
     };
 
     openAbout = () => {
         this.props.onClose?.();
-        showAboutPage();
+        pagesModel.showAboutPage();
     };
 
     setLeftItem = (item: MenuFolder) => {

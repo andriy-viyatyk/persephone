@@ -2,7 +2,7 @@ import styled from "@emotion/styled";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { List } from "../../components/form/List";
 import { api } from "../../../ipc/renderer/api";
-import { pagesModel } from "../../store";
+import { pagesModel } from "../../api/pages";
 import { appWindow } from "../../api/window";
 import { IPage, WindowPages } from "../../../shared/types";
 import color from "../../theme/color";

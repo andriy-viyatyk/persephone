@@ -59,6 +59,7 @@ The single entry point to the entire application.
 | `app.editors` | IEditorRegistry | Available editor types, language mapping |
 | `app.recent` | IRecentFiles | Recent file history |
 | `app.shell` | IShell | OS integration, spawn, and sub-services |
+| `app.downloads` | IDownloads | Global download tracking |
 
 **Direct properties:** `version`
 
@@ -431,7 +432,7 @@ These are NOT directly exposed in the Object Model — they power the interface 
 |---------|--------------|-----------|--------|
 | **File Service** | Requests file I/O, dialogs | Handles fs calls, shows native dialogs | `app.fs` |
 | **Window Service** | Requests window actions | Controls BrowserWindow | `app.window` |
-| **Download Service** | Tracks downloads, shows UI | Manages download items | `IBrowserEditor.downloads` |
+| **Download Service** | Tracks downloads, shows UI | Manages download items | `app.downloads` (IDownloads) |
 | **Search Service** | Requests file search | Indexes and streams results | `app.shell.fileSearch` |
 | **Browser Service** | Manages webview state | Bridges webContents events | `IBrowserEditor` |
 | **Version Service** | Displays update info | Checks GitHub releases | `app.shell.version` |

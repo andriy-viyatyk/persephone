@@ -2,7 +2,7 @@ import { TComponentModel } from "../../core/state/model";
 import { MenuItem } from "../overlay/PopupMenu";
 import { TreeViewRef } from "../TreeView";
 import { FileTreeItem, FileSortType, buildFileTree, loadFolderChildren, filterTreeShallow, filterTreeDeep, filterTreeByPaths } from "./file-tree-builder";
-import { pagesModel } from "../../store";
+import { pagesModel } from "../../api/pages";
 import { TextFileModel } from "../../editors/text/TextPageModel";
 import { api } from "../../../ipc/renderer/api";
 import { ui } from "../../api/ui";

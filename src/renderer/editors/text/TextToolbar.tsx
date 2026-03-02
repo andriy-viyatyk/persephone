@@ -6,7 +6,7 @@ import { SwitchButtons } from "../../components/form/SwitchButtons";
 import { FlexSpace } from "../../components/layout/Elements";
 import styled from "@emotion/styled";
 import { editorRegistry } from "../registry";
-import { pagesModel } from "../../store";
+import { pagesModel } from "../../api/pages";
 import { NavPanelModel } from "../../features/navigation/nav-panel-store";
 
 const path = require("path");

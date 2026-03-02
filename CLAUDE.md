@@ -47,7 +47,7 @@ When user says "let's work on tasks" or similar:
 2. Update documentation (see checklist in [/doc/tasks/active.md](doc/tasks/active.md)):
    - Architecture docs, standards docs, CLAUDE.md, what's new
    - **Review and update user guidance docs** in `/docs/` — check all pages that describe affected features, update text to match the new behavior
-3. Move task to "Recently Completed" in active.md
+3. Add task to the top of [/doc/tasks/completed.md](doc/tasks/completed.md)
 4. **Ask user for confirmation** before deleting the task folder
 
 This step-by-step approach ensures user understands what's happening and can review changes properly.

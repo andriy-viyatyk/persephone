@@ -5,7 +5,7 @@ import color from "../../theme/color";
 import { Splitter } from "../../components/layout/Splitter";
 import { LinkEditor } from "../link-editor/LinkEditor";
 import { BrowserBookmarks } from "./BrowserBookmarks";
-import { pagesModel } from "../../store/pages-store";
+import { pagesModel } from "../../api/pages";
 
 // =============================================================================
 // Styles

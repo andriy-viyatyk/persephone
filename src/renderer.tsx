@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { app } from "./renderer/api/app";
+import { api } from "./ipc/renderer/api";
 
 function RootComponent() {
     const [content, setContent] = useState(null);
@@ -14,6 +15,11 @@ function RootComponent() {
             await app.initServices();        // load interface wrappers (stores already cached)
             await app.initPages();           // restore persisted pages
             await app.initEvents();          // subscribe to all events (global, keyboard, IPC)
+
+            // Signal main process that this window is fully initialized.
+            // Main process waits for this before sending IPC events like eMovePageIn.
+            setTimeout(() => api.windowReady(), 0);
+
             setContent(<cont.default />);
         };
         bootstrap();

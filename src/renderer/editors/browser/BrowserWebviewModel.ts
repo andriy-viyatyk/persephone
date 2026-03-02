@@ -6,7 +6,7 @@ import {
 } from "../../../ipc/browser-ipc";
 import { showAppPopupMenu } from "../../ui/dialogs/poppers/showPopupMenu";
 import { MenuItem } from "../../components/overlay/PopupMenu";
-import { pagesModel } from "../../store/pages-store";
+import { pagesModel } from "../../api/pages";
 import { newTextFileModel } from "../text/TextPageModel";
 import { PageModel } from "../base";
 import { showEditLinkDialog } from "../link-editor/EditLinkDialog";
@@ -384,8 +384,7 @@ export class BrowserWebviewModel {
                 label: "Open Image in New Tab",
                 startGroup: items.length > 0,
                 onClick: async () => {
-                    const { openImageInNewTab } = await import("../../store/page-actions");
-                    openImageInNewTab(srcURL);
+                    pagesModel.openImageInNewTab(srcURL);
                 },
             });
             items.push({

@@ -1,10 +1,9 @@
 import rendererEvents from "../../../ipc/renderer/renderer-events";
-import { pagesModel } from "../../store";
+import { pagesModel } from "../pages";
 import { api } from "../../../ipc/renderer/api";
 import { settings } from "../settings";
 import { shell } from "../shell";
 import { ui } from "../ui";
-import { showAboutPage } from "../../store";
 import { UpdateCheckResult } from "../../../ipc/api-param-types";
 import { EventEndpoint } from "../../../ipc/api-types";
 
@@ -77,8 +76,7 @@ export class RendererEventsService {
         try {
             const behavior = settings.get("link-open-behavior");
             if (behavior === "internal-browser") {
-                const { openUrlInBrowserTab } = await import("../../store/page-actions");
-                openUrlInBrowserTab(url);
+                pagesModel.openUrlInBrowserTab(url);
             } else {
                 shell.openExternal(url);
             }
@@ -89,8 +87,7 @@ export class RendererEventsService {
 
     private handleExternalUrl = async (url: string) => {
         try {
-            const { openUrlInBrowserTab } = await import("../../store/page-actions");
-            openUrlInBrowserTab(url, { external: true });
+            pagesModel.openUrlInBrowserTab(url, { external: true });
         } catch (err) {
             ui.notify(`Failed to open URL: ${err instanceof Error ? err.message : String(err)}`, "error");
         }
@@ -115,7 +112,7 @@ export class RendererEventsService {
                 "info",
             );
             if (closeResult === "clicked") {
-                showAboutPage();
+                pagesModel.showAboutPage();
             }
         }
     };

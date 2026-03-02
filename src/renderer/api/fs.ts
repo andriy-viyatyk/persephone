@@ -24,7 +24,6 @@ class FileSystem implements IFileSystem {
     };
 
     private _init = async (): Promise<void> => {
-        await new Promise((resolve) => setTimeout(resolve, 100)); // Allow other init tasks to complete
         const userData = await api.getCommonFolder("userData");
         this._windowIndex = await api.getWindowIndex();
         this._dataPath = path.join(userData, "data");

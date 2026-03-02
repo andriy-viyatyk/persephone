@@ -1,0 +1,616 @@
+import type { PagesModel } from "./PagesModel";
+import { PageModel } from "../../editors/base";
+import { IPage, PageEditor } from "../../../shared/types";
+import {
+    isTextFileModel,
+    newTextFileModel,
+    TextFileModel,
+} from "../../editors/text";
+import { api } from "../../../ipc/renderer/api";
+import { recent } from "../recent";
+import { ui } from "../ui";
+import { shell } from "../shell";
+import { settings } from "../settings";
+import { editorRegistry } from "../../editors/registry";
+import { getLanguageByExtension } from "../../store/language-mapping";
+import { NavPanelModel } from "../../features/navigation/nav-panel-store";
+
+const path = require("path");
+const fs = require("fs");
+
+/**
+ * PagesLifecycleModel — Page creation, opening, closing, and navigation.
+ */
+export class PagesLifecycleModel {
+    constructor(private model: PagesModel) {}
+
+    // ── Page factory helpers ─────────────────────────────────────────
+
+    private newPageModel = async (filePath?: string): Promise<PageModel> => {
+        const editorDef = editorRegistry.resolve(filePath);
+        if (editorDef) {
+            const module = await editorDef.loadModule();
+            return module.newPageModel(filePath);
+        }
+        const def = editorRegistry.getById("monaco");
+        if (!def) throw new Error("Monaco editor not registered");
+        const module = await def.loadModule();
+        return module.newPageModel(filePath);
+    };
+
+    private newPageModelFromState = async (
+        state: Partial<IPage>
+    ): Promise<PageModel> => {
+        const editors = editorRegistry.getAll();
+        const editorDef = editors.find((e) => e.pageType === state.type);
+        if (editorDef) {
+            const module = await editorDef.loadModule();
+            return module.newPageModelFromState(state);
+        }
+        const def = editorRegistry.getById("monaco");
+        if (!def) throw new Error("Monaco editor not registered");
+        const module = await def.loadModule();
+        return module.newPageModelFromState(state);
+    };
+
+    // ── Core page operations ─────────────────────────────────────────
+
+    createPageFromFile = async (filePath: string): Promise<PageModel> => {
+        const pageModel = await this.newPageModel(filePath);
+        pageModel.state.update((s) => {
+            s.language = "";
+        });
+        await pageModel.restore();
+        return pageModel;
+    };
+
+    addPage = (page: PageModel): PageModel => {
+        const pageId = page.state.get().id;
+        const existingPage = this.model.query.findPage(pageId);
+        if (existingPage) {
+            this.model.navigation.showPage(pageId);
+            return existingPage;
+        }
+
+        this.model.attachPage(page);
+
+        this.model.state.update((s) => {
+            s.pages.push(page);
+            s.ordered.push(page);
+        });
+        this.model.persistence.saveState();
+
+        return page;
+    };
+
+    addEmptyPage = (): PageModel => {
+        const emptyFile = newTextFileModel("");
+        emptyFile.restore();
+        return this.addPage(emptyFile as unknown as PageModel);
+    };
+
+    addEmptyPageWithNavPanel = (folderPath: string): PageModel => {
+        const page = this.addEmptyPage();
+        const navPanel = new NavPanelModel(folderPath);
+        navPanel.id = page.state.get().id;
+        navPanel.flushSave();
+        page.navPanel = navPanel;
+        page.state.update((s) => {
+            s.hasNavPanel = true;
+        });
+        return page;
+    };
+
+    addEditorPage = (
+        editor: PageEditor,
+        language: string,
+        title: string
+    ): PageModel => {
+        const page = newTextFileModel("");
+        page.state.update((s) => {
+            s.title = title;
+            s.language = language;
+            s.editor = editor;
+        });
+        page.restore();
+        return this.addPage(page as unknown as PageModel);
+    };
+
+    replacePage = (oldModel: PageModel, newModel: PageModel) => {
+        const state = this.model.state.get();
+        const rightId = state.leftRight.get(oldModel.id);
+        const leftId = state.rightLeft.get(oldModel.id);
+
+        this.model.state.update((s) => {
+            const pIdx = s.pages.indexOf(oldModel);
+            if (pIdx !== -1) s.pages[pIdx] = newModel;
+            const oIdx = s.ordered.indexOf(oldModel);
+            if (oIdx !== -1) s.ordered[oIdx] = newModel;
+        });
+
+        if (rightId) {
+            this.model.layout.ungroup(oldModel.id);
+            this.model.layout.group(newModel.id, rightId);
+        } else if (leftId) {
+            this.model.layout.ungroup(oldModel.id);
+            this.model.layout.group(leftId, newModel.id);
+        }
+
+        this.model.persistence.saveState();
+    };
+
+    // ── File opening ─────────────────────────────────────────────────
+
+    openFile = async (filePath?: string) => {
+        if (!filePath) return;
+        const existingPage = this.model.state
+            .get()
+            .pages.find((p) => p.state.get().filePath === filePath);
+        if (existingPage) {
+            this.model.navigation.showPage(existingPage.state.get().id);
+            return;
+        }
+
+        const pageModel = await this.createPageFromFile(filePath);
+        this.addPage(pageModel);
+        recent.add(filePath);
+
+        this.model.closeFirstPageIfEmpty();
+    };
+
+    openFileWithDialog = async () => {
+        const filePaths = await api.showOpenFileDialog({
+            title: "Open File",
+            multiSelections: false,
+        });
+        if (filePaths && filePaths.length > 0) {
+            await this.openFile(filePaths[0]);
+        }
+    };
+
+    openDiff = async (
+        params: { firstPath: string; secondPath: string } | undefined
+    ) => {
+        if (!params) return;
+        const { firstPath, secondPath } = params;
+        if (!firstPath || !secondPath) return;
+        let existingFirst = this.model.state
+            .get()
+            .pages.find((p) => p.state.get().filePath === firstPath);
+        let existingSecond = this.model.state
+            .get()
+            .pages.find((p) => p.state.get().filePath === secondPath);
+
+        if (!existingFirst) {
+            existingFirst = await this.createPageFromFile(firstPath);
+            this.addPage(existingFirst);
+        }
+        if (!existingSecond) {
+            existingSecond = await this.createPageFromFile(secondPath);
+            this.addPage(existingSecond);
+        }
+
+        this.model.layout.groupTabs(existingFirst.id, existingSecond.id, true);
+        this.model.layout.fixCompareMode();
+        if (
+            isTextFileModel(existingFirst) &&
+            isTextFileModel(existingSecond)
+        ) {
+            existingFirst.state.update((s) => {
+                s.compareMode = true;
+            });
+            existingSecond.state.update((s) => {
+                s.compareMode = true;
+            });
+        }
+        this.model.navigation.showPage(existingFirst.id);
+    };
+
+    // ── Navigation within a page ─────────────────────────────────────
+
+    navigatePageTo = async (
+        pageId: string,
+        newFilePath: string,
+        options?: {
+            revealLine?: number;
+            highlightText?: string;
+            forceTextEditor?: boolean;
+        }
+    ): Promise<boolean> => {
+        const oldModel = this.model.query.findPage(pageId);
+        if (!oldModel) return false;
+
+        const released = await oldModel.confirmRelease();
+        if (!released) return false;
+
+        // Preserve pinned state and NavPanel across navigation
+        const wasPinned = oldModel.state.get().pinned;
+        const navPanel = oldModel.navPanel;
+        oldModel.navPanel = null;
+
+        await oldModel.dispose();
+        this.model.detachPage(oldModel);
+
+        let newModel: PageModel;
+        if (!fs.existsSync(newFilePath)) {
+            ui.notify(
+                `File not found: ${path.basename(newFilePath)}`,
+                "error"
+            );
+            newModel = newTextFileModel("");
+            newModel.state.update((s) => {
+                s.title = path.basename(newFilePath);
+            });
+            await newModel.restore();
+        } else {
+            try {
+                newModel = await this.createPageFromFile(newFilePath);
+            } catch (err) {
+                ui.notify(
+                    `Failed to open ${path.basename(newFilePath)}: ${(err as Error).message}`,
+                    "error"
+                );
+                newModel = newTextFileModel("");
+                await newModel.restore();
+            }
+        }
+
+        // Auto-select preview editor for navigated files
+        if (newModel.state.get().type === "textFile") {
+            if (
+                options?.forceTextEditor ||
+                options?.revealLine ||
+                options?.highlightText
+            ) {
+                if (options.revealLine) {
+                    (newModel as TextFileModel).editor.revealLine(
+                        options.revealLine
+                    );
+                }
+                if (options.highlightText) {
+                    (newModel as TextFileModel).editor.setHighlightText(
+                        options.highlightText
+                    );
+                }
+            } else {
+                const ext = path.extname(newFilePath).toLowerCase();
+                const lang = getLanguageByExtension(ext);
+                const languageId = lang?.id || "plaintext";
+                const previewEditor = editorRegistry.getPreviewEditor(
+                    languageId,
+                    newFilePath
+                );
+                if (previewEditor) {
+                    newModel.state.update((s) => {
+                        s.editor = previewEditor;
+                    });
+                }
+            }
+        }
+
+        // Restore pinned state on the new model
+        if (wasPinned) {
+            newModel.state.update((s) => {
+                s.pinned = true;
+            });
+        }
+
+        this.model.attachPage(newModel);
+        this.replacePage(oldModel, newModel);
+        this.model.onShow.send(newModel);
+        this.model.onFocus.send(newModel);
+
+        // Transfer NavPanel from old page to new page
+        if (navPanel) {
+            newModel.navPanel = navPanel;
+            newModel.state.update((s) => {
+                s.hasNavPanel = true;
+            });
+            navPanel.setCurrentFilePath(newFilePath);
+            navPanel.updateId(newModel.id);
+        }
+
+        return true;
+    };
+
+    // ── Closing ──────────────────────────────────────────────────────
+
+    closeToTheRight = async (pageId: string) => {
+        const { pages } = this.model.state.get();
+        const pagesToClose = [];
+        for (let i = pages.length - 1; i >= 0; i--) {
+            if (pages[i].state.get().id === pageId) {
+                break;
+            }
+            if (!pages[i].state.get().pinned) {
+                pagesToClose.push(pages[i]);
+            }
+        }
+        for (const page of pagesToClose) {
+            const closed = await page.close(undefined);
+            if (!closed) {
+                break;
+            }
+        }
+    };
+
+    closeOtherPages = async (pageId: string) => {
+        const { pages } = this.model.state.get();
+        const pagesToClose = [];
+        for (let i = pages.length - 1; i >= 0; i--) {
+            if (
+                pages[i].state.get().id !== pageId &&
+                !pages[i].state.get().pinned
+            ) {
+                pagesToClose.push(pages[i]);
+            }
+        }
+        for (const page of pagesToClose) {
+            const closed = await page.close(undefined);
+            if (!closed) {
+                break;
+            }
+        }
+    };
+
+    // ── Multi-window operations ──────────────────────────────────────
+
+    movePageIn = async (data?: {
+        page: Partial<IPage>;
+        targetPageId: string | undefined;
+    }) => {
+        if (!data || !data.page) {
+            return;
+        }
+        const pageModel = await this.newPageModelFromState(data.page);
+        await pageModel.restore();
+        const targetIndex = data.targetPageId
+            ? this.model.state
+                  .get()
+                  .pages.findIndex(
+                      (p) => p.state.get().id === data.targetPageId
+                  )
+            : -1;
+        if (targetIndex === -1) {
+            this.addPage(pageModel);
+            this.model.closeFirstPageIfEmpty();
+        } else {
+            this.model.attachPage(pageModel);
+            this.model.state.update((s) => {
+                s.pages.splice(targetIndex, 0, pageModel);
+                s.ordered.push(pageModel);
+            });
+            this.model.layout.fixGrouping();
+            this.model.persistence.saveStateDebounced();
+        }
+    };
+
+    movePageOut = async (pageId?: string) => {
+        const page = this.model.query.findPage(pageId);
+        if (!page) {
+            return;
+        }
+        await page.saveState();
+        const closeWindow = this.model.state.get().pages.length === 1;
+        page.skipSave = true;
+        if (closeWindow) {
+            this.model.state.update((s) => {
+                s.pages = s.pages.filter((p) => p !== page);
+                s.ordered = s.ordered.filter((p) => p !== page);
+            });
+            this.model.persistence.saveStateDebounced();
+            api.closeWindow();
+        } else {
+            // Detach first to prevent dispose — the page is being transferred, not closed.
+            this.model.detachPage(page);
+            this.model.removePage(page);
+        }
+    };
+
+    // ── Duplication ──────────────────────────────────────────────────
+
+    duplicatePage = async (pageId: string) => {
+        const page = this.model.query.findPage(pageId);
+        if (!page) {
+            return;
+        }
+
+        const pageData: Partial<IPage> = page.getRestoreData();
+        pageData.id = crypto.randomUUID();
+        pageData.hasNavPanel = false;
+        pageData.pinned = false;
+        const newPage = await this.model.persistence.restoreModel(pageData);
+        if (newPage) {
+            this.addPage(newPage);
+        }
+        this.model.layout.groupTabs(pageId, pageData.id!, false);
+    };
+
+    // ── URL handling ─────────────────────────────────────────────────
+
+    handleOpenUrl = async (url: string) => {
+        const behavior = settings.get("link-open-behavior");
+        if (behavior === "internal-browser") {
+            await this.openUrlInBrowserTab(url);
+        } else {
+            shell.openExternal(url);
+        }
+    };
+
+    handleExternalUrl = async (url: string) => {
+        await this.openUrlInBrowserTab(url, { external: true });
+    };
+
+    openPathInNewWindow = (filePath: string) => {
+        if (!filePath) {
+            return;
+        }
+        api.openNewWindow(filePath);
+    };
+
+    // ── Grouped text helper ──────────────────────────────────────────
+
+    requireGroupedText = (
+        pageId: string,
+        suggestedLanguage?: string
+    ): TextFileModel => {
+        let groupedPage = this.model.query.getGroupedPage(pageId);
+        if (groupedPage && !(groupedPage.state.get().type === "textFile")) {
+            this.model.layout.ungroup(pageId);
+            groupedPage = undefined;
+        }
+
+        if (!groupedPage) {
+            groupedPage = this.addEmptyPage() as unknown as PageModel;
+            this.model.layout.groupTabs(
+                pageId,
+                groupedPage.state.get().id,
+                false
+            );
+            groupedPage.changeLanguage(suggestedLanguage);
+        }
+
+        return groupedPage as unknown as TextFileModel;
+    };
+
+    // ── Page-actions (from old page-actions.ts) ──────────────────────
+
+    showAboutPage = async (): Promise<void> => {
+        const aboutModule = await import("../../editors/about/AboutPage");
+        const model = await aboutModule.default.newEmptyPageModel("aboutPage");
+        if (model) {
+            this.addPage(model);
+        }
+    };
+
+    showSettingsPage = async (): Promise<void> => {
+        const settingsModule = await import(
+            "../../editors/settings/SettingsPage"
+        );
+        const model =
+            await settingsModule.default.newEmptyPageModel("settingsPage");
+        if (model) {
+            this.addPage(model);
+        }
+    };
+
+    showBrowserPage = async (options?: {
+        profileName?: string;
+        incognito?: boolean;
+        url?: string;
+    }): Promise<void> => {
+        const browserModule = await import(
+            "../../editors/browser/BrowserPageView"
+        );
+        const model =
+            await browserModule.default.newEmptyPageModel("browserPage");
+        if (model) {
+            if (options?.profileName || options?.incognito) {
+                model.state.update((s: any) => {
+                    if (options.profileName) s.profileName = options.profileName;
+                    if (options.incognito) s.isIncognito = true;
+                });
+            }
+            if (options?.url) {
+                model.state.update((s: any) => {
+                    s.url = options.url;
+                    const tab = s.tabs?.[0];
+                    if (tab) {
+                        tab.url = options.url;
+                        tab.homeUrl = options.url;
+                    }
+                });
+            }
+            await model.restore();
+            this.addPage(model);
+        }
+    };
+
+    openImageInNewTab = async (imageUrl: string): Promise<void> => {
+        const imgModule = await import("../../editors/image/ImageViewer");
+        const imgModel =
+            await imgModule.default.newEmptyPageModel("imageFile");
+        if (imgModel) {
+            imgModel.state.update(
+                (s: { title: string; url?: string }) => {
+                    s.title =
+                        imageUrl.split("/").pop()?.split("?")[0] || "Image";
+                    s.url = imageUrl;
+                }
+            );
+            await imgModel.restore();
+            this.addPage(imgModel);
+        }
+    };
+
+    openUrlInBrowserTab = async (
+        url: string,
+        options?: {
+            incognito?: boolean;
+            profileName?: string;
+            external?: boolean;
+        }
+    ): Promise<void> => {
+        const pages = this.model.state.get().pages;
+        const activePage = this.model.query.activePage;
+        const activeIndex = activePage ? pages.indexOf(activePage) : -1;
+
+        const matchesBrowser = (pageState: any) => {
+            if (pageState.type !== "browserPage") return false;
+            if (options?.incognito) return !!pageState.isIncognito;
+            const targetProfile =
+                options?.profileName !== undefined
+                    ? options.profileName || ""
+                    : options?.external
+                      ? settings.get("browser-default-profile") || ""
+                      : undefined;
+            return (
+                !pageState.isIncognito &&
+                (targetProfile === undefined ||
+                    (pageState.profileName ?? "") === targetProfile)
+            );
+        };
+
+        const addTabToPage = (index: number) => {
+            const pageState = pages[index].state.get();
+            (pages[index] as any).addTab(url);
+            this.model.navigation.showPage(pageState.id);
+        };
+
+        if (options?.external) {
+            for (let i = 0; i < pages.length; i++) {
+                if (matchesBrowser(pages[i].state.get())) {
+                    addTabToPage(i);
+                    return;
+                }
+            }
+        } else {
+            for (let i = activeIndex + 1; i < pages.length; i++) {
+                if (matchesBrowser(pages[i].state.get())) {
+                    addTabToPage(i);
+                    return;
+                }
+            }
+            for (let i = activeIndex - 1; i >= 0; i--) {
+                if (matchesBrowser(pages[i].state.get())) {
+                    addTabToPage(i);
+                    return;
+                }
+            }
+        }
+
+        const profileName = options?.incognito
+            ? undefined
+            : (options?.profileName ??
+                  settings.get("browser-default-profile")) || undefined;
+        const showOptions = {
+            url,
+            ...(options?.incognito
+                ? { incognito: true }
+                : profileName
+                  ? { profileName }
+                  : {}),
+        };
+        await this.showBrowserPage(showOptions);
+    };
+}

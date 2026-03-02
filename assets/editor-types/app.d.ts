@@ -5,6 +5,8 @@ import type { IFileSystem } from "./fs";
 import type { IWindow } from "./window";
 import type { IShell } from "./shell";
 import type { IUserInterface } from "./ui";
+import type { IDownloads } from "./downloads";
+import type { IPageCollection } from "./pages";
 
 /**
  * Root application object. Entry point to all app functionality.
@@ -14,12 +16,7 @@ import type { IUserInterface } from "./ui";
  * @example
  * console.log(app.version);
  * app.settings.set("theme", "monokai");
- * app.editors.getAll().forEach(e => console.log(e.name));
- * await app.recent.load();
- * const text = await app.fs.read("C:/file.txt");
- * app.window.maximize();
- * await app.shell.openExternal("https://example.com");
- * const answer = await app.ui.confirm("Save changes?");
+ * app.pages.all.forEach(p => console.log(p.title));
  */
 export interface IApp {
     /** Application version string (e.g. "1.0.17"). */
@@ -46,5 +43,9 @@ export interface IApp {
     /** Dialogs and notifications. */
     readonly ui: IUserInterface;
 
-    // Phase 4+: pages
+    /** Global download tracking. */
+    readonly downloads: IDownloads;
+
+    /** Open pages (tabs) in the current window. */
+    readonly pages: IPageCollection;
 }

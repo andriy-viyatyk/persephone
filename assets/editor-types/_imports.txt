@@ -4,6 +4,7 @@ downloads.d.ts
 editors.d.ts
 fs.d.ts
 page.d.ts
+pages.d.ts
 recent.d.ts
 settings.d.ts
 shell.d.ts

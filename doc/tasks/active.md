@@ -8,67 +8,15 @@ Current work in progress and planned tasks.
 
 ## In Progress
 
-| ID | Title | Notes |
-|----|-------|-------|
-| US-049 | Phase 4a — Event Services Extraction | 🔄 Ready for implementation. Extract 5 event services (GlobalEvent, Keyboard, WindowState, DownloadTracker, RendererEvents). Delete EventHandler, simplify MainPage. Low-risk refactoring. See `/doc/future-architecture/8.app-pages.md` (Sections 3-5, 9-13). |
+(none)
 
 ## Planned (Next)
 
-| ID | Title | Notes |
-|----|-------|-------|
-| US-050 | Phase 4b — Pages API (`app.pages` + `IPage`) | 📋 Awaiting US-049. Create 5 submodels + facade, implement IPageCollection interface, migrate consumers. Core refactoring. Depends on US-049 complete. Medium risk. See `/doc/future-architecture/8.app-pages.md` (Sections 1-2, 6-8, 14). |
+(See [migration README](../future-architecture/migration/README.md) for next migration phase)
 
-## Recently Completed
+## Completed
 
-| ID | Title | Notes |
-|----|-------|-------|
-| US-048 | Phase 3a — `app.ui` (IUserInterface) | IUserInterface: wrap dialog functions (confirm, input, password) + absorb alert notification API (notify). `features/dialogs/` moved to `ui/dialogs/`. 11 consumer files (~38 call sites) migrated, old exports removed. |
-| US-045 | Phase 3b — `app.shell` (IShell) | IShell: absorb encryption logic into `api/shell/`, wrap version service IPC, add `openExternal()`. 6 consumer files migrated, `encryption.ts` deleted. |
-| US-047 | Phase 2 Revision — Full Absorption into API | Full absorption: `nodeUtils` file I/O + `filesModel` data/cache/path ops merged into `api/fs.ts`. `windowIndex` added to `IWindow`. `uuid()` replaced with `crypto.randomUUID()`. `files-store.ts` and `node-utils.ts` deleted. `watchFile`/`getFileStats` inlined into `file-watcher.ts`. 18+ consumers updated. |
-| US-046 | Phase 1 Revision — Move Logic into API | `app.settings`: moved logic from `app-settings.ts` to `api/settings.ts` (14 consumers). `app.editors`: confirmed facade pattern correct (no code change). `app.recent`: moved logic from `recent-files.ts` to `api/recent.ts` (4 consumers). Old stores deleted. |
-| US-044 | Phase 2 — File System & Window | `app.fs` (IFileSystem: read/readFile/write/readBinary/writeBinary/exists/delete, resolveDataPath/resolveCachePath, dialogs, showInExplorer/showFolder), `app.window` (IWindow: minimize/maximize/restore/close, isMaximized, zoom/resetZoom/zoomLevel, openNew). Dynamic `import()` in `initServices()`. API reference docs created. |
-| US-043 | Phase 1 — Independent Interfaces | `app.settings` (ISettings wrapping appSettings with onChanged event), `app.editors` (IEditorRegistry — read-only subset of editorRegistry), `app.recent` (IRecentFiles with lazy load()). Dynamic `import()` via `initServices()` in app.ts. API reference docs created. |
-| US-042 | Phase 0 — App Object Model Infrastructure | `/api/` folder with IDisposable, IEvent, IApp types. `app` singleton with async init (version via IPC). Script context wiring. Vite plugin auto-copies .d.ts to assets for Monaco IntelliSense. |
-| — | Phase -1: Pre-Migration Complete | Enhanced TComponentModel with effect()/memo()/auto init-dispose. Migrated all page editors (-1.3 through -1.8) and app shell (-1.1, -1.2). Views are now pure render functions. |
-| US-041 | Tabs & Navigation Migration to Enhanced Model-View | Pre-migration -1.2: TabsModel + MenuBarModel → effect()/memo(), refs and state moved to model. PageTabModel skipped (no lifecycle) |
-| US-040 | App Shell Migration to Enhanced Model-View | Pre-migration -1.1: MainPageModel + EventHandlerModel → effect() pattern, auto init/dispose, removed useEffect boilerplate from Views |
-| US-039 | Browser Find in Page | Inline search bar with match counter, Ctrl+F interception via main process + preload script + renderer keydown, webview.findInPage() API |
-| US-030 | Browser Download Progress & History | Toolbar download button with SVG progress ring, Popper popup with download list, main-process DownloadService with IPC broadcasting, native save dialog for reliable path capture, global state shared across windows, last 5 completed persisted. Also fixed external URL routing (left-to-right search, default profile only). |
-| US-036 | Register as Default Browser | HKCU registry management (no admin), Settings page UI, deep-link to Windows Default Apps, separate eOpenExternalUrl event for OS URLs, launcher version info for proper app name/icon |
-| US-038 | Switch to electron-builder + NSIS | electron-builder replaces Forge makers, NSIS installer with custom options page (shortcuts, context menu, file associations, browser registration), AllowSetForegroundWindow for bring-to-front, GitHub Actions with Rust toolchain |
-| US-037 | Lightweight Rust Launcher | 308KB Rust launcher with Named Pipe IPC for instant file/URL/diff opening, pipe server in main process, concurrent connection support |
-| US-035 | Miscellaneous Enhancements | Link Editor hostnames panel, Link/ToDo Editor session state persistence, pinned tab file path tooltip, browser popup/tab spam blocking |
-| US-034 | Link Editor Enhancement | Favicon caching & display, drag-and-drop (links→categories, categories→categories with reparenting), pinned links panel with drag-to-reorder |
-| US-028 | Browser Bookmarks (Links Editor Integration) | Per-profile bookmarks with star button, sliding drawer with full Link Editor, image discovery (meta tags + click tracking + context menu), encrypted bookmarks support via async password dialog, auto-save |
-| US-033 | Link Editor | Structured link manager for `.link.json` files with categories, tags, 5 view modes (list + 4 tile variants), edit dialog, image context menu, per-category and per-tag view mode, quick-add menu |
-| US-032 | Browser Integration — Link Opening & Context Menu | Link open behavior setting (default browser vs internal), smart browser tab routing (right→left→create new), Markdown link context menu (Open in Default/Internal Browser, Incognito), Settings page UI |
-| US-031 | Browser Enhancement #1 | OAuth popup support, toolbar changes, active tab styling, transparent splitter, compact tab extension popup, tab audio mute controls, home button, tabs panel initially collapsed, search engine selector, URL bar suggestions dropdown with search/navigation history |
-| US-027 | Browser Profiles & Incognito Mode | Named browser profiles with isolated sessions (cookies/storage/cache per profile), incognito mode (ephemeral partition), profile management in Settings (add/remove/color/default/clear data), incognito icon in URL bar, profile-colored globe icons on page tabs, quick-add submenu for profiles |
-| US-029 | Browser Web Page Context Menu | Contextual right-click menu for webview content (links, images, text, SVG), View Source/Actual DOM, Open Image/SVG in editor, URL bar with navigate button and Paste and Go, dynamic webview background |
-| US-026 | Browser Internal Tabs | Multi-tab browsing within a browser page, left-side tabs panel, target="_blank"/window.open() open new internal tabs, tab context menu (close/close others/close below), resizable panel, session restore for all tabs |
-| US-025 | Basic Browser Editor | Built-in web browser as page-editor using webview, multi-process architecture (renderer + main + guest preload), favicon/title detection, session restore, protocol blocking |
-| US-023 | NavigationPanel File Content Search | VS Code-style file content search with streaming results, include/exclude patterns, FileExplorer filtering, Monaco highlighting, configurable extensions in Settings |
-| US-024 | ToDo List Enhancement — Tags | Colored tags with filtering, tag assignment on items, predefined color palette, drag-drop warnings |
-| US-022 | ToDo Editor | Structured task list editor for `.todo.json` files with multiple lists, drag-to-reorder, search, comments, virtualized grid |
-| US-020 | Markdown View Search | Ctrl+F search in Markdown Preview with match highlighting, F3/Shift+F3 navigation, match counter, active match background |
-| US-019 | Open User Folder in Tab | Chevron on sidebar folders opens new tab with NavPanel, hover+tooltip for discoverability, built-in items unchanged |
-| US-018 | Implement Grouping for Pinned Tabs | Non-adjacent grouping for pinned+unpinned tabs, script execution works in pinned tabs, grouping preserved through pin/unpin |
-| US-017 | Pinning Page Tabs | Compact icon-only pinned tabs with sticky positioning, drag constraints, window persistence, navigation preservation |
-| US-016 | Reusable File Explorer Component | Tree-based FileExplorer replacing flat lists in sidebar and NavigationPanel, lazy loading, search, file operations, state persistence, navigate up/make root, collapse all |
-| US-015 | Document Navigation Panel | Folder-based nav tree from markdown links, in-tab navigation with auto-preview, pages-store lifecycle refactoring, global keyboard shortcuts fix |
-| US-014 | Application Theming | CSS Custom Properties theming with 6 dark themes, Settings page with theme selector, Monaco integration |
-| US-013 | Create HTML Viewer | Sandboxed iframe preview for HTML files with script execution support |
-| US-012 | Markdown View Enhancements | Code block syntax highlighting, copy-to-clipboard button, inline Mermaid diagrams, shared render-mermaid module |
-| US-011 | Mermaid Diagram Viewer | .mmd/.mermaid preview with light/dark toggle, copy to clipboard, syntax highlighting |
-| US-010 | Copy Image to Clipboard | Copy button in Image Viewer header and SVG View toolbar, Ctrl+C shortcut |
-| US-009 | Notebook Editor | Structured notes editor with categories, tags, search, drag-and-drop, expand-to-overlay |
-| US-008 | TypeScript and Dependencies Upgrade | TypeScript 4.5→5.4, @types/node 16→20, fixed vite compatibility |
-| US-007 | About Page and Version Check | About page with version info + auto update check via GitHub API |
-| US-006 | Create Image View Editor | Image viewer for binary images + SVG preview as content-view |
-| US-003 | ContentPageModel Extraction | Closed - architecture review concluded existing design is correct |
-| US-002 | Editor Registry Pattern | Declarative editor registration in `register-editors.ts` |
-| US-001 | Fix Circular Dependencies | Direct imports instead of barrel exports |
-| US-005 | Create User Documentation | Completed - see `/docs/` folder |
+See [completed.md](completed.md) for all completed tasks.
 
 ## How to Work on Tasks
 
@@ -94,7 +42,7 @@ Current work in progress and planned tasks.
    - [ ] Review and update user guidance docs in `/docs/` — check all pages that describe affected features, update text/screenshots to match the new behavior
    - [ ] Update CLAUDE.md (if significant patterns or key files changed)
    - [ ] Update `/docs/whats-new.md` (for notable features/changes)
-3. Update this file: move task to "Recently Completed" section
+3. Add task to the top of [completed.md](completed.md)
 4. **Ask user for confirmation** before deleting the task folder
 5. Delete task folder after user confirms
 
@@ -114,4 +62,4 @@ Current work in progress and planned tasks.
 
 ---
 
-*Last updated: 2026-02*
+*Last updated: 2026-03*

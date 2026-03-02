@@ -1,6 +1,6 @@
 const path = require("path");
 import { forwardRef, useCallback, useEffect, useMemo } from "react";
-import { pagesModel } from "../../store";
+import { pagesModel } from "../../api/pages";
 import { recent } from "../../api/recent";
 import { FileListItem, FileList, FileListRef } from "./FileList";
 import { MenuItem } from "../../components/overlay/PopupMenu";

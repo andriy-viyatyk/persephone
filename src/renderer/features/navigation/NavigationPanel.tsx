@@ -16,7 +16,7 @@ import {
     SearchIcon,
 } from "../../theme/icons";
 import color from "../../theme/color";
-import { pagesModel } from "../../store";
+import { pagesModel } from "../../api/pages";
 import { isTextFileModel } from "../../editors/text";
 
 const path = require("path");

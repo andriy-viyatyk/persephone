@@ -311,8 +311,8 @@ export function LinkItemList({ links, model, selectedLinkId, pinnedLinkIds }: Li
                     label: "Open Image in New Tab",
                     icon: <OpenFileIcon />,
                     onClick: async () => {
-                        const { openImageInNewTab } = await import("../../store/page-actions");
-                        openImageInNewTab(imgUrl);
+                        const { pagesModel } = await import("../../api/pages");
+                        pagesModel.openImageInNewTab(imgUrl);
                     },
                 },
             );

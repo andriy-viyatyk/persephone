@@ -264,9 +264,9 @@ Identifies gaps — functionality that doesn't fit any proposed interface.
 
 ## GAPS — Resolved
 
-### 1. Downloads → part of `IBrowserEditor`
+### 1. Downloads → `app.downloads` (IDownloads)
 
-Downloads are initiated by user clicks in browser pages. Not a standalone download manager. Expose as `page.asBrowser().downloads` — a list of download entries with cancel/open/showInFolder. If a standalone download manager is needed in the future, it becomes a separate interface then.
+Revised in US-049: Downloads are global infrastructure (main process managed, shared across all windows), not editor-specific. `IDownloads` is a standalone interface on `app`, initialized in `app.initServices()`. Logic moved from `store/downloads-store.ts` to `api/downloads.ts`.
 
 ### 2. Recent files → `app.recent` (IRecentFiles)
 
@@ -317,6 +317,7 @@ AI bot needs to execute scripts programmatically. `app.shell.scripting.run(code,
 | IEditorRegistry | `app.editors` | Editor discovery, language mapping |
 | IRecentFiles | `app.recent` | Recent file history |
 | IShell | `app.shell` | OS integration, spawn, services |
+| IDownloads | `app.downloads` | Global download tracking |
 
 ### Services (via app.shell)
 | Interface | Name | Description |
