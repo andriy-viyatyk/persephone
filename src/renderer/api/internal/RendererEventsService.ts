@@ -1,0 +1,122 @@
+import rendererEvents from "../../../ipc/renderer/renderer-events";
+import { pagesModel } from "../../store";
+import { api } from "../../../ipc/renderer/api";
+import { settings } from "../settings";
+import { shell } from "../shell";
+import { ui } from "../ui";
+import { showAboutPage } from "../../store";
+import { UpdateCheckResult } from "../../../ipc/api-param-types";
+import { EventEndpoint } from "../../../ipc/api-types";
+
+/**
+ * Renderer IPC events service.
+ * Subscribes to IPC events and delegates to pagesModel methods.
+ * Will be updated in US-050 to delegate to app.pages instead.
+ */
+export class RendererEventsService {
+    async init(): Promise<void> {
+        // Page operations (currently delegates to pagesModel)
+        rendererEvents.eOpenFile.subscribe(this.handleOpenFile);
+        rendererEvents.eOpenDiff.subscribe(this.handleOpenDiff);
+        rendererEvents.eShowPage.subscribe(this.handleShowPage);
+        rendererEvents.eMovePageIn.subscribe(this.handleMovePageIn);
+        rendererEvents.eMovePageOut.subscribe(this.handleMovePageOut);
+
+        // URL opening
+        rendererEvents.eOpenUrl.subscribe(this.handleOpenUrl);
+        rendererEvents.eOpenExternalUrl.subscribe(this.handleExternalUrl);
+
+        // Quit handler
+        rendererEvents.eBeforeQuit.subscribe(this.handleBeforeQuit);
+
+        // Update check notification
+        rendererEvents[EventEndpoint.eUpdateAvailable].subscribe(this.handleUpdateAvailable);
+    }
+
+    private handleOpenFile = async (filePath: string) => {
+        try {
+            await pagesModel.openFile(filePath);
+        } catch (err) {
+            ui.notify(`Failed to open file: ${err instanceof Error ? err.message : String(err)}`, "error");
+        }
+    };
+
+    private handleOpenDiff = async (params: { firstPath: string; secondPath: string }) => {
+        try {
+            await pagesModel.openDiff(params);
+        } catch (err) {
+            ui.notify(`Failed to open diff: ${err instanceof Error ? err.message : String(err)}`, "error");
+        }
+    };
+
+    private handleShowPage = (pageId: string) => {
+        try {
+            pagesModel.showPage(pageId);
+        } catch (err) {
+            ui.notify(`Failed to show page: ${err instanceof Error ? err.message : String(err)}`, "error");
+        }
+    };
+
+    private handleMovePageIn = async (data: any) => {
+        try {
+            await pagesModel.movePageIn(data);
+        } catch (err) {
+            ui.notify(`Failed to move page: ${err instanceof Error ? err.message : String(err)}`, "error");
+        }
+    };
+
+    private handleMovePageOut = async (pageId: string) => {
+        try {
+            await pagesModel.movePageOut(pageId);
+        } catch (err) {
+            ui.notify(`Failed to move page: ${err instanceof Error ? err.message : String(err)}`, "error");
+        }
+    };
+
+    private handleOpenUrl = async (url: string) => {
+        try {
+            const behavior = settings.get("link-open-behavior");
+            if (behavior === "internal-browser") {
+                const { openUrlInBrowserTab } = await import("../../store/page-actions");
+                openUrlInBrowserTab(url);
+            } else {
+                shell.openExternal(url);
+            }
+        } catch (err) {
+            ui.notify(`Failed to open URL: ${err instanceof Error ? err.message : String(err)}`, "error");
+        }
+    };
+
+    private handleExternalUrl = async (url: string) => {
+        try {
+            const { openUrlInBrowserTab } = await import("../../store/page-actions");
+            openUrlInBrowserTab(url, { external: true });
+        } catch (err) {
+            ui.notify(`Failed to open URL: ${err instanceof Error ? err.message : String(err)}`, "error");
+        }
+    };
+
+    private handleBeforeQuit = async () => {
+        try {
+            await Promise.all(
+                pagesModel.state.get().pages.map((model) => model.saveState())
+            );
+            await pagesModel.saveState();
+        } catch (err) {
+            console.error("Failed to save pages on quit:", err);
+        }
+        api.setCanQuit(true);
+    };
+
+    private handleUpdateAvailable = async (result: UpdateCheckResult) => {
+        if (result.updateAvailable && result.releaseInfo) {
+            const closeResult = await ui.notify(
+                `New version ${result.releaseInfo.version} is available! Click to open About page.`,
+                "info",
+            );
+            if (closeResult === "clicked") {
+                showAboutPage();
+            }
+        }
+    };
+}

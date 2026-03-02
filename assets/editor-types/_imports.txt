@@ -1,5 +1,6 @@
 app.d.ts
 common.d.ts
+downloads.d.ts
 editors.d.ts
 fs.d.ts
 page.d.ts

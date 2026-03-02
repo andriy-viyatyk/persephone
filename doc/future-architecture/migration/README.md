@@ -81,6 +81,9 @@ No dependencies on other interface objects. Can be done in any order.
 |---|-----------|-----|--------|
 | 6 | `app.ui` — IUserInterface | [6.app-ui.md](6.app-ui.md) | Complete |
 | 7 | `app.shell` — IShell + services | [7.app-shell.md](7.app-shell.md) | Complete |
+| 8 | `app.downloads` — IDownloads | (integrated into Phase 3 during US-049) | Complete |
+
+**Note (US-049):** Downloads moved to Phase 3 because it is global infrastructure (main process managed, shared across all windows) — not editor-specific like Phase 5 editors. The new `IDownloads` interface moved all logic from `/store/downloads-store.ts` into `/api/downloads.ts` and was initialized in `app.initServices()`, allowing Browser editor to use `app.downloads` instead of the old store.
 
 ---
 
@@ -216,7 +219,7 @@ Goal: after each phase, old modules are slimmer or gone. No pass-through wrapper
 | `/store/recent-files.ts` | `/api/recent.ts` | Phase 1c |
 | `/store/files-store.ts` | Deleted — fully absorbed into `/api/fs.ts` | Phase 2a (US-047) |
 | `/store/pages-store.ts` | `/api/pages.ts` + `/api/page.ts` | Phase 4 |
-| `/store/downloads-store.ts` | stays near browser editor | Phase 5b |
+| `/store/downloads-store.ts` | `/api/downloads.ts` | Phase 3b (global infrastructure, not editor-specific) |
 | `/store/page-factory.ts` | `/api/pages.ts` (internal) | Phase 4 |
 | `/store/page-actions.ts` | `/api/` (distributed to relevant interfaces) | Phase 4 |
 | `/core/state/` | `/platform/state/` | Phase 0 or 1 |

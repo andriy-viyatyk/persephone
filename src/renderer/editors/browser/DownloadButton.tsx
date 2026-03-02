@@ -4,7 +4,7 @@ import { DownloadIcon } from "../../theme/icons";
 import color from "../../theme/color";
 import { Tooltip } from "../../components/basic/Tooltip";
 
-import { downloadsStore } from "../../store/downloads-store";
+import { downloads } from "../../api/downloads";
 
 const ICON_SIZE = 16;
 const RING_SIZE = 22;
@@ -71,7 +71,7 @@ export function DownloadButton({ onClick }: DownloadButtonProps) {
     const tooltipId = useRef(crypto.randomUUID()).current;
     const buttonRef = useRef<HTMLButtonElement>(null);
 
-    const { hasActive, progress } = downloadsStore.state.use((s) => {
+    const { hasActive, progress } = downloads.state.use((s) => {
         const active = s.downloads.filter((d) => d.status === "downloading");
         const hasActive = active.length > 0;
         let progress = 0;

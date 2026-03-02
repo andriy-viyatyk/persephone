@@ -12,16 +12,10 @@ import {
 import { TComponentModel, useComponentModel } from "../core/state/model";
 import { api } from "../../ipc/renderer/api";
 import rendererEvents from "../../ipc/renderer/renderer-events";
-import { globalKeyDown } from "../core/state/events";
 import { Pages } from "./Pages";
 import { PageTabs } from "../features/tabs/PageTabs";
-import { pagesModel } from "../store";
-import { appWindow } from "../api/window";
-import { MenuBar } from "../features/sidebar/MenuBar";
-import { parseObject } from "../core/utils/parse-utils";
 import clsx from "clsx";
-import { cycleTheme, getCurrentThemeId } from "../theme/themes";
-import { settings } from "../api/settings";
+import { MenuBar } from "../features/sidebar/MenuBar";
 
 const AppRoot = styled.div({
     backgroundColor: color.background.default,
@@ -128,11 +122,6 @@ class MainPageModel extends TComponentModel<MainPageState, undefined> {
             );
             return () => sub.unsubscribe();
         });
-
-        this.effect(() => {
-            window.addEventListener("keydown", this.handleKeyDown);
-            return () => window.removeEventListener("keydown", this.handleKeyDown);
-        });
     }
 
     minimizeWindow = () => {
@@ -151,97 +140,14 @@ class MainPageModel extends TComponentModel<MainPageState, undefined> {
         api.closeWindow();
     };
 
-    handleKeyDown = (e: KeyboardEvent) => {
-        globalKeyDown.send(e);
-
-        switch (e.code) {
-            case "Tab":
-                {
-                    if (e.ctrlKey) {
-                        e.preventDefault();
-                        if (e.shiftKey) pagesModel.showPrevious();
-                        else pagesModel.showNext();
-                    }
-                }
-                break;
-            case "F4":
-            case "KeyW":
-                {
-                    if (e.ctrlKey) {
-                        e.preventDefault();
-                        const activePage = pagesModel.activePage;
-                        if (activePage) {
-                            activePage.close(undefined);
-                        }
-                    }
-                }
-                break;
-            case "KeyN":
-                {
-                    if (e.ctrlKey) {
-                        e.preventDefault();
-                        if (e.shiftKey) {
-                            api.openNewWindow();
-                        } else {
-                            pagesModel.addEmptyPage();
-                        }
-                    }
-                }
-                break;
-            case "KeyO":
-                {
-                    if (e.ctrlKey) {
-                        e.preventDefault();
-                        pagesModel.openFileWithDialog();
-                    }
-                }
-                break;
-            case "BracketRight":
-            case "BracketLeft":
-                {
-                    if (e.ctrlKey && e.altKey) {
-                        e.preventDefault();
-                        const direction = e.code === "BracketRight" ? 1 : -1;
-                        cycleTheme(direction);
-                        settings.set("theme", getCurrentThemeId());
-                    }
-                }
-                break;
-        }
-    };
-
     toggleMenuBar = () => {
         this.state.update((s) => {
             s.menuBarOpen = !s.menuBarOpen;
         });
     };
 
-    onContentDrop = (e: React.DragEvent<HTMLDivElement>) => {
-        const dataStr = e.dataTransfer.getData("application/js-notepad-tab");
-        const data = parseObject(dataStr);
-        if (
-            data &&
-            data.sourceWindowIndex !== undefined &&
-            data.sourceWindowIndex === appWindow.windowIndex &&
-            data.page?.id
-        ) {
-            const activePageId = pagesModel.activePage?.id;
-            if (activePageId) {
-                pagesModel.groupTabs(activePageId, data.page.id);
-            }
-        }
-    };
-
     resetZoom = () => {
         api.resetZoom();
-    };
-
-    handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
-        if (e.ctrlKey) {
-            e.preventDefault();
-            const delta = e.deltaY < 0 ? 0.5 : -0.5;
-            api.zoom(delta);
-        }
     };
 }
 
@@ -254,7 +160,7 @@ export function MainPage() {
     const state = model.state.use();
 
     return (
-        <AppRoot onWheel={model.handleWheel}>
+        <AppRoot>
             <div className="app-header">
                 <Button
                     onClick={model.toggleMenuBar}
@@ -302,7 +208,7 @@ export function MainPage() {
                     <CloseIcon />
                 </Button>
             </div>
-            <div className="app-content" onDrop={model.onContentDrop}>
+            <div className="app-content">
                 <div className="pages-container">
                     <Pages />
                 </div>

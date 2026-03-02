@@ -12,6 +12,8 @@ function RootComponent() {
                 app.init(),                  // init app version (IPC call)
             ]);
             await app.initServices();        // load interface wrappers (stores already cached)
+            await app.initPages();           // restore persisted pages
+            await app.initEvents();          // subscribe to all events (global, keyboard, IPC)
             setContent(<cont.default />);
         };
         bootstrap();

@@ -7,19 +7,16 @@ import { MainPage } from "./app/MainPage";
 import "./setup/configure-monaco";
 import "./editors/register-editors";
 import { GlobalStyles } from "./theme/GlobalStyles";
-import { EventHandler } from "./app/EventHandler";
 
 export default function AppContent() {
     return (
-        <EventHandler>
-            <DndProvider backend={HTML5Backend}>
-                <GlobalStyles />
-                <MainPage />
-                <Dialogs />
-                <AlertsBar />
-                <Poppers />
-            </DndProvider>
-        </EventHandler>
+        <DndProvider backend={HTML5Backend}>
+            <GlobalStyles />
+            <MainPage />
+            <Dialogs />
+            <AlertsBar />
+            <Poppers />
+        </DndProvider>
     );
 }
 

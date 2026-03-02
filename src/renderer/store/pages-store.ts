@@ -327,7 +327,6 @@ export class PagesModel extends TModel<OpenFilesState> {
     };
 
     init = async () => {
-        rendererEvents.eBeforeQuit.subscribe(this.onAppQuit);
         await this.restoreState();
         const fileToOpen = await api.getFileToOpen();
         if (fileToOpen) {
@@ -339,13 +338,8 @@ export class PagesModel extends TModel<OpenFilesState> {
         }
         this.checkEmptyPage();
 
-        rendererEvents.eOpenFile.subscribe(this.openFile);
-        rendererEvents.eOpenDiff.subscribe(this.openDiff);
-        rendererEvents.eShowPage.subscribe(this.showPage);
-        rendererEvents.eMovePageIn.subscribe(this.movePageIn);
-        rendererEvents.eMovePageOut.subscribe(this.movePageOut);
-        rendererEvents.eOpenUrl.subscribe(this.handleOpenUrl);
-        rendererEvents.eOpenExternalUrl.subscribe(this.handleExternalUrl);
+        // IPC event subscriptions are now handled by RendererEventsService (in app.initEvents())
+        // api.windowReady() is now signaled after all events are initialized
 
         setTimeout(() => {
             api.windowReady();

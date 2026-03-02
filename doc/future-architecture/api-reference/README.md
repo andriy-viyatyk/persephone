@@ -27,6 +27,7 @@ Each interface document contains:
 | [IPage](page.md) | `page` / `app.pages.active` | [page.md](page.md) | Planned |
 | [IUserInterface](ui.md) | `app.ui` | [ui.md](ui.md) | Implemented (Phase 3a) |
 | [IShell](shell.md) | `app.shell` | [shell.md](shell.md) | Implemented (Phase 3b) |
+| [IDownloads](downloads.md) | `app.downloads` | [downloads.md](downloads.md) | Implemented (Phase 3b) |
 
 ### Editor-Specific
 

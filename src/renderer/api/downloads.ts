@@ -4,6 +4,7 @@ import { api } from "../../ipc/renderer/api";
 import rendererEvents from "../../ipc/renderer/renderer-events";
 import { DownloadEntry } from "../../ipc/api-param-types";
 import { EventSubscription } from "../../ipc/api-types";
+import type { IDownloads } from "./types/downloads";
 
 const defaultDownloadsState = {
     downloads: [] as DownloadEntry[],
@@ -11,7 +12,12 @@ const defaultDownloadsState = {
 
 type DownloadsState = typeof defaultDownloadsState;
 
-class DownloadsStore extends TModel<DownloadsState> {
+/**
+ * Downloads — Global download tracking service.
+ * Manages download state synchronized from main process.
+ * Implements IDownloads interface.
+ */
+class Downloads extends TModel<DownloadsState> implements IDownloads {
     private subscriptions: EventSubscription[] = [];
 
     constructor() {
@@ -68,6 +74,10 @@ class DownloadsStore extends TModel<DownloadsState> {
         );
     }
 
+    get downloads(): DownloadEntry[] {
+        return this.state.get().downloads;
+    }
+
     get hasActiveDownloads(): boolean {
         return this.state.get().downloads.some((d) => d.status === "downloading");
     }
@@ -87,4 +97,4 @@ class DownloadsStore extends TModel<DownloadsState> {
     clearCompleted = () => api.clearCompletedDownloads();
 }
 
-export const downloadsStore = new DownloadsStore();
+export const downloads = new Downloads();

@@ -8,11 +8,15 @@ Current work in progress and planned tasks.
 
 ## In Progress
 
-(none)
+| ID | Title | Notes |
+|----|-------|-------|
+| US-049 | Phase 4a — Event Services Extraction | 🔄 Ready for implementation. Extract 5 event services (GlobalEvent, Keyboard, WindowState, DownloadTracker, RendererEvents). Delete EventHandler, simplify MainPage. Low-risk refactoring. See `/doc/future-architecture/8.app-pages.md` (Sections 3-5, 9-13). |
 
 ## Planned (Next)
 
-(none — check [migration README](../future-architecture/migration/README.md) for next phase)
+| ID | Title | Notes |
+|----|-------|-------|
+| US-050 | Phase 4b — Pages API (`app.pages` + `IPage`) | 📋 Awaiting US-049. Create 5 submodels + facade, implement IPageCollection interface, migrate consumers. Core refactoring. Depends on US-049 complete. Medium risk. See `/doc/future-architecture/8.app-pages.md` (Sections 1-2, 6-8, 14). |
 
 ## Recently Completed
 

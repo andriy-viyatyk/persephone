@@ -3,7 +3,7 @@ import color from "../../theme/color";
 import { Popper } from "../../components/overlay/Popper";
 import { Button } from "../../components/basic/Button";
 import { CloseIcon, FolderOpenIcon } from "../../theme/icons";
-import { downloadsStore } from "../../store/downloads-store";
+import { downloads } from "../../api/downloads";
 import { DownloadEntry } from "../../../ipc/api-param-types";
 
 function formatBytes(bytes: number): string {
@@ -110,8 +110,8 @@ interface BrowserDownloadsPopupProps {
 }
 
 export function BrowserDownloadsPopup({ anchorEl, onClose }: BrowserDownloadsPopupProps) {
-    const downloads = downloadsStore.state.use((s) => s.downloads);
-    const hasCompleted = downloads.some((d) => d.status !== "downloading");
+    const downloadsList = downloads.state.use((s) => s.downloads);
+    const hasCompleted = downloadsList.some((d) => d.status !== "downloading");
 
     return (
         <Popper
@@ -128,17 +128,17 @@ export function BrowserDownloadsPopup({ anchorEl, onClose }: BrowserDownloadsPop
                         <Button
                             size="small"
                             type="flat"
-                            onClick={downloadsStore.clearCompleted}
+                            onClick={downloads.clearCompleted}
                         >
                             Clear
                         </Button>
                     )}
                 </div>
                 <div className="downloads-list">
-                    {downloads.length === 0 ? (
+                    {downloadsList.length === 0 ? (
                         <div className="downloads-empty">No downloads</div>
                     ) : (
-                        downloads.map((dl) => (
+                        downloadsList.map((dl) => (
                             <DownloadItem key={dl.id} entry={dl} />
                         ))
                     )}
@@ -183,7 +183,7 @@ function DownloadItem({ entry }: { entry: DownloadEntry }) {
                     <Button
                         size="small"
                         type="flat"
-                        onClick={() => downloadsStore.cancelDownload(id)}
+                        onClick={() => downloads.cancelDownload(id)}
                     >
                         Cancel
                     </Button>
@@ -193,7 +193,7 @@ function DownloadItem({ entry }: { entry: DownloadEntry }) {
                         <Button
                             size="small"
                             type="flat"
-                            onClick={() => downloadsStore.openDownload(id)}
+                            onClick={() => downloads.openDownload(id)}
                         >
                             Open
                         </Button>
@@ -201,7 +201,7 @@ function DownloadItem({ entry }: { entry: DownloadEntry }) {
                             size="small"
                             type="icon"
                             title="Show in Folder"
-                            onClick={() => downloadsStore.showInFolder(id)}
+                            onClick={() => downloads.showInFolder(id)}
                         >
                             <FolderOpenIcon />
                         </Button>
@@ -212,7 +212,7 @@ function DownloadItem({ entry }: { entry: DownloadEntry }) {
                         size="small"
                         type="icon"
                         title="Dismiss"
-                        onClick={() => downloadsStore.clearCompleted()}
+                        onClick={() => downloads.clearCompleted()}
                     >
                         <CloseIcon />
                     </Button>
