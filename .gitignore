@@ -100,3 +100,6 @@ release/
 
 # Rust launcher build artifacts
 launcher/target/
+
+# Claude environment temporary files
+tmpclaude-*
