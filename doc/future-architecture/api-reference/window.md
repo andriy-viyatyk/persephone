@@ -193,15 +193,6 @@ if (paths) {
 
 ---
 
-## Planned Additions (Phase 4)
-
-The following methods will be added when `app.pages` is implemented:
-
-- Page-moving between windows (requires `app.pages` for page identity)
-- `showWindowPage(windowIndex, pageId)` — navigate to a specific page in another window
-
----
-
 ## Implementation Notes
 
 - All window actions are fire-and-forget IPC calls to the main process

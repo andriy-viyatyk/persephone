@@ -23,7 +23,7 @@ Each interface document contains:
 | [IRecentFiles](recent.md) | `app.recent` | [recent.md](recent.md) | Implemented (Phase 1) |
 | [IFileSystem](fs.md) | `app.fs` | [fs.md](fs.md) | Implemented (Phase 2) |
 | [IWindow](window.md) | `app.window` | [window.md](window.md) | Implemented (Phase 2) |
-| [IPageCollection](pages.md) | `app.pages` | [pages.md](pages.md) | Planned |
+| [IPageCollection](pages.md) | `app.pages` | [pages.md](pages.md) | Implemented (Phase 4) |
 | [IPage](page.md) | `page` / `app.pages.active` | [page.md](page.md) | Planned |
 | [IUserInterface](ui.md) | `app.ui` | [ui.md](ui.md) | Implemented (Phase 3a) |
 | [IShell](shell.md) | `app.shell` | [shell.md](shell.md) | Implemented (Phase 3b) |

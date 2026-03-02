@@ -32,6 +32,26 @@ export class PageModel<T extends IPage = IPage, R = any> extends TDialogModel<T,
         return this.state.get().type;
     }
 
+    get title() {
+        return this.state.get().title;
+    }
+
+    get modified() {
+        return this.state.get().modified;
+    }
+
+    get pinned() {
+        return this.state.get().pinned;
+    }
+
+    get filePath() {
+        return this.state.get().filePath;
+    }
+
+    get language() {
+        return this.state.get().language;
+    }
+
     async confirmRelease(): Promise<boolean> {
         return true;
     }
