@@ -1,16 +1,17 @@
 import { debounce } from "../../../shared/utils";
-import { TComponentModel } from "../../core/state/model";
+import { ContentViewModel } from "../base/ContentViewModel";
+import { IContentHost } from "../base/IContentHost";
 import { CategoryTreeItem, DragItem } from "../../components/TreeView";
 import RenderGridModel from "../../components/virtualization/RenderGrid/RenderGridModel";
 
 import { splitWithSeparators } from "../../core/utils/utils";
 import { getHostname } from "./favicon-cache";
-import { LinkItem, LinkEditorData, LinkEditorProps, LinkViewMode, LINK_DRAG, LINK_CATEGORY_DRAG } from "./linkTypes";
+import { LinkItem, LinkEditorData, LinkViewMode, LINK_DRAG, LINK_CATEGORY_DRAG } from "./linkTypes";
 import { showEditLinkDialog } from "./EditLinkDialog";
 import { ui } from "../../api/ui";
 import { settings } from "../../api/settings";
-import { fs } from "../../api/fs";
 import { shell } from "../../api/shell";
+import type { TextFileModel } from "../text/TextPageModel";
 
 // =============================================================================
 // State
@@ -50,53 +51,80 @@ export const defaultLinkEditorState = {
 export type LinkEditorState = typeof defaultLinkEditorState;
 
 // =============================================================================
-// Model
+// View Model
 // =============================================================================
 
-export class LinkEditorModel extends TComponentModel<
-    LinkEditorState,
-    LinkEditorProps
-> {
+export class LinkViewModel extends ContentViewModel<LinkEditorState> {
     private lastSerializedData: LinkEditorData | null = null;
-    private stateChangeSubscription: (() => void) | undefined;
+    /** Flag to skip reloading content that we just serialized ourselves */
     private skipNextContentUpdate = false;
     private selectionRestored = false;
-    gridModel: RenderGridModel | null = null;
-    containerElement: HTMLElement | null = null;
+    /** Previous filter state for incremental search optimization */
     private lastFilterState = { searchText: "", selectedCategory: "", selectedTag: "", selectedHostname: "", expandedPanel: "" };
     private static cacheName = "link-editor";
+
+    gridModel: RenderGridModel | null = null;
+    containerElement: HTMLElement | null = null;
+
+    constructor(host: IContentHost) {
+        super(host, defaultLinkEditorState);
+    }
+
+    /** Access the underlying TextFileModel (for script context). */
+    get pageModel(): TextFileModel {
+        return this.host as unknown as TextFileModel;
+    }
 
     // =========================================================================
     // Lifecycle
     // =========================================================================
 
-    init() {
-        this.stateChangeSubscription = this.state.subscribe(() => {
+    protected onInit(): void {
+        this.addSubscription(this.state.subscribe(() => {
             this.onDataChangedDebounced();
-        });
-        this.initBrowserSelection();
+        }));
 
-        this.effect(() => {
-            this.updateContent(this.props.model.state.get().content || "");
-        }, () => [this.props.model.state.get().content]);
-
-        this.effect(() => {
-            this.gridModel?.update({ all: true });
-        }, () => [this.state.get().filteredLinks]);
+        const content = this.host.state.get().content || "";
+        this.loadData(content);
     }
 
-    dispose() {
-        this.stateChangeSubscription?.();
+    protected onContentChanged(content: string): void {
+        if (this.skipNextContentUpdate) {
+            this.skipNextContentUpdate = false;
+            return;
+        }
+        this.loadData(content);
+    }
+
+    protected onDispose(): void {
+        // Flush pending debounced save
+        this.onDataChanged();
         this.containerElement = null;
     }
+
+    // =========================================================================
+    // Serialization: state → file content
+    // =========================================================================
+
+    private onDataChanged = () => {
+        const { data, error } = this.state.get();
+        if (error) return;
+        if (data !== this.lastSerializedData) {
+            this.lastSerializedData = data;
+            this.skipNextContentUpdate = true;
+            const content = JSON.stringify(data, null, 4);
+            this.host.changeContent(content, true);
+        }
+    };
+
+    private onDataChangedDebounced = debounce(this.onDataChanged, 300);
 
     // =========================================================================
     // Selection state cache
     // =========================================================================
 
     private restoreSelectionState = async () => {
-        const id = this.props.model.state.get().id;
-        const data = await fs.getCacheFile(id, LinkEditorModel.cacheName);
+        const data = await this.host.stateStorage.getState(this.host.id, LinkViewModel.cacheName);
         if (!data) return;
         try {
             const saved = JSON.parse(data);
@@ -114,41 +142,15 @@ export class LinkEditorModel extends TComponentModel<
 
     private saveSelectionState = () => {
         const { expandedPanel, selectedCategory, selectedTag, selectedHostname } = this.state.get();
-        const id = this.props.model.state.get().id;
         const data = JSON.stringify({ expandedPanel, selectedCategory, selectedTag, selectedHostname });
-        fs.saveCacheFile(id, data, LinkEditorModel.cacheName);
+        this.host.stateStorage.setState(this.host.id, LinkViewModel.cacheName, data);
     };
 
     private saveSelectionStateDebounced = debounce(this.saveSelectionState, 300);
 
     // =========================================================================
-    // Sync: state → file content
+    // Data Loading
     // =========================================================================
-
-    private onDataChanged = () => {
-        const { data, error } = this.state.get();
-        if (error) return;
-        if (data !== this.lastSerializedData) {
-            this.lastSerializedData = data;
-            this.skipNextContentUpdate = true;
-            const content = JSON.stringify(data, null, 4);
-            this.props.model.changeContent(content, true);
-        }
-    };
-
-    private onDataChangedDebounced = debounce(this.onDataChanged, 300);
-
-    // =========================================================================
-    // Sync: file content → state
-    // =========================================================================
-
-    updateContent = (content: string) => {
-        if (this.skipNextContentUpdate) {
-            this.skipNextContentUpdate = false;
-            return;
-        }
-        this.loadData(content);
-    };
 
     private loadData = (content: string) => {
         try {
@@ -728,8 +730,12 @@ export class LinkEditorModel extends TComponentModel<
     // Browser Selection
     // =========================================================================
 
-    private initBrowserSelection = () => {
-        if (this.props.swapLayout) return; // keep "" for BookmarksDrawer monkey-patching
+    /**
+     * Initialize browser selection based on settings.
+     * Called by the component (not in onInit) — BookmarksDrawer skips this
+     * to keep selectedBrowser as "" for its own open-link handling.
+     */
+    initBrowserSelection = () => {
         const behavior = settings.get("link-open-behavior");
         if (behavior === "default-browser") {
             this.state.update((s) => { s.selectedBrowser = "os-default"; });
@@ -772,4 +778,12 @@ export class LinkEditorModel extends TComponentModel<
         // "internal-default" — pass empty profileName to match only default-profile tabs
         pagesModel.openUrlInBrowserTab(url, { profileName: "" });
     };
+}
+
+// =============================================================================
+// Factory
+// =============================================================================
+
+export function createLinkViewModel(host: IContentHost): LinkViewModel {
+    return new LinkViewModel(host);
 }

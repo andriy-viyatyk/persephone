@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import clsx from "clsx";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { Breadcrumb } from "../../components/basic/Breadcrumb";
 import { Button } from "../../components/basic/Button";
@@ -10,7 +10,6 @@ import { HighlightedTextProvider } from "../../components/basic/useHighlightedTe
 import { CollapsiblePanel, CollapsiblePanelStack } from "../../components/layout/CollapsiblePanelStack";
 import { Splitter } from "../../components/layout/Splitter";
 import { CategoryTree, CategoryTreeItem } from "../../components/TreeView";
-import { useComponentModel } from "../../core/state/model";
 import { splitWithSeparators } from "../../core/utils/utils";
 import { showAppPopupMenu } from "../../ui/dialogs";
 import color from "../../theme/color";
@@ -21,12 +20,13 @@ import {
 import { IncognitoIcon } from "../../theme/language-icons";
 import { DEFAULT_BROWSER_COLOR } from "../../theme/palette-colors";
 import { settings, BrowserProfile } from "../../api/settings";
-import { defaultLinkEditorState, LinkEditorModel } from "./LinkEditorModel";
+import { defaultLinkEditorState, LinkViewModel, LinkEditorState } from "./LinkViewModel";
 import { LinkEditorProps, LinkViewMode, LINK_DRAG, LINK_CATEGORY_DRAG } from "./linkTypes";
 import { LinkItemList } from "./LinkItemList";
 import { LinkItemTiles } from "./LinkItemTiles";
 import { PinnedLinksPanel } from "./PinnedLinksPanel";
 import { EditorError } from "../base/EditorError";
+import { useContentViewModel } from "../base/useContentViewModel";
 
 // =============================================================================
 // Styles
@@ -158,22 +158,41 @@ function getBrowserSelectorLabel(selectedBrowser: string): string {
 }
 
 // =============================================================================
+// useSyncExternalStore helpers
+// =============================================================================
+
+const noopUnsubscribe = () => () => {};
+const getDefaultState = () => defaultLinkEditorState;
+
+// =============================================================================
 // Component
 // =============================================================================
 
 export function LinkEditor(props: LinkEditorProps) {
     const { model, swapLayout } = props;
-    const pageModel = useComponentModel(
-        props,
-        LinkEditorModel,
-        defaultLinkEditorState,
+    const vm = useContentViewModel<LinkViewModel>(model, "link-view");
+
+    const pageState: LinkEditorState = useSyncExternalStore(
+        vm ? (cb) => vm.state.subscribe(cb) : noopUnsubscribe,
+        vm ? () => vm.state.get() : getDefaultState,
     );
-    model.state.use(); // Subscribe to file content changes for effect re-evaluation
-    const pageState = pageModel.state.use();
+
+    // Initialize browser selection for standalone mode (BookmarksDrawer skips this)
+    useEffect(() => {
+        if (vm && !swapLayout) {
+            vm.initBrowserSelection();
+        }
+    }, [vm, swapLayout]);
+
+    // Update grid when filtered links change (React rendering concern)
+    useEffect(() => {
+        vm?.gridModel?.update({ all: true });
+    }, [vm, pageState.filteredLinks]);
+
     const allLinks = pageState.data.links;
     const links = pageState.filteredLinks;
-    const viewMode = pageModel.getViewMode();
-    const pinnedLinks = pageModel.getPinnedLinks();
+    const viewMode = vm?.getViewMode() ?? "list";
+    const pinnedLinks = vm?.getPinnedLinks() ?? [];
     const pinnedLinkIds = useMemo(
         () => new Set(pageState.data.state.pinnedLinks ?? []),
         [pageState.data.state.pinnedLinks],
@@ -183,53 +202,56 @@ export function LinkEditor(props: LinkEditorProps) {
     const browserProfiles = settings.use("browser-profiles");
 
     const showBrowserSelectorMenu = useCallback((e: React.MouseEvent) => {
+        if (!vm) return;
         const rect = e.currentTarget.getBoundingClientRect();
         const items = [
             {
                 label: "OS Default Browser",
                 icon: <OpenFileIcon />,
                 selected: pageState.selectedBrowser === "os-default",
-                onClick: () => pageModel.setSelectedBrowser("os-default"),
+                onClick: () => vm.setSelectedBrowser("os-default"),
             },
             {
                 label: "Internal Browser",
                 icon: <GlobeIcon color={DEFAULT_BROWSER_COLOR} />,
                 selected: pageState.selectedBrowser === "internal-default",
-                onClick: () => pageModel.setSelectedBrowser("internal-default"),
+                onClick: () => vm.setSelectedBrowser("internal-default"),
                 startGroup: true,
             },
             ...browserProfiles.map((profile) => ({
                 label: profile.name,
                 icon: <GlobeIcon color={profile.color} />,
                 selected: pageState.selectedBrowser === `profile:${profile.name}`,
-                onClick: () => pageModel.setSelectedBrowser(`profile:${profile.name}`),
+                onClick: () => vm.setSelectedBrowser(`profile:${profile.name}`),
             })),
             {
                 label: "Incognito",
                 icon: <IncognitoIcon />,
                 selected: pageState.selectedBrowser === "incognito",
-                onClick: () => pageModel.setSelectedBrowser("incognito"),
+                onClick: () => vm.setSelectedBrowser("incognito"),
                 startGroup: true,
             },
         ];
         showAppPopupMenu(rect.left, rect.bottom + 2, items);
-    }, [pageState.selectedBrowser, browserProfiles, pageModel]);
+    }, [vm, pageState.selectedBrowser, browserProfiles]);
 
     const showViewModeMenu = useCallback((e: React.MouseEvent) => {
+        if (!vm) return;
         const rect = e.currentTarget.getBoundingClientRect();
         showAppPopupMenu(rect.left, rect.bottom + 2, VIEW_MODE_ORDER.map((mode) => ({
             label: VIEW_MODE_LABELS[mode],
             icon: VIEW_MODE_ICONS[mode],
             selected: mode === viewMode,
-            onClick: () => pageModel.setViewMode(mode),
+            onClick: () => vm.setViewMode(mode),
         })));
-    }, [viewMode, pageModel]);
+    }, [vm, viewMode]);
 
     // Category tree label with link count
     const getTreeItemLabel = useCallback(
         (item: CategoryTreeItem) => {
+            if (!vm) return null;
             const name = splitWithSeparators(item.category, "/\\").pop() || "";
-            const size = pageModel.getCategoryCount(item.category);
+            const size = vm.getCategoryCount(item.category);
             return (
                 <>
                     <span className="category-label-name">{name || "All"}</span>
@@ -239,8 +261,10 @@ export function LinkEditor(props: LinkEditorProps) {
                 </>
             );
         },
-        [pageModel, pageState.categoriesSize],
+        [vm, pageState.categoriesSize],
     );
+
+    if (!vm) return null;
 
     if (pageState.error) {
         return (
@@ -258,7 +282,7 @@ export function LinkEditor(props: LinkEditorProps) {
                         <Breadcrumb
                             rootLabel="Tags"
                             value={pageState.selectedTag}
-                            onChange={pageModel.setSelectedTag}
+                            onChange={vm.setSelectedTag}
                             separators=":"
                             trailingParentSeparator
                         />
@@ -266,13 +290,13 @@ export function LinkEditor(props: LinkEditorProps) {
                         <Breadcrumb
                             rootLabel="Hostnames"
                             value={pageState.selectedHostname}
-                            onChange={pageModel.setSelectedHostname}
+                            onChange={vm.setSelectedHostname}
                         />
                     ) : (
                         <Breadcrumb
                             rootLabel="Categories"
                             value={pageState.selectedCategory}
-                            onChange={pageModel.setSelectedCategory}
+                            onChange={vm.setSelectedCategory}
                         />
                     ),
                     model.editorToolbarRefFirst,
@@ -296,7 +320,7 @@ export function LinkEditor(props: LinkEditorProps) {
                             size="small"
                             type="raised"
                             title="Add Link"
-                            onClick={() => pageModel.showLinkDialog()}
+                            onClick={() => vm.showLinkDialog()}
                             style={{ borderColor: color.border.active }}
                         >
                             <PlusIcon /> Add Link&nbsp;
@@ -311,7 +335,7 @@ export function LinkEditor(props: LinkEditorProps) {
                         </Button>
                         <SearchField
                             value={pageState.searchText}
-                            onChange={pageModel.setSearchText}
+                            onChange={vm.setSearchText}
                             placeholder="Search..."
                             width={180}
                             endButtons={
@@ -321,7 +345,7 @@ export function LinkEditor(props: LinkEditorProps) {
                                         size="small"
                                         type="icon"
                                         title="Clear search"
-                                        onClick={pageModel.clearSearch}
+                                        onClick={vm.clearSearch}
                                     >
                                         <CloseIcon />
                                     </Button>,
@@ -331,20 +355,20 @@ export function LinkEditor(props: LinkEditorProps) {
                     </>,
                     model.editorToolbarRefLast,
                 )}
-            <LinkEditorRoot ref={(el) => { pageModel.containerElement = el; }} tabIndex={-1} className={clsx({ "swap-layout": swapLayout })}>
+            <LinkEditorRoot ref={(el) => { vm.containerElement = el; }} tabIndex={-1} className={clsx({ "swap-layout": swapLayout })}>
                 <CollapsiblePanelStack
                     className="left-panel"
                     style={{ width: pageState.leftPanelWidth }}
                     activePanel={pageState.expandedPanel}
-                    setActivePanel={pageModel.setExpandedPanel}
+                    setActivePanel={vm.setExpandedPanel}
                 >
                     <CollapsiblePanel id="tags" title="Tags">
                         <div className="tags-list-container">
                             <TagsList
                                 tags={pageState.tags}
                                 value={pageState.selectedTag}
-                                onChange={pageModel.setSelectedTag}
-                                getCount={pageModel.getTagCount}
+                                onChange={vm.setSelectedTag}
+                                getCount={vm.getTagCount}
                             />
                         </div>
                     </CollapsiblePanel>
@@ -353,8 +377,8 @@ export function LinkEditor(props: LinkEditorProps) {
                             <TagsList
                                 tags={pageState.hostnames}
                                 value={pageState.selectedHostname}
-                                onChange={pageModel.setSelectedHostname}
-                                getCount={pageModel.getHostnameCount}
+                                onChange={vm.setSelectedHostname}
+                                getCount={vm.getHostnameCount}
                                 separator={"\0"}
                                 rootLabel="All"
                             />
@@ -367,14 +391,14 @@ export function LinkEditor(props: LinkEditorProps) {
                                 separators="/\"
                                 rootLabel="All"
                                 rootCollapsible={false}
-                                onItemClick={pageModel.categoryItemClick}
-                                getSelected={pageModel.getCategoryItemSelected}
+                                onItemClick={vm.categoryItemClick}
+                                getSelected={vm.getCategoryItemSelected}
                                 getLabel={getTreeItemLabel}
                                 refreshKey={pageState.selectedCategory}
                                 dropTypes={[LINK_DRAG, LINK_CATEGORY_DRAG]}
-                                onDrop={pageModel.categoryDrop}
+                                onDrop={vm.categoryDrop}
                                 dragType={LINK_CATEGORY_DRAG}
-                                getDragItem={pageModel.getCategoryDragItem}
+                                getDragItem={vm.getCategoryDragItem}
                             />
                         </div>
                     </CollapsiblePanel>
@@ -382,7 +406,7 @@ export function LinkEditor(props: LinkEditorProps) {
                 <Splitter
                     type="vertical"
                     initialWidth={pageState.leftPanelWidth}
-                    onChangeWidth={pageModel.setLeftPanelWidth}
+                    onChangeWidth={vm.setLeftPanelWidth}
                     borderSized={swapLayout ? "left" : "right"}
                 />
                 <HighlightedTextProvider value={pageState.searchText}>
@@ -402,14 +426,14 @@ export function LinkEditor(props: LinkEditorProps) {
                         ) : viewMode === "list" ? (
                             <LinkItemList
                                 links={links}
-                                model={pageModel}
+                                model={vm}
                                 selectedLinkId={pageState.selectedLinkId}
                                 pinnedLinkIds={pinnedLinkIds}
                             />
                         ) : (
                             <LinkItemTiles
                                 links={links}
-                                model={pageModel}
+                                model={vm}
                                 viewMode={viewMode}
                                 selectedLinkId={pageState.selectedLinkId}
                                 pinnedLinkIds={pinnedLinkIds}
@@ -422,12 +446,12 @@ export function LinkEditor(props: LinkEditorProps) {
                         <Splitter
                             type="vertical"
                             initialWidth={pinnedPanelWidth}
-                            onChangeWidth={pageModel.setPinnedPanelWidth}
+                            onChangeWidth={vm.setPinnedPanelWidth}
                             borderSized={swapLayout ? "right" : "left"}
                         />
                         <PinnedLinksPanel
                             pinnedLinks={pinnedLinks}
-                            model={pageModel}
+                            model={vm}
                             style={{ width: pinnedPanelWidth }}
                         />
                     </>

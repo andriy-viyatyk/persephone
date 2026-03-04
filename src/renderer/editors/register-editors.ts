@@ -346,9 +346,13 @@ editorRegistry.register({
         return 10;
     },
     loadModule: async () => {
-        const module = await import("./link-editor/LinkEditor");
+        const [module, { createLinkViewModel }] = await Promise.all([
+            import("./link-editor/LinkEditor"),
+            import("./link-editor/LinkViewModel"),
+        ]);
         return {
             Editor: module.LinkEditor,
+            createViewModel: createLinkViewModel,
             newPageModel: textEditorModule.newPageModel,
             newEmptyPageModel: textEditorModule.newEmptyPageModel,
             newPageModelFromState: textEditorModule.newPageModelFromState,

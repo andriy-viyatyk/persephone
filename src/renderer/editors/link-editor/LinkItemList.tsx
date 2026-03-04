@@ -10,7 +10,7 @@ import color from "../../theme/color";
 import { CopyIcon, DeleteIcon, GlobeIcon, OpenFileIcon, OpenLinkIcon, PinFilledIcon, PinIcon, RenameIcon } from "../../theme/icons";
 import { appendLinkOpenMenuItems } from "../../store/link-open-menu";
 import { LinkItem, LINK_DRAG } from "./linkTypes";
-import { LinkEditorModel } from "./LinkEditorModel";
+import { LinkViewModel } from "./LinkViewModel";
 import { getHostname, getFaviconPathSync, useFavicons, requestFaviconSave } from "./favicon-cache";
 
 const { clipboard } = require("electron");
@@ -142,7 +142,7 @@ const LinkItemListRoot = styled(RenderGrid)({
 
 interface LinkRowProps {
     link: LinkItem;
-    model: LinkEditorModel;
+    model: LinkViewModel;
     isSelected: boolean;
     isPinned: boolean;
     searchText: string;
@@ -237,7 +237,7 @@ function LinkRow({ link, model, isSelected, isPinned, searchText, onLinkClick, o
 
 interface LinkItemListProps {
     links: LinkItem[];
-    model: LinkEditorModel;
+    model: LinkViewModel;
     selectedLinkId: string;
     pinnedLinkIds: Set<string>;
 }

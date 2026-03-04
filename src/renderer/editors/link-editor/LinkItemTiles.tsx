@@ -8,7 +8,7 @@ import color from "../../theme/color";
 import { CopyIcon, DeleteIcon, GlobeIcon, OpenFileIcon, OpenLinkIcon, PinFilledIcon, PinIcon, RenameIcon } from "../../theme/icons";
 import { appendLinkOpenMenuItems } from "../../store/link-open-menu";
 import { LinkItem, LinkViewMode, LINK_DRAG } from "./linkTypes";
-import { LinkEditorModel } from "./LinkEditorModel";
+import { LinkViewModel } from "./LinkViewModel";
 import { getHostname, getFaviconPathSync, useFavicons, requestFaviconSave } from "./favicon-cache";
 
 const { clipboard } = require("electron");
@@ -180,7 +180,7 @@ const LinkItemTilesRoot = styled(RenderGrid)({
 
 interface TileCellProps {
     link: LinkItem;
-    model: LinkEditorModel;
+    model: LinkViewModel;
     isSelected: boolean;
     isPinned: boolean;
     imageHeight: number;
@@ -273,7 +273,7 @@ function TileCell({ link, model, isSelected, isPinned, imageHeight, onOpenLink, 
 
 interface LinkItemTilesProps {
     links: LinkItem[];
-    model: LinkEditorModel;
+    model: LinkViewModel;
     viewMode: Exclude<LinkViewMode, "list">;
     selectedLinkId: string;
     pinnedLinkIds: Set<string>;

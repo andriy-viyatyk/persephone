@@ -4,7 +4,7 @@ import { useDrag, useDrop } from "react-dnd";
 import color from "../../theme/color";
 import { GlobeIcon, OpenLinkIcon, PinFilledIcon } from "../../theme/icons";
 import { LinkItem, LINK_PIN_DRAG } from "./linkTypes";
-import { LinkEditorModel } from "./LinkEditorModel";
+import { LinkViewModel } from "./LinkViewModel";
 import { getHostname, getFaviconPathSync, requestFaviconSave } from "./favicon-cache";
 
 // =============================================================================
@@ -131,7 +131,7 @@ const PinnedLinksPanelRoot = styled.div({
 interface PinnedItemProps {
     link: LinkItem;
     index: number;
-    model: LinkEditorModel;
+    model: LinkViewModel;
     onOpenLink: (link: LinkItem) => void;
 }
 
@@ -214,7 +214,7 @@ function PinnedItem({ link, index, model, onOpenLink }: PinnedItemProps) {
 
 interface PinnedLinksPanelProps {
     pinnedLinks: LinkItem[];
-    model: LinkEditorModel;
+    model: LinkViewModel;
     style?: React.CSSProperties;
 }
 

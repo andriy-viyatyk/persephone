@@ -12,7 +12,7 @@ Current work in progress and planned tasks.
 
 ## Planned (Next)
 
-(none — check [migration README](../future-architecture/migration/README.md) for next task)
+(none — next: Task 8 Pure renderers in content view models migration)
 
 ## Completed
 
