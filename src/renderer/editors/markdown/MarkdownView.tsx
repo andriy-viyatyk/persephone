@@ -6,12 +6,10 @@ import { TextFileModel } from "../text";
 import color from "../../theme/color";
 import { CheckedIcon, CompactViewIcon, CopyIcon, NormalViewIcon, UncheckedIcon } from "../../theme/icons";
 import { appendLinkOpenMenuItems } from "../../store/link-open-menu";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { Minimap } from "../../components/layout/Minimap";
-import { TComponentModel, useComponentModel } from "../../core/state/model";
-import { PageModel, useEditorConfig } from "../base";
-import { pagesModel } from "../../api/pages";
+import { useEditorConfig } from "../base";
 import { createRehypeHighlight } from "./rehypeHighlight";
 import { CodeBlock, createPreBlock } from "./CodeBlock";
 import { isCurrentThemeDark } from "../../theme/themes";
@@ -19,6 +17,8 @@ import { settings } from "../../api/settings";
 import { resolveRelatedLink } from "../../core/utils/path-utils";
 import { Button } from "../../components/basic/Button";
 import { MarkdownSearchBar } from "./MarkdownSearchBar";
+import { MarkdownViewModel, MarkdownViewState, defaultMarkdownViewState } from "./MarkdownViewModel";
+import { useContentViewModel } from "../base/useContentViewModel";
 
 const MdViewRoot = styled.div({
     flex: "1 1 auto",
@@ -381,187 +381,17 @@ export interface MarkdownViewProps {
     model: TextFileModel;
 }
 
-const defaultMarkdownViewState = {
-    container: null as HTMLDivElement | null,
-    compactMode: false,
-    searchVisible: false,
-    searchText: "",
-    currentMatchIndex: 0,
-    totalMatches: 0,
-};
+const noopUnsubscribe = () => () => {};
+const getDefaultState = () => defaultMarkdownViewState;
 
-type MarkdownViewState = typeof defaultMarkdownViewState;
-
-class MarkdownViewModel extends TComponentModel<MarkdownViewState, MarkdownViewProps> {
-    containerSrollTop = 0;
-
-    init() {
-        this.effect(() => {
-            const sub = pagesModel.onFocus.subscribe(this.pageFocused);
-            return () => sub.unsubscribe();
-        });
-
-        this.effect(() => {
-            const { searchVisible, searchText } = this.state.get();
-            if (searchVisible && searchText) {
-                const timer = setTimeout(() => this.updateMatchNavigation(), 0);
-                return () => clearTimeout(timer);
-            }
-        }, () => [this.state.get().searchText, this.state.get().searchVisible, this.props.model.state.get().content]);
-    }
-
-    setContainer = (el: HTMLDivElement | null) => {
-        this.state.update((s) => {
-            s.container = el;
-        });
-    };
-
-    pageFocused = (page?: PageModel) => {
-        if (
-            page === this.props.model ||
-            pagesModel.activePage === this.props.model
-        ) {
-            Promise.resolve().then(() => {
-                const container = this.state.get().container;
-                if (container) container.scrollTop = this.containerSrollTop;
-            });
-        }
-    };
-
-    containerScroll = (e: React.UIEvent<HTMLDivElement>) => {
-        this.containerSrollTop = e.currentTarget?.scrollTop ?? 0;
-    };
-
-    toggleCompact = () => {
-        this.state.update((s) => {
-            s.compactMode = !s.compactMode;
-        });
-    };
-
-    // --- Search ---
-
-    openSearch = () => {
-        this.state.update((s) => {
-            s.searchVisible = true;
-        });
-    };
-
-    closeSearch = () => {
-        this.state.update((s) => {
-            s.searchVisible = false;
-            s.searchText = "";
-            s.currentMatchIndex = 0;
-            s.totalMatches = 0;
-        });
-        this.clearActiveMatchClass();
-    };
-
-    setSearchText = (text: string) => {
-        this.state.update((s) => {
-            s.searchText = text;
-            s.currentMatchIndex = 0;
-        });
-    };
-
-    nextMatch = () => {
-        const { totalMatches, currentMatchIndex } = this.state.get();
-        if (totalMatches === 0) return;
-        const newIndex = (currentMatchIndex + 1) % totalMatches;
-        this.state.update((s) => {
-            s.currentMatchIndex = newIndex;
-        });
-        this.navigateToMatch(newIndex);
-    };
-
-    prevMatch = () => {
-        const { totalMatches, currentMatchIndex } = this.state.get();
-        if (totalMatches === 0) return;
-        const newIndex = (currentMatchIndex - 1 + totalMatches) % totalMatches;
-        this.state.update((s) => {
-            s.currentMatchIndex = newIndex;
-        });
-        this.navigateToMatch(newIndex);
-    };
-
-    private navigateToMatch(index: number) {
-        const container = this.state.get().container;
-        if (!container) return;
-        const spans = container.querySelectorAll(".highlighted-text");
-        this.applyActiveMatchClass(spans, index);
-        this.scrollToActiveMatch();
-    }
-
-    /** Called after render to update match count and highlight the active match */
-    updateMatchNavigation = () => {
-        const { container, searchText, searchVisible } = this.state.get();
-        if (!container || !searchText || !searchVisible) {
-            if (this.state.get().totalMatches !== 0) {
-                this.state.update((s) => { s.totalMatches = 0; });
-            }
-            return;
-        }
-
-        const spans = container.querySelectorAll(".highlighted-text");
-        const total = spans.length;
-        const { totalMatches, currentMatchIndex } = this.state.get();
-
-        // Clamp index if matches changed
-        let index = currentMatchIndex;
-        if (total > 0 && index >= total) {
-            index = 0;
-        }
-
-        if (total !== totalMatches || index !== currentMatchIndex) {
-            this.state.update((s) => {
-                s.totalMatches = total;
-                s.currentMatchIndex = index;
-            });
-        }
-
-        this.applyActiveMatchClass(spans, index);
-        if (total > 0) {
-            this.scrollToActiveMatch();
-        }
-    };
-
-    private clearActiveMatchClass() {
-        const container = this.state.get().container;
-        if (!container) return;
-        const active = container.querySelector(".highlighted-text-active");
-        if (active) active.classList.remove("highlighted-text-active");
-    }
-
-    private applyActiveMatchClass(spans: NodeListOf<Element>, index: number) {
-        // Remove old active class
-        const container = this.state.get().container;
-        if (!container) return;
-        const oldActive = container.querySelector(".highlighted-text-active");
-        if (oldActive) oldActive.classList.remove("highlighted-text-active");
-
-        // Apply to current
-        if (spans.length > 0 && index < spans.length) {
-            spans[index].classList.add("highlighted-text-active");
-        }
-    }
-
-    private scrollToActiveMatch() {
-        // Use microtask so the DOM class is applied first
-        Promise.resolve().then(() => {
-            const container = this.state.get().container;
-            if (!container) return;
-            const active = container.querySelector(".highlighted-text-active");
-            if (active) {
-                active.scrollIntoView({ block: "center", behavior: "smooth" });
-            }
-        });
-    }
-}
-
-export function MarkdownView(props: MarkdownViewProps) {
-    const { model } = props;
+export function MarkdownView({ model }: MarkdownViewProps) {
+    const vm = useContentViewModel<MarkdownViewModel>(model, "md-view");
     const editorConfig = useEditorConfig();
-    const pageModel = useComponentModel(props, MarkdownViewModel, defaultMarkdownViewState);
-    const pageState = pageModel.state.use();
+
+    const pageState: MarkdownViewState = useSyncExternalStore(
+        vm ? (cb) => vm.state.subscribe(cb) : noopUnsubscribe,
+        vm ? () => vm.state.get() : getDefaultState,
+    );
     const { content, filePath } = model.state.use((s) => ({
         content: s.content,
         filePath: s.filePath,
@@ -595,18 +425,18 @@ export function MarkdownView(props: MarkdownViewProps) {
     const onKeyDown = useCallback((e: React.KeyboardEvent) => {
         if (e.key === "f" && (e.ctrlKey || e.metaKey)) {
             e.preventDefault();
-            pageModel.openSearch();
+            vm.openSearch();
         } else if (e.key === "Escape" && pageState.searchVisible) {
             e.preventDefault();
-            pageModel.closeSearch();
+            vm.closeSearch();
         } else if (e.key === "F3" && e.shiftKey) {
             e.preventDefault();
-            pageModel.prevMatch();
+            vm.prevMatch();
         } else if (e.key === "F3") {
             e.preventDefault();
-            pageModel.nextMatch();
+            vm.nextMatch();
         }
-    }, [pageState.searchVisible]);
+    }, [vm, pageState.searchVisible]);
 
     const onContextMenu = useCallback((e: React.MouseEvent) => {
         const anchor = (e.target as HTMLElement).closest("a");
@@ -640,6 +470,8 @@ export function MarkdownView(props: MarkdownViewProps) {
     // Only show own search bar when not embedded with external highlight
     const showSearchBar = pageState.searchVisible && !editorConfig.highlightText;
 
+    if (!vm) return null;
+
     return (
         <>
             {Boolean(model.editorToolbarRefLast) &&
@@ -648,7 +480,7 @@ export function MarkdownView(props: MarkdownViewProps) {
                         size="small"
                         type="icon"
                         title={pageState.compactMode ? "Normal View" : "Compact View"}
-                        onClick={pageModel.toggleCompact}
+                        onClick={vm.toggleCompact}
                     >
                         {pageState.compactMode ? <NormalViewIcon /> : <CompactViewIcon />}
                     </Button>,
@@ -666,16 +498,16 @@ export function MarkdownView(props: MarkdownViewProps) {
                         searchText={pageState.searchText}
                         currentMatch={pageState.currentMatchIndex}
                         totalMatches={pageState.totalMatches}
-                        onSearchTextChange={pageModel.setSearchText}
-                        onNext={pageModel.nextMatch}
-                        onPrev={pageModel.prevMatch}
-                        onClose={pageModel.closeSearch}
+                        onSearchTextChange={vm.setSearchText}
+                        onNext={vm.nextMatch}
+                        onPrev={vm.prevMatch}
+                        onClose={vm.closeSearch}
                     />
                 )}
                 <div
                     className="md-scroll-container"
-                    ref={pageModel.setContainer}
-                    onScroll={pageModel.containerScroll}
+                    ref={vm.setContainer}
+                    onScroll={vm.containerScroll}
                 >
                     <ReactMarkdown
                         remarkPlugins={[remarkGfm]}

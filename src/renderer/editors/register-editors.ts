@@ -151,9 +151,13 @@ editorRegistry.register({
         return 10;
     },
     loadModule: async () => {
-        const module = await import("./markdown/MarkdownView");
+        const [module, { createMarkdownViewModel }] = await Promise.all([
+            import("./markdown/MarkdownView"),
+            import("./markdown/MarkdownViewModel"),
+        ]);
         return {
             Editor: module.MarkdownView,
+            createViewModel: createMarkdownViewModel,
             newPageModel: textEditorModule.newPageModel,
             newEmptyPageModel: textEditorModule.newEmptyPageModel,
             newPageModelFromState: textEditorModule.newPageModelFromState,
