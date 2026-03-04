@@ -244,9 +244,13 @@ editorRegistry.register({
         return -1;
     },
     loadModule: async () => {
-        const module = await import("./svg/SvgView");
+        const [module, { createSvgViewModel }] = await Promise.all([
+            import("./svg/SvgView"),
+            import("./svg/SvgViewModel"),
+        ]);
         return {
             Editor: module.SvgView,
+            createViewModel: createSvgViewModel,
             newPageModel: textEditorModule.newPageModel,
             newEmptyPageModel: textEditorModule.newEmptyPageModel,
             newPageModelFromState: textEditorModule.newPageModelFromState,
@@ -266,9 +270,13 @@ editorRegistry.register({
         return 10;
     },
     loadModule: async () => {
-        const module = await import("./html/HtmlView");
+        const [module, { createHtmlViewModel }] = await Promise.all([
+            import("./html/HtmlView"),
+            import("./html/HtmlViewModel"),
+        ]);
         return {
             Editor: module.HtmlView,
+            createViewModel: createHtmlViewModel,
             newPageModel: textEditorModule.newPageModel,
             newEmptyPageModel: textEditorModule.newEmptyPageModel,
             newPageModelFromState: textEditorModule.newPageModelFromState,
@@ -288,9 +296,13 @@ editorRegistry.register({
         return 10;
     },
     loadModule: async () => {
-        const module = await import("./mermaid/MermaidView");
+        const [module, { createMermaidViewModel }] = await Promise.all([
+            import("./mermaid/MermaidView"),
+            import("./mermaid/MermaidViewModel"),
+        ]);
         return {
             Editor: module.MermaidView,
+            createViewModel: createMermaidViewModel,
             newPageModel: textEditorModule.newPageModel,
             newEmptyPageModel: textEditorModule.newEmptyPageModel,
             newPageModelFromState: textEditorModule.newPageModelFromState,

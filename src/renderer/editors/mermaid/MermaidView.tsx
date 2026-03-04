@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { BaseImageView } from "../image";
 import type { BaseImageViewRef } from "../image";
@@ -9,8 +9,8 @@ import { CopyIcon, SunIcon, MoonIcon } from "../../theme/icons";
 import { CircularProgress } from "../../components/basic/CircularProgress";
 import { EditorError } from "../base/EditorError";
 import color from "../../theme/color";
-import { isCurrentThemeDark } from "../../theme/themes";
-import { renderMermaid } from "./render-mermaid";
+import { useContentViewModel } from "../base/useContentViewModel";
+import { MermaidViewModel, MermaidViewState, defaultMermaidViewState } from "./MermaidViewModel";
 
 // ============================================================================
 // Styled Components
@@ -48,32 +48,22 @@ interface MermaidViewProps {
     model: TextFileModel;
 }
 
+const noopUnsubscribe = () => () => {};
+const getDefaultState = () => defaultMermaidViewState;
+
 function MermaidView({ model }: MermaidViewProps) {
-    const content = model.state.use((s) => s.content);
+    const vm = useContentViewModel<MermaidViewModel>(model, "mermaid-view");
     const imageRef = useRef<BaseImageViewRef>(null);
-    const [svgUrl, setSvgUrl] = useState("");
-    const [error, setError] = useState("");
-    const [loading, setLoading] = useState(true);
-    const [lightMode, setLightMode] = useState(() => !isCurrentThemeDark());
 
-    useEffect(() => {
-        setLoading(true);
-        const timeoutId = setTimeout(() => {
-            renderMermaid(content, lightMode)
-                .then((url) => {
-                    setSvgUrl(url);
-                    setError("");
-                })
-                .catch((e) => {
-                    setError(e.message || "Failed to render diagram");
-                })
-                .finally(() => {
-                    setLoading(false);
-                });
-        }, 400);
+    // Subscribe to VM state (unconditional — Rules of Hooks)
+    const pageState: MermaidViewState = useSyncExternalStore(
+        vm ? (cb) => vm.state.subscribe(cb) : noopUnsubscribe,
+        vm ? () => vm.state.get() : getDefaultState,
+    );
 
-        return () => clearTimeout(timeoutId);
-    }, [content, lightMode]);
+    if (!vm) return null;
+
+    const { svgUrl, error, loading, lightMode } = pageState;
 
     return (
         <MermaidViewRoot>
@@ -84,7 +74,7 @@ function MermaidView({ model }: MermaidViewProps) {
                             type="icon"
                             size="small"
                             title={lightMode ? "Switch to Dark Theme" : "Switch to Light Theme"}
-                            onClick={() => setLightMode((v) => !v)}
+                            onClick={vm.toggleLightMode}
                         >
                             {lightMode ? <MoonIcon /> : <SunIcon />}
                         </Button>
