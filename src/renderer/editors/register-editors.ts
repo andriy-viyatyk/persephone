@@ -94,9 +94,13 @@ editorRegistry.register({
         return 10;
     },
     loadModule: async () => {
-        const module = await import("./grid/GridEditor");
+        const [module, { createGridViewModel }] = await Promise.all([
+            import("./grid/GridEditor"),
+            import("./grid/GridViewModel"),
+        ]);
         return {
             Editor: module.GridEditor,
+            createViewModel: createGridViewModel,
             newPageModel: textEditorModule.newPageModel,
             newEmptyPageModel: textEditorModule.newEmptyPageModel,
             newPageModelFromState: textEditorModule.newPageModelFromState,
@@ -121,9 +125,13 @@ editorRegistry.register({
         return 10;
     },
     loadModule: async () => {
-        const module = await import("./grid/GridEditor");
+        const [module, { createGridViewModel }] = await Promise.all([
+            import("./grid/GridEditor"),
+            import("./grid/GridViewModel"),
+        ]);
         return {
             Editor: module.GridEditor,
+            createViewModel: createGridViewModel,
             newPageModel: textEditorModule.newPageModel,
             newEmptyPageModel: textEditorModule.newEmptyPageModel,
             newPageModelFromState: textEditorModule.newPageModelFromState,

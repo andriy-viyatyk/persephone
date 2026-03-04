@@ -3,7 +3,8 @@ export { GridEditor, GridPage } from './GridEditor';
 export { default as GridEditorModule } from './GridEditor';
 
 // Model
-export { GridPageModel, GridPageProps, defaultGridPageState } from './GridPageModel';
+export { GridViewModel, createGridViewModel, defaultGridViewState } from './GridViewModel';
+export type { GridViewState } from './GridViewModel';
 
 // Utils
 export {

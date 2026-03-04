@@ -15,7 +15,7 @@ import { TComponentState } from "../../../core/state/state";
 import { TextField } from "../../../components/basic/TextField";
 import { TPopperModel } from "../../../ui/dialogs/poppers/types";
 import { showPopper } from "../../../ui/dialogs/poppers/Poppers";
-import { GridPageModel } from "../GridPageModel";
+import { GridViewModel } from "../GridViewModel";
 
 const CsvOptionsRoot = styled.div({
     minWidth: 140,
@@ -42,7 +42,7 @@ const CsvOptionsRoot = styled.div({
 
 class CsvOptionsModel extends TPopperModel<null, void> {
     el = undefined as Element | undefined;
-    gridModel: GridPageModel | undefined = undefined;
+    gridModel: GridViewModel | undefined = undefined;
 }
 
 const defaultOffset = [0, 2] as [number, number];
@@ -129,7 +129,7 @@ export function CsvOptions({ model }: ViewPropsRO<CsvOptionsModel>) {
 
 Views.registerView(showCsvOptionsId, CsvOptions as DefaultView);
 
-export const showCsvOptions = async (el: Element, gridModel: GridPageModel) => {
+export const showCsvOptions = async (el: Element, gridModel: GridViewModel) => {
     const model = new CsvOptionsModel(new TComponentState(null));
     model.el = el;
     model.gridModel = gridModel;

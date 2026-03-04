@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
-import { useComponentModel } from "../../core/state/model";
 import { getRowKey } from "./utils/grid-utils";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import AVGrid from "../../components/data-grid/AVGrid/AVGrid";
 import { FiltersProvider } from "../../components/data-grid/AVGrid/filters/useFilters";
 import { FilterBar } from "../../components/data-grid/AVGrid/filters/FilterBar";
@@ -11,14 +10,16 @@ import { CloseIcon, ColumnsIcon } from "../../theme/icons";
 import { Button } from "../../components/basic/Button";
 import color from "../../theme/color";
 import { showColumnsOptions } from "./components/ColumnsOptions";
-import {
-    defaultGridPageState,
-    GridPageModel,
-    GridPageProps,
-} from "./GridPageModel";
+import { GridViewModel, defaultGridViewState, GridViewState } from "./GridViewModel";
 import { showCsvOptions } from "./components/CsvOptions";
-import { useEditorConfig, useEditorStateStorage } from "../base";
+import { useEditorConfig } from "../base";
 import { EditorError } from "../base/EditorError";
+import { useContentViewModel } from "../base/useContentViewModel";
+import { TextFileModel } from "../text";
+import type { PageEditor } from "../../../shared/types";
+
+const noopUnsubscribe = () => () => {};
+const getDefaultState = () => defaultGridViewState;
 
 const GridPageRoot = styled.div<{ fitContent?: boolean }>(({ fitContent }) => ({
     flex: "1 1 auto",
@@ -35,23 +36,22 @@ const SearchFieldRoot = styled(TextField)({
     },
 });
 
-export function GridEditor(props: GridPageProps) {
-    const { model } = props;
+interface GridEditorProps {
+    model: TextFileModel;
+}
+
+export function GridEditor({ model }: GridEditorProps) {
+    const editorId = model.state.get().editor as PageEditor;
+    const vm = useContentViewModel<GridViewModel>(model, editorId);
     const editorConfig = useEditorConfig();
-    const stateStorage = useEditorStateStorage();
-    const mergedProps: GridPageProps = {
-        ...props,
-        disableAutoFocus: editorConfig.disableAutoFocus,
-        stateStorage,
-    };
-    const pageModel = useComponentModel(
-        mergedProps,
-        GridPageModel,
-        defaultGridPageState
-    );
-    const state = model.state.use();
-    const pageState = pageModel.state.use();
-    const [, /* unused */ setRefresh] = useState(0);
+    const [, setRefresh] = useState(0);
+
+    // Auto-focus grid after mount (unless disabled by editor config)
+    useEffect(() => {
+        if (vm && !editorConfig.disableAutoFocus) {
+            vm.gridRef?.focusGrid();
+        }
+    }, [vm]);
 
     const onVisibleRowsChanged = useCallback(() => {
         Promise.resolve().then(() => {
@@ -59,8 +59,17 @@ export function GridEditor(props: GridPageProps) {
         });
     }, []);
 
-    if (pageState.error) {
-        return <EditorError>{pageState.error}</EditorError>;
+    // Always call hooks unconditionally (Rules of Hooks).
+    // When vm is null (loading), subscribe to a no-op and return defaults.
+    const gridState: GridViewState = useSyncExternalStore(
+        vm ? (cb) => vm.state.subscribe(cb) : noopUnsubscribe,
+        vm ? () => vm.state.get() : getDefaultState,
+    );
+
+    if (!vm) return null;
+
+    if (gridState.error) {
+        return <EditorError>{gridState.error}</EditorError>;
     }
 
     return (
@@ -68,8 +77,8 @@ export function GridEditor(props: GridPageProps) {
             {Boolean(model.editorToolbarRefLast) &&
                 createPortal(
                     <SearchFieldRoot
-                        value={pageState.search}
-                        onChange={pageModel.setSearch}
+                        value={gridState.search}
+                        onChange={vm.setSearch}
                         placeholder="Search..."
                         endButtons={[
                             <Button
@@ -77,8 +86,8 @@ export function GridEditor(props: GridPageProps) {
                                 type="icon"
                                 key="clear-search"
                                 title="Clear Search"
-                                onClick={pageModel.clearSearch}
-                                invisible={!pageState.search}
+                                onClick={vm.clearSearch}
+                                invisible={!gridState.search}
                             >
                                 <CloseIcon />
                             </Button>,
@@ -94,19 +103,19 @@ export function GridEditor(props: GridPageProps) {
                             type="flat"
                             title="Edit Columns"
                             onClick={(e) => {
-                                if (pageModel.gridRef) {
+                                if (vm.gridRef) {
                                     showColumnsOptions(
                                         e.currentTarget,
-                                        pageModel.gridRef,
-                                        state.editor === "grid-csv",
-                                        pageModel.onUpdateRows
+                                        vm.gridRef,
+                                        editorId === "grid-csv",
+                                        vm.onUpdateRows
                                     );
                                 }
                             }}
                         >
                             <ColumnsIcon />
                         </Button>
-                        {Boolean(model.state.get().editor === "grid-csv") && (
+                        {editorId === "grid-csv" && (
                             <Button
                                 size="small"
                                 type="icon"
@@ -115,7 +124,7 @@ export function GridEditor(props: GridPageProps) {
                                 className="csv-options-button"
                                 title="Csv Options"
                                 onClick={(e) => {
-                                    showCsvOptions(e.currentTarget, pageModel);
+                                    showCsvOptions(e.currentTarget, vm);
                                 }}
                             >
                                 ⚒-csv
@@ -126,32 +135,32 @@ export function GridEditor(props: GridPageProps) {
                 )}
             <GridPageRoot fitContent={editorConfig.maxEditorHeight !== undefined}>
                 <FiltersProvider
-                    filters={pageState.filters}
-                    setFilters={pageModel.setFilters}
-                    onGetOptions={pageModel.onGetOptions}
+                    filters={gridState.filters}
+                    setFilters={vm.setFilters}
+                    onGetOptions={vm.onGetOptions}
                 >
                     <FilterBar
                         className="filter-bar"
-                        gridModel={pageModel.gridRef}
+                        gridModel={vm.gridRef}
                     />
                     <AVGrid
-                        ref={pageModel.setGridRef}
-                        columns={pageState.columns}
-                        rows={pageState.rows}
+                        ref={vm.setGridRef}
+                        columns={gridState.columns}
+                        rows={gridState.rows}
                         getRowKey={getRowKey}
-                        focus={pageState.focus}
-                        setFocus={pageModel.setFocus}
-                        searchString={pageState.search}
+                        focus={gridState.focus}
+                        setFocus={vm.setFocus}
+                        searchString={gridState.search}
                         highlightString={editorConfig.highlightText}
-                        filters={pageState.filters}
+                        filters={gridState.filters}
                         onVisibleRowsChanged={onVisibleRowsChanged}
-                        editRow={pageModel.editRow}
-                        onAddRows={pageModel.onAddRows}
-                        setColumns={pageModel.setColumns}
-                        onAddColumns={pageModel.onAddColumns}
-                        onDeleteRows={pageModel.onDeleteRows}
-                        onDeleteColumns={pageModel.onDeleteColumns}
-                        onDataChanged={pageModel.onDataChanged}
+                        editRow={vm.editRow}
+                        onAddRows={vm.onAddRows}
+                        setColumns={vm.setColumns}
+                        onAddColumns={vm.onAddColumns}
+                        onDeleteRows={vm.onDeleteRows}
+                        onDeleteColumns={vm.onDeleteColumns}
+                        onDataChanged={vm.onDataChanged}
                         growToHeight={editorConfig.maxEditorHeight}
                     />
                 </FiltersProvider>
@@ -159,7 +168,7 @@ export function GridEditor(props: GridPageProps) {
             {Boolean(model.editorFooterRefLast) &&
                 createPortal(
                     <span className="records-count">
-                        {pageModel.recordsCount}
+                        {vm.recordsCount}
                     </span>,
                     model.editorFooterRefLast
                 )}
