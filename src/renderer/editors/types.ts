@@ -1,5 +1,7 @@
 import { IPage, PageEditor, PageType } from "../../shared/types";
 import { PageModel } from "./base";
+import type { IContentHost } from "./base/IContentHost";
+import type { ContentViewModel } from "./base/ContentViewModel";
 
 export type FileEditorPage<T extends PageModel = PageModel> = React.ComponentType<{
     model: T;
@@ -15,7 +17,13 @@ export interface EditorPageModule {
     Editor: FileEditorPage;
 }
 
-export type EditorModule = EditorPageModule & EditorModelCreations;
+/** Factory function that creates a ContentViewModel for a given host. */
+export type ViewModelFactory = (host: IContentHost) => ContentViewModel<any>;
+
+export type EditorModule = EditorPageModule & EditorModelCreations & {
+    /** Optional factory for creating a content view model. Content-view editors provide this. */
+    createViewModel?: ViewModelFactory;
+};
 
 /**
  * Editor category distinguishes between two types of editors:

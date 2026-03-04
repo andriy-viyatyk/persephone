@@ -17,6 +17,7 @@ export class GlobalEventService {
         document.addEventListener("dragover", this.handleDragOver);
         document.addEventListener("drop", this.captureDrop, true);
         document.addEventListener("drop", this.handleDrop);
+        document.addEventListener("wheel", this.handleWheel, { passive: false });
         window.addEventListener("unhandledrejection", this.handleUnhandledRejection);
     }
 
@@ -68,6 +69,14 @@ export class GlobalEventService {
             e.preventDefault();
             e.stopPropagation();
             window.electron.ipcRenderer.sendMessage(RendererEvent.fileDropped, filePath);
+        }
+    };
+
+    private handleWheel = (e: WheelEvent) => {
+        if (e.ctrlKey) {
+            e.preventDefault();
+            const delta = e.deltaY < 0 ? 0.5 : -0.5;
+            api.zoom(delta);
         }
     };
 

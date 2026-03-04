@@ -74,7 +74,7 @@ export const defaultImageViewState = {
 export type ImageViewState = typeof defaultImageViewState;
 
 interface ImageViewModelProps {
-    src?: string;
+    src: string;
 }
 
 export class ImageViewModel extends TComponentModel<ImageViewState, ImageViewModelProps> {

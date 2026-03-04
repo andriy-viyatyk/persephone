@@ -11,3 +11,9 @@ export {
     useObjectStateStorage,
 } from './EditorStateStorageContext';
 export type { EditorStateStorage } from './EditorStateStorageContext';
+
+// Content View Models foundation
+export type { IContentHost, IContentHostState } from './IContentHost';
+export { ContentViewModel } from './ContentViewModel';
+export { ContentViewModelHost } from './ContentViewModelHost';
+export { useContentViewModel } from './useContentViewModel';

@@ -8,13 +8,11 @@ Current work in progress and planned tasks.
 
 ## In Progress
 
-| ID | Title | Folder |
-|----|-------|--------|
-| US-051 | Window API Consolidation — Absorb MainPageModel into `app.window` | [US-051](US-051-window-api-consolidation/) |
+(none)
 
 ## Planned (Next)
 
-(See [migration README](../future-architecture/migration/README.md) for next migration phase)
+- **US-055** — [TextViewModel (Monaco ContentViewModel)](US-055-text-view-model/) — Refactor TextEditorModel → TextViewModel (ContentViewModel). First editor migrated to the new pattern.
 
 ## Completed
 

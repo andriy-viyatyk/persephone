@@ -1,5 +1,6 @@
 import { PageEditor } from "../../shared/types";
-import { EditorDefinition } from "./types";
+import { EditorDefinition, EditorModule, ViewModelFactory } from "./types";
+import type { IContentHost } from "./base/IContentHost";
 
 /**
  * Options for the editor switch UI component.
@@ -15,6 +16,7 @@ export interface SwitchOptions {
  */
 class EditorRegistry {
     private editors = new Map<PageEditor, EditorDefinition>();
+    private modules = new Map<PageEditor, EditorModule>();
 
     /**
      * Register an editor definition.
@@ -143,6 +145,82 @@ class EditorRegistry {
             options: options.length > 1 ? options : [],
             getOptionLabel,
         };
+    }
+
+    // =========================================================================
+    // Content View Model support
+    // =========================================================================
+
+    /**
+     * Cache a loaded editor module.
+     * Called by loadViewModelFactory and can be called by AsyncEditor.
+     */
+    cacheModule(editorId: PageEditor, module: EditorModule): void {
+        this.modules.set(editorId, module);
+    }
+
+    /**
+     * Get the cached module for an editor (if already loaded).
+     */
+    getCachedModule(editorId: PageEditor): EditorModule | undefined {
+        return this.modules.get(editorId);
+    }
+
+    /**
+     * Get the view model factory for an editor (sync).
+     * Returns undefined if the module hasn't been loaded yet.
+     */
+    getViewModelFactory(editorId: PageEditor): ViewModelFactory | undefined {
+        return this.modules.get(editorId)?.createViewModel;
+    }
+
+    /**
+     * Load the editor module and return its view model factory (async).
+     * Caches the module for future sync access.
+     * Throws if the editor has no definition or no createViewModel factory.
+     */
+    async loadViewModelFactory(editorId: PageEditor): Promise<ViewModelFactory> {
+        // Check cache first
+        const cached = this.modules.get(editorId);
+        if (cached) {
+            if (!cached.createViewModel) {
+                throw new Error(`Editor "${editorId}" does not provide a view model factory.`);
+            }
+            return cached.createViewModel;
+        }
+
+        const def = this.editors.get(editorId);
+        if (!def) {
+            throw new Error(`Editor "${editorId}" is not registered.`);
+        }
+
+        const module = await def.loadModule();
+        this.modules.set(editorId, module);
+
+        if (!module.createViewModel) {
+            throw new Error(`Editor "${editorId}" does not provide a view model factory.`);
+        }
+        return module.createViewModel;
+    }
+
+    /**
+     * Validate that an editor is applicable for a content host.
+     * Throws a descriptive error if the editor cannot be used with the host's language.
+     */
+    validateForHost(editorId: PageEditor, host: IContentHost): void {
+        if (editorId === "monaco") return;
+
+        const def = this.editors.get(editorId);
+        if (!def) {
+            throw new Error(`Editor "${editorId}" is not registered.`);
+        }
+
+        const language = host.state.get().language || "";
+        if (def.validForLanguage && !def.validForLanguage(language)) {
+            throw new Error(
+                `Editor "${editorId}" is not applicable for "${language}" content.`
+            );
+        }
     }
 }
 

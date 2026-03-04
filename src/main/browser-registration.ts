@@ -130,7 +130,7 @@ export function isRegisteredAsDefaultBrowser(): boolean {
 
 export function openDefaultAppsSettings(): void {
     try {
-        execSync("start ms-settings:defaultapps?registeredAppUser=js-notepad", { windowsHide: true, shell: true, stdio: "ignore" });
+        execSync("start ms-settings:defaultapps?registeredAppUser=js-notepad", { windowsHide: true, stdio: "ignore" });
     } catch {
         // Ignore
     }
