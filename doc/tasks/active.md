@@ -12,7 +12,7 @@ Current work in progress and planned tasks.
 
 ## Planned (Next)
 
-(none — next: Task 9 NoteItemEditModel IContentHost in content view models migration)
+(none — next: Task 10 Script interfaces in content view models migration)
 
 ## Completed
 

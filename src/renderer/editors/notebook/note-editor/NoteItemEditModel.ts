@@ -6,6 +6,7 @@ import { NoteItem } from "../notebookTypes";
 import { NotebookViewModel } from "../NotebookViewModel";
 import { scriptRunner } from "../../../core/services/scripting/ScriptRunner";
 import { ContentViewModelHost } from "../../base/ContentViewModelHost";
+import type { IContentHost } from "../../base/IContentHost";
 import type { ContentViewModel } from "../../base/ContentViewModel";
 import type { EditorStateStorage } from "../../base/EditorStateStorageContext";
 import * as monaco from "monaco-editor";
@@ -167,10 +168,10 @@ export interface NoteItemEditState {
 // =============================================================================
 
 /**
- * Adapter that provides TextFileModel-like interface for note items.
- * Allows existing editors (Grid, Markdown, SVG) to work with notes.
+ * Adapter that provides IContentHost interface for note items.
+ * Allows existing content-view editors (Grid, Markdown, SVG) to work with notes.
  */
-export class NoteItemEditModel {
+export class NoteItemEditModel implements IContentHost {
     readonly id: string;
     readonly type = "textFile" as const;
 
@@ -178,7 +179,7 @@ export class NoteItemEditModel {
     private noteId: string;
     private _vmHost = new ContentViewModelHost();
 
-    // State that mimics TextFileModel.state
+    // IContentHost reactive state
     state: TComponentState<NoteItemEditState>;
 
     // Sub-model for Monaco editor
@@ -264,13 +265,14 @@ export class NoteItemEditModel {
         this.notebookModel.updateNoteEditor(this.noteId, editor);
     };
 
-    changeLanguage = (language: string) => {
+    changeLanguage = (language: string | undefined) => {
+        const lang = language ?? "";
         this.state.update((s) => {
-            s.language = language;
+            s.language = lang;
         });
 
         // Propagate to notebook model
-        this.notebookModel.updateNoteLanguage(this.noteId, language);
+        this.notebookModel.updateNoteLanguage(this.noteId, lang);
     };
 
     // =========================================================================
@@ -318,7 +320,7 @@ export class NoteItemEditModel {
     // =========================================================================
 
     acquireViewModel(editorId: PageEditor): Promise<ContentViewModel<any>> {
-        return this._vmHost.acquire(editorId, this as any);
+        return this._vmHost.acquire(editorId, this);
     }
 
     releaseViewModel(editorId: PageEditor): void {

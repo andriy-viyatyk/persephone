@@ -3,7 +3,7 @@ import { PageModel } from "./base";
 import type { IContentHost } from "./base/IContentHost";
 import type { ContentViewModel } from "./base/ContentViewModel";
 
-export type FileEditorPage<T extends PageModel = PageModel> = React.ComponentType<{
+export type FileEditorPage<T extends PageModel | IContentHost = PageModel | IContentHost> = React.ComponentType<{
     model: T;
 }>;
 

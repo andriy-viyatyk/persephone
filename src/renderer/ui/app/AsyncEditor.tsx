@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
 import { EditorPageModule } from "../../editors/types";
 import { PageModel } from "../../editors/base";
+import type { IContentHost } from "../../editors/base/IContentHost";
 import { useEffect, useState } from "react";
 import { CircularProgress } from "../../components/basic/CircularProgress";
 
@@ -16,7 +17,7 @@ const moduleCache = new Map<string, EditorPageModule>();
 
 export interface AsyncEditorProps {
     getEditorModule: () => Promise<EditorPageModule>;
-    model: PageModel;
+    model: PageModel | IContentHost;
     /** Unique identifier for caching the loaded module (e.g., editor type) */
     cacheKey?: string;
 }

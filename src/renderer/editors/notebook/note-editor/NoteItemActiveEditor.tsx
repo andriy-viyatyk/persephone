@@ -3,7 +3,6 @@ import { MiniTextEditor } from "./MiniTextEditor";
 import { AsyncEditor } from "../../../ui/app/AsyncEditor";
 import { editorRegistry } from "../../registry";
 import { PageEditor } from "../../../../shared/types";
-import { TextFileModel } from "../../text/TextPageModel";
 
 // =============================================================================
 // Component
@@ -30,13 +29,11 @@ export function NoteItemActiveEditor({ model }: NoteItemActiveEditorProps) {
 
     // Use registry to load alternative editors (Grid, Markdown, SVG)
     if (editor && editor !== "monaco") {
-        // Cast to TextFileModel for compatibility with existing editors
-        // This works because NoteItemEditModel implements the same interface
         return (
             <AsyncEditor
                 key={editor}
                 getEditorModule={getEditorModule(editor)}
-                model={model as unknown as TextFileModel}
+                model={model}
                 cacheKey={editor}
             />
         );
