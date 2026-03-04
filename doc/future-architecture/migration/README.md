@@ -101,30 +101,37 @@ No dependencies on other interface objects. Can be done in any order.
 
 ---
 
-### Phase 5: Editor-Specific Interfaces
+### Phase 5: Migration Review
 
-| # | Interface | Doc | Status |
-|---|-----------|-----|--------|
-| 9 | `page.asText()` — ITextEditor | 9.text-editor.md | Planned |
-| 10 | `page.asBrowser()` — IBrowserEditor | 10.browser-editor.md | Planned |
-| 11 | `page.asGrid()` — IGridEditor | 11.grid-editor.md | Planned |
-| 12 | Other editors (notebook, todo, links, markdown) | 12.other-editors.md | Planned |
+**Goal:** Review remaining old folder structure (`/core/`, `/store/`, `/app/`, `/features/`, `/components/`) and identify what still needs to be migrated or reorganized into the new API architecture (`/api/`, `/ui/`, `/platform/`).
 
----
-
-### Phase 6: AI Integration
-
-| # | Interface | Doc | Status |
-|---|-----------|-----|--------|
-| 13 | Tool adapter + Claude integration | 13.ai-integration.md | Planned |
+| # | Task | Doc | Status |
+|---|------|-----|--------|
+| 9 | Audit remaining old code, plan final restructuring | — | Planned |
 
 ---
 
-### Phase 7: Monaco Autocompletion
+### Phase 6: Editor-Specific Interfaces
+
+**Goal:** Create typed public API facades for each editor type, enabling programmatic access to editor models from scripts and other code.
 
 | # | Interface | Doc | Status |
 |---|-----------|-----|--------|
-| 14 | Aggregated `.d.ts` for scripts IntelliSense | 14.monaco-autocompletion.md | Planned |
+| 10 | `page.asText()` — ITextEditor | — | Planned |
+| 11 | `page.asBrowser()` — IBrowserEditor | — | Planned |
+| 12 | `page.asGrid()` — IGridEditor | — | Planned |
+| 13 | Other editors (notebook, todo, links, markdown) | — | Planned |
+
+---
+
+### Phase 7: Scripting Support
+
+**Goal:** Wire editor interfaces into `ScriptContext`, add script-facing `.d.ts` type definitions, and provide Monaco IntelliSense for the `page` and `app` objects in user scripts.
+
+| # | Task | Doc | Status |
+|---|------|-----|--------|
+| 14 | `page.asGrid()`, `page.asNotebook()`, `page.asTodo()` — ScriptContext wrappers | [9.content-view-models.md](9.content-view-models.md) (Tasks 10–11) | Planned |
+| 15 | Aggregated `.d.ts` for scripts IntelliSense + Monaco autocompletion | — | Planned |
 
 ---
 
@@ -147,13 +154,14 @@ Phase 0: Infrastructure (base types, app singleton, ScriptContext wiring)
                                   │
                                   └── Phase 4: app.pages + IPage (absorbs pagesModel + PageModel)
                                             │
-                                            ├── Phase 5a: ITextEditor
-                                            ├── Phase 5b: IBrowserEditor
-                                            ├── Phase 5c: IGridEditor
-                                            └── Phase 5d: Other editors
+                                            └── Phase 5: Migration review (audit remaining old code)
                                                       │
-                                                      ├── Phase 6: AI tool adapter
-                                                      └── Phase 7: Monaco autocompletion
+                                                      ├── Phase 6a: ITextEditor
+                                                      ├── Phase 6b: IBrowserEditor
+                                                      ├── Phase 6c: IGridEditor
+                                                      └── Phase 6d: Other editors
+                                                                │
+                                                                └── Phase 7: Scripting support + Monaco autocompletion
 ```
 
 ---

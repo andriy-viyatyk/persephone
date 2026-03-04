@@ -12,7 +12,7 @@ Current work in progress and planned tasks.
 
 ## Planned (Next)
 
-(none — next: Task 10 Script interfaces in content view models migration)
+(none — next: Phase 5 Migration Review in migration plan)
 
 ## Completed
 
