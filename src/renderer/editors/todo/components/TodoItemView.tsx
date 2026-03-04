@@ -10,7 +10,7 @@ import { formatDate } from "../../../core/utils/utils";
 import { WithPopupMenu } from "../../../components/overlay/WithPopupMenu";
 import { MenuItem } from "../../../components/overlay/PopupMenu";
 import { TodoItem, TodoTag, TODO_ITEM_DRAG } from "../todoTypes";
-import { TodoEditorModel } from "../TodoEditorModel";
+import { TodoViewModel } from "../TodoViewModel";
 
 // =============================================================================
 // Styles
@@ -198,7 +198,7 @@ const TodoItemRoot = styled.div({
 interface TodoItemViewProps {
     item: TodoItem;
     tags: TodoTag[];
-    pageModel: TodoEditorModel;
+    pageModel: TodoViewModel;
     cellRef?: React.RefObject<HTMLDivElement>;
 }
 

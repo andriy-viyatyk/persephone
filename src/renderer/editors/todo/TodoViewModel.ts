@@ -1,10 +1,10 @@
 import { debounce } from "../../../shared/utils";
-import { TComponentModel } from "../../core/state/model";
-import RenderGridModel from "../../components/virtualization/RenderGrid/RenderGridModel";
+import { ContentViewModel } from "../base/ContentViewModel";
+import { IContentHost } from "../base/IContentHost";
 
 import { ui } from "../../api/ui";
-import { TodoItem, TodoTag, TodoData, TodoEditorProps, ListCount } from "./todoTypes";
-import { fs } from "../../api/fs";
+import { TodoItem, TodoTag, TodoData, ListCount } from "./todoTypes";
+import type { TextFileModel } from "../text/TextPageModel";
 
 // =============================================================================
 // State
@@ -27,27 +27,52 @@ export const defaultTodoEditorState = {
 export type TodoEditorState = typeof defaultTodoEditorState;
 
 // =============================================================================
-// Model
+// View Model
 // =============================================================================
 
-export class TodoEditorModel extends TComponentModel<
-    TodoEditorState,
-    TodoEditorProps
-> {
+export class TodoViewModel extends ContentViewModel<TodoEditorState> {
     private lastSerializedData: TodoData | null = null;
-    private stateChangeSubscription: (() => void) | undefined;
     /** Flag to skip reloading content that we just serialized ourselves */
     private skipNextContentUpdate = false;
-    /** Grid model ref for virtualized list updates */
-    gridModel: RenderGridModel | null = null;
     /** Previous filter state for incremental search optimization */
     private lastFilterState = { searchText: "", selectedList: "", selectedTag: "" };
     private selectionRestored = false;
     private static cacheName = "todo-editor";
 
-    setGridModel = (model: RenderGridModel | null) => {
-        this.gridModel = model;
-    };
+    constructor(host: IContentHost) {
+        super(host, defaultTodoEditorState);
+    }
+
+    /** Access the underlying TextFileModel (for script context). */
+    get pageModel(): TextFileModel {
+        return this.host as unknown as TextFileModel;
+    }
+
+    // =========================================================================
+    // Lifecycle
+    // =========================================================================
+
+    protected onInit(): void {
+        this.addSubscription(this.state.subscribe(() => {
+            this.onDataChangedDebounced();
+        }));
+
+        const content = this.host.state.get().content || "";
+        this.loadData(content);
+    }
+
+    protected onContentChanged(content: string): void {
+        if (this.skipNextContentUpdate) {
+            this.skipNextContentUpdate = false;
+            return;
+        }
+        this.loadData(content);
+    }
+
+    protected onDispose(): void {
+        // Flush pending debounced save
+        this.onDataChanged();
+    }
 
     // =========================================================================
     // Serialization
@@ -67,37 +92,18 @@ export class TodoEditorModel extends TComponentModel<
             this.lastSerializedData = data;
             this.skipNextContentUpdate = true;
             const content = JSON.stringify(data, null, 4);
-            this.props.model.changeContent(content, true);
+            this.host.changeContent(content, true);
         }
     };
 
     private onDataChangedDebounced = debounce(this.onDataChanged, 300);
-
-    init() {
-        this.stateChangeSubscription = this.state.subscribe(() => {
-            this.onDataChangedDebounced();
-        });
-
-        this.effect(() => {
-            this.updateContent(this.props.model.state.get().content || "");
-        }, () => [this.props.model.state.get().content]);
-
-        this.effect(() => {
-            this.gridModel?.update({ all: true });
-        }, () => [this.state.get().filteredItems, this.state.get().data.tags]);
-    }
-
-    dispose() {
-        this.stateChangeSubscription?.();
-    }
 
     // =========================================================================
     // Selection state cache
     // =========================================================================
 
     private restoreSelectionState = async () => {
-        const id = this.props.model.state.get().id;
-        const data = await fs.getCacheFile(id, TodoEditorModel.cacheName);
+        const data = await this.host.stateStorage.getState(this.host.id, TodoViewModel.cacheName);
         if (!data) return;
         try {
             const saved = JSON.parse(data);
@@ -113,23 +119,11 @@ export class TodoEditorModel extends TComponentModel<
 
     private saveSelectionState = () => {
         const { selectedList, selectedTag } = this.state.get();
-        const id = this.props.model.state.get().id;
         const data = JSON.stringify({ selectedList, selectedTag });
-        fs.saveCacheFile(id, data, TodoEditorModel.cacheName);
+        this.host.stateStorage.setState(this.host.id, TodoViewModel.cacheName, data);
     };
 
     private saveSelectionStateDebounced = debounce(this.saveSelectionState, 300);
-
-    updateContent = (content: string) => {
-        // Skip if this is our own serialized content
-        if (this.skipNextContentUpdate) {
-            this.skipNextContentUpdate = false;
-            return;
-        }
-
-        // Load data (initial load or external file change)
-        this.loadData(content);
-    };
 
     // =========================================================================
     // Data Loading
@@ -725,4 +719,8 @@ export class TodoEditorModel extends TComponentModel<
             s.data.state[id].contentHeight = height;
         });
     };
+}
+
+export function createTodoViewModel(host: IContentHost): TodoViewModel {
+    return new TodoViewModel(host);
 }

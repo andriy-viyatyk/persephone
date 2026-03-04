@@ -7,7 +7,7 @@ import { Button } from "../../../components/basic/Button";
 import { TextField } from "../../../components/basic/TextField";
 import { WithPopupMenu } from "../../../components/overlay/WithPopupMenu";
 import { MenuItem } from "../../../components/overlay/PopupMenu";
-import { TodoEditorModel } from "../TodoEditorModel";
+import { TodoViewModel } from "../TodoViewModel";
 import { ListCount, TodoTag } from "../todoTypes";
 import { TAG_COLORS } from "../todoColors";
 
@@ -113,7 +113,7 @@ const TodoListPanelRoot = styled.div({
 // =============================================================================
 
 interface TodoListPanelProps {
-    pageModel: TodoEditorModel;
+    pageModel: TodoViewModel;
     lists: string[];
     selectedList: string;
     listCounts: { [listName: string]: ListCount };

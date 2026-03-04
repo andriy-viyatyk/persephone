@@ -311,9 +311,13 @@ editorRegistry.register({
         return 10;
     },
     loadModule: async () => {
-        const module = await import("./todo/TodoEditor");
+        const [module, { createTodoViewModel }] = await Promise.all([
+            import("./todo/TodoEditor"),
+            import("./todo/TodoViewModel"),
+        ]);
         return {
             Editor: module.TodoEditor,
+            createViewModel: createTodoViewModel,
             newPageModel: textEditorModule.newPageModel,
             newEmptyPageModel: textEditorModule.newEmptyPageModel,
             newPageModelFromState: textEditorModule.newPageModelFromState,

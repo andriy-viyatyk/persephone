@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import React, { useCallback, useMemo, useRef } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "../../components/basic/Button";
 import { TextField } from "../../components/basic/TextField";
@@ -10,15 +10,16 @@ import {
     RenderFlexCellParams,
     RenderFlexGrid,
 } from "../../components/virtualization/RenderGrid/RenderFlexGrid";
+import RenderGridModel from "../../components/virtualization/RenderGrid/RenderGridModel";
 import { Percent } from "../../components/virtualization/RenderGrid/types";
-import { useComponentModel } from "../../core/state/model";
 import color from "../../theme/color";
 import { CloseIcon, PlusIcon } from "../../theme/icons";
-import { defaultTodoEditorState, TodoEditorModel } from "./TodoEditorModel";
+import { TodoViewModel, defaultTodoEditorState, TodoEditorState } from "./TodoViewModel";
 import { TodoEditorProps, TodoItem } from "./todoTypes";
 import { TodoListPanel } from "./components/TodoListPanel";
 import { TodoItemView } from "./components/TodoItemView";
 import { EditorError } from "../base/EditorError";
+import { useContentViewModel } from "../base/useContentViewModel";
 
 // =============================================================================
 // Styles
@@ -108,25 +109,39 @@ const SearchField = styled(TextField)({
 // Component
 // =============================================================================
 
+const noopUnsubscribe = () => () => {};
+const getDefaultState = () => defaultTodoEditorState;
 const getColumnWidth = () => "100%" as Percent;
 
-export function TodoEditor(props: TodoEditorProps) {
-    const { model } = props;
-    const pageModel = useComponentModel(
-        props,
-        TodoEditorModel,
-        defaultTodoEditorState
+export function TodoEditor({ model }: TodoEditorProps) {
+    const vm = useContentViewModel<TodoViewModel>(model, "todo-view");
+
+    // Grid model ref for virtualized list updates (React rendering concern)
+    const gridModelRef = useRef<RenderGridModel | null>(null);
+    const setGridModel = useCallback((m: RenderGridModel | null) => {
+        gridModelRef.current = m;
+    }, []);
+
+    // Always call hooks unconditionally (Rules of Hooks).
+    // When vm is null (loading), subscribe to a no-op and return defaults.
+    const pageState: TodoEditorState = useSyncExternalStore(
+        vm ? (cb) => vm.state.subscribe(cb) : noopUnsubscribe,
+        vm ? () => vm.state.get() : getDefaultState,
     );
-    model.state.use(); // Subscribe to file content changes for effect re-evaluation
-    const pageState = pageModel.state.use();
+
     const allItems = pageState.data.items;
     const tags = pageState.data.tags;
     const items = pageState.filteredItems;
     const quickAddRef = useRef<TextAreaFieldRef>(null);
 
+    // Update virtualized grid when filteredItems or tags change (React rendering concern)
+    useEffect(() => {
+        gridModelRef.current?.update({ all: true });
+    }, [items, tags]);
+
     // Compute separator position between undone and done items
     const separatorIndex = useMemo(() => {
-        const firstDoneIndex = items.findIndex((item) => item.done);
+        const firstDoneIndex = items.findIndex((item: TodoItem) => item.done);
         // Show separator only if there are both undone and done items
         if (firstDoneIndex > 0) return firstDoneIndex;
         return -1;
@@ -152,19 +167,19 @@ export function TodoEditor(props: TodoEditorProps) {
         (row: number) => {
             const item = getItemForRow(row);
             if (!item) return undefined;
-            return pageModel.getItemHeight(item.id);
+            return vm.getItemHeight(item.id);
         },
-        [getItemForRow, pageModel]
+        [getItemForRow, vm]
     );
 
     // Quick add
     const handleQuickAdd = useCallback(() => {
         const trimmed = quickAddRef.current?.getText()?.trim();
         if (trimmed) {
-            pageModel.addItem(trimmed);
+            vm.addItem(trimmed);
             quickAddRef.current?.clear();
         }
-    }, [pageModel]);
+    }, [vm]);
 
     const handleQuickAddKeyDown = useCallback(
         (e: React.KeyboardEvent) => {
@@ -196,13 +211,15 @@ export function TodoEditor(props: TodoEditorProps) {
                     key={item.id}
                     item={item}
                     tags={tags}
-                    pageModel={pageModel}
+                    pageModel={vm}
                     cellRef={p.ref}
                 />
             );
         },
-        [getItemForRow, separatorIndex, pageModel, tags]
+        [getItemForRow, separatorIndex, vm, tags]
     );
+
+    if (!vm) return null;
 
     if (pageState.error) {
         return (
@@ -220,7 +237,7 @@ export function TodoEditor(props: TodoEditorProps) {
                 createPortal(
                     <SearchField
                         value={pageState.searchText}
-                        onChange={pageModel.setSearchText}
+                        onChange={vm.setSearchText}
                         placeholder="Search..."
                         endButtons={
                             pageState.searchText
@@ -230,7 +247,7 @@ export function TodoEditor(props: TodoEditorProps) {
                                           size="small"
                                           type="icon"
                                           title="Clear search"
-                                          onClick={pageModel.clearSearch}
+                                          onClick={vm.clearSearch}
                                       >
                                           <CloseIcon />
                                       </Button>,
@@ -246,7 +263,7 @@ export function TodoEditor(props: TodoEditorProps) {
                     style={{ width: pageState.leftPanelWidth }}
                 >
                     <TodoListPanel
-                        pageModel={pageModel}
+                        pageModel={vm}
                         lists={pageState.data.lists}
                         selectedList={pageState.selectedList}
                         listCounts={pageState.listCounts}
@@ -257,7 +274,7 @@ export function TodoEditor(props: TodoEditorProps) {
                 <Splitter
                     type="vertical"
                     initialWidth={pageState.leftPanelWidth}
-                    onChangeWidth={pageModel.setLeftPanelWidth}
+                    onChangeWidth={vm.setLeftPanelWidth}
                     borderSized="right"
                 />
                 <HighlightedTextProvider value={pageState.searchText}>
@@ -304,7 +321,7 @@ export function TodoEditor(props: TodoEditorProps) {
                             </div>
                         ) : (
                             <RenderFlexGrid
-                                ref={pageModel.setGridModel}
+                                ref={setGridModel}
                                 className="items-grid"
                                 columnCount={1}
                                 rowCount={rowCount}
