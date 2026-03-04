@@ -3,7 +3,7 @@ import { HTML5Backend } from "react-dnd-html5-backend";
 import { AlertsBar } from "./ui/dialogs/alerts/AlertsBar";
 import { Dialogs } from "./ui/dialogs/Dialogs";
 import { Poppers } from "./ui/dialogs/poppers/Poppers";
-import { MainPage } from "./app/MainPage";
+import { MainPage } from "./ui/app/MainPage";
 import "./setup/configure-monaco";
 import "./editors/register-editors";
 import { GlobalStyles } from "./theme/GlobalStyles";

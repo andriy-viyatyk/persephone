@@ -3,7 +3,7 @@ import type { ISettings } from "./types/settings";
 import type { IEditorRegistry } from "./types/editors";
 import type { IRecentFiles } from "./types/recent";
 import type { IFileSystem } from "./types/fs";
-import type { IWindow } from "./types/window";
+import type { Window } from "./window";
 import type { IShell } from "./types/shell";
 import type { IUserInterface } from "./types/ui";
 import type { IDownloads } from "./types/downloads";
@@ -25,7 +25,7 @@ class App {
     private _editors = undefined as unknown as IEditorRegistry;
     private _recent = undefined as unknown as IRecentFiles;
     private _fs = undefined as unknown as IFileSystem;
-    private _window = undefined as unknown as IWindow;
+    private _window = undefined as unknown as Window;
     private _shell = undefined as unknown as IShell;
     private _ui = undefined as unknown as IUserInterface;
     private _downloads = undefined as unknown as IDownloads;
@@ -51,7 +51,7 @@ class App {
         return this._fs;
     }
 
-    get window(): IWindow {
+    get window(): Window {
         return this._window;
     }
 

@@ -1,6 +1,6 @@
 import { NoteItemEditModel } from "./NoteItemEditModel";
 import { MiniTextEditor } from "./MiniTextEditor";
-import { AsyncEditor } from "../../../app/AsyncEditor";
+import { AsyncEditor } from "../../../ui/app/AsyncEditor";
 import { editorRegistry } from "../../registry";
 import { PageEditor } from "../../../../shared/types";
 import { TextFileModel } from "../../text/TextPageModel";

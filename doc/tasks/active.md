@@ -8,7 +8,9 @@ Current work in progress and planned tasks.
 
 ## In Progress
 
-(none)
+| ID | Title | Folder |
+|----|-------|--------|
+| US-051 | Window API Consolidation — Absorb MainPageModel into `app.window` | [US-051](US-051-window-api-consolidation/) |
 
 ## Planned (Next)
 

@@ -1,5 +1,5 @@
 import { TextFileModel } from "./TextPageModel";
-import { AsyncEditor } from "../../app/AsyncEditor";
+import { AsyncEditor } from "../../ui/app/AsyncEditor";
 import { TextEditor } from "./TextEditor";
 import { editorRegistry } from "../registry";
 import { PageEditor } from "../../../shared/types";

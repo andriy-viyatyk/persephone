@@ -1,8 +1,8 @@
-import { PageModel } from "../editors/base";
-import { TextPageView, TextFileModel } from "../editors/text";
-import { editorRegistry } from "../editors/registry";
+import { PageModel } from "../../editors/base";
+import { TextPageView, TextFileModel } from "../../editors/text";
+import { editorRegistry } from "../../editors/registry";
 import { AsyncEditor } from "./AsyncEditor";
-import { PageType } from "../../shared/types";
+import { PageType } from "../../../shared/types";
 
 /**
  * Get the async module loader for a standalone page editor.

@@ -3,18 +3,16 @@ import { appWindow } from "../window";
 
 /**
  * Window state service for window state IPC subscriptions.
- * Syncs maximize/zoom state from main process to appWindow API cache.
+ * Syncs maximize/zoom state from main process to appWindow reactive state.
  */
 export class WindowStateService {
     async init(): Promise<void> {
-        // Subscribe to window maximize events
         rendererEvents.eWindowMaximized.subscribe((isMaximized) => {
-            (appWindow as any)._isMaximized = isMaximized;
+            appWindow.setMaximized(isMaximized);
         });
 
-        // Subscribe to zoom change events
         rendererEvents.eZoomChanged.subscribe((zoomLevel) => {
-            (appWindow as any)._zoomLevel = zoomLevel;
+            appWindow.setZoomLevel(zoomLevel);
         });
     }
 }

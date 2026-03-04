@@ -1,8 +1,8 @@
 import styled from "@emotion/styled";
-import { EditorPageModule } from "../editors/types";
-import { PageModel } from "../editors/base";
+import { EditorPageModule } from "../../editors/types";
+import { PageModel } from "../../editors/base";
 import { useEffect, useState } from "react";
-import { CircularProgress } from "../components/basic/CircularProgress";
+import { CircularProgress } from "../../components/basic/CircularProgress";
 
 const ProgressRoot = styled.div({
     flex: "1 1 auto",

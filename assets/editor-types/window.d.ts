@@ -2,7 +2,7 @@
  * Window management API.
  *
  * Controls the application window: minimize, maximize, restore, close,
- * zoom, and multi-window support.
+ * zoom, menu bar, and multi-window support.
  *
  * @example
  * app.window.maximize();
@@ -25,10 +25,21 @@ export interface IWindow {
     /** Close the window. */
     close(): void;
 
+    /** Toggle between maximized and restored state. */
+    toggleWindow(): void;
+
     // ── Window state ─────────────────────────────────────────────────
 
     /** Whether the window is currently maximized. Updated reactively. */
     readonly isMaximized: boolean;
+
+    // ── Menu bar ─────────────────────────────────────────────────────
+
+    /** Whether the menu bar (sidebar) is currently open. */
+    readonly menuBarOpen: boolean;
+
+    /** Toggle the menu bar (sidebar) open/closed. */
+    toggleMenuBar(): void;
 
     // ── Zoom ─────────────────────────────────────────────────────────
 
@@ -41,7 +52,7 @@ export interface IWindow {
     /** Reset zoom to 100%. */
     resetZoom(): void;
 
-    /** Current zoom level. Updated reactively. Default: 1.0. */
+    /** Current zoom level (step value). 0 = 100%. Updated reactively. */
     readonly zoomLevel: number;
 
     // ── Multi-window ─────────────────────────────────────────────────

@@ -1,29 +1,46 @@
 import { api } from "../../ipc/renderer/api";
-import rendererEvents from "../../ipc/renderer/renderer-events";
+import { TOneState } from "../core/state/state";
 import type { IWindow } from "./types/window";
 
-class Window implements IWindow {
-    private _isMaximized = false;
-    private _zoomLevel = 1.0;
+interface WindowState {
+    isMaximized: boolean;
+    zoomLevel: number;
+    menuBarOpen: boolean;
+}
+
+export class Window implements IWindow {
     private _windowIndex: number | null = null;
+    private _state = new TOneState<WindowState>({
+        isMaximized: false,
+        zoomLevel: 0,
+        menuBarOpen: false,
+    });
 
     constructor() {
         this._initWindowIndex();
-
-        rendererEvents.eWindowMaximized.subscribe((maximized) => {
-            this._isMaximized = maximized;
-        });
-
-        rendererEvents.eZoomChanged.subscribe((zoom) => {
-            this._zoomLevel = zoom;
-        });
     }
 
     private async _initWindowIndex(): Promise<void> {
         this._windowIndex = await api.getWindowIndex();
     }
 
-    // ── Window actions ───────────────────────────────────────────────
+    // ── Window state setters ───────────────────────────────────────
+
+    setMaximized(isMaximized: boolean): void {
+        this._state.update(s => { s.isMaximized = isMaximized; });
+    }
+
+    setZoomLevel(zoomLevel: number): void {
+        this._state.update(s => { s.zoomLevel = zoomLevel; });
+    }
+
+    // ── React hook (not in .d.ts) ──────────────────────────────────
+
+    use() {
+        return this._state.use();
+    }
+
+    // ── Window actions ─────────────────────────────────────────────
 
     minimize(): void {
         api.minimizeWindow();
@@ -41,13 +58,31 @@ class Window implements IWindow {
         api.closeWindow();
     }
 
-    // ── Window state ─────────────────────────────────────────────────
-
-    get isMaximized(): boolean {
-        return this._isMaximized;
+    toggleWindow(): void {
+        if (this._state.get().isMaximized) {
+            this.restore();
+        } else {
+            this.maximize();
+        }
     }
 
-    // ── Zoom ─────────────────────────────────────────────────────────
+    // ── Window state ───────────────────────────────────────────────
+
+    get isMaximized(): boolean {
+        return this._state.get().isMaximized;
+    }
+
+    // ── Menu bar ───────────────────────────────────────────────────
+
+    get menuBarOpen(): boolean {
+        return this._state.get().menuBarOpen;
+    }
+
+    toggleMenuBar(): void {
+        this._state.update(s => { s.menuBarOpen = !s.menuBarOpen; });
+    }
+
+    // ── Zoom ───────────────────────────────────────────────────────
 
     zoom(delta: number): void {
         api.zoom(delta);
@@ -58,16 +93,16 @@ class Window implements IWindow {
     }
 
     get zoomLevel(): number {
-        return this._zoomLevel;
+        return this._state.get().zoomLevel;
     }
 
-    // ── Multi-window ─────────────────────────────────────────────────
+    // ── Multi-window ───────────────────────────────────────────────
 
     async openNew(filePath?: string): Promise<number> {
         return api.openNewWindow(filePath);
     }
 
-    // ── Window identity ───────────────────────────────────────────
+    // ── Window identity ────────────────────────────────────────────
 
     get windowIndex(): number {
         if (this._windowIndex === null) {

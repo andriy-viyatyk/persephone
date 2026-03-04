@@ -1,21 +1,19 @@
 import styled from "@emotion/styled";
-import color from "../theme/color";
-import { FlexSpace } from "../components/layout/Elements";
-import { Button } from "../components/basic/Button";
+import color from "../../theme/color";
+import { FlexSpace } from "../../components/layout/Elements";
+import { Button } from "../../components/basic/Button";
 import {
     CloseIcon,
     JsNotepadIcon,
     WindowMaximizeIcon,
     WindowMinimizeIcon,
     WindowRestoreIcon,
-} from "../theme/icons";
-import { TComponentModel, useComponentModel } from "../core/state/model";
-import { api } from "../../ipc/renderer/api";
-import rendererEvents from "../../ipc/renderer/renderer-events";
+} from "../../theme/icons";
+import { app } from "../../api/app";
 import { Pages } from "./Pages";
-import { PageTabs } from "../features/tabs/PageTabs";
+import { PageTabs } from "../../features/tabs/PageTabs";
 import clsx from "clsx";
-import { MenuBar } from "../features/sidebar/MenuBar";
+import { MenuBar } from "../../features/sidebar/MenuBar";
 
 const AppRoot = styled.div({
     backgroundColor: color.background.default,
@@ -91,79 +89,14 @@ const AppRoot = styled.div({
     },
 });
 
-const defaultMainPageState = {
-    maximized: false,
-    menuBarOpen: false,
-    zoomLevel: 0,
-};
-
-type MainPageState = typeof defaultMainPageState;
-
-class MainPageModel extends TComponentModel<MainPageState, undefined> {
-    init() {
-        this.effect(() => {
-            const sub = rendererEvents.eWindowMaximized.subscribe(
-                (isMaximized) => {
-                    this.state.update((s) => {
-                        s.maximized = isMaximized;
-                    });
-                },
-            );
-            return () => sub.unsubscribe();
-        });
-
-        this.effect(() => {
-            const sub = rendererEvents.eZoomChanged.subscribe(
-                (zoomLevel) => {
-                    this.state.update((s) => {
-                        s.zoomLevel = zoomLevel;
-                    });
-                },
-            );
-            return () => sub.unsubscribe();
-        });
-    }
-
-    minimizeWindow = () => {
-        api.minimizeWindow();
-    };
-
-    toggleWindow = () => {
-        if (this.state.get().maximized) {
-            api.restoreWindow();
-        } else {
-            api.maximizeWindow();
-        }
-    };
-
-    closeWindow = () => {
-        api.closeWindow();
-    };
-
-    toggleMenuBar = () => {
-        this.state.update((s) => {
-            s.menuBarOpen = !s.menuBarOpen;
-        });
-    };
-
-    resetZoom = () => {
-        api.resetZoom();
-    };
-}
-
 export function MainPage() {
-    const model = useComponentModel(
-        undefined,
-        MainPageModel,
-        defaultMainPageState,
-    );
-    const state = model.state.use();
+    const state = app.window.use();
 
     return (
         <AppRoot>
             <div className="app-header">
                 <Button
-                    onClick={model.toggleMenuBar}
+                    onClick={() => app.window.toggleMenuBar()}
                     type="icon"
                     className="app-button"
                 >
@@ -177,31 +110,31 @@ export function MainPage() {
                     className={clsx("zoom-indicator", {
                         visible: state.zoomLevel,
                     })}
-                    onClick={model.resetZoom}
+                    onClick={() => app.window.resetZoom()}
                     title="Reset Zoom"
                 >
                     {Math.round(Math.pow(1.2, state.zoomLevel) * 100)}%
                 </Button>
                 <Button
-                    onClick={model.minimizeWindow}
+                    onClick={() => app.window.minimize()}
                     className="system-button"
                     background="dark"
                 >
                     <WindowMinimizeIcon />
                 </Button>
                 <Button
-                    onClick={model.toggleWindow}
+                    onClick={() => app.window.toggleWindow()}
                     className="system-button"
                     background="dark"
                 >
-                    {state.maximized ? (
+                    {state.isMaximized ? (
                         <WindowRestoreIcon />
                     ) : (
                         <WindowMaximizeIcon />
                     )}
                 </Button>
                 <Button
-                    onClick={model.closeWindow}
+                    onClick={() => app.window.close()}
                     className="system-button close-button"
                     background="dark"
                 >
@@ -214,7 +147,7 @@ export function MainPage() {
                 </div>
                 <MenuBar
                     open={state.menuBarOpen}
-                    onClose={model.toggleMenuBar}
+                    onClose={() => app.window.toggleMenuBar()}
                 />
             </div>
         </AppRoot>

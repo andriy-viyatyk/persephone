@@ -2,7 +2,7 @@
 
 **Status:** Implemented (Phase 2)
 
-Window management API. Controls the application window: minimize, maximize, restore, close, zoom, and multi-window support.
+Window management API. Controls the application window: minimize, maximize, restore, close, zoom, menu bar, and multi-window support.
 
 ## Access
 
@@ -62,7 +62,19 @@ app.window.close();
 
 ---
 
-## Properties — Window State
+### `toggleWindow()`
+
+Toggle between maximized and restored state.
+
+```javascript
+app.window.toggleWindow();
+```
+
+**Returns:** `void`
+
+---
+
+## Methods & Properties — Window State
 
 ### `isMaximized` (read-only)
 
@@ -77,6 +89,51 @@ if (app.window.isMaximized) {
 ```
 
 **Type:** `boolean`
+
+---
+
+### `setMaximized(isMaximized)`
+
+Set the maximized state. Used by `WindowStateService` to sync from main process, but also available for scripts.
+
+```javascript
+app.window.setMaximized(true);
+```
+
+**Parameters:**
+| Name | Type | Description |
+|------|------|-------------|
+| `isMaximized` | `boolean` | Whether the window is maximized |
+
+**Returns:** `void`
+
+---
+
+## Properties & Methods — Menu Bar
+
+### `menuBarOpen` (read-only)
+
+Whether the menu bar (sidebar) is currently open.
+
+```javascript
+if (app.window.menuBarOpen) {
+  console.log("Menu bar is open");
+}
+```
+
+**Type:** `boolean`
+
+---
+
+### `toggleMenuBar()`
+
+Toggle the menu bar (sidebar) open or closed.
+
+```javascript
+app.window.toggleMenuBar();
+```
+
+**Returns:** `void`
 
 ---
 
@@ -112,17 +169,34 @@ app.window.resetZoom();
 
 ---
 
-## Properties — Zoom State
+## Properties & Methods — Zoom State
 
 ### `zoomLevel` (read-only)
 
-Current zoom level. Updated reactively via IPC events. Default: `1.0`.
+Current zoom level (step value). `0` = 100%. Updated reactively via IPC events.
 
 ```javascript
-console.log(app.window.zoomLevel); // 1.0, 1.1, 0.9, etc.
+console.log(app.window.zoomLevel); // 0, 1, 2, -1, -2, etc.
 ```
 
 **Type:** `number`
+
+---
+
+### `setZoomLevel(zoomLevel)`
+
+Set the zoom level directly. Used by `WindowStateService` to sync from main process, but also available for scripts.
+
+```javascript
+app.window.setZoomLevel(2); // set to ~144%
+```
+
+**Parameters:**
+| Name | Type | Description |
+|------|------|-------------|
+| `zoomLevel` | `number` | Zoom step value (0 = 100%) |
+
+**Returns:** `void`
 
 ---
 
@@ -165,11 +239,21 @@ await app.window.openNew("C:/Users/me/file.txt");  // Window with file
 ### Toggle maximize
 
 ```javascript
+// Using toggleWindow (recommended)
+app.window.toggleWindow();
+
+// Or manually
 if (app.window.isMaximized) {
   app.window.restore();
 } else {
   app.window.maximize();
 }
+```
+
+### Toggle menu bar from script
+
+```javascript
+app.window.toggleMenuBar();
 ```
 
 ### Zoom to specific level
@@ -196,6 +280,6 @@ if (paths) {
 ## Implementation Notes
 
 - All window actions are fire-and-forget IPC calls to the main process
-- `isMaximized` and `zoomLevel` are cached locally, updated via `eWindowMaximized` and `eZoomChanged` IPC events
-- Event subscriptions are established when the module is loaded (during `initServices()`)
+- Window state (`isMaximized`, `zoomLevel`, `menuBarOpen`) is stored in a reactive `TOneState` — React components subscribe via `.use()`, scripts read via getters
+- Event subscriptions (`eWindowMaximized`, `eZoomChanged`) are handled by `WindowStateService` during `initEvents()`, not in the Window constructor
 - Each window has its own `app.window` instance
