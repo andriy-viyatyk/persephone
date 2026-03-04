@@ -10,7 +10,7 @@ import { NoteItemToolbar } from "./note-editor/NoteItemToolbar";
 import { NoteItemActiveEditor } from "./note-editor/NoteItemActiveEditor";
 import { NoteItemEditModel } from "./note-editor/NoteItemEditModel";
 import { NoteItem } from "./notebookTypes";
-import { NotebookEditorModel } from "./NotebookEditorModel";
+import { NotebookViewModel } from "./NotebookViewModel";
 import { formatDate } from "../../core/utils/utils";
 
 // =============================================================================
@@ -243,7 +243,7 @@ const ExpandedNoteViewRoot = styled.div({
 
 interface ExpandedNoteViewProps {
     note: NoteItem;
-    notebookModel: NotebookEditorModel;
+    notebookModel: NotebookViewModel;
     categories: string[];
     tags: string[];
     onCollapse: () => void;

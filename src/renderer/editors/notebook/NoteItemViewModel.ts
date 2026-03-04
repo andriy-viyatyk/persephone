@@ -2,7 +2,7 @@ import React from "react";
 import { TComponentModel } from "../../core/state/model";
 import { formatDate } from "../../core/utils/utils";
 import { NoteItem } from "./notebookTypes";
-import { NotebookEditorModel } from "./NotebookEditorModel";
+import { NotebookViewModel } from "./NotebookViewModel";
 import { NoteItemEditModel } from "./note-editor/NoteItemEditModel";
 
 // =============================================================================
@@ -11,7 +11,7 @@ import { NoteItemEditModel } from "./note-editor/NoteItemEditModel";
 
 export interface NoteItemViewProps {
     note: NoteItem;
-    notebookModel: NotebookEditorModel;
+    notebookModel: NotebookViewModel;
     /** Available categories for autocomplete */
     categories: string[];
     /** Available tags for autocomplete */

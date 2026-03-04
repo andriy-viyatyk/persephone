@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { Breadcrumb } from "../../components/basic/Breadcrumb";
 import { Button } from "../../components/basic/Button";
@@ -13,19 +13,17 @@ import {
     RenderFlexCellParams,
     RenderFlexGrid,
 } from "../../components/virtualization/RenderGrid/RenderFlexGrid";
+import RenderGridModel from "../../components/virtualization/RenderGrid/RenderGridModel";
 import { Percent } from "../../components/virtualization/RenderGrid/types";
-import { useComponentModel } from "../../core/state/model";
 import { splitWithSeparators } from "../../core/utils/utils";
 import color from "../../theme/color";
 import { CloseIcon, PlusIcon } from "../../theme/icons";
-import {
-    defaultNotebookEditorState,
-    NotebookEditorModel,
-} from "./NotebookEditorModel";
+import { NotebookViewModel, defaultNotebookViewState, NotebookViewState } from "./NotebookViewModel";
 import { NoteItemView } from "./NoteItemView";
 import { ExpandedNoteView } from "./ExpandedNoteView";
 import { NotebookEditorProps, NOTE_DRAG, CATEGORY_DRAG } from "./notebookTypes";
 import { EditorError } from "../base/EditorError";
+import { useContentViewModel } from "../base/useContentViewModel";
 
 // =============================================================================
 // Styles
@@ -115,62 +113,76 @@ const SearchField = styled(TextField)({
 // Component
 // =============================================================================
 
+const noopUnsubscribe = () => () => {};
+const getDefaultState = () => defaultNotebookViewState;
 const getColumnWidth = () => "100%" as Percent;
 
-export function NotebookEditor(props: NotebookEditorProps) {
-    const { model } = props;
-    const pageModel = useComponentModel(
-        props,
-        NotebookEditorModel,
-        defaultNotebookEditorState
+export function NotebookEditor({ model }: NotebookEditorProps) {
+    const vm = useContentViewModel<NotebookViewModel>(model, "notebook-view");
+
+    // Grid model ref for virtualized list updates (React rendering concern)
+    const gridModelRef = useRef<RenderGridModel | null>(null);
+    const setGridModel = useCallback((m: RenderGridModel | null) => {
+        gridModelRef.current = m;
+    }, []);
+
+    // Always call hooks unconditionally (Rules of Hooks).
+    // When vm is null (loading), subscribe to a no-op and return defaults.
+    const pageState: NotebookViewState = useSyncExternalStore(
+        vm ? (cb) => vm.state.subscribe(cb) : noopUnsubscribe,
+        vm ? () => vm.state.get() : getDefaultState,
     );
-    model.state.use(); // Subscribe to file content changes for effect re-evaluation
-    const pageState = pageModel.state.use();
+
     const allNotes = pageState.data.notes;
     const notes = pageState.filteredNotes;
+
+    // Update virtualized grid when filteredNotes change (React rendering concern)
+    useEffect(() => {
+        gridModelRef.current?.update({ all: true });
+    }, [notes]);
 
     const renderNoteCell = useCallback(
         (p: RenderFlexCellParams) => {
             const note = notes[p.row];
-            if (!note) return null;
+            if (!note || !vm) return null;
             return (
                 <NoteItemView
                     key={note.id}
                     note={note}
-                    notebookModel={pageModel}
+                    notebookModel={vm}
                     categories={pageState.categories}
                     tags={pageState.tags}
-                    onDelete={pageModel.deleteNote}
-                    onExpand={pageModel.expandNote}
-                    onAddComment={pageModel.addComment}
-                    onCommentChange={pageModel.updateNoteComment}
-                    onTitleChange={pageModel.updateNoteTitle}
-                    onCategoryChange={pageModel.updateNoteCategory}
-                    onTagAdd={pageModel.addNoteTag}
-                    onTagRemove={pageModel.removeNoteTag}
-                    onTagUpdate={pageModel.updateNoteTag}
+                    onDelete={vm.deleteNote}
+                    onExpand={vm.expandNote}
+                    onAddComment={vm.addComment}
+                    onCommentChange={vm.updateNoteComment}
+                    onTitleChange={vm.updateNoteTitle}
+                    onCategoryChange={vm.updateNoteCategory}
+                    onTagAdd={vm.addNoteTag}
+                    onTagRemove={vm.removeNoteTag}
+                    onTagUpdate={vm.updateNoteTag}
                     cellRef={p.ref}
                 />
             );
         },
-        [notes, pageModel, pageState.categories, pageState.tags]
+        [notes, vm, pageState.categories, pageState.tags]
     );
 
     // Provide stored heights to RenderFlexGrid for initial row sizing
     const getInitialRowHeight = useCallback(
         (row: number) => {
             const note = notes[row];
-            if (!note) return undefined;
-            return pageModel.getNoteHeight(note.id);
+            if (!note || !vm) return undefined;
+            return vm.getNoteHeight(note.id);
         },
-        [notes, pageModel]
+        [notes, vm]
     );
 
     // Category tree label with note count
     const getTreeItemLabel = useCallback(
         (item: CategoryTreeItem) => {
             const name = splitWithSeparators(item.category, "/\\").pop() || "";
-            const size = pageModel.getCategorySize(item.category);
+            const size = vm?.getCategorySize(item.category);
             return (
                 <>
                     <span className="category-label-name">{name || "All"}</span>
@@ -180,8 +192,10 @@ export function NotebookEditor(props: NotebookEditorProps) {
                 </>
             );
         },
-        [pageModel, pageState.categoriesSize]
+        [vm, pageState.categoriesSize]
     );
+
+    if (!vm) return null;
 
     if (pageState.error) {
         return (
@@ -199,7 +213,7 @@ export function NotebookEditor(props: NotebookEditorProps) {
                         <Breadcrumb
                             rootLabel="Tags"
                             value={pageState.selectedTag}
-                            onChange={pageModel.setSelectedTag}
+                            onChange={vm.setSelectedTag}
                             separators=":"
                             trailingParentSeparator
                         />
@@ -207,7 +221,7 @@ export function NotebookEditor(props: NotebookEditorProps) {
                         <Breadcrumb
                             rootLabel="Categories"
                             value={pageState.selectedCategory}
-                            onChange={pageModel.setSelectedCategory}
+                            onChange={vm.setSelectedCategory}
                         />
                     ),
                     model.editorToolbarRefFirst
@@ -219,14 +233,14 @@ export function NotebookEditor(props: NotebookEditorProps) {
                             size="small"
                             type="raised"
                             title="Add Note"
-                            onClick={pageModel.addNote}
+                            onClick={vm.addNote}
                             style={{ borderColor: color.border.active }}
                         >
                             <PlusIcon /> Add Note&nbsp;
                         </Button>
                         <SearchField
                             value={pageState.searchText}
-                            onChange={pageModel.setSearchText}
+                            onChange={vm.setSearchText}
                             placeholder="Search..."
                             endButtons={
                                 pageState.searchText ? [
@@ -235,7 +249,7 @@ export function NotebookEditor(props: NotebookEditorProps) {
                                         size="small"
                                         type="icon"
                                         title="Clear search"
-                                        onClick={pageModel.clearSearch}
+                                        onClick={vm.clearSearch}
                                     >
                                         <CloseIcon />
                                     </Button>,
@@ -250,15 +264,15 @@ export function NotebookEditor(props: NotebookEditorProps) {
                     className="left-panel"
                     style={{ width: pageState.leftPanelWidth }}
                     activePanel={pageState.expandedPanel}
-                    setActivePanel={pageModel.setExpandedPanel}
+                    setActivePanel={vm.setExpandedPanel}
                 >
                     <CollapsiblePanel id="tags" title="Tags">
                         <div className="tags-list-container">
                             <TagsList
                                 tags={pageState.tags}
                                 value={pageState.selectedTag}
-                                onChange={pageModel.setSelectedTag}
-                                getCount={pageModel.getTagSize}
+                                onChange={vm.setSelectedTag}
+                                getCount={vm.getTagSize}
                             />
                         </div>
                     </CollapsiblePanel>
@@ -269,14 +283,14 @@ export function NotebookEditor(props: NotebookEditorProps) {
                                 separators="/\"
                                 rootLabel="All"
                                 rootCollapsible={false}
-                                onItemClick={pageModel.categoryItemClick}
-                                getSelected={pageModel.getCategoryItemSelected}
+                                onItemClick={vm.categoryItemClick}
+                                getSelected={vm.getCategoryItemSelected}
                                 getLabel={getTreeItemLabel}
                                 refreshKey={pageState.selectedCategory}
                                 dropTypes={[NOTE_DRAG, CATEGORY_DRAG]}
-                                onDrop={pageModel.categoryDrop}
+                                onDrop={vm.categoryDrop}
                                 dragType={CATEGORY_DRAG}
-                                getDragItem={pageModel.getCategoryDragItem}
+                                getDragItem={vm.getCategoryDragItem}
                             />
                         </div>
                     </CollapsiblePanel>
@@ -284,7 +298,7 @@ export function NotebookEditor(props: NotebookEditorProps) {
                 <Splitter
                     type="vertical"
                     initialWidth={pageState.leftPanelWidth}
-                    onChangeWidth={pageModel.setLeftPanelWidth}
+                    onChangeWidth={vm.setLeftPanelWidth}
                     borderSized="right"
                 />
                 <HighlightedTextProvider value={pageState.searchText}>
@@ -303,7 +317,7 @@ export function NotebookEditor(props: NotebookEditorProps) {
                             </div>
                         ) : (
                             <RenderFlexGrid
-                                ref={pageModel.setGridModel}
+                                ref={setGridModel}
                                 className="notes-grid"
                                 columnCount={1}
                                 rowCount={notes.length}
@@ -333,10 +347,10 @@ export function NotebookEditor(props: NotebookEditorProps) {
                 return createPortal(
                     <ExpandedNoteView
                         note={expandedNote}
-                        notebookModel={pageModel}
+                        notebookModel={vm}
                         categories={pageState.categories}
                         tags={pageState.tags}
-                        onCollapse={pageModel.collapseNote}
+                        onCollapse={vm.collapseNote}
                     />,
                     model.editorOverlayRef!
                 );
@@ -344,3 +358,9 @@ export function NotebookEditor(props: NotebookEditorProps) {
         </>
     );
 }
+
+const moduleExport = {
+    Editor: NotebookEditor,
+};
+
+export default moduleExport;

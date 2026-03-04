@@ -12,7 +12,7 @@ Current work in progress and planned tasks.
 
 ## Planned (Next)
 
-(none — check [migration doc](../future-architecture/migration/9.content-view-models.md) for next tasks: NotebookViewModel, TodoViewModel, etc.)
+(none — check [migration README](../future-architecture/migration/README.md) for next task)
 
 ## Completed
 

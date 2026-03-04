@@ -1,5 +1,7 @@
 export { NotebookEditor } from "./NotebookEditor";
-export { NotebookEditorModel, defaultNotebookEditorState } from "./NotebookEditorModel";
+export { default as NotebookEditorModule } from "./NotebookEditor";
+export { NotebookViewModel, createNotebookViewModel, defaultNotebookViewState } from "./NotebookViewModel";
+export type { NotebookViewState } from "./NotebookViewModel";
 export type {
     NoteContent,
     NoteItem,

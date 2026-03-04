@@ -213,9 +213,13 @@ editorRegistry.register({
         return 10;
     },
     loadModule: async () => {
-        const module = await import("./notebook/NotebookEditor");
+        const [module, { createNotebookViewModel }] = await Promise.all([
+            import("./notebook/NotebookEditor"),
+            import("./notebook/NotebookViewModel"),
+        ]);
         return {
             Editor: module.NotebookEditor,
+            createViewModel: createNotebookViewModel,
             newPageModel: textEditorModule.newPageModel,
             newEmptyPageModel: textEditorModule.newEmptyPageModel,
             newPageModelFromState: textEditorModule.newPageModelFromState,

@@ -3,8 +3,11 @@ import { TComponentState } from "../../../core/state/state";
 import { TModel } from "../../../core/state/model";
 import { PageEditor } from "../../../../shared/types";
 import { NoteItem } from "../notebookTypes";
-import { NotebookEditorModel } from "../NotebookEditorModel";
+import { NotebookViewModel } from "../NotebookViewModel";
 import { scriptRunner } from "../../../core/services/scripting/ScriptRunner";
+import { ContentViewModelHost } from "../../base/ContentViewModelHost";
+import type { ContentViewModel } from "../../base/ContentViewModel";
+import type { EditorStateStorage } from "../../base/EditorStateStorageContext";
 import * as monaco from "monaco-editor";
 
 // =============================================================================
@@ -171,8 +174,9 @@ export class NoteItemEditModel {
     readonly id: string;
     readonly type = "textFile" as const;
 
-    private notebookModel: NotebookEditorModel;
+    private notebookModel: NotebookViewModel;
     private noteId: string;
+    private _vmHost = new ContentViewModelHost();
 
     // State that mimics TextFileModel.state
     state: TComponentState<NoteItemEditState>;
@@ -180,12 +184,15 @@ export class NoteItemEditModel {
     // Sub-model for Monaco editor
     editor: NoteEditorModel;
 
+    // State storage backed by notebook's per-note state
+    readonly stateStorage: EditorStateStorage;
+
     // Portal refs for toolbar elements
     editorToolbarRefFirst: HTMLDivElement | null = null;
     editorToolbarRefLast: HTMLDivElement | null = null;
     editorFooterRefLast: HTMLDivElement | null = null;
 
-    constructor(notebookModel: NotebookEditorModel, note: NoteItem) {
+    constructor(notebookModel: NotebookViewModel, note: NoteItem) {
         this.notebookModel = notebookModel;
         this.noteId = note.id;
         this.id = note.id;
@@ -196,6 +203,15 @@ export class NoteItemEditModel {
             language: note.content.language,
             editor: (note.content.editor as PageEditor) || "monaco",
         });
+
+        // State storage backed by notebook's per-note state
+        this.stateStorage = {
+            getState: async (id: string, name: string) =>
+                notebookModel.getNoteState(id, name),
+            setState: async (id: string, name: string, state: string) => {
+                notebookModel.setNoteState(id, name, state);
+            },
+        };
 
         // Get stored height from notebook model (prevents scroll jumping on remount)
         const storedHeight = notebookModel.getNoteHeight(note.id);
@@ -270,7 +286,7 @@ export class NoteItemEditModel {
         if (language === "javascript") {
             // Get the notebook page model for script context
             // page.content will be notebook's JSON, output grouped with notebook
-            const notebookPageModel = this.notebookModel.props.model;
+            const notebookPageModel = this.notebookModel.pageModel;
             await scriptRunner.runWithResult(notebookPageModel.id, script, notebookPageModel);
         }
     };
@@ -298,10 +314,23 @@ export class NoteItemEditModel {
     };
 
     // =========================================================================
+    // IContentHost — view model management
+    // =========================================================================
+
+    acquireViewModel(editorId: PageEditor): Promise<ContentViewModel<any>> {
+        return this._vmHost.acquire(editorId, this as any);
+    }
+
+    releaseViewModel(editorId: PageEditor): void {
+        this._vmHost.release(editorId);
+    }
+
+    // =========================================================================
     // Cleanup
     // =========================================================================
 
     dispose = () => {
+        this._vmHost.disposeAll();
         this.editor.onDispose();
     };
 

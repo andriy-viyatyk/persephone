@@ -1,11 +1,11 @@
 import { debounce } from "../../../shared/utils";
-import { TComponentModel } from "../../core/state/model";
-import RenderGridModel from "../../components/virtualization/RenderGrid/RenderGridModel";
-
 import { splitWithSeparators } from "../../core/utils/utils";
 import { ui } from "../../api/ui";
 import { CategoryTreeItem, DragItem } from "../../components/TreeView";
-import { NoteItem, NotebookData, NotebookEditorProps, NOTE_DRAG, CATEGORY_DRAG } from "./notebookTypes";
+import { NoteItem, NotebookData, NOTE_DRAG, CATEGORY_DRAG } from "./notebookTypes";
+import { ContentViewModel } from "../base/ContentViewModel";
+import type { IContentHost } from "../base/IContentHost";
+import type { TextFileModel } from "../text";
 
 // =============================================================================
 // Content Search Helper
@@ -49,7 +49,7 @@ function getContentSearchText(note: NoteItem): string {
 
 export type ExpandedPanel = "tags" | "categories";
 
-export const defaultNotebookEditorState = {
+export const defaultNotebookViewState = {
     data: { notes: [], state: {} } as NotebookData,
     error: undefined as string | undefined,
     leftPanelWidth: 200,
@@ -68,28 +68,65 @@ export const defaultNotebookEditorState = {
     expandedNoteId: "" as string, // empty = no note expanded
 };
 
-export type NotebookEditorState = typeof defaultNotebookEditorState;
+export type NotebookViewState = typeof defaultNotebookViewState;
 
 // =============================================================================
 // Model
 // =============================================================================
 
-export class NotebookEditorModel extends TComponentModel<
-    NotebookEditorState,
-    NotebookEditorProps
-> {
+export class NotebookViewModel extends ContentViewModel<NotebookViewState> {
     private lastSerializedData: NotebookData | null = null;
-    private stateChangeSubscription: (() => void) | undefined;
     /** Flag to skip reloading content that we just serialized ourselves */
     private skipNextContentUpdate = false;
-    /** Grid model ref for virtualized list updates */
-    gridModel: RenderGridModel | null = null;
     /** Previous filter state for incremental search optimization */
     private lastFilterState = { searchText: "", selectedCategory: "", selectedTag: "", expandedPanel: "" };
 
-    setGridModel = (model: RenderGridModel | null) => {
-        this.gridModel = model;
-    };
+    constructor(host: IContentHost) {
+        super(host, defaultNotebookViewState);
+    }
+
+    /**
+     * Expose the host as TextFileModel for script execution context.
+     * The host of a notebook editor can only ever be a TextFileModel.
+     */
+    get pageModel(): TextFileModel {
+        return this.host as unknown as TextFileModel;
+    }
+
+    // =========================================================================
+    // Lifecycle
+    // =========================================================================
+
+    protected onInit(): void {
+        // Subscribe to own state changes for debounced serialize back to host
+        this.addSubscription(this.state.subscribe(() => {
+            this.onDataChangedDebounced();
+        }));
+
+        // Process initial content
+        const content = this.host.state.get().content || "";
+        this.loadData(content);
+    }
+
+    protected onContentChanged(content: string): void {
+        // Skip if this is our own serialized content
+        if (this.skipNextContentUpdate) {
+            this.skipNextContentUpdate = false;
+            return;
+        }
+
+        // Load data (external file change)
+        this.loadData(content);
+    }
+
+    protected onDispose(): void {
+        // Flush any pending debounced save
+        this.onDataChanged();
+    }
+
+    // =========================================================================
+    // Serialization
+    // =========================================================================
 
     private onDataChanged = () => {
         const { data, error } = this.state.get();
@@ -99,40 +136,15 @@ export class NotebookEditorModel extends TComponentModel<
             this.lastSerializedData = data;
             this.skipNextContentUpdate = true;
             const content = JSON.stringify(data, null, 4);
-            this.props.model.changeContent(content, true);
+            this.host.changeContent(content, true);
         }
     };
 
     private onDataChangedDebounced = debounce(this.onDataChanged, 300);
 
-    init() {
-        this.stateChangeSubscription = this.state.subscribe(() => {
-            this.onDataChangedDebounced();
-        });
-
-        this.effect(() => {
-            this.updateContent(this.props.model.state.get().content || "");
-        }, () => [this.props.model.state.get().content]);
-
-        this.effect(() => {
-            this.gridModel?.update({ all: true });
-        }, () => [this.state.get().filteredNotes]);
-    }
-
-    dispose() {
-        this.stateChangeSubscription?.();
-    }
-
-    updateContent = (content: string) => {
-        // Skip if this is our own serialized content
-        if (this.skipNextContentUpdate) {
-            this.skipNextContentUpdate = false;
-            return;
-        }
-
-        // Load data (initial load or external file change)
-        this.loadData(content);
-    };
+    // =========================================================================
+    // Data loading
+    // =========================================================================
 
     private loadData = (content: string) => {
         if (!content || content.trim() === "") {
@@ -168,6 +180,10 @@ export class NotebookEditorModel extends TComponentModel<
             });
         }
     };
+
+    // =========================================================================
+    // Notes
+    // =========================================================================
 
     get notesCount(): number {
         return this.state.get().data.notes.length;
@@ -738,4 +754,8 @@ export class NotebookEditorModel extends TComponentModel<
             s.data.state[id][name] = value;
         });
     };
+}
+
+export function createNotebookViewModel(host: IContentHost): NotebookViewModel {
+    return new NotebookViewModel(host);
 }
