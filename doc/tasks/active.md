@@ -12,7 +12,7 @@ Current work in progress and planned tasks.
 
 ## Planned (Next)
 
-- **US-055** — [TextViewModel (Monaco ContentViewModel)](US-055-text-view-model/) — Refactor TextEditorModel → TextViewModel (ContentViewModel). First editor migrated to the new pattern.
+(none — check [migration doc](../future-architecture/migration/9.content-view-models.md) for next tasks: GridViewModel, NotebookViewModel, etc.)
 
 ## Completed
 

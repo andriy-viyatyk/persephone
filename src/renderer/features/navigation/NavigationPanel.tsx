@@ -175,7 +175,7 @@ export function NavigationPanel({ model, pageId }: NavigationPanelProps) {
         } else {
             const page = pagesModel.findPage(pageId);
             if (page && isTextFileModel(page)) {
-                requestAnimationFrame(() => page.editor.focusEditor());
+                requestAnimationFrame(() => page.focusEditor());
             }
         }
     }, [searchOpen]);
@@ -284,7 +284,7 @@ export function NavigationPanel({ model, pageId }: NavigationPanelProps) {
             // Same file — reveal line directly in the current editor
             const page = pagesModel.findPage(pageId);
             if (page && isTextFileModel(page)) {
-                page.editor.revealLine(lineNumber);
+                page.revealLine(lineNumber);
             }
         } else {
             // Different file — navigate with revealLine + highlightText
@@ -302,10 +302,10 @@ export function NavigationPanel({ model, pageId }: NavigationPanelProps) {
         if (!page || !isTextFileModel(page)) return;
 
         const highlightText = showResultsPanel ? query : undefined;
-        page.editor.setHighlightText(highlightText);
+        page.setHighlightText(highlightText);
 
         return () => {
-            page.editor.setHighlightText(undefined);
+            page.setHighlightText(undefined);
         };
     }, [showResultsPanel, query, pageId, currentFilePath]);
 

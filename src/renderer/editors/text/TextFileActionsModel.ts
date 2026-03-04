@@ -56,7 +56,7 @@ export class TextFileActionsModel {
         const { language, content } = this.model.state.get();
         let script = content;
         if (!all) {
-            script = this.model.editor.getSelectedText() || content;
+            script = this.model.getSelectedText() || content;
         }
         if (language === "javascript") {
             await scriptRunner.runWithResult(this.model.id, script, this.model);

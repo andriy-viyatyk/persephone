@@ -2,12 +2,11 @@ import { Editor } from "@monaco-editor/react";
 import * as monaco from "monaco-editor";
 import styled from "@emotion/styled";
 
-import { TextFileModel } from "./TextPageModel";
-import { TModel } from "../../core/state/model";
-import { useEffect } from "react";
+import { ContentViewModel } from "../base/ContentViewModel";
+import { useContentViewModel } from "../base/useContentViewModel";
 import { pagesModel } from "../../api/pages";
 import { api } from "../../../ipc/renderer/api";
-import { TComponentState } from "../../core/state/state";
+import type { IContentHost } from "../base/IContentHost";
 
 const TextEditorRoot = styled.div({
     flex: "1 1 auto",
@@ -23,29 +22,40 @@ export const defaultTextEditorState = {
 
 export type TextEditorState = typeof defaultTextEditorState;
 
-export class TextEditorModel extends TModel<TextEditorState> {
-    private pageModel: TextFileModel;
+export class TextViewModel extends ContentViewModel<TextEditorState> {
     editorRef = null as monaco.editor.IStandaloneCodeEditor | null;
     private wheelListenerCleanup: (() => void) | null = null;
     private selectionListenerDisposable: monaco.IDisposable | null = null;
-    private focusSubscription: { unsubscribe: () => void } | null = null;
     /** Set before mount to scroll Monaco to a specific line after it initializes */
     pendingRevealLine: number | null = null;
     private highlightDecorations: monaco.editor.IEditorDecorationsCollection | null = null;
-    private pendingHighlightText: string | undefined = undefined;
+    pendingHighlightText: string | undefined = undefined;
 
-    constructor(pageModel: TextFileModel) {
-        super(new TComponentState(defaultTextEditorState));
-        this.pageModel = pageModel;
+    constructor(host: IContentHost) {
+        super(host, defaultTextEditorState);
     }
 
-    init = () => {
-        this.focusSubscription = pagesModel.onFocus.subscribe((focusedPage) => {
-            if (focusedPage === (this.pageModel as any)) {
+    protected onInit(): void {
+        const sub = pagesModel.onFocus.subscribe((focusedPage) => {
+            if (focusedPage === (this.host as any)) {
                 setTimeout(() => { this.focusEditor(); }, 0);
             }
         });
-    };
+        this.addSubscription(() => sub.unsubscribe());
+    }
+
+    protected onContentChanged(_content: string): void {
+        // No-op: Monaco receives content via React props
+    }
+
+    protected onDispose(): void {
+        this.highlightDecorations?.clear();
+        this.highlightDecorations = null;
+        this.selectionListenerDisposable?.dispose();
+        this.selectionListenerDisposable = null;
+        this.wheelListenerCleanup?.();
+        this.wheelListenerCleanup = null;
+    }
 
     handleEditorDidMount = (editor: monaco.editor.IStandaloneCodeEditor) => {
         this.editorRef = editor;
@@ -67,7 +77,7 @@ export class TextEditorModel extends TModel<TextEditorState> {
     };
 
     handleEditorChange = (value: string | undefined) => {
-        this.pageModel.changeContent(value || "", true);
+        this.host.changeContent(value || "", true);
     };
 
     focusEditor = () => {
@@ -116,7 +126,7 @@ export class TextEditorModel extends TModel<TextEditorState> {
 
     setupSelectionListener = (editor: monaco.editor.IStandaloneCodeEditor) => {
         this.selectionListenerDisposable = editor.onDidChangeCursorSelection(
-            (e) => {
+            () => {
                 const selection = editor.getSelection();
                 const hasSelection = selection ? !selection.isEmpty() : false;
 
@@ -170,42 +180,33 @@ export class TextEditorModel extends TModel<TextEditorState> {
             };
         }
     };
+}
 
-    dispose = () => {
-        this.focusSubscription?.unsubscribe();
-        this.focusSubscription = null;
-        this.highlightDecorations?.clear();
-        this.highlightDecorations = null;
-        this.selectionListenerDisposable?.dispose();
-        this.selectionListenerDisposable = null;
-        this.wheelListenerCleanup?.();
-        this.wheelListenerCleanup = null;
-    };
+export function createTextViewModel(host: IContentHost): TextViewModel {
+    return new TextViewModel(host);
 }
 
 interface TextEditorProps {
-    model: TextFileModel;
+    model: IContentHost;
 }
 
 export function TextEditor({ model }: TextEditorProps) {
-    const editorModel = model.editor;
+    const vm = useContentViewModel<TextViewModel>(model, "monaco");
+
     const { content, language } = model.state.use((s) => ({
         content: s.content,
         language: s.language,
     }));
 
-    useEffect(() => {
-        editorModel.init();
-        return () => editorModel.dispose();
-    }, []);
+    if (!vm) return null;
 
     return (
         <TextEditorRoot>
             <Editor
                 value={content}
                 language={language}
-                onMount={editorModel.handleEditorDidMount}
-                onChange={editorModel.handleEditorChange}
+                onMount={vm.handleEditorDidMount}
+                onChange={vm.handleEditorChange}
                 theme="custom-dark"
                 options={{
                     automaticLayout: true,

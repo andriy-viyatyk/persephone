@@ -263,12 +263,12 @@ export class PagesLifecycleModel {
                 options?.highlightText
             ) {
                 if (options.revealLine) {
-                    (newModel as TextFileModel).editor.revealLine(
+                    (newModel as TextFileModel).revealLine(
                         options.revealLine
                     );
                 }
                 if (options.highlightText) {
-                    (newModel as TextFileModel).editor.setHighlightText(
+                    (newModel as TextFileModel).setHighlightText(
                         options.highlightText
                     );
                 }

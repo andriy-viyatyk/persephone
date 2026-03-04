@@ -4,7 +4,6 @@ import { fs as appFs } from "../../api/fs";
 import { getDefaultPageModelState, PageModel } from "../base/PageModel";
 import { IPage, PageEditor } from "../../../shared/types";
 import { ScriptPanelModel } from "./ScriptPanel";
-import { TextEditorModel } from "./TextEditor";
 import { editorRegistry } from "../registry";
 import { TextFileEncryptionModel } from "./TextFileEncryptionModel";
 import { TextFileIOModel } from "./TextFileIOModel";
@@ -12,6 +11,7 @@ import { TextFileActionsModel } from "./TextFileActionsModel";
 import type { IContentHost } from "../base/IContentHost";
 import type { EditorStateStorage } from "../base/EditorStateStorageContext";
 import { ContentViewModelHost } from "../base/ContentViewModelHost";
+import type { TextViewModel } from "./TextEditor";
 
 export interface TextFilePageModelState extends IPage {
     content: string;
@@ -48,12 +48,58 @@ export class TextFileModel extends PageModel<TextFilePageModelState, void> imple
         setState: async (id, name, state) => { await appFs.saveCacheFile(id, state, name); },
     };
 
-    acquireViewModel(editorId: PageEditor) {
-        return this._vmHost.acquire(editorId, this);
+    async acquireViewModel(editorId: PageEditor) {
+        const vm = await this._vmHost.acquire(editorId, this);
+        if (editorId === "monaco") {
+            const textVm = vm as TextViewModel;
+            if (this._pendingRevealLine !== null) {
+                textVm.pendingRevealLine = this._pendingRevealLine;
+                this._pendingRevealLine = null;
+            }
+            if (this._pendingHighlightText !== undefined) {
+                textVm.pendingHighlightText = this._pendingHighlightText;
+                this._pendingHighlightText = undefined;
+            }
+        }
+        return vm;
     }
 
     releaseViewModel(editorId: PageEditor) {
         this._vmHost.release(editorId);
+    }
+
+    // =========================================================================
+    // TextViewModel delegates (synchronous access via tryGet)
+    // =========================================================================
+
+    getTextViewModel(): TextViewModel | null {
+        return (this._vmHost.tryGet("monaco") as TextViewModel) ?? null;
+    }
+
+    focusEditor() {
+        this.getTextViewModel()?.focusEditor();
+    }
+
+    revealLine(lineNumber: number) {
+        const vm = this.getTextViewModel();
+        if (vm) {
+            vm.revealLine(lineNumber);
+        } else {
+            this._pendingRevealLine = lineNumber;
+        }
+    }
+
+    setHighlightText(text: string | undefined) {
+        const vm = this.getTextViewModel();
+        if (vm) {
+            vm.setHighlightText(text);
+        } else {
+            this._pendingHighlightText = text;
+        }
+    }
+
+    getSelectedText(): string {
+        return this.getTextViewModel()?.getSelectedText() ?? "";
     }
 
     // Submodels
@@ -61,7 +107,10 @@ export class TextFileModel extends PageModel<TextFilePageModelState, void> imple
     encryption = new TextFileEncryptionModel(this);
     actions = new TextFileActionsModel(this);
     script = new ScriptPanelModel(this);
-    editor = new TextEditorModel(this);
+
+    // Pending operations — applied when TextViewModel is first acquired
+    private _pendingRevealLine: number | null = null;
+    private _pendingHighlightText: string | undefined = undefined;
 
     // Portal refs
     editorToolbarRefFirst: HTMLDivElement | null = null;
@@ -175,7 +224,6 @@ export class TextFileModel extends PageModel<TextFilePageModelState, void> imple
     async dispose(): Promise<void> {
         this._vmHost.disposeAll();
         this.io.dispose();
-        this.editor.dispose();
         this.script.dispose();
         await super.dispose();
     }

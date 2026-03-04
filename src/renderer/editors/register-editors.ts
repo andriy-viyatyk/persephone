@@ -65,7 +65,14 @@ editorRegistry.register({
     acceptFile: () => 0, // Lowest priority - fallback for all files
     validForLanguage: () => true, // Valid for all languages
     switchOption: () => 0, // Always available as first option
-    loadModule: async () => textEditorModule,
+    loadModule: async () => {
+        const { createTextViewModel } = await import("./text/TextEditor");
+        // Object.create preserves the lazy `get Editor()` getter on the prototype
+        // (spread would call the getter eagerly, triggering require() too early)
+        const module: EditorModule = Object.create(textEditorModule);
+        module.createViewModel = createTextViewModel;
+        return module;
+    },
 });
 
 // Grid JSON editor

@@ -56,6 +56,14 @@ export class ContentViewModelHost {
     }
 
     /**
+     * Get a cached view model without changing the reference count.
+     * Returns undefined if the view model hasn't been created yet.
+     */
+    tryGet(editorId: PageEditor): ContentViewModel<any> | undefined {
+        return this._viewModels.get(editorId)?.vm;
+    }
+
+    /**
      * Release a reference to a view model.
      * When refs reach 0, the model is disposed and removed from cache.
      */

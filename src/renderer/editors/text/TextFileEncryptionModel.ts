@@ -82,7 +82,7 @@ export class TextFileEncryptionModel {
         } else {
             await this.encript(password);
         }
-        this.model.editor.focusEditor();
+        this.model.focusEditor();
     };
 
     makeUnencrypted = () => {

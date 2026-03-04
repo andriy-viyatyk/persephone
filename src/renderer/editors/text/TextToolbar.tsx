@@ -1,4 +1,5 @@
 import { ReactNode, useMemo } from "react";
+import { useSyncExternalStore } from "react";
 import { isTextFileModel, TextFileModel } from "./TextPageModel";
 import { Button } from "../../components/basic/Button";
 import { CompareIcon, NavPanelIcon, RunAllIcon, RunIcon } from "../../theme/icons";
@@ -8,8 +9,21 @@ import styled from "@emotion/styled";
 import { editorRegistry } from "../registry";
 import { pagesModel } from "../../api/pages";
 import { NavPanelModel } from "../../features/navigation/nav-panel-store";
+import type { TOneState } from "../../core/state/state";
 
 const path = require("path");
+
+/** Always calls useSyncExternalStore — handles null state gracefully. */
+function useOptionalModelState<T, R>(
+    state: TOneState<T> | null | undefined,
+    selector: (s: T) => R,
+    defaultValue: R,
+): R {
+    return useSyncExternalStore(
+        state ? (cb) => state.subscribe(cb) : () => () => {},
+        state ? () => selector(state.get()) : () => defaultValue,
+    );
+}
 
 const EditorToolbarRoot = styled.div({
     display: "flex",
@@ -25,9 +39,8 @@ interface TextToolbarProps {
 
 export function TextToolbar({ model, setEditorToolbarRefFirst, setEditorToolbarRefLast }: TextToolbarProps) {
     const actions: ReactNode[] = [];
-    const { hasSelection } = model.editor.state.use((s) => ({
-        hasSelection: s.hasSelection,
-    }));
+    const textVm = model.getTextViewModel();
+    const hasSelection = useOptionalModelState(textVm?.state, s => s.hasSelection, false);
 
     const { language, editor, filePath, title } = model.state.use((s) => ({
         language: s.language,

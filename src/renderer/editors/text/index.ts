@@ -2,7 +2,7 @@
 export { TextPageView } from './TextPageView';
 export { TextToolbar } from './TextToolbar';
 export { TextFooter } from './TextFooter';
-export { TextEditor, TextEditorModel } from './TextEditor';
+export { TextEditor, TextViewModel, createTextViewModel } from './TextEditor';
 export { ActiveEditor } from './ActiveEditor';
 export { EncryptionPanel } from './EncryptionPanel';
 export { ScriptPanel, ScriptPanelModel, defaultScriptPanelState } from './ScriptPanel';
