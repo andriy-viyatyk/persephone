@@ -73,7 +73,7 @@ Replace the Named Pipe transport with a **Streamable HTTP** MCP server built int
 - No bridge process: server runs inside js-notepad, user just pastes a URL
 - Standard: Streamable HTTP is the MCP spec's recommended remote transport
 
-### Phase 3: MCP Tools & Configuration
+### Phase 3: MCP Tools & Configuration ✅
 Define MCP tools with schemas, add new commands, configure AI clients.
 
 - Define MCP tools with proper names, descriptions, and Zod input schemas
@@ -116,6 +116,7 @@ Note: `read_file`, `write_file`, `run_command` are skipped — AI tools (Claude 
 |------|-------|--------|
 | US-101 | MCP Bidirectional Pipe Protocol | Done |
 | US-102 | HTTP MCP Transport | Done |
+| US-103 | MCP Tools & Configuration | Done |
 
 ## Open Questions
 

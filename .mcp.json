@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "js-notepad": {
+      "type": "http",
+      "url": "http://localhost:7865/mcp"
+    }
+  }
+}

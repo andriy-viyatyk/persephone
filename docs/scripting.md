@@ -182,6 +182,12 @@ await app.shell.openExternal("https://github.com");
 
 For the complete API with all methods and parameters, see the [Scripting API Reference](./api/index.md).
 
+## AI Agent Integration (MCP)
+
+The same `page` and `app` scripting API is available to external AI agents via the built-in MCP server. Agents can execute scripts, create pages, read content, and more — without any user interaction.
+
+See [MCP Server Setup](./mcp-setup.md) to connect Claude, ChatGPT, Gemini, or any MCP-compatible client.
+
 ## Node.js Access
 
 Scripts have full Node.js access:

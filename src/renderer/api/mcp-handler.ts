@@ -4,6 +4,7 @@ import { scriptRunner } from "../scripting/ScriptRunner";
 import { pagesModel } from "./pages";
 import { isTextFileModel } from "../editors/text/TextPageModel";
 import { MCP_EXECUTE, MCP_RESULT } from "../../shared/constants";
+import { app } from "./app";
 
 // ── Types ───────────────────────────────────────────────────────────
 
@@ -24,6 +25,12 @@ async function handleCommand(method: string, params: any): Promise<McpResponse> 
             return getPageContent(params);
         case "get_active_page":
             return { result: getActivePage() };
+        case "create_page":
+            return createPage(params);
+        case "set_page_content":
+            return setPageContent(params);
+        case "get_app_info":
+            return { result: getAppInfo() };
         default:
             return { error: { code: -32601, message: `Method not found: ${method}` } };
     }
@@ -108,6 +115,67 @@ function getActivePage(): any {
         filePath: s.filePath,
         modified: s.modified,
         content,
+    };
+}
+
+function createPage(params: any): McpResponse {
+    const content = params?.content ?? "";
+    const language = params?.language ?? "plaintext";
+    const editor = params?.editor ?? "monaco";
+    const title = params?.title ?? "Untitled";
+
+    const page = pagesModel.addEditorPage(editor, language, title);
+    if (content && isTextFileModel(page)) {
+        page.changeContent(content);
+        page.state.update((s) => { s.modified = false; });
+    }
+
+    const s = page.state.get();
+    return {
+        result: {
+            id: s.id,
+            title: s.title,
+            editor: s.editor,
+            language: s.language,
+        },
+    };
+}
+
+function setPageContent(params: any): McpResponse {
+    const pageId = params?.pageId;
+    if (!pageId) {
+        return { error: { code: -32602, message: "Missing 'pageId' parameter" } };
+    }
+
+    const content = params?.content;
+    if (content == null || typeof content !== "string") {
+        return { error: { code: -32602, message: "Missing or invalid 'content' parameter" } };
+    }
+
+    const page = pagesModel.findPage(pageId);
+    if (!page) {
+        return { error: { code: -32602, message: `Page not found: ${pageId}` } };
+    }
+
+    if (!isTextFileModel(page)) {
+        return {
+            error: {
+                code: -32602,
+                message: "Page is not a text-based page. Use execute_script with page facades (asGrid, asNotebook, etc.) for structured editors.",
+            },
+        };
+    }
+
+    page.changeContent(content);
+    return { result: { id: page.id, title: page.title, contentLength: content.length } };
+}
+
+function getAppInfo(): any {
+    const pages = pagesModel.state.get().pages;
+    return {
+        version: app.version,
+        pageCount: pages.length,
+        activePageId: pagesModel.activePage?.id ?? null,
     };
 }
 

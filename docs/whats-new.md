@@ -16,8 +16,9 @@ Release notes and changelog for js-notepad.
   - Disabled by default — enable in Settings or in `appSettings.json` by setting `mcp.enabled` to `true`
   - Port is configurable via `mcp.port` setting (default: `7865`); changing the port requires toggling MCP off and on
   - Server is bound to localhost only (127.0.0.1) and is not accessible from other machines
-  - Available tools: run scripts, list open tabs, read tab content, get the active tab
+  - Available tools: `execute_script`, `list_pages`, `get_page_content`, `get_active_page`, `create_page`, `set_page_content`, `get_app_info`
   - Console output (`console.log`, `console.error`, etc.) from scripts executed via MCP is captured and returned to the agent
+  - See [MCP Server Setup](./mcp-setup.md) for configuration instructions
 
 ### Improvements
 

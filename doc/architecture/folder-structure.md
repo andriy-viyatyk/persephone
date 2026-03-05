@@ -22,6 +22,7 @@ js-notepad/
 │   ├── icons/              # App icons
 │   └── pdfjs/              # PDF.js library
 ├── patches/                # Dependency patches (patch-package)
+├── .mcp.json               # MCP server config for Claude Code (points to MCP HTTP server)
 ├── doc/                    # Developer documentation
 │   ├── architecture/       # Architecture docs (this folder)
 │   ├── standards/          # Coding standards and guides

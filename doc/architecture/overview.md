@@ -162,7 +162,7 @@ See [scripting.md](./scripting.md).
 - External AI agents (Claude Desktop, Claude Code) control js-notepad via a Streamable HTTP MCP server
 - Protocol: MCP over HTTP at `http://127.0.0.1:{port}/mcp` (default port 7865)
 - Main process: `mcp-http-server.ts` accepts connections using `@modelcontextprotocol/sdk`, forwards requests to renderer via IPC
-- Renderer process: `mcp-handler.ts` dispatches commands (`execute_script`, `get_pages`, `get_page_content`, `get_active_page`)
+- Renderer process: `mcp-handler.ts` dispatches 7 commands (`execute_script`, `list_pages`, `get_page_content`, `get_active_page`, `create_page`, `set_page_content`, `get_app_info`)
 - Opt-in via `mcp.enabled` setting — server starts/stops dynamically based on setting changes
 - Port is configurable via `mcp.port` setting (default `7865`)
 - Script execution uses `ScriptRunner.runWithCapture()` for headless operation with console capture

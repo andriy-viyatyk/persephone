@@ -86,33 +86,62 @@ function createMcpServer(): McpServer {
         version: electronApp.getVersion(),
     });
 
-    // Tools use existing renderer commands via IPC bridge.
-    // Descriptions refined in Phase 3 (EPIC-001).
-
     server.tool(
         "execute_script",
-        "Execute JavaScript in js-notepad with access to `page` and `app` objects. Returns the result value and any console output captured during execution.",
-        { script: z.string().describe("JavaScript code to execute") },
-        async ({ script }) => toToolResult(await sendToRenderer("execute_script", { script })),
+        "Execute JavaScript in js-notepad. The script has access to `page` (active page — content, language, editor, grouped) and `app` (pages, fs, settings, ui, shell, window). Returns { text, language, isError, consoleLogs }. Use for complex operations, transformations, and accessing structured editors via page facades (asGrid, asNotebook, asTodo, etc.).",
+        {
+            script: z.string().describe("JavaScript code to execute. Supports async/await. Last expression is returned as result."),
+            pageId: z.string().optional().describe("Target page ID. If omitted, uses the active page."),
+        },
+        async ({ script, pageId }) => toToolResult(await sendToRenderer("execute_script", { script, pageId })),
     );
 
     server.tool(
         "list_pages",
-        "List all open pages (tabs) with their IDs, titles, editors, and metadata.",
+        "List all open pages (tabs). Returns array of { id, title, type, editor, language, filePath, modified, pinned, active }.",
         async () => toToolResult(await sendToRenderer("get_pages", {})),
     );
 
     server.tool(
         "get_page_content",
-        "Get the text content of a specific page by its ID.",
-        { pageId: z.string().describe("The page ID to read content from") },
+        "Get the text content of a page by ID. Works for text-based pages (monaco, markdown, JSON, CSV, etc.). Returns { id, title, content }.",
+        { pageId: z.string().describe("The page ID (from list_pages).") },
         async ({ pageId }) => toToolResult(await sendToRenderer("get_page_content", { pageId })),
     );
 
     server.tool(
         "get_active_page",
-        "Get the currently active (focused) page with its content and full metadata.",
+        "Get the currently active (focused) page with its content and metadata. Returns { id, title, type, editor, language, filePath, modified, content }.",
         async () => toToolResult(await sendToRenderer("get_active_page", {})),
+    );
+
+    server.tool(
+        "create_page",
+        "Create a new page (tab) with optional content. Returns { id, title, editor, language }. Common editors: 'monaco' (text), 'grid-json' (JSON grid), 'grid-csv' (CSV grid), 'md-view' (markdown preview). Common languages: 'javascript', 'typescript', 'json', 'html', 'css', 'markdown', 'python', 'plaintext'.",
+        {
+            title: z.string().optional().describe("Page title. Defaults to 'Untitled'."),
+            content: z.string().optional().describe("Initial text content."),
+            language: z.string().optional().describe("Monaco language ID (e.g. 'javascript', 'json', 'markdown'). Defaults to 'plaintext'."),
+            editor: z.string().optional().describe("Editor type (e.g. 'monaco', 'grid-json', 'md-view'). Defaults to 'monaco'."),
+        },
+        async ({ title, content, language, editor }) =>
+            toToolResult(await sendToRenderer("create_page", { title, content, language, editor })),
+    );
+
+    server.tool(
+        "set_page_content",
+        "Update the text content of a page by ID. Works for text-based pages only. For structured editors (grid, notebook, todo), use execute_script with page facades instead.",
+        {
+            pageId: z.string().describe("The page ID (from list_pages)."),
+            content: z.string().describe("The new text content to set."),
+        },
+        async ({ pageId, content }) => toToolResult(await sendToRenderer("set_page_content", { pageId, content })),
+    );
+
+    server.tool(
+        "get_app_info",
+        "Get application info: { version, pageCount, activePageId }.",
+        async () => toToolResult(await sendToRenderer("get_app_info", {})),
     );
 
     return server;
