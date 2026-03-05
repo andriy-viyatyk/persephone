@@ -46,6 +46,7 @@ js-notepad/
 │   ├── downloads.ts        # IDownloads implementation
 │   ├── menu-folders.ts     # IMenuFolders implementation
 │   ├── pages.ts            # PagesModel singleton export
+│   ├── mcp-handler.ts      # MCP command handler (receives IPC from main, dispatches commands)
 │   ├── internal.ts         # Disposable utilities (wrapSubscription, etc.)
 │   │
 │   ├── pages/              # Page collection — composed submodels
@@ -331,6 +332,7 @@ js-notepad/
 ├── open-windows.ts         # Multi-window management and broadcasting
 ├── window-states.ts        # Window state persistence
 ├── pipe-server.ts          # Named Pipe server (launcher integration)
+├── mcp-pipe-server.ts      # MCP Named Pipe server (JSON-RPC 2.0 for AI agents)
 ├── browser-service.ts      # Browser page support (webview management)
 ├── browser-registration.ts # Default browser registration
 ├── download-service.ts     # Download management

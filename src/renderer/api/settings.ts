@@ -28,7 +28,8 @@ export type AppSettingsKey =
     | "browser-default-profile"
     | "browser-default-bookmarks-file"
     | "browser-incognito-bookmarks-file"
-    | "link-open-behavior";
+    | "link-open-behavior"
+    | "mcp.enabled";
 
 // =============================================================================
 // State
@@ -47,6 +48,7 @@ const settingsComments: Partial<Record<AppSettingsKey, string>> = {
     "browser-default-bookmarks-file": "Path to the .link.json bookmarks file for the default browser profile.",
     "browser-incognito-bookmarks-file": "Path to the .link.json bookmarks file for incognito mode.",
     "link-open-behavior": "How external links open from editors.\n\"default-browser\" opens in the OS default browser, \"internal-browser\" opens in the nearest Browser tab.",
+    "mcp.enabled": "Enable MCP (Model Context Protocol) pipe server.\nAllows AI agents like Claude Desktop and Claude Code to control js-notepad.",
 };
 
 const defaultAppSettingsState = {
@@ -60,6 +62,7 @@ const defaultAppSettingsState = {
         "browser-default-bookmarks-file": "",
         "browser-incognito-bookmarks-file": "",
         "link-open-behavior": "default-browser" as "default-browser" | "internal-browser",
+        "mcp.enabled": false,
     },
 };
 
@@ -73,13 +76,19 @@ class Settings implements ISettings {
     readonly onChanged;
 
     private readonly state = new TGlobalState(defaultAppSettingsState);
+    private readonly _initPromise: Promise<void>;
     private fileWatcher: FileWatcher | undefined;
     private skipNextFileChange = false;
 
     constructor() {
         this.onChanged = wrapSubscription(this._onChanged);
-        this.init();
+        this._initPromise = this.init();
     }
+
+    /** Wait until settings are loaded from disk. */
+    wait = async (): Promise<void> => {
+        await this._initPromise;
+    };
 
     get theme(): string {
         return this.state.get().settings["theme"];

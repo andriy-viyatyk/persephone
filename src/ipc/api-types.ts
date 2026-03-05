@@ -48,6 +48,14 @@ export enum Endpoint {
     openDownload = "openDownload",
     showDownloadInFolder = "showDownloadInFolder",
     clearCompletedDownloads = "clearCompletedDownloads",
+    setMcpEnabled = "setMcpEnabled",
+    getMcpStatus = "getMcpStatus",
+}
+
+export interface McpStatus {
+    running: boolean;
+    pipeName: string;
+    clientCount: number;
 }
 
 export type Api = {
@@ -95,6 +103,8 @@ export type Api = {
     [Endpoint.openDownload]: (id: string) => Promise<void>;
     [Endpoint.showDownloadInFolder]: (id: string) => Promise<void>;
     [Endpoint.clearCompletedDownloads]: () => Promise<void>;
+    [Endpoint.setMcpEnabled]: (enabled: boolean) => Promise<void>;
+    [Endpoint.getMcpStatus]: () => Promise<McpStatus>;
 };
 
 export enum EventEndpoint {

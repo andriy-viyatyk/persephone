@@ -1,5 +1,5 @@
 import { app, BrowserWindow, ipcMain, IpcMainEvent, nativeTheme, shell } from "electron";
-import { Api, Endpoint, EventEndpoint } from "../api-types";
+import { Api, Endpoint, EventEndpoint, McpStatus } from "../api-types";
 import { getAssetPath, getAppRootPath } from "../../main/utils";
 import { showOpenFileDialog, showOpenFolderDialog, showSaveFileDialog } from "./dialog-handlers";
 import { getFileToOpen, getUrlToOpen, windowReady } from "./window-handlers";
@@ -12,6 +12,7 @@ import { fileIconCache } from "../../main/fileIconCache";
 import { versionService } from "../../main/version-service";
 import * as browserRegistration from "../../main/browser-registration";
 import { downloadService } from "../../main/download-service";
+import { startMcpPipeServer, stopMcpPipeServer, isMcpPipeServerRunning, getMcpPipeName, getMcpClientCount } from "../../main/mcp-pipe-server";
 
 type AddEventParam<T> = T extends (...args: infer Args) => infer Return
     ? (event: IpcMainEvent, ...args: Args) => Return
@@ -188,6 +189,22 @@ class Controller implements MainApi {
     clearCompletedDownloads = async (event: IpcMainEvent): Promise<void> => {
         downloadService.clearCompleted();
     }
+
+    setMcpEnabled = async (event: IpcMainEvent, enabled: boolean): Promise<void> => {
+        if (enabled) {
+            startMcpPipeServer();
+        } else {
+            stopMcpPipeServer();
+        }
+    }
+
+    getMcpStatus = async (event: IpcMainEvent): Promise<McpStatus> => {
+        return {
+            running: isMcpPipeServerRunning(),
+            pipeName: getMcpPipeName(),
+            clientCount: getMcpClientCount(),
+        };
+    }
 }
 
 const controllerInstance = new Controller();
@@ -244,6 +261,8 @@ const init = () => {
     bindEndpoint(Endpoint.openDownload, controllerInstance.openDownload);
     bindEndpoint(Endpoint.showDownloadInFolder, controllerInstance.showDownloadInFolder);
     bindEndpoint(Endpoint.clearCompletedDownloads, controllerInstance.clearCompletedDownloads);
+    bindEndpoint(Endpoint.setMcpEnabled, controllerInstance.setMcpEnabled);
+    bindEndpoint(Endpoint.getMcpStatus, controllerInstance.getMcpStatus);
 
     initRendererEvents();
 }

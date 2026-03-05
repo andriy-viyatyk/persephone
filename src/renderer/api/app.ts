@@ -173,11 +173,13 @@ class App {
             { KeyboardService },
             { WindowStateService },
             { RendererEventsService },
+            { initMcpHandler },
         ] = await Promise.all([
             import("./internal/GlobalEventService"),
             import("./internal/KeyboardService"),
             import("./internal/WindowStateService"),
             import("./internal/RendererEventsService"),
+            import("./mcp-handler"),
         ]);
 
         // Create service instances
@@ -193,6 +195,25 @@ class App {
             windowState.init(),
             rendererEvents.init(),
         ]);
+
+        // Initialize MCP command handler (listens for IPC from main process)
+        initMcpHandler();
+
+        // Ensure settings are loaded from disk before checking mcp.enabled
+        const { settings: settingsInstance } = await import("./settings");
+        await settingsInstance.wait();
+
+        // Start MCP pipe server if enabled in settings
+        if (this._settings.get("mcp.enabled")) {
+            api.setMcpEnabled(true);
+        }
+
+        // Watch for mcp.enabled setting changes
+        this._settings.onChanged.subscribe(({ key, value }) => {
+            if (key === "mcp.enabled") {
+                api.setMcpEnabled(!!value);
+            }
+        });
     }
 }
 

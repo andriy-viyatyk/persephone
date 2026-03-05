@@ -8,6 +8,16 @@ Release notes and changelog for js-notepad.
 
 ## Version 1.0.17 (Upcoming)
 
+### New Features
+
+- **AI Agent Integration (MCP Pipe Server)** — external AI agents (such as Claude Desktop or Claude Code) can now connect to js-notepad and control it programmatically
+  - Communication via a Windows Named Pipe using JSON-RPC 2.0 protocol
+  - Pipe name: `js-notepad-mcp-{username}` (where `{username}` is your Windows user name)
+  - Disabled by default — enable in `appSettings.json` by setting `mcp.enabled` to `true`
+  - Available commands: run scripts, list open tabs, read tab content, get the active tab
+  - Console output (`console.log`, `console.error`, etc.) from scripts executed via MCP is captured and returned to the agent
+  - This is foundational infrastructure — more commands and a full MCP server are planned for future versions
+
 ### Improvements
 
 - **Markdown Preview — Mermaid "Open in Editor"** — hover over an inline mermaid diagram to see a toolbar with two buttons: copy image to clipboard, and open the diagram source in a new Mermaid editor tab

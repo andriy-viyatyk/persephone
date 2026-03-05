@@ -3,7 +3,26 @@ import { AppWrapper } from "./api-wrapper/AppWrapper";
 import { PageWrapper } from "./api-wrapper/PageWrapper";
 import React from "react";
 
-export function createScriptContext(page?: PageModel) {
+export interface ConsoleLogEntry {
+    level: "log" | "error" | "warn" | "info";
+    args: string[];
+    timestamp: number;
+}
+
+function serializeArg(arg: any): string {
+    if (arg === undefined) return "undefined";
+    if (arg === null) return "null";
+    if (typeof arg === "string") return arg;
+    if (typeof arg === "number" || typeof arg === "boolean" || typeof arg === "bigint") return String(arg);
+    if (arg instanceof Error) return `${arg.name}: ${arg.message}`;
+    try {
+        return JSON.stringify(arg);
+    } catch {
+        return String(arg);
+    }
+}
+
+export function createScriptContext(page?: PageModel, consoleLogs?: ConsoleLogEntry[]) {
     const releaseList: Array<() => void> = [];
 
     const appWrapper = new AppWrapper(releaseList);
@@ -14,6 +33,15 @@ export function createScriptContext(page?: PageModel) {
         page: pageWrapper,
         React,
     };
+
+    if (consoleLogs) {
+        customContext.console = {
+            log: (...args: any[]) => { consoleLogs.push({ level: "log", args: args.map(serializeArg), timestamp: Date.now() }); },
+            error: (...args: any[]) => { consoleLogs.push({ level: "error", args: args.map(serializeArg), timestamp: Date.now() }); },
+            warn: (...args: any[]) => { consoleLogs.push({ level: "warn", args: args.map(serializeArg), timestamp: Date.now() }); },
+            info: (...args: any[]) => { consoleLogs.push({ level: "info", args: args.map(serializeArg), timestamp: Date.now() }); },
+        };
+    }
 
     function cleanup() {
         for (const release of releaseList) {

@@ -23,6 +23,7 @@ js-notepad is an **Electron desktop application** — a Windows Notepad replacem
 │ - System tray       │ - Monaco Editor                       │
 │ - File dialogs      │ - Object Model (app.*)                │
 │ - Named Pipe server │ - Script execution                    │
+│ - MCP Pipe server   │ - MCP command handler                 │
 │ - Native menus      │ - Editor system                       │
 │ - Version service   │                                       │
 └─────────────────────┴───────────────────────────────────────┘
@@ -82,7 +83,7 @@ Each renderer window bootstraps via `src/renderer.tsx`:
 3. import(index)       ──  Load main bundle, register editors
 4. app.initServices()  ──  Load all Object Model interfaces (settings, fs, ui, ...)
 5. app.initPages()     ──  Restore persisted pages, handle CLI args
-6. app.initEvents()    ──  Subscribe to global/keyboard/IPC events
+6. app.initEvents()    ──  Subscribe to global/keyboard/IPC events, init MCP handler
 7. api.windowReady()   ──  Signal main process → window shown
 8. React renders       ──  UI appears with pages ready
 ```
@@ -156,7 +157,16 @@ See [scripting.md](./scripting.md).
 - Auto-release of ViewModels on script completion
 - Monaco IntelliSense via `.d.ts` files
 
-### 4. Theming System
+### 4. MCP Integration (Model Context Protocol)
+
+- External AI agents (Claude Desktop, Claude Code) control js-notepad via a Named Pipe server
+- Protocol: JSON-RPC 2.0 over `\\.\pipe\js-notepad-mcp-{username}`
+- Main process: `mcp-pipe-server.ts` accepts connections, forwards requests to renderer via IPC
+- Renderer process: `mcp-handler.ts` dispatches commands (`execute_script`, `get_pages`, `get_page_content`, `get_active_page`)
+- Opt-in via `mcp.enabled` setting — server starts/stops dynamically based on setting changes
+- Script execution uses `ScriptRunner.runWithCapture()` for headless operation with console capture
+
+### 5. Theming System
 
 - CSS Custom Properties — `color.ts` returns `var()` references, theme definitions set actual values on `:root`
 - 55+ component files import `color` unchanged — zero migration when adding themes

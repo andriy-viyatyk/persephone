@@ -25,6 +25,7 @@ Get a setting value by key. Returns `undefined` for unknown keys.
 ```javascript
 const fontSize = app.settings.get("editor.fontSize");
 const wordWrap = app.settings.get("editor.wordWrap");
+const mcpEnabled = app.settings.get("mcp.enabled");
 ```
 
 ### set(key, value)
@@ -35,7 +36,19 @@ Set a setting value. Changes are persisted automatically (debounced).
 app.settings.set("theme", "monokai");
 app.settings.set("editor.fontSize", 16);
 app.settings.set("editor.wordWrap", "on");
+app.settings.set("mcp.enabled", true);
 ```
+
+## Common Settings
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `theme` | `string` | `"default-dark"` | Color theme name |
+| `editor.fontSize` | `number` | `14` | Editor font size |
+| `editor.wordWrap` | `string` | `"off"` | Word wrap mode (`"off"`, `"on"`, `"wordWrapColumn"`, `"bounded"`) |
+| `mcp.enabled` | `boolean` | `false` | Enable the Named Pipe server for AI agent integration. When `true`, external tools (e.g., Claude Desktop) can connect to js-notepad and run scripts, read content, and list open tabs. See [What's New](../whats-new.md) for details. |
+
+Settings are stored in `appSettings.json`. You can open this file via Settings → "View Settings File".
 
 ## Events
 

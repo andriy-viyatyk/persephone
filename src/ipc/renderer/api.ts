@@ -8,7 +8,7 @@ import {
     SaveFileDialogParams,
     UpdateCheckResult,
 } from "../api-param-types";
-import { Api, Endpoint } from "../api-types";
+import { Api, Endpoint, McpStatus } from "../api-types";
 
 let idGen = 0;
 const idGenMax = 2000000000;
@@ -206,6 +206,14 @@ class ApiCalls implements Api {
 
     clearCompletedDownloads = async () => {
         return executeOnce<void>(Endpoint.clearCompletedDownloads);
+    }
+
+    setMcpEnabled = async (enabled: boolean) => {
+        return executeOnce<void>(Endpoint.setMcpEnabled, enabled);
+    }
+
+    getMcpStatus = async () => {
+        return executeOnce<McpStatus>(Endpoint.getMcpStatus);
     }
 }
 

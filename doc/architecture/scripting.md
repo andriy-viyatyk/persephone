@@ -222,7 +222,22 @@ Located in `/src/renderer/scripting/ScriptRunner.ts`.
 
 Calls `run()`, then converts result to text and writes to grouped page.
 
-### `convertToText(value)`
+### `runWithCapture(script, page?)`
+
+Headless execution for MCP/programmatic use. Returns a `McpScriptResult` without writing to any grouped page:
+
+```typescript
+interface McpScriptResult {
+    text: string;
+    language: string;
+    isError: boolean;
+    consoleLogs: ConsoleLogEntry[];
+}
+```
+
+Captures `console.log/error/warn/info` calls during script execution via `ScriptContext`'s console capture support (see below).
+
+### `convertToText(value)` (public)
 
 Converts any JS value to displayable `{ text, language }`:
 
@@ -238,16 +253,24 @@ Converts any JS value to displayable `{ text, language }`:
 
 Located in `/src/renderer/scripting/ScriptContext.ts`.
 
-`createScriptContext(page?)` builds the execution environment:
+`createScriptContext(page?, consoleLogs?)` builds the execution environment:
 
 1. Creates `releaseList` (shared cleanup array)
 2. Creates `AppWrapper` (always) and `PageWrapper` (if page provided)
-3. Builds proxy chain:
+3. If `consoleLogs` array is provided, injects a capturing `console` object that records `log`, `error`, `warn`, `info` calls as `ConsoleLogEntry` items:
+   ```typescript
+   interface ConsoleLogEntry {
+       level: "log" | "error" | "warn" | "info";
+       args: any[];
+       timestamp: number;
+   }
+   ```
+4. Builds proxy chain:
    - Custom context checked first (`app`, `page`, `React`)
    - Falls back to `globalThis` for standard APIs
    - Functions auto-bound to `globalThis` (except constructors)
    - Set operations go to custom context (scripts can create variables)
-4. Returns `{ context, cleanup }` — cleanup releases all ViewModels
+5. Returns `{ context, cleanup }` — cleanup releases all ViewModels
 
 ## Grouped Pages
 

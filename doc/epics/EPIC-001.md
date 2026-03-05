@@ -118,7 +118,7 @@ MCP Tools:
 
 | Task | Title | Status |
 |------|-------|--------|
-| (tasks will be created as phases begin) | | |
+| US-101 | MCP Bidirectional Pipe Protocol | Done |
 
 ## Open Questions
 

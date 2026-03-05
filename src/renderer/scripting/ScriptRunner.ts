@@ -1,5 +1,13 @@
 import { PageModel } from "../editors/base";
 import { pagesModel } from "../api/pages";
+import type { ConsoleLogEntry } from "./ScriptContext";
+
+export interface McpScriptResult {
+    text: string;
+    language: string;
+    consoleLogs: ConsoleLogEntry[];
+    isError: boolean;
+}
 
 const lexicalObjects = `
     const React = globalThis.React;
@@ -57,12 +65,33 @@ class ScriptRunner {
     handlePromiseException = 0;
 
     run = async (script: string, page?: PageModel): Promise<any> => {
+        return this.executeScript(script, page);
+    };
+
+    runWithCapture = async (script: string, page?: PageModel): Promise<McpScriptResult> => {
+        const consoleLogs: ConsoleLogEntry[] = [];
+        const result = await this.executeScript(script, page, consoleLogs);
+        const isError = result instanceof Error;
+        const textAndLang = this.convertToText(result);
+        return {
+            text: textAndLang.text,
+            language: textAndLang.language,
+            consoleLogs,
+            isError,
+        };
+    };
+
+    private executeScript = async (
+        script: string,
+        page?: PageModel,
+        consoleLogs?: ConsoleLogEntry[],
+    ): Promise<any> => {
         this.handlePromiseException += 1;
         let cleanup: (() => void) | undefined;
         try {
             try {
                 const contextModule = await import("./ScriptContext");
-                const result = contextModule.createScriptContext(page);
+                const result = contextModule.createScriptContext(page, consoleLogs);
                 const context = result.context;
                 cleanup = result.cleanup;
 
@@ -213,7 +242,7 @@ class ScriptRunner {
     `;
     }
 
-    private convertToText = (
+    convertToText = (
         value: any
     ): { text: string; language: string } => {
         // Handle Error objects (including exceptions)
