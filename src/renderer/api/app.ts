@@ -7,6 +7,7 @@ import type { Window } from "./window";
 import type { IShell } from "./types/shell";
 import type { IUserInterface } from "./types/ui";
 import type { IDownloads } from "./types/downloads";
+import type { IMenuFolders } from "./types/menu-folders";
 import type { PagesModel } from "./pages/PagesModel";
 
 // Note: IApp (.d.ts) is the script-facing interface for Monaco IntelliSense.
@@ -15,6 +16,7 @@ import type { PagesModel } from "./pages/PagesModel";
 class App {
     private _version = "";
     private _initialized = false;
+    private _setupInitialized = false;
     private _servicesInitialized = false;
     private _pagesInitialized = false;
     private _eventsInitialized = false;
@@ -29,6 +31,7 @@ class App {
     private _shell = undefined as unknown as IShell;
     private _ui = undefined as unknown as IUserInterface;
     private _downloads = undefined as unknown as IDownloads;
+    private _menuFolders = undefined as unknown as IMenuFolders;
     private _pages = undefined as unknown as PagesModel;
 
     get version(): string {
@@ -67,6 +70,10 @@ class App {
         return this._downloads;
     }
 
+    get menuFolders(): IMenuFolders {
+        return this._menuFolders;
+    }
+
     get pages(): PagesModel {
         return this._pages;
     }
@@ -83,6 +90,19 @@ class App {
     }
 
     /**
+     * Configure Monaco editor (themes, languages, keybindings, type definitions).
+     * Called early in bootstrap before services or editors load.
+     * Not exposed to scripts.
+     */
+    async initSetup(): Promise<void> {
+        if (this._setupInitialized) return;
+        this._setupInitialized = true;
+
+        const { initMonaco } = await import("./setup/configure-monaco");
+        await initMonaco();
+    }
+
+    /**
      * Load interface wrappers via dynamic import().
      * Must be called AFTER the main bundle has loaded (so stores are in the
      * module cache). Called from bootstrap (renderer.tsx) before React renders.
@@ -92,7 +112,7 @@ class App {
         if (this._servicesInitialized) return;
         this._servicesInitialized = true;
 
-        const [{ settings }, { editors }, { recent }, { fs }, win, { shell }, { ui }, { downloads }] = await Promise.all([
+        const [{ settings }, { editors }, { recent }, { fs }, win, { shell }, { ui }, { downloads }, { menuFolders }] = await Promise.all([
             import("./settings"),
             import("./editors"),
             import("./recent"),
@@ -101,6 +121,7 @@ class App {
             import("./shell"),
             import("./ui"),
             import("./downloads"),
+            import("./menu-folders"),
         ]);
         this._settings = settings;
         this._editors = editors;
@@ -110,6 +131,7 @@ class App {
         this._shell = shell;
         this._ui = ui;
         this._downloads = downloads;
+        this._menuFolders = menuFolders;
 
         // Initialize downloads tracking
         await this._downloads.init();

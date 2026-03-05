@@ -6,7 +6,7 @@ import { TGlobalState } from "../../core/state/state";
 import {
     getLanguageByExtension,
     getLanguageById,
-} from "../../store";
+} from "../../core/utils";
 import {
     CIcon,
     ClojureIcon,

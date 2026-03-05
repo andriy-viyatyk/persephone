@@ -3,9 +3,9 @@ const path = require("path");
 import { api } from "../../../ipc/renderer/api";
 import { fs as appFs } from "../../api/fs";
 import { recent } from "../../api/recent";
-import { getLanguageByExtension } from "../../store";
+import { getLanguageByExtension } from "../../core/utils";
 import { shell } from "../../api/shell";
-import { FileWatcher } from "../../core/services/file-watcher";
+import { FileWatcher } from "../../core/utils/file-watcher";
 import { debounce } from "../../../shared/utils";
 import type { TextFileModel } from "./TextPageModel";
 

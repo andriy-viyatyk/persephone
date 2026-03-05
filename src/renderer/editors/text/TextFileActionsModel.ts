@@ -2,9 +2,9 @@ const path = require("path");
 
 import { ui } from "../../api/ui";
 import { pagesModel } from "../../api/pages";
-import { scriptRunner } from "../../core/services/scripting/ScriptRunner";
+import { scriptRunner } from "../../scripting/ScriptRunner";
 import { PageModel } from "../base/PageModel";
-import { NavPanelModel } from "../../features/navigation/nav-panel-store";
+import { NavPanelModel } from "../../ui/navigation/nav-panel-store";
 import type { TextFileModel } from "./TextPageModel";
 
 export class TextFileActionsModel {

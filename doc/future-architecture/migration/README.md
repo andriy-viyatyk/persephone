@@ -107,7 +107,7 @@ No dependencies on other interface objects. Can be done in any order.
 
 | # | Task | Doc | Status |
 |---|------|-----|--------|
-| 9 | Audit remaining old code, plan final restructuring | — | Planned |
+| 9 | Audit remaining old code, plan final restructuring | [10.migration-review.md](10.migration-review.md) | In Progress |
 
 ---
 
@@ -185,43 +185,46 @@ Old modules are absorbed **during** the phase that implements their interface �
 
 Goal: after each phase, old modules are slimmer or gone. No pass-through wrappers remain.
 
-### Current Structure
+### Current Structure (after Phase 5 in progress)
 
 ```
 /src/renderer/
-  /app/           → App shell (MainPage, Pages, RenderEditor)
-  /components/    → Reusable UI (TreeView, data-grid, form, layout, overlay, virtualization)
-  /core/          → Mixed bag: state primitives + services + utilities
-  /editors/       → Editor implementations (17 editors, each in own folder)
-  /features/      → App features (tabs, sidebar, dialogs, navigation)
-  /setup/         → Monaco configuration
-  /store/         → All stores (pages, files, settings, recent, downloads, etc.)
+  /api/           → Object Model (settings, fs, ui, window, shell, editors, recent, downloads, pages, menuFolders)
+  /components/    → Shared component library (icons, TreeView, data-grid, form, layout, overlay, virtualization)
+  /core/          → State primitives + utilities
+  /editors/       → Editor implementations (17 editors, each in own folder) + /shared/ utilities
+  /scripting/     → Script engine + context (moved from core/services/)
   /theme/         → Color tokens, theme definitions
-  /types/         → Type definitions
+  /types/         → Global type augmentations (Window, MouseEvent)
+  /ui/            → App shell, tabs, sidebar, navigation, dialogs
 ```
 
 ### Target Structure
 
 ```
 /src/renderer/
-  /api/           → Object Model: interfaces + implementations
-  /editors/       → Editor implementations (stays, already well-organized)
-  /ui/            → All React presentation: app shell, components, features
-  /platform/      → Infrastructure: state primitives, services, utilities
-  /theme/         → Styling (stays)
-  /setup/         → Monaco configuration (stays)
+  /api/           → Object Model: interfaces, implementations, setup, internal services
+  /components/    → Shared component library (icons, TreeView, data-grid, form, layout, overlay, virtualization)
+  /core/          → Foundational infrastructure: state primitives + utilities
+  /editors/       → Editor implementations (17 editors) + /shared/ utilities
+  /scripting/     → Script engine, context, types, IntelliSense (grows in Phase 7)
+  /types/         → Global type augmentations (Window, MouseEvent)
+  /ui/            → App shell, tabs, sidebar, navigation, dialogs
+  /theme/         → Styling
 ```
 
-**4 clear layers**, each file belongs to exactly one:
+Each file belongs to exactly one layer:
 
-| Folder | Layer | Purpose | What moves here |
-|--------|-------|---------|-----------------|
-| `/api/` | Object Model | Public interfaces + implementations | NEW. Actual logic moves here from old stores/services |
-| `/editors/` | Editors | Editor implementations | STAYS. Already well-organized |
-| `/ui/` | Presentation | React components, app shell, features | MERGES: `/app/` + `/components/` + `/features/` |
-| `/platform/` | Infrastructure | State primitives, IPC, services, utilities | MERGES: `/core/` + remaining `/store/` internals |
+| Folder | Layer | Purpose | Status |
+|--------|-------|---------|--------|
+| `/api/` | Object Model | Public interfaces + implementations + setup + internal services | NEW (Phases 1–5) |
+| `/components/` | Shared UI | Reusable React components (Button, Grid, Splitter, icons, etc.) | STAYS |
+| `/core/` | Infrastructure | State primitives (`TModel`, `TOneState`, `Views`) + utilities | STAYS (cleaned up) |
+| `/editors/` | Editors | Editor implementations + `/shared/` cross-editor utilities | STAYS |
+| `/scripting/` | Scripting | Script engine, sandbox context, types, Monaco IntelliSense | NEW (from `/core/services/scripting/`, grows in Phase 7) |
+| `/types/` | Ambient Types | Global type augmentations (`Window`, `MouseEvent`) | STAYS |
+| `/ui/` | Presentation | App shell, tabs, sidebar, navigation, dialogs | MERGES: `/app/` + `/features/` |
 | `/theme/` | Design | Color tokens, theme definitions | STAYS |
-| `/setup/` | Config | Monaco configuration | STAYS |
 
 ### How Old Folders Map to New
 
@@ -234,18 +237,27 @@ Goal: after each phase, old modules are slimmer or gone. No pass-through wrapper
 | `/store/downloads-store.ts` | Deleted — logic moved to `/api/downloads.ts` | Phase 3b (US-049) |
 | `/store/page-factory.ts` | `/api/pages.ts` (internal) | Phase 4 |
 | `/store/page-actions.ts` | Deleted — functions absorbed into `PagesModel` methods | Phase 4 (US-050) |
-| `/core/state/` | `/platform/state/` | Phase 0 or 1 |
-| `/core/services/scripting/` | `/platform/services/scripting/` | Phase 1 |
-| `/core/services/encryption.ts` | `/api/shell/encryption.ts` | Phase 3b |
-| `/core/services/file-watcher.ts` | `/platform/services/` | Phase 2a |
-| `/core/utils/` | `/platform/utils/` | Phase 0 or 1 |
+| `/core/state/` | STAYS in `/core/state/` — foundational primitives | — |
+| `/core/services/scripting/` | `/scripting/` — top-level, grows in Phase 7 | Phase 5 |
+| `/core/services/encryption.ts` | `/api/shell/encryption.ts` | Phase 3b (done) |
+| `/core/services/file-watcher.ts` | `/core/utils/file-watcher.ts` — standalone utility | Phase 5 |
+| `/core/utils/` | STAYS in `/core/utils/` — general utilities | — |
 | `/app/MainPage.tsx` | `/ui/app/MainPage.tsx` | Phase 3+ |
 | `/app/RenderEditor.tsx` | `/ui/app/RenderEditor.tsx` | Phase 3+ |
-| `/components/*` | `/ui/components/*` | When touching those files |
-| `/features/tabs/` | `/ui/tabs/` | Phase 4 |
-| `/features/sidebar/` | `/ui/sidebar/` | Phase 3 |
+| `/store/menu-folders.ts` | `/api/menu-folders.ts` — `IMenuFolders` wired onto `app.menuFolders` | Phase 5 |
+| `/store/link-open-menu.tsx` | `/editors/shared/link-open-menu.tsx` — shared editor utility | Phase 5 |
+| `/store/language-mapping.ts` | `/core/utils/language-mapping.ts` — pure utility | Phase 5 |
+| `/store/` | **DELETED** — all files moved | Phase 5 |
+| `/components/*` | STAYS — shared component library at renderer root | — |
+| `/types/*` | STAYS — ambient global type augmentations | — |
+| `/features/tabs/` | `/ui/tabs/` | Phase 5 |
+| `/features/sidebar/` | `/ui/sidebar/` (FileIcon extracted to `/components/icons/`) | Phase 5 |
+| `/features/sidebar/FileIcon.tsx` | `/components/icons/FileIcon.tsx` — cross-cutting icon component | Phase 5 |
+| `/editors/base/LanguageIcon.tsx` | `/components/icons/LanguageIcon.tsx` — cross-cutting icon component | Phase 5 |
 | `/features/dialogs/` | `/ui/dialogs/` | Phase 3a |
-| `/features/navigation/` | `/ui/navigation/` | Phase 3+ |
+| `/features/navigation/` | `/ui/navigation/` | Phase 5 |
+| `/features/` | **DELETED** — all subfolders moved to `/ui/` | Phase 5 |
+| `/setup/` | `/api/setup/` — wired into `app.initSetup()` bootstrap | Phase 5 |
 
 ### `/api/` Subfolder Detail
 

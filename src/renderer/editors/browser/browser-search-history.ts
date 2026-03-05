@@ -1,6 +1,6 @@
 import { TModel } from "../../core/state/model";
 import { TGlobalState } from "../../core/state/state";
-import { FileWatcher } from "../../core/services/file-watcher";
+import { FileWatcher } from "../../core/utils/file-watcher";
 import { fs } from "../../api/fs";
 
 const MAX_ENTRIES = 2000;

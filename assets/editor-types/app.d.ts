@@ -6,6 +6,7 @@ import type { IWindow } from "./window";
 import type { IShell } from "./shell";
 import type { IUserInterface } from "./ui";
 import type { IDownloads } from "./downloads";
+import type { IMenuFolders } from "./menu-folders";
 import type { IPageCollection } from "./pages";
 
 /**
@@ -45,6 +46,9 @@ export interface IApp {
 
     /** Global download tracking. */
     readonly downloads: IDownloads;
+
+    /** User-configured sidebar folders. */
+    readonly menuFolders: IMenuFolders;
 
     /** Open pages (tabs) in the current window. */
     readonly pages: IPageCollection;

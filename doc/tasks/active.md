@@ -12,7 +12,7 @@ Current work in progress and planned tasks.
 
 ## Planned (Next)
 
-(none — next: Phase 5 Migration Review in migration plan)
+(none)
 
 ## Completed
 

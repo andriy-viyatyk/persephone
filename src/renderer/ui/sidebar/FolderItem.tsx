@@ -6,8 +6,8 @@ import color from "../../theme/color";
 import { OverflowTooltipText } from "../../components/basic/OverflowTooltipText";
 import { Tooltip } from "../../components/basic/Tooltip";
 
-import { menuFolders } from "../../store";
-import type { MenuFolder } from "../../store";
+import { menuFolders } from "../../api/menu-folders";
+import type { MenuFolder } from "../../api/menu-folders";
 import { MenuItem } from "../../components/overlay/PopupMenu";
 
 const FOLDER_DRAG_TYPE = "FOLDER_DRAG";
@@ -84,7 +84,7 @@ export function FolderItem(props: FolderItemProps) {
         accept: FOLDER_DRAG_TYPE,
         drop({ id: draggedId }: { id: string }) {
             if (draggedId !== folder.id && folder.id) {
-                menuFolders.moveFolder(draggedId, folder.id);
+                menuFolders.move(draggedId, folder.id);
             }
         },
         collect: (monitor) => ({

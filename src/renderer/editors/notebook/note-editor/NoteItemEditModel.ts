@@ -4,7 +4,7 @@ import { TModel } from "../../../core/state/model";
 import { PageEditor } from "../../../../shared/types";
 import { NoteItem } from "../notebookTypes";
 import { NotebookViewModel } from "../NotebookViewModel";
-import { scriptRunner } from "../../../core/services/scripting/ScriptRunner";
+import { scriptRunner } from "../../../scripting/ScriptRunner";
 import { ContentViewModelHost } from "../../base/ContentViewModelHost";
 import type { IContentHost } from "../../base/IContentHost";
 import type { ContentViewModel } from "../../base/ContentViewModel";

@@ -5,7 +5,7 @@ import { Button } from "../../../components/basic/Button";
 import { RunAllIcon, RunIcon } from "../../../theme/icons";
 import { SwitchButtons } from "../../../components/form/SwitchButtons";
 import { editorRegistry } from "../../registry";
-import { LanguageIcon } from "../../base/LanguageIcon";
+import { LanguageIcon } from "../../../components/icons/LanguageIcon";
 import { WithPopupMenu } from "../../../components/overlay/WithPopupMenu";
 import { MenuItem } from "../../../components/overlay/PopupMenu";
 import { monacoLanguages } from "../../../core/utils/monaco-languages";

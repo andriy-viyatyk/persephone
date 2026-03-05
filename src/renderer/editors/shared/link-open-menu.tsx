@@ -1,11 +1,11 @@
 import React from "react";
-import { MenuItem } from "../components/overlay/PopupMenu";
-import { GlobeIcon, OpenFileIcon } from "../theme/icons";
-import { IncognitoIcon } from "../theme/language-icons";
-import { DEFAULT_BROWSER_COLOR } from "../theme/palette-colors";
-import { settings } from "../api/settings";
+import { MenuItem } from "../../components/overlay/PopupMenu";
+import { GlobeIcon, OpenFileIcon } from "../../theme/icons";
+import { IncognitoIcon } from "../../theme/language-icons";
+import { DEFAULT_BROWSER_COLOR } from "../../theme/palette-colors";
+import { settings } from "../../api/settings";
 
-import { shell } from "../api/shell";
+import { shell } from "../../api/shell";
 
 /**
  * Appends "Open in ..." menu items for a URL to the given menu items array.
@@ -31,7 +31,7 @@ export function appendLinkOpenMenuItems(
             label: "Open in Internal Browser",
             icon: <GlobeIcon color={DEFAULT_BROWSER_COLOR} />,
             onClick: async () => {
-                const { pagesModel } = await import("../api/pages");
+                const { pagesModel } = await import("../../api/pages");
                 pagesModel.openUrlInBrowserTab(href, { profileName: "" });
             },
             disabled,
@@ -40,7 +40,7 @@ export function appendLinkOpenMenuItems(
             label: `Open in ${profile.name}`,
             icon: <GlobeIcon color={profile.color} />,
             onClick: async () => {
-                const { pagesModel } = await import("../api/pages");
+                const { pagesModel } = await import("../../api/pages");
                 pagesModel.openUrlInBrowserTab(href, { profileName: profile.name });
             },
             disabled,
@@ -49,7 +49,7 @@ export function appendLinkOpenMenuItems(
             label: "Open in Incognito",
             icon: <IncognitoIcon />,
             onClick: async () => {
-                const { pagesModel } = await import("../api/pages");
+                const { pagesModel } = await import("../../api/pages");
                 pagesModel.openUrlInBrowserTab(href, { incognito: true });
             },
             disabled,

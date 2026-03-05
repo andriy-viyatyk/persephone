@@ -8,8 +8,8 @@ import color from "../../theme/color";
 import { RenderEditor } from "./RenderEditor";
 import { CompareEditor } from "../../editors/compare";
 import { isTextFileModel } from "../../editors/text";
-import { NavPanelModel } from "../../features/navigation/nav-panel-store";
-import { NavigationPanel } from "../../features/navigation/NavigationPanel";
+import { NavPanelModel } from "../navigation/nav-panel-store";
+import { NavigationPanel } from "../navigation/NavigationPanel";
 
 const navPanelContainerStyles = {
     "& .nav-panel-container": {

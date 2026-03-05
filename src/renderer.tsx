@@ -9,8 +9,9 @@ function RootComponent() {
     useEffect(() => {
         const bootstrap = async () => {
             const [cont] = await Promise.all([
-                import("./renderer/index"),  // load main bundle (stores init here)
+                import("./renderer/index"),  // load main bundle (editors register here)
                 app.init(),                  // init app version (IPC call)
+                app.initSetup(),             // configure Monaco (themes, languages, types)
             ]);
             await app.initServices();        // load interface wrappers (stores already cached)
             await app.initPages();           // restore persisted pages

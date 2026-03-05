@@ -12,8 +12,8 @@ import { ui } from "../ui";
 import { shell } from "../shell";
 import { settings } from "../settings";
 import { editorRegistry } from "../../editors/registry";
-import { getLanguageByExtension } from "../../store/language-mapping";
-import { NavPanelModel } from "../../features/navigation/nav-panel-store";
+import { getLanguageByExtension } from "../../core/utils/language-mapping";
+import { NavPanelModel } from "../../ui/navigation/nav-panel-store";
 
 const path = require("path");
 const fs = require("fs");

@@ -2,7 +2,7 @@ import { showAppPopupMenu } from "../../ui/dialogs/poppers/showPopupMenu";
 import { parseObject } from "../../core/utils/parse-utils";
 import { api } from "../../../ipc/renderer/api";
 import { ui } from "../ui";
-import { scriptRunner } from "../../core/services/scripting/ScriptRunner";
+import { scriptRunner } from "../../scripting/ScriptRunner";
 import { fs } from "../fs";
 import { appWindow } from "../window";
 import { RendererEvent } from "../../../ipc/api-types";

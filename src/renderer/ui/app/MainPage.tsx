@@ -11,9 +11,9 @@ import {
 } from "../../theme/icons";
 import { app } from "../../api/app";
 import { Pages } from "./Pages";
-import { PageTabs } from "../../features/tabs/PageTabs";
+import { PageTabs } from "../tabs/PageTabs";
 import clsx from "clsx";
-import { MenuBar } from "../../features/sidebar/MenuBar";
+import { MenuBar } from "../sidebar/MenuBar";
 
 const AppRoot = styled.div({
     backgroundColor: color.background.default,

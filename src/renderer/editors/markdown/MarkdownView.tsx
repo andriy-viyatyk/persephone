@@ -5,7 +5,7 @@ import styled from "@emotion/styled";
 import { TextFileModel } from "../text";
 import color from "../../theme/color";
 import { CheckedIcon, CompactViewIcon, CopyIcon, NormalViewIcon, UncheckedIcon } from "../../theme/icons";
-import { appendLinkOpenMenuItems } from "../../store/link-open-menu";
+import { appendLinkOpenMenuItems } from "../shared/link-open-menu";
 import { useCallback, useMemo, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { Minimap } from "../../components/layout/Minimap";

@@ -3,7 +3,7 @@ import { forwardRef, useImperativeHandle, useMemo, useRef, useState } from "reac
 import { List } from "../../components/form/List";
 import color from "../../theme/color";
 import { MenuItem } from "../../components/overlay/PopupMenu";
-import { FileIcon, FolderIcon } from "./FileIcon";
+import { FileIcon, FolderIcon } from "../../components/icons/FileIcon";
 import { TextField } from "../../components/basic/TextField";
 import { HighlightedTextProvider, highlightText, searchMatch } from "../../components/basic/useHighlightedText";
 import { Button } from "../../components/basic/Button";

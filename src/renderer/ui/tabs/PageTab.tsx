@@ -22,7 +22,7 @@ import {
     VolumeIcon,
     VolumeMutedIcon,
 } from "../../theme/icons";
-import { LanguageIcon } from "../../editors/base/LanguageIcon";
+import { LanguageIcon } from "../../components/icons/LanguageIcon";
 import { TComponentModel, useComponentModel } from "../../core/state/model";
 import { MenuItem } from "../../components/overlay/PopupMenu";
 import { WithPopupMenu } from "../../components/overlay/WithPopupMenu";

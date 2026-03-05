@@ -2,8 +2,8 @@ import * as monaco from "monaco-editor";
 import { loader } from "@monaco-editor/react";
 import { languages } from "monaco-editor";
 
-import { getCurrentThemeId, getThemeById, onMonacoThemeChange } from "../theme/themes";
-import { ThemeDefinition } from "../theme/themes/types";
+import { getCurrentThemeId, getThemeById, onMonacoThemeChange } from "../../theme/themes";
+import { ThemeDefinition } from "../../theme/themes/types";
 import { defineRegLanguage } from "./monaco-languages/reg";
 import { defineCSVLanguage } from "./monaco-languages/csv";
 import { defineMermaidLanguage } from "./monaco-languages/mermaid";
@@ -221,5 +221,3 @@ export async function initMonaco() {
         applyMonacoTheme(activeTheme);
     }
 }
-
-initMonaco();

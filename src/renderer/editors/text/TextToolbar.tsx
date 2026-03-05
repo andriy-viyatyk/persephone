@@ -8,7 +8,7 @@ import { FlexSpace } from "../../components/layout/Elements";
 import styled from "@emotion/styled";
 import { editorRegistry } from "../registry";
 import { pagesModel } from "../../api/pages";
-import { NavPanelModel } from "../../features/navigation/nav-panel-store";
+import { NavPanelModel } from "../../ui/navigation/nav-panel-store";
 import type { TOneState } from "../../core/state/state";
 
 const path = require("path");

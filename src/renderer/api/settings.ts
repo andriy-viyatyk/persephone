@@ -3,7 +3,7 @@ import { TGlobalState } from "../core/state/state";
 import { Subscription } from "../core/state/events";
 import { parseJSON5 } from "../core/utils/parse-utils";
 import { fs } from "./fs";
-import { FileWatcher } from "../core/services/file-watcher";
+import { FileWatcher } from "../core/utils/file-watcher";
 import { applyTheme } from "../theme/themes";
 import { defaultSearchableExtensions, defaultMaxFileSize } from "../../ipc/search-ipc";
 import { wrapSubscription } from "./internal";

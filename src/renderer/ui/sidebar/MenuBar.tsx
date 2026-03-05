@@ -6,9 +6,9 @@ import { Button } from "../../components/basic/Button";
 import { List, ListOptionRenderer } from "../../components/form/List";
 import { api } from "../../../ipc/renderer/api";
 import { pagesModel } from "../../api/pages";
-import { menuFolders } from "../../store";
+import { menuFolders } from "../../api/menu-folders";
 import { recent } from "../../api/recent";
-import type { MenuFolder } from "../../store";
+import type { MenuFolder } from "../../api/menu-folders";
 import color from "../../theme/color";
 import {
     ArrowRightIcon,
@@ -28,7 +28,7 @@ import { RecentFileList } from "./RecentFileList";
 import { FileExplorer, FileExplorerRef, FileExplorerSavedState } from "../../components/file-explorer";
 import { FileListRef } from "./FileList";
 import { MenuItem } from "../../components/overlay/PopupMenu";
-import { FolderIcon } from "./FileIcon";
+import { FolderIcon } from "../../components/icons/FileIcon";
 import { Splitter } from "../../components/layout/Splitter";
 import { FolderItem } from "./FolderItem";
 const path = require("path");
@@ -285,7 +285,7 @@ class MenuBarModel extends TComponentModel<MenuBarState, MenuBarProps> {
                 label: "Remove Folder",
                 icon: <RemoveIcon />,
                 onClick: () => {
-                    menuFolders.deleteFolder(folder.id);
+                    menuFolders.remove(folder.id);
                 },
             },
             {
@@ -307,7 +307,7 @@ class MenuBarModel extends TComponentModel<MenuBarState, MenuBarProps> {
         });
         if (folderPath && folderPath.length > 0) {
             const name = path.basename(folderPath[0]);
-            menuFolders.addFolder({ name, path: folderPath[0] });
+            menuFolders.add({ name, path: folderPath[0] });
         }
     };
 

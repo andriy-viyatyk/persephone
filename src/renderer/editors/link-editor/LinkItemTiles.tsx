@@ -6,7 +6,7 @@ import RenderGridModel from "../../components/virtualization/RenderGrid/RenderGr
 import { RenderCellParams, RenderSizeOptional } from "../../components/virtualization/RenderGrid/types";
 import color from "../../theme/color";
 import { CopyIcon, DeleteIcon, GlobeIcon, OpenFileIcon, OpenLinkIcon, PinFilledIcon, PinIcon, RenameIcon } from "../../theme/icons";
-import { appendLinkOpenMenuItems } from "../../store/link-open-menu";
+import { appendLinkOpenMenuItems } from "../shared/link-open-menu";
 import { LinkItem, LinkViewMode, LINK_DRAG } from "./linkTypes";
 import { LinkViewModel } from "./LinkViewModel";
 import { getHostname, getFaviconPathSync, useFavicons, requestFaviconSave } from "./favicon-cache";

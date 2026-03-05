@@ -1,13 +1,14 @@
 import { debounce } from "../../shared/utils";
 import { TModel } from "../core/state/model";
 import { TGlobalState } from "../core/state/state";
-
 import { parseObject } from "../core/utils/parse-utils";
-import { fs } from "../api/fs";
-import { FileWatcher } from "../core/services/file-watcher";
+import { fs } from "./fs";
+import { FileWatcher } from "../core/utils/file-watcher";
+import type { IMenuFolders, IMenuFolder } from "./types/menu-folders";
 
 const menuFoldersFileName = "menuFolders.json";
 
+// Keep MenuFolder as the mutable internal type (matches persisted JSON shape)
 export interface MenuFolder {
     id?: string;
     name: string;
@@ -17,11 +18,11 @@ export interface MenuFolder {
 
 const defaultMenuFoldersState = {
     folders: [] as MenuFolder[],
-}
+};
 
 type MenuFoldersState = typeof defaultMenuFoldersState;
 
-class MenuFolders extends TModel<MenuFoldersState> {
+class MenuFoldersModel extends TModel<MenuFoldersState> implements IMenuFolders {
     private fileWatcher: FileWatcher | undefined;
 
     constructor() {
@@ -53,8 +54,8 @@ class MenuFolders extends TModel<MenuFoldersState> {
                         (Array.isArray(folder.files) &&
                             folder.files.every((file: any) => typeof file === "string")))
             )
-        )
-    }
+        );
+    };
 
     private loadState = async () => {
         const content = parseObject(await this.fileWatcher?.getTextContent());
@@ -68,30 +69,37 @@ class MenuFolders extends TModel<MenuFoldersState> {
     private saveState = () => {
         const content = JSON.stringify(this.state.get(), null, 4);
         fs.saveDataFile(menuFoldersFileName, content);
-    }
+    };
 
     private saveStateDebounced = debounce(this.saveState, 200);
 
-    addFolder = (folder: MenuFolder) => {
-        const id = crypto.randomUUID();
-        this.state.update((s) => {
-            s.folders.push({id, ...folder});
-        });
-        this.saveStateDebounced();
+    // ── IMenuFolders ────────────────────────────────────────────────
+
+    get folders(): readonly IMenuFolder[] {
+        return this.state.get().folders as IMenuFolder[];
     }
 
-    deleteFolder = (id: string) => {
+    add = (folder: { name: string; path?: string; files?: string[] }): string => {
+        const id = crypto.randomUUID();
+        this.state.update((s) => {
+            s.folders.push({ id, ...folder });
+        });
+        this.saveStateDebounced();
+        return id;
+    };
+
+    remove = (id: string) => {
         this.state.update((s) => {
             s.folders = s.folders.filter((folder) => folder.id !== id);
         });
         this.saveStateDebounced();
-    }
+    };
 
-    find = (id: string): MenuFolder | undefined => {
-        return this.state.get().folders.find((folder) => folder.id === id);
-    }
+    find = (id: string): IMenuFolder | undefined => {
+        return this.state.get().folders.find((folder) => folder.id === id) as IMenuFolder | undefined;
+    };
 
-    moveFolder = (sourceId: string, targetId: string) => {
+    move = (sourceId: string, targetId: string) => {
         this.state.update((s) => {
             const sourceIndex = s.folders.findIndex((folder) => folder.id === sourceId);
             const targetIndex = s.folders.findIndex((folder) => folder.id === targetId);
@@ -102,7 +110,7 @@ class MenuFolders extends TModel<MenuFoldersState> {
             s.folders.splice(targetIndex, 0, movedFolder);
         });
         this.saveStateDebounced();
-    }
+    };
 }
 
-export const menuFolders = new MenuFolders();
+export const menuFolders = new MenuFoldersModel();

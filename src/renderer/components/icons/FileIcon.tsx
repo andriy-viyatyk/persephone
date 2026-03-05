@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { FileTypeIcon } from "../../editors/base/LanguageIcon";
+import { FileTypeIcon } from "./LanguageIcon";
 const path = require("path");
 
 interface FileIconProps {

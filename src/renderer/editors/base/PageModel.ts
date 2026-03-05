@@ -2,7 +2,7 @@ import { TDialogModel } from "../../core/state/model";
 
 import { IPage } from "../../../shared/types";
 import { editorRegistry } from "../registry";
-import { NavPanelModel } from "../../features/navigation/nav-panel-store";
+import { NavPanelModel } from "../../ui/navigation/nav-panel-store";
 import { fs } from "../../api/fs";
 
 export const getDefaultPageModelState = (): IPage => ({

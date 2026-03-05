@@ -3,6 +3,7 @@ common.d.ts
 downloads.d.ts
 editors.d.ts
 fs.d.ts
+menu-folders.d.ts
 page.d.ts
 pages.d.ts
 recent.d.ts

@@ -7,7 +7,7 @@ import { appWindow } from "../../api/window";
 import { IPage, WindowPages } from "../../../shared/types";
 import color from "../../theme/color";
 import { EmptyIcon } from "../../theme/icons";
-import { LanguageIcon } from "../../editors/base/LanguageIcon";
+import { LanguageIcon } from "../../components/icons/LanguageIcon";
 
 const OpenTabsListRoot = styled(List)({
     "& .list-item": {
