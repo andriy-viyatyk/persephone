@@ -12,7 +12,7 @@ import { fileIconCache } from "../../main/fileIconCache";
 import { versionService } from "../../main/version-service";
 import * as browserRegistration from "../../main/browser-registration";
 import { downloadService } from "../../main/download-service";
-import { startMcpPipeServer, stopMcpPipeServer, isMcpPipeServerRunning, getMcpPipeName, getMcpClientCount } from "../../main/mcp-pipe-server";
+import { startMcpHttpServer, stopMcpHttpServer, isMcpHttpServerRunning, getMcpUrl, getMcpClientCount } from "../../main/mcp-http-server";
 
 type AddEventParam<T> = T extends (...args: infer Args) => infer Return
     ? (event: IpcMainEvent, ...args: Args) => Return
@@ -190,18 +190,18 @@ class Controller implements MainApi {
         downloadService.clearCompleted();
     }
 
-    setMcpEnabled = async (event: IpcMainEvent, enabled: boolean): Promise<void> => {
+    setMcpEnabled = async (event: IpcMainEvent, enabled: boolean, port?: number): Promise<void> => {
         if (enabled) {
-            startMcpPipeServer();
+            await startMcpHttpServer(port);
         } else {
-            stopMcpPipeServer();
+            await stopMcpHttpServer();
         }
     }
 
     getMcpStatus = async (event: IpcMainEvent): Promise<McpStatus> => {
         return {
-            running: isMcpPipeServerRunning(),
-            pipeName: getMcpPipeName(),
+            running: isMcpHttpServerRunning(),
+            url: getMcpUrl(),
             clientCount: getMcpClientCount(),
         };
     }

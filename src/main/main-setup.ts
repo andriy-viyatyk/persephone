@@ -11,7 +11,7 @@ import { versionService } from "./version-service";
 import { initSearchHandlers } from "./search-service";
 import { initBrowserHandlers } from "./browser-service";
 import { startPipeServer, stopPipeServer } from "./pipe-server";
-import { stopMcpPipeServer } from "./mcp-pipe-server";
+import { stopMcpHttpServer } from "./mcp-http-server";
 import { downloadService } from "./download-service";
 
 export function setupMainProcess() {
@@ -112,7 +112,7 @@ export function setupMainProcess() {
 
     app.on("will-quit", () => {
         stopPipeServer();
-        stopMcpPipeServer();
+        stopMcpHttpServer();
     });
 
     app.on("window-all-closed", () => {

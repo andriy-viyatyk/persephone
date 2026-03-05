@@ -228,6 +228,6 @@ See [/doc/standards/coding-style.md](doc/standards/coding-style.md) for complete
 | Color tokens             | `/src/renderer/theme/color.ts`                    |
 | Theme definitions        | `/src/renderer/theme/themes/`                     |
 | Named Pipe server        | `/src/main/pipe-server.ts`                        |
-| MCP Pipe server          | `/src/main/mcp-pipe-server.ts`                    |
+| MCP HTTP server          | `/src/main/mcp-http-server.ts`                    |
 | MCP command handler      | `/src/renderer/api/mcp-handler.ts`                |
 | Rust launcher            | `/launcher/src/main.rs`                           |

@@ -23,7 +23,7 @@ js-notepad is an **Electron desktop application** — a Windows Notepad replacem
 │ - System tray       │ - Monaco Editor                       │
 │ - File dialogs      │ - Object Model (app.*)                │
 │ - Named Pipe server │ - Script execution                    │
-│ - MCP Pipe server   │ - MCP command handler                 │
+│ - MCP HTTP server   │ - MCP command handler                 │
 │ - Native menus      │ - Editor system                       │
 │ - Version service   │                                       │
 └─────────────────────┴───────────────────────────────────────┘
@@ -159,11 +159,12 @@ See [scripting.md](./scripting.md).
 
 ### 4. MCP Integration (Model Context Protocol)
 
-- External AI agents (Claude Desktop, Claude Code) control js-notepad via a Named Pipe server
-- Protocol: JSON-RPC 2.0 over `\\.\pipe\js-notepad-mcp-{username}`
-- Main process: `mcp-pipe-server.ts` accepts connections, forwards requests to renderer via IPC
+- External AI agents (Claude Desktop, Claude Code) control js-notepad via a Streamable HTTP MCP server
+- Protocol: MCP over HTTP at `http://127.0.0.1:{port}/mcp` (default port 7865)
+- Main process: `mcp-http-server.ts` accepts connections using `@modelcontextprotocol/sdk`, forwards requests to renderer via IPC
 - Renderer process: `mcp-handler.ts` dispatches commands (`execute_script`, `get_pages`, `get_page_content`, `get_active_page`)
 - Opt-in via `mcp.enabled` setting — server starts/stops dynamically based on setting changes
+- Port is configurable via `mcp.port` setting (default `7865`)
 - Script execution uses `ScriptRunner.runWithCapture()` for headless operation with console capture
 
 ### 5. Theming System

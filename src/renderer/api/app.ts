@@ -203,15 +203,17 @@ class App {
         const { settings: settingsInstance } = await import("./settings");
         await settingsInstance.wait();
 
-        // Start MCP pipe server if enabled in settings
+        // Start MCP HTTP server if enabled in settings
         if (this._settings.get("mcp.enabled")) {
-            api.setMcpEnabled(true);
+            const port = this._settings.get("mcp.port") as number | undefined;
+            api.setMcpEnabled(true, port || undefined);
         }
 
         // Watch for mcp.enabled setting changes
         this._settings.onChanged.subscribe(({ key, value }) => {
             if (key === "mcp.enabled") {
-                api.setMcpEnabled(!!value);
+                const port = this._settings.get("mcp.port") as number | undefined;
+                api.setMcpEnabled(!!value, port || undefined);
             }
         });
     }

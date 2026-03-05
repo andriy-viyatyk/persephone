@@ -54,7 +54,7 @@ export enum Endpoint {
 
 export interface McpStatus {
     running: boolean;
-    pipeName: string;
+    url: string;
     clientCount: number;
 }
 
@@ -103,7 +103,7 @@ export type Api = {
     [Endpoint.openDownload]: (id: string) => Promise<void>;
     [Endpoint.showDownloadInFolder]: (id: string) => Promise<void>;
     [Endpoint.clearCompletedDownloads]: () => Promise<void>;
-    [Endpoint.setMcpEnabled]: (enabled: boolean) => Promise<void>;
+    [Endpoint.setMcpEnabled]: (enabled: boolean, port?: number) => Promise<void>;
     [Endpoint.getMcpStatus]: () => Promise<McpStatus>;
 };
 

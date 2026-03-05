@@ -29,7 +29,8 @@ export type AppSettingsKey =
     | "browser-default-bookmarks-file"
     | "browser-incognito-bookmarks-file"
     | "link-open-behavior"
-    | "mcp.enabled";
+    | "mcp.enabled"
+    | "mcp.port";
 
 // =============================================================================
 // State
@@ -48,7 +49,8 @@ const settingsComments: Partial<Record<AppSettingsKey, string>> = {
     "browser-default-bookmarks-file": "Path to the .link.json bookmarks file for the default browser profile.",
     "browser-incognito-bookmarks-file": "Path to the .link.json bookmarks file for incognito mode.",
     "link-open-behavior": "How external links open from editors.\n\"default-browser\" opens in the OS default browser, \"internal-browser\" opens in the nearest Browser tab.",
-    "mcp.enabled": "Enable MCP (Model Context Protocol) pipe server.\nAllows AI agents like Claude Desktop and Claude Code to control js-notepad.",
+    "mcp.enabled": "Enable MCP (Model Context Protocol) HTTP server.\nAllows AI agents like Claude Desktop and Claude Code to control js-notepad.",
+    "mcp.port": "Port number for the MCP HTTP server.\nDefault: 7865. Change requires toggling MCP off and on.",
 };
 
 const defaultAppSettingsState = {
@@ -63,6 +65,7 @@ const defaultAppSettingsState = {
         "browser-incognito-bookmarks-file": "",
         "link-open-behavior": "default-browser" as "default-browser" | "internal-browser",
         "mcp.enabled": false,
+        "mcp.port": 7865,
     },
 };
 

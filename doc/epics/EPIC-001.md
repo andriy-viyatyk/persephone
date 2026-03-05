@@ -7,81 +7,79 @@
 
 ## Overview
 
-Make js-notepad controllable by Claude AI via the **Model Context Protocol (MCP)**. Instead of embedding Claude inside js-notepad, we expose js-notepad as an MCP server that Claude Desktop and Claude Code can connect to. Claude can then execute scripts, create/manipulate pages, show diagrams, read/write files, and run shell commands — all through the existing app object model. This uses the user's existing Claude subscription (Team/Pro/Max) with zero API costs.
+Make js-notepad controllable by AI agents via the **Model Context Protocol (MCP)**. Instead of embedding AI inside js-notepad, we expose js-notepad as an MCP server that any MCP client (Claude Desktop, Claude Code, ChatGPT, Gemini CLI) can connect to. AI agents can then execute scripts, create/manipulate pages, and read page state — all through the existing app object model. This uses the user's existing AI subscription with zero API costs.
 
 ## Goals
 
-- **MCP server** — Expose js-notepad capabilities as MCP tools that Claude Desktop/Code can call
-- **Bidirectional IPC** — Extend Named Pipe with JSON-RPC protocol for request/response communication
-- **Script execution with results** — Claude sends scripts, receives execution output + console logs
-- **Page manipulation** — Claude can create pages, set content, switch editors, read page state
-- **Console capture** — Intercept console.log/error/warn in script context, return to Claude
-- **DevTools exposure** — Surface renderer errors and console output to the MCP caller
+- **Built-in MCP server** — HTTP Streamable MCP server running inside js-notepad (no external bridge process)
+- **Universal compatibility** — Any MCP client connects via `http://localhost:7865/mcp`
+- **Script execution with results** — AI sends scripts, receives execution output + console logs
+- **Page manipulation** — AI can create pages, set content, switch editors, read page state
+- **Console capture** — Intercept console.log/error/warn in script context, return to caller
 
 ## Architecture
 
 ```
-Claude Desktop / Claude Code
-    ↕ stdio (JSON-RPC 2.0)
-MCP Server (lightweight Node.js process, ~200 lines)
-    ↕ Named Pipe (JSON-RPC 2.0, bidirectional)
-js-notepad main process (pipe-server.ts)
+Claude Desktop / Claude Code / ChatGPT / Gemini CLI
+    ↕ Streamable HTTP (http://localhost:7865/mcp)
+js-notepad main process (built-in MCP HTTP server)
     ↕ Electron IPC (ipcMain/ipcRenderer)
 js-notepad renderer (ScriptRunner, app object model)
 ```
 
 ### How It Works
 
-1. User starts js-notepad (pipe server starts automatically)
-2. User configures MCP server in Claude Desktop or Claude Code
-3. Claude Desktop launches MCP server process (Node.js script)
-4. MCP server connects to js-notepad's Named Pipe
-5. User asks Claude to do something with js-notepad
-6. Claude calls MCP tool → MCP server sends JSON-RPC request over pipe → js-notepad executes → returns result
-7. Claude sees result, may call more tools, eventually responds to user
+1. User starts js-notepad with MCP enabled in Settings
+2. js-notepad starts an HTTP MCP server on `http://localhost:7865/mcp`
+3. User pastes the URL into any MCP client (Claude, ChatGPT, Gemini, etc.)
+4. AI agent calls MCP tools → js-notepad executes → returns result
+5. No external bridge process needed — everything runs inside js-notepad
 
 ### Key Insight
 
-The existing ScriptRunner + app object model (`app.pages`, `app.fs`, `app.ui`, `app.shell`) already provides full app control. A single `execute_script` MCP tool gives Claude access to everything — additional tools (list_pages, get_page_content) are convenience optimizations for common read operations.
+The existing ScriptRunner + app object model (`app.pages`, `app.fs`, `app.ui`, `app.shell`) already provides full app control. A single `execute_script` MCP tool gives AI access to everything — additional tools (list_pages, get_page_content) are convenience optimizations for common read operations.
 
 ### Technology
 
-- **MCP SDK:** `@modelcontextprotocol/sdk` (Node.js)
-- **Transport:** stdio (MCP server ↔ Claude) + Named Pipe (MCP server ↔ js-notepad)
-- **Protocol:** JSON-RPC 2.0 over Named Pipe (extending existing pipe-server.ts)
-- **Cost:** Zero — uses existing Claude subscription (Team/Pro/Max)
+- **MCP SDK:** `@modelcontextprotocol/sdk` (Node.js, runs in Electron main process)
+- **Transport:** Streamable HTTP (MCP standard, supported by all major AI tools)
+- **IPC:** Electron ipcMain/ipcRenderer for main ↔ renderer communication
+- **Cost:** Zero — uses existing AI subscription
 
 ## Planned Phases
 
-### Phase 1: Bidirectional Pipe Protocol
-Extend `pipe-server.ts` with JSON-RPC 2.0 support alongside existing OPEN/SHOW/DIFF commands.
+### Phase 1: Bidirectional IPC Protocol + Console Capture ✅
+Separate MCP Named Pipe server with JSON-RPC 2.0, command handler in renderer, console capture in ScriptContext.
 
-- **Backward compatible:** Plain text commands (OPEN, SHOW, DIFF) still work for the Rust launcher
-- **New protocol:** Lines starting with `{` are parsed as JSON-RPC requests
-- **Request/response:** Each request gets a JSON-RPC response with result or error
-- **New IPC handlers:** Main process forwards JSON-RPC requests to renderer, awaits response
+- Separate Named Pipe: `\\.\pipe\js-notepad-mcp-{user}` with JSON-RPC 2.0
+- IPC bridge: main ↔ renderer via `MCP_EXECUTE`/`MCP_RESULT` channels
+- Command handler in renderer: `execute_script`, `get_pages`, `get_page_content`, `get_active_page`
+- Console capture: Override `console.log/error/warn/info` in ScriptContext, return with results
+- Settings toggle: `mcp.enabled` controls pipe server lifecycle
 
-Initial commands:
-- `execute_script` — Run JS via ScriptRunner, return result text + console output
-- `get_pages` — List all open pages (id, title, type, editor, language, filePath)
-- `get_page_content` — Read content of a specific page
-- `get_active_page` — Get active page info + content
+### Phase 2: HTTP MCP Transport ✅
+Replace the Named Pipe transport with a **Streamable HTTP** MCP server built into js-notepad's main process.
 
-### Phase 2: Console Capture
-Intercept console methods in script execution context.
+- Add `@modelcontextprotocol/sdk` to Electron main process
+- Create HTTP MCP server using `StreamableHTTPServerTransport`
+- Listen on `http://localhost:7865/mcp` when MCP is enabled (default port: 7865)
+- Reuse existing IPC bridge (main → renderer command handler stays unchanged)
+- Replace `mcp-pipe-server.ts` with `mcp-http-server.ts`
+- Settings: `mcp.enabled` starts/stops the HTTP server, `mcp.port` configures port (default 7865)
+- Update IPC endpoints: `getMcpStatus` returns URL instead of pipe name
 
-- Override `console.log/error/warn/info` in ScriptContext before execution
-- Buffer all output with timestamps and levels
-- Return captured logs alongside script result in JSON-RPC response
-- Also capture unhandled errors/rejections during script execution
+**Why HTTP over Named Pipe:**
+- Universal: all MCP clients support HTTP (Claude, ChatGPT, Gemini, etc.)
+- No bridge process: server runs inside js-notepad, user just pastes a URL
+- Standard: Streamable HTTP is the MCP spec's recommended remote transport
 
-### Phase 3: MCP Server
-Create the MCP server that bridges Claude to js-notepad.
+### Phase 3: MCP Tools & Configuration
+Define MCP tools with schemas, add new commands, configure AI clients.
 
-- Standalone Node.js script using `@modelcontextprotocol/sdk`
-- Connects to js-notepad Named Pipe on startup
-- Exposes MCP tools that map to JSON-RPC commands
-- Configuration for Claude Desktop (`claude_desktop_config.json`) and Claude Code (`.mcp.json`)
+- Define MCP tools with proper names, descriptions, and Zod input schemas
+- Add new commands to renderer handler: `create_page`, `set_page_content`, `get_app_info`
+- Optimize tool descriptions (help AI understand when/how to use each tool)
+- Create `.mcp.json` / config examples for Claude Code, Claude Desktop, ChatGPT, Gemini
 
 MCP Tools:
 | Tool | Description |
@@ -89,28 +87,26 @@ MCP Tools:
 | `execute_script` | Run JavaScript with access to `page` and `app` objects |
 | `list_pages` | List all open pages with metadata |
 | `get_page_content` | Read content of a page by ID |
+| `get_active_page` | Get active page with content |
 | `create_page` | Create a new page with content/editor/language |
-| `read_file` | Read a file from disk |
-| `write_file` | Write content to a file |
-| `run_command` | Execute a shell command, return stdout/stderr |
-| `get_app_info` | Get app version, window state, settings |
+| `set_page_content` | Update content of a page by ID |
+| `get_app_info` | Get app version, window state, page count |
+
+Note: `read_file`, `write_file`, `run_command` are skipped — AI tools (Claude Code, etc.) already have native file/shell access.
 
 ### Phase 4: Settings UI & Polish
 - **Settings page section** for MCP integration:
   - Toggle: Enable/Disable MCP server
-  - Ready-to-copy config snippets for popular MCP hosts (Claude Desktop, Claude Code, ChatGPT)
+  - Show MCP URL for easy copy-paste (`http://localhost:7865/mcp`)
   - Status indicator: "MCP server running" / "stopped" / "N clients connected"
-  - Advanced (collapsed): pipe name for custom integrations
-- Error handling and edge cases (js-notepad not running, pipe timeout)
-- MCP tool descriptions optimization (help Claude understand when/how to use each tool)
-- System prompt / MCP instructions for Claude context
-- Test with Claude Desktop and Claude Code
+- MCP instructions / system prompt for AI context
+- Test with Claude Desktop, Claude Code, and other MCP clients
 - User documentation
 
 ### Phase 5: Advanced (Future)
-- **Resources:** Expose open pages as MCP resources (Claude can read without explicit tool calls)
+- **Resources:** Expose open pages as MCP resources (AI can read without explicit tool calls)
 - **Prompts:** Predefined MCP prompts (e.g., "Analyze current page", "Create diagram from data")
-- **Notifications:** Push events from js-notepad to Claude (page changed, file saved, error occurred)
+- **Notifications:** Push events from js-notepad to AI (page changed, file saved, error occurred)
 - **Image return:** Return rendered diagrams/images as base64 in tool results
 - **Multi-window:** Support targeting specific windows
 
@@ -119,36 +115,46 @@ MCP Tools:
 | Task | Title | Status |
 |------|-------|--------|
 | US-101 | MCP Bidirectional Pipe Protocol | Done |
+| US-102 | HTTP MCP Transport | Done |
 
 ## Open Questions
 
-### Must Decide Before Phase 1
-- **Pipe protocol details:** JSON-RPC 2.0 strict, or simplified JSON request/response? → Leaning JSON-RPC 2.0 for standard compliance
-- **Renderer execution:** How to route JSON-RPC commands from main process to renderer and back? New IPC channel pair, or extend existing api.ts?
-
-### Must Decide Before Phase 3
-- **MCP server packaging:** Standalone script in repo, or separate npm package?
-- **Connection resilience:** What happens if js-notepad restarts while MCP server is connected?
+### Must Decide Before Phase 2
+- ~~**HTTP port:** Fixed port (e.g., 7865) or configurable via settings?~~ → **Decided:** Default port 7865, configurable via `mcp.port` setting
+- ~~**MCP SDK in Electron:** Does `@modelcontextprotocol/sdk` work in Electron's main process?~~ → **Confirmed:** Works perfectly. SDK v1.27.1 runs in Electron main process with no bundling issues.
 
 ### Can Decide Later
-- **Authentication:** Should the pipe require a token for MCP connections? (security for multi-user machines)
+- **Authentication:** Should the HTTP server require a token? (security for shared machines)
 - **Rate limiting:** Should script execution be throttled?
+- **CORS:** Which origins should be allowed? (localhost only for security)
 
 ## Technical Details
 
-### Named Pipe Architecture (Two Pipes)
+### Transport Architecture
 
-| Pipe | Name | Protocol | Lifecycle |
-|------|------|----------|-----------|
-| **Launcher** | `\\.\pipe\js-notepad-{user}` | Line-based text (OPEN/SHOW/DIFF) | Always on |
-| **MCP** | `\\.\pipe\js-notepad-mcp-{user}` | JSON-RPC 2.0 (bidirectional) | On-demand (Settings toggle) |
+| Component | Protocol | Lifecycle |
+|-----------|----------|-----------|
+| **Launcher pipe** | `\\.\pipe\js-notepad-{user}` — Line-based text (OPEN/SHOW/DIFF) | Always on |
+| **MCP HTTP server** | `http://localhost:7865/mcp` — Streamable HTTP (MCP standard) | On-demand (`mcp.enabled` setting) |
 
 - Launcher pipe unchanged — backward compatible with `js-notepad-launcher.exe`
-- MCP pipe is a **separate server** with its own start/stop lifecycle
-- Setting: `mcp.enabled` (boolean, default: false) — controls MCP pipe
-- Location: `/src/main/pipe-server.ts` (launcher), new file for MCP pipe
+- MCP HTTP server runs in Electron main process
+- Setting: `mcp.enabled` (boolean, default: false) — controls MCP HTTP server
+- IPC bridge: main process routes MCP tool calls to renderer via `MCP_EXECUTE`/`MCP_RESULT`
 
-### ScriptRunner Capabilities (what Claude gets access to)
+### MCP Client Compatibility
+
+All major AI tools support Streamable HTTP transport:
+
+| Client | Transport | Setup |
+|--------|-----------|-------|
+| Claude Code | `"type": "http"` in `.mcp.json` | Paste URL |
+| Claude Desktop | Streamable HTTP | Paste URL |
+| ChatGPT Desktop | Streamable HTTP | Paste URL |
+| Gemini CLI | Streamable HTTP | Paste URL |
+| OpenAI Agents SDK | Streamable HTTP | Paste URL |
+
+### ScriptRunner Capabilities (what AI gets access to)
 - **app.pages** — Create, open, close, navigate, group pages
 - **app.fs** — Read/write files, resolve paths, file dialogs, show in explorer
 - **app.settings** — Get/set application settings
@@ -160,19 +166,6 @@ MCP Tools:
 - **page.editor** — Switch editors (monaco, grid-json, md-view, etc.)
 - **page.grouped** — Create side-by-side output pages
 - **page.asText/asGrid/asNotebook/...** — Typed editor facades
-
-### Console Capture Design
-```typescript
-// Before script execution, inject into context:
-const consoleLogs: Array<{level: string, args: any[], timestamp: number}> = [];
-const capturedConsole = {
-    log: (...args) => { consoleLogs.push({level: "log", args, timestamp: Date.now()}); },
-    error: (...args) => { consoleLogs.push({level: "error", args, timestamp: Date.now()}); },
-    warn: (...args) => { consoleLogs.push({level: "warn", args, timestamp: Date.now()}); },
-    info: (...args) => { consoleLogs.push({level: "info", args, timestamp: Date.now()}); },
-};
-// Return { result, consoleLogs } in JSON-RPC response
-```
 
 ## Notes
 
@@ -186,3 +179,13 @@ const capturedConsole = {
 - MCP server is an industry standard — works with Claude, ChatGPT, Gemini, Copilot, and any MCP client
 - No existing console.log capture in ScriptRunner — must add for MCP tool results
 - Existing app object model + ScriptRunner provide everything Claude needs to control the app
+
+### 2026-03-05 (later)
+- Phase 1 complete (US-101): Named Pipe JSON-RPC + console capture working end-to-end
+- **Architecture decision:** Replace Named Pipe transport with Streamable HTTP
+  - Reason: HTTP is universal — all MCP clients (Claude, ChatGPT, Gemini) support it
+  - Reason: No bridge process needed — server runs inside js-notepad
+  - Reason: Simple setup — user pastes `http://localhost:7865/mcp` into any AI tool
+- Skipped `read_file`, `write_file`, `run_command` tools — AI tools already have native file/shell access
+- Added `set_page_content` tool — allows AI to write content back to pages
+- Phase 2 (HTTP transport) will be implemented before Phase 3 (tools & config)

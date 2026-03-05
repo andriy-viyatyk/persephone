@@ -53,7 +53,7 @@ js-notepad is a Windows Notepad replacement designed for developers. It combines
 - File comparison (diff view)
 - File encryption
 - Full Node.js access in scripts
-- AI agent integration — connect external tools like Claude Desktop to control js-notepad via Named Pipe
+- AI agent integration — connect external tools like Claude Desktop, Claude Code, or ChatGPT to control js-notepad via HTTP (MCP)
 
 ## Getting Help
 

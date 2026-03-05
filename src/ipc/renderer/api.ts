@@ -208,8 +208,8 @@ class ApiCalls implements Api {
         return executeOnce<void>(Endpoint.clearCompletedDownloads);
     }
 
-    setMcpEnabled = async (enabled: boolean) => {
-        return executeOnce<void>(Endpoint.setMcpEnabled, enabled);
+    setMcpEnabled = async (enabled: boolean, port?: number) => {
+        return executeOnce<void>(Endpoint.setMcpEnabled, enabled, port);
     }
 
     getMcpStatus = async () => {

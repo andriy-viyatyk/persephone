@@ -45,6 +45,7 @@
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@floating-ui/react": "^0.27.16",
+    "@modelcontextprotocol/sdk": "^1.27.1",
     "@monaco-editor/react": "^4.7.0",
     "clsx": "^2.1.1",
     "csv-parse": "^6.1.0",
