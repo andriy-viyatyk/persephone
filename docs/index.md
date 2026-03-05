@@ -27,6 +27,7 @@ js-notepad is a Windows Notepad replacement designed for developers. It combines
 - [Todo Editor](./editors.md#todo-editor) - Task lists for `.todo.json` files
 - [Browser](./browser.md) - Built-in web browser with profiles, bookmarks, and downloads
 - [Scripting](./scripting.md) - JavaScript execution and content transformation
+- [Scripting API Reference](./api/index.md) - Complete API for `page` and `app` objects
 - [Tabs & Navigation](./tabs-and-navigation.md) - Tab management, grouping, sidebar, and session restore
 - [Encryption](./encryption.md) - Password-based file encryption
 - [Keyboard Shortcuts](./shortcuts.md) - Complete shortcut reference

@@ -3,78 +3,203 @@
 ## Overview
 
 The editor system handles different file types with specialized viewers/editors. Each editor:
-- Has its own `PageModel` for state management
+- Has its own state management (PageModel or ContentViewModel)
 - Renders a specific UI for the file type
-- Can be loaded asynchronously for code splitting
+- Is loaded asynchronously for code splitting
+- Can expose a scripting facade via `page.asX()` methods
+
+All editor code lives in `/src/renderer/editors/`.
 
 ## Editor Categories
 
-Editors are divided into two categories based on how they integrate with the application:
-
 ### Content Views (`category: "content-view"`)
 
-Views of text-based content that share `TextFileModel` for state management.
+Views of text-based content that share `TextFileModel` for state management. They render inside `TextPageView` and can switch between each other.
 
-| Editor | Description |
-|--------|-------------|
-| **monaco** | Monaco text editor (default) |
-| **grid-json** | Tabular JSON viewer/editor |
-| **grid-csv** | CSV viewer/editor |
-| **md-view** | Rendered markdown preview |
-| **svg-view** | Rendered SVG preview |
-| **mermaid-view** | Rendered Mermaid diagram preview |
-| **notebook-view** | Structured notes editor for `.note.json` files |
+| Editor ID | Name | File types | ViewModel |
+|-----------|------|------------|-----------|
+| `monaco` | Text Editor | `*` (all, default) | `TextViewModel` |
+| `grid-json` | Grid | `.json`, `.grid.json` | `GridViewModel` |
+| `grid-csv` | Grid | `.csv`, `.grid.csv` | `GridViewModel` |
+| `md-view` | Preview | `.md`, `.markdown` | `MarkdownViewModel` |
+| `svg-view` | Preview | `.svg` | `SvgViewModel` |
+| `html-view` | Preview | `.html` | `HtmlViewModel` |
+| `mermaid-view` | Mermaid | `.mmd`, `.mermaid` | `MermaidViewModel` |
+| `notebook-view` | Notebook | `.note.json` | `NotebookViewModel` |
+| `todo-view` | ToDo | `.todo.json` | `TodoViewModel` |
+| `link-view` | Links | `.link.json` | `LinkViewModel` |
 
 **Characteristics:**
 - Rendered inside `TextPageView` via `ActiveEditor` component
 - Share toolbar, script panel, footer, and encryption panel
-- Can switch between each other (e.g., JSON text → Grid view)
-- Use `TextFileModel` - no separate PageModel needed
+- Can switch between each other (e.g., JSON text <-> Grid view)
+- Use `TextFileModel` (no separate PageModel)
+- Each has a `ContentViewModel` subclass for view-specific state
 - `switchOption()` function controls when editor appears in switch dropdown
 
 ### Page Editors (`category: "page-editor"`)
 
-Standalone editors with their own PageModel for non-text file formats.
+Standalone editors with their own PageModel.
 
-| Editor | Description |
-|--------|-------------|
-| **pdf-view** | PDF viewer (read-only) |
-| **image-view** | Image viewer (PNG, JPG, GIF, WEBP, BMP, ICO) |
-| **browser-view** | In-app web browser ([architecture](./browser-editor.md)) |
+| Editor ID | Name | Page type | File types |
+|-----------|------|-----------|------------|
+| `pdf-view` | PDF Viewer | `pdfFile` | `.pdf` |
+| `image-view` | Image Viewer | `imageFile` | `.png`, `.jpg`, `.gif`, `.webp`, `.bmp`, `.ico` |
+| `browser-view` | Browser | `browserPage` | (none — opened via UI) |
+| `about-view` | About | `aboutPage` | (none — opened via UI) |
+| `settings-view` | Settings | `settingsPage` | (none — opened via UI) |
+| `compare` | Compare | (triggered) | (none — opened via diff command) |
 
 **Characteristics:**
 - Rendered instead of `TextPageView` by `RenderEditor`
-- Have their own PageModel subclass (e.g., `PdfViewerModel`)
+- Have their own PageModel subclass
 - Handle their own UI entirely (no shared toolbar/script panel)
-- Each has a unique `pageType` (e.g., "pdfFile")
+- Each has a unique `pageType`
 
 ### Architecture Diagram
 
 ```
 RenderEditor
-├── [page-editor] → AsyncEditor → PdfViewer / ImageViewer (own PageModel)
+├── [page-editor] → AsyncEditor → PdfViewer / ImageViewer / Browser / About / Settings
 └── [content-view] → TextPageView
                          ├── TextToolbar
-                         ├── ActiveEditor → Monaco / Grid / Markdown / Notebook
+                         ├── ActiveEditor → Monaco / Grid / Markdown / Notebook / Todo / Link / SVG / HTML / Mermaid
                          ├── ScriptPanel
                          ├── TextFooter
                          └── EditorOverlay (portal target for expanded note)
 ```
 
-## Editor Types
+## Content Host + ViewModel Architecture
 
-| Editor | File Types | Description |
-|--------|------------|-------------|
-| **Text** | `*` (all) | Monaco-based text editor (default) |
-| **Grid JSON** | `.json`, `*.grid.json` | Tabular JSON viewer/editor |
-| **Grid CSV** | `.csv`, `*.grid.csv` | CSV viewer/editor |
-| **Markdown** | `.md`, `.markdown` | Rendered markdown preview |
-| **Image** | `.png`, `.jpg`, `.gif`, `.webp`, `.bmp`, `.ico` | Image viewer |
-| **SVG** | `.svg` | SVG preview (content-view, Monaco default) |
-| **Mermaid** | `.mmd`, `.mermaid` | Mermaid diagram preview with light/dark toggle |
-| **PDF** | `.pdf` | PDF viewer (read-only) |
-| **Notebook** | `*.note.json` | Structured notes with categories, tags, search |
-| **Compare** | (triggered) | Side-by-side diff view |
+Content-view editors use a layered architecture with ref-counted ViewModels:
+
+```
+TextFileModel (IContentHost)
+    │
+    ├── owns text content, language, file I/O
+    │
+    └── ContentViewModelHost (ref-counting)
+            │
+            ├── GridViewModel (refs: 1)      ← acquired by GridEditor component
+            ├── MarkdownViewModel (refs: 0)  ← disposed (no active consumers)
+            └── NotebookViewModel (refs: 2)  ← acquired by NotebookEditor + NotebookEditorFacade
+```
+
+### IContentHost Interface
+
+The contract for anything that hosts editable text content. Implemented by:
+- `TextFileModel` — standalone page tab
+- `NoteItemEditModel` — notebook note (embedded editor)
+
+```typescript
+interface IContentHost {
+    readonly id: string;
+    readonly state: IState<IContentHostState>;  // { content, language, editor }
+    changeContent(content: string, byUser?: boolean): void;
+    changeEditor(editor: PageEditor): void;
+    changeLanguage(language: string | undefined): void;
+    readonly stateStorage: EditorStateStorage;
+    acquireViewModel(editorId: PageEditor): Promise<ContentViewModel<any>>;
+    releaseViewModel(editorId: PageEditor): void;
+}
+```
+
+### ContentViewModel Lifecycle
+
+1. React component mounts → `useContentViewModel(host, editorId)` calls `host.acquireViewModel()`
+2. `ContentViewModelHost.acquire()` → checks cache → first call: loads factory, creates VM, calls `init()`
+3. VM subscribes to host content changes via `onContentChanged()`
+4. React component unmounts → hook calls `host.releaseViewModel()`
+5. `ContentViewModelHost.release()` → decrements refs → if 0: calls `dispose()`
+
+### ViewModelFactory Registration
+
+Each content-view editor provides a `createViewModel` factory in its `EditorModule`:
+
+```typescript
+// In register-editors.ts
+editorRegistry.register({
+    id: "grid-json",
+    category: "content-view",
+    loadModule: async () => {
+        const { GridEditor } = await import("./grid/GridEditor");
+        const { createGridViewModel } = await import("./grid/GridViewModel");
+        return {
+            Editor: GridEditor,
+            createViewModel: createGridViewModel,  // ← factory for ContentViewModel
+            newPageModel: textEditorModule.newPageModel,
+            // ...
+        };
+    },
+});
+```
+
+## PageModel Hierarchy
+
+```
+TDialogModel<T, R>   (from core/state/model.ts)
+└── PageModel<T, R>   (from editors/base/PageModel.ts)
+    ├── TextFileModel         # Content-view host (Monaco, Grid, Markdown, etc.)
+    ├── BrowserPageModel      # Browser (multi-tab, webview, IPC)
+    ├── NotebookEditorModel   # Notebook (.note.json — page-level model)
+    └── (PdfViewer, ImageViewer, About, Settings, Compare — inline models)
+
+ContentViewModel<TState>   (from editors/base/ContentViewModel.ts)
+├── TextViewModel           # Monaco text editor state
+├── GridViewModel           # Grid columns, rows, filters
+├── MarkdownViewModel       # Container ref, search, scroll
+├── NotebookViewModel       # Notes, categories, tags, filters
+├── TodoViewModel           # Todo items, lists, tags
+├── LinkViewModel           # Links, pins, favicons
+├── SvgViewModel            # SVG rendering
+├── HtmlViewModel           # HTML rendering
+└── MermaidViewModel        # SVG URL, loading, error, light mode
+```
+
+**Note:** PageModel extends `TDialogModel` (not `TModel`) because pages need `close()` with confirmation and `canClose` guards.
+
+### PageModel Base
+
+```typescript
+class PageModel<T extends IPageState, R = any> extends TDialogModel<T, R> {
+    get id(): string;
+    get type(): PageType;
+    get title(): string;
+    get modified(): boolean;
+    get pinned(): boolean;
+    get filePath(): string | undefined;
+
+    scriptData: Record<string, any>;   // In-memory data for scripts
+    navPanel: NavPanelModel | null;    // Navigation panel state
+
+    confirmRelease(): Promise<boolean>;
+    restore(): Promise<void>;
+    saveState(): Promise<void>;
+    getRestoreData(): Partial<T>;
+    changeLanguage(language: string): void;
+}
+```
+
+## Scripting Facades
+
+Editor facades provide safe, typed script access to editors via `page.asX()` methods. Each facade wraps a ContentViewModel or PageModel.
+
+| Method | Facade | Source |
+|--------|--------|--------|
+| `page.asText()` | `TextEditorFacade` | Wraps `TextViewModel` |
+| `page.asGrid()` | `GridEditorFacade` | Wraps `GridViewModel` |
+| `page.asNotebook()` | `NotebookEditorFacade` | Wraps `NotebookViewModel` |
+| `page.asTodo()` | `TodoEditorFacade` | Wraps `TodoViewModel` |
+| `page.asLink()` | `LinkEditorFacade` | Wraps `LinkViewModel` |
+| `page.asBrowser()` | `BrowserEditorFacade` | Wraps `BrowserPageModel` directly |
+| `page.asMarkdown()` | `MarkdownEditorFacade` | Wraps `MarkdownViewModel` |
+| `page.asSvg()` | `SvgEditorFacade` | Wraps `SvgViewModel` |
+| `page.asHtml()` | `HtmlEditorFacade` | Wraps `HtmlViewModel` |
+| `page.asMermaid()` | `MermaidEditorFacade` | Wraps `MermaidViewModel` |
+
+Facades live in `/src/renderer/scripting/api-wrapper/`. Interfaces in `/src/renderer/api/types/*.d.ts`.
+
+Content-view facades acquire a ViewModel via `host.acquireViewModel()` and auto-release it when the script completes (via `releaseList` in `PageWrapper`). `BrowserEditorFacade` wraps the PageModel directly (no ViewModel, no ref-counting).
 
 ## Editor Resolution
 
@@ -85,11 +210,11 @@ File Path → editorRegistry.resolve() → EditorDefinition → loadModule() →
 ```
 
 Resolution priority (higher priority wins):
-1. Filename patterns (e.g., `*.grid.json`) - priority 10
-2. File extensions (e.g., `.pdf`) - priority 100
-3. Default to monaco text editor - priority 0
+1. Filename patterns (e.g., `*.note.json`) — priority 20
+2. File extensions (e.g., `.pdf`) — priority 100
+3. Default to monaco text editor — priority 0
 
-All editor registration is in `/editors/register-editors.ts`.
+All editor registration is in `/src/renderer/editors/register-editors.ts`.
 
 ## Editor Structure
 
@@ -99,8 +224,8 @@ Every editor follows this pattern:
 /editors/[name]/
 ├── index.ts              # Public exports + EditorModule
 ├── [Name]Editor.tsx      # Main component (or [Name]View.tsx)
-├── [Name]PageModel.ts    # State and business logic
-├── [Name]Toolbar.tsx     # Editor-specific toolbar (optional)
+├── [Name]ViewModel.ts    # ContentViewModel subclass (content-views)
+├── [Name]PageModel.ts    # PageModel subclass (page-editors)
 ├── components/           # Editor-specific components (optional)
 └── utils/                # Editor-specific utilities (optional)
 ```
@@ -109,196 +234,54 @@ Every editor follows this pattern:
 
 ```typescript
 interface EditorModule {
-  Editor: React.ComponentType<{ model: PageModel }>;
-  newPageModel(filePath?: string): Promise<PageModel>;
-  newEmptyPageModel(pageType: PageType): Promise<PageModel | null>;
-  newPageModelFromState(state: Partial<IPage>): Promise<PageModel>;
-}
-```
-
-## PageModel Hierarchy
-
-```
-PageModel (abstract)
-├── TextFileModel         # Content views (Monaco, Grid, Markdown)
-├── PdfViewerModel        # PDF viewer (page-editor)
-├── ImageViewerModel      # Image viewer (page-editor)
-├── BrowserPageModel      # Browser editor (page-editor, multi-process)
-└── [Future page-editors...]
-
-TComponentModel (for view-specific state)
-├── GridPageModel         # Grid view state (columns, filters, etc.)
-├── MarkdownViewModel     # Markdown view state (scroll position)
-├── NotebookEditorModel   # Notebook state (notes, categories, tags, filters)
-└── [Future view models...]
-```
-
-Note: Content views like Grid and Markdown use `TextFileModel` for content management,
-but may have their own `TComponentModel` for view-specific state (not page state).
-
-### PageModel Base
-
-```typescript
-class PageModel<T extends IPage, R = any> {
-  state: TComponentState<T>;
-
-  get id(): string;
-  get type(): PageType;
-
-  // Lifecycle
-  restore(): Promise<void>;
-  saveState(): Promise<void>;
-  getRestoreData(): Partial<T>;
-  applyRestoreData(data: Partial<T>): void;
-
-  // Language
-  changeLanguage(language: string): void;
+    Editor: React.ComponentType<{ model: PageModel | IContentHost }>;
+    newPageModel(filePath?: string): Promise<PageModel>;
+    newEmptyPageModel(pageType: PageType): Promise<PageModel | null>;
+    newPageModelFromState(state: Partial<IPageState>): Promise<PageModel>;
+    createViewModel?: ViewModelFactory;  // Content-views provide this
 }
 ```
 
 ## Adding a New Editor
 
-### Step 1: Create Editor Folder
+### Adding a Content-View Editor
 
-```
-/editors/myeditor/
-├── index.ts
-├── MyEditor.tsx
-└── MyPageModel.ts
-```
+1. Create folder `/editors/myview/`
+2. Implement `ContentViewModel` subclass:
+   ```typescript
+   export class MyViewModel extends ContentViewModel<MyState> {
+       protected onInit(): void { /* parse initial content */ }
+       protected onContentChanged(content: string): void { /* react to updates */ }
+   }
+   export const createMyViewModel: ViewModelFactory = (host) => new MyViewModel(host, defaultState);
+   ```
+3. Implement editor component receiving `IContentHost` as model
+4. Register with `category: "content-view"` and `createViewModel` factory
+5. Add `PageEditor` type to `/shared/types.ts`
+6. (Optional) Add scripting facade in `/scripting/api-wrapper/` + `.d.ts` in `/api/types/`
 
-### Step 2: Implement PageModel
+### Adding a Page-Editor
 
-```typescript
-// MyPageModel.ts
-import { PageModel, getDefaultPageModelState } from "../base";
-
-interface MyPageModelState extends IPage {
-  // Custom state...
-}
-
-export class MyPageModel extends PageModel<MyPageModelState> {
-  // Implementation...
-}
-
-export function newMyPageModel(filePath?: string): MyPageModel {
-  // Factory function
-}
-```
-
-### Step 3: Implement Editor Component
-
-```typescript
-// MyEditor.tsx
-interface MyEditorProps {
-  model: MyPageModel;
-}
-
-export function MyEditor({ model }: MyEditorProps) {
-  const state = model.state.use();
-  return <div>...</div>;
-}
-```
-
-### Step 4: Create EditorModule
-
-```typescript
-// index.ts
-import { EditorModule } from "../types";
-import { MyEditor } from "./MyEditor";
-import { MyPageModel, newMyPageModel } from "./MyPageModel";
-
-const myEditorModule: EditorModule = {
-  Editor: MyEditor,
-  newPageModel: async (filePath) => newMyPageModel(filePath),
-  newEmptyPageModel: async (pageType) => {
-    if (pageType === "myType") {
-      return newMyPageModel();
-    }
-    return null;
-  },
-  newPageModelFromState: async (state) => {
-    return new MyPageModel(new TComponentState({
-      ...getDefaultMyState(),
-      ...state,
-    }));
-  },
-};
-
-export default myEditorModule;
-export { MyEditor, MyPageModel };
-```
-
-### Step 5: Register in EditorRegistry
-
-Add registration in `/editors/register-editors.ts`. Editors use function-based matching for full control:
-
-```typescript
-// For a standalone page editor (like PDF, Image viewer):
-editorRegistry.register({
-    id: "my-editor",           // Must match PageEditor type
-    name: "My Editor",         // Display name in UI
-    pageType: "myType",        // PageType this editor creates
-    category: "page-editor",   // Standalone editor with own PageModel
-    acceptFile: (fileName) => {
-        // Return priority >= 0 if editor can open file, -1 otherwise
-        if (fileName.toLowerCase().endsWith(".myext")) return 50;
-        return -1;
-    },
-    loadModule: async () => {
-        const module = await import("./myeditor");
-        return module.default;
-    },
-});
-
-// For a content view (alternative view of text content):
-editorRegistry.register({
-    id: "my-view",
-    name: "My View",
-    pageType: "textFile",      // Uses TextFileModel
-    category: "content-view",  // Rendered inside TextPageView
-    validForLanguage: (languageId) => languageId === "mylang",
-    switchOption: (languageId) => {
-        // Return priority >= 0 to show in switch dropdown, -1 to hide
-        if (languageId !== "mylang") return -1;
-        return 10;
-    },
-    loadModule: async () => {
-        const module = await import("./myview");
-        return {
-            Editor: module.MyView,
-            newPageModel: textEditorModule.newPageModel,  // Reuse text model
-            newEmptyPageModel: textEditorModule.newEmptyPageModel,
-            newPageModelFromState: textEditorModule.newPageModelFromState,
-        };
-    },
-});
-```
-
-### Step 6: Add Types (if new)
-
-Add to `/shared/types.ts`:
-
-```typescript
-export type PageType = 'textFile' | 'pdfFile' | 'myType';
-export type PageEditor = 'monaco' | 'grid-json' | ... | 'my-editor';
-```
+1. Create folder `/editors/myeditor/`
+2. Extend `PageModel` with custom state
+3. Implement editor component receiving your PageModel
+4. Register with `category: "page-editor"` and unique `pageType`
+5. Add `PageType` and `PageEditor` types to `/shared/types.ts`
+6. (Optional) Add scripting facade
 
 ## Editor Switching
 
-Some editors support switching views (e.g., JSON → Grid view):
+Content-view editors support switching views (e.g., JSON text <-> Grid view):
 
 ```typescript
-// In TextToolbar.tsx
-const switchOptions = editorRegistry.getSwitchOptions(language);
-
-// Available editors for language
+// Get available switch options for current language
+const switchOptions = editorRegistry.getSwitchOptions(language, filePath);
 if (switchOptions.options.length > 1) {
-  // Render switch buttons
+    // Render switch buttons in toolbar
 }
 ```
 
-The `page.editor` property controls which editor renders the content.
+The `page.editor` property on `TextFileModel` state controls which editor renders the content.
 
 ## EditorRegistry API
 
@@ -306,10 +289,14 @@ The `page.editor` property controls which editor renders the content.
 editorRegistry.register(definition)              // Register an editor
 editorRegistry.getById(id)                       // Get editor by ID
 editorRegistry.getAll()                          // Get all registered editors
-editorRegistry.resolve(filePath)                 // Resolve editor for file (calls acceptFile)
+editorRegistry.resolve(filePath)                 // Resolve editor for file
 editorRegistry.resolveId(filePath)               // Resolve just the editor ID
-editorRegistry.validateForLanguage(editor, lang) // Validate editor/language (calls validForLanguage)
-editorRegistry.getSwitchOptions(lang, filePath)  // Get UI switch options (calls switchOption)
+editorRegistry.validateForLanguage(editor, lang) // Validate editor/language combo
+editorRegistry.getSwitchOptions(lang, filePath)  // Get UI switch options
+editorRegistry.getPreviewEditor(lang, filePath)  // Get auto-preview editor
+editorRegistry.getViewModelFactory(editorId)     // Get cached VM factory (sync)
+editorRegistry.loadViewModelFactory(editorId)    // Load VM factory (async)
+editorRegistry.validateForHost(editorId, host)   // Validate editor for content host
 ```
 
 For complete guide, see [Editor Creation Guide](/doc/standards/editor-guide.md).

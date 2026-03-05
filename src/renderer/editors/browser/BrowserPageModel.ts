@@ -1,6 +1,6 @@
 import { createElement, ReactNode } from "react";
 const { ipcRenderer } = require("electron");
-import { IPage } from "../../../shared/types";
+import { IPageState } from "../../../shared/types";
 import { getDefaultPageModelState, PageModel } from "../base";
 import { TComponentState } from "../../core/state/state";
 import { globalKeyDown, SubscriptionObject } from "../../core/state/events";
@@ -157,7 +157,7 @@ export interface BrowserTabData {
     navHistory: string[];
 }
 
-export interface BrowserPageState extends IPage {
+export interface BrowserPageState extends IPageState {
     /** Active internal tab's URL (kept in sync for toolbar display). */
     url: string;
     pageTitle: string;

@@ -152,6 +152,46 @@ export class TextViewModel extends ContentViewModel<TextEditorState> {
         return this.editorRef.getModel()?.getValueInRange(selection) || "";
     };
 
+    getCursorPosition = (): { lineNumber: number; column: number } => {
+        const pos = this.editorRef?.getPosition();
+        return pos
+            ? { lineNumber: pos.lineNumber, column: pos.column }
+            : { lineNumber: 1, column: 1 };
+    };
+
+    insertText = (text: string): void => {
+        const editor = this.editorRef;
+        if (!editor) return;
+
+        const selection = editor.getSelection();
+        if (!selection) return;
+
+        editor.executeEdits("script", [{
+            range: new monaco.Range(
+                selection.startLineNumber,
+                selection.startColumn,
+                selection.startLineNumber,
+                selection.startColumn,
+            ),
+            text,
+            forceMoveMarkers: true,
+        }]);
+    };
+
+    replaceSelection = (text: string): void => {
+        const editor = this.editorRef;
+        if (!editor) return;
+
+        const selection = editor.getSelection();
+        if (!selection) return;
+
+        editor.executeEdits("script", [{
+            range: selection,
+            text,
+            forceMoveMarkers: true,
+        }]);
+    };
+
     setupWheelZoom = (editor: monaco.editor.IStandaloneCodeEditor) => {
         const editorDomNode = editor.getDomNode();
         if (editorDomNode) {

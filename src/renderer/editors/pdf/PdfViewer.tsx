@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { IPage, PageType } from "../../../shared/types";
+import { IPageState, PageType } from "../../../shared/types";
 import { getDefaultPageModelState, PageModel } from "../base";
 import { PageToolbar } from "../base/EditorToolbar";
 import { TComponentState } from "../../core/state/state";
@@ -19,7 +19,7 @@ const PdfViewerRoot = styled.div({
     position: "relative",
 });
 
-interface PdfViewerModelState extends IPage {}
+interface PdfViewerModelState extends IPageState {}
 
 const getDefaultPdfViewerModelState = (): PdfViewerModelState => ({
     ...getDefaultPageModelState(),
@@ -116,7 +116,7 @@ const pdfEditorModule: EditorModule = {
         return null;
     },
     newPageModelFromState: async (
-        state: Partial<IPage>
+        state: Partial<IPageState>
     ): Promise<PageModel> => {
         const initialState: PdfViewerModelState = {
             ...getDefaultPdfViewerModelState(),

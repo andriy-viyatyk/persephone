@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import { useEffect, useState } from "react";
-import { IPage, PageType } from "../../../shared/types";
+import { IPageState, PageType } from "../../../shared/types";
 import { getDefaultPageModelState, PageModel } from "../base";
 import { TComponentState } from "../../core/state/state";
 import { EditorModule } from "../types";
@@ -156,7 +156,7 @@ const AboutPageRoot = styled.div({
 
 export const ABOUT_PAGE_ID = "about-page";
 
-interface AboutPageModelState extends IPage {}
+interface AboutPageModelState extends IPageState {}
 
 const getDefaultAboutPageModelState = (): AboutPageModelState => ({
     ...getDefaultPageModelState(),
@@ -354,7 +354,7 @@ const aboutEditorModule: EditorModule = {
         }
         return null;
     },
-    newPageModelFromState: async (state: Partial<IPage>): Promise<PageModel> => {
+    newPageModelFromState: async (state: Partial<IPageState>): Promise<PageModel> => {
         const initialState: AboutPageModelState = {
             ...getDefaultAboutPageModelState(),
             ...state,

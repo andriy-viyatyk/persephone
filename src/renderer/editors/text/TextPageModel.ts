@@ -2,7 +2,7 @@ import { TComponentState } from "../../core/state/state";
 import { shell } from "../../api/shell";
 import { fs as appFs } from "../../api/fs";
 import { getDefaultPageModelState, PageModel } from "../base/PageModel";
-import { IPage, PageEditor } from "../../../shared/types";
+import { IPageState, PageEditor } from "../../../shared/types";
 import { ScriptPanelModel } from "./ScriptPanel";
 import { editorRegistry } from "../registry";
 import { TextFileEncryptionModel } from "./TextFileEncryptionModel";
@@ -13,7 +13,7 @@ import type { EditorStateStorage } from "../base/EditorStateStorageContext";
 import { ContentViewModelHost } from "../base/ContentViewModelHost";
 import type { TextViewModel } from "./TextEditor";
 
-export interface TextFilePageModelState extends IPage {
+export interface TextFilePageModelState extends IPageState {
     content: string;
     deleted: boolean;
     encoding?: string;
@@ -267,7 +267,7 @@ export function newTextFileModel(filePath?: string): TextFileModel {
 }
 
 export function newTextFileModelFromState(
-    state: Partial<IPage>,
+    state: Partial<IPageState>,
 ): TextFileModel {
     const initialState: TextFilePageModelState = {
         ...getDefaultTextFilePageModelState(),

@@ -1,4 +1,4 @@
-import { IPage } from "../../shared/types";
+import { IPageState } from "../../shared/types";
 import { DownloadEntry, UpdateCheckResult } from "../api-param-types";
 import { EventApi, EventEndpoint, EventObject } from "../api-types";
 
@@ -67,7 +67,7 @@ class RendererEvents implements EventApi {
         EventEndpoint.eShowPage
     );
 
-    [EventEndpoint.eMovePageIn] = new RendererEventObject<{ page: Partial<IPage>; targetPageId: string | undefined }>(
+    [EventEndpoint.eMovePageIn] = new RendererEventObject<{ page: Partial<IPageState>; targetPageId: string | undefined }>(
         EventEndpoint.eMovePageIn
     );
 

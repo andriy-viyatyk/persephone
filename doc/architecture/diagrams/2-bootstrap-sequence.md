@@ -1,0 +1,113 @@
+# Bootstrap Sequence
+
+How the renderer window initializes from Electron launch to interactive UI.
+Each phase completes before the next starts — no race conditions.
+
+```mermaid
+sequenceDiagram
+    participant E as Electron
+    participant R as renderer.tsx
+    participant App as app (App class)
+    participant S as Services
+    participant P as Pages
+    participant Ev as Event Services
+    participant UI as React UI
+
+    E->>R: Window loaded
+
+    rect rgb(240, 248, 255)
+        Note over R,App: Phase 0 — Parallel Init
+        par
+            R->>R: import("./renderer/index")
+            Note right of R: Side effects:<br/>configure-monaco<br/>register-editors
+        and
+            R->>App: app.init()
+            App->>E: IPC: getAppVersion()
+            E-->>App: version string
+        and
+            R->>App: app.initSetup()
+            Note right of App: Configure Monaco:<br/>themes, languages,<br/>script types (.d.ts)
+        end
+    end
+
+    rect rgb(232, 245, 233)
+        Note over App,S: Layer 1 — Services
+        R->>App: app.initServices()
+        par
+            App->>S: import("./settings")
+        and
+            App->>S: import("./editors")
+        and
+            App->>S: import("./recent")
+        and
+            App->>S: import("./fs")
+        and
+            App->>S: import("./window")
+        and
+            App->>S: import("./shell")
+        and
+            App->>S: import("./ui")
+        and
+            App->>S: import("./downloads")
+        end
+        Note right of S: 8 APIs loaded in parallel<br/>UI notifications ready ✓
+    end
+
+    rect rgb(255, 243, 224)
+        Note over App,P: Layer 2 — Pages
+        R->>App: app.initPages()
+        App->>P: await fs.wait()
+        App->>P: pages.init()
+        P->>P: restoreState()
+        Note right of P: Load persisted pages<br/>from storage
+        P->>P: handleArgs()
+        Note right of P: Process CLI args:<br/>--file, --url, --diff
+        P->>P: ensureOnePage()
+    end
+
+    rect rgb(252, 228, 236)
+        Note over App,Ev: Layer 3 — Events
+        R->>App: app.initEvents()
+        par
+            App->>Ev: GlobalEventService.init()
+            Note right of Ev: contextmenu, drop,<br/>dragover, unhandledrejection
+        and
+            App->>Ev: KeyboardService.init()
+            Note right of Ev: Ctrl+Tab, Ctrl+W,<br/>Ctrl+N, Ctrl+O
+        and
+            App->>Ev: WindowStateService.init()
+            Note right of Ev: maximize, zoom
+        and
+            App->>Ev: RendererEventsService.init()
+            Note right of Ev: IPC: eOpenFile,<br/>eBeforeQuit, ...
+        end
+    end
+
+    rect rgb(200, 230, 201)
+        Note over R,UI: Ready
+        R->>E: api.windowReady()
+        Note right of E: Main process now<br/>sends IPC events
+        R->>UI: setContent(<AppContent />)
+        UI->>UI: React renders MainPage
+        Note right of UI: Tabs + Active Editor<br/>User can interact ✓
+    end
+```
+
+## Guard Flags
+
+Each `init*()` method has a boolean guard preventing re-initialization:
+
+```
+_initialized         → app.init()
+_setupInitialized    → app.initSetup()
+_servicesInitialized → app.initServices()
+_pagesInitialized    → app.initPages()
+_eventsInitialized   → app.initEvents()
+```
+
+## Key Timing Dependencies
+
+- **Services before Pages** — `pages.init()` needs `fs.wait()` to be ready
+- **Pages before Events** — `RendererEventsService` needs `pages` to delegate to
+- **Events before windowReady** — main process waits for ready signal before sending `eMovePageIn`
+- **windowReady before React** — ensures no flash of empty state

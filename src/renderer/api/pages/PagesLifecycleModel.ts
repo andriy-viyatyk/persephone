@@ -1,6 +1,6 @@
 import type { PagesModel } from "./PagesModel";
 import { PageModel } from "../../editors/base";
-import { IPage, PageEditor } from "../../../shared/types";
+import { IPageState, PageEditor } from "../../../shared/types";
 import {
     isTextFileModel,
     newTextFileModel,
@@ -39,7 +39,7 @@ export class PagesLifecycleModel {
     };
 
     private newPageModelFromState = async (
-        state: Partial<IPage>
+        state: Partial<IPageState>
     ): Promise<PageModel> => {
         const editors = editorRegistry.getAll();
         const editorDef = editors.find((e) => e.pageType === state.type);
@@ -356,7 +356,7 @@ export class PagesLifecycleModel {
     // ── Multi-window operations ──────────────────────────────────────
 
     movePageIn = async (data?: {
-        page: Partial<IPage>;
+        page: Partial<IPageState>;
         targetPageId: string | undefined;
     }) => {
         if (!data || !data.page) {
@@ -415,7 +415,7 @@ export class PagesLifecycleModel {
             return;
         }
 
-        const pageData: Partial<IPage> = page.getRestoreData();
+        const pageData: Partial<IPageState> = page.getRestoreData();
         pageData.id = crypto.randomUUID();
         pageData.hasNavPanel = false;
         pageData.pinned = false;

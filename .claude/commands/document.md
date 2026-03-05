@@ -1,0 +1,65 @@
+# Developer Documentation Update
+
+You are updating the developer documentation in `/doc/` to reflect recent code changes.
+
+## Scope
+
+This command covers **developer docs only** (the `/doc/` folder). User-facing docs in `/docs/` are handled by the `/project:userdoc` agent separately.
+
+## What to check and update
+
+### 1. Architecture docs (`doc/architecture/`)
+
+Read each file and compare against the current code:
+
+| File | Covers |
+|------|--------|
+| `overview.md` | Application layers, process boundaries, key patterns |
+| `folder-structure.md` | Directory structure and what goes where |
+| `state-management.md` | State primitives, Object Model APIs |
+| `scripting.md` | Script execution, wrappers, facades |
+| `editors.md` | Editor registry, content-view pattern |
+| `pages-architecture.md` | Page model, tab lifecycle |
+| `browser-editor.md` | Browser-specific architecture |
+
+For each doc:
+- Check if new files/folders need to be mentioned
+- Check if moved/deleted files need to be removed
+- Check if new patterns or APIs need to be documented
+- Check if diagrams in `doc/architecture/diagrams/` need updates
+
+### 2. Standards docs (`doc/standards/`)
+
+| File | Covers |
+|------|--------|
+| `coding-style.md` | TypeScript, naming, imports, styling conventions |
+| `editor-guide.md` | How to add/modify editors |
+| `component-guide.md` | UI component patterns |
+| `model-view-pattern.md` | Model-View separation |
+
+Check if new patterns were established that should be standardized.
+
+### 3. CLAUDE.md
+
+Check the root `CLAUDE.md` file:
+- **Key Files table** — Does it list all important files? Any new key files to add? Any deleted files to remove?
+- **Folder Structure** — Does the summary match reality?
+- **Critical Patterns** — Any new patterns to document?
+- **Documentation Map** — Any new docs to link?
+
+## How to work
+
+1. Use `git diff` or `git log` to understand what changed recently
+2. Read each doc file that might be affected
+3. Compare against actual source code
+4. Make targeted edits — only change what's actually stale or missing
+5. Do NOT rewrite docs that are already accurate
+
+## Output
+
+After making updates, provide a summary:
+- Which docs were updated and why
+- Which docs were checked and found to be current
+- Any docs that need larger rewrites (flag for future task)
+
+**Important:** Be precise. Only update what's actually wrong or missing. Do not add speculative content or over-document simple changes.

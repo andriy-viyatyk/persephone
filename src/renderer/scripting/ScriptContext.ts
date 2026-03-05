@@ -1,71 +1,32 @@
 import { PageModel } from "../editors/base";
-import { isTextFileModel } from "../editors/text/TextPageModel";
-import { pagesModel } from "../api/pages";
-import { app } from "../api/app";
+import { AppWrapper } from "./api-wrapper/AppWrapper";
+import { PageWrapper } from "./api-wrapper/PageWrapper";
 import React from "react";
-import { PageEditor } from "../../shared/types";
-
-const wrapPage = (page?: PageModel) => {
-    return {
-        get content() {
-            if (isTextFileModel(page)) {
-                return page.state.get().content;
-            }
-            return "";
-        },
-        set content(value: string) {
-            if (isTextFileModel(page)) {
-                page.changeContent(value);
-            }
-        },
-        get grouped() {
-            let grouped = pagesModel.getGroupedPage(page.id);
-            if (!grouped) {
-                grouped = pagesModel.requireGroupedText(page.id);
-            }
-            return wrapPage(grouped);
-        },
-        get language() {
-            return page.state.get().language;
-        },
-        set language(value: string) {
-            if (!page.noLanguage) {
-                page.changeLanguage(value);
-            }
-        },
-        get data() {
-            if (isTextFileModel(page)) {
-                return page.script.data;
-            }
-            return undefined;
-        },
-        get editor() {
-            return page.state.get().editor;
-        },
-        set editor(value: PageEditor) {
-            if (isTextFileModel(page)) {
-                page.changeEditor(value);
-            }
-        }
-    };
-};
-
-const createCustomContext = (page?: PageModel) => {
-    return {
-        app,
-        page: wrapPage(page),
-        React,
-    };
-};
 
 export function createScriptContext(page?: PageModel) {
-    const customContext = createCustomContext(page);
+    const releaseList: Array<() => void> = [];
+
+    const appWrapper = new AppWrapper(releaseList);
+    const pageWrapper = page ? new PageWrapper(page, releaseList) : undefined;
+
+    const customContext: Record<string, any> = {
+        app: appWrapper,
+        page: pageWrapper,
+        React,
+    };
+
+    function cleanup() {
+        for (const release of releaseList) {
+            try { release(); } catch { /* don't block other releases */ }
+        }
+        releaseList.length = 0;
+    }
 
     // Create a read-only proxy for window/globalThis
     const readOnlyGlobalThis = new Proxy(globalThis, {
         get(target, prop) {
             if (Object.hasOwn(customContext, prop)) {
-                return (customContext as any)[prop];
+                return customContext[prop as string];
             }
             const value = (globalThis as any)[prop];
 
@@ -82,8 +43,8 @@ export function createScriptContext(page?: PageModel) {
             return value;
         },
         set(target, prop, value) {
-            (customContext as any)[prop] = value;
-            return true; // Return true to indicate "success" but don't actually set
+            customContext[prop as string] = value;
+            return true;
         },
         deleteProperty() {
             // Prevent deletions
@@ -95,11 +56,11 @@ export function createScriptContext(page?: PageModel) {
         },
     });
 
-    return new Proxy(customContext, {
+    const context = new Proxy(customContext, {
         get(target, prop) {
             // First check custom context
             if (prop in target) {
-                return (target as any)[prop];
+                return target[prop as string];
             }
 
             // Special handling for 'window' and 'globalThis'
@@ -127,18 +88,20 @@ export function createScriptContext(page?: PageModel) {
         },
 
         set(target, prop, value) {
-            (target as any)[prop] = value;
+            target[prop as string] = value;
             return true;
         },
 
         deleteProperty(target, prop) {
             // Only allow deleting custom context properties
             if (prop in target) {
-                delete (target as any)[prop];
+                delete target[prop as string];
                 return true;
             }
             // Prevent deleting global properties
             return false;
         },
     });
+
+    return { context, cleanup };
 }

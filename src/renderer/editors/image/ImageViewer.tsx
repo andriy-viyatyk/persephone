@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { IPage, PageType } from "../../../shared/types";
+import { IPageState, PageType } from "../../../shared/types";
 import { getDefaultPageModelState, PageModel } from "../base";
 import { PageToolbar } from "../base/EditorToolbar";
 import { TComponentState } from "../../core/state/state";
@@ -17,7 +17,7 @@ const path = require("path");
 // ImageViewerModel (Page Model) - manages page state and lifecycle
 // ============================================================================
 
-interface ImageViewerModelState extends IPage {
+interface ImageViewerModelState extends IPageState {
     /** External image URL (e.g. from a browser webview). When set, used instead of filePath. */
     url?: string;
 }
@@ -129,7 +129,7 @@ const imageEditorModule: EditorModule = {
         return null;
     },
     newPageModelFromState: async (
-        state: Partial<IPage>
+        state: Partial<IPageState>
     ): Promise<PageModel> => {
         const initialState: ImageViewerModelState = {
             ...getDefaultImageViewerModelState(),

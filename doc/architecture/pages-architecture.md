@@ -164,7 +164,7 @@ graph TD
 
 ## 4. Internal Submodel Architecture
 
-The pages system uses category-based decomposition. A base model holds shared state, and 5 submodels handle specific operation categories. A thin facade composes them into the public `PagesModel`.
+The pages system uses category-based decomposition. `PagesModel` holds shared state, composes 5 submodels for specific operation categories, and delegates all public methods through a flat API.
 
 ```mermaid
 graph TD
@@ -176,13 +176,7 @@ graph TD
     Base --> Persist["PagesPersistenceModel<br/>save, restore"]
     Base --> Query["PagesQueryModel<br/>find, getActive, getGrouped"]
 
-    LC --> Facade["PagesCollectionFacade<br/>(Thin Wrapper)"]
-    Nav --> Facade
-    Lay --> Facade
-    Persist --> Facade
-    Query --> Facade
-
-    Facade --> IPC["IPageCollection<br/>(Public Interface)"]
+    Base -->|delegates| IPC["IPageCollection<br/>(Public Interface)"]
 
     Base -->|state| S["OpenFilesState<br/>pages[], ordered[], groupings"]
     LC -->|uses| S
@@ -197,7 +191,6 @@ graph TD
     style Lay fill:#f3e5f5
     style Persist fill:#f3e5f5
     style Query fill:#f3e5f5
-    style Facade fill:#c8e6c9
     style IPC fill:#e1f5ff
     style S fill:#ffe0b2
 ```
@@ -213,7 +206,7 @@ graph TD
 | Persistence | [`PagesPersistenceModel.ts`](../../src/renderer/api/pages/PagesPersistenceModel.ts) | save/restore window state to disk |
 | Query | [`PagesQueryModel.ts`](../../src/renderer/api/pages/PagesQueryModel.ts) | find, activePage, getGrouped, isLastPage |
 
-**Facade** re-exports all submodel methods under a single `PagesModel` class. Consumers import it as:
+`PagesModel` delegates all submodel methods as its own (46 public methods). Exported as a singleton:
 
 ```typescript
 import { pagesModel } from "../api/pages";

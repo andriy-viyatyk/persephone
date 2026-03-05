@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import * as monaco from "monaco-editor";
 import { monacoLanguages } from "../../core/utils/monaco-languages";
-import { CopyIcon } from "../../theme/icons";
+import { pagesModel } from "../../api/pages";
+import { CopyIcon, OpenLinkIcon } from "../../theme/icons";
 import { renderMermaidSvg, svgToDataUrl } from "../mermaid/render-mermaid";
 
 interface CodeBlockProps {
@@ -125,6 +126,11 @@ function MermaidBlock({ code, lightMode }: { code: string; lightMode: boolean })
         setTimeout(() => setCopied(false), 750);
     }, []);
 
+    const handleOpen = useCallback(() => {
+        const page = pagesModel.addEditorPage("mermaid-view", "mermaid", "Mermaid Diagram");
+        (page as any).changeContent(code);
+    }, [code]);
+
     if (error) {
         return <div className="mermaid-error">{error}</div>;
     }
@@ -136,13 +142,18 @@ function MermaidBlock({ code, lightMode }: { code: string; lightMode: boolean })
     return (
         <div className="mermaid-diagram">
             <img ref={imgRef} src={svgUrl} alt="Mermaid Diagram" />
-            <button
-                className={`copy-btn ${copied ? "copied" : ""}`}
-                onClick={handleCopy}
-                title="Copy"
-            >
-                <CopyIcon width={14} height={14} />
-            </button>
+            <div className="diagram-toolbar">
+                <button className="toolbar-btn" onClick={handleOpen} title="Open in Editor">
+                    <OpenLinkIcon width={14} height={14} />
+                </button>
+                <button
+                    className={`toolbar-btn ${copied ? "copied" : ""}`}
+                    onClick={handleCopy}
+                    title="Copy"
+                >
+                    <CopyIcon width={14} height={14} />
+                </button>
+            </div>
         </div>
     );
 }

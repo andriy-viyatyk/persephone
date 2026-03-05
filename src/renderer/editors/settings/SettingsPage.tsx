@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import styled from "@emotion/styled";
-import { IPage, PageType } from "../../../shared/types";
+import { IPageState, PageType } from "../../../shared/types";
 import { getDefaultPageModelState, PageModel } from "../base";
 import { TComponentState } from "../../core/state/state";
 import { EditorModule } from "../types";
@@ -436,7 +436,7 @@ function ThemePreview({ bgDefault, bgDark, textDefault, accentColor }: ThemePrev
 
 export const SETTINGS_PAGE_ID = "settings-page";
 
-interface SettingsPageModelState extends IPage {}
+interface SettingsPageModelState extends IPageState {}
 
 const getDefaultSettingsPageModelState = (): SettingsPageModelState => ({
     ...getDefaultPageModelState(),
@@ -935,7 +935,7 @@ const settingsEditorModule: EditorModule = {
         }
         return null;
     },
-    newPageModelFromState: async (state: Partial<IPage>): Promise<PageModel> => {
+    newPageModelFromState: async (state: Partial<IPageState>): Promise<PageModel> => {
         const initialState: SettingsPageModelState = {
             ...getDefaultSettingsPageModelState(),
             ...state,

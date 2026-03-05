@@ -1,4 +1,5 @@
-import type { PageEditor } from "../../../shared/types";
+import type { PageEditor } from "./common";
+import type { IPage } from "./page";
 
 /**
  * IPageCollection — `app.pages`
@@ -19,16 +20,16 @@ export interface IPageCollection {
     // ── Queries ──────────────────────────────────────────────────────
 
     /** Currently active (visible) page, or undefined. */
-    readonly activePage: IPageInfo | undefined;
+    readonly activePage: IPage | undefined;
 
     /** The grouped (side-by-side) partner of the active page, if any. */
-    readonly groupedPage: IPageInfo | undefined;
+    readonly groupedPage: IPage | undefined;
 
     /** Find a page by its ID. */
-    findPage(pageId: string): IPageInfo | undefined;
+    findPage(pageId: string): IPage | undefined;
 
     /** Get the grouped (side-by-side) partner of a page, if any. */
-    getGroupedPage(withPageId: string): IPageInfo | undefined;
+    getGroupedPage(withPageId: string): IPage | undefined;
 
     /** True if the page is the last tab in the tab bar. */
     isLastPage(pageId?: string): boolean;
@@ -52,10 +53,10 @@ export interface IPageCollection {
     }): Promise<boolean>;
 
     /** Add an empty text page. */
-    addEmptyPage(): IPageInfo;
+    addEmptyPage(): IPage;
 
     /** Add a page with a specific editor, language, and title. */
-    addEditorPage(editor: PageEditor, language: string, title: string): IPageInfo;
+    addEditorPage(editor: PageEditor, language: string, title: string): IPage;
 
     /** Open a diff view for two files side by side. */
     openDiff(params: { firstPath: string; secondPath: string }): Promise<void>;
@@ -107,18 +108,4 @@ export interface IPageCollection {
 
     /** Remove a page from its group. */
     ungroup(pageId: string): void;
-}
-
-/**
- * Read-only page information exposed to scripts.
- * Access via `app.pages.activePage` or `app.pages.findPage(id)`.
- */
-export interface IPageInfo {
-    readonly id: string;
-    readonly type: string;
-    readonly title: string;
-    readonly modified: boolean;
-    readonly pinned: boolean;
-    readonly filePath?: string;
-    readonly language?: string;
 }

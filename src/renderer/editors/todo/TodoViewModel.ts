@@ -452,16 +452,18 @@ export class TodoViewModel extends ContentViewModel<TodoEditorState> {
         this.applyFilters();
     };
 
-    deleteItem = async (id: string) => {
-        const item = this.state.get().data.items.find((i) => i.id === id);
-        const itemTitle = item?.title || "this item";
+    deleteItem = async (id: string, skipConfirm = false) => {
+        if (!skipConfirm) {
+            const item = this.state.get().data.items.find((i) => i.id === id);
+            const itemTitle = item?.title || "this item";
 
-        const result = await ui.confirm(
-            `Are you sure you want to delete "${itemTitle}"?`,
-            { title: "Delete Todo Item", buttons: ["Delete", "Cancel"] },
-        );
+            const result = await ui.confirm(
+                `Are you sure you want to delete "${itemTitle}"?`,
+                { title: "Delete Todo Item", buttons: ["Delete", "Cancel"] },
+            );
 
-        if (result !== "Delete") return;
+            if (result !== "Delete") return;
+        }
 
         this.state.update((s) => {
             s.data.items = s.data.items.filter((i) => i.id !== id);
@@ -558,15 +560,17 @@ export class TodoViewModel extends ContentViewModel<TodoEditorState> {
         return true;
     };
 
-    deleteList = async (name: string) => {
-        const itemCount = this.state.get().data.items.filter((i) => i.list === name).length;
+    deleteList = async (name: string, skipConfirm = false) => {
+        if (!skipConfirm) {
+            const itemCount = this.state.get().data.items.filter((i) => i.list === name).length;
 
-        const result = await ui.confirm(
-            `Delete list "${name}" and all ${itemCount} item${itemCount !== 1 ? "s" : ""}?`,
-            { title: "Delete List", buttons: ["Delete", "Cancel"] },
-        );
+            const result = await ui.confirm(
+                `Delete list "${name}" and all ${itemCount} item${itemCount !== 1 ? "s" : ""}?`,
+                { title: "Delete List", buttons: ["Delete", "Cancel"] },
+            );
 
-        if (result !== "Delete") return;
+            if (result !== "Delete") return;
+        }
 
         this.state.update((s) => {
             s.data.lists = s.data.lists.filter((l) => l !== name);
@@ -644,15 +648,17 @@ export class TodoViewModel extends ContentViewModel<TodoEditorState> {
         });
     };
 
-    deleteTag = async (name: string) => {
-        const itemCount = this.state.get().data.items.filter((i) => i.tag === name).length;
+    deleteTag = async (name: string, skipConfirm = false) => {
+        if (!skipConfirm) {
+            const itemCount = this.state.get().data.items.filter((i) => i.tag === name).length;
 
-        const result = await ui.confirm(
-            `Delete tag "${name}"?${itemCount > 0 ? ` It will be removed from ${itemCount} item${itemCount !== 1 ? "s" : ""}.` : ""}`,
-            { title: "Delete Tag", buttons: ["Delete", "Cancel"] },
-        );
+            const result = await ui.confirm(
+                `Delete tag "${name}"?${itemCount > 0 ? ` It will be removed from ${itemCount} item${itemCount !== 1 ? "s" : ""}.` : ""}`,
+                { title: "Delete Tag", buttons: ["Delete", "Cancel"] },
+            );
 
-        if (result !== "Delete") return;
+            if (result !== "Delete") return;
+        }
 
         this.state.update((s) => {
             s.data.tags = s.data.tags.filter((t) => t.name !== name);

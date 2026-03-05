@@ -2,10 +2,6 @@
 
 Current work in progress and planned tasks.
 
-> **Long-running migration in progress.** When there are no active tasks here, check
-> [/doc/future-architecture/migration/README.md](../future-architecture/migration/README.md)
-> for the next migration phase/task to pick up. Remove this notice when migration is complete.
-
 ## In Progress
 
 (none)
@@ -23,7 +19,7 @@ See [completed.md](completed.md) for all completed tasks.
 ### Starting a Task
 
 1. Check this file for available tasks
-2. Read the task's `README.md` in its folder
+2. Read the task's `README.md` in its folder (if it exists)
 3. Update task status to "In Progress"
 4. Update this file to move task to "In Progress" section
 
@@ -36,22 +32,24 @@ See [completed.md](completed.md) for all completed tasks.
 ### Completing a Task
 
 1. Verify all acceptance criteria are met
-2. Run the documentation checklist:
-   - [ ] Update architecture docs (if structure changed)
-   - [ ] Update standards docs (if new patterns established)
-   - [ ] Review and update user guidance docs in `/docs/` — check all pages that describe affected features, update text/screenshots to match the new behavior
-   - [ ] Update CLAUDE.md (if significant patterns or key files changed)
-   - [ ] Update `/docs/whats-new.md` (for notable features/changes)
-3. Add task to the top of [completed.md](completed.md)
-4. **Ask user for confirmation** before deleting the task folder
-5. Delete task folder after user confirms
+2. Run `/project:review` — check code against architecture docs
+3. Run `/project:document` — update developer docs in `/doc/`
+4. Run `/project:userdoc` — update user docs in `/docs/`
+5. Add task to the top of [completed.md](completed.md)
+6. **Ask user for confirmation** before deleting the task folder (if one exists)
+7. Delete task folder after user confirms
 
-## Creating New Tasks
+### Creating New Tasks
 
-1. Copy `_template/` folder to `US-XXX-short-name/`
+1. Copy `_template/` folder to `US-XXX-short-name/` (optional for small tasks)
 2. Fill in the README.md
 3. Add to "Planned" section in this file
 4. Use next available US number
+
+### Epic Links
+
+Tasks can optionally be linked to an epic: `(EPIC-XXX)` after the task title.
+See [/doc/epics/active.md](../epics/active.md) for active epics.
 
 ## Task ID Format
 

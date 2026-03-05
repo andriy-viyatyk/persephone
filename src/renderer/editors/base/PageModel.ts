@@ -1,11 +1,11 @@
 import { TDialogModel } from "../../core/state/model";
 
-import { IPage } from "../../../shared/types";
+import { IPageState } from "../../../shared/types";
 import { editorRegistry } from "../registry";
 import { NavPanelModel } from "../../ui/navigation/nav-panel-store";
 import { fs } from "../../api/fs";
 
-export const getDefaultPageModelState = (): IPage => ({
+export const getDefaultPageModelState = (): IPageState => ({
     id: crypto.randomUUID(),
     type: "textFile",
     title: "untitled",
@@ -16,10 +16,12 @@ export const getDefaultPageModelState = (): IPage => ({
     pinned: false,
 });
 
-export class PageModel<T extends IPage = IPage, R = any> extends TDialogModel<T, R> {
+export class PageModel<T extends IPageState = IPageState, R = any> extends TDialogModel<T, R> {
     skipSave = false;
     getIcon?: () => React.ReactNode;
     noLanguage = false;
+    /** In-memory data storage for scripts. Available on all page types. Does not persist to disk. */
+    scriptData: Record<string, any> = {};
     navPanel: NavPanelModel | null = null;
     /** Flag for restore(): NavPanel needs to be created from cache */
     protected needsNavPanelRestore = false;

@@ -1,0 +1,116 @@
+# Application Layers
+
+How the main process, renderer process, and IPC layer connect.
+Within the renderer, how the 7 code layers depend on each other.
+
+```mermaid
+graph TB
+    subgraph MAIN["Main Process (Node.js)"]
+        M1["Window Manager<br/><i>open-windows.ts</i>"]
+        M2["Browser Service<br/><i>browser-service.ts</i>"]
+        M3["Version Service<br/><i>version-service.ts</i>"]
+        M4["Pipe Server<br/><i>pipe-server.ts</i>"]
+        M5["File Dialogs &amp; Shell"]
+    end
+
+    subgraph IPC["IPC Layer (/ipc/)"]
+        I1["renderer-events.ts<br/><i>Main → Renderer</i>"]
+        I2["renderer-api.ts<br/><i>Renderer → Main</i>"]
+        I3["browser-ipc.ts<br/><i>Webview ↔ Main</i>"]
+    end
+
+    subgraph RENDERER["Renderer Process (React + Monaco)"]
+        direction TB
+
+        subgraph API["Object Model (/api/)"]
+            A1["app.settings"]
+            A2["app.pages"]
+            A3["app.fs"]
+            A4["app.window"]
+            A5["app.shell"]
+            A6["app.ui"]
+            A7["app.editors"]
+            A8["app.recent"]
+            A9["app.downloads"]
+            A10["Internal Services<br/><i>Keyboard, GlobalEvent,<br/>WindowState, RendererEvents</i>"]
+        end
+
+        subgraph UI["UI Shell (/ui/)"]
+            U1["MainPage"]
+            U2["Tabs / Sidebar"]
+            U3["Dialogs / Poppers"]
+            U4["Navigation"]
+        end
+
+        subgraph EDIT["Editors (/editors/)"]
+            E1["Content Views<br/><i>Monaco, Grid, Markdown,<br/>Notebook, Todo, Link,<br/>SVG, HTML, Mermaid</i>"]
+            E2["Page Editors<br/><i>PDF, Image, Browser,<br/>About, Settings, Compare</i>"]
+            E3["Registry + Base<br/><i>EditorRegistry, PageModel,<br/>ContentViewModel,<br/>ContentViewModelHost</i>"]
+        end
+
+        subgraph SCRIPT["Scripting (/scripting/)"]
+            S1["ScriptRunner"]
+            S2["ScriptContext"]
+            S3["Wrappers &amp; Facades<br/><i>PageWrapper, AppWrapper,<br/>10 EditorFacades</i>"]
+        end
+
+        subgraph COMP["Components (/components/)"]
+            C1["Data Grid / AVGrid"]
+            C2["Form / Layout / Overlay"]
+            C3["TreeView / FileExplorer"]
+            C4["Virtualization"]
+        end
+
+        subgraph CORE["Core (/core/)"]
+            CO1["State Primitives<br/><i>TOneState, TGlobalState,<br/>TModel, TComponentModel</i>"]
+            CO2["Utilities<br/><i>file-watcher, debounce,<br/>string-utils</i>"]
+        end
+
+        subgraph THEME["Theme (/theme/)"]
+            TH1["color.ts<br/><i>Semantic tokens</i>"]
+            TH2["themes/<br/><i>Dark, Light, ...</i>"]
+            TH3["icons/"]
+        end
+    end
+
+    %% Process connections
+    MAIN <-->|"ipcRenderer / ipcMain"| IPC
+    IPC <-->|"subscriptions / invoke"| API
+
+    %% Renderer layer dependencies (top-down)
+    UI --> API
+    UI --> EDIT
+    UI --> COMP
+    EDIT --> API
+    EDIT --> COMP
+    EDIT --> CORE
+    SCRIPT --> API
+    SCRIPT --> EDIT
+    COMP --> CORE
+    COMP --> THEME
+    API --> CORE
+    API --> THEME
+    CORE --> THEME
+
+    %% Styles
+    style MAIN fill:#e3f2fd
+    style IPC fill:#fff3e0
+    style RENDERER fill:#f9fbe7
+    style API fill:#e8f5e9
+    style UI fill:#fce4ec
+    style EDIT fill:#f3e5f5
+    style SCRIPT fill:#e0f2f1
+    style COMP fill:#fff8e1
+    style CORE fill:#e8eaf6
+    style THEME fill:#fafafa
+```
+
+## Dependency Rules
+
+1. **UI** imports from **API**, **Editors**, **Components** — never the reverse
+2. **Editors** import from **API**, **Components**, **Core** — never from **UI**
+3. **Scripting** imports from **API**, **Editors** — never from **UI** or **Components**
+4. **Components** are pure UI building blocks — no knowledge of editors or API
+5. **Core** is foundational — imported by everyone, imports only **Theme**
+6. **Theme** has zero code dependencies — only color tokens and icon assets
+7. **API** is the bridge to IPC — only layer that talks to the main process

@@ -107,10 +107,16 @@ const MdViewRoot = styled.div({
             maxWidth: "100%",
             height: "auto",
         },
-        "& .copy-btn": {
+        "& .diagram-toolbar": {
             position: "absolute",
             top: -10,
             right: 0,
+            display: "flex",
+            gap: 4,
+            opacity: 0,
+            transition: "opacity 0.2s ease",
+        },
+        "& .toolbar-btn": {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -120,29 +126,21 @@ const MdViewRoot = styled.div({
             border: `1px solid ${color.border.default}`,
             borderRadius: 4,
             cursor: "pointer",
-            opacity: 0,
-            transition: "opacity 0.2s ease",
             "& svg": {
                 transition: "transform 0.15s ease-out",
             },
             "&:hover": {
-                opacity: 1,
+                color: color.text.default,
             },
             "&.copied svg": {
                 transform: "scale(0.65)",
                 transition: "transform 0.1s ease-in",
             },
-            "&.copied": {
-                opacity: 1,
-            },
         },
-        "&:hover .copy-btn": {
+        "&:hover .diagram-toolbar": {
             opacity: 0.5,
         },
-        "&:hover .copy-btn:hover": {
-            opacity: 1,
-        },
-        "&:hover .copy-btn.copied": {
+        "&:hover .diagram-toolbar:hover": {
             opacity: 1,
         },
     },

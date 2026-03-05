@@ -189,7 +189,7 @@ export class NotebookViewModel extends ContentViewModel<NotebookViewState> {
         return this.state.get().data.notes.length;
     }
 
-    addNote = () => {
+    addNote = (): NoteItem => {
         const now = new Date().toISOString();
         const { expandedPanel, selectedCategory, selectedTag, searchText } = this.state.get();
 
@@ -233,6 +233,7 @@ export class NotebookViewModel extends ContentViewModel<NotebookViewState> {
         this.loadCategories();
         this.loadTags();
         this.applyFilters();
+        return newNote;
     };
 
     setLeftPanelWidth = (width: number) => {
@@ -450,17 +451,19 @@ export class NotebookViewModel extends ContentViewModel<NotebookViewState> {
         });
     };
 
-    deleteNote = async (id: string) => {
-        const note = this.getNote(id);
-        const noteTitle = note?.title || "this note";
+    deleteNote = async (id: string, skipConfirm = false) => {
+        if (!skipConfirm) {
+            const note = this.getNote(id);
+            const noteTitle = note?.title || "this note";
 
-        const result = await ui.confirm(
-            `Are you sure you want to delete "${noteTitle}"?`,
-            { title: "Delete Note", buttons: ["Delete", "Cancel"] },
-        );
+            const result = await ui.confirm(
+                `Are you sure you want to delete "${noteTitle}"?`,
+                { title: "Delete Note", buttons: ["Delete", "Cancel"] },
+            );
 
-        if (result !== "Delete") {
-            return;
+            if (result !== "Delete") {
+                return;
+            }
         }
 
         this.state.update((s) => {

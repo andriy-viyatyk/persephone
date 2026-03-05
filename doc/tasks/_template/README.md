@@ -4,6 +4,7 @@
 
 **Status:** Planned | In Progress | Done
 **Priority:** High | Medium | Low
+**Epic:** EPIC-XXX *(optional — link to parent epic)*
 **Started:** YYYY-MM-DD
 **Completed:** YYYY-MM-DD
 

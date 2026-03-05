@@ -1,4 +1,4 @@
-import { IPage, PageEditor, PageType } from "../../shared/types";
+import { IPageState, PageEditor, PageType } from "../../shared/types";
 import { PageModel } from "./base";
 import type { IContentHost } from "./base/IContentHost";
 import type { ContentViewModel } from "./base/ContentViewModel";
@@ -10,7 +10,7 @@ export type FileEditorPage<T extends PageModel | IContentHost = PageModel | ICon
 export interface EditorModelCreations {
     newPageModel(filePath?: string): Promise<PageModel>;
     newEmptyPageModel(pageType: PageType): Promise<PageModel | null>;
-    newPageModelFromState(state: Partial<IPage>): Promise<PageModel>;
+    newPageModelFromState(state: Partial<IPageState>): Promise<PageModel>;
 }
 
 export interface EditorPageModule {

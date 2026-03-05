@@ -58,10 +58,13 @@ class ScriptRunner {
 
     run = async (script: string, page?: PageModel): Promise<any> => {
         this.handlePromiseException += 1;
+        let cleanup: (() => void) | undefined;
         try {
             try {
                 const contextModule = await import("./ScriptContext");
-                const context = contextModule.createScriptContext(page);
+                const result = contextModule.createScriptContext(page);
+                const context = result.context;
+                cleanup = result.cleanup;
 
                 // Check if script contains statement keywords at the start
                 const trimmedScript = script.trim();
@@ -82,11 +85,11 @@ class ScriptRunner {
 
                     try {
                         const fn = new Function(expressionScript);
-                        const result = fn.call(context);
+                        const scriptResult = fn.call(context);
 
-                        if (result && typeof result.then === "function") {
+                        if (scriptResult && typeof scriptResult.then === "function") {
                             try {
-                                return await result;
+                                return await scriptResult;
                             } catch (asyncError) {
                                 return asyncError instanceof Error
                                     ? asyncError
@@ -94,7 +97,7 @@ class ScriptRunner {
                             }
                         }
 
-                        return result;
+                        return scriptResult;
                     } catch (expressionError) {
                         // Fall through to statement handling
                     }
@@ -105,11 +108,11 @@ class ScriptRunner {
                 const statementScript = this.wrapScriptWithImplicitReturn(script);
 
                 const fn = new Function(statementScript);
-                const result = fn.call(context);
+                const scriptResult = fn.call(context);
 
-                if (result && typeof result.then === "function") {
+                if (scriptResult && typeof scriptResult.then === "function") {
                     try {
-                        return await result;
+                        return await scriptResult;
                     } catch (asyncError) {
                         return asyncError instanceof Error
                             ? asyncError
@@ -117,11 +120,12 @@ class ScriptRunner {
                     }
                 }
 
-                return result;
+                return scriptResult;
             } catch (error) {
                 return error instanceof Error ? error : new Error(String(error));
             }
         } finally {
+            cleanup?.();
             setTimeout(() => {
                 this.handlePromiseException -= 1;
             }, 1000);

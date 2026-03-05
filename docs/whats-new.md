@@ -8,7 +8,9 @@ Release notes and changelog for js-notepad.
 
 ## Version 1.0.17 (Upcoming)
 
-*No changes yet.*
+### Improvements
+
+- **Markdown Preview — Mermaid "Open in Editor"** — hover over an inline mermaid diagram to see a toolbar with two buttons: copy image to clipboard, and open the diagram source in a new Mermaid editor tab
 
 ---
 

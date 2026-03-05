@@ -24,7 +24,7 @@ js-notepad lets you run JavaScript to transform and process content.
 
 ## The `page` Object
 
-Scripts have access to `page` representing the current file:
+Scripts have access to [`page`](./api/page.md) representing the current file:
 
 ```javascript
 // Read content
@@ -140,7 +140,7 @@ return data;
 
 ## The `app` Object
 
-Scripts also have access to `app` — the root application object with settings, file system, dialogs, and more:
+Scripts also have access to [`app`](./api/app.md) — the root application object with settings, file system, dialogs, and more:
 
 ```javascript
 // Show a confirmation dialog
@@ -170,13 +170,17 @@ await app.shell.openExternal("https://github.com");
 | Property | Description |
 |----------|-------------|
 | `app.version` | Application version string |
-| `app.settings` | Read/write application settings |
-| `app.editors` | Read-only editor registry |
-| `app.recent` | Recently opened files |
-| `app.fs` | File system operations and dialogs |
-| `app.window` | Window management (minimize, maximize, zoom) |
-| `app.ui` | Dialogs (confirm, input, password) and notifications |
-| `app.shell` | OS integration (open URLs, encryption, version info) |
+| [`app.settings`](./api/settings.md) | Read/write application settings |
+| [`app.editors`](./api/editors.md) | Read-only editor registry |
+| [`app.recent`](./api/recent.md) | Recently opened files |
+| [`app.fs`](./api/fs.md) | File system operations and dialogs |
+| [`app.window`](./api/window.md) | Window management (minimize, maximize, zoom) |
+| [`app.ui`](./api/ui.md) | Dialogs (confirm, input, password) and notifications |
+| [`app.shell`](./api/shell.md) | OS integration (open URLs, encryption, version info) |
+| [`app.pages`](./api/pages.md) | Open tabs management |
+| [`app.downloads`](./api/downloads.md) | Download tracking |
+
+For the complete API with all methods and parameters, see the [Scripting API Reference](./api/index.md).
 
 ## Node.js Access
 

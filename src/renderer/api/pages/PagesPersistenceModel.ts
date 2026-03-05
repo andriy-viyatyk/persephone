@@ -1,5 +1,5 @@
 import type { PagesModel } from "./PagesModel";
-import { IPage, WindowState } from "../../../shared/types";
+import { IPageState, WindowState } from "../../../shared/types";
 import { openFilesNameTemplate } from "../../../shared/constants";
 import { parseObject } from "../../core/utils/parse-utils";
 import { debounce } from "../../../shared/utils";
@@ -34,7 +34,7 @@ export class PagesPersistenceModel {
 
     saveStateDebounced = debounce(this.saveState, 500);
 
-    restoreModel = async (data: Partial<IPage>): Promise<PageModel | null> => {
+    restoreModel = async (data: Partial<IPageState>): Promise<PageModel | null> => {
         const editors = editorRegistry.getAll();
         const editorDef = editors.find((e) => e.pageType === data.type);
         let model: PageModel | null = null;
@@ -59,7 +59,7 @@ export class PagesPersistenceModel {
             return;
         }
 
-        const modelsPromise = (data.pages as Partial<IPage>[]).map((pageData) =>
+        const modelsPromise = (data.pages as Partial<IPageState>[]).map((pageData) =>
             this.restoreModel(pageData)
         );
         const models = (await Promise.all(modelsPromise)).filter(

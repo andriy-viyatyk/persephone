@@ -176,7 +176,7 @@ The renderer builds the menu dynamically based on `params` fields from the `cont
 | `src/preload-webview.ts` | Guest | MutationObserver for title/favicon, image tracking on link clicks |
 | `src/ipc/browser-ipc.ts` | Shared | IPC channel names and type definitions |
 | `src/ipc/popup-rate-limiter.ts` | Shared | Time-window rate limiter for popup/tab spam blocking |
-| `src/renderer/store/link-open-menu.tsx` | Renderer | Shared helper for "Open in..." browser menu items |
+| `src/renderer/editors/shared/link-open-menu.tsx` | Renderer | Shared helper for "Open in..." browser menu items |
 | `src/renderer/core/state/events.ts` | Renderer | `globalKeyDown` Subscription for keyboard event broadcasting |
 
 ## Why the Main Process Bridge?
@@ -283,7 +283,7 @@ The `clearCache` IPC handler runs three operations in parallel:
 
 Skipped for incognito pages since they use non-persistent partitions (no `persist:` prefix = memory-only).
 
-**Disposal lifecycle:** `page.dispose()` is called from the `onClose` callback in `pages-store.ts`, which fires when the user closes a tab. The `movePageOut` flow (tab transfer to another window) calls `detachPage()` first, which clears `onClose`, preventing disposal of transferred pages.
+**Disposal lifecycle:** `page.dispose()` is called from the `onClose` callback in `PagesModel.ts`, which fires when the user closes a tab. The `movePageOut` flow (tab transfer to another window) calls `detachPage()` first, which clears `onClose`, preventing disposal of transferred pages.
 
 ## Link Integration
 
@@ -304,7 +304,7 @@ setWindowOpenHandler(url)  →  eOpenUrl(url)  →    → "default-browser": she
 
 ### Smart Browser Tab Search (`openUrlInBrowserTab`)
 
-Located in `src/renderer/store/page-actions.ts`. Uses the active page as the reference point:
+Located in `src/renderer/api/pages/PagesLifecycleModel.ts`. Uses the active page as the reference point:
 
 1. Search pages to the **right** of the active page for `type === "browserPage"`
 2. If not found, search pages to the **left**
@@ -408,9 +408,26 @@ The root browser `<div>` handles `Ctrl+L` (focus URL bar) and `Ctrl+F` (find in 
 | `Ctrl+L` | Focus URL bar | Root div only |
 | `Ctrl+F` | Find in page | Root div only |
 
+## Scripting Facade
+
+Scripts access browser pages via `page.asBrowser()`, which returns a `BrowserEditorFacade`. Unlike content-view facades (which acquire a ViewModel with ref-counting), this wraps `BrowserPageModel` directly — no ViewModel, no ref-counting — because the browser is a page-editor, not a content-view.
+
+```javascript
+const browser = await page.asBrowser();
+browser.navigate("https://example.com");
+console.log(browser.url);    // "https://example.com"
+console.log(browser.title);  // "Example Domain"
+browser.back();
+browser.forward();
+browser.reload();
+```
+
+**Interface:** [`IBrowserEditor`](../../src/renderer/api/types/browser-editor.d.ts) — `url`, `title`, `navigate()`, `back()`, `forward()`, `reload()`
+**Implementation:** [`BrowserEditorFacade`](../../src/renderer/scripting/api-wrapper/BrowserEditorFacade.ts)
+
 ## Link Open Menu Helper
 
-`appendLinkOpenMenuItems()` in `src/renderer/store/link-open-menu.tsx` is a reusable function that appends "Open in..." browser menu items to a `MenuItem[]` array. It generates items for: OS default browser, internal browser, all configured user profiles, and incognito. Used by Link Editor (list, tiles, pinned links) and Markdown Preview link context menus.
+`appendLinkOpenMenuItems()` in `src/renderer/editors/shared/link-open-menu.tsx` is a reusable function that appends "Open in..." browser menu items to a `MenuItem[]` array. It generates items for: OS default browser, internal browser, all configured user profiles, and incognito. Used by Link Editor (list, tiles, pinned links) and Markdown Preview link context menus.
 
 ## Common Pitfalls
 

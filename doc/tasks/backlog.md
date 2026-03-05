@@ -18,7 +18,7 @@ Ideas and future tasks not yet planned for implementation.
 #### Script Hooks System
 
 **Tasks:**
-- [ ] Create `core/services/scripting/ScriptHooks.ts`
+- [ ] Create `scripting/ScriptHooks.ts`
 - [ ] Define hook types: `onLanguageChange`, `onFileOpen`, `onFileSave`
 - [ ] Create hooks registry and execution logic
 - [ ] Integrate with TextFileModel language change
@@ -27,7 +27,7 @@ Ideas and future tasks not yet planned for implementation.
 #### Toolbar Builder API
 
 **Tasks:**
-- [ ] Create `core/services/scripting/ToolbarBuilder.ts`
+- [ ] Create `scripting/ToolbarBuilder.ts`
 - [ ] Define API: `toolbar.addButton()`, `toolbar.addCombobox()`, `toolbar.clear()`
 - [ ] Connect to editor toolbar ref system
 - [ ] Add to ScriptContext
@@ -340,6 +340,7 @@ js-notepad
 
 | Idea | Description | Complexity |
 |------|-------------|------------|
+| Markdown Diagram Viewer | Zoom/pan for Mermaid diagrams in Markdown preview; option to open diagram in separate Mermaid editor page | Medium |
 | Middle-click Tab Close | Close tab with middle mouse button (standard behavior) | Low |
 | Sidebar Toggle Shortcut | Add `Ctrl+B` to show/hide sidebar | Low |
 | Keyboard Shortcuts Panel | View/customize shortcuts | Medium |

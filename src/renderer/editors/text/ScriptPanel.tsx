@@ -34,7 +34,6 @@ export const defaultScriptPanelState = {
     open: false,
     height: 160,
     hasSelection: false,
-    data: {},
 }
 
 export type ScriptPanelState = typeof defaultScriptPanelState;
@@ -45,13 +44,8 @@ export class ScriptPanelModel extends TModel<ScriptPanelState> {
     private unsubscribe: (() => void) | undefined = undefined;
     private skipSave = false;
     private selectionListenerDisposable: monaco.IDisposable | null = null;
-    private scriptData: Record<string, any> | undefined = {};
     id: string | undefined = undefined;
     name = "script";
-
-    get data() {
-        return this.scriptData;
-    }
 
     constructor(pageModel: TextFileModel) {
         super(new TComponentState(defaultScriptPanelState));
