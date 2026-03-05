@@ -5,9 +5,12 @@ js-notepad includes a built-in [Model Context Protocol (MCP)](https://modelconte
 ## Quick Start
 
 1. Open js-notepad Settings (`Ctrl+,` or Settings tab)
-2. Set `"mcp.enabled": true`
-3. The MCP server starts at `http://localhost:7865/mcp`
-4. Configure your AI client (see below)
+2. Find the **MCP Server** section and check **Enable MCP server**
+3. The server starts automatically — a green status dot and the server URL appear below the toggle
+4. Click **Copy URL** to grab the server address, or **Copy Config** to get a ready-to-paste JSON snippet for your AI client
+5. Paste the configuration into your AI client (see below)
+
+> **Tip:** You can also change the port number in the Settings UI (disable MCP first, change the port, then re-enable). The default port is `7865`.
 
 ## AI Client Configuration
 
@@ -96,13 +99,14 @@ The `execute_script` tool gives AI access to the full [Scripting API](scripting.
 ## Troubleshooting
 
 **Server not starting?**
-- Check that `mcp.enabled` is `true` in Settings
+- Check that the **Enable MCP server** checkbox is checked in Settings → MCP Server
+- Look at the status indicator — a red dot means the server failed to start (usually a port conflict)
 - Check that port 7865 is not in use by another application
-- Try changing `mcp.port` to a different port
+- Try changing the port: disable MCP, enter a different port number, then re-enable
 
 **AI client can't connect?**
-- Make sure js-notepad is running with MCP enabled
-- Verify the URL matches your `mcp.port` setting
+- Make sure js-notepad is running with MCP enabled (green status dot visible in Settings)
+- Verify the URL matches the one shown in Settings (use the **Copy URL** button to be sure)
 - The server only accepts connections from localhost (127.0.0.1)
 
 **Tool calls timing out?**

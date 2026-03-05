@@ -94,7 +94,7 @@ MCP Tools:
 
 Note: `read_file`, `write_file`, `run_command` are skipped — AI tools (Claude Code, etc.) already have native file/shell access.
 
-### Phase 4: Settings UI & Polish
+### Phase 4: Settings UI & Polish ✅
 - **Settings page section** for MCP integration:
   - Toggle: Enable/Disable MCP server
   - Show MCP URL for easy copy-paste (`http://localhost:7865/mcp`)
@@ -117,6 +117,7 @@ Note: `read_file`, `write_file`, `run_command` are skipped — AI tools (Claude 
 | US-101 | MCP Bidirectional Pipe Protocol | Done |
 | US-102 | HTTP MCP Transport | Done |
 | US-103 | MCP Tools & Configuration | Done |
+| US-104 | MCP Settings UI & Polish | Done |
 
 ## Open Questions
 

@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import styled from "@emotion/styled";
 import { IPageState, PageType } from "../../../shared/types";
 import { getDefaultPageModelState, PageModel } from "../base";
@@ -404,6 +404,113 @@ const SettingsPageRoot = styled.div({
             borderColor: color.border.active,
         },
     },
+
+    "& .mcp-toggle-row": {
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        marginBottom: 12,
+    },
+
+    "& .mcp-toggle-label": {
+        fontSize: 13,
+        color: color.text.default,
+        cursor: "pointer",
+        userSelect: "none" as const,
+    },
+
+    "& .mcp-field-row": {
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        marginBottom: 12,
+    },
+
+    "& .mcp-field-label": {
+        fontSize: 13,
+        color: color.text.default,
+    },
+
+    "& .mcp-port-input": {
+        width: 72,
+        fontSize: 13,
+        padding: "4px 8px",
+        backgroundColor: color.background.dark,
+        border: `1px solid ${color.border.default}`,
+        borderRadius: 4,
+        color: color.text.default,
+        outline: "none",
+        "&:focus": {
+            borderColor: color.border.active,
+        },
+        "&:disabled": {
+            opacity: 0.5,
+            cursor: "not-allowed",
+        },
+    },
+
+    "& .mcp-status-line": {
+        display: "flex",
+        alignItems: "center",
+        gap: 6,
+        fontSize: 12,
+        color: color.text.light,
+        marginBottom: 12,
+    },
+
+    "& .mcp-status-dot": {
+        width: 8,
+        height: 8,
+        borderRadius: "50%",
+        flexShrink: 0,
+    },
+
+    "& .mcp-url-row": {
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        marginBottom: 12,
+    },
+
+    "& .mcp-url": {
+        fontSize: 12,
+        fontFamily: "monospace",
+        padding: "4px 8px",
+        backgroundColor: color.background.dark,
+        borderRadius: 4,
+        border: `1px solid ${color.border.default}`,
+        color: color.text.default,
+        userSelect: "all" as const,
+    },
+
+    "& .mcp-copy-button": {
+        fontSize: 11,
+        padding: "3px 8px",
+        color: color.text.light,
+        backgroundColor: "transparent",
+        border: `1px solid ${color.border.default}`,
+        borderRadius: 4,
+        cursor: "pointer",
+        whiteSpace: "nowrap" as const,
+        "&:hover": {
+            color: color.text.default,
+            backgroundColor: color.background.dark,
+        },
+    },
+
+    "& .mcp-config": {
+        fontSize: 11,
+        fontFamily: "monospace",
+        lineHeight: 1.5,
+        padding: "8px 12px",
+        backgroundColor: color.background.dark,
+        borderRadius: 4,
+        border: `1px solid ${color.border.default}`,
+        color: color.text.default,
+        whiteSpace: "pre" as const,
+        overflow: "auto",
+        marginBottom: 8,
+    },
 });
 
 // ============================================================================
@@ -808,6 +915,138 @@ function DefaultBrowserSection() {
 }
 
 // ============================================================================
+// MCP Server Section
+// ============================================================================
+
+function McpSection() {
+    const mcpEnabled = settings.use("mcp.enabled");
+    const mcpPort = settings.use("mcp.port");
+    const [status, setStatus] = useState<{ running: boolean; url: string; clientCount: number } | null>(null);
+    const [portValue, setPortValue] = useState(String(mcpPort));
+    const [copied, setCopied] = useState<string | null>(null);
+
+    useEffect(() => {
+        setPortValue(String(mcpPort));
+    }, [mcpPort]);
+
+    useEffect(() => {
+        let interval: ReturnType<typeof setInterval> | undefined;
+
+        const fetchStatus = async () => {
+            try {
+                const s = await api.getMcpStatus();
+                setStatus(s);
+            } catch {
+                setStatus(null);
+            }
+        };
+
+        fetchStatus();
+        if (mcpEnabled) {
+            interval = setInterval(fetchStatus, 5000);
+        }
+
+        return () => {
+            if (interval) clearInterval(interval);
+        };
+    }, [mcpEnabled]);
+
+    const handleToggle = () => {
+        settings.set("mcp.enabled", !mcpEnabled);
+    };
+
+    const handlePortBlur = () => {
+        const num = parseInt(portValue, 10);
+        if (num >= 1024 && num <= 65535) {
+            settings.set("mcp.port", num);
+        } else {
+            setPortValue(String(mcpPort));
+        }
+    };
+
+    const handlePortKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === "Enter") {
+            (e.target as HTMLInputElement).blur();
+        }
+    };
+
+    const handleCopy = (text: string, label: string) => {
+        navigator.clipboard.writeText(text);
+        setCopied(label);
+        setTimeout(() => setCopied((prev) => prev === label ? null : prev), 2000);
+    };
+
+    const mcpUrl = `http://localhost:${mcpPort}/mcp`;
+    const configJson = JSON.stringify({
+        mcpServers: {
+            "js-notepad": {
+                type: "http",
+                url: mcpUrl,
+            },
+        },
+    }, null, 2);
+
+    return (
+        <>
+            <div className="section-label">MCP Server</div>
+            <div className="section-hint">
+                AI agents (Claude, ChatGPT, Gemini) can control js-notepad via MCP
+            </div>
+
+            <div className="mcp-toggle-row">
+                <input type="checkbox" checked={mcpEnabled} onChange={handleToggle} id="mcp-enabled" />
+                <label htmlFor="mcp-enabled" className="mcp-toggle-label">
+                    Enable MCP server
+                </label>
+            </div>
+
+            <div className="mcp-field-row">
+                <span className="mcp-field-label">Port:</span>
+                <input
+                    className="mcp-port-input"
+                    type="text"
+                    value={portValue}
+                    onChange={(e) => setPortValue(e.target.value)}
+                    onBlur={handlePortBlur}
+                    onKeyDown={handlePortKeyDown}
+                    disabled={mcpEnabled}
+                />
+            </div>
+
+            {mcpEnabled && status && (
+                <>
+                    <div className="mcp-status-line">
+                        <span
+                            className="mcp-status-dot"
+                            style={{ backgroundColor: status.running ? color.misc.green : color.text.light }}
+                        />
+                        {status.running
+                            ? `Running${status.clientCount > 0 ? ` — ${status.clientCount} client${status.clientCount !== 1 ? "s" : ""} connected` : ""}`
+                            : "Stopped"
+                        }
+                    </div>
+
+                    <div className="mcp-url-row">
+                        <span className="mcp-url">{status.url}</span>
+                        <button className="mcp-copy-button" onClick={() => handleCopy(status.url, "url")}>
+                            {copied === "url" ? "Copied!" : "Copy URL"}
+                        </button>
+                    </div>
+                </>
+            )}
+
+            <div className="section-hint" style={{ marginTop: 4 }}>
+                AI client configuration:
+            </div>
+            <div className="mcp-config">{configJson}</div>
+            <button className="mcp-copy-button" onClick={() => handleCopy(configJson, "config")}>
+                {copied === "config" ? "Copied!" : "Copy"}
+            </button>
+        </>
+    );
+}
+
+// ============================================================================
 // SettingsPage Component
 // ============================================================================
 
@@ -909,6 +1148,10 @@ function SettingsPage({ model }: SettingsPageProps) {
                     value={extensionsText}
                     onBlur={handleExtensionsBlur}
                 />
+
+                <hr className="divider" />
+
+                <McpSection />
 
                 <hr className="divider" />
 

@@ -13,8 +13,9 @@ Release notes and changelog for js-notepad.
 - **AI Agent Integration (MCP HTTP Server)** — external AI agents (such as Claude Desktop, Claude Code, ChatGPT, or Gemini) can now connect to js-notepad and control it programmatically via HTTP
   - Server listens on `http://localhost:7865/mcp` (port is configurable via the `mcp.port` setting)
   - Connect any MCP-compatible client by pointing it to the server URL
-  - Disabled by default — enable in Settings or in `appSettings.json` by setting `mcp.enabled` to `true`
-  - Port is configurable via `mcp.port` setting (default: `7865`); changing the port requires toggling MCP off and on
+  - Dedicated **MCP Server** section in Settings with enable/disable toggle, port input, live status indicator (green/red dot), **Copy URL** and **Copy Config** buttons
+  - Disabled by default — enable with a single checkbox in Settings → MCP Server
+  - Port is configurable in Settings (default: `7865`); disable MCP first, change the port, then re-enable
   - Server is bound to localhost only (127.0.0.1) and is not accessible from other machines
   - Available tools: `execute_script`, `list_pages`, `get_page_content`, `get_active_page`, `create_page`, `set_page_content`, `get_app_info`
   - Console output (`console.log`, `console.error`, etc.) from scripts executed via MCP is captured and returned to the agent
