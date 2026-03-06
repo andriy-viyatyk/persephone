@@ -123,6 +123,22 @@ export interface IFileSystem {
      */
     delete(filePath: string): Promise<void>;
 
+    // ── Directory operations ────────────────────────────────────────
+
+    /**
+     * List files and directories in a folder.
+     * @param dirPath Absolute path to directory.
+     * @param pattern Optional extension filter (e.g., ".json") or RegExp.
+     * @returns Array of file/directory names (not full paths). Empty array if directory doesn't exist.
+     */
+    listDir(dirPath: string, pattern?: string | RegExp): Promise<string[]>;
+
+    /**
+     * Create a directory (and parent directories if needed). No-op if already exists.
+     * @param dirPath Absolute path to directory.
+     */
+    mkdir(dirPath: string): Promise<void>;
+
     // ── Path resolution ──────────────────────────────────────────────
 
     /**

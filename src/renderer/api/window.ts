@@ -1,4 +1,5 @@
 import { api } from "../../ipc/renderer/api";
+import rendererEvents from "../../ipc/renderer/renderer-events";
 import { TOneState } from "../core/state/state";
 import type { IWindow } from "./types/window";
 
@@ -6,6 +7,8 @@ interface WindowState {
     isMaximized: boolean;
     zoomLevel: number;
     menuBarOpen: boolean;
+    mcpRunning: boolean;
+    mcpClientCount: number;
 }
 
 export class Window implements IWindow {
@@ -14,14 +17,34 @@ export class Window implements IWindow {
         isMaximized: false,
         zoomLevel: 0,
         menuBarOpen: false,
+        mcpRunning: false,
+        mcpClientCount: 0,
     });
 
     constructor() {
         this._initWindowIndex();
+        this._initMcpStatus();
     }
 
     private async _initWindowIndex(): Promise<void> {
         this._windowIndex = await api.getWindowIndex();
+    }
+
+    private async _initMcpStatus(): Promise<void> {
+        try {
+            const status = await api.getMcpStatus();
+            this._state.update(s => {
+                s.mcpRunning = status.running;
+                s.mcpClientCount = status.clientCount;
+            });
+        } catch { /* MCP may not be enabled */ }
+
+        rendererEvents.eMcpStatusChanged.subscribe((status) => {
+            this._state.update(s => {
+                s.mcpRunning = status.running;
+                s.mcpClientCount = status.clientCount;
+            });
+        });
     }
 
     // ── Window state setters ───────────────────────────────────────

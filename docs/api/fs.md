@@ -65,6 +65,57 @@ if (await app.fs.exists("C:/data/config.json")) {
 
 Delete a file. No-op if the file doesn't exist.
 
+## Directory Operations
+
+### listDir(dirPath, pattern?) → `Promise<string[]>`
+
+List files and directories inside a folder. Returns entry names only, not full paths. Returns an empty array if the directory does not exist.
+
+The optional `pattern` argument filters results by extension string (e.g. `".json"`) or a `RegExp`.
+
+```javascript
+// List everything in a folder
+const entries = await app.fs.listDir("C:/data/exports");
+console.log(entries); // ["report.csv", "summary.json", "archive"]
+
+// Filter by extension
+const jsonFiles = await app.fs.listDir("C:/data/exports", ".json");
+// ["summary.json"]
+
+// Filter by RegExp
+const logs = await app.fs.listDir("C:/logs", /\d{4}-\d{2}-\d{2}\.log/);
+```
+
+To get full paths, combine with the directory path:
+
+```javascript
+const dir = "C:/data/exports";
+const files = await app.fs.listDir(dir, ".csv");
+for (const name of files) {
+    const content = await app.fs.read(`${dir}/${name}`);
+    console.log(name, content.length);
+}
+```
+
+### mkdir(dirPath) → `Promise<void>`
+
+Create a directory. Parent directories are created automatically if they do not exist. No-op if the directory already exists.
+
+```javascript
+await app.fs.mkdir("C:/data/exports/monthly");
+
+// Safe to call even if the folder exists
+await app.fs.mkdir("C:/data/exports");
+```
+
+Combine with `write` to ensure a destination folder exists before writing files:
+
+```javascript
+const outDir = "C:/data/reports/2026";
+await app.fs.mkdir(outDir);
+await app.fs.write(`${outDir}/summary.txt`, reportContent);
+```
+
 ## Path Resolution
 
 ### resolveDataPath(relativePath) → `string`

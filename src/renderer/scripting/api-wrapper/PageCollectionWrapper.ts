@@ -20,6 +20,10 @@ export class PageCollectionWrapper {
 
     // ── Queries ───────────────────────────────────────────────────────
 
+    get all(): PageWrapper[] {
+        return this.pages.pages.map((p) => new PageWrapper(p, this.releaseList));
+    }
+
     get activePage(): PageWrapper | undefined {
         return this.wrap(this.pages.activePage);
     }
@@ -46,8 +50,13 @@ export class PageCollectionWrapper {
 
     // ── Lifecycle ─────────────────────────────────────────────────────
 
-    openFile(filePath: string): Promise<void> {
-        return this.pages.openFile(filePath);
+    async openFile(filePath: string): Promise<PageWrapper | undefined> {
+        const model = await this.pages.openFile(filePath);
+        return this.wrap(model);
+    }
+
+    closePage(pageId: string): Promise<boolean> {
+        return this.pages.closePage(pageId);
     }
 
     openFileWithDialog(): Promise<void> {

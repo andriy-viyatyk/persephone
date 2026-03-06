@@ -87,6 +87,31 @@ const AppRoot = styled.div({
             display: "flex",
         },
     },
+    "& .mcp-indicator": {
+        position: "absolute",
+        bottom: 1,
+        right: 4,
+        fontSize: 9,
+        lineHeight: 1,
+        color: color.text.light,
+        opacity: 0.6,
+        display: "flex",
+        alignItems: "center",
+        gap: 3,
+        WebkitAppRegion: "no-drag",
+        pointerEvents: "auto",
+        "& .mcp-dot": {
+            width: 7,
+            height: 7,
+            borderRadius: "50%",
+            backgroundColor: color.misc.green,
+        },
+        "& .mcp-count": {
+            marginLeft: 1,
+            fontSize: 11,
+            color: color.misc.green,
+        },
+    },
 });
 
 export function MainPage() {
@@ -140,6 +165,21 @@ export function MainPage() {
                 >
                     <CloseIcon />
                 </Button>
+                {state.mcpRunning && (
+                    <span
+                        className="mcp-indicator"
+                        title={state.mcpClientCount > 0
+                            ? `MCP is active, ${state.mcpClientCount} active connection${state.mcpClientCount !== 1 ? "s" : ""}`
+                            : "MCP server is running"
+                        }
+                    >
+                        <span className="mcp-dot" />
+                        MCP
+                        {state.mcpClientCount > 0 && (
+                            <span className="mcp-count">{state.mcpClientCount}</span>
+                        )}
+                    </span>
+                )}
             </div>
             <div className="app-content">
                 <div className="pages-container">

@@ -229,5 +229,6 @@ See [/doc/standards/coding-style.md](doc/standards/coding-style.md) for complete
 | Theme definitions        | `/src/renderer/theme/themes/`                     |
 | Named Pipe server        | `/src/main/pipe-server.ts`                        |
 | MCP HTTP server          | `/src/main/mcp-http-server.ts`                    |
+| MCP API guide (resource) | `/assets/mcp-api-guide.md`                        |
 | MCP command handler      | `/src/renderer/api/mcp-handler.ts`                |
 | Rust launcher            | `/launcher/src/main.rs`                           |

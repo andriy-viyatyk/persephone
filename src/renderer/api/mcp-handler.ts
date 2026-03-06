@@ -3,6 +3,7 @@ const { ipcRenderer } = require("electron");
 import { scriptRunner } from "../scripting/ScriptRunner";
 import { pagesModel } from "./pages";
 import { isTextFileModel } from "../editors/text/TextPageModel";
+import { editorRegistry } from "../editors/registry";
 import { MCP_EXECUTE, MCP_RESULT } from "../../shared/constants";
 import { app } from "./app";
 
@@ -123,6 +124,11 @@ function createPage(params: any): McpResponse {
     const language = params?.language ?? "plaintext";
     const editor = params?.editor ?? "monaco";
     const title = params?.title ?? "Untitled";
+
+    if (!editorRegistry.getById(editor)) {
+        const all = editorRegistry.getAll().map((e) => e.id);
+        return { error: { code: -32602, message: `Unknown editor '${editor}'. Valid editors: ${all.join(", ")}` } };
+    }
 
     const page = pagesModel.addEditorPage(editor, language, title);
     if (content && isTextFileModel(page)) {

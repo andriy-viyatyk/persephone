@@ -19,6 +19,9 @@ import type { IPage } from "./page";
 export interface IPageCollection {
     // ── Queries ──────────────────────────────────────────────────────
 
+    /** All open pages (tabs) in the current window. */
+    readonly all: IPage[];
+
     /** Currently active (visible) page, or undefined. */
     readonly activePage: IPage | undefined;
 
@@ -39,8 +42,11 @@ export interface IPageCollection {
 
     // ── Lifecycle ────────────────────────────────────────────────────
 
-    /** Open a file in a new or existing tab. */
-    openFile(filePath: string): Promise<void>;
+    /** Open a file in a new or existing tab. Returns the page. */
+    openFile(filePath: string): Promise<IPage | undefined>;
+
+    /** Close a page by ID. Returns true if closed, false if cancelled (e.g. unsaved changes). */
+    closePage(pageId: string): Promise<boolean>;
 
     /** Show the Open File dialog and open the selected file. */
     openFileWithDialog(): Promise<void>;

@@ -4,11 +4,11 @@ Epics represent big ideas with high-level overviews. Each epic links to tasks in
 
 ## Active
 
-- **EPIC-001** — [AI Claude Integration](EPIC-001.md)
+- **EPIC-002** — [App API Polishing](EPIC-002.md)
 
 ## Completed
 
-(none)
+- **EPIC-001** — [AI Claude Integration](EPIC-001.md)
 
 ## How Epics Work
 

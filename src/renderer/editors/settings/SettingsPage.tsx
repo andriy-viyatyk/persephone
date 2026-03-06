@@ -16,6 +16,7 @@ import { ui } from "../../api/ui";
 import { getPartitionString } from "../browser/BrowserPageModel";
 import { IncognitoIcon } from "../../theme/language-icons";
 import { api } from "../../../ipc/renderer/api";
+import rendererEvents from "../../../ipc/renderer/renderer-events";
 const { ipcRenderer } = require("electron");
 const path = require("path");
 import { BrowserChannel } from "../../../ipc/browser-ipc";
@@ -930,25 +931,13 @@ function McpSection() {
     }, [mcpPort]);
 
     useEffect(() => {
-        let interval: ReturnType<typeof setInterval> | undefined;
+        api.getMcpStatus().then(setStatus).catch(() => setStatus(null));
 
-        const fetchStatus = async () => {
-            try {
-                const s = await api.getMcpStatus();
-                setStatus(s);
-            } catch {
-                setStatus(null);
-            }
-        };
+        const sub = rendererEvents.eMcpStatusChanged.subscribe((s) => {
+            setStatus(s);
+        });
 
-        fetchStatus();
-        if (mcpEnabled) {
-            interval = setInterval(fetchStatus, 5000);
-        }
-
-        return () => {
-            if (interval) clearInterval(interval);
-        };
+        return () => sub.unsubscribe();
     }, [mcpEnabled]);
 
     const handleToggle = () => {

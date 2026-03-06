@@ -13,7 +13,7 @@ export class LinkEditorFacade {
     constructor(private readonly vm: LinkViewModel) {}
 
     get links(): Array<{ readonly id: string; readonly url: string; readonly title: string; readonly category: string; readonly tags: readonly string[]; readonly pinned: boolean }> {
-        return this.vm.state.get().data.links.map((link) => this.mapLink(link));
+        return this.vm.state.get().data.links.map((link) => mapLink(link, this.vm));
     }
 
     get categories(): string[] {
@@ -44,14 +44,16 @@ export class LinkEditorFacade {
         this.vm.updateLink(id, updates);
     }
 
-    private mapLink(link: LinkItem) {
-        return {
-            id: link.id,
-            url: link.href,
-            title: link.title,
-            category: link.category,
-            tags: link.tags,
-            pinned: this.vm.isLinkPinned(link.id),
-        };
-    }
+}
+
+/** Map internal LinkItem → ILink. */
+function mapLink(link: LinkItem, vm: LinkViewModel) {
+    return {
+        id: link.id,
+        url: link.href,
+        title: link.title,
+        category: link.category,
+        tags: link.tags,
+        pinned: vm.isLinkPinned(link.id),
+    };
 }

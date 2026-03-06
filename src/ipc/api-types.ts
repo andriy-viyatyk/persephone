@@ -124,6 +124,7 @@ export enum EventEndpoint {
     eDownloadCompleted = "eDownloadCompleted",
     eDownloadFailed = "eDownloadFailed",
     eDownloadCleared = "eDownloadCleared",
+    eMcpStatusChanged = "eMcpStatusChanged",
 }
 
 export interface EventSubscription {
@@ -152,6 +153,7 @@ export type EventApi = {
     [EventEndpoint.eDownloadCompleted]: EventObject<{ id: string; savePath: string }>;
     [EventEndpoint.eDownloadFailed]: EventObject<{ id: string; error: string }>;
     [EventEndpoint.eDownloadCleared]: EventObject<DownloadEntry[]>;
+    [EventEndpoint.eMcpStatusChanged]: EventObject<McpStatus>;
 };
 
 export enum RendererEvent {

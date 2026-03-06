@@ -139,10 +139,9 @@ export class PagesModel extends TModel<OpenFilesState> {
         this.query.getLeftGroupedPage(withPageId);
     isLastPage = (pageId?: string) => this.query.isLastPage(pageId);
     isGrouped = (pageId: string) => this.query.isGrouped(pageId);
-    canGroupWithLeft = (rightPageId: string) =>
-        this.query.canGroupWithLeft(rightPageId);
-    canGroupWithRight = (leftPageId: string) =>
-        this.query.canGroupWithRight(leftPageId);
+    get pages() {
+        return this.query.pages;
+    }
 
     // Navigation delegates
     showPage = (pageId?: string) => this.navigation.showPage(pageId);
@@ -160,6 +159,7 @@ export class PagesModel extends TModel<OpenFilesState> {
     createPageFromFile = (filePath: string) =>
         this.lifecycle.createPageFromFile(filePath);
     openFile = (filePath?: string) => this.lifecycle.openFile(filePath);
+    closePage = (pageId: string) => this.lifecycle.closePage(pageId);
     openFileWithDialog = () => this.lifecycle.openFileWithDialog();
     openDiff = (
         params: { firstPath: string; secondPath: string } | undefined

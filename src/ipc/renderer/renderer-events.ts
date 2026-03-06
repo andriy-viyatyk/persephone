@@ -1,6 +1,6 @@
 import { IPageState } from "../../shared/types";
 import { DownloadEntry, UpdateCheckResult } from "../api-param-types";
-import { EventApi, EventEndpoint, EventObject } from "../api-types";
+import { EventApi, EventEndpoint, EventObject, McpStatus } from "../api-types";
 
 class RendererEventObject<T> implements EventObject<T> {
     private subscribers: Array<(data: T) => void> = [];
@@ -109,6 +109,10 @@ class RendererEvents implements EventApi {
 
     [EventEndpoint.eDownloadCleared] = new RendererEventObject<DownloadEntry[]>(
         EventEndpoint.eDownloadCleared
+    );
+
+    [EventEndpoint.eMcpStatusChanged] = new RendererEventObject<McpStatus>(
+        EventEndpoint.eMcpStatusChanged
     );
 }
 

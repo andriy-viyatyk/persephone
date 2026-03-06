@@ -153,6 +153,10 @@ Todo list editor. Only for `.todo.json` pages.
 | `renameList(oldName, newName)` | `boolean` | Rename a list. Returns false on conflict. |
 | `deleteList(name)` | `void` | Delete a list and all its items. |
 | `addTag(name)` | `boolean` | Add a tag. Returns false if name exists. |
+| `selectList(name)` | `void` | Select a list by name. Empty string selects "All". |
+| `selectTag(name)` | `void` | Select a tag filter by name. Empty string selects "All Tags". |
+| `setSearch(text)` | `void` | Set search filter text. |
+| `clearSearch()` | `void` | Clear search filter. |
 
 ```javascript
 const todo = await page.asTodo();

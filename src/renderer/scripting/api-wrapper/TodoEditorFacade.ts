@@ -55,6 +55,22 @@ export class TodoEditorFacade {
     addTag(name: string): boolean {
         return this.vm.addTag(name);
     }
+
+    selectList(name: string): void {
+        this.vm.setSelectedList(name);
+    }
+
+    selectTag(name: string): void {
+        this.vm.setSelectedTag(name);
+    }
+
+    setSearch(text: string): void {
+        this.vm.setSearchText(text);
+    }
+
+    clearSearch(): void {
+        this.vm.clearSearch();
+    }
 }
 
 /** Map internal TodoItem → ITodoItem. */

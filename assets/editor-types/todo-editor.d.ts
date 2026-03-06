@@ -41,6 +41,18 @@ export interface ITodoEditor {
 
     /** Add a new tag. Returns false if name is empty or already exists. */
     addTag(name: string): boolean;
+
+    /** Select a list by name. Empty string selects "All". */
+    selectList(name: string): void;
+
+    /** Select a tag filter by name. Empty string selects "All Tags". */
+    selectTag(name: string): void;
+
+    /** Set search filter text. */
+    setSearch(text: string): void;
+
+    /** Clear search filter. */
+    clearSearch(): void;
 }
 
 /** A single todo item. */

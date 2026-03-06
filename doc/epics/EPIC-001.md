@@ -2,8 +2,9 @@
 
 ## Status
 
-**Status:** Active
+**Status:** Complete
 **Created:** 2026-03-05
+**Completed:** 2026-03-06
 
 ## Overview
 
@@ -104,11 +105,15 @@ Note: `read_file`, `write_file`, `run_command` are skipped — AI tools (Claude 
 - User documentation
 
 ### Phase 5: Advanced (Future)
-- **Resources:** Expose open pages as MCP resources (AI can read without explicit tool calls)
-- **Prompts:** Predefined MCP prompts (e.g., "Analyze current page", "Create diagram from data")
-- **Notifications:** Push events from js-notepad to AI (page changed, file saved, error occurred)
-- **Image return:** Return rendered diagrams/images as base64 in tool results
-- **Multi-window:** Support targeting specific windows
+- **API docs resource:** Expose a built-in MCP resource (`notepad://docs/api-guide`) — a "CLAUDE.md for strangers" for standalone AI clients that have no project context. Condensed markdown (~200-300 lines) covering what js-notepad is, `page`/`app` objects, all services, grouped pages, editor facades, practical examples, and links to GitHub docs. Implementation: markdown file in `assets/mcp-api-guide.md` loaded dynamically via `getAssetPath()`, registered with `server.registerResource()` from MCP SDK.
+- **Title bar MCP indicator:** Green dot + client count badge in the title bar when MCP server is active
+- **Multi-window:** Support targeting specific windows from MCP tools ✅
+
+Reviewed and skipped:
+- ~~Resources (pages)~~ — Would overload AI context with irrelevant data; AI can already read pages via tools
+- ~~Prompts~~ — Can't predict user needs; AI handles this naturally via conversation
+- ~~Notifications~~ — MCP is pull-based; no way to push content into AI conversation; without page resources, notifications have no value
+- ~~Image return (separate tool)~~ — AI can already extract images via `execute_script`; future API improvements will make this easier
 
 ## Linked Tasks
 
@@ -118,6 +123,9 @@ Note: `read_file`, `write_file`, `run_command` are skipped — AI tools (Claude 
 | US-102 | HTTP MCP Transport | Done |
 | US-103 | MCP Tools & Configuration | Done |
 | US-104 | MCP Settings UI & Polish | Done |
+| US-105 | MCP API Docs Resource | Done |
+| US-106 | MCP Title Bar Indicator | Done |
+| US-107 | MCP Multi-Window Support | Done |
 
 ## Open Questions
 

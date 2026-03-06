@@ -20,7 +20,8 @@ js-notepad/
 ├── assets/                 # Static assets
 │   ├── editor-types/       # Auto-copied .d.ts files for Monaco IntelliSense
 │   ├── icons/              # App icons
-│   └── pdfjs/              # PDF.js library
+│   ├── pdfjs/              # PDF.js library
+│   └── mcp-api-guide.md    # Condensed API guide exposed as MCP resource
 ├── patches/                # Dependency patches (patch-package)
 ├── .mcp.json               # MCP server config for Claude Code (points to MCP HTTP server)
 ├── doc/                    # Developer documentation

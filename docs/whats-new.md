@@ -19,9 +19,16 @@ Release notes and changelog for js-notepad.
   - Server is bound to localhost only (127.0.0.1) and is not accessible from other machines
   - Available tools: `execute_script`, `list_pages`, `get_page_content`, `get_active_page`, `create_page`, `set_page_content`, `get_app_info`
   - Console output (`console.log`, `console.error`, etc.) from scripts executed via MCP is captured and returned to the agent
+  - **API Guide resource** (`notepad://docs/api-guide`) — AI clients can read a condensed scripting API reference directly from the MCP server, giving standalone clients (Claude Desktop, ChatGPT, Gemini) the context they need to use js-notepad effectively without any project setup
+  - **Title bar MCP indicator** — when the MCP server is active, a small indicator (green dot + "MCP" label) appears in the title bar with a live connection count; hidden when MCP is disabled
+  - **Multi-window support** — all MCP tools accept an optional `windowIndex` parameter to target specific windows. New `list_windows` tool discovers all windows (open and closed) with their pages. New `open_window` tool reopens closed windows with their persisted pages
   - See [MCP Server Setup](./mcp-setup.md) for configuration instructions
 
 ### Improvements
+
+- **Todo Editor Scripting** — 4 new methods on the `asTodo()` facade: `selectList(name)`, `selectTag(name)`, `setSearch(text)`, `clearSearch()` — allowing scripts and MCP agents to navigate and filter the todo UI programmatically
+
+- **MCP `create_page` Editor Validation** — passing an invalid editor ID to `create_page` now returns a descriptive error with the list of valid editor IDs, instead of silently failing
 
 - **Markdown Preview — Mermaid "Open in Editor"** — hover over an inline mermaid diagram to see a toolbar with two buttons: copy image to clipboard, and open the diagram source in a new Mermaid editor tab
 

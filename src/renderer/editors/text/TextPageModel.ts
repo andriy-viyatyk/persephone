@@ -165,8 +165,10 @@ export class TextFileModel extends PageModel<TextFilePageModelState, void> imple
     };
 
     changeEditor = (editor: PageEditor) => {
+        const language = this.state.get().language ?? "";
+        const validated = editorRegistry.validateForLanguage(editor, language);
         this.state.update((s) => {
-            s.editor = editor;
+            s.editor = validated;
         });
     };
 

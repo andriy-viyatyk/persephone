@@ -163,9 +163,12 @@ See [scripting.md](./scripting.md).
 - Protocol: MCP over HTTP at `http://127.0.0.1:{port}/mcp` (default port 7865)
 - Main process: `mcp-http-server.ts` accepts connections using `@modelcontextprotocol/sdk`, forwards requests to renderer via IPC
 - Renderer process: `mcp-handler.ts` dispatches 7 commands (`execute_script`, `list_pages`, `get_page_content`, `get_active_page`, `create_page`, `set_page_content`, `get_app_info`)
+- Multi-window support: all tools accept optional `windowIndex` parameter (defaults to first open window). `list_windows` tool runs in main process (no IPC) to discover windows and their status. `open_window` tool reopens closed windows with persisted pages.
+- MCP resource: `notepad://docs/api-guide` exposes a condensed API guide (`assets/mcp-api-guide.md`) so standalone AI clients understand js-notepad capabilities
 - Opt-in via `mcp.enabled` setting — server starts/stops dynamically based on setting changes
 - Port is configurable via `mcp.port` setting (default `7865`)
 - Script execution uses `ScriptRunner.runWithCapture()` for headless operation with console capture
+- Status broadcasting: main process pushes `eMcpStatusChanged` events to all windows on server start/stop and session connect/disconnect — renderer `Window` class holds reactive `mcpRunning`/`mcpClientCount` state, UI shows a title-bar indicator
 
 ### 5. Theming System
 

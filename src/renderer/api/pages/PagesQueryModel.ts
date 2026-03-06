@@ -55,16 +55,7 @@ export class PagesQueryModel {
         return state.leftRight.has(pageId) || state.rightLeft.has(pageId);
     };
 
-    canGroupWithLeft = (rightPageId: string): boolean => {
-        const pageIndex = this.model.state
-            .get()
-            .pages.findIndex((p) => p.id === rightPageId);
-        return pageIndex > 0;
-    };
-
-    canGroupWithRight = (leftPageId: string): boolean => {
-        const state = this.model.state.get();
-        const pageIndex = state.pages.findIndex((p) => p.id === leftPageId);
-        return pageIndex >= 0 && pageIndex < state.pages.length - 1;
-    };
+    get pages(): PageModel[] {
+        return this.model.state.get().pages;
+    }
 }

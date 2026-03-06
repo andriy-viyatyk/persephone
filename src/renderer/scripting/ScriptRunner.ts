@@ -213,6 +213,7 @@ class ScriptRunner {
             return `
             with (this) {
                 return (async function() {
+                    ${lexicalObjects}
                     ${beforeLast}
                     return (${lastLine});
                 }).call(this);
@@ -225,6 +226,7 @@ class ScriptRunner {
             return `
             with (this) {
                 return (async function() {
+                    ${lexicalObjects}
                     ${beforeLast}
                     return (${expressionPart});
                 }).call(this);
@@ -236,6 +238,7 @@ class ScriptRunner {
         return `
         with (this) {
             return (async function() {
+                ${lexicalObjects}
                 ${script}
             }).call(this);
         }

@@ -130,7 +130,7 @@ Facades provide safe, typed access to editor-specific features. Each facade wrap
 | `page.asText()` | `TextEditorFacade` | `TextViewModel` | `getSelectedText()`, `insertText()`, `replaceSelection()`, `revealLine()`, cursor position |
 | `page.asGrid()` | `GridEditorFacade` | `GridViewModel` | `rows`, `columns`, `editCell()`, `addRows()`, `deleteRows()`, `addColumns()`, `deleteColumns()` |
 | `page.asNotebook()` | `NotebookEditorFacade` | `NotebookViewModel` | `notes`, `categories`, `tags`, `addNote()`, `deleteNote()`, `updateNoteTitle()` |
-| `page.asTodo()` | `TodoEditorFacade` | `TodoViewModel` | `items`, `lists`, `tags`, `addItem()`, `toggleItem()`, `deleteItem()`, `addList()` |
+| `page.asTodo()` | `TodoEditorFacade` | `TodoViewModel` | `items`, `lists`, `tags`, `addItem()`, `toggleItem()`, `deleteItem()`, `addList()`, `selectList()`, `selectTag()`, `setSearch()`, `clearSearch()` |
 | `page.asLink()` | `LinkEditorFacade` | `LinkViewModel` | `links`, `categories`, `tags`, `addLink()`, `deleteLink()`, `updateLink()` |
 | `page.asMarkdown()` | `MarkdownEditorFacade` | `MarkdownViewModel` | `viewMounted`, `html` (read-only) |
 | `page.asSvg()` | `SvgEditorFacade` | `SvgViewModel` | `svg` (read-only) |

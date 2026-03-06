@@ -141,14 +141,14 @@ export class PagesLifecycleModel {
 
     // ── File opening ─────────────────────────────────────────────────
 
-    openFile = async (filePath?: string) => {
-        if (!filePath) return;
+    openFile = async (filePath?: string): Promise<PageModel | undefined> => {
+        if (!filePath) return undefined;
         const existingPage = this.model.state
             .get()
             .pages.find((p) => p.state.get().filePath === filePath);
         if (existingPage) {
             this.model.navigation.showPage(existingPage.state.get().id);
-            return;
+            return existingPage;
         }
 
         const pageModel = await this.createPageFromFile(filePath);
@@ -156,6 +156,13 @@ export class PagesLifecycleModel {
         recent.add(filePath);
 
         this.model.closeFirstPageIfEmpty();
+        return pageModel;
+    };
+
+    closePage = async (pageId: string): Promise<boolean> => {
+        const page = this.model.query.findPage(pageId);
+        if (!page) return false;
+        return await page.close(undefined) !== false;
     };
 
     openFileWithDialog = async () => {

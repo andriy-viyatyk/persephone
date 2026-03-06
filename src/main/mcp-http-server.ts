@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import fs from "node:fs";
 import http from "node:http";
 import { app as electronApp, ipcMain } from "electron";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -6,7 +7,10 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { openWindows } from "./open-windows";
+import { windowStates } from "./window-states";
 import { MCP_EXECUTE, MCP_RESULT } from "../shared/constants";
+import { EventEndpoint } from "../ipc/api-types";
+import { getAssetPath } from "./utils";
 
 const DEFAULT_PORT = 7865;
 const REQUEST_TIMEOUT_MS = 30_000;
@@ -36,10 +40,21 @@ function initMcpIpc(): void {
     });
 }
 
-async function sendToRenderer(method: string, params: any): Promise<{ result?: any; error?: any }> {
-    const windowData = openWindows.windows.find(w => w.window);
-    if (!windowData?.window) {
-        return { error: { code: -32603, message: "No renderer window available" } };
+async function sendToRenderer(method: string, params: any, windowIndex?: number): Promise<{ result?: any; error?: any }> {
+    const windowData = windowIndex !== undefined
+        ? openWindows.windows.find(w => w.index === windowIndex)
+        : openWindows.windows.find(w => w.window);
+
+    if (!windowData) {
+        return { error: { code: -32603, message: windowIndex !== undefined
+            ? `Window ${windowIndex} does not exist`
+            : "No renderer window available",
+        } };
+    }
+
+    // Closed windows must be opened first via open_window tool
+    if (!windowData.window) {
+        return { error: { code: -32603, message: `Window ${windowIndex} is closed. Use the open_window tool to reopen it first.` } };
     }
 
     // Wait for renderer to be fully initialized
@@ -77,6 +92,16 @@ function toToolResult(response: { result?: any; error?: any }) {
     return { content: [{ type: "text" as const, text }] };
 }
 
+// ── Status Broadcast ────────────────────────────────────────────────
+
+function broadcastMcpStatus(): void {
+    openWindows.send(EventEndpoint.eMcpStatusChanged, {
+        running: isMcpHttpServerRunning(),
+        url: getMcpUrl(),
+        clientCount: getMcpClientCount(),
+    });
+}
+
 // ── MCP Server Factory ─────────────────────────────────────────────
 // Creates a new McpServer per session (SDK requires one transport per server).
 
@@ -86,33 +111,113 @@ function createMcpServer(): McpServer {
         version: electronApp.getVersion(),
     });
 
+    // ── Window parameter (shared across tools) ────────────────────────
+    const windowIndexParam = z.number().int().optional().describe(
+        "Target window index (from list_windows). If omitted, uses the first open window. Use open_window to reopen closed windows first.",
+    );
+
+    // ── Multi-window tools ───────────────────────────────────────────
+    server.tool(
+        "list_windows",
+        "List all windows (open and closed) with their status and pages. Closed windows have persisted pages and can be reopened with open_window. Returns array of { windowIndex, status, pageCount, activePageId, pages: [{ id, title, type, editor, language, filePath, modified, pinned }] }.",
+        async () => {
+            const result = openWindows.windows.map(w => {
+                const wState = windowStates.getState(w.index);
+                return {
+                    windowIndex: w.index,
+                    status: w.window ? "open" : "closed",
+                    pageCount: wState?.pages?.length ?? 0,
+                    activePageId: wState?.activePageId,
+                    pages: (wState?.pages || []).map(p => ({
+                        id: p.id,
+                        title: p.title,
+                        type: p.type,
+                        editor: p.editor,
+                        language: p.language,
+                        filePath: p.filePath,
+                        modified: p.modified,
+                        pinned: p.pinned,
+                    })),
+                };
+            });
+            const text = JSON.stringify(result, null, 2);
+            return { content: [{ type: "text" as const, text }] };
+        },
+    );
+
+    server.tool(
+        "open_window",
+        "Open (or reopen) a window by index. If the window is closed, it will be recreated with its persisted pages. If already open, it will be focused. Returns { windowIndex, status }.",
+        {
+            windowIndex: z.number().int().describe("The window index to open (from list_windows)."),
+        },
+        async ({ windowIndex }) => {
+            const windowData = openWindows.windows.find(w => w.index === windowIndex);
+            if (!windowData) {
+                return {
+                    content: [{ type: "text" as const, text: `Error: Window ${windowIndex} does not exist` }],
+                    isError: true,
+                };
+            }
+
+            if (windowData.window) {
+                windowData.window.focus();
+                return { content: [{ type: "text" as const, text: JSON.stringify({ windowIndex, status: "open", message: "Window is already open and focused" }) }] };
+            }
+
+            try {
+                openWindows.createWindow(windowIndex);
+                if (windowData.whenReady) {
+                    await windowData.whenReady;
+                }
+                return { content: [{ type: "text" as const, text: JSON.stringify({ windowIndex, status: "open", message: "Window reopened successfully" }) }] };
+            } catch (err) {
+                return {
+                    content: [{ type: "text" as const, text: `Error: Failed to open window ${windowIndex}: ${err}` }],
+                    isError: true,
+                };
+            }
+        },
+    );
+
+    // ── Page & script tools ──────────────────────────────────────────
     server.tool(
         "execute_script",
         "Execute JavaScript in js-notepad. The script has access to `page` (active page — content, language, editor, grouped) and `app` (pages, fs, settings, ui, shell, window). Returns { text, language, isError, consoleLogs }. Use for complex operations, transformations, and accessing structured editors via page facades (asGrid, asNotebook, asTodo, etc.).",
         {
             script: z.string().describe("JavaScript code to execute. Supports async/await. Last expression is returned as result."),
             pageId: z.string().optional().describe("Target page ID. If omitted, uses the active page."),
+            windowIndex: windowIndexParam,
         },
-        async ({ script, pageId }) => toToolResult(await sendToRenderer("execute_script", { script, pageId })),
+        async ({ script, pageId, windowIndex }) => toToolResult(await sendToRenderer("execute_script", { script, pageId }, windowIndex)),
     );
 
     server.tool(
         "list_pages",
-        "List all open pages (tabs). Returns array of { id, title, type, editor, language, filePath, modified, pinned, active }.",
-        async () => toToolResult(await sendToRenderer("get_pages", {})),
+        "List all open pages (tabs) in a window. Returns array of { id, title, type, editor, language, filePath, modified, pinned, active }.",
+        {
+            windowIndex: windowIndexParam,
+        },
+        async ({ windowIndex }) => toToolResult(await sendToRenderer("get_pages", {}, windowIndex)),
     );
 
     server.tool(
         "get_page_content",
         "Get the text content of a page by ID. Works for text-based pages (monaco, markdown, JSON, CSV, etc.). Returns { id, title, content }.",
-        { pageId: z.string().describe("The page ID (from list_pages).") },
-        async ({ pageId }) => toToolResult(await sendToRenderer("get_page_content", { pageId })),
+        {
+            pageId: z.string().describe("The page ID (from list_pages)."),
+            windowIndex: windowIndexParam,
+        },
+        async ({ pageId, windowIndex }) => toToolResult(await sendToRenderer("get_page_content", { pageId }, windowIndex)),
     );
 
     server.tool(
         "get_active_page",
         "Get the currently active (focused) page with its content and metadata. Returns { id, title, type, editor, language, filePath, modified, content }.",
-        async () => toToolResult(await sendToRenderer("get_active_page", {})),
+        {
+            windowIndex: windowIndexParam,
+        },
+        async ({ windowIndex }) => toToolResult(await sendToRenderer("get_active_page", {}, windowIndex)),
     );
 
     server.tool(
@@ -123,9 +228,10 @@ function createMcpServer(): McpServer {
             content: z.string().optional().describe("Initial text content."),
             language: z.string().optional().describe("Monaco language ID (e.g. 'javascript', 'json', 'markdown'). Defaults to 'plaintext'."),
             editor: z.string().optional().describe("Editor type (e.g. 'monaco', 'grid-json', 'md-view'). Defaults to 'monaco'."),
+            windowIndex: windowIndexParam,
         },
-        async ({ title, content, language, editor }) =>
-            toToolResult(await sendToRenderer("create_page", { title, content, language, editor })),
+        async ({ title, content, language, editor, windowIndex }) =>
+            toToolResult(await sendToRenderer("create_page", { title, content, language, editor }, windowIndex)),
     );
 
     server.tool(
@@ -134,14 +240,38 @@ function createMcpServer(): McpServer {
         {
             pageId: z.string().describe("The page ID (from list_pages)."),
             content: z.string().describe("The new text content to set."),
+            windowIndex: windowIndexParam,
         },
-        async ({ pageId, content }) => toToolResult(await sendToRenderer("set_page_content", { pageId, content })),
+        async ({ pageId, content, windowIndex }) => toToolResult(await sendToRenderer("set_page_content", { pageId, content }, windowIndex)),
     );
 
     server.tool(
         "get_app_info",
         "Get application info: { version, pageCount, activePageId }.",
-        async () => toToolResult(await sendToRenderer("get_app_info", {})),
+        {
+            windowIndex: windowIndexParam,
+        },
+        async ({ windowIndex }) => toToolResult(await sendToRenderer("get_app_info", {}, windowIndex)),
+    );
+
+    // ── MCP Resource: API Guide ───────────────────────────────────────
+    server.registerResource(
+        "api-guide",
+        "notepad://docs/api-guide",
+        {
+            description: "js-notepad scripting API guide — covers the page object, app services, editor facades, and practical examples. Read this to understand how to write scripts and use MCP tools effectively.",
+            mimeType: "text/markdown",
+        },
+        async (uri) => {
+            const content = fs.readFileSync(getAssetPath("mcp-api-guide.md"), "utf-8");
+            return {
+                contents: [{
+                    uri: uri.href,
+                    mimeType: "text/markdown",
+                    text: content,
+                }],
+            };
+        },
     );
 
     return server;
@@ -188,12 +318,14 @@ async function handleHttpRequest(req: http.IncomingMessage, res: http.ServerResp
                     sessionIdGenerator: () => randomUUID(),
                     onsessioninitialized: (sid: string) => {
                         sessions.set(sid, { server: mcpServer, transport });
+                        broadcastMcpStatus();
                     },
                 });
 
                 transport.onclose = () => {
                     const sid = transport.sessionId;
                     if (sid) sessions.delete(sid);
+                    broadcastMcpStatus();
                 };
 
                 await mcpServer.connect(transport);
@@ -225,6 +357,7 @@ async function handleHttpRequest(req: http.IncomingMessage, res: http.ServerResp
             res.end("Method not allowed");
         }
     } catch (error) {
+        console.error("MCP HTTP handler error:", error);
         if (!res.headersSent) {
             res.writeHead(500, { "Content-Type": "application/json" });
             res.end(JSON.stringify({
@@ -258,6 +391,7 @@ export function startMcpHttpServer(port?: number): Promise<void> {
         server.listen(currentPort, "127.0.0.1", () => {
             httpServer = server;
             console.log(`MCP HTTP server started: http://localhost:${currentPort}/mcp`);
+            broadcastMcpStatus();
             resolve();
         });
     });
@@ -282,6 +416,7 @@ export async function stopMcpHttpServer(): Promise<void> {
         httpServer!.close(() => {
             httpServer = undefined;
             console.log("MCP HTTP server stopped");
+            broadcastMcpStatus();
             resolve();
         });
     });

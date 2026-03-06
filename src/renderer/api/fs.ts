@@ -265,6 +265,16 @@ class FileSystem implements IFileSystem {
         this._unlinkFile(filePath);
     }
 
+    // ── IFileSystem — Directory operations ──────────────────────────────
+
+    async listDir(dirPath: string, pattern?: string | RegExp): Promise<string[]> {
+        return this._listDirFiles(dirPath, pattern);
+    }
+
+    async mkdir(dirPath: string): Promise<void> {
+        this._ensureDir(dirPath);
+    }
+
     // ── IFileSystem — Path resolution ─────────────────────────────────
 
     resolveDataPath(relativePath: string): string {
