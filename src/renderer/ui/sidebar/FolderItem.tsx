@@ -39,6 +39,7 @@ export interface FolderItemProps {
     style: React.CSSProperties;
     selected: boolean;
     onClick: (folder: MenuFolder, index?: number, e?: React.MouseEvent) => void;
+    onDoubleClick?: (folder: MenuFolder) => void;
     icon: React.ReactNode;
     label: React.ReactNode;
     selectedIcon?: React.ReactNode;
@@ -57,6 +58,7 @@ export function FolderItem(props: FolderItemProps) {
         style,
         selected,
         onClick,
+        onDoubleClick,
         icon,
         label,
         selectedIcon,
@@ -100,6 +102,13 @@ export function FolderItem(props: FolderItemProps) {
             onClick(folder, index, e);
         },
         [onClick, folder, index]
+    );
+
+    const handleDoubleClick = useCallback(
+        () => {
+            onDoubleClick?.(folder);
+        },
+        [onDoubleClick, folder]
     );
 
     const handleSelectedIconClick = useCallback(
@@ -155,6 +164,7 @@ export function FolderItem(props: FolderItemProps) {
                 "drag-over": isOver,
             })}
             onClick={handleClick}
+            onDoubleClick={handleDoubleClick}
             onContextMenu={handleContextMenu}
             onDragOver={handleDragOver}
             data-tooltip-id={id}

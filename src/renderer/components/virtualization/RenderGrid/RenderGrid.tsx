@@ -87,6 +87,7 @@ const RenderGrid = React.forwardRef<RenderGridModel, RenderGridProps>(function R
         >
             <div
                 id="avg-container"
+                className="scroll-container"
                 ref={model.containerRef.ref as RefType<HTMLDivElement>}
                 tabIndex={-1}
                 style={{

@@ -2,7 +2,7 @@
 
 ## Status
 
-**Status:** Active
+**Status:** Completed
 **Created:** 2026-03-06
 
 ## Overview
@@ -115,14 +115,8 @@ Test `page.asMarkdown()`, `page.asSvg()`, `page.asHtml()`, `page.asMermaid()`, `
 **IMermaidEditor:** `svgUrl`, `loading`, `error`
 **IBrowserEditor:** `url`, `title`, `navigate()`, `back()`, `forward()`, `reload()`
 
-### Phase 7: New APIs
-Implement entirely new API surfaces discovered during phases 1-6 that don't belong to existing services.
-
-**Candidates** (to be confirmed during testing):
-- Clipboard API (copy/paste)
-- Page event subscriptions (`onPageChanged`, `onPageAdded`)
-- File watching API
-- Other gaps discovered during phases 1-6
+### Phase 7: New APIs (Skipped)
+No new API surfaces were identified as urgently needed during phases 1-6. The only gap found (4 missing Todo facade methods) was fixed inline during Phase 5. Candidates like Clipboard API, page event subscriptions, and file watching remain in the backlog for future consideration.
 
 ## Linked Tasks
 
@@ -149,3 +143,5 @@ Implement entirely new API surfaces discovered during phases 1-6 that don't belo
 - Epic created after completing EPIC-001 (AI Claude Integration)
 - All testing will be done via MCP `execute_script` tool — dogfooding the MCP integration
 - Phase 7 scope depends entirely on what phases 1-6 discover
+- Phases 1-6 completed: all APIs tested, 4 Todo facade methods added (US-121), no other gaps found
+- Phase 7 skipped — no new API surfaces needed. Epic completed.

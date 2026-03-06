@@ -115,6 +115,16 @@ function buildGlobalStyles() {
         .monaco-editor.no-user-select {
             outline: none;
         }
+
+        /* VSCode-like scrollbar: hidden by default, thumb fades in on hover */
+        .scroll-container {
+            scrollbar-color: transparent transparent;
+            scrollbar-width: thin;
+            transition: scrollbar-color 0.3s ease;
+        }
+        .scroll-container:hover {
+            scrollbar-color: ${color.background.scrollBarThumb} transparent;
+        }
     `;
 }
 

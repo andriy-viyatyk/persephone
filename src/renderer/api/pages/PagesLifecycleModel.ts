@@ -90,7 +90,11 @@ export class PagesLifecycleModel {
     };
 
     addEmptyPageWithNavPanel = (folderPath: string): PageModel => {
-        const page = this.addEmptyPage();
+        // Create page directly without calling restore(), which would
+        // asynchronously overwrite our NavPanel (it sees hasNavPanel=true
+        // and creates a new NavPanelModel with empty rootFilePath).
+        const emptyFile = newTextFileModel("");
+        const page = this.addPage(emptyFile as unknown as PageModel);
         const navPanel = new NavPanelModel(folderPath);
         navPanel.id = page.state.get().id;
         navPanel.flushSave();
@@ -580,11 +584,23 @@ export class PagesLifecycleModel {
 
         const addTabToPage = (index: number) => {
             const pageState = pages[index].state.get();
-            (pages[index] as any).addTab(url);
+            const page = pages[index] as any;
+            // If the browser has only one empty tab, navigate it instead of adding a new one
+            const tabs = (pageState as any).tabs;
+            if (tabs?.length === 1 && tabs[0].url === "about:blank") {
+                page.navigate(url);
+            } else {
+                page.addTab(url);
+            }
             this.model.navigation.showPage(pageState.id);
         };
 
         if (options?.external) {
+            // Prefer the active page if it's a matching browser
+            if (activeIndex >= 0 && matchesBrowser(pages[activeIndex].state.get())) {
+                addTabToPage(activeIndex);
+                return;
+            }
             for (let i = 0; i < pages.length; i++) {
                 if (matchesBrowser(pages[i].state.get())) {
                     addTabToPage(i);

@@ -34,6 +34,22 @@ Release notes and changelog for js-notepad.
 
 - **Markdown Preview — Mermaid "Open in Editor"** — hover over an inline mermaid diagram to see a toolbar with two buttons: copy image to clipboard, and open the diagram source in a new Mermaid editor tab
 
+- **External Link Routing** — external links now prefer the active browser page when one is available. Empty browser tabs (`about:blank`) are reused instead of opening a new tab
+
+- **Image Viewer — Save Image to File** — URL-based images now have a "Save Image to File" button in the toolbar that downloads the image and saves it to disk, then switches to file mode
+
+- **Link Editor — Image URL Clear Button** — the Image URL field in the Edit Link dialog now has a clear (X) button for quickly removing the image
+
+- **Monaco Minimap Click** — clicking on the minimap background now scrolls directly to that position in the document
+
+- **Auto-Hiding Scrollbars** — tree views and grids now use VSCode-like auto-hiding scrollbars that appear on hover, reducing visual clutter
+
+- **Sidebar Folder Double-Click** — double-clicking a folder in the sidebar now opens it in a NavigationPanel tab
+
+### Bug Fixes
+
+- **NavigationPanel Folder State** — fixed expanded folder state being lost on first navigation in NavigationPanel
+
 ---
 
 ## Version 1.0.16

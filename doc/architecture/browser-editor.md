@@ -304,13 +304,19 @@ setWindowOpenHandler(url)  →  eOpenUrl(url)  →    → "default-browser": she
 
 ### Smart Browser Tab Search (`openUrlInBrowserTab`)
 
-Located in `src/renderer/api/pages/PagesLifecycleModel.ts`. Uses the active page as the reference point:
+Located in `src/renderer/api/pages/PagesLifecycleModel.ts`. Two search strategies depending on the source:
 
-1. Search pages to the **right** of the active page for `type === "browserPage"`
+**Internal links** (Monaco, Markdown — `link-open-behavior: "internal-browser"`):
+1. Search pages to the **right** of the active page for a matching browser tab
 2. If not found, search pages to the **left**
 3. If still not found: create a new Browser page (using the default profile) as the last tab
 
-For existing browser tabs, `addTab(url)` creates a new internal tab. For newly created browser pages, `navigate(url)` is called on the initial blank tab.
+**External links** (IPC from main process via `eOpenExternalUrl`, e.g. default browser registration):
+1. **Prefer the active page** if it's already a matching browser tab
+2. If not, search **all pages** (left to right) for a matching browser tab
+3. If still not found: create a new Browser page (using the default profile) as the last tab
+
+For existing browser tabs: if the tab has only one empty (`about:blank`) internal tab, `navigate(url)` reuses it; otherwise `addTab(url)` creates a new internal tab.
 
 ### Markdown Link Context Menu
 

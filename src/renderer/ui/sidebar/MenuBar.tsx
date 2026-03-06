@@ -353,6 +353,7 @@ export function MenuBar(props: MenuBarProps) {
                     style={style}
                     selected={selected}
                     onClick={onClick}
+                    onDoubleClick={isStaticFolder(row) ? undefined : model.openFolderInTab}
                     icon={model.getFolderIcon(row)}
                     label={model.getFolderLabel(row)}
                     selectedIcon={selectedIcon}

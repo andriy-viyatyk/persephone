@@ -229,6 +229,7 @@ import { pagesModel } from "../api/pages";
 - `attachPage()` / `detachPage()` / `removePage()` — state management
 - `fixGrouping()` / `fixCompareMode()` — invariant repair
 - `checkEmptyPage()` — auto-create empty page when last one closes
+- `addEmptyPageWithNavPanel(folderPath)` — creates an empty page with a pre-attached NavigationPanel (used by sidebar double-click). Intentionally skips `restore()` to avoid a race condition where the async restore would see `hasNavPanel=true` and create a new NavPanelModel that overwrites the one we just attached.
 - `save()` / `restore()` — persistence (called by bootstrap, not by scripts)
 - Submodel instances — private composition detail
 

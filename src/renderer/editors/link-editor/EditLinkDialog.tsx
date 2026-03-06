@@ -322,6 +322,17 @@ function EditLinkDialog({ model }: ViewPropsRO<EditLinkDialogModel>) {
                             value={state.imgSrc}
                             onChange={model.setImgSrc}
                             placeholder="https://... (optional)"
+                            endButtons={state.imgSrc ? [
+                                <Button
+                                    size="small"
+                                    type="icon"
+                                    key="clear-img"
+                                    title="Clear Image URL"
+                                    onClick={() => model.setImgSrc("")}
+                                >
+                                    <CloseIcon />
+                                </Button>,
+                            ] : undefined}
                         />
                     </div>
 

@@ -214,7 +214,7 @@ External links clicked in the **text editor** (Monaco) or **Markdown preview** c
 Configure in **Settings → Links**:
 
 - **Default browser** (default) — opens links in your OS browser
-- **Internal browser** — opens links in the nearest browser tab (searches right, then left from the active page); if no browser tab exists, a new one is created with the default profile
+- **Internal browser** — opens links in the active browser page if one is focused, otherwise searches right then left from the active page. Empty browser tabs (`about:blank`) are reused. If no browser tab exists, a new one is created with the default profile
 
 The **Markdown preview** also provides a link context menu with explicit options: "Open in Default Browser", "Open in Internal Browser", browser profiles, and "Open in Incognito".
 

@@ -45,6 +45,9 @@ Standalone editors with their own PageModel.
 |-----------|------|-----------|------------|
 | `pdf-view` | PDF Viewer | `pdfFile` | `.pdf` |
 | `image-view` | Image Viewer | `imageFile` | `.png`, `.jpg`, `.gif`, `.webp`, `.bmp`, `.ico` |
+
+> **Image Viewer URL support:** ImageViewer can display images from external URLs (e.g. opened from a browser webview context menu) via the `url` field in its state. URL-based images show a "Save Image to File" toolbar button that fetches the image, saves it locally via a save dialog, and switches the page from URL mode to file mode.
+
 | `browser-view` | Browser | `browserPage` | (none — opened via UI) |
 | `about-view` | About | `aboutPage` | (none — opened via UI) |
 | `settings-view` | Settings | `settingsPage` | (none — opened via UI) |

@@ -7,7 +7,9 @@ import { EditorModule } from "../types";
 import { FileIcon } from "../../components/icons/FileIcon";
 import { Button } from "../../components/basic/Button";
 import { FlexSpace } from "../../components/layout/Elements";
-import { CopyIcon, NavPanelIcon } from "../../theme/icons";
+import { CopyIcon, NavPanelIcon, SaveIcon } from "../../theme/icons";
+import { fs } from "../../api/fs";
+import { ui } from "../../api/ui";
 import { NavPanelModel } from "../../ui/navigation/nav-panel-store";
 import { BaseImageView } from "./BaseImageView";
 import type { BaseImageViewRef } from "./BaseImageView";
@@ -45,6 +47,48 @@ class ImageViewerModel extends PageModel<ImageViewerModelState, void> {
         return (
             <FileIcon path={filePath || "image.png"} width={12} height={12} />
         );
+    };
+
+    saveImage = async () => {
+        const url = this.state.get().url;
+        if (!url) return;
+
+        // Guess a default filename from the URL
+        let defaultName = "image.png";
+        try {
+            const urlPath = new URL(url).pathname;
+            const basename = urlPath.split("/").pop();
+            if (basename && /\.\w+$/.test(basename)) {
+                defaultName = decodeURIComponent(basename)
+                    .replace(/[<>:"/\\|?*]/g, "_");
+            }
+        } catch { /* ignore invalid URLs */ }
+
+        const savePath = await fs.showSaveDialog({
+            title: "Save Image",
+            defaultPath: defaultName,
+            filters: [
+                { name: "Images", extensions: ["png", "jpg", "jpeg", "gif", "webp", "svg", "ico", "bmp"] },
+                { name: "All Files", extensions: ["*"] },
+            ],
+        });
+        if (!savePath) return;
+
+        try {
+            const response = await fetch(url);
+            const buffer = Buffer.from(await response.arrayBuffer());
+            await fs.saveBinaryFile(savePath, buffer);
+        } catch (err) {
+            ui.notify(`Failed to save image: ${(err as Error).message}`, "error");
+            return;
+        }
+
+        // Switch from URL to local file
+        this.state.update((s) => {
+            s.url = undefined;
+            s.filePath = savePath;
+            s.title = path.basename(savePath);
+        });
     };
 }
 
@@ -90,6 +134,16 @@ function ImageViewer({ model }: ImageViewerProps) {
                     </Button>
                 )}
                 <FlexSpace />
+                {!filePath && url && (
+                    <Button
+                        type="icon"
+                        size="small"
+                        title="Save Image to File"
+                        onClick={model.saveImage}
+                    >
+                        <SaveIcon />
+                    </Button>
+                )}
                 <Button
                     type="icon"
                     size="small"

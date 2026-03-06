@@ -219,6 +219,21 @@ class MinimapModel extends TComponentModel<MinimapState, MinimapProps> {
         }
     };
 
+    handleBackgroundClick = (e: React.MouseEvent) => {
+        if (!this.scrollContainer || !this.wrapper) return;
+
+        // Ignore clicks on the viewport indicator (it has its own drag logic)
+        if ((e.target as HTMLElement).classList.contains("minimap-viewport-indicator")) return;
+
+        const wrapperRect = this.wrapper.getBoundingClientRect();
+        const clickY = e.clientY - wrapperRect.top + this.wrapper.scrollTop;
+        const effectiveScale = this.getScale();
+        const { indicatorHeight } = this.state.get();
+
+        // Scroll so the indicator centers on the click point
+        this.scrollContainer.scrollTop = (clickY - indicatorHeight / 2) / effectiveScale;
+    };
+
     mouseEnter = () => {
         if (!this.state.get().indicatorHeight) {
             this.syncEverything();
@@ -267,6 +282,7 @@ export function Minimap({
         <MinimapRoot
             ref={model.setWrapper}
             className={clsx("minimap-wrapper", className)}
+            onClick={model.handleBackgroundClick}
             onMouseEnter={model.mouseEnter}
             {...props}
         >

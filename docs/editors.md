@@ -73,6 +73,7 @@ For image files (`.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`, `.bmp`, `.ico`) — o
 - **Fit to window** (default view)
 - **Reset zoom** — click the zoom percentage indicator
 - **Copy to clipboard** — `Ctrl+C` or toolbar button (copies as PNG)
+- **Save Image to File** — for URL-based images, a toolbar button downloads the image and saves it to disk
 
 ## SVG Preview
 
