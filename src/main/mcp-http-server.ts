@@ -2,15 +2,31 @@ import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import http from "node:http";
 import { app as electronApp, ipcMain } from "electron";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
-import { z } from "zod";
 import { openWindows } from "./open-windows";
 import { windowStates } from "./window-states";
 import { MCP_EXECUTE, MCP_RESULT } from "../shared/constants";
 import { EventEndpoint } from "../ipc/api-types";
 import { getAssetPath } from "./utils";
+
+// Lazy-loaded SDK modules (loaded on first startMcpHttpServer call)
+let McpServer: typeof import("@modelcontextprotocol/sdk/server/mcp.js").McpServer;
+let StreamableHTTPServerTransport: typeof import("@modelcontextprotocol/sdk/server/streamableHttp.js").StreamableHTTPServerTransport;
+let isInitializeRequest: typeof import("@modelcontextprotocol/sdk/types.js").isInitializeRequest;
+let z: typeof import("zod").z;
+
+async function loadSdk(): Promise<void> {
+    if (McpServer) return;
+    const [mcpMod, transportMod, typesMod, zodMod] = await Promise.all([
+        import("@modelcontextprotocol/sdk/server/mcp.js"),
+        import("@modelcontextprotocol/sdk/server/streamableHttp.js"),
+        import("@modelcontextprotocol/sdk/types.js"),
+        import("zod"),
+    ]);
+    McpServer = mcpMod.McpServer;
+    StreamableHTTPServerTransport = transportMod.StreamableHTTPServerTransport;
+    isInitializeRequest = typesMod.isInitializeRequest;
+    z = zodMod.z;
+}
 
 const DEFAULT_PORT = 7865;
 const REQUEST_TIMEOUT_MS = 30_000;
@@ -22,7 +38,7 @@ let ipcInitialized = false;
 let requestIdGen = 0;
 let currentPort = DEFAULT_PORT;
 const pendingRequests = new Map<string, (response: { result?: any; error?: any }) => void>();
-const sessions = new Map<string, { server: McpServer; transport: StreamableHTTPServerTransport }>();
+const sessions = new Map<string, { server: InstanceType<typeof McpServer>; transport: InstanceType<typeof StreamableHTTPServerTransport> }>();
 
 // ── IPC Bridge (main ↔ renderer) ───────────────────────────────────
 // Reuses the same MCP_EXECUTE/MCP_RESULT channels as the old pipe server.
@@ -105,7 +121,7 @@ function broadcastMcpStatus(): void {
 // ── MCP Server Factory ─────────────────────────────────────────────
 // Creates a new McpServer per session (SDK requires one transport per server).
 
-function createMcpServer(): McpServer {
+function createMcpServer(): InstanceType<typeof McpServer> {
     const server = new McpServer({
         name: "js-notepad",
         version: electronApp.getVersion(),
@@ -371,9 +387,10 @@ async function handleHttpRequest(req: http.IncomingMessage, res: http.ServerResp
 
 // ── Server Lifecycle ───────────────────────────────────────────────
 
-export function startMcpHttpServer(port?: number): Promise<void> {
-    if (httpServer) return Promise.resolve();
+export async function startMcpHttpServer(port?: number): Promise<void> {
+    if (httpServer) return;
 
+    await loadSdk();
     currentPort = port ?? DEFAULT_PORT;
     initMcpIpc();
 

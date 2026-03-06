@@ -30,6 +30,8 @@ Release notes and changelog for js-notepad.
 
 - **MCP `create_page` Editor Validation** — passing an invalid editor ID to `create_page` now returns a descriptive error with the list of valid editor IDs, instead of silently failing
 
+- **MCP Lazy Loading** — the MCP SDK is now loaded on-demand when the server starts, rather than at app startup. Combined with a 1.5s deferred auto-start, this improves application launch time for all users
+
 - **Markdown Preview — Mermaid "Open in Editor"** — hover over an inline mermaid diagram to see a toolbar with two buttons: copy image to clipboard, and open the diagram source in a new Mermaid editor tab
 
 ---
