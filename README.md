@@ -21,10 +21,11 @@
 * **Markdown Preview:** Real-time toggle between Markdown source and rendered preview.
 * **PDF Support:** Integrated **pdf.js** (Firefox engine) for viewing PDF documents directly within your tabs.
 
-### JavaScript Scripting Engine
-* **Standalone Runner:** Write and execute JavaScript directly in a tab. Results are automatically displayed in a grouped "output" page.
+### JavaScript & TypeScript Scripting Engine
+* **Standalone Runner:** Write and execute JavaScript or TypeScript directly in a tab. Results are automatically displayed in a grouped "output" page.
 * **Context-Aware Scripting:** Open the "Script Panel" on any text file to manipulate data using the `page` variable.
   * *Example:* `return JSON.parse(page.content).map(i => i.name);`
+* **TypeScript Support:** Write scripts with full type annotations — TypeScript is transpiled automatically before execution.
 
 ### AI Agent Integration (MCP Server)
 * **Fully Controllable by AI:** JS-Notepad includes a built-in [MCP](https://modelcontextprotocol.io/) HTTP server that lets AI agents (Claude Desktop, Claude Code, ChatGPT, Gemini, etc.) control the editor programmatically.
