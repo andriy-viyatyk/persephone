@@ -26,6 +26,11 @@
 * **Context-Aware Scripting:** Open the "Script Panel" on any text file to manipulate data using the `page` variable.
   * *Example:* `return JSON.parse(page.content).map(i => i.name);`
 
+### AI Agent Integration (MCP Server)
+* **Fully Controllable by AI:** JS-Notepad includes a built-in [MCP](https://modelcontextprotocol.io/) HTTP server that lets AI agents (Claude Desktop, Claude Code, ChatGPT, Gemini, etc.) control the editor programmatically.
+* **What AI Agents Can Do:** Create pages with generated content, execute JavaScript/TypeScript scripts, generate and display Mermaid diagrams, build HTML mockups and preview them in the HTML editor, manipulate grid data, read and transform any open document — all through a standard MCP protocol.
+* **Easy Setup:** Enable with a single checkbox in Settings → MCP Server. See the [MCP Setup Guide](docs/mcp-setup.md) for AI client configuration.
+
 ### Built-in Web Browser
 * **Browse Without Leaving the Editor:** Open web pages in a dedicated browser tab — no need to switch to an external app for quick lookups, API docs, or testing.
 * **Profiles & Incognito:** Create isolated browser profiles with separate cookies and storage, or use incognito mode for throwaway sessions.
