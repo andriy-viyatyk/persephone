@@ -128,6 +128,7 @@ js-notepad/
 │   │   ├── ConfirmationDialog.tsx
 │   │   ├── InputDialog.tsx
 │   │   ├── PasswordDialog.tsx
+│   │   ├── TextDialog.tsx            # Multi-purpose text dialog (Monaco editor)
 │   │   ├── alerts/                 # Notification bar
 │   │   │   ├── AlertsBar.tsx
 │   │   │   └── AlertItem.tsx

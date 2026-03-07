@@ -4,6 +4,8 @@ import type {
     IInputOptions,
     IInputResult,
     IPasswordOptions,
+    ITextDialogOptions,
+    ITextDialogResult,
     NotificationType,
 } from "./types/ui";
 import { alertsBarModel } from "../ui/dialogs/alerts/AlertsBar";
@@ -35,6 +37,12 @@ class UserInterface implements IUserInterface {
 
     notify(message: string, type?: NotificationType): Promise<string | undefined> {
         return alertsBarModel.addAlert(message, type ?? "info") as Promise<string | undefined>;
+    }
+
+    async textDialog(options: ITextDialogOptions): Promise<ITextDialogResult | null> {
+        const { showTextDialog } = await import("../ui/dialogs/TextDialog");
+        const result = await showTextDialog(options);
+        return result ?? null;
     }
 }
 

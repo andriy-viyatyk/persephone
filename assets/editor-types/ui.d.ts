@@ -49,6 +49,53 @@ export interface IPasswordOptions {
     mode?: "encrypt" | "decrypt";
 }
 
+/**
+ * Editor options for the text dialog.
+ */
+export interface ITextDialogEditorOptions {
+    /** Monaco language for syntax highlighting. Defaults to "plaintext". */
+    language?: string;
+    /** Word wrap mode. Defaults to "on". */
+    wordWrap?: "on" | "off" | "wordWrapColumn" | "bounded";
+    /** Show minimap. Defaults to false. */
+    minimap?: boolean;
+    /** Line numbers display. Defaults to "off". */
+    lineNumbers?: "on" | "off" | "relative" | "interval";
+}
+
+/**
+ * Options for the text dialog.
+ *
+ * @example
+ * const result = await app.ui.textDialog({ title: "Edit", text: "Hello", readOnly: false });
+ */
+export interface ITextDialogOptions {
+    /** Dialog title. Defaults to "". */
+    title?: string;
+    /** Initial text content. Defaults to "". */
+    text?: string;
+    /** Button labels. Defaults to ["OK"]. */
+    buttons?: string[];
+    /** Whether text is read-only. Defaults to true. */
+    readOnly?: boolean;
+    /** Monaco editor options. */
+    options?: ITextDialogEditorOptions;
+    /** Dialog width in pixels. */
+    width?: number;
+    /** Dialog height in pixels. */
+    height?: number;
+}
+
+/**
+ * Result returned by the text dialog.
+ */
+export interface ITextDialogResult {
+    /** The text content (final value if editable, or same as input if readOnly). */
+    text: string;
+    /** The button label that was clicked. */
+    button: string;
+}
+
 /** Notification type for toast alerts. */
 export type NotificationType = "info" | "success" | "warning" | "error";
 
@@ -105,4 +152,25 @@ export interface IUserInterface {
      * if (result === "clicked") { console.log("User clicked the notification"); }
      */
     notify(message: string, type?: NotificationType): Promise<string | undefined>;
+
+    /**
+     * Show a text dialog with a Monaco editor.
+     * Useful for displaying large text, error details, or getting multi-line input.
+     * Returns the result, or `null` if dismissed.
+     *
+     * @example
+     * // Read-only display
+     * await app.ui.textDialog({ title: "Error Details", text: errorStack });
+     *
+     * // Editable with custom buttons and syntax highlighting
+     * const result = await app.ui.textDialog({
+     *     title: "Edit SQL",
+     *     text: "SELECT * FROM users",
+     *     readOnly: false,
+     *     buttons: ["Execute", "Cancel"],
+     *     options: { language: "sql" },
+     * });
+     * if (result?.button === "Execute") { runQuery(result.text); }
+     */
+    textDialog(options: ITextDialogOptions): Promise<ITextDialogResult | null>;
 }

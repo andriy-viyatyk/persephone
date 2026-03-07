@@ -12,6 +12,7 @@ Scripts have two global variables:
 |----------|------|-------------|
 | `page` | [IPage](./page.md) | The current page (tab). Read/write content, switch editors, access grouped output. |
 | `app` | [IApp](./app.md) | The application object. Access settings, file system, dialogs, pages, and more. |
+| `preventOutput()` | function | Suppress default script output to the grouped page. See [Output Suppression](../scripting.md#output-suppression). |
 
 ```javascript
 // Both are available as globals — no import needed
@@ -26,6 +27,7 @@ const theme = app.settings.theme;
 | API | Description |
 |-----|-------------|
 | [page](./page.md) | Current page — content, language, editor, grouped output |
+| [page.runScript()](./page.md#runscriptpromisestring) | Run page content as a script (same as F5) |
 | [page.asText()](./page.md#astextpromiseitexteditor) | Monaco text editor — selection, cursor, insert |
 | [page.asGrid()](./page.md#asgridpromiseigrideditor) | Grid editor — rows, columns, cells |
 | [page.asNotebook()](./page.md#asnotebookpromiseinotebookeditor) | Notebook — notes, categories, tags |

@@ -25,7 +25,9 @@ ScriptRunner.run(script, page?, language?)
     │       │     └── PageCollectionWrapper  ← wraps `app.pages`
     │       ├── PageWrapper       ← wraps `page` global
     │       │     └── EditorFacades (10)  ← page.asText(), page.asGrid(), ...
+    │       ├── preventOutput()   ← suppresses default grouped-page output
     │       ├── React             ← React library
+    │       ├── ScriptOutputFlags ← tracks output suppression state
     │       └── Proxy (globalThis interception)
     │
     ├── Execute script in sandbox (with + Function constructor)
@@ -35,12 +37,13 @@ ScriptRunner.run(script, page?, language?)
 
 ## Execution Modes
 
-### 1. Run Script (F5)
+### 1. Run Script (F5) / `page.runScript()`
 
 For files with `javascript` or `typescript` language:
 - Runs selected text, or entire content if nothing selected
-- Output appears in grouped page
+- Output appears in grouped page (unless suppressed — see Output Suppression below)
 - TypeScript files are transpiled (types stripped) before execution
+- Also available programmatically via `page.runScript()` (equivalent to F5)
 
 ### 2. Script Panel
 
@@ -88,8 +91,23 @@ interface IPage {
     asHtml(): Promise<IHtmlEditor>;
     asMermaid(): Promise<IMermaidEditor>;
     asBrowser(): Promise<IBrowserEditor>;
+
+    // Run this page as a script (same as F5)
+    runScript(): Promise<string>;
 }
 ```
+
+### `preventOutput()` — Suppress Default Output
+
+Calling `preventOutput()` in a script prevents `runWithResult` from writing the script's return value to the grouped page. Useful when scripts handle their own output or need no output at all.
+
+```javascript
+preventOutput();
+await processFiles();
+app.ui.notify("Done!", "success");
+```
+
+Output is also automatically suppressed when a script writes to `page.grouped.content` directly (tracked via `GroupedPageWrapper`).
 
 ### `app` — Application Object
 
@@ -181,24 +199,31 @@ Wraps `PageModel`, implements `IPage`. Created per-page:
 
 ```typescript
 class PageWrapper {
-    constructor(model: PageModel, releaseList: Array<() => void>);
+    constructor(model: PageModel, releaseList: Array<() => void>, outputFlags?: ScriptOutputFlags);
 
     // IPage properties delegate to model
     get content(): string { return model.state.get().content; }
     set content(v: string) { model.changeContent(v); }
 
-    // Grouped page auto-creation
+    // Grouped page auto-creation (returns GroupedPageWrapper)
     get grouped(): PageWrapper {
         let grouped = pagesModel.getGroupedPage(this.model.id);
         if (!grouped) grouped = pagesModel.requireGroupedText(this.model.id);
-        return new PageWrapper(grouped, this.releaseList);
+        return new GroupedPageWrapper(grouped, this.releaseList, this.outputFlags);
     }
 
     // Facade acquisition with auto-release
-    async asGrid(): Promise<GridEditorFacade> {
-        const vm = await model.acquireViewModel("grid-json");
-        this.releaseList.push(() => model.releaseViewModel("grid-json"));
-        return new GridEditorFacade(vm);
+    async asGrid(): Promise<GridEditorFacade> { ... }
+
+    // Run this page's content as a script (same as F5)
+    async runScript(): Promise<string> { ... }
+}
+
+// Subclass that tracks writes to grouped page content
+class GroupedPageWrapper extends PageWrapper {
+    set content(value: string) {
+        super.content = value;
+        this.flags.groupedContentWritten = true;  // suppresses default output
     }
 }
 ```
@@ -227,7 +252,11 @@ Located in `/src/renderer/scripting/ScriptRunner.ts`.
 
 ### `runWithResult(pageId, script, page?, language?)`
 
-Calls `run()`, then converts result to text and writes to grouped page.
+Calls `executeScript()`, then converts result to text and writes to grouped page — unless output is suppressed. Output suppression is triggered by:
+- `preventOutput()` called in the script
+- Script writing to `page.grouped.content` directly
+
+When output is suppressed and the script throws an error, the error is shown in a `TextDialog` instead of the grouped page.
 
 ### `runWithCapture(script, page?, language?)`
 
@@ -277,14 +306,14 @@ Located in `/src/renderer/scripting/ScriptContext.ts`.
    - Falls back to `globalThis` for standard APIs
    - Functions auto-bound to `globalThis` (except constructors)
    - Set operations go to custom context (scripts can create variables)
-5. Returns `{ context, cleanup }` — cleanup releases all ViewModels
+5. Returns `{ context, cleanup, outputFlags }` — cleanup releases all ViewModels, outputFlags tracks suppression state
 
-## Grouped Pages
+## Grouped Pages & Output Suppression
 
 When a script accesses `page.grouped`:
 1. If no grouped page exists, one is automatically created
 2. The new page is grouped (side-by-side) with the source page
-3. Script return value is written to the grouped page
+3. Script return value is written to the grouped page (default behavior)
 
 ```javascript
 // This automatically creates and groups a new page
@@ -292,6 +321,18 @@ page.grouped.content = 'Output here';
 page.grouped.language = 'json';
 page.grouped.editor = 'grid-json';
 ```
+
+### Output Suppression
+
+By default, `runWithResult` writes the script's return value to the grouped page. This can be suppressed in two ways:
+
+1. **`preventOutput()`** — explicitly called in the script. Use when the script handles its own output (e.g., creates custom pages, shows notifications) or needs no output at all.
+
+2. **`page.grouped.content` write detection** — if the script writes to `page.grouped.content`, the default output is suppressed automatically. This prevents the return value from overwriting script-managed output.
+
+Both mechanisms set flags on `ScriptOutputFlags` (tracked in `ScriptContext`). The `GroupedPageWrapper` subclass intercepts `content` setter to set the `groupedContentWritten` flag.
+
+When output is suppressed and the script throws an error, the error is displayed via `TextDialog` (a Monaco-based dialog) instead of the grouped page.
 
 ## Script Triggers
 
@@ -309,7 +350,7 @@ Script API types are defined in `/src/renderer/api/types/`:
 
 | File | Defines |
 |------|---------|
-| `index.d.ts` | Global declarations: `app: IApp`, `page: IPage` |
+| `index.d.ts` | Global declarations: `app: IApp`, `page: IPage`, `preventOutput()` |
 | `app.d.ts` | `IApp` — root application interface |
 | `page.d.ts` | `IPage`, `IPageInfo` — page/tab interface |
 | `pages.d.ts` | `IPageCollection` — pages management |
@@ -324,6 +365,7 @@ Script API types are defined in `/src/renderer/api/types/`:
 | `html-editor.d.ts` | `IHtmlEditor` |
 | `mermaid-editor.d.ts` | `IMermaidEditor` |
 | `browser-editor.d.ts` | `IBrowserEditor` — browser page operations |
+| `ui.d.ts` | `IUserInterface`, `ITextDialogOptions`, `ITextDialogResult` — dialogs and notifications |
 
 These files serve dual purpose: TypeScript type checking **and** IDE IntelliSense for script authors.
 
@@ -354,6 +396,7 @@ These files serve dual purpose: TypeScript type checking **and** IDE IntelliSens
 ├── app.d.ts                     # IApp
 ├── page.d.ts                    # IPage, IPageInfo
 ├── pages.d.ts                   # IPageCollection
+├── ui.d.ts                      # IUserInterface, ITextDialogOptions, ITextDialogResult
 ├── common.d.ts                  # IDisposable, IEvent, PageEditor, Language
 ├── text-editor.d.ts             # ITextEditor
 ├── grid-editor.d.ts             # IGridEditor

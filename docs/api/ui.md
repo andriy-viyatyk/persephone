@@ -69,6 +69,49 @@ const password = await app.ui.password();
 const password = await app.ui.password({ mode: "encrypt" });
 ```
 
+### textDialog(options) → `Promise<ITextDialogResult | null>`
+
+Show a dialog with a Monaco editor. Useful for displaying large text, error details, or getting multi-line input. Returns `{ text, button }`, or `null` if dismissed.
+
+Options:
+- `title?: string` — dialog title (default: `""`)
+- `text?: string` — initial text content (default: `""`)
+- `buttons?: string[]` — button labels (default: `["OK"]`)
+- `readOnly?: boolean` — whether text is read-only (default: `true`)
+- `width?: number` — dialog width in pixels
+- `height?: number` — dialog height in pixels
+- `options?: ITextDialogEditorOptions` — Monaco editor options:
+  - `language?: string` — language for syntax highlighting (default: `"plaintext"`)
+  - `wordWrap?: "on" | "off" | "wordWrapColumn" | "bounded"` — word wrap mode (default: `"on"`)
+  - `minimap?: boolean` — show minimap (default: `false`)
+  - `lineNumbers?: "on" | "off" | "relative" | "interval"` — line numbers display (default: `"off"`)
+
+```javascript
+// Read-only display (e.g., error details)
+await app.ui.textDialog({ title: "Error Details", text: errorStack });
+
+// Editable with syntax highlighting
+const result = await app.ui.textDialog({
+    title: "Edit SQL",
+    text: "SELECT * FROM users",
+    readOnly: false,
+    buttons: ["Execute", "Cancel"],
+    options: { language: "sql" },
+});
+if (result?.button === "Execute") {
+    // use result.text
+}
+
+// Large dialog with line numbers
+await app.ui.textDialog({
+    title: "Log Output",
+    text: logContent,
+    width: 900,
+    height: 600,
+    options: { lineNumbers: "on", wordWrap: "off" },
+});
+```
+
 ### notify(message, type?) → `Promise<string | undefined>`
 
 Show a toast notification. Returns `"clicked"` if the user clicks it, or `undefined` if dismissed.

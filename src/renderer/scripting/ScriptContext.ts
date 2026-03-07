@@ -22,16 +22,26 @@ function serializeArg(arg: any): string {
     }
 }
 
+export interface ScriptOutputFlags {
+    outputPrevented: boolean;
+    groupedContentWritten: boolean;
+}
+
 export function createScriptContext(page?: PageModel, consoleLogs?: ConsoleLogEntry[]) {
     const releaseList: Array<() => void> = [];
+    const outputFlags: ScriptOutputFlags = {
+        outputPrevented: false,
+        groupedContentWritten: false,
+    };
 
     const appWrapper = new AppWrapper(releaseList);
-    const pageWrapper = page ? new PageWrapper(page, releaseList) : undefined;
+    const pageWrapper = page ? new PageWrapper(page, releaseList, outputFlags) : undefined;
 
     const customContext: Record<string, any> = {
         app: appWrapper,
         page: pageWrapper,
         React,
+        preventOutput: () => { outputFlags.outputPrevented = true; },
     };
 
     if (consoleLogs) {
@@ -131,5 +141,5 @@ export function createScriptContext(page?: PageModel, consoleLogs?: ConsoleLogEn
         },
     });
 
-    return { context, cleanup };
+    return { context, cleanup, outputFlags };
 }

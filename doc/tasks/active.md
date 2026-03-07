@@ -4,7 +4,8 @@ Current work in progress and planned tasks.
 
 ## In Progress
 
-(none)
+| ID | Title | Epic | Notes |
+|----|-------|------|-------|
 
 ## Planned (Next)
 

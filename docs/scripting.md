@@ -66,7 +66,38 @@ page.grouped.editor = "grid-json";
 return result.recordset;
 ```
 
-**Note:** Currently, any value assigned to `page.grouped.content` will be overwritten by the script's return value. Use `return` to set the output content.
+## Output Suppression
+
+Sometimes you want full control over script output — for example, when writing to `page.grouped.content` directly or when using dialogs to display results. There are two ways to prevent the default output behavior:
+
+### Writing to `page.grouped.content` directly
+
+When you assign to `page.grouped.content`, the default output is automatically suppressed. The grouped page shows exactly what you wrote:
+
+```javascript
+// Default output is suppressed — grouped page shows your content
+page.grouped.content = "Custom output";
+page.grouped.language = "json";
+```
+
+### Using `preventOutput()`
+
+Call the global `preventOutput()` function to explicitly suppress default output:
+
+```javascript
+// Show results in a dialog instead of the grouped page
+const data = JSON.parse(page.content);
+await app.ui.textDialog({
+    title: "Results",
+    text: JSON.stringify(data, null, 2),
+    options: { language: "json" },
+});
+preventOutput();
+```
+
+### Error handling with suppressed output
+
+When output is suppressed and a script error occurs, the error is shown in a text dialog instead of the grouped page. This keeps error details visible even when the grouped page is not used for output.
 
 ## Examples
 
@@ -233,6 +264,7 @@ const _ = require(path.join('D:\\myproject\\node_modules', 'lodash'));
 ## Tips
 
 1. **Use async/await** for asynchronous operations
-2. **Return values** to set output content (assignments to `page.grouped.content` are overwritten)
-3. **Set language** on grouped page for syntax highlighting: `page.grouped.language = 'json'`
-4. **Use grid view** for tabular data: `page.grouped.editor = 'grid-json'`
+2. **Return values** to set output content, or write to `page.grouped.content` directly for full control
+3. **Use `preventOutput()`** when displaying results via dialogs instead of the grouped page
+4. **Set language** on grouped page for syntax highlighting: `page.grouped.language = 'json'`
+5. **Use grid view** for tabular data: `page.grouped.editor = 'grid-json'`

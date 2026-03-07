@@ -32,6 +32,18 @@ Release notes and changelog for js-notepad.
   - **Quick Add: Script (TS)** — new option in the tab bar's "+" dropdown menu to create a TypeScript script page
   - MCP `execute_script` tool accepts an optional `language` parameter (`"javascript"` or `"typescript"`)
 
+- **Text Dialog** — new `app.ui.textDialog()` method that opens a Monaco-based dialog for displaying or editing multi-line text
+  - Configurable title, buttons, read-only mode, and dialog dimensions
+  - Monaco editor options: language for syntax highlighting, word wrap, minimap, line numbers
+  - Useful for showing error details, editing SQL queries, reviewing logs, or getting multi-line input from scripts
+
+- **Output Suppression** — scripts can now prevent the default output to the grouped page
+  - Call `preventOutput()` to explicitly suppress output (e.g., when showing results in a dialog)
+  - Writing to `page.grouped.content` directly now automatically suppresses default output
+  - When output is suppressed and an error occurs, the error is shown in a text dialog instead
+
+- **`page.runScript()`** — new method to programmatically run a JavaScript/TypeScript page as a script (equivalent to pressing F5), returning the result as text
+
 ### Improvements
 
 - **Todo Editor Scripting** — 4 new methods on the `asTodo()` facade: `selectList(name)`, `selectTag(name)`, `setSearch(text)`, `clearSearch()` — allowing scripts and MCP agents to navigate and filter the todo UI programmatically

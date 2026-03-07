@@ -22,6 +22,7 @@ import { SvgEditorFacade } from "./SvgEditorFacade";
 import { HtmlEditorFacade } from "./HtmlEditorFacade";
 import { MermaidEditorFacade } from "./MermaidEditorFacade";
 import { BrowserEditorFacade } from "./BrowserEditorFacade";
+import type { ScriptOutputFlags } from "../ScriptContext";
 
 /**
  * Safe wrapper around PageModel for script access.
@@ -34,6 +35,7 @@ export class PageWrapper {
     constructor(
         private readonly model: PageModel,
         private readonly releaseList: Array<() => void>,
+        private readonly outputFlags?: ScriptOutputFlags,
     ) {}
 
     // ── IPageInfo readonly properties ─────────────────────────────────
@@ -106,7 +108,7 @@ export class PageWrapper {
         if (!grouped) {
             grouped = pagesModel.requireGroupedText(this.model.id);
         }
-        return new PageWrapper(grouped, this.releaseList);
+        return new GroupedPageWrapper(grouped, this.releaseList, this.outputFlags);
     }
 
     // ── Editor facades ────────────────────────────────────────────────
@@ -230,5 +232,36 @@ export class PageWrapper {
         }
 
         return new BrowserEditorFacade(this.model as unknown as BrowserPageModel);
+    }
+
+    async runScript(): Promise<string> {
+        const language = this.model.state.get().language ?? "";
+        const { isScriptLanguage } = await import("../transpile");
+        if (!isScriptLanguage(language)) {
+            throw new Error("runScript() is only available for javascript/typescript pages");
+        }
+        const { scriptRunner } = await import("../ScriptRunner");
+        return scriptRunner.runWithResult(this.model.id, this.content, this.model, language);
+    }
+}
+
+class GroupedPageWrapper extends PageWrapper {
+    constructor(
+        model: PageModel,
+        releaseList: Array<() => void>,
+        private readonly flags?: ScriptOutputFlags,
+    ) {
+        super(model, releaseList);
+    }
+
+    set content(value: string) {
+        super.content = value;
+        if (this.flags) {
+            this.flags.groupedContentWritten = true;
+        }
+    }
+
+    get content(): string {
+        return super.content;
     }
 }

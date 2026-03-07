@@ -173,11 +173,10 @@ export function MainPage() {
                             : "MCP server is running"
                         }
                     >
-                        <span className="mcp-dot" />
-                        MCP
-                        {state.mcpClientCount > 0 && (
-                            <span className="mcp-count">{state.mcpClientCount}</span>
-                        )}
+                        {state.mcpClientCount > 0
+                            ? <><span className="mcp-count">{state.mcpClientCount}</span> MCP</>
+                            : <><span className="mcp-dot" /> MCP</>
+                        }
                     </span>
                 )}
             </div>

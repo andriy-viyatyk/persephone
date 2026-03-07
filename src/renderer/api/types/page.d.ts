@@ -96,4 +96,15 @@ export interface IPage {
 
     /** Get browser editor interface. Only for browser pages. */
     asBrowser(): Promise<IBrowserEditor>;
+
+    /**
+     * Run this page's content as a script (same as pressing F5).
+     * Only works for javascript/typescript pages.
+     * Returns the script result as text.
+     *
+     * @example
+     * const scriptPage = app.pages.find(p => p.title === "my-script.js");
+     * await scriptPage.runScript();
+     */
+    runScript(): Promise<string>;
 }

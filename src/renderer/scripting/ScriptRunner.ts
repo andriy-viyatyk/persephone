@@ -1,6 +1,6 @@
 import { PageModel } from "../editors/base";
 import { pagesModel } from "../api/pages";
-import type { ConsoleLogEntry } from "./ScriptContext";
+import type { ConsoleLogEntry, ScriptOutputFlags } from "./ScriptContext";
 import { transpileIfNeeded } from "./transpile";
 
 export interface McpScriptResult {
@@ -66,12 +66,13 @@ class ScriptRunner {
     handlePromiseException = 0;
 
     run = async (script: string, page?: PageModel, language?: string): Promise<any> => {
-        return this.executeScript(script, page, undefined, language);
+        const { result } = await this.executeScript(script, page, undefined, language);
+        return result;
     };
 
     runWithCapture = async (script: string, page?: PageModel, language?: string): Promise<McpScriptResult> => {
         const consoleLogs: ConsoleLogEntry[] = [];
-        const result = await this.executeScript(script, page, consoleLogs, language);
+        const { result } = await this.executeScript(script, page, consoleLogs, language);
         const isError = result instanceof Error;
         const textAndLang = this.convertToText(result);
         return {
@@ -87,16 +88,18 @@ class ScriptRunner {
         page?: PageModel,
         consoleLogs?: ConsoleLogEntry[],
         language?: string,
-    ): Promise<any> => {
+    ): Promise<{ result: any; outputFlags: ScriptOutputFlags }> => {
         this.handlePromiseException += 1;
         let cleanup: (() => void) | undefined;
+        let outputFlags: ScriptOutputFlags = { outputPrevented: false, groupedContentWritten: false };
         try {
             try {
                 script = await transpileIfNeeded(script, language);
                 const contextModule = await import("./ScriptContext");
-                const result = contextModule.createScriptContext(page, consoleLogs);
-                const context = result.context;
-                cleanup = result.cleanup;
+                const ctxResult = contextModule.createScriptContext(page, consoleLogs);
+                const context = ctxResult.context;
+                cleanup = ctxResult.cleanup;
+                outputFlags = ctxResult.outputFlags;
 
                 // Check if script contains statement keywords at the start
                 const trimmedScript = script.trim();
@@ -121,15 +124,15 @@ class ScriptRunner {
 
                         if (scriptResult && typeof scriptResult.then === "function") {
                             try {
-                                return await scriptResult;
+                                return { result: await scriptResult, outputFlags };
                             } catch (asyncError) {
-                                return asyncError instanceof Error
+                                return { result: asyncError instanceof Error
                                     ? asyncError
-                                    : new Error(String(asyncError));
+                                    : new Error(String(asyncError)), outputFlags };
                             }
                         }
 
-                        return scriptResult;
+                        return { result: scriptResult, outputFlags };
                     } catch (expressionError) {
                         // Fall through to statement handling
                     }
@@ -144,17 +147,17 @@ class ScriptRunner {
 
                 if (scriptResult && typeof scriptResult.then === "function") {
                     try {
-                        return await scriptResult;
+                        return { result: await scriptResult, outputFlags };
                     } catch (asyncError) {
-                        return asyncError instanceof Error
+                        return { result: asyncError instanceof Error
                             ? asyncError
-                            : new Error(String(asyncError));
+                            : new Error(String(asyncError)), outputFlags };
                     }
                 }
 
-                return scriptResult;
+                return { result: scriptResult, outputFlags };
             } catch (error) {
-                return error instanceof Error ? error : new Error(String(error));
+                return { result: error instanceof Error ? error : new Error(String(error)), outputFlags };
             }
         } finally {
             cleanup?.();
@@ -170,10 +173,19 @@ class ScriptRunner {
         page?: PageModel,
         language?: string,
     ): Promise<string> => {
-        const result = await this.run(script, page, language);
+        const { result, outputFlags } = await this.executeScript(script, page, undefined, language);
+        const isError = result instanceof Error;
+        const outputSuppressed = outputFlags.outputPrevented || outputFlags.groupedContentWritten;
         const textAndLang = this.convertToText(result);
 
-        if (pageId) {
+        if (outputSuppressed && isError) {
+            import("../ui/dialogs/TextDialog").then(({ showTextDialog }) => {
+                showTextDialog({
+                    title: "Script Error",
+                    text: textAndLang.text,
+                });
+            });
+        } else if (!outputSuppressed && pageId) {
             const groupedModel = pagesModel.requireGroupedText(pageId, textAndLang.language);
             groupedModel.changeContent(textAndLang.text);
         }

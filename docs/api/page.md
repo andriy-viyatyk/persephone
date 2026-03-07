@@ -35,6 +35,19 @@ page.data.counter = (page.data.counter || 0) + 1;
 
 `"monaco"` · `"grid-json"` · `"grid-csv"` · `"md-view"` · `"notebook-view"` · `"todo-view"` · `"link-view"` · `"svg-view"` · `"html-view"` · `"mermaid-view"` · `"pdf-view"` · `"image-view"` · `"browser-view"` · `"about-view"` · `"settings-view"`
 
+## Methods
+
+### runScript() → `Promise<string>`
+
+Run this page's content as a script, equivalent to pressing `F5`. Only works for JavaScript/TypeScript pages. Returns the script result as text.
+
+```javascript
+// Find a script page and run it
+const scriptPage = app.pages.find(p => p.title === "my-script.js");
+const result = await scriptPage.runScript();
+console.log(result); // script output
+```
+
 ## Editor Facades
 
 Editor facades provide specialized access to a page's content through the appropriate editor. Call `page.asX()` to get a facade.
