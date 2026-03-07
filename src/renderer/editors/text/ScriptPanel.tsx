@@ -199,7 +199,7 @@ export function ScriptPanel({ model }: ScriptPanelProps) {
             </PageToolbar>
             <Editor
                 value={state.content}
-                language="javascript"
+                language="typescript"
                 onMount={scriptModel.handleEditorDidMount}
                 onChange={scriptModel.handleEditorChange}
                 theme="custom-dark"

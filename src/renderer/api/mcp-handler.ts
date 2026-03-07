@@ -46,9 +46,10 @@ async function executeScript(params: any): Promise<McpResponse> {
     }
 
     const pageId = params?.pageId;
+    const language = params?.language;
     const page = pageId ? pagesModel.findPage(pageId) : pagesModel.activePage;
 
-    const result = await scriptRunner.runWithCapture(script, page);
+    const result = await scriptRunner.runWithCapture(script, page, language);
 
     return {
         result: {

@@ -2,7 +2,7 @@
 
 # Scripting API Reference
 
-Complete reference for the scripting API available when running JavaScript in js-notepad.
+Complete reference for the scripting API available when running JavaScript or TypeScript in js-notepad.
 
 ## Global Variables
 

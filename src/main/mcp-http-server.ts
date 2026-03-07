@@ -199,13 +199,14 @@ function createMcpServer(): InstanceType<typeof McpServer> {
     // ── Page & script tools ──────────────────────────────────────────
     server.tool(
         "execute_script",
-        "Execute JavaScript in js-notepad. The script has access to `page` (active page — content, language, editor, grouped) and `app` (pages, fs, settings, ui, shell, window). Returns { text, language, isError, consoleLogs }. Use for complex operations, transformations, and accessing structured editors via page facades (asGrid, asNotebook, asTodo, etc.).",
+        "Execute JavaScript or TypeScript in js-notepad. The script has access to `page` (active page — content, language, editor, grouped) and `app` (pages, fs, settings, ui, shell, window). Returns { text, language, isError, consoleLogs }. Use for complex operations, transformations, and accessing structured editors via page facades (asGrid, asNotebook, asTodo, etc.). TypeScript is transpiled via sucrase before execution.",
         {
-            script: z.string().describe("JavaScript code to execute. Supports async/await. Last expression is returned as result."),
+            script: z.string().describe("JavaScript or TypeScript code to execute. Supports async/await. Last expression is returned as result."),
             pageId: z.string().optional().describe("Target page ID. If omitted, uses the active page."),
+            language: z.enum(["javascript", "typescript"]).optional().describe("Script language. Defaults to 'javascript'. Use 'typescript' to write scripts with type annotations."),
             windowIndex: windowIndexParam,
         },
-        async ({ script, pageId, windowIndex }) => toToolResult(await sendToRenderer("execute_script", { script, pageId }, windowIndex)),
+        async ({ script, pageId, language, windowIndex }) => toToolResult(await sendToRenderer("execute_script", { script, pageId, language }, windowIndex)),
     );
 
     server.tool(

@@ -2,11 +2,13 @@
 
 ## Overview
 
-js-notepad includes a JavaScript execution environment that allows users to:
+js-notepad includes a JavaScript/TypeScript execution environment that allows users to:
 - Transform content programmatically
 - Automate repetitive tasks
 - Connect to databases and APIs
 - Process data with full Node.js access
+
+TypeScript support is provided via [sucrase](https://github.com/alangpierce/sucrase) (~275 KB), which strips type annotations before execution. Sucrase is loaded dynamically on first TypeScript execution, so it has zero cost if only JavaScript is used.
 
 All scripting code lives in `/src/renderer/scripting/`.
 Type definitions for the script API live in `/src/renderer/api/types/*.d.ts`.
@@ -14,7 +16,9 @@ Type definitions for the script API live in `/src/renderer/api/types/*.d.ts`.
 ## Architecture
 
 ```
-ScriptRunner.run(script, page?)
+ScriptRunner.run(script, page?, language?)
+    │
+    ├── transpileIfNeeded(script, language)   ← strips TS types via sucrase (lazy-loaded)
     │
     ├── ScriptContext.createScriptContext(page?)
     │       ├── AppWrapper        ← wraps `app` global
@@ -33,15 +37,17 @@ ScriptRunner.run(script, page?)
 
 ### 1. Run Script (F5)
 
-For files with `javascript` language:
+For files with `javascript` or `typescript` language:
 - Runs selected text, or entire content if nothing selected
 - Output appears in grouped page
+- TypeScript files are transpiled (types stripped) before execution
 
 ### 2. Script Panel
 
 Available on any text file:
 - Open via toolbar or context menu
-- Write scripts that operate on the page content
+- Monaco editor uses TypeScript language (supports both JS and TS transparently)
+- Scripts are always transpiled as TypeScript (no-op for pure JS)
 - Scripts have access to `page` and `app` variables
 
 ## Script Globals
@@ -209,20 +215,21 @@ Wraps `PagesModel`, implements `IPageCollection`. Returns `PageWrapper` instance
 
 Located in `/src/renderer/scripting/ScriptRunner.ts`.
 
-### `run(script, page?)`
+### `run(script, page?, language?)`
 
-1. Creates `ScriptContext` with `app` and `page` wrappers
-2. Wraps script code in `async function` with `with(this)` block
-3. Injects lexical JS globals (Array, Date, JSON, etc.) to prevent accidental `window` access
-4. Handles implicit return: last expression auto-returns (REPL-like)
-5. Awaits result if Promise
-6. Calls `cleanup()` in `finally` block
+1. Calls `transpileIfNeeded(script, language)` — strips TypeScript types if `language === "typescript"`
+2. Creates `ScriptContext` with `app` and `page` wrappers
+3. Wraps script code in `async function` with `with(this)` block
+4. Injects lexical JS globals (Array, Date, JSON, etc.) to prevent accidental `window` access
+5. Handles implicit return: last expression auto-returns (REPL-like)
+6. Awaits result if Promise
+7. Calls `cleanup()` in `finally` block
 
-### `runWithResult(pageId, script, page?)`
+### `runWithResult(pageId, script, page?, language?)`
 
 Calls `run()`, then converts result to text and writes to grouped page.
 
-### `runWithCapture(script, page?)`
+### `runWithCapture(script, page?, language?)`
 
 Headless execution for MCP/programmatic use. Returns a `McpScriptResult` without writing to any grouped page:
 
@@ -288,12 +295,13 @@ page.grouped.editor = 'grid-json';
 
 ## Script Triggers
 
-| Trigger | Location | What Runs |
-|---------|----------|-----------|
-| F5 (script panel open) | `TextFileActionsModel` | Script panel content |
-| F5 (script panel closed, JS file) | `TextFileActionsModel` | Page content (or selection) |
-| F5 (notebook note) | `NoteItemEditModel` | Note content as script |
-| Run button (script panel) | `ScriptPanel.tsx` | Script panel content |
+| Trigger | Location | Language | What Runs |
+|---------|----------|----------|-----------|
+| F5 (script panel open) | `TextFileActionsModel` | Always `"typescript"` | Script panel content |
+| F5 (script panel closed, JS/TS file) | `TextFileActionsModel` | From page state | Page content (or selection) |
+| F5 (notebook JS/TS note) | `NoteItemEditModel` | From note language | Note content as script |
+| Run button (script panel) | `ScriptPanel.tsx` | Always `"typescript"` | Script panel content |
+| MCP `execute_script` | `mcp-handler.ts` | Caller-specified (optional) | Script from MCP tool call |
 
 ## Type Definitions
 
@@ -325,6 +333,7 @@ These files serve dual purpose: TypeScript type checking **and** IDE IntelliSens
 /src/renderer/scripting/
 ├── ScriptRunner.ts              # Execution engine
 ├── ScriptContext.ts             # Context builder with cleanup
+├── transpile.ts                 # TypeScript transpilation (sucrase, lazy-loaded)
 └── api-wrapper/                 # Facade layer
     ├── AppWrapper.ts            # Wraps app singleton
     ├── PageWrapper.ts           # Wraps PageModel → IPage

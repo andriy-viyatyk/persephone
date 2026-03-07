@@ -1,6 +1,7 @@
 import { PageModel } from "../editors/base";
 import { pagesModel } from "../api/pages";
 import type { ConsoleLogEntry } from "./ScriptContext";
+import { transpileIfNeeded } from "./transpile";
 
 export interface McpScriptResult {
     text: string;
@@ -64,13 +65,13 @@ const lexicalObjects = `
 class ScriptRunner {
     handlePromiseException = 0;
 
-    run = async (script: string, page?: PageModel): Promise<any> => {
-        return this.executeScript(script, page);
+    run = async (script: string, page?: PageModel, language?: string): Promise<any> => {
+        return this.executeScript(script, page, undefined, language);
     };
 
-    runWithCapture = async (script: string, page?: PageModel): Promise<McpScriptResult> => {
+    runWithCapture = async (script: string, page?: PageModel, language?: string): Promise<McpScriptResult> => {
         const consoleLogs: ConsoleLogEntry[] = [];
-        const result = await this.executeScript(script, page, consoleLogs);
+        const result = await this.executeScript(script, page, consoleLogs, language);
         const isError = result instanceof Error;
         const textAndLang = this.convertToText(result);
         return {
@@ -85,11 +86,13 @@ class ScriptRunner {
         script: string,
         page?: PageModel,
         consoleLogs?: ConsoleLogEntry[],
+        language?: string,
     ): Promise<any> => {
         this.handlePromiseException += 1;
         let cleanup: (() => void) | undefined;
         try {
             try {
+                script = await transpileIfNeeded(script, language);
                 const contextModule = await import("./ScriptContext");
                 const result = contextModule.createScriptContext(page, consoleLogs);
                 const context = result.context;
@@ -165,8 +168,9 @@ class ScriptRunner {
         pageId: string,
         script: string,
         page?: PageModel,
+        language?: string,
     ): Promise<string> => {
-        const result = await this.run(script, page);
+        const result = await this.run(script, page, language);
         const textAndLang = this.convertToText(result);
 
         if (pageId) {

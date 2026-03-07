@@ -1,6 +1,6 @@
 # js-notepad API Guide
 
-js-notepad is a developer notepad built on Electron + Monaco Editor (VS Code engine). It provides tabbed editing with specialized editors (text, JSON/CSV grids, markdown preview, notebooks, todo lists, PDF, browser), a JavaScript execution environment with full Node.js access, and this MCP server for AI agent integration.
+js-notepad is a developer notepad built on Electron + Monaco Editor (VS Code engine). It provides tabbed editing with specialized editors (text, JSON/CSV grids, markdown preview, notebooks, todo lists, PDF, browser), a JavaScript/TypeScript execution environment with full Node.js access, and this MCP server for AI agent integration.
 
 You can control js-notepad through MCP tools (`execute_script`, `list_pages`, `get_page_content`, etc.) and the scripting API described below.
 
@@ -345,6 +345,16 @@ browser.back() / browser.forward() / browser.reload()
 ### asMarkdown(), asSvg(), asHtml(), asMermaid()
 
 Preview facades for rendered content. Check `viewMounted` / `loading` before accessing.
+
+## TypeScript Support
+
+The `execute_script` tool accepts an optional `language` parameter. Set it to `"typescript"` to write scripts with type annotations — types are stripped via sucrase before execution.
+
+```
+execute_script({ script: "const x: number = 42; x", language: "typescript" })
+```
+
+TypeScript scripts have the same access to `page`, `app`, and Node.js APIs as JavaScript scripts. All type annotations are removed at runtime — no type checking is performed.
 
 ## Practical Examples
 

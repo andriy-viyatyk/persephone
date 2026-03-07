@@ -8,7 +8,7 @@ import {
     GlobeIcon,
     PlusIcon,
 } from "../../theme/icons";
-import { IncognitoIcon, GridIcon, JavascriptIcon, LinkIcon, NotebookIcon, TodoIcon } from "../../theme/language-icons";
+import { IncognitoIcon, GridIcon, JavascriptIcon, TypescriptIcon, LinkIcon, NotebookIcon, TodoIcon } from "../../theme/language-icons";
 import { DEFAULT_BROWSER_COLOR } from "../../theme/palette-colors";
 import { Button } from "../../components/basic/Button";
 import { WithPopupMenu } from "../../components/overlay/WithPopupMenu";
@@ -198,6 +198,11 @@ export function PageTabs(props: object) {
                 label: "Script (JS)",
                 icon: <JavascriptIcon />,
                 onClick: () => pagesModel.addEditorPage("monaco", "javascript", "untitled.js"),
+            },
+            {
+                label: "Script (TS)",
+                icon: <TypescriptIcon />,
+                onClick: () => pagesModel.addEditorPage("monaco", "typescript", "untitled.ts"),
             },
             {
                 label: "Grid (JSON)",

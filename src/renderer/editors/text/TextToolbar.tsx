@@ -9,6 +9,7 @@ import styled from "@emotion/styled";
 import { editorRegistry } from "../registry";
 import { pagesModel } from "../../api/pages";
 import { NavPanelModel } from "../../ui/navigation/nav-panel-store";
+import { isScriptLanguage } from "../../scripting/transpile";
 import type { TOneState } from "../../core/state/state";
 
 const path = require("path");
@@ -104,7 +105,7 @@ export function TextToolbar({ model, setEditorToolbarRefFirst, setEditorToolbarR
         }
     }
 
-    if (language === "javascript") {
+    if (isScriptLanguage(language)) {
         actions.push(
             <Button
                 key="run-script"

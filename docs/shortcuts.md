@@ -23,7 +23,7 @@ These shortcuts work regardless of which editor is active.
 | `Ctrl+Mouse Wheel` | Zoom in/out |
 | `Ctrl+Alt+]` | Next theme |
 | `Ctrl+Alt+[` | Previous theme |
-| `F5` | Run script |
+| `F5` | Run script (JavaScript or TypeScript) |
 
 ## Text Editor (Monaco)
 

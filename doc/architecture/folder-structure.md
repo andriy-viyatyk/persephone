@@ -263,6 +263,7 @@ js-notepad/
 ├── scripting/              # Script Execution
 │   ├── ScriptRunner.ts     # Script engine (expression/statement, async, errors)
 │   ├── ScriptContext.ts    # Sandbox context (globals, cleanup, read-only proxy)
+│   ├── transpile.ts        # TypeScript transpilation via sucrase (lazy-loaded)
 │   └── api-wrapper/        # Safe wrappers for script access
 │       ├── AppWrapper.ts           # Wraps app → IApp
 │       ├── PageCollectionWrapper.ts # Wraps pages → IPageCollection

@@ -8,7 +8,7 @@ js-notepad is a Windows Notepad replacement designed for developers. It combines
 
 - **Monaco Editor** - The same editor that powers VS Code
 - **Syntax Highlighting** - 50+ programming languages
-- **JavaScript Execution** - Run scripts to transform content
+- **JavaScript & TypeScript Execution** - Run scripts to transform content
 - **Multiple Editors** - Grid view for JSON/CSV, Markdown preview, PDF viewer, and more
 - **Tab Management** - Multiple files with drag-and-drop, grouping, and compare
 
@@ -26,7 +26,7 @@ js-notepad is a Windows Notepad replacement designed for developers. It combines
 - [Notebook Editor](./notebook.md) - Structured notes with categories and tags
 - [Todo Editor](./editors.md#todo-editor) - Task lists for `.todo.json` files
 - [Browser](./browser.md) - Built-in web browser with profiles, bookmarks, and downloads
-- [Scripting](./scripting.md) - JavaScript execution and content transformation
+- [Scripting](./scripting.md) - JavaScript/TypeScript execution and content transformation
 - [Scripting API Reference](./api/index.md) - Complete API for `page` and `app` objects
 - [MCP Server Setup](./mcp-setup.md) - Connect AI agents (Claude, ChatGPT, Gemini) to control js-notepad
 - [Tabs & Navigation](./tabs-and-navigation.md) - Tab management, grouping, sidebar, and session restore
@@ -45,7 +45,7 @@ js-notepad is a Windows Notepad replacement designed for developers. It combines
 - 9 color themes — 6 dark + 3 light (Default Dark, Solarized Dark, Monokai, Abyss, Red, Tomorrow Night Blue, Light Modern, Solarized Light, Quiet Light)
 
 ### For Developers
-- Run JavaScript to transform content
+- Run JavaScript or TypeScript to transform content
 - JSON/CSV grid view with sorting, filtering, and full keyboard navigation
 - Notebook editor for structured notes
 - Todo editor for file-based task tracking

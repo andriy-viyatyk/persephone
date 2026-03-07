@@ -17,7 +17,7 @@ The default editor for all text files, powered by Monaco (the same engine as VS 
 - **Minimap** — code overview on the right side
 - **Delete line** — `Ctrl+Y` deletes the entire current line
 
-The text editor also provides a **Script Panel** for running JavaScript against any file's content. See [Scripting](./scripting.md) for details.
+The text editor also provides a **Script Panel** for running JavaScript or TypeScript against any file's content. See [Scripting](./scripting.md) for details.
 
 ## Grid Editor
 
@@ -169,7 +169,7 @@ For `.note.json` files — a structured notes interface:
 - **Full-text search** with highlighting across all content
 - **Drag-and-drop** to reorganize categories
 - **Expand** notes to full editor size
-- **Run JavaScript** from individual notes
+- **Run JavaScript or TypeScript** from individual notes
 - Optional **comments** on each note
 
 See **[Notebook Editor](./notebook.md)** for detailed documentation.
@@ -217,4 +217,4 @@ Some files support multiple editors:
 
 Use the buttons in the toolbar to switch between available editors.
 
-**Quick Add:** Click the dropdown arrow (&#9662;) next to the **+** button in the tab bar to create a new page with a specific editor: Script (JS), Grid (JSON), Grid (CSV), Notebook, Todo, Links, Browser, or Browser profile (with Incognito and named profiles).
+**Quick Add:** Click the dropdown arrow (&#9662;) next to the **+** button in the tab bar to create a new page with a specific editor: Script (JS), Script (TS), Grid (JSON), Grid (CSV), Notebook, Todo, Links, Browser, or Browser profile (with Incognito and named profiles).

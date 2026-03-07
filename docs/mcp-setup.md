@@ -52,7 +52,7 @@ gemini --mcp-server http://localhost:7865/mcp
 |------|-------------|
 | **list_windows** | List all windows (open and closed) with their status, page count, and page metadata. |
 | **open_window** | Open or reopen a window by index. Closed windows are recreated with their persisted pages. |
-| **execute_script** | Execute JavaScript with access to `page` and `app` objects. The most powerful tool — can do anything the scripting system supports. |
+| **execute_script** | Execute JavaScript or TypeScript with access to `page` and `app` objects. Accepts an optional `language` parameter (`"javascript"` or `"typescript"`; defaults to `"javascript"`). The most powerful tool — can do anything the scripting system supports. |
 | **list_pages** | List all open pages (tabs) with IDs, titles, editors, metadata. |
 | **get_page_content** | Get text content of a page by ID. |
 | **get_active_page** | Get the active page with content and metadata. |

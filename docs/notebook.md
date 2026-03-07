@@ -64,13 +64,14 @@ Each note can use different editors depending on its language:
 | Markdown | Monaco text editor, Preview |
 | SVG | Monaco text editor, Preview |
 | JavaScript | Monaco text editor (with Run button) |
+| TypeScript | Monaco text editor (with Run button) |
 | Other | Monaco text editor |
 
 Use the editor switch buttons (visible on hover) to change the view.
 
 ### Running Scripts
 
-Notes with JavaScript language have a Run button (visible on hover). Click it to execute the script. If you have text selected, only the selected portion runs. The script output goes to a grouped page, same as the main script panel.
+Notes with JavaScript or TypeScript language have a Run button (visible on hover). Click it to execute the script. If you have text selected, only the selected portion runs. The script output goes to a grouped page, same as the main script panel.
 
 ### Deleting a Note
 

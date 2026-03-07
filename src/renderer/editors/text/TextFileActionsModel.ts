@@ -3,6 +3,7 @@ const path = require("path");
 import { ui } from "../../api/ui";
 import { pagesModel } from "../../api/pages";
 import { scriptRunner } from "../../scripting/ScriptRunner";
+import { isScriptLanguage } from "../../scripting/transpile";
 import { PageModel } from "../base/PageModel";
 import { NavPanelModel } from "../../ui/navigation/nav-panel-store";
 import type { TextFileModel } from "./TextPageModel";
@@ -58,8 +59,8 @@ export class TextFileActionsModel {
         if (!all) {
             script = this.model.getSelectedText() || content;
         }
-        if (language === "javascript") {
-            await scriptRunner.runWithResult(this.model.id, script, this.model);
+        if (isScriptLanguage(language)) {
+            await scriptRunner.runWithResult(this.model.id, script, this.model, language);
         }
     };
 
@@ -68,7 +69,7 @@ export class TextFileActionsModel {
         if (!all) {
             script = this.model.script.getSelectedText() || script;
         }
-        await scriptRunner.runWithResult(this.model.id, script, this.model);
+        await scriptRunner.runWithResult(this.model.id, script, this.model, "typescript");
     };
 
     setCompareMode = (compareMode: boolean) => {

@@ -104,7 +104,7 @@ When user says **"let's publish new build"** (or similar), follow [/doc/standard
 
 ## Project Overview
 
-JS-Notepad is a Windows Notepad replacement for developers. Built with Electron and Monaco Editor (VS Code engine), it extends classic notepad with powerful code editing and a JavaScript execution environment.
+JS-Notepad is a Windows Notepad replacement for developers. Built with Electron and Monaco Editor (VS Code engine), it extends classic notepad with powerful code editing and a JavaScript/TypeScript execution environment.
 
 ### Design Philosophy
 - **Core First:** Keep core functionality fast and lightweight
@@ -114,7 +114,7 @@ JS-Notepad is a Windows Notepad replacement for developers. Built with Electron 
 
 ### Key Features
 - **Monaco Editor** - Syntax highlighting, IntelliSense, multi-cursor, compare mode
-- **JavaScript Executor** - Run scripts with `page` object to transform content
+- **Script Executor** - Run JavaScript/TypeScript scripts with `page` object to transform content
 - **Grid Editors** - JSON/CSV viewing with sorting, filtering, Excel copy-paste
 - **Markdown Preview** - Live rendered preview
 - **PDF Viewer** - Integrated pdf.js
@@ -215,6 +215,7 @@ See [/doc/standards/coding-style.md](doc/standards/coding-style.md) for complete
 | File operations          | `/src/renderer/api/fs.ts`                         |
 | App settings             | `/src/renderer/api/settings.ts`                   |
 | Script execution         | `/src/renderer/scripting/ScriptRunner.ts`         |
+| TypeScript transpilation | `/src/renderer/scripting/transpile.ts`            |
 | Script API types         | `/src/renderer/api/types/*.d.ts`                  |
 | Monaco setup             | `/src/renderer/api/setup/configure-monaco.ts`     |
 | Editor registry          | `/src/renderer/editors/registry.ts`               |

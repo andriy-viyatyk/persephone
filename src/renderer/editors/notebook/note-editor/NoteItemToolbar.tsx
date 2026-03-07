@@ -10,6 +10,7 @@ import { WithPopupMenu } from "../../../components/overlay/WithPopupMenu";
 import { MenuItem } from "../../../components/overlay/PopupMenu";
 import { monacoLanguages } from "../../../core/utils/monaco-languages";
 import { settings } from "../../../api/settings";
+import { isScriptLanguage } from "../../../scripting/transpile";
 
 // =============================================================================
 // Styles
@@ -102,8 +103,8 @@ export function NoteItemToolbar({ model, children }: NoteItemToolbarProps) {
     // Build extras (hidden by default, shown on hover)
     const extras: ReactNode[] = [];
 
-    // Run script buttons for JavaScript
-    if (language === "javascript") {
+    // Run script buttons for JavaScript/TypeScript
+    if (isScriptLanguage(language)) {
         extras.push(
             <Button
                 key="run-script"

@@ -1,25 +1,25 @@
 [← Home](./index.md)
 
-# JavaScript Scripting
+# Scripting
 
-js-notepad lets you run JavaScript to transform and process content.
+js-notepad lets you run JavaScript and TypeScript to transform and process content. TypeScript is fully supported — type annotations are stripped automatically before execution.
 
 ## Quick Start
 
-1. Open a file with JavaScript code (or set language to JavaScript)
+1. Open a file with JavaScript or TypeScript code (or set the language accordingly)
 2. Press `F5` to run
 3. Output appears in a new grouped tab
 
 ## Running Scripts
 
 ### Run File Content
-- Set file language to JavaScript
-- Press `F5` to run entire file
+- Set file language to JavaScript or TypeScript
+- Press `F5` to run the entire file (works with both `.js` and `.ts` files)
 - Or select text and press `F5` to run selection
 
 ### Script Panel
 - Open Script Panel from toolbar or context menu
-- Write scripts that operate on any file type
+- The Script Panel uses TypeScript by default — write plain JavaScript or add type annotations as you like
 - Press `F5` in Script Panel to run
 
 ## The `page` Object
@@ -121,6 +121,22 @@ page.grouped.language = 'json';
 page.grouped.editor = 'grid-json';
 return result.recordset;
 ```
+
+### TypeScript Example
+
+```typescript
+interface User {
+  name: string;
+  email: string;
+  active: boolean;
+}
+
+const users: User[] = JSON.parse(page.content);
+const active: User[] = users.filter((u: User) => u.active);
+return active.map((u: User) => `${u.name} <${u.email}>`).join('\n');
+```
+
+TypeScript type annotations are stripped before execution. You get the readability benefits of types without any extra setup.
 
 ### Fetch API Data
 

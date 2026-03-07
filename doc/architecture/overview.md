@@ -7,7 +7,7 @@
 js-notepad is an **Electron desktop application** — a Windows Notepad replacement designed for developers. It combines:
 - Monaco Editor (VS Code engine) for text editing
 - Custom editors for specific file types (Grid, PDF, Markdown, Notebook, Todo, etc.)
-- JavaScript execution environment for data transformation
+- JavaScript/TypeScript execution environment for data transformation
 - Built-in browser with multi-tab support
 
 ## Process Architecture
@@ -150,7 +150,8 @@ See [editors.md](./editors.md).
 
 See [scripting.md](./scripting.md).
 
-- JavaScript execution with `page` and `app` globals
+- JavaScript/TypeScript execution with `page` and `app` globals
+- TypeScript transpilation via sucrase (lazy-loaded, type stripping only)
 - Full Node.js and React access for scripts
 - API wrappers (AppWrapper, PageWrapper) provide safe, typed access
 - Editor facades (TextEditorFacade, GridEditorFacade, etc.) for typed editor operations

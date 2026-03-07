@@ -24,6 +24,14 @@ Release notes and changelog for js-notepad.
   - **Multi-window support** — all MCP tools accept an optional `windowIndex` parameter to target specific windows. New `list_windows` tool discovers all windows (open and closed) with their pages. New `open_window` tool reopens closed windows with their persisted pages
   - See [MCP Server Setup](./mcp-setup.md) for configuration instructions
 
+- **TypeScript Script Execution** — scripts now support TypeScript in addition to JavaScript
+  - Write scripts with type annotations (interfaces, typed variables, etc.) — types are stripped automatically before execution
+  - The Script Panel uses TypeScript by default, accepting both plain JavaScript and TypeScript seamlessly
+  - Press `F5` on `.ts` files to execute them, just like `.js` files
+  - Notebook notes with TypeScript language show a Run button and can be executed
+  - **Quick Add: Script (TS)** — new option in the tab bar's "+" dropdown menu to create a TypeScript script page
+  - MCP `execute_script` tool accepts an optional `language` parameter (`"javascript"` or `"typescript"`)
+
 ### Improvements
 
 - **Todo Editor Scripting** — 4 new methods on the `asTodo()` facade: `selectList(name)`, `selectTag(name)`, `setSearch(text)`, `clearSearch()` — allowing scripts and MCP agents to navigate and filter the todo UI programmatically

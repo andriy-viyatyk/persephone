@@ -31,6 +31,7 @@ win:
     - target: zip
 
 nsis:
+  artifactName: "js-notepad-setup-${version}.${ext}"
   oneClick: false
   allowToChangeInstallationDirectory: true
   perMachine: false

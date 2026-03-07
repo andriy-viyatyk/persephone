@@ -5,6 +5,7 @@ import { PageEditor } from "../../../../shared/types";
 import { NoteItem } from "../notebookTypes";
 import { NotebookViewModel } from "../NotebookViewModel";
 import { scriptRunner } from "../../../scripting/ScriptRunner";
+import { isScriptLanguage } from "../../../scripting/transpile";
 import { ContentViewModelHost } from "../../base/ContentViewModelHost";
 import type { IContentHost } from "../../base/IContentHost";
 import type { ContentViewModel } from "../../base/ContentViewModel";
@@ -285,11 +286,11 @@ export class NoteItemEditModel implements IContentHost {
         if (!all) {
             script = this.editor.getSelectedText() || content;
         }
-        if (language === "javascript") {
+        if (isScriptLanguage(language)) {
             // Get the notebook page model for script context
             // page.content will be notebook's JSON, output grouped with notebook
             const notebookPageModel = this.notebookModel.pageModel;
-            await scriptRunner.runWithResult(notebookPageModel.id, script, notebookPageModel);
+            await scriptRunner.runWithResult(notebookPageModel.id, script, notebookPageModel, language);
         }
     };
 

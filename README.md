@@ -35,7 +35,7 @@
 
 | Format | Link |
 | :--- | :--- |
-| **Installer** | [![Download MSI](https://img.shields.io/badge/Download-Installer%20(.msi)-blue?style=for-the-badge&logo=windows)](https://github.com/andriy-viyatyk/js-notepad/releases/latest/download/js-notepad.msi) |
+| **Installer** | [![Download EXE](https://img.shields.io/badge/Download-Installer%20(.exe)-blue?style=for-the-badge&logo=windows)](https://github.com/andriy-viyatyk/js-notepad/releases/latest) |
 | **Portable** | [![Download ZIP](https://img.shields.io/badge/Download-Portable%20(.zip)-orange?style=for-the-badge&logo=windows)](https://github.com/andriy-viyatyk/js-notepad/releases/latest) |
 
 ## Editors
