@@ -47,6 +47,7 @@ js-notepad/
 │   ├── ui.ts               # IUserInterface implementation
 │   ├── downloads.ts        # IDownloads implementation
 │   ├── menu-folders.ts     # IMenuFolders implementation
+│   ├── library-service.ts  # LibraryService — script library scanning, caching, file watching
 │   ├── pages.ts            # PagesModel singleton export
 │   ├── mcp-handler.ts      # MCP command handler (receives IPC from main, dispatches commands)
 │   ├── internal.ts         # Disposable utilities (wrapSubscription, etc.)
@@ -73,6 +74,7 @@ js-notepad/
 │   │
 │   ├── setup/              # Monaco editor configuration
 │   │   ├── configure-monaco.ts      # Themes, keybindings, type definitions
+│   │   ├── library-intellisense.ts  # Library module IntelliSense (addExtraLib)
 │   │   └── monaco-languages/        # Custom language definitions
 │   │       ├── csv.ts               # CSV rainbow coloring
 │   │       ├── mermaid.ts           # Mermaid syntax highlighting
@@ -119,6 +121,7 @@ js-notepad/
 │   │   ├── MenuBar.tsx             # Top menu bar
 │   │   ├── OpenTabsList.tsx         # Open tabs list
 │   │   ├── RecentFileList.tsx       # Recent files panel
+│   │   ├── ScriptLibraryPanel.tsx   # Script library folder panel
 │   │   ├── FileList.tsx            # File browser list
 │   │   ├── FolderItem.tsx          # Folder tree item
 │   │   └── index.ts
@@ -265,6 +268,7 @@ js-notepad/
 │   ├── ScriptRunner.ts     # Script engine (expression/statement, async, errors)
 │   ├── ScriptContext.ts    # Sandbox context (globals, cleanup, read-only proxy)
 │   ├── transpile.ts        # TypeScript transpilation via sucrase (lazy-loaded)
+│   ├── library-require.ts  # Library require() resolution + .ts extension handler
 │   └── api-wrapper/        # Safe wrappers for script access
 │       ├── AppWrapper.ts           # Wraps app → IApp
 │       ├── PageCollectionWrapper.ts # Wraps pages → IPageCollection

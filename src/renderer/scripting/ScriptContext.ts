@@ -1,6 +1,7 @@
 import { PageModel } from "../editors/base";
 import { AppWrapper } from "./api-wrapper/AppWrapper";
 import { PageWrapper } from "./api-wrapper/PageWrapper";
+import { createLibraryRequire, createUnlinkedLibraryRequire } from "./library-require";
 import React from "react";
 
 export interface ConsoleLogEntry {
@@ -27,7 +28,7 @@ export interface ScriptOutputFlags {
     groupedContentWritten: boolean;
 }
 
-export function createScriptContext(page?: PageModel, consoleLogs?: ConsoleLogEntry[]) {
+export function createScriptContext(page?: PageModel, consoleLogs?: ConsoleLogEntry[], libraryPath?: string) {
     const releaseList: Array<() => void> = [];
     const outputFlags: ScriptOutputFlags = {
         outputPrevented: false,
@@ -42,6 +43,9 @@ export function createScriptContext(page?: PageModel, consoleLogs?: ConsoleLogEn
         page: pageWrapper,
         React,
         preventOutput: () => { outputFlags.outputPrevented = true; },
+        require: libraryPath
+            ? createLibraryRequire(libraryPath)
+            : createUnlinkedLibraryRequire(),
     };
 
     if (consoleLogs) {

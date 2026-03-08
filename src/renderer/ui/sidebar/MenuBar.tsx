@@ -20,6 +20,7 @@ import {
     NewWindowIcon,
     OpenFileIcon,
     RemoveIcon,
+    ScriptLibraryIcon,
     SettingsIcon,
 } from "../../theme/icons";
 import { OpenTabsList } from "./OpenTabsList";
@@ -31,6 +32,8 @@ import { MenuItem } from "../../components/overlay/PopupMenu";
 import { FolderIcon } from "../../components/icons/FileIcon";
 import { Splitter } from "../../components/layout/Splitter";
 import { FolderItem } from "./FolderItem";
+import { ScriptLibraryPanel } from "./ScriptLibraryPanel";
+import { settings } from "../../api/settings";
 const path = require("path");
 
 const MenuBarRoot = styled("div")({
@@ -76,6 +79,10 @@ const MenuBarRoot = styled("div")({
             "& .list-item": {
                 "&:hover": {
                     backgroundColor: color.background.default,
+                },
+                "& > svg": {
+                    width: 16,
+                    height: 16,
                 },
                 "& .selected-icon": {
                     color: color.text.light,
@@ -136,9 +143,11 @@ interface MenuBarProps {
 
 const openTabsId = "open-tabs";
 const recentFilesId = "recent-files";
+const scriptLibraryId = "script-library";
 const staticFolders: MenuFolder[] = [
     { id: openTabsId, name: "Open Tabs" },
     { id: recentFilesId, name: "Recent Files" },
+    { id: scriptLibraryId, name: "Script Library" },
 ];
 
 const isStaticFolder = (folder: MenuFolder) => {
@@ -246,6 +255,8 @@ class MenuBarModel extends TComponentModel<MenuBarState, MenuBarProps> {
                 return "🗔";
             case recentFilesId:
                 return "🕘";
+            case scriptLibraryId:
+                return <ScriptLibraryIcon />;
             default:
                 return folder.path ? <FolderIcon /> : <EmptyIcon />;
         }
@@ -261,7 +272,24 @@ class MenuBarModel extends TComponentModel<MenuBarState, MenuBarProps> {
         if (folder.id === recentFilesId) {
             return "Recently opened files";
         }
+        if (folder.id === scriptLibraryId) {
+            const libPath = settings.get("script-library.path");
+            return libPath || "Script library folder";
+        }
         return undefined;
+    };
+
+    changeLibraryFolder = async () => {
+        const result = await api.showOpenFolderDialog({
+            title: "Select Script Library Folder",
+        });
+        if (result && result.length > 0) {
+            settings.set("script-library.path", result[0]);
+        }
+    };
+
+    unlinkLibraryFolder = () => {
+        settings.set("script-library.path", "");
     };
 
     getMenuFolderContextMenu = (folder: MenuFolder) => {
@@ -278,6 +306,31 @@ class MenuBarModel extends TComponentModel<MenuBarState, MenuBarProps> {
                     },
                 },
             ];
+        }
+        if (folder.id === scriptLibraryId) {
+            const libPath = settings.get("script-library.path");
+            const items: MenuItem[] = [
+                {
+                    label: "Change Library Folder",
+                    icon: <FolderOpenIcon />,
+                    onClick: this.changeLibraryFolder,
+                },
+            ];
+            if (libPath) {
+                items.push(
+                    {
+                        label: "Open in Explorer",
+                        icon: <FolderOpenIcon />,
+                        onClick: () => { api.showFolder(libPath); },
+                    },
+                    {
+                        label: "Unlink Library",
+                        icon: <RemoveIcon />,
+                        onClick: this.unlinkLibraryFolder,
+                    },
+                );
+            }
+            return items;
         }
 
         const menuItems: MenuItem[] = [
@@ -377,6 +430,15 @@ export function MenuBar(props: MenuBarProps) {
                 );
             case recentFilesId:
                 return <RecentFileList ref={model.setFileListRef} onClose={props.onClose} />;
+            case scriptLibraryId:
+                return (
+                    <ScriptLibraryPanel
+                        onClose={props.onClose}
+                        explorerRef={model.setFileExplorerRef}
+                        expandState={model.expandStateMap.get(scriptLibraryId)}
+                        onExpandStateChange={(s) => model.expandStateMap.set(scriptLibraryId, s)}
+                    />
+                );
             default: {
                 const folder = menuFolders.find(state.leftItemId);
                 if (folder?.path) {

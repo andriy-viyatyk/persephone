@@ -8,6 +8,26 @@ Release notes and changelog for js-notepad.
 
 ## Version 1.0.18 (Upcoming)
 
+### New Features
+
+- **Library Imports in Scripts** — Use `require("library/...")` to import reusable modules from your linked Script Library folder
+  - Both `.ts` and `.js` files supported — TypeScript is transpiled automatically
+  - Extension auto-resolution: `.ts`, `.js`, `/index.ts`, `/index.js` tried automatically
+  - Relative requires within library modules work (e.g., `require('./db-config')`)
+  - Cache invalidated between runs when source files change
+  - Clear error message when no library folder is linked
+
+- **Script Library** — A dedicated sidebar entry for quick access to your reusable script collection
+  - Link any folder as your Script Library via the sidebar or Settings → Script Library
+  - Browse and open scripts from the sidebar's right panel (File Explorer view)
+  - Context menu: Change Library Folder, Open in Explorer, Unlink Library
+  - Settings page section with path display, Browse button, and Unlink button
+
+- **IntelliSense for Library Modules** — When a Script Library folder is linked, Monaco now provides autocomplete and type information for `require("library/...")` calls
+  - Exported functions, variables, and types from library `.ts`/`.js` files appear in autocomplete with parameter types, return types, and JSDoc documentation
+  - Updates live when library files are modified
+  - Built-in `require()` and `preventOutput()` also show in autocomplete with documentation
+
 ### Improvements
 
 - **Structured Editor Auto-Detection** — JSON content created via MCP or scripting now embeds a `type` property (`"note-editor"`, `"todo-editor"`, or `"link-editor"`), so the correct editor switch button (Notebook, ToDo, or Links) appears in the toolbar automatically — even without the `.note.json`/`.todo.json`/`.link.json` file extension

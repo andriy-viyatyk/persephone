@@ -214,6 +214,7 @@ See [/doc/standards/coding-style.md](doc/standards/coding-style.md) for complete
 | Page/tab management      | `/src/renderer/api/pages/PagesModel.ts`           |
 | File operations          | `/src/renderer/api/fs.ts`                         |
 | App settings             | `/src/renderer/api/settings.ts`                   |
+| Script library service   | `/src/renderer/api/library-service.ts`            |
 | Script execution         | `/src/renderer/scripting/ScriptRunner.ts`         |
 | TypeScript transpilation | `/src/renderer/scripting/transpile.ts`            |
 | Script API types         | `/src/renderer/api/types/*.d.ts`                  |

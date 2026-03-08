@@ -512,6 +512,33 @@ const SettingsPageRoot = styled.div({
         overflow: "auto",
         marginBottom: 8,
     },
+
+    "& .library-path-row": {
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        marginBottom: 8,
+    },
+
+    "& .library-path-display": {
+        flex: 1,
+        fontSize: 12,
+        fontFamily: "monospace",
+        padding: "6px 8px",
+        backgroundColor: color.background.dark,
+        border: `1px solid ${color.border.default}`,
+        borderRadius: 4,
+        color: color.text.default,
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+        whiteSpace: "nowrap" as const,
+    },
+
+    "& .library-path-placeholder": {
+        color: color.text.light,
+        fontStyle: "italic",
+        fontFamily: "inherit",
+    },
 });
 
 // ============================================================================
@@ -1036,6 +1063,53 @@ function McpSection() {
 }
 
 // ============================================================================
+// Script Library Section
+// ============================================================================
+
+function ScriptLibrarySection() {
+    const libraryPath = settings.use("script-library.path");
+
+    const handleBrowse = async () => {
+        const result = await api.showOpenFolderDialog({
+            title: "Select Script Library Folder",
+        });
+        if (result && result.length > 0) {
+            settings.set("script-library.path", result[0]);
+        }
+    };
+
+    const handleUnlink = () => {
+        settings.set("script-library.path", "");
+    };
+
+    return (
+        <>
+            <div className="section-label">Script Library</div>
+            <div className="section-hint">
+                Folder for saved scripts and reusable modules
+            </div>
+            <div className="library-path-row">
+                <div className="library-path-display">
+                    {libraryPath ? (
+                        <span title={libraryPath}>{libraryPath}</span>
+                    ) : (
+                        <span className="library-path-placeholder">Not linked</span>
+                    )}
+                </div>
+                <button className="link-button" onClick={handleBrowse}>
+                    Browse...
+                </button>
+                {libraryPath && (
+                    <button className="link-button" onClick={handleUnlink}>
+                        Unlink
+                    </button>
+                )}
+            </div>
+        </>
+    );
+}
+
+// ============================================================================
 // SettingsPage Component
 // ============================================================================
 
@@ -1141,6 +1215,10 @@ function SettingsPage({ model }: SettingsPageProps) {
                 <hr className="divider" />
 
                 <McpSection />
+
+                <hr className="divider" />
+
+                <ScriptLibrarySection />
 
                 <hr className="divider" />
 

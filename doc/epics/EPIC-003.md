@@ -7,14 +7,13 @@
 
 ## Overview
 
-A persistent script library system that lets users save, organize, and reuse scripts across pages. The library is a linked folder on disk with a conventional structure, surfaced in the sidebar and script panel. It includes context scripts (auto-executed before user scripts), per-language saved scripts, and IntelliSense support for library modules in Monaco.
+A persistent script library system that lets users save, organize, and reuse scripts across pages. The library is a linked folder on disk with a conventional structure, surfaced in the sidebar and script panel. It includes per-language saved scripts, reusable utility modules via `require("library/...")`, and IntelliSense support for library modules in Monaco.
 
 ## Goals
 
 - Let users save scripts from the script panel to a persistent library folder
 - Let users load and run saved scripts on any page
-- Support "context scripts" that run automatically before every user script (utilities, config, connection strings)
-- Provide Monaco IntelliSense for library modules (so `require("library/context/utils")` gets autocomplete)
+- Provide Monaco IntelliSense for library modules (so `require("library/utils")` gets autocomplete)
 - Surface the library in the sidebar for browsing and management
 - Keep the folder structure convention-based (no config files), so the library is just a normal folder users can manage with any file manager
 
@@ -31,10 +30,6 @@ A persistent script library system that lets users save, organize, and reuse scr
 
 ```
 📁 script-library/
-├── 📁 context/              # [Special] Auto-run before every user script
-│   ├── index.js             # Entry point — controls load order via require()
-│   ├── utils.ts             # Utility functions available to all scripts
-│   └── db-config.ts         # Connection strings, constants
 ├── 📁 script-panel/         # [Special] Saved script panel scripts (by target language)
 │   ├── 📁 json/             # Scripts for pages with "json" language
 │   │   ├── flatten.ts
@@ -43,6 +38,9 @@ A persistent script library system that lets users save, organize, and reuse scr
 │   │   └── format-query.ts
 │   └── 📁 all/              # Scripts available for any page language
 │       └── base64-encode.ts
+├── 📁 utils/                # [User-defined] Shared utilities
+│   ├── db-config.ts         # Connection strings, constants
+│   └── helpers.ts           # Common helper functions
 ├── 📁 my-tests/             # [User-defined] Any custom folder
 │   ├── test-runner.ts
 │   └── assertions.ts
@@ -58,8 +56,7 @@ const { parseCsv } = require("library/data-tools/csv-parser");
 run();
 ```
 
-**Special folders** have app-level behavior on top of being regular modules:
-- `context/` — auto-executed before every user script (via `index.js` entry point)
+**Special folder:**
 - `script-panel/` — scripts surfaced in the script panel dropdown (organized by target language)
 
 **Conventions:**
@@ -69,27 +66,11 @@ run();
 - No manifest or config file — the folder structure IS the configuration
 - Users can create any other folders for their own modules
 
-### Context Scripts
-
-- Entry point: `context/index.js` (or `index.ts`) — the only file executed directly
-- The user controls execution order and inclusion by importing files from `index.js`:
-  ```javascript
-  // library/context/index.js
-  require("./db-config");
-  require("./utils");
-  require("./helpers");
-  ```
-- Context scripts run in the same script context as the user script — variables and functions defined in context modules are available to the user script
-- If `context/index.js` (or any imported module) fails, user script does NOT run — error shows which file failed
-- Files in `context/` that are NOT imported from `index.js` are dormant (not executed)
-- Context script content is cached in memory; library folder is watched for changes
-- If `context/index.js` does not exist, no context scripts run (silently skipped)
-
 ### Script Access at Runtime
 
 - Library scripts use `require()` for importing (not ES `import`), because scripts execute via `Function` constructor in a `with(this)` sandbox where ES imports don't work
 - ScriptContext patches `require("library/...")` calls to resolve to the actual library folder path
-- Example: `const { myFunc } = require("library/context/utils")`
+- Example: `const { myFunc } = require("library/utils/helpers")`
 
 ### Lazy Loading & Performance
 
@@ -105,14 +86,12 @@ run();
 **Level 2 — Full LibraryService (heavier):**
 - Triggered on first actual use: script panel open, script run, sidebar "Script Library" click
 - Scans `script-panel/` subfolders for the dropdown file list
-- Reads `context/index.js` content for pre-execution
 - Starts file watcher for script-panel index updates
 - If no library is linked, prompts user to link/create a folder
 
 **What gets cached:**
 - Monaco extra libs (file contents for IntelliSense) — loaded at Level 1
 - Script-panel file index (filenames per language subfolder) — loaded at Level 2
-- Context script content (`context/index.js` + its dependencies) — read on first script run
 
 ### IntelliSense
 
@@ -134,10 +113,8 @@ A multi-step dialog for linking or creating the library folder. Triggered from s
 - "Next" button proceeds
 
 **Step 2 — Initialize options:**
-- Checkbox: **Create system folders** (`context/`, `script-panel/`) — checked by default
+- Checkbox: **Create system folders** (`script-panel/`) — checked by default
 - Checkbox: **Create example scripts** — checked by default
-  - `context/index.js` — example entry point with comments explaining the pattern
-  - `context/example.ts` — example utility module (imported by index.js)
   - `script-panel/all/example.ts` — example script panel script
 - "Finish" button applies
 
@@ -178,18 +155,18 @@ The script panel header gets two new controls: a **script selector dropdown** an
 
 | Task | Title | Status |
 |------|-------|--------|
-| US-XXX | Library folder setting & sidebar integration | Planned |
+| US-128 | Library folder setting & sidebar integration | Done |
 | US-XXX | Library setup wizard (link/create folder dialog) | Planned |
-| US-XXX | LibraryService — folder scanning, caching, file watching | Planned |
+| US-130 | LibraryService — folder scanning, caching, file watching | Done |
 | US-XXX | Script panel dropdown & save to library | Planned |
-| US-XXX | Context scripts execution in ScriptRunner | Planned |
-| US-XXX | require("library/...") resolution in ScriptContext | Planned |
-| US-XXX | IntelliSense for library modules (addExtraLib + path mapping) | Planned |
+| US-129 | require("library/...") resolution in ScriptContext | Done |
+| US-131 | IntelliSense for library modules (addExtraLib + path mapping) | Done |
+| US-132 | Path completion for require("library/...") | Planned |
 
 ## Resolved Decisions
 
-1. **Import syntax**: `require("library/context/utils")` — full path, discoverable, no alias magic
-2. **Context scripts scope**: Run for ALL script executions — script panel, F5, and MCP `execute_script`
+1. **Import syntax**: `require("library/utils/helpers")` — full path, discoverable, no alias magic
+2. **No auto-run context scripts**: Users explicitly `require()` shared utilities — simpler, no hidden magic
 3. **Script metadata**: Not needed for now — just filenames
 4. **Custom editors from library**: Future idea, out of scope for this epic
 
@@ -199,8 +176,7 @@ The script panel header gets two new controls: a **script selector dropdown** an
 - Epic created based on initial design discussion
 - Key architectural decision: convention-based folder structure (no config files)
 - Key architectural decision: `require()` for runtime, `addExtraLib()` for IntelliSense
-- Context scripts use `context/index.js` entry point (user controls execution order)
 - `script-panel/` folder with language subfolders for saved scripts
 - Entire library is an open module tree — any file can be `require()`d
 - Lazy loading: IntelliSense on JS/TS page open, full service on first use
-- Context scripts run for all execution modes (script panel, F5, MCP)
+- Removed context scripts concept — users explicitly require() shared modules instead

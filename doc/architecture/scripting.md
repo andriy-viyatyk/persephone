@@ -19,13 +19,16 @@ Type definitions for the script API live in `/src/renderer/api/types/*.d.ts`.
 ScriptRunner.run(script, page?, language?)
     │
     ├── transpileIfNeeded(script, language)   ← strips TS types via sucrase (lazy-loaded)
+    ├── ensureSucraseLoaded() + registerTsExtension()  ← for require(".ts") in library
+    ├── clearLibraryRequireCache() if dirty   ← invalidate cached library modules
     │
-    ├── ScriptContext.createScriptContext(page?)
+    ├── ScriptContext.createScriptContext(page?, consoleLogs?, libraryPath?)
     │       ├── AppWrapper        ← wraps `app` global
     │       │     └── PageCollectionWrapper  ← wraps `app.pages`
     │       ├── PageWrapper       ← wraps `page` global
     │       │     └── EditorFacades (10)  ← page.asText(), page.asGrid(), ...
     │       ├── preventOutput()   ← suppresses default grouped-page output
+    │       ├── require           ← patched require with library/ resolution
     │       ├── React             ← React library
     │       ├── ScriptOutputFlags ← tracks output suppression state
     │       └── Proxy (globalThis interception)
@@ -144,6 +147,32 @@ const https = require('https');
 const sql = require(path.join('D:\\packages\\node_modules', 'mssql'));
 const axios = require(path.join('D:\\packages\\node_modules', 'axios'));
 ```
+
+### Script Library Imports
+
+When a script library folder is linked (via `script-library.path` setting), scripts can import library modules:
+
+```javascript
+const { greet } = require("library/utils/helpers");
+const config = require("library/config");
+```
+
+- `require("library/...")` resolves to `{script-library.path}/...`
+- Supports `.ts` and `.js` files — TypeScript files are transpiled automatically via sucrase
+- Extension auto-resolution: tries exact path, `.ts`, `.js`, `/index.ts`, `/index.js`
+- Relative requires within library modules work naturally (e.g., `require('./db-config')` inside a library file)
+- Library require cache is invalidated via `LibraryService` file watcher → calls `scriptRunner.invalidateLibraryCache()` which marks the cache as stale → next script execution clears it
+- When the library is not linked, `require("library/...")` throws a descriptive error
+
+Implementation: `library-require.ts` provides `createLibraryRequire()` (patched require function) and `registerTsExtension()` (`.ts` handler via `require.extensions`).
+
+### Library IntelliSense
+
+Monaco provides IntelliSense (autocomplete, type checking) for library modules. When a script library folder is linked, all library `.ts`/`.js` files are registered with Monaco via `addExtraLib()`, and compiler options include `paths: { "library/*": ["file:///library/*"] }` so that `import`/`require` of `library/...` paths resolve to the registered virtual files.
+
+- Lazy-loaded: `loadLibraryIntelliSense()` is called from `initMonaco()` (in `configure-monaco.ts`)
+- Live updates: subscribes to `libraryService.state` changes, disposes old registrations and re-registers on library changes
+- Implementation: `/src/renderer/api/setup/library-intellisense.ts`
 
 ## Editor Facades
 
@@ -289,7 +318,7 @@ Converts any JS value to displayable `{ text, language }`:
 
 Located in `/src/renderer/scripting/ScriptContext.ts`.
 
-`createScriptContext(page?, consoleLogs?)` builds the execution environment:
+`createScriptContext(page?, consoleLogs?, libraryPath?)` builds the execution environment:
 
 1. Creates `releaseList` (shared cleanup array)
 2. Creates `AppWrapper` (always) and `PageWrapper` (if page provided)
@@ -301,8 +330,9 @@ Located in `/src/renderer/scripting/ScriptContext.ts`.
        timestamp: number;
    }
    ```
-4. Builds proxy chain:
-   - Custom context checked first (`app`, `page`, `React`)
+4. If `libraryPath` provided, adds patched `require` that resolves `library/` paths to the library folder; otherwise adds a require wrapper that throws a clear error for `library/` paths
+5. Builds proxy chain:
+   - Custom context checked first (`app`, `page`, `require`, `React`)
    - Falls back to `globalThis` for standard APIs
    - Functions auto-bound to `globalThis` (except constructors)
    - Set operations go to custom context (scripts can create variables)
@@ -350,7 +380,7 @@ Script API types are defined in `/src/renderer/api/types/`:
 
 | File | Defines |
 |------|---------|
-| `index.d.ts` | Global declarations: `app: IApp`, `page: IPage`, `preventOutput()` |
+| `index.d.ts` | Global declarations: `app: IApp`, `page: IPage`, `preventOutput()`, `require()` |
 | `app.d.ts` | `IApp` — root application interface |
 | `page.d.ts` | `IPage`, `IPageInfo` — page/tab interface |
 | `pages.d.ts` | `IPageCollection` — pages management |
@@ -376,6 +406,7 @@ These files serve dual purpose: TypeScript type checking **and** IDE IntelliSens
 ├── ScriptRunner.ts              # Execution engine
 ├── ScriptContext.ts             # Context builder with cleanup
 ├── transpile.ts                 # TypeScript transpilation (sucrase, lazy-loaded)
+├── library-require.ts           # Library require() resolution + .ts extension handler
 └── api-wrapper/                 # Facade layer
     ├── AppWrapper.ts            # Wraps app singleton
     ├── PageWrapper.ts           # Wraps PageModel → IPage

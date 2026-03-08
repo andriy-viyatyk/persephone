@@ -1,7 +1,9 @@
 import { PageModel } from "../editors/base";
 import { pagesModel } from "../api/pages";
 import type { ConsoleLogEntry, ScriptOutputFlags } from "./ScriptContext";
-import { transpileIfNeeded } from "./transpile";
+import { transpileIfNeeded, ensureSucraseLoaded } from "./transpile";
+import { registerTsExtension, clearLibraryRequireCache } from "./library-require";
+import { settings } from "../api/settings";
 
 export interface McpScriptResult {
     text: string;
@@ -64,6 +66,12 @@ const lexicalObjects = `
 
 class ScriptRunner {
     handlePromiseException = 0;
+    private libraryDirty = true;
+
+    /** Mark library cache as dirty. Called by file watcher when library files change. */
+    invalidateLibraryCache = () => {
+        this.libraryDirty = true;
+    };
 
     run = async (script: string, page?: PageModel, language?: string): Promise<any> => {
         const { result } = await this.executeScript(script, page, undefined, language);
@@ -95,8 +103,21 @@ class ScriptRunner {
         try {
             try {
                 script = await transpileIfNeeded(script, language);
+
+                // Ensure sucrase is loaded and .ts extension handler is registered
+                // (needed for require() of .ts library files)
+                await ensureSucraseLoaded();
+                registerTsExtension();
+
+                // Clear library require cache if dirty
+                const libraryPath = settings.get("script-library.path");
+                if (this.libraryDirty && libraryPath) {
+                    clearLibraryRequireCache(libraryPath);
+                    this.libraryDirty = false;
+                }
+
                 const contextModule = await import("./ScriptContext");
-                const ctxResult = contextModule.createScriptContext(page, consoleLogs);
+                const ctxResult = contextModule.createScriptContext(page, consoleLogs, libraryPath);
                 const context = ctxResult.context;
                 cleanup = ctxResult.cleanup;
                 outputFlags = ctxResult.outputFlags;

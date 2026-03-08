@@ -1207,6 +1207,34 @@ export const PinFilledIcon = createIcon(24)(
     />,
 );
 
+export const ScriptLibraryIcon = createIcon(16)(
+    <>
+        <rect
+            x="1"
+            y="2"
+            width="14"
+            height="12"
+            rx="1.5"
+            stroke="currentColor"
+            strokeWidth="1.3"
+            fill="none"
+        />
+        <path
+            d="M5 2V14"
+            stroke="currentColor"
+            strokeWidth="1.3"
+        />
+        <path
+            d="M8 6.5L10.5 8.5L8 10.5"
+            stroke="currentColor"
+            strokeWidth="1.3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            fill="none"
+        />
+    </>,
+);
+
 export const DownloadIcon = createIcon(24)(
     <g fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <path d="M12 3v12" />

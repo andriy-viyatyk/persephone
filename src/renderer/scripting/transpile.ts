@@ -8,6 +8,16 @@ async function loadSucrase() {
     return sucraseTransform;
 }
 
+/** Ensure sucrase is loaded. Call this before using getSucraseTransform(). */
+export async function ensureSucraseLoaded(): Promise<void> {
+    await loadSucrase();
+}
+
+/** Get the synchronous sucrase transform. Returns undefined if not yet loaded via ensureSucraseLoaded(). */
+export function getSucraseTransform(): typeof import("sucrase").transform | undefined {
+    return sucraseTransform;
+}
+
 export function isScriptLanguage(language: string): boolean {
     return language === "javascript" || language === "typescript";
 }

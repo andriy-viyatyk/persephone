@@ -113,6 +113,7 @@ The left side shows your folder shortcuts:
 
 - **Open Tabs** — Lists all open pages in the current window and other open windows
 - **Recent Files** — Recently opened files
+- **Script Library** — A dedicated folder for your reusable scripts (see below)
 - **Custom Folders** — Your bookmarked filesystem folders
 
 Click a folder in the left panel to see its contents in the right panel.
@@ -152,6 +153,15 @@ The right panel shows the contents of the selected folder:
 | New Window | Opens a new js-notepad window (`Ctrl+Shift+N`) |
 | About | Opens the About page (version info, update check) |
 | Settings | Opens the Settings page (themes, preferences) |
+
+### Script Library
+
+The **Script Library** entry appears below Recent Files and provides quick access to a folder of reusable scripts.
+
+- **First time:** Click "Script Library" to see a placeholder with a **Select Folder** button. Choose a folder containing your `.js` / `.ts` script files.
+- **After linking:** The right panel shows a File Explorer rooted at your library folder. Click any script to open it.
+- **Context menu:** Right-click the "Script Library" entry for **Change Library Folder**, **Open in Explorer**, or **Unlink Library**.
+- **Settings:** You can also configure the library path in **Settings → Script Library** (browse, change, or unlink).
 
 ### Closing the Sidebar
 

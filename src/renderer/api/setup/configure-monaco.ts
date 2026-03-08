@@ -7,6 +7,7 @@ import { ThemeDefinition } from "../../theme/themes/types";
 import { defineRegLanguage } from "./monaco-languages/reg";
 import { defineCSVLanguage } from "./monaco-languages/csv";
 import { defineMermaidLanguage } from "./monaco-languages/mermaid";
+import { loadLibraryIntelliSense } from "./library-intellisense";
 
 loader.config({ monaco });
 
@@ -126,6 +127,10 @@ function setupCompiler(monaco: Monaco) {
         noSuggestionDiagnostics: true,
     });
 
+    const sharedPaths = {
+        "library/*": ["file:///library/*"],
+    };
+
     monaco.languages.typescript.typescriptDefaults.setCompilerOptions({
         target: monaco.languages.typescript.ScriptTarget.Latest,
         allowNonTsExtensions: true,
@@ -137,6 +142,7 @@ function setupCompiler(monaco: Monaco) {
         jsx: monaco.languages.typescript.JsxEmit.React,
         allowJs: true,
         typeRoots: [],
+        paths: sharedPaths,
     });
 
     monaco.languages.typescript.javascriptDefaults.setCompilerOptions({
@@ -151,6 +157,7 @@ function setupCompiler(monaco: Monaco) {
         typeRoots: [],
         strictNullChecks: true,
         strict: true,
+        paths: sharedPaths,
     });
 }
 
@@ -208,6 +215,7 @@ export async function initMonaco() {
     defineMermaidLanguage(monaco);
 
     await loadEditorTypes(monaco);
+    loadLibraryIntelliSense();
 
     monacoInstance = monaco;
 

@@ -235,6 +235,45 @@ The same `page` and `app` scripting API is available to external AI agents via t
 
 See [MCP Server Setup](./mcp-setup.md) to connect Claude, ChatGPT, Gemini, or any MCP-compatible client.
 
+## Script Library
+
+You can designate a folder as your **Script Library** for quick access to frequently used scripts. The library appears as a dedicated entry in the sidebar — click it to browse and open scripts without navigating through custom folders.
+
+Set up the library folder in **Settings → Script Library** or via the sidebar. See [Tabs & Navigation](./tabs-and-navigation.md#script-library) for details.
+
+### Importing Library Modules
+
+Once a library folder is linked, scripts can import modules from it using `require("library/...")`:
+
+```javascript
+// Import a module from your library folder
+const helpers = require("library/utils/helpers");
+const db = require("library/db/connection");
+
+const result = await db.query(page.content);
+return helpers.formatTable(result);
+```
+
+**How it works:**
+- `require("library/utils/helpers")` resolves to a file inside your linked library folder
+- Extension auto-resolution: `.ts`, `.js`, `/index.ts`, `/index.js` are tried automatically — no need to specify the extension
+- TypeScript files are transpiled automatically
+- Relative requires within library modules work as expected (e.g., `require('./db-config')` inside a library file)
+- The library require cache is invalidated between script runs when source files change, so edits take effect immediately
+- If no library folder is linked, `require("library/...")` throws a clear error message
+
+### IntelliSense for Library Modules
+
+When a library folder is linked, Monaco provides full IntelliSense for `require("library/...")` calls:
+
+- **Autocomplete** — typing `require("library/` suggests available modules from your library folder
+- **Type information** — exported functions and variables from library `.ts` and `.js` files show parameter types, return types, and JSDoc documentation
+- **Live updates** — when you edit a library file, IntelliSense reflects the changes immediately
+
+The built-in `require()` and `preventOutput()` functions also appear in autocomplete with documentation.
+
+This lets you build a reusable toolkit — database helpers, formatters, API clients — and use it from any script or the Script Panel.
+
 ## Node.js Access
 
 Scripts have full Node.js access:
