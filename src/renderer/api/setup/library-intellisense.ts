@@ -67,6 +67,7 @@ function registerLibraryFiles(): void {
 // =============================================================================
 
 const REQUIRE_LIBRARY_RE = /require\(\s*["']library\/([^"']*)$/;
+const REQUIRE_OPEN_RE = /require\(\s*["']([^"']*)$/;
 
 interface DirectoryListing {
     folders: string[];
@@ -118,11 +119,37 @@ function registerPathCompletionProvider(): void {
             const lineContent = model.getLineContent(position.lineNumber);
             const textUntilCursor = lineContent.slice(0, position.column - 1);
 
-            const match = textUntilCursor.match(REQUIRE_LIBRARY_RE);
-            if (!match) return { suggestions: [] };
-
             const libraryPath = settings.get("script-library.path");
             if (!libraryPath) return { suggestions: [] };
+
+            const match = textUntilCursor.match(REQUIRE_LIBRARY_RE);
+            if (!match) {
+                // Check if user just opened a require string (e.g. require(" )
+                const openMatch = textUntilCursor.match(REQUIRE_OPEN_RE);
+                if (!openMatch) return { suggestions: [] };
+                const typed = openMatch[1]; // what user typed so far
+                if (!"library/".startsWith(typed)) return { suggestions: [] };
+
+                const range = new monaco.Range(
+                    position.lineNumber,
+                    position.column - typed.length,
+                    position.lineNumber,
+                    position.column,
+                );
+                return {
+                    suggestions: [{
+                        label: "library",
+                        kind: monaco.languages.CompletionItemKind.Module,
+                        insertText: "library/",
+                        range,
+                        detail: "Script library modules",
+                        command: {
+                            id: "editor.action.triggerSuggest",
+                            title: "Trigger",
+                        },
+                    }],
+                };
+            }
 
             const typedPath = match[1]; // e.g. "utils/hel" or "utils/" or ""
             const lastSlash = typedPath.lastIndexOf("/");
