@@ -24,9 +24,14 @@ Release notes and changelog for js-notepad.
   - Settings page section with path display, Browse button, and Unlink button
 
 - **IntelliSense for Library Modules** — When a Script Library folder is linked, Monaco now provides autocomplete and type information for `require("library/...")` calls
+  - **Path completion** — typing `require("library/` auto-suggests folders and files; selecting a folder re-triggers suggestions to drill deeper; files shown without extension
   - Exported functions, variables, and types from library `.ts`/`.js` files appear in autocomplete with parameter types, return types, and JSDoc documentation
   - Updates live when library files are modified
   - Built-in `require()` and `preventOutput()` also show in autocomplete with documentation
+
+### Bug Fixes
+
+- **Library `.js` ES Module Support** — `.js` files in the Script Library using `export`/`import` syntax now work correctly. Previously only `.ts` files were transpiled; `.js` files with ES module syntax would fail at runtime
 
 ### Improvements
 

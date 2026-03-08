@@ -2,7 +2,7 @@ import { PageModel } from "../editors/base";
 import { pagesModel } from "../api/pages";
 import type { ConsoleLogEntry, ScriptOutputFlags } from "./ScriptContext";
 import { transpileIfNeeded, ensureSucraseLoaded } from "./transpile";
-import { registerTsExtension, clearLibraryRequireCache } from "./library-require";
+import { registerLibraryExtensions, clearLibraryRequireCache } from "./library-require";
 import { settings } from "../api/settings";
 
 export interface McpScriptResult {
@@ -104,13 +104,15 @@ class ScriptRunner {
             try {
                 script = await transpileIfNeeded(script, language);
 
-                // Ensure sucrase is loaded and .ts extension handler is registered
-                // (needed for require() of .ts library files)
+                // Ensure sucrase is loaded and extension handlers are registered
+                // (needed for require() of .ts and .js library files)
                 await ensureSucraseLoaded();
-                registerTsExtension();
+                const libraryPath = settings.get("script-library.path");
+                if (libraryPath) {
+                    registerLibraryExtensions(libraryPath);
+                }
 
                 // Clear library require cache if dirty
-                const libraryPath = settings.get("script-library.path");
                 if (this.libraryDirty && libraryPath) {
                     clearLibraryRequireCache(libraryPath);
                     this.libraryDirty = false;

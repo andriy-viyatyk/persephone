@@ -4,24 +4,29 @@ const fs = require("fs") as typeof import("fs");
 const path = require("path") as typeof import("path");
 const LIBRARY_PREFIX = "library/";
 
-let tsExtensionRegistered = false;
+let extensionsRegistered = false;
 
 /**
- * Register a `.ts` extension handler for Node.js require().
- * Uses the already-loaded sucrase transform for synchronous transpilation.
+ * Register custom extension handlers for Node.js require():
+ * - `.ts` — transpiles TypeScript + ES module imports via sucrase
+ * - `.js` — transpiles ES module imports via sucrase (for library files using export/import)
+ *
+ * The `.js` handler only applies to files inside the library folder to avoid
+ * breaking non-library CommonJS modules.
+ *
  * Must be called after `ensureSucraseLoaded()`.
  */
-export function registerTsExtension(): void {
-    if (tsExtensionRegistered) return;
-    tsExtensionRegistered = true;
+export function registerLibraryExtensions(libraryPath: string): void {
+    if (extensionsRegistered) return;
+    extensionsRegistered = true;
 
-    const originalHandler = require.extensions[".js"];
+    const originalJsHandler = require.extensions[".js"];
+    const normalizedLibPath = path.resolve(libraryPath);
 
     require.extensions[".ts"] = (module: NodeModule, filename: string) => {
         const transform = getSucraseTransform();
         if (!transform) {
-            // Fallback: if sucrase somehow not loaded, use .js handler
-            originalHandler(module, filename);
+            originalJsHandler(module, filename);
             return;
         }
 
@@ -31,6 +36,23 @@ export function registerTsExtension(): void {
             filePath: filename,
         });
         (module as any)._compile(compiled, filename);
+    };
+
+    require.extensions[".js"] = (module: NodeModule, filename: string) => {
+        // Only transpile .js files inside the library folder
+        const transform = getSucraseTransform();
+        if (transform && path.resolve(filename).startsWith(normalizedLibPath)) {
+            const code = fs.readFileSync(filename, "utf-8");
+            const { code: compiled } = transform(code, {
+                transforms: ["imports"],
+                filePath: filename,
+            });
+            (module as any)._compile(compiled, filename);
+            return;
+        }
+
+        // Non-library .js files use the original handler
+        originalJsHandler(module, filename);
     };
 }
 

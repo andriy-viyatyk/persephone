@@ -257,7 +257,7 @@ return helpers.formatTable(result);
 **How it works:**
 - `require("library/utils/helpers")` resolves to a file inside your linked library folder
 - Extension auto-resolution: `.ts`, `.js`, `/index.ts`, `/index.js` are tried automatically — no need to specify the extension
-- TypeScript files are transpiled automatically
+- TypeScript files are transpiled automatically; `.js` files using ES module syntax (`export`/`import`) are also transpiled
 - Relative requires within library modules work as expected (e.g., `require('./db-config')` inside a library file)
 - The library require cache is invalidated between script runs when source files change, so edits take effect immediately
 - If no library folder is linked, `require("library/...")` throws a clear error message
@@ -266,7 +266,7 @@ return helpers.formatTable(result);
 
 When a library folder is linked, Monaco provides full IntelliSense for `require("library/...")` calls:
 
-- **Autocomplete** — typing `require("library/` suggests available modules from your library folder
+- **Path completion** — typing `require("library/` auto-suggests folders and files from your library. Selecting a folder re-triggers suggestions so you can drill into subdirectories; files appear without extension (matching runtime auto-resolution)
 - **Type information** — exported functions and variables from library `.ts` and `.js` files show parameter types, return types, and JSDoc documentation
 - **Live updates** — when you edit a library file, IntelliSense reflects the changes immediately
 

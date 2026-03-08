@@ -74,7 +74,7 @@ js-notepad/
 │   │
 │   ├── setup/              # Monaco editor configuration
 │   │   ├── configure-monaco.ts      # Themes, keybindings, type definitions
-│   │   ├── library-intellisense.ts  # Library module IntelliSense (addExtraLib)
+│   │   ├── library-intellisense.ts  # Library module IntelliSense (addExtraLib + path completion)
 │   │   └── monaco-languages/        # Custom language definitions
 │   │       ├── csv.ts               # CSV rainbow coloring
 │   │       ├── mermaid.ts           # Mermaid syntax highlighting

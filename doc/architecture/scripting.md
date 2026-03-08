@@ -19,7 +19,7 @@ Type definitions for the script API live in `/src/renderer/api/types/*.d.ts`.
 ScriptRunner.run(script, page?, language?)
     │
     ├── transpileIfNeeded(script, language)   ← strips TS types via sucrase (lazy-loaded)
-    ├── ensureSucraseLoaded() + registerTsExtension()  ← for require(".ts") in library
+    ├── ensureSucraseLoaded() + registerLibraryExtensions()  ← for require(".ts"/".js") in library
     ├── clearLibraryRequireCache() if dirty   ← invalidate cached library modules
     │
     ├── ScriptContext.createScriptContext(page?, consoleLogs?, libraryPath?)
@@ -158,20 +158,21 @@ const config = require("library/config");
 ```
 
 - `require("library/...")` resolves to `{script-library.path}/...`
-- Supports `.ts` and `.js` files — TypeScript files are transpiled automatically via sucrase
+- Supports `.ts` and `.js` files — TypeScript files are transpiled via sucrase; `.js` files with ES module syntax (`export`/`import`) are also transpiled (imports transform only)
 - Extension auto-resolution: tries exact path, `.ts`, `.js`, `/index.ts`, `/index.js`
 - Relative requires within library modules work naturally (e.g., `require('./db-config')` inside a library file)
 - Library require cache is invalidated via `LibraryService` file watcher → calls `scriptRunner.invalidateLibraryCache()` which marks the cache as stale → next script execution clears it
 - When the library is not linked, `require("library/...")` throws a descriptive error
 
-Implementation: `library-require.ts` provides `createLibraryRequire()` (patched require function) and `registerTsExtension()` (`.ts` handler via `require.extensions`).
+Implementation: `library-require.ts` provides `createLibraryRequire()` (patched require function) and `registerLibraryExtensions()` (`.ts` and `.js` handlers via `require.extensions` — `.js` handler only transpiles files inside the library folder).
 
 ### Library IntelliSense
 
 Monaco provides IntelliSense (autocomplete, type checking) for library modules. When a script library folder is linked, all library `.ts`/`.js` files are registered with Monaco via `addExtraLib()`, and compiler options include `paths: { "library/*": ["file:///library/*"] }` so that `import`/`require` of `library/...` paths resolve to the registered virtual files.
 
 - Lazy-loaded: `loadLibraryIntelliSense()` is called from `initMonaco()` (in `configure-monaco.ts`)
-- Live updates: subscribes to `libraryService.state` changes, disposes old registrations and re-registers on library changes
+- Live updates: subscribes to `libraryService.state` changes, disposes old extra-lib registrations and re-registers on library changes
+- Path completion: a `CompletionItemProvider` triggers inside `require("library/...")` strings, suggesting folders and files from the library. Folders show with folder icon and re-trigger suggestions; files show without extension (matching runtime auto-resolution). Registered once per language (JS/TS), reads `allFiles` dynamically.
 - Implementation: `/src/renderer/api/setup/library-intellisense.ts`
 
 ## Editor Facades
@@ -406,7 +407,7 @@ These files serve dual purpose: TypeScript type checking **and** IDE IntelliSens
 ├── ScriptRunner.ts              # Execution engine
 ├── ScriptContext.ts             # Context builder with cleanup
 ├── transpile.ts                 # TypeScript transpilation (sucrase, lazy-loaded)
-├── library-require.ts           # Library require() resolution + .ts extension handler
+├── library-require.ts           # Library require() resolution + .ts/.js extension handlers
 └── api-wrapper/                 # Facade layer
     ├── AppWrapper.ts            # Wraps app singleton
     ├── PageWrapper.ts           # Wraps PageModel → IPage
