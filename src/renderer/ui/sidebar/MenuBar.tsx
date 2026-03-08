@@ -154,6 +154,11 @@ const isStaticFolder = (folder: MenuFolder) => {
     return Boolean(staticFolders.find((f) => f.id === folder.id));
 };
 
+/** Static folders that support "open in tab" (double-click / selected icon click). */
+const canOpenInTab = (folder: MenuFolder) => {
+    return !isStaticFolder(folder) || folder.id === scriptLibraryId;
+};
+
 const defaultMenuBarState = {
     leftItemId: openTabsId,
     contentWidth: 600,
@@ -365,8 +370,11 @@ class MenuBarModel extends TComponentModel<MenuBarState, MenuBarProps> {
     };
 
     openFolderInTab = (folder: MenuFolder) => {
-        if (folder.path) {
-            pagesModel.addEmptyPageWithNavPanel(folder.path);
+        const folderPath = folder.id === scriptLibraryId
+            ? settings.get("script-library.path")
+            : folder.path;
+        if (folderPath) {
+            pagesModel.addEmptyPageWithNavPanel(folderPath);
             this.props.onClose?.();
         }
     };
@@ -406,11 +414,11 @@ export function MenuBar(props: MenuBarProps) {
                     style={style}
                     selected={selected}
                     onClick={onClick}
-                    onDoubleClick={isStaticFolder(row) ? undefined : model.openFolderInTab}
+                    onDoubleClick={canOpenInTab(row) ? model.openFolderInTab : undefined}
                     icon={model.getFolderIcon(row)}
                     label={model.getFolderLabel(row)}
                     selectedIcon={selectedIcon}
-                    onSelectedIconClick={isStaticFolder(row) ? undefined : model.openFolderInTab}
+                    onSelectedIconClick={canOpenInTab(row) ? model.openFolderInTab : undefined}
                     itemMarginY={itemMarginY}
                     getTooltip={getTooltip}
                     getContextMenu={getContextMenu}

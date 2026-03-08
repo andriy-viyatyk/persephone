@@ -48,7 +48,13 @@ Release notes and changelog for js-notepad.
 
 - **Library `.js` ES Module Support** — `.js` files in the Script Library using `export`/`import` syntax now work correctly. Previously only `.ts` files were transpiled; `.js` files with ES module syntax would fail at runtime
 
+- **Example Script Fixes** — All bundled example scripts now use browser APIs (`btoa`/`atob`) instead of `Buffer.from()`, which is not available in the script sandbox. The `parse-jwt-token` script now strips "Bearer " prefix automatically. The `format-json` script now sets the output language to JSON for proper syntax highlighting.
+
 ### Improvements
+
+- **Script Library — Open in New Tab** — Double-click the Script Library sidebar entry (or click its icon when selected) to open it in a new tab with the File Explorer panel, just like custom linked folders
+
+- **Script Panel — Open in New Tab** — New toolbar button opens the currently selected script (or an empty page) in a new tab with the File Explorer panel rooted at the `script-panel/` folder
 
 - **Structured Editor Auto-Detection** — JSON content created via MCP or scripting now embeds a `type` property (`"note-editor"`, `"todo-editor"`, or `"link-editor"`), so the correct editor switch button (Notebook, ToDo, or Links) appears in the toolbar automatically — even without the `.note.json`/`.todo.json`/`.link.json` file extension
 

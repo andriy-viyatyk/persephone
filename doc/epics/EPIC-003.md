@@ -162,6 +162,7 @@ The script panel header gets two new controls: a **script selector dropdown** an
 | US-129 | require("library/...") resolution in ScriptContext | Done |
 | US-131 | IntelliSense for library modules (addExtraLib + path mapping) | Done |
 | US-132 | Path completion for require("library/...") | Done |
+| US-135 | Script Library enhancements & example script fixes | Done |
 
 ## Resolved Decisions
 

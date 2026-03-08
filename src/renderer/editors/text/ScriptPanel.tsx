@@ -7,7 +7,7 @@ import { TextFileModel } from "./TextPageModel";
 import { Splitter } from "../../components/layout/Splitter";
 import color from "../../theme/color";
 import { PageToolbar } from "../base/EditorToolbar";
-import { CloseIcon, RunAllIcon, RunIcon, SaveIcon } from "../../theme/icons";
+import { CloseIcon, OpenFileIcon, RunAllIcon, RunIcon, SaveIcon } from "../../theme/icons";
 import { Button } from "../../components/basic/Button";
 import { FlexSpace } from "../../components/layout/Elements";
 import { TComponentState } from "../../core/state/state";
@@ -320,6 +320,37 @@ export class ScriptPanelModel extends TModel<ScriptPanelState> {
         if (!selectedScript) return null;
         return entries.find(e => e.entry?.path === selectedScript) ?? null;
     };
+
+    /** Open selected script (or empty page) in a new tab with NavigationPanel rooted at script-panel/. */
+    openInTab = async () => {
+        const { pagesModel } = await import("../../api/pages");
+        const { NavPanelModel } = await import("../../ui/navigation/nav-panel-store");
+
+        const libraryPath = settings.get("script-library.path");
+        const scriptPanelDir = libraryPath ? nodepath.join(libraryPath, "script-panel") : "";
+        const { selectedScript } = this.state.get();
+
+        if (selectedScript && nodefs.existsSync(selectedScript)) {
+            // Open the selected script file, then attach NavPanel
+            const page = await pagesModel.openFile(selectedScript);
+            if (page && scriptPanelDir) {
+                const navPanel = new NavPanelModel(scriptPanelDir, selectedScript);
+                // Pre-expand the folder containing the script so it's visible
+                const fileDir = nodepath.dirname(selectedScript);
+                navPanel.fileExplorerState = {
+                    expandedPaths: [scriptPanelDir, fileDir],
+                    selectedFilePath: selectedScript,
+                };
+                navPanel.id = page.state.get().id;
+                navPanel.flushSave();
+                page.navPanel = navPanel;
+                page.state.update((s) => { s.hasNavPanel = true; });
+            }
+        } else if (scriptPanelDir) {
+            // No selected script — open empty page with NavPanel
+            pagesModel.addEmptyPageWithNavPanel(scriptPanelDir);
+        }
+    };
 }
 
 interface ScriptPanelProps {
@@ -393,6 +424,14 @@ export function ScriptPanel({ model }: ScriptPanelProps) {
                     onClick={scriptModel.saveToLibrary}
                 >
                     <SaveIcon />
+                </Button>
+                <Button
+                    title="Open in New Tab"
+                    type="icon"
+                    size="small"
+                    onClick={scriptModel.openInTab}
+                >
+                    <OpenFileIcon />
                 </Button>
                 <FlexSpace />
                 <Button

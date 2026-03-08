@@ -483,6 +483,15 @@ These files serve dual purpose: TypeScript type checking **and** IDE IntelliSens
 └── browser-editor.d.ts          # IBrowserEditor
 ```
 
+## Sandbox Limitations
+
+Although scripts have access to `globalThis` via proxy fallback, some Node.js globals don't work correctly through the `with(this)` proxy chain. Known limitation:
+
+- **`Buffer`** — `Buffer.from()` fails in the sandbox. Use browser APIs instead: `btoa()`/`atob()` for base64, `TextEncoder`/`TextDecoder` for encoding.
+- **`require()`** — works for Node.js modules and `library/` paths (see above), but the built-in `require` is patched to support library resolution.
+
+Bundled example scripts use browser APIs (`atob`/`btoa`) instead of `Buffer` for this reason.
+
 ## Security Considerations
 
 Scripts have full Node.js access. This is by design for power users, but means:
