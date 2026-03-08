@@ -7,13 +7,20 @@ import { TextFileModel } from "./TextPageModel";
 import { Splitter } from "../../components/layout/Splitter";
 import color from "../../theme/color";
 import { PageToolbar } from "../base/EditorToolbar";
-import { CloseIcon, RunAllIcon, RunIcon } from "../../theme/icons";
+import { CloseIcon, RunAllIcon, RunIcon, SaveIcon } from "../../theme/icons";
 import { Button } from "../../components/basic/Button";
 import { FlexSpace } from "../../components/layout/Elements";
 import { TComponentState } from "../../core/state/state";
 import { fs } from "../../api/fs";
 import { parseObject } from "../../core/utils/parse-utils";
 import { debounce } from "../../../shared/utils";
+import { libraryService, ScriptPanelEntry } from "../../api/library-service";
+import { settings } from "../../api/settings";
+import { showInputDialog } from "../../ui/dialogs/InputDialog";
+import { ComboSelect } from "../../components/form/ComboSelect";
+
+const nodefs = require("fs") as typeof import("fs");
+const nodepath = require("path") as typeof import("path");
 
 const ScriptPanelRoot = styled.div({
     flexShrink: 0,
@@ -27,16 +34,45 @@ const ScriptPanelRoot = styled.div({
     "& .page-toolbar": {
         marginBottom: 2,
     },
+    "& .script-selector": {
+        height: 22,
+        minWidth: 120,
+        maxWidth: 200,
+        fontSize: 12,
+        "& input": {
+            height: 22,
+            fontSize: 12,
+        },
+    },
 });
 
-export const defaultScriptPanelState = {
+export interface ScriptPanelState {
+    content: string;
+    open: boolean;
+    height: number;
+    hasSelection: boolean;
+    /** File path of the selected library script, or null for ad-hoc script. */
+    selectedScript: string | null;
+    /** True when content has been modified since last load/save. */
+    dirty: boolean;
+}
+
+export const defaultScriptPanelState: ScriptPanelState = {
     content: "return page.content",
     open: false,
     height: 160,
     hasSelection: false,
-}
+    selectedScript: null,
+    dirty: false,
+};
 
-export type ScriptPanelState = typeof defaultScriptPanelState;
+/** Dropdown entry for the script selector. */
+export interface ScriptDropdownEntry {
+    /** Display label (e.g. "my-script" or "all/my-script") */
+    label: string;
+    /** The underlying ScriptPanelEntry, or null for "(unsaved script)" */
+    entry: ScriptPanelEntry | null;
+}
 
 export class ScriptPanelModel extends TModel<ScriptPanelState> {
     editorRef = null as monaco.editor.IStandaloneCodeEditor | null;
@@ -58,10 +94,12 @@ export class ScriptPanelModel extends TModel<ScriptPanelState> {
         const data = await fs.getCacheFile(id, this.name);
         const newState = parseObject(data) || defaultScriptPanelState;
         this.skipSave = true;
-        this.state.set({
-            ...defaultScriptPanelState,
-            ...newState
-        });
+        const merged = { ...defaultScriptPanelState, ...newState };
+        // Ad-hoc scripts always have save enabled (acts as "save as")
+        if (!merged.selectedScript) {
+            merged.dirty = true;
+        }
+        this.state.set(merged);
     }
 
     private saveState = async (): Promise<void> => {
@@ -88,6 +126,7 @@ export class ScriptPanelModel extends TModel<ScriptPanelState> {
     changeContent = (newContent: string) => {
         this.state.update((s) => {
             s.content = newContent;
+            s.dirty = true;
         });
     }
 
@@ -111,6 +150,13 @@ export class ScriptPanelModel extends TModel<ScriptPanelState> {
         if (e.code === "F5") {
             e.preventDefault();
             this.pageModel.runRelatedScript();
+        }
+        if (e.code === "KeyS" && (e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey) {
+            if (this.state.get().dirty) {
+                e.preventDefault();
+                e.stopPropagation();
+                this.saveToLibrary();
+            }
         }
     };
 
@@ -142,19 +188,163 @@ export class ScriptPanelModel extends TModel<ScriptPanelState> {
 
         return this.editorRef.getModel()?.getValueInRange(selection) || "";
     };
+
+    // ── Script Library Integration ──────────────────────────────────────
+
+    /** Get available scripts for the current page language, merged with "all". */
+    getAvailableScripts = (): ScriptDropdownEntry[] => {
+        libraryService.ensureInitialized();
+        const language = this.pageModel.state.get().language || "";
+        const index = libraryService.scriptPanelIndex;
+
+        const entries: ScriptDropdownEntry[] = [];
+
+        // Language-specific scripts
+        const langScripts = index[language] || [];
+        for (const entry of langScripts) {
+            entries.push({ label: entry.name, entry });
+        }
+
+        // "all" scripts — prefixed to distinguish
+        const allScripts = index["all"] || [];
+        for (const entry of allScripts) {
+            entries.push({ label: "all/" + entry.name, entry });
+        }
+
+        return entries;
+    };
+
+    /** Select a library script (loads file content) or switch back to ad-hoc (null). */
+    selectScript = (dropdown: ScriptDropdownEntry | null) => {
+        if (!dropdown || !dropdown.entry) {
+            // Switch to ad-hoc — always enable save (acts as "save as")
+            this.state.update((s) => {
+                s.selectedScript = null;
+                s.dirty = true;
+            });
+            return;
+        }
+
+        const entry = dropdown.entry;
+        try {
+            const content = nodefs.readFileSync(entry.path, "utf-8");
+            this.state.update((s) => {
+                s.content = content;
+                s.selectedScript = entry.path;
+                s.dirty = false;
+            });
+        } catch {
+            // File read failed — stay on current content
+        }
+    };
+
+    /** Save current script content to library. */
+    saveToLibrary = async () => {
+        const libraryPath = settings.get("script-library.path");
+        if (!libraryPath) {
+            const { ui } = await import("../../api/ui");
+            ui.notify("Script library is not linked. Set the library folder in Settings.", "warning");
+            return;
+        }
+
+        const state = this.state.get();
+
+        if (state.selectedScript) {
+            // Selected library script — overwrite directly
+            try {
+                nodefs.writeFileSync(state.selectedScript, state.content, "utf-8");
+                this.state.update((s) => { s.dirty = false; });
+            } catch (err: any) {
+                const { ui } = await import("../../api/ui");
+                ui.notify(`Failed to save script: ${err.message}`, "error");
+            }
+            return;
+        }
+
+        // Ad-hoc script — prompt for name and folder
+        const language = this.pageModel.state.get().language || "all";
+        const options = language !== "all" ? [language, "all"] : ["all"];
+
+        const result = await showInputDialog({
+            title: "Save Script to Library",
+            message: "Script name:",
+            value: "",
+            options,
+            selectedOption: options[0],
+            buttons: ["Save", "Cancel"],
+            selectAll: true,
+        });
+
+        if (!result || result.button !== "Save" || !result.value.trim()) {
+            return;
+        }
+
+        const scriptName = result.value.trim();
+        const folder = result.selectedOption || options[0];
+        const scriptPanelDir = nodepath.join(libraryPath, "script-panel", folder);
+        const filePath = nodepath.join(scriptPanelDir, scriptName + ".ts");
+
+        // Create folder if needed
+        if (!nodefs.existsSync(scriptPanelDir)) {
+            nodefs.mkdirSync(scriptPanelDir, { recursive: true });
+        }
+
+        // Check if file already exists
+        if (nodefs.existsSync(filePath)) {
+            const { showConfirmationDialog } = await import("../../ui/dialogs/ConfirmationDialog");
+            const confirmResult = await showConfirmationDialog({
+                message: `Script "${scriptName}" already exists in "${folder}/". Overwrite?`,
+                buttons: ["Overwrite", "Cancel"],
+            });
+            if (confirmResult !== "Overwrite") {
+                return;
+            }
+        }
+
+        try {
+            nodefs.writeFileSync(filePath, state.content, "utf-8");
+            this.state.update((s) => {
+                s.selectedScript = filePath;
+                s.dirty = false;
+            });
+        } catch (err: any) {
+            const { ui } = await import("../../api/ui");
+            ui.notify(`Failed to save script: ${err.message}`, "error");
+        }
+    };
+
+    /** Find the dropdown entry matching the current selectedScript path. */
+    getSelectedDropdownEntry = (entries: ScriptDropdownEntry[]): ScriptDropdownEntry | null => {
+        const { selectedScript } = this.state.get();
+        if (!selectedScript) return null;
+        return entries.find(e => e.entry?.path === selectedScript) ?? null;
+    };
 }
 
 interface ScriptPanelProps {
     model: TextFileModel;
 }
 
+const UNSAVED_ENTRY: ScriptDropdownEntry = { label: "(unsaved script)", entry: null };
+
+function getDropdownLabel(entry: ScriptDropdownEntry): string {
+    return entry.label;
+}
+
 export function ScriptPanel({ model }: ScriptPanelProps) {
     const scriptModel = model.script;
     const state = model.script.state.use();
 
+    // Subscribe to library changes for dropdown refresh
+    libraryService.state.use();
+
     if (!state.open) {
         return null;
     }
+
+    const availableScripts = scriptModel.getAvailableScripts();
+    const allEntries = [UNSAVED_ENTRY, ...availableScripts];
+    const selectedEntry = scriptModel.getSelectedDropdownEntry(availableScripts) ?? UNSAVED_ENTRY;
 
     return (
         <ScriptPanelRoot
@@ -187,6 +377,22 @@ export function ScriptPanel({ model }: ScriptPanelProps) {
                         <RunAllIcon />
                     </Button>
                 )}
+                <ComboSelect
+                    className="script-selector"
+                    selectFrom={allEntries}
+                    getLabel={getDropdownLabel}
+                    value={selectedEntry}
+                    onChange={(entry?: ScriptDropdownEntry) => scriptModel.selectScript(entry ?? null)}
+                />
+                <Button
+                    title="Save Script to Library"
+                    type="icon"
+                    size="small"
+                    disabled={!state.dirty}
+                    onClick={scriptModel.saveToLibrary}
+                >
+                    <SaveIcon />
+                </Button>
                 <FlexSpace />
                 <Button
                     title="Close Script Editor"

@@ -175,6 +175,27 @@ Monaco provides IntelliSense (autocomplete, type checking) for library modules. 
 - Path completion: a `CompletionItemProvider` triggers inside `require("library/...")` strings, suggesting folders and files from the library. Folders show with folder icon and re-trigger suggestions; files show without extension (matching runtime auto-resolution). Registered once per language (JS/TS), reads `allFiles` dynamically.
 - Implementation: `/src/renderer/api/setup/library-intellisense.ts`
 
+### Script Panel Library Integration
+
+The script panel toolbar includes a **script selector dropdown** (ComboSelect) and a **save button** for loading/saving scripts from the `script-panel/` folder in the library.
+
+**Script selector dropdown:**
+- Lists scripts from `script-panel/{pageLanguage}/` and `script-panel/all/` (prefixed with `all/` to distinguish)
+- First entry is always "(unsaved script)" representing the ad-hoc script
+- Selecting a script reads the file and loads its content into the editor
+- Subscribes to `libraryService.state` for live refresh when library files change
+
+**Save button (SaveIcon):**
+- Disabled when content is unmodified (for selected library scripts); always enabled for ad-hoc scripts (acts as "save as")
+- Ad-hoc script: shows `InputDialog` with filename input + radio buttons for folder choice (`{language}` or `all`)
+- Selected library script: directly overwrites the file (no prompt)
+- Ctrl+S shortcut triggers save when script panel editor is focused
+- Creates `script-panel/{folder}/` directory if it doesn't exist; shows overwrite confirmation if file exists
+
+**State:** `ScriptPanelState` includes `selectedScript: string | null` (file path) and `dirty: boolean` (modification indicator). Both are persisted to cache and restored on app restart.
+
+- Implementation: `/src/renderer/editors/text/ScriptPanel.tsx` (ScriptPanelModel)
+
 ## Editor Facades
 
 Facades provide safe, typed access to editor-specific features. Each facade wraps a `ContentViewModel` and is acquired via `page.asX()` methods.

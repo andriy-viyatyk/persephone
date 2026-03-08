@@ -22,6 +22,18 @@ js-notepad lets you run JavaScript and TypeScript to transform and process conte
 - The Script Panel uses TypeScript by default — write plain JavaScript or add type annotations as you like
 - Press `F5` in Script Panel to run
 
+#### Script Selector & Save
+
+The Script Panel toolbar includes a **script selector dropdown** and a **Save button** for managing reusable scripts:
+
+- **Script selector** — lists saved scripts from your Script Library under `script-panel/{language}/` and `script-panel/all/` folders. Scripts from the "all" folder are shown with an "all/" prefix. Select a script to load its content into the editor, or choose "(unsaved script)" for ad-hoc editing.
+- **Save button** — saves the current script to the library:
+  - **Ad-hoc scripts:** Opens a dialog where you enter a filename and choose the target folder (current language folder or "all" for shared scripts)
+  - **Library scripts:** Directly overwrites the file when content has been modified
+  - Folders are created automatically if they don't exist
+  - Overwrite confirmation is shown when saving an ad-hoc script with an existing filename
+- **Ctrl+S** shortcut works when the Script Panel editor is focused
+
 ## The `page` Object
 
 Scripts have access to [`page`](./api/page.md) representing the current file:

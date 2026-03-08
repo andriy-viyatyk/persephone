@@ -29,6 +29,15 @@ Release notes and changelog for js-notepad.
   - Updates live when library files are modified
   - Built-in `require()` and `preventOutput()` also show in autocomplete with documentation
 
+- **Script Panel — Script Selector & Save** — The Script Panel toolbar now includes a dropdown to browse and load saved scripts from your library, plus a Save button to store scripts for reuse
+  - Script selector lists scripts from `script-panel/{language}/` and `script-panel/all/` folders in the library
+  - Scripts from the "all" folder shown with "all/" prefix to distinguish them
+  - Select a script to load it; choose "(unsaved script)" for ad-hoc editing
+  - Save button for ad-hoc scripts opens a dialog with filename input and folder selection (language-specific or "all")
+  - Save button for library scripts directly overwrites when content is modified
+  - `Ctrl+S` shortcut works when the Script Panel editor is focused
+  - Folders created automatically as needed; overwrite confirmation for existing files
+
 ### Bug Fixes
 
 - **Library `.js` ES Module Support** — `.js` files in the Script Library using `export`/`import` syntax now work correctly. Previously only `.ts` files were transpiled; `.js` files with ES module syntax would fail at runtime

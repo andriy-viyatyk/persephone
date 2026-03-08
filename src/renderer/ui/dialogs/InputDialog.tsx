@@ -3,7 +3,7 @@ import { Dialog, DialogContent } from "./Dialog";
 import { TDialogModel } from "../../core/state/model";
 import { DefaultView, ViewPropsRO, Views } from "../../core/state/view";
 import color from "../../theme/color";
-import { ConfirmIcon } from "../../theme/icons";
+import { ConfirmIcon, RadioCheckedIcon, RadioUncheckedIcon } from "../../theme/icons";
 import { Button } from "../../components/basic/Button";
 import { TComponentState } from "../../core/state/state";
 import { showDialog } from "./Dialogs";
@@ -27,6 +27,12 @@ const InputDialogContent = styled(DialogContent)({
     },
     "& .value-input": {
         margin: "0 24px",
+    },
+    "& .input-dialog-options": {
+        display: "flex",
+        flexDirection: "row",
+        columnGap: 4,
+        padding: "4px 24px",
     },
     "& .dialog-button": {
         minWidth: 60,
@@ -52,6 +58,10 @@ interface InputDialogProps {
     buttons?: string[];
     selectAll?: boolean;
     defaultButton?: string;
+    /** Optional radio button options rendered below the input field. */
+    options?: string[];
+    /** Initially selected option (must match one of `options`). */
+    selectedOption?: string;
 }
 
 const defaultInputDialogProps: InputDialogProps = {
@@ -66,6 +76,7 @@ const defaultInputDialogProps: InputDialogProps = {
 export interface InputResult {
     value: string;
     button: string;
+    selectedOption?: string;
 }
 
 class InputDialogModel extends TDialogModel<InputDialogProps, InputResult | undefined> {
@@ -82,13 +93,19 @@ class InputDialogModel extends TDialogModel<InputDialogProps, InputResult | unde
                 return;
             }
             const defBt = state.defaultButton || (state.buttons ? state.buttons[0] : "OK");
-            this.close({ value: state.value || "", button: defBt });
+            this.close({ value: state.value || "", button: defBt, selectedOption: state.selectedOption });
         }
     };
 
     setValue = (value: string) => {
         this.state.update((s) => {
             s.value = value;
+        });
+    };
+
+    setSelectedOption = (option: string) => {
+        this.state.update((s) => {
+            s.selectedOption = option;
         });
     };
 }
@@ -126,11 +143,28 @@ function InputDialog({ model }: ViewPropsRO<InputDialogModel>) {
                     onChange={model.setValue}
                     autoFocus
                 />
+                {state.options && state.options.length > 0 && (
+                    <div className="input-dialog-options">
+                        {state.options.map((option) => (
+                            <Button
+                                key={option}
+                                type="flat"
+                                size="small"
+                                onClick={() => model.setSelectedOption(option)}
+                            >
+                                {state.selectedOption === option
+                                    ? <RadioCheckedIcon />
+                                    : <RadioUncheckedIcon />}
+                                {option}
+                            </Button>
+                        ))}
+                    </div>
+                )}
                 <div className="confirmation-dialog-buttons">
                     {state.buttons?.map((bt, i) => (
                         <Button
                             key={i}
-                            onClick={() => model.close({ value: state.value, button: bt })}
+                            onClick={() => model.close({ value: state.value, button: bt, selectedOption: state.selectedOption })}
                             className="dialog-button"
                         >
                             {bt}

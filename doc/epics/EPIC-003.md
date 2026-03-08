@@ -158,7 +158,7 @@ The script panel header gets two new controls: a **script selector dropdown** an
 | US-128 | Library folder setting & sidebar integration | Done |
 | US-XXX | Library setup wizard (link/create folder dialog) | Planned |
 | US-130 | LibraryService — folder scanning, caching, file watching | Done |
-| US-XXX | Script panel dropdown & save to library | Planned |
+| US-133 | Script panel dropdown & save to library | Done |
 | US-129 | require("library/...") resolution in ScriptContext | Done |
 | US-131 | IntelliSense for library modules (addExtraLib + path mapping) | Done |
 | US-132 | Path completion for require("library/...") | Done |
