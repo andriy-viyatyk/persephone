@@ -240,11 +240,12 @@ export class ScriptPanelModel extends TModel<ScriptPanelState> {
 
     /** Save current script content to library. */
     saveToLibrary = async () => {
-        const libraryPath = settings.get("script-library.path");
+        let libraryPath = settings.get("script-library.path");
         if (!libraryPath) {
-            const { ui } = await import("../../api/ui");
-            ui.notify("Script library is not linked. Set the library folder in Settings.", "warning");
-            return;
+            const { showLibrarySetupDialog } = await import("../../ui/dialogs/LibrarySetupDialog");
+            const result = await showLibrarySetupDialog();
+            if (!result) return;
+            libraryPath = result;
         }
 
         const state = this.state.get();

@@ -251,7 +251,20 @@ See [MCP Server Setup](./mcp-setup.md) to connect Claude, ChatGPT, Gemini, or an
 
 You can designate a folder as your **Script Library** for quick access to frequently used scripts. The library appears as a dedicated entry in the sidebar — click it to browse and open scripts without navigating through custom folders.
 
-Set up the library folder in **Settings → Script Library** or via the sidebar. See [Tabs & Navigation](./tabs-and-navigation.md#script-library) for details.
+### Setting Up
+
+When you link a library folder for the first time (from the sidebar, Settings, or the Script Panel save button), a **Library Setup** dialog appears:
+
+- **Folder path** — pick any folder to use as your library root
+- **Copy example scripts** — enabled by default; copies a set of bundled example scripts into the folder so you can start immediately
+  - `script-panel/all/` — general-purpose examples (example.ts, base64-encode.ts, base64-decode.ts)
+  - `script-panel/plaintext/` — text-oriented scripts (sort-lines.ts, parse-jwt-token.ts)
+  - `script-panel/json/` — JSON utilities (format-json.ts)
+  - `utils/helpers.ts` — a shared helper module you can import with `require("library/utils/helpers")`
+
+Existing files are never overwritten — only missing example files are copied.
+
+You can also configure the library path later in **Settings → Script Library**. See [Tabs & Navigation](./tabs-and-navigation.md#script-library) for sidebar details.
 
 ### Importing Library Modules
 

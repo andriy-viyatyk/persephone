@@ -158,7 +158,7 @@ The right panel shows the contents of the selected folder:
 
 The **Script Library** entry appears below Recent Files and provides quick access to a folder of reusable scripts.
 
-- **First time:** Click "Script Library" to see a placeholder with a **Select Folder** button. Choose a folder containing your `.js` / `.ts` script files.
+- **First time:** Click "Script Library" to see a placeholder with a **Select Folder** button. A setup dialog opens where you pick a folder and optionally copy bundled example scripts into it.
 - **After linking:** The right panel shows a File Explorer rooted at your library folder. Click any script to open it.
 - **Context menu:** Right-click the "Script Library" entry for **Change Library Folder**, **Open in Explorer**, or **Unlink Library**.
 - **Settings:** You can also configure the library path in **Settings → Script Library** (browse, change, or unlink).

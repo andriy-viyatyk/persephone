@@ -156,7 +156,7 @@ The script panel header gets two new controls: a **script selector dropdown** an
 | Task | Title | Status |
 |------|-------|--------|
 | US-128 | Library folder setting & sidebar integration | Done |
-| US-XXX | Library setup wizard (link/create folder dialog) | Planned |
+| US-134 | Library setup wizard (link/create folder dialog) | Done |
 | US-130 | LibraryService — folder scanning, caching, file watching | Done |
 | US-133 | Script panel dropdown & save to library | Done |
 | US-129 | require("library/...") resolution in ScriptContext | Done |

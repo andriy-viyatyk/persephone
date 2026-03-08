@@ -196,6 +196,26 @@ The script panel toolbar includes a **script selector dropdown** (ComboSelect) a
 
 - Implementation: `/src/renderer/editors/text/ScriptPanel.tsx` (ScriptPanelModel)
 
+### Library Setup Wizard
+
+When no library is linked, actions that need the library (sidebar "Select Folder", settings "Browse...", script panel save) open the **Library Setup Dialog** instead of a raw folder picker.
+
+**Dialog:** `showLibrarySetupDialog()` — async `TDialogModel` pattern, returns `Promise<string | undefined>` (linked path or cancelled).
+- Folder input field + "Browse..." button (Electron folder dialog)
+- "Copy example scripts" checkbox (default: checked) — copies bundled examples from `assets/script-library/` to the target folder, skipping files that already exist
+- Creates target folder if it doesn't exist
+- Saves path to `script-library.path` setting on success
+
+**Bundled example scripts** (`assets/script-library/`):
+- `script-panel/all/` — example, base64-encode, base64-decode
+- `script-panel/plaintext/` — sort-lines, parse-jwt-token
+- `script-panel/json/` — format-json
+- `utils/helpers.ts` — shared module demonstrating `require("library/...")`
+
+**Copy logic:** `copyExampleScripts(targetPath)` in `library-service.ts` — resolves asset path via `api.getAppRootPath()`, recursively copies files, never overwrites existing.
+
+- Implementation: `/src/renderer/ui/dialogs/LibrarySetupDialog.tsx`
+
 ## Editor Facades
 
 Facades provide safe, typed access to editor-specific features. Each facade wraps a `ContentViewModel` and is acquired via `page.asX()` methods.

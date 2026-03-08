@@ -1,11 +1,9 @@
 import styled from "@emotion/styled";
 import { settings } from "../../api/settings";
 import { pagesModel } from "../../api/pages";
-import { api } from "../../../ipc/renderer/api";
 import { FileExplorer, FileExplorerRef, FileExplorerSavedState } from "../../components/file-explorer";
 import { FolderOpenIcon } from "../../theme/icons";
 import color from "../../theme/color";
-
 const ScriptLibraryPanelRoot = styled.div({
     display: "flex",
     flexDirection: "column",
@@ -62,12 +60,8 @@ export function ScriptLibraryPanel(props: ScriptLibraryPanelProps) {
     const libraryPath = settings.use("script-library.path");
 
     const handleSelectFolder = async () => {
-        const result = await api.showOpenFolderDialog({
-            title: "Select Script Library Folder",
-        });
-        if (result && result.length > 0) {
-            settings.set("script-library.path", result[0]);
-        }
+        const { showLibrarySetupDialog } = await import("../dialogs/LibrarySetupDialog");
+        showLibrarySetupDialog();
     };
 
     if (!libraryPath) {

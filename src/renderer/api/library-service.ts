@@ -201,3 +201,42 @@ class LibraryService extends TModel<LibraryServiceState> {
 }
 
 export const libraryService = new LibraryService();
+
+// =============================================================================
+// Example Scripts
+// =============================================================================
+
+/**
+ * Copy bundled example scripts from assets to the target library folder.
+ * Skips files that already exist in the destination (never overwrites).
+ */
+export async function copyExampleScripts(targetPath: string): Promise<void> {
+    const { api } = await import("../../ipc/renderer/api");
+    const appRoot = await api.getAppRootPath();
+    const sourcePath = nodepath.join(appRoot, "assets", "script-library");
+
+    if (!nodefs.existsSync(sourcePath)) {
+        return;
+    }
+
+    copyDirRecursive(sourcePath, targetPath);
+}
+
+function copyDirRecursive(src: string, dest: string): void {
+    if (!nodefs.existsSync(dest)) {
+        nodefs.mkdirSync(dest, { recursive: true });
+    }
+
+    const entries = nodefs.readdirSync(src, { withFileTypes: true });
+    for (const entry of entries) {
+        const srcPath = nodepath.join(src, entry.name);
+        const destPath = nodepath.join(dest, entry.name);
+        if (entry.isDirectory()) {
+            copyDirRecursive(srcPath, destPath);
+        } else if (entry.isFile()) {
+            if (!nodefs.existsSync(destPath)) {
+                nodefs.copyFileSync(srcPath, destPath);
+            }
+        }
+    }
+}

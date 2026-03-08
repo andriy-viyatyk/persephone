@@ -29,6 +29,12 @@ Release notes and changelog for js-notepad.
   - Updates live when library files are modified
   - Built-in `require()` and `preventOutput()` also show in autocomplete with documentation
 
+- **Library Setup Wizard** — Linking a Script Library folder now opens a setup dialog instead of a raw folder picker
+  - Folder path input with Browse button
+  - "Copy example scripts" checkbox (on by default) populates the folder with bundled starter scripts: general-purpose examples, text utilities, JSON formatters, and a shared helper module
+  - Existing files are never overwritten — safe to run on a folder that already has scripts
+  - Triggered from the sidebar "Select Folder", Settings "Browse...", and Script Panel save (when no library is linked)
+
 - **Script Panel — Script Selector & Save** — The Script Panel toolbar now includes a dropdown to browse and load saved scripts from your library, plus a Save button to store scripts for reuse
   - Script selector lists scripts from `script-panel/{language}/` and `script-panel/all/` folders in the library
   - Scripts from the "all" folder shown with "all/" prefix to distinguish them

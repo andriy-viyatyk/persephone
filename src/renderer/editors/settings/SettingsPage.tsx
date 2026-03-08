@@ -1070,12 +1070,8 @@ function ScriptLibrarySection() {
     const libraryPath = settings.use("script-library.path");
 
     const handleBrowse = async () => {
-        const result = await api.showOpenFolderDialog({
-            title: "Select Script Library Folder",
-        });
-        if (result && result.length > 0) {
-            settings.set("script-library.path", result[0]);
-        }
+        const { showLibrarySetupDialog } = await import("../../ui/dialogs/LibrarySetupDialog");
+        showLibrarySetupDialog();
     };
 
     const handleUnlink = () => {
