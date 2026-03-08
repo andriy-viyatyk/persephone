@@ -69,5 +69,16 @@ export interface EditorDefinition {
      */
     switchOption?(languageId: string, fileName?: string): number;
 
+    /**
+     * Detects if file content belongs to this editor based on a `type` property
+     * embedded in the content. Used for structured JSON editors (notebook, todo, link)
+     * to show the correct switch button even when the file name doesn't match.
+     * Checked via fast regex — no JSON parsing.
+     * @param languageId - Current language ID (must be "json" for structured editors)
+     * @param content - The raw text content of the file
+     * @returns true if the content matches this editor's expected structure
+     */
+    isEditorContent?(languageId: string, content: string): boolean;
+
     loadModule: () => Promise<EditorModule>;
 }

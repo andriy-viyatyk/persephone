@@ -91,7 +91,7 @@ export class TodoViewModel extends ContentViewModel<TodoEditorState> {
         ) {
             this.lastSerializedData = data;
             this.skipNextContentUpdate = true;
-            const content = JSON.stringify(data, null, 4);
+            const content = JSON.stringify({ type: "todo-editor", ...data }, null, 4);
             this.host.changeContent(content, true);
         }
     };

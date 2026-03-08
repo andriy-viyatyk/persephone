@@ -217,4 +217,6 @@ Some files support multiple editors:
 
 Use the buttons in the toolbar to switch between available editors.
 
+**Content-based detection:** JSON pages that contain a `"type"` property (`"note-editor"`, `"todo-editor"`, or `"link-editor"`) automatically show the corresponding switch button — even without the special file extension. This is useful for pages created via MCP or scripting.
+
 **Quick Add:** Click the dropdown arrow (&#9662;) next to the **+** button in the tab bar to create a new page with a specific editor: Script (JS), Script (TS), Grid (JSON), Grid (CSV), Notebook, Todo, Links, Browser, or Browser profile (with Incognito and named profiles).

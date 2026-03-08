@@ -266,6 +266,7 @@ editorRegistry.register({
 | `acceptFile(fileName)` | Returns priority >= 0 if editor can open file, -1 otherwise |
 | `validForLanguage(languageId)` | Returns true if editor is valid for the language |
 | `switchOption(languageId, fileName)` | Returns priority >= 0 to show in switch dropdown, -1 to hide |
+| `isEditorContent(languageId, content)` | Returns true if content matches this editor (regex-based, no JSON parsing). Used by structured JSON editors to show switch button when file name doesn't match. |
 | `loadModule` | Async function returning `EditorModule` |
 
 #### Priority Guidelines

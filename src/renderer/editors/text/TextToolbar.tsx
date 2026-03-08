@@ -1,6 +1,6 @@
-import { ReactNode, useMemo } from "react";
-import { useSyncExternalStore } from "react";
+import { ReactNode, useMemo, useSyncExternalStore } from "react";
 import { isTextFileModel, TextFileModel } from "./TextPageModel";
+import type { PageEditor } from "../../../shared/types";
 import { Button } from "../../components/basic/Button";
 import { CompareIcon, NavPanelIcon, RunAllIcon, RunIcon } from "../../theme/icons";
 import { SwitchButtons } from "../../components/form/SwitchButtons";
@@ -43,19 +43,36 @@ export function TextToolbar({ model, setEditorToolbarRefFirst, setEditorToolbarR
     const textVm = model.getTextViewModel();
     const hasSelection = useOptionalModelState(textVm?.state, s => s.hasSelection, false);
 
-    const { language, editor, filePath, title } = model.state.use((s) => ({
+    const { language, editor, filePath, title, detectedContentEditor } = model.state.use((s) => ({
         language: s.language,
         editor: s.editor,
         filePath: s.filePath,
         title: s.title,
+        detectedContentEditor: s.detectedContentEditor,
     }));
 
     // Use filePath if available, otherwise use title (which represents the intended filename)
     const fileName = filePath || title;
 
     const switchOptions = useMemo(() => {
-        return editorRegistry.getSwitchOptions(language || "plaintext", fileName);
-    }, [language, fileName]);
+        const base = editorRegistry.getSwitchOptions(language || "plaintext", fileName);
+        // If content-based detection found an editor not already in the list, add it
+        if (detectedContentEditor && !base.options.includes(detectedContentEditor)) {
+            const options = base.options.length > 0
+                ? [...base.options, detectedContentEditor]
+                : ["monaco" as PageEditor, detectedContentEditor];
+            return {
+                options,
+                getOptionLabel: (option: PageEditor) => {
+                    if (option === detectedContentEditor) {
+                        return editorRegistry.getById(detectedContentEditor)?.name ?? option;
+                    }
+                    return base.getOptionLabel(option);
+                },
+            };
+        }
+        return base;
+    }, [language, fileName, detectedContentEditor]);
 
 
     if (filePath) {

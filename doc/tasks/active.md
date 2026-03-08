@@ -11,7 +11,6 @@ Current work in progress and planned tasks.
 
 | ID | Title | Epic | Notes |
 |----|-------|------|-------|
-| US-117 | Fix editor switch buttons for structured JSON editors | — | Notebook, Todo, Link editors don't show correct switch buttons when page title lacks proper file extension |
 
 ## Completed
 

@@ -286,6 +286,22 @@ if (switchOptions.options.length > 1) {
 
 The `page.editor` property on `TextFileModel` state controls which editor renders the content.
 
+### Content-Based Editor Detection
+
+Structured JSON editors (notebook, todo, link) embed a `"type"` property in their JSON content:
+- `"type": "note-editor"` → notebook-view
+- `"type": "todo-editor"` → todo-view
+- `"type": "link-editor"` → link-view
+
+This allows the correct switch button to appear even when the file name doesn't match the expected pattern (e.g., `.note.json`). Detection uses fast regex checks (no JSON parsing) via the `isEditorContent()` hook on `EditorDefinition`.
+
+`TextFileModel` runs detection:
+- **Immediately** on `restore()` and `changeEditor()`
+- **Debounced (2.5s)** on `changeContent()`
+- Timer is cancelled on `dispose()`
+
+The detected editor is stored in `TextFilePageModelState.detectedContentEditor` and merged into switch options by `TextToolbar`.
+
 ## EditorRegistry API
 
 ```typescript
@@ -297,6 +313,7 @@ editorRegistry.resolveId(filePath)               // Resolve just the editor ID
 editorRegistry.validateForLanguage(editor, lang) // Validate editor/language combo
 editorRegistry.getSwitchOptions(lang, filePath)  // Get UI switch options
 editorRegistry.getPreviewEditor(lang, filePath)  // Get auto-preview editor
+editorRegistry.detectContentEditor(lang, content) // Detect editor from content type field
 editorRegistry.getViewModelFactory(editorId)     // Get cached VM factory (sync)
 editorRegistry.loadViewModelFactory(editorId)    // Load VM factory (async)
 editorRegistry.validateForHost(editorId, host)   // Validate editor for content host

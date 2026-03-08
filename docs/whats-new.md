@@ -8,7 +8,9 @@ Release notes and changelog for js-notepad.
 
 ## Version 1.0.18 (Upcoming)
 
-*No changes yet.*
+### Improvements
+
+- **Structured Editor Auto-Detection** — JSON content created via MCP or scripting now embeds a `type` property (`"note-editor"`, `"todo-editor"`, or `"link-editor"`), so the correct editor switch button (Notebook, ToDo, or Links) appears in the toolbar automatically — even without the `.note.json`/`.todo.json`/`.link.json` file extension
 
 ---
 

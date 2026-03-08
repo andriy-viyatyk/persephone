@@ -147,6 +147,21 @@ class EditorRegistry {
         };
     }
 
+    /**
+     * Detect if file content matches a structured editor via the `isEditorContent` hook.
+     * Returns the first matching editor ID, or undefined if no match.
+     * Uses fast regex checks — no JSON parsing.
+     */
+    detectContentEditor(languageId: string, content: string): PageEditor | undefined {
+        if (!content) return undefined;
+        for (const editor of this.editors.values()) {
+            if (editor.isEditorContent?.(languageId, content)) {
+                return editor.id;
+            }
+        }
+        return undefined;
+    }
+
     // =========================================================================
     // Content View Model support
     // =========================================================================

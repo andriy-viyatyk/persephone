@@ -112,7 +112,7 @@ export class LinkViewModel extends ContentViewModel<LinkEditorState> {
         if (data !== this.lastSerializedData) {
             this.lastSerializedData = data;
             this.skipNextContentUpdate = true;
-            const content = JSON.stringify(data, null, 4);
+            const content = JSON.stringify({ type: "link-editor", ...data }, null, 4);
             this.host.changeContent(content, true);
         }
     };

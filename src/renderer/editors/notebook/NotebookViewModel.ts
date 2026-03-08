@@ -135,7 +135,7 @@ export class NotebookViewModel extends ContentViewModel<NotebookViewState> {
         if (data !== this.lastSerializedData) {
             this.lastSerializedData = data;
             this.skipNextContentUpdate = true;
-            const content = JSON.stringify(data, null, 4);
+            const content = JSON.stringify({ type: "note-editor", ...data }, null, 4);
             this.host.changeContent(content, true);
         }
     };

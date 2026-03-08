@@ -22,6 +22,8 @@ export interface TextFilePageModelState extends IPageState {
     restored: boolean;
     compareMode: boolean;
     temp: boolean;
+    /** Editor detected from content (e.g., "notebook-view" when JSON has "type": "note-editor") */
+    detectedContentEditor?: PageEditor;
 }
 
 export const getDefaultTextFilePageModelState = (): TextFilePageModelState => ({
@@ -108,6 +110,38 @@ export class TextFileModel extends PageModel<TextFilePageModelState, void> imple
     actions = new TextFileActionsModel(this);
     script = new ScriptPanelModel(this);
 
+    // =========================================================================
+    // Content-based editor detection
+    // =========================================================================
+
+    private _detectTimer: ReturnType<typeof setTimeout> | null = null;
+
+    /** Run content detection immediately and update state if changed. */
+    private detectContentEditor = () => {
+        const { content, language } = this.state.get();
+        const detected = editorRegistry.detectContentEditor(language || "", content);
+        if (detected !== this.state.get().detectedContentEditor) {
+            this.state.update((s) => { s.detectedContentEditor = detected; });
+        }
+    };
+
+    /** Schedule detection after a debounce delay (for content changes). */
+    private scheduleDetection = () => {
+        if (this._detectTimer) clearTimeout(this._detectTimer);
+        this._detectTimer = setTimeout(() => {
+            this._detectTimer = null;
+            this.detectContentEditor();
+        }, 2500);
+    };
+
+    /** Cancel any pending detection timer. */
+    private cancelDetection = () => {
+        if (this._detectTimer) {
+            clearTimeout(this._detectTimer);
+            this._detectTimer = null;
+        }
+    };
+
     // Pending operations — applied when TextViewModel is first acquired
     private _pendingRevealLine: number | null = null;
     private _pendingHighlightText: string | undefined = undefined;
@@ -162,6 +196,7 @@ export class TextFileModel extends PageModel<TextFilePageModelState, void> imple
             state.temp = state.temp && !byUser;
         });
         this.io.markModificationUnsaved();
+        this.scheduleDetection();
     };
 
     changeEditor = (editor: PageEditor) => {
@@ -170,6 +205,7 @@ export class TextFileModel extends PageModel<TextFilePageModelState, void> imple
         this.state.update((s) => {
             s.editor = validated;
         });
+        this.detectContentEditor();
     };
 
     getRestoreData() {
@@ -179,6 +215,7 @@ export class TextFileModel extends PageModel<TextFilePageModelState, void> imple
             password,
             encripted,
             restored,
+            detectedContentEditor,
             ...pageData
         } = this.state.get();
         if (this.navPanel) {
@@ -218,12 +255,14 @@ export class TextFileModel extends PageModel<TextFilePageModelState, void> imple
         await this.io.restore();
         await this.script.restore(this.state.get().id);
         await super.restore();
+        this.detectContentEditor();
         this.state.update((s) => {
             s.restored = true;
         });
     }
 
     async dispose(): Promise<void> {
+        this.cancelDetection();
         this._vmHost.disposeAll();
         this.io.dispose();
         this.script.dispose();

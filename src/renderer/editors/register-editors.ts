@@ -216,6 +216,11 @@ editorRegistry.register({
         if (!fileName || !matchesPattern(fileName, /\.note\.json$/i)) return -1;
         return 10;
     },
+    isEditorContent: (languageId, content) => {
+        if (languageId !== "json") return false;
+        if (!content.includes('"type"')) return false;
+        return /"type"\s*:\s*"note-editor"/.test(content) && content.includes('"notes"');
+    },
     loadModule: async () => {
         const [module, { createNotebookViewModel }] = await Promise.all([
             import("./notebook/NotebookEditor"),
@@ -326,6 +331,11 @@ editorRegistry.register({
         if (!fileName || !matchesPattern(fileName, /\.todo\.json$/i)) return -1;
         return 10;
     },
+    isEditorContent: (languageId, content) => {
+        if (languageId !== "json") return false;
+        if (!content.includes('"type"')) return false;
+        return /"type"\s*:\s*"todo-editor"/.test(content) && content.includes('"items"');
+    },
     loadModule: async () => {
         const [module, { createTodoViewModel }] = await Promise.all([
             import("./todo/TodoEditor"),
@@ -356,6 +366,11 @@ editorRegistry.register({
         if (languageId !== "json") return -1;
         if (!fileName || !matchesPattern(fileName, /\.link\.json$/i)) return -1;
         return 10;
+    },
+    isEditorContent: (languageId, content) => {
+        if (languageId !== "json") return false;
+        if (!content.includes('"type"')) return false;
+        return /"type"\s*:\s*"link-editor"/.test(content) && content.includes('"links"');
     },
     loadModule: async () => {
         const [module, { createLinkViewModel }] = await Promise.all([
