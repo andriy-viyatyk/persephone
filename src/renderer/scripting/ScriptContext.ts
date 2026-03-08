@@ -116,6 +116,11 @@ export function createScriptContext(page?: PageModel, consoleLogs?: ConsoleLogEn
 
                 // If it's a function, bind it to globalThis
                 if (typeof value === "function") {
+                    if (value.prototype) {
+                        // Do NOT bind constructors or classes (e.g. Buffer, URL)
+                        // — binding loses static methods like Buffer.from()
+                        return value;
+                    }
                     return value.bind(globalThis);
                 }
 
