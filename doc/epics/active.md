@@ -4,7 +4,7 @@ Epics represent big ideas with high-level overviews. Each epic links to tasks in
 
 ## Active
 
-(none)
+- **EPIC-003** — [Script Library](EPIC-003.md)
 
 ## Completed
 
