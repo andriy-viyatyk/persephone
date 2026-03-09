@@ -4,6 +4,7 @@ All completed tasks, newest first.
 
 | ID | Title | Epic | Notes |
 |----|-------|------|-------|
+| US-139 | Log View editor — basic rendering of log entries | EPIC-004 | RenderFlexGrid virtualized rendering with variable row heights. `LogEntryWrapper` (cell root + container with timestamp, accent border), `LogEntryContent` (type router), `LogMessageView` (5 log levels with colored text), `StyledTextView` (plain/styled segment renderer). Auto-scroll to bottom on new entries. Toolbar toggle for timestamps (off by default). Dialog/output stubs. Height cache on LogViewModel. |
 | US-136 | Define LogEntry types, models, and LogViewModel | EPIC-004 | Foundation for Log View editor: `logTypes.ts` (LogEntry, StyledText, dialog/output types, type guards), `LogEntryModel` (reactive wrapper with lazy instantiation/eviction), `LogViewModel` (ContentViewModel with JSONL parsing, incremental parse, dialog promises, model cache), placeholder `LogViewEditor` component. Registered `log-view` content-view editor for `.log.jsonl` files. |
 | US-138 | Grid editor support for JSONL/NDJSON files | EPIC-004 | Registered `grid-jsonl` content-view editor. Added JSONL parsing (line-by-line `JSON.parse`) and serialization (compact, one object per line). Updated `asGrid()` facade, `PageEditor` type. |
 | US-137 | JSONL language support for Monaco | EPIC-004 | Registered `jsonl` language with Monarch tokenizer for `.jsonl`/`.ndjson`/`.log.jsonl` files. Reuses JSON token names for automatic theme colors. Added green `{ }` file icon. Prerequisite for Log View editor. |

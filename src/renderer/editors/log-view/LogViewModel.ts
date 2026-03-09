@@ -12,6 +12,7 @@ export const defaultLogViewState = {
     entries: [] as LogEntry[],
     entryCount: 0,
     error: undefined as string | undefined,
+    showTimestamps: false,
 };
 
 export type LogViewState = typeof defaultLogViewState;
@@ -38,6 +39,9 @@ export class LogViewModel extends ContentViewModel<LogViewState> {
 
     /** Currently rendered row range (for model eviction). */
     private renderedRange: { top: number; bottom: number } | null = null;
+
+    /** Cached measured row heights by entry ID (persists across model evictions). */
+    private heightCache = new Map<string, number>();
 
     constructor(host: IContentHost) {
         super(host, defaultLogViewState);
@@ -443,6 +447,13 @@ export class LogViewModel extends ContentViewModel<LogViewState> {
     // Queries
     // =========================================================================
 
+    /** Toggle timestamp display. */
+    toggleTimestamps = (): void => {
+        this.state.update((s) => {
+            s.showTimestamps = !s.showTimestamps;
+        });
+    };
+
     /** Check if a dialog entry is still pending (awaiting user response). */
     isDialogPending(id: string): boolean {
         return this.pendingDialogs.has(id);
@@ -451,6 +462,20 @@ export class LogViewModel extends ContentViewModel<LogViewState> {
     /** Get the total number of entries. */
     get entryCount(): number {
         return this.state.get().entryCount;
+    }
+
+    // =========================================================================
+    // Height Cache (for RenderFlexGrid)
+    // =========================================================================
+
+    /** Get the cached height for an entry (used by getInitialRowHeight). */
+    getEntryHeight(id: string): number | undefined {
+        return this.heightCache.get(id);
+    }
+
+    /** Store a measured row height (called from the cell's ResizeObserver). */
+    setEntryHeight(id: string, height: number): void {
+        this.heightCache.set(id, height);
     }
 }
 

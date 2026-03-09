@@ -286,13 +286,13 @@ The key principle: **entry content renderers should only care about rendering th
 | US-137 | JSONL language support for Monaco | **Done** |
 | US-138 | Grid editor support for JSONL/NDJSON files | **Done** |
 | US-136 | Define LogEntry types, models, and LogViewModel | **Done** |
-| — | Log View editor — basic rendering of log entries | Planned |
+| US-139 | Log View editor — basic rendering of log entries | **Done** |
 | — | Log View editor — dialog entries (input.text, confirm, buttons) | Planned |
 | — | Log View editor — additional dialogs (checkboxes, radio, select) | Planned |
 | — | Log View editor — output entries (progress, grid, text, markdown, mermaid) | Planned |
 | — | Script facade: global `ui` variable | Planned |
 | — | MCP integration for log pages | Planned |
-| — | Styled text support (StyledSegment rendering) | Planned |
+| — | Styled text support (StyledSegment rendering) | **Done** (included in US-139) |
 
 *Tasks will be created and assigned IDs as work begins.*
 

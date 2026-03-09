@@ -68,7 +68,7 @@ RenderEditor
 ├── [page-editor] → AsyncEditor → PdfViewer / ImageViewer / Browser / About / Settings
 └── [content-view] → TextPageView
                          ├── TextToolbar
-                         ├── ActiveEditor → Monaco / Grid / Markdown / Notebook / Todo / Link / SVG / HTML / Mermaid
+                         ├── ActiveEditor → Monaco / Grid / Markdown / Notebook / Todo / Link / Log View / SVG / HTML / Mermaid
                          ├── ScriptPanel
                          ├── TextFooter
                          └── EditorOverlay (portal target for expanded note)

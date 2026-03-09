@@ -244,9 +244,13 @@ js-notepad/
 │   │   ├── render-mermaid.ts       # Rendering utilities (shared with Markdown)
 │   │   └── index.ts
 │   ├── log-view/           # Log viewer (content-view)
-│   │   ├── LogViewEditor.tsx       # Log viewer component
+│   │   ├── LogViewEditor.tsx       # Log viewer component (RenderFlexGrid + auto-scroll)
 │   │   ├── LogViewModel.ts         # ContentViewModel — JSONL parsing, entry management
 │   │   ├── LogEntryModel.ts        # Reactive wrapper for individual log entries
+│   │   ├── LogEntryWrapper.tsx     # Cell root + entry container (timestamp, accent border)
+│   │   ├── LogEntryContent.tsx     # Type router — dispatches to entry renderers
+│   │   ├── LogMessageView.tsx      # Log message renderer (text/info/warn/error/success)
+│   │   ├── StyledTextView.tsx      # StyledText renderer (plain string or styled segments)
 │   │   └── logTypes.ts             # LogEntry, StyledText, dialog/output types
 │   ├── pdf/                # PDF viewer (page-editor)
 │   │   ├── PdfViewer.tsx
