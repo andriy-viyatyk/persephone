@@ -2,12 +2,12 @@
 
 ## Status
 
-**Status:** Planned
+**Status:** Done
 **Priority:** High
 **Epic:** EPIC-004
 **Depends on:** US-137 (JSONL language support)
-**Started:** —
-**Completed:** —
+**Started:** 2026-03-09
+**Completed:** 2026-03-09
 
 ## Summary
 

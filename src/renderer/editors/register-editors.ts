@@ -169,6 +169,42 @@ editorRegistry.register({
     },
 });
 
+// Log View editor (content-view for .log.jsonl files)
+editorRegistry.register({
+    id: "log-view",
+    name: "Log View",
+    pageType: "textFile",
+    category: "content-view",
+    acceptFile: (fileName) => {
+        if (matchesPattern(fileName, /\.log\.jsonl$/i)) return 20;
+        return -1;
+    },
+    validForLanguage: (languageId) => languageId === "jsonl",
+    switchOption: (languageId, fileName) => {
+        if (languageId !== "jsonl") return -1;
+        // Only show for .log.jsonl files
+        if (!fileName || !matchesPattern(fileName, /\.log\.jsonl$/i)) return -1;
+        return 10;
+    },
+    isEditorContent: (languageId, content) => {
+        if (languageId !== "jsonl") return false;
+        return /\"type\"\s*:\s*\"log\./.test(content);
+    },
+    loadModule: async () => {
+        const [module, { createLogViewModel }] = await Promise.all([
+            import("./log-view/LogViewEditor"),
+            import("./log-view/LogViewModel"),
+        ]);
+        return {
+            Editor: module.LogViewEditor,
+            createViewModel: createLogViewModel,
+            newPageModel: textEditorModule.newPageModel,
+            newEmptyPageModel: textEditorModule.newEmptyPageModel,
+            newPageModelFromState: textEditorModule.newPageModelFromState,
+        };
+    },
+});
+
 // Markdown preview
 editorRegistry.register({
     id: "md-view",

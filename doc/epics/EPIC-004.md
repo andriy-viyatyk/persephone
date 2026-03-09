@@ -285,7 +285,7 @@ The key principle: **entry content renderers should only care about rendering th
 |------|-------|--------|
 | US-137 | JSONL language support for Monaco | **Done** |
 | US-138 | Grid editor support for JSONL/NDJSON files | **Done** |
-| US-136 | Define LogEntry types, models, and LogViewModel | Planned |
+| US-136 | Define LogEntry types, models, and LogViewModel | **Done** |
 | — | Log View editor — basic rendering of log entries | Planned |
 | — | Log View editor — dialog entries (input.text, confirm, buttons) | Planned |
 | — | Log View editor — additional dialogs (checkboxes, radio, select) | Planned |

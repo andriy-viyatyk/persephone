@@ -29,6 +29,7 @@ Views of text-based content that share `TextFileModel` for state management. The
 | `notebook-view` | Notebook | `.note.json` | `NotebookViewModel` |
 | `todo-view` | ToDo | `.todo.json` | `TodoViewModel` |
 | `link-view` | Links | `.link.json` | `LinkViewModel` |
+| `log-view` | Log View | `.log.jsonl` | `LogViewModel` |
 
 **Characteristics:**
 - Rendered inside `TextPageView` via `ActiveEditor` component
@@ -155,6 +156,7 @@ ContentViewModel<TState>   (from editors/base/ContentViewModel.ts)
 ├── NotebookViewModel       # Notes, categories, tags, filters
 ├── TodoViewModel           # Todo items, lists, tags
 ├── LinkViewModel           # Links, pins, favicons
+├── LogViewModel            # Log entries, dialog promises, lazy models
 ├── SvgViewModel            # SVG rendering
 ├── HtmlViewModel           # HTML rendering
 └── MermaidViewModel        # SVG URL, loading, error, light mode

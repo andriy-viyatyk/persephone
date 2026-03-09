@@ -4,6 +4,7 @@ All completed tasks, newest first.
 
 | ID | Title | Epic | Notes |
 |----|-------|------|-------|
+| US-136 | Define LogEntry types, models, and LogViewModel | EPIC-004 | Foundation for Log View editor: `logTypes.ts` (LogEntry, StyledText, dialog/output types, type guards), `LogEntryModel` (reactive wrapper with lazy instantiation/eviction), `LogViewModel` (ContentViewModel with JSONL parsing, incremental parse, dialog promises, model cache), placeholder `LogViewEditor` component. Registered `log-view` content-view editor for `.log.jsonl` files. |
 | US-138 | Grid editor support for JSONL/NDJSON files | EPIC-004 | Registered `grid-jsonl` content-view editor. Added JSONL parsing (line-by-line `JSON.parse`) and serialization (compact, one object per line). Updated `asGrid()` facade, `PageEditor` type. |
 | US-137 | JSONL language support for Monaco | EPIC-004 | Registered `jsonl` language with Monarch tokenizer for `.jsonl`/`.ndjson`/`.log.jsonl` files. Reuses JSON token names for automatic theme colors. Added green `{ }` file icon. Prerequisite for Log View editor. |
 | US-135 | Script Library enhancements & example script fixes | EPIC-003 | Fixed example scripts: replaced `Buffer.from()` with browser APIs (`atob`/`btoa`) since Buffer fails in script sandbox. JWT parser strips "Bearer " prefix. format-json sets `page.grouped.language`. Script Library sidebar supports double-click/icon-click to open in tab with NavigationPanel. ScriptPanel "Open in New Tab" button opens selected script (or empty page) in tab with NavPanel rooted at script-panel/. |

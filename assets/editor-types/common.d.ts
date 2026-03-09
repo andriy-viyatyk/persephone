@@ -39,6 +39,7 @@ export type PageEditor =
     | "settings-view"
     | "todo-view"
     | "link-view"
+    | "log-view"
     | "browser-view";
 
 /** Monaco language identifier. */

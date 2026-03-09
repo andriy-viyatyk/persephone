@@ -223,6 +223,7 @@ See [/doc/standards/coding-style.md](doc/standards/coding-style.md) for complete
 | Editor registration      | `/src/renderer/editors/register-editors.ts`       |
 | Text editor model        | `/src/renderer/editors/text/TextPageModel.ts`     |
 | Grid editor              | `/src/renderer/editors/grid/GridViewModel.ts`     |
+| Log view editor          | `/src/renderer/editors/log-view/LogViewModel.ts`  |
 | Notebook editor model    | `/src/renderer/editors/notebook/NotebookEditorModel.ts` |
 | Notebook types           | `/src/renderer/editors/notebook/notebookTypes.ts` |
 | Base virtualization      | `/src/renderer/components/virtualization/RenderGrid.tsx` |

@@ -11,7 +11,6 @@ Current work in progress and planned tasks.
 
 | ID | Title | Epic | Notes |
 |----|-------|------|-------|
-| US-136 | Define LogEntry types, models, and LogViewModel | EPIC-004 | Foundation for Log View editor — types, entry models, content view model, editor registration. Depends on US-137 |
 
 
 ## Completed
