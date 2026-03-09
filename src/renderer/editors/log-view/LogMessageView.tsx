@@ -12,6 +12,7 @@ const LogMessageRoot = styled.div({
     wordBreak: "break-word",
     fontSize: 14,
     lineHeight: "18px",
+    minHeight: 18,
     fontFamily: "Consolas, 'Courier New', monospace",
 
     "&.level-info": {

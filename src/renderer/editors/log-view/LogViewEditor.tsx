@@ -69,6 +69,7 @@ export function LogViewEditor({ model }: { model: TextFileModel }) {
     const gridModelRef = useRef<RenderGridModel | null>(null);
     const isAtBottom = useRef(true);
     const prevEntryCount = useRef(0);
+    const scrollTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
 
     const setGridModel = useCallback((m: RenderGridModel | null) => {
         gridModelRef.current = m;
@@ -95,13 +96,33 @@ export function LogViewEditor({ model }: { model: TextFileModel }) {
         if (!vm) return;
         const count = state.entryCount;
 
+        // Clear any pending scroll timers from previous update
+        for (const t of scrollTimers.current) clearTimeout(t);
+        scrollTimers.current = [];
+
         gridModelRef.current?.update({ all: true });
 
         if (count > prevEntryCount.current && isAtBottom.current && count > 0) {
-            gridModelRef.current?.scrollToRow(count - 1, "bottom");
+            // Iterative auto-scroll: RenderFlexGrid renders new rows at minRowHeight
+            // (preferMinHeightForNewRows), then ResizeObserver measures actual content and
+            // grows rows asynchronously. A single scroll-to-bottom fires before these height
+            // adjustments settle, so the last row ends up partially hidden. We scroll multiple
+            // times with increasing delays to compensate for each measurement pass.
+            // Three follow-ups (50/150/300ms) reliably cover multi-row batches where each
+            // row's ResizeObserver fires at slightly different times.
+            const scrollToEnd = () => gridModelRef.current?.scrollToRow(count - 1, "bottom");
+            scrollToEnd();
+            const t1 = setTimeout(scrollToEnd, 50);
+            const t2 = setTimeout(scrollToEnd, 150);
+            const t3 = setTimeout(scrollToEnd, 300);
+            scrollTimers.current = [t1, t2, t3];
         }
 
         prevEntryCount.current = count;
+        return () => {
+            for (const t of scrollTimers.current) clearTimeout(t);
+            scrollTimers.current = [];
+        };
     }, [vm, state.entryCount]);
 
     // Re-render grid when timestamps toggled (row heights change)
@@ -169,6 +190,7 @@ export function LogViewEditor({ model }: { model: TextFileModel }) {
                             fitToWidth
                             minRowHeight={18}
                             getInitialRowHeight={getInitialRowHeight}
+                            preferMinHeightForNewRows
                         />
                     )}
                 </LogViewRoot>

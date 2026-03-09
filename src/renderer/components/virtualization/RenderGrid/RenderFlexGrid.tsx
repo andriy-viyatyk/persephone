@@ -92,6 +92,9 @@ export interface RenderFlexGridProps
     renderCell: RenderFlexCellFunc;
     /** Optional function to provide initial row heights before measurement */
     getInitialRowHeight?: (row: number) => number | undefined;
+    /** When true, new rows without cached/initial height use minRowHeight instead of last measured height.
+     *  Prevents visual jumps when row heights vary significantly (e.g., log views). */
+    preferMinHeightForNewRows?: boolean;
 }
 
 const defaultRenderFlexGridState = {
@@ -186,6 +189,9 @@ class RenderFlexGridModel extends TComponentModel<
                 if (initialHeight !== undefined) {
                     // Apply same min/max clamping as setRowHeight
                     return this.clampHeight(initialHeight);
+                }
+                if (this.props.preferMinHeightForNewRows) {
+                    return this.props.minRowHeight || this.defaultFlexRowHeight;
                 }
                 return this.lastRowHeight || this.defaultFlexRowHeight;
             };
