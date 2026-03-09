@@ -61,6 +61,73 @@ function sendEvent(
     }
 }
 
+/**
+ * Guard a popup window opened by a webview. Blocks popups from the child
+ * until the user has explicitly focused (activated) the window. This prevents
+ * cascade attacks where each popup opens the next without user interaction.
+ * Applied recursively to any grandchild windows.
+ */
+function guardPopupWindow(
+    childWindow: BrowserWindow,
+    sender: WebContents,
+    tabId: string,
+    internalTabId: string,
+) {
+    let userActivated = false;
+
+    // Mark as activated when the user focuses the window
+    childWindow.once("focus", () => {
+        userActivated = true;
+    });
+
+    const childWc = childWindow.webContents;
+
+    childWc.setWindowOpenHandler(({ url, disposition, features }) => {
+        // Link clicks → open as internal tab in the parent page
+        if (disposition === "foreground-tab" || disposition === "background-tab") {
+            sendEvent(sender, tabId, internalTabId, "new-window", {
+                url,
+                disposition,
+            });
+            return { action: "deny" };
+        }
+
+        // Block popups from windows the user hasn't activated
+        if (!userActivated) {
+            sendEvent(sender, tabId, internalTabId, "popups-blocked", { url });
+            return { action: "deny" };
+        }
+
+        // User-activated window: apply rate limiting
+        const limiterKey = `popup/${tabId}/${internalTabId}`;
+        if (!popupRateLimiter.isAllowed(tabId) && !popupRateLimiter.check(limiterKey)) {
+            sendEvent(sender, tabId, internalTabId, "popups-blocked", { url });
+            return { action: "deny" };
+        }
+
+        // Center on the child window
+        const parentBounds = childWindow.getBounds();
+        const popupWidth = parseFeature(features, "width") || 500;
+        const popupHeight = parseFeature(features, "height") || 600;
+
+        return {
+            action: "allow",
+            overrideBrowserWindowOptions: {
+                autoHideMenuBar: true,
+                width: popupWidth,
+                height: popupHeight,
+                x: Math.round(parentBounds.x + (parentBounds.width - popupWidth) / 2),
+                y: Math.round(parentBounds.y + (parentBounds.height - popupHeight) / 2),
+            },
+        };
+    });
+
+    // Recursively guard grandchild windows
+    childWc.on("did-create-window", (grandchild) => {
+        guardPopupWindow(grandchild, sender, tabId, internalTabId);
+    });
+}
+
 function registerWebview(event: IpcMainEvent, request: BrowserRegisterRequest) {
     const { tabId, internalTabId, webContentsId } = request;
     const key = regKey(tabId, internalTabId);
@@ -237,6 +304,12 @@ function registerWebview(event: IpcMainEvent, request: BrowserRegisterRequest) {
         }
 
         return { action: "allow", overrideBrowserWindowOptions };
+    });
+
+    // Block popup chains: child popup windows cannot open more popups
+    // unless the user has activated (focused) them first.
+    wc.on("did-create-window", (childWindow) => {
+        guardPopupWindow(childWindow, sender, tabId, internalTabId);
     });
 
     // Clean up if the webview's webContents is destroyed
