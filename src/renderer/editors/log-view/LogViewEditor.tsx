@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import { TextFileModel } from "../text/TextPageModel";
 import { useContentViewModel } from "../base/useContentViewModel";
 import { LogViewModel, LogViewState, defaultLogViewState } from "./LogViewModel";
+import { LogViewProvider } from "./LogViewContext";
 import { LogEntryWrapper } from "./LogEntryWrapper";
 import { RenderFlexGrid, RenderFlexCellParams } from "../../components/virtualization/RenderGrid/RenderFlexGrid";
 import RenderGridModel from "../../components/virtualization/RenderGrid/RenderGridModel";
@@ -112,13 +113,10 @@ export function LogViewEditor({ model }: { model: TextFileModel }) {
     const renderLogEntry = useCallback(
         (p: RenderFlexCellParams) => {
             if (!vm) return null;
-            const entries = vm.state.get().entries;
-            const entry = entries[p.row];
-            if (!entry) return null;
             return (
                 <LogEntryWrapper
-                    key={entry.id}
-                    entry={entry}
+                    vm={vm}
+                    index={p.row}
                     cellRef={p.ref}
                     showTimestamp={state.showTimestamps}
                 />
@@ -139,14 +137,6 @@ export function LogViewEditor({ model }: { model: TextFileModel }) {
         [vm],
     );
 
-    // Model cache eviction on viewport change
-    const handleRenderRange = useCallback(
-        (r: { top: number; bottom: number }) => {
-            vm?.setRenderedRange(r.top, r.bottom);
-        },
-        [vm],
-    );
-
     if (!vm) return null;
 
     return (
@@ -163,25 +153,26 @@ export function LogViewEditor({ model }: { model: TextFileModel }) {
                     </Button>,
                     model.editorToolbarRefLast!,
                 )}
-            <LogViewRoot>
-                {state.error ? (
-                    <EditorError>{state.error}</EditorError>
-                ) : state.entryCount === 0 ? (
-                    <div className="log-view-placeholder">No log entries</div>
-                ) : (
-                    <RenderFlexGrid
-                        ref={setGridModel}
-                        columnCount={1}
-                        rowCount={state.entryCount}
-                        columnWidth={getColumnWidth}
-                        renderCell={renderLogEntry}
-                        fitToWidth
-                        minRowHeight={18}
-                        getInitialRowHeight={getInitialRowHeight}
-                        onAdjustRenderRange={handleRenderRange}
-                    />
-                )}
-            </LogViewRoot>
+            <LogViewProvider value={vm}>
+                <LogViewRoot>
+                    {state.error ? (
+                        <EditorError>{state.error}</EditorError>
+                    ) : state.entryCount === 0 ? (
+                        <div className="log-view-placeholder">No log entries</div>
+                    ) : (
+                        <RenderFlexGrid
+                            ref={setGridModel}
+                            columnCount={1}
+                            rowCount={state.entryCount}
+                            columnWidth={getColumnWidth}
+                            renderCell={renderLogEntry}
+                            fitToWidth
+                            minRowHeight={18}
+                            getInitialRowHeight={getInitialRowHeight}
+                        />
+                    )}
+                </LogViewRoot>
+            </LogViewProvider>
         </>
     );
 }

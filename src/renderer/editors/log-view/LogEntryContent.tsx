@@ -1,9 +1,12 @@
-import { LogEntry, isLogEntry, isDialogEntry, isOutputEntry, StyledText } from "./logTypes";
+import { LogEntry, ConfirmDialogData, TextDialogData, ButtonsDialogData, isLogEntry, isOutputEntry, StyledText } from "./logTypes";
 import { LogMessageView } from "./LogMessageView";
+import { ConfirmDialogView } from "./items/ConfirmDialogView";
+import { TextInputDialogView } from "./items/TextInputDialogView";
+import { ButtonsDialogView } from "./items/ButtonsDialogView";
 import color from "../../theme/color";
 
 // =============================================================================
-// Stubs for dialog and output entries (full renderers in future tasks)
+// Stubs for unimplemented entry types
 // =============================================================================
 
 const stubStyle: React.CSSProperties = {
@@ -51,11 +54,31 @@ function UnknownEntryView({ entry }: { entry: LogEntry }) {
 // Router
 // =============================================================================
 
-export function LogEntryContent({ entry }: { entry: LogEntry }) {
+interface LogEntryContentProps {
+    entry: LogEntry;
+    updateEntry: (updater: (draft: LogEntry) => void) => void;
+}
+
+export function LogEntryContent({ entry, updateEntry }: LogEntryContentProps) {
     if (isLogEntry(entry)) {
         return <LogMessageView entry={entry as LogEntry<StyledText>} />;
     }
-    if (isDialogEntry(entry)) {
+
+    switch (entry.type) {
+        case "input.confirm":
+            return <ConfirmDialogView entry={entry as LogEntry<ConfirmDialogData>} />;
+        case "input.text":
+            return (
+                <TextInputDialogView
+                    entry={entry as LogEntry<TextDialogData>}
+                    updateEntry={updateEntry as any}
+                />
+            );
+        case "input.buttons":
+            return <ButtonsDialogView entry={entry as LogEntry<ButtonsDialogData>} />;
+    }
+
+    if (entry.type.startsWith("input.")) {
         return <DialogEntryStub entry={entry} />;
     }
     if (isOutputEntry(entry)) {

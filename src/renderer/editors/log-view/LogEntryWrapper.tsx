@@ -1,7 +1,8 @@
-import { RefObject } from "react";
+import { RefObject, useCallback } from "react";
 import styled from "@emotion/styled";
 import { LogEntry } from "./logTypes";
 import { LogEntryContent } from "./LogEntryContent";
+import { LogViewModel } from "./LogViewModel";
 import color from "../../theme/color";
 
 // =============================================================================
@@ -9,6 +10,7 @@ import color from "../../theme/color";
 // =============================================================================
 
 const WrapperRoot = styled.div({
+    position: "relative",
     width: "100%",
     height: "fit-content",
     boxSizing: "border-box",
@@ -17,6 +19,19 @@ const WrapperRoot = styled.div({
     alignItems: "flex-start",
     padding: "0 12px",
     borderLeft: "3px solid transparent",
+
+    "&::after": {
+        content: "''",
+        position: "absolute",
+        inset: 0,
+        pointerEvents: "none",
+        backgroundColor: "transparent",
+        transition: "background-color 0.1s",
+    },
+
+    "&:hover::after": {
+        backgroundColor: color.grid.selectionColor.hovered,
+    },
 
     "&.accent-info": {
         borderLeftColor: color.misc.blue,
@@ -72,12 +87,24 @@ function formatTimestamp(ts: number): string {
 // =============================================================================
 
 interface LogEntryWrapperProps {
-    entry: LogEntry;
+    vm: LogViewModel;
+    index: number;
     cellRef?: RefObject<HTMLDivElement>;
     showTimestamp?: boolean;
 }
 
-export function LogEntryWrapper({ entry, cellRef, showTimestamp }: LogEntryWrapperProps) {
+export function LogEntryWrapper({ vm, index, cellRef, showTimestamp }: LogEntryWrapperProps) {
+    const entry = vm.state.use((s) => s.entries[index]);
+
+    const updateEntry = useCallback(
+        (updater: (draft: LogEntry) => void) => {
+            vm.updateEntryAt(index, updater);
+        },
+        [vm, index],
+    );
+
+    if (!entry) return null;
+
     const accentClass = accentClassMap[entry.type] || "";
 
     return (
@@ -86,7 +113,7 @@ export function LogEntryWrapper({ entry, cellRef, showTimestamp }: LogEntryWrapp
                 <div className="entry-timestamp">{formatTimestamp(entry.timestamp)}</div>
             )}
             <div className="entry-content">
-                <LogEntryContent entry={entry} />
+                <LogEntryContent entry={entry} updateEntry={updateEntry} />
             </div>
         </WrapperRoot>
     );

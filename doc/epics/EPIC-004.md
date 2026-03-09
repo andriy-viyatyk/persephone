@@ -122,27 +122,15 @@ The log is stored as **JSONL (JSON Lines)** — one JSON object per line, not a 
 - Dialog result submission = find entry by ID → update result fields → serialize
 - Modified tracking works normally (dirty state when entries are added/changed)
 
-### Log Entry Models
+### State Management
 
-Each log entry in the view is backed by a **model instance**, not just raw JSON. This enables programmatic interaction with individual entries through the app API and script facade.
+`LogViewModel.state.entries[]` is the single source of truth. Both rendering and the scripting facade access entries through this array:
 
-**Base model (`LogEntryModel`):**
-- Wraps a single `LogEntry` JSON object
-- Provides reactive state (entry data, status, result)
-- Common interface for all entry types: `id`, `type`, `data`, `timestamp`
-- Methods: `update(data)`, `toJSON()`, `dispose()`
+**Rendering:** Each entry component subscribes to its slice via `vm.state.use(s => s.entries[index])` (selector hook with deep equality). All changes — user typing, button clicks, programmatic updates — go through `vm.state.update()`. No per-entry model wrappers needed.
 
-**Type-specific subclasses** extend the base for entries that need extra behavior:
-- `DialogEntryModel` — adds `result`, `resultButton`, `resolved` state, `resolve(result)` method, and a Promise that the script facade can `await`
-- `ProgressEntryModel` — adds `value`, `label` state and `update(value, label)` for live progress updates
-- Plain log entries (`log.info`, `log.text`, etc.) use the base `LogEntryModel` directly — no subclass needed
+**Scripting facade (future `ui` global):** Calls `LogViewModel` methods directly — `addEntry()`, `addDialogEntry()`, `resolveDialog()`, `updateEntry()`, `clear()`. Similar to interactive-script's API pattern (`ui.log.info(...)`, `ui.dialog.confirm(...)`).
 
-**`LogViewPageModel`** holds an observable array of `LogEntryModel` instances. The array is the source of truth for the view; serialization to JSON happens on save/content-read.
-
-**Why models matter:**
-- Scripts and MCP can reference and update existing entries (e.g., update a progress bar, resolve a dialog)
-- The view reacts to model state changes, not to full content re-parses
-- Future wrapper actions ("copy", "expand", "open in new page") operate on the model, not raw JSON
+**No LogEntryModel:** Per-entry reactive model wrappers are not needed. The entries array provides both the source for rendering and the target for mutations. `LogEntryModel` (from US-136) is deprecated and will be removed.
 
 ### Script API: global `ui` variable
 
@@ -287,7 +275,7 @@ The key principle: **entry content renderers should only care about rendering th
 | US-138 | Grid editor support for JSONL/NDJSON files | **Done** |
 | US-136 | Define LogEntry types, models, and LogViewModel | **Done** |
 | US-139 | Log View editor — basic rendering of log entries | **Done** |
-| — | Log View editor — dialog entries (input.text, confirm, buttons) | Planned |
+| US-140 | Log View editor — dialog entries (input.text, confirm, buttons) | **Done** |
 | — | Log View editor — additional dialogs (checkboxes, radio, select) | Planned |
 | — | Log View editor — output entries (progress, grid, text, markdown, mermaid) | Planned |
 | — | Script facade: global `ui` variable | Planned |

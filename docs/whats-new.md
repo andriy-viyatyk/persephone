@@ -8,6 +8,21 @@ Release notes and changelog for js-notepad.
 
 ## Version 1.0.19 (Upcoming)
 
+### New Features
+
+- **Log View Editor** — A structured log viewer for `.log.jsonl` files that renders typed log entries with virtualized scrolling
+  - **Message entries** — five log levels (`info`, `warning`, `error`, `success`, `debug`) with level-appropriate text colors
+  - **Styled text** — rich text with per-segment foreground/background colors and bold/italic formatting
+  - **Interactive dialogs** — three dialog types render inline within the log stream:
+    - `input.confirm` — message with Yes/No buttons
+    - `input.text` — title, text input field, and action buttons
+    - `input.buttons` — array of clickable buttons
+  - Dialogs have **pending** (active border, clickable) and **resolved** (dim border, disabled, check icon on chosen button) states
+  - `!` prefix on button names marks them as "required" — disabled until the text field has a value
+  - Text input values and dialog results persist to the JSONL content immediately (text input debounced at 300ms)
+  - Auto-scroll to bottom when new entries appear
+  - Toolbar toggle for timestamps (off by default)
+
 ### Improvements
 
 - **JSONL Language Support** — Syntax highlighting for `.jsonl` and `.ndjson` files (JSON Lines format) with dedicated file icon

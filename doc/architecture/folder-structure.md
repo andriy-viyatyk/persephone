@@ -246,12 +246,20 @@ js-notepad/
 │   ├── log-view/           # Log viewer (content-view)
 │   │   ├── LogViewEditor.tsx       # Log viewer component (RenderFlexGrid + auto-scroll)
 │   │   ├── LogViewModel.ts         # ContentViewModel — JSONL parsing, entry management
-│   │   ├── LogEntryModel.ts        # Reactive wrapper for individual log entries
-│   │   ├── LogEntryWrapper.tsx     # Cell root + entry container (timestamp, accent border)
+│   │   ├── LogViewContext.ts       # React Context providing LogViewModel to dialog views
+│   │   ├── LogEntryModel.ts        # Reactive wrapper for individual log entries (deprecated)
+│   │   ├── LogEntryWrapper.tsx     # Cell root — subscribes to entries[index] via selector
 │   │   ├── LogEntryContent.tsx     # Type router — dispatches to entry renderers
 │   │   ├── LogMessageView.tsx      # Log message renderer (text/info/warn/error/success)
 │   │   ├── StyledTextView.tsx      # StyledText renderer (plain string or styled segments)
-│   │   └── logTypes.ts             # LogEntry, StyledText, dialog/output types
+│   │   ├── logTypes.ts             # LogEntry, StyledText, dialog/output types
+│   │   └── items/                  # Dialog and output entry renderers
+│   │       ├── DialogContainer.tsx     # Shared styled wrapper (active/resolved border)
+│   │       ├── DialogHeader.tsx        # Optional title bar
+│   │       ├── ButtonsPanel.tsx        # Reusable button row with ! prefix + check icon
+│   │       ├── ConfirmDialogView.tsx   # input.confirm renderer
+│   │       ├── TextInputDialogView.tsx # input.text renderer
+│   │       └── ButtonsDialogView.tsx   # input.buttons renderer
 │   ├── pdf/                # PDF viewer (page-editor)
 │   │   ├── PdfViewer.tsx
 │   │   └── index.ts

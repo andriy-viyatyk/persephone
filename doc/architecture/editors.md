@@ -156,7 +156,7 @@ ContentViewModel<TState>   (from editors/base/ContentViewModel.ts)
 ├── NotebookViewModel       # Notes, categories, tags, filters
 ├── TodoViewModel           # Todo items, lists, tags
 ├── LinkViewModel           # Links, pins, favicons
-├── LogViewModel            # Log entries, dialog promises, lazy models
+├── LogViewModel            # Log entries, dialog promises, dirty-index serialization
 ├── SvgViewModel            # SVG rendering
 ├── HtmlViewModel           # HTML rendering
 └── MermaidViewModel        # SVG URL, loading, error, light mode

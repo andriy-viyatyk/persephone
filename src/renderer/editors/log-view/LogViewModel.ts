@@ -1,8 +1,7 @@
 import { debounce } from "../../../shared/utils";
 import { ContentViewModel } from "../base/ContentViewModel";
 import { IContentHost } from "../base/IContentHost";
-import { LogEntry, DialogResult, isDialogEntry } from "./logTypes";
-import { LogEntryModel } from "./LogEntryModel";
+import { LogEntry, DialogResult } from "./logTypes";
 
 // =============================================================================
 // State
@@ -22,9 +21,6 @@ export type LogViewState = typeof defaultLogViewState;
 // =============================================================================
 
 export class LogViewModel extends ContentViewModel<LogViewState> {
-    /** Lazily created model instances, keyed by entry ID. */
-    private modelCache = new Map<string, LogEntryModel>();
-
     /** Promise resolve callbacks for unresolved dialog entries. */
     private pendingDialogs = new Map<string, { resolve: (result: DialogResult) => void }>();
 
@@ -37,11 +33,11 @@ export class LogViewModel extends ContentViewModel<LogViewState> {
     /** Last known line count for incremental parsing. */
     private lastLineCount = 0;
 
-    /** Currently rendered row range (for model eviction). */
-    private renderedRange: { top: number; bottom: number } | null = null;
-
     /** Cached measured row heights by entry ID (persists across model evictions). */
     private heightCache = new Map<string, number>();
+
+    /** Entry indices with pending changes that need JSONL serialization. */
+    private dirtyIndices = new Set<number>();
 
     constructor(host: IContentHost) {
         super(host, defaultLogViewState);
@@ -65,17 +61,12 @@ export class LogViewModel extends ContentViewModel<LogViewState> {
     }
 
     protected onDispose(): void {
-        // Flush all cached models
-        for (const model of this.modelCache.values()) {
-            model.dispose();
-        }
-        this.modelCache.clear();
-
         // Cancel all pending dialogs
         for (const { resolve } of this.pendingDialogs.values()) {
             resolve({ canceled: true });
         }
         this.pendingDialogs.clear();
+        this.dirtyIndices.clear();
     }
 
     // =========================================================================
@@ -117,12 +108,6 @@ export class LogViewModel extends ContentViewModel<LogViewState> {
         }
 
         this.lastLineCount = content.trim() ? content.split("\n").length : 0;
-
-        // Dispose all cached models — entries array is replaced
-        for (const model of this.modelCache.values()) {
-            model.dispose();
-        }
-        this.modelCache.clear();
 
         this.state.update((s) => {
             s.entries = entries;
@@ -243,21 +228,18 @@ export class LogViewModel extends ContentViewModel<LogViewState> {
 
     /** Resolve a pending dialog. Updates the entry data and resolves the Promise. */
     resolveDialog(id: string, result: any, resultButton?: string): void {
-        const entries = this.state.get().entries;
-        const entry = entries.find((e) => e.id === id);
-        if (!entry) return;
+        this.state.update((s) => {
+            const entry = s.entries.find((e) => e.id === id);
+            if (entry) {
+                entry.data = { ...entry.data, result, resultButton };
+            }
+        });
 
-        // Update plain entry data
-        entry.data = { ...entry.data, result, resultButton };
-
-        // Update cached model if any
-        const model = this.modelCache.get(id);
-        if (model) {
-            model.update(entry.data);
+        // Serialize immediately (not debounced — one-time event)
+        const updatedEntry = this.state.get().entries.find((e) => e.id === id);
+        if (updatedEntry) {
+            this.updateEntryInContent(updatedEntry);
         }
-
-        // Update the line in host content
-        this.updateEntryInContent(entry);
 
         // Resolve the Promise
         const pending = this.pendingDialogs.get(id);
@@ -267,31 +249,17 @@ export class LogViewModel extends ContentViewModel<LogViewState> {
         }
     }
 
-    /** Update an entry's data (e.g., progress value). */
-    updateEntry(id: string, data: any): void {
-        const entries = this.state.get().entries;
-        const entry = entries.find((e) => e.id === id);
-        if (!entry) return;
-
-        entry.data = { ...entry.data, ...data };
-
-        // Update cached model if any
-        const model = this.modelCache.get(id);
-        if (model) {
-            model.update(entry.data);
-        }
-
-        this.updateEntryInContentDebounced();
+    /** Update entry at index via immer updater. Marks dirty for debounced JSONL serialization. */
+    updateEntryAt(index: number, updater: (draft: LogEntry) => void): void {
+        this.state.update((s) => {
+            updater(s.entries[index]);
+        });
+        this.dirtyIndices.add(index);
+        this.flushDirtyDebounced();
     }
 
     /** Remove all entries. */
     clear(): void {
-        // Dispose all cached models
-        for (const model of this.modelCache.values()) {
-            model.dispose();
-        }
-        this.modelCache.clear();
-
         // Cancel all pending dialogs
         for (const { resolve } of this.pendingDialogs.values()) {
             resolve({ canceled: true });
@@ -310,65 +278,6 @@ export class LogViewModel extends ContentViewModel<LogViewState> {
         this.skipNextContentUpdate = true;
         this.host.changeContent("", true);
     }
-
-    // =========================================================================
-    // Model Cache (Lazy Instantiation)
-    // =========================================================================
-
-    /** Get or create a model for the entry at the given index. */
-    getModel(index: number): LogEntryModel | null {
-        const entries = this.state.get().entries;
-        if (index < 0 || index >= entries.length) return null;
-
-        const entry = entries[index];
-        let model = this.modelCache.get(entry.id);
-        if (!model) {
-            model = new LogEntryModel(entry);
-            this.modelCache.set(entry.id, model);
-        }
-        return model;
-    }
-
-    /** Get or create a model for the entry with the given ID. */
-    getEntry(id: string): LogEntryModel | null {
-        // Check cache first
-        let model = this.modelCache.get(id);
-        if (model) return model;
-
-        // Find in entries array
-        const entries = this.state.get().entries;
-        const entry = entries.find((e) => e.id === id);
-        if (!entry) return null;
-
-        model = new LogEntryModel(entry);
-        this.modelCache.set(id, model);
-        return model;
-    }
-
-    /**
-     * Called by the virtualized grid when the rendered range changes.
-     * Evicts models outside the visible range (debounced).
-     */
-    setRenderedRange(top: number, bottom: number): void {
-        this.renderedRange = { top, bottom };
-        this.evictModelsDebounced();
-    }
-
-    private evictModels = () => {
-        if (!this.renderedRange) return;
-        const { top, bottom } = this.renderedRange;
-        const entries = this.state.get().entries;
-
-        for (const [id, model] of this.modelCache) {
-            const index = entries.findIndex((e) => e.id === id);
-            if (index === -1 || index < top || index > bottom) {
-                model.dispose();
-                this.modelCache.delete(id);
-            }
-        }
-    };
-
-    private evictModelsDebounced = debounce(this.evictModels, 500);
 
     // =========================================================================
     // Content Serialization
@@ -412,30 +321,34 @@ export class LogViewModel extends ContentViewModel<LogViewState> {
         }
     }
 
-    /** Debounced version for frequent updates (e.g., progress). */
-    private updateEntryInContentDebounced = debounce(() => {
-        // Re-serialize all entries that have cached models with changes
+    /** Debounced flush of dirty entries to JSONL content. */
+    private flushDirtyDebounced = debounce(() => {
+        if (this.dirtyIndices.size === 0) return;
+        const entries = this.state.get().entries;
         const content = this.host.state.get().content;
         const lines = content.split("\n");
         let changed = false;
 
-        for (let i = 0; i < lines.length; i++) {
-            const trimmed = lines[i].trim();
-            if (!trimmed) continue;
-            try {
-                const parsed = JSON.parse(trimmed);
-                const model = this.modelCache.get(parsed.id);
-                if (model) {
-                    const updated = JSON.stringify(model.toJSON());
-                    if (lines[i] !== updated) {
-                        lines[i] = updated;
-                        changed = true;
+        for (const idx of this.dirtyIndices) {
+            const entry = entries[idx];
+            if (!entry) continue;
+            for (let i = 0; i < lines.length; i++) {
+                const trimmed = lines[i].trim();
+                if (!trimmed) continue;
+                try {
+                    const parsed = JSON.parse(trimmed);
+                    if (parsed.id === entry.id) {
+                        const updated = JSON.stringify(entry);
+                        if (lines[i] !== updated) {
+                            lines[i] = updated;
+                            changed = true;
+                        }
+                        break;
                     }
-                }
-            } catch {
-                // skip malformed lines
+                } catch { /* skip */ }
             }
         }
+        this.dirtyIndices.clear();
 
         if (changed) {
             this.skipNextContentUpdate = true;

@@ -122,7 +122,7 @@ class MyDialog extends TDialogModel<State, Result> {
 
 ## ContentViewModel Pattern
 
-Located in `/src/renderer/editors/base/`. Used by content-view editors (Grid, Markdown, Notebook, Todo, Link, SVG, HTML, Mermaid) to manage view state separately from the shared text content.
+Located in `/src/renderer/editors/base/`. Used by content-view editors (Grid, Markdown, Notebook, Todo, Link, Log View, SVG, HTML, Mermaid) to manage view state separately from the shared text content.
 
 ### ContentViewModel\<TState\>
 
