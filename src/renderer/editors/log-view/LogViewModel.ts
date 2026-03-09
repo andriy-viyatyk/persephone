@@ -22,7 +22,7 @@ export type LogViewState = typeof defaultLogViewState;
 
 export class LogViewModel extends ContentViewModel<LogViewState> {
     /** Promise resolve callbacks for unresolved dialog entries. */
-    private pendingDialogs = new Map<string, { resolve: (result: DialogResult | undefined) => void }>();
+    private pendingDialogs = new Map<string, { resolve: (result: DialogResult) => void }>();
 
     /** Auto-incrementing ID counter. */
     private nextId = 1;
@@ -61,9 +61,9 @@ export class LogViewModel extends ContentViewModel<LogViewState> {
     }
 
     protected onDispose(): void {
-        // Cancel all pending dialogs (undefined = canceled)
+        // Cancel all pending dialogs (button: undefined = canceled)
         for (const { resolve } of this.pendingDialogs.values()) {
-            resolve(undefined);
+            resolve({});
         }
         this.pendingDialogs.clear();
         this.dirtyIndices.clear();
@@ -218,20 +218,20 @@ export class LogViewModel extends ContentViewModel<LogViewState> {
     }
 
     /** Add a dialog entry and return a Promise that resolves when the user responds. */
-    addDialogEntry<T = any>(type: string, data: T): Promise<DialogResult | undefined> {
+    addDialogEntry<T = any>(type: string, data: T): Promise<DialogResult> {
         const entry = this.addEntry(type, data);
 
-        return new Promise<DialogResult | undefined>((resolve) => {
+        return new Promise<DialogResult>((resolve) => {
             this.pendingDialogs.set(entry.id, { resolve });
         });
     }
 
-    /** Resolve a pending dialog. Updates the entry data and resolves the Promise. */
-    resolveDialog(id: string, result: any, resultButton?: string): void {
+    /** Resolve a pending dialog. Sets `button` on entry data and resolves the Promise with full data. */
+    resolveDialog(id: string, button: string): void {
         this.state.update((s) => {
             const entry = s.entries.find((e) => e.id === id);
             if (entry) {
-                entry.data = { ...entry.data, result, resultButton };
+                entry.data = { ...entry.data, button };
             }
         });
 
@@ -241,10 +241,10 @@ export class LogViewModel extends ContentViewModel<LogViewState> {
             this.updateEntryInContent(updatedEntry);
         }
 
-        // Resolve the Promise
+        // Resolve the Promise with the full data object
         const pending = this.pendingDialogs.get(id);
         if (pending) {
-            pending.resolve({ result, resultButton });
+            pending.resolve(updatedEntry!.data);
             this.pendingDialogs.delete(id);
         }
     }
@@ -260,9 +260,9 @@ export class LogViewModel extends ContentViewModel<LogViewState> {
 
     /** Remove all entries. */
     clear(): void {
-        // Cancel all pending dialogs (undefined = canceled)
+        // Cancel all pending dialogs (button: undefined = canceled)
         for (const { resolve } of this.pendingDialogs.values()) {
-            resolve(undefined);
+            resolve({});
         }
         this.pendingDialogs.clear();
 

@@ -16,11 +16,11 @@ interface ButtonsDialogViewProps {
 export function ButtonsDialogView({ entry }: ButtonsDialogViewProps) {
     const vm = useLogViewModel();
     const data = entry.data;
-    const resolved = data.resultButton !== undefined;
+    const resolved = data.button !== undefined;
 
     const handleClick = useCallback(
         (label: string) => {
-            vm.resolveDialog(entry.id, label, label);
+            vm.resolveDialog(entry.id, label);
         },
         [vm, entry.id],
     );
@@ -30,7 +30,7 @@ export function ButtonsDialogView({ entry }: ButtonsDialogViewProps) {
             <DialogHeader title={data.title} />
             <ButtonsPanel
                 buttons={data.buttons}
-                resultButton={data.resultButton}
+                button={data.button}
                 onClickButton={handleClick}
             />
         </DialogContainer>

@@ -36,9 +36,9 @@ export type LogMessageEntry = LogEntry<StyledText> & { type: LogLevel };
 // Dialog Entries (interactive)
 // =============================================================================
 
+/** Common field added to all dialog data after user responds. */
 export interface DialogResultFields {
-    result?: any;
-    resultButton?: string;
+    button?: string;
 }
 
 export interface ConfirmDialogData extends DialogResultFields {
@@ -50,6 +50,7 @@ export interface TextDialogData extends DialogResultFields {
     title?: StyledText;
     placeholder?: string;
     defaultValue?: string;
+    text?: string;
     buttons?: string[];
 }
 
@@ -142,10 +143,11 @@ export type OutputDataMap = {
 // Dialog Result
 // =============================================================================
 
-export interface DialogResult {
-    result?: any;
-    resultButton?: string;
-}
+/**
+ * Dialog result — the full entry.data object after user responds.
+ * Always an object; `button` is `undefined` if dialog was canceled.
+ */
+export type DialogResult = Record<string, any> & DialogResultFields;
 
 // =============================================================================
 // Type Guards
@@ -168,5 +170,5 @@ export function isOutputEntry(entry: LogEntry): boolean {
 }
 
 export function isDialogResolved(entry: LogEntry): boolean {
-    return isDialogEntry(entry) && entry.data?.resultButton !== undefined;
+    return isDialogEntry(entry) && entry.data?.button !== undefined;
 }

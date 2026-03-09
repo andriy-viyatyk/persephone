@@ -31,12 +31,12 @@ const DEFAULT_BUTTONS = ["No", "Yes"];
 export function ConfirmDialogView({ entry }: ConfirmDialogViewProps) {
     const vm = useLogViewModel();
     const data = entry.data;
-    const resolved = data.resultButton !== undefined;
+    const resolved = data.button !== undefined;
     const buttons = data.buttons ?? DEFAULT_BUTTONS;
 
     const handleClick = useCallback(
         (label: string) => {
-            vm.resolveDialog(entry.id, label, label);
+            vm.resolveDialog(entry.id, label);
         },
         [vm, entry.id],
     );
@@ -49,7 +49,7 @@ export function ConfirmDialogView({ entry }: ConfirmDialogViewProps) {
                 </div>
                 <ButtonsPanel
                     buttons={buttons}
-                    resultButton={data.resultButton}
+                    button={data.button}
                     onClickButton={handleClick}
                 />
             </ConfirmRoot>

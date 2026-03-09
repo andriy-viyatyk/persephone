@@ -47,13 +47,13 @@ function parseButtons(buttons: string[]): ParsedButton[] {
 
 interface ButtonsPanelProps {
     buttons: string[];
-    resultButton?: string;
+    button?: string;
     requirementNotMet?: boolean;
     onClickButton: (label: string) => void;
 }
 
-export function ButtonsPanel({ buttons, resultButton, requirementNotMet, onClickButton }: ButtonsPanelProps) {
-    const resolved = resultButton !== undefined;
+export function ButtonsPanel({ buttons, button, requirementNotMet, onClickButton }: ButtonsPanelProps) {
+    const resolved = button !== undefined;
     const parsed = parseButtons(buttons);
 
     const handleClick = useCallback(
@@ -66,7 +66,7 @@ export function ButtonsPanel({ buttons, resultButton, requirementNotMet, onClick
     return (
         <PanelRoot>
             {parsed.map((btn) => {
-                const isResult = resolved && resultButton === btn.label;
+                const isResult = resolved && button === btn.label;
                 const disabled = resolved || (btn.required && requirementNotMet);
                 return (
                     <Button

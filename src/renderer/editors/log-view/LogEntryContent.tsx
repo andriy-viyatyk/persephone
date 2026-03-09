@@ -18,11 +18,11 @@ const stubStyle: React.CSSProperties = {
 
 function DialogEntryStub({ entry }: { entry: LogEntry }) {
     const label = entry.data?.title || entry.data?.message || "";
-    const resolved = entry.data?.resultButton !== undefined;
+    const resolved = entry.data?.button !== undefined;
     return (
         <div style={stubStyle}>
             [{entry.type}] {typeof label === "string" ? label : ""}
-            {resolved && <span style={{ color: color.text.dark }}> — answered: {entry.data.resultButton}</span>}
+            {resolved && <span style={{ color: color.text.dark }}> — answered: {entry.data.button}</span>}
         </div>
     );
 }

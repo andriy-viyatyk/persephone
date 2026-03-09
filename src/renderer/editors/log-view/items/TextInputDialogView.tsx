@@ -31,14 +31,14 @@ const DEFAULT_BUTTONS = ["OK"];
 export function TextInputDialogView({ entry, updateEntry }: TextInputDialogViewProps) {
     const vm = useLogViewModel();
     const data = entry.data;
-    const resolved = data.resultButton !== undefined;
+    const resolved = data.button !== undefined;
     const buttons = data.buttons ?? DEFAULT_BUTTONS;
-    const currentValue = data.result ?? data.defaultValue ?? "";
+    const currentValue = data.text ?? data.defaultValue ?? "";
 
     const handleTextChange = useCallback(
         (text: string) => {
             updateEntry((draft) => {
-                draft.data.result = text;
+                draft.data.text = text;
             });
         },
         [updateEntry],
@@ -46,9 +46,9 @@ export function TextInputDialogView({ entry, updateEntry }: TextInputDialogViewP
 
     const handleClick = useCallback(
         (label: string) => {
-            vm.resolveDialog(entry.id, currentValue, label);
+            vm.resolveDialog(entry.id, label);
         },
-        [vm, entry.id, currentValue],
+        [vm, entry.id],
     );
 
     const handleKeyDown = useCallback(
@@ -60,11 +60,11 @@ export function TextInputDialogView({ entry, updateEntry }: TextInputDialogViewP
                 // Only submit if no required button blocks it or field is not empty
                 const hasRequired = buttons.some((b) => b.startsWith("!"));
                 if (!hasRequired || currentValue.trim()) {
-                    vm.resolveDialog(entry.id, currentValue, label);
+                    vm.resolveDialog(entry.id, label);
                 }
             }
         },
-        [vm, entry.id, currentValue, resolved, buttons],
+        [vm, entry.id, resolved, buttons, currentValue],
     );
 
     const requirementNotMet = !currentValue.trim();
@@ -84,7 +84,7 @@ export function TextInputDialogView({ entry, updateEntry }: TextInputDialogViewP
                 </div>
                 <ButtonsPanel
                     buttons={buttons}
-                    resultButton={data.resultButton}
+                    button={data.button}
                     requirementNotMet={requirementNotMet}
                     onClickButton={handleClick}
                 />
