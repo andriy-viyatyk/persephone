@@ -22,7 +22,7 @@ export type LogViewState = typeof defaultLogViewState;
 
 export class LogViewModel extends ContentViewModel<LogViewState> {
     /** Promise resolve callbacks for unresolved dialog entries. */
-    private pendingDialogs = new Map<string, { resolve: (result: DialogResult) => void }>();
+    private pendingDialogs = new Map<string, { resolve: (result: DialogResult | undefined) => void }>();
 
     /** Auto-incrementing ID counter. */
     private nextId = 1;
@@ -61,9 +61,9 @@ export class LogViewModel extends ContentViewModel<LogViewState> {
     }
 
     protected onDispose(): void {
-        // Cancel all pending dialogs
+        // Cancel all pending dialogs (undefined = canceled)
         for (const { resolve } of this.pendingDialogs.values()) {
-            resolve({ canceled: true });
+            resolve(undefined);
         }
         this.pendingDialogs.clear();
         this.dirtyIndices.clear();
@@ -218,10 +218,10 @@ export class LogViewModel extends ContentViewModel<LogViewState> {
     }
 
     /** Add a dialog entry and return a Promise that resolves when the user responds. */
-    addDialogEntry<T = any>(type: string, data: T): Promise<DialogResult> {
+    addDialogEntry<T = any>(type: string, data: T): Promise<DialogResult | undefined> {
         const entry = this.addEntry(type, data);
 
-        return new Promise<DialogResult>((resolve) => {
+        return new Promise<DialogResult | undefined>((resolve) => {
             this.pendingDialogs.set(entry.id, { resolve });
         });
     }
@@ -260,9 +260,9 @@ export class LogViewModel extends ContentViewModel<LogViewState> {
 
     /** Remove all entries. */
     clear(): void {
-        // Cancel all pending dialogs
+        // Cancel all pending dialogs (undefined = canceled)
         for (const { resolve } of this.pendingDialogs.values()) {
-            resolve({ canceled: true });
+            resolve(undefined);
         }
         this.pendingDialogs.clear();
 

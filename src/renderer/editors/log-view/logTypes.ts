@@ -145,7 +145,6 @@ export type OutputDataMap = {
 export interface DialogResult {
     result?: any;
     resultButton?: string;
-    canceled?: boolean;
 }
 
 // =============================================================================
