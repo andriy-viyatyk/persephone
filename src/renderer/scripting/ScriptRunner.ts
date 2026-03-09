@@ -1,5 +1,6 @@
 import { PageModel } from "../editors/base";
 import { pagesModel } from "../api/pages";
+import { editorRegistry } from "../editors/registry";
 import type { ConsoleLogEntry, ScriptOutputFlags } from "./ScriptContext";
 import { transpileIfNeeded, ensureSucraseLoaded } from "./transpile";
 import { registerLibraryExtensions, clearLibraryRequireCache } from "./library-require";
@@ -106,7 +107,11 @@ class ScriptRunner {
 
                 // Ensure sucrase is loaded and extension handlers are registered
                 // (needed for require() of .ts and .js library files)
-                await ensureSucraseLoaded();
+                // Also pre-load log-view module so UiFacade can create VM synchronously
+                await Promise.all([
+                    ensureSucraseLoaded(),
+                    editorRegistry.loadViewModelFactory("log-view"),
+                ]);
                 const libraryPath = settings.get("script-library.path");
                 if (libraryPath) {
                     registerLibraryExtensions(libraryPath);

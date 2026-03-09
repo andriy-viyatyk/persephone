@@ -45,7 +45,7 @@ js-notepad is a Windows Notepad replacement designed for developers. It combines
 - 9 color themes — 6 dark + 3 light (Default Dark, Solarized Dark, Monokai, Abyss, Red, Tomorrow Night Blue, Light Modern, Solarized Light, Quiet Light)
 
 ### For Developers
-- Run JavaScript or TypeScript to transform content
+- Run JavaScript or TypeScript to transform content, with Log View for structured output and inline dialogs
 - JSON/CSV grid view with sorting, filtering, and full keyboard navigation
 - Notebook editor for structured notes
 - Todo editor for file-based task tracking

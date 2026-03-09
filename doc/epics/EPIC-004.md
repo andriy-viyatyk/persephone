@@ -75,7 +75,7 @@ interface StyledSegment { text: string; styles?: Record<string, string | number>
 1. Script/agent appends a dialog entry (e.g., `input.text`) with no `result`
 2. Log View renders the dialog as active (highlighted border, interactive controls)
 3. User fills in data and clicks a button
-4. Log View updates the entry's `result`/`resultButton` fields in the JSON
+4. Log View updates the entry's data fields (e.g., `text`, `button`) in the JSON
 5. If script is waiting — it receives the result via the facade's async API
 6. Dialog entry remains visible in the log (read-only after completion)
 
@@ -85,7 +85,7 @@ The file content is JSONL — one `LogEntry` JSON object per line:
 
 ```
 {"type":"log.info","id":"1","data":"Process started","timestamp":1741500000000}
-{"type":"input.text","id":"2","data":{"title":"Enter name","buttons":["Cancel","OK"],"result":"John","resultButton":"OK"},"timestamp":1741500001000}
+{"type":"input.text","id":"2","data":{"title":"Enter name","buttons":["Cancel","OK"],"text":"John","button":"OK"},"timestamp":1741500001000}
 {"type":"log.success","id":"3","data":"Done!","timestamp":1741500002000}
 ```
 
@@ -156,28 +156,28 @@ ui.clear()                          // remove all entries
 
 **Dialogs** (`ui.dialog.*` — async, await user response):
 
-All dialog methods return `Promise<T | undefined>` where `undefined` means canceled (page closed while dialog was pending). All result objects include a `button` field for the clicked button label.
+All dialog methods return `Promise<T>` where `T` is always an object. The `button` property contains the clicked button label, or `undefined` if the dialog was canceled (page closed while pending).
 
 ```typescript
 ui.dialog.confirm(message, buttons?)
-// → Promise<{ button: string } | undefined>
+// → Promise<{ button: string | undefined }>
 // Default buttons: ["No", "Yes"]
 
 ui.dialog.buttons(buttons, title?)
-// → Promise<{ button: string } | undefined>
+// → Promise<{ button: string | undefined }>
 
 ui.dialog.textInput(title?, options?)
 // options: { placeholder?, defaultValue?, buttons? }
-// → Promise<{ button: string; text: string } | undefined>
+// → Promise<{ button: string | undefined; text: string | undefined }>
 
 ui.dialog.checkboxes(items, title?, buttons?)
-// → Promise<{ button: string; selected: string[] } | undefined>
+// → Promise<{ button: string | undefined; selected: string[] | undefined }>
 
 ui.dialog.radioboxes(items, title?, buttons?)
-// → Promise<{ button: string; selected: string } | undefined>
+// → Promise<{ button: string | undefined; selected: string | undefined }>
 
 ui.dialog.select(items, title?, placeholder?)
-// → Promise<{ button: string; selected: string } | undefined>
+// → Promise<{ button: string | undefined; selected: string | undefined }>
 ```
 
 **Output** (`ui.show.*` — display-only rich content):
@@ -199,7 +199,7 @@ ui.warn("Slow query detected");
 
 // Confirm dialog
 const result = await ui.dialog.confirm("Proceed with changes?");
-if (!result) return;                    // page was closed
+if (!result.button) return;             // canceled (page was closed)
 if (result.button === "Yes") {
     ui.success("Changes applied!");
 }
@@ -209,7 +209,7 @@ const input = await ui.dialog.textInput("Enter your name", {
     placeholder: "Name...",
     buttons: ["Cancel", "!OK"],        // ! = required (disabled when empty)
 });
-if (!input) return;
+if (!input.button) return;
 ui.log(`Hello ${input.text}`);
 
 // Checkboxes
@@ -217,7 +217,7 @@ const items = await ui.dialog.checkboxes(
     ["Item 1", "Item 2", "Item 3"],
     "Select items to process",
 );
-if (!items) return;
+if (!items.button) return;
 ui.info(`Selected: ${items.selected.join(", ")}`);
 
 // Output
@@ -239,14 +239,14 @@ The Log View editor is **read-only** — users cannot manually add or edit entri
 
 ### Dialog Cancellation
 
-When a script is awaiting a dialog result and the user closes the Log View page, the dialog promise resolves with `undefined`. This prevents scripts/agents from hanging indefinitely. Scripts check for cancellation with a simple falsy check:
+When a script is awaiting a dialog result and the user closes the Log View page, the dialog promise resolves with an object where `button` is `undefined`. The result is always an object — never `undefined` itself. Scripts check for cancellation by testing the `button` property:
 
 ```typescript
 const result = await ui.dialog.confirm("Proceed?");
-if (!result) return;  // page was closed — canceled
+if (!result.button) return;  // canceled — page was closed
 ```
 
-For MCP, canceled dialogs return `{ button: null }` in the results array.
+For MCP, canceled dialogs return `{ button: null }` in the results array (using `null` instead of `undefined` since JSON doesn't support `undefined`).
 
 ### Live Update Debouncing
 
@@ -421,7 +421,7 @@ The key principle: **entry content renderers should only care about rendering th
 
 | Task | Title | Status |
 |------|-------|--------|
-| — | Script facade: global `ui` variable (logging + dialogs) | Planned |
+| US-141 | Script facade: global `ui` variable (logging + dialogs) | **Done** |
 | — | MCP tool: `log_push` (entry array, batched dialogs, active log page) | Planned |
 | — | MCP API guide update (log as default AI output channel) | Planned |
 
@@ -448,9 +448,9 @@ The key principle: **entry content renderers should only care about rendering th
 2. **Live streaming debounce:** 300ms debounce for UI updates. Adjustable after testing.
 3. **Max entries:** No limit. Virtualized rendering handles large logs. Performance depends on user's machine.
 4. **Read-only log:** Log View is read-only. No clear/reset. Only scripts/agents can append. Future enhancement may add editing (notebook-like), but out of scope.
-5. **Dialog timeout:** No timeouts. But closing the Log View page while a dialog is pending resolves with `undefined` (script) or `{ button: null }` (MCP).
+5. **Dialog timeout:** No timeouts. But closing the Log View page while a dialog is pending resolves with `{ button: undefined }` (script) or `{ button: null }` (MCP). The result is always an object.
 6. **API grouping:** `ui.log/info/warn/error/success/text` at top level, `ui.dialog.*` for interactive dialogs, `ui.show.*` for rich output. Matches interactive-script patterns. No `ui.inline.*`, `ui.window.*`, or `ui.file.*` (covered by existing `page` and `app` APIs).
-7. **Dialog return types:** All dialogs return consistent objects with `button` field (e.g., `{ button: "Yes" }`, `{ button: "OK", text: "input" }`). Object format is forward-compatible — new fields can be added without breaking existing scripts.
+7. **Dialog return types:** All dialogs always return an object with `button` field (e.g., `{ button: "Yes" }`, `{ button: "OK", text: "input" }`). On cancellation, `button` is `undefined` (script) or `null` (MCP) — the result itself is never `undefined`. Object format is forward-compatible — new fields can be added without breaking existing scripts.
 8. **MCP approach:** Single `log_push` tool with entry array. String shorthand for simple log messages. Multiple dialogs per call supported via `Promise.all()`. Log View is the default output channel for AI agents — separate pages only when user explicitly requests a specific editor.
 9. **MCP batched dialogs:** Multiple dialog entries in one `log_push` call are supported. Each dialog creates a pending promise, `Promise.all()` collects results. Tool call blocks until all dialogs are resolved.
 
@@ -467,7 +467,7 @@ The key principle: **entry content renderers should only care about rendering th
 - Refined script API grouping: `ui.log/info/warn/error/success/text` (top-level), `ui.dialog.*`, `ui.show.*`
 - Dropped `ui.inline.*`, `ui.window.*`, `ui.file.*` — already covered by `page` and `app` APIs
 - Dialog return type: consistent `{ button, ...data }` objects for all dialogs (forward-compatible)
-- Cancellation: `undefined` for scripts, `{ button: null }` for MCP — no extra `canceled` field
+- Cancellation: `{ button: undefined }` for scripts, `{ button: null }` for MCP — result is always an object, never `undefined` itself
 - MCP: single `log_push` tool with entry array, string shorthand, batched dialogs via `Promise.all()`
 - MCP philosophy: Log View = default AI output channel; separate editor pages only on explicit user request
 - Renamed MCP tool from `ui_push` to `log_push` for clarity

@@ -56,6 +56,40 @@ export class ContentViewModelHost {
     }
 
     /**
+     * Ensure the editor module is loaded and cached for future sync access.
+     * Call this ahead of time so that acquireSync() can work without awaiting.
+     */
+    async prepare(editorId: PageEditor): Promise<void> {
+        await editorRegistry.loadViewModelFactory(editorId);
+    }
+
+    /**
+     * Acquire a view model synchronously.
+     * - If already cached: increments ref count, returns cached model
+     * - If not cached but factory is available (module pre-loaded): creates, caches, returns
+     * - If module not loaded: returns undefined
+     */
+    acquireSync(editorId: PageEditor, host: IContentHost): ContentViewModel<any> | undefined {
+        let entry = this._viewModels.get(editorId);
+        if (entry) {
+            entry.refs++;
+            return entry.vm;
+        }
+
+        const factory = editorRegistry.getViewModelFactory(editorId);
+        if (!factory) return undefined;
+
+        editorRegistry.validateForHost(editorId, host);
+
+        const vm = factory(host);
+        vm.init();
+
+        entry = { vm, refs: 1 };
+        this._viewModels.set(editorId, entry);
+        return vm;
+    }
+
+    /**
      * Get a cached view model without changing the reference count.
      * Returns undefined if the view model hasn't been created yet.
      */

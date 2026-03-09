@@ -105,9 +105,13 @@ interface IContentHost {
     changeLanguage(language: string | undefined): void;
     readonly stateStorage: EditorStateStorage;
     acquireViewModel(editorId: PageEditor): Promise<ContentViewModel<any>>;
+    acquireViewModelSync(editorId: PageEditor): ContentViewModel<any> | undefined;
+    prepareViewModel(editorId: PageEditor): Promise<void>;
     releaseViewModel(editorId: PageEditor): void;
 }
 ```
+
+**Sync acquisition:** `prepareViewModel()` pre-loads the editor module, then `acquireViewModelSync()` creates the VM synchronously from the cached factory. Returns `undefined` if the module hasn't been loaded. Used by `UiFacade` to create `LogViewModel` synchronously in the lazy `ui` getter.
 
 ### ContentViewModel Lifecycle
 

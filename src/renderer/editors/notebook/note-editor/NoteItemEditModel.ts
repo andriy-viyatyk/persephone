@@ -328,6 +328,14 @@ export class NoteItemEditModel implements IContentHost {
         this._vmHost.release(editorId);
     }
 
+    acquireViewModelSync(editorId: PageEditor): ContentViewModel<any> | undefined {
+        return this._vmHost.acquireSync(editorId, this);
+    }
+
+    async prepareViewModel(editorId: PageEditor): Promise<void> {
+        await this._vmHost.prepare(editorId);
+    }
+
     // =========================================================================
     // Cleanup
     // =========================================================================

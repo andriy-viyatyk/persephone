@@ -27,6 +27,7 @@ ScriptRunner.run(script, page?, language?)
     │       │     └── PageCollectionWrapper  ← wraps `app.pages`
     │       ├── PageWrapper       ← wraps `page` global
     │       │     └── EditorFacades (10)  ← page.asText(), page.asGrid(), ...
+    │       ├── UiFacade (lazy)   ← wraps `ui` global (Log View logging + dialogs)
     │       ├── preventOutput()   ← suppresses default grouped-page output
     │       ├── require           ← patched require with library/ resolution
     │       ├── React             ← React library
@@ -110,7 +111,40 @@ await processFiles();
 app.ui.notify("Done!", "success");
 ```
 
-Output is also automatically suppressed when a script writes to `page.grouped.content` directly (tracked via `GroupedPageWrapper`).
+Output is also automatically suppressed when a script writes to `page.grouped.content` directly (tracked via `GroupedPageWrapper`), or when the script accesses the `ui` global (see below).
+
+### `ui` — Log View UI Facade
+
+Provides logging and interactive dialogs via a Log View page. **Lazy-initialized** — the Log View page is created only when the script first accesses `ui`.
+
+```typescript
+interface IUiLog {
+    // Logging (fire-and-forget)
+    log(message: StyledText): void;
+    info(message: StyledText): void;
+    warn(message: StyledText): void;
+    error(message: StyledText): void;
+    success(message: StyledText): void;
+    text(message: StyledText): void;
+    clear(): void;
+
+    // Dialogs (async — returns Promise)
+    readonly dialog: {
+        confirm(message: StyledText, buttons?: string[]): Promise<IDialogResult>;
+        buttons(buttons: string[], title?: StyledText): Promise<IDialogResult>;
+        textInput(title?: StyledText, options?: { ... }): Promise<IDialogResult>;
+    };
+}
+```
+
+**Key behaviors:**
+- Accessing `ui` auto-creates a Log View page grouped with the source page (or standalone if no page context)
+- Accessing `ui` sets `groupedContentWritten = true`, suppressing default script output
+- Re-running a script reuses the existing grouped Log View (appends with separator)
+- Dialog results are always objects — `button` is `undefined` if canceled (page closed while pending)
+- Log View page title uses datetime format: `"2026-03-10 12:24.log.jsonl"`
+
+**Implementation:** `UiFacade` wraps `LogViewModel`. The log-view editor module is pre-loaded in `ScriptRunner` via `editorRegistry.loadViewModelFactory("log-view")`, then the VM is created synchronously in the lazy getter via `acquireViewModelSync("log-view")`.
 
 ### `app` — Application Object
 
@@ -373,8 +407,9 @@ Located in `/src/renderer/scripting/ScriptContext.ts`.
    }
    ```
 4. If `libraryPath` provided, adds patched `require` that resolves `library/` paths to the library folder; otherwise adds a require wrapper that throws a clear error for `library/` paths
-5. Builds proxy chain:
-   - Custom context checked first (`app`, `page`, `require`, `React`)
+5. Adds lazy `ui` getter via `Object.defineProperty` — creates `UiFacade` on first access (see `ui` global above)
+6. Builds proxy chain:
+   - Custom context checked first (`app`, `page`, `ui`, `require`, `React`)
    - Falls back to `globalThis` for standard APIs
    - Functions auto-bound to `globalThis` (except constructors)
    - Set operations go to custom context (scripts can create variables)
@@ -396,13 +431,15 @@ page.grouped.editor = 'grid-json';
 
 ### Output Suppression
 
-By default, `runWithResult` writes the script's return value to the grouped page. This can be suppressed in two ways:
+By default, `runWithResult` writes the script's return value to the grouped page. This can be suppressed in three ways:
 
 1. **`preventOutput()`** — explicitly called in the script. Use when the script handles its own output (e.g., creates custom pages, shows notifications) or needs no output at all.
 
 2. **`page.grouped.content` write detection** — if the script writes to `page.grouped.content`, the default output is suppressed automatically. This prevents the return value from overwriting script-managed output.
 
-Both mechanisms set flags on `ScriptOutputFlags` (tracked in `ScriptContext`). The `GroupedPageWrapper` subclass intercepts `content` setter to set the `groupedContentWritten` flag.
+3. **`ui` access** — accessing the `ui` global creates a Log View page grouped with the source page, which sets `groupedContentWritten = true`. The `ui` facade handles its own output.
+
+All three mechanisms set flags on `ScriptOutputFlags` (tracked in `ScriptContext`). The `GroupedPageWrapper` subclass intercepts `content` setter to set the `groupedContentWritten` flag.
 
 When output is suppressed and the script throws an error, the error is displayed via `TextDialog` (a Monaco-based dialog) instead of the grouped page.
 
@@ -422,7 +459,7 @@ Script API types are defined in `/src/renderer/api/types/`:
 
 | File | Defines |
 |------|---------|
-| `index.d.ts` | Global declarations: `app: IApp`, `page: IPage`, `preventOutput()`, `require()` |
+| `index.d.ts` | Global declarations: `app: IApp`, `page: IPage`, `ui: IUiLog`, `preventOutput()`, `require()` |
 | `app.d.ts` | `IApp` — root application interface |
 | `page.d.ts` | `IPage`, `IPageInfo` — page/tab interface |
 | `pages.d.ts` | `IPageCollection` — pages management |
@@ -438,6 +475,7 @@ Script API types are defined in `/src/renderer/api/types/`:
 | `mermaid-editor.d.ts` | `IMermaidEditor` |
 | `browser-editor.d.ts` | `IBrowserEditor` — browser page operations |
 | `ui.d.ts` | `IUserInterface`, `ITextDialogOptions`, `ITextDialogResult` — dialogs and notifications |
+| `ui-log.d.ts` | `IUiLog`, `IUiDialog`, `IDialogResult` — Log View UI facade |
 
 These files serve dual purpose: TypeScript type checking **and** IDE IntelliSense for script authors.
 
@@ -462,14 +500,16 @@ These files serve dual purpose: TypeScript type checking **and** IDE IntelliSens
     ├── SvgEditorFacade.ts       # SVG preview (read-only)
     ├── HtmlEditorFacade.ts      # HTML preview (read-only)
     ├── MermaidEditorFacade.ts   # Mermaid diagram (read-only)
-    └── BrowserEditorFacade.ts   # Browser page operations
+    ├── BrowserEditorFacade.ts   # Browser page operations
+    └── UiFacade.ts              # Log View UI (logging + dialogs)
 
 /src/renderer/api/types/
-├── index.d.ts                   # Global: app, page
+├── index.d.ts                   # Global: app, page, ui
 ├── app.d.ts                     # IApp
 ├── page.d.ts                    # IPage, IPageInfo
 ├── pages.d.ts                   # IPageCollection
 ├── ui.d.ts                      # IUserInterface, ITextDialogOptions, ITextDialogResult
+├── ui-log.d.ts                  # IUiLog, IUiDialog, IDialogResult
 ├── common.d.ts                  # IDisposable, IEvent, PageEditor, Language
 ├── text-editor.d.ts             # ITextEditor
 ├── grid-editor.d.ts             # IGridEditor

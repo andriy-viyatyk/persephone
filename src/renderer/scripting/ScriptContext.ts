@@ -1,7 +1,11 @@
 import { PageModel } from "../editors/base";
+import { pagesModel } from "../api/pages";
 import { AppWrapper } from "./api-wrapper/AppWrapper";
 import { PageWrapper } from "./api-wrapper/PageWrapper";
+import { UiFacade } from "./api-wrapper/UiFacade";
 import { createLibraryRequire, createUnlinkedLibraryRequire } from "./library-require";
+import { isTextFileModel } from "../editors/text/TextPageModel";
+import type { LogViewModel } from "../editors/log-view/LogViewModel";
 import React from "react";
 
 export interface ConsoleLogEntry {
@@ -47,6 +51,19 @@ export function createScriptContext(page?: PageModel, consoleLogs?: ConsoleLogEn
             ? createLibraryRequire(libraryPath)
             : createUnlinkedLibraryRequire(),
     };
+
+    // Lazy `ui` global — Log View page created on first access
+    let uiFacade: UiFacade | undefined;
+    Object.defineProperty(customContext, "ui", {
+        get: () => {
+            if (!uiFacade) {
+                uiFacade = initializeUiFacade(page, releaseList, outputFlags);
+            }
+            return uiFacade;
+        },
+        enumerable: true,
+        configurable: false,
+    });
 
     if (consoleLogs) {
         customContext.console = {
@@ -151,4 +168,58 @@ export function createScriptContext(page?: PageModel, consoleLogs?: ConsoleLogEn
     });
 
     return { context, cleanup, outputFlags };
+}
+
+// =============================================================================
+// UI Facade Initialization
+// =============================================================================
+
+function formatLogTitle(): string {
+    const now = new Date();
+    const date = now.toISOString().slice(0, 10);
+    const time = now.toTimeString().slice(0, 5);
+    return `${date} ${time}.log.jsonl`;
+}
+
+function initializeUiFacade(
+    page: PageModel | undefined,
+    releaseList: Array<() => void>,
+    outputFlags: ScriptOutputFlags,
+): UiFacade {
+    let logPage: PageModel;
+    let isExisting = false;
+
+    if (page) {
+        const grouped = pagesModel.getGroupedPage(page.id);
+        if (grouped && grouped.state.get().editor === "log-view") {
+            logPage = grouped;
+            isExisting = true;
+        } else {
+            logPage = pagesModel.addEditorPage("log-view", "jsonl", formatLogTitle());
+            pagesModel.groupTabs(page.id, logPage.id, false);
+        }
+    } else {
+        logPage = pagesModel.addEditorPage("log-view", "jsonl", formatLogTitle());
+    }
+
+    if (!isTextFileModel(logPage)) {
+        throw new Error("Log view page is not a text file model. This is an internal error.");
+    }
+    const vm = logPage.acquireViewModelSync("log-view") as LogViewModel;
+    if (!vm) {
+        throw new Error("Log view module not pre-loaded. This is an internal error.");
+    }
+    releaseList.push(() => logPage.releaseViewModel("log-view"));
+
+    // Mark grouped content as written — prevents default script output
+    outputFlags.groupedContentWritten = true;
+
+    // Append separator when reusing existing log
+    if (isExisting) {
+        vm.addEntry("log.info", "");
+    }
+    const title = page?.title ?? "untitled";
+    vm.addEntry("log.info", `Script ${title} started`);
+
+    return new UiFacade(vm);
 }

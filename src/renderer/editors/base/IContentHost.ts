@@ -48,6 +48,18 @@ export interface IContentHost {
      */
     acquireViewModel(editorId: PageEditor): Promise<ContentViewModel<any>>;
 
+    /**
+     * Acquire a view model synchronously.
+     * Returns undefined if the editor module hasn't been loaded yet.
+     * Call prepareViewModel() first to ensure the module is cached.
+     */
+    acquireViewModelSync(editorId: PageEditor): ContentViewModel<any> | undefined;
+
+    /**
+     * Pre-load and cache the editor module so that acquireViewModelSync() can work.
+     */
+    prepareViewModel(editorId: PageEditor): Promise<void>;
+
     /** Release a reference. When refs reach 0, the model is disposed. */
     releaseViewModel(editorId: PageEditor): void;
 }

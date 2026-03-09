@@ -6,12 +6,13 @@ Complete reference for the scripting API available when running JavaScript or Ty
 
 ## Global Variables
 
-Scripts have two global variables:
+Scripts have access to these global variables:
 
 | Variable | Type | Description |
 |----------|------|-------------|
 | `page` | [IPage](./page.md) | The current page (tab). Read/write content, switch editors, access grouped output. |
 | `app` | [IApp](./app.md) | The application object. Access settings, file system, dialogs, pages, and more. |
+| `ui` | [IUiLog](./ui-log.md) | Log View UI — logging, styled text, and inline dialogs. Lazy-initialized on first access. |
 | `preventOutput()` | function | Suppress default script output to the grouped page. See [Output Suppression](../scripting.md#output-suppression). |
 
 ```javascript
@@ -53,6 +54,12 @@ const theme = app.settings.theme;
 | [app.editors](./editors.md) | Editor registry — list editors, resolve by file |
 | [app.recent](./recent.md) | Recent files — load, add, remove, clear |
 | [app.downloads](./downloads.md) | Downloads — track, cancel, open downloaded files |
+
+### Log View
+
+| API | Description |
+|-----|-------------|
+| [ui](./ui-log.md) | Log View — structured logging, styled text, and inline dialogs |
 
 ## Node.js Access
 

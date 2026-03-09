@@ -111,6 +111,34 @@ preventOutput();
 
 When output is suppressed and a script error occurs, the error is shown in a text dialog instead of the grouped page. This keeps error details visible even when the grouped page is not used for output.
 
+## The `ui` Object (Log View)
+
+Scripts can use the global [`ui`](./api/ui-log.md) object for structured logging and inline dialogs. Instead of writing output to a grouped text page, `ui` opens a **Log View** — a scrollable list of typed log entries and interactive dialogs.
+
+```javascript
+ui.info("Starting import...");
+
+const data = JSON.parse(page.content);
+ui.log(`Found ${data.length} records`);
+
+const result = await ui.dialog.confirm("Continue with import?");
+if (result.button === "Yes") {
+    // process data...
+    ui.success("Import complete!");
+} else {
+    ui.warn("Import canceled");
+}
+```
+
+Key points:
+- **Lazy initialization** — the Log View page is created on the first `ui` access and auto-grouped with the source page
+- **Suppresses default output** — accessing `ui` automatically prevents the return value from being written to a grouped page (same as `preventOutput()`)
+- **Logging levels** — `ui.log()`, `ui.info()`, `ui.warn()`, `ui.error()`, `ui.success()`, `ui.text()`
+- **Styled text** — pass an array of `{ text, styles }` segments for custom formatting
+- **Inline dialogs** — `ui.dialog.confirm()`, `ui.dialog.buttons()`, `ui.dialog.textInput()` appear directly in the Log View and return a `Promise` with the user's response
+
+See the [ui API reference](./api/ui-log.md) for complete details.
+
 ## Examples
 
 ### Transform JSON
@@ -331,6 +359,7 @@ const _ = require(path.join('D:\\myproject\\node_modules', 'lodash'));
 
 1. **Use async/await** for asynchronous operations
 2. **Return values** to set output content, or write to `page.grouped.content` directly for full control
-3. **Use `preventOutput()`** when displaying results via dialogs instead of the grouped page
+3. **Use `ui`** for structured logging and inline dialogs instead of grouped page output
+4. **Use `preventOutput()`** when displaying results via dialogs instead of the grouped page
 4. **Set language** on grouped page for syntax highlighting: `page.grouped.language = 'json'`
 5. **Use grid view** for tabular data: `page.grouped.editor = 'grid-json'`

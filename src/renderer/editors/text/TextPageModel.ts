@@ -70,6 +70,14 @@ export class TextFileModel extends PageModel<TextFilePageModelState, void> imple
         this._vmHost.release(editorId);
     }
 
+    acquireViewModelSync(editorId: PageEditor) {
+        return this._vmHost.acquireSync(editorId, this);
+    }
+
+    async prepareViewModel(editorId: PageEditor) {
+        await this._vmHost.prepare(editorId);
+    }
+
     // =========================================================================
     // TextViewModel delegates (synchronous access via tryGet)
     // =========================================================================
