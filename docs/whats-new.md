@@ -8,7 +8,10 @@ Release notes and changelog for js-notepad.
 
 ## Version 1.0.19 (Upcoming)
 
-*No changes yet.*
+### Improvements
+
+- **JSONL Language Support** — Syntax highlighting for `.jsonl` and `.ndjson` files (JSON Lines format) with dedicated file icon
+- **Grid View for JSONL** — Switch to Grid editor for `.jsonl`/`.ndjson` files to view, sort, filter, and edit data as a spreadsheet
 
 ---
 

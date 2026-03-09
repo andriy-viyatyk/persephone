@@ -7,6 +7,7 @@ import { ThemeDefinition } from "../../theme/themes/types";
 import { defineRegLanguage } from "./monaco-languages/reg";
 import { defineCSVLanguage } from "./monaco-languages/csv";
 import { defineMermaidLanguage } from "./monaco-languages/mermaid";
+import { defineJsonlLanguage } from "./monaco-languages/jsonl";
 import { loadLibraryIntelliSense } from "./library-intellisense";
 
 loader.config({ monaco });
@@ -213,6 +214,7 @@ export async function initMonaco() {
     defineRegLanguage(monaco);
     defineCSVLanguage(monaco);
     defineMermaidLanguage(monaco);
+    defineJsonlLanguage(monaco);
 
     await loadEditorTypes(monaco);
     loadLibraryIntelliSense();

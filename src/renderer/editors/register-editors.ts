@@ -139,6 +139,36 @@ editorRegistry.register({
     },
 });
 
+// Grid JSONL editor
+editorRegistry.register({
+    id: "grid-jsonl",
+    name: "Grid",
+    pageType: "textFile",
+    category: "content-view",
+    acceptFile: (fileName) => {
+        if (matchesPattern(fileName, /\.grid\.jsonl$/i)) return 20;
+        return -1;
+    },
+    validForLanguage: (languageId) => languageId === "jsonl",
+    switchOption: (languageId) => {
+        if (languageId !== "jsonl") return -1;
+        return 10;
+    },
+    loadModule: async () => {
+        const [module, { createGridViewModel }] = await Promise.all([
+            import("./grid/GridEditor"),
+            import("./grid/GridViewModel"),
+        ]);
+        return {
+            Editor: module.GridEditor,
+            createViewModel: createGridViewModel,
+            newPageModel: textEditorModule.newPageModel,
+            newEmptyPageModel: textEditorModule.newEmptyPageModel,
+            newPageModelFromState: textEditorModule.newPageModelFromState,
+        };
+    },
+});
+
 // Markdown preview
 editorRegistry.register({
     id: "md-view",

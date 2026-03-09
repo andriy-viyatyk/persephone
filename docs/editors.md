@@ -21,12 +21,13 @@ The text editor also provides a **Script Panel** for running JavaScript or TypeS
 
 ## Grid Editor
 
-A spreadsheet-like interface for JSON and CSV data with sorting, filtering, cell editing, and full keyboard navigation.
+A spreadsheet-like interface for JSON, CSV, and JSONL data with sorting, filtering, cell editing, and full keyboard navigation.
 
 **Supported formats:**
 - JSON files containing an array of objects
 - CSV files (auto-detects delimiter)
-- Files with `.grid.json` or `.grid.csv` extensions open directly in Grid view
+- JSONL / NDJSON files (one JSON object per line)
+- Files with `.grid.json`, `.grid.csv`, or `.grid.jsonl` extensions open directly in Grid view
 
 **Key features:**
 - Click column headers to sort
@@ -207,6 +208,7 @@ Some files support multiple editors:
 | `.todo.json` | Text, ToDo |
 | `.link.json` | Text, Links |
 | `.csv` | Text, Grid |
+| `.jsonl` / `.ndjson` | Text, Grid |
 | `.md` | Text, Preview |
 | `.svg` | Text, Preview |
 | `.html` | Text, Preview |

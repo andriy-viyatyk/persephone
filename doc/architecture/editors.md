@@ -21,6 +21,7 @@ Views of text-based content that share `TextFileModel` for state management. The
 | `monaco` | Text Editor | `*` (all, default) | `TextViewModel` |
 | `grid-json` | Grid | `.json`, `.grid.json` | `GridViewModel` |
 | `grid-csv` | Grid | `.csv`, `.grid.csv` | `GridViewModel` |
+| `grid-jsonl` | Grid | `.jsonl`, `.ndjson`, `.grid.jsonl` | `GridViewModel` |
 | `md-view` | Preview | `.md`, `.markdown` | `MarkdownViewModel` |
 | `svg-view` | Preview | `.svg` | `SvgViewModel` |
 | `html-view` | Preview | `.html` | `HtmlViewModel` |

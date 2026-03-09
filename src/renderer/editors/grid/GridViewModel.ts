@@ -217,7 +217,8 @@ export class GridViewModel extends ContentViewModel<GridViewState> {
     private parseContent = (content: string) => {
         let err: any = undefined;
         let res: any = undefined;
-        if (this.host.state.get().editor === "grid-csv") {
+        const editor = this.host.state.get().editor;
+        if (editor === "grid-csv") {
             const { csvDelimiter, csvWithColumns } = this.state.get();
             let rows = csvToRecords(
                 content,
@@ -229,6 +230,8 @@ export class GridViewModel extends ContentViewModel<GridViewState> {
                 rows = rows.map((r) => ({ ...r }));
             }
             res = rows;
+        } else if (editor === "grid-jsonl") {
+            res = parseJsonl(content, (e) => (err = e));
         } else {
             res = parseObject(content, (e) => (err = e));
         }
@@ -334,11 +337,20 @@ export class GridViewModel extends ContentViewModel<GridViewState> {
         return rowsToCsvText(rows, columns, csvWithColumns, csvDelimiter);
     };
 
+    private getJsonlContent = () => {
+        const { rows } = this.state.get();
+        return removeIdColumn(rows)
+            .map((row) => JSON.stringify(row))
+            .join("\n");
+    };
+
     private getContentToSave = () => {
         const editor = this.host.state.get().editor;
         switch (editor) {
             case "grid-csv":
                 return this.getCsvContent();
+            case "grid-jsonl":
+                return this.getJsonlContent();
             case "grid-json":
             default:
                 return this.getJsonContent();
@@ -536,4 +548,25 @@ export class GridViewModel extends ContentViewModel<GridViewState> {
 
 export function createGridViewModel(host: IContentHost): GridViewModel {
     return new GridViewModel(host);
+}
+
+function parseJsonl(content: string, onError: (e: Error) => void): any[] {
+    const lines = content.split("\n");
+    const result: any[] = [];
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+        try {
+            const parsed = JSON.parse(line);
+            result.push(
+                typeof parsed === "object" && parsed !== null
+                    ? parsed
+                    : { value: parsed },
+            );
+        } catch (e) {
+            onError(new Error(`Line ${i + 1}: ${(e as Error).message}`));
+            return result;
+        }
+    }
+    return result;
 }

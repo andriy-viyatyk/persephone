@@ -138,15 +138,16 @@ export class PageWrapper {
 
     private resolveGridEditorId(): PageEditor {
         const currentEditor = this.model.state.get().editor;
-        if (currentEditor === "grid-json" || currentEditor === "grid-csv") {
+        if (currentEditor === "grid-json" || currentEditor === "grid-csv" || currentEditor === "grid-jsonl") {
             return currentEditor;
         }
 
         const language = this.model.state.get().language;
         if (language === "json") return "grid-json";
         if (language === "csv") return "grid-csv";
+        if (language === "jsonl") return "grid-jsonl";
 
-        throw new Error("asGrid(): content is not JSON or CSV");
+        throw new Error("asGrid(): content is not JSON, CSV, or JSONL");
     }
 
     async asNotebook(): Promise<NotebookEditorFacade> {

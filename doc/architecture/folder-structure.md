@@ -78,6 +78,7 @@ js-notepad/
 │   │   ├── library-intellisense.ts  # Library module IntelliSense (addExtraLib + path completion)
 │   │   └── monaco-languages/        # Custom language definitions
 │   │       ├── csv.ts               # CSV rainbow coloring
+│   │       ├── jsonl.ts            # JSONL (JSON Lines) syntax highlighting
 │   │       ├── mermaid.ts           # Mermaid syntax highlighting
 │   │       └── reg.ts              # Windows Registry file syntax
 │   │

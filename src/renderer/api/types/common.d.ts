@@ -27,6 +27,7 @@ export type PageEditor =
     | "monaco"
     | "grid-json"
     | "grid-csv"
+    | "grid-jsonl"
     | "md-view"
     | "pdf-view"
     | "image-view"
