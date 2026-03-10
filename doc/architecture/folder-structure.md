@@ -269,7 +269,8 @@ js-notepad/
 │   │       ├── SelectDialogView.tsx     # input.select renderer
 │   │       ├── ProgressOutputView.tsx   # output.progress renderer
 │   │       ├── GridOutputView.tsx       # output.grid renderer (inline AVGrid)
-│   │       └── TextOutputView.tsx       # output.text renderer (inline Monaco editor)
+│   │       ├── TextOutputView.tsx       # output.text renderer (inline Monaco editor)
+│   │       └── MarkdownOutputView.tsx  # output.markdown renderer (inline MarkdownBlock)
 │   ├── pdf/                # PDF viewer (page-editor)
 │   │   ├── PdfViewer.tsx
 │   │   └── index.ts
@@ -316,6 +317,7 @@ js-notepad/
 │       ├── Progress.ts            # Progress helper class (returned by ui.show.progress)
 │       ├── Grid.ts                # Grid helper class (returned by ui.show.grid)
 │       ├── Text.ts                # Text helper class (returned by ui.show.text)
+│       ├── Markdown.ts            # Markdown helper class (returned by ui.show.markdown)
 │       └── StyledTextBuilder.ts    # Fluent styled text builder + styledText() factory
 │
 ├── components/             # Reusable UI Components

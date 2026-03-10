@@ -154,6 +154,8 @@ interface IUiLog {
         grid(options: { data: any[]; columns?; title? }): IGrid;
         text(text: string, language?: string): IText;
         text(options: { text; language?; title?; wordWrap?; lineNumbers?; minimap? }): IText;
+        markdown(text: string): IMarkdown;
+        markdown(options: { text: string; title?: StyledText }): IMarkdown;
     };
 }
 ```

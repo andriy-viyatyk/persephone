@@ -4,6 +4,7 @@ import { StyledLogBuilder } from "./StyledTextBuilder";
 import { Progress } from "./Progress";
 import { Grid } from "./Grid";
 import { Text } from "./Text";
+import { Markdown } from "./Markdown";
 
 /** Check if value is a plain options object (not a string, not an array). */
 function isOptionsObject(value: unknown): value is Record<string, any> {
@@ -143,6 +144,17 @@ export class UiFacade {
             }
             const entry = this.vm.addEntry("output.text", fields);
             return new Text(entry.id, this.vm, fields as any);
+        },
+
+        markdown: (textOrOpts: string | { text: string; title?: StyledText }): Markdown => {
+            let fields: Record<string, any>;
+            if (isOptionsObject(textOrOpts)) {
+                fields = textOrOpts;
+            } else {
+                fields = { text: textOrOpts };
+            }
+            const entry = this.vm.addEntry("output.markdown", fields);
+            return new Markdown(entry.id, this.vm, fields as any);
         },
     };
 }

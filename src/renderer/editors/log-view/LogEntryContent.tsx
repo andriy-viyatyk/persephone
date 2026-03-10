@@ -1,5 +1,5 @@
 import { Component, ReactNode } from "react";
-import { LogEntry, ConfirmEntry, TextInputEntry, ButtonsEntry, CheckboxesEntry, RadioboxesEntry, SelectEntry, ProgressOutputEntry, GridOutputEntry, TextOutputEntry, isLogEntry, isOutputEntry } from "./logTypes";
+import { LogEntry, ConfirmEntry, TextInputEntry, ButtonsEntry, CheckboxesEntry, RadioboxesEntry, SelectEntry, ProgressOutputEntry, GridOutputEntry, TextOutputEntry, MarkdownOutputEntry, isLogEntry, isOutputEntry } from "./logTypes";
 import { LogMessageView } from "./LogMessageView";
 import { ConfirmDialogView } from "./items/ConfirmDialogView";
 import { TextInputDialogView } from "./items/TextInputDialogView";
@@ -10,6 +10,7 @@ import { SelectDialogView } from "./items/SelectDialogView";
 import { ProgressOutputView } from "./items/ProgressOutputView";
 import { GridOutputView } from "./items/GridOutputView";
 import { TextOutputView } from "./items/TextOutputView";
+import { MarkdownOutputView } from "./items/MarkdownOutputView";
 import color from "../../theme/color";
 
 // =============================================================================
@@ -156,6 +157,8 @@ function LogEntryContentInner({ entry, updateEntry }: LogEntryContentProps) {
             return <GridOutputView entry={entry as GridOutputEntry} />;
         case "output.text":
             return <TextOutputView entry={entry as TextOutputEntry} />;
+        case "output.markdown":
+            return <MarkdownOutputView entry={entry as MarkdownOutputEntry} />;
     }
 
     if (entry.type.startsWith("input.")) {

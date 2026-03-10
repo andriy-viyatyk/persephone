@@ -141,6 +141,7 @@ export interface TextOutputEntry extends LogEntryBase {
 
 export interface MarkdownOutputEntry extends LogEntryBase {
     type: "output.markdown";
+    title?: StyledText;
     text: string;
 }
 

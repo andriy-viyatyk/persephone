@@ -52,6 +52,14 @@ Release notes and changelog for js-notepad.
   - `completeWithPromise(promise, label?)` auto-completes the bar when a promise settles
   - MCP agents use `output.progress` entries with upsert-by-id to create and update progress bars
 
+- **Markdown Output** — New `ui.show.markdown()` method for scripts and `output.markdown` entry for MCP `ui_push`
+  - Render markdown content inline in the Log View — headings, tables, code blocks, Mermaid diagrams, task lists, and blockquotes
+  - Two overloads: `ui.show.markdown(text)` for quick display, `ui.show.markdown({ text, title? })` for adding a title
+  - Returns a `Markdown` helper with live `text` and `title` setters for real-time updates
+  - `openInEditor(pageTitle?)` opens the markdown in a dedicated Markdown editor tab
+  - Hover toolbar with "Open in Markdown editor" button
+  - MCP agents use `output.markdown` entries with `text` and optional `title`
+
 - **Grid Output** — New `ui.show.grid()` method for scripts and `output.grid` entry for MCP `ui_push`
   - Display tabular data inline in the Log View using a full-featured grid (AVGrid)
   - Two overloads: `ui.show.grid(data)` for quick display, `ui.show.grid({ data, columns?, title? })` for custom columns and title

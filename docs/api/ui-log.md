@@ -543,6 +543,64 @@ const txt = ui.show.text(sourceCode, "typescript");
 txt.openInEditor("Source Code");
 ```
 
+## Markdown Output
+
+### show.markdown(text)
+### show.markdown(options)
+
+Show rendered markdown inline in the Log View. Supports headings, tables, code blocks, Mermaid diagrams, task lists, and blockquotes. Returns a `Markdown` helper whose property setters update the entry in real-time.
+
+A hover toolbar shows an "Open in Markdown editor" button.
+
+```javascript
+// Simple form — markdown string
+ui.show.markdown("# Hello\nSome **bold** text and a [link](https://example.com)");
+```
+
+```javascript
+// Full form — with title
+const md = ui.show.markdown({
+    text: "## Report\n\n| Name | Score |\n|------|-------|\n| Alice | 95 |",
+    title: "Analysis Results",
+});
+```
+
+```javascript
+// Table with Mermaid diagram
+ui.show.markdown(`
+## Architecture
+
+\`\`\`mermaid
+graph LR
+    A[Client] --> B[Server]
+    B --> C[Database]
+\`\`\`
+
+### Task List
+
+- [x] Design API
+- [ ] Implement endpoints
+- [ ] Write tests
+`);
+```
+
+#### Markdown properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `text` | `string` | Markdown text content. Setting triggers re-render. |
+| `title` | `string \| IStyledSegment[] \| undefined` | Title displayed above the markdown (supports styled text). Setting triggers re-render. |
+
+#### openInEditor(pageTitle?)
+
+Open the markdown in a dedicated Markdown editor tab.
+
+```javascript
+const md = ui.show.markdown("# My Document\nContent here...");
+// Later — open in a full Markdown editor tab
+md.openInEditor("My Document");
+```
+
 ## MCP `ui_push` Tool
 
 The same Log View is available to external AI agents via the MCP `ui_push` tool. While scripts use the `ui` global, MCP agents use `ui_push` to push entries to a managed Log View page.
@@ -563,7 +621,7 @@ The `entries` parameter is an array. Each element is either:
 
 **Dialog entry types:** `input.confirm`, `input.text`, `input.buttons`, `input.checkboxes`, `input.radioboxes`, `input.select` (same dialog types as `ui.dialog`) — use fields like `message`, `title`, `buttons`, `placeholder`, `defaultValue`, `items`, `checked`, `selected`, `layout` directly on the object.
 
-**Output entry types:** `output.progress` — a progress bar with `label` (string or styled text), `value` (number), `max` (number, default 100), and `completed` (boolean) fields. Use the same `id` on subsequent calls to update an existing progress bar (upsert-by-id). `output.grid` — an inline data grid with `content` (JSON or CSV string), optional `contentType` (`"json"` or `"csv"`, default `"json"`), and optional `title`. `output.text` — a syntax-highlighted text block with `text` (string), optional `language`, `title`, `wordWrap` (boolean), `lineNumbers` (boolean), and `minimap` (boolean).
+**Output entry types:** `output.progress` — a progress bar with `label` (string or styled text), `value` (number), `max` (number, default 100), and `completed` (boolean) fields. Use the same `id` on subsequent calls to update an existing progress bar (upsert-by-id). `output.grid` — an inline data grid with `content` (JSON or CSV string), optional `contentType` (`"json"` or `"csv"`, default `"json"`), and optional `title`. `output.text` — a syntax-highlighted text block with `text` (string), optional `language`, `title`, `wordWrap` (boolean), `lineNumbers` (boolean), and `minimap` (boolean). `output.markdown` — rendered markdown with `text` (string) and optional `title`.
 
 ### Examples
 
@@ -641,6 +699,11 @@ ui_push({ entries: [
 // Text output (with display options)
 ui_push({ entries: [
     { type: "output.text", text: "function hello() {\n  return 'world';\n}", language: "javascript", lineNumbers: true, wordWrap: false }
+] })
+
+// Markdown output
+ui_push({ entries: [
+    { type: "output.markdown", text: "# Results\n\n| Name | Score |\n|------|-------|\n| Alice | 95 |", title: "Analysis" }
 ] })
 ```
 

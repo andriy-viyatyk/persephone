@@ -292,7 +292,7 @@ AI agents get a single `ui_push` MCP tool. The agent does **not** need to find o
 | `ui.show.progress()` | `output.progress` | `label?, value, max?` |
 | `ui.show.grid()` | `output.grid` | `columns, rows, title?` |
 | `ui.show.text()` | `output.text` | `text, language?, title?` |
-| `ui.show.markdown()` | `output.markdown` | `text` |
+| `ui.show.markdown()` | `output.markdown` | `text, title?` |
 | `ui.show.mermaid()` | `output.mermaid` | `text` |
 
 **Return value:**
@@ -448,7 +448,7 @@ The key principle: **entry content renderers should only care about rendering th
 | US-152 | Log item: output.grid (renderer + ui.show.grid) | **Done** |
 | US-153 | Log item: output.text (renderer + ui.show.text) | **Done** |
 | US-155 | Extract MarkdownBlock reusable component | **Done** |
-| US-154 | Log item: output.markdown (renderer + ui.show.markdown) | Planned |
+| US-154 | Log item: output.markdown (renderer + ui.show.markdown) | **Done** |
 | — | Log item: output.mermaid (renderer + ui.show.mermaid) | Planned |
 
 *Tasks will be created and assigned IDs as work begins.*

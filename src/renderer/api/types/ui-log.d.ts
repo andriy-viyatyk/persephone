@@ -399,6 +399,31 @@ export interface IText {
 }
 
 // =============================================================================
+// Markdown Helper
+// =============================================================================
+
+/**
+ * Markdown helper returned by `ui.show.markdown()`.
+ * Update properties to change the markdown display in real-time.
+ *
+ * @example
+ * const md = ui.show.markdown("# Hello\nSome **bold** text");
+ * md.text = "# Updated\nNew content";
+ *
+ * @example
+ * // Open in a dedicated Markdown editor tab
+ * md.openInEditor("My Document");
+ */
+export interface IMarkdown {
+    /** Markdown text content. Setting triggers re-render. */
+    text: string;
+    /** Markdown title. Setting triggers re-render. */
+    title: IStyledText | undefined;
+    /** Open markdown in a dedicated Markdown editor page. */
+    openInEditor(pageTitle?: string): void;
+}
+
+// =============================================================================
 // Show Namespace
 // =============================================================================
 
@@ -477,6 +502,28 @@ export interface IUiShow {
         lineNumbers?: boolean;
         minimap?: boolean;
     }): IText;
+
+    /**
+     * Show rendered markdown in the Log View. Returns a Markdown helper
+     * whose property setters update the display in real-time.
+     *
+     * @example
+     * // Simple form — markdown string
+     * ui.show.markdown("# Hello\nSome **bold** text and a [link](https://example.com)");
+     *
+     * @example
+     * // Full form with title
+     * const md = ui.show.markdown({
+     *     text: "## Report\n\n| Name | Score |\n|------|-------|\n| Alice | 95 |",
+     *     title: "Analysis Results",
+     * });
+     *
+     * @example
+     * // Open in dedicated Markdown editor
+     * md.openInEditor("My Document");
+     */
+    markdown(text: string): IMarkdown;
+    markdown(options: { text: string; title?: IStyledText }): IMarkdown;
 }
 
 // =============================================================================

@@ -46,6 +46,7 @@ Entries are **flat objects** with `type` and type-specific fields directly on th
 | `output.progress` | `label?, value?, max?, completed?` | Progress bar with optional label |
 | `output.grid` | `content, contentType?, title?` | Tabular data grid (auto-detects columns from data) |
 | `output.text` | `text, language?, title?, wordWrap?, lineNumbers?, minimap?` | Syntax-highlighted text block (Monaco editor) |
+| `output.markdown` | `text, title?` | Rendered markdown document (headings, code blocks, tables, mermaid, task lists) |
 
 **`output.grid` content formats:**
 
@@ -123,6 +124,12 @@ ui_push({ entries: [
 // Text block with line numbers and no word wrap
 ui_push({ entries: [
     { type: "output.text", text: "function hello() {\n  console.log('world');\n}", language: "javascript", lineNumbers: true, wordWrap: false }
+] })
+→ returns immediately: { }
+
+// Rendered markdown document
+ui_push({ entries: [
+    { type: "output.markdown", text: "# Report\n\n| Name | Score |\n|------|-------|\n| Alice | 95 |\n| Bob | 87 |", title: "Analysis Results" }
 ] })
 → returns immediately: { }
 

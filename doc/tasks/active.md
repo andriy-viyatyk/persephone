@@ -11,7 +11,6 @@ Current work in progress and planned tasks.
 
 | ID | Title | Epic | Notes |
 |----|-------|------|-------|
-| US-154 | Log item: output.markdown (renderer + ui.show.markdown) | EPIC-004 | Depends on US-155 (done); inline rendering with gutter hover button |
 
 
 ## Completed

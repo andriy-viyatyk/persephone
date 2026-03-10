@@ -141,6 +141,7 @@ Key points:
 - **Inline dialogs** — `ui.dialog.confirm()`, `ui.dialog.buttons()`, `ui.dialog.textInput()`, `ui.dialog.checkboxes()`, `ui.dialog.radioboxes()`, `ui.dialog.select()` appear directly in the Log View and return a `Promise` with the user's response
 - **Progress bars** — `ui.show.progress()` adds a progress bar to the Log View and returns a `Progress` helper with `label`, `value`, `max`, and `completed` setters for real-time updates. Use `progress.completeWithPromise(promise)` to auto-complete on promise settlement.
 - **Inline grids** — `ui.show.grid(data)` displays tabular data inline in the Log View using a full-featured grid with column resizing, reordering, and cell selection/copy. Pass an options object for custom columns and title: `ui.show.grid({ data, columns?, title? })`. The returned `Grid` helper has live `data`, `columns`, and `title` setters, plus `openInEditor()` to open the data in a dedicated Grid editor tab.
+- **Inline markdown** — `ui.show.markdown(text)` renders markdown inline in the Log View — headings, tables, code blocks, Mermaid diagrams, task lists, and blockquotes. Pass an options object for a title: `ui.show.markdown({ text, title? })`. The returned `Markdown` helper has live `text` and `title` setters, plus `openInEditor()` to open in a Markdown editor tab.
 
 See the [ui API reference](./api/ui-log.md) for complete details.
 
