@@ -56,7 +56,7 @@ function initMcpIpc(): void {
     });
 }
 
-async function sendToRenderer(method: string, params: any, windowIndex?: number): Promise<{ result?: any; error?: any }> {
+async function sendToRenderer(method: string, params: any, windowIndex?: number, timeoutMs?: number): Promise<{ result?: any; error?: any }> {
     const windowData = windowIndex !== undefined
         ? openWindows.windows.find(w => w.index === windowIndex)
         : openWindows.windows.find(w => w.window);
@@ -79,15 +79,20 @@ async function sendToRenderer(method: string, params: any, windowIndex?: number)
     }
 
     const requestId = `mcp_${++requestIdGen}_${Date.now()}`;
+    const effectiveTimeout = timeoutMs ?? REQUEST_TIMEOUT_MS;
 
     return new Promise((resolve) => {
-        const timeout = setTimeout(() => {
-            pendingRequests.delete(requestId);
-            resolve({ error: { code: -32603, message: "Request timeout" } });
-        }, REQUEST_TIMEOUT_MS);
+        let timer: ReturnType<typeof setTimeout> | undefined;
+
+        if (effectiveTimeout > 0) {
+            timer = setTimeout(() => {
+                pendingRequests.delete(requestId);
+                resolve({ error: { code: -32603, message: "Request timeout" } });
+            }, effectiveTimeout);
+        }
 
         pendingRequests.set(requestId, (response) => {
-            clearTimeout(timeout);
+            if (timer) clearTimeout(timer);
             resolve(response);
         });
 
@@ -122,10 +127,31 @@ function broadcastMcpStatus(): void {
 // Creates a new McpServer per session (SDK requires one transport per server).
 
 function createMcpServer(): InstanceType<typeof McpServer> {
-    const server = new McpServer({
-        name: "js-notepad",
-        version: electronApp.getVersion(),
-    });
+    const server = new McpServer(
+        {
+            name: "js-notepad",
+            version: electronApp.getVersion(),
+        },
+        {
+            instructions: [
+                "js-notepad is a developer notepad with tabbed pages, specialized editors (text, JSON/CSV grid, markdown, notebook, todo, links, PDF, browser), JavaScript/TypeScript scripting, and full Node.js access.",
+                "",
+                "## Main workflows",
+                "",
+                "1. **Show output to user** — use `ui_push` (default). Pushes log messages and interactive dialogs to a managed Log View page. Read resource `notepad://guides/ui-push` for entry types and examples.",
+                "2. **Read/create/edit pages** — use `list_pages`, `get_active_page`, `get_page_content`, `create_page`, `set_page_content`. Read resource `notepad://guides/pages` for page properties, editor types, and multi-window support.",
+                "3. **Advanced operations** — use `execute_script` to run JS/TS with access to `page` (current tab) and `app` (services: pages, fs, settings, ui, shell, window, editors). Read resource `notepad://guides/scripting` for the full API reference.",
+                "",
+                "## Quick tips",
+                "",
+                "- Prefer `ui_push` over `create_page` for showing results, status, and asking questions",
+                "- String entries in `ui_push` are shorthand for `log.info`",
+                "- Dialog entries (`input.*`) block until the user responds",
+                "- All tools accept optional `windowIndex` (default: first open window)",
+                "- Read only the resource you need — each guide is self-contained",
+            ].join("\n"),
+        },
+    );
 
     // ── Window parameter (shared across tools) ────────────────────────
     const windowIndexParam = z.number().int().optional().describe(
@@ -263,6 +289,29 @@ function createMcpServer(): InstanceType<typeof McpServer> {
     );
 
     server.tool(
+        "ui_push",
+        "Push entries to the Log View page — the AI agent's default output channel. Entries can be log messages (display-only), dialogs (interactive, blocks until user responds), or output items (rich display). String entries are treated as log.info. The tool manages an active Log View page automatically (creates on first call, reuses on subsequent calls). If entries contain dialogs, the tool blocks until ALL dialogs are resolved.",
+        {
+            entries: z.array(z.union([
+                z.string(),
+                z.object({
+                    type: z.string(),
+                }).passthrough(),
+            ])).describe("Array of flat entries. Strings are shorthand for log.info. Objects: { type, ...fields } — type-specific fields at top level. Types: log.text/info/warn/error/success (text field), input.confirm/text/buttons/checkboxes/radioboxes/select, output.progress/grid/text/markdown/mermaid."),
+            windowIndex: windowIndexParam,
+        },
+        async ({ entries, windowIndex }) => {
+            // Detect if any entries contain dialogs → use no timeout (0) for infinite wait
+            const hasDialogs = entries.some(
+                (e) => typeof e === "object" && typeof e.type === "string" && e.type.startsWith("input."),
+            );
+            return toToolResult(
+                await sendToRenderer("ui_push", { entries }, windowIndex, hasDialogs ? 0 : undefined),
+            );
+        },
+    );
+
+    server.tool(
         "get_app_info",
         "Get application info: { version, pageCount, activePageId }.",
         {
@@ -271,24 +320,61 @@ function createMcpServer(): InstanceType<typeof McpServer> {
         async ({ windowIndex }) => toToolResult(await sendToRenderer("get_app_info", {}, windowIndex)),
     );
 
-    // ── MCP Resource: API Guide ───────────────────────────────────────
-    server.registerResource(
-        "api-guide",
-        "notepad://docs/api-guide",
+    // ── MCP Resources (focused guides) ─────────────────────────────────
+
+    const resourceFiles = [
         {
-            description: "js-notepad scripting API guide — covers the page object, app services, editor facades, and practical examples. Read this to understand how to write scripts and use MCP tools effectively.",
-            mimeType: "text/markdown",
+            name: "ui-push-guide",
+            uri: "notepad://guides/ui-push",
+            file: "mcp-res-ui-push.md",
+            description: "ui_push tool guide — log messages, dialogs, entry types, and examples. Read this first when the user asks to show, display, or present something.",
         },
-        async (uri) => {
-            const content = fs.readFileSync(getAssetPath("mcp-api-guide.md"), "utf-8");
-            return {
+        {
+            name: "pages-guide",
+            uri: "notepad://guides/pages",
+            file: "mcp-res-pages.md",
+            description: "Pages & windows guide — page properties, editor types, creating pages, multi-window support. Read when working with tabs, reading content, or creating documents.",
+        },
+        {
+            name: "scripting-guide",
+            uri: "notepad://guides/scripting",
+            file: "mcp-res-scripting.md",
+            description: "Scripting API reference — app object (pages, fs, settings, ui, shell, window), editor facades (grid, notebook, todo, links, browser), TypeScript, Node.js access. Read when using execute_script.",
+        },
+    ];
+
+    for (const res of resourceFiles) {
+        server.registerResource(
+            res.name,
+            res.uri,
+            { description: res.description, mimeType: "text/markdown" },
+            async (uri) => ({
                 contents: [{
                     uri: uri.href,
                     mimeType: "text/markdown",
-                    text: content,
+                    text: fs.readFileSync(getAssetPath(res.file), "utf-8"),
                 }],
-            };
+            }),
+        );
+    }
+
+    // Full API guide — concatenation of all resource files (for agents that want everything)
+    server.registerResource(
+        "full-api-guide",
+        "notepad://guides/full",
+        {
+            description: "Complete API guide — all resources combined. Only read this if you need the full reference; prefer the focused guides above for specific tasks.",
+            mimeType: "text/markdown",
         },
+        async (uri) => ({
+            contents: [{
+                uri: uri.href,
+                mimeType: "text/markdown",
+                text: resourceFiles
+                    .map((r) => fs.readFileSync(getAssetPath(r.file), "utf-8"))
+                    .join("\n\n---\n\n"),
+            }],
+        }),
     );
 
     return server;

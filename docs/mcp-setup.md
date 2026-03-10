@@ -58,6 +58,7 @@ gemini --mcp-server http://localhost:7865/mcp
 | **get_active_page** | Get the active page with content and metadata. |
 | **create_page** | Create a new page with optional content, language, and editor. |
 | **set_page_content** | Update text content of a page by ID. |
+| **ui_push** | Push log entries, interactive dialogs, and output widgets to a Log View page — the recommended output channel for AI agents. Strings are shorthand for `log.info`. Dialog entries (`input.confirm`, `input.text`, `input.buttons`, `input.checkboxes`, `input.radioboxes`, `input.select`) block until the user responds. Output entries (`output.progress`, `output.grid`) support rich display — progress bars with upsert-by-id for real-time updates, and inline data grids from JSON or CSV strings. The Log View page is created automatically on first call and reused on subsequent calls. |
 | **get_app_info** | Get app version, page count, and active page ID. |
 
 ### Multi-Window Support
@@ -74,9 +75,14 @@ MCP resources are read-only documents that AI clients can discover and read to g
 
 | Resource | URI | Description |
 |----------|-----|-------------|
-| **API Guide** | `notepad://docs/api-guide` | Condensed reference for the `page` and `app` scripting API. Useful for standalone AI clients (Claude Desktop, ChatGPT, Gemini) that don't have project-level context and need to understand js-notepad's scripting capabilities before writing or executing scripts. |
+| **ui_push Guide** | `notepad://guides/ui-push` | Log View output channel — entry types, dialogs, examples. Read when showing output to the user. |
+| **Pages Guide** | `notepad://guides/pages` | Pages & windows — page properties, editor types, creating pages, multi-window support. Read when working with tabs or documents. |
+| **Scripting Guide** | `notepad://guides/scripting` | Full scripting API — `app` object, editor facades, TypeScript, Node.js access. Read when using `execute_script`. |
+| **Full Guide** | `notepad://guides/full` | All guides combined into one document. Only read if you need the complete reference. |
 
-> **Note:** Claude Code users working inside the js-notepad project already have full documentation context via CLAUDE.md, so they rarely need to fetch this resource explicitly. It is most useful for standalone AI clients connecting without any project context.
+AI agents also receive **server instructions** on connection — a concise overview of js-notepad and its main workflows, with pointers to which resource to read for each task. This means agents have immediate context without reading any resource.
+
+> **Note:** Claude Code users working inside the js-notepad project already have full documentation context via CLAUDE.md, so they rarely need to fetch resources explicitly. Resources are most useful for standalone AI clients connecting without any project context.
 
 ## Settings
 
@@ -105,6 +111,22 @@ Ask: *"Parse the JSON in the active page and create a CSV version"*
 
 The agent will use `execute_script` to read the active page content, transform it, and write the result to a grouped page.
 
+### Show progress and ask questions
+
+Ask: *"Analyze the JSON in the active page and ask me before making changes"*
+
+The agent will use `ui_push` to log status messages and show an interactive confirmation dialog in the Log View:
+
+```
+ui_push({ entries: [
+    "Analyzing JSON structure...",
+    { type: "log.success", text: "Found 42 records" },
+    { type: "input.confirm", message: "Apply formatting to all records?" }
+] })
+```
+
+The tool blocks until you click a button. See the [ui API reference](./api/ui-log.md#mcp-ui_push-tool) for all entry types and dialog options.
+
 ### Advanced scripting
 
 The `execute_script` tool gives AI access to the full [Scripting API](scripting.md):
@@ -132,3 +154,4 @@ The `execute_script` tool gives AI access to the full [Scripting API](scripting.
 **Tool calls timing out?**
 - The server has a 30-second timeout for script execution
 - Long-running scripts may need to be broken into smaller steps
+- `ui_push` calls with dialog entries have no timeout — they block until the user responds

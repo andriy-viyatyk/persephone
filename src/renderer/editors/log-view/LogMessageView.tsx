@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { LogEntry, StyledText } from "./logTypes";
+import { LogMessageEntry } from "./logTypes";
 import { StyledTextView } from "./StyledTextView";
 import color from "../../theme/color";
 
@@ -15,6 +15,9 @@ const LogMessageRoot = styled.div({
     minHeight: 18,
     fontFamily: "Consolas, 'Courier New', monospace",
 
+    "&.level-log": {
+        color: color.text.light,
+    },
     "&.level-info": {
         color: color.misc.blue,
     },
@@ -34,17 +37,18 @@ const LogMessageRoot = styled.div({
 // =============================================================================
 
 const levelClassMap: Record<string, string> = {
+    "log.log": "level-log",
     "log.info": "level-info",
     "log.warn": "level-warn",
     "log.error": "level-error",
     "log.success": "level-success",
 };
 
-export function LogMessageView({ entry }: { entry: LogEntry<StyledText> }) {
+export function LogMessageView({ entry }: { entry: LogMessageEntry }) {
     const className = levelClassMap[entry.type] || "";
     return (
         <LogMessageRoot className={className}>
-            <StyledTextView text={entry.data} />
+            <StyledTextView text={entry.text} />
         </LogMessageRoot>
     );
 }

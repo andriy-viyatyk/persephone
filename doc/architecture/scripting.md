@@ -28,6 +28,7 @@ ScriptRunner.run(script, page?, language?)
     │       ├── PageWrapper       ← wraps `page` global
     │       │     └── EditorFacades (10)  ← page.asText(), page.asGrid(), ...
     │       ├── UiFacade (lazy)   ← wraps `ui` global (Log View logging + dialogs)
+    │       ├── styledText()     ← standalone styled text builder for dialog labels
     │       ├── preventOutput()   ← suppresses default grouped-page output
     │       ├── require           ← patched require with library/ resolution
     │       ├── React             ← React library
@@ -119,26 +120,74 @@ Provides logging and interactive dialogs via a Log View page. **Lazy-initialized
 
 ```typescript
 interface IUiLog {
-    // Logging (fire-and-forget)
-    log(message: StyledText): void;
-    info(message: StyledText): void;
-    warn(message: StyledText): void;
-    error(message: StyledText): void;
-    success(message: StyledText): void;
-    text(message: StyledText): void;
+    // Logging — returns StyledLogBuilder for optional fluent styling
+    log(message: StyledText): IStyledLogBuilder;
+    info(message: StyledText): IStyledLogBuilder;
+    warn(message: StyledText): IStyledLogBuilder;
+    error(message: StyledText): IStyledLogBuilder;
+    success(message: StyledText): IStyledLogBuilder;
+    text(message: StyledText): IStyledLogBuilder;
     clear(): void;
 
     // Dialogs (async — returns Promise)
+    // Two-overload pattern: simple positional form + full object form
     readonly dialog: {
         confirm(message: StyledText, buttons?: string[]): Promise<IDialogResult>;
+        confirm(options: { message: StyledText; buttons?: string[] }): Promise<IDialogResult>;
         buttons(buttons: string[], title?: StyledText): Promise<IDialogResult>;
+        buttons(options: { buttons: string[]; title?: StyledText }): Promise<IDialogResult>;
         textInput(title?: StyledText, options?: { ... }): Promise<IDialogResult>;
+        textInput(options: { title?: StyledText; placeholder?: string; ... }): Promise<IDialogResult>;
+        checkboxes(items: (string | CheckboxItem)[], title?, buttons?): Promise<IDialogResult>;
+        checkboxes(options: { items: (string | CheckboxItem)[]; title?; layout?; buttons? }): Promise<IDialogResult>;
+        radioboxes(items: string[], title?, buttons?): Promise<IDialogResult>;
+        radioboxes(options: { items: string[]; title?; checked?; layout?; buttons? }): Promise<IDialogResult>;
+        select(items: string[], title?, buttons?): Promise<IDialogResult>;
+        select(options: { items: string[]; title?; selected?; placeholder?; buttons? }): Promise<IDialogResult>;
+    };
+
+    // Output (display-only rich content)
+    readonly show: {
+        progress(label?: StyledText): IProgress;
+        progress(options: { label?; value?; max? }): IProgress;
+        grid(data: any[]): IGrid;
+        grid(options: { data: any[]; columns?; title? }): IGrid;
     };
 }
 ```
 
+**Two-overload pattern:** All dialog methods and `ui.show.*` methods support two calling styles: a simple positional form and a full object form. Disambiguation relies on `StyledText` being `string | StyledSegment[]` — a plain non-array object is always the full form. Implementation uses `isOptionsObject()` helper in `UiFacade`.
+
+**Styled text builder:** Logging methods return `IStyledLogBuilder` — a fluent builder that allows chaining `.append()`, `.color()`, `.bold()`, etc. and finalizing with `.print()`:
+
+```typescript
+ui.text("Status: ")
+    .append("OK").color("lime").bold()
+    .append(" — all checks passed")
+    .print();
+```
+
+The standalone `styledText()` global creates a builder for use in dialog labels and other components:
+
+```typescript
+const label = styledText("Warning").color("red").bold().value;
+await ui.dialog.confirm(label);
+```
+
+**Implementation:** `StyledTextBuilder` and `StyledLogBuilder` classes in `/src/renderer/scripting/api-wrapper/StyledTextBuilder.ts`. `StyledLogBuilder` extends `StyledTextBuilder` with a `print()` method that calls `LogViewModel.updateEntryText()` to update the already-added entry with the built styled text.
+
+**Console forwarding:** When `ui` is first accessed, `console.log/info/warn/error` are automatically forwarded to the Log View:
+- `console.log` → `log.log` (light/dimmed text)
+- `console.info` → `log.info` (blue)
+- `console.warn` → `log.warn` (yellow)
+- `console.error` → `log.error` (red)
+- Native console is always called (forwarding is additive, not a replacement)
+- For MCP scripts, console output is captured in both `consoleLogs` (returned to agent) and Log View (visible to user)
+- Suppress forwarding per-level with `ui.preventConsoleLog()`, `ui.preventConsoleWarn()`, `ui.preventConsoleError()`
+
 **Key behaviors:**
 - Accessing `ui` auto-creates a Log View page grouped with the source page (or standalone if no page context)
+- For MCP scripts (`runWithCapture`), `ui` uses a shared standalone MCP Log View (same page as `ui_push`), tracked via `mcpLogState.pageId` in `/src/renderer/api/mcp-log-state.ts`
 - Accessing `ui` sets `groupedContentWritten = true`, suppressing default script output
 - Re-running a script reuses the existing grouped Log View (appends with separator)
 - Dialog results are always objects — `button` is `undefined` if canceled (page closed while pending)
@@ -376,7 +425,7 @@ interface McpScriptResult {
 }
 ```
 
-Captures `console.log/error/warn/info` calls during script execution via `ScriptContext`'s console capture support (see below).
+Captures `console.log/error/warn/info` calls during script execution via `ScriptContext`'s console capture support. If the script accesses `ui`, console output is forwarded to both `consoleLogs` (returned to agent) and the shared MCP Log View (visible to user).
 
 ### `convertToText(value)` (public)
 
@@ -398,7 +447,7 @@ Located in `/src/renderer/scripting/ScriptContext.ts`.
 
 1. Creates `releaseList` (shared cleanup array)
 2. Creates `AppWrapper` (always) and `PageWrapper` (if page provided)
-3. If `consoleLogs` array is provided, injects a capturing `console` object that records `log`, `error`, `warn`, `info` calls as `ConsoleLogEntry` items:
+3. If `consoleLogs` array is provided (MCP mode), injects a basic capturing `console` object that records `log`, `error`, `warn`, `info` calls as `ConsoleLogEntry` items. This basic capture is replaced with full forwarding when `ui` is accessed (see step 6).
    ```typescript
    interface ConsoleLogEntry {
        level: "log" | "error" | "warn" | "info";
@@ -407,9 +456,10 @@ Located in `/src/renderer/scripting/ScriptContext.ts`.
    }
    ```
 4. If `libraryPath` provided, adds patched `require` that resolves `library/` paths to the library folder; otherwise adds a require wrapper that throws a clear error for `library/` paths
-5. Adds lazy `ui` getter via `Object.defineProperty` — creates `UiFacade` on first access (see `ui` global above)
-6. Builds proxy chain:
-   - Custom context checked first (`app`, `page`, `ui`, `require`, `React`)
+5. Adds `styledText` factory function for standalone styled text building
+6. Adds lazy `ui` getter via `Object.defineProperty` — creates `UiFacade` on first access, then installs console forwarding (`installConsoleForwarding`) which replaces the basic capture console with one that forwards to both the Log View and (if MCP) the `consoleLogs` array
+7. Builds proxy chain:
+   - Custom context checked first (`app`, `page`, `ui`, `styledText`, `require`, `React`)
    - Falls back to `globalThis` for standard APIs
    - Functions auto-bound to `globalThis` (except constructors)
    - Set operations go to custom context (scripts can create variables)
@@ -459,7 +509,7 @@ Script API types are defined in `/src/renderer/api/types/`:
 
 | File | Defines |
 |------|---------|
-| `index.d.ts` | Global declarations: `app: IApp`, `page: IPage`, `ui: IUiLog`, `preventOutput()`, `require()` |
+| `index.d.ts` | Global declarations: `app: IApp`, `page: IPage`, `ui: IUiLog`, `styledText()`, `preventOutput()`, `require()` |
 | `app.d.ts` | `IApp` — root application interface |
 | `page.d.ts` | `IPage`, `IPageInfo` — page/tab interface |
 | `pages.d.ts` | `IPageCollection` — pages management |
@@ -475,7 +525,7 @@ Script API types are defined in `/src/renderer/api/types/`:
 | `mermaid-editor.d.ts` | `IMermaidEditor` |
 | `browser-editor.d.ts` | `IBrowserEditor` — browser page operations |
 | `ui.d.ts` | `IUserInterface`, `ITextDialogOptions`, `ITextDialogResult` — dialogs and notifications |
-| `ui-log.d.ts` | `IUiLog`, `IUiDialog`, `IDialogResult` — Log View UI facade |
+| `ui-log.d.ts` | `IUiLog`, `IUiDialog`, `IUiShow`, `IProgress`, `IGrid`, `IGridColumn`, `IDialogResult`, `IStyledTextBuilder`, `IStyledLogBuilder` — Log View UI facade |
 
 These files serve dual purpose: TypeScript type checking **and** IDE IntelliSense for script authors.
 
@@ -501,7 +551,10 @@ These files serve dual purpose: TypeScript type checking **and** IDE IntelliSens
     ├── HtmlEditorFacade.ts      # HTML preview (read-only)
     ├── MermaidEditorFacade.ts   # Mermaid diagram (read-only)
     ├── BrowserEditorFacade.ts   # Browser page operations
-    └── UiFacade.ts              # Log View UI (logging + dialogs)
+    ├── UiFacade.ts              # Log View UI (logging + dialogs + output)
+    ├── Progress.ts              # Progress helper class (returned by ui.show.progress)
+    ├── Grid.ts                  # Grid helper class (returned by ui.show.grid)
+    └── StyledTextBuilder.ts     # Fluent styled text builder + styledText() factory
 
 /src/renderer/api/types/
 ├── index.d.ts                   # Global: app, page, ui

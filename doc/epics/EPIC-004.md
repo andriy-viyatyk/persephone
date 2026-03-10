@@ -7,11 +7,11 @@
 
 ## Overview
 
-A new editor type "Log View" that displays structured logs with interactive dialogs. Inspired by the UI panel from the `interactive-script` VSCode extension. The editor is associated with `.log.json` files and stores the full log as a JSON array. Scripts and AI agents can use it to display log entries (text, info, warn, error, success) and interactive dialogs (text input, confirm, buttons, checkboxes, select, etc.) — with dialog results flowing back to the caller.
+A new editor type "Log View" that displays structured logs with interactive dialogs. Inspired by the UI panel from the `interactive-script` VSCode extension. The editor is associated with `.log.jsonl` files and stores the log as JSONL (one flat JSON object per line). Scripts and AI agents can use it to display log entries (text, info, warn, error, success) and interactive dialogs (text input, confirm, buttons, checkboxes, select, etc.) — with dialog results flowing back to the caller.
 
 ## Goals
 
-- New "log-view" editor for `.log.json` files that renders a scrollable log with rich entries
+- New "log-view" editor for `.log.jsonl` files that renders a scrollable log with rich entries
 - Log entry types: text, info, warn, error, success, progress
 - Interactive dialog entries rendered inline: confirm, text input, buttons, checkboxes, radioboxes, select
 - Dialog results stored in the JSON and returned to the calling script/agent
@@ -26,21 +26,22 @@ The design is based on the `D:\projects\interactive-script` project. Key pattern
 
 ### Message/Entry Model
 
-Each log entry follows this structure (adapted from `ViewMessage`):
+Each log entry is a flat object with system fields (`type`, `id`, `timestamp`) plus type-specific fields at the top level:
 
 ```typescript
-interface LogEntry<T = any> {
+type LogEntry = {
     type: string;        // Entry type: "log.info", "input.text", etc.
     id: string;          // Unique ID (for dialog response tracking)
-    data: T;             // Type-specific payload
     timestamp?: number;  // When the entry was created
-}
+    [key: string]: any;  // Type-specific fields (text, message, buttons, etc.)
+};
 ```
 
 ### Entry Types from interactive-script
 
 **Log entries** (display-only):
-- `log.text` — plain text
+- `log.log` — light/dimmed text (console.log forwarding, ui.log())
+- `log.text` — plain text (default contrast)
 - `log.info` — info (blue)
 - `log.warn` — warning (yellow)
 - `log.error` — error (red)
@@ -72,21 +73,21 @@ interface StyledSegment { text: string; styles?: Record<string, string | number>
 
 ### Dialog Lifecycle
 
-1. Script/agent appends a dialog entry (e.g., `input.text`) with no `result`
+1. Script/agent appends a dialog entry (e.g., `input.text`) with no `button` field
 2. Log View renders the dialog as active (highlighted border, interactive controls)
 3. User fills in data and clicks a button
-4. Log View updates the entry's data fields (e.g., `text`, `button`) in the JSON
-5. If script is waiting — it receives the result via the facade's async API
+4. Log View sets the `button` field on the flat entry and serializes to JSONL
+5. If script is waiting — it receives the full flat entry via the facade's async API
 6. Dialog entry remains visible in the log (read-only after completion)
 
 ### File Format (.log.jsonl)
 
-The file content is JSONL — one `LogEntry` JSON object per line:
+The file content is JSONL — one flat `LogEntry` JSON object per line:
 
 ```
-{"type":"log.info","id":"1","data":"Process started","timestamp":1741500000000}
-{"type":"input.text","id":"2","data":{"title":"Enter name","buttons":["Cancel","OK"],"text":"John","button":"OK"},"timestamp":1741500001000}
-{"type":"log.success","id":"3","data":"Done!","timestamp":1741500002000}
+{"type":"log.info","id":"1","text":"Process started","timestamp":1741500000000}
+{"type":"input.text","id":"2","title":"Enter name","buttons":["Cancel","OK"],"text":"John","button":"OK","timestamp":1741500001000}
+{"type":"log.success","id":"3","text":"Done!","timestamp":1741500002000}
 ```
 
 ## Design Decisions
@@ -104,9 +105,9 @@ The file content is JSONL — one `LogEntry` JSON object per line:
 The log is stored as **JSONL (JSON Lines)** — one JSON object per line, not a JSON array:
 
 ```
-{"type":"log.info","id":"1","data":"Process started","timestamp":1741500000000}
-{"type":"input.text","id":"2","data":{"title":"Enter name","buttons":["Cancel","OK"]}}
-{"type":"log.success","id":"3","data":"Done!","timestamp":1741500002000}
+{"type":"log.info","id":"1","text":"Process started","timestamp":1741500000000}
+{"type":"input.text","id":"2","title":"Enter name","buttons":["Cancel","OK"],"timestamp":1741500001000}
+{"type":"log.success","id":"3","text":"Done!","timestamp":1741500002000}
 ```
 
 **Why JSONL over JSON array:**
@@ -128,9 +129,9 @@ The log is stored as **JSONL (JSON Lines)** — one JSON object per line, not a 
 
 **Rendering:** Each entry component subscribes to its slice via `vm.state.use(s => s.entries[index])` (selector hook with deep equality). All changes — user typing, button clicks, programmatic updates — go through `vm.state.update()`. No per-entry model wrappers needed.
 
-**Scripting facade (future `ui` global):** Calls `LogViewModel` methods directly — `addEntry()`, `addDialogEntry()`, `resolveDialog()`, `updateEntry()`, `clear()`. Similar to interactive-script's API pattern (`ui.log.info(...)`, `ui.dialog.confirm(...)`).
+**Scripting facade (`ui` global):** Calls `LogViewModel` methods directly — `addEntry()`, `addDialogEntry()`, `resolveDialog()`, `updateEntryText()`, `clear()`.
 
-**No LogEntryModel:** Per-entry reactive model wrappers are not needed. The entries array provides both the source for rendering and the target for mutations. `LogEntryModel` (from US-136) is deprecated and will be removed.
+**No LogEntryModel:** Per-entry reactive model wrappers are not needed. The entries array provides both the source for rendering and the target for mutations. `LogEntryModel` was removed in US-145.
 
 ### Script API: global `ui` variable
 
@@ -142,43 +143,33 @@ The log is stored as **JSONL (JSON Lines)** — one JSON object per line, not a 
 
 #### API Grouping
 
-**Logging** (fire-and-forget, top-level methods):
+**Logging** (top-level methods, return `IStyledLogBuilder` for optional fluent styling):
 
 ```typescript
-ui.log("message or StyledText")     // log.text — standard log
+ui.log("message or StyledText")     // log.log — light/dimmed text
 ui.info("message")                  // log.info — blue
 ui.warn("message")                  // log.warn — yellow/orange
 ui.error("message")                 // log.error — red
 ui.success("message")               // log.success — green
-ui.text("message")                  // log.text — high-contrast
+ui.text("message")                  // log.text — default contrast
 ui.clear()                          // remove all entries
 ```
 
 **Dialogs** (`ui.dialog.*` — async, await user response):
 
-All dialog methods return `Promise<T>` where `T` is always an object. The `button` property contains the clicked button label, or `undefined` if the dialog was canceled (page closed while pending).
+All dialog methods support a **two-overload pattern**: a simple positional form and a full object form. They return `Promise<IDialogResult>` — a flat entry object. The `button` property contains the clicked button label, or `undefined` if canceled.
 
 ```typescript
-ui.dialog.confirm(message, buttons?)
-// → Promise<{ button: string | undefined }>
-// Default buttons: ["No", "Yes"]
-
-ui.dialog.buttons(buttons, title?)
-// → Promise<{ button: string | undefined }>
-
-ui.dialog.textInput(title?, options?)
-// options: { placeholder?, defaultValue?, buttons? }
-// → Promise<{ button: string | undefined; text: string | undefined }>
-
-ui.dialog.checkboxes(items, title?, buttons?)
-// → Promise<{ button: string | undefined; selected: string[] | undefined }>
-
-ui.dialog.radioboxes(items, title?, buttons?)
-// → Promise<{ button: string | undefined; selected: string | undefined }>
-
-ui.dialog.select(items, title?, placeholder?)
-// → Promise<{ button: string | undefined; selected: string | undefined }>
+// Simple form (positional args)       // Full form (single object)
+ui.dialog.confirm(message, buttons?)   ui.dialog.confirm({ message, buttons? })
+ui.dialog.buttons(buttons, title?)     ui.dialog.buttons({ buttons, title? })
+ui.dialog.textInput(title?, options?)  ui.dialog.textInput({ title?, placeholder?, defaultValue?, buttons? })
+ui.dialog.checkboxes(items, title?, buttons?)  ui.dialog.checkboxes({ items, title?, buttons? })
+ui.dialog.radioboxes(items, title?, buttons?)  ui.dialog.radioboxes({ items, title?, buttons? })
+ui.dialog.select(items, title?, placeholder?)  ui.dialog.select({ items, title?, placeholder? })
 ```
+
+Disambiguation: `StyledText` is `string | StyledSegment[]` (always string or array). A plain non-array object is always the full form.
 
 **Output** (`ui.show.*` — display-only rich content):
 
@@ -196,6 +187,16 @@ ui.show.mermaid(text)                   // rendered mermaid diagram
 // Logging
 ui.info("Processing started...");
 ui.warn("Slow query detected");
+
+// Styled text (fluent builder)
+ui.text("Status: ")
+    .append("OK").color("lime").bold()
+    .append(" — all checks passed")
+    .print();
+
+// Standalone styled text builder (for dialog labels, etc.)
+const label = styledText("Warning").color("red").bold().value;
+await ui.dialog.confirm(label);
 
 // Confirm dialog
 const result = await ui.dialog.confirm("Proceed with changes?");
@@ -254,45 +255,45 @@ When a script appends log entries rapidly, the UI updates are debounced at **300
 
 ### MCP Integration
 
-AI agents get a single `log_push` MCP tool. The agent does **not** need to find or track a Log View page — js-notepad manages an **active MCP log page** internally:
+AI agents get a single `ui_push` MCP tool. The agent does **not** need to find or track a Log View page — js-notepad manages an **active MCP log page** internally:
 
-- On first `log_push` call: js-notepad creates a new Log View page and marks it as the "active MCP log"
-- Subsequent `log_push` calls reuse the active MCP log page
-- If the user closes the active MCP log page, the next `log_push` creates a new one
+- On first `ui_push` call: js-notepad creates a new Log View page and marks it as the "active MCP log"
+- Subsequent `ui_push` calls reuse the active MCP log page
+- If the user closes the active MCP log page, the next `ui_push` creates a new one
 - The agent sends an array of entries — same types as the script `ui` API
 
-#### Tool: `log_push`
+#### Tool: `ui_push`
 
 **Parameters:**
 
 ```typescript
 {
-    entries: Array<string | { type: string; data: any }>
+    entries: Array<string | { type: string; [key: string]: any }>
     // String shorthand: treated as log.info
-    // Object: { type, data } matching LogEntry types
+    // Object: flat entry with type + type-specific fields
 }
 ```
 
 **Entry type mapping (matches script API):**
 
-| Script API method | Entry type | data |
-|-------------------|------------|------|
-| `ui.log()` | `log.text` | `StyledText` |
-| `ui.info()` | `log.info` | `StyledText` |
-| `ui.warn()` | `log.warn` | `StyledText` |
-| `ui.error()` | `log.error` | `StyledText` |
-| `ui.success()` | `log.success` | `StyledText` |
-| `ui.dialog.confirm()` | `input.confirm` | `{ message, buttons? }` |
-| `ui.dialog.buttons()` | `input.buttons` | `{ buttons, title? }` |
-| `ui.dialog.textInput()` | `input.text` | `{ title?, placeholder?, defaultValue?, buttons? }` |
-| `ui.dialog.checkboxes()` | `input.checkboxes` | `{ items, title?, buttons? }` |
-| `ui.dialog.radioboxes()` | `input.radioboxes` | `{ items, title?, buttons? }` |
-| `ui.dialog.select()` | `input.select` | `{ items, title?, placeholder? }` |
-| `ui.show.progress()` | `output.progress` | `{ label?, value, max? }` |
-| `ui.show.grid()` | `output.grid` | `{ columns, rows, title? }` |
-| `ui.show.text()` | `output.text` | `{ text, language?, title? }` |
-| `ui.show.markdown()` | `output.markdown` | `{ text }` |
-| `ui.show.mermaid()` | `output.mermaid` | `{ text }` |
+| Script API method | Entry type | Fields (flat, top-level) |
+|-------------------|------------|--------------------------|
+| `ui.log()` | `log.log` | `text: StyledText` |
+| `ui.info()` | `log.info` | `text: StyledText` |
+| `ui.warn()` | `log.warn` | `text: StyledText` |
+| `ui.error()` | `log.error` | `text: StyledText` |
+| `ui.success()` | `log.success` | `text: StyledText` |
+| `ui.dialog.confirm()` | `input.confirm` | `message, buttons?` |
+| `ui.dialog.buttons()` | `input.buttons` | `buttons, title?` |
+| `ui.dialog.textInput()` | `input.text` | `title?, placeholder?, defaultValue?, buttons?` |
+| `ui.dialog.checkboxes()` | `input.checkboxes` | `items, title?, buttons?` |
+| `ui.dialog.radioboxes()` | `input.radioboxes` | `items, title?, buttons?` |
+| `ui.dialog.select()` | `input.select` | `items, title?, placeholder?` |
+| `ui.show.progress()` | `output.progress` | `label?, value, max?` |
+| `ui.show.grid()` | `output.grid` | `columns, rows, title?` |
+| `ui.show.text()` | `output.text` | `text, language?, title?` |
+| `ui.show.markdown()` | `output.markdown` | `text` |
+| `ui.show.mermaid()` | `output.mermaid` | `text` |
 
 **Return value:**
 
@@ -316,35 +317,35 @@ AI agents get a single `log_push` MCP tool. The agent does **not** need to find 
 
 ```
 // Simple log messages (string shorthand → log.info)
-log_push({ entries: ["Analyzing your code...", "Found 3 files to process"] })
+ui_push({ entries: ["Analyzing your code...", "Found 3 files to process"] })
 → returns immediately: { }
 
-// Mixed log + dialog
-log_push({ entries: [
-    { type: "log.info", data: "Analysis complete." },
-    { type: "input.confirm", data: { message: "Apply changes?", buttons: ["No", "Yes"] } }
+// Mixed log + dialog (flat entries — fields at top level)
+ui_push({ entries: [
+    { type: "log.info", text: "Analysis complete." },
+    { type: "input.confirm", message: "Apply changes?", buttons: ["No", "Yes"] }
 ]})
-→ blocks until user clicks → { results: [{ button: "Yes" }] }
+→ blocks until user clicks → { results: [{ button: "Yes", message: "Apply changes?", ... }] }
 
 // Multiple dialogs in one call
-log_push({ entries: [
-    { type: "input.text", data: { title: "Project name", buttons: ["OK"] } },
-    { type: "input.select", data: { title: "Language", items: ["TypeScript", "JavaScript", "Python"] } }
+ui_push({ entries: [
+    { type: "input.text", title: "Project name", buttons: ["OK"] },
+    { type: "input.select", title: "Language", items: ["TypeScript", "JavaScript", "Python"] }
 ]})
-→ blocks until BOTH dialogs resolved → { results: [{ button: "OK", text: "my-app" }, { button: "OK", selected: "TypeScript" }] }
+→ blocks until BOTH dialogs resolved → { results: [{ button: "OK", text: "my-app", ... }, { button: "OK", selected: "TypeScript", ... }] }
 
 // Rich output
-log_push({ entries: [
-    { type: "output.grid", data: { columns: ["File", "Issues"], rows: [["app.ts", 3], ["index.ts", 1]] } },
-    { type: "output.markdown", data: { text: "## Summary\n\nFixed **4** issues." } },
-    { type: "output.mermaid", data: { text: "graph TD\n  A[Scan] --> B[Fix] --> C[Done]" } }
+ui_push({ entries: [
+    { type: "output.grid", columns: ["File", "Issues"], rows: [["app.ts", 3], ["index.ts", 1]] },
+    { type: "output.markdown", text: "## Summary\n\nFixed **4** issues." },
+    { type: "output.mermaid", text: "graph TD\n  A[Scan] --> B[Fix] --> C[Done]" }
 ]})
 → returns immediately: { }
 ```
 
 **MCP as default output for AI agents:**
 
-The Log View is the **preferred output channel** for AI agents. When the user asks the agent to "show something" in js-notepad, the agent should use `log_push` with appropriate `output.*` entries (grid, markdown, mermaid) rather than creating separate editor pages. Separate pages (`create_page`) are only for when the user explicitly asks to open data in a specific editor. This will be documented in the MCP API guide (`/assets/mcp-api-guide.md`).
+The Log View is the **preferred output channel** for AI agents. When the user asks the agent to "show something" in js-notepad, the agent should use `ui_push` with appropriate `output.*` entries (grid, markdown, mermaid) rather than creating separate editor pages. Separate pages (`create_page`) are only for when the user explicitly asks to open data in a specific editor. This will be documented in the MCP API guide (`/assets/mcp-api-guide.md`).
 
 ### Log Entry Wrapper (Extensible Container)
 
@@ -382,7 +383,7 @@ The key principle: **entry content renderers should only care about rendering th
 | Location | Purpose |
 |----------|---------|
 | `/src/renderer/editors/log-view/` | Editor — `LogViewEditor.tsx`, `LogViewModel.ts`, `logTypes.ts`, `index.ts`, `items/` (entry renderers) |
-| `/src/renderer/api/types/ui.d.ts` | `IUi` facade type definitions (IntelliSense for `ui` global in scripts) |
+| `/src/renderer/api/types/ui-log.d.ts` | `IUiLog` facade type definitions (IntelliSense for `ui` global in scripts) |
 | `/src/renderer/scripting/api-wrapper/UiFacade.ts` | Script facade — implements `ui`, `ui.dialog.*`, `ui.show.*` methods, binds to LogViewModel |
 
 ### Modified Folders
@@ -390,11 +391,11 @@ The key principle: **entry content renderers should only care about rendering th
 | Location | What changes |
 |----------|-------------|
 | `/src/renderer/scripting/ScriptContext.ts` | Add `ui` global to script sandbox context (lazy-initialized UiFacade) |
-| `/src/renderer/api/mcp-handler.ts` | Add `log_push` MCP tool + active MCP log page tracking |
+| `/src/renderer/api/mcp-handler.ts` | Add `ui_push` MCP tool + active MCP log page tracking |
 | `/src/renderer/api/types/index.d.ts` | Declare global `ui` variable (like `page` and `app`) |
-| `/assets/editor-types/` | Copy `ui.d.ts` for Monaco IntelliSense |
-| `/assets/mcp-api-guide.md` | Document `log_push` MCP tool, entry types, and "log as default AI output" guidance |
-| `/src/main/mcp-http-server.ts` | Register `log_push` tool definition |
+| `/assets/editor-types/` | Copy `ui-log.d.ts` for Monaco IntelliSense |
+| `/assets/mcp-api-guide.md` | Document `ui_push` MCP tool, entry types, and "log as default AI output" guidance |
+| `/src/main/mcp-http-server.ts` | Register `ui_push` tool definition |
 
 ### Reused Infrastructure (no modifications expected)
 
@@ -422,20 +423,29 @@ The key principle: **entry content renderers should only care about rendering th
 | Task | Title | Status |
 |------|-------|--------|
 | US-141 | Script facade: global `ui` variable (logging + dialogs) | **Done** |
-| — | MCP tool: `log_push` (entry array, batched dialogs, active log page) | Planned |
-| — | MCP API guide update (log as default AI output channel) | Planned |
+| US-142 | Log View polish: StyledTextBuilder, dialog UX, ScriptRunner fix | **Done** |
+| US-143 | MCP tool: `ui_push` (entry array, batched dialogs, active log page) + API guide update | **Done** |
+| US-144 | MCP: split API guide into focused resources + server instructions | **Done** |
 
 *Test all implemented items via scripts and MCP before proceeding.*
+
+**Phase 2.5: Refactoring** (prerequisites for Phase 3):
+
+| Task | Title | Status |
+|------|-------|--------|
+| US-145 | Flatten LogEntry structure — remove `data` nesting | **Done** |
+| US-146 | Standardize ui API — two-overload pattern (full object + simple positional) | **Done** |
 
 **Phase 3: New log items** (one by one, each includes renderer + script API + MCP + test):
 
 | Task | Title | Status |
 |------|-------|--------|
-| — | Log item: input.checkboxes (renderer + ui.dialog.checkboxes) | Planned |
-| — | Log item: input.radioboxes (renderer + ui.dialog.radioboxes) | Planned |
-| — | Log item: input.select (renderer + ui.dialog.select) | Planned |
-| — | Log item: output.progress (renderer + ui.show.progress) | Planned |
-| — | Log item: output.grid (renderer + ui.show.grid) | Planned |
+| US-148 | Console forwarding to Log View + MCP Log View sharing | **Done** |
+| US-147 | Log item: input.checkboxes (renderer + ui.dialog.checkboxes) | **Done** |
+| US-149 | Log item: input.radioboxes (renderer + ui.dialog.radioboxes) | **Done** |
+| US-150 | Log item: input.select (renderer + ui.dialog.select) | **Done** |
+| US-151 | Log item: output.progress (renderer + ui.show.progress) | **Done** |
+| US-152 | Log item: output.grid (renderer + ui.show.grid) | **Done** |
 | — | Log item: output.text (renderer + ui.show.text) | Planned |
 | — | Log item: output.markdown (renderer + ui.show.markdown) | Planned |
 | — | Log item: output.mermaid (renderer + ui.show.mermaid) | Planned |
@@ -451,8 +461,8 @@ The key principle: **entry content renderers should only care about rendering th
 5. **Dialog timeout:** No timeouts. But closing the Log View page while a dialog is pending resolves with `{ button: undefined }` (script) or `{ button: null }` (MCP). The result is always an object.
 6. **API grouping:** `ui.log/info/warn/error/success/text` at top level, `ui.dialog.*` for interactive dialogs, `ui.show.*` for rich output. Matches interactive-script patterns. No `ui.inline.*`, `ui.window.*`, or `ui.file.*` (covered by existing `page` and `app` APIs).
 7. **Dialog return types:** All dialogs always return an object with `button` field (e.g., `{ button: "Yes" }`, `{ button: "OK", text: "input" }`). On cancellation, `button` is `undefined` (script) or `null` (MCP) — the result itself is never `undefined`. Object format is forward-compatible — new fields can be added without breaking existing scripts.
-8. **MCP approach:** Single `log_push` tool with entry array. String shorthand for simple log messages. Multiple dialogs per call supported via `Promise.all()`. Log View is the default output channel for AI agents — separate pages only when user explicitly requests a specific editor.
-9. **MCP batched dialogs:** Multiple dialog entries in one `log_push` call are supported. Each dialog creates a pending promise, `Promise.all()` collects results. Tool call blocks until all dialogs are resolved.
+8. **MCP approach:** Single `ui_push` tool with entry array. String shorthand for simple log messages. Multiple dialogs per call supported via `Promise.all()`. Log View is the default output channel for AI agents — separate pages only when user explicitly requests a specific editor. Named `ui_push` (not `ui_push`) for consistency with the script `ui` global — the tool handles logs, dialogs, and output items, not just log messages.
+9. **MCP batched dialogs:** Multiple dialog entries in one `ui_push` call are supported. Each dialog creates a pending promise, `Promise.all()` collects results. Tool call blocks until all dialogs are resolved. IPC timeout is infinite for dialog-containing requests (users can take breaks and return).
 
 ## Notes
 
@@ -460,7 +470,7 @@ The key principle: **entry content renderers should only care about rendering th
 - Epic created based on interactive-script UI panel investigation
 - Reference project: `D:\projects\interactive-script` — VSCode extension with script panel UI
 - Key architecture from reference: ViewMessage protocol, 30+ command types, dialog lifecycle with result flow, virtualized rendering, styled text
-- Adapting to js-notepad: store as .log.json, editor type, script facade, MCP integration
+- Adapting to js-notepad: store as .log.jsonl, editor type, script facade, MCP integration
 - Resolved all open questions: page.ui API, 300ms debounce, no max entries, read-only log, dialog cancellation on page close
 
 ### 2026-03-09 (API design refinement)
@@ -468,6 +478,41 @@ The key principle: **entry content renderers should only care about rendering th
 - Dropped `ui.inline.*`, `ui.window.*`, `ui.file.*` — already covered by `page` and `app` APIs
 - Dialog return type: consistent `{ button, ...data }` objects for all dialogs (forward-compatible)
 - Cancellation: `{ button: undefined }` for scripts, `{ button: null }` for MCP — result is always an object, never `undefined` itself
-- MCP: single `log_push` tool with entry array, string shorthand, batched dialogs via `Promise.all()`
+- MCP: single `ui_push` tool with entry array, string shorthand, batched dialogs via `Promise.all()`
 - MCP philosophy: Log View = default AI output channel; separate editor pages only on explicit user request
-- Renamed MCP tool from `ui_push` to `log_push` for clarity
+- Initially renamed to `ui_push`, later reverted to `ui_push` for consistency with `ui` API name (covers logs + dialogs + output, not just logs)
+
+### 2026-03-10 (US-142: Log View polish)
+- Implemented `StyledTextBuilder` / `StyledLogBuilder` fluent API — logging methods now return builders for `.append().color().bold().print()` chaining
+- Added standalone `styledText()` global for building styled text in dialog labels
+- `LogViewModel.updateEntryText()` — immediate serialization to prevent race conditions with page setup
+- Dialog UX: fit-content width, button padding, force scroll-to-bottom on dialog entries (`forceScrollVersion`)
+- Iterative auto-scroll (3 follow-ups at 50/150/300ms) to compensate for async ResizeObserver height adjustments
+- `RenderFlexGrid.preferMinHeightForNewRows` — prevents height jumping for new rows
+- `ScriptRunner.wrapScriptWithImplicitReturn` — fixed block-closer (`});`, `];`) handling
+
+### 2026-03-10 (US-143: MCP `ui_push` tool)
+- Implemented `ui_push` MCP tool — AI agents can push entries (log messages, dialogs, output items) to a managed Log View page
+- Tool name reverted from `ui_push` to `ui_push` for consistency with script `ui` global (covers all entry categories, not just logs)
+- Active MCP log page tracking in `mcp-handler.ts`: auto-creates on first call, reuses on subsequent, recreates if user closes
+- `sendToRenderer` now accepts optional `timeoutMs` parameter (0 = no timeout). Dialog-containing `ui_push` calls use infinite timeout so users can take breaks
+- String shorthand: plain strings in entries array treated as `log.info`
+- Batched dialogs: multiple `input.*` entries per call resolved via `Promise.all()`, tool blocks until all resolved
+- Canceled dialogs return `{ button: null }` (JSON-safe, vs `undefined` for scripts)
+- MCP API guide (`assets/mcp-api-guide.md`) updated with full `ui_push` documentation, entry types, examples, and "when to use" guidance
+- Phase 2 now complete — all integration layer tasks done (scripts + MCP)
+
+### 2026-03-10 (US-144: MCP resource split + server instructions)
+- Split monolithic `assets/mcp-api-guide.md` (509 lines) into 3 focused resources: `mcp-res-ui-push.md`, `mcp-res-pages.md`, `mcp-res-scripting.md`
+- Added `notepad://guides/full` resource that dynamically concatenates all 3 files (no content duplication)
+- Added MCP server `instructions` — immediate context sent to agents on connection (workflow overview, resource pointers, quick tips)
+- Resource URIs changed from `notepad://docs/api-guide` to `notepad://guides/*`
+- Agents now get immediate context without reading any resource, and can read only the specific guide they need
+
+### 2026-03-10 (US-147: input.checkboxes dialog)
+- First Phase 3 log item: `input.checkboxes` — checkbox list dialog with optional title, layout modes, and custom buttons
+- New reusable `Checkbox` component in `components/basic/` using `CheckedIcon`/`UncheckedIcon` icons for consistency with Todo editor, Grid, and ListMultiselect
+- `CheckboxItem` type: `{ label: string; checked?: boolean }` — items stored as objects in the flat entry
+- `ui.dialog.checkboxes()` with two-overload pattern; simple form accepts string[] (auto-normalized to objects)
+- `!` button prefix disables button when no item is checked (`requirementNotMet`)
+- Updated `RadioboxesEntry` stub: `checked?: string` (single selected item by label, prevents misconfiguration)

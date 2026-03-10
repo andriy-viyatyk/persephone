@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import { useCallback } from "react";
-import { LogEntry, ConfirmDialogData } from "../logTypes";
+import { ConfirmEntry } from "../logTypes";
 import { useLogViewModel } from "../LogViewContext";
 import { StyledTextView } from "../StyledTextView";
 import { DialogContainer } from "./DialogContainer";
@@ -23,16 +23,15 @@ const ConfirmRoot = styled.div({
 // =============================================================================
 
 interface ConfirmDialogViewProps {
-    entry: LogEntry<ConfirmDialogData>;
+    entry: ConfirmEntry;
 }
 
 const DEFAULT_BUTTONS = ["No", "Yes"];
 
 export function ConfirmDialogView({ entry }: ConfirmDialogViewProps) {
     const vm = useLogViewModel();
-    const data = entry.data;
-    const resolved = data.button !== undefined;
-    const buttons = data.buttons ?? DEFAULT_BUTTONS;
+    const resolved = entry.button !== undefined;
+    const buttons = entry.buttons ?? DEFAULT_BUTTONS;
 
     const handleClick = useCallback(
         (label: string) => {
@@ -45,11 +44,11 @@ export function ConfirmDialogView({ entry }: ConfirmDialogViewProps) {
         <DialogContainer resolved={resolved}>
             <ConfirmRoot>
                 <div className="confirm-message">
-                    <StyledTextView text={data.message} />
+                    <StyledTextView text={entry.message} />
                 </div>
                 <ButtonsPanel
                     buttons={buttons}
-                    button={data.button}
+                    button={entry.button}
                     onClickButton={handleClick}
                 />
             </ConfirmRoot>

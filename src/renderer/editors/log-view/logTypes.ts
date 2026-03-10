@@ -1,3 +1,6 @@
+import type { GridColumn } from "../grid/utils/grid-utils";
+export type { GridColumn };
+
 // =============================================================================
 // Styled Text
 // =============================================================================
@@ -14,67 +17,89 @@ export type StyledText = string | StyledSegment[];
 // Base Entry
 // =============================================================================
 
-export interface LogEntry<T = any> {
+export interface LogEntryBase {
     type: string;
     id: string;
-    data: T;
     timestamp?: number;
 }
+
+/** Flat log entry — system fields + any type-specific fields. */
+export type LogEntry = LogEntryBase & Record<string, any>;
 
 // =============================================================================
 // Log Entries (display-only)
 // =============================================================================
 
 // log.text, log.info, log.warn, log.error, log.success
-// data: StyledText
+// text: StyledText
 
-export type LogLevel = "log.text" | "log.info" | "log.warn" | "log.error" | "log.success";
+export type LogLevel = "log.log" | "log.text" | "log.info" | "log.warn" | "log.error" | "log.success";
 
-export type LogMessageEntry = LogEntry<StyledText> & { type: LogLevel };
+export interface LogMessageEntry extends LogEntryBase {
+    type: LogLevel;
+    text: StyledText;
+}
 
 // =============================================================================
 // Dialog Entries (interactive)
 // =============================================================================
 
-/** Common field added to all dialog data after user responds. */
-export interface DialogResultFields {
+export interface ConfirmEntry extends LogEntryBase {
+    type: "input.confirm";
+    message: StyledText;
+    buttons?: string[];
     button?: string;
 }
 
-export interface ConfirmDialogData extends DialogResultFields {
-    message: StyledText;
-    buttons?: string[];
-}
-
-export interface TextDialogData extends DialogResultFields {
+export interface TextInputEntry extends LogEntryBase {
+    type: "input.text";
     title?: StyledText;
     placeholder?: string;
     defaultValue?: string;
     text?: string;
     buttons?: string[];
+    button?: string;
 }
 
-export interface ButtonsDialogData extends DialogResultFields {
+export interface ButtonsEntry extends LogEntryBase {
+    type: "input.buttons";
     title?: StyledText;
     buttons: string[];
+    button?: string;
 }
 
-export interface CheckboxesDialogData extends DialogResultFields {
+export interface CheckboxItem {
+    label: string;
+    checked?: boolean;
+}
+
+export interface CheckboxesEntry extends LogEntryBase {
+    type: "input.checkboxes";
     title?: StyledText;
-    items: string[];
+    items: CheckboxItem[];
+    layout?: "vertical" | "flex";
     buttons?: string[];
+    button?: string;
 }
 
-export interface RadioboxesDialogData extends DialogResultFields {
+export interface RadioboxesEntry extends LogEntryBase {
+    type: "input.radioboxes";
     title?: StyledText;
     items: string[];
+    checked?: string;
+    layout?: "vertical" | "flex";
     buttons?: string[];
+    button?: string;
 }
 
-export interface SelectDialogData extends DialogResultFields {
+export interface SelectEntry extends LogEntryBase {
+    type: "input.select";
     title?: StyledText;
     items: string[];
+    selected?: string;
     placeholder?: string;
+    buttons?: string[];
+    button?: string;
 }
 
 export type DialogEntryType =
@@ -85,42 +110,39 @@ export type DialogEntryType =
     | "input.radioboxes"
     | "input.select";
 
-export type DialogDataMap = {
-    "input.confirm": ConfirmDialogData;
-    "input.text": TextDialogData;
-    "input.buttons": ButtonsDialogData;
-    "input.checkboxes": CheckboxesDialogData;
-    "input.radioboxes": RadioboxesDialogData;
-    "input.select": SelectDialogData;
-};
-
 // =============================================================================
 // Output Entries (rich display)
 // =============================================================================
 
-export interface ProgressOutputData {
+export interface ProgressOutputEntry extends LogEntryBase {
+    type: "output.progress";
     label?: StyledText;
-    value: number;
+    value?: number;
     max?: number;
+    completed?: boolean;
 }
 
-export interface GridOutputData {
+export interface GridOutputEntry extends LogEntryBase {
+    type: "output.grid";
     title?: StyledText;
-    columns: string[];
-    rows: any[][];
+    data: any[];
+    columns?: (string | GridColumn)[];
 }
 
-export interface TextOutputData {
+export interface TextOutputEntry extends LogEntryBase {
+    type: "output.text";
     title?: StyledText;
     text: string;
     language?: string;
 }
 
-export interface MarkdownOutputData {
+export interface MarkdownOutputEntry extends LogEntryBase {
+    type: "output.markdown";
     text: string;
 }
 
-export interface MermaidOutputData {
+export interface MermaidOutputEntry extends LogEntryBase {
+    type: "output.mermaid";
     text: string;
 }
 
@@ -131,29 +153,11 @@ export type OutputEntryType =
     | "output.markdown"
     | "output.mermaid";
 
-export type OutputDataMap = {
-    "output.progress": ProgressOutputData;
-    "output.grid": GridOutputData;
-    "output.text": TextOutputData;
-    "output.markdown": MarkdownOutputData;
-    "output.mermaid": MermaidOutputData;
-};
-
-// =============================================================================
-// Dialog Result
-// =============================================================================
-
-/**
- * Dialog result — the full entry.data object after user responds.
- * Always an object; `button` is `undefined` if dialog was canceled.
- */
-export type DialogResult = Record<string, any> & DialogResultFields;
-
 // =============================================================================
 // Type Guards
 // =============================================================================
 
-const LOG_LEVELS = new Set<string>(["log.text", "log.info", "log.warn", "log.error", "log.success"]);
+const LOG_LEVELS = new Set<string>(["log.log", "log.text", "log.info", "log.warn", "log.error", "log.success"]);
 const DIALOG_TYPES = new Set<string>(["input.confirm", "input.text", "input.buttons", "input.checkboxes", "input.radioboxes", "input.select"]);
 const OUTPUT_TYPES = new Set<string>(["output.progress", "output.grid", "output.text", "output.markdown", "output.mermaid"]);
 
@@ -170,5 +174,5 @@ export function isOutputEntry(entry: LogEntry): boolean {
 }
 
 export function isDialogResolved(entry: LogEntry): boolean {
-    return isDialogEntry(entry) && entry.data?.button !== undefined;
+    return isDialogEntry(entry) && entry.button !== undefined;
 }

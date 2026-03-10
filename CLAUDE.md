@@ -37,6 +37,29 @@ If the user gives work without a defined task (e.g., "fix this bug", "add this f
 - **Epic linking**: If an active epic exists and the work relates to it, suggest linking: "This seems related to EPIC-XXX. Should I link this task to it?"
 - **Before committing**: If no task entry exists yet, create one in `active.md` so the work is tracked.
 
+### Creating a new task ("Let's create a task for ...")
+
+When the user says **"let's create a task for [description]"** (or similar), follow this workflow. The goal is to produce a thorough task document **before** any implementation begins, because:
+- The codebase is large — the agent cannot hold all relevant code in context during implementation
+- A detailed plan with resolved concerns lets the agent implement correctly even after context compaction
+
+**Steps:**
+
+1. **Create task folder and README.md** — `doc/tasks/US-XXX-short-name/README.md`
+2. **Deep investigation** — Read all relevant source files, types, existing patterns, and similar implementations in the codebase. Be thorough: check renderers, models, script API wrappers, MCP handlers, type definitions, and tests.
+3. **Write the task document** with these sections:
+   - **Goal** — What this task achieves (1-2 sentences)
+   - **Background** — Relevant existing code, patterns to follow, similar implementations to reference
+   - **Implementation plan** — Step-by-step checklist of what to create/modify, with file paths and key details. Each step should have enough detail that the agent can implement it without re-reading the entire codebase.
+   - **Concerns / Open questions** — Anything ambiguous, risky, or needing user input. Flag design decisions that could go either way.
+   - **Acceptance criteria** — How to verify the task is complete
+4. **Add entry to `active.md`** with status "Planned"
+5. **Link to epic** if applicable (update epic's task table)
+6. **Present the document to the user** — Summarize key points and highlight concerns
+7. **Wait for user review** — Do NOT start implementation. The user will review, ask questions, request changes, and eventually say "let's implement"
+
+**Important:** Do not rush this phase. Spend time reading code thoroughly. Missing a pattern or dependency during investigation leads to rework during implementation.
+
 ### When starting a new task (not already in progress):
 1. **Review first, don't implement immediately**
 2. Read the task documentation (if it exists) and provide a summary of:
@@ -232,6 +255,6 @@ See [/doc/standards/coding-style.md](doc/standards/coding-style.md) for complete
 | Theme definitions        | `/src/renderer/theme/themes/`                     |
 | Named Pipe server        | `/src/main/pipe-server.ts`                        |
 | MCP HTTP server          | `/src/main/mcp-http-server.ts`                    |
-| MCP API guide (resource) | `/assets/mcp-api-guide.md`                        |
+| MCP resource guides      | `/assets/mcp-res-*.md`                            |
 | MCP command handler      | `/src/renderer/api/mcp-handler.ts`                |
 | Rust launcher            | `/launcher/src/main.rs`                           |

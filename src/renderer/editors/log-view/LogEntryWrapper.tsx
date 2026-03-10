@@ -10,7 +10,6 @@ import color from "../../theme/color";
 // =============================================================================
 
 const WrapperRoot = styled.div({
-    position: "relative",
     width: "100%",
     height: "fit-content",
     boxSizing: "border-box",
@@ -19,19 +18,6 @@ const WrapperRoot = styled.div({
     alignItems: "flex-start",
     padding: "0 12px",
     borderLeft: "3px solid transparent",
-
-    "&::after": {
-        content: "''",
-        position: "absolute",
-        inset: 0,
-        pointerEvents: "none",
-        backgroundColor: "transparent",
-        transition: "background-color 0.1s",
-    },
-
-    "&:hover::after": {
-        backgroundColor: color.grid.selectionColor.hovered,
-    },
 
     "&.accent-info": {
         borderLeftColor: color.misc.blue,

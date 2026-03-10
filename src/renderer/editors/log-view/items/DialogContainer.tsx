@@ -11,6 +11,8 @@ const ContainerRoot = styled.div({
     borderRadius: 4,
     margin: "2px 0",
     overflow: "hidden",
+    width: "fit-content",
+    maxWidth: "100%",
 
     "&.active": {
         borderColor: color.border.active,

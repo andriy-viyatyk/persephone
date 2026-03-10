@@ -15,6 +15,11 @@ const PanelRoot = styled.div({
     padding: "4px 8px",
     flexWrap: "wrap",
 
+    "& button.small": {
+        paddingLeft: 8,
+        paddingRight: 8,
+    },
+
     "& .btn-check": {
         display: "inline-flex",
         alignItems: "center",

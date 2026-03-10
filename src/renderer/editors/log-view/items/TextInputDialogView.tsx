@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import { useCallback } from "react";
-import { LogEntry, TextDialogData } from "../logTypes";
+import { TextInputEntry } from "../logTypes";
 import { useLogViewModel } from "../LogViewContext";
 import { DialogContainer } from "./DialogContainer";
 import { DialogHeader } from "./DialogHeader";
@@ -12,6 +12,8 @@ import { TextField } from "../../../components/basic/TextField";
 // =============================================================================
 
 const TextInputRoot = styled.div({
+    minWidth: 300,
+
     "& .text-input-field": {
         padding: "4px 8px",
     },
@@ -22,23 +24,22 @@ const TextInputRoot = styled.div({
 // =============================================================================
 
 interface TextInputDialogViewProps {
-    entry: LogEntry<TextDialogData>;
-    updateEntry: (updater: (draft: LogEntry<TextDialogData>) => void) => void;
+    entry: TextInputEntry;
+    updateEntry: (updater: (draft: TextInputEntry) => void) => void;
 }
 
 const DEFAULT_BUTTONS = ["OK"];
 
 export function TextInputDialogView({ entry, updateEntry }: TextInputDialogViewProps) {
     const vm = useLogViewModel();
-    const data = entry.data;
-    const resolved = data.button !== undefined;
-    const buttons = data.buttons ?? DEFAULT_BUTTONS;
-    const currentValue = data.text ?? data.defaultValue ?? "";
+    const resolved = entry.button !== undefined;
+    const buttons = entry.buttons ?? DEFAULT_BUTTONS;
+    const currentValue = entry.text ?? entry.defaultValue ?? "";
 
     const handleTextChange = useCallback(
         (text: string) => {
             updateEntry((draft) => {
-                draft.data.text = text;
+                draft.text = text;
             });
         },
         [updateEntry],
@@ -72,19 +73,19 @@ export function TextInputDialogView({ entry, updateEntry }: TextInputDialogViewP
     return (
         <DialogContainer resolved={resolved}>
             <TextInputRoot>
-                <DialogHeader title={data.title} />
+                <DialogHeader title={entry.title} />
                 <div className="text-input-field">
                     <TextField
                         value={currentValue}
                         onChange={handleTextChange}
-                        placeholder={data.placeholder}
+                        placeholder={entry.placeholder}
                         disabled={resolved}
                         onKeyDown={handleKeyDown}
                     />
                 </div>
                 <ButtonsPanel
                     buttons={buttons}
-                    button={data.button}
+                    button={entry.button}
                     requirementNotMet={requirementNotMet}
                     onClickButton={handleClick}
                 />

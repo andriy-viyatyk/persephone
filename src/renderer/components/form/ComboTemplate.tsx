@@ -235,7 +235,7 @@ export const ComboTemplate = forwardRef(function ComboTemplateComponent(
             key="open-button"
             size="small"
             type="icon"
-            onClick={toggleOpen}
+            onClick={() => { toggleOpen(); inputRef.current?.focus(); }}
             disabled={disabled}
             className="combo-template-open-icon"
             tabIndex={-1}

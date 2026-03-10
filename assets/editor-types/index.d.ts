@@ -1,7 +1,7 @@
 /* eslint-disable no-var */
 import type { IApp } from "./app";
 import type { IPage } from "./page";
-import type { IUiLog } from "./ui-log";
+import type { IUiLog, IStyledTextBuilder } from "./ui-log";
 
 declare global {
     /** The application object. Access all app functionality through this. */
@@ -31,6 +31,21 @@ declare global {
 
     /** Prevent script output from being written to the grouped page. */
     function preventOutput(): void;
+
+    /**
+     * Create a styled text builder for use in dialog labels and other components.
+     *
+     * @example
+     * const label = styledText("Warning").color("red").bold().value;
+     * await ui.dialog.confirm(label);
+     *
+     * @example
+     * await ui.dialog.buttons([
+     *     styledText("Accept").color("lime").value,
+     *     styledText("Reject").color("red").value,
+     * ]);
+     */
+    function styledText(text: string): IStyledTextBuilder;
 }
 
 export {};

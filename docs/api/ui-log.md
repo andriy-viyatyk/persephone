@@ -14,11 +14,11 @@ ui.success("Done!");
 
 ## Logging Methods
 
-All logging methods accept either a plain string or an array of styled segments (see [Styled Text](#styled-text) below).
+All logging methods accept either a plain string or an array of styled segments (see [Styled Text](#styled-text) below). They return a `StyledLogBuilder` that can optionally be used to build styled text via fluent chaining (see [Fluent Styled Text](#fluent-styled-text) below).
 
 ### log(message)
 
-Log a message (default level — no special styling).
+Log a message with lighter text, suitable for secondary or supplementary output.
 
 ```javascript
 ui.log("Plain message");
@@ -58,7 +58,7 @@ ui.success("All tests passed");
 
 ### text(message)
 
-Alias for `log()`.
+Log a message with normal text color. Unlike `log()` which uses lighter text, `text()` renders at full contrast.
 
 ### clear()
 
@@ -68,7 +68,36 @@ Remove all log entries from the Log View.
 ui.clear();
 ```
 
+## Console Forwarding
+
+When a script accesses `ui`, all `console` output is automatically forwarded to the Log View:
+
+| Console method | Log View level | Appearance |
+|----------------|---------------|------------|
+| `console.log()` | `log.log` | Lighter text (same as `ui.log()`) |
+| `console.info()` | `log.info` | Highlighted |
+| `console.warn()` | `log.warn` | Warning style |
+| `console.error()` | `log.error` | Error style |
+
+The native console is always called as well — forwarding adds a Log View entry on top.
+
+To suppress forwarding for specific levels, call these methods on `ui`:
+
+```javascript
+ui.preventConsoleLog();   // suppress console.log → Log View
+ui.preventConsoleWarn();  // suppress console.warn → Log View
+ui.preventConsoleError(); // suppress console.error → Log View
+```
+
+Each method suppresses forwarding for its level only; the native console call is unaffected.
+
+For **MCP scripts** that use `ui`, console output goes to both the MCP response (`consoleLogs`) and the shared MCP Log View.
+
 ## Styled Text
+
+There are two ways to create styled text in Log View: the **array syntax** and the **fluent builder**.
+
+### Array Syntax
 
 Any logging method can accept an array of styled segments instead of a plain string. Each segment has a `text` property and an optional `styles` object with CSS properties:
 
@@ -84,49 +113,121 @@ ui.log([
 ]);
 ```
 
+### Fluent Styled Text
+
+All logging methods (`ui.log()`, `ui.info()`, `ui.warn()`, `ui.error()`, `ui.success()`, `ui.text()`) return a `StyledLogBuilder`. You can chain styling methods on it and call `.print()` to update the log entry with the styled result:
+
+```javascript
+ui.log("Status: ")
+    .append("OK").color("lime").bold()
+    .append(" — all checks passed")
+    .print();
+
+ui.error("Failed: ")
+    .append("connection timeout").italic()
+    .print();
+
+ui.info("Build ")
+    .append("SUCCESS").color("lime").bold().background("#1a3a1a")
+    .print();
+```
+
+If you don't call `.print()`, the entry keeps the initial plain text — so existing code that ignores the return value works exactly as before.
+
+#### Builder methods
+
+| Method | Description |
+|--------|-------------|
+| `.append(text?)` | Append a new text segment |
+| `.color(color)` | Set text color of the current segment |
+| `.background(color)` | Set background color (with padding and border-radius) |
+| `.border(color)` | Add a border around the current segment |
+| `.fontSize(size)` | Set font size (`string` or `number`) |
+| `.bold()` | Bold the current segment |
+| `.italic()` | Italicize the current segment |
+| `.underline()` | Underline the current segment |
+| `.style(styles)` | Apply arbitrary CSS styles (`Record<string, string \| number>`) |
+| `.print()` | Finalize and update the log entry |
+
+## `styledText()` Global
+
+The `styledText(text)` global function creates a standalone styled text builder for use in dialog labels and anywhere styled text is accepted. It returns a `StyledTextBuilder` (same methods as above, without `.print()`). Access the built value via `.value`:
+
+```javascript
+// Styled dialog label
+const label = styledText("Warning").color("red").bold()
+    .append(": this action is irreversible").value;
+await ui.dialog.confirm(label);
+
+// Styled dialog title
+const title = styledText("Enter ").append("server name").bold().underline().value;
+await ui.dialog.textInput(title);
+```
+
 ## Dialogs
 
 The `ui.dialog` namespace provides interactive dialogs that appear inline in the Log View. All dialog methods return a `Promise<IDialogResult>` where:
 
 - `result.button` — the label of the clicked button, or `undefined` if the dialog was canceled (e.g., the Log View page was closed)
 
+All dialog methods support two calling styles: a **simple form** with positional arguments and a **full form** with a single options object.
+
 ### dialog.confirm(message, buttons?)
+### dialog.confirm(options)
 
 Show a confirmation dialog. Default buttons: `["No", "Yes"]`.
 
 ```javascript
+// Simple form — positional arguments
 const result = await ui.dialog.confirm("Delete all items?");
 if (result.button === "Yes") {
     deleteAll();
 }
 
-// Custom buttons
+// Simple form — custom buttons
 const result = await ui.dialog.confirm("Save changes?", ["Save", "Discard", "Cancel"]);
 if (result.button === "Save") { save(); }
+
+// Full form — single options object
+const result = await ui.dialog.confirm({
+    message: "Delete all items?",
+    buttons: ["Yes", "No"],
+});
 ```
 
 ### dialog.buttons(buttons, title?)
+### dialog.buttons(options)
 
 Show a dialog with custom buttons. The title is optional and supports styled text.
 
 ```javascript
+// Simple form
 const result = await ui.dialog.buttons(
     ["Option A", "Option B", "Cancel"],
     "Choose an option"
 );
 if (result.button === "Option A") { /* ... */ }
+
+// Full form
+const result = await ui.dialog.buttons({
+    buttons: ["Option A", "Option B", "Cancel"],
+    title: "Choose an option",
+});
 ```
 
 ### dialog.textInput(title?, options?)
+### dialog.textInput(options)
 
 Show a text input dialog. The entered text is available in `result.text`. Default buttons: `["OK"]`.
 
 Options:
+- `title?: string` — dialog title (supports styled text)
 - `placeholder?: string` — placeholder text
 - `defaultValue?: string` — initial value
 - `buttons?: string[]` — button labels (prefix with `!` to require non-empty input)
 
 ```javascript
+// Simple form
 const result = await ui.dialog.textInput("Enter your name", {
     placeholder: "Name...",
     defaultValue: "World",
@@ -135,9 +236,380 @@ const result = await ui.dialog.textInput("Enter your name", {
 if (result.button === "OK") {
     ui.log(`Hello, ${result.text}!`);
 }
+
+// Full form — all options in one object
+const result = await ui.dialog.textInput({
+    title: "Enter your name",
+    placeholder: "Name...",
+    defaultValue: "World",
+    buttons: ["!OK", "Cancel"],
+});
 ```
 
 The `!` prefix on a button label (e.g., `"!OK"`) disables that button until the user has entered text. The prefix is not included in `result.button`.
+
+### dialog.checkboxes(items, title?, buttons?)
+### dialog.checkboxes(options)
+
+Show a checkboxes dialog. The updated checkbox state is available in `result.items`. Default buttons: `["OK"]`.
+
+Items can be plain strings (treated as unchecked) or objects with `label` and optional `checked` properties.
+
+Options:
+- `items: (string | { label, checked? })[]` — checkbox items
+- `title?: string` — dialog title (supports styled text)
+- `layout?: "vertical" | "flex"` — layout mode (`"vertical"` = one item per row, `"flex"` = items wrap horizontally; default: `"vertical"`)
+- `buttons?: string[]` — button labels (prefix with `!` to require at least one checked item)
+
+```javascript
+// Simple form — array of strings
+const result = await ui.dialog.checkboxes(["Option A", "Option B", "Option C"]);
+if (result.button === "OK") {
+    const selected = result.items.filter(i => i.checked).map(i => i.label);
+    ui.log(`Selected: ${selected.join(", ")}`);
+}
+
+// Simple form — with title and buttons
+const result = await ui.dialog.checkboxes(
+    ["Feature 1", "Feature 2", "Feature 3"],
+    "Select features",
+    ["!Apply", "Cancel"]
+);
+
+// Full form — pre-checked items, flex layout
+const result = await ui.dialog.checkboxes({
+    items: [
+        { label: "Enable logging", checked: true },
+        { label: "Verbose mode" },
+        { label: "Dry run", checked: true },
+    ],
+    title: "Configuration",
+    layout: "flex",
+    buttons: ["!Apply", "Cancel"],
+});
+if (result.button === "Apply") {
+    for (const item of result.items) {
+        ui.log(`${item.label}: ${item.checked ? "on" : "off"}`);
+    }
+}
+```
+
+The `!` prefix on a button label (e.g., `"!Apply"`) disables that button until at least one checkbox is checked. The prefix is not included in `result.button`.
+
+### dialog.radioboxes(items, title?, buttons?)
+### dialog.radioboxes(options)
+
+Show a radio buttons dialog for single-selection. The selected item label is available in `result.checked`. Default buttons: `["OK"]`.
+
+Items are plain strings (unlike checkboxes, no object form).
+
+Options:
+- `items: string[]` — radio button items
+- `title?: string` — dialog title (supports styled text)
+- `checked?: string` — pre-selected item label
+- `layout?: "vertical" | "flex"` — layout mode (`"vertical"` = one item per row, `"flex"` = items wrap horizontally; default: `"vertical"`)
+- `buttons?: string[]` — button labels (prefix with `!` to require a selection)
+
+```javascript
+// Simple form — array of strings
+const result = await ui.dialog.radioboxes(["Option A", "Option B", "Option C"]);
+if (result.button === "OK") {
+    ui.log(`Selected: ${result.checked}`);
+}
+
+// Simple form — with title and buttons
+const result = await ui.dialog.radioboxes(
+    ["Small", "Medium", "Large"],
+    "Select size",
+    ["!OK", "Cancel"]
+);
+
+// Full form — pre-selected item, flex layout
+const result = await ui.dialog.radioboxes({
+    items: ["Small", "Medium", "Large"],
+    title: "Select size",
+    checked: "Medium",
+    layout: "flex",
+    buttons: ["!Apply", "Cancel"],
+});
+if (result.button === "Apply") {
+    ui.log(`Size: ${result.checked}`);
+}
+```
+
+The `!` prefix on a button label (e.g., `"!Apply"`) disables that button until an item is selected. The prefix is not included in `result.button`.
+
+### dialog.select(items, title?, buttons?)
+### dialog.select(options)
+
+Show a dropdown select dialog. The selected item label is available in `result.selected`. Default buttons: `["OK"]`.
+
+The dropdown supports search/filter and keyboard navigation.
+
+Options:
+- `items: string[]` — selectable items
+- `title?: string` — dialog title (supports styled text)
+- `selected?: string` — pre-selected item label
+- `placeholder?: string` — placeholder text when no item is selected
+- `buttons?: string[]` — button labels (prefix with `!` to require a selection)
+
+```javascript
+// Simple form — array of strings
+const result = await ui.dialog.select(["Option A", "Option B", "Option C"]);
+if (result.button === "OK") {
+    ui.log(`Selected: ${result.selected}`);
+}
+
+// Simple form — with title and buttons
+const result = await ui.dialog.select(
+    ["Small", "Medium", "Large"],
+    "Select size",
+    ["!OK", "Cancel"]
+);
+
+// Full form — pre-selected item with placeholder
+const result = await ui.dialog.select({
+    items: ["Small", "Medium", "Large"],
+    title: "Select size",
+    selected: "Medium",
+    placeholder: "Choose a size...",
+    buttons: ["!Apply", "Cancel"],
+});
+if (result.button === "Apply") {
+    ui.log(`Size: ${result.selected}`);
+}
+```
+
+The `!` prefix on a button label (e.g., `"!Apply"`) disables that button until an item is selected. The prefix is not included in `result.button`.
+
+## Progress Bars
+
+The `ui.show` namespace provides rich output display methods for the Log View, including progress bars and inline data grids.
+
+### show.progress(label?)
+### show.progress(options)
+
+Show a progress bar in the Log View. Returns a `Progress` helper whose property setters update the bar in real-time.
+
+```javascript
+// Simple form — just a label
+const progress = ui.show.progress("Downloading...");
+progress.max = 100;
+for (let i = 0; i <= 100; i += 10) {
+    await delay(200);
+    progress.value = i;
+}
+progress.completed = true;
+progress.label = "Done!";
+```
+
+```javascript
+// Full form — initial values
+const progress = ui.show.progress({
+    label: "Processing files",
+    value: 0,
+    max: 50,
+});
+```
+
+#### Progress properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `label` | `string \| IStyledSegment[]` | Progress label (supports styled text) |
+| `value` | `number \| undefined` | Current progress value |
+| `max` | `number \| undefined` | Maximum value (default: 100) |
+| `completed` | `boolean \| undefined` | When `true`, shows the bar as fully completed |
+
+#### completeWithPromise(promise, completeLabel?)
+
+Mark the progress bar as completed when a promise settles. Optionally update the label on completion.
+
+```javascript
+const progress = ui.show.progress("Loading data...");
+progress.completeWithPromise(
+    fetchData(),
+    styledText("Loaded!").color("green").value
+);
+```
+
+## Grid Output
+
+### show.grid(data)
+### show.grid(options)
+
+Show an inline data grid in the Log View. Returns a `Grid` helper whose property setters update the grid in real-time.
+
+The grid supports column resizing, column reordering, and cell selection with copy-to-clipboard. A hover toolbar shows an "Open in Grid editor" button.
+
+```javascript
+// Simple form — array of objects
+const grid = ui.show.grid([
+    { name: "Alice", age: 30, city: "NYC" },
+    { name: "Bob", age: 25, city: "LA" },
+]);
+```
+
+```javascript
+// Full form — with columns and title
+const grid = ui.show.grid({
+    data: users,
+    columns: ["name", "age"],
+    title: "User List",
+});
+```
+
+```javascript
+// Column objects with custom widths and data types
+const grid = ui.show.grid({
+    data: records,
+    columns: [
+        { key: "name", title: "Full Name", width: 200 },
+        { key: "age", dataType: "number" },
+        { key: "active", dataType: "boolean" },
+    ],
+    title: styledText("Results").bold().value,
+});
+```
+
+#### Grid properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `data` | `any[]` | Grid data (array of objects). Setting triggers re-render. |
+| `columns` | `(string \| IGridColumn)[] \| undefined` | Column definitions — strings (key names) or column objects. Setting triggers re-render. |
+| `title` | `string \| IStyledSegment[] \| undefined` | Grid title (supports styled text). Setting triggers re-render. |
+
+#### IGridColumn
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `key` | `string` | Property key to access from row objects |
+| `title` | `string \| undefined` | Display name in header (defaults to key) |
+| `width` | `number \| undefined` | Column width in pixels |
+| `dataType` | `"string" \| "number" \| "boolean" \| undefined` | Data type for sorting/alignment |
+
+#### openInEditor(pageTitle?)
+
+Open the grid data in a dedicated Grid editor tab for full sorting, filtering, and editing capabilities.
+
+```javascript
+const grid = ui.show.grid(data);
+// Later — open in a full Grid editor
+grid.openInEditor("My Data");
+```
+
+## MCP `ui_push` Tool
+
+The same Log View is available to external AI agents via the MCP `ui_push` tool. While scripts use the `ui` global, MCP agents use `ui_push` to push entries to a managed Log View page.
+
+### How it works
+
+- On the first `ui_push` call, js-notepad creates a new Log View page (titled with the current date/time)
+- Subsequent calls reuse the same page, appending new entries
+- If the user closes the page, the next `ui_push` call creates a fresh one
+
+### Entry format
+
+The `entries` parameter is an array. Each element is either:
+- A **string** — treated as `log.info`
+- A **flat object** with `type` and type-specific fields directly on the object (no wrapper) — see entry types below
+
+**Log entry types:** `log.text`, `log.info`, `log.warn`, `log.error`, `log.success` — use a `text` field for the message.
+
+**Dialog entry types:** `input.confirm`, `input.text`, `input.buttons`, `input.checkboxes`, `input.radioboxes`, `input.select` (same dialog types as `ui.dialog`) — use fields like `message`, `title`, `buttons`, `placeholder`, `defaultValue`, `items`, `checked`, `selected`, `layout` directly on the object.
+
+**Output entry types:** `output.progress` — a progress bar with `label` (string or styled text), `value` (number), `max` (number, default 100), and `completed` (boolean) fields. Use the same `id` on subsequent calls to update an existing progress bar (upsert-by-id). `output.grid` — an inline data grid with `content` (JSON or CSV string), optional `contentType` (`"json"` or `"csv"`, default `"json"`), and optional `title`.
+
+### Examples
+
+```
+// Simple log messages
+ui_push({ entries: ["Starting analysis...", "Found 15 files"] })
+
+// Typed entries (flat format)
+ui_push({ entries: [
+    { type: "log.info", text: "Processing complete" },
+    { type: "log.warn", text: "2 files skipped" }
+] })
+
+// Confirmation dialog (blocks until user responds)
+ui_push({ entries: [
+    { type: "log.info", text: "Ready to apply changes." },
+    { type: "input.confirm", message: "Apply?", buttons: ["No", "Yes"] }
+] })
+// → { results: [{ button: "Yes", ... }] }
+
+// Text input dialog
+ui_push({ entries: [
+    { type: "input.text", title: "Project name", placeholder: "my-app" }
+] })
+// → { results: [{ button: "OK", text: "my-project", ... }] }
+
+// Checkboxes dialog
+ui_push({ entries: [
+    { type: "input.checkboxes", items: ["Option A", "Option B", "Option C"], title: "Select options", buttons: ["!OK", "Cancel"] }
+] })
+// → { results: [{ button: "OK", items: [{ label: "Option A", checked: true }, ...], ... }] }
+
+// Radioboxes dialog (single selection)
+ui_push({ entries: [
+    { type: "input.radioboxes", items: ["Small", "Medium", "Large"], title: "Select size", checked: "Medium", buttons: ["!OK", "Cancel"] }
+] })
+// → { results: [{ button: "OK", checked: "Large", ... }] }
+
+// Select dropdown dialog
+ui_push({ entries: [
+    { type: "input.select", items: ["Small", "Medium", "Large"], title: "Select size", selected: "Medium", placeholder: "Choose...", buttons: ["!OK", "Cancel"] }
+] })
+// → { results: [{ button: "OK", selected: "Large", ... }] }
+
+// Progress bar (initial)
+ui_push({ entries: [
+    { type: "output.progress", id: "dl-1", label: "Downloading...", value: 0, max: 100 }
+] })
+
+// Progress bar (update by same id)
+ui_push({ entries: [
+    { type: "output.progress", id: "dl-1", value: 75 }
+] })
+
+// Progress bar (completed)
+ui_push({ entries: [
+    { type: "output.progress", id: "dl-1", value: 100, completed: true, label: "Download complete" }
+] })
+
+// Grid output (JSON data)
+ui_push({ entries: [
+    { type: "output.grid", content: "[{\"name\":\"Alice\",\"age\":30},{\"name\":\"Bob\",\"age\":25}]", title: "Users" }
+] })
+
+// Grid output (CSV data — first row is headers)
+ui_push({ entries: [
+    { type: "output.grid", content: "name,age\nAlice,30\nBob,25", contentType: "csv", title: "Users" }
+] })
+```
+
+### Dialog results
+
+- If entries contain no dialogs, the tool returns immediately with `{}`
+- If entries contain dialogs, the tool blocks until **all** dialogs are resolved
+- Each dialog produces one result object in the `results` array (in order)
+- Results are the full flat entry objects (including `type`, `id`, `timestamp`, and all fields)
+- `button` contains the clicked button label, or `null` if the user closed the Log View page
+- Text input dialogs also include a `text` field
+- Checkboxes dialogs also include an `items` array with updated `checked` state
+- Radioboxes dialogs also include a `checked` field with the selected item label
+- Select dialogs also include a `selected` field with the chosen item label
+
+### When to use `ui_push` vs other tools
+
+| Scenario | Use |
+|----------|-----|
+| Show status, progress, results | `ui_push` with log entries |
+| Ask the user a question | `ui_push` with dialog entries |
+| Show data the user will edit | `create_page` with appropriate editor |
+| Open a file in a specific editor | `create_page` or `execute_script` |
 
 ## Example: Interactive Script
 

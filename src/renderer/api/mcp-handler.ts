@@ -6,6 +6,10 @@ import { isTextFileModel } from "../editors/text/TextPageModel";
 import { editorRegistry } from "../editors/registry";
 import { MCP_EXECUTE, MCP_RESULT } from "../../shared/constants";
 import { app } from "./app";
+import type { LogViewModel } from "../editors/log-view/LogViewModel";
+import type { LogEntry } from "../editors/log-view/logTypes";
+import { mcpLogState } from "./mcp-log-state";
+import { csvToRecords } from "../core/utils/csv-utils";
 
 // ── Types ───────────────────────────────────────────────────────────
 
@@ -32,6 +36,8 @@ async function handleCommand(method: string, params: any): Promise<McpResponse> 
             return setPageContent(params);
         case "get_app_info":
             return { result: getAppInfo() };
+        case "ui_push":
+            return handleUiPush(params);
         default:
             return { error: { code: -32601, message: `Method not found: ${method}` } };
     }
@@ -176,6 +182,107 @@ function setPageContent(params: any): McpResponse {
     page.changeContent(content);
     return { result: { id: page.id, title: page.title, contentLength: content.length } };
 }
+
+// ── Active MCP Log Page ────────────────────────────────────────────
+
+function formatLogTitle(): string {
+    const now = new Date();
+    const date = now.toISOString().slice(0, 10);
+    const time = now.toTimeString().slice(0, 5);
+    return `${date} ${time}.log.jsonl`;
+}
+
+async function getOrCreateMcpLogViewModel(): Promise<LogViewModel> {
+    // Reuse existing active MCP log page if still valid
+    if (mcpLogState.pageId) {
+        const page = pagesModel.findPage(mcpLogState.pageId);
+        if (page && isTextFileModel(page)) {
+            const vm = page.acquireViewModelSync("log-view") as LogViewModel | undefined;
+            if (vm) return vm;
+        }
+        mcpLogState.pageId = undefined;
+    }
+
+    // Ensure log-view editor module is loaded (async import)
+    await editorRegistry.loadViewModelFactory("log-view");
+
+    const page = pagesModel.addEditorPage("log-view", "jsonl", formatLogTitle());
+    mcpLogState.pageId = page.id;
+
+    if (!isTextFileModel(page)) {
+        throw new Error("Log view page is not a text file model.");
+    }
+    const vm = page.acquireViewModelSync("log-view") as LogViewModel | undefined;
+    if (!vm) {
+        throw new Error("Log view module not loaded.");
+    }
+    return vm;
+}
+
+// ── ui_push Handler ────────────────────────────────────────────────
+
+async function handleUiPush(params: any): Promise<McpResponse> {
+    const entries = params?.entries;
+    if (!Array.isArray(entries)) {
+        return { error: { code: -32602, message: "Missing or invalid 'entries' parameter" } };
+    }
+
+    const vm = await getOrCreateMcpLogViewModel();
+    const dialogPromises: Promise<LogEntry>[] = [];
+
+    for (const raw of entries) {
+        // Normalize: string shorthand → log.info
+        const entry = typeof raw === "string"
+            ? { type: "log.info", text: raw }
+            : raw;
+
+        if (!entry || typeof entry !== "object" || !entry.type) continue;
+
+        const { type, ...fields } = entry;
+        if (typeof type === "string" && type.startsWith("input.")) {
+            // Dialog entry — addDialogEntry returns a Promise
+            dialogPromises.push(vm.addDialogEntry(type, fields));
+        } else if (type === "output.grid") {
+            // MCP sends: { content: string, contentType?: "csv" | "json", title? }
+            // Parse content to data[] before storing in the entry
+            const contentType = fields.contentType ?? "json";
+            let data: any[];
+            if (contentType === "csv") {
+                data = csvToRecords(fields.content, true, ",");
+            } else {
+                data = JSON.parse(fields.content);
+            }
+            const { content: _, contentType: _ct, ...rest } = fields;
+            vm.addEntry(type, { ...rest, data });
+        } else if (typeof type === "string" && type.startsWith("output.")) {
+            // Output entry — pass full fields object
+            vm.addEntry(type, fields);
+        } else {
+            // Log entry — pass text only
+            vm.addEntry(type, fields.text ?? "");
+        }
+    }
+
+    if (dialogPromises.length === 0) {
+        return { result: {} };
+    }
+
+    // Wait for ALL dialogs to be resolved by the user
+    const dialogResults = await Promise.all(dialogPromises);
+
+    // Convert undefined → null for JSON serialization
+    const results = dialogResults.map((r) => {
+        const obj: Record<string, any> = { ...r };
+        if (obj.button === undefined) {
+            obj.button = null;
+        }
+        return obj;
+    });
+
+    return { result: { results } };
+}
+
+// ── App Info ───────────────────────────────────────────────────────
 
 function getAppInfo(): any {
     const pages = pagesModel.state.get().pages;

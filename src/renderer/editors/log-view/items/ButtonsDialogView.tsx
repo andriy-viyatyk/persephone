@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { LogEntry, ButtonsDialogData } from "../logTypes";
+import { ButtonsEntry } from "../logTypes";
 import { useLogViewModel } from "../LogViewContext";
 import { DialogContainer } from "./DialogContainer";
 import { DialogHeader } from "./DialogHeader";
@@ -10,13 +10,12 @@ import { ButtonsPanel } from "./ButtonsPanel";
 // =============================================================================
 
 interface ButtonsDialogViewProps {
-    entry: LogEntry<ButtonsDialogData>;
+    entry: ButtonsEntry;
 }
 
 export function ButtonsDialogView({ entry }: ButtonsDialogViewProps) {
     const vm = useLogViewModel();
-    const data = entry.data;
-    const resolved = data.button !== undefined;
+    const resolved = entry.button !== undefined;
 
     const handleClick = useCallback(
         (label: string) => {
@@ -27,10 +26,10 @@ export function ButtonsDialogView({ entry }: ButtonsDialogViewProps) {
 
     return (
         <DialogContainer resolved={resolved}>
-            <DialogHeader title={data.title} />
+            <DialogHeader title={entry.title} />
             <ButtonsPanel
-                buttons={data.buttons}
-                button={data.button}
+                buttons={entry.buttons}
+                button={entry.button}
                 onClickButton={handleClick}
             />
         </DialogContainer>

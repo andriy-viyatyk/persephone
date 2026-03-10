@@ -22,7 +22,9 @@ js-notepad/
 │   ├── icons/              # App icons
 │   ├── pdfjs/              # PDF.js library
 │   ├── script-library/     # Bundled example scripts (copied to user library on setup)
-│   └── mcp-api-guide.md    # Condensed API guide exposed as MCP resource
+│   ├── mcp-res-ui-push.md  # MCP resource: ui_push tool guide
+│   ├── mcp-res-pages.md    # MCP resource: pages & windows guide
+│   └── mcp-res-scripting.md # MCP resource: scripting API reference
 ├── patches/                # Dependency patches (patch-package)
 ├── .mcp.json               # MCP server config for Claude Code (points to MCP HTTP server)
 ├── doc/                    # Developer documentation
@@ -51,6 +53,7 @@ js-notepad/
 │   ├── library-service.ts  # LibraryService — script library scanning, caching, file watching
 │   ├── pages.ts            # PagesModel singleton export
 │   ├── mcp-handler.ts      # MCP command handler (receives IPC from main, dispatches commands)
+│   ├── mcp-log-state.ts    # Shared MCP Log View page tracking (avoids circular deps)
 │   ├── internal.ts         # Disposable utilities (wrapSubscription, etc.)
 │   │
 │   ├── pages/              # Page collection — composed submodels
@@ -247,19 +250,24 @@ js-notepad/
 │   │   ├── LogViewEditor.tsx       # Log viewer component (RenderFlexGrid + auto-scroll)
 │   │   ├── LogViewModel.ts         # ContentViewModel — JSONL parsing, entry management
 │   │   ├── LogViewContext.ts       # React Context providing LogViewModel to dialog views
-│   │   ├── LogEntryModel.ts        # Reactive wrapper for individual log entries (deprecated)
 │   │   ├── LogEntryWrapper.tsx     # Cell root — subscribes to entries[index] via selector
-│   │   ├── LogEntryContent.tsx     # Type router — dispatches to entry renderers
+│   │   ├── LogEntryContent.tsx     # Type router — dispatches to entry renderers (with EntryErrorBoundary)
 │   │   ├── LogMessageView.tsx      # Log message renderer (text/info/warn/error/success)
 │   │   ├── StyledTextView.tsx      # StyledText renderer (plain string or styled segments)
 │   │   ├── logTypes.ts             # LogEntry, StyledText, dialog/output types
+│   │   ├── logConstants.ts         # Shared constants (DIALOG_CONTENT_MAX_HEIGHT)
 │   │   └── items/                  # Dialog and output entry renderers
 │   │       ├── DialogContainer.tsx     # Shared styled wrapper (active/resolved border)
 │   │       ├── DialogHeader.tsx        # Optional title bar
 │   │       ├── ButtonsPanel.tsx        # Reusable button row with ! prefix + check icon
 │   │       ├── ConfirmDialogView.tsx   # input.confirm renderer
 │   │       ├── TextInputDialogView.tsx # input.text renderer
-│   │       └── ButtonsDialogView.tsx   # input.buttons renderer
+│   │       ├── ButtonsDialogView.tsx   # input.buttons renderer
+│   │       ├── CheckboxesDialogView.tsx # input.checkboxes renderer
+│   │       ├── RadioboxesDialogView.tsx # input.radioboxes renderer
+│   │       ├── SelectDialogView.tsx     # input.select renderer
+│   │       ├── ProgressOutputView.tsx   # output.progress renderer
+│   │       └── GridOutputView.tsx       # output.grid renderer (inline AVGrid)
 │   ├── pdf/                # PDF viewer (page-editor)
 │   │   ├── PdfViewer.tsx
 │   │   └── index.ts
@@ -301,7 +309,11 @@ js-notepad/
 │       ├── MarkdownEditorFacade.ts # IMarkdownEditor facade
 │       ├── SvgEditorFacade.ts      # ISvgEditor facade
 │       ├── HtmlEditorFacade.ts     # IHtmlEditor facade
-│       └── MermaidEditorFacade.ts  # IMermaidEditor facade
+│       ├── MermaidEditorFacade.ts  # IMermaidEditor facade
+│       ├── UiFacade.ts             # Log View UI (logging + dialogs + output)
+│       ├── Progress.ts            # Progress helper class (returned by ui.show.progress)
+│       ├── Grid.ts                # Grid helper class (returned by ui.show.grid)
+│       └── StyledTextBuilder.ts    # Fluent styled text builder + styledText() factory
 │
 ├── components/             # Reusable UI Components
 │   ├── basic/              # Atomic: Button, Input, TextField, Chip, Tooltip, etc.

@@ -17,16 +17,79 @@ Release notes and changelog for js-notepad.
     - `input.confirm` — message with Yes/No buttons
     - `input.text` — title, text input field, and action buttons
     - `input.buttons` — array of clickable buttons
+    - `input.checkboxes` — list of checkboxes with optional title and layout modes
+    - `input.radioboxes` — single-selection radio button group with optional title and layout modes
+    - `input.select` — dropdown select with search/filter and keyboard navigation
   - Dialogs have **pending** (active border, clickable) and **resolved** (dim border, disabled, check icon on chosen button) states
   - `!` prefix on button names marks them as "required" — disabled until the text field has a value
   - Text input values and dialog results persist to the JSONL content immediately (text input debounced at 300ms)
   - Auto-scroll to bottom when new entries appear
-  - Toolbar toggle for timestamps (off by default)
+  - Toolbar buttons: **Clear log** (removes all entries) and **timestamps toggle** (off by default)
+
+- **MCP `ui_push` Tool** — AI agents can now push log entries and interactive dialogs to a Log View page via the new `ui_push` MCP tool
+  - **Log entries** — `log.text`, `log.info`, `log.warn`, `log.error`, `log.success` for styled status messages
+  - **Interactive dialogs** — `input.confirm`, `input.text`, `input.buttons`, `input.checkboxes`, `input.radioboxes`, `input.select` render inline in the Log View; the tool blocks until the user responds
+  - **String shorthand** — plain strings in the entries array are treated as `log.info`
+  - **Automatic page management** — Log View page is created on first call, reused on subsequent calls, and recreated if the user closes it
+  - Recommended output channel for AI agents — prefer `ui_push` over `create_page` for showing status, results, and asking questions
+
+- **Checkboxes Dialog** — New `ui.dialog.checkboxes()` method for scripts and `input.checkboxes` entry for MCP `ui_push`
+  - Items can be strings or `{ label, checked? }` objects with pre-checked state
+  - Two layout modes: `"vertical"` (one per row, default) and `"flex"` (items wrap horizontally)
+  - `!` prefix on buttons disables them until at least one item is checked
+  - Result includes `items` array with updated `checked` state
+
+- **Radioboxes Dialog** — New `ui.dialog.radioboxes()` method for scripts and `input.radioboxes` entry for MCP `ui_push`
+  - Items are plain strings (single-selection radio button group)
+  - Two layout modes: `"vertical"` (one per row, default) and `"flex"` (items wrap horizontally)
+  - Pre-selected item via `checked` option
+  - `!` prefix on buttons disables them until an item is selected
+  - Result includes `checked` field with the selected item label
+
+- **Progress Bar** — New `ui.show.progress()` method for scripts and `output.progress` entry for MCP `ui_push`
+  - Shows a progress bar inline in the Log View with label, value, max, and completed state
+  - Returns a `Progress` helper with live property setters — update `value`, `label`, `max`, or `completed` to animate the bar in real-time
+  - `completeWithPromise(promise, label?)` auto-completes the bar when a promise settles
+  - MCP agents use `output.progress` entries with upsert-by-id to create and update progress bars
+
+- **Grid Output** — New `ui.show.grid()` method for scripts and `output.grid` entry for MCP `ui_push`
+  - Display tabular data inline in the Log View using a full-featured grid (AVGrid)
+  - Two overloads: `ui.show.grid(data)` for quick display, `ui.show.grid({ data, columns?, title? })` for custom columns and title
+  - Column definitions can be strings (key names) or objects with `key`, `title`, `width`, and `dataType` properties
+  - Returns a `Grid` helper with live `data`, `columns`, and `title` setters for real-time updates
+  - `openInEditor(pageTitle?)` opens the data in a dedicated Grid editor tab
+  - Grid supports column resizing, column reordering, cell selection, and copy-to-clipboard
+  - Hover toolbar with "Open in Grid editor" button
+  - MCP agents use `output.grid` entries with `content` (JSON or CSV string), optional `contentType` (`"json"` or `"csv"`), and optional `title`
+
+- **Select Dialog** — New `ui.dialog.select()` method for scripts and `input.select` entry for MCP `ui_push`
+  - Dropdown select using a searchable combo box with keyboard navigation
+  - Items are plain strings
+  - Pre-selected item via `selected` option, customizable placeholder text
+  - `!` prefix on buttons disables them until an item is selected
+  - Result includes `selected` field with the chosen item label
 
 ### Improvements
 
+- **Console Forwarding to Log View** — When a script uses `ui`, `console.log/info/warn/error` are automatically forwarded to the Log View (`console.log` maps to lighter `log.log` text, `console.info` → `log.info`, etc.). The native console is always called. Suppress forwarding per level with `ui.preventConsoleLog()`, `ui.preventConsoleWarn()`, or `ui.preventConsoleError()`. MCP scripts with `ui` send console output to both the MCP response and the Log View.
+- **`ui.log()` Lighter Text** — `ui.log()` now renders with lighter text (`log.log` level), visually distinct from `ui.text()` which uses normal text color (`log.text` level)
+- **Fluent Styled Text in Log View** — `ui.log()`, `ui.info()`, `ui.warn()`, `ui.error()`, `ui.success()`, and `ui.text()` now return a builder for fluent chaining: `ui.log("Status: ").append("OK").color("lime").bold().print()`. Existing code that ignores the return value is unaffected.
+- **`styledText()` Global** — New standalone function for building styled text outside the Log View, for use in dialog labels and anywhere styled text is accepted: `const label = styledText("Warning").color("red").bold().value;`
+- **Dialog Two-Overload Pattern** — All `ui.dialog` methods (`confirm`, `buttons`, `textInput`) now support two calling styles: a simple form with positional arguments (e.g., `confirm("message", buttons?)`) and a full form with a single options object (e.g., `confirm({ message, buttons? })`)
+- **Log View Dialog UX** — Dialogs now have fit-content width, improved button padding, and auto-scroll to bottom when a new dialog appears
+- **Log View Rendering** — Fixed empty lines growing unexpectedly, eliminated height jumping for new rows, and improved auto-scroll reliability
 - **JSONL Language Support** — Syntax highlighting for `.jsonl` and `.ndjson` files (JSON Lines format) with dedicated file icon
 - **Grid View for JSONL** — Switch to Grid editor for `.jsonl`/`.ndjson` files to view, sort, filter, and edit data as a spreadsheet
+
+### Bug Fixes
+
+- **ScriptRunner Block Closers** — Scripts ending with block-closing syntax like `});` no longer fail with syntax errors
+
+### Internal
+
+- **Flat Log Entry Format** — Log entries in `.log.jsonl` files and MCP `ui_push` now use a flat object structure (e.g., `{ type: "log.info", text: "Hello" }`) instead of the previous `{ type, data }` wrapper. Dialog entries are flat too (e.g., `{ type: "input.confirm", message: "Sure?", buttons: ["Yes", "No"] }`). Dialog results return the full flat entry object.
+- **Editor Error Boundary** — Editors that fail to render now show an error message with stack trace in the tab instead of crashing the application
+- **Log Entry Error Boundary** — Individual log entries that fail to render show an error stub instead of crashing the entire Log View
 
 ---
 
@@ -97,7 +160,7 @@ Release notes and changelog for js-notepad.
   - Server is bound to localhost only (127.0.0.1) and is not accessible from other machines
   - Available tools: `execute_script`, `list_pages`, `get_page_content`, `get_active_page`, `create_page`, `set_page_content`, `get_app_info`
   - Console output (`console.log`, `console.error`, etc.) from scripts executed via MCP is captured and returned to the agent
-  - **API Guide resource** (`notepad://docs/api-guide`) — AI clients can read a condensed scripting API reference directly from the MCP server, giving standalone clients (Claude Desktop, ChatGPT, Gemini) the context they need to use js-notepad effectively without any project setup
+  - **API Guide resources** — AI clients can read focused guides (`notepad://guides/ui-push`, `notepad://guides/pages`, `notepad://guides/scripting`) or the full combined reference (`notepad://guides/full`) directly from the MCP server. Server instructions provide immediate context on connection.
   - **Title bar MCP indicator** — when the MCP server is active, a small indicator (green dot + "MCP" label) appears in the title bar with a live connection count; hidden when MCP is disabled
   - **Multi-window support** — all MCP tools accept an optional `windowIndex` parameter to target specific windows. New `list_windows` tool discovers all windows (open and closed) with their pages. New `open_window` tool reopens closed windows with their persisted pages
   - See [MCP Server Setup](./mcp-setup.md) for configuration instructions

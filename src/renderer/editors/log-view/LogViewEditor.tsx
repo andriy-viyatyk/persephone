@@ -54,6 +54,14 @@ function TimestampIcon({ active }: { active: boolean }) {
     );
 }
 
+function ClearIcon() {
+    return (
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M2 5h8M2 8h5M2 11h3M10.5 5.5l4 4M14.5 5.5l-4 4" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
+        </svg>
+    );
+}
+
 // =============================================================================
 // Component
 // =============================================================================
@@ -91,6 +99,25 @@ export function LogViewEditor({ model }: { model: TextFileModel }) {
         return () => container.removeEventListener("scroll", handleScroll);
     }, [vm, state.entryCount, handleScroll]);
 
+    // Iterative auto-scroll: RenderFlexGrid renders new rows at minRowHeight
+    // (preferMinHeightForNewRows), then ResizeObserver measures actual content and
+    // grows rows asynchronously. A single scroll-to-bottom fires before these height
+    // adjustments settle, so the last row ends up partially hidden. We scroll multiple
+    // times with increasing delays to compensate for each measurement pass.
+    // Three follow-ups (50/150/300ms) reliably cover multi-row batches where each
+    // row's ResizeObserver fires at slightly different times.
+    const scheduleScrollToBottom = useCallback(() => {
+        for (const t of scrollTimers.current) clearTimeout(t);
+        const count = prevEntryCount.current;
+        if (count <= 0) return;
+        const scrollToEnd = () => gridModelRef.current?.scrollToRow(count - 1, "bottom");
+        scrollToEnd();
+        const t1 = setTimeout(scrollToEnd, 50);
+        const t2 = setTimeout(scrollToEnd, 150);
+        const t3 = setTimeout(scrollToEnd, 300);
+        scrollTimers.current = [t1, t2, t3];
+    }, []);
+
     // Grid update + auto-scroll on entry count change
     useEffect(() => {
         if (!vm) return;
@@ -103,27 +130,23 @@ export function LogViewEditor({ model }: { model: TextFileModel }) {
         gridModelRef.current?.update({ all: true });
 
         if (count > prevEntryCount.current && isAtBottom.current && count > 0) {
-            // Iterative auto-scroll: RenderFlexGrid renders new rows at minRowHeight
-            // (preferMinHeightForNewRows), then ResizeObserver measures actual content and
-            // grows rows asynchronously. A single scroll-to-bottom fires before these height
-            // adjustments settle, so the last row ends up partially hidden. We scroll multiple
-            // times with increasing delays to compensate for each measurement pass.
-            // Three follow-ups (50/150/300ms) reliably cover multi-row batches where each
-            // row's ResizeObserver fires at slightly different times.
-            const scrollToEnd = () => gridModelRef.current?.scrollToRow(count - 1, "bottom");
-            scrollToEnd();
-            const t1 = setTimeout(scrollToEnd, 50);
-            const t2 = setTimeout(scrollToEnd, 150);
-            const t3 = setTimeout(scrollToEnd, 300);
-            scrollTimers.current = [t1, t2, t3];
+            prevEntryCount.current = count;
+            scheduleScrollToBottom();
+        } else {
+            prevEntryCount.current = count;
         }
 
-        prevEntryCount.current = count;
         return () => {
             for (const t of scrollTimers.current) clearTimeout(t);
             scrollTimers.current = [];
         };
-    }, [vm, state.entryCount]);
+    }, [vm, state.entryCount, scheduleScrollToBottom]);
+
+    // Force scroll-to-bottom when a dialog entry is added (user must see it to respond)
+    useEffect(() => {
+        if (!vm || state.forceScrollVersion === 0) return;
+        scheduleScrollToBottom();
+    }, [vm, state.forceScrollVersion, scheduleScrollToBottom]);
 
     // Re-render grid when timestamps toggled (row heights change)
     useEffect(() => {
@@ -164,14 +187,24 @@ export function LogViewEditor({ model }: { model: TextFileModel }) {
         <>
             {Boolean(model.editorToolbarRefLast) &&
                 createPortal(
-                    <Button
-                        size="small"
-                        type="icon"
-                        title={state.showTimestamps ? "Hide timestamps" : "Show timestamps"}
-                        onClick={vm.toggleTimestamps}
-                    >
-                        <TimestampIcon active={state.showTimestamps} />
-                    </Button>,
+                    <>
+                        <Button
+                            size="small"
+                            type="icon"
+                            title="Clear log"
+                            onClick={vm.clear}
+                        >
+                            <ClearIcon />
+                        </Button>
+                        <Button
+                            size="small"
+                            type="icon"
+                            title={state.showTimestamps ? "Hide timestamps" : "Show timestamps"}
+                            onClick={vm.toggleTimestamps}
+                        >
+                            <TimestampIcon active={state.showTimestamps} />
+                        </Button>
+                    </>,
                     model.editorToolbarRefLast!,
                 )}
             <LogViewProvider value={vm}>

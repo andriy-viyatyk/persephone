@@ -133,9 +133,14 @@ if (result.button === "Yes") {
 Key points:
 - **Lazy initialization** — the Log View page is created on the first `ui` access and auto-grouped with the source page
 - **Suppresses default output** — accessing `ui` automatically prevents the return value from being written to a grouped page (same as `preventOutput()`)
-- **Logging levels** — `ui.log()`, `ui.info()`, `ui.warn()`, `ui.error()`, `ui.success()`, `ui.text()`
-- **Styled text** — pass an array of `{ text, styles }` segments for custom formatting
-- **Inline dialogs** — `ui.dialog.confirm()`, `ui.dialog.buttons()`, `ui.dialog.textInput()` appear directly in the Log View and return a `Promise` with the user's response
+- **Console forwarding** — when `ui` is active, `console.log/info/warn/error` are automatically forwarded to the Log View (`console.log` → lighter text, `console.info` → info, etc.). The native console is always called too. Suppress with `ui.preventConsoleLog()`, `ui.preventConsoleWarn()`, `ui.preventConsoleError()`.
+- **Logging levels** — `ui.log()` (lighter text), `ui.text()` (normal text), `ui.info()`, `ui.warn()`, `ui.error()`, `ui.success()`
+- **Fluent styled text** — logging methods return a builder for chaining: `ui.log("Status: ").append("OK").color("lime").bold().print()`
+- **Styled text arrays** — pass an array of `{ text, styles }` segments for custom formatting
+- **`styledText()` global** — build styled text for dialog labels: `styledText("Warning").color("red").bold().value`
+- **Inline dialogs** — `ui.dialog.confirm()`, `ui.dialog.buttons()`, `ui.dialog.textInput()`, `ui.dialog.checkboxes()`, `ui.dialog.radioboxes()`, `ui.dialog.select()` appear directly in the Log View and return a `Promise` with the user's response
+- **Progress bars** — `ui.show.progress()` adds a progress bar to the Log View and returns a `Progress` helper with `label`, `value`, `max`, and `completed` setters for real-time updates. Use `progress.completeWithPromise(promise)` to auto-complete on promise settlement.
+- **Inline grids** — `ui.show.grid(data)` displays tabular data inline in the Log View using a full-featured grid with column resizing, reordering, and cell selection/copy. Pass an options object for custom columns and title: `ui.show.grid({ data, columns?, title? })`. The returned `Grid` helper has live `data`, `columns`, and `title` setters, plus `openInEditor()` to open the data in a dedicated Grid editor tab.
 
 See the [ui API reference](./api/ui-log.md) for complete details.
 
@@ -272,6 +277,8 @@ For the complete API with all methods and parameters, see the [Scripting API Ref
 ## AI Agent Integration (MCP)
 
 The same `page` and `app` scripting API is available to external AI agents via the built-in MCP server. Agents can execute scripts, create pages, read content, and more — without any user interaction.
+
+AI agents also have access to the **`ui_push`** MCP tool, which pushes log entries and interactive dialogs to a Log View page — the same Log View that scripts access via the `ui` global. This is the recommended output channel for agents to show status messages, results, and ask users questions. See the [ui API reference](./api/ui-log.md#mcp-ui_push-tool) for details.
 
 See [MCP Server Setup](./mcp-setup.md) to connect Claude, ChatGPT, Gemini, or any MCP-compatible client.
 

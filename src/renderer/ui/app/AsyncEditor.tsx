@@ -4,6 +4,7 @@ import { PageModel } from "../../editors/base";
 import type { IContentHost } from "../../editors/base/IContentHost";
 import { useEffect, useState } from "react";
 import { CircularProgress } from "../../components/basic/CircularProgress";
+import { EditorErrorBoundary } from "../../components/basic/EditorErrorBoundary";
 
 const ProgressRoot = styled.div({
     flex: "1 1 auto",
@@ -57,7 +58,11 @@ export function AsyncEditor({ getEditorModule, model, cacheKey }: AsyncEditorPro
         );
     }
 
-    return <EditorModule.Editor model={model} />;
+    return (
+        <EditorErrorBoundary>
+            <EditorModule.Editor model={model} />
+        </EditorErrorBoundary>
+    );
 }
 
 export type AsyncEditorComponent = typeof AsyncEditor;

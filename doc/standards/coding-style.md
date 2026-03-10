@@ -48,7 +48,9 @@ function process(data: any): void {
 
 ## React
 
-### Functional Components Only
+### Functional Components Only (Exception: Error Boundaries)
+
+> **Exception:** React error boundaries require class components (`getDerivedStateFromError`/`componentDidCatch` have no hook equivalent). See `EditorErrorBoundary` and `EntryErrorBoundary`.
 
 ```typescript
 // GOOD

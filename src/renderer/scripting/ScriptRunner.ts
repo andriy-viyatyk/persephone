@@ -150,7 +150,7 @@ class ScriptRunner {
                         const fn = new Function(expressionScript);
                         const scriptResult = fn.call(context);
 
-                        if (scriptResult && typeof scriptResult.then === "function") {
+                        if (this.isPromiseLike(scriptResult)) {
                             try {
                                 return { result: await scriptResult, outputFlags };
                             } catch (asyncError) {
@@ -173,7 +173,7 @@ class ScriptRunner {
                 const fn = new Function(statementScript);
                 const scriptResult = fn.call(context);
 
-                if (scriptResult && typeof scriptResult.then === "function") {
+                if (this.isPromiseLike(scriptResult)) {
                     try {
                         return { result: await scriptResult, outputFlags };
                     } catch (asyncError) {
@@ -240,14 +240,16 @@ class ScriptRunner {
         // This is a simplified approach - handles most common cases
         const lastLine = lines[lines.length - 1].trim();
 
-        // Check if last line looks like an expression (not a statement)
+        // Check if last line looks like an expression (not a statement or block closer)
         const isStatement =
             /^(const|let|var|if|for|while|do|switch|function|class|try|throw|return)\s/.test(
                 lastLine
             );
+        const isBlockCloser = /^[}\]]/.test(lastLine);
 
         if (
             !isStatement &&
+            !isBlockCloser &&
             lastLine &&
             !lastLine.endsWith(";") &&
             !lastLine.endsWith("}")
@@ -263,7 +265,7 @@ class ScriptRunner {
                 }).call(this);
             }
         `;
-        } else if (!isStatement && lastLine && lastLine.endsWith(";")) {
+        } else if (!isStatement && !isBlockCloser && lastLine && lastLine.endsWith(";")) {
             // Remove trailing semicolon and return
             const beforeLast = lines.slice(0, -1).join("\n");
             const expressionPart = lastLine.slice(0, -1); // Remove semicolon
@@ -287,6 +289,16 @@ class ScriptRunner {
             }).call(this);
         }
     `;
+    }
+
+    /**
+     * Check if a value is a genuine Promise-like object (not just any object with a .then method).
+     * StyledLogBuilder has a .then() method for chaining styled text segments — it is NOT a Promise.
+     * Using `typeof value.then === "function"` would misidentify it as a thenable and hang forever.
+     */
+    private isPromiseLike(value: any): boolean {
+        return value instanceof Promise
+            || (value && typeof value.then === "function" && typeof value.catch === "function");
     }
 
     convertToText = (

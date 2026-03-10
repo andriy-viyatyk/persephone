@@ -10,7 +10,6 @@ export interface GridColumn {
     title?: string;
     width?: number;
     dataType?: "string" | "number" | "boolean";
-    hidden?: boolean;
 }
 
 const charWidth = 8; // Approximate width of a character in pixels

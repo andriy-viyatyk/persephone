@@ -3,8 +3,10 @@ import { pagesModel } from "../api/pages";
 import { AppWrapper } from "./api-wrapper/AppWrapper";
 import { PageWrapper } from "./api-wrapper/PageWrapper";
 import { UiFacade } from "./api-wrapper/UiFacade";
+import { styledText } from "./api-wrapper/StyledTextBuilder";
 import { createLibraryRequire, createUnlinkedLibraryRequire } from "./library-require";
 import { isTextFileModel } from "../editors/text/TextPageModel";
+import { mcpLogState } from "../api/mcp-log-state";
 import type { LogViewModel } from "../editors/log-view/LogViewModel";
 import React from "react";
 
@@ -46,6 +48,7 @@ export function createScriptContext(page?: PageModel, consoleLogs?: ConsoleLogEn
         app: appWrapper,
         page: pageWrapper,
         React,
+        styledText,
         preventOutput: () => { outputFlags.outputPrevented = true; },
         require: libraryPath
             ? createLibraryRequire(libraryPath)
@@ -53,11 +56,14 @@ export function createScriptContext(page?: PageModel, consoleLogs?: ConsoleLogEn
     };
 
     // Lazy `ui` global — Log View page created on first access
+    const isMcp = !!consoleLogs;
     let uiFacade: UiFacade | undefined;
     Object.defineProperty(customContext, "ui", {
         get: () => {
             if (!uiFacade) {
-                uiFacade = initializeUiFacade(page, releaseList, outputFlags);
+                uiFacade = initializeUiFacade(page, releaseList, outputFlags, isMcp);
+                // Install console forwarding now that LogViewModel exists
+                installConsoleForwarding(uiFacade, customContext, consoleLogs);
             }
             return uiFacade;
         },
@@ -185,11 +191,28 @@ function initializeUiFacade(
     page: PageModel | undefined,
     releaseList: Array<() => void>,
     outputFlags: ScriptOutputFlags,
+    isMcp = false,
 ): UiFacade {
     let logPage: PageModel;
     let isExisting = false;
 
-    if (page) {
+    if (isMcp) {
+        // MCP mode: use shared standalone MCP Log View (same as ui_push)
+        if (mcpLogState.pageId) {
+            const existing = pagesModel.findPage(mcpLogState.pageId);
+            if (existing) {
+                logPage = existing;
+                isExisting = true;
+            } else {
+                mcpLogState.pageId = undefined;
+                logPage = pagesModel.addEditorPage("log-view", "jsonl", formatLogTitle());
+                mcpLogState.pageId = logPage.id;
+            }
+        } else {
+            logPage = pagesModel.addEditorPage("log-view", "jsonl", formatLogTitle());
+            mcpLogState.pageId = logPage.id;
+        }
+    } else if (page) {
         const grouped = pagesModel.getGroupedPage(page.id);
         if (grouped && grouped.state.get().editor === "log-view") {
             logPage = grouped;
@@ -218,8 +241,70 @@ function initializeUiFacade(
     if (isExisting) {
         vm.addEntry("log.info", "");
     }
-    const title = page?.title ?? "untitled";
-    vm.addEntry("log.info", `Script ${title} started`);
+
+    if (isMcp) {
+        vm.addEntry("log.info", "Agent started script");
+    } else {
+        const title = page?.title ?? "untitled";
+        vm.addEntry("log.info", `Script ${title} started`);
+    }
 
     return new UiFacade(vm);
+}
+
+// =============================================================================
+// Console Forwarding
+// =============================================================================
+
+function installConsoleForwarding(
+    facade: UiFacade,
+    customContext: Record<string, any>,
+    consoleLogs?: ConsoleLogEntry[],
+) {
+    const formatArgs = (args: any[]) => args.map(serializeArg).join(" ");
+    const nativeConsole = globalThis.console;
+
+    const capture = consoleLogs
+        ? (level: ConsoleLogEntry["level"], args: any[]) => {
+            consoleLogs.push({ level, args: args.map(serializeArg), timestamp: Date.now() });
+        }
+        : undefined;
+
+    customContext.console = {
+        log: (...args: any[]) => {
+            nativeConsole.log(...args);
+            capture?.("log", args);
+            if (!facade.consoleLogPrevented) facade.addConsoleEntry("log.log", formatArgs(args));
+        },
+        info: (...args: any[]) => {
+            nativeConsole.info(...args);
+            capture?.("info", args);
+            if (!facade.consoleLogPrevented) facade.addConsoleEntry("log.info", formatArgs(args));
+        },
+        warn: (...args: any[]) => {
+            nativeConsole.warn(...args);
+            capture?.("warn", args);
+            if (!facade.consoleWarnPrevented) facade.addConsoleEntry("log.warn", formatArgs(args));
+        },
+        error: (...args: any[]) => {
+            nativeConsole.error(...args);
+            capture?.("error", args);
+            if (!facade.consoleErrorPrevented) facade.addConsoleEntry("log.error", formatArgs(args));
+        },
+        // Pass-through for non-forwarded methods
+        debug: nativeConsole.debug.bind(nativeConsole),
+        trace: nativeConsole.trace.bind(nativeConsole),
+        dir: nativeConsole.dir.bind(nativeConsole),
+        table: nativeConsole.table.bind(nativeConsole),
+        clear: nativeConsole.clear.bind(nativeConsole),
+        assert: nativeConsole.assert.bind(nativeConsole),
+        count: nativeConsole.count.bind(nativeConsole),
+        countReset: nativeConsole.countReset.bind(nativeConsole),
+        group: nativeConsole.group.bind(nativeConsole),
+        groupCollapsed: nativeConsole.groupCollapsed.bind(nativeConsole),
+        groupEnd: nativeConsole.groupEnd.bind(nativeConsole),
+        time: nativeConsole.time.bind(nativeConsole),
+        timeEnd: nativeConsole.timeEnd.bind(nativeConsole),
+        timeLog: nativeConsole.timeLog.bind(nativeConsole),
+    };
 }
