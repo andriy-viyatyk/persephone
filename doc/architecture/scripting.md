@@ -156,6 +156,8 @@ interface IUiLog {
         text(options: { text; language?; title?; wordWrap?; lineNumbers?; minimap? }): IText;
         markdown(text: string): IMarkdown;
         markdown(options: { text: string; title?: StyledText }): IMarkdown;
+        mermaid(text: string): IMermaid;
+        mermaid(options: { text: string; title?: StyledText }): IMermaid;
     };
 }
 ```
@@ -558,6 +560,9 @@ These files serve dual purpose: TypeScript type checking **and** IDE IntelliSens
     ├── UiFacade.ts              # Log View UI (logging + dialogs + output)
     ├── Progress.ts              # Progress helper class (returned by ui.show.progress)
     ├── Grid.ts                  # Grid helper class (returned by ui.show.grid)
+    ├── Text.ts                  # Text helper class (returned by ui.show.text)
+    ├── Markdown.ts              # Markdown helper class (returned by ui.show.markdown)
+    ├── Mermaid.ts               # Mermaid helper class (returned by ui.show.mermaid)
     └── StyledTextBuilder.ts     # Fluent styled text builder + styledText() factory
 
 /src/renderer/api/types/

@@ -5,6 +5,7 @@ import { Progress } from "./Progress";
 import { Grid } from "./Grid";
 import { Text } from "./Text";
 import { Markdown } from "./Markdown";
+import { Mermaid } from "./Mermaid";
 
 /** Check if value is a plain options object (not a string, not an array). */
 function isOptionsObject(value: unknown): value is Record<string, any> {
@@ -155,6 +156,17 @@ export class UiFacade {
             }
             const entry = this.vm.addEntry("output.markdown", fields);
             return new Markdown(entry.id, this.vm, fields as any);
+        },
+
+        mermaid: (textOrOpts: string | { text: string; title?: StyledText }): Mermaid => {
+            let fields: Record<string, any>;
+            if (isOptionsObject(textOrOpts)) {
+                fields = textOrOpts;
+            } else {
+                fields = { text: textOrOpts };
+            }
+            const entry = this.vm.addEntry("output.mermaid", fields);
+            return new Mermaid(entry.id, this.vm, fields as any);
         },
     };
 }

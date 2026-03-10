@@ -270,7 +270,8 @@ js-notepad/
 │   │       ├── ProgressOutputView.tsx   # output.progress renderer
 │   │       ├── GridOutputView.tsx       # output.grid renderer (inline AVGrid)
 │   │       ├── TextOutputView.tsx       # output.text renderer (inline Monaco editor)
-│   │       └── MarkdownOutputView.tsx  # output.markdown renderer (inline MarkdownBlock)
+│   │       ├── MarkdownOutputView.tsx  # output.markdown renderer (inline MarkdownBlock)
+│   │       └── MermaidOutputView.tsx  # output.mermaid renderer (inline mermaid diagram)
 │   ├── pdf/                # PDF viewer (page-editor)
 │   │   ├── PdfViewer.tsx
 │   │   └── index.ts
@@ -318,6 +319,7 @@ js-notepad/
 │       ├── Grid.ts                # Grid helper class (returned by ui.show.grid)
 │       ├── Text.ts                # Text helper class (returned by ui.show.text)
 │       ├── Markdown.ts            # Markdown helper class (returned by ui.show.markdown)
+│       ├── Mermaid.ts             # Mermaid helper class (returned by ui.show.mermaid)
 │       └── StyledTextBuilder.ts    # Fluent styled text builder + styledText() factory
 │
 ├── components/             # Reusable UI Components

@@ -601,6 +601,45 @@ const md = ui.show.markdown("# My Document\nContent here...");
 md.openInEditor("My Document");
 ```
 
+## Mermaid Output
+
+### show.mermaid(text)
+### show.mermaid(options)
+
+Show a rendered Mermaid diagram inline in the Log View. The diagram is theme-aware — it automatically adapts to the current light/dark theme. Returns a `Mermaid` helper whose property setters update the entry in real-time.
+
+A hover toolbar shows "Copy image to clipboard" and "Open in Mermaid editor" buttons.
+
+```javascript
+// Simple form — mermaid text
+ui.show.mermaid("graph TD\n    A[Start] --> B[Process]\n    B --> C[End]");
+```
+
+```javascript
+// Full form — with title
+const diagram = ui.show.mermaid({
+    text: "sequenceDiagram\n    Alice->>Bob: Hello\n    Bob-->>Alice: Hi!",
+    title: "Communication Flow",
+});
+```
+
+#### Mermaid properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `text` | `string` | Mermaid diagram text. Setting triggers re-render. |
+| `title` | `string \| IStyledSegment[] \| undefined` | Title displayed above the diagram (supports styled text). Setting triggers re-render. |
+
+#### openInEditor(pageTitle?)
+
+Open the diagram in a dedicated Mermaid editor tab.
+
+```javascript
+const diagram = ui.show.mermaid("graph LR\n    A --> B --> C");
+// Later — open in a full Mermaid editor tab
+diagram.openInEditor("My Diagram");
+```
+
 ## MCP `ui_push` Tool
 
 The same Log View is available to external AI agents via the MCP `ui_push` tool. While scripts use the `ui` global, MCP agents use `ui_push` to push entries to a managed Log View page.
@@ -621,7 +660,7 @@ The `entries` parameter is an array. Each element is either:
 
 **Dialog entry types:** `input.confirm`, `input.text`, `input.buttons`, `input.checkboxes`, `input.radioboxes`, `input.select` (same dialog types as `ui.dialog`) — use fields like `message`, `title`, `buttons`, `placeholder`, `defaultValue`, `items`, `checked`, `selected`, `layout` directly on the object.
 
-**Output entry types:** `output.progress` — a progress bar with `label` (string or styled text), `value` (number), `max` (number, default 100), and `completed` (boolean) fields. Use the same `id` on subsequent calls to update an existing progress bar (upsert-by-id). `output.grid` — an inline data grid with `content` (JSON or CSV string), optional `contentType` (`"json"` or `"csv"`, default `"json"`), and optional `title`. `output.text` — a syntax-highlighted text block with `text` (string), optional `language`, `title`, `wordWrap` (boolean), `lineNumbers` (boolean), and `minimap` (boolean). `output.markdown` — rendered markdown with `text` (string) and optional `title`.
+**Output entry types:** `output.progress` — a progress bar with `label` (string or styled text), `value` (number), `max` (number, default 100), and `completed` (boolean) fields. Use the same `id` on subsequent calls to update an existing progress bar (upsert-by-id). `output.grid` — an inline data grid with `content` (JSON or CSV string), optional `contentType` (`"json"` or `"csv"`, default `"json"`), and optional `title`. `output.text` — a syntax-highlighted text block with `text` (string), optional `language`, `title`, `wordWrap` (boolean), `lineNumbers` (boolean), and `minimap` (boolean). `output.markdown` — rendered markdown with `text` (string) and optional `title`. `output.mermaid` — a rendered Mermaid diagram with `text` (string) and optional `title`.
 
 ### Examples
 
@@ -704,6 +743,11 @@ ui_push({ entries: [
 // Markdown output
 ui_push({ entries: [
     { type: "output.markdown", text: "# Results\n\n| Name | Score |\n|------|-------|\n| Alice | 95 |", title: "Analysis" }
+] })
+
+// Mermaid diagram output
+ui_push({ entries: [
+    { type: "output.mermaid", text: "graph TD\n    A[Start] --> B[Process]\n    B --> C[End]", title: "Workflow" }
 ] })
 ```
 

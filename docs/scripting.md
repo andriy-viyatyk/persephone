@@ -142,6 +142,7 @@ Key points:
 - **Progress bars** — `ui.show.progress()` adds a progress bar to the Log View and returns a `Progress` helper with `label`, `value`, `max`, and `completed` setters for real-time updates. Use `progress.completeWithPromise(promise)` to auto-complete on promise settlement.
 - **Inline grids** — `ui.show.grid(data)` displays tabular data inline in the Log View using a full-featured grid with column resizing, reordering, and cell selection/copy. Pass an options object for custom columns and title: `ui.show.grid({ data, columns?, title? })`. The returned `Grid` helper has live `data`, `columns`, and `title` setters, plus `openInEditor()` to open the data in a dedicated Grid editor tab.
 - **Inline markdown** — `ui.show.markdown(text)` renders markdown inline in the Log View — headings, tables, code blocks, Mermaid diagrams, task lists, and blockquotes. Pass an options object for a title: `ui.show.markdown({ text, title? })`. The returned `Markdown` helper has live `text` and `title` setters, plus `openInEditor()` to open in a Markdown editor tab.
+- **Inline mermaid** — `ui.show.mermaid(text)` renders a Mermaid diagram inline in the Log View with theme-aware light/dark rendering. Pass an options object for a title: `ui.show.mermaid({ text, title? })`. The returned `Mermaid` helper has live `text` and `title` setters, plus `openInEditor()` to open in a Mermaid editor tab. Hover toolbar provides "Copy image to clipboard" and "Open in Mermaid editor" buttons.
 
 See the [ui API reference](./api/ui-log.md) for complete details.
 

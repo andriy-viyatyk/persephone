@@ -47,6 +47,7 @@ Entries are **flat objects** with `type` and type-specific fields directly on th
 | `output.grid` | `content, contentType?, title?` | Tabular data grid (auto-detects columns from data) |
 | `output.text` | `text, language?, title?, wordWrap?, lineNumbers?, minimap?` | Syntax-highlighted text block (Monaco editor) |
 | `output.markdown` | `text, title?` | Rendered markdown document (headings, code blocks, tables, mermaid, task lists) |
+| `output.mermaid` | `text, title?` | Rendered mermaid diagram (flowcharts, sequence diagrams, etc.) |
 
 **`output.grid` content formats:**
 
@@ -130,6 +131,12 @@ ui_push({ entries: [
 // Rendered markdown document
 ui_push({ entries: [
     { type: "output.markdown", text: "# Report\n\n| Name | Score |\n|------|-------|\n| Alice | 95 |\n| Bob | 87 |", title: "Analysis Results" }
+] })
+→ returns immediately: { }
+
+// Rendered mermaid diagram
+ui_push({ entries: [
+    { type: "output.mermaid", text: "graph TD\n  A[Start] --> B[Process]\n  B --> C[End]", title: "Pipeline" }
 ] })
 → returns immediately: { }
 

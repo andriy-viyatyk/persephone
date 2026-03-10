@@ -147,6 +147,7 @@ export interface MarkdownOutputEntry extends LogEntryBase {
 
 export interface MermaidOutputEntry extends LogEntryBase {
     type: "output.mermaid";
+    title?: StyledText;
     text: string;
 }
 

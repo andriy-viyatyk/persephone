@@ -424,6 +424,31 @@ export interface IMarkdown {
 }
 
 // =============================================================================
+// Mermaid Helper
+// =============================================================================
+
+/**
+ * Mermaid helper returned by `ui.show.mermaid()`.
+ * Update properties to change the mermaid diagram in real-time.
+ *
+ * @example
+ * const diagram = ui.show.mermaid("graph TD\n  A[Start] --> B[End]");
+ * diagram.text = "graph LR\n  A --> B --> C";
+ *
+ * @example
+ * // Open in a dedicated Mermaid editor tab
+ * diagram.openInEditor("My Diagram");
+ */
+export interface IMermaid {
+    /** Mermaid diagram source text. Setting triggers re-render. */
+    text: string;
+    /** Diagram title. Setting triggers re-render. */
+    title: IStyledText | undefined;
+    /** Open mermaid source in a dedicated Mermaid editor page. */
+    openInEditor(pageTitle?: string): void;
+}
+
+// =============================================================================
 // Show Namespace
 // =============================================================================
 
@@ -524,6 +549,28 @@ export interface IUiShow {
      */
     markdown(text: string): IMarkdown;
     markdown(options: { text: string; title?: IStyledText }): IMarkdown;
+
+    /**
+     * Show a rendered mermaid diagram in the Log View. Returns a Mermaid helper
+     * whose property setters update the diagram in real-time.
+     *
+     * @example
+     * // Simple form — mermaid source string
+     * ui.show.mermaid("graph TD\n  A[Start] --> B[Process] --> C[End]");
+     *
+     * @example
+     * // Full form with title
+     * const diagram = ui.show.mermaid({
+     *     text: "sequenceDiagram\n  Alice->>Bob: Hello\n  Bob->>Alice: Hi!",
+     *     title: "Communication Flow",
+     * });
+     *
+     * @example
+     * // Open in dedicated Mermaid editor
+     * diagram.openInEditor("My Diagram");
+     */
+    mermaid(text: string): IMermaid;
+    mermaid(options: { text: string; title?: IStyledText }): IMermaid;
 }
 
 // =============================================================================

@@ -449,7 +449,7 @@ The key principle: **entry content renderers should only care about rendering th
 | US-153 | Log item: output.text (renderer + ui.show.text) | **Done** |
 | US-155 | Extract MarkdownBlock reusable component | **Done** |
 | US-154 | Log item: output.markdown (renderer + ui.show.markdown) | **Done** |
-| — | Log item: output.mermaid (renderer + ui.show.mermaid) | Planned |
+| US-156 | Log item: output.mermaid (renderer + ui.show.mermaid) | **Done** |
 
 *Tasks will be created and assigned IDs as work begins.*
 

@@ -60,6 +60,13 @@ Release notes and changelog for js-notepad.
   - Hover toolbar with "Open in Markdown editor" button
   - MCP agents use `output.markdown` entries with `text` and optional `title`
 
+- **Mermaid Output** — New `ui.show.mermaid()` method for scripts and `output.mermaid` entry for MCP `ui_push`
+  - Render Mermaid diagrams inline in the Log View with theme-aware rendering (light/dark)
+  - Two overloads: `ui.show.mermaid(text)` for quick display, `ui.show.mermaid({ text, title? })` for adding a title
+  - Returns a `Mermaid` helper with live `text` and `title` setters for real-time updates, plus `openInEditor()` to open in the Mermaid editor
+  - Hover toolbar with "Copy image to clipboard" and "Open in Mermaid editor" buttons
+  - MCP agents use `output.mermaid` entries with `text` and optional `title`
+
 - **Grid Output** — New `ui.show.grid()` method for scripts and `output.grid` entry for MCP `ui_push`
   - Display tabular data inline in the Log View using a full-featured grid (AVGrid)
   - Two overloads: `ui.show.grid(data)` for quick display, `ui.show.grid({ data, columns?, title? })` for custom columns and title
