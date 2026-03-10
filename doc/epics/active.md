@@ -4,10 +4,11 @@ Epics represent big ideas with high-level overviews. Each epic links to tasks in
 
 ## Active
 
-- **EPIC-004** — [Log View Editor](EPIC-004.md)
+(none)
 
 ## Completed
 
+- **EPIC-004** — [Log View Editor](EPIC-004.md)
 - **EPIC-003** — [Script Library](EPIC-003.md)
 - **EPIC-002** — [App API Polishing](EPIC-002.md)
 - **EPIC-001** — [AI Claude Integration](EPIC-001.md)
