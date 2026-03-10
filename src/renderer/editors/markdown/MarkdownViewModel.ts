@@ -1,7 +1,6 @@
 import React from "react";
 import { ContentViewModel } from "../base/ContentViewModel";
 import { IContentHost } from "../base/IContentHost";
-import { TextFileModel } from "../text/TextPageModel";
 import { PageModel } from "../base";
 import { pagesModel } from "../../api/pages";
 
@@ -24,6 +23,14 @@ export type MarkdownViewState = typeof defaultMarkdownViewState;
 // ViewModel
 // =============================================================================
 
+/**
+ * ViewModel for the markdown editor page shell.
+ *
+ * Manages search state, compact mode, scroll restoration, and focus events.
+ * DOM-level search operations (match counting, highlight navigation) are
+ * delegated to MarkdownBlock via its imperative handle — the MarkdownView
+ * component bridges this ViewModel's state with the MarkdownBlock handle.
+ */
 export class MarkdownViewModel extends ContentViewModel<MarkdownViewState> {
     containerScrollTop = 0;
 
@@ -31,49 +38,22 @@ export class MarkdownViewModel extends ContentViewModel<MarkdownViewState> {
         super(host, defaultMarkdownViewState);
     }
 
-    get pageModel(): TextFileModel {
-        return this.host as unknown as TextFileModel;
+    get pageModel() {
+        return this.host as unknown as PageModel;
     }
 
     // =========================================================================
     // Lifecycle
     // =========================================================================
 
-    private _searchTimer: ReturnType<typeof setTimeout> | undefined;
-
     protected onInit(): void {
         // Scroll restoration on page focus
         const sub = pagesModel.onFocus.subscribe(this.pageFocused);
         this.addSubscription(() => sub.unsubscribe());
-
-        // Search highlight update when search state changes
-        let lastSearchText = "";
-        let lastSearchVisible = false;
-
-        const unsubState = this.state.subscribe(() => {
-            const { searchText, searchVisible } = this.state.get();
-            if (searchText !== lastSearchText || searchVisible !== lastSearchVisible) {
-                lastSearchText = searchText;
-                lastSearchVisible = searchVisible;
-                this.scheduleSearchUpdate();
-            }
-        });
-        this.addSubscription(unsubState);
-
-        this.addSubscription(() => clearTimeout(this._searchTimer));
     }
 
     protected onContentChanged(): void {
-        // Content changed — re-evaluate search highlights if search is active
-        this.scheduleSearchUpdate();
-    }
-
-    private scheduleSearchUpdate() {
-        const { searchVisible, searchText } = this.state.get();
-        if (searchVisible && searchText) {
-            clearTimeout(this._searchTimer);
-            this._searchTimer = setTimeout(() => this.updateMatchNavigation(), 0);
-        }
+        // No-op — MarkdownBlock handles re-rendering via props
     }
 
     // =========================================================================
@@ -129,7 +109,6 @@ export class MarkdownViewModel extends ContentViewModel<MarkdownViewState> {
             s.currentMatchIndex = 0;
             s.totalMatches = 0;
         });
-        this.clearActiveMatchClass();
     };
 
     setSearchText = (text: string) => {
@@ -146,7 +125,6 @@ export class MarkdownViewModel extends ContentViewModel<MarkdownViewState> {
         this.state.update((s) => {
             s.currentMatchIndex = newIndex;
         });
-        this.navigateToMatch(newIndex);
     };
 
     prevMatch = () => {
@@ -156,81 +134,7 @@ export class MarkdownViewModel extends ContentViewModel<MarkdownViewState> {
         this.state.update((s) => {
             s.currentMatchIndex = newIndex;
         });
-        this.navigateToMatch(newIndex);
     };
-
-    /** Called after render to update match count and highlight the active match */
-    updateMatchNavigation = () => {
-        const { container, searchText, searchVisible } = this.state.get();
-        if (!container || !searchText || !searchVisible) {
-            if (this.state.get().totalMatches !== 0) {
-                this.state.update((s) => { s.totalMatches = 0; });
-            }
-            return;
-        }
-
-        const spans = container.querySelectorAll(".highlighted-text");
-        const total = spans.length;
-        const { totalMatches, currentMatchIndex } = this.state.get();
-
-        // Clamp index if matches changed
-        let index = currentMatchIndex;
-        if (total > 0 && index >= total) {
-            index = 0;
-        }
-
-        if (total !== totalMatches || index !== currentMatchIndex) {
-            this.state.update((s) => {
-                s.totalMatches = total;
-                s.currentMatchIndex = index;
-            });
-        }
-
-        this.applyActiveMatchClass(spans, index);
-        if (total > 0) {
-            this.scrollToActiveMatch();
-        }
-    };
-
-    private navigateToMatch(index: number) {
-        const container = this.state.get().container;
-        if (!container) return;
-        const spans = container.querySelectorAll(".highlighted-text");
-        this.applyActiveMatchClass(spans, index);
-        this.scrollToActiveMatch();
-    }
-
-    private clearActiveMatchClass() {
-        const container = this.state.get().container;
-        if (!container) return;
-        const active = container.querySelector(".highlighted-text-active");
-        if (active) active.classList.remove("highlighted-text-active");
-    }
-
-    private applyActiveMatchClass(spans: NodeListOf<Element>, index: number) {
-        // Remove old active class
-        const container = this.state.get().container;
-        if (!container) return;
-        const oldActive = container.querySelector(".highlighted-text-active");
-        if (oldActive) oldActive.classList.remove("highlighted-text-active");
-
-        // Apply to current
-        if (spans.length > 0 && index < spans.length) {
-            spans[index].classList.add("highlighted-text-active");
-        }
-    }
-
-    private scrollToActiveMatch() {
-        // Use microtask so the DOM class is applied first
-        Promise.resolve().then(() => {
-            const container = this.state.get().container;
-            if (!container) return;
-            const active = container.querySelector(".highlighted-text-active");
-            if (active) {
-                active.scrollIntoView({ block: "center", behavior: "smooth" });
-            }
-        });
-    }
 }
 
 // =============================================================================

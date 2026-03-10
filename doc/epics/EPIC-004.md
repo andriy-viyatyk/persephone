@@ -447,7 +447,8 @@ The key principle: **entry content renderers should only care about rendering th
 | US-151 | Log item: output.progress (renderer + ui.show.progress) | **Done** |
 | US-152 | Log item: output.grid (renderer + ui.show.grid) | **Done** |
 | US-153 | Log item: output.text (renderer + ui.show.text) | **Done** |
-| — | Log item: output.markdown (renderer + ui.show.markdown) | Planned |
+| US-155 | Extract MarkdownBlock reusable component | **Done** |
+| US-154 | Log item: output.markdown (renderer + ui.show.markdown) | Planned |
 | — | Log item: output.mermaid (renderer + ui.show.mermaid) | Planned |
 
 *Tasks will be created and assigned IDs as work begins.*

@@ -184,8 +184,9 @@ js-notepad/
 │   │   ├── utils/                  # Grid utilities
 │   │   └── index.ts
 │   ├── markdown/           # Markdown preview (content-view)
-│   │   ├── MarkdownView.tsx        # Rendered markdown
-│   │   ├── MarkdownViewModel.ts    # View state (container, search, scroll)
+│   │   ├── MarkdownBlock.tsx       # Reusable markdown rendering (CSS, ReactMarkdown, search handle)
+│   │   ├── MarkdownView.tsx        # Page shell (scroll, minimap, toolbar, search bar)
+│   │   ├── MarkdownViewModel.ts    # View state (search, compact, scroll)
 │   │   ├── MarkdownSearchBar.tsx   # Search within preview
 │   │   ├── CodeBlock.tsx           # Code block + inline Mermaid
 │   │   ├── rehypeHighlight.ts      # Search text highlighting

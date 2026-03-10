@@ -1,24 +1,15 @@
-import ReactMarkdown, { Components } from "react-markdown";
-import remarkGfm from "remark-gfm";
-import rehypeRaw from "rehype-raw";
 import styled from "@emotion/styled";
 import { TextFileModel } from "../text";
-import color from "../../theme/color";
-import { CheckedIcon, CompactViewIcon, CopyIcon, NormalViewIcon, UncheckedIcon } from "../../theme/icons";
-import { appendLinkOpenMenuItems } from "../shared/link-open-menu";
-import { useCallback, useMemo, useSyncExternalStore } from "react";
+import { CompactViewIcon, NormalViewIcon } from "../../theme/icons";
+import { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { Minimap } from "../../components/layout/Minimap";
 import { useEditorConfig } from "../base";
-import { createRehypeHighlight } from "./rehypeHighlight";
-import { CodeBlock, createPreBlock } from "./CodeBlock";
-import { isCurrentThemeDark } from "../../theme/themes";
-import { settings } from "../../api/settings";
-import { resolveRelatedLink } from "../../core/utils/path-utils";
 import { Button } from "../../components/basic/Button";
 import { MarkdownSearchBar } from "./MarkdownSearchBar";
 import { MarkdownViewModel, MarkdownViewState, defaultMarkdownViewState } from "./MarkdownViewModel";
 import { useContentViewModel } from "../base/useContentViewModel";
+import { MarkdownBlock, MarkdownBlockHandle } from "./MarkdownBlock";
 
 const MdViewRoot = styled.div({
     flex: "1 1 auto",
@@ -34,10 +25,6 @@ const MdViewRoot = styled.div({
         padding: "0 24px",
         overflowY: "auto",
         overflowX: "hidden",
-        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif',
-        fontSize: 16,
-        lineHeight: 1.5,
-        wordWrap: "break-word",
         "&::-webkit-scrollbar": {
             display: "none",
         },
@@ -47,331 +34,9 @@ const MdViewRoot = styled.div({
         display: "block",
         width: 8,
     },
-    "& > *": {
-        maxWidth: "100%",
-        wordWrap: "break-word",
-        overflowWrap: "break-word",
-    },
-
-    // Code block wrapper (from PreBlock component)
-    "& .code-block-wrapper": {
-        position: "relative",
-        width: "fit-content",
-        maxWidth: "100%",
-        "& .copy-btn": {
-            position: "absolute",
-            top: 6,
-            right: 6,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 4,
-            color: color.text.light,
-            backgroundColor: color.background.light,
-            border: `1px solid ${color.border.default}`,
-            borderRadius: 4,
-            cursor: "pointer",
-            opacity: 0,
-            transition: "opacity 0.2s ease",
-            "& svg": {
-                transition: "transform 0.15s ease-out",
-            },
-            "&:hover": {
-                opacity: 1,
-            },
-            "&.copied svg": {
-                transform: "scale(0.65)",
-                transition: "transform 0.1s ease-in",
-            },
-            "&.copied": {
-                opacity: 1,
-            },
-        },
-        "&:hover .copy-btn": {
-            opacity: 0.5,
-        },
-        "&:hover .copy-btn:hover": {
-            opacity: 1,
-        },
-        "&:hover .copy-btn.copied": {
-            opacity: 1,
-        },
-    },
-
-    // Mermaid diagrams rendered from ```mermaid code blocks
-    "& .mermaid-diagram": {
-        position: "relative",
-        margin: "1em 0",
-        textAlign: "center",
-        "& img": {
-            maxWidth: "100%",
-            height: "auto",
-        },
-        "& .diagram-toolbar": {
-            position: "absolute",
-            top: -10,
-            right: 0,
-            display: "flex",
-            gap: 4,
-            opacity: 0,
-            transition: "opacity 0.2s ease",
-        },
-        "& .toolbar-btn": {
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 4,
-            color: color.text.light,
-            backgroundColor: color.background.light,
-            border: `1px solid ${color.border.default}`,
-            borderRadius: 4,
-            cursor: "pointer",
-            "& svg": {
-                transition: "transform 0.15s ease-out",
-            },
-            "&:hover": {
-                color: color.text.default,
-            },
-            "&.copied svg": {
-                transform: "scale(0.65)",
-                transition: "transform 0.1s ease-in",
-            },
-        },
-        "&:hover .diagram-toolbar": {
-            opacity: 0.5,
-        },
-        "&:hover .diagram-toolbar:hover": {
-            opacity: 1,
-        },
-    },
-    "& .mermaid-diagram.mermaid-loading": {
-        padding: "2em",
-        color: color.text.light,
-        fontSize: 13,
-    },
-    "& .mermaid-error": {
-        margin: "1em 0",
-        padding: "1em",
-        backgroundColor: color.background.dark,
-        borderRadius: 6,
-        color: color.misc.red,
-        fontSize: 13,
-    },
-
-    // Code blocks
-    "& pre": {
-        maxWidth: "100%",
-        whiteSpace: "pre-wrap",
-        wordWrap: "break-word",
-        padding: 16,
-        backgroundColor: color.background.dark,
-        borderRadius: 6,
-        fontSize: "85%",
-        lineHeight: 1.45,
-        width: "fit-content",
-    },
-    // Code inside pre — reset inline code styles
-    "& pre code": {
-        display: "inline",
-        padding: 0,
-        backgroundColor: "transparent",
-        borderRadius: 0,
-        fontSize: "inherit",
-    },
-    // Inline code
-    "& code": {
-        display: "inline-block",
-        fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace',
-        backgroundColor: color.background.light,
-        padding: ".2em .4em",
-        borderRadius: 6,
-        fontSize: "85%",
-    },
-    "& img": {
-        maxWidth: "100%",
-        height: "auto",
-        boxSizing: "content-box",
-    },
-    "& a": {
-        color: color.misc.blue,
-        textDecoration: "none",
-        "&:hover": {
-            textDecoration: "underline",
-        },
-        "& strong": {
-            color: color.misc.blue,
-        },
-    },
-
-    // Headings
-    "& h1, & h2, & h3, & h4, & h5, & h6": {
-        marginTop: "1.5rem",
-        marginBottom: "1rem",
-        fontWeight: 600,
-        lineHeight: 1.25,
-    },
-    "& h1": {
-        paddingBottom: ".3em",
-        fontSize: "2em",
-        borderBottom: `1px solid ${color.border.default}`,
-    },
-    "& h2": {
-        paddingBottom: ".3em",
-        fontSize: "1.5em",
-        borderBottom: `1px solid ${color.border.default}`,
-    },
-    "& h3": {
-        fontSize: "1.25em",
-    },
-    "& h4": {
-        fontSize: "1em",
-    },
-    "& h5": {
-        fontSize: ".875em",
-    },
-    "& h6": {
-        fontSize: ".85em",
-        color: color.text.light,
-    },
-
-    // Lists
-    "& ul, & ol": {
-        paddingLeft: "2em",
-    },
-    "& li + li": {
-        marginTop: ".25em",
-    },
-    "& li": {
-        lineHeight: 1.5,
-    },
-    // Nested list styles
-    "& ol ol, & ul ol": {
-        listStyleType: "lower-roman",
-    },
-    "& ul ul ol, & ul ol ol, & ol ul ol, & ol ol ol": {
-        listStyleType: "lower-alpha",
-    },
-
-    // Tables
-    "& table": {
-        borderSpacing: 0,
-        borderCollapse: "collapse",
-        width: "max-content",
-        maxWidth: "100%",
-        overflow: "auto",
-        marginTop: "1em",
-        marginBottom: "1em",
-    },
-    "& th, & td": {
-        border: `1px solid ${color.border.default}`,
-        padding: "6px 13px",
-        textAlign: "left",
-    },
-    "& th": {
-        fontWeight: 600,
-    },
-    "& tr": {
-        borderTop: `1px solid ${color.border.default}`,
-    },
-    "& tr:nth-of-type(2n)": {
-        backgroundColor: color.background.dark,
-    },
-
-    "& blockquote": {
-        margin: 0,
-        borderLeft: `.25em solid ${color.border.default}`,
-        color: color.text.light,
-        padding: "0 1em",
-    },
-    "& b, & strong": {
-        color: color.text.strong,
-    },
-    "& .task-list-item": {
-        display: "flex",
-        alignItems: "center",
-        "& svg": {
-            flexShrink: 0,
-            marginRight: 6,
-        },
-    },
-    "& hr": {
-        height: ".25em",
-        padding: 0,
-        margin: "1.5rem 0",
-        backgroundColor: color.border.default,
-        border: 0,
-    },
-    "& sup": {
-        marginLeft: 3,
-    },
-    "& p": {
-        marginTop: 0,
-        marginBottom: 10,
-        lineHeight: 1.5,
-    },
-
-    // Compact mode — reduced font size and spacing for embedded views
+    // Compact mode — reduced padding for scroll container
     "&.compact .md-scroll-container": {
-        fontSize: 14,
         padding: "0 8px",
-        lineHeight: 1.2,
-    },
-    "&.compact h1, &.compact h2, &.compact h3, &.compact h4, &.compact h5, &.compact h6": {
-        marginTop: ".4rem",
-        marginBottom: ".25rem",
-        lineHeight: 1.1,
-    },
-    "&.compact h1": { fontSize: "1.4em" },
-    "&.compact h2": { fontSize: "1.2em" },
-    "&.compact h3": { fontSize: "1.05em" },
-    "&.compact pre": {
-        padding: "6px 10px",
-        lineHeight: 1.3,
-    },
-    "&.compact th, &.compact td": {
-        padding: "3px 6px",
-    },
-    "&.compact hr": {
-        margin: ".4rem 0",
-    },
-    "&.compact p": {
-        marginBottom: 3,
-        lineHeight: 1.25,
-    },
-    "&.compact li": {
-        lineHeight: 1.25,
-    },
-    "&.compact li + li": {
-        marginTop: ".1em",
-    },
-    "&.compact ul, &.compact ol": {
-        marginTop: 2,
-        marginBottom: 2,
-    },
-    "&.compact blockquote": {
-        padding: "0 .75em",
-    },
-});
-
-const getComponents = (filePath: string, mermaidLightMode: boolean): Components => ({
-    code: CodeBlock as any,
-    pre: createPreBlock(mermaidLightMode),
-    input: ({ node, ...props }) => {
-        if (props.type === "checkbox") {
-            return props.checked ? (
-                <CheckedIcon width={14} height={14} />
-            ) : (
-                <UncheckedIcon width={14} height={14} />
-            );
-        }
-        return <input {...props} />;
-    },
-    a: ({ node, href, children, ...props }) => {
-        return (
-            <a href={resolveRelatedLink(filePath, href)} {...props}>
-                {children}
-            </a>
-        );
     },
 });
 
@@ -384,6 +49,7 @@ const getDefaultState = () => defaultMarkdownViewState;
 
 export function MarkdownView({ model }: MarkdownViewProps) {
     const vm = useContentViewModel<MarkdownViewModel>(model, "md-view");
+    const blockRef = useRef<MarkdownBlockHandle>(null);
     const editorConfig = useEditorConfig();
 
     const pageState: MarkdownViewState = useSyncExternalStore(
@@ -395,29 +61,34 @@ export function MarkdownView({ model }: MarkdownViewProps) {
         filePath: s.filePath,
     }));
 
-    // Subscribe to theme changes — only affects mermaid diagram rendering
-    const themeId = settings.use("theme");
-    const mermaidLightMode = !isCurrentThemeDark();
-    const hasMermaid = content.includes("```mermaid");
-
-    const components = useMemo(
-        () => getComponents(filePath || "", mermaidLightMode),
-        [filePath, hasMermaid ? mermaidLightMode : 0],
-    );
-
     // Determine effective highlight text: own search takes priority, then external
     const highlightText = pageState.searchVisible && pageState.searchText
         ? pageState.searchText
         : editorConfig.highlightText || "";
 
-    // Rehype plugin for search text highlighting
-    const rehypePlugins = useMemo(() => {
-        const plugins: any[] = [rehypeRaw];
-        if (highlightText) {
-            plugins.push(createRehypeHighlight(highlightText));
+    // Sync match count from MarkdownBlock handle to ViewModel
+    const onMatchCountChange = useCallback((count: number) => {
+        if (!vm) return;
+        const { totalMatches, currentMatchIndex } = vm.state.get();
+        if (count !== totalMatches) {
+            const newIndex = count > 0 && currentMatchIndex >= count ? 0 : currentMatchIndex;
+            vm.state.update((s) => {
+                s.totalMatches = count;
+                s.currentMatchIndex = newIndex;
+            });
+            // Navigate to current match after count update
+            if (count > 0) {
+                blockRef.current?.scrollToMatch(newIndex);
+            }
         }
-        return plugins;
-    }, [highlightText]);
+    }, [vm]);
+
+    // Navigate to match when currentMatchIndex changes (from next/prev)
+    useEffect(() => {
+        if (pageState.totalMatches > 0) {
+            blockRef.current?.scrollToMatch(pageState.currentMatchIndex);
+        }
+    }, [pageState.currentMatchIndex]);
 
     // Keyboard handler for search shortcuts
     const onKeyDown = useCallback((e: React.KeyboardEvent) => {
@@ -435,27 +106,6 @@ export function MarkdownView({ model }: MarkdownViewProps) {
             vm.nextMatch();
         }
     }, [vm, pageState.searchVisible]);
-
-    const onContextMenu = useCallback((e: React.MouseEvent) => {
-        const anchor = (e.target as HTMLElement).closest("a");
-        if (anchor) {
-            const href = anchor.getAttribute("href");
-            if (href) {
-                if (!e.nativeEvent.menuItems) {
-                    e.nativeEvent.menuItems = [];
-                }
-                e.nativeEvent.menuItems.push({
-                    label: "Copy Link",
-                    icon: <CopyIcon />,
-                    onClick: () => navigator.clipboard.writeText(href),
-                });
-                const isExternal = href.startsWith("http://") || href.startsWith("https://");
-                if (isExternal) {
-                    appendLinkOpenMenuItems(e.nativeEvent.menuItems!, href);
-                }
-            }
-        }
-    }, []);
 
     // Apply max height constraint from context (e.g., when embedded in notebook)
     const rootStyle = editorConfig.maxEditorHeight
@@ -488,7 +138,6 @@ export function MarkdownView({ model }: MarkdownViewProps) {
                 style={rootStyle}
                 className={`${showMinimap ? "" : "show-scrollbar"} ${compact ? "compact" : ""}`}
                 onKeyDown={onKeyDown}
-                onContextMenu={onContextMenu}
                 tabIndex={-1}
             >
                 {showSearchBar && (
@@ -507,16 +156,14 @@ export function MarkdownView({ model }: MarkdownViewProps) {
                     ref={vm.setContainer}
                     onScroll={vm.containerScroll}
                 >
-                    <ReactMarkdown
-                        remarkPlugins={[remarkGfm]}
-                        rehypePlugins={rehypePlugins}
-                        components={components}
-                        urlTransform={(url) => {
-                            try { return decodeURIComponent(url); } catch { return url; }
-                        }}
-                    >
-                        {content}
-                    </ReactMarkdown>
+                    <MarkdownBlock
+                        ref={blockRef}
+                        content={content}
+                        highlightText={highlightText}
+                        compact={compact}
+                        filePath={filePath}
+                        onMatchCountChange={onMatchCountChange}
+                    />
                 </div>
                 {showMinimap && (
                     <Minimap

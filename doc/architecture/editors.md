@@ -158,7 +158,7 @@ TDialogModel<T, R>   (from core/state/model.ts)
 ContentViewModel<TState>   (from editors/base/ContentViewModel.ts)
 ├── TextViewModel           # Monaco text editor state
 ├── GridViewModel           # Grid columns, rows, filters
-├── MarkdownViewModel       # Container ref, search, scroll
+├── MarkdownViewModel       # Search state, compact, scroll (delegates rendering to MarkdownBlock)
 ├── NotebookViewModel       # Notes, categories, tags, filters
 ├── TodoViewModel           # Todo items, lists, tags
 ├── LinkViewModel           # Links, pins, favicons
