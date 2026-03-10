@@ -62,6 +62,14 @@ Release notes and changelog for js-notepad.
   - Hover toolbar with "Open in Grid editor" button
   - MCP agents use `output.grid` entries with `content` (JSON or CSV string), optional `contentType` (`"json"` or `"csv"`), and optional `title`
 
+- **Text Output** — New `ui.show.text()` method for scripts and `output.text` entry for MCP `ui_push`
+  - Display syntax-highlighted text inline in the Log View using an embedded Monaco editor (read-only)
+  - Two overloads: `ui.show.text("code", "javascript")` for quick display, `ui.show.text({ text, language?, title?, wordWrap?, lineNumbers?, minimap? })` for full control
+  - Defaults: language `"plaintext"`, wordWrap `true`, lineNumbers `false`, minimap `false`
+  - Returns a `Text` helper with live property setters (`text`, `language`, `title`, `wordWrap`, `lineNumbers`, `minimap`) for real-time updates
+  - `openInEditor(pageTitle?)` opens the text in a new Monaco editor tab
+  - MCP agents use `output.text` entries with `text`, optional `language`, `title`, `wordWrap`, `lineNumbers`, and `minimap` fields
+
 - **Select Dialog** — New `ui.dialog.select()` method for scripts and `input.select` entry for MCP `ui_push`
   - Dropdown select using a searchable combo box with keyboard navigation
   - Items are plain strings

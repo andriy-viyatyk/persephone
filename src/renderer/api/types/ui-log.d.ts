@@ -366,6 +366,39 @@ export interface IGrid {
 }
 
 // =============================================================================
+// Text Helper
+// =============================================================================
+
+/**
+ * Text helper returned by `ui.show.text()`.
+ * Update properties to change the text display in real-time.
+ *
+ * @example
+ * const text = ui.show.text("console.log('hello');", "javascript");
+ * text.language = "typescript"; // change language
+ *
+ * @example
+ * // Open in a dedicated text editor tab
+ * text.openInEditor("My Code");
+ */
+export interface IText {
+    /** Text content. Setting triggers re-render. */
+    text: string;
+    /** Syntax highlighting language (e.g., "javascript", "sql", "html"). */
+    language: string | undefined;
+    /** Text title. Setting triggers re-render. */
+    title: IStyledText | undefined;
+    /** Enable word wrapping (default: true). */
+    wordWrap: boolean | undefined;
+    /** Show line numbers (default: false). */
+    lineNumbers: boolean | undefined;
+    /** Show minimap (default: false). */
+    minimap: boolean | undefined;
+    /** Open text in a dedicated Text editor page. */
+    openInEditor(pageTitle?: string): void;
+}
+
+// =============================================================================
 // Show Namespace
 // =============================================================================
 
@@ -416,6 +449,34 @@ export interface IUiShow {
      */
     grid(data: any[]): IGrid;
     grid(options: { data: any[]; columns?: (string | IGridColumn)[]; title?: IStyledText }): IGrid;
+
+    /**
+     * Show syntax-highlighted text in the Log View using Monaco editor.
+     * Returns a Text helper whose property setters update the display in real-time.
+     *
+     * @example
+     * // Simple form — text with optional language
+     * ui.show.text("console.log('hello');", "javascript");
+     *
+     * @example
+     * // Full form with all options
+     * const text = ui.show.text({
+     *     text: "SELECT * FROM users;",
+     *     language: "sql",
+     *     title: "Query",
+     *     wordWrap: false,
+     *     lineNumbers: true,
+     * });
+     */
+    text(text: string, language?: string): IText;
+    text(options: {
+        text: string;
+        language?: string;
+        title?: IStyledText;
+        wordWrap?: boolean;
+        lineNumbers?: boolean;
+        minimap?: boolean;
+    }): IText;
 }
 
 // =============================================================================

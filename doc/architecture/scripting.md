@@ -152,6 +152,8 @@ interface IUiLog {
         progress(options: { label?; value?; max? }): IProgress;
         grid(data: any[]): IGrid;
         grid(options: { data: any[]; columns?; title? }): IGrid;
+        text(text: string, language?: string): IText;
+        text(options: { text; language?; title?; wordWrap?; lineNumbers?; minimap? }): IText;
     };
 }
 ```

@@ -134,6 +134,9 @@ export interface TextOutputEntry extends LogEntryBase {
     title?: StyledText;
     text: string;
     language?: string;
+    wordWrap?: boolean;
+    lineNumbers?: boolean;
+    minimap?: boolean;
 }
 
 export interface MarkdownOutputEntry extends LogEntryBase {

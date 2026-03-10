@@ -38,7 +38,8 @@ const LogViewRoot = styled.div({
 
 const noopUnsubscribe = () => () => {};
 const getDefaultState = () => defaultLogViewState;
-const getColumnWidth = () => "100%" as Percent;
+const RIGHT_GUTTER = 40;
+const getColumnWidth = (col: number) => col === 0 ? "100%" as Percent : RIGHT_GUTTER;
 const AUTO_SCROLL_THRESHOLD = 50;
 
 // =============================================================================
@@ -156,7 +157,7 @@ export function LogViewEditor({ model }: { model: TextFileModel }) {
     // Render cell callback
     const renderLogEntry = useCallback(
         (p: RenderFlexCellParams) => {
-            if (!vm) return null;
+            if (!vm || p.col === 1) return null;
             return (
                 <LogEntryWrapper
                     vm={vm}
@@ -216,7 +217,7 @@ export function LogViewEditor({ model }: { model: TextFileModel }) {
                     ) : (
                         <RenderFlexGrid
                             ref={setGridModel}
-                            columnCount={1}
+                            columnCount={2}
                             rowCount={state.entryCount}
                             columnWidth={getColumnWidth}
                             renderCell={renderLogEntry}

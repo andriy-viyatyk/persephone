@@ -499,6 +499,50 @@ const grid = ui.show.grid(data);
 grid.openInEditor("My Data");
 ```
 
+## Text Output
+
+### show.text(text, language?)
+### show.text(options)
+
+Show a syntax-highlighted text block in the Log View using an embedded read-only Monaco editor. Returns a `Text` helper whose property setters update the entry in real-time.
+
+```javascript
+// Simple form — text and language
+const txt = ui.show.text("SELECT * FROM users WHERE active = 1;", "sql");
+```
+
+```javascript
+// Full form — with title and options
+const txt = ui.show.text({
+    text: jsonData,
+    language: "json",
+    title: "API Response",
+    wordWrap: false,
+    lineNumbers: true,
+});
+```
+
+#### Text properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `text` | `string` | The text content. Setting triggers re-render. |
+| `language` | `string \| undefined` | Language for syntax highlighting (default: `"plaintext"`). Setting triggers re-render. |
+| `title` | `string \| IStyledSegment[] \| undefined` | Title displayed above the text (supports styled text). Setting triggers re-render. |
+| `wordWrap` | `boolean \| undefined` | Enable word wrap (default: `true`). Setting triggers re-render. |
+| `lineNumbers` | `boolean \| undefined` | Show line numbers (default: `false`). Setting triggers re-render. |
+| `minimap` | `boolean \| undefined` | Show minimap (default: `false`). Setting triggers re-render. |
+
+#### openInEditor(pageTitle?)
+
+Open the text in a new Monaco editor tab.
+
+```javascript
+const txt = ui.show.text(sourceCode, "typescript");
+// Later — open in a full editor tab
+txt.openInEditor("Source Code");
+```
+
 ## MCP `ui_push` Tool
 
 The same Log View is available to external AI agents via the MCP `ui_push` tool. While scripts use the `ui` global, MCP agents use `ui_push` to push entries to a managed Log View page.
@@ -519,7 +563,7 @@ The `entries` parameter is an array. Each element is either:
 
 **Dialog entry types:** `input.confirm`, `input.text`, `input.buttons`, `input.checkboxes`, `input.radioboxes`, `input.select` (same dialog types as `ui.dialog`) — use fields like `message`, `title`, `buttons`, `placeholder`, `defaultValue`, `items`, `checked`, `selected`, `layout` directly on the object.
 
-**Output entry types:** `output.progress` — a progress bar with `label` (string or styled text), `value` (number), `max` (number, default 100), and `completed` (boolean) fields. Use the same `id` on subsequent calls to update an existing progress bar (upsert-by-id). `output.grid` — an inline data grid with `content` (JSON or CSV string), optional `contentType` (`"json"` or `"csv"`, default `"json"`), and optional `title`.
+**Output entry types:** `output.progress` — a progress bar with `label` (string or styled text), `value` (number), `max` (number, default 100), and `completed` (boolean) fields. Use the same `id` on subsequent calls to update an existing progress bar (upsert-by-id). `output.grid` — an inline data grid with `content` (JSON or CSV string), optional `contentType` (`"json"` or `"csv"`, default `"json"`), and optional `title`. `output.text` — a syntax-highlighted text block with `text` (string), optional `language`, `title`, `wordWrap` (boolean), `lineNumbers` (boolean), and `minimap` (boolean).
 
 ### Examples
 
@@ -587,6 +631,16 @@ ui_push({ entries: [
 // Grid output (CSV data — first row is headers)
 ui_push({ entries: [
     { type: "output.grid", content: "name,age\nAlice,30\nBob,25", contentType: "csv", title: "Users" }
+] })
+
+// Text output (syntax-highlighted code block)
+ui_push({ entries: [
+    { type: "output.text", text: "SELECT * FROM users WHERE active = 1;", language: "sql", title: "Query" }
+] })
+
+// Text output (with display options)
+ui_push({ entries: [
+    { type: "output.text", text: "function hello() {\n  return 'world';\n}", language: "javascript", lineNumbers: true, wordWrap: false }
 ] })
 ```
 

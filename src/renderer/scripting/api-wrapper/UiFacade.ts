@@ -3,6 +3,7 @@ import type { StyledText, LogEntry, CheckboxItem, GridColumn } from "../../edito
 import { StyledLogBuilder } from "./StyledTextBuilder";
 import { Progress } from "./Progress";
 import { Grid } from "./Grid";
+import { Text } from "./Text";
 
 /** Check if value is a plain options object (not a string, not an array). */
 function isOptionsObject(value: unknown): value is Record<string, any> {
@@ -131,6 +132,17 @@ export class UiFacade {
             }
             const entry = this.vm.addEntry("output.grid", fields);
             return new Grid(entry.id, this.vm, fields as any);
+        },
+
+        text: (textOrOpts: string | { text: string; language?: string; title?: StyledText; wordWrap?: boolean; lineNumbers?: boolean; minimap?: boolean }, language?: string): Text => {
+            let fields: Record<string, any>;
+            if (isOptionsObject(textOrOpts)) {
+                fields = textOrOpts;
+            } else {
+                fields = { text: textOrOpts, language };
+            }
+            const entry = this.vm.addEntry("output.text", fields);
+            return new Text(entry.id, this.vm, fields as any);
         },
     };
 }

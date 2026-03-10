@@ -45,6 +45,7 @@ Entries are **flat objects** with `type` and type-specific fields directly on th
 |------|--------|-------------|
 | `output.progress` | `label?, value?, max?, completed?` | Progress bar with optional label |
 | `output.grid` | `content, contentType?, title?` | Tabular data grid (auto-detects columns from data) |
+| `output.text` | `text, language?, title?, wordWrap?, lineNumbers?, minimap?` | Syntax-highlighted text block (Monaco editor) |
 
 **`output.grid` content formats:**
 
@@ -112,6 +113,18 @@ ui_push({ entries: [
     { type: "input.select", title: "Select format", items: ["JSON", "CSV", "XML"], placeholder: "Choose format...", buttons: ["!OK", "Cancel"] }
 ] })
 → blocks → { results: [{ button: "OK", selected: "JSON", ... }] }
+
+// Syntax-highlighted text block
+ui_push({ entries: [
+    { type: "output.text", text: "SELECT * FROM users WHERE active = true;", language: "sql", title: "Query" }
+] })
+→ returns immediately: { }
+
+// Text block with line numbers and no word wrap
+ui_push({ entries: [
+    { type: "output.text", text: "function hello() {\n  console.log('world');\n}", language: "javascript", lineNumbers: true, wordWrap: false }
+] })
+→ returns immediately: { }
 
 // Multiple dialogs in one call (all shown, all must be resolved)
 ui_push({ entries: [

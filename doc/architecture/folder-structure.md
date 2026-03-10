@@ -267,7 +267,8 @@ js-notepad/
 │   │       ├── RadioboxesDialogView.tsx # input.radioboxes renderer
 │   │       ├── SelectDialogView.tsx     # input.select renderer
 │   │       ├── ProgressOutputView.tsx   # output.progress renderer
-│   │       └── GridOutputView.tsx       # output.grid renderer (inline AVGrid)
+│   │       ├── GridOutputView.tsx       # output.grid renderer (inline AVGrid)
+│   │       └── TextOutputView.tsx       # output.text renderer (inline Monaco editor)
 │   ├── pdf/                # PDF viewer (page-editor)
 │   │   ├── PdfViewer.tsx
 │   │   └── index.ts
@@ -313,6 +314,7 @@ js-notepad/
 │       ├── UiFacade.ts             # Log View UI (logging + dialogs + output)
 │       ├── Progress.ts            # Progress helper class (returned by ui.show.progress)
 │       ├── Grid.ts                # Grid helper class (returned by ui.show.grid)
+│       ├── Text.ts                # Text helper class (returned by ui.show.text)
 │       └── StyledTextBuilder.ts    # Fluent styled text builder + styledText() factory
 │
 ├── components/             # Reusable UI Components
