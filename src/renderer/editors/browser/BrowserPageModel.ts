@@ -10,6 +10,7 @@ import { GlobeIcon } from "../../theme/icons";
 import { settings, BrowserProfile } from "../../api/settings";
 import { DEFAULT_BROWSER_COLOR } from "../../theme/palette-colors";
 import { BrowserChannel } from "../../../ipc/browser-ipc";
+import { globalPopupRateLimiter } from "../../../ipc/popup-rate-limiter";
 import { searchHistoryManager } from "./browser-search-history";
 import { BrowserBookmarks } from "./BrowserBookmarks";
 import { BrowserWebviewModel } from "./BrowserWebviewModel";
@@ -817,8 +818,8 @@ export class BrowserPageModel extends PageModel<BrowserPageState, void> {
     /** Allow popups for this page (disables rate limiting). */
     allowPopups = () => {
         this.webview.popupsAllowed = true;
-        this.webview.tabRateLimiter.allowByPrefix("");
-        ipcRenderer.send(BrowserChannel.allowPopups, this.id);
+        globalPopupRateLimiter.allow("tabs");
+        ipcRenderer.send(BrowserChannel.allowPopups);
         this.state.update((s) => { s.blockedPopupCount = 0; });
     };
 

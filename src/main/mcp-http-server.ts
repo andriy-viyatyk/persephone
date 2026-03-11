@@ -140,7 +140,8 @@ function createMcpServer(): InstanceType<typeof McpServer> {
                 "",
                 "1. **Show output to user** — use `ui_push` (default). Pushes log messages and interactive dialogs to a managed Log View page. Read resource `notepad://guides/ui-push` for entry types and examples.",
                 "2. **Read/create/edit pages** — use `list_pages`, `get_active_page`, `get_page_content`, `create_page`, `set_page_content`. Read resource `notepad://guides/pages` for page properties, editor types, and multi-window support.",
-                "3. **Advanced operations** — use `execute_script` to run JS/TS with access to `page` (current tab) and `app` (services: pages, fs, settings, ui, shell, window, editors). Read resource `notepad://guides/scripting` for the full API reference.",
+                "3. **Open URLs in the built-in browser** — use `open_url`. js-notepad has a full browser with tabs, profiles, and incognito mode. It can be the default Windows browser.",
+                "4. **Advanced operations** — use `execute_script` to run JS/TS with access to `page` (current tab) and `app` (services: pages, fs, settings, ui, shell, window, editors). Read resource `notepad://guides/scripting` for the full API reference.",
                 "",
                 "## Quick tips",
                 "",
@@ -149,6 +150,11 @@ function createMcpServer(): InstanceType<typeof McpServer> {
                 "- Dialog entries (`input.*`) block until the user responds",
                 "- All tools accept optional `windowIndex` (default: first open window)",
                 "- Read only the resource you need — each guide is self-contained",
+                "",
+                "## IMPORTANT: Read guides before using specialized editors",
+                "",
+                "- `create_page` only works with content-view editors (monaco, grid-json, md-view, etc.). Page-editors (browser-view, pdf-view, image-view) require specialized models — use `open_url` for browser, `execute_script` with `app.pages.openFile()` for PDF/image.",
+                "- Before using `create_page` or `set_page_content` with non-monaco editors, you MUST read `notepad://guides/pages` to learn the required content format for that editor type.",
             ].join("\n"),
         },
     );
@@ -265,7 +271,7 @@ function createMcpServer(): InstanceType<typeof McpServer> {
 
     server.tool(
         "create_page",
-        "Create a new page (tab) with optional content. Returns { id, title, editor, language }. Common editors: 'monaco' (text), 'grid-json' (JSON grid), 'grid-csv' (CSV grid), 'md-view' (markdown preview). Common languages: 'javascript', 'typescript', 'json', 'html', 'css', 'markdown', 'python', 'plaintext'.",
+        "Create a new page (tab) with optional content. Only content-view editors are supported — for browser use open_url, for PDF/image use execute_script with app.pages.openFile(). Returns { id, title, editor, language }. For non-monaco editors, read resource `notepad://guides/pages` first to learn the required content format. Common editors: 'monaco' (text), 'grid-json' (JSON grid), 'grid-csv' (CSV grid), 'md-view' (markdown preview). Common languages: 'javascript', 'typescript', 'json', 'html', 'css', 'markdown', 'python', 'plaintext'.",
         {
             title: z.string().optional().describe("Page title. Defaults to 'Untitled'."),
             content: z.string().optional().describe("Initial text content."),
@@ -279,7 +285,7 @@ function createMcpServer(): InstanceType<typeof McpServer> {
 
     server.tool(
         "set_page_content",
-        "Update the text content of a page by ID. Works for text-based pages only. For structured editors (grid, notebook, todo), use execute_script with page facades instead.",
+        "Update the text content of a page by ID. Works for text-based pages only. IMPORTANT: For non-monaco editors, read resource `notepad://guides/pages` first to learn the required content format. For structured editors (grid, notebook, todo), use execute_script with page facades instead.",
         {
             pageId: z.string().describe("The page ID (from list_pages)."),
             content: z.string().describe("The new text content to set."),
@@ -318,6 +324,19 @@ function createMcpServer(): InstanceType<typeof McpServer> {
             windowIndex: windowIndexParam,
         },
         async ({ windowIndex }) => toToolResult(await sendToRenderer("get_app_info", {}, windowIndex)),
+    );
+
+    server.tool(
+        "open_url",
+        "Open a URL in the built-in browser. js-notepad has a full browser with tabs, profiles, and incognito mode. Reuses an existing browser page if one is open (adds a new tab), or creates a new browser page. Returns { opened: url }.",
+        {
+            url: z.string().describe("The URL to open."),
+            profileName: z.string().optional().describe("Browser profile name. Uses the default profile if omitted."),
+            incognito: z.boolean().optional().describe("Open in incognito mode (no cookies, no history)."),
+            windowIndex: windowIndexParam,
+        },
+        async ({ url, profileName, incognito, windowIndex }) =>
+            toToolResult(await sendToRenderer("open_url", { url, profileName, incognito }, windowIndex)),
     );
 
     // ── MCP Resources (focused guides) ─────────────────────────────────

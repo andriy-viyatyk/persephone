@@ -1,7 +1,12 @@
 /**
  * Simple rate limiter for popup/tab creation.
  * Tracks timestamps per key and blocks if too many requests within a time window.
- * Used in both main process (real popup windows) and renderer (internal tabs).
+ *
+ * A single global instance (`globalPopupRateLimiter`) enforces an app-wide limit
+ * of 3 popups/tabs per 2 seconds. This prevents cascade attacks where each new tab
+ * opens more tabs, bypassing per-tab limits. Each process (main, renderer) gets its
+ * own instance of the global singleton, which is fine — they guard different things
+ * (renderer: internal tabs, main: popup BrowserWindows).
  */
 
 const MAX_COUNT = 3;
@@ -69,3 +74,6 @@ export class PopupRateLimiter {
         this.allowed.delete(prefix);
     }
 }
+
+/** App-wide global rate limiter — max 3 popups/tabs per 2 seconds across the entire app. */
+export const globalPopupRateLimiter = new PopupRateLimiter();

@@ -36,6 +36,8 @@ async function handleCommand(method: string, params: any): Promise<McpResponse> 
             return setPageContent(params);
         case "get_app_info":
             return { result: getAppInfo() };
+        case "open_url":
+            return await openUrl(params);
         case "ui_push":
             return handleUiPush(params);
         default:
@@ -132,9 +134,23 @@ function createPage(params: any): McpResponse {
     const editor = params?.editor ?? "monaco";
     const title = params?.title ?? "Untitled";
 
-    if (!editorRegistry.getById(editor)) {
+    const editorDef = editorRegistry.getById(editor);
+    if (!editorDef) {
         const all = editorRegistry.getAll().map((e) => e.id);
         return { error: { code: -32602, message: `Unknown editor '${editor}'. Valid editors: ${all.join(", ")}` } };
+    }
+
+    if (editorDef.category === "page-editor") {
+        return {
+            error: {
+                code: -32602,
+                message: `Editor '${editor}' is a page-editor and cannot be created with create_page. `
+                    + `Page-editors require specialized models. `
+                    + `To open a URL in the browser, use the open_url tool. `
+                    + `To open a file (PDF, image), use execute_script with: await app.pages.openFile("/path/to/file"). `
+                    + `Read resource 'notepad://guides/pages' for details on editor types.`,
+            },
+        };
     }
 
     const page = pagesModel.addEditorPage(editor, language, title);
@@ -291,6 +307,20 @@ function getAppInfo(): any {
         pageCount: pages.length,
         activePageId: pagesModel.activePage?.id ?? null,
     };
+}
+
+// ── Open URL ────────────────────────────────────────────────────────
+
+async function openUrl(params: any): Promise<McpResponse> {
+    const url = params?.url;
+    if (!url || typeof url !== "string") {
+        return { error: { code: -32602, message: "Missing or invalid 'url' parameter" } };
+    }
+    await pagesModel.openUrlInBrowserTab(url, {
+        profileName: params?.profileName,
+        incognito: params?.incognito,
+    });
+    return { result: { opened: url } };
 }
 
 // ── Initialization ──────────────────────────────────────────────────

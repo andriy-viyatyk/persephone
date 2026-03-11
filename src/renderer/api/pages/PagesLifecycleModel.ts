@@ -110,6 +110,12 @@ export class PagesLifecycleModel {
         language: string,
         title: string
     ): PageModel => {
+        const editorDef = editorRegistry.getById(editor);
+        if (editorDef?.category === "page-editor") {
+            throw new Error(
+                `Cannot create '${editor}' with addEditorPage() — it is a page-editor that requires a specialized model. Use the dedicated method instead (e.g., showBrowserPage(), showAboutPage(), openFile()).`
+            );
+        }
         const page = newTextFileModel("");
         page.state.update((s) => {
             s.title = title;

@@ -10,7 +10,7 @@ import { pagesModel } from "../../api/pages";
 import { newTextFileModel } from "../text/TextPageModel";
 import { PageModel } from "../base";
 import { showEditLinkDialog } from "../link-editor/EditLinkDialog";
-import { PopupRateLimiter } from "../../../ipc/popup-rate-limiter";
+import { globalPopupRateLimiter } from "../../../ipc/popup-rate-limiter";
 import type { BrowserPageModel } from "./BrowserPageModel";
 
 /**
@@ -25,8 +25,6 @@ export class BrowserWebviewModel {
     /** Set of internalTabIds whose webview has fired dom-ready. */
     webviewReady = new Set<string>();
 
-    /** Rate limiter for internal tab creation from target="_blank" links. */
-    readonly tabRateLimiter = new PopupRateLimiter();
     /** When true, rate limiting is disabled (user clicked "Allow"). */
     popupsAllowed = false;
 
@@ -230,7 +228,7 @@ export class BrowserWebviewModel {
             }
             case "new-window": {
                 if (data.url) {
-                    if (!this.popupsAllowed && !this.tabRateLimiter.check(internalTabId)) {
+                    if (!this.popupsAllowed && !globalPopupRateLimiter.check("tabs")) {
                         this.model.state.update((s) => { s.blockedPopupCount++; });
                         break;
                     }

@@ -400,7 +400,7 @@ js-notepad/
 ├── api-param-types.ts      # IPC parameter types
 ├── browser-ipc.ts          # Browser-specific IPC channels
 ├── search-ipc.ts           # Search IPC channels
-├── popup-rate-limiter.ts   # Browser popup rate limiting
+├── popup-rate-limiter.ts   # Global popup/tab rate limiter (app-wide singleton)
 ├── main/                   # Main process handlers
 │   ├── controller.ts       # IPC handler registration
 │   ├── dialog-handlers.ts  # File dialog handlers

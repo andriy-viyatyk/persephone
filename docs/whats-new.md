@@ -8,7 +8,14 @@ Release notes and changelog for js-notepad.
 
 ## Version 1.0.20 (Upcoming)
 
-*No changes yet.*
+### New Features
+
+- **MCP `open_url` Tool** — AI agents can now open URLs in the [built-in browser](./browser.md) via the new `open_url` MCP tool. Supports optional `profileName` and `incognito` parameters for browser profile selection and private browsing.
+
+### Improvements
+
+- **MCP `create_page` error handling** — Calling `create_page` with a page-editor type (browser-view, pdf-view, image-view) now returns a clear error message explaining how to use `open_url` or `execute_script` instead, rather than crashing.
+- **Popup rate limiting** — Browser popup/tab blocking now uses a single app-wide limiter (max 3 per 2 seconds) instead of per-tab limits, preventing cascade attacks where each new tab opens more tabs.
 
 ---
 

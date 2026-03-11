@@ -27,14 +27,14 @@ The main process intercepts these via `setWindowOpenHandler()` on the webContent
 
 ### Popup/Tab Rate Limiting
 
-Both code paths (internal tabs and real popup windows) are protected by `PopupRateLimiter` — a time-window rate limiter allowing max 3 requests within 2 seconds per internal tab. When exceeded:
+Both code paths (internal tabs and real popup windows) are protected by a **global app-wide rate limiter** (`globalPopupRateLimiter` from `src/ipc/popup-rate-limiter.ts`) — max 3 requests within 2 seconds across the entire application. This prevents cascade attacks where each new tab opens more tabs. When exceeded:
 
 - **Internal tabs** (renderer): blocked in `BrowserWebviewModel.handleBrowserEvent("new-window")`; increments `blockedPopupCount` in state
 - **Popup windows** (main process): blocked in `setWindowOpenHandler`; sends `"popups-blocked"` IPC event to renderer
 
-A notification bar appears below the loading indicator showing the blocked count. The user can click "Allow" to permanently whitelist the page for the session (sends `BrowserChannel.allowPopups` IPC to also unblock main process rate limiting), or dismiss the bar.
+Each process (main, renderer) imports the same `globalPopupRateLimiter` singleton but gets its own instance — this is fine because they guard different things (renderer: internal tabs via `"tabs"` key, main: popup BrowserWindows via `"popups"` key).
 
-The rate limiter (`src/ipc/popup-rate-limiter.ts`) is shared between main and renderer processes (separate instances, same logic). It supports per-key tracking, permanent allow-listing, and prefix-based operations for cleanup.
+A notification bar appears below the loading indicator showing the blocked count. The user can click "Allow" to permanently whitelist popups for the session (allows both renderer and main process rate limiters via `BrowserChannel.allowPopups` IPC), or dismiss the bar.
 
 ## Process Architecture
 

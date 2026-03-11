@@ -163,7 +163,7 @@ See [scripting.md](./scripting.md).
 - External AI agents (Claude Desktop, Claude Code) control js-notepad via a Streamable HTTP MCP server
 - Protocol: MCP over HTTP at `http://127.0.0.1:{port}/mcp` (default port 7865)
 - Main process: `mcp-http-server.ts` accepts connections using `@modelcontextprotocol/sdk`, forwards requests to renderer via IPC
-- Renderer process: `mcp-handler.ts` dispatches 8 commands (`execute_script`, `list_pages`, `get_page_content`, `get_active_page`, `create_page`, `set_page_content`, `get_app_info`, `ui_push`)
+- Renderer process: `mcp-handler.ts` dispatches 9 commands (`execute_script`, `list_pages`, `get_page_content`, `get_active_page`, `create_page`, `set_page_content`, `get_app_info`, `open_url`, `ui_push`)
 - Multi-window support: all tools accept optional `windowIndex` parameter (defaults to first open window). `list_windows` tool runs in main process (no IPC) to discover windows and their status. `open_window` tool reopens closed windows with persisted pages.
 - Log View integration: `ui_push` tool pushes log entries, dialogs, and output items to a managed Log View page. Tracks an "active MCP log page" per window (auto-creates on first call, reuses on subsequent calls). Dialog entries block until user responds (infinite IPC timeout). This is the recommended output channel for AI agents.
 - MCP resources: focused guides (`assets/mcp-res-*.md`) exposed as `notepad://guides/ui-push`, `notepad://guides/pages`, `notepad://guides/scripting`, plus `notepad://guides/full` (concatenated). Server instructions provide immediate context on connection.
