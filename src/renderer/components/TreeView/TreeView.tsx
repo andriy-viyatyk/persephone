@@ -65,8 +65,27 @@ const TreeViewRoot = styled.div({
         height: "100%",
         flexShrink: 0,
         borderLeft: `1px solid ${color.border.light}`,
+        position: "relative",
         "&:first-of-type": {
             borderLeft: "none",
+        },
+    },
+
+    "& .tree-badge": {
+        position: "absolute",
+        right: 0,
+        top: "50%",
+        transform: "translateY(-50%)",
+        display: "flex",
+        alignItems: "center",
+        cursor: "pointer",
+        color: color.icon.dark,
+        "& svg": {
+            width: 10,
+            height: 10,
+        },
+        "&:hover": {
+            color: color.icon.active,
         },
     },
 
@@ -146,7 +165,9 @@ function TreeCell<T extends TreeItem = TreeItem>({
             })}
         >
             {levels.map((l) => (
-                <div key={l} className="level-shift" />
+                <div key={l} className="level-shift">
+                    {l === 0 && model.props.getBadge?.(item.item)}
+                </div>
             ))}
             {item.level === 0 && !model.props.rootCollapsible ? (
                 // Root item with collapsing disabled - no spacing

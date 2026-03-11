@@ -19,7 +19,7 @@ import color from "../../theme/color";
 import { pagesModel } from "../../api/pages";
 import { isTextFileModel } from "../../editors/text";
 
-const path = require("path");
+import { fpBasename, fpDirname, fpSep, isArchivePath, isArchiveFile, isAsarFile, isAsarPath } from "../../core/utils/file-path";
 
 const NavigationPanelRoot = styled.div({
     display: "flex",
@@ -137,6 +137,14 @@ const NavigationPanelRoot = styled.div({
     "& .nav-explorer-wrap": {
         overflow: "hidden",
     },
+
+    "& .nav-archive-banner": {
+        fontSize: 11,
+        color: color.text.dark,
+        padding: "3px 8px",
+        borderBottom: `1px solid ${color.border.light}`,
+        flexShrink: 0,
+    },
 });
 
 interface NavigationPanelProps {
@@ -162,7 +170,9 @@ export function NavigationPanel({ model, pageId }: NavigationPanelProps) {
     const fileExplorerRef = useRef<FileExplorerRef>(null);
     const searchInputRef = useRef<HTMLInputElement>(null);
 
-    const parentPath = path.dirname(rootFilePath);
+    const isArchiveRoot = isArchivePath(rootFilePath) || isAsarFile(rootFilePath) || isAsarPath(rootFilePath);
+    const isAsarRoot = isAsarFile(rootFilePath) || isAsarPath(rootFilePath);
+    const parentPath = fpDirname(rootFilePath);
     const canNavigateUp = parentPath !== rootFilePath;
 
     const hasQuery = query.trim().length > 0;
@@ -179,16 +189,6 @@ export function NavigationPanel({ model, pageId }: NavigationPanelProps) {
             }
         }
     }, [searchOpen]);
-
-    const handleFileClick = useCallback((filePath: string) => {
-        if (filePath.toLowerCase() === currentFilePath?.toLowerCase()) return;
-        // Save scroll position before navigation triggers remount
-        model.scrollTop = fileExplorerRef.current?.getScrollTop() ?? 0;
-        const options = searchOpen
-            ? { forceTextEditor: true, highlightText: hasQuery ? query : undefined }
-            : undefined;
-        pagesModel.navigatePageTo(pageId, filePath, options);
-    }, [pageId, currentFilePath, model, searchOpen, hasQuery, query]);
 
     // Restore scroll position after remount (navigation transfers NavPanelModel)
     useEffect(() => {
@@ -234,7 +234,8 @@ export function NavigationPanel({ model, pageId }: NavigationPanelProps) {
     const handleMakeRoot = useCallback((folderPath: string) => {
         if (folderPath.toLowerCase() === rootFilePath.toLowerCase()) return;
         const currentState = fileExplorerRef.current?.getState();
-        const folderLower = folderPath.toLowerCase() + path.sep;
+        const sep = isArchivePath(folderPath) ? "/" : fpSep;
+        const folderLower = folderPath.toLowerCase() + sep;
         const expandedPaths = (currentState?.expandedPaths ?? [])
             .filter(p => p.toLowerCase().startsWith(folderLower));
         model.fileExplorerState = { expandedPaths };
@@ -242,6 +243,33 @@ export function NavigationPanel({ model, pageId }: NavigationPanelProps) {
             s.rootFilePath = folderPath;
         });
     }, [rootFilePath, model]);
+
+    const handleFileClick = useCallback((filePath: string) => {
+        if (filePath.toLowerCase() === currentFilePath?.toLowerCase()) return;
+        // .asar files can't be read as text (Electron treats them as directories)
+        if (isAsarFile(filePath)) {
+            handleMakeRoot(filePath);
+            return;
+        }
+        // Save scroll position before navigation triggers remount
+        model.scrollTop = fileExplorerRef.current?.getScrollTop() ?? 0;
+        const options = searchOpen
+            ? { forceTextEditor: true, highlightText: hasQuery ? query : undefined }
+            : undefined;
+        pagesModel.navigatePageTo(pageId, filePath, options);
+    }, [pageId, currentFilePath, model, searchOpen, hasQuery, query, handleMakeRoot]);
+
+    const handleFileDoubleClick = useCallback((filePath: string) => {
+        if (isArchiveFile(filePath)) {
+            // .asar uses regular path (Electron native fs); ZIP archives use "!" convention
+            const isAsar = filePath.toLowerCase().endsWith(".asar");
+            handleMakeRoot(isAsar ? filePath : filePath + "!");
+        }
+    }, [handleMakeRoot]);
+
+    const handleArchiveBadgeClick = useCallback((filePath: string) => {
+        pagesModel.openFileAsArchive(filePath);
+    }, []);
 
     const getExtraMenuItems = useCallback((filePath: string, isFolder: boolean): MenuItem[] => {
         if (!isFolder || filePath.toLowerCase() === rootFilePath.toLowerCase()) return [];
@@ -315,22 +343,24 @@ export function NavigationPanel({ model, pageId }: NavigationPanelProps) {
                 <Button
                     type="icon"
                     size="small"
-                    title={canNavigateUp ? `Up to ${path.basename(parentPath)}` : "Already at root"}
+                    title={canNavigateUp ? `Up to ${fpBasename(parentPath)}` : "Already at root"}
                     onClick={handleNavigateUp}
                     disabled={!canNavigateUp}
                 >
                     <FolderUpIcon width={14} height={14} />
                 </Button>
                 <span className="nav-header-spacer" />
-                <Button
-                    type="icon"
-                    size="small"
-                    title="Search in Files"
-                    onClick={searchModel.toggleSearchOpen}
-                    className={searchOpen ? "nav-btn-toggled" : undefined}
-                >
-                    <SearchIcon width={14} height={14} />
-                </Button>
+                {!isArchiveRoot && (
+                    <Button
+                        type="icon"
+                        size="small"
+                        title="Search in Files"
+                        onClick={searchModel.toggleSearchOpen}
+                        className={searchOpen ? "nav-btn-toggled" : undefined}
+                    >
+                        <SearchIcon width={14} height={14} />
+                    </Button>
+                )}
                 <Button
                     type="icon"
                     size="small"
@@ -430,6 +460,16 @@ export function NavigationPanel({ model, pageId }: NavigationPanelProps) {
                     )}
                 </div>
             )}
+            {isArchiveRoot && (
+                <div
+                    className="nav-archive-banner"
+                    title={isAsarRoot
+                        ? "Saving files in this archive will throw an error. Use File \u2192 Save As to save a copy outside the archive."
+                        : "Opening large files may freeze the application."}
+                >
+                    {isAsarRoot ? ".asar is read-only" : "Archive content"}
+                </div>
+            )}
             <div className="nav-content">
                 <div
                     className="nav-explorer-wrap"
@@ -445,8 +485,10 @@ export function NavigationPanel({ model, pageId }: NavigationPanelProps) {
                         selectedFilePath={currentFilePath}
                         filterPaths={filterPaths}
                         onFileClick={handleFileClick}
+                        onFileDoubleClick={handleFileDoubleClick}
                         onFolderDoubleClick={handleMakeRoot}
-                        enableFileOperations
+                        onArchiveBadgeClick={handleArchiveBadgeClick}
+                        enableFileOperations={!isArchiveRoot}
                         showOpenInNewTab
                         initialState={model.fileExplorerState}
                         onStateChange={model.setFileExplorerState}

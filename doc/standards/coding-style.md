@@ -179,6 +179,40 @@ const Header = styled.div({
 
 If a needed color doesn't exist in `color`, add it to `color.ts` and all theme definitions in `src/renderer/theme/themes/`.
 
+## No Direct Node.js `fs` or `path` Imports
+
+Renderer modules must NOT use `require("fs")` or `require("path")` directly. All file system operations go through `app.fs` (`/src/renderer/api/fs.ts`), and all path operations go through the `file-path` utility module (`/src/renderer/core/utils/file-path.ts`).
+
+```typescript
+// GOOD - path operations through file-path utility
+import { fpBasename, fpDirname, fpJoin } from "../../core/utils/file-path";
+const name = fpBasename(filePath);
+const dir = fpDirname(filePath);
+
+// GOOD - file operations through app.fs
+import { fs } from "../../api/fs";
+const content = await fs.read(filePath);
+await fs.write(filePath, content);
+
+// BAD - direct Node.js imports
+const path = require("path");
+const nodefs = require("fs");
+```
+
+**Why:** These modules are the single source of truth for file and path operations. The `file-path` module provides archive-aware path functions (for `zip!inner/path` and `.asar` path support). The `app.fs` module routes archive paths to the appropriate service. Centralizing all usage ensures consistent behavior and makes it easy to review/change path and file logic.
+
+**Exceptions (allowed direct usage):**
+- `file-path.ts` itself — the one module that wraps `require("path")`
+- `fs.ts` itself — the one module that wraps `require("fs")`
+- `archive-service.ts` — low-level archive I/O provider that `fs.ts` routes to (using `fs.ts` would create circular dependency)
+- `file-watcher.ts` — uses `fs.watch()` (callback-based watcher, not a simple read/write)
+- `library-require.ts` — custom `require()` transpiler that uses `fs.readFileSync` for module compilation
+- `ScriptPanel.tsx` — uses `fs.readFileSync`/`writeFileSync` for script file operations (will be migrated in future tasks)
+- `themes/index.ts` — uses `fs.readFileSync` at startup before `app.fs` is initialized
+- Other files that use `require("fs")` for low-level operations not covered by `app.fs` (e.g., `fs.watch`, `fs.createReadStream`)
+
+When in doubt: if `app.fs` or `file-path` can do the job, use them.
+
 ## File Organization
 
 ### One Component Per File

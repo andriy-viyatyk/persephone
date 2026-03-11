@@ -10,10 +10,15 @@ Release notes and changelog for js-notepad.
 
 ### New Features
 
+- **Browse ZIP archives** — Open ZIP-based archives directly in the File Explorer panel. Right-click an archive in the file tree and choose **Open as Archive**, or double-click it in the sidebar navigation panel, to browse its contents as a folder tree. Supported formats: `.zip`, `.docx`, `.xlsx`, `.pptx`, `.jar`, `.war`, `.epub`, `.odt`, `.ods`, `.odp`. Navigate up from the archive root to return to the parent folder. Text-based files (XML, JSON, etc.) open in Monaco editor for inspection. File operations (create, rename, delete files and folders) work inside archives just like in regular folders.
+- **Browse `.asar` archives** — Electron `.asar` archive files can now be browsed in the File Explorer panel, just like ZIP archives. Right-click and choose **Open as Archive**, or double-click in the sidebar. Files inside `.asar` open in Monaco editor for inspection. `.asar` archives are read-only — file operations (create, rename, delete) are disabled inside them.
+- **Archive visual indicators** — Archive files now show a small clickable badge icon next to their name in the file tree (File Explorer panel and sidebar). Click the badge to open the archive in a new tab — a shortcut to **Open as Archive**. When browsing inside an archive, a banner appears at the top of the navigation panel: ZIP archives show "Archive content"; `.asar` archives show ".asar is read-only". File operations (rename, delete, new file/folder) and the search button are automatically hidden while inside an archive.
 - **MCP `open_url` Tool** — AI agents can now open URLs in the [built-in browser](./browser.md) via the new `open_url` MCP tool. Supports optional `profileName` and `incognito` parameters for browser profile selection and private browsing.
 
 ### Improvements
 
+- **Archive path support in `app.fs`** — All file system methods now transparently work with files inside ZIP archives using the `!` path separator (e.g., `"D:/temp/doc.zip!word/document.xml"`). Read, write, stat, list, and delete operations are all supported. See the [fs API reference](./api/fs.md#archive-paths) for details.
+- **Extended `app.fs` API** — Five new file system methods for scripting: `rename`, `copyFile`, `stat`, `listDirWithTypes`, and `removeDir`. See the [fs API reference](./api/fs.md) for details.
 - **MCP `create_page` error handling** — Calling `create_page` with a page-editor type (browser-view, pdf-view, image-view) now returns a clear error message explaining how to use `open_url` or `execute_script` instead, rather than crashing.
 - **Popup rate limiting** — Browser popup/tab blocking now uses a single app-wide limiter (max 3 per 2 seconds) instead of per-tab limits, preventing cascade attacks where each new tab opens more tabs.
 

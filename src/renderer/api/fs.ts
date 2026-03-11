@@ -4,7 +4,9 @@ const nodefs = require("fs");
 import jschardet from "jschardet";
 import iconv from "iconv-lite";
 import { api } from "../../ipc/renderer/api";
-import type { IFileSystem, ITextFile } from "./types/fs";
+import type { IFileSystem, ITextFile, IFileStat, IDirEntry } from "./types/fs";
+import { isArchivePath, parseArchivePath, isAsarFile, isAsarPath } from "../core/utils/file-path";
+import { archiveService } from "./archive-service";
 
 class FileSystem implements IFileSystem {
     // ── Init state ────────────────────────────────────────────────────
@@ -36,7 +38,12 @@ class FileSystem implements IFileSystem {
 
     private _loadStringFile(filePath: string, encoding?: string): ITextFile {
         const buffer = nodefs.readFileSync(filePath);
+        return this._decodeBuffer(buffer, encoding);
+    }
 
+    /** Decode a binary buffer into text with encoding detection. */
+    _decodeBuffer(buffer: Buffer, encoding?: string): ITextFile {
+        // BOM detection — O(1), safe for any file size
         if (
             buffer.length >= 3 &&
             buffer[0] === 0xef &&
@@ -60,6 +67,17 @@ class FileSystem implements IFileSystem {
             return {
                 content: iconv.decode(buffer.slice(2), "utf16be"),
                 encoding: "utf-16be",
+            };
+        }
+
+        // For large files (>20MB), skip encoding detection entirely — jschardet,
+        // iconv.decode, and replacement-char scanning are too expensive and can
+        // cause stack overflows or multi-second hangs. Just use utf-8.
+        const LARGE_FILE_THRESHOLD = 20 * 1024 * 1024;
+        if (buffer.length > LARGE_FILE_THRESHOLD) {
+            return {
+                content: buffer.toString("utf-8"),
+                encoding: "utf-8",
             };
         }
 
@@ -123,32 +141,37 @@ class FileSystem implements IFileSystem {
         content: string,
         encoding?: string
     ): void {
+        const buffer = this._encodeString(content, encoding);
+        nodefs.writeFileSync(filePath, buffer);
+    }
+
+    /** Encode a string into a binary buffer with the specified encoding (including BOM). */
+    _encodeString(content: string, encoding?: string): Buffer {
         const enc = encoding?.toLowerCase() || "utf-8";
 
         if (enc === "utf-8" || enc === "utf8") {
-            nodefs.writeFileSync(filePath, content, "utf-8");
+            return Buffer.from(content, "utf-8");
         } else if (enc === "utf-8-bom" || enc === "utf8bom") {
             const bom = Buffer.from([0xef, 0xbb, 0xbf]);
             const textBuffer = Buffer.from(content, "utf-8");
-            nodefs.writeFileSync(filePath, Buffer.concat([bom, textBuffer]));
+            return Buffer.concat([bom, textBuffer]);
         } else if (enc === "utf-16le" || enc === "utf16le") {
             const bom = Buffer.from([0xff, 0xfe]);
             const textBuffer = iconv.encode(content, "utf16le");
-            nodefs.writeFileSync(filePath, Buffer.concat([bom, textBuffer]));
+            return Buffer.concat([bom, textBuffer]);
         } else if (enc === "utf-16be" || enc === "utf16be") {
             const bom = Buffer.from([0xfe, 0xff]);
             const textBuffer = iconv.encode(content, "utf16be");
-            nodefs.writeFileSync(filePath, Buffer.concat([bom, textBuffer]));
+            return Buffer.concat([bom, textBuffer]);
         } else {
             try {
-                const buffer = iconv.encode(content, enc);
-                nodefs.writeFileSync(filePath, buffer);
+                return iconv.encode(content, enc);
             } catch (error) {
                 console.error(
                     `Failed to encode with ${enc}, falling back to UTF-8:`,
                     error
                 );
-                nodefs.writeFileSync(filePath, content, "utf-8");
+                return Buffer.from(content, "utf-8");
             }
         }
     }
@@ -236,43 +259,166 @@ class FileSystem implements IFileSystem {
     // ── IFileSystem — File I/O ────────────────────────────────────────
 
     async read(filePath: string, encoding?: string): Promise<string> {
+        if (isArchivePath(filePath)) {
+            const { archivePath, innerPath } = parseArchivePath(filePath);
+            const buffer = await archiveService.readFile(archivePath, innerPath);
+            return this._decodeBuffer(buffer, encoding).content;
+        }
         return this._loadStringFile(filePath, encoding).content;
     }
 
     async readFile(filePath: string, encoding?: string): Promise<ITextFile> {
+        if (isArchivePath(filePath)) {
+            const { archivePath, innerPath } = parseArchivePath(filePath);
+            const buffer = await archiveService.readFile(archivePath, innerPath);
+            return this._decodeBuffer(buffer, encoding);
+        }
         return this._loadStringFile(filePath, encoding);
     }
 
     async readBinary(filePath: string): Promise<Buffer> {
+        if (isArchivePath(filePath)) {
+            const { archivePath, innerPath } = parseArchivePath(filePath);
+            return archiveService.readFile(archivePath, innerPath);
+        }
         return nodefs.readFileSync(filePath);
     }
 
     async write(filePath: string, content: string, encoding?: string): Promise<void> {
+        if (isArchivePath(filePath)) {
+            const { archivePath, innerPath } = parseArchivePath(filePath);
+            const buffer = this._encodeString(content, encoding);
+            await archiveService.writeFile(archivePath, innerPath, buffer);
+            return;
+        }
         this._ensureDir(path.dirname(filePath));
         this._saveStringFile(filePath, content, encoding);
     }
 
     async writeBinary(filePath: string, data: Buffer): Promise<void> {
+        if (isArchivePath(filePath)) {
+            const { archivePath, innerPath } = parseArchivePath(filePath);
+            await archiveService.writeFile(archivePath, innerPath, data);
+            return;
+        }
         this._ensureDir(path.dirname(filePath));
         nodefs.writeFileSync(filePath, data);
     }
 
     async exists(filePath: string): Promise<boolean> {
+        if (isArchivePath(filePath)) {
+            const { archivePath, innerPath } = parseArchivePath(filePath);
+            return archiveService.exists(archivePath, innerPath);
+        }
+        // For .asar paths, use statSync which Electron patches reliably
+        if (isAsarFile(filePath) || isAsarPath(filePath)) {
+            try {
+                nodefs.statSync(filePath);
+                return true;
+            } catch {
+                return false;
+            }
+        }
         return this.fileExistsSync(filePath);
     }
 
     async delete(filePath: string): Promise<void> {
+        if (isArchivePath(filePath)) {
+            const { archivePath, innerPath } = parseArchivePath(filePath);
+            await archiveService.deleteFile(archivePath, innerPath);
+            return;
+        }
         this._unlinkFile(filePath);
+    }
+
+    // ── IFileSystem — File management ───────────────────────────────────
+
+    async rename(oldPath: string, newPath: string): Promise<void> {
+        if (isArchivePath(oldPath)) {
+            const oldParsed = parseArchivePath(oldPath);
+            const newParsed = parseArchivePath(newPath);
+            await archiveService.renameFile(oldParsed.archivePath, oldParsed.innerPath, newParsed.innerPath);
+            return;
+        }
+        nodefs.renameSync(oldPath, newPath);
+    }
+
+    async stat(filePath: string): Promise<IFileStat> {
+        if (isArchivePath(filePath)) {
+            const { archivePath, innerPath } = parseArchivePath(filePath);
+            return archiveService.stat(archivePath, innerPath);
+        }
+        try {
+            const stats = nodefs.statSync(filePath);
+            return {
+                size: stats.size,
+                mtime: stats.mtime.getTime(),
+                exists: true,
+                // Electron patches fs to treat .asar files as directories — override back to file
+                isDirectory: stats.isDirectory() && !filePath.endsWith(".asar"),
+            };
+        } catch {
+            return { size: 0, mtime: 0, exists: false, isDirectory: false };
+        }
+    }
+
+    async copyFile(srcPath: string, destPath: string): Promise<void> {
+        this._ensureDir(path.dirname(destPath));
+        nodefs.copyFileSync(srcPath, destPath);
     }
 
     // ── IFileSystem — Directory operations ──────────────────────────────
 
     async listDir(dirPath: string, pattern?: string | RegExp): Promise<string[]> {
+        if (isArchivePath(dirPath)) {
+            const { archivePath, innerPath } = parseArchivePath(dirPath);
+            const entries = await archiveService.listDir(archivePath, innerPath);
+            const names = entries.map((e) => e.name);
+            if (!pattern) return names;
+            if (typeof pattern === "string") {
+                return names.filter((name) =>
+                    path.extname(name).toLowerCase() === pattern.toLowerCase()
+                );
+            }
+            return names.filter((name) => pattern.test(name));
+        }
         return this._listDirFiles(dirPath, pattern);
     }
 
     async mkdir(dirPath: string): Promise<void> {
+        if (isArchivePath(dirPath)) {
+            const { archivePath, innerPath } = parseArchivePath(dirPath);
+            await archiveService.mkdir(archivePath, innerPath);
+            return;
+        }
         this._ensureDir(dirPath);
+    }
+
+    async listDirWithTypes(dirPath: string): Promise<IDirEntry[]> {
+        if (isArchivePath(dirPath)) {
+            const { archivePath, innerPath } = parseArchivePath(dirPath);
+            return archiveService.listDir(archivePath, innerPath);
+        }
+        // Skip fileExistsSync for .asar paths — Electron's fs patching handles
+        // .asar transparently, but accessSync may not work correctly on virtual dirs
+        if (!isAsarFile(dirPath) && !isAsarPath(dirPath) && !this.fileExistsSync(dirPath)) {
+            return [];
+        }
+        const entries: any[] = nodefs.readdirSync(dirPath, { withFileTypes: true });
+        return entries.map((dirent: any) => ({
+            name: dirent.name,
+            // Electron patches fs to treat .asar files as directories — override back to file
+            isDirectory: dirent.isDirectory() && !dirent.name.endsWith(".asar"),
+        }));
+    }
+
+    async removeDir(dirPath: string, recursive?: boolean): Promise<void> {
+        if (isArchivePath(dirPath)) {
+            const { archivePath, innerPath } = parseArchivePath(dirPath);
+            await archiveService.removeDir(archivePath, innerPath);
+            return;
+        }
+        nodefs.rmSync(dirPath, { recursive: !!recursive, force: true });
     }
 
     // ── IFileSystem — Path resolution ─────────────────────────────────

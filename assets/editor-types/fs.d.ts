@@ -9,6 +9,26 @@ export interface ITextFile {
     readonly encoding: string;
 }
 
+/** File/directory metadata returned by stat(). */
+export interface IFileStat {
+    /** File size in bytes. */
+    size: number;
+    /** Last modification time (ms since epoch). */
+    mtime: number;
+    /** True if path exists. */
+    exists: boolean;
+    /** True if path is a directory. */
+    isDirectory: boolean;
+}
+
+/** Directory entry with type info, returned by listDirWithTypes(). */
+export interface IDirEntry {
+    /** File or directory name (not full path). */
+    name: string;
+    /** True if entry is a directory. */
+    isDirectory: boolean;
+}
+
 /** File type filter for open/save dialogs. */
 export interface IFileFilter {
     /** Display name (e.g., "Text Files"). */
@@ -123,6 +143,27 @@ export interface IFileSystem {
      */
     delete(filePath: string): Promise<void>;
 
+    /**
+     * Rename or move a file or directory.
+     * @param oldPath Current absolute path.
+     * @param newPath New absolute path.
+     */
+    rename(oldPath: string, newPath: string): Promise<void>;
+
+    /**
+     * Get file/directory metadata.
+     * @param filePath Absolute path.
+     * @returns Stat object. If path doesn't exist, returns `{ exists: false, size: 0, mtime: 0, isDirectory: false }`.
+     */
+    stat(filePath: string): Promise<IFileStat>;
+
+    /**
+     * Copy a file. Creates parent directories if needed.
+     * @param srcPath Source absolute path.
+     * @param destPath Destination absolute path.
+     */
+    copyFile(srcPath: string, destPath: string): Promise<void>;
+
     // ── Directory operations ────────────────────────────────────────
 
     /**
@@ -138,6 +179,20 @@ export interface IFileSystem {
      * @param dirPath Absolute path to directory.
      */
     mkdir(dirPath: string): Promise<void>;
+
+    /**
+     * List directory contents with type information.
+     * @param dirPath Absolute path to directory.
+     * @returns Array of entries with name and isDirectory flag. Empty array if directory doesn't exist.
+     */
+    listDirWithTypes(dirPath: string): Promise<IDirEntry[]>;
+
+    /**
+     * Remove a directory.
+     * @param dirPath Absolute path to directory.
+     * @param recursive If true, removes contents recursively (default: false).
+     */
+    removeDir(dirPath: string, recursive?: boolean): Promise<void>;
 
     // ── Path resolution ──────────────────────────────────────────────
 

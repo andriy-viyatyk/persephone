@@ -5,7 +5,7 @@ import { ChevronDownIcon, ChevronRightIcon } from "../../theme/icons";
 import { NavigationSearchModel, FileSearchResult } from "./NavigationSearchModel";
 import { SearchMatch } from "../../../ipc/search-ipc";
 
-const path = require("path");
+import { fpBasename, fpDirname } from "../../core/utils/file-path";
 
 const SearchResultsPanelRoot = styled.div({
     flex: "1 1 auto",
@@ -139,8 +139,8 @@ function FileResultGroup({ result, onMatchClick }: {
     onMatchClick: (filePath: string, lineNumber: number) => void;
 }) {
     const [expanded, setExpanded] = useState(true);
-    const fileName = path.basename(result.filePath);
-    const dirName = path.dirname(result.filePath);
+    const fileName = fpBasename(result.filePath);
+    const dirName = fpDirname(result.filePath);
 
     const handleToggle = useCallback(() => {
         setExpanded((prev) => !prev);
@@ -171,7 +171,7 @@ function FileResultGroup({ result, onMatchClick }: {
                 </span>
                 <span className="sr-file-name">{fileName}</span>
                 <span className="sr-file-dir" title={dirName}>
-                    {path.basename(dirName)}
+                    {fpBasename(dirName)}
                 </span>
                 <span className="sr-match-count">
                     {result.matches.length}

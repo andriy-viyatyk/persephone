@@ -65,21 +65,24 @@ The current page (tab). Available as a global in scripts.
 
 ### Creating Pages with Specialized Editors
 
-Some editors require specific `language` and `title` (ending with a file extension) to render correctly with proper toolbar switch buttons:
+**CRITICAL: Each non-monaco editor REQUIRES a specific `language` parameter. Using the wrong language (e.g., `language: "plaintext"` with `editor: "md-view"`) will result in broken rendering — the page will appear empty or display raw text instead of rendered content.**
 
-| Editor | Language | Title must end with | Example |
-|--------|----------|-------------------|---------|
-| `notebook-view` | `json` | `.note.json` | `"My Notes.note.json"` |
-| `todo-view` | `json` | `.todo.json` | `"Tasks.todo.json"` |
-| `link-view` | `json` | `.link.json` | `"Bookmarks.link.json"` |
-| `grid-json` | `json` | `.grid.json` (optional) | `"Data.grid.json"` or `"Data"` |
-| `grid-csv` | `csv` | — | `"Data"` |
-| `md-view` | `markdown` | — | `"README.md"` |
-| `svg-view` | `xml` | `.svg` | `"Logo.svg"` |
-| `html-view` | `html` | — | `"Page.html"` |
-| `mermaid-view` | `mermaid` | — | `"Diagram"` |
+| Editor | Required `language` | Recommended title suffix | Example |
+|--------|-------------------|------------------------|---------|
+| `monaco` (default) | any (`plaintext`, `javascript`, `json`, etc.) | — | `"script.js"` |
+| `md-view` | **`markdown`** | — | `"README.md"` |
+| `grid-json` | **`json`** | `.grid.json` (optional) | `"Data.grid.json"` or `"Data"` |
+| `grid-csv` | **`csv`** | — | `"Data"` |
+| `notebook-view` | **`json`** | `.note.json` | `"My Notes.note.json"` |
+| `todo-view` | **`json`** | `.todo.json` | `"Tasks.todo.json"` |
+| `link-view` | **`json`** | `.link.json` | `"Bookmarks.link.json"` |
+| `svg-view` | **`xml`** | `.svg` | `"Logo.svg"` |
+| `html-view` | **`html`** | — | `"Page.html"` |
+| `mermaid-view` | **`mermaid`** | — | `"Diagram"` |
 
-**Important:** Without the correct title suffix, the editor will work but the toolbar switch buttons may not show all available editor options (e.g., a link editor page titled `"Links"` won't show the "Links" switch button, but `"Links.link.json"` will).
+**Common mistake:** `create_page({ editor: "md-view", language: "plaintext", ... })` — this creates a broken page. Use `language: "markdown"` with `md-view`.
+
+**Title suffix:** Without the correct title suffix, the editor will work but the toolbar switch buttons may not show all available editor options (e.g., a link editor page titled `"Links"` won't show the "Links" switch button, but `"Links.link.json"` will).
 
 **Initial content:** Notebook, todo, and link editors expect valid JSON content on creation:
 - **Notebook:** `{"notes":[],"state":{}}`

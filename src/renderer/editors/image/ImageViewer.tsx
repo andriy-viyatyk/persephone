@@ -13,7 +13,7 @@ import { ui } from "../../api/ui";
 import { NavPanelModel } from "../../ui/navigation/nav-panel-store";
 import { BaseImageView } from "./BaseImageView";
 import type { BaseImageViewRef } from "./BaseImageView";
-const path = require("path");
+import { fpBasename, fpDirname } from "../../core/utils/file-path";
 
 // ============================================================================
 // ImageViewerModel (Page Model) - manages page state and lifecycle
@@ -37,7 +37,7 @@ class ImageViewerModel extends PageModel<ImageViewerModelState, void> {
         const filePath = this.state.get().filePath;
         if (filePath) {
             this.state.update((s) => {
-                s.title = path.basename(filePath);
+                s.title = fpBasename(filePath);
             });
         }
     }
@@ -87,7 +87,7 @@ class ImageViewerModel extends PageModel<ImageViewerModelState, void> {
         this.state.update((s) => {
             s.url = undefined;
             s.filePath = savePath;
-            s.title = path.basename(savePath);
+            s.title = fpBasename(savePath);
         });
     };
 }
@@ -105,7 +105,7 @@ function ImageViewer({ model }: ImageViewerProps) {
     const url = model.state.use((s) => s.url);
     const imageRef = useRef<BaseImageViewRef>(null);
     const src = url || `safe-file://${filePath?.replace(/\\/g, "/") || ""}`;
-    const alt = filePath ? path.basename(filePath) : "Image";
+    const alt = filePath ? fpBasename(filePath) : "Image";
 
     return (
         <>
@@ -117,10 +117,10 @@ function ImageViewer({ model }: ImageViewerProps) {
                         title="File Explorer"
                         onClick={() => {
                             if (model.navPanel) {
-                                model.navPanel.reinitIfEmpty(path.dirname(filePath), filePath);
+                                model.navPanel.reinitIfEmpty(fpDirname(filePath), filePath);
                                 model.navPanel.toggle();
                             } else {
-                                const navPanel = new NavPanelModel(path.dirname(filePath), filePath);
+                                const navPanel = new NavPanelModel(fpDirname(filePath), filePath);
                                 navPanel.id = model.id;
                                 navPanel.flushSave();
                                 model.navPanel = navPanel;

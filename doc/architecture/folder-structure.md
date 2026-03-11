@@ -46,6 +46,7 @@ js-notepad/
 │   ├── editors.ts          # IEditorRegistry implementation
 │   ├── recent.ts           # IRecentFiles implementation
 │   ├── fs.ts               # IFileSystem implementation
+│   ├── archive-service.ts  # ArchiveService — ZIP archive I/O (jszip), used by fs.ts for archive paths
 │   ├── window.ts           # IWindow implementation
 │   ├── ui.ts               # IUserInterface implementation
 │   ├── downloads.ts        # IDownloads implementation
@@ -344,7 +345,8 @@ js-notepad/
 │   │   ├── utils.ts        # General helpers
 │   │   ├── parse-utils.ts  # JSON5, JS parsing
 │   │   ├── csv-utils.ts    # CSV parsing/generation
-│   │   ├── path-utils.ts   # File path manipulation
+│   │   ├── file-path.ts    # Archive-aware path utility (wraps ALL path.* usage)
+│   │   ├── path-utils.ts   # Markdown link resolution
 │   │   ├── obj-path.ts     # Deep object access by path
 │   │   ├── language-mapping.ts  # Extension → Monaco language
 │   │   ├── monaco-languages.ts  # Monaco language config

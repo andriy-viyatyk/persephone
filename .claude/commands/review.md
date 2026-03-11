@@ -30,6 +30,8 @@ Read the following documentation as your source of truth:
 6. **ContentViewModel pattern** — New editor views use `useContentViewModel` hook
 7. **Styled components** — Single root styled component with nested class-based styles (not multiple styled components)
 8. **Script API** — Any new scripting API has `.d.ts` types in `api/types/`
+9. **No direct `require("path")`** — Use `file-path` utility (`/src/renderer/core/utils/file-path.ts`) for all path operations. Only `file-path.ts` itself may import `path` directly.
+10. **No direct `require("fs")`** — Use `app.fs` (`/src/renderer/api/fs.ts`) for file operations. Only `fs.ts` itself and a few documented exceptions may import `fs` directly (see `coding-style.md` for the exception list).
 
 ## How to review
 

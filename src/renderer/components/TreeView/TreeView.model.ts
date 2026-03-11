@@ -75,6 +75,8 @@ export interface TreeViewProps<T extends TreeItem = TreeItem> {
     onExpandChange?: (id: string, expanded: boolean) => void;
     /** Return true if an item should show an expand arrow even when its children aren't loaded yet (lazy loading) */
     getHasChildren?: (item: T) => boolean;
+    /** Optional badge rendered inside the first level-shift div (indentation area) */
+    getBadge?: (item: T) => React.ReactNode;
 }
 
 export function treeItemForEach<T extends TreeItem = TreeItem>(

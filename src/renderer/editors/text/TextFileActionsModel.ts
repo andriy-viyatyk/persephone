@@ -1,4 +1,4 @@
-const path = require("path");
+import { fpDirname } from "../../core/utils/file-path";
 
 import { ui } from "../../api/ui";
 import { pagesModel } from "../../api/pages";
@@ -41,7 +41,7 @@ export class TextFileActionsModel {
         if (!this.model.navPanel && !filePath) return;
 
         if (!this.model.navPanel) {
-            const navPanel = new NavPanelModel(path.dirname(filePath), filePath);
+            const navPanel = new NavPanelModel(fpDirname(filePath), filePath);
             navPanel.id = this.model.id;
             navPanel.flushSave();
             this.model.navPanel = navPanel;

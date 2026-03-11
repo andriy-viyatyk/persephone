@@ -58,7 +58,7 @@ import {
     YamlIcon,
 } from "../../theme/language-icons";
 
-const path = require("path");
+import { fpExtname } from "../../core/utils/file-path";
 
 // =============================================================================
 // Language → Icon mapping
@@ -149,7 +149,7 @@ class SystemIconModel extends TModel<SystemIconState> {
     }
 
     prepareIcon = async (fileName: string) => {
-        const ext = path.extname(fileName).toLowerCase();
+        const ext = fpExtname(fileName).toLowerCase();
         if (!ext || this.state.get().iconCache.has(ext)) return;
 
         const iconDataUrl = await api.getFileIcon(fileName);
@@ -186,7 +186,7 @@ export interface FileTypeIconProps extends SvgIconProps {
  */
 export function FileTypeIcon({ language, fileName, ...props }: FileTypeIconProps) {
     const ext = useMemo(
-        () => (fileName ? path.extname(fileName).toLowerCase() : ""),
+        () => (fileName ? fpExtname(fileName).toLowerCase() : ""),
         [fileName],
     );
 

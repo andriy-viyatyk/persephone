@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import { FileTypeIcon } from "./LanguageIcon";
-const path = require("path");
+import { fpBasename } from "../../core/utils/file-path";
 
 interface FileIconProps {
     path: string;
@@ -9,7 +9,7 @@ interface FileIconProps {
 }
 
 export function FileIcon(props: FileIconProps) {
-    const fileName = path.basename(props.path);
+    const fileName = fpBasename(props.path);
     return <FileTypeIcon fileName={fileName} width={props.width} height={props.height} />;
 }
 

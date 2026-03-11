@@ -12,7 +12,7 @@ import { NavPanelModel } from "../../ui/navigation/nav-panel-store";
 import { isScriptLanguage } from "../../scripting/transpile";
 import type { TOneState } from "../../core/state/state";
 
-const path = require("path");
+import { fpDirname } from "../../core/utils/file-path";
 
 /** Always calls useSyncExternalStore — handles null state gracefully. */
 function useOptionalModelState<T, R>(
@@ -84,10 +84,10 @@ export function TextToolbar({ model, setEditorToolbarRefFirst, setEditorToolbarR
                 title="File Explorer"
                 onClick={() => {
                     if (model.navPanel) {
-                        model.navPanel.reinitIfEmpty(path.dirname(filePath), filePath);
+                        model.navPanel.reinitIfEmpty(fpDirname(filePath), filePath);
                         model.navPanel.toggle();
                     } else {
-                        const navPanel = new NavPanelModel(path.dirname(filePath), filePath);
+                        const navPanel = new NavPanelModel(fpDirname(filePath), filePath);
                         navPanel.id = model.id;
                         navPanel.flushSave();
                         model.navPanel = navPanel;

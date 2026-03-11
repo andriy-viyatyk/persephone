@@ -1,4 +1,4 @@
-const path = require("path");
+import { fpBasename } from "../../core/utils/file-path";
 import { forwardRef, useCallback, useEffect, useMemo } from "react";
 import { pagesModel } from "../../api/pages";
 import { recent } from "../../api/recent";
@@ -27,7 +27,7 @@ export const RecentFileList = forwardRef<FileListRef, RecentFileListProps>(
         const items = useMemo(() => {
             const fileItems: FileListItem[] = files.map((filePath) => ({
                 filePath,
-                title: path.basename(filePath),
+                title: fpBasename(filePath),
             }));
             return fileItems;
         }, [files]);

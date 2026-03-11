@@ -1,4 +1,4 @@
-const path = require("path");
+import { fpDirname, fpResolve } from "./file-path";
 const url = require("url");
 
 /**
@@ -23,8 +23,8 @@ export function resolveRelatedLink(currentFilePath?: string, link?: string): str
     try {
         // Decode URL-encoded characters (e.g. %5C for backslashes from markdown parsers)
         const decoded = decodeURIComponent(link);
-        const currentDir = path.dirname(currentFilePath);
-        const absolutePath = path.resolve(currentDir, decoded);
+        const currentDir = fpDirname(currentFilePath);
+        const absolutePath = fpResolve(currentDir, decoded);
         const fileUrl = url.pathToFileURL(absolutePath).href;
         return fileUrl;
     } catch {
@@ -53,6 +53,6 @@ export function isLocalLink(link: string): boolean {
  */
 export function resolveRelativePath(currentFilePath: string, link: string): string {
     const linkWithoutFragment = link.split("#")[0];
-    const currentDir = path.dirname(currentFilePath);
-    return path.resolve(currentDir, linkWithoutFragment);
+    const currentDir = fpDirname(currentFilePath);
+    return fpResolve(currentDir, linkWithoutFragment);
 }

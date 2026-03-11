@@ -1,7 +1,7 @@
 import { getSucraseTransform } from "./transpile";
 
 const fs = require("fs") as typeof import("fs");
-const path = require("path") as typeof import("path");
+import { fpJoin, fpResolve } from "../core/utils/file-path";
 const LIBRARY_PREFIX = "library/";
 
 let extensionsRegistered = false;
@@ -21,7 +21,7 @@ export function registerLibraryExtensions(libraryPath: string): void {
     extensionsRegistered = true;
 
     const originalJsHandler = require.extensions[".js"];
-    const normalizedLibPath = path.resolve(libraryPath);
+    const normalizedLibPath = fpResolve(libraryPath);
 
     require.extensions[".ts"] = (module: NodeModule, filename: string) => {
         const transform = getSucraseTransform();
@@ -41,7 +41,7 @@ export function registerLibraryExtensions(libraryPath: string): void {
     require.extensions[".js"] = (module: NodeModule, filename: string) => {
         // Only transpile .js files inside the library folder
         const transform = getSucraseTransform();
-        if (transform && path.resolve(filename).startsWith(normalizedLibPath)) {
+        if (transform && fpResolve(filename).startsWith(normalizedLibPath)) {
             const code = fs.readFileSync(filename, "utf-8");
             const { code: compiled } = transform(code, {
                 transforms: ["imports"],
@@ -60,7 +60,7 @@ export function registerLibraryExtensions(libraryPath: string): void {
  * Clear all require.cache entries under the library folder.
  */
 export function clearLibraryRequireCache(libraryPath: string): void {
-    const normalizedLibPath = path.resolve(libraryPath);
+    const normalizedLibPath = fpResolve(libraryPath);
     for (const key of Object.keys(require.cache)) {
         if (key.startsWith(normalizedLibPath)) {
             delete require.cache[key];
@@ -73,15 +73,15 @@ export function clearLibraryRequireCache(libraryPath: string): void {
  * Tries: exact, .ts, .js, /index.ts, /index.js
  */
 function resolveLibraryModule(libraryPath: string, modulePath: string): string {
-    const basePath = path.join(libraryPath, modulePath);
+    const basePath = fpJoin(libraryPath, modulePath);
 
     // Try exact path first
     const candidates = [
         basePath,
         basePath + ".ts",
         basePath + ".js",
-        path.join(basePath, "index.ts"),
-        path.join(basePath, "index.js"),
+        fpJoin(basePath, "index.ts"),
+        fpJoin(basePath, "index.js"),
     ];
 
     for (const candidate of candidates) {

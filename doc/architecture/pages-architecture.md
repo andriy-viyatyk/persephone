@@ -229,7 +229,8 @@ import { pagesModel } from "../api/pages";
 - `attachPage()` / `detachPage()` / `removePage()` — state management
 - `fixGrouping()` / `fixCompareMode()` — invariant repair
 - `checkEmptyPage()` — auto-create empty page when last one closes
-- `addEmptyPageWithNavPanel(folderPath)` — creates an empty page with a pre-attached NavigationPanel (used by sidebar double-click). Intentionally skips `restore()` to avoid a race condition where the async restore would see `hasNavPanel=true` and create a new NavPanelModel that overwrites the one we just attached.
+- `addEmptyPageWithNavPanel(folderPath)` — creates an empty page with a pre-attached NavigationPanel (used by sidebar double-click and archive browsing). Intentionally skips `restore()` to avoid a race condition where the async restore would see `hasNavPanel=true` and create a new NavPanelModel that overwrites the one we just attached.
+- `openFileAsArchive(filePath)` — opens an archive for browsing. Creates an empty page with NavPanel root set to the archive root. Reuses existing tab if the archive is already open. ZIP archives use `!` separator (e.g., `doc.zip!word/document.xml`) via `archive-service.ts`; `.asar` archives use the regular path directly (e.g., `app.asar`) via Electron's native fs patching — see `file-path.ts`.
 - `save()` / `restore()` — persistence (called by bootstrap, not by scripts)
 - Submodel instances — private composition detail
 

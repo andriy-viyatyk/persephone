@@ -9,6 +9,7 @@ import { tomorrowNightBlue } from "./tomorrow-night-blue";
 import { lightModern } from "./light-modern";
 import { solarizedLight } from "./solarized-light";
 import { quietLight } from "./quiet-light";
+import { fpJoin } from "../../core/utils/file-path";
 
 const themes: ThemeDefinition[] = [
     defaultDark,
@@ -26,9 +27,8 @@ const themes: ThemeDefinition[] = [
 // Uses fs.readFileSync so the correct CSS variables are set before first paint.
 function readStartupThemeId(): string {
     try {
-        const path = require("path");
         const fs = require("fs");
-        const settingsPath = path.join(
+        const settingsPath = fpJoin(
             process.env.APPDATA, "js-notepad", "data", "appSettings.json"
         );
         const raw = fs.readFileSync(settingsPath, "utf-8");

@@ -1,4 +1,4 @@
-const path = require("path");
+import { fpBasename, fpDirname, fpExtname, fpJoin } from "../../core/utils/file-path";
 
 import { api } from "../../../ipc/renderer/api";
 import { fs as appFs } from "../../api/fs";
@@ -47,7 +47,7 @@ export class TextFileIOModel {
                 s.modified = false;
                 s.temp = false;
                 s.filePath = savePath;
-                s.title = path.basename(savePath);
+                s.title = fpBasename(savePath);
                 s.deleted = false;
             });
             this.fileWatcher?.dispose();
@@ -62,7 +62,6 @@ export class TextFileIOModel {
     };
 
     renameFile = async (newName: string): Promise<boolean> => {
-        const fs = require("fs");
         const { filePath } = this.model.state.get();
         if (!filePath) {
             this.model.state.update((s) => {
@@ -72,14 +71,14 @@ export class TextFileIOModel {
             return true;
         }
 
-        const newPath = path.join(path.dirname(filePath), newName);
-        if (fs.existsSync(newPath)) {
+        const newPath = fpJoin(fpDirname(filePath), newName);
+        if (await appFs.exists(newPath)) {
             const { ui } = await import("../../api/ui");
             ui.notify("A file or folder with that name already exists.", "warning");
             return false;
         }
         try {
-            fs.renameSync(filePath, newPath);
+            await appFs.rename(filePath, newPath);
         } catch (err) {
             const { ui } = await import("../../api/ui");
             ui.notify(err.message || "Failed to rename file.", "warning");
@@ -94,7 +93,7 @@ export class TextFileIOModel {
         const oldPath = this.model.state.get().filePath;
         this.model.state.update((s) => {
             s.filePath = newPath;
-            s.title = path.basename(newPath);
+            s.title = fpBasename(newPath);
         });
         this.fileWatcher?.dispose();
         this.fileWatcher = new FileWatcher(newPath, this.onFileChanged);
@@ -119,7 +118,7 @@ export class TextFileIOModel {
                 });
             }
         } else if (filePath) {
-            const ext = path.extname(filePath).toLowerCase();
+            const ext = fpExtname(filePath).toLowerCase();
             const fileContent = await this.fileWatcher.getTextContent(
                 this.model.state.get().encoding,
             );
@@ -128,7 +127,7 @@ export class TextFileIOModel {
                 s.content = fileContent || "";
                 s.encripted = shell.encryption.isEncrypted(s.content);
                 s.encoding = encoding;
-                s.title = path.basename(filePath);
+                s.title = fpBasename(filePath);
                 s.language =
                     s.language ||
                     getLanguageByExtension(ext)?.id ||

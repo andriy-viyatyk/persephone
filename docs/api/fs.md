@@ -9,6 +9,43 @@ const text = await app.fs.read("C:/data/file.txt");
 await app.fs.write("C:/data/out.txt", text);
 ```
 
+## Archive Paths
+
+All `app.fs` read/write/stat/list methods transparently support **archive paths** — paths that point to files *inside* ZIP archives. Archive paths use the `!` character as a separator between the archive file and the inner path:
+
+```
+<archive-file>!<inner-path>
+```
+
+For example:
+
+| Archive path | Archive file | Inner path |
+|---|---|---|
+| `D:/temp/doc.zip!word/document.xml` | `D:/temp/doc.zip` | `word/document.xml` |
+| `C:/data/bundle.zip!config.json` | `C:/data/bundle.zip` | `config.json` |
+| `C:/data/backup.zip!logs/2026/jan.log` | `C:/data/backup.zip` | `logs/2026/jan.log` |
+
+```javascript
+// Read a file from inside a ZIP archive
+const xml = await app.fs.read("D:/temp/doc.zip!word/document.xml");
+
+// Write to a file inside an archive (creates the entry if it doesn't exist)
+await app.fs.write("D:/temp/doc.zip!data/output.json", jsonContent);
+
+// Check if a file exists inside an archive
+const found = await app.fs.exists("C:/data/bundle.zip!config.json");
+
+// List files in an archive directory
+const entries = await app.fs.listDir("C:/data/bundle.zip!src");
+
+// Get metadata for a file inside an archive
+const info = await app.fs.stat("C:/data/bundle.zip!README.md");
+```
+
+The following methods support archive paths: `read`, `readFile`, `readBinary`, `write`, `writeBinary`, `exists`, `delete`, `stat`, `listDir`, and `listDirWithTypes`. The routing is automatic — you simply pass an archive path and `app.fs` handles the rest.
+
+Write operations read the full archive, modify the entry, and write it back. For best performance, batch multiple writes to the same archive.
+
 ## File I/O
 
 ### read(filePath, encoding?) → `Promise<string>`
@@ -65,6 +102,38 @@ if (await app.fs.exists("C:/data/config.json")) {
 
 Delete a file. No-op if the file doesn't exist.
 
+### rename(oldPath, newPath) → `Promise<void>`
+
+Rename or move a file.
+
+```javascript
+await app.fs.rename("C:/data/draft.txt", "C:/data/final.txt");
+
+// Also works as a move operation
+await app.fs.rename("C:/inbox/file.csv", "C:/archive/file.csv");
+```
+
+### copyFile(srcPath, destPath) → `Promise<void>`
+
+Copy a file to a new location. Overwrites the destination if it already exists.
+
+```javascript
+await app.fs.copyFile("C:/data/template.json", "C:/data/config.json");
+```
+
+### stat(filePath) → `Promise<IFileStat>`
+
+Get file or directory metadata. Returns an object with `size` (bytes), `mtime` (last modified ISO string), `exists` (boolean), and `isDirectory` (boolean).
+
+```javascript
+const info = await app.fs.stat("C:/data/report.csv");
+if (info.exists) {
+    console.log(`Size: ${info.size} bytes`);
+    console.log(`Modified: ${info.mtime}`);
+    console.log(`Is directory: ${info.isDirectory}`);
+}
+```
+
 ## Directory Operations
 
 ### listDir(dirPath, pattern?) → `Promise<string[]>`
@@ -95,6 +164,33 @@ for (const name of files) {
     const content = await app.fs.read(`${dir}/${name}`);
     console.log(name, content.length);
 }
+```
+
+### listDirWithTypes(dirPath) → `Promise<IDirEntry[]>`
+
+List files and directories inside a folder, including type information. Each entry has `name` (string) and `isDirectory` (boolean). Returns an empty array if the directory does not exist.
+
+```javascript
+const entries = await app.fs.listDirWithTypes("C:/data/exports");
+for (const entry of entries) {
+    if (entry.isDirectory) {
+        console.log(`[DIR]  ${entry.name}`);
+    } else {
+        console.log(`[FILE] ${entry.name}`);
+    }
+}
+```
+
+### removeDir(dirPath, recursive?) → `Promise<void>`
+
+Remove a directory. By default, the directory must be empty. Pass `true` for `recursive` to remove the directory and all its contents.
+
+```javascript
+// Remove an empty directory
+await app.fs.removeDir("C:/data/temp");
+
+// Remove a directory and everything inside it
+await app.fs.removeDir("C:/data/old-exports", true);
 ```
 
 ### mkdir(dirPath) → `Promise<void>`

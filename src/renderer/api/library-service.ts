@@ -4,8 +4,10 @@ import { TGlobalState } from "../core/state/state";
 import { settings } from "./settings";
 import { scriptRunner } from "../scripting/ScriptRunner";
 
+// nodefs kept only for fs.watch() (documented exception — callback-based watcher)
 const nodefs = require("fs") as typeof import("fs");
-const nodepath = require("path") as typeof import("path");
+import { fs } from "./fs";
+import { fpBasename, fpExtname, fpJoin, fpRelative } from "../core/utils/file-path";
 
 // =============================================================================
 // Types
@@ -76,7 +78,7 @@ class LibraryService extends TModel<LibraryServiceState> {
 
     private activate(): void {
         const libraryPath = settings.get("script-library.path");
-        if (!libraryPath || !nodefs.existsSync(libraryPath)) {
+        if (!libraryPath) {
             this.state.update((s) => {
                 s.scriptPanelIndex = {};
                 s.allFiles = [];
@@ -84,7 +86,19 @@ class LibraryService extends TModel<LibraryServiceState> {
             return;
         }
 
-        this.scan(libraryPath);
+        this.activateAsync(libraryPath);
+    }
+
+    private async activateAsync(libraryPath: string): Promise<void> {
+        if (!await fs.exists(libraryPath)) {
+            this.state.update((s) => {
+                s.scriptPanelIndex = {};
+                s.allFiles = [];
+            });
+            return;
+        }
+
+        await this.scan(libraryPath);
         this.startWatching(libraryPath);
     }
 
@@ -96,30 +110,30 @@ class LibraryService extends TModel<LibraryServiceState> {
         });
     }
 
-    private scan(libraryPath: string): void {
-        const scriptPanelIndex = this.scanScriptPanel(libraryPath);
-        const allFiles = this.scanAllFiles(libraryPath);
+    private async scan(libraryPath: string): Promise<void> {
+        const scriptPanelIndex = await this.scanScriptPanel(libraryPath);
+        const allFiles = await this.scanAllFiles(libraryPath);
         this.state.update((s) => {
             s.scriptPanelIndex = scriptPanelIndex;
             s.allFiles = allFiles;
         });
     }
 
-    private scanScriptPanel(libraryPath: string): Record<string, ScriptPanelEntry[]> {
-        const scriptPanelDir = nodepath.join(libraryPath, "script-panel");
-        if (!nodefs.existsSync(scriptPanelDir)) {
+    private async scanScriptPanel(libraryPath: string): Promise<Record<string, ScriptPanelEntry[]>> {
+        const scriptPanelDir = fpJoin(libraryPath, "script-panel");
+        if (!await fs.exists(scriptPanelDir)) {
             return {};
         }
 
         const index: Record<string, ScriptPanelEntry[]> = {};
 
         try {
-            const langDirs = nodefs.readdirSync(scriptPanelDir, { withFileTypes: true });
+            const langDirs = await fs.listDirWithTypes(scriptPanelDir);
             for (const dirent of langDirs) {
-                if (!dirent.isDirectory()) continue;
+                if (!dirent.isDirectory) continue;
                 const langKey = dirent.name;
-                const langDir = nodepath.join(scriptPanelDir, langKey);
-                const entries = this.readScriptFiles(langDir);
+                const langDir = fpJoin(scriptPanelDir, langKey);
+                const entries = await this.readScriptFiles(langDir);
                 if (entries.length > 0) {
                     index[langKey] = entries;
                 }
@@ -131,17 +145,17 @@ class LibraryService extends TModel<LibraryServiceState> {
         return index;
     }
 
-    private readScriptFiles(dir: string): ScriptPanelEntry[] {
+    private async readScriptFiles(dir: string): Promise<ScriptPanelEntry[]> {
         const entries: ScriptPanelEntry[] = [];
         try {
-            const files = nodefs.readdirSync(dir, { withFileTypes: true });
+            const files = await fs.listDirWithTypes(dir);
             for (const dirent of files) {
-                if (!dirent.isFile()) continue;
-                const ext = nodepath.extname(dirent.name).toLowerCase();
+                if (dirent.isDirectory) continue;
+                const ext = fpExtname(dirent.name).toLowerCase();
                 if (ext !== ".ts" && ext !== ".js") continue;
                 entries.push({
-                    name: nodepath.basename(dirent.name, ext),
-                    path: nodepath.join(dir, dirent.name),
+                    name: fpBasename(dirent.name, ext),
+                    path: fpJoin(dir, dirent.name),
                     ext,
                 });
             }
@@ -151,23 +165,23 @@ class LibraryService extends TModel<LibraryServiceState> {
         return entries;
     }
 
-    private scanAllFiles(libraryPath: string): string[] {
+    private async scanAllFiles(libraryPath: string): Promise<string[]> {
         const files: string[] = [];
-        this.walkDir(libraryPath, libraryPath, files);
+        await this.walkDir(libraryPath, libraryPath, files);
         return files;
     }
 
-    private walkDir(baseDir: string, currentDir: string, result: string[]): void {
+    private async walkDir(baseDir: string, currentDir: string, result: string[]): Promise<void> {
         try {
-            const entries = nodefs.readdirSync(currentDir, { withFileTypes: true });
+            const entries = await fs.listDirWithTypes(currentDir);
             for (const dirent of entries) {
-                const fullPath = nodepath.join(currentDir, dirent.name);
-                if (dirent.isDirectory()) {
-                    this.walkDir(baseDir, fullPath, result);
-                } else if (dirent.isFile()) {
-                    const ext = nodepath.extname(dirent.name).toLowerCase();
+                const fullPath = fpJoin(currentDir, dirent.name);
+                if (dirent.isDirectory) {
+                    await this.walkDir(baseDir, fullPath, result);
+                } else {
+                    const ext = fpExtname(dirent.name).toLowerCase();
                     if (ext === ".ts" || ext === ".js") {
-                        const relativePath = nodepath.relative(baseDir, fullPath).replace(/\\/g, "/");
+                        const relativePath = fpRelative(baseDir, fullPath).replace(/\\/g, "/");
                         result.push(relativePath);
                     }
                 }
@@ -194,8 +208,8 @@ class LibraryService extends TModel<LibraryServiceState> {
         this.watcher = undefined;
     }
 
-    private onChangeDebounced = debounce((libraryPath: string) => {
-        this.scan(libraryPath);
+    private onChangeDebounced = debounce(async (libraryPath: string) => {
+        await this.scan(libraryPath);
         scriptRunner.invalidateLibraryCache();
     }, 300);
 }
@@ -213,29 +227,29 @@ export const libraryService = new LibraryService();
 export async function copyExampleScripts(targetPath: string): Promise<void> {
     const { api } = await import("../../ipc/renderer/api");
     const appRoot = await api.getAppRootPath();
-    const sourcePath = nodepath.join(appRoot, "assets", "script-library");
+    const sourcePath = fpJoin(appRoot, "assets", "script-library");
 
-    if (!nodefs.existsSync(sourcePath)) {
+    if (!await fs.exists(sourcePath)) {
         return;
     }
 
-    copyDirRecursive(sourcePath, targetPath);
+    await copyDirRecursive(sourcePath, targetPath);
 }
 
-function copyDirRecursive(src: string, dest: string): void {
-    if (!nodefs.existsSync(dest)) {
-        nodefs.mkdirSync(dest, { recursive: true });
+async function copyDirRecursive(src: string, dest: string): Promise<void> {
+    if (!await fs.exists(dest)) {
+        await fs.mkdir(dest);
     }
 
-    const entries = nodefs.readdirSync(src, { withFileTypes: true });
+    const entries = await fs.listDirWithTypes(src);
     for (const entry of entries) {
-        const srcPath = nodepath.join(src, entry.name);
-        const destPath = nodepath.join(dest, entry.name);
-        if (entry.isDirectory()) {
-            copyDirRecursive(srcPath, destPath);
-        } else if (entry.isFile()) {
-            if (!nodefs.existsSync(destPath)) {
-                nodefs.copyFileSync(srcPath, destPath);
+        const srcPath = fpJoin(src, entry.name);
+        const destPath = fpJoin(dest, entry.name);
+        if (entry.isDirectory) {
+            await copyDirRecursive(srcPath, destPath);
+        } else {
+            if (!await fs.exists(destPath)) {
+                await fs.copyFile(srcPath, destPath);
             }
         }
     }

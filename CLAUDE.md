@@ -87,8 +87,9 @@ After implementation is done, ALWAYS run these steps in order:
 4. **Run `/project:userdoc`** — updates user docs in `/docs/` (guides, API reference, what's new)
 5. Add task to the top of [/doc/tasks/completed.md](doc/tasks/completed.md) (include Epic column if linked)
 6. Update the linked epic's task table (if applicable)
-7. **Ask user for confirmation** before deleting the task folder (if one exists)
-8. Delete task folder after user confirms
+7. **Task folder cleanup** (if one exists):
+   - If the task is part of an active epic — **keep the folder** (do not ask, do not delete). Task documents are useful for reference while the epic is in progress.
+   - If the task is standalone (no epic) or the epic is completed — **ask user for confirmation** before deleting.
 
 **Steps 2-4 are mandatory.** Only skip if the user explicitly says to skip them. The agent must not forget these steps — they ensure documentation stays in sync with code.
 
@@ -226,6 +227,8 @@ grid.addRows(5);
 - **Direct imports** preferred over barrel imports (avoid circular deps)
 - **Meaningful names** - descriptive, no abbreviations
 - **No hardcoded colors** - All colors must come from `import color from "../../theme/color"`. Never use hex codes, `rgb()`/`rgba()`, or named colors directly in styled components or inline styles. If a needed color doesn't exist in `color`, add it to `color.ts` and all theme definitions in `/src/renderer/theme/themes/`.
+- **No direct `require("path")`** - Use `file-path` utility (`/src/renderer/core/utils/file-path.ts`) for all path operations. Only `file-path.ts` itself may import `path` directly.
+- **No direct `require("fs")`** - Use `app.fs` (`/src/renderer/api/fs.ts`) for file operations. Only `fs.ts` and a few documented exceptions may use `fs` directly (see `coding-style.md`).
 
 See [/doc/standards/coding-style.md](doc/standards/coding-style.md) for complete standards.
 
@@ -236,6 +239,8 @@ See [/doc/standards/coding-style.md](doc/standards/coding-style.md) for complete
 | App object model         | `/src/renderer/api/app.ts`                        |
 | Page/tab management      | `/src/renderer/api/pages/PagesModel.ts`           |
 | File operations          | `/src/renderer/api/fs.ts`                         |
+| Archive I/O (ZIP)        | `/src/renderer/api/archive-service.ts`             |
+| Path utilities           | `/src/renderer/core/utils/file-path.ts`           |
 | App settings             | `/src/renderer/api/settings.ts`                   |
 | Script library service   | `/src/renderer/api/library-service.ts`            |
 | Script execution         | `/src/renderer/scripting/ScriptRunner.ts`         |

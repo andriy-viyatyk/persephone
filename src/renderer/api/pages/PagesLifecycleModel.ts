@@ -15,8 +15,8 @@ import { editorRegistry } from "../../editors/registry";
 import { getLanguageByExtension } from "../../core/utils/language-mapping";
 import { NavPanelModel } from "../../ui/navigation/nav-panel-store";
 
-const path = require("path");
-const fs = require("fs");
+import { fpBasename, fpExtname, isArchivePath } from "../../core/utils/file-path";
+import { fs as appFs } from "../fs";
 
 /**
  * PagesLifecycleModel — Page creation, opening, closing, and navigation.
@@ -28,7 +28,8 @@ export class PagesLifecycleModel {
 
     private newPageModel = async (filePath?: string): Promise<PageModel> => {
         const editorDef = editorRegistry.resolve(filePath);
-        if (editorDef) {
+        // Archive inner paths can't use page-editors (image, pdf) — they need real file paths
+        if (editorDef && !(filePath && isArchivePath(filePath) && editorDef.category === "page-editor")) {
             const module = await editorDef.loadModule();
             return module.newPageModel(filePath);
         }
@@ -120,7 +121,8 @@ export class PagesLifecycleModel {
         page.state.update((s) => {
             s.title = title;
             s.language = language;
-            s.editor = editor;
+            // Validate editor is compatible with language (e.g., md-view requires markdown)
+            s.editor = editorRegistry.validateForLanguage(editor, language);
         });
         page.restore();
         return this.addPage(page as unknown as PageModel);
@@ -167,6 +169,27 @@ export class PagesLifecycleModel {
 
         this.model.closeFirstPageIfEmpty();
         return pageModel;
+    };
+
+    openFileAsArchive = (filePath: string): PageModel => {
+        // .asar uses regular path (Electron native fs); ZIP archives use "!" convention
+        const isAsar = filePath.toLowerCase().endsWith(".asar");
+        const archiveRoot = isAsar ? filePath : filePath + "!";
+        // Check if already open as archive
+        const existing = this.model.state.get().pages.find(
+            (p) => p.navPanel?.state.get().rootFilePath === archiveRoot
+        );
+        if (existing) {
+            this.model.navigation.showPage(existing.state.get().id);
+            return existing;
+        }
+
+        const page = this.addEmptyPageWithNavPanel(archiveRoot);
+        page.state.update((s) => {
+            s.title = fpBasename(filePath);
+        });
+        this.model.closeFirstPageIfEmpty();
+        return page;
     };
 
     closePage = async (pageId: string): Promise<boolean> => {
@@ -249,14 +272,14 @@ export class PagesLifecycleModel {
         this.model.detachPage(oldModel);
 
         let newModel: PageModel;
-        if (!fs.existsSync(newFilePath)) {
+        if (!(await appFs.exists(newFilePath))) {
             ui.notify(
-                `File not found: ${path.basename(newFilePath)}`,
+                `File not found: ${fpBasename(newFilePath)}`,
                 "error"
             );
             newModel = newTextFileModel("");
             newModel.state.update((s) => {
-                s.title = path.basename(newFilePath);
+                s.title = fpBasename(newFilePath);
             });
             await newModel.restore();
         } else {
@@ -264,7 +287,7 @@ export class PagesLifecycleModel {
                 newModel = await this.createPageFromFile(newFilePath);
             } catch (err) {
                 ui.notify(
-                    `Failed to open ${path.basename(newFilePath)}: ${(err as Error).message}`,
+                    `Failed to open ${fpBasename(newFilePath)}: ${(err as Error).message}`,
                     "error"
                 );
                 newModel = newTextFileModel("");
@@ -290,7 +313,7 @@ export class PagesLifecycleModel {
                     );
                 }
             } else {
-                const ext = path.extname(newFilePath).toLowerCase();
+                const ext = fpExtname(newFilePath).toLowerCase();
                 const lang = getLanguageByExtension(ext);
                 const languageId = lang?.id || "plaintext";
                 const previewEditor = editorRegistry.getPreviewEditor(

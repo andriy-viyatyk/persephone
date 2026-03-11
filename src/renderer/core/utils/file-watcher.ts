@@ -3,6 +3,7 @@ const nodefs = require("fs");
 import { FileStats } from "../../../shared/types";
 import { debounce } from "../../../shared/utils";
 import { fs } from "../../api/fs";
+import { isArchivePath, isAsarPath } from "./file-path";
 
 function watchFile(filePath: string, callback: (event: string) => void): () => void {
     try {
@@ -52,8 +53,14 @@ export class FileWatcher {
     constructor(filePath: string, onChange: () => void) {
         this.path = filePath;
         this.onChange = onChange;
-        this.unWatch = watchFile(this.path, this.onFileChange);
-        this.stat = getFileStats(this.path);
+        if (isArchivePath(filePath) || isAsarPath(filePath)) {
+            // Archive/asar inner files can't be watched — no-op
+            this.unWatch = () => {};
+            this.stat = { size: 0, mtime: 0, exists: true };
+        } else {
+            this.unWatch = watchFile(this.path, this.onFileChange);
+            this.stat = getFileStats(this.path);
+        }
     }
 
     dispose = () => {
@@ -61,6 +68,16 @@ export class FileWatcher {
     }
 
     getTextContent = async (encoding?: string): Promise<string | undefined> => {
+        if (isArchivePath(this.path) || isAsarPath(this.path)) {
+            // Archive/asar paths use async exists check via fs.readFile
+            try {
+                const fileData = await fs.readFile(this.path, encoding);
+                this.encoding = fileData.encoding || "utf-8";
+                return fileData.content;
+            } catch {
+                return undefined;
+            }
+        }
         if (!fs.fileExistsSync(this.path)) {
             return undefined;
         }

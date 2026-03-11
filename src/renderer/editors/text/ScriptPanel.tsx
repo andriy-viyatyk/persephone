@@ -20,7 +20,7 @@ import { showInputDialog } from "../../ui/dialogs/InputDialog";
 import { ComboSelect } from "../../components/form/ComboSelect";
 
 const nodefs = require("fs") as typeof import("fs");
-const nodepath = require("path") as typeof import("path");
+import { fpDirname, fpJoin } from "../../core/utils/file-path";
 
 const ScriptPanelRoot = styled.div({
     flexShrink: 0,
@@ -282,8 +282,8 @@ export class ScriptPanelModel extends TModel<ScriptPanelState> {
 
         const scriptName = result.value.trim();
         const folder = result.selectedOption || options[0];
-        const scriptPanelDir = nodepath.join(libraryPath, "script-panel", folder);
-        const filePath = nodepath.join(scriptPanelDir, scriptName + ".ts");
+        const scriptPanelDir = fpJoin(libraryPath, "script-panel", folder);
+        const filePath = fpJoin(scriptPanelDir, scriptName + ".ts");
 
         // Create folder if needed
         if (!nodefs.existsSync(scriptPanelDir)) {
@@ -327,7 +327,7 @@ export class ScriptPanelModel extends TModel<ScriptPanelState> {
         const { NavPanelModel } = await import("../../ui/navigation/nav-panel-store");
 
         const libraryPath = settings.get("script-library.path");
-        const scriptPanelDir = libraryPath ? nodepath.join(libraryPath, "script-panel") : "";
+        const scriptPanelDir = libraryPath ? fpJoin(libraryPath, "script-panel") : "";
         const { selectedScript } = this.state.get();
 
         if (selectedScript && nodefs.existsSync(selectedScript)) {
@@ -336,7 +336,7 @@ export class ScriptPanelModel extends TModel<ScriptPanelState> {
             if (page && scriptPanelDir) {
                 const navPanel = new NavPanelModel(scriptPanelDir, selectedScript);
                 // Pre-expand the folder containing the script so it's visible
-                const fileDir = nodepath.dirname(selectedScript);
+                const fileDir = fpDirname(selectedScript);
                 navPanel.fileExplorerState = {
                     expandedPaths: [scriptPanelDir, fileDir],
                     selectedFilePath: selectedScript,

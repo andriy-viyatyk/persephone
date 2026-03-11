@@ -7,9 +7,10 @@ import { FileTypeIcon } from "../icons/LanguageIcon";
 import { FolderIcon } from "../icons/FileIcon";
 import { TextField } from "../basic/TextField";
 import { Button } from "../basic/Button";
-import { CloseIcon } from "../../theme/icons";
+import { CloseIcon, OpenLinkIcon } from "../../theme/icons";
 import { highlightText } from "../basic/useHighlightedText";
 import color from "../../theme/color";
+import { isArchiveFile } from "../../core/utils/file-path";
 import { FileTreeItem } from "./file-tree-builder";
 import {
     FileExplorerModel,
@@ -141,6 +142,24 @@ export function FileExplorer(props: FileExplorerProps & { ref?: React.Ref<FileEx
             : <FileTypeIcon fileName={item.label} width={16} height={16} />
     ), []);
 
+    const getBadge = useCallback((item: FileTreeItem) => {
+        if (!item.isFolder && isArchiveFile(item.filePath)) {
+            return (
+                <span
+                    className="tree-badge"
+                    title="Open archive in new tab"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        props.onArchiveBadgeClick?.(item.filePath);
+                    }}
+                >
+                    <OpenLinkIcon />
+                </span>
+            );
+        }
+        return null;
+    }, [props.onArchiveBadgeClick]);
+
     const getId = useCallback((item: FileTreeItem) => item.filePath, []);
 
     const getHasChildren = useCallback((item: FileTreeItem) => item.isFolder, []);
@@ -216,6 +235,7 @@ export function FileExplorer(props: FileExplorerProps & { ref?: React.Ref<FileEx
                     getId={getId}
                     getLabel={getLabel}
                     getIcon={getIcon}
+                    getBadge={getBadge}
                     getHasChildren={getHasChildren}
                     getSelected={getSelected}
                     onItemClick={model.onItemClick}

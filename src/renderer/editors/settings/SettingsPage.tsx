@@ -18,7 +18,7 @@ import { IncognitoIcon } from "../../theme/language-icons";
 import { api } from "../../../ipc/renderer/api";
 import rendererEvents from "../../../ipc/renderer/renderer-events";
 const { ipcRenderer } = require("electron");
-const path = require("path");
+import { fpBasename } from "../../core/utils/file-path";
 import { BrowserChannel } from "../../../ipc/browser-ipc";
 
 // ============================================================================
@@ -618,7 +618,7 @@ function BookmarksFileLine({ filePath, onBrowse, onClear }: {
     onBrowse: () => void;
     onClear: () => void;
 }) {
-    const filename = filePath ? path.basename(filePath) : "";
+    const filename = filePath ? fpBasename(filePath) : "";
     return (
         <div className="profile-bookmarks-line">
             <span>📁</span>

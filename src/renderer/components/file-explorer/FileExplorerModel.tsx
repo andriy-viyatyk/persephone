@@ -17,8 +17,8 @@ import {
     RenameIcon,
 } from "../../theme/icons";
 
-const path = require("path");
-const fs = require("fs");
+import { fpBasename, fpDirname, fpJoin, isArchivePath, isArchiveFile } from "../../core/utils/file-path";
+import { fs } from "../../api/fs";
 
 export interface FileExplorerSavedState {
     expandedPaths: string[];
@@ -43,6 +43,8 @@ export interface FileExplorerProps {
     onStateChange?: (state: FileExplorerSavedState) => void;
     /** External filter: show only files whose paths are in this set (+ ancestor folders) */
     filterPaths?: Set<string>;
+    /** Called when user clicks the archive badge on an archive file */
+    onArchiveBadgeClick?: (filePath: string) => void;
 }
 
 export const defaultFileExplorerState = {
@@ -71,34 +73,7 @@ export class FileExplorerModel extends TComponentModel<FileExplorerState, FileEx
                 }
                 this.initialExpandMap = map;
             }
-            this.buildTree();
-            // Lazy-load children for all initially-expanded folders so the
-            // restored tree actually shows their content (not just chevron-down).
-            if (this.props.initialState?.expandedPaths?.length) {
-                this.loadChildrenForExpandedPaths(this.props.initialState.expandedPaths);
-            }
-
-            // Apply external filter on first mount (e.g. remount after navigation with active search)
-            if (this.props.filterPaths?.size) {
-                this.ensureParentDirsLoaded(this.props.filterPaths);
-                this.initialExpandMap = undefined; // expand all when filtered
-                const tree = this.state.get().tree;
-                if (tree) {
-                    const displayTree = this.computeDisplayTree(tree, "");
-                    this.state.update((s) => {
-                        s.displayTree = displayTree;
-                    });
-                }
-            }
-
-            // Build a complete expansion map so every folder has an explicit entry,
-            // preventing TreeView's `level < 2` fallback from expanding folders.
-            // When restoring saved state, merge collapsed defaults with saved expanded paths.
-            const tree = this.state.get().tree;
-            if (tree && !this.props.filterPaths?.size && (this.initialExpandMap || this.props.defaultCollapsed !== false)) {
-                const collapsedMap = this.buildAllCollapsedMap(tree);
-                this.initialExpandMap = { ...collapsedMap, ...(this.initialExpandMap ?? {}) };
-            }
+            this.initializeTree();
         } else {
             if (this.oldProps?.rootPath !== this.props.rootPath) {
                 this.buildTree();
@@ -107,6 +82,44 @@ export class FileExplorerModel extends TComponentModel<FileExplorerState, FileEx
                 this.applyFilterPaths();
             }
         }
+    };
+
+    private initializeTree = async () => {
+        await this.buildTree();
+
+        // Lazy-load children for all initially-expanded folders so the
+        // restored tree actually shows their content (not just chevron-down).
+        if (this.props.initialState?.expandedPaths?.length) {
+            await this.loadChildrenForExpandedPaths(this.props.initialState.expandedPaths);
+        }
+
+        // Apply external filter on first mount (e.g. remount after navigation with active search)
+        if (this.props.filterPaths?.size) {
+            await this.ensureParentDirsLoaded(this.props.filterPaths);
+            this.initialExpandMap = undefined; // expand all when filtered
+            const tree = this.state.get().tree;
+            if (tree) {
+                const displayTree = this.computeDisplayTree(tree, "");
+                this.state.update((s) => {
+                    s.displayTree = displayTree;
+                });
+            }
+        }
+
+        // Build a complete expansion map so every folder has an explicit entry,
+        // preventing TreeView's `level < 2` fallback from expanding folders.
+        // When restoring saved state, merge collapsed defaults with saved expanded paths.
+        const tree = this.state.get().tree;
+        if (tree && !this.props.filterPaths?.size && (this.initialExpandMap || this.props.defaultCollapsed !== false)) {
+            const collapsedMap = this.buildAllCollapsedMap(tree);
+            this.initialExpandMap = { ...collapsedMap, ...(this.initialExpandMap ?? {}) };
+        }
+
+        // Force TreeView remount after all async init is done.
+        // buildTree() triggers an early render before children are loaded and the
+        // collapsed map is computed — the treeViewKey bump ensures TreeView picks
+        // up the final initialExpandMap with correct expansion state.
+        this.state.update((s) => { s.treeViewKey++; });
     };
 
     private buildAllCollapsedMap = (tree: FileTreeItem): Record<string, boolean> => {
@@ -149,7 +162,7 @@ export class FileExplorerModel extends TComponentModel<FileExplorerState, FileEx
         this.props.onStateChange?.(this.getState());
     };
 
-    private loadChildrenForExpandedPaths = (expandedPaths: string[]) => {
+    private loadChildrenForExpandedPaths = async (expandedPaths: string[]) => {
         let { tree } = this.state.get();
         if (!tree) return;
 
@@ -160,7 +173,7 @@ export class FileExplorerModel extends TComponentModel<FileExplorerState, FileEx
         for (const folderPath of sorted) {
             const node = this.findNode(tree, folderPath);
             if (node && node.isFolder && node.items === undefined) {
-                const children = loadFolderChildren(folderPath, this.props.sortType);
+                const children = await loadFolderChildren(folderPath, this.props.sortType);
                 tree = this.updateNodeInTree(tree, folderPath, children);
                 changed = true;
             }
@@ -176,14 +189,14 @@ export class FileExplorerModel extends TComponentModel<FileExplorerState, FileEx
         }
     };
 
-    private loadChildrenIfNeeded = (folderPath: string) => {
+    private loadChildrenIfNeeded = async (folderPath: string) => {
         const { tree } = this.state.get();
         if (!tree) return;
 
         const node = this.findNode(tree, folderPath);
         if (!node || !node.isFolder || node.items !== undefined) return;
 
-        const children = loadFolderChildren(folderPath, this.props.sortType);
+        const children = await loadFolderChildren(folderPath, this.props.sortType);
         const newTree = this.updateNodeInTree(tree, folderPath, children);
         const { searchText } = this.state.get();
         const displayTree = this.computeDisplayTree(newTree, searchText);
@@ -225,7 +238,7 @@ export class FileExplorerModel extends TComponentModel<FileExplorerState, FileEx
         return node;
     };
 
-    private applyFilterPaths = () => {
+    private applyFilterPaths = async () => {
         const { filterPaths } = this.props;
         const wasFiltered = !!this.oldProps?.filterPaths?.size;
         const isFiltered = !!filterPaths?.size;
@@ -237,7 +250,7 @@ export class FileExplorerModel extends TComponentModel<FileExplorerState, FileEx
 
         if (isFiltered) {
             // Load parent directories so the tree has nodes for matching files
-            this.ensureParentDirsLoaded(filterPaths);
+            await this.ensureParentDirsLoaded(filterPaths);
             this.initialExpandMap = undefined; // expand all
         }
 
@@ -255,7 +268,7 @@ export class FileExplorerModel extends TComponentModel<FileExplorerState, FileEx
         });
     };
 
-    private ensureParentDirsLoaded = (filterPaths: Set<string>) => {
+    private ensureParentDirsLoaded = async (filterPaths: Set<string>) => {
         let { tree } = this.state.get();
         if (!tree) return;
 
@@ -263,10 +276,10 @@ export class FileExplorerModel extends TComponentModel<FileExplorerState, FileEx
         const dirsToLoad = new Set<string>();
 
         for (const filePath of filterPaths) {
-            let dir = path.dirname(filePath);
+            let dir = fpDirname(filePath);
             while (dir.length > rootPath.length && dir.startsWith(rootPath)) {
                 dirsToLoad.add(dir);
-                dir = path.dirname(dir);
+                dir = fpDirname(dir);
             }
         }
 
@@ -278,7 +291,7 @@ export class FileExplorerModel extends TComponentModel<FileExplorerState, FileEx
         for (const folderPath of sorted) {
             const node = this.findNode(tree, folderPath);
             if (node && node.isFolder && node.items === undefined) {
-                const children = loadFolderChildren(folderPath, this.props.sortType);
+                const children = await loadFolderChildren(folderPath, this.props.sortType);
                 tree = this.updateNodeInTree(tree, folderPath, children);
                 changed = true;
             }
@@ -291,7 +304,7 @@ export class FileExplorerModel extends TComponentModel<FileExplorerState, FileEx
         }
     };
 
-    buildTree = () => {
+    buildTree = async () => {
         const { rootPath, sortType } = this.props;
         if (!rootPath) {
             this.state.update((s) => {
@@ -309,7 +322,7 @@ export class FileExplorerModel extends TComponentModel<FileExplorerState, FileEx
             .map(([id]) => id);
 
         try {
-            const tree = buildFileTree(rootPath, sortType);
+            const tree = await buildFileTree(rootPath, sortType);
             const { searchText } = this.state.get();
             const displayTree = this.computeDisplayTree(tree, searchText);
 
@@ -321,7 +334,7 @@ export class FileExplorerModel extends TComponentModel<FileExplorerState, FileEx
 
             // Reload children for folders that were expanded before the rebuild
             if (expandedPaths.length) {
-                this.loadChildrenForExpandedPaths(expandedPaths);
+                await this.loadChildrenForExpandedPaths(expandedPaths);
             }
         } catch (err: any) {
             this.state.update((s) => {
@@ -481,6 +494,7 @@ export class FileExplorerModel extends TComponentModel<FileExplorerState, FileEx
 
     private getFileMenuItems = (item: FileTreeItem): MenuItem[] => {
         const openAction = this.props.onFileClick ?? this.props.onFileDoubleClick;
+        const isArchiveInner = isArchivePath(item.filePath);
         const items: MenuItem[] = [
             {
                 label: "Open",
@@ -497,24 +511,36 @@ export class FileExplorerModel extends TComponentModel<FileExplorerState, FileEx
             });
         }
 
-        items.push(
-            {
+        if (!isArchiveInner) {
+            items.push({
                 label: "Open in New Window",
                 icon: <NewWindowIcon />,
                 onClick: () => pagesModel.openPathInNewWindow(item.filePath),
-            },
-            {
-                startGroup: true,
-                label: "Copy File Path",
-                icon: <CopyIcon />,
-                onClick: () => navigator.clipboard.writeText(item.filePath),
-            },
-            {
+            });
+        }
+
+        if (isArchiveFile(item.filePath)) {
+            items.push({
+                label: "Open as Archive",
+                icon: <FolderOpenIcon />,
+                onClick: () => pagesModel.openFileAsArchive(item.filePath),
+            });
+        }
+
+        items.push({
+            startGroup: true,
+            label: "Copy File Path",
+            icon: <CopyIcon />,
+            onClick: () => navigator.clipboard.writeText(item.filePath),
+        });
+
+        if (!isArchiveInner) {
+            items.push({
                 label: "Show in File Explorer",
                 icon: <FolderOpenIcon />,
                 onClick: () => api.showItemInFolder(item.filePath),
-            },
-        );
+            });
+        }
 
         if (this.props.enableFileOperations) {
             items.push(
@@ -553,19 +579,20 @@ export class FileExplorerModel extends TComponentModel<FileExplorerState, FileEx
             );
         }
 
-        items.push(
-            {
-                startGroup: items.length > 0,
-                label: "Copy Folder Path",
-                icon: <CopyIcon />,
-                onClick: () => navigator.clipboard.writeText(item.filePath),
-            },
-            {
+        items.push({
+            startGroup: items.length > 0,
+            label: "Copy Folder Path",
+            icon: <CopyIcon />,
+            onClick: () => navigator.clipboard.writeText(item.filePath),
+        });
+
+        if (!isArchivePath(item.filePath)) {
+            items.push({
                 label: "Show in File Explorer",
                 icon: <FolderOpenIcon />,
                 onClick: () => api.showFolder(item.filePath),
-            },
-        );
+            });
+        }
 
         if (this.props.enableFileOperations && item.filePath !== this.props.rootPath) {
             items.push(
@@ -594,18 +621,18 @@ export class FileExplorerModel extends TComponentModel<FileExplorerState, FileEx
             buttons: ["Create", "Cancel"],
         });
         if (inputResult?.button === "Create" && inputResult.value.trim()) {
-            const newPath = path.join(dirPath, inputResult.value.trim());
-            if (fs.existsSync(newPath)) {
+            const newPath = fpJoin(dirPath, inputResult.value.trim());
+            if (await fs.exists(newPath)) {
                 ui.notify("A file or folder with that name already exists.", "warning");
                 return;
             }
             try {
-                fs.writeFileSync(newPath, "");
+                await fs.write(newPath, "");
             } catch (err: any) {
                 ui.notify(err.message || "Failed to create file.", "warning");
                 return;
             }
-            this.buildTree();
+            await this.buildTree();
         }
     };
 
@@ -615,18 +642,18 @@ export class FileExplorerModel extends TComponentModel<FileExplorerState, FileEx
             buttons: ["Create", "Cancel"],
         });
         if (inputResult?.button === "Create" && inputResult.value.trim()) {
-            const newPath = path.join(dirPath, inputResult.value.trim());
-            if (fs.existsSync(newPath)) {
+            const newPath = fpJoin(dirPath, inputResult.value.trim());
+            if (await fs.exists(newPath)) {
                 ui.notify("A file or folder with that name already exists.", "warning");
                 return;
             }
             try {
-                fs.mkdirSync(newPath);
+                await fs.mkdir(newPath);
             } catch (err: any) {
                 ui.notify(err.message || "Failed to create folder.", "warning");
                 return;
             }
-            this.buildTree();
+            await this.buildTree();
         }
     };
 
@@ -638,13 +665,13 @@ export class FileExplorerModel extends TComponentModel<FileExplorerState, FileEx
             selectAll: true,
         });
         if (inputResult?.button === "Rename" && inputResult.value.trim()) {
-            const newPath = path.join(path.dirname(item.filePath), inputResult.value.trim());
-            if (fs.existsSync(newPath)) {
+            const newPath = fpJoin(fpDirname(item.filePath), inputResult.value.trim());
+            if (await fs.exists(newPath)) {
                 ui.notify("A file or folder with that name already exists.", "warning");
                 return;
             }
             try {
-                fs.renameSync(item.filePath, newPath);
+                await fs.rename(item.filePath, newPath);
             } catch (err: any) {
                 ui.notify(err.message || `Failed to rename ${item.isFolder ? "folder" : "file"}.`, "warning");
                 return;
@@ -657,7 +684,7 @@ export class FileExplorerModel extends TComponentModel<FileExplorerState, FileEx
                     await page.applyRenamedPath(newPath);
                 }
             }
-            this.buildTree();
+            await this.buildTree();
         }
     };
 
@@ -670,14 +697,14 @@ export class FileExplorerModel extends TComponentModel<FileExplorerState, FileEx
 
         try {
             if (item.isFolder) {
-                fs.rmdirSync(item.filePath, { recursive: true });
+                await fs.removeDir(item.filePath, true);
             } else {
-                fs.unlinkSync(item.filePath);
+                await fs.delete(item.filePath);
             }
         } catch (err: any) {
             ui.notify(err.message || "Failed to delete file or folder.", "warning");
             return;
         }
-        this.buildTree();
+        await this.buildTree();
     };
 }

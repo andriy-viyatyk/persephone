@@ -39,8 +39,9 @@ See [completed.md](completed.md) for all completed tasks.
 3. Run `/project:document` — update developer docs in `/doc/`
 4. Run `/project:userdoc` — update user docs in `/docs/`
 5. Add task to the top of [completed.md](completed.md)
-6. **Ask user for confirmation** before deleting the task folder (if one exists)
-7. Delete task folder after user confirms
+6. **Task folder cleanup** (if one exists):
+   - If the task is part of an active epic — **keep the folder** (task documents are useful for reference while the epic is in progress)
+   - If the task is standalone or the epic is completed — ask user for confirmation before deleting
 
 ### Creating New Tasks
 

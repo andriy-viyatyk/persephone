@@ -34,7 +34,7 @@ import { Splitter } from "../../components/layout/Splitter";
 import { FolderItem } from "./FolderItem";
 import { ScriptLibraryPanel } from "./ScriptLibraryPanel";
 import { settings } from "../../api/settings";
-const path = require("path");
+import { fpBasename } from "../../core/utils/file-path";
 
 const MenuBarRoot = styled("div")({
     position: "absolute",
@@ -364,7 +364,7 @@ class MenuBarModel extends TComponentModel<MenuBarState, MenuBarProps> {
             title: "Select Folder to Add",
         });
         if (folderPath && folderPath.length > 0) {
-            const name = path.basename(folderPath[0]);
+            const name = fpBasename(folderPath[0]);
             menuFolders.add({ name, path: folderPath[0] });
         }
     };

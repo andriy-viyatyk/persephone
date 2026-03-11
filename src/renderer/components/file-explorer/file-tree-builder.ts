@@ -1,7 +1,7 @@
 import { TreeItem } from "../TreeView";
 
-const path = require("path");
-const fs = require("fs");
+import { fpBasename, fpExtname, fpJoin } from "../../core/utils/file-path";
+import { fs } from "../../api/fs";
 
 export interface FileTreeItem extends TreeItem<FileTreeItem> {
     label: string;
@@ -26,12 +26,12 @@ const DEFAULT_IGNORE = new Set([
  * Build a file tree from the filesystem.
  * Returns a root FileTreeItem with children, suitable for TreeView.
  */
-export function buildFileTree(
+export async function buildFileTree(
     rootPath: string,
     sortType: FileSortType = "type",
     maxDepth = 1,
-): FileTreeItem {
-    const rootLabel = path.basename(rootPath);
+): Promise<FileTreeItem> {
+    const rootLabel = fpBasename(rootPath);
     const root: FileTreeItem = {
         label: rootLabel,
         filePath: rootPath,
@@ -39,7 +39,7 @@ export function buildFileTree(
         items: [],
     };
 
-    root.items = readDirectoryItems(rootPath, sortType, maxDepth, 0);
+    root.items = await readDirectoryItems(rootPath, sortType, maxDepth, 0);
     return root;
 }
 
@@ -47,10 +47,10 @@ export function buildFileTree(
  * Load direct children of a folder (1 level deep).
  * Used for lazy loading — folders in the result will have items: undefined (not yet loaded).
  */
-export function loadFolderChildren(
+export async function loadFolderChildren(
     folderPath: string,
     sortType: FileSortType = "type",
-): FileTreeItem[] {
+): Promise<FileTreeItem[]> {
     return readDirectoryItems(folderPath, sortType, 1, 0);
 }
 
@@ -172,19 +172,19 @@ function filterChildrenByPaths(
     return result;
 }
 
-function readDirectoryItems(
+async function readDirectoryItems(
     dirPath: string,
     sortType: FileSortType,
     maxDepth: number,
     currentDepth: number,
-): FileTreeItem[] {
+): Promise<FileTreeItem[]> {
     if (currentDepth >= maxDepth) {
         return [];
     }
 
-    let entries: string[];
+    let entries: { name: string; isDirectory: boolean }[];
     try {
-        entries = fs.readdirSync(dirPath);
+        entries = await fs.listDirWithTypes(dirPath);
     } catch {
         return [];
     }
@@ -193,32 +193,25 @@ function readDirectoryItems(
     const files: FileTreeItem[] = [];
 
     for (const entry of entries) {
-        if (DEFAULT_IGNORE.has(entry)) continue;
+        if (DEFAULT_IGNORE.has(entry.name)) continue;
 
-        const fullPath = path.join(dirPath, entry);
-        let isFolder: boolean;
-        try {
-            const stats = fs.statSync(fullPath);
-            isFolder = stats.isDirectory();
-        } catch {
-            continue;
-        }
+        const fullPath = fpJoin(dirPath, entry.name);
 
-        if (isFolder) {
+        if (entry.isDirectory) {
             const atDepthLimit = currentDepth + 1 >= maxDepth;
             const children = atDepthLimit
                 ? undefined
-                : readDirectoryItems(fullPath, sortType, maxDepth, currentDepth + 1);
+                : await readDirectoryItems(fullPath, sortType, maxDepth, currentDepth + 1);
             folders.push({
-                label: entry,
+                label: entry.name,
                 filePath: fullPath,
                 isFolder: true,
                 items: children,
             });
         } else {
-            const ext = path.extname(entry).toLowerCase();
+            const ext = fpExtname(entry.name).toLowerCase();
             files.push({
-                label: entry,
+                label: entry.name,
                 filePath: fullPath,
                 isFolder: false,
                 extension: ext || undefined,

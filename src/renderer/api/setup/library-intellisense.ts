@@ -2,8 +2,8 @@ import * as monaco from "monaco-editor";
 import { libraryService } from "../library-service";
 import { settings } from "../settings";
 
-const nodefs = require("fs") as typeof import("fs");
-const nodepath = require("path") as typeof import("path");
+import { fs } from "../fs";
+import { fpJoin } from "../../core/utils/file-path";
 
 let extraLibDisposables: monaco.IDisposable[] = [];
 let loaded = false;
@@ -31,16 +31,16 @@ export function loadLibraryIntelliSense(): void {
 // Private
 // =============================================================================
 
-function registerLibraryFiles(): void {
+async function registerLibraryFiles(): Promise<void> {
     const libraryPath = settings.get("script-library.path");
     if (!libraryPath) return;
 
     const allFiles = libraryService.allFiles;
     for (const relativePath of allFiles) {
-        const absolutePath = nodepath.join(libraryPath, relativePath);
+        const absolutePath = fpJoin(libraryPath, relativePath);
         let content: string;
         try {
-            content = nodefs.readFileSync(absolutePath, "utf-8");
+            content = await fs.read(absolutePath);
         } catch {
             continue;
         }

@@ -9,7 +9,7 @@ import { Button } from "../../components/basic/Button";
 import { FlexSpace } from "../../components/layout/Elements";
 import { NavPanelIcon } from "../../theme/icons";
 import { NavPanelModel } from "../../ui/navigation/nav-panel-store";
-const path = require("path");
+import { fpBasename, fpDirname } from "../../core/utils/file-path";
 
 const PdfViewerRoot = styled.div({
     flex: "1 1 auto",
@@ -34,7 +34,7 @@ class PdfViewerModel extends PageModel<PdfViewerModelState, void> {
         const filePath = this.state.get().filePath;
         if (filePath) {
             this.state.update((s) => {
-                s.title = path.basename(filePath);
+                s.title = fpBasename(filePath);
             });
         }
     }
@@ -66,10 +66,10 @@ function PdfViewer({ model }: PdfViewerProps) {
                         title="File Explorer"
                         onClick={() => {
                             if (model.navPanel) {
-                                model.navPanel.reinitIfEmpty(path.dirname(filePath), filePath);
+                                model.navPanel.reinitIfEmpty(fpDirname(filePath), filePath);
                                 model.navPanel.toggle();
                             } else {
-                                const navPanel = new NavPanelModel(path.dirname(filePath), filePath);
+                                const navPanel = new NavPanelModel(fpDirname(filePath), filePath);
                                 navPanel.id = model.id;
                                 navPanel.flushSave();
                                 model.navPanel = navPanel;
