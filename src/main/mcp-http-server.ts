@@ -324,7 +324,7 @@ function createMcpServer(): InstanceType<typeof McpServer> {
                 z.object({
                     type: z.string(),
                 }).passthrough(),
-            ])).describe("Array of flat entries. Strings are shorthand for log.info. Objects: { type, ...fields } — type-specific fields at top level. Types: log.text/info/warn/error/success (text field), input.confirm/text/buttons/checkboxes/radioboxes/select, output.progress/grid/text/markdown/mermaid."),
+            ])).describe("Array of flat entries. Strings are shorthand for log.info. Objects: { type, ...fields } — type-specific fields at top level.\n\nLog types: log.text/info/warn/error/success — fields: text.\nDialog types: input.confirm/text/buttons/checkboxes/radioboxes/select — read resource for fields.\nOutput types:\n  output.text — fields: text, language?, title?, wordWrap?, lineNumbers?, minimap?\n  output.markdown — fields: text, title?\n  output.mermaid — fields: text, title?\n  output.grid — fields: content (JSON array or CSV string), contentType? ('json'|'csv'), title?\n  output.progress — fields: label?, value?, max?, completed?"),
             windowIndex: windowIndexParam,
         },
         async ({ entries, windowIndex }) => {

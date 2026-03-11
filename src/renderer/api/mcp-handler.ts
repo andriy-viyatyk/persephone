@@ -271,7 +271,12 @@ async function handleUiPush(params: any): Promise<McpResponse> {
             const { content: _, contentType: _ct, ...rest } = fields;
             vm.addEntry(type, { ...rest, data });
         } else if (typeof type === "string" && type.startsWith("output.")) {
-            // Output entry — pass full fields object
+            // Output entry — normalize "content" → "text" for text-based output types
+            // (common LLM mistake: sending { content: "..." } instead of { text: "..." })
+            if (!fields.text && fields.content && (type === "output.text" || type === "output.markdown" || type === "output.mermaid")) {
+                fields.text = fields.content;
+                delete fields.content;
+            }
             vm.addEntry(type, fields);
         } else {
             // Log entry — pass text only
