@@ -6,7 +6,13 @@ Release notes and changelog for js-notepad.
 
 ---
 
-## Version 1.0.20 (Upcoming)
+## Version 1.0.21 (Upcoming)
+
+*No changes yet.*
+
+---
+
+## Version 1.0.20
 
 ### New Features
 
