@@ -8,7 +8,11 @@ Release notes and changelog for js-notepad.
 
 ## Version 1.0.21 (Upcoming)
 
-*No changes yet.*
+### New Features
+
+- **Graph View Editor** — A force-directed graph viewer for `.fg.json` files. Also activates for any JSON file containing `"type": "force-graph"` and a `"nodes"` property. Click **Graph** in the toolbar to switch between the text editor and the graph view. Supports zoom (scroll wheel), pan (drag canvas), node dragging, click-to-select with neighbor highlighting, and hover highlighting. Node labels appear for selected/hovered nodes at sufficient zoom levels. Graph colors adapt to all 9 app themes. See [Editors](./editors.md#graph-view) for details.
+- **Graph View node properties** — Nodes now support `title` (display label), `level` (size tier 1–5; level 1 is largest), and `shape` (`circle`, `square`, `diamond`, `triangle`, `star`, `hexagon`). Level 1 and 2 nodes always display their label. Labels show `title` if present, otherwise `id`.
+- **"Open in New Panel" for folders** — All folders in the File Explorer panel now have an **Open in New Panel** option in the right-click context menu. This opens the folder in a new File Explorer tab alongside the current editor. Previously this was only accessible by double-clicking linked sidebar folders.
 
 ---
 

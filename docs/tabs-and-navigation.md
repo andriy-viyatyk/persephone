@@ -182,7 +182,8 @@ Any saved file can open a **File Explorer** panel alongside the editor. Click th
 - **Navigate up** — Click the up arrow button in the panel header to move the root to the parent folder
 - **Make root** — Right-click any folder and choose "Make Root" to focus the tree on that folder, or double-click a folder to do the same
 - **Collapse all** — Click the collapse button in the panel header to collapse all expanded folders at once
-- **File operations** — Right-click for: create files/folders, rename, delete, copy path, show in explorer, open in new tab
+- **File operations** — Right-click files for: create files/folders, rename, delete, copy path, show in explorer, open in new tab
+- **Open folder in new panel** — Right-click any folder and choose **Open in New Panel** to open it in a new File Explorer tab alongside the current editor
 - **Search files by name** — Press Ctrl+F within the panel to search files by name
 - **Search in files** — Press Ctrl+Shift+F to search file contents across the entire folder tree
   - Results appear in a split panel below the file tree, grouped by file with matched lines

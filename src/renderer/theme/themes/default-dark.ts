@@ -141,6 +141,19 @@ export const defaultDark: ThemeDefinition = {
         "--color-minimap-bg": "rgba(121, 121, 121, 0.2)",
         "--color-minimap-hover-bg": "rgba(100, 100, 100, 0.35)",
         "--color-minimap-active-bg": "rgba(191, 191, 191, 0.2)",
+
+        // graph
+        "--color-graph-bg": "#1f1f1f",
+        "--color-graph-node-default": "#00bfff",
+        "--color-graph-node-highlight": "#32cd32",
+        "--color-graph-node-selected": "#ffb6c1",
+        "--color-graph-border-default": "#00bfff",
+        "--color-graph-border-highlight": "#228b22",
+        "--color-graph-border-selected": "#fa8072",
+        "--color-graph-link-default": "#778899",
+        "--color-graph-link-selected": "#ffb6c1",
+        "--color-graph-label-bg": "rgba(121, 121, 121, 0.2)",
+        "--color-graph-label-text": "#cccccc",
     },
     monaco: {
         base: "vs-dark",

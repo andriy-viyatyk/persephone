@@ -91,6 +91,19 @@ export const solarizedDark: ThemeDefinition = {
         "--color-minimap-bg": "rgba(131, 148, 150, 0.15)",
         "--color-minimap-hover-bg": "rgba(131, 148, 150, 0.3)",
         "--color-minimap-active-bg": "rgba(147, 161, 161, 0.2)",
+
+        // graph
+        "--color-graph-bg": "#002b36",
+        "--color-graph-node-default": "#268bd2",
+        "--color-graph-node-highlight": "#859900",
+        "--color-graph-node-selected": "#d33682",
+        "--color-graph-border-default": "#268bd2",
+        "--color-graph-border-highlight": "#859900",
+        "--color-graph-border-selected": "#d33682",
+        "--color-graph-link-default": "#586e75",
+        "--color-graph-link-selected": "#d33682",
+        "--color-graph-label-bg": "rgba(7, 54, 66, 0.6)",
+        "--color-graph-label-text": "#839496",
     },
     monaco: {
         base: "vs-dark",

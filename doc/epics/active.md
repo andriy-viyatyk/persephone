@@ -4,7 +4,7 @@ Epics represent big ideas with high-level overviews. Each epic links to tasks in
 
 ## Active
 
-(none)
+- **EPIC-006** — [Graph Editor (Force Graph)](EPIC-006.md)
 
 ## Completed
 

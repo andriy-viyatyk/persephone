@@ -30,6 +30,7 @@ Views of text-based content that share `TextFileModel` for state management. The
 | `todo-view` | ToDo | `.todo.json` | `TodoViewModel` |
 | `link-view` | Links | `.link.json` | `LinkViewModel` |
 | `log-view` | Log View | `.log.jsonl` | `LogViewModel` |
+| `graph-view` | Graph | `.fg.json` | `GraphViewModel` |
 
 **Characteristics:**
 - Rendered inside `TextPageView` via `ActiveEditor` component
@@ -68,7 +69,7 @@ RenderEditor
 ├── [page-editor] → AsyncEditor → EditorErrorBoundary → PdfViewer / ImageViewer / Browser / About / Settings
 └── [content-view] → TextPageView
                          ├── TextToolbar
-                         ├── ActiveEditor → AsyncEditor → EditorErrorBoundary → Monaco / Grid / Markdown / Notebook / Todo / Link / Log View / SVG / HTML / Mermaid
+                         ├── ActiveEditor → AsyncEditor → EditorErrorBoundary → Monaco / Grid / Markdown / Notebook / Todo / Link / Log View / SVG / HTML / Mermaid / Graph
                          ├── ScriptPanel
                          ├── TextFooter
                          └── EditorOverlay (portal target for expanded note)
@@ -165,7 +166,8 @@ ContentViewModel<TState>   (from editors/base/ContentViewModel.ts)
 ├── LogViewModel            # Log entries, dialog promises, dirty-index serialization
 ├── SvgViewModel            # SVG rendering
 ├── HtmlViewModel           # HTML rendering
-└── MermaidViewModel        # SVG URL, loading, error, light mode
+├── MermaidViewModel        # SVG URL, loading, error, light mode
+└── GraphViewModel          # Force graph rendering (D3 simulation + canvas)
 ```
 
 **Note:** PageModel extends `TDialogModel` (not `TModel`) because pages need `close()` with confirmation and `canClose` guards.
@@ -301,6 +303,7 @@ Structured JSON editors (notebook, todo, link) embed a `"type"` property in thei
 - `"type": "note-editor"` → notebook-view
 - `"type": "todo-editor"` → todo-view
 - `"type": "link-editor"` → link-view
+- `"type": "force-graph"` → graph-view
 
 This allows the correct switch button to appear even when the file name doesn't match the expected pattern (e.g., `.note.json`). Detection uses fast regex checks (no JSON parsing) via the `isEditorContent()` hook on `EditorDefinition`.
 

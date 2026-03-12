@@ -90,6 +90,19 @@ export const lightModern: ThemeDefinition = {
         "--color-minimap-bg": "rgba(100, 100, 100, 0.2)",
         "--color-minimap-hover-bg": "rgba(100, 100, 100, 0.35)",
         "--color-minimap-active-bg": "rgba(0, 0, 0, 0.25)",
+
+        // graph
+        "--color-graph-bg": "#FFFFFF",
+        "--color-graph-node-default": "#0078d4",
+        "--color-graph-node-highlight": "#1A7F37",
+        "--color-graph-node-selected": "#CF222E",
+        "--color-graph-border-default": "#0078d4",
+        "--color-graph-border-highlight": "#1A7F37",
+        "--color-graph-border-selected": "#CF222E",
+        "--color-graph-link-default": "#C0C0C0",
+        "--color-graph-link-selected": "#CF222E",
+        "--color-graph-label-bg": "rgba(243, 243, 243, 0.85)",
+        "--color-graph-label-text": "#3B3B3B",
     },
     monaco: {
         base: "vs",

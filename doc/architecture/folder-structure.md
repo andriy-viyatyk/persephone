@@ -248,6 +248,13 @@ js-notepad/
 │   │   ├── MermaidViewModel.ts
 │   │   ├── render-mermaid.ts       # Rendering utilities (shared with Markdown)
 │   │   └── index.ts
+│   ├── graph/              # Force graph viewer (content-view)
+│   │   ├── GraphView.tsx           # Canvas-based graph component
+│   │   ├── GraphViewModel.ts       # ContentViewModel — JSON parsing to GraphData
+│   │   ├── ForceGraphRenderer.ts   # D3 force simulation + canvas rendering
+│   │   ├── types.ts                # GraphNode (id, title, level, shape), GraphLink, GraphData, NodeShape, nodeLabel(), nodeRadius()
+│   │   ├── constants.ts            # Force simulation parameters
+│   │   └── index.ts
 │   ├── log-view/           # Log viewer (content-view)
 │   │   ├── LogViewEditor.tsx       # Log viewer component (RenderFlexGrid + auto-scroll)
 │   │   ├── LogViewModel.ts         # ContentViewModel — JSONL parsing, entry management

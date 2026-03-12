@@ -90,6 +90,19 @@ export const quietLight: ThemeDefinition = {
         "--color-minimap-bg": "rgba(100, 100, 100, 0.2)",
         "--color-minimap-hover-bg": "rgba(100, 100, 100, 0.3)",
         "--color-minimap-active-bg": "rgba(151, 105, 220, 0.25)",
+
+        // graph
+        "--color-graph-bg": "#F5F5F5",
+        "--color-graph-node-default": "#4B69C6",
+        "--color-graph-node-highlight": "#50A14F",
+        "--color-graph-node-selected": "#E45649",
+        "--color-graph-border-default": "#4B69C6",
+        "--color-graph-border-highlight": "#50A14F",
+        "--color-graph-border-selected": "#E45649",
+        "--color-graph-link-default": "#BBBBBB",
+        "--color-graph-link-selected": "#E45649",
+        "--color-graph-label-bg": "rgba(235, 235, 235, 0.85)",
+        "--color-graph-label-text": "#333333",
     },
     monaco: {
         base: "vs",

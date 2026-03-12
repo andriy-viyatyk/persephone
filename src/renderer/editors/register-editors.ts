@@ -21,6 +21,7 @@ const SPECIALIZED_JSON_PATTERNS = [
     /\.note\.json$/i,
     /\.todo\.json$/i,
     /\.link\.json$/i,
+    /\.fg\.json$/i,
 ];
 
 const isSpecializedJson = (fileName?: string): boolean => {
@@ -446,6 +447,42 @@ editorRegistry.register({
         return {
             Editor: module.LinkEditor,
             createViewModel: createLinkViewModel,
+            newPageModel: textEditorModule.newPageModel,
+            newEmptyPageModel: textEditorModule.newEmptyPageModel,
+            newPageModelFromState: textEditorModule.newPageModelFromState,
+        };
+    },
+});
+
+// Force graph viewer (content-view for .fg.json files)
+editorRegistry.register({
+    id: "graph-view",
+    name: "Graph",
+    pageType: "textFile",
+    category: "content-view",
+    acceptFile: (fileName) => {
+        if (matchesPattern(fileName, /\.fg\.json$/i)) return 20;
+        return -1;
+    },
+    validForLanguage: (languageId) => languageId === "json",
+    switchOption: (languageId, fileName) => {
+        if (languageId !== "json") return -1;
+        if (isSpecializedJson(fileName)) return -1;
+        return 10;
+    },
+    isEditorContent: (languageId, content) => {
+        if (languageId !== "json") return false;
+        if (!content.includes('"type"')) return false;
+        return /"type"\s*:\s*"force-graph"/.test(content) && content.includes('"nodes"');
+    },
+    loadModule: async () => {
+        const [module, { createGraphViewModel }] = await Promise.all([
+            import("./graph/GraphView"),
+            import("./graph/GraphViewModel"),
+        ]);
+        return {
+            Editor: module.GraphView,
+            createViewModel: createGraphViewModel,
             newPageModel: textEditorModule.newPageModel,
             newEmptyPageModel: textEditorModule.newEmptyPageModel,
             newPageModelFromState: textEditorModule.newPageModelFromState,

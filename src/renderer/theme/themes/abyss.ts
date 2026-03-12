@@ -91,6 +91,19 @@ export const abyss: ThemeDefinition = {
         "--color-minimap-bg": "rgba(31, 34, 48, 0.4)",
         "--color-minimap-hover-bg": "rgba(59, 63, 81, 0.53)",
         "--color-minimap-active-bg": "rgba(59, 63, 81, 0.53)",
+
+        // graph
+        "--color-graph-bg": "#000c18",
+        "--color-graph-node-default": "#00bfff",
+        "--color-graph-node-highlight": "#32cd32",
+        "--color-graph-node-selected": "#ffb6c1",
+        "--color-graph-border-default": "#00bfff",
+        "--color-graph-border-highlight": "#228b22",
+        "--color-graph-border-selected": "#fa8072",
+        "--color-graph-link-default": "#778899",
+        "--color-graph-link-selected": "#ffb6c1",
+        "--color-graph-label-bg": "rgba(31, 34, 48, 0.4)",
+        "--color-graph-label-text": "#6688cc",
     },
     monaco: {
         base: "vs-dark",

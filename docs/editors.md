@@ -175,6 +175,26 @@ For `.note.json` files — a structured notes interface:
 
 See **[Notebook Editor](./notebook.md)** for detailed documentation.
 
+## Graph View
+
+For `.fg.json` files — a force-directed graph viewer. Also activates for any JSON file that contains `"type": "force-graph"` and a `"nodes"` property. Click **Graph** in the toolbar to switch between the text editor and the graph view.
+
+**Interaction:**
+- **Zoom** — scroll wheel to zoom in/out
+- **Pan** — drag the canvas background
+- **Drag nodes** — click and drag individual nodes to reposition them
+- **Select** — click a node to select it; selected node and its direct neighbors are highlighted
+- **Hover** — hover over a node to highlight it
+- **Labels** — node labels appear for selected and hovered nodes when zoomed in sufficiently. Level 1 and 2 nodes always show their label regardless of selection or zoom state. Labels display the node's `title` if present, otherwise its `id`.
+
+**Node properties:**
+- `id` — unique identifier (required)
+- `title` — display label shown instead of `id` when present
+- `level` — size tier from `1` (largest) to `5` (smallest); defaults to `5` if omitted
+- `shape` — visual shape: `circle` (default), `square`, `diamond`, `triangle`, `star`, or `hexagon`
+
+**Theme support:** Graph colors (node fill, edge color, selected/hover highlights) adapt to whichever of the 9 app themes is active.
+
 ## Link Editor
 
 For `.link.json` files — a structured link manager:
@@ -213,12 +233,13 @@ Some files support multiple editors:
 | `.svg` | Text, Preview |
 | `.html` | Text, Preview |
 | `.mmd` | Text, Mermaid |
+| `.fg.json` | Text, Graph |
 | `.pdf` | PDF only |
 | Images | Image Viewer only |
 | Other | Text only |
 
 Use the buttons in the toolbar to switch between available editors.
 
-**Content-based detection:** JSON pages that contain a `"type"` property (`"note-editor"`, `"todo-editor"`, or `"link-editor"`) automatically show the corresponding switch button — even without the special file extension. This is useful for pages created via MCP or scripting.
+**Content-based detection:** JSON pages that contain a `"type"` property (`"note-editor"`, `"todo-editor"`, `"link-editor"`, or `"force-graph"`) automatically show the corresponding switch button — even without the special file extension. For the Graph View, the JSON must also contain a `"nodes"` property. This is useful for pages created via MCP or scripting.
 
 **Quick Add:** Click the dropdown arrow (&#9662;) next to the **+** button in the tab bar to create a new page with a specific editor: Script (JS), Script (TS), Grid (JSON), Grid (CSV), Notebook, Todo, Links, Browser, or Browser profile (with Incognito and named profiles).

@@ -78,6 +78,19 @@ const color = {
         hoverBackground: "var(--color-minimap-hover-bg)",
         activeBackground: "var(--color-minimap-active-bg)",
     },
+    graph: {
+        background: "var(--color-graph-bg)",
+        nodeDefault: "var(--color-graph-node-default)",
+        nodeHighlight: "var(--color-graph-node-highlight)",
+        nodeSelected: "var(--color-graph-node-selected)",
+        nodeBorderDefault: "var(--color-graph-border-default)",
+        nodeBorderHighlight: "var(--color-graph-border-highlight)",
+        nodeBorderSelected: "var(--color-graph-border-selected)",
+        linkDefault: "var(--color-graph-link-default)",
+        linkSelected: "var(--color-graph-link-selected)",
+        labelBackground: "var(--color-graph-label-bg)",
+        labelText: "var(--color-graph-label-text)",
+    },
 };
 
 export default color;

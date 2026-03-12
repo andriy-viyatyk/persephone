@@ -91,6 +91,19 @@ export const tomorrowNightBlue: ThemeDefinition = {
         "--color-minimap-bg": "rgba(187, 218, 255, 0.15)",
         "--color-minimap-hover-bg": "rgba(187, 218, 255, 0.3)",
         "--color-minimap-active-bg": "rgba(187, 218, 255, 0.25)",
+
+        // graph
+        "--color-graph-bg": "#002451",
+        "--color-graph-node-default": "#bbdaff",
+        "--color-graph-node-highlight": "#d1f1a9",
+        "--color-graph-node-selected": "#ff9da4",
+        "--color-graph-border-default": "#bbdaff",
+        "--color-graph-border-highlight": "#d1f1a9",
+        "--color-graph-border-selected": "#ff9da4",
+        "--color-graph-link-default": "#7285b7",
+        "--color-graph-link-selected": "#ff9da4",
+        "--color-graph-label-bg": "rgba(0, 28, 64, 0.6)",
+        "--color-graph-label-text": "#ffffff",
     },
     monaco: {
         base: "vs-dark",

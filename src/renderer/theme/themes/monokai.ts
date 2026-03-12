@@ -91,6 +91,19 @@ export const monokai: ThemeDefinition = {
         "--color-minimap-bg": "rgba(121, 121, 121, 0.2)",
         "--color-minimap-hover-bg": "rgba(121, 121, 121, 0.35)",
         "--color-minimap-active-bg": "rgba(150, 150, 150, 0.2)",
+
+        // graph
+        "--color-graph-bg": "#272822",
+        "--color-graph-node-default": "#66d9ef",
+        "--color-graph-node-highlight": "#a6e22e",
+        "--color-graph-node-selected": "#f92672",
+        "--color-graph-border-default": "#66d9ef",
+        "--color-graph-border-highlight": "#a6e22e",
+        "--color-graph-border-selected": "#f92672",
+        "--color-graph-link-default": "#75715e",
+        "--color-graph-link-selected": "#f92672",
+        "--color-graph-label-bg": "rgba(73, 72, 62, 0.5)",
+        "--color-graph-label-text": "#f8f8f2",
     },
     monaco: {
         base: "vs-dark",

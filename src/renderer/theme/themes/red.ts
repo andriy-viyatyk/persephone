@@ -92,6 +92,19 @@ export const red: ThemeDefinition = {
         "--color-minimap-bg": "rgba(200, 100, 100, 0.15)",
         "--color-minimap-hover-bg": "rgba(200, 100, 100, 0.3)",
         "--color-minimap-active-bg": "rgba(220, 120, 120, 0.25)",
+
+        // graph
+        "--color-graph-bg": "#390000",
+        "--color-graph-node-default": "#6c9ef8",
+        "--color-graph-node-highlight": "#7cc47c",
+        "--color-graph-node-selected": "#ff6666",
+        "--color-graph-border-default": "#6c9ef8",
+        "--color-graph-border-highlight": "#7cc47c",
+        "--color-graph-border-selected": "#ff6666",
+        "--color-graph-link-default": "#b89090",
+        "--color-graph-link-selected": "#ff6666",
+        "--color-graph-label-bg": "rgba(136, 0, 0, 0.4)",
+        "--color-graph-label-text": "#f8f8f8",
     },
     monaco: {
         base: "vs-dark",
