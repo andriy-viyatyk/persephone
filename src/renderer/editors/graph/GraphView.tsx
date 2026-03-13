@@ -340,7 +340,7 @@ function GraphView({ model }: GraphViewProps) {
     });
 
     // Auto-switch to results tab when search results appear
-    const { searchQuery, searchInfo, searchResults, tooltip, selectedNode, linkedNodes } = pageState;
+    const { searchQuery, searchInfo, searchResults, tooltip, selectedNode, linkedNodes, statusHint } = pageState;
     useEffect(() => {
         if (searchResults && searchResults.length > 0) {
             setToolbarPanel("results");
@@ -582,7 +582,10 @@ function GraphView({ model }: GraphViewProps) {
             )}
             {Boolean(model.editorFooterRefLast) &&
                 createPortal(
-                    <span>{vm.recordsCount}</span>,
+                    <>
+                        {statusHint && <span style={{ fontStyle: "italic", color: color.warning.text, marginRight: 12 }}>{statusHint}</span>}
+                        <span>{vm.recordsCount}</span>
+                    </>,
                     model.editorFooterRefLast,
                 )}
         </GraphViewRoot>

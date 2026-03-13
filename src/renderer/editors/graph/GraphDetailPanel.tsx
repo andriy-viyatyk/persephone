@@ -1059,7 +1059,7 @@ function InfoTab({
                     {LEVELS.map((lvl) => (
                         <button
                             key={lvl}
-                            className={`info-icon-btn ${(node.level ?? 3) === lvl ? "selected" : ""}`}
+                            className={`info-icon-btn ${(node.level ?? 5) === lvl ? "selected" : ""}`}
                             onClick={() => onUpdateProps(node.id, { level: lvl })}
                             title={`Level ${lvl}`}
                         >

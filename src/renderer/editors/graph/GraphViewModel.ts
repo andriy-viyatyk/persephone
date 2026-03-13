@@ -43,6 +43,7 @@ export const defaultGraphViewState = {
     tooltip: null as TooltipInfo | null,
     selectedNode: null as GraphNode | null,
     linkedNodes: [] as GraphNode[],
+    statusHint: "",
 };
 
 export type GraphViewState = typeof defaultGraphViewState;
@@ -342,7 +343,20 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
 
         if (!nodeId || this.renderer.isDragging) {
             this.clearTooltip();
+            this.updateStatusHint("");
             return;
+        }
+
+        // Status hint: Alt+Click to link/unlink
+        const selectedId = this.renderer.selectedId;
+        if (selectedId && nodeId !== selectedId && this.sourceData) {
+            const linked = this.linkExists(selectedId, nodeId);
+            const label = nodeLabel(this.sourceData.nodes.find((n) => n.id === selectedId) ?? { id: selectedId });
+            this.updateStatusHint(linked
+                ? `Alt+Click to unlink from "${label}"`
+                : `Alt+Click to link with "${label}"`);
+        } else {
+            this.updateStatusHint("");
         }
 
         this._tooltipTimer = setTimeout(() => {
@@ -359,6 +373,12 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
         clearTimeout(this._tooltipTimer);
         if (this.state.get().tooltip) {
             this.state.update((s) => { s.tooltip = null; });
+        }
+    }
+
+    private updateStatusHint(hint: string): void {
+        if (this.state.get().statusHint !== hint) {
+            this.state.update((s) => { s.statusHint = hint; });
         }
     }
 
@@ -519,6 +539,7 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
 
     private handleSelectionChanged(nodeId: string): void {
         this.state.update((s) => {
+            s.statusHint = "";
             if (!nodeId) {
                 s.selectedNode = null;
                 s.linkedNodes = [];
@@ -607,7 +628,11 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
     // =========================================================================
 
     addNode(worldX: number, worldY: number): string {
-        if (!this.sourceData) return "";
+        if (!this.sourceData) {
+            // Initialize empty graph (first node on blank page)
+            this.sourceData = { nodes: [], links: [] };
+            this.originalJson = { type: "force-graph" };
+        }
 
         const id = this.generateNodeId();
         this.sourceData.nodes.push({ id });
