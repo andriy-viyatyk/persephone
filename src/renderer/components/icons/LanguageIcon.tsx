@@ -22,6 +22,7 @@ import {
     FshartIcon,
     GoIcon,
     GraphqlIcon,
+    GraphIcon,
     GridIcon,
     HclIcon,
     HtmlIcon,
@@ -124,6 +125,7 @@ const filePatternIcons: Array<{ pattern: RegExp; icon: SvgIconComponent }> = [
     { pattern: /\.grid\.json$/i, icon: GridIcon },
     { pattern: /\.grid\.csv$/i, icon: GridIcon },
     { pattern: /\.link\.json$/i, icon: LinkIcon },
+    { pattern: /\.fg\.json$/i, icon: GraphIcon },
 ];
 
 function getFilePatternIcon(fileName: string): SvgIconComponent | undefined {

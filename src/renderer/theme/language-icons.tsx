@@ -560,6 +560,23 @@ export const IncognitoIcon = createIconWithViewBox("0 0 32 32")(
     </g>,
 );
 
+export const GraphIcon = createIconWithViewBox("0 0 32 32")(
+    <g>
+        {/* Links */}
+        <line x1="10" y1="10" x2="22" y2="10" stroke="#4DD0E1" strokeWidth="1.5" opacity="0.5" />
+        <line x1="10" y1="10" x2="8" y2="22" stroke="#4DD0E1" strokeWidth="1.5" opacity="0.5" />
+        <line x1="22" y1="10" x2="24" y2="22" stroke="#4DD0E1" strokeWidth="1.5" opacity="0.5" />
+        <line x1="8" y1="22" x2="24" y2="22" stroke="#4DD0E1" strokeWidth="1.5" opacity="0.5" />
+        <line x1="10" y1="10" x2="16" y2="27" stroke="#4DD0E1" strokeWidth="1.5" opacity="0.4" />
+        {/* Nodes */}
+        <circle cx="10" cy="10" r="3.5" fill="#4DD0E1" />
+        <circle cx="22" cy="10" r="3" fill="#4DD0E1" opacity="0.85" />
+        <circle cx="8" cy="22" r="2.5" fill="#4DD0E1" opacity="0.7" />
+        <circle cx="24" cy="22" r="2.5" fill="#4DD0E1" opacity="0.7" />
+        <circle cx="16" cy="27" r="2" fill="#4DD0E1" opacity="0.55" />
+    </g>
+);
+
 export const GridIcon = createIconWithViewBox("0 0 32 32")(
     <g>
         {/* Grid cells - 3x3 */}

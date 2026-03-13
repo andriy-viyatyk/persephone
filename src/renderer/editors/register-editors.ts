@@ -467,6 +467,8 @@ editorRegistry.register({
     validForLanguage: (languageId) => languageId === "json",
     switchOption: (languageId, fileName) => {
         if (languageId !== "json") return -1;
+        // Always offer Graph switch for .fg.json files
+        if (fileName && matchesPattern(fileName, /\.fg\.json$/i)) return 10;
         if (isSpecializedJson(fileName)) return -1;
         return 10;
     },

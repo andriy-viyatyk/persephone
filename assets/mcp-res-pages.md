@@ -61,7 +61,7 @@ The current page (tab). Available as a global in scripts.
 
 ### Editor Types
 
-`"monaco"` · `"grid-json"` · `"grid-csv"` · `"md-view"` · `"notebook-view"` · `"todo-view"` · `"link-view"` · `"svg-view"` · `"html-view"` · `"mermaid-view"` · `"pdf-view"` · `"image-view"` · `"browser-view"` · `"about-view"` · `"settings-view"`
+`"monaco"` · `"grid-json"` · `"grid-csv"` · `"md-view"` · `"notebook-view"` · `"todo-view"` · `"link-view"` · `"graph-view"` · `"svg-view"` · `"html-view"` · `"mermaid-view"` · `"pdf-view"` · `"image-view"` · `"browser-view"` · `"about-view"` · `"settings-view"`
 
 ### Creating Pages with Specialized Editors
 
@@ -78,16 +78,80 @@ The current page (tab). Available as a global in scripts.
 | `link-view` | **`json`** | `.link.json` | `"Bookmarks.link.json"` |
 | `svg-view` | **`xml`** | `.svg` | `"Logo.svg"` |
 | `html-view` | **`html`** | — | `"Page.html"` |
+| `graph-view` | **`json`** | `.fg.json` | `"Network.fg.json"` |
 | `mermaid-view` | **`mermaid`** | — | `"Diagram"` |
 
 **Common mistake:** `create_page({ editor: "md-view", language: "plaintext", ... })` — this creates a broken page. Use `language: "markdown"` with `md-view`.
 
 **Title suffix:** Without the correct title suffix, the editor will work but the toolbar switch buttons may not show all available editor options (e.g., a link editor page titled `"Links"` won't show the "Links" switch button, but `"Links.link.json"` will).
 
-**Initial content:** Notebook, todo, and link editors expect valid JSON content on creation:
+**Initial content:** Notebook, todo, link, and graph editors expect valid JSON content on creation:
 - **Notebook:** `{"notes":[],"state":{}}`
 - **Todo:** `{"lists":[],"tags":[],"items":[],"state":{}}`
 - **Links:** `{"links":[],"state":{}}`
+- **Graph:** `{"nodes":[],"links":[],"options":{}}` — see Graph Format below
+
+### Graph Editor Format (`graph-view`)
+
+The graph editor renders an interactive force-directed graph. Content is JSON with this structure:
+
+```json
+{
+  "type": "force-graph",
+  "nodes": [
+    { "id": "server", "title": "API Server", "level": 1, "shape": "hexagon" },
+    { "id": "db", "title": "Database", "level": 2, "shape": "square" },
+    { "id": "cache", "title": "Redis Cache", "level": 3 },
+    { "id": "client", "title": "Web Client", "level": 2, "shape": "diamond", "team": "frontend" }
+  ],
+  "links": [
+    { "source": "client", "target": "server" },
+    { "source": "server", "target": "db" },
+    { "source": "server", "target": "cache" }
+  ],
+  "options": {
+    "rootNode": "server",
+    "expandDepth": 3,
+    "maxVisible": 500
+  }
+}
+```
+
+**Node properties:**
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `id` | string (required) | Unique node identifier, used in links |
+| `title` | string | Display label (falls back to `id` if omitted) |
+| `level` | number (1-5) | Hierarchy level — controls node size (1=largest, 5=smallest) |
+| `shape` | string | `"circle"` (default), `"square"`, `"diamond"`, `"triangle"`, `"star"`, `"hexagon"` |
+| *custom* | any | Any additional properties are preserved and displayed in the detail panel |
+
+**Link properties:**
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `source` | string (required) | Source node `id` |
+| `target` | string (required) | Target node `id` |
+
+**Options:**
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `rootNode` | string | Root node ID — BFS expansion starts here |
+| `expandDepth` | number | How many hops from root to show initially (default: show all) |
+| `maxVisible` | number | Hard ceiling on visible nodes (default 500) — use for large graphs |
+| `charge` | number | Repulsion force between nodes (default -70) |
+| `linkDistance` | number | Desired link length in pixels (default 40) |
+| `collide` | number | Collision radius multiplier (default 0.7) |
+
+**Tips for generating graphs:**
+- Always include `"type": "force-graph"` for content detection
+- Use `level` to visually distinguish node importance (1=central/important, 5=leaf/minor)
+- Use `shape` to encode node categories (e.g., hexagons for services, squares for databases)
+- Add custom properties for metadata (e.g., `"team"`, `"status"`, `"url"`) — they appear in the detail panel
+- For large graphs (>200 nodes), set `rootNode` and `expandDepth` to avoid overwhelming the view
+- Title suffix `.fg.json` ensures the graph editor opens by default and shows the JSON/Graph switch
 
 ## Grouped Pages (Script Output)
 

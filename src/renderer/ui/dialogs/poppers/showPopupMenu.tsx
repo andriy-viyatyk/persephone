@@ -169,6 +169,11 @@ export interface ShowAppPopupMenuOptions {
     skipInspect?: boolean;
 }
 
+/** Close any currently open app popup menu. */
+export const closeAppPopupMenu = () => {
+    closePopper(showAppPopupMenuId);
+};
+
 export const showAppPopupMenu = async (
     x: number,
     y: number,

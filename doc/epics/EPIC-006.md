@@ -31,9 +31,12 @@ Add a new force-graph editor for `.fg.json` files. The editor renders interactiv
     { "source": "PageA", "target": "ButtonX" }
   ],
   "options": {
-    "focus": "AppRoot",
+    "rootNode": "AppRoot",
     "expandDepth": 3,
-    "maxVisible": 500
+    "maxVisible": 500,
+    "charge": -70,
+    "linkDistance": 40,
+    "collide": 0.7
   }
 }
 ```
@@ -53,9 +56,12 @@ Add a new force-graph editor for `.fg.json` files. The editor renders interactiv
 - Displayed in tooltip and detail panel
 
 **Options** (optional):
-- `options.focus` — initial focus node ID. Default: first node with lowest level, or first node.
-- `options.expandDepth` — BFS depth from focus for initial expansion. Default: unlimited.
+- `options.rootNode` — root node ID for BFS expansion. Default: first node with lowest level, or first node. Visually distinguished with compass star shape and level-1 size.
+- `options.expandDepth` — BFS depth from root for initial expansion. Default: unlimited.
 - `options.maxVisible` — max initially visible nodes. Default: 500.
+- `options.charge` — force charge strength. Default: -70.
+- `options.linkDistance` — link distance. Default: 40.
+- `options.collide` — collide force strength (0-1). Default: 0.7.
 
 **Not using node colors** — colors are reserved for selection/hover states to avoid confusion.
 
@@ -77,12 +83,18 @@ Sample data file: `D:\js-notepad-notes\temp\miserables.fg.json`
 |------|-------|--------|
 | US-170 | Force Graph viewer — read-only (Phase 1) | Done |
 | US-171 | Node properties: title, level, shape | Done |
-| US-172 | Collapse/expand with BFS + options | Planned |
-| US-173 | Search with node dimming | Planned |
-| US-174 | Node tooltips (HTML overlay) | Planned |
-| US-175 | Context menu + basic editing (add/delete/link) | Planned |
-| US-176 | Detail panel (Info, Links, Properties tabs) | Planned |
-| US-177 | Force tuning panel (charge, link distance, collide sliders) | Planned |
+| US-172 | Collapse/expand with BFS + options | Done |
+| US-173 | Search with node dimming | Done |
+| US-174 | Node tooltips (HTML overlay) | Done |
+| US-175 | Context menu + basic editing (add/delete/link) | Done |
+| US-176 | Detail panel — panel shell + Info tab | Done |
+| US-177 | Force tuning panel (charge, link distance, collide sliders) | Done |
+| US-178 | Detail panel — Links tab (AVGrid) | Done |
+| US-179 | Detail panel — Properties tab (AVGrid) | Done |
+| US-181 | Graph search enhancement — multi-word, properties, results panel | Done |
+| US-182 | Graph settings persistence, expansion UI, root node | Done |
+| US-180 | Graph editor — polish & enhancements | Done |
+| US-183 | Graph editor — adjustments & fixes | Done |
 
 ## Phase 2 — Planned Scope
 
@@ -96,14 +108,15 @@ Sample data file: `D:\js-notepad-notes\temp\miserables.fg.json`
 
 ### US-172: Collapse/expand with BFS + options
 
-- Parse `options` from JSON (`focus`, `expandDepth`, `maxVisible`)
-- Defaults: `focus` = first node with lowest level or first node; `expandDepth` = undefined; `maxVisible` = 500
-- BFS from focus node, assign `showIndex` to every node
-- Only pass visible nodes/links to D3 simulation
-- Draw "+" indicator on nodes with hidden neighbors (with hidden count badge)
-- **Ctrl+Click** on "+" node → expand (reveal hidden neighbors)
-- **Ctrl+Click** on visible node → collapse (cascading hide using showIndex)
-- Small graphs (total <= maxVisible) render entirely, no collapse needed
+- Parse `options` from JSON (`rootNode`, `expandDepth`, `maxVisible`)
+- Defaults: `rootNode` = first node with lowest level or first node; `expandDepth` = undefined; `maxVisible` = 500
+- BFS from root node, assign `_$showIndex` to every node
+- `GraphVisibilityModel` sub-model: BFS, adjacency, expand/collapse, visible set
+- Only pass visible nodes/links to D3 simulation (shallow copies to avoid immer freeze)
+- Draw "+" badge on nodes with hidden neighbors (clickable, with hover highlight)
+- **Badge click** → expand (reveal hidden neighbors near clicked node)
+- Collapse deferred to context menu (US-175)
+- Small graphs (total <= maxVisible) render entirely, no filtering needed
 - Toolbar: "Reset View" button
 
 ### US-173: Search with node dimming
@@ -130,14 +143,13 @@ Sample data file: `D:\js-notepad-notes\temp\miserables.fg.json`
 - All edits serialize back to JSON content via `host.changeContent()`
 - Editing changes reflected immediately in canvas
 
-### US-176: Detail panel (Info, Links, Properties tabs)
+### US-176: Detail panel — panel shell + Info tab
 
 - Collapsible overlay panel at top-right corner
 - Collapsed: only header with node title visible; expanded: full editing UI
-- Updates when selection changes (click node)
+- Tab bar (Info / Links / Properties) — only Info tab implemented, others placeholder
 - **Info tab** — edit id, title, level (dropdown 1-5), shape (dropdown)
-- **Links tab** — AVGrid with linked node IDs (supports Excel copy-paste for bulk add)
-- **Properties tab** — key-value editor for custom properties
+- Updates when selection changes (click node)
 - Editing in panel immediately updates canvas rendering and JSON content
 
 ### US-177: Force tuning panel (charge, link distance, collide sliders)
@@ -147,6 +159,30 @@ Sample data file: `D:\js-notepad-notes\temp\miserables.fg.json`
 - Sliders adjust forces in real-time (simulation restarts on change)
 - "Reset" button to restore defaults
 - Panel state is transient — not saved to JSON
+
+### US-178: Detail panel — Links tab (AVGrid)
+
+- Links tab with AVGrid showing connected links (neighbor ID, direction)
+- Add link row — type a node ID, validates target exists, prevents duplicates/self-links
+- Delete link rows (Ctrl+Delete)
+- Copy/paste support from Excel — bulk-add links by pasting node IDs
+- Changes immediately update canvas + JSON
+
+### US-179: Detail panel — Properties tab (AVGrid)
+
+- Properties tab with AVGrid (key, value columns) for custom node properties
+- Shows all non-core properties (excludes id, title, level, shape, _$ runtime props)
+- Add/delete property rows
+- Copy/paste range of key-value pairs from spreadsheet
+- Inline editing — double-click cell to edit
+- Changes immediately update canvas + JSON
+
+### US-180: Graph editor — polish & enhancements
+
+Final polish task for the epic. Known items:
+- "Expand All" button on toolbar
+- Ctrl+Click on badge → recursive expand all children
+- Additional items TBD from review and testing
 
 ### Interactions summary
 
@@ -284,15 +320,15 @@ Optional `options` object in the JSON data provides hints for the initial view:
   "nodes": [...],
   "links": [...],
   "options": {
-    "focus": "MainComponent",
+    "rootNode": "MainComponent",
     "expandDepth": 3,
     "maxVisible": 200
   }
 }
 ```
 
-- `focus` — ID of the initial focus node. If not provided, use the node with highest degree (most connections).
-- `expandDepth` — BFS depth from focus for initial expansion. If omitted, expand until `maxVisible` is reached.
+- `rootNode` — ID of the root node for BFS expansion. If not provided, use the node with lowest level, or first node. Visually distinguished with compass star shape.
+- `expandDepth` — BFS depth from root node for initial expansion. If omitted, expand until `maxVisible` is reached.
 - `maxVisible` — hard ceiling on initially visible nodes (default: 200). `expandDepth` is a soft limit; `maxVisible` always wins.
 - Both are optional and work independently or together.
 
@@ -300,7 +336,7 @@ Optional `options` object in the JSON data provides hints for the initial view:
 
 #### BFS collection algorithm
 
-1. Start from focus node, assign `showIndex = 0`
+1. Start from root node, assign `showIndex = 0`
 2. BFS: iterate over level 1 neighbors → assign `showIndex = 1, 2, 3, ...`, then level 2, etc.
 3. Stop when `maxVisible` is reached OR `expandDepth` levels are exhausted (whichever comes first)
 4. Every node in the full graph gets a `showIndex` (BFS discovery order) — this is computed once on data load
@@ -335,19 +371,19 @@ collapse(clickedNode):
     clickedNode now shows "+" indicator
 ```
 
-This uses the BFS `showIndex` to determine direction: only hide nodes "further from focus" (higher showIndex) than the clicked node. Cascading ensures no orphaned visible nodes remain disconnected from the focus.
+This uses the BFS `showIndex` to determine direction: only hide nodes "further from root" (higher showIndex) than the clicked node. Cascading ensures no orphaned visible nodes remain disconnected from the focus.
 
 **Edge case — shared nodes:** If node C is reachable from both A and B, and user collapses B, C gets hidden (its showIndex > B's). Node A then shows "+" because its neighbor C is now hidden. User can re-expand C from A.
 
 #### Toolbar controls
 
 - "Show All" button (with warning if > 1000 nodes)
-- "Reset View" — return to initial collapse state (re-run BFS from focus with original options)
-- Right-click node → "Focus here" — re-center collapse/expand around this node
+- "Reset View" — return to initial collapse state (re-run BFS from root node with original options)
+- Right-click node → "Set as Root" — set this node as the root for BFS expansion
 
 #### Architecture notes
 
-- Collapse state is **transient** — not saved to JSON. Only `options.focus`/`expandDepth`/`maxVisible` are persisted.
+- Collapse state is **transient** — not saved to JSON. Only `options.rootNode`/`expandDepth`/`maxVisible`/physics params are persisted.
 - The full graph is always in memory; collapse only affects which nodes/links are passed to the D3 simulation.
 - `showIndex` is computed once per data load (O(n) BFS), stored as a `Map<string, number>`.
 

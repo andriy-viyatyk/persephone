@@ -167,7 +167,7 @@ ContentViewModel<TState>   (from editors/base/ContentViewModel.ts)
 ├── SvgViewModel            # SVG rendering
 ├── HtmlViewModel           # HTML rendering
 ├── MermaidViewModel        # SVG URL, loading, error, light mode
-└── GraphViewModel          # Force graph rendering (D3 simulation + canvas)
+└── GraphViewModel          # Force graph editing (composes ForceGraphRenderer + GraphVisibilityModel)
 ```
 
 **Note:** PageModel extends `TDialogModel` (not `TModel`) because pages need `close()` with confirmation and `canClose` guards.

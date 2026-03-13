@@ -180,11 +180,12 @@ See **[Notebook Editor](./notebook.md)** for detailed documentation.
 For `.fg.json` files — a force-directed graph viewer. Also activates for any JSON file that contains `"type": "force-graph"` and a `"nodes"` property. Click **Graph** in the toolbar to switch between the text editor and the graph view.
 
 **Interaction:**
-- **Zoom** — scroll wheel to zoom in/out
+- **Zoom** — scroll wheel to zoom in/out (double-click zoom is disabled)
 - **Pan** — drag the canvas background
 - **Drag nodes** — click and drag individual nodes to reposition them
 - **Select** — click a node to select it; selected node and its direct neighbors are highlighted
-- **Hover** — hover over a node to highlight it
+- **Double-click node** — expands the detail panel for the clicked node
+- **Hover** — hover over a node to highlight it; after ~500 ms a tooltip appears showing the node's title, id, and any custom user-defined properties
 - **Labels** — node labels appear for selected and hovered nodes when zoomed in sufficiently. Level 1 and 2 nodes always show their label regardless of selection or zoom state. Labels display the node's `title` if present, otherwise its `id`.
 
 **Node properties:**
@@ -192,6 +193,62 @@ For `.fg.json` files — a force-directed graph viewer. Also activates for any J
 - `title` — display label shown instead of `id` when present
 - `level` — size tier from `1` (largest) to `5` (smallest); defaults to `5` if omitted
 - `shape` — visual shape: `circle` (default), `square`, `diamond`, `triangle`, `star`, or `hexagon`
+
+**Graph options:**
+- `options.rootNode` — initial root node ID; the graph centers on this node. The root node is visually distinct: it uses a compass (4-pointed star) shape, level-1 size, and its label is always visible.
+- `options.expandDepth` — BFS depth limit from the root node; only nodes within this depth are shown initially
+- `options.maxVisible` — maximum number of visible nodes (default `500`); when a graph exceeds this limit, only the closest nodes are shown initially
+- `options.charge` — repulsion strength between nodes (persisted)
+- `options.linkDistance` — target link distance between connected nodes (persisted)
+- `options.collide` — overlap prevention strength (persisted)
+
+**Detail Panel:**
+
+A collapsible overlay panel in the top-right corner for editing the selected node's properties. The header always shows the selected node's title (or "select node for edit" when nothing is selected). Click the header or double-click a node to expand the panel. The panel auto-collapses when you deselect all nodes. Clicking the canvas background also collapses the panel.
+
+- **Info tab** — editable fields for ID (with rename validation), Title, Level (1–5 icon selector), and Shape (6 shape icons: circle, square, diamond, triangle, star, hexagon)
+- Changes immediately update the canvas and JSON
+- Resizable via the bottom-left corner drag handle
+- **Links tab** — an AVGrid showing all nodes linked to the selected node. Three column presets are available: Default (ID, Title), View (adds Level, Shape with combobox editors), and Custom (adds all custom properties). Supports batch editing with Apply/Cancel buttons, adding new linked nodes (including paste from Excel), and deleting rows (removes the link, and also removes the node if it becomes orphaned). Unsaved edits block panel collapse and node selection changes. When the Links tab is active, non-linked nodes are dimmed on the canvas. Focusing a grid row highlights the corresponding node in green on the canvas and draws a green link line from the selected node to the hovered node. Hidden children are automatically expanded when the Links tab is activated.
+- **Properties tab** — an AVGrid showing all custom (non-core) key-value properties of the selected node. Supports inline editing (double-click), adding and deleting rows (`Ctrl+Insert` / `Ctrl+Delete` or context menu), copy/paste from spreadsheets, and the same Apply/Cancel batch workflow as the Links tab. Reserved keys (`id`, `title`, `level`, `shape`, and system keys) are highlighted and blocked from being added. Unsaved edits block tab switching, panel collapse, and node selection changes.
+
+**Editing:**
+- **Add Node** — right-click on empty canvas area and choose "Add Node" to create a new node at the click position
+- **Add Child** — right-click on a node and choose "Add Child" to create a new node linked to the clicked node
+- **Delete Node** — right-click on a node and choose "Delete Node" to remove it and all its links
+- **Delete Link** — right-click on a node and use the "Delete Link" submenu to remove a specific link from that node
+- **Set as Root** — right-click on a node and choose "Set as Root" to designate it as the root node
+- **Collapse** — right-click on a node and choose "Collapse" to hide its descendant nodes (those discovered later in BFS order from the root). Only available when visibility filtering is active.
+- **Toggle Link** — `Alt+Click` on a node to add or remove a link between it and the currently selected node
+- All edits serialize back to clean JSON with no internal properties. Existing node positions are preserved after edits.
+
+**Large graph support:** Graphs with more nodes than `maxVisible` automatically show a subset of nodes closest to the root node (or the most-connected node if no root is set). Nodes with hidden neighbors display a **"+"** badge — click the badge to expand and reveal the next layer of neighbors. `Ctrl+Click` on a badge performs a **deep expand**, revealing the entire hidden subtree connected to that node (already-visible nodes act as barriers). Use the **Expand All** toolbar button to make all nodes visible at once (a confirmation dialog appears when the graph has more than 1,000 nodes). Use the **Reset View** toolbar button to restore the initial visibility state. Disconnected components (nodes not reachable from the focus) show their root plus one level of children.
+
+**Status bar:** The footer displays the node count — "N of M nodes" when visibility filtering hides some nodes, or "N nodes" when all nodes are visible.
+
+**Empty graph:** New empty graph pages show a centered hint: "Right-click → Add Node".
+
+**Toolbar:** The toolbar displays a search input, an expand-all icon, a reset view icon, and a gear icon in a single row. Below the toolbar, three tabs — **Physics**, **Expansion**, and **Results (N)** — switch between the force tuning panel, expansion settings panel, and search results panel. The toolbar is semi-transparent when idle and becomes fully opaque on hover, focus, or when a panel is expanded.
+
+**Search:** The toolbar includes a search input that supports **multi-word AND matching**. Type multiple words separated by spaces — all words must match somewhere in a node's title, ID, or custom property names/values. Non-matching nodes and their links are dimmed.
+
+When matches are found, the **Results** tab shows the match count and opens a scrollable results panel listing matching nodes with highlighted matches. Hidden nodes appear at reduced opacity and can be clicked to reveal them. Use **ArrowUp/Down** to navigate results, **Enter** to select, and **Escape** to close the results panel.
+
+A status bar below the results shows "matched N visible" and, when hidden nodes also match, a clickable **"+K hidden"** link for bulk reveal. Press Escape or the **×** button to clear the search.
+
+**Force Tuning:** Click the gear icon in the toolbar (or select the **Physics** tab) to toggle an expandable tuning panel with three sliders that control the force simulation in real time:
+- **Charge** (-200 to 0) — how strongly nodes repel each other
+- **Distance** (10 to 200) — target link distance between connected nodes
+- **Collide** (0 to 1) — overlap prevention strength
+
+Adjustments take effect immediately. Click **Reset** to restore the default values. Physics settings are persisted to the JSON `options` object and restored when the file is reopened. Clicking the canvas auto-collapses the tuning panel.
+
+**Expansion Settings:** Select the **Expansion** tab to configure how the graph expands from the root node:
+- **Root Node** — dropdown to select which node is the root (the graph centers on this node)
+- **Expand Depth** — BFS depth limit from the root node
+- **Max Visible** — maximum number of visible nodes
+
+Changes to Expand Depth and Max Visible are deferred — they take effect when the file is reopened.
 
 **Theme support:** Graph colors (node fill, edge color, selected/hover highlights) adapt to whichever of the 9 app themes is active.
 
@@ -242,4 +299,4 @@ Use the buttons in the toolbar to switch between available editors.
 
 **Content-based detection:** JSON pages that contain a `"type"` property (`"note-editor"`, `"todo-editor"`, `"link-editor"`, or `"force-graph"`) automatically show the corresponding switch button — even without the special file extension. For the Graph View, the JSON must also contain a `"nodes"` property. This is useful for pages created via MCP or scripting.
 
-**Quick Add:** Click the dropdown arrow (&#9662;) next to the **+** button in the tab bar to create a new page with a specific editor: Script (JS), Script (TS), Grid (JSON), Grid (CSV), Notebook, Todo, Links, Browser, or Browser profile (with Incognito and named profiles).
+**Quick Add:** Click the dropdown arrow (&#9662;) next to the **+** button in the tab bar to create a new page with a specific editor: Script (JS), Script (TS), Grid (JSON), Grid (CSV), Notebook, Todo, Links, Force Graph, Browser, or Browser profile (with Incognito and named profiles).

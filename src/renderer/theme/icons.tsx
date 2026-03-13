@@ -967,6 +967,15 @@ export const CollapseAllIcon = createIcon(16)(
     </>,
 );
 
+export const ExpandAllIcon = createIcon(16)(
+    <>
+        <path d="M6.5 1.5L3 4.5L6.5 7.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+        <path d="M7 4.5H14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+        <path d="M6.5 8.5L3 11.5L6.5 14.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+        <path d="M7 11.5H14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+    </>,
+);
+
 export const CompactViewIcon = createIcon(24)(
     <>
         <path d="M4,7 h16 M4,11 h16 M4,15 h16 M4,19 h16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none" />

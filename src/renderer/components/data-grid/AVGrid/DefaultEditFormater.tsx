@@ -22,6 +22,7 @@ const EditCellTextRoot = styled(TextField)({
         left: 0,
         right: 0,
         bottom: 0,
+        fontSize: "inherit",
     },
 });
 
@@ -77,6 +78,7 @@ const EditOptionsRoot = styled(ComboSelect)({
         left: 0,
         right: 0,
         bottom: 0,
+        fontSize: "inherit",
     },
 })
 

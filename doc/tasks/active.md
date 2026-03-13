@@ -11,12 +11,6 @@ Current work in progress and planned tasks.
 
 | ID | Title | Epic | Notes |
 |----|-------|------|-------|
-| US-172 | Collapse/expand with BFS + options | EPIC-006 | Parse `options` from JSON, BFS showIndex, "+" indicators, Ctrl+Click expand/collapse |
-| US-173 | Search with node dimming | EPIC-006 | Search field, match by title/id, dim non-matching nodes |
-| US-174 | Node tooltips (HTML overlay) | EPIC-006 | HTML div overlay on 500ms hover, show id/title/custom properties |
-| US-175 | Context menu + basic editing | EPIC-006 | Right-click add/delete nodes, Alt+Click link/unlink, serialize to JSON |
-| US-176 | Detail panel (Info, Links, Properties) | EPIC-006 | Collapsible overlay at top-right, AVGrid for links, key-value editor for properties |
-| US-177 | Force tuning panel | EPIC-006 | Collapsible top-left panel with charge/link-distance/collide sliders, real-time adjustment, transient state |
 
 
 ## Completed

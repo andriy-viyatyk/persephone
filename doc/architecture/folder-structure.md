@@ -249,10 +249,15 @@ js-notepad/
 │   │   ├── render-mermaid.ts       # Rendering utilities (shared with Markdown)
 │   │   └── index.ts
 │   ├── graph/              # Force graph viewer (content-view)
-│   │   ├── GraphView.tsx           # Canvas-based graph component
-│   │   ├── GraphViewModel.ts       # ContentViewModel — JSON parsing to GraphData
-│   │   ├── ForceGraphRenderer.ts   # D3 force simulation + canvas rendering
-│   │   ├── types.ts                # GraphNode (id, title, level, shape), GraphLink, GraphData, NodeShape, nodeLabel(), nodeRadius()
+│   │   ├── GraphView.tsx           # Canvas-based graph component (toolbar with search results/physics/expansion tabs, tooltip, detail panel)
+│   │   ├── GraphViewModel.ts       # ContentViewModel — JSON parsing, editing, orchestrates sub-models
+│   │   ├── ForceGraphRenderer.ts   # D3 force simulation + canvas rendering (badges, context menu, Alt+Click, force tuning)
+│   │   ├── GraphVisibilityModel.ts # BFS-based visibility filtering for large graphs
+│   │   ├── GraphDetailPanel.tsx    # Collapsible detail panel overlay (Info tab, Links tab, Properties tab — AVGrid batch editing)
+│   │   ├── GraphTuningSliders.tsx  # Force tuning sliders (charge, distance, collide) — expandable from toolbar
+│   │   ├── GraphExpansionSettings.tsx # Expansion settings panel (root node, expand depth, max visible)
+│   │   ├── GraphTooltip.tsx        # Node tooltip (fixed-position portal, custom properties)
+│   │   ├── types.ts                # GraphNode, GraphLink, GraphData, GraphOptions, NodeShape, nodeLabel(), nodeRadius(), getCustomProperties(), isReservedPropertyKey()
 │   │   ├── constants.ts            # Force simulation parameters
 │   │   └── index.ts
 │   ├── log-view/           # Log viewer (content-view)
