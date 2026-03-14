@@ -19,6 +19,11 @@ export interface GraphLink extends SimulationLinkDatum<GraphNode> {
     target: string | GraphNode;
 }
 
+export interface GraphLegend {
+    levels?: Record<string, string>;  // key: "1"-"5" or "root", value: description
+    shapes?: Record<string, string>;  // key: shape name or "root", value: description
+}
+
 export interface GraphOptions {
     rootNode?: string;     // Root node ID for BFS expansion (renamed from focus)
     expandDepth?: number;  // BFS depth limit from root
@@ -27,6 +32,8 @@ export interface GraphOptions {
     charge?: number;
     linkDistance?: number;
     collide?: number;
+    // Legend descriptions
+    legend?: GraphLegend;
 }
 
 export interface GraphData {

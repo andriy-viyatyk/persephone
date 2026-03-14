@@ -201,6 +201,7 @@ For `.fg.json` files — a force-directed graph viewer. Also activates for any J
 - `options.charge` — repulsion strength between nodes (persisted)
 - `options.linkDistance` — target link distance between connected nodes (persisted)
 - `options.collide` — overlap prevention strength (persisted)
+- `options.legend` — legend descriptions for levels and shapes (persisted by the Legend Panel)
 
 **Detail Panel:**
 
@@ -249,6 +250,8 @@ Adjustments take effect immediately. Click **Reset** to restore the default valu
 - **Max Visible** — maximum number of visible nodes
 
 Changes to Expand Depth and Max Visible are deferred — they take effect when the file is reopened.
+
+**Legend Panel:** A collapsible panel at the bottom-left corner for documenting what node levels and shapes mean. Click to expand; the panel has two tabs — **Level** and **Shape**. Each tab lists levels or shapes present in the graph, with a checkbox to highlight matching nodes and a text input for a free-form description. Descriptions are persisted to the JSON `options.legend` object. The root node (if set) appears in both tabs with a shared description. When checkboxes are checked, matching nodes are highlighted and non-matching nodes are dimmed. Collapsing the panel clears the highlighting but preserves checkbox state.
 
 **Theme support:** Graph colors (node fill, edge color, selected/hover highlights) adapt to whichever of the 9 app themes is active.
 

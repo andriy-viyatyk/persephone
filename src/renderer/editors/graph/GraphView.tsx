@@ -10,6 +10,7 @@ import { GraphTooltip } from "./GraphTooltip";
 import { GraphDetailPanel } from "./GraphDetailPanel";
 import { GraphTuningSliders } from "./GraphTuningSliders";
 import { GraphExpansionSettings } from "./GraphExpansionSettings";
+import { GraphLegendPanel } from "./GraphLegendPanel";
 import { highlightText } from "../../components/basic/useHighlightedText";
 import { SettingsIcon, RefreshIcon, ExpandAllIcon } from "../../theme/icons";
 import { showConfirmationDialog } from "../../ui/dialogs/ConfirmationDialog";
@@ -241,6 +242,116 @@ const GraphViewRoot = styled.div({
         color: color.graph.labelText,
         opacity: 0.5,
         fontSize: 12,
+    },
+    // Legend panel (bottom-left)
+    "& .graph-legend": {
+        position: "absolute",
+        bottom: 8,
+        left: 8,
+        width: 260,
+        display: "flex",
+        flexDirection: "column" as const,
+        backgroundColor: color.graph.background,
+        border: `1px solid ${color.border.default}`,
+        borderRadius: 4,
+        zIndex: 1,
+        opacity: 0.5,
+        transition: "opacity 0.15s",
+        "&:hover, &.expanded, &:focus-within": {
+            opacity: 1,
+        },
+        "&.expanded": {
+            borderColor: color.graph.nodeHighlight,
+        },
+    },
+    "& .legend-header": {
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        padding: "3px 8px",
+        cursor: "pointer",
+        userSelect: "none" as const,
+    },
+    "& .legend-title": {
+        fontSize: 11,
+        fontWeight: 600,
+        color: color.graph.labelText,
+    },
+    "& .legend-chevron": {
+        fontSize: 8,
+        color: color.graph.labelText,
+        opacity: 0.6,
+    },
+    "& .legend-tabs": {
+        display: "flex",
+        borderBottom: `1px solid ${color.border.default}`,
+        backgroundColor: color.background.dark,
+    },
+    "& .legend-tab": {
+        padding: "3px 8px",
+        fontSize: 11,
+        cursor: "pointer",
+        color: color.graph.labelText,
+        backgroundColor: "transparent",
+        border: "none",
+        borderBottomWidth: 2,
+        borderBottomStyle: "solid" as const,
+        borderBottomColor: "transparent",
+        "&.active": {
+            borderBottomColor: color.graph.nodeHighlight,
+        },
+        "&:hover:not(.active)": {
+            borderBottomColor: color.border.default,
+        },
+    },
+    "& .legend-content": {
+        maxHeight: 250,
+        overflowY: "auto" as const,
+        padding: "2px 0",
+    },
+    "& .legend-row": {
+        display: "flex",
+        alignItems: "center",
+        gap: 4,
+        padding: "2px 8px",
+        fontSize: 11,
+    },
+    "& .legend-checkbox": {
+        margin: 0,
+        flexShrink: 0,
+        cursor: "pointer",
+    },
+    "& .legend-icon": {
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        flexShrink: 0,
+        width: 16,
+        height: 16,
+        color: color.graph.labelText,
+    },
+    "& .legend-label": {
+        fontSize: 11,
+        color: color.graph.labelText,
+        flexShrink: 0,
+        minWidth: 50,
+    },
+    "& .legend-description": {
+        flex: 1,
+        minWidth: 0,
+        padding: "1px 4px",
+        fontSize: 11,
+        border: `1px solid ${color.border.default}`,
+        borderRadius: 3,
+        backgroundColor: color.graph.background,
+        color: color.graph.labelText,
+        outline: "none",
+        "&:focus": {
+            borderColor: color.graph.nodeHighlight,
+        },
+        "&::placeholder": {
+            color: color.border.default,
+        },
     },
 });
 
@@ -578,6 +689,7 @@ function GraphView({ model }: GraphViewProps) {
                         containerRef={containerRef}
                         expandRequest={expandRequest}
                     />
+                    <GraphLegendPanel vm={vm} />
                 </>
             )}
             {Boolean(model.editorFooterRefLast) &&

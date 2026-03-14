@@ -95,6 +95,7 @@ Sample data file: `D:\js-notepad-notes\temp\miserables.fg.json`
 | US-182 | Graph settings persistence, expansion UI, root node | Done |
 | US-180 | Graph editor — polish & enhancements | Done |
 | US-183 | Graph editor — adjustments & fixes | Done |
+| US-184 | Graph editor — Legend panel | Done |
 
 ## Phase 2 — Planned Scope
 

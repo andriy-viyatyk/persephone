@@ -4,6 +4,7 @@ All completed tasks, newest first.
 
 | ID | Title | Epic | Notes |
 |----|-------|------|-------|
+| US-184 | Graph editor — Legend panel | EPIC-006 | Collapsible bottom-left panel with Level/Shape tabs. Checkbox highlighting (3-layer dimming merge). Free-text description inputs persisted to `options.legend`. Root node shared description across tabs. SVG shape/level icons. `GraphLegendPanel.tsx` component. `legendHighlight` layer in `ForceGraphRenderer`. |
 | US-183 | Graph editor — adjustments & fixes | EPIC-006 | Quick-add menu "Force Graph" item. Custom `.fg.json` file icon. Status bar node count (portal). Empty page hint label. Canvas focus fix for popup menu dismissal. MCP documentation for graph editor format. |
 | US-180 | Graph editor — polish & enhancements | EPIC-006 | Ctrl+Click badge deep expand (BFS through hidden subtree, visible nodes as barriers). "Expand All" toolbar button with confirmation dialog for >1000 nodes. `expandDeep()`/`expandAll()` on `GraphVisibilityModel`. `ExpandAllIcon` added to icons.tsx. |
 | US-182 | Graph settings persistence, expansion UI, root node | EPIC-006 | Physics settings persisted to JSON options (`charge`, `linkDistance`, `collide`). `options.focus` → `options.rootNode` rename. Toolbar "Settings" → "Physics", new "Expansion" tab (ComboSelect root node, expandDepth, maxVisible — deferred apply on reopen). Root node visual: compass star shape, level-1 size, always-visible label. "Set as Root" context menu. `GraphExpansionSettings.tsx` component. |

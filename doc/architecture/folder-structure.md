@@ -256,8 +256,9 @@ js-notepad/
 │   │   ├── GraphDetailPanel.tsx    # Collapsible detail panel overlay (Info tab, Links tab, Properties tab — AVGrid batch editing)
 │   │   ├── GraphTuningSliders.tsx  # Force tuning sliders (charge, distance, collide) — expandable from toolbar
 │   │   ├── GraphExpansionSettings.tsx # Expansion settings panel (root node, expand depth, max visible)
+│   │   ├── GraphLegendPanel.tsx    # Collapsible legend panel (bottom-left, Level/Shape tabs, checkbox highlighting, description persistence)
 │   │   ├── GraphTooltip.tsx        # Node tooltip (fixed-position portal, custom properties)
-│   │   ├── types.ts                # GraphNode, GraphLink, GraphData, GraphOptions, NodeShape, nodeLabel(), nodeRadius(), getCustomProperties(), isReservedPropertyKey()
+│   │   ├── types.ts                # GraphNode, GraphLink, GraphLegend, GraphData, GraphOptions, NodeShape, nodeLabel(), nodeRadius(), getCustomProperties(), isReservedPropertyKey()
 │   │   ├── constants.ts            # Force simulation parameters
 │   │   └── index.ts
 │   ├── log-view/           # Log viewer (content-view)
@@ -418,7 +419,6 @@ js-notepad/
 ├── main/                   # Main process handlers
 │   ├── controller.ts       # IPC handler registration
 │   ├── dialog-handlers.ts  # File dialog handlers
-│   ├── registry-handler.ts # Default app registration
 │   ├── renderer-events.ts  # Events sent TO renderer
 │   └── window-handlers.ts  # Window management handlers
 └── renderer/               # Renderer process API

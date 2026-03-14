@@ -1,6 +1,6 @@
 import { ContentViewModel } from "../base/ContentViewModel";
 import { IContentHost } from "../base/IContentHost";
-import { GraphData, GraphLink, GraphNode, GraphOptions, SYS_PREFIX, linkIds, nodeLabel, getCustomProperties } from "./types";
+import { GraphData, GraphLegend, GraphLink, GraphNode, GraphOptions, NodeShape, SYS_PREFIX, linkIds, nodeLabel, getCustomProperties } from "./types";
 import { ForceGraphRenderer, ForceParams } from "./ForceGraphRenderer";
 import { GraphVisibilityModel } from "./GraphVisibilityModel";
 import { showAppPopupMenu } from "../../ui/dialogs/poppers/showPopupMenu";
@@ -247,6 +247,109 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
     /** Set hover highlight on a node from external source (e.g. grid focus). Empty to clear. */
     setExternalHover(id: string): void {
         this.renderer.setExternalHover(id);
+    }
+
+    /** Highlight a set of node IDs from legend panel. Null to clear. */
+    setLegendHighlight(ids: Set<string> | null): void {
+        this.renderer.setLegendHighlight(ids);
+    }
+
+    // =========================================================================
+    // Legend
+    // =========================================================================
+
+    /** Get legend descriptions from options. */
+    getLegendDescriptions(): GraphLegend {
+        return this.sourceData?.options?.legend ?? {};
+    }
+
+    /** Set a single legend description. */
+    setLegendDescription(tab: "levels" | "shapes", key: string, value: string): void {
+        if (!this.sourceData) return;
+        if (!this.sourceData.options) this.sourceData.options = {};
+        if (!this.sourceData.options.legend) this.sourceData.options.legend = {};
+        const legend = this.sourceData.options.legend;
+
+        // Root description is canonical in levels.root — sync to both
+        if (key === "root") {
+            if (!legend.levels) legend.levels = {};
+            if (!legend.shapes) legend.shapes = {};
+            if (value) {
+                legend.levels.root = value;
+                legend.shapes.root = value;
+            } else {
+                delete legend.levels.root;
+                delete legend.shapes.root;
+            }
+        } else {
+            if (!legend[tab]) legend[tab] = {};
+            if (value) {
+                legend[tab]![key] = value;
+            } else {
+                delete legend[tab]![key];
+            }
+        }
+
+        // Cleanup empty objects
+        if (legend.levels && Object.keys(legend.levels).length === 0) delete legend.levels;
+        if (legend.shapes && Object.keys(legend.shapes).length === 0) delete legend.shapes;
+        if (!legend.levels && !legend.shapes) delete this.sourceData.options.legend;
+
+        this.serializeToHost();
+    }
+
+    /** Get node IDs matching a filter (for legend highlighting). Operates on visible nodes. */
+    getNodeIdsByLegendFilter(filter: { levels?: Set<number>; shapes?: Set<string>; includeRoot?: boolean }): Set<string> {
+        const result = new Set<string>();
+        const visibleNodes = this.renderer.getNodes();
+        const rootId = this.sourceData?.options?.rootNode ?? "";
+
+        for (const node of visibleNodes) {
+            const isRoot = rootId !== "" && node.id === rootId;
+
+            if (filter.includeRoot && isRoot) {
+                result.add(node.id);
+                continue;
+            }
+
+            if (filter.levels) {
+                const level = typeof node.level === "number" && node.level >= 1 && node.level <= 5 ? node.level : 5;
+                if (filter.levels.has(level)) {
+                    result.add(node.id);
+                    continue;
+                }
+            }
+
+            if (filter.shapes) {
+                const shape = isRoot ? "compass" : (node.shape || "circle");
+                if (filter.shapes.has(shape)) {
+                    result.add(node.id);
+                }
+            }
+        }
+
+        return result;
+    }
+
+    /** Get set of levels and shapes present in visible nodes. */
+    getPresentLevelsAndShapes(): { levels: Set<number>; shapes: Set<NodeShape>; hasRoot: boolean } {
+        const levels = new Set<number>();
+        const shapes = new Set<NodeShape>();
+        const visibleNodes = this.renderer.getNodes();
+        const rootId = this.sourceData?.options?.rootNode ?? "";
+        let hasRoot = false;
+
+        for (const node of visibleNodes) {
+            if (rootId !== "" && node.id === rootId) {
+                hasRoot = true;
+                continue; // root has its own entry, don't count its level/shape
+            }
+            const level = typeof node.level === "number" && node.level >= 1 && node.level <= 5 ? node.level : 5;
+            levels.add(level);
+            shapes.add(node.shape || "circle");
+        }
+
+        return { levels, shapes, hasRoot };
     }
 
     // =========================================================================

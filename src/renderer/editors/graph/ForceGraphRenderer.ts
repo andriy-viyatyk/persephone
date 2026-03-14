@@ -98,6 +98,7 @@ export class ForceGraphRenderer {
     private _rootNodeId = "";
     private searchMatches: Set<string> | null = null;
     private highlightSet: Set<string> | null = null;
+    private legendHighlight: Set<string> | null = null;
     private externalHoverId = "";
     private _lastClientX = 0;
     private _lastClientY = 0;
@@ -213,6 +214,12 @@ export class ForceGraphRenderer {
     /** Set of node IDs to highlight (e.g. links tab). Null = no highlight active. */
     setHighlightSet(ids: Set<string> | null): void {
         this.highlightSet = ids;
+        this.renderData();
+    }
+
+    /** Set of node IDs to highlight from the legend panel. Null = no legend highlight active. */
+    setLegendHighlight(ids: Set<string> | null): void {
+        this.legendHighlight = ids;
         this.renderData();
     }
 
@@ -761,12 +768,16 @@ export class ForceGraphRenderer {
         ctx.save();
         ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
-        const { transform, graphData, activeId, activeChild, hoveredId, hoveredChild, searchMatches, highlightSet } = this;
+        const { transform, graphData, activeId, activeChild, hoveredId, hoveredChild, searchMatches, highlightSet, legendHighlight } = this;
         const activeState: ActiveState = { activeId, activeChild, hoveredId, hoveredChild };
-        // Merge dimming: if both active, intersect; if one active, use that one
-        const dimSet = searchMatches && highlightSet
-            ? new Set([...searchMatches].filter((id) => highlightSet.has(id)))
-            : searchMatches ?? highlightSet;
+        // Merge all active highlight layers (intersection when multiple active)
+        const layers = [searchMatches, highlightSet, legendHighlight].filter(Boolean) as Set<string>[];
+        let dimSet: Set<string> | null = null;
+        if (layers.length === 1) {
+            dimSet = layers[0];
+        } else if (layers.length > 1) {
+            dimSet = new Set([...layers[0]].filter((id) => layers.every((s) => s.has(id))));
+        }
         const dimming = dimSet !== null;
 
         ctx.translate(transform.x, transform.y);

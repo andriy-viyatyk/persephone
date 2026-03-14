@@ -8,7 +8,9 @@ Release notes and changelog for js-notepad.
 
 ## Version 1.0.22 (Upcoming)
 
-*No changes yet.*
+### New Features
+
+- **Graph View Legend Panel** — A collapsible panel at the bottom-left corner of the graph editor for documenting node levels and shapes. Expand to see two tabs (Level and Shape), each listing the levels or shapes present in the graph. Check boxes to highlight matching nodes (others are dimmed); type free-form descriptions that persist to the JSON `options.legend` object. The root node appears in both tabs with a shared description. Legend highlighting integrates with existing search and link highlighting (intersection when multiple are active).
 
 ---
 
