@@ -55,17 +55,26 @@ export function createScriptContext(page?: PageModel, consoleLogs?: ConsoleLogEn
             : createUnlinkedLibraryRequire(),
     };
 
-    // Lazy `ui` global — Log View page created on first access
+    // Lazy `ui` global — Log View page created on first access.
+    // Wrapped in a callable Proxy so `await ui()` yields to the event loop,
+    // preventing long-running scripts from freezing the UI.
     const isMcp = !!consoleLogs;
     let uiFacade: UiFacade | undefined;
+    let callableUi: unknown;
     Object.defineProperty(customContext, "ui", {
         get: () => {
             if (!uiFacade) {
                 uiFacade = initializeUiFacade(page, releaseList, outputFlags, isMcp);
                 // Install console forwarding now that LogViewModel exists
                 installConsoleForwarding(uiFacade, customContext, consoleLogs);
+                // Create callable proxy: await ui() yields, ui.log() etc. delegate to facade
+                const yieldFn = () => new Promise<void>((r) => setTimeout(r, 0));
+                callableUi = new Proxy(yieldFn, {
+                    get: (_target, prop, receiver) => Reflect.get(uiFacade!, prop, receiver),
+                    set: (_target, prop, value, receiver) => Reflect.set(uiFacade!, prop, value, receiver),
+                });
             }
-            return uiFacade;
+            return callableUi;
         },
         enumerable: true,
         configurable: false,

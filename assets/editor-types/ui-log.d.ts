@@ -617,6 +617,18 @@ export interface IUiShow {
  * }
  */
 export interface IUiLog {
+    /**
+     * Yield to the event loop, allowing the UI to update.
+     * Call `await ui()` periodically in long-running loops to prevent freezing.
+     *
+     * @example
+     * for (const item of largeArray) {
+     *     // ... heavy processing ...
+     *     await ui(); // let UI breathe
+     * }
+     */
+    (): Promise<void>;
+
     /** Log a message (default level). Returns a builder for optional styling. */
     log(message: IStyledText): IStyledLogBuilder;
     /** Log an info message. Returns a builder for optional styling. */
