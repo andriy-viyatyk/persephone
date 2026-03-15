@@ -7,7 +7,10 @@ import { GraphDataModel } from "./GraphDataModel";
 import { GraphSearchModel } from "./GraphSearchModel";
 import { GraphGroupModel } from "./GraphGroupModel";
 import { showAppPopupMenu } from "../../ui/dialogs/poppers/showPopupMenu";
-import { buildNodeContextMenu, buildEmptyAreaContextMenu, ContextMenuActions } from "./GraphContextMenu";
+import { buildNodeContextMenu, buildEmptyAreaContextMenu, buildGroupNodeContextMenu, ContextMenuActions } from "./GraphContextMenu";
+import { showInputDialog } from "../../ui/dialogs/InputDialog";
+import { showConfirmationDialog } from "../../ui/dialogs/ConfirmationDialog";
+import { alertsBarModel } from "../../ui/dialogs/alerts/AlertsBar";
 
 // Re-export search types for consumers (GraphView.tsx imports from here)
 export type { SearchInfo, SearchPropertyMatch, SearchResult } from "./GraphSearchModel";
@@ -153,6 +156,14 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
         this.serializeToHost();
     }
 
+    /** Clear root node option if the given node was the root. */
+    private clearRootIfDeleted(nodeId: string): void {
+        if (this.dataModel.sourceData?.options?.rootNode === nodeId) {
+            delete this.dataModel.sourceData.options.rootNode;
+            this.renderer.rootNodeId = "";
+        }
+    }
+
     // =========================================================================
     // Expansion options
     // =========================================================================
@@ -290,11 +301,31 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
         // Status hint: Alt+Click to link/unlink (only for single selection)
         const selectedId = this.renderer.selectedId;
         if (selectedId && this.renderer.selectedIds.size === 1 && nodeId !== selectedId && this.dataModel.sourceData) {
-            const linked = this.dataModel.linkExists(selectedId, nodeId);
-            const label = nodeLabel(this.dataModel.sourceData.nodes.find((n) => n.id === selectedId) ?? { id: selectedId });
-            this.updateStatusHint(linked
-                ? `Alt+Click to unlink from "${label}"`
-                : `Alt+Click to link with "${label}"`);
+            const selectedNode = this.dataModel.sourceData.nodes.find((n) => n.id === selectedId);
+            const hoveredNode = this.dataModel.sourceData.nodes.find((n) => n.id === nodeId);
+
+            if (selectedNode?.isGroup && hoveredNode?.isGroup) {
+                // Both groups → no hint
+                this.updateStatusHint("");
+            } else if (selectedNode?.isGroup && !hoveredNode?.isGroup) {
+                const isMember = this.groupModel.getGroupOf(nodeId) === selectedId;
+                const label = nodeLabel(selectedNode);
+                this.updateStatusHint(isMember
+                    ? `Alt+Click to remove from "${label}"`
+                    : `Alt+Click to add to "${label}"`);
+            } else if (!selectedNode?.isGroup && hoveredNode?.isGroup) {
+                const isMember = this.groupModel.getGroupOf(selectedId) === nodeId;
+                const groupLabel = nodeLabel(hoveredNode);
+                this.updateStatusHint(isMember
+                    ? `Alt+Click to remove from "${groupLabel}"`
+                    : `Alt+Click to add to "${groupLabel}"`);
+            } else {
+                const linked = this.dataModel.linkExists(selectedId, nodeId);
+                const label = nodeLabel(selectedNode ?? { id: selectedId });
+                this.updateStatusHint(linked
+                    ? `Alt+Click to unlink from "${label}"`
+                    : `Alt+Click to link with "${label}"`);
+            }
         } else {
             this.updateStatusHint("");
         }
@@ -428,6 +459,11 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
             deleteLink: (s, t) => this.deleteLink(s, t),
             setRootNode: (id) => this.setRootNode(id),
             collapseNode: (id) => this.collapseNode(id),
+            editGroupTitle: (id) => this.editGroupTitle(id),
+            ungroupNode: (id) => this.ungroupNode(id),
+            deleteGroup: (id) => this.deleteGroupNode(id),
+            groupSelected: () => this.groupSelectedNodes(),
+            removeFromGroup: (id) => this.removeFromGroup(id),
         };
     }
 
@@ -438,11 +474,33 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
             const worldPos = this.renderer.screenToWorld(clientX, clientY);
             const items = buildEmptyAreaContextMenu(worldPos.x, worldPos.y, this.contextMenuActions);
             showAppPopupMenu(clientX, clientY, items);
+            return;
+        }
+
+        // Only replace selection if right-clicked node is not already selected
+        if (!this.renderer.selectedIds.has(nodeId)) {
+            this.renderer.selectNode(nodeId);
+        }
+
+        const clickedNode = this.dataModel.sourceData?.nodes.find((n) => n.id === nodeId);
+
+        if (clickedNode?.isGroup) {
+            // Group node gets its own context menu
+            const items = buildGroupNodeContextMenu(
+                nodeId,
+                this.visibilityModel.active,
+                this.contextMenuActions,
+            );
+            showAppPopupMenu(clientX, clientY, items);
         } else {
-            // Only replace selection if right-clicked node is not already selected
-            if (!this.renderer.selectedIds.has(nodeId)) {
-                this.renderer.selectNode(nodeId);
-            }
+            // Regular node context menu with optional group actions
+            const isInGroup = this.groupModel.getGroupOf(nodeId);
+            const nodes = this.dataModel.sourceData?.nodes ?? [];
+            const nonGroupCount = [...this.renderer.selectedIds].filter((id) => {
+                const n = nodes.find((node) => node.id === id);
+                return n && !n.isGroup;
+            }).length;
+
             const items = buildNodeContextMenu(
                 nodeId,
                 this.dataModel.getNeighborIdsFromSource(nodeId),
@@ -450,6 +508,8 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
                 nodeId === this.rootNodeId,
                 this.visibilityModel.active,
                 this.contextMenuActions,
+                isInGroup,
+                nonGroupCount,
             );
             showAppPopupMenu(clientX, clientY, items);
         }
@@ -460,12 +520,42 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
     // =========================================================================
 
     private handleAltClick(nodeId: string): void {
-        // Alt+Click link toggle only works with single selection
         if (this.renderer.selectedIds.size !== 1) return;
         const selectedId = this.renderer.selectedId;
         if (!selectedId || selectedId === nodeId) return;
         if (!this.dataModel.sourceData) return;
 
+        const selectedNode = this.dataModel.sourceData.nodes.find((n) => n.id === selectedId);
+        const clickedNode = this.dataModel.sourceData.nodes.find((n) => n.id === nodeId);
+        if (!selectedNode || !clickedNode) return;
+
+        const selectedIsGroup = !!selectedNode.isGroup;
+        const clickedIsGroup = !!clickedNode.isGroup;
+
+        // Both groups → no-op
+        if (selectedIsGroup && clickedIsGroup) return;
+
+        // One is group, other is regular → toggle membership
+        if (selectedIsGroup || clickedIsGroup) {
+            const groupId = selectedIsGroup ? selectedId : nodeId;
+            const memberId = selectedIsGroup ? nodeId : selectedId;
+            const isMember = this.groupModel.getGroupOf(memberId) === groupId;
+
+            if (isMember) {
+                this.dataModel.deleteLink(groupId, memberId);
+            } else {
+                const oldGroup = this.groupModel.getGroupOf(memberId);
+                if (oldGroup) {
+                    this.dataModel.deleteLink(oldGroup, memberId);
+                }
+                this.dataModel.addLink(groupId, memberId);
+            }
+            this.rebuildAndRender();
+            this.serializeToHost();
+            return;
+        }
+
+        // Neither is group → existing link toggle
         const exists = this.dataModel.linkExists(selectedId, nodeId);
         if (exists) {
             this.deleteLink(selectedId, nodeId);
@@ -521,6 +611,155 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
     }
 
     // =========================================================================
+    // Group operations
+    // =========================================================================
+
+    async groupSelectedNodes(): Promise<void> {
+        if (!this.dataModel.sourceData) return;
+
+        const selectedIds = [...this.renderer.selectedIds];
+        const nodes = this.dataModel.sourceData.nodes;
+
+        const groupIds: string[] = [];
+        const regularIds: string[] = [];
+        for (const id of selectedIds) {
+            const node = nodes.find((n) => n.id === id);
+            if (node?.isGroup) groupIds.push(id);
+            else if (node) regularIds.push(id);
+        }
+
+        // Case C: 2+ group nodes
+        if (groupIds.length >= 2) {
+            alertsBarModel.addAlert("Cannot group: more than one group node is selected.", "warning");
+            return;
+        }
+
+        // Case B: Exactly 1 group + regular nodes → add to existing group
+        if (groupIds.length === 1) {
+            const groupId = groupIds[0];
+            const groupNode = nodes.find((n) => n.id === groupId);
+            const groupTitle = nodeLabel(groupNode ?? { id: groupId });
+            const result = await showConfirmationDialog({
+                title: "Add to Group",
+                message: `Add ${regularIds.length} node(s) to group "${groupTitle}"?`,
+            });
+            if (result !== "Yes") return;
+
+            for (const id of regularIds) {
+                const oldGroup = this.groupModel.getGroupOf(id);
+                if (oldGroup) this.dataModel.deleteLink(oldGroup, id);
+                this.dataModel.addLink(groupId, id);
+            }
+            this.rebuildAndRender();
+            this.serializeToHost();
+            return;
+        }
+
+        // Case A: All regular nodes (≥ 2)
+        if (regularIds.length < 2) return;
+
+        // Show dialog BEFORE mutating data — cancel means no changes
+        const result = await showInputDialog({ title: "Group Title", message: "Enter a title for the group:", value: "" });
+        if (result?.button !== "OK") return;
+
+        // Remove from old groups
+        for (const id of regularIds) {
+            const oldGroup = this.groupModel.getGroupOf(id);
+            if (oldGroup) this.dataModel.deleteLink(oldGroup, id);
+        }
+
+        const groupId = this.dataModel.generateGroupId();
+        this.dataModel.sourceData.nodes.push({ id: groupId, isGroup: true });
+        for (const id of regularIds) {
+            this.dataModel.sourceData.links.push({ source: groupId, target: id });
+        }
+
+        if (result.value) {
+            this.dataModel.updateNodeProps(groupId, { title: result.value });
+        }
+
+        // Place new group node at centroid of selected members
+        const renderedNodes = this.renderer.getNodes();
+        let cx = 0, cy = 0, count = 0;
+        for (const id of regularIds) {
+            const rn = renderedNodes.find((n) => n.id === id);
+            if (rn?.x != null && rn?.y != null) {
+                cx += rn.x;
+                cy += rn.y;
+                count++;
+            }
+        }
+        const posHint = count > 0
+            ? new Map([[groupId, { x: cx / count, y: cy / count }]])
+            : undefined;
+
+        this.rebuildAndRender(undefined, posHint, [groupId]);
+        this.serializeToHost();
+        this.renderer.selectNode(groupId);
+    }
+
+    async editGroupTitle(groupId: string): Promise<void> {
+        if (!this.dataModel.sourceData) return;
+        const currentTitle = this.dataModel.sourceData.nodes.find((n) => n.id === groupId)?.title ?? "";
+        const result = await showInputDialog({ title: "Group Title", message: "Enter a title for the group:", value: currentTitle });
+        if (result?.button === "OK") {
+            this.updateNodeProps(groupId, { title: result.value });
+        }
+    }
+
+    async ungroupNode(groupId: string): Promise<void> {
+        if (!this.dataModel.sourceData) return;
+        const node = this.dataModel.sourceData.nodes.find((n) => n.id === groupId);
+        if (!node?.isGroup) return;
+
+        const count = this.groupModel.getMembers(groupId).size;
+        const label = nodeLabel(node);
+        const result = await showConfirmationDialog({
+            title: "Ungroup",
+            message: `Ungroup "${label}"? ${count} member node(s) will be ungrouped.`,
+        });
+        if (result !== "Yes") return;
+
+        this.dataModel.removeAllNodeLinks(groupId);
+        this.dataModel.sourceData.nodes = this.dataModel.sourceData.nodes.filter((n) => n.id !== groupId);
+        this.renderer.selectNode("");
+        this.rebuildAndRender();
+        this.serializeToHost();
+    }
+
+    async deleteGroupNode(groupId: string): Promise<void> {
+        if (!this.dataModel.sourceData) return;
+        const node = this.dataModel.sourceData.nodes.find((n) => n.id === groupId);
+        if (!node?.isGroup) return;
+
+        const memberIds = [...this.groupModel.getMembers(groupId)];
+        const label = nodeLabel(node);
+        const result = await showConfirmationDialog({
+            title: "Delete Group",
+            message: `Delete group "${label}" and its ${memberIds.length} member node(s)?`,
+        });
+        if (result !== "Yes") return;
+
+        for (const memberId of memberIds) {
+            this.dataModel.deleteNode(memberId);
+            this.clearRootIfDeleted(memberId);
+        }
+        this.dataModel.deleteNode(groupId);
+        this.clearRootIfDeleted(groupId);
+        this.renderer.selectNode("");
+        this.rebuildAndRender();
+        this.serializeToHost();
+    }
+
+    removeFromGroup(nodeId: string): void {
+        const groupId = this.groupModel.getGroupOf(nodeId);
+        if (!groupId) return;
+        this.dataModel.deleteLink(groupId, nodeId);
+        this.rebuildAndRender();
+        this.serializeToHost();
+    }
+
+    // =========================================================================
     // Editing operations (delegate to dataModel → rebuild → serialize)
     // =========================================================================
 
@@ -566,6 +805,7 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
 
     deleteNode(nodeId: string): void {
         this.dataModel.deleteNode(nodeId);
+        this.clearRootIfDeleted(nodeId);
 
         // Clear selection if deleted node was selected (handles both single and multi)
         if (this.renderer.selectedIds.has(nodeId)) {

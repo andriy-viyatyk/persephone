@@ -11,6 +11,11 @@ export interface ContextMenuActions {
     deleteLink: (sourceId: string, targetId: string) => void;
     setRootNode: (nodeId: string) => void;
     collapseNode: (nodeId: string) => void;
+    editGroupTitle: (groupId: string) => void;
+    ungroupNode: (groupId: string) => void;
+    deleteGroup: (groupId: string) => void;
+    groupSelected: () => void;
+    removeFromGroup: (nodeId: string) => void;
 }
 
 // =============================================================================
@@ -25,6 +30,8 @@ export function buildNodeContextMenu(
     isRoot: boolean,
     hasVisibilityFilter: boolean,
     actions: ContextMenuActions,
+    isInGroup?: string,
+    multiSelectedNonGroupCount?: number,
 ): MenuItem[] {
     const items: MenuItem[] = [
         { label: "Add Child", onClick: () => actions.addChild(nodeId) },
@@ -45,7 +52,28 @@ export function buildNodeContextMenu(
         });
     }
 
+    if (multiSelectedNonGroupCount !== undefined && multiSelectedNonGroupCount >= 2) {
+        items.push({ label: "Group Selected", onClick: () => actions.groupSelected(), startGroup: true });
+    }
+    if (isInGroup) {
+        items.push({ label: "Remove from Group", onClick: () => actions.removeFromGroup(nodeId) });
+    }
+
     return items;
+}
+
+/** Build context menu for right-click on a group node. */
+export function buildGroupNodeContextMenu(
+    groupId: string,
+    hasVisibilityFilter: boolean,
+    actions: ContextMenuActions,
+): MenuItem[] {
+    return [
+        { label: "Edit Title", onClick: () => actions.editGroupTitle(groupId) },
+        { label: "Collapse", onClick: () => actions.collapseNode(groupId), disabled: !hasVisibilityFilter },
+        { label: "Ungroup", onClick: () => actions.ungroupNode(groupId), startGroup: true },
+        { label: "Delete Group", onClick: () => actions.deleteGroup(groupId) },
+    ];
 }
 
 /** Build context menu for right-click on empty area. */

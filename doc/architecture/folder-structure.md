@@ -255,7 +255,7 @@ js-notepad/
 │   │   ├── GraphSearchModel.ts    # Search query matching + result computation
 │   │   ├── GraphGroupModel.ts    # Group membership analysis + link pre-processing (hide membership, split cross-group, dedup)
 │   │   ├── GraphHighlightModel.ts # Highlight layers (search, legend, links tab) + selection/hover state + color helpers
-│   │   ├── GraphContextMenu.ts    # Context menu item builders (node menu, empty area menu)
+│   │   ├── GraphContextMenu.ts    # Context menu item builders (node menu, group node menu, empty area menu)
 │   │   ├── ForceGraphRenderer.ts   # D3 force simulation + canvas rendering
 │   │   ├── GraphVisibilityModel.ts # BFS-based visibility filtering for large graphs
 │   │   ├── GraphDetailPanel.tsx    # Collapsible detail panel overlay (Info tab, Links tab, Properties tab — AVGrid batch editing)

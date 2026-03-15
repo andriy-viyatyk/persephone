@@ -6,7 +6,6 @@ Current work in progress and planned tasks.
 
 | ID | Title | Epic | Notes |
 |----|-------|------|-------|
-| US-190 | Group management UI | EPIC-006 | Group/ungroup actions, Alt+Click membership, title editing |
 
 ## Planned (Next)
 

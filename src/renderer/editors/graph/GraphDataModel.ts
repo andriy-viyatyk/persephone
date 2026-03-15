@@ -344,6 +344,22 @@ export class GraphDataModel {
         return `node-${i}`;
     }
 
+    generateGroupId(): string {
+        if (!this.sourceData) return "group-1";
+        const existingIds = new Set(this.sourceData.nodes.map((n) => n.id));
+        let i = 1;
+        while (existingIds.has(`group-${i}`)) i++;
+        return `group-${i}`;
+    }
+
+    removeAllNodeLinks(nodeId: string): void {
+        if (!this.sourceData) return;
+        this.sourceData.links = this.sourceData.links.filter((link) => {
+            const { source, target } = linkIds(link);
+            return source !== nodeId && target !== nodeId;
+        });
+    }
+
     linkExists(aId: string, bId: string): boolean {
         if (!this.sourceData) return false;
         return this.sourceData.links.some((link) => {

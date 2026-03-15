@@ -102,7 +102,7 @@ Sample data file: `D:\js-notepad-notes\temp\miserables.fg.json`
 | US-187 | Graph editor — Node multiselection | Done |
 | US-188 | Group node data model & rendering | Done |
 | US-189 | Group link pre-processing | Done |
-| US-190 | Group management UI | Planned |
+| US-190 | Group management UI | Done |
 
 ## Phase 3 — Node Grouping
 
@@ -113,7 +113,7 @@ Allow users (or scripts) to group nodes so that a set of nodes is visually repre
 ### Concept
 
 - **Group Node** — A special node with `isGroup: true`. It represents a set of member nodes.
-- **Membership** — Defined by links from the group node to its members (group→member direction). A node can belong to at most **one** group.
+- **Membership** — Defined by any link between a group node and a non-group node (either direction). A node can belong to at most **one** group.
 - **Link Pre-processing** — Before visualization, the graph is transformed:
   1. **Intra-group links** (both endpoints in same group): shown as-is
   2. **Cross-group links** (one endpoint inside, other outside): split into two links — `node→groupNode` + `groupNode→outsideNode`

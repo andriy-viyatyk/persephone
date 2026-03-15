@@ -20,10 +20,14 @@ Release notes and changelog for js-notepad.
 - **Graph View Special Node Coloring** — Root nodes and group nodes now appear in violet, making them visually distinct from regular nodes. Selection (orange) and hover (green) highlights still override the violet color.
 - **Graph View Tooltip Badges** — Root nodes show a "ROOT NODE" badge and group nodes show a "GROUP" badge as the first line in their tooltip, above the title.
 
+- **Graph View Group Management** — Full UI for creating, editing, and removing groups. Multi-select 2+ regular nodes → right-click → "Group Selected" to create a new group (prompts for title). Select one group plus regular nodes → "Group Selected" to add nodes to the existing group. Right-click a group for "Ungroup" (dissolve group, keep members), "Delete Group" (remove group and all members), or "Edit Title" (rename). Right-click a member node for "Remove from Group". `Alt+Click` a regular node while a group is selected to toggle membership. Each node can belong to only one group — reassigning silently removes from the old group. Group membership is direction-agnostic (links in either direction count).
+
 ### Improvements
 
 - **Graph View UI polish** — Node labels now scale font size by level (larger nodes get bigger text). Selection highlight reworked: selected node label is orange, hovered node and its children get green labels. Tooltips no longer appear during node drag. Edit panel tabs reordered to Info → Properties → Links. Links tab now shows all columns (ID, Title, Level, Shape + custom properties) with auto-detected widths and sticky ID column.
 - **Graph View toolbar and panel UX** — Collapsed search toolbar stays visible with a green border when a search is active. Clicking on empty canvas collapses expanded panels without changing selection. Legend panel chevron turns green when expanded (replaces the previous green border indicator).
+- **Graph View group membership detection** — Group membership now works with links in either direction (group→member or member→group), making group setup more flexible.
+- **Graph View BFS visibility** — Initial visibility calculation now uses real graph depth instead of discovery order, producing more accurate node visibility for complex graphs. Focus node starts component detection so connected graphs no longer show disconnected clusters.
 
 ---
 

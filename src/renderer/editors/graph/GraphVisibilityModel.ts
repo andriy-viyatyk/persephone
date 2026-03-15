@@ -7,6 +7,8 @@ import { GraphNode, GraphLink, GraphOptions, GraphData, linkIds } from "./types"
 interface ProcessedNode {
     node: GraphNode;
     showIndex: number;
+    /** BFS depth from component root (0 = root itself). */
+    depth: number;
     neighbors: Set<string>;
 }
 
@@ -62,12 +64,8 @@ export class GraphVisibilityModel {
         this._active = true;
         this.rebuildInternal(nodes, links);
 
-        // Initial visible set: first maxVisible nodes by BFS order
-        const sorted = [...this.fullNodes.entries()].sort((a, b) => a[1].showIndex - b[1].showIndex);
-        this.visibleIds = new Set(sorted.slice(0, maxVisible).map(([id]) => id));
-
-        // Ensure at least one node per disconnected component is visible
-        this.ensureComponentRootsVisible();
+        // Initial visible set: nodes within expandDepth, capped at maxVisible
+        this.computeInitialVisibility(maxVisible);
 
         return true;
     }
@@ -164,11 +162,7 @@ export class GraphVisibilityModel {
     /** Reset to initial visibility state. */
     reset(): void {
         const maxVisible = this.options.maxVisible ?? 500;
-        const sorted = [...this.fullNodes.entries()].sort((a, b) => a[1].showIndex - b[1].showIndex);
-        this.visibleIds = new Set(sorted.slice(0, maxVisible).map(([id]) => id));
-
-        // Ensure at least one node per disconnected component is visible
-        this.ensureComponentRootsVisible();
+        this.computeInitialVisibility(maxVisible);
     }
 
     // =========================================================================
@@ -191,8 +185,8 @@ export class GraphVisibilityModel {
         // Determine focus node
         this._focusId = this.determineFocusNode(nodes);
 
-        // BFS from focus — assigns showIndex to all nodes
-        const showIndexMap = this.computeBFS(nodes, adjacency);
+        // BFS from focus — assigns showIndex and depth to all nodes
+        const { showIndexMap, depthMap } = this.computeBFS(nodes, adjacency);
 
         // Store processed nodes
         this.fullNodes.clear();
@@ -200,6 +194,7 @@ export class GraphVisibilityModel {
             this.fullNodes.set(node.id, {
                 node,
                 showIndex: showIndexMap.get(node.id) ?? Infinity,
+                depth: depthMap.get(node.id) ?? Infinity,
                 neighbors: adjacency.get(node.id) ?? new Set(),
             });
         }
@@ -274,14 +269,20 @@ export class GraphVisibilityModel {
     /** IDs of component root nodes (first node visited in each truly disconnected component). */
     private componentRoots: string[] = [];
 
-    private computeBFS(nodes: GraphNode[], adjacency: Map<string, Set<string>>): Map<string, number> {
+    private computeBFS(
+        nodes: GraphNode[],
+        adjacency: Map<string, Set<string>>,
+    ): { showIndexMap: Map<string, number>; depthMap: Map<string, number> } {
         const showIndexMap = new Map<string, number>();
+        const depthMap = new Map<string, number>();
         this.componentRoots = [];
-        if (!this._focusId) return showIndexMap;
+        if (!this._focusId) return { showIndexMap, depthMap };
 
         // Step 1: Find truly disconnected components via unlimited BFS
+        // Start from focus node so it becomes its component's root
         const componentOf = new Map<string, string>(); // nodeId → componentRootId
-        for (const node of nodes) {
+        const nodeOrder = [{ id: this._focusId }, ...nodes.filter((n) => n.id !== this._focusId)];
+        for (const node of nodeOrder) {
             if (componentOf.has(node.id)) continue;
             const rootId = node.id;
             this.componentRoots.push(rootId);
@@ -298,49 +299,41 @@ export class GraphVisibilityModel {
             }
         }
 
-        // Step 2: Depth-limited BFS from focus node for showIndex ordering
-        let index = this.bfsFrom(this._focusId, 0, adjacency, showIndexMap);
+        // Step 2: Unlimited BFS from focus node — assigns showIndex and depth
+        let index = this.bfsFrom(this._focusId, 0, adjacency, showIndexMap, depthMap);
 
-        // Step 3: Depth-limited BFS from each remaining component root
+        // Step 3: Unlimited BFS from each remaining component root
         for (const rootId of this.componentRoots) {
             if (!showIndexMap.has(rootId)) {
-                index = this.bfsFrom(rootId, index, adjacency, showIndexMap);
+                index = this.bfsFrom(rootId, index, adjacency, showIndexMap, depthMap);
             }
         }
 
-        // Step 4: Any nodes still unvisited (due to expandDepth) get sequential indices
-        for (const node of nodes) {
-            if (!showIndexMap.has(node.id)) {
-                showIndexMap.set(node.id, index++);
-            }
-        }
-
-        return showIndexMap;
+        return { showIndexMap, depthMap };
     }
 
-    /** Run BFS from a start node, assigning showIndex starting at `startIndex`.
-     *  Respects expandDepth limit. Returns the next available index. */
+    /** Run unlimited BFS from a start node, assigning showIndex and depth.
+     *  Returns the next available showIndex. */
     private bfsFrom(
         startId: string,
         startIndex: number,
         adjacency: Map<string, Set<string>>,
         showIndexMap: Map<string, number>,
+        depthMap: Map<string, number>,
     ): number {
-        const queue: string[] = [startId];
+        const queue: Array<{ id: string; depth: number }> = [{ id: startId, depth: 0 }];
         showIndexMap.set(startId, startIndex);
+        depthMap.set(startId, 0);
         let index = startIndex + 1;
 
         while (queue.length > 0) {
-            const nodeId = queue.shift()!;
-            const depth = showIndexMap.get(nodeId)! - startIndex;
-
-            // Respect expandDepth limit for BFS traversal
-            if (this.options.expandDepth !== undefined && depth >= this.options.expandDepth) continue;
+            const { id: nodeId, depth } = queue.shift()!;
 
             for (const neighborId of adjacency.get(nodeId) || []) {
                 if (!showIndexMap.has(neighborId)) {
                     showIndexMap.set(neighborId, index++);
-                    queue.push(neighborId);
+                    depthMap.set(neighborId, depth + 1);
+                    queue.push({ id: neighborId, depth: depth + 1 });
                 }
             }
         }
@@ -368,6 +361,39 @@ export class GraphVisibilityModel {
 
         // 3. First node
         return nodes[0]?.id ?? "";
+    }
+
+    // =========================================================================
+    // Initial visibility
+    // =========================================================================
+
+    /** Compute initial visible set: nodes within expandDepth of each component root, capped at maxVisible. */
+    private computeInitialVisibility(maxVisible: number): void {
+        const expandDepth = this.options.expandDepth;
+
+        if (expandDepth !== undefined) {
+            // Depth-based: show all nodes within expandDepth (across all components)
+            this.visibleIds = new Set<string>();
+            for (const [id, pn] of this.fullNodes) {
+                if (pn.depth <= expandDepth) {
+                    this.visibleIds.add(id);
+                }
+            }
+            // Cap at maxVisible: keep nodes with lowest showIndex (closest to their component root)
+            if (this.visibleIds.size > maxVisible) {
+                const sorted = [...this.visibleIds]
+                    .map((id) => ({ id, showIndex: this.fullNodes.get(id)!.showIndex }))
+                    .sort((a, b) => a.showIndex - b.showIndex);
+                this.visibleIds = new Set(sorted.slice(0, maxVisible).map((e) => e.id));
+            }
+        } else {
+            // No depth limit: first maxVisible nodes by BFS order
+            const sorted = [...this.fullNodes.entries()].sort((a, b) => a[1].showIndex - b[1].showIndex);
+            this.visibleIds = new Set(sorted.slice(0, maxVisible).map(([id]) => id));
+        }
+
+        // Ensure at least one node per disconnected component is visible
+        this.ensureComponentRootsVisible();
     }
 
     // =========================================================================

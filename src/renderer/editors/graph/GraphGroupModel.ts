@@ -12,8 +12,8 @@ export interface PreprocessedGraph {
  * Read-only analysis model for group node membership.
  * Tracks which nodes are groups and which nodes belong to which group.
  *
- * Membership is derived from links: a link FROM a group node TO a non-group node
- * means the target is a member of that group. A node can belong to at most one group.
+ * Membership is derived from links: any link between a group node and a non-group node
+ * (in either direction) means the non-group node is a member. A node can belong to at most one group.
  *
  * This model does NOT transform data — that is the job of the link pre-processing step (US-189).
  * It only provides membership lookups for UI purposes (tooltip, detail panel, legend).
@@ -40,14 +40,26 @@ export class GraphGroupModel {
 
         if (groupIds.size === 0) return;
 
-        // Find membership links: links FROM a group node TO a non-group node
+        // Find membership links: any link between a group node and a non-group node
+        // (either direction — group→member or member→group)
         for (const link of links) {
             const { source, target } = linkIds(link);
+            let groupId: string | undefined;
+            let memberId: string | undefined;
+
             if (groupIds.has(source) && !groupIds.has(target)) {
-                this.groups.get(source)!.add(target);
+                groupId = source;
+                memberId = target;
+            } else if (groupIds.has(target) && !groupIds.has(source)) {
+                groupId = target;
+                memberId = source;
+            }
+
+            if (groupId && memberId) {
+                this.groups.get(groupId)!.add(memberId);
                 // A node can belong to at most one group (first wins)
-                if (!this.memberOf.has(target)) {
-                    this.memberOf.set(target, source);
+                if (!this.memberOf.has(memberId)) {
+                    this.memberOf.set(memberId, groupId);
                 }
             }
         }
