@@ -154,6 +154,7 @@ export const defaultDark: ThemeDefinition = {
         "--color-graph-link-selected": "#ffb6c1",
         "--color-graph-label-bg": "rgba(121, 121, 121, 0.2)",
         "--color-graph-label-text": "#cccccc",
+        "--color-graph-group-border": "#3a6ea5",
     },
     monaco: {
         base: "vs-dark",

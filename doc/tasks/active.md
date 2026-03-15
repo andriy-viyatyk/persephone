@@ -11,6 +11,8 @@ Current work in progress and planned tasks.
 
 | ID | Title | Epic | Notes |
 |----|-------|------|-------|
+| US-189 | Group link pre-processing | EPIC-006 | Link splitting algorithm, pipeline integration, force clustering |
+| US-190 | Group management UI | EPIC-006 | Group/ungroup actions, Alt+Click membership, title editing |
 
 
 ## Completed

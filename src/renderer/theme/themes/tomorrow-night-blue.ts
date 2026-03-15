@@ -104,6 +104,7 @@ export const tomorrowNightBlue: ThemeDefinition = {
         "--color-graph-link-selected": "#ff9da4",
         "--color-graph-label-bg": "rgba(0, 28, 64, 0.6)",
         "--color-graph-label-text": "#ffffff",
+        "--color-graph-group-border": "#3a6ea5",
     },
     monaco: {
         base: "vs-dark",

@@ -15,6 +15,7 @@ export interface ResolvedColors {
     linkSelected: string;
     labelBg: string;
     labelText: string;
+    groupBorder: string;
 }
 
 /**

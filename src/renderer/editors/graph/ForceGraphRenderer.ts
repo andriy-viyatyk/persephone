@@ -26,6 +26,7 @@ function resolveColors(): ResolvedColors {
         linkSelected: resolveVar(color.graph.linkSelected),
         labelBg: resolveVar(color.graph.labelBackground),
         labelText: resolveVar(color.graph.labelText),
+        groupBorder: resolveVar(color.graph.groupBorder),
     };
 }
 
@@ -629,7 +630,7 @@ export class ForceGraphRenderer {
     // Internals — shape drawing
     // =========================================================================
 
-    private drawShape(ctx: CanvasRenderingContext2D, shape: NodeShape | "compass" | undefined, x: number, y: number, r: number): void {
+    private drawShape(ctx: CanvasRenderingContext2D, shape: NodeShape | "compass" | "group" | undefined, x: number, y: number, r: number): void {
         ctx.beginPath();
         const pts = getShapePoints(shape, x, y, r);
         if (pts) {
@@ -643,6 +644,9 @@ export class ForceGraphRenderer {
                 }
                 ctx.closePath();
             }
+        } else if (shape === "group") {
+            // Group: draw inner circle (65% of radius) — outer ring drawn separately
+            ctx.arc(x, y, r * 0.65, 0, 2 * Math.PI);
         } else {
             // circle
             ctx.arc(x, y, r, 0, 2 * Math.PI);
@@ -688,13 +692,27 @@ export class ForceGraphRenderer {
             if (dimming) ctx.globalAlpha = dimSet!.has(d.id) ? 1.0 : 0.15;
             const isRoot = rootId !== "" && d.id === rootId;
             const r = effectiveNodeRadius(d, rootId);
-            const shape = isRoot ? "compass" as const : d.shape;
+            const shape = isRoot ? "compass" as const : d.isGroup ? "group" as const : d.shape;
             this.drawShape(ctx, shape, d.x || 0, d.y || 0, r);
             ctx.fillStyle = highlight.nodeColor(d, colors);
             ctx.fill();
             ctx.strokeStyle = highlight.nodeBorderColor(d, colors);
             ctx.lineWidth = 1.5;
             ctx.stroke();
+
+            // Group node outer ring
+            if (shape === "group") {
+                ctx.beginPath();
+                ctx.arc(d.x || 0, d.y || 0, r, 0, 2 * Math.PI);
+                // Outer ring color reflects selection/hover state, defaults to groupBorder
+                const isSelected = highlight.selectedIds.has(d.id);
+                const isHovered = d.id === highlight.hoveredId;
+                ctx.strokeStyle = isSelected ? colors.borderSelected
+                    : isHovered ? colors.borderHighlight
+                    : colors.groupBorder;
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+            }
         });
 
         if (dimming) ctx.globalAlpha = 1.0;
@@ -751,7 +769,7 @@ export class ForceGraphRenderer {
                 // Highlighted labels always shown; important labels only when zoomed in
                 if (!isHighlighted) {
                     if (!showImportantLabels) return;
-                    const isImportant = isRoot || (typeof d.level === "number" && d.level >= 1 && d.level <= 2);
+                    const isImportant = isRoot || d.isGroup || (typeof d.level === "number" && d.level >= 1 && d.level <= 2);
                     if (!isImportant) return;
                 }
 
@@ -760,8 +778,8 @@ export class ForceGraphRenderer {
                 const text = nodeLabel(d);
                 const r = effectiveNodeRadius(d, rootId);
 
-                // Font size based on node level (root = level 1)
-                const level = isRoot ? 1 : (typeof d.level === "number" ? d.level : 5);
+                // Font size based on node level (root and group = level 1)
+                const level = isRoot || d.isGroup ? 1 : (typeof d.level === "number" ? d.level : 5);
                 const fontSize = level <= 1 ? 14 : level === 2 ? 12 : level === 3 ? 11 : 10;
                 ctx.font = `${fontSize}px sans-serif`;
 

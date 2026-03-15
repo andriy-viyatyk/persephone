@@ -104,6 +104,7 @@ export const solarizedLight: ThemeDefinition = {
         "--color-graph-link-selected": "#d33682",
         "--color-graph-label-bg": "rgba(238, 232, 213, 0.85)",
         "--color-graph-label-text": "#657B83",
+        "--color-graph-group-border": "#2a5a8a",
     },
     monaco: {
         base: "vs",

@@ -90,6 +90,7 @@ const color = {
         linkSelected: "var(--color-graph-link-selected)",
         labelBackground: "var(--color-graph-label-bg)",
         labelText: "var(--color-graph-label-text)",
+        groupBorder: "var(--color-graph-group-border)",
     },
 };
 

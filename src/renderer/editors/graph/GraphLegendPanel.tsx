@@ -43,12 +43,13 @@ export function GraphLegendPanel({ vm }: GraphLegendPanelProps) {
     }, [vm]);
 
     // Compute which levels/shapes are present
-    const { presentLevels, presentShapes, hasRoot } = useMemo(() => {
+    const { presentLevels, presentShapes, hasRoot, hasGroup } = useMemo(() => {
         const info = vm.getPresentLevelsAndShapes();
         return {
             presentLevels: [...info.levels].sort((a, b) => a - b),
             presentShapes: ALL_SHAPES.filter((s) => info.shapes.has(s)),
             hasRoot: info.hasRoot,
+            hasGroup: info.hasGroup,
         };
     }, [vm]);
 
@@ -88,20 +89,24 @@ export function GraphLegendPanel({ vm }: GraphLegendPanelProps) {
         if (activeTab === "level") {
             const levelNums = new Set<number>();
             let includeRoot = false;
+            let includeGroup = false;
             for (const key of checked) {
                 if (key === "root") includeRoot = true;
+                else if (key === "group") includeGroup = true;
                 else levelNums.add(Number(key));
             }
-            const ids = vm.getNodeIdsByLegendFilter({ levels: levelNums.size > 0 ? levelNums : undefined, includeRoot });
+            const ids = vm.getNodeIdsByLegendFilter({ levels: levelNums.size > 0 ? levelNums : undefined, includeRoot, includeGroup });
             vm.setLegendHighlight(ids.size > 0 ? ids : new Set());
         } else {
             const shapeNames = new Set<string>();
             let includeRoot = false;
+            let includeGroup = false;
             for (const key of checked) {
                 if (key === "root") includeRoot = true;
+                else if (key === "group") includeGroup = true;
                 else shapeNames.add(key);
             }
-            const ids = vm.getNodeIdsByLegendFilter({ shapes: shapeNames.size > 0 ? shapeNames : undefined, includeRoot });
+            const ids = vm.getNodeIdsByLegendFilter({ shapes: shapeNames.size > 0 ? shapeNames : undefined, includeRoot, includeGroup });
             vm.setLegendHighlight(ids.size > 0 ? ids : new Set());
         }
     }, [vm, expanded, activeTab, checkedLevels, checkedShapes, selectionFilter, selectedCount]);
@@ -145,7 +150,7 @@ export function GraphLegendPanel({ vm }: GraphLegendPanelProps) {
     }, []);
 
     // Nothing to show if no levels/shapes present
-    if (presentLevels.length === 0 && presentShapes.length === 0 && !hasRoot) return null;
+    if (presentLevels.length === 0 && presentShapes.length === 0 && !hasRoot && !hasGroup) return null;
 
     return (
         <div className={`graph-legend${expanded ? " expanded" : ""}`}>
@@ -190,6 +195,18 @@ export function GraphLegendPanel({ vm }: GraphLegendPanelProps) {
                                         onDescriptionChange={(v) => handleDescriptionChange("levels", "root", v)}
                                     />
                                 )}
+                                {hasGroup && (
+                                    <LegendRow
+                                        key="group"
+
+                                        label="Group"
+                                        icon={<ShapeIcon shape="group" size={14} />}
+                                        checked={checkedLevels.has("group")}
+                                        description={descriptions.levels?.group ?? ""}
+                                        onToggle={() => toggleCheck("level", "group")}
+                                        onDescriptionChange={(v) => handleDescriptionChange("levels", "group", v)}
+                                    />
+                                )}
                                 {presentLevels.map((level) => (
                                     <LegendRow
                                         key={level}
@@ -216,6 +233,18 @@ export function GraphLegendPanel({ vm }: GraphLegendPanelProps) {
                                         description={descriptions.shapes?.root ?? ""}
                                         onToggle={() => toggleCheck("shape", "root")}
                                         onDescriptionChange={(v) => handleDescriptionChange("shapes", "root", v)}
+                                    />
+                                )}
+                                {hasGroup && (
+                                    <LegendRow
+                                        key="group"
+
+                                        label="Group"
+                                        icon={<ShapeIcon shape="group" size={14} />}
+                                        checked={checkedShapes.has("group")}
+                                        description={descriptions.shapes?.group ?? ""}
+                                        onToggle={() => toggleCheck("shape", "group")}
+                                        onDescriptionChange={(v) => handleDescriptionChange("shapes", "group", v)}
                                     />
                                 )}
                                 {presentShapes.map((shape) => (

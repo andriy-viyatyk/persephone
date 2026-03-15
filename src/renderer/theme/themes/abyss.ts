@@ -104,6 +104,7 @@ export const abyss: ThemeDefinition = {
         "--color-graph-link-selected": "#ffb6c1",
         "--color-graph-label-bg": "rgba(31, 34, 48, 0.4)",
         "--color-graph-label-text": "#6688cc",
+        "--color-graph-group-border": "#3a6ea5",
     },
     monaco: {
         base: "vs-dark",

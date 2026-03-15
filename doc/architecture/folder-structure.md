@@ -253,6 +253,7 @@ js-notepad/
 │   │   ├── GraphViewModel.ts       # ContentViewModel — JSON parsing, orchestration, delegates to sub-models
 │   │   ├── GraphDataModel.ts      # Source data ownership + node/link CRUD + legend data
 │   │   ├── GraphSearchModel.ts    # Search query matching + result computation
+│   │   ├── GraphGroupModel.ts    # Group membership analysis (group→members, member→group lookups)
 │   │   ├── GraphHighlightModel.ts # Highlight layers (search, legend, links tab) + selection/hover state + color helpers
 │   │   ├── GraphContextMenu.ts    # Context menu item builders (node menu, empty area menu)
 │   │   ├── ForceGraphRenderer.ts   # D3 force simulation + canvas rendering

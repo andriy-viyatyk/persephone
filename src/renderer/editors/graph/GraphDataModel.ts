@@ -246,7 +246,7 @@ export class GraphDataModel {
 
     /** Get node IDs matching a filter (for legend highlighting). Operates on visible nodes. */
     getNodeIdsByLegendFilter(
-        filter: { levels?: Set<number>; shapes?: Set<string>; includeRoot?: boolean },
+        filter: { levels?: Set<number>; shapes?: Set<string>; includeRoot?: boolean; includeGroup?: boolean },
         visibleNodes: GraphNode[],
     ): Set<string> {
         const result = new Set<string>();
@@ -256,6 +256,11 @@ export class GraphDataModel {
             const isRoot = rootId !== "" && node.id === rootId;
 
             if (filter.includeRoot && isRoot) {
+                result.add(node.id);
+                continue;
+            }
+
+            if (filter.includeGroup && node.isGroup) {
                 result.add(node.id);
                 continue;
             }
@@ -280,23 +285,28 @@ export class GraphDataModel {
     }
 
     /** Get set of levels and shapes present in visible nodes. */
-    getPresentLevelsAndShapes(visibleNodes: GraphNode[]): { levels: Set<number>; shapes: Set<NodeShape>; hasRoot: boolean } {
+    getPresentLevelsAndShapes(visibleNodes: GraphNode[]): { levels: Set<number>; shapes: Set<NodeShape>; hasRoot: boolean; hasGroup: boolean } {
         const levels = new Set<number>();
         const shapes = new Set<NodeShape>();
         const rootId = this.sourceData?.options?.rootNode ?? "";
         let hasRoot = false;
+        let hasGroup = false;
 
         for (const node of visibleNodes) {
             if (rootId !== "" && node.id === rootId) {
                 hasRoot = true;
                 continue; // root has its own entry, don't count its level/shape
             }
+            if (node.isGroup) {
+                hasGroup = true;
+                continue; // group has its own entry, don't count its level/shape
+            }
             const level = typeof node.level === "number" && node.level >= 1 && node.level <= 5 ? node.level : 5;
             levels.add(level);
             shapes.add(node.shape || "circle");
         }
 
-        return { levels, shapes, hasRoot };
+        return { levels, shapes, hasRoot, hasGroup };
     }
 
     // =========================================================================

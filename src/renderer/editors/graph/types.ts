@@ -10,6 +10,7 @@ export interface GraphNode extends SimulationNodeDatum {
     title?: string;
     level?: number;
     shape?: NodeShape;
+    isGroup?: boolean;
     _$showIndex?: number;      // runtime: BFS discovery order
     _$hiddenCount?: number;    // runtime: count of hidden neighbors
 }
@@ -59,7 +60,7 @@ export function nodeLabel(node: GraphNode): string {
 
 /** Keys excluded from custom property enumeration (core, presentation, D3 sim). */
 const CUSTOM_PROP_EXCLUDED_KEYS = new Set([
-    "id", "title", "level", "shape",
+    "id", "title", "level", "shape", "isGroup",
     "x", "y", "vx", "vy", "fx", "fy", "index",
 ]);
 
@@ -100,7 +101,9 @@ export function nodeRadius(node: GraphNode): number {
     return 4; // invalid or missing level → level 5 (smallest)
 }
 
-/** Get effective radius for a node, accounting for root node override. */
+/** Get effective radius for a node, accounting for root and group node overrides. */
 export function effectiveNodeRadius(node: GraphNode, rootNodeId: string): number {
-    return rootNodeId && node.id === rootNodeId ? levelRadii[0] : nodeRadius(node);
+    if (rootNodeId && node.id === rootNodeId) return levelRadii[0];
+    if (node.isGroup) return levelRadii[0];
+    return nodeRadius(node);
 }

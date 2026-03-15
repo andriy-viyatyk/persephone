@@ -1,5 +1,6 @@
 import type { NodeShape } from "./types";
 import { starPoints, hexagonPoints, compassPoints, diamondPoints, trianglePoints, pointsToSvgString } from "./shapeGeometry";
+import color from "../../theme/color";
 
 /**
  * Shared SVG icon components for shape and level visualization.
@@ -7,7 +8,7 @@ import { starPoints, hexagonPoints, compassPoints, diamondPoints, trianglePoints
  */
 
 interface ShapeIconProps {
-    shape: NodeShape | "root";
+    shape: NodeShape | "root" | "group";
     size?: number;
 }
 
@@ -19,6 +20,15 @@ export function ShapeIcon({ shape, size = 16 }: ShapeIconProps) {
         return (
             <svg className="legend-shape-icon" width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
                 <polygon points={pointsToSvgString(compassPoints(c, c, r * 1.1, r * 0.35))} fill="currentColor" />
+            </svg>
+        );
+    }
+
+    if (shape === "group") {
+        return (
+            <svg className="legend-shape-icon" width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+                <circle cx={c} cy={c} r={r * 0.65} fill="currentColor" />
+                <circle cx={c} cy={c} r={r} fill="none" stroke={color.graph.groupBorder} strokeWidth={1.5} />
             </svg>
         );
     }

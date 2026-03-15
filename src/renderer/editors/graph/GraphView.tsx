@@ -62,7 +62,7 @@ const GraphViewRoot = styled.div({
         "&:hover, &.expanded, &:focus-within, &.has-search": {
             opacity: 1,
         },
-        "&.expanded, &.has-search": {
+        "&.expanded": {
             borderColor: color.graph.nodeHighlight,
         },
     },
@@ -140,6 +140,12 @@ const GraphViewRoot = styled.div({
     },
     "& .graph-search-wrap:hover .graph-search-clear, & .graph-search-input:focus ~ .graph-search-clear": {
         color: color.graph.labelText,
+    },
+    "& .has-search .graph-search-input": {
+        color: color.graph.nodeHighlight,
+    },
+    "& .has-search .graph-search-clear": {
+        color: color.graph.nodeHighlight,
     },
     "& .graph-search-info": {
         fontSize: 11,
@@ -691,10 +697,10 @@ function GraphView({ model }: GraphViewProps) {
                         )}
                     </div>
                     {tooltip && (
-                        <GraphTooltip node={tooltip.node} x={tooltip.x} y={tooltip.y} />
+                        <GraphTooltip node={tooltip.node} x={tooltip.x} y={tooltip.y} memberCount={tooltip.memberCount} />
                     )}
                     <GraphDetailPanel
-                        nodes={selectedNodes}
+                        nodes={selectedNodes.filter((n) => !n.isGroup)}
                         linkedNodes={linkedNodes}
                         onUpdateProps={(nodeId, props) => vm.updateNodeProps(nodeId, props)}
                         onBatchUpdateProps={(nodeIds, props) => vm.batchUpdateNodeProps(nodeIds, props)}

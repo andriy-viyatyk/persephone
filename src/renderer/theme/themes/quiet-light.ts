@@ -103,6 +103,7 @@ export const quietLight: ThemeDefinition = {
         "--color-graph-link-selected": "#E45649",
         "--color-graph-label-bg": "rgba(235, 235, 235, 0.85)",
         "--color-graph-label-text": "#333333",
+        "--color-graph-group-border": "#2a5a8a",
     },
     monaco: {
         base: "vs",

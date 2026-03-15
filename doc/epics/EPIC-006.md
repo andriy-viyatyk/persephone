@@ -12,7 +12,8 @@ Add a new force-graph editor for `.fg.json` files. The editor renders interactiv
 ## Goals
 
 - **Phase 1 (View Only):** Reimplement the existing `ForceGraph` renderer as a content-view editor in js-notepad, associated with `.fg.json` files *(Done)*
-- **Phase 2 (Enhanced Rendering + Interactions):** Node differentiation (title, level, shape), search, tooltips, collapse/expand, context menu, detail panel, editing interactions
+- **Phase 2 (Enhanced Rendering + Interactions):** Node differentiation (title, level, shape), search, tooltips, collapse/expand, context menu, detail panel, editing interactions *(Done)*
+- **Phase 3 (Node Grouping):** Group nodes to cluster related nodes behind a single group node, with automatic link routing through groups
 
 ## Data Format
 
@@ -99,6 +100,80 @@ Sample data file: `D:\js-notepad-notes\temp\miserables.fg.json`
 | US-185 | Graph editor — Architecture refactoring | Done |
 | US-186 | Graph editor — UI polish & highlight rework | Done |
 | US-187 | Graph editor — Node multiselection | Done |
+| US-188 | Group node data model & rendering | Done |
+| US-189 | Group link pre-processing | Planned |
+| US-190 | Group management UI | Planned |
+
+## Phase 3 — Node Grouping
+
+### Vision
+
+Allow users (or scripts) to group nodes so that a set of nodes is visually represented as a cluster behind a single "group node". This is critical for large dependency graphs (e.g., module imports) where hundreds of nodes create visual noise. By grouping nodes by folder or logical module (e.g., "Components", "Theme", "API"), the graph becomes readable — inter-module dependencies surface clearly through group-to-group links.
+
+### Concept
+
+- **Group Node** — A special node with `isGroup: true`. It represents a set of member nodes.
+- **Membership** — Defined by links from the group node to its members (group→member direction). A node can belong to at most **one** group.
+- **Link Pre-processing** — Before visualization, the graph is transformed:
+  1. **Intra-group links** (both endpoints in same group): shown as-is
+  2. **Cross-group links** (one endpoint inside, other outside): split into two links — `node→groupNode` + `groupNode→outsideNode`
+  3. **Inter-group links** (endpoints in different groups): split into three links — `node→group1` + `group1→group2` + `group2→node`
+  4. **Membership links** themselves are NOT shown — they're structural metadata only
+- **Source data preserved** — Pre-processed links are visualization-only. Original links + membership links are kept in the JSON.
+
+### Data Format
+
+```json
+{
+  "nodes": [
+    { "id": "group-1", "title": "Components", "isGroup": true },
+    { "id": "Button.tsx", "level": 3 },
+    { "id": "Input.tsx", "level": 3 },
+    { "id": "theme.ts", "level": 2 }
+  ],
+  "links": [
+    { "source": "group-1", "target": "Button.tsx" },
+    { "source": "group-1", "target": "Input.tsx" },
+    { "source": "Button.tsx", "target": "theme.ts" },
+    { "source": "Input.tsx", "target": "theme.ts" }
+  ]
+}
+```
+
+Pre-processed visualization:
+- Membership links (group-1→Button, group-1→Input) are hidden
+- Cross-group links (Button→theme, Input→theme) become: Button→group-1 + group-1→theme, Input→group-1 + group-1→theme
+- Intra-group links (Button↔Input, if any) stay as-is
+
+### Task Breakdown
+
+**US-188: Group node data model & rendering** — Define `isGroup` property, new group shape, level 1 rendering, `GraphGroupModel` sub-model for membership tracking, edit panel exclusion, tooltip adjustments. Manual JSON testing only.
+
+**US-189: Group link pre-processing** — Core algorithm: transform source links for visualization. Remove membership links, split cross-group links through group nodes. Integration into the data pipeline between source data and visibility model. Force clustering adjustments. Single-level grouping only.
+
+**US-190: Group management UI** — "..." menu in panel header → "Group selected nodes". Auto-generated group IDs. "Edit title" context menu with InputText dialog. Alt+Click add/remove from group when group selected. "Ungroup" context menu. Single group membership enforcement.
+
+### Future Considerations (Out of Scope)
+
+**Nested groups** — Allow grouping a group node with other nodes into an outer group. The link-splitting algorithm would recurse: links from inner-group members route through inner group → outer group → destination. Deferred until single-level grouping is stable. May be a separate task (US-191+).
+
+**Enable/disable groups** — Toggle a group on/off. When disabled, the graph renders as if the group doesn't exist (original links shown directly). Needs UI for listing groups and toggling state. Deferred — needs design for where to place the toggle UI.
+
+### Design Decisions
+
+1. **No force clustering tricks** — No invisible physics-only links. Let the graph behave naturally with the processed links. Group members will cluster through their intra-group links and the synthetic links through the group node.
+
+2. **Synthetic link deduplication** — Use a `Set` to deduplicate synthetic links. If 3 nodes in group G all link to node X, produce only one G→X synthetic link (not 3). The pipeline is: `source data → grouped data → visibility-filtered data → rendered data`. Each step is a pure transformation. Track the count of original links each synthetic link replaces (needed for force adjustment, see #7).
+
+7. **Group↔group link force adjustment** — When many cross-links between two groups are compressed into one synthetic group↔group link, the single link's force may not be strong enough to keep the clusters close (charge force pushes them apart). Solution: during pre-processing, count the original links each synthetic group↔group link replaces. Use D3's per-link `distance` function to shorten the distance proportionally: `distance = baseDistance / log2(count)` (logarithmic scale to prevent extreme clustering). Only apply to group↔group links, not group↔regular-node links.
+
+3. **Interaction with expand/collapse** — Group nodes participate in BFS like regular nodes. Should work naturally but needs testing.
+
+4. **Pre-processing pipeline position** — New step between `GraphDataModel` (source) and `GraphVisibilityModel` (filtering). `GraphGroupModel` transforms source graph into grouped graph.
+
+5. **All edits on source data** — Every edit (add/remove links, group/ungroup) operates on the original `{type, nodes, links, options}` object. After any edit, the full pipeline re-runs: source → grouped → visibility-filtered → rendered. Position, showIndex, and other calculated state are restored during recalculation (existing architecture already supports this pattern).
+
+6. **Group node initial position** — Use the position of the first member node for simplicity. The force simulation will reposition naturally with animation.
 
 ## Phase 2 — Planned Scope
 

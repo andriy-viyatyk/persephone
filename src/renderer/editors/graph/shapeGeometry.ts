@@ -51,7 +51,7 @@ export function trianglePoints(cx: number, cy: number, r: number): [number, numb
  * Get polygon points for a given shape. Returns null for circle (use arc instead).
  * The returned array of [x, y] pairs can be used for both canvas and SVG rendering.
  */
-export function getShapePoints(shape: NodeShape | "compass" | undefined, cx: number, cy: number, r: number): [number, number][] | null {
+export function getShapePoints(shape: NodeShape | "compass" | "group" | undefined, cx: number, cy: number, r: number): [number, number][] | null {
     switch (shape) {
         case "square":
             return [
@@ -70,6 +70,8 @@ export function getShapePoints(shape: NodeShape | "compass" | undefined, cx: num
             return compassPoints(cx, cy, r * 1.2, r * 0.4);
         case "hexagon":
             return hexagonPoints(cx, cy, r);
+        case "group": // double circle — inner circle drawn via arc, like "circle"
+            return null;
         default: // "circle" or undefined
             return null;
     }

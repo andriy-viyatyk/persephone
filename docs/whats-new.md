@@ -14,6 +14,7 @@ Release notes and changelog for js-notepad.
 
 - **Graph View Node Multi-Selection** — `Ctrl+Click` to toggle individual nodes in and out of a multi-selection. The edit panel header shows "N nodes selected" and the Info tab supports batch editing of Level and Shape (mixed values highlighted in yellow). The Properties tab displays a union of all selected nodes' properties with yellow highlights for differing values. The Links tab is hidden during multi-selection. Right-clicking a selected node preserves the multi-selection. Search results status bar adds **[select all]** and **[add to selection]** actions for bulk selection from search matches.
 - **Graph View Legend Selection Tab** — The Legend panel gains a new **Selection** tab with radio filters for selected/not-selected nodes, enabling quick visual isolation of multi-selected subsets.
+- **Graph View Group Nodes** — Nodes with `isGroup: true` are rendered as double circles (filled inner circle with a dark blue outer ring). Group nodes use level-1 size, always-visible labels, and appear in the Legend panel with their own "Group" row in both Level and Shape tabs. Tooltips show "Group · N members" where membership is derived from links from the group to non-group nodes. Group nodes are excluded from the detail edit panel and from legend level/shape counting.
 
 ### Improvements
 

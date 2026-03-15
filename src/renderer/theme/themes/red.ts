@@ -105,6 +105,7 @@ export const red: ThemeDefinition = {
         "--color-graph-link-selected": "#ff6666",
         "--color-graph-label-bg": "rgba(136, 0, 0, 0.4)",
         "--color-graph-label-text": "#f8f8f8",
+        "--color-graph-group-border": "#3a6ea5",
     },
     monaco: {
         base: "vs-dark",

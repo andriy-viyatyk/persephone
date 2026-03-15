@@ -57,11 +57,13 @@ interface GraphTooltipProps {
     node: GraphNode;
     x: number;
     y: number;
+    /** Number of group members (only set for group nodes). */
+    memberCount?: number;
 }
 
 const OFFSET = 12;
 
-function GraphTooltip({ node, x, y }: GraphTooltipProps) {
+function GraphTooltip({ node, x, y, memberCount }: GraphTooltipProps) {
     const ref = useRef<HTMLDivElement>(null);
     const [pos, setPos] = useState({ left: x + OFFSET, top: y + OFFSET });
 
@@ -90,6 +92,9 @@ function GraphTooltip({ node, x, y }: GraphTooltipProps) {
         <GraphTooltipRoot ref={ref} style={{ left: pos.left, top: pos.top }}>
             <div className="tooltip-title">{title}</div>
             {showId && <div className="tooltip-id">{node.id}</div>}
+            {memberCount !== undefined && (
+                <div className="tooltip-id">Group · {memberCount} member{memberCount !== 1 ? "s" : ""}</div>
+            )}
             {customProps.length > 0 && (
                 <div className="tooltip-props">
                     {customProps.map(([key, value]) => (

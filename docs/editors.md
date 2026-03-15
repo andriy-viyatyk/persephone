@@ -194,6 +194,7 @@ For `.fg.json` files — a force-directed graph viewer. Also activates for any J
 - `title` — display label shown instead of `id` when present
 - `level` — size tier from `1` (largest) to `5` (smallest); defaults to `5` if omitted
 - `shape` — visual shape: `circle` (default), `square`, `diamond`, `triangle`, `star`, or `hexagon`
+- `isGroup` — when `true`, the node is rendered as a double circle (filled inner circle with a dark blue outer ring). Group nodes use level-1 size, always-visible labels, and show "Group · N members" in tooltips (membership = links from group to non-group nodes). Group nodes appear in the Legend panel but are excluded from the detail edit panel and from legend level/shape counting.
 
 **Graph options:**
 - `options.rootNode` — initial root node ID; the graph centers on this node. The root node is visually distinct: it uses a compass (4-pointed star) shape, level-1 size, and its label is always visible.

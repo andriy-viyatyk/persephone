@@ -5,6 +5,7 @@ import { ForceGraphRenderer, ForceParams } from "./ForceGraphRenderer";
 import { GraphVisibilityModel } from "./GraphVisibilityModel";
 import { GraphDataModel } from "./GraphDataModel";
 import { GraphSearchModel } from "./GraphSearchModel";
+import { GraphGroupModel } from "./GraphGroupModel";
 import { showAppPopupMenu } from "../../ui/dialogs/poppers/showPopupMenu";
 import { buildNodeContextMenu, buildEmptyAreaContextMenu, ContextMenuActions } from "./GraphContextMenu";
 
@@ -20,6 +21,8 @@ export interface TooltipInfo {
     node: GraphNode;
     x: number;
     y: number;
+    /** Number of group members (only set for group nodes). */
+    memberCount?: number;
 }
 
 export const defaultGraphViewState = {
@@ -46,6 +49,7 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
     readonly renderer = new ForceGraphRenderer();
     readonly visibilityModel = new GraphVisibilityModel();
     readonly dataModel = new GraphDataModel();
+    readonly groupModel = new GraphGroupModel();
     readonly searchModel: GraphSearchModel;
     /** Set by GraphView to handle double-click on a node (e.g. expand detail panel). */
     onDoubleClickNode: ((nodeId: string) => void) | null = null;
@@ -213,7 +217,7 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
     }
 
     /** Get node IDs matching a filter (for legend highlighting). Operates on visible nodes. */
-    getNodeIdsByLegendFilter(filter: { levels?: Set<number>; shapes?: Set<string>; includeRoot?: boolean }): Set<string> {
+    getNodeIdsByLegendFilter(filter: { levels?: Set<number>; shapes?: Set<string>; includeRoot?: boolean; includeGroup?: boolean }): Set<string> {
         return this.dataModel.getNodeIdsByLegendFilter(filter, this.renderer.getNodes());
     }
 
@@ -298,8 +302,9 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
         this._tooltipTimer = setTimeout(() => {
             const node = this.renderer.getNodes().find((n) => n.id === nodeId);
             if (node) {
+                const memberCount = node.isGroup ? (this.groupModel.getMembers(node.id)?.size ?? 0) : undefined;
                 this.state.update((s) => {
-                    s.tooltip = { node: { ...node }, x: clientX, y: clientY };
+                    s.tooltip = { node: { ...node }, x: clientX, y: clientY, memberCount };
                 });
             }
         }, 500);
@@ -660,6 +665,9 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
         if (!this.dataModel.sourceData) return;
 
         const { nodes, links, options } = this.dataModel.sourceData;
+
+        // Rebuild group membership from source data
+        this.groupModel.rebuild(nodes, links);
 
         let filtering: boolean;
         if (this.isFirstLoad) {
