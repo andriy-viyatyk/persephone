@@ -3,6 +3,7 @@ import { SetStateAction, useCallback, useEffect, useMemo, useRef, useState } fro
 import { GraphNode, NodeShape, nodeLabel, isReservedPropertyKey } from "./types";
 import AVGrid from "../../components/data-grid/AVGrid/AVGrid";
 import type { CellFocus, Column } from "../../components/data-grid/AVGrid/avGridTypes";
+import { detectColumnWidth } from "../../components/data-grid/column-width";
 import color from "../../theme/color";
 import { ChevronDownIcon, ChevronUpIcon } from "../../theme/icons";
 import { ShapeIcon, LevelIcon } from "./GraphIcons";
@@ -187,28 +188,6 @@ const GraphDetailPanelRoot = styled.div({
         flexDirection: "column",
         flex: 1,
         overflow: "hidden",
-    },
-    "& .preset-tabs": {
-        display: "flex",
-        gap: 0,
-        borderBottom: `1px solid ${color.border.default}`,
-        flexShrink: 0,
-    },
-    "& .preset-tab": {
-        padding: "2px 8px",
-        fontSize: 10,
-        border: "none",
-        background: "none",
-        cursor: "pointer",
-        color: color.text.light,
-        borderBottom: "2px solid transparent",
-        "&:hover": {
-            color: color.text.default,
-        },
-    },
-    "& .preset-tab.active": {
-        color: color.text.default,
-        borderBottomColor: color.border.active,
     },
     "& .links-grid, & .properties-grid": {
         display: "flex",
@@ -503,16 +482,16 @@ function GraphDetailPanel({
                             Info
                         </button>
                         <button
-                            className={`panel-tab ${activeTab === "links" ? "active" : ""}${anyDirty && activeTab !== "links" ? " disabled" : ""}`}
-                            onClick={() => { if (!anyDirty) setActiveTab("links"); }}
-                        >
-                            Links
-                        </button>
-                        <button
                             className={`panel-tab ${activeTab === "properties" ? "active" : ""}${anyDirty && activeTab !== "properties" ? " disabled" : ""}`}
                             onClick={() => { if (!anyDirty) setActiveTab("properties"); }}
                         >
                             Properties
+                        </button>
+                        <button
+                            className={`panel-tab ${activeTab === "links" ? "active" : ""}${anyDirty && activeTab !== "links" ? " disabled" : ""}`}
+                            onClick={() => { if (!anyDirty) setActiveTab("links"); }}
+                        >
+                            Links
                         </button>
                     </div>
 
@@ -531,6 +510,13 @@ function GraphDetailPanel({
                                 onUpdateProps={onUpdateProps}
                             />
                         )}
+                        {activeTab === "properties" && (
+                            <PropertiesTab
+                                node={node}
+                                onApply={onApplyProperties}
+                                onDirtyChange={handlePropertiesDirtyChange}
+                            />
+                        )}
                         {activeTab === "links" && (
                             <LinksTab
                                 linkedNodes={linkedNodes}
@@ -538,13 +524,6 @@ function GraphDetailPanel({
                                 onApply={onApplyLinks}
                                 onDirtyChange={handleLinksDirtyChange}
                                 onExternalHover={onExternalHover}
-                            />
-                        )}
-                        {activeTab === "properties" && (
-                            <PropertiesTab
-                                node={node}
-                                onApply={onApplyProperties}
-                                onDirtyChange={handlePropertiesDirtyChange}
                             />
                         )}
                     </div>
@@ -582,38 +561,35 @@ interface LinksTabProps {
 
 const KNOWN_KEYS = new Set(["id", "title", "level", "shape"]);
 
-function makeColumns(preset: string, rows: LinkRow[]): Column<LinkRow>[] {
+/** charWidth scaled for the detail panel's 12px font (vs 14px default grid font) */
+const LINKS_CHAR_WIDTH = 7;
+const LINKS_COL_OPTS = { charWidth: LINKS_CHAR_WIDTH, padding: 16, minWidth: 50, maxWidth: 200 };
+
+function makeColumns(rows: LinkRow[]): Column<LinkRow>[] {
     const cols: Column<LinkRow>[] = [
-        { key: "id", name: "ID", width: 80, resizible: true },
-        { key: "title", name: "Title", width: 120, resizible: true },
+        { key: "id", name: "ID", width: detectColumnWidth(rows, "id", "ID", LINKS_COL_OPTS), resizible: true, isStatusColumn: true },
+        { key: "title", name: "Title", width: detectColumnWidth(rows, "title", "Title", LINKS_COL_OPTS), resizible: true },
+        { key: "level", name: "Level", width: 60, resizible: true,
+          options: [1, 2, 3, 4, 5] },
+        { key: "shape", name: "Shape", width: 70, resizible: true,
+          options: ["circle", "square", "diamond", "triangle", "star", "hexagon"] },
     ];
 
-    if (preset === "view" || preset === "custom") {
-        cols.push(
-            { key: "level", name: "Level", width: 50, resizible: true,
-              options: [1, 2, 3, 4, 5] },
-            { key: "shape", name: "Shape", width: 70, resizible: true,
-              options: ["circle", "square", "diamond", "triangle", "star", "hexagon"] },
-        );
-    }
-
-    if (preset === "custom") {
-        const customKeys = new Set<string>();
-        for (const row of rows) {
-            for (const key of Object.keys(row)) {
-                if (key !== "_rowKey" && !KNOWN_KEYS.has(key) && !key.startsWith("_$")) {
-                    customKeys.add(key);
-                }
+    const customKeys = new Set<string>();
+    for (const row of rows) {
+        for (const key of Object.keys(row)) {
+            if (key !== "_rowKey" && !KNOWN_KEYS.has(key) && !key.startsWith("_$")) {
+                customKeys.add(key);
             }
         }
-        for (const key of [...customKeys].sort()) {
-            cols.push({
-                key,
-                name: key,
-                width: Math.max(60, Math.min(140, key.length * 10)),
-                resizible: true,
-            });
-        }
+    }
+    for (const key of [...customKeys].sort()) {
+        cols.push({
+            key,
+            name: key,
+            width: detectColumnWidth(rows, key, key, LINKS_COL_OPTS),
+            resizible: true,
+        });
     }
 
     return cols;
@@ -622,19 +598,19 @@ function makeColumns(preset: string, rows: LinkRow[]): Column<LinkRow>[] {
 function LinksTab({ linkedNodes, selectedNodeId, onApply, onDirtyChange, onExternalHover }: LinksTabProps) {
     const [rows, setRows] = useState<LinkRow[]>([]);
     const [columns, setColumns] = useState<Column<LinkRow>[]>([]);
-    const [activePreset, setActivePreset] = useState<"default" | "view" | "custom">("default");
     const [dirty, setDirty] = useState(false);
     const [focus, setFocus] = useState<CellFocus<LinkRow> | undefined>();
     const originalIdsRef = useRef<Set<string>>(new Set());
     const rowCounterRef = useRef(0);
 
-    // Initialize from linkedNodes prop
+    // Initialize rows and columns from linkedNodes prop
     useEffect(() => {
         const mapped = linkedNodes.map((n) => ({
             ...n,
             _rowKey: `link-${++rowCounterRef.current}`,
         }));
         setRows(mapped);
+        setColumns(makeColumns(mapped));
         setDirty(false);
         onDirtyChange(false);
         originalIdsRef.current = new Set(linkedNodes.map((n) => n.id));
@@ -649,15 +625,6 @@ function LinksTab({ linkedNodes, selectedNodeId, onApply, onDirtyChange, onExter
             onExternalHover?.("");
         }
     }, [focus?.rowKey]);
-
-    // Recompute columns when preset changes
-    useEffect(() => {
-        setColumns(makeColumns(activePreset, rows));
-    }, [activePreset]);
-    // Also recompute when linkedNodes prop changes (initial load / after Apply / external edit)
-    useEffect(() => {
-        setColumns(makeColumns(activePreset, rows));
-    }, [linkedNodes]);
     const markDirty = useCallback(() => {
         setDirty(true);
         onDirtyChange(true);
@@ -723,22 +690,11 @@ function LinksTab({ linkedNodes, selectedNodeId, onApply, onDirtyChange, onExter
         setRows(mapped);
         setDirty(false);
         onDirtyChange(false);
-        setColumns(makeColumns(activePreset, mapped));
-    }, [linkedNodes, activePreset, onDirtyChange]);
+        setColumns(makeColumns(mapped));
+    }, [linkedNodes, onDirtyChange]);
 
     return (
         <div className="links-tab">
-            <div className="preset-tabs">
-                {(["default", "view", "custom"] as const).map((p) => (
-                    <button
-                        key={p}
-                        className={`preset-tab${activePreset === p ? " active" : ""}`}
-                        onClick={() => setActivePreset(p)}
-                    >
-                        {p === "default" ? "Default" : p === "view" ? "View" : "Custom"}
-                    </button>
-                ))}
-            </div>
             <div className="links-grid">
                 <AVGrid
                     columns={columns}

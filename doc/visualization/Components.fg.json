@@ -1,0 +1,3566 @@
+{
+    "type": "force-graph",
+    "nodes": [
+        {
+            "id": "src/renderer/components/basic/Button.tsx::Button",
+            "title": "Button",
+            "level": 1,
+            "file": "src/renderer/components/basic/Button.tsx",
+            "folder": "src/renderer/components/basic",
+            "renderedBy": 65
+        },
+        {
+            "id": "src/renderer/components/basic/TextField.tsx::TextField",
+            "title": "TextField",
+            "level": 1,
+            "file": "src/renderer/components/basic/TextField.tsx",
+            "folder": "src/renderer/components/basic",
+            "renderedBy": 22
+        },
+        {
+            "id": "src/renderer/components/overlay/WithPopupMenu.tsx::WithPopupMenu",
+            "title": "WithPopupMenu",
+            "level": 1,
+            "file": "src/renderer/components/overlay/WithPopupMenu.tsx",
+            "folder": "src/renderer/components/overlay",
+            "renderedBy": 15
+        },
+        {
+            "id": "src/renderer/components/layout/Splitter.tsx::Splitter",
+            "title": "Splitter",
+            "level": 2,
+            "file": "src/renderer/components/layout/Splitter.tsx",
+            "folder": "src/renderer/components/layout",
+            "renderedBy": 13
+        },
+        {
+            "id": "src/renderer/components/basic/TextAreaField.tsx::TextAreaField",
+            "title": "TextAreaField",
+            "level": 2,
+            "file": "src/renderer/components/basic/TextAreaField.tsx",
+            "folder": "src/renderer/components/basic",
+            "renderedBy": 13
+        },
+        {
+            "id": "src/renderer/components/virtualization/RenderGrid/RenderGrid.tsx::RenderGrid",
+            "title": "RenderGrid",
+            "level": 2,
+            "file": "src/renderer/components/virtualization/RenderGrid/RenderGrid.tsx",
+            "folder": "src/renderer/components/virtualization/RenderGrid",
+            "renderedBy": 12
+        },
+        {
+            "id": "src/renderer/components/overlay/Popper.tsx::Popper",
+            "title": "Popper",
+            "level": 2,
+            "file": "src/renderer/components/overlay/Popper.tsx",
+            "folder": "src/renderer/components/overlay",
+            "renderedBy": 10
+        },
+        {
+            "id": "src/renderer/components/data-grid/AVGrid/AVGrid.tsx::Cell",
+            "title": "Cell",
+            "level": 2,
+            "file": "src/renderer/components/data-grid/AVGrid/AVGrid.tsx",
+            "folder": "src/renderer/components/data-grid/AVGrid",
+            "renderedBy": 10
+        },
+        {
+            "id": "src/renderer/editors/log-view/items/DialogHeader.tsx::DialogHeader",
+            "title": "DialogHeader",
+            "level": 2,
+            "file": "src/renderer/editors/log-view/items/DialogHeader.tsx",
+            "folder": "src/renderer/editors/log-view/items",
+            "renderedBy": 9
+        },
+        {
+            "id": "src/renderer/editors/settings/SettingsPage.tsx::ThemePreview",
+            "title": "ThemePreview",
+            "level": 3,
+            "file": "src/renderer/editors/settings/SettingsPage.tsx",
+            "folder": "src/renderer/editors/settings",
+            "renderedBy": 7
+        },
+        {
+            "id": "src/renderer/editors/settings/SettingsPage.tsx::BookmarksFileLine",
+            "title": "BookmarksFileLine",
+            "level": 3,
+            "file": "src/renderer/editors/settings/SettingsPage.tsx",
+            "folder": "src/renderer/editors/settings",
+            "renderedBy": 7
+        },
+        {
+            "id": "src/renderer/editors/settings/SettingsPage.tsx::BrowserProfilesSection",
+            "title": "BrowserProfilesSection",
+            "level": 3,
+            "file": "src/renderer/editors/settings/SettingsPage.tsx",
+            "folder": "src/renderer/editors/settings",
+            "renderedBy": 7
+        },
+        {
+            "id": "src/renderer/editors/settings/SettingsPage.tsx::LinkBehaviorSection",
+            "title": "LinkBehaviorSection",
+            "level": 3,
+            "file": "src/renderer/editors/settings/SettingsPage.tsx",
+            "folder": "src/renderer/editors/settings",
+            "renderedBy": 7
+        },
+        {
+            "id": "src/renderer/editors/settings/SettingsPage.tsx::DefaultBrowserSection",
+            "title": "DefaultBrowserSection",
+            "level": 3,
+            "file": "src/renderer/editors/settings/SettingsPage.tsx",
+            "folder": "src/renderer/editors/settings",
+            "renderedBy": 7
+        },
+        {
+            "id": "src/renderer/editors/settings/SettingsPage.tsx::McpSection",
+            "title": "McpSection",
+            "level": 3,
+            "file": "src/renderer/editors/settings/SettingsPage.tsx",
+            "folder": "src/renderer/editors/settings",
+            "renderedBy": 7
+        },
+        {
+            "id": "src/renderer/editors/settings/SettingsPage.tsx::ScriptLibrarySection",
+            "title": "ScriptLibrarySection",
+            "level": 3,
+            "file": "src/renderer/editors/settings/SettingsPage.tsx",
+            "folder": "src/renderer/editors/settings",
+            "renderedBy": 7
+        },
+        {
+            "id": "src/renderer/editors/settings/SettingsPage.tsx::SettingsPage",
+            "title": "SettingsPage",
+            "level": 3,
+            "file": "src/renderer/editors/settings/SettingsPage.tsx",
+            "folder": "src/renderer/editors/settings",
+            "renderedBy": 7
+        },
+        {
+            "id": "src/renderer/components/basic/Tooltip.tsx::Tooltip",
+            "title": "Tooltip",
+            "level": 3,
+            "file": "src/renderer/components/basic/Tooltip.tsx",
+            "folder": "src/renderer/components/basic",
+            "renderedBy": 6
+        },
+        {
+            "id": "src/renderer/components/basic/OverflowTooltipText.tsx::OverflowTooltipText",
+            "title": "OverflowTooltipText",
+            "level": 3,
+            "file": "src/renderer/components/basic/OverflowTooltipText.tsx",
+            "folder": "src/renderer/components/basic",
+            "renderedBy": 6
+        },
+        {
+            "id": "src/renderer/ui/dialogs/Dialog.tsx::Dialog",
+            "title": "Dialog",
+            "level": 3,
+            "file": "src/renderer/ui/dialogs/Dialog.tsx",
+            "folder": "src/renderer/ui/dialogs",
+            "renderedBy": 6
+        },
+        {
+            "id": "src/renderer/ui/dialogs/Dialog.tsx::DialogContent",
+            "title": "DialogContent",
+            "level": 3,
+            "file": "src/renderer/ui/dialogs/Dialog.tsx",
+            "folder": "src/renderer/ui/dialogs",
+            "renderedBy": 6
+        },
+        {
+            "id": "src/renderer/components/form/ComboSelect.tsx::ComboSelect",
+            "title": "ComboSelect",
+            "level": 3,
+            "file": "src/renderer/components/form/ComboSelect.tsx",
+            "folder": "src/renderer/components/form",
+            "renderedBy": 6
+        },
+        {
+            "id": "src/renderer/editors/log-view/items/DialogContainer.tsx::DialogContainer",
+            "title": "DialogContainer",
+            "level": 3,
+            "file": "src/renderer/editors/log-view/items/DialogContainer.tsx",
+            "folder": "src/renderer/editors/log-view/items",
+            "renderedBy": 6
+        },
+        {
+            "id": "src/renderer/editors/log-view/items/ButtonsPanel.tsx::ButtonsPanel",
+            "title": "ButtonsPanel",
+            "level": 3,
+            "file": "src/renderer/editors/log-view/items/ButtonsPanel.tsx",
+            "folder": "src/renderer/editors/log-view/items",
+            "renderedBy": 6
+        },
+        {
+            "id": "src/renderer/editors/log-view/LogMessageView.tsx::LogMessageView",
+            "title": "LogMessageView",
+            "level": 3,
+            "file": "src/renderer/editors/log-view/LogMessageView.tsx",
+            "folder": "src/renderer/editors/log-view",
+            "renderedBy": 5
+        },
+        {
+            "id": "src/renderer/editors/log-view/items/ConfirmDialogView.tsx::ConfirmDialogView",
+            "title": "ConfirmDialogView",
+            "level": 3,
+            "file": "src/renderer/editors/log-view/items/ConfirmDialogView.tsx",
+            "folder": "src/renderer/editors/log-view/items",
+            "renderedBy": 5
+        },
+        {
+            "id": "src/renderer/editors/log-view/items/TextInputDialogView.tsx::TextInputDialogView",
+            "title": "TextInputDialogView",
+            "level": 3,
+            "file": "src/renderer/editors/log-view/items/TextInputDialogView.tsx",
+            "folder": "src/renderer/editors/log-view/items",
+            "renderedBy": 5
+        },
+        {
+            "id": "src/renderer/editors/log-view/items/ButtonsDialogView.tsx::ButtonsDialogView",
+            "title": "ButtonsDialogView",
+            "level": 3,
+            "file": "src/renderer/editors/log-view/items/ButtonsDialogView.tsx",
+            "folder": "src/renderer/editors/log-view/items",
+            "renderedBy": 5
+        },
+        {
+            "id": "src/renderer/editors/log-view/items/CheckboxesDialogView.tsx::CheckboxesDialogView",
+            "title": "CheckboxesDialogView",
+            "level": 3,
+            "file": "src/renderer/editors/log-view/items/CheckboxesDialogView.tsx",
+            "folder": "src/renderer/editors/log-view/items",
+            "renderedBy": 5
+        },
+        {
+            "id": "src/renderer/editors/log-view/items/RadioboxesDialogView.tsx::RadioboxesDialogView",
+            "title": "RadioboxesDialogView",
+            "level": 3,
+            "file": "src/renderer/editors/log-view/items/RadioboxesDialogView.tsx",
+            "folder": "src/renderer/editors/log-view/items",
+            "renderedBy": 5
+        },
+        {
+            "id": "src/renderer/editors/log-view/items/SelectDialogView.tsx::SelectDialogView",
+            "title": "SelectDialogView",
+            "level": 3,
+            "file": "src/renderer/editors/log-view/items/SelectDialogView.tsx",
+            "folder": "src/renderer/editors/log-view/items",
+            "renderedBy": 5
+        },
+        {
+            "id": "src/renderer/editors/log-view/items/ProgressOutputView.tsx::ProgressOutputView",
+            "title": "ProgressOutputView",
+            "level": 3,
+            "file": "src/renderer/editors/log-view/items/ProgressOutputView.tsx",
+            "folder": "src/renderer/editors/log-view/items",
+            "renderedBy": 5
+        },
+        {
+            "id": "src/renderer/editors/log-view/items/GridOutputView.tsx::GridOutputView",
+            "title": "GridOutputView",
+            "level": 3,
+            "file": "src/renderer/editors/log-view/items/GridOutputView.tsx",
+            "folder": "src/renderer/editors/log-view/items",
+            "renderedBy": 5
+        },
+        {
+            "id": "src/renderer/editors/log-view/items/TextOutputView.tsx::TextOutputView",
+            "title": "TextOutputView",
+            "level": 3,
+            "file": "src/renderer/editors/log-view/items/TextOutputView.tsx",
+            "folder": "src/renderer/editors/log-view/items",
+            "renderedBy": 5
+        },
+        {
+            "id": "src/renderer/editors/log-view/items/MarkdownOutputView.tsx::MarkdownOutputView",
+            "title": "MarkdownOutputView",
+            "level": 3,
+            "file": "src/renderer/editors/log-view/items/MarkdownOutputView.tsx",
+            "folder": "src/renderer/editors/log-view/items",
+            "renderedBy": 5
+        },
+        {
+            "id": "src/renderer/editors/log-view/items/MermaidOutputView.tsx::MermaidOutputView",
+            "title": "MermaidOutputView",
+            "level": 3,
+            "file": "src/renderer/editors/log-view/items/MermaidOutputView.tsx",
+            "folder": "src/renderer/editors/log-view/items",
+            "renderedBy": 5
+        },
+        {
+            "id": "src/renderer/components/virtualization/RenderGrid/RenderFlexGrid.tsx::RenderFlexGrid",
+            "title": "RenderFlexGrid",
+            "level": 3,
+            "file": "src/renderer/components/virtualization/RenderGrid/RenderFlexGrid.tsx",
+            "folder": "src/renderer/components/virtualization/RenderGrid",
+            "renderedBy": 5
+        },
+        {
+            "id": "src/renderer/editors/graph/GraphDetailPanel.tsx::LinksTab",
+            "title": "LinksTab",
+            "level": 3,
+            "file": "src/renderer/editors/graph/GraphDetailPanel.tsx",
+            "folder": "src/renderer/editors/graph",
+            "renderedBy": 5
+        },
+        {
+            "id": "src/renderer/editors/graph/GraphDetailPanel.tsx::PropertiesTab",
+            "title": "PropertiesTab",
+            "level": 3,
+            "file": "src/renderer/editors/graph/GraphDetailPanel.tsx",
+            "folder": "src/renderer/editors/graph",
+            "renderedBy": 5
+        },
+        {
+            "id": "src/renderer/editors/graph/GraphDetailPanel.tsx::ShapeIcon",
+            "title": "ShapeIcon",
+            "level": 3,
+            "file": "src/renderer/editors/graph/GraphDetailPanel.tsx",
+            "folder": "src/renderer/editors/graph",
+            "renderedBy": 5
+        },
+        {
+            "id": "src/renderer/editors/graph/GraphDetailPanel.tsx::LevelIcon",
+            "title": "LevelIcon",
+            "level": 3,
+            "file": "src/renderer/editors/graph/GraphDetailPanel.tsx",
+            "folder": "src/renderer/editors/graph",
+            "renderedBy": 5
+        },
+        {
+            "id": "src/renderer/editors/graph/GraphDetailPanel.tsx::InfoTab",
+            "title": "InfoTab",
+            "level": 3,
+            "file": "src/renderer/editors/graph/GraphDetailPanel.tsx",
+            "folder": "src/renderer/editors/graph",
+            "renderedBy": 5
+        },
+        {
+            "id": "src/renderer/ui/app/RenderEditor.tsx::RenderEditor",
+            "title": "RenderEditor",
+            "level": 3,
+            "file": "src/renderer/ui/app/RenderEditor.tsx",
+            "folder": "src/renderer/ui/app",
+            "renderedBy": 4
+        },
+        {
+            "id": "src/renderer/ui/navigation/NavigationPanel.tsx::NavigationPanel",
+            "title": "NavigationPanel",
+            "level": 3,
+            "file": "src/renderer/ui/navigation/NavigationPanel.tsx",
+            "folder": "src/renderer/ui/navigation",
+            "renderedBy": 4
+        },
+        {
+            "id": "src/renderer/editors/log-view/StyledTextView.tsx::StyledTextView",
+            "title": "StyledTextView",
+            "level": 3,
+            "file": "src/renderer/editors/log-view/StyledTextView.tsx",
+            "folder": "src/renderer/editors/log-view",
+            "renderedBy": 4
+        },
+        {
+            "id": "src/renderer/editors/log-view/LogEntryContent.tsx::DialogEntryStub",
+            "title": "DialogEntryStub",
+            "level": 3,
+            "file": "src/renderer/editors/log-view/LogEntryContent.tsx",
+            "folder": "src/renderer/editors/log-view",
+            "renderedBy": 4
+        },
+        {
+            "id": "src/renderer/editors/log-view/LogEntryContent.tsx::OutputEntryStub",
+            "title": "OutputEntryStub",
+            "level": 3,
+            "file": "src/renderer/editors/log-view/LogEntryContent.tsx",
+            "folder": "src/renderer/editors/log-view",
+            "renderedBy": 4
+        },
+        {
+            "id": "src/renderer/editors/log-view/LogEntryContent.tsx::UnknownEntryView",
+            "title": "UnknownEntryView",
+            "level": 3,
+            "file": "src/renderer/editors/log-view/LogEntryContent.tsx",
+            "folder": "src/renderer/editors/log-view",
+            "renderedBy": 4
+        },
+        {
+            "id": "src/renderer/editors/log-view/LogEntryContent.tsx::LogEntryContentInner",
+            "title": "LogEntryContentInner",
+            "level": 3,
+            "file": "src/renderer/editors/log-view/LogEntryContent.tsx",
+            "folder": "src/renderer/editors/log-view",
+            "renderedBy": 4
+        },
+        {
+            "id": "src/renderer/components/icons/LanguageIcon.tsx::FileTypeIcon",
+            "title": "FileTypeIcon",
+            "level": 4,
+            "file": "src/renderer/components/icons/LanguageIcon.tsx",
+            "folder": "src/renderer/components/icons",
+            "renderedBy": 3
+        },
+        {
+            "id": "src/renderer/components/icons/FileIcon.tsx::FileIcon",
+            "title": "FileIcon",
+            "level": 4,
+            "file": "src/renderer/components/icons/FileIcon.tsx",
+            "folder": "src/renderer/components/icons",
+            "renderedBy": 3
+        },
+        {
+            "id": "src/renderer/components/icons/FileIcon.tsx::FolderIcon",
+            "title": "FolderIcon",
+            "level": 4,
+            "file": "src/renderer/components/icons/FileIcon.tsx",
+            "folder": "src/renderer/components/icons",
+            "renderedBy": 3
+        },
+        {
+            "id": "src/renderer/components/overlay/PopupMenu.tsx::PopupMenu",
+            "title": "PopupMenu",
+            "level": 4,
+            "file": "src/renderer/components/overlay/PopupMenu.tsx",
+            "folder": "src/renderer/components/overlay",
+            "renderedBy": 3
+        },
+        {
+            "id": "src/renderer/ui/app/AsyncEditor.tsx::AsyncEditor",
+            "title": "AsyncEditor",
+            "level": 4,
+            "file": "src/renderer/ui/app/AsyncEditor.tsx",
+            "folder": "src/renderer/ui/app",
+            "renderedBy": 3
+        },
+        {
+            "id": "src/renderer/components/basic/PathInput.tsx::PathInput",
+            "title": "PathInput",
+            "level": 4,
+            "file": "src/renderer/components/basic/PathInput.tsx",
+            "folder": "src/renderer/components/basic",
+            "renderedBy": 3
+        },
+        {
+            "id": "src/renderer/ui/app/Pages.tsx::NavPanelWrapper",
+            "title": "NavPanelWrapper",
+            "level": 4,
+            "file": "src/renderer/ui/app/Pages.tsx",
+            "folder": "src/renderer/ui/app",
+            "renderedBy": 3
+        },
+        {
+            "id": "src/renderer/ui/app/Pages.tsx::NavPanelContent",
+            "title": "NavPanelContent",
+            "level": 4,
+            "file": "src/renderer/ui/app/Pages.tsx",
+            "folder": "src/renderer/ui/app",
+            "renderedBy": 3
+        },
+        {
+            "id": "src/renderer/ui/app/Pages.tsx::RenderGroupedPages",
+            "title": "RenderGroupedPages",
+            "level": 4,
+            "file": "src/renderer/ui/app/Pages.tsx",
+            "folder": "src/renderer/ui/app",
+            "renderedBy": 3
+        },
+        {
+            "id": "src/renderer/editors/log-view/LogEntryWrapper.tsx::LogEntryWrapper",
+            "title": "LogEntryWrapper",
+            "level": 4,
+            "file": "src/renderer/editors/log-view/LogEntryWrapper.tsx",
+            "folder": "src/renderer/editors/log-view",
+            "renderedBy": 3
+        },
+        {
+            "id": "src/renderer/components/TreeView/TreeView.tsx::TreeView",
+            "title": "TreeView",
+            "level": 4,
+            "file": "src/renderer/components/TreeView/TreeView.tsx",
+            "folder": "src/renderer/components/TreeView",
+            "renderedBy": 2
+        },
+        {
+            "id": "src/renderer/components/form/SwitchButtons.tsx::SwitchButtons",
+            "title": "SwitchButtons",
+            "level": 4,
+            "file": "src/renderer/components/form/SwitchButtons.tsx",
+            "folder": "src/renderer/components/form",
+            "renderedBy": 2
+        },
+        {
+            "id": "src/renderer/editors/browser/BrowserTabsPanel.tsx::BrowserTabsPanel",
+            "title": "BrowserTabsPanel",
+            "level": 4,
+            "file": "src/renderer/editors/browser/BrowserTabsPanel.tsx",
+            "folder": "src/renderer/editors/browser",
+            "renderedBy": 2
+        },
+        {
+            "id": "src/renderer/editors/browser/UrlSuggestionsDropdown.tsx::UrlSuggestionsDropdown",
+            "title": "UrlSuggestionsDropdown",
+            "level": 4,
+            "file": "src/renderer/editors/browser/UrlSuggestionsDropdown.tsx",
+            "folder": "src/renderer/editors/browser",
+            "renderedBy": 2
+        },
+        {
+            "id": "src/renderer/components/basic/Breadcrumb.tsx::Breadcrumb",
+            "title": "Breadcrumb",
+            "level": 4,
+            "file": "src/renderer/components/basic/Breadcrumb.tsx",
+            "folder": "src/renderer/components/basic",
+            "renderedBy": 2
+        },
+        {
+            "id": "src/renderer/components/basic/TagsList.tsx::TagsList",
+            "title": "TagsList",
+            "level": 4,
+            "file": "src/renderer/components/basic/TagsList.tsx",
+            "folder": "src/renderer/components/basic",
+            "renderedBy": 2
+        },
+        {
+            "id": "src/renderer/components/layout/CollapsiblePanelStack.tsx::CollapsiblePanelStack",
+            "title": "CollapsiblePanelStack",
+            "level": 4,
+            "file": "src/renderer/components/layout/CollapsiblePanelStack.tsx",
+            "folder": "src/renderer/components/layout",
+            "renderedBy": 2
+        },
+        {
+            "id": "src/renderer/editors/browser/BookmarksDrawer.tsx::BookmarksDrawer",
+            "title": "BookmarksDrawer",
+            "level": 4,
+            "file": "src/renderer/editors/browser/BookmarksDrawer.tsx",
+            "folder": "src/renderer/editors/browser",
+            "renderedBy": 2
+        },
+        {
+            "id": "src/renderer/editors/browser/DownloadButton.tsx::DownloadButton",
+            "title": "DownloadButton",
+            "level": 4,
+            "file": "src/renderer/editors/browser/DownloadButton.tsx",
+            "folder": "src/renderer/editors/browser",
+            "renderedBy": 2
+        },
+        {
+            "id": "src/renderer/editors/browser/BrowserDownloadsPopup.tsx::BrowserDownloadsPopup",
+            "title": "BrowserDownloadsPopup",
+            "level": 4,
+            "file": "src/renderer/editors/browser/BrowserDownloadsPopup.tsx",
+            "folder": "src/renderer/editors/browser",
+            "renderedBy": 2
+        },
+        {
+            "id": "src/renderer/editors/browser/BrowserFindBar.tsx::BrowserFindBar",
+            "title": "BrowserFindBar",
+            "level": 4,
+            "file": "src/renderer/editors/browser/BrowserFindBar.tsx",
+            "folder": "src/renderer/editors/browser",
+            "renderedBy": 2
+        },
+        {
+            "id": "src/renderer/ui/navigation/SearchResultsPanel.tsx::MatchLineText",
+            "title": "MatchLineText",
+            "level": 4,
+            "file": "src/renderer/ui/navigation/SearchResultsPanel.tsx",
+            "folder": "src/renderer/ui/navigation",
+            "renderedBy": 2
+        },
+        {
+            "id": "src/renderer/ui/navigation/SearchResultsPanel.tsx::FileResultGroup",
+            "title": "FileResultGroup",
+            "level": 4,
+            "file": "src/renderer/ui/navigation/SearchResultsPanel.tsx",
+            "folder": "src/renderer/ui/navigation",
+            "renderedBy": 2
+        },
+        {
+            "id": "src/renderer/components/data-grid/AVGrid/DefaultEditFormater.tsx::DefaultTextEdit",
+            "title": "DefaultTextEdit",
+            "level": 4,
+            "file": "src/renderer/components/data-grid/AVGrid/DefaultEditFormater.tsx",
+            "folder": "src/renderer/components/data-grid/AVGrid",
+            "renderedBy": 2
+        },
+        {
+            "id": "src/renderer/components/data-grid/AVGrid/DefaultEditFormater.tsx::DefaultOptionsEdit",
+            "title": "DefaultOptionsEdit",
+            "level": 4,
+            "file": "src/renderer/components/data-grid/AVGrid/DefaultEditFormater.tsx",
+            "folder": "src/renderer/components/data-grid/AVGrid",
+            "renderedBy": 2
+        },
+        {
+            "id": "src/renderer/components/data-grid/AVGrid/DataCell.tsx::DefaultCellBoolean",
+            "title": "DefaultCellBoolean",
+            "level": 4,
+            "file": "src/renderer/components/data-grid/AVGrid/DataCell.tsx",
+            "folder": "src/renderer/components/data-grid/AVGrid",
+            "renderedBy": 2
+        },
+        {
+            "id": "src/renderer/components/data-grid/AVGrid/filters/OptionsFilterContent.tsx::OptionsFilterContent",
+            "title": "OptionsFilterContent",
+            "level": 4,
+            "file": "src/renderer/components/data-grid/AVGrid/filters/OptionsFilterContent.tsx",
+            "folder": "src/renderer/components/data-grid/AVGrid/filters",
+            "renderedBy": 2
+        },
+        {
+            "id": "src/renderer/components/data-grid/AVGrid/filters/FilterPoper.tsx::FilterPoper",
+            "title": "FilterPoper",
+            "level": 4,
+            "file": "src/renderer/components/data-grid/AVGrid/filters/FilterPoper.tsx",
+            "folder": "src/renderer/components/data-grid/AVGrid/filters",
+            "renderedBy": 2
+        },
+        {
+            "id": "src/renderer/components/basic/Chip.tsx::Chip",
+            "title": "Chip",
+            "level": 4,
+            "file": "src/renderer/components/basic/Chip.tsx",
+            "folder": "src/renderer/components/basic",
+            "renderedBy": 2
+        },
+        {
+            "id": "src/renderer/editors/markdown/CodeBlock.tsx::MermaidBlock",
+            "title": "MermaidBlock",
+            "level": 4,
+            "file": "src/renderer/editors/markdown/CodeBlock.tsx",
+            "folder": "src/renderer/editors/markdown",
+            "renderedBy": 2
+        },
+        {
+            "id": "src/renderer/editors/markdown/CodeBlock.tsx::CodePreBlock",
+            "title": "CodePreBlock",
+            "level": 4,
+            "file": "src/renderer/editors/markdown/CodeBlock.tsx",
+            "folder": "src/renderer/editors/markdown",
+            "renderedBy": 2
+        },
+        {
+            "id": "src/renderer/editors/markdown/MarkdownBlock.tsx::MarkdownBlock",
+            "title": "MarkdownBlock",
+            "level": 4,
+            "file": "src/renderer/editors/markdown/MarkdownBlock.tsx",
+            "folder": "src/renderer/editors/markdown",
+            "renderedBy": 2
+        },
+        {
+            "id": "src/renderer/editors/log-view/LogViewEditor.tsx::TimestampIcon",
+            "title": "TimestampIcon",
+            "level": 4,
+            "file": "src/renderer/editors/log-view/LogViewEditor.tsx",
+            "folder": "src/renderer/editors/log-view",
+            "renderedBy": 2
+        },
+        {
+            "id": "src/renderer/editors/log-view/LogViewEditor.tsx::ClearIcon",
+            "title": "ClearIcon",
+            "level": 4,
+            "file": "src/renderer/editors/log-view/LogViewEditor.tsx",
+            "folder": "src/renderer/editors/log-view",
+            "renderedBy": 2
+        },
+        {
+            "id": "src/renderer/editors/notebook/note-editor/NoteItemToolbar.tsx::NoteItemToolbar",
+            "title": "NoteItemToolbar",
+            "level": 4,
+            "file": "src/renderer/editors/notebook/note-editor/NoteItemToolbar.tsx",
+            "folder": "src/renderer/editors/notebook/note-editor",
+            "renderedBy": 2
+        },
+        {
+            "id": "src/renderer/editors/notebook/note-editor/NoteItemActiveEditor.tsx::NoteItemActiveEditor",
+            "title": "NoteItemActiveEditor",
+            "level": 4,
+            "file": "src/renderer/editors/notebook/note-editor/NoteItemActiveEditor.tsx",
+            "folder": "src/renderer/editors/notebook/note-editor",
+            "renderedBy": 2
+        },
+        {
+            "id": "src/renderer/editors/graph/GraphTooltip.tsx::GraphTooltip",
+            "title": "GraphTooltip",
+            "level": 4,
+            "file": "src/renderer/editors/graph/GraphTooltip.tsx",
+            "folder": "src/renderer/editors/graph",
+            "renderedBy": 2
+        },
+        {
+            "id": "src/renderer/editors/graph/GraphDetailPanel.tsx::GraphDetailPanel",
+            "title": "GraphDetailPanel",
+            "level": 4,
+            "file": "src/renderer/editors/graph/GraphDetailPanel.tsx",
+            "folder": "src/renderer/editors/graph",
+            "renderedBy": 2
+        },
+        {
+            "id": "src/renderer/editors/graph/GraphTuningSliders.tsx::GraphTuningSliders",
+            "title": "GraphTuningSliders",
+            "level": 4,
+            "file": "src/renderer/editors/graph/GraphTuningSliders.tsx",
+            "folder": "src/renderer/editors/graph",
+            "renderedBy": 2
+        },
+        {
+            "id": "src/renderer/editors/graph/GraphExpansionSettings.tsx::GraphExpansionSettings",
+            "title": "GraphExpansionSettings",
+            "level": 4,
+            "file": "src/renderer/editors/graph/GraphExpansionSettings.tsx",
+            "folder": "src/renderer/editors/graph",
+            "renderedBy": 2
+        },
+        {
+            "id": "src/renderer/components/TreeView/TreeView.tsx::TreeCell",
+            "title": "TreeCell",
+            "level": 5,
+            "file": "src/renderer/components/TreeView/TreeView.tsx",
+            "folder": "src/renderer/components/TreeView",
+            "renderedBy": 1
+        },
+        {
+            "id": "src/renderer/components/basic/InputBase.tsx::InputBase",
+            "title": "InputBase",
+            "level": 5,
+            "file": "src/renderer/components/basic/InputBase.tsx",
+            "folder": "src/renderer/components/basic",
+            "renderedBy": 1
+        },
+        {
+            "id": "src/renderer/components/basic/Input.tsx::Input",
+            "title": "Input",
+            "level": 5,
+            "file": "src/renderer/components/basic/Input.tsx",
+            "folder": "src/renderer/components/basic",
+            "renderedBy": 1
+        },
+        {
+            "id": "src/renderer/components/form/List.tsx::DefaultCell",
+            "title": "DefaultCell",
+            "level": 5,
+            "file": "src/renderer/components/form/List.tsx",
+            "folder": "src/renderer/components/form",
+            "renderedBy": 1
+        },
+        {
+            "id": "src/renderer/ui/dialogs/poppers/Poppers.tsx::Poppers",
+            "title": "Poppers",
+            "level": 5,
+            "file": "src/renderer/ui/dialogs/poppers/Poppers.tsx",
+            "folder": "src/renderer/ui/dialogs/poppers",
+            "renderedBy": 1
+        },
+        {
+            "id": "src/renderer/editors/text/TextEditor.tsx::TextEditor",
+            "title": "TextEditor",
+            "level": 5,
+            "file": "src/renderer/editors/text/TextEditor.tsx",
+            "folder": "src/renderer/editors/text",
+            "renderedBy": 1
+        },
+        {
+            "id": "src/renderer/components/data-grid/AVGrid/filters/useFilters.tsx::FiltersProvider",
+            "title": "FiltersProvider",
+            "level": 5,
+            "file": "src/renderer/components/data-grid/AVGrid/filters/useFilters.tsx",
+            "folder": "src/renderer/components/data-grid/AVGrid/filters",
+            "renderedBy": 1
+        },
+        {
+            "id": "src/renderer/ui/dialogs/alerts/AlertItem.tsx::AlertItem",
+            "title": "AlertItem",
+            "level": 5,
+            "file": "src/renderer/ui/dialogs/alerts/AlertItem.tsx",
+            "folder": "src/renderer/ui/dialogs/alerts",
+            "renderedBy": 1
+        },
+        {
+            "id": "src/renderer/ui/dialogs/alerts/AlertsBar.tsx::AlertsBar",
+            "title": "AlertsBar",
+            "level": 5,
+            "file": "src/renderer/ui/dialogs/alerts/AlertsBar.tsx",
+            "folder": "src/renderer/ui/dialogs/alerts",
+            "renderedBy": 1
+        },
+        {
+            "id": "src/renderer/ui/dialogs/Dialogs.tsx::Dialogs",
+            "title": "Dialogs",
+            "level": 5,
+            "file": "src/renderer/ui/dialogs/Dialogs.tsx",
+            "folder": "src/renderer/ui/dialogs",
+            "renderedBy": 1
+        },
+        {
+            "id": "src/renderer/editors/text/TextToolbar.tsx::TextToolbar",
+            "title": "TextToolbar",
+            "level": 5,
+            "file": "src/renderer/editors/text/TextToolbar.tsx",
+            "folder": "src/renderer/editors/text",
+            "renderedBy": 1
+        },
+        {
+            "id": "src/renderer/editors/text/TextFooter.tsx::TextFooter",
+            "title": "TextFooter",
+            "level": 5,
+            "file": "src/renderer/editors/text/TextFooter.tsx",
+            "folder": "src/renderer/editors/text",
+            "renderedBy": 1
+        },
+        {
+            "id": "src/renderer/editors/text/ActiveEditor.tsx::ActiveEditor",
+            "title": "ActiveEditor",
+            "level": 5,
+            "file": "src/renderer/editors/text/ActiveEditor.tsx",
+            "folder": "src/renderer/editors/text",
+            "renderedBy": 1
+        },
+        {
+            "id": "src/renderer/components/form/ComboTemplate.tsx::ComboTemplate",
+            "title": "ComboTemplate",
+            "level": 5,
+            "file": "src/renderer/components/form/ComboTemplate.tsx",
+            "folder": "src/renderer/components/form",
+            "renderedBy": 1
+        },
+        {
+            "id": "src/renderer/editors/text/ScriptPanel.tsx::ScriptPanel",
+            "title": "ScriptPanel",
+            "level": 5,
+            "file": "src/renderer/editors/text/ScriptPanel.tsx",
+            "folder": "src/renderer/editors/text",
+            "renderedBy": 1
+        },
+        {
+            "id": "src/renderer/editors/link-editor/LinkItemList.tsx::LinkRow",
+            "title": "LinkRow",
+            "level": 5,
+            "file": "src/renderer/editors/link-editor/LinkItemList.tsx",
+            "folder": "src/renderer/editors/link-editor",
+            "renderedBy": 1
+        },
+        {
+            "id": "src/renderer/editors/link-editor/LinkItemList.tsx::LinkItemList",
+            "title": "LinkItemList",
+            "level": 5,
+            "file": "src/renderer/editors/link-editor/LinkItemList.tsx",
+            "folder": "src/renderer/editors/link-editor",
+            "renderedBy": 1
+        },
+        {
+            "id": "src/renderer/editors/link-editor/LinkItemTiles.tsx::TileCell",
+            "title": "TileCell",
+            "level": 5,
+            "file": "src/renderer/editors/link-editor/LinkItemTiles.tsx",
+            "folder": "src/renderer/editors/link-editor",
+            "renderedBy": 1
+        },
+        {
+            "id": "src/renderer/editors/link-editor/LinkItemTiles.tsx::LinkItemTiles",
+            "title": "LinkItemTiles",
+            "level": 5,
+            "file": "src/renderer/editors/link-editor/LinkItemTiles.tsx",
+            "folder": "src/renderer/editors/link-editor",
+            "renderedBy": 1
+        },
+        {
+            "id": "src/renderer/editors/link-editor/PinnedLinksPanel.tsx::PinnedItem",
+            "title": "PinnedItem",
+            "level": 5,
+            "file": "src/renderer/editors/link-editor/PinnedLinksPanel.tsx",
+            "folder": "src/renderer/editors/link-editor",
+            "renderedBy": 1
+        },
+        {
+            "id": "src/renderer/editors/link-editor/PinnedLinksPanel.tsx::PinnedLinksPanel",
+            "title": "PinnedLinksPanel",
+            "level": 5,
+            "file": "src/renderer/editors/link-editor/PinnedLinksPanel.tsx",
+            "folder": "src/renderer/editors/link-editor",
+            "renderedBy": 1
+        },
+        {
+            "id": "src/renderer/editors/link-editor/LinkEditor.tsx::LinkEditor",
+            "title": "LinkEditor",
+            "level": 5,
+            "file": "src/renderer/editors/link-editor/LinkEditor.tsx",
+            "folder": "src/renderer/editors/link-editor",
+            "renderedBy": 1
+        },
+        {
+            "id": "src/renderer/editors/browser/BrowserDownloadsPopup.tsx::DownloadItem",
+            "title": "DownloadItem",
+            "level": 5,
+            "file": "src/renderer/editors/browser/BrowserDownloadsPopup.tsx",
+            "folder": "src/renderer/editors/browser",
+            "renderedBy": 1
+        },
+        {
+            "id": "src/renderer/editors/browser/BrowserPageView.tsx::BrowserWebviewItem",
+            "title": "BrowserWebviewItem",
+            "level": 5,
+            "file": "src/renderer/editors/browser/BrowserPageView.tsx",
+            "folder": "src/renderer/editors/browser",
+            "renderedBy": 1
+        },
+        {
+            "id": "src/renderer/editors/browser/BrowserPageView.tsx::BrowserPageView",
+            "title": "BrowserPageView",
+            "level": 5,
+            "file": "src/renderer/editors/browser/BrowserPageView.tsx",
+            "folder": "src/renderer/editors/browser",
+            "renderedBy": 1
+        },
+        {
+            "id": "src/renderer/editors/image/BaseImageView.tsx::BaseImageView",
+            "title": "BaseImageView",
+            "level": 5,
+            "file": "src/renderer/editors/image/BaseImageView.tsx",
+            "folder": "src/renderer/editors/image",
+            "renderedBy": 1
+        },
+        {
+            "id": "src/renderer/ui/navigation/SearchResultsPanel.tsx::SearchResultsPanel",
+            "title": "SearchResultsPanel",
+            "level": 5,
+            "file": "src/renderer/ui/navigation/SearchResultsPanel.tsx",
+            "folder": "src/renderer/ui/navigation",
+            "renderedBy": 1
+        },
+        {
+            "id": "src/renderer/ui/app/Pages.tsx::Pages",
+            "title": "Pages",
+            "level": 5,
+            "file": "src/renderer/ui/app/Pages.tsx",
+            "folder": "src/renderer/ui/app",
+            "renderedBy": 1
+        },
+        {
+            "id": "src/renderer/ui/tabs/PageTab.tsx::PageTab",
+            "title": "PageTab",
+            "level": 5,
+            "file": "src/renderer/ui/tabs/PageTab.tsx",
+            "folder": "src/renderer/ui/tabs",
+            "renderedBy": 1
+        },
+        {
+            "id": "src/renderer/ui/tabs/PageTabs.tsx::PageTabs",
+            "title": "PageTabs",
+            "level": 5,
+            "file": "src/renderer/ui/tabs/PageTabs.tsx",
+            "folder": "src/renderer/ui/tabs",
+            "renderedBy": 1
+        },
+        {
+            "id": "src/renderer/ui/sidebar/OpenTabsList.tsx::OpenTabsList",
+            "title": "OpenTabsList",
+            "level": 5,
+            "file": "src/renderer/ui/sidebar/OpenTabsList.tsx",
+            "folder": "src/renderer/ui/sidebar",
+            "renderedBy": 1
+        },
+        {
+            "id": "src/renderer/ui/sidebar/FileList.tsx::FileList",
+            "title": "FileList",
+            "level": 5,
+            "file": "src/renderer/ui/sidebar/FileList.tsx",
+            "folder": "src/renderer/ui/sidebar",
+            "renderedBy": 1
+        },
+        {
+            "id": "src/renderer/ui/sidebar/RecentFileList.tsx::RecentFileList",
+            "title": "RecentFileList",
+            "level": 5,
+            "file": "src/renderer/ui/sidebar/RecentFileList.tsx",
+            "folder": "src/renderer/ui/sidebar",
+            "renderedBy": 1
+        },
+        {
+            "id": "src/renderer/ui/sidebar/FolderItem.tsx::FolderItem",
+            "title": "FolderItem",
+            "level": 5,
+            "file": "src/renderer/ui/sidebar/FolderItem.tsx",
+            "folder": "src/renderer/ui/sidebar",
+            "renderedBy": 1
+        },
+        {
+            "id": "src/renderer/ui/sidebar/ScriptLibraryPanel.tsx::ScriptLibraryPanel",
+            "title": "ScriptLibraryPanel",
+            "level": 5,
+            "file": "src/renderer/ui/sidebar/ScriptLibraryPanel.tsx",
+            "folder": "src/renderer/ui/sidebar",
+            "renderedBy": 1
+        },
+        {
+            "id": "src/renderer/ui/sidebar/MenuBar.tsx::MenuBar",
+            "title": "MenuBar",
+            "level": 5,
+            "file": "src/renderer/ui/sidebar/MenuBar.tsx",
+            "folder": "src/renderer/ui/sidebar",
+            "renderedBy": 1
+        },
+        {
+            "id": "src/renderer/ui/app/MainPage.tsx::MainPage",
+            "title": "MainPage",
+            "level": 5,
+            "file": "src/renderer/ui/app/MainPage.tsx",
+            "folder": "src/renderer/ui/app",
+            "renderedBy": 1
+        },
+        {
+            "id": "src/renderer/components/data-grid/AVGrid/HeaderCell.tsx::SortIcon",
+            "title": "SortIcon",
+            "level": 5,
+            "file": "src/renderer/components/data-grid/AVGrid/HeaderCell.tsx",
+            "folder": "src/renderer/components/data-grid/AVGrid",
+            "renderedBy": 1
+        },
+        {
+            "id": "src/renderer/components/data-grid/AVGrid/filters/FilterPoper.tsx::FilterContent",
+            "title": "FilterContent",
+            "level": 5,
+            "file": "src/renderer/components/data-grid/AVGrid/filters/FilterPoper.tsx",
+            "folder": "src/renderer/components/data-grid/AVGrid/filters",
+            "renderedBy": 1
+        },
+        {
+            "id": "src/renderer/components/data-grid/AVGrid/filters/FilterBar.tsx::FilterChip",
+            "title": "FilterChip",
+            "level": 5,
+            "file": "src/renderer/components/data-grid/AVGrid/filters/FilterBar.tsx",
+            "folder": "src/renderer/components/data-grid/AVGrid/filters",
+            "renderedBy": 1
+        },
+        {
+            "id": "src/renderer/components/data-grid/AVGrid/filters/FilterBar.tsx::FilterBar",
+            "title": "FilterBar",
+            "level": 5,
+            "file": "src/renderer/components/data-grid/AVGrid/filters/FilterBar.tsx",
+            "folder": "src/renderer/components/data-grid/AVGrid/filters",
+            "renderedBy": 1
+        },
+        {
+            "id": "src/renderer/components/basic/Checkbox.tsx::Checkbox",
+            "title": "Checkbox",
+            "level": 5,
+            "file": "src/renderer/components/basic/Checkbox.tsx",
+            "folder": "src/renderer/components/basic",
+            "renderedBy": 1
+        },
+        {
+            "id": "src/renderer/components/basic/Radio.tsx::Radio",
+            "title": "Radio",
+            "level": 5,
+            "file": "src/renderer/components/basic/Radio.tsx",
+            "folder": "src/renderer/components/basic",
+            "renderedBy": 1
+        },
+        {
+            "id": "src/renderer/editors/markdown/CodeBlock.tsx::CodeBlock",
+            "title": "CodeBlock",
+            "level": 5,
+            "file": "src/renderer/editors/markdown/CodeBlock.tsx",
+            "folder": "src/renderer/editors/markdown",
+            "renderedBy": 1
+        },
+        {
+            "id": "src/renderer/editors/log-view/LogEntryContent.tsx::LogEntryContent",
+            "title": "LogEntryContent",
+            "level": 5,
+            "file": "src/renderer/editors/log-view/LogEntryContent.tsx",
+            "folder": "src/renderer/editors/log-view",
+            "renderedBy": 1
+        },
+        {
+            "id": "src/renderer/components/virtualization/RenderGrid/RenderFlexGrid.tsx::FlexCell",
+            "title": "FlexCell",
+            "level": 5,
+            "file": "src/renderer/components/virtualization/RenderGrid/RenderFlexGrid.tsx",
+            "folder": "src/renderer/components/virtualization/RenderGrid",
+            "renderedBy": 1
+        },
+        {
+            "id": "src/renderer/components/layout/Minimap.tsx::Minimap",
+            "title": "Minimap",
+            "level": 5,
+            "file": "src/renderer/components/layout/Minimap.tsx",
+            "folder": "src/renderer/components/layout",
+            "renderedBy": 1
+        },
+        {
+            "id": "src/renderer/editors/markdown/MarkdownSearchBar.tsx::MarkdownSearchBar",
+            "title": "MarkdownSearchBar",
+            "level": 5,
+            "file": "src/renderer/editors/markdown/MarkdownSearchBar.tsx",
+            "folder": "src/renderer/editors/markdown",
+            "renderedBy": 1
+        },
+        {
+            "id": "src/renderer/editors/notebook/note-editor/MiniTextEditor.tsx::MiniTextEditor",
+            "title": "MiniTextEditor",
+            "level": 5,
+            "file": "src/renderer/editors/notebook/note-editor/MiniTextEditor.tsx",
+            "folder": "src/renderer/editors/notebook/note-editor",
+            "renderedBy": 1
+        },
+        {
+            "id": "src/renderer/editors/notebook/NoteItemView.tsx::NoteItemView",
+            "title": "NoteItemView",
+            "level": 5,
+            "file": "src/renderer/editors/notebook/NoteItemView.tsx",
+            "folder": "src/renderer/editors/notebook",
+            "renderedBy": 1
+        },
+        {
+            "id": "src/renderer/editors/notebook/ExpandedNoteView.tsx::ExpandedNoteView",
+            "title": "ExpandedNoteView",
+            "level": 5,
+            "file": "src/renderer/editors/notebook/ExpandedNoteView.tsx",
+            "folder": "src/renderer/editors/notebook",
+            "renderedBy": 1
+        },
+        {
+            "id": "src/renderer/editors/todo/components/TodoListPanel.tsx::TodoListPanel",
+            "title": "TodoListPanel",
+            "level": 5,
+            "file": "src/renderer/editors/todo/components/TodoListPanel.tsx",
+            "folder": "src/renderer/editors/todo/components",
+            "renderedBy": 1
+        },
+        {
+            "id": "src/renderer/editors/todo/components/TodoItemView.tsx::TodoItemView",
+            "title": "TodoItemView",
+            "level": 5,
+            "file": "src/renderer/editors/todo/components/TodoItemView.tsx",
+            "folder": "src/renderer/editors/todo/components",
+            "renderedBy": 1
+        },
+        {
+            "id": "src/renderer/editors/graph/GraphView.tsx::GraphSearchResults",
+            "title": "GraphSearchResults",
+            "level": 5,
+            "file": "src/renderer/editors/graph/GraphView.tsx",
+            "folder": "src/renderer/editors/graph",
+            "renderedBy": 1
+        },
+        {
+            "id": "src/renderer/theme/GlobalStyles.tsx::GlobalStyles",
+            "title": "GlobalStyles",
+            "level": 5,
+            "file": "src/renderer/theme/GlobalStyles.tsx",
+            "folder": "src/renderer/theme",
+            "renderedBy": 1
+        },
+        {
+            "id": "src/renderer/components/data-grid/AVGrid/SelectColumn.tsx::HeaderCell",
+            "title": "HeaderCell",
+            "level": 5,
+            "file": "src/renderer/components/data-grid/AVGrid/SelectColumn.tsx",
+            "folder": "src/renderer/components/data-grid/AVGrid",
+            "renderedBy": 1
+        },
+        {
+            "id": "src/renderer/components/data-grid/AVGrid/SelectColumn.tsx::DataCell",
+            "title": "DataCell",
+            "level": 5,
+            "file": "src/renderer/components/data-grid/AVGrid/SelectColumn.tsx",
+            "folder": "src/renderer/components/data-grid/AVGrid",
+            "renderedBy": 1
+        },
+        {
+            "id": "src/renderer/components/TreeView/CategoryTree.tsx::CategoryTree",
+            "title": "CategoryTree",
+            "level": 5,
+            "file": "src/renderer/components/TreeView/CategoryTree.tsx",
+            "folder": "src/renderer/components/TreeView",
+            "renderedBy": 0
+        },
+        {
+            "id": "src/renderer/components/form/List.tsx::ListComponent",
+            "title": "ListComponent",
+            "level": 5,
+            "file": "src/renderer/components/form/List.tsx",
+            "folder": "src/renderer/components/form",
+            "renderedBy": 0
+        },
+        {
+            "id": "src/renderer/components/overlay/PopupMenu.tsx::SubMenu",
+            "title": "SubMenu",
+            "level": 5,
+            "file": "src/renderer/components/overlay/PopupMenu.tsx",
+            "folder": "src/renderer/components/overlay",
+            "renderedBy": 0
+        },
+        {
+            "id": "src/renderer/ui/dialogs/poppers/showPopupMenu.tsx::AppPopupMenu",
+            "title": "AppPopupMenu",
+            "level": 5,
+            "file": "src/renderer/ui/dialogs/poppers/showPopupMenu.tsx",
+            "folder": "src/renderer/ui/dialogs/poppers",
+            "renderedBy": 0
+        },
+        {
+            "id": "src/renderer/ui/dialogs/ConfirmationDialog.tsx::ConfirmationDialog",
+            "title": "ConfirmationDialog",
+            "level": 5,
+            "file": "src/renderer/ui/dialogs/ConfirmationDialog.tsx",
+            "folder": "src/renderer/ui/dialogs",
+            "renderedBy": 0
+        },
+        {
+            "id": "src/renderer/ui/dialogs/InputDialog.tsx::InputDialog",
+            "title": "InputDialog",
+            "level": 5,
+            "file": "src/renderer/ui/dialogs/InputDialog.tsx",
+            "folder": "src/renderer/ui/dialogs",
+            "renderedBy": 0
+        },
+        {
+            "id": "src/renderer/ui/dialogs/PasswordDialog.tsx::PasswordDialog",
+            "title": "PasswordDialog",
+            "level": 5,
+            "file": "src/renderer/ui/dialogs/PasswordDialog.tsx",
+            "folder": "src/renderer/ui/dialogs",
+            "renderedBy": 0
+        },
+        {
+            "id": "src/renderer/ui/dialogs/TextDialog.tsx::TextDialog",
+            "title": "TextDialog",
+            "level": 5,
+            "file": "src/renderer/ui/dialogs/TextDialog.tsx",
+            "folder": "src/renderer/ui/dialogs",
+            "renderedBy": 0
+        },
+        {
+            "id": "src/renderer/editors/text/TextPageView.tsx::TextPageView",
+            "title": "TextPageView",
+            "level": 5,
+            "file": "src/renderer/editors/text/TextPageView.tsx",
+            "folder": "src/renderer/editors/text",
+            "renderedBy": 0
+        },
+        {
+            "id": "src/renderer/editors/text/EncryptionPanel.tsx::EncryptionPanel",
+            "title": "EncryptionPanel",
+            "level": 5,
+            "file": "src/renderer/editors/text/EncryptionPanel.tsx",
+            "folder": "src/renderer/editors/text",
+            "renderedBy": 0
+        },
+        {
+            "id": "src/renderer/editors/link-editor/EditLinkDialog.tsx::EditLinkDialog",
+            "title": "EditLinkDialog",
+            "level": 5,
+            "file": "src/renderer/editors/link-editor/EditLinkDialog.tsx",
+            "folder": "src/renderer/editors/link-editor",
+            "renderedBy": 0
+        },
+        {
+            "id": "src/renderer/ui/dialogs/LibrarySetupDialog.tsx::LibrarySetupDialog",
+            "title": "LibrarySetupDialog",
+            "level": 5,
+            "file": "src/renderer/ui/dialogs/LibrarySetupDialog.tsx",
+            "folder": "src/renderer/ui/dialogs",
+            "renderedBy": 0
+        },
+        {
+            "id": "src/renderer/components/file-explorer/FileExplorer.tsx::FileExplorer",
+            "title": "FileExplorer",
+            "level": 5,
+            "file": "src/renderer/components/file-explorer/FileExplorer.tsx",
+            "folder": "src/renderer/components/file-explorer",
+            "renderedBy": 0
+        },
+        {
+            "id": "src/renderer/editors/image/ImageViewer.tsx::ImageViewer",
+            "title": "ImageViewer",
+            "level": 5,
+            "file": "src/renderer/editors/image/ImageViewer.tsx",
+            "folder": "src/renderer/editors/image",
+            "renderedBy": 0
+        },
+        {
+            "id": "src/renderer/editors/compare/CompareEditor.tsx::CompareEditor",
+            "title": "CompareEditor",
+            "level": 5,
+            "file": "src/renderer/editors/compare/CompareEditor.tsx",
+            "folder": "src/renderer/editors/compare",
+            "renderedBy": 0
+        },
+        {
+            "id": "src/renderer/components/data-grid/AVGrid/HeaderCell.tsx::HeaderCell",
+            "title": "HeaderCell",
+            "level": 5,
+            "file": "src/renderer/components/data-grid/AVGrid/HeaderCell.tsx",
+            "folder": "src/renderer/components/data-grid/AVGrid",
+            "renderedBy": 0
+        },
+        {
+            "id": "src/renderer/components/data-grid/AVGrid/DefaultEditFormater.tsx::DefaultEditFormater",
+            "title": "DefaultEditFormater",
+            "level": 5,
+            "file": "src/renderer/components/data-grid/AVGrid/DefaultEditFormater.tsx",
+            "folder": "src/renderer/components/data-grid/AVGrid",
+            "renderedBy": 0
+        },
+        {
+            "id": "src/renderer/components/data-grid/AVGrid/DataCell.tsx::DefaultCellFormater",
+            "title": "DefaultCellFormater",
+            "level": 5,
+            "file": "src/renderer/components/data-grid/AVGrid/DataCell.tsx",
+            "folder": "src/renderer/components/data-grid/AVGrid",
+            "renderedBy": 0
+        },
+        {
+            "id": "src/renderer/components/data-grid/AVGrid/DataCell.tsx::DataCell",
+            "title": "DataCell",
+            "level": 5,
+            "file": "src/renderer/components/data-grid/AVGrid/DataCell.tsx",
+            "folder": "src/renderer/components/data-grid/AVGrid",
+            "renderedBy": 0
+        },
+        {
+            "id": "src/renderer/components/data-grid/AVGrid/AVGrid.tsx::AVGridComponent",
+            "title": "AVGridComponent",
+            "level": 5,
+            "file": "src/renderer/components/data-grid/AVGrid/AVGrid.tsx",
+            "folder": "src/renderer/components/data-grid/AVGrid",
+            "renderedBy": 0
+        },
+        {
+            "id": "src/renderer/editors/grid/components/ColumnsOptions.tsx::ColumnsOptions",
+            "title": "ColumnsOptions",
+            "level": 5,
+            "file": "src/renderer/editors/grid/components/ColumnsOptions.tsx",
+            "folder": "src/renderer/editors/grid/components",
+            "renderedBy": 0
+        },
+        {
+            "id": "src/renderer/editors/grid/components/CsvOptions.tsx::CsvOptions",
+            "title": "CsvOptions",
+            "level": 5,
+            "file": "src/renderer/editors/grid/components/CsvOptions.tsx",
+            "folder": "src/renderer/editors/grid/components",
+            "renderedBy": 0
+        },
+        {
+            "id": "src/renderer/editors/grid/GridEditor.tsx::GridEditor",
+            "title": "GridEditor",
+            "level": 5,
+            "file": "src/renderer/editors/grid/GridEditor.tsx",
+            "folder": "src/renderer/editors/grid",
+            "renderedBy": 0
+        },
+        {
+            "id": "src/renderer/editors/log-view/LogViewEditor.tsx::LogViewEditor",
+            "title": "LogViewEditor",
+            "level": 5,
+            "file": "src/renderer/editors/log-view/LogViewEditor.tsx",
+            "folder": "src/renderer/editors/log-view",
+            "renderedBy": 0
+        },
+        {
+            "id": "src/renderer/editors/markdown/MarkdownView.tsx::MarkdownView",
+            "title": "MarkdownView",
+            "level": 5,
+            "file": "src/renderer/editors/markdown/MarkdownView.tsx",
+            "folder": "src/renderer/editors/markdown",
+            "renderedBy": 0
+        },
+        {
+            "id": "src/renderer/editors/pdf/PdfViewer.tsx::PdfViewer",
+            "title": "PdfViewer",
+            "level": 5,
+            "file": "src/renderer/editors/pdf/PdfViewer.tsx",
+            "folder": "src/renderer/editors/pdf",
+            "renderedBy": 0
+        },
+        {
+            "id": "src/renderer/editors/notebook/NotebookEditor.tsx::NotebookEditor",
+            "title": "NotebookEditor",
+            "level": 5,
+            "file": "src/renderer/editors/notebook/NotebookEditor.tsx",
+            "folder": "src/renderer/editors/notebook",
+            "renderedBy": 0
+        },
+        {
+            "id": "src/renderer/editors/svg/SvgView.tsx::SvgView",
+            "title": "SvgView",
+            "level": 5,
+            "file": "src/renderer/editors/svg/SvgView.tsx",
+            "folder": "src/renderer/editors/svg",
+            "renderedBy": 0
+        },
+        {
+            "id": "src/renderer/editors/mermaid/MermaidView.tsx::MermaidView",
+            "title": "MermaidView",
+            "level": 5,
+            "file": "src/renderer/editors/mermaid/MermaidView.tsx",
+            "folder": "src/renderer/editors/mermaid",
+            "renderedBy": 0
+        },
+        {
+            "id": "src/renderer/editors/todo/TodoEditor.tsx::TodoEditor",
+            "title": "TodoEditor",
+            "level": 5,
+            "file": "src/renderer/editors/todo/TodoEditor.tsx",
+            "folder": "src/renderer/editors/todo",
+            "renderedBy": 0
+        },
+        {
+            "id": "src/renderer/editors/graph/GraphView.tsx::GraphView",
+            "title": "GraphView",
+            "level": 5,
+            "file": "src/renderer/editors/graph/GraphView.tsx",
+            "folder": "src/renderer/editors/graph",
+            "renderedBy": 0
+        },
+        {
+            "id": "src/renderer/index.tsx::AppContent",
+            "title": "AppContent",
+            "level": 5,
+            "file": "src/renderer/index.tsx",
+            "folder": "src/renderer",
+            "renderedBy": 0
+        }
+    ],
+    "links": [
+        {
+            "source": "src/renderer/components/basic/Button.tsx::Button",
+            "target": "src/renderer/components/basic/Tooltip.tsx::Tooltip"
+        },
+        {
+            "source": "src/renderer/components/TreeView/TreeView.tsx::TreeCell",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/components/TreeView/TreeView.tsx::TreeView",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/components/TreeView/TreeView.tsx::TreeView",
+            "target": "src/renderer/components/TreeView/TreeView.tsx::TreeCell"
+        },
+        {
+            "source": "src/renderer/components/TreeView/TreeView.tsx::TreeCell",
+            "target": "src/renderer/components/virtualization/RenderGrid/RenderGrid.tsx::RenderGrid"
+        },
+        {
+            "source": "src/renderer/components/TreeView/TreeView.tsx::TreeView",
+            "target": "src/renderer/components/virtualization/RenderGrid/RenderGrid.tsx::RenderGrid"
+        },
+        {
+            "source": "src/renderer/components/TreeView/CategoryTree.tsx::CategoryTree",
+            "target": "src/renderer/components/TreeView/TreeView.tsx::TreeView"
+        },
+        {
+            "source": "src/renderer/components/icons/FileIcon.tsx::FileIcon",
+            "target": "src/renderer/components/icons/LanguageIcon.tsx::FileTypeIcon"
+        },
+        {
+            "source": "src/renderer/components/icons/FileIcon.tsx::FolderIcon",
+            "target": "src/renderer/components/icons/LanguageIcon.tsx::FileTypeIcon"
+        },
+        {
+            "source": "src/renderer/components/basic/Input.tsx::Input",
+            "target": "src/renderer/components/basic/InputBase.tsx::InputBase"
+        },
+        {
+            "source": "src/renderer/components/basic/TextField.tsx::TextField",
+            "target": "src/renderer/components/basic/Input.tsx::Input"
+        },
+        {
+            "source": "src/renderer/components/form/List.tsx::DefaultCell",
+            "target": "src/renderer/components/basic/OverflowTooltipText.tsx::OverflowTooltipText"
+        },
+        {
+            "source": "src/renderer/components/form/List.tsx::ListComponent",
+            "target": "src/renderer/components/basic/OverflowTooltipText.tsx::OverflowTooltipText"
+        },
+        {
+            "source": "src/renderer/components/form/List.tsx::DefaultCell",
+            "target": "src/renderer/components/basic/Tooltip.tsx::Tooltip"
+        },
+        {
+            "source": "src/renderer/components/form/List.tsx::ListComponent",
+            "target": "src/renderer/components/basic/Tooltip.tsx::Tooltip"
+        },
+        {
+            "source": "src/renderer/components/form/List.tsx::ListComponent",
+            "target": "src/renderer/components/form/List.tsx::DefaultCell"
+        },
+        {
+            "source": "src/renderer/components/form/List.tsx::DefaultCell",
+            "target": "src/renderer/components/virtualization/RenderGrid/RenderGrid.tsx::RenderGrid"
+        },
+        {
+            "source": "src/renderer/components/form/List.tsx::ListComponent",
+            "target": "src/renderer/components/virtualization/RenderGrid/RenderGrid.tsx::RenderGrid"
+        },
+        {
+            "source": "src/renderer/components/overlay/PopupMenu.tsx::PopupMenu",
+            "target": "src/renderer/components/overlay/Popper.tsx::Popper"
+        },
+        {
+            "source": "src/renderer/components/overlay/PopupMenu.tsx::SubMenu",
+            "target": "src/renderer/components/overlay/Popper.tsx::Popper"
+        },
+        {
+            "source": "src/renderer/components/overlay/PopupMenu.tsx::PopupMenu",
+            "target": "src/renderer/components/basic/TextField.tsx::TextField"
+        },
+        {
+            "source": "src/renderer/components/overlay/PopupMenu.tsx::SubMenu",
+            "target": "src/renderer/components/basic/TextField.tsx::TextField"
+        },
+        {
+            "source": "src/renderer/components/overlay/PopupMenu.tsx::SubMenu",
+            "target": "src/renderer/components/overlay/PopupMenu.tsx::PopupMenu"
+        },
+        {
+            "source": "src/renderer/ui/dialogs/poppers/showPopupMenu.tsx::AppPopupMenu",
+            "target": "src/renderer/components/overlay/PopupMenu.tsx::PopupMenu"
+        },
+        {
+            "source": "src/renderer/ui/dialogs/alerts/AlertItem.tsx::AlertItem",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/ui/dialogs/alerts/AlertsBar.tsx::AlertsBar",
+            "target": "src/renderer/ui/dialogs/alerts/AlertItem.tsx::AlertItem"
+        },
+        {
+            "source": "src/renderer/ui/dialogs/Dialog.tsx::Dialog",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/ui/dialogs/Dialog.tsx::DialogContent",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/ui/dialogs/ConfirmationDialog.tsx::ConfirmationDialog",
+            "target": "src/renderer/ui/dialogs/Dialog.tsx::Dialog"
+        },
+        {
+            "source": "src/renderer/ui/dialogs/ConfirmationDialog.tsx::ConfirmationDialog",
+            "target": "src/renderer/ui/dialogs/Dialog.tsx::DialogContent"
+        },
+        {
+            "source": "src/renderer/ui/dialogs/ConfirmationDialog.tsx::ConfirmationDialog",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/ui/dialogs/InputDialog.tsx::InputDialog",
+            "target": "src/renderer/ui/dialogs/Dialog.tsx::Dialog"
+        },
+        {
+            "source": "src/renderer/ui/dialogs/InputDialog.tsx::InputDialog",
+            "target": "src/renderer/ui/dialogs/Dialog.tsx::DialogContent"
+        },
+        {
+            "source": "src/renderer/ui/dialogs/InputDialog.tsx::InputDialog",
+            "target": "src/renderer/components/basic/TextField.tsx::TextField"
+        },
+        {
+            "source": "src/renderer/ui/dialogs/InputDialog.tsx::InputDialog",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/ui/dialogs/PasswordDialog.tsx::PasswordDialog",
+            "target": "src/renderer/ui/dialogs/Dialog.tsx::Dialog"
+        },
+        {
+            "source": "src/renderer/ui/dialogs/PasswordDialog.tsx::PasswordDialog",
+            "target": "src/renderer/ui/dialogs/Dialog.tsx::DialogContent"
+        },
+        {
+            "source": "src/renderer/ui/dialogs/PasswordDialog.tsx::PasswordDialog",
+            "target": "src/renderer/components/basic/TextField.tsx::TextField"
+        },
+        {
+            "source": "src/renderer/ui/dialogs/PasswordDialog.tsx::PasswordDialog",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/ui/dialogs/TextDialog.tsx::TextDialog",
+            "target": "src/renderer/ui/dialogs/Dialog.tsx::Dialog"
+        },
+        {
+            "source": "src/renderer/ui/dialogs/TextDialog.tsx::TextDialog",
+            "target": "src/renderer/ui/dialogs/Dialog.tsx::DialogContent"
+        },
+        {
+            "source": "src/renderer/ui/dialogs/TextDialog.tsx::TextDialog",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/editors/text/TextToolbar.tsx::TextToolbar",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/editors/text/TextToolbar.tsx::TextToolbar",
+            "target": "src/renderer/components/form/SwitchButtons.tsx::SwitchButtons"
+        },
+        {
+            "source": "src/renderer/editors/text/TextFooter.tsx::TextFooter",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/editors/text/ActiveEditor.tsx::ActiveEditor",
+            "target": "src/renderer/editors/text/TextEditor.tsx::TextEditor"
+        },
+        {
+            "source": "src/renderer/editors/text/ActiveEditor.tsx::ActiveEditor",
+            "target": "src/renderer/ui/app/AsyncEditor.tsx::AsyncEditor"
+        },
+        {
+            "source": "src/renderer/editors/text/TextPageView.tsx::TextPageView",
+            "target": "src/renderer/editors/text/TextToolbar.tsx::TextToolbar"
+        },
+        {
+            "source": "src/renderer/editors/text/TextPageView.tsx::TextPageView",
+            "target": "src/renderer/editors/text/ActiveEditor.tsx::ActiveEditor"
+        },
+        {
+            "source": "src/renderer/editors/text/TextPageView.tsx::TextPageView",
+            "target": "src/renderer/editors/text/ScriptPanel.tsx::ScriptPanel"
+        },
+        {
+            "source": "src/renderer/editors/text/TextPageView.tsx::TextPageView",
+            "target": "src/renderer/editors/text/TextFooter.tsx::TextFooter"
+        },
+        {
+            "source": "src/renderer/editors/text/EncryptionPanel.tsx::EncryptionPanel",
+            "target": "src/renderer/components/basic/TextField.tsx::TextField"
+        },
+        {
+            "source": "src/renderer/editors/text/EncryptionPanel.tsx::EncryptionPanel",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/components/basic/PathInput.tsx::PathInput",
+            "target": "src/renderer/components/overlay/Popper.tsx::Popper"
+        },
+        {
+            "source": "src/renderer/editors/link-editor/EditLinkDialog.tsx::EditLinkDialog",
+            "target": "src/renderer/ui/dialogs/Dialog.tsx::Dialog"
+        },
+        {
+            "source": "src/renderer/editors/link-editor/EditLinkDialog.tsx::EditLinkDialog",
+            "target": "src/renderer/ui/dialogs/Dialog.tsx::DialogContent"
+        },
+        {
+            "source": "src/renderer/editors/link-editor/EditLinkDialog.tsx::EditLinkDialog",
+            "target": "src/renderer/components/basic/TextAreaField.tsx::TextAreaField"
+        },
+        {
+            "source": "src/renderer/editors/link-editor/EditLinkDialog.tsx::EditLinkDialog",
+            "target": "src/renderer/components/basic/TextField.tsx::TextField"
+        },
+        {
+            "source": "src/renderer/editors/link-editor/EditLinkDialog.tsx::EditLinkDialog",
+            "target": "src/renderer/components/basic/PathInput.tsx::PathInput"
+        },
+        {
+            "source": "src/renderer/editors/link-editor/EditLinkDialog.tsx::EditLinkDialog",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/components/form/ComboTemplate.tsx::ComboTemplate",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/components/form/ComboTemplate.tsx::ComboTemplate",
+            "target": "src/renderer/components/basic/TextField.tsx::TextField"
+        },
+        {
+            "source": "src/renderer/components/form/ComboTemplate.tsx::ComboTemplate",
+            "target": "src/renderer/components/overlay/Popper.tsx::Popper"
+        },
+        {
+            "source": "src/renderer/components/form/ComboSelect.tsx::ComboSelect",
+            "target": "src/renderer/components/form/ComboTemplate.tsx::ComboTemplate"
+        },
+        {
+            "source": "src/renderer/ui/dialogs/LibrarySetupDialog.tsx::LibrarySetupDialog",
+            "target": "src/renderer/ui/dialogs/Dialog.tsx::Dialog"
+        },
+        {
+            "source": "src/renderer/ui/dialogs/LibrarySetupDialog.tsx::LibrarySetupDialog",
+            "target": "src/renderer/ui/dialogs/Dialog.tsx::DialogContent"
+        },
+        {
+            "source": "src/renderer/ui/dialogs/LibrarySetupDialog.tsx::LibrarySetupDialog",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/editors/text/ScriptPanel.tsx::ScriptPanel",
+            "target": "src/renderer/components/layout/Splitter.tsx::Splitter"
+        },
+        {
+            "source": "src/renderer/editors/text/ScriptPanel.tsx::ScriptPanel",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/editors/text/ScriptPanel.tsx::ScriptPanel",
+            "target": "src/renderer/components/form/ComboSelect.tsx::ComboSelect"
+        },
+        {
+            "source": "src/renderer/components/file-explorer/FileExplorer.tsx::FileExplorer",
+            "target": "src/renderer/components/icons/FileIcon.tsx::FolderIcon"
+        },
+        {
+            "source": "src/renderer/components/file-explorer/FileExplorer.tsx::FileExplorer",
+            "target": "src/renderer/components/icons/LanguageIcon.tsx::FileTypeIcon"
+        },
+        {
+            "source": "src/renderer/components/file-explorer/FileExplorer.tsx::FileExplorer",
+            "target": "src/renderer/components/TreeView/TreeView.tsx::TreeView"
+        },
+        {
+            "source": "src/renderer/components/file-explorer/FileExplorer.tsx::FileExplorer",
+            "target": "src/renderer/components/basic/TextField.tsx::TextField"
+        },
+        {
+            "source": "src/renderer/components/file-explorer/FileExplorer.tsx::FileExplorer",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/components/overlay/WithPopupMenu.tsx::WithPopupMenu",
+            "target": "src/renderer/components/overlay/PopupMenu.tsx::PopupMenu"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::ThemePreview",
+            "target": "src/renderer/editors/settings/SettingsPage.tsx::BookmarksFileLine"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::BrowserProfilesSection",
+            "target": "src/renderer/editors/settings/SettingsPage.tsx::BookmarksFileLine"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::LinkBehaviorSection",
+            "target": "src/renderer/editors/settings/SettingsPage.tsx::BookmarksFileLine"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::DefaultBrowserSection",
+            "target": "src/renderer/editors/settings/SettingsPage.tsx::BookmarksFileLine"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::McpSection",
+            "target": "src/renderer/editors/settings/SettingsPage.tsx::BookmarksFileLine"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::ScriptLibrarySection",
+            "target": "src/renderer/editors/settings/SettingsPage.tsx::BookmarksFileLine"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::SettingsPage",
+            "target": "src/renderer/editors/settings/SettingsPage.tsx::BookmarksFileLine"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::ThemePreview",
+            "target": "src/renderer/components/overlay/WithPopupMenu.tsx::WithPopupMenu"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::BookmarksFileLine",
+            "target": "src/renderer/components/overlay/WithPopupMenu.tsx::WithPopupMenu"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::BrowserProfilesSection",
+            "target": "src/renderer/components/overlay/WithPopupMenu.tsx::WithPopupMenu"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::LinkBehaviorSection",
+            "target": "src/renderer/components/overlay/WithPopupMenu.tsx::WithPopupMenu"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::DefaultBrowserSection",
+            "target": "src/renderer/components/overlay/WithPopupMenu.tsx::WithPopupMenu"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::McpSection",
+            "target": "src/renderer/components/overlay/WithPopupMenu.tsx::WithPopupMenu"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::ScriptLibrarySection",
+            "target": "src/renderer/components/overlay/WithPopupMenu.tsx::WithPopupMenu"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::SettingsPage",
+            "target": "src/renderer/components/overlay/WithPopupMenu.tsx::WithPopupMenu"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::BookmarksFileLine",
+            "target": "src/renderer/editors/settings/SettingsPage.tsx::ThemePreview"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::BrowserProfilesSection",
+            "target": "src/renderer/editors/settings/SettingsPage.tsx::ThemePreview"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::LinkBehaviorSection",
+            "target": "src/renderer/editors/settings/SettingsPage.tsx::ThemePreview"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::DefaultBrowserSection",
+            "target": "src/renderer/editors/settings/SettingsPage.tsx::ThemePreview"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::McpSection",
+            "target": "src/renderer/editors/settings/SettingsPage.tsx::ThemePreview"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::ScriptLibrarySection",
+            "target": "src/renderer/editors/settings/SettingsPage.tsx::ThemePreview"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::SettingsPage",
+            "target": "src/renderer/editors/settings/SettingsPage.tsx::ThemePreview"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::ThemePreview",
+            "target": "src/renderer/editors/settings/SettingsPage.tsx::BrowserProfilesSection"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::BookmarksFileLine",
+            "target": "src/renderer/editors/settings/SettingsPage.tsx::BrowserProfilesSection"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::LinkBehaviorSection",
+            "target": "src/renderer/editors/settings/SettingsPage.tsx::BrowserProfilesSection"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::DefaultBrowserSection",
+            "target": "src/renderer/editors/settings/SettingsPage.tsx::BrowserProfilesSection"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::McpSection",
+            "target": "src/renderer/editors/settings/SettingsPage.tsx::BrowserProfilesSection"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::ScriptLibrarySection",
+            "target": "src/renderer/editors/settings/SettingsPage.tsx::BrowserProfilesSection"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::SettingsPage",
+            "target": "src/renderer/editors/settings/SettingsPage.tsx::BrowserProfilesSection"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::ThemePreview",
+            "target": "src/renderer/editors/settings/SettingsPage.tsx::LinkBehaviorSection"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::BookmarksFileLine",
+            "target": "src/renderer/editors/settings/SettingsPage.tsx::LinkBehaviorSection"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::BrowserProfilesSection",
+            "target": "src/renderer/editors/settings/SettingsPage.tsx::LinkBehaviorSection"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::DefaultBrowserSection",
+            "target": "src/renderer/editors/settings/SettingsPage.tsx::LinkBehaviorSection"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::McpSection",
+            "target": "src/renderer/editors/settings/SettingsPage.tsx::LinkBehaviorSection"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::ScriptLibrarySection",
+            "target": "src/renderer/editors/settings/SettingsPage.tsx::LinkBehaviorSection"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::SettingsPage",
+            "target": "src/renderer/editors/settings/SettingsPage.tsx::LinkBehaviorSection"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::ThemePreview",
+            "target": "src/renderer/editors/settings/SettingsPage.tsx::DefaultBrowserSection"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::BookmarksFileLine",
+            "target": "src/renderer/editors/settings/SettingsPage.tsx::DefaultBrowserSection"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::BrowserProfilesSection",
+            "target": "src/renderer/editors/settings/SettingsPage.tsx::DefaultBrowserSection"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::LinkBehaviorSection",
+            "target": "src/renderer/editors/settings/SettingsPage.tsx::DefaultBrowserSection"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::McpSection",
+            "target": "src/renderer/editors/settings/SettingsPage.tsx::DefaultBrowserSection"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::ScriptLibrarySection",
+            "target": "src/renderer/editors/settings/SettingsPage.tsx::DefaultBrowserSection"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::SettingsPage",
+            "target": "src/renderer/editors/settings/SettingsPage.tsx::DefaultBrowserSection"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::ThemePreview",
+            "target": "src/renderer/components/basic/TextAreaField.tsx::TextAreaField"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::BookmarksFileLine",
+            "target": "src/renderer/components/basic/TextAreaField.tsx::TextAreaField"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::BrowserProfilesSection",
+            "target": "src/renderer/components/basic/TextAreaField.tsx::TextAreaField"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::LinkBehaviorSection",
+            "target": "src/renderer/components/basic/TextAreaField.tsx::TextAreaField"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::DefaultBrowserSection",
+            "target": "src/renderer/components/basic/TextAreaField.tsx::TextAreaField"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::McpSection",
+            "target": "src/renderer/components/basic/TextAreaField.tsx::TextAreaField"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::ScriptLibrarySection",
+            "target": "src/renderer/components/basic/TextAreaField.tsx::TextAreaField"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::SettingsPage",
+            "target": "src/renderer/components/basic/TextAreaField.tsx::TextAreaField"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::ThemePreview",
+            "target": "src/renderer/editors/settings/SettingsPage.tsx::McpSection"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::BookmarksFileLine",
+            "target": "src/renderer/editors/settings/SettingsPage.tsx::McpSection"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::BrowserProfilesSection",
+            "target": "src/renderer/editors/settings/SettingsPage.tsx::McpSection"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::LinkBehaviorSection",
+            "target": "src/renderer/editors/settings/SettingsPage.tsx::McpSection"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::DefaultBrowserSection",
+            "target": "src/renderer/editors/settings/SettingsPage.tsx::McpSection"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::ScriptLibrarySection",
+            "target": "src/renderer/editors/settings/SettingsPage.tsx::McpSection"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::SettingsPage",
+            "target": "src/renderer/editors/settings/SettingsPage.tsx::McpSection"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::ThemePreview",
+            "target": "src/renderer/editors/settings/SettingsPage.tsx::ScriptLibrarySection"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::BookmarksFileLine",
+            "target": "src/renderer/editors/settings/SettingsPage.tsx::ScriptLibrarySection"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::BrowserProfilesSection",
+            "target": "src/renderer/editors/settings/SettingsPage.tsx::ScriptLibrarySection"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::LinkBehaviorSection",
+            "target": "src/renderer/editors/settings/SettingsPage.tsx::ScriptLibrarySection"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::DefaultBrowserSection",
+            "target": "src/renderer/editors/settings/SettingsPage.tsx::ScriptLibrarySection"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::McpSection",
+            "target": "src/renderer/editors/settings/SettingsPage.tsx::ScriptLibrarySection"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::SettingsPage",
+            "target": "src/renderer/editors/settings/SettingsPage.tsx::ScriptLibrarySection"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::ThemePreview",
+            "target": "src/renderer/editors/settings/SettingsPage.tsx::SettingsPage"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::BookmarksFileLine",
+            "target": "src/renderer/editors/settings/SettingsPage.tsx::SettingsPage"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::BrowserProfilesSection",
+            "target": "src/renderer/editors/settings/SettingsPage.tsx::SettingsPage"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::LinkBehaviorSection",
+            "target": "src/renderer/editors/settings/SettingsPage.tsx::SettingsPage"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::DefaultBrowserSection",
+            "target": "src/renderer/editors/settings/SettingsPage.tsx::SettingsPage"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::McpSection",
+            "target": "src/renderer/editors/settings/SettingsPage.tsx::SettingsPage"
+        },
+        {
+            "source": "src/renderer/editors/settings/SettingsPage.tsx::ScriptLibrarySection",
+            "target": "src/renderer/editors/settings/SettingsPage.tsx::SettingsPage"
+        },
+        {
+            "source": "src/renderer/editors/browser/BrowserTabsPanel.tsx::BrowserTabsPanel",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/editors/link-editor/LinkItemList.tsx::LinkRow",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/editors/link-editor/LinkItemList.tsx::LinkItemList",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/editors/link-editor/LinkItemList.tsx::LinkItemList",
+            "target": "src/renderer/editors/link-editor/LinkItemList.tsx::LinkRow"
+        },
+        {
+            "source": "src/renderer/editors/link-editor/LinkItemList.tsx::LinkRow",
+            "target": "src/renderer/components/virtualization/RenderGrid/RenderGrid.tsx::RenderGrid"
+        },
+        {
+            "source": "src/renderer/editors/link-editor/LinkItemList.tsx::LinkItemList",
+            "target": "src/renderer/components/virtualization/RenderGrid/RenderGrid.tsx::RenderGrid"
+        },
+        {
+            "source": "src/renderer/editors/link-editor/LinkItemTiles.tsx::LinkItemTiles",
+            "target": "src/renderer/editors/link-editor/LinkItemTiles.tsx::TileCell"
+        },
+        {
+            "source": "src/renderer/editors/link-editor/LinkItemTiles.tsx::TileCell",
+            "target": "src/renderer/components/virtualization/RenderGrid/RenderGrid.tsx::RenderGrid"
+        },
+        {
+            "source": "src/renderer/editors/link-editor/LinkItemTiles.tsx::LinkItemTiles",
+            "target": "src/renderer/components/virtualization/RenderGrid/RenderGrid.tsx::RenderGrid"
+        },
+        {
+            "source": "src/renderer/editors/link-editor/PinnedLinksPanel.tsx::PinnedLinksPanel",
+            "target": "src/renderer/editors/link-editor/PinnedLinksPanel.tsx::PinnedItem"
+        },
+        {
+            "source": "src/renderer/editors/link-editor/LinkEditor.tsx::LinkEditor",
+            "target": "src/renderer/components/basic/Breadcrumb.tsx::Breadcrumb"
+        },
+        {
+            "source": "src/renderer/editors/link-editor/LinkEditor.tsx::LinkEditor",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/editors/link-editor/LinkEditor.tsx::LinkEditor",
+            "target": "src/renderer/components/basic/TextField.tsx::TextField"
+        },
+        {
+            "source": "src/renderer/editors/link-editor/LinkEditor.tsx::LinkEditor",
+            "target": "src/renderer/components/layout/CollapsiblePanelStack.tsx::CollapsiblePanelStack"
+        },
+        {
+            "source": "src/renderer/editors/link-editor/LinkEditor.tsx::LinkEditor",
+            "target": "src/renderer/components/basic/TagsList.tsx::TagsList"
+        },
+        {
+            "source": "src/renderer/editors/link-editor/LinkEditor.tsx::LinkEditor",
+            "target": "src/renderer/components/layout/Splitter.tsx::Splitter"
+        },
+        {
+            "source": "src/renderer/editors/link-editor/LinkEditor.tsx::LinkEditor",
+            "target": "src/renderer/editors/link-editor/LinkItemList.tsx::LinkItemList"
+        },
+        {
+            "source": "src/renderer/editors/link-editor/LinkEditor.tsx::LinkEditor",
+            "target": "src/renderer/editors/link-editor/LinkItemTiles.tsx::LinkItemTiles"
+        },
+        {
+            "source": "src/renderer/editors/link-editor/LinkEditor.tsx::LinkEditor",
+            "target": "src/renderer/editors/link-editor/PinnedLinksPanel.tsx::PinnedLinksPanel"
+        },
+        {
+            "source": "src/renderer/editors/browser/BookmarksDrawer.tsx::BookmarksDrawer",
+            "target": "src/renderer/components/layout/Splitter.tsx::Splitter"
+        },
+        {
+            "source": "src/renderer/editors/browser/BookmarksDrawer.tsx::BookmarksDrawer",
+            "target": "src/renderer/editors/link-editor/LinkEditor.tsx::LinkEditor"
+        },
+        {
+            "source": "src/renderer/editors/browser/DownloadButton.tsx::DownloadButton",
+            "target": "src/renderer/components/basic/Tooltip.tsx::Tooltip"
+        },
+        {
+            "source": "src/renderer/editors/browser/BrowserDownloadsPopup.tsx::BrowserDownloadsPopup",
+            "target": "src/renderer/components/overlay/Popper.tsx::Popper"
+        },
+        {
+            "source": "src/renderer/editors/browser/BrowserDownloadsPopup.tsx::DownloadItem",
+            "target": "src/renderer/components/overlay/Popper.tsx::Popper"
+        },
+        {
+            "source": "src/renderer/editors/browser/BrowserDownloadsPopup.tsx::BrowserDownloadsPopup",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/editors/browser/BrowserDownloadsPopup.tsx::DownloadItem",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/editors/browser/BrowserDownloadsPopup.tsx::BrowserDownloadsPopup",
+            "target": "src/renderer/editors/browser/BrowserDownloadsPopup.tsx::DownloadItem"
+        },
+        {
+            "source": "src/renderer/editors/browser/BrowserPageView.tsx::BrowserWebviewItem",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/editors/browser/BrowserPageView.tsx::BrowserPageView",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/editors/browser/BrowserPageView.tsx::BrowserWebviewItem",
+            "target": "src/renderer/components/overlay/WithPopupMenu.tsx::WithPopupMenu"
+        },
+        {
+            "source": "src/renderer/editors/browser/BrowserPageView.tsx::BrowserPageView",
+            "target": "src/renderer/components/overlay/WithPopupMenu.tsx::WithPopupMenu"
+        },
+        {
+            "source": "src/renderer/editors/browser/BrowserPageView.tsx::BrowserWebviewItem",
+            "target": "src/renderer/components/basic/TextField.tsx::TextField"
+        },
+        {
+            "source": "src/renderer/editors/browser/BrowserPageView.tsx::BrowserPageView",
+            "target": "src/renderer/components/basic/TextField.tsx::TextField"
+        },
+        {
+            "source": "src/renderer/editors/browser/BrowserPageView.tsx::BrowserWebviewItem",
+            "target": "src/renderer/editors/browser/DownloadButton.tsx::DownloadButton"
+        },
+        {
+            "source": "src/renderer/editors/browser/BrowserPageView.tsx::BrowserPageView",
+            "target": "src/renderer/editors/browser/DownloadButton.tsx::DownloadButton"
+        },
+        {
+            "source": "src/renderer/editors/browser/BrowserPageView.tsx::BrowserWebviewItem",
+            "target": "src/renderer/editors/browser/BrowserTabsPanel.tsx::BrowserTabsPanel"
+        },
+        {
+            "source": "src/renderer/editors/browser/BrowserPageView.tsx::BrowserPageView",
+            "target": "src/renderer/editors/browser/BrowserTabsPanel.tsx::BrowserTabsPanel"
+        },
+        {
+            "source": "src/renderer/editors/browser/BrowserPageView.tsx::BrowserWebviewItem",
+            "target": "src/renderer/components/layout/Splitter.tsx::Splitter"
+        },
+        {
+            "source": "src/renderer/editors/browser/BrowserPageView.tsx::BrowserPageView",
+            "target": "src/renderer/components/layout/Splitter.tsx::Splitter"
+        },
+        {
+            "source": "src/renderer/editors/browser/BrowserPageView.tsx::BrowserPageView",
+            "target": "src/renderer/editors/browser/BrowserPageView.tsx::BrowserWebviewItem"
+        },
+        {
+            "source": "src/renderer/editors/browser/BrowserPageView.tsx::BrowserWebviewItem",
+            "target": "src/renderer/editors/browser/BrowserFindBar.tsx::BrowserFindBar"
+        },
+        {
+            "source": "src/renderer/editors/browser/BrowserPageView.tsx::BrowserPageView",
+            "target": "src/renderer/editors/browser/BrowserFindBar.tsx::BrowserFindBar"
+        },
+        {
+            "source": "src/renderer/editors/browser/BrowserPageView.tsx::BrowserWebviewItem",
+            "target": "src/renderer/editors/browser/BookmarksDrawer.tsx::BookmarksDrawer"
+        },
+        {
+            "source": "src/renderer/editors/browser/BrowserPageView.tsx::BrowserPageView",
+            "target": "src/renderer/editors/browser/BookmarksDrawer.tsx::BookmarksDrawer"
+        },
+        {
+            "source": "src/renderer/editors/browser/BrowserPageView.tsx::BrowserWebviewItem",
+            "target": "src/renderer/editors/browser/UrlSuggestionsDropdown.tsx::UrlSuggestionsDropdown"
+        },
+        {
+            "source": "src/renderer/editors/browser/BrowserPageView.tsx::BrowserPageView",
+            "target": "src/renderer/editors/browser/UrlSuggestionsDropdown.tsx::UrlSuggestionsDropdown"
+        },
+        {
+            "source": "src/renderer/editors/browser/BrowserPageView.tsx::BrowserWebviewItem",
+            "target": "src/renderer/editors/browser/BrowserDownloadsPopup.tsx::BrowserDownloadsPopup"
+        },
+        {
+            "source": "src/renderer/editors/browser/BrowserPageView.tsx::BrowserPageView",
+            "target": "src/renderer/editors/browser/BrowserDownloadsPopup.tsx::BrowserDownloadsPopup"
+        },
+        {
+            "source": "src/renderer/editors/browser/BrowserPageView.tsx::BrowserWebviewItem",
+            "target": "src/renderer/editors/browser/BrowserPageView.tsx::BrowserPageView"
+        },
+        {
+            "source": "src/renderer/editors/image/ImageViewer.tsx::ImageViewer",
+            "target": "src/renderer/components/icons/FileIcon.tsx::FileIcon"
+        },
+        {
+            "source": "src/renderer/editors/image/ImageViewer.tsx::ImageViewer",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/editors/image/ImageViewer.tsx::ImageViewer",
+            "target": "src/renderer/editors/image/BaseImageView.tsx::BaseImageView"
+        },
+        {
+            "source": "src/renderer/ui/app/RenderEditor.tsx::RenderEditor",
+            "target": "src/renderer/ui/app/AsyncEditor.tsx::AsyncEditor"
+        },
+        {
+            "source": "src/renderer/editors/compare/CompareEditor.tsx::CompareEditor",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/ui/navigation/SearchResultsPanel.tsx::FileResultGroup",
+            "target": "src/renderer/ui/navigation/SearchResultsPanel.tsx::MatchLineText"
+        },
+        {
+            "source": "src/renderer/ui/navigation/SearchResultsPanel.tsx::SearchResultsPanel",
+            "target": "src/renderer/ui/navigation/SearchResultsPanel.tsx::MatchLineText"
+        },
+        {
+            "source": "src/renderer/ui/navigation/SearchResultsPanel.tsx::MatchLineText",
+            "target": "src/renderer/ui/navigation/SearchResultsPanel.tsx::FileResultGroup"
+        },
+        {
+            "source": "src/renderer/ui/navigation/SearchResultsPanel.tsx::SearchResultsPanel",
+            "target": "src/renderer/ui/navigation/SearchResultsPanel.tsx::FileResultGroup"
+        },
+        {
+            "source": "src/renderer/ui/navigation/NavigationPanel.tsx::NavigationPanel",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/ui/navigation/NavigationPanel.tsx::NavigationPanel",
+            "target": "src/renderer/components/layout/Splitter.tsx::Splitter"
+        },
+        {
+            "source": "src/renderer/ui/navigation/NavigationPanel.tsx::NavigationPanel",
+            "target": "src/renderer/ui/navigation/SearchResultsPanel.tsx::SearchResultsPanel"
+        },
+        {
+            "source": "src/renderer/ui/app/Pages.tsx::NavPanelWrapper",
+            "target": "src/renderer/ui/app/Pages.tsx::NavPanelContent"
+        },
+        {
+            "source": "src/renderer/ui/app/Pages.tsx::RenderGroupedPages",
+            "target": "src/renderer/ui/app/Pages.tsx::NavPanelContent"
+        },
+        {
+            "source": "src/renderer/ui/app/Pages.tsx::Pages",
+            "target": "src/renderer/ui/app/Pages.tsx::NavPanelContent"
+        },
+        {
+            "source": "src/renderer/ui/app/Pages.tsx::NavPanelWrapper",
+            "target": "src/renderer/ui/navigation/NavigationPanel.tsx::NavigationPanel"
+        },
+        {
+            "source": "src/renderer/ui/app/Pages.tsx::NavPanelContent",
+            "target": "src/renderer/ui/navigation/NavigationPanel.tsx::NavigationPanel"
+        },
+        {
+            "source": "src/renderer/ui/app/Pages.tsx::RenderGroupedPages",
+            "target": "src/renderer/ui/navigation/NavigationPanel.tsx::NavigationPanel"
+        },
+        {
+            "source": "src/renderer/ui/app/Pages.tsx::Pages",
+            "target": "src/renderer/ui/navigation/NavigationPanel.tsx::NavigationPanel"
+        },
+        {
+            "source": "src/renderer/ui/app/Pages.tsx::NavPanelWrapper",
+            "target": "src/renderer/components/layout/Splitter.tsx::Splitter"
+        },
+        {
+            "source": "src/renderer/ui/app/Pages.tsx::NavPanelContent",
+            "target": "src/renderer/components/layout/Splitter.tsx::Splitter"
+        },
+        {
+            "source": "src/renderer/ui/app/Pages.tsx::RenderGroupedPages",
+            "target": "src/renderer/components/layout/Splitter.tsx::Splitter"
+        },
+        {
+            "source": "src/renderer/ui/app/Pages.tsx::Pages",
+            "target": "src/renderer/components/layout/Splitter.tsx::Splitter"
+        },
+        {
+            "source": "src/renderer/ui/app/Pages.tsx::NavPanelContent",
+            "target": "src/renderer/ui/app/Pages.tsx::NavPanelWrapper"
+        },
+        {
+            "source": "src/renderer/ui/app/Pages.tsx::RenderGroupedPages",
+            "target": "src/renderer/ui/app/Pages.tsx::NavPanelWrapper"
+        },
+        {
+            "source": "src/renderer/ui/app/Pages.tsx::Pages",
+            "target": "src/renderer/ui/app/Pages.tsx::NavPanelWrapper"
+        },
+        {
+            "source": "src/renderer/ui/app/Pages.tsx::NavPanelWrapper",
+            "target": "src/renderer/ui/app/RenderEditor.tsx::RenderEditor"
+        },
+        {
+            "source": "src/renderer/ui/app/Pages.tsx::NavPanelContent",
+            "target": "src/renderer/ui/app/RenderEditor.tsx::RenderEditor"
+        },
+        {
+            "source": "src/renderer/ui/app/Pages.tsx::RenderGroupedPages",
+            "target": "src/renderer/ui/app/RenderEditor.tsx::RenderEditor"
+        },
+        {
+            "source": "src/renderer/ui/app/Pages.tsx::Pages",
+            "target": "src/renderer/ui/app/RenderEditor.tsx::RenderEditor"
+        },
+        {
+            "source": "src/renderer/ui/app/Pages.tsx::NavPanelWrapper",
+            "target": "src/renderer/ui/app/Pages.tsx::RenderGroupedPages"
+        },
+        {
+            "source": "src/renderer/ui/app/Pages.tsx::NavPanelContent",
+            "target": "src/renderer/ui/app/Pages.tsx::RenderGroupedPages"
+        },
+        {
+            "source": "src/renderer/ui/app/Pages.tsx::Pages",
+            "target": "src/renderer/ui/app/Pages.tsx::RenderGroupedPages"
+        },
+        {
+            "source": "src/renderer/ui/tabs/PageTab.tsx::PageTab",
+            "target": "src/renderer/components/overlay/WithPopupMenu.tsx::WithPopupMenu"
+        },
+        {
+            "source": "src/renderer/ui/tabs/PageTab.tsx::PageTab",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/ui/tabs/PageTab.tsx::PageTab",
+            "target": "src/renderer/components/basic/Tooltip.tsx::Tooltip"
+        },
+        {
+            "source": "src/renderer/ui/tabs/PageTabs.tsx::PageTabs",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/ui/tabs/PageTabs.tsx::PageTabs",
+            "target": "src/renderer/ui/tabs/PageTab.tsx::PageTab"
+        },
+        {
+            "source": "src/renderer/ui/tabs/PageTabs.tsx::PageTabs",
+            "target": "src/renderer/components/overlay/WithPopupMenu.tsx::WithPopupMenu"
+        },
+        {
+            "source": "src/renderer/ui/sidebar/FileList.tsx::FileList",
+            "target": "src/renderer/components/icons/FileIcon.tsx::FolderIcon"
+        },
+        {
+            "source": "src/renderer/ui/sidebar/FileList.tsx::FileList",
+            "target": "src/renderer/components/icons/FileIcon.tsx::FileIcon"
+        },
+        {
+            "source": "src/renderer/ui/sidebar/FileList.tsx::FileList",
+            "target": "src/renderer/components/basic/TextField.tsx::TextField"
+        },
+        {
+            "source": "src/renderer/ui/sidebar/FileList.tsx::FileList",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/ui/sidebar/RecentFileList.tsx::RecentFileList",
+            "target": "src/renderer/ui/sidebar/FileList.tsx::FileList"
+        },
+        {
+            "source": "src/renderer/ui/sidebar/FolderItem.tsx::FolderItem",
+            "target": "src/renderer/components/basic/OverflowTooltipText.tsx::OverflowTooltipText"
+        },
+        {
+            "source": "src/renderer/ui/sidebar/FolderItem.tsx::FolderItem",
+            "target": "src/renderer/components/basic/Tooltip.tsx::Tooltip"
+        },
+        {
+            "source": "src/renderer/ui/sidebar/MenuBar.tsx::MenuBar",
+            "target": "src/renderer/components/icons/FileIcon.tsx::FolderIcon"
+        },
+        {
+            "source": "src/renderer/ui/sidebar/MenuBar.tsx::MenuBar",
+            "target": "src/renderer/ui/sidebar/FolderItem.tsx::FolderItem"
+        },
+        {
+            "source": "src/renderer/ui/sidebar/MenuBar.tsx::MenuBar",
+            "target": "src/renderer/ui/sidebar/OpenTabsList.tsx::OpenTabsList"
+        },
+        {
+            "source": "src/renderer/ui/sidebar/MenuBar.tsx::MenuBar",
+            "target": "src/renderer/ui/sidebar/RecentFileList.tsx::RecentFileList"
+        },
+        {
+            "source": "src/renderer/ui/sidebar/MenuBar.tsx::MenuBar",
+            "target": "src/renderer/ui/sidebar/ScriptLibraryPanel.tsx::ScriptLibraryPanel"
+        },
+        {
+            "source": "src/renderer/ui/sidebar/MenuBar.tsx::MenuBar",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/ui/sidebar/MenuBar.tsx::MenuBar",
+            "target": "src/renderer/components/layout/Splitter.tsx::Splitter"
+        },
+        {
+            "source": "src/renderer/ui/app/MainPage.tsx::MainPage",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/ui/app/MainPage.tsx::MainPage",
+            "target": "src/renderer/ui/tabs/PageTabs.tsx::PageTabs"
+        },
+        {
+            "source": "src/renderer/ui/app/MainPage.tsx::MainPage",
+            "target": "src/renderer/ui/app/Pages.tsx::Pages"
+        },
+        {
+            "source": "src/renderer/ui/app/MainPage.tsx::MainPage",
+            "target": "src/renderer/ui/sidebar/MenuBar.tsx::MenuBar"
+        },
+        {
+            "source": "src/renderer/components/data-grid/AVGrid/HeaderCell.tsx::HeaderCell",
+            "target": "src/renderer/components/data-grid/AVGrid/HeaderCell.tsx::SortIcon"
+        },
+        {
+            "source": "src/renderer/components/data-grid/AVGrid/HeaderCell.tsx::SortIcon",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/components/data-grid/AVGrid/HeaderCell.tsx::HeaderCell",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/components/data-grid/AVGrid/DefaultEditFormater.tsx::DefaultTextEdit",
+            "target": "src/renderer/components/basic/TextField.tsx::TextField"
+        },
+        {
+            "source": "src/renderer/components/data-grid/AVGrid/DefaultEditFormater.tsx::DefaultOptionsEdit",
+            "target": "src/renderer/components/basic/TextField.tsx::TextField"
+        },
+        {
+            "source": "src/renderer/components/data-grid/AVGrid/DefaultEditFormater.tsx::DefaultEditFormater",
+            "target": "src/renderer/components/basic/TextField.tsx::TextField"
+        },
+        {
+            "source": "src/renderer/components/data-grid/AVGrid/DefaultEditFormater.tsx::DefaultTextEdit",
+            "target": "src/renderer/components/form/ComboSelect.tsx::ComboSelect"
+        },
+        {
+            "source": "src/renderer/components/data-grid/AVGrid/DefaultEditFormater.tsx::DefaultOptionsEdit",
+            "target": "src/renderer/components/form/ComboSelect.tsx::ComboSelect"
+        },
+        {
+            "source": "src/renderer/components/data-grid/AVGrid/DefaultEditFormater.tsx::DefaultEditFormater",
+            "target": "src/renderer/components/form/ComboSelect.tsx::ComboSelect"
+        },
+        {
+            "source": "src/renderer/components/data-grid/AVGrid/DefaultEditFormater.tsx::DefaultTextEdit",
+            "target": "src/renderer/components/data-grid/AVGrid/DefaultEditFormater.tsx::DefaultOptionsEdit"
+        },
+        {
+            "source": "src/renderer/components/data-grid/AVGrid/DefaultEditFormater.tsx::DefaultEditFormater",
+            "target": "src/renderer/components/data-grid/AVGrid/DefaultEditFormater.tsx::DefaultOptionsEdit"
+        },
+        {
+            "source": "src/renderer/components/data-grid/AVGrid/DefaultEditFormater.tsx::DefaultOptionsEdit",
+            "target": "src/renderer/components/data-grid/AVGrid/DefaultEditFormater.tsx::DefaultTextEdit"
+        },
+        {
+            "source": "src/renderer/components/data-grid/AVGrid/DefaultEditFormater.tsx::DefaultEditFormater",
+            "target": "src/renderer/components/data-grid/AVGrid/DefaultEditFormater.tsx::DefaultTextEdit"
+        },
+        {
+            "source": "src/renderer/components/data-grid/AVGrid/DataCell.tsx::DefaultCellBoolean",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/components/data-grid/AVGrid/DataCell.tsx::DefaultCellFormater",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/components/data-grid/AVGrid/DataCell.tsx::DataCell",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/components/data-grid/AVGrid/DataCell.tsx::DefaultCellFormater",
+            "target": "src/renderer/components/data-grid/AVGrid/DataCell.tsx::DefaultCellBoolean"
+        },
+        {
+            "source": "src/renderer/components/data-grid/AVGrid/DataCell.tsx::DataCell",
+            "target": "src/renderer/components/data-grid/AVGrid/DataCell.tsx::DefaultCellBoolean"
+        },
+        {
+            "source": "src/renderer/components/data-grid/AVGrid/DataCell.tsx::DefaultCellBoolean",
+            "target": "src/renderer/components/basic/OverflowTooltipText.tsx::OverflowTooltipText"
+        },
+        {
+            "source": "src/renderer/components/data-grid/AVGrid/DataCell.tsx::DefaultCellFormater",
+            "target": "src/renderer/components/basic/OverflowTooltipText.tsx::OverflowTooltipText"
+        },
+        {
+            "source": "src/renderer/components/data-grid/AVGrid/DataCell.tsx::DataCell",
+            "target": "src/renderer/components/basic/OverflowTooltipText.tsx::OverflowTooltipText"
+        },
+        {
+            "source": "src/renderer/components/data-grid/AVGrid/filters/OptionsFilterContent.tsx::OptionsFilterContent",
+            "target": "src/renderer/components/basic/TextField.tsx::TextField"
+        },
+        {
+            "source": "src/renderer/components/data-grid/AVGrid/filters/OptionsFilterContent.tsx::OptionsFilterContent",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/components/data-grid/AVGrid/filters/FilterPoper.tsx::FilterContent",
+            "target": "src/renderer/components/data-grid/AVGrid/filters/OptionsFilterContent.tsx::OptionsFilterContent"
+        },
+        {
+            "source": "src/renderer/components/data-grid/AVGrid/filters/FilterPoper.tsx::FilterPoper",
+            "target": "src/renderer/components/data-grid/AVGrid/filters/OptionsFilterContent.tsx::OptionsFilterContent"
+        },
+        {
+            "source": "src/renderer/components/data-grid/AVGrid/filters/FilterPoper.tsx::FilterContent",
+            "target": "src/renderer/components/overlay/Popper.tsx::Popper"
+        },
+        {
+            "source": "src/renderer/components/data-grid/AVGrid/filters/FilterPoper.tsx::FilterPoper",
+            "target": "src/renderer/components/overlay/Popper.tsx::Popper"
+        },
+        {
+            "source": "src/renderer/components/data-grid/AVGrid/filters/FilterPoper.tsx::FilterPoper",
+            "target": "src/renderer/components/data-grid/AVGrid/filters/FilterPoper.tsx::FilterContent"
+        },
+        {
+            "source": "src/renderer/components/data-grid/AVGrid/AVGrid.tsx::AVGridComponent",
+            "target": "src/renderer/components/data-grid/AVGrid/AVGrid.tsx::Cell"
+        },
+        {
+            "source": "src/renderer/components/data-grid/AVGrid/AVGrid.tsx::Cell",
+            "target": "src/renderer/components/virtualization/RenderGrid/RenderGrid.tsx::RenderGrid"
+        },
+        {
+            "source": "src/renderer/components/data-grid/AVGrid/AVGrid.tsx::AVGridComponent",
+            "target": "src/renderer/components/virtualization/RenderGrid/RenderGrid.tsx::RenderGrid"
+        },
+        {
+            "source": "src/renderer/components/data-grid/AVGrid/AVGrid.tsx::Cell",
+            "target": "src/renderer/components/data-grid/AVGrid/filters/FilterPoper.tsx::FilterPoper"
+        },
+        {
+            "source": "src/renderer/components/data-grid/AVGrid/AVGrid.tsx::AVGridComponent",
+            "target": "src/renderer/components/data-grid/AVGrid/filters/FilterPoper.tsx::FilterPoper"
+        },
+        {
+            "source": "src/renderer/components/data-grid/AVGrid/filters/FilterBar.tsx::FilterChip",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/components/data-grid/AVGrid/filters/FilterBar.tsx::FilterBar",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/components/data-grid/AVGrid/filters/FilterBar.tsx::FilterChip",
+            "target": "src/renderer/components/basic/Chip.tsx::Chip"
+        },
+        {
+            "source": "src/renderer/components/data-grid/AVGrid/filters/FilterBar.tsx::FilterBar",
+            "target": "src/renderer/components/basic/Chip.tsx::Chip"
+        },
+        {
+            "source": "src/renderer/components/data-grid/AVGrid/filters/FilterBar.tsx::FilterBar",
+            "target": "src/renderer/components/data-grid/AVGrid/filters/FilterBar.tsx::FilterChip"
+        },
+        {
+            "source": "src/renderer/editors/grid/components/ColumnsOptions.tsx::ColumnsOptions",
+            "target": "src/renderer/components/overlay/Popper.tsx::Popper"
+        },
+        {
+            "source": "src/renderer/editors/grid/components/ColumnsOptions.tsx::ColumnsOptions",
+            "target": "src/renderer/components/data-grid/AVGrid/AVGrid.tsx::Cell"
+        },
+        {
+            "source": "src/renderer/editors/grid/components/ColumnsOptions.tsx::ColumnsOptions",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/editors/grid/components/CsvOptions.tsx::CsvOptions",
+            "target": "src/renderer/components/overlay/Popper.tsx::Popper"
+        },
+        {
+            "source": "src/renderer/editors/grid/components/CsvOptions.tsx::CsvOptions",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/editors/grid/components/CsvOptions.tsx::CsvOptions",
+            "target": "src/renderer/components/basic/TextField.tsx::TextField"
+        },
+        {
+            "source": "src/renderer/editors/grid/GridEditor.tsx::GridEditor",
+            "target": "src/renderer/components/basic/TextField.tsx::TextField"
+        },
+        {
+            "source": "src/renderer/editors/grid/GridEditor.tsx::GridEditor",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/editors/grid/GridEditor.tsx::GridEditor",
+            "target": "src/renderer/components/data-grid/AVGrid/filters/useFilters.tsx::FiltersProvider"
+        },
+        {
+            "source": "src/renderer/editors/grid/GridEditor.tsx::GridEditor",
+            "target": "src/renderer/components/data-grid/AVGrid/filters/FilterBar.tsx::FilterBar"
+        },
+        {
+            "source": "src/renderer/editors/grid/GridEditor.tsx::GridEditor",
+            "target": "src/renderer/components/data-grid/AVGrid/AVGrid.tsx::Cell"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogMessageView.tsx::LogMessageView",
+            "target": "src/renderer/editors/log-view/StyledTextView.tsx::StyledTextView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/items/ButtonsPanel.tsx::ButtonsPanel",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/editors/log-view/items/ConfirmDialogView.tsx::ConfirmDialogView",
+            "target": "src/renderer/editors/log-view/items/DialogContainer.tsx::DialogContainer"
+        },
+        {
+            "source": "src/renderer/editors/log-view/items/ConfirmDialogView.tsx::ConfirmDialogView",
+            "target": "src/renderer/editors/log-view/StyledTextView.tsx::StyledTextView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/items/ConfirmDialogView.tsx::ConfirmDialogView",
+            "target": "src/renderer/editors/log-view/items/ButtonsPanel.tsx::ButtonsPanel"
+        },
+        {
+            "source": "src/renderer/editors/log-view/items/DialogHeader.tsx::DialogHeader",
+            "target": "src/renderer/editors/log-view/StyledTextView.tsx::StyledTextView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/items/TextInputDialogView.tsx::TextInputDialogView",
+            "target": "src/renderer/editors/log-view/items/DialogContainer.tsx::DialogContainer"
+        },
+        {
+            "source": "src/renderer/editors/log-view/items/TextInputDialogView.tsx::TextInputDialogView",
+            "target": "src/renderer/editors/log-view/items/DialogHeader.tsx::DialogHeader"
+        },
+        {
+            "source": "src/renderer/editors/log-view/items/TextInputDialogView.tsx::TextInputDialogView",
+            "target": "src/renderer/components/basic/TextField.tsx::TextField"
+        },
+        {
+            "source": "src/renderer/editors/log-view/items/TextInputDialogView.tsx::TextInputDialogView",
+            "target": "src/renderer/editors/log-view/items/ButtonsPanel.tsx::ButtonsPanel"
+        },
+        {
+            "source": "src/renderer/editors/log-view/items/ButtonsDialogView.tsx::ButtonsDialogView",
+            "target": "src/renderer/editors/log-view/items/DialogContainer.tsx::DialogContainer"
+        },
+        {
+            "source": "src/renderer/editors/log-view/items/ButtonsDialogView.tsx::ButtonsDialogView",
+            "target": "src/renderer/editors/log-view/items/DialogHeader.tsx::DialogHeader"
+        },
+        {
+            "source": "src/renderer/editors/log-view/items/ButtonsDialogView.tsx::ButtonsDialogView",
+            "target": "src/renderer/editors/log-view/items/ButtonsPanel.tsx::ButtonsPanel"
+        },
+        {
+            "source": "src/renderer/editors/log-view/items/CheckboxesDialogView.tsx::CheckboxesDialogView",
+            "target": "src/renderer/editors/log-view/items/DialogContainer.tsx::DialogContainer"
+        },
+        {
+            "source": "src/renderer/editors/log-view/items/CheckboxesDialogView.tsx::CheckboxesDialogView",
+            "target": "src/renderer/editors/log-view/items/DialogHeader.tsx::DialogHeader"
+        },
+        {
+            "source": "src/renderer/editors/log-view/items/CheckboxesDialogView.tsx::CheckboxesDialogView",
+            "target": "src/renderer/components/basic/Checkbox.tsx::Checkbox"
+        },
+        {
+            "source": "src/renderer/editors/log-view/items/CheckboxesDialogView.tsx::CheckboxesDialogView",
+            "target": "src/renderer/editors/log-view/items/ButtonsPanel.tsx::ButtonsPanel"
+        },
+        {
+            "source": "src/renderer/editors/log-view/items/RadioboxesDialogView.tsx::RadioboxesDialogView",
+            "target": "src/renderer/editors/log-view/items/DialogContainer.tsx::DialogContainer"
+        },
+        {
+            "source": "src/renderer/editors/log-view/items/RadioboxesDialogView.tsx::RadioboxesDialogView",
+            "target": "src/renderer/editors/log-view/items/DialogHeader.tsx::DialogHeader"
+        },
+        {
+            "source": "src/renderer/editors/log-view/items/RadioboxesDialogView.tsx::RadioboxesDialogView",
+            "target": "src/renderer/components/basic/Radio.tsx::Radio"
+        },
+        {
+            "source": "src/renderer/editors/log-view/items/RadioboxesDialogView.tsx::RadioboxesDialogView",
+            "target": "src/renderer/editors/log-view/items/ButtonsPanel.tsx::ButtonsPanel"
+        },
+        {
+            "source": "src/renderer/editors/log-view/items/SelectDialogView.tsx::SelectDialogView",
+            "target": "src/renderer/editors/log-view/items/DialogContainer.tsx::DialogContainer"
+        },
+        {
+            "source": "src/renderer/editors/log-view/items/SelectDialogView.tsx::SelectDialogView",
+            "target": "src/renderer/editors/log-view/items/DialogHeader.tsx::DialogHeader"
+        },
+        {
+            "source": "src/renderer/editors/log-view/items/SelectDialogView.tsx::SelectDialogView",
+            "target": "src/renderer/components/form/ComboSelect.tsx::ComboSelect"
+        },
+        {
+            "source": "src/renderer/editors/log-view/items/SelectDialogView.tsx::SelectDialogView",
+            "target": "src/renderer/editors/log-view/items/ButtonsPanel.tsx::ButtonsPanel"
+        },
+        {
+            "source": "src/renderer/editors/log-view/items/ProgressOutputView.tsx::ProgressOutputView",
+            "target": "src/renderer/editors/log-view/StyledTextView.tsx::StyledTextView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/items/GridOutputView.tsx::GridOutputView",
+            "target": "src/renderer/editors/log-view/items/DialogHeader.tsx::DialogHeader"
+        },
+        {
+            "source": "src/renderer/editors/log-view/items/GridOutputView.tsx::GridOutputView",
+            "target": "src/renderer/components/data-grid/AVGrid/AVGrid.tsx::Cell"
+        },
+        {
+            "source": "src/renderer/editors/log-view/items/GridOutputView.tsx::GridOutputView",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/editors/log-view/items/TextOutputView.tsx::TextOutputView",
+            "target": "src/renderer/editors/log-view/items/DialogHeader.tsx::DialogHeader"
+        },
+        {
+            "source": "src/renderer/editors/log-view/items/TextOutputView.tsx::TextOutputView",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/editors/markdown/CodeBlock.tsx::CodeBlock",
+            "target": "src/renderer/editors/markdown/CodeBlock.tsx::MermaidBlock"
+        },
+        {
+            "source": "src/renderer/editors/markdown/CodeBlock.tsx::CodePreBlock",
+            "target": "src/renderer/editors/markdown/CodeBlock.tsx::MermaidBlock"
+        },
+        {
+            "source": "src/renderer/editors/markdown/CodeBlock.tsx::CodeBlock",
+            "target": "src/renderer/editors/markdown/CodeBlock.tsx::CodePreBlock"
+        },
+        {
+            "source": "src/renderer/editors/markdown/CodeBlock.tsx::MermaidBlock",
+            "target": "src/renderer/editors/markdown/CodeBlock.tsx::CodePreBlock"
+        },
+        {
+            "source": "src/renderer/editors/markdown/MarkdownBlock.tsx::MarkdownBlock",
+            "target": "src/renderer/editors/markdown/CodeBlock.tsx::CodeBlock"
+        },
+        {
+            "source": "src/renderer/editors/log-view/items/MarkdownOutputView.tsx::MarkdownOutputView",
+            "target": "src/renderer/editors/log-view/items/DialogHeader.tsx::DialogHeader"
+        },
+        {
+            "source": "src/renderer/editors/log-view/items/MarkdownOutputView.tsx::MarkdownOutputView",
+            "target": "src/renderer/editors/markdown/MarkdownBlock.tsx::MarkdownBlock"
+        },
+        {
+            "source": "src/renderer/editors/log-view/items/MarkdownOutputView.tsx::MarkdownOutputView",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/editors/log-view/items/MermaidOutputView.tsx::MermaidOutputView",
+            "target": "src/renderer/editors/log-view/items/DialogHeader.tsx::DialogHeader"
+        },
+        {
+            "source": "src/renderer/editors/log-view/items/MermaidOutputView.tsx::MermaidOutputView",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::DialogEntryStub",
+            "target": "src/renderer/editors/log-view/LogEntryContent.tsx::LogEntryContentInner"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::OutputEntryStub",
+            "target": "src/renderer/editors/log-view/LogEntryContent.tsx::LogEntryContentInner"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::UnknownEntryView",
+            "target": "src/renderer/editors/log-view/LogEntryContent.tsx::LogEntryContentInner"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::LogEntryContent",
+            "target": "src/renderer/editors/log-view/LogEntryContent.tsx::LogEntryContentInner"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::DialogEntryStub",
+            "target": "src/renderer/editors/log-view/LogMessageView.tsx::LogMessageView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::OutputEntryStub",
+            "target": "src/renderer/editors/log-view/LogMessageView.tsx::LogMessageView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::UnknownEntryView",
+            "target": "src/renderer/editors/log-view/LogMessageView.tsx::LogMessageView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::LogEntryContent",
+            "target": "src/renderer/editors/log-view/LogMessageView.tsx::LogMessageView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::LogEntryContentInner",
+            "target": "src/renderer/editors/log-view/LogMessageView.tsx::LogMessageView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::DialogEntryStub",
+            "target": "src/renderer/editors/log-view/items/ConfirmDialogView.tsx::ConfirmDialogView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::OutputEntryStub",
+            "target": "src/renderer/editors/log-view/items/ConfirmDialogView.tsx::ConfirmDialogView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::UnknownEntryView",
+            "target": "src/renderer/editors/log-view/items/ConfirmDialogView.tsx::ConfirmDialogView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::LogEntryContent",
+            "target": "src/renderer/editors/log-view/items/ConfirmDialogView.tsx::ConfirmDialogView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::LogEntryContentInner",
+            "target": "src/renderer/editors/log-view/items/ConfirmDialogView.tsx::ConfirmDialogView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::DialogEntryStub",
+            "target": "src/renderer/editors/log-view/items/TextInputDialogView.tsx::TextInputDialogView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::OutputEntryStub",
+            "target": "src/renderer/editors/log-view/items/TextInputDialogView.tsx::TextInputDialogView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::UnknownEntryView",
+            "target": "src/renderer/editors/log-view/items/TextInputDialogView.tsx::TextInputDialogView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::LogEntryContent",
+            "target": "src/renderer/editors/log-view/items/TextInputDialogView.tsx::TextInputDialogView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::LogEntryContentInner",
+            "target": "src/renderer/editors/log-view/items/TextInputDialogView.tsx::TextInputDialogView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::DialogEntryStub",
+            "target": "src/renderer/editors/log-view/items/ButtonsDialogView.tsx::ButtonsDialogView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::OutputEntryStub",
+            "target": "src/renderer/editors/log-view/items/ButtonsDialogView.tsx::ButtonsDialogView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::UnknownEntryView",
+            "target": "src/renderer/editors/log-view/items/ButtonsDialogView.tsx::ButtonsDialogView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::LogEntryContent",
+            "target": "src/renderer/editors/log-view/items/ButtonsDialogView.tsx::ButtonsDialogView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::LogEntryContentInner",
+            "target": "src/renderer/editors/log-view/items/ButtonsDialogView.tsx::ButtonsDialogView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::DialogEntryStub",
+            "target": "src/renderer/editors/log-view/items/CheckboxesDialogView.tsx::CheckboxesDialogView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::OutputEntryStub",
+            "target": "src/renderer/editors/log-view/items/CheckboxesDialogView.tsx::CheckboxesDialogView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::UnknownEntryView",
+            "target": "src/renderer/editors/log-view/items/CheckboxesDialogView.tsx::CheckboxesDialogView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::LogEntryContent",
+            "target": "src/renderer/editors/log-view/items/CheckboxesDialogView.tsx::CheckboxesDialogView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::LogEntryContentInner",
+            "target": "src/renderer/editors/log-view/items/CheckboxesDialogView.tsx::CheckboxesDialogView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::DialogEntryStub",
+            "target": "src/renderer/editors/log-view/items/RadioboxesDialogView.tsx::RadioboxesDialogView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::OutputEntryStub",
+            "target": "src/renderer/editors/log-view/items/RadioboxesDialogView.tsx::RadioboxesDialogView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::UnknownEntryView",
+            "target": "src/renderer/editors/log-view/items/RadioboxesDialogView.tsx::RadioboxesDialogView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::LogEntryContent",
+            "target": "src/renderer/editors/log-view/items/RadioboxesDialogView.tsx::RadioboxesDialogView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::LogEntryContentInner",
+            "target": "src/renderer/editors/log-view/items/RadioboxesDialogView.tsx::RadioboxesDialogView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::DialogEntryStub",
+            "target": "src/renderer/editors/log-view/items/SelectDialogView.tsx::SelectDialogView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::OutputEntryStub",
+            "target": "src/renderer/editors/log-view/items/SelectDialogView.tsx::SelectDialogView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::UnknownEntryView",
+            "target": "src/renderer/editors/log-view/items/SelectDialogView.tsx::SelectDialogView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::LogEntryContent",
+            "target": "src/renderer/editors/log-view/items/SelectDialogView.tsx::SelectDialogView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::LogEntryContentInner",
+            "target": "src/renderer/editors/log-view/items/SelectDialogView.tsx::SelectDialogView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::DialogEntryStub",
+            "target": "src/renderer/editors/log-view/items/ProgressOutputView.tsx::ProgressOutputView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::OutputEntryStub",
+            "target": "src/renderer/editors/log-view/items/ProgressOutputView.tsx::ProgressOutputView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::UnknownEntryView",
+            "target": "src/renderer/editors/log-view/items/ProgressOutputView.tsx::ProgressOutputView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::LogEntryContent",
+            "target": "src/renderer/editors/log-view/items/ProgressOutputView.tsx::ProgressOutputView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::LogEntryContentInner",
+            "target": "src/renderer/editors/log-view/items/ProgressOutputView.tsx::ProgressOutputView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::DialogEntryStub",
+            "target": "src/renderer/editors/log-view/items/GridOutputView.tsx::GridOutputView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::OutputEntryStub",
+            "target": "src/renderer/editors/log-view/items/GridOutputView.tsx::GridOutputView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::UnknownEntryView",
+            "target": "src/renderer/editors/log-view/items/GridOutputView.tsx::GridOutputView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::LogEntryContent",
+            "target": "src/renderer/editors/log-view/items/GridOutputView.tsx::GridOutputView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::LogEntryContentInner",
+            "target": "src/renderer/editors/log-view/items/GridOutputView.tsx::GridOutputView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::DialogEntryStub",
+            "target": "src/renderer/editors/log-view/items/TextOutputView.tsx::TextOutputView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::OutputEntryStub",
+            "target": "src/renderer/editors/log-view/items/TextOutputView.tsx::TextOutputView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::UnknownEntryView",
+            "target": "src/renderer/editors/log-view/items/TextOutputView.tsx::TextOutputView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::LogEntryContent",
+            "target": "src/renderer/editors/log-view/items/TextOutputView.tsx::TextOutputView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::LogEntryContentInner",
+            "target": "src/renderer/editors/log-view/items/TextOutputView.tsx::TextOutputView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::DialogEntryStub",
+            "target": "src/renderer/editors/log-view/items/MarkdownOutputView.tsx::MarkdownOutputView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::OutputEntryStub",
+            "target": "src/renderer/editors/log-view/items/MarkdownOutputView.tsx::MarkdownOutputView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::UnknownEntryView",
+            "target": "src/renderer/editors/log-view/items/MarkdownOutputView.tsx::MarkdownOutputView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::LogEntryContent",
+            "target": "src/renderer/editors/log-view/items/MarkdownOutputView.tsx::MarkdownOutputView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::LogEntryContentInner",
+            "target": "src/renderer/editors/log-view/items/MarkdownOutputView.tsx::MarkdownOutputView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::DialogEntryStub",
+            "target": "src/renderer/editors/log-view/items/MermaidOutputView.tsx::MermaidOutputView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::OutputEntryStub",
+            "target": "src/renderer/editors/log-view/items/MermaidOutputView.tsx::MermaidOutputView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::UnknownEntryView",
+            "target": "src/renderer/editors/log-view/items/MermaidOutputView.tsx::MermaidOutputView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::LogEntryContent",
+            "target": "src/renderer/editors/log-view/items/MermaidOutputView.tsx::MermaidOutputView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::LogEntryContentInner",
+            "target": "src/renderer/editors/log-view/items/MermaidOutputView.tsx::MermaidOutputView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::OutputEntryStub",
+            "target": "src/renderer/editors/log-view/LogEntryContent.tsx::DialogEntryStub"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::UnknownEntryView",
+            "target": "src/renderer/editors/log-view/LogEntryContent.tsx::DialogEntryStub"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::LogEntryContent",
+            "target": "src/renderer/editors/log-view/LogEntryContent.tsx::DialogEntryStub"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::LogEntryContentInner",
+            "target": "src/renderer/editors/log-view/LogEntryContent.tsx::DialogEntryStub"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::DialogEntryStub",
+            "target": "src/renderer/editors/log-view/LogEntryContent.tsx::OutputEntryStub"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::UnknownEntryView",
+            "target": "src/renderer/editors/log-view/LogEntryContent.tsx::OutputEntryStub"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::LogEntryContent",
+            "target": "src/renderer/editors/log-view/LogEntryContent.tsx::OutputEntryStub"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::LogEntryContentInner",
+            "target": "src/renderer/editors/log-view/LogEntryContent.tsx::OutputEntryStub"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::DialogEntryStub",
+            "target": "src/renderer/editors/log-view/LogEntryContent.tsx::UnknownEntryView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::OutputEntryStub",
+            "target": "src/renderer/editors/log-view/LogEntryContent.tsx::UnknownEntryView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::LogEntryContent",
+            "target": "src/renderer/editors/log-view/LogEntryContent.tsx::UnknownEntryView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryContent.tsx::LogEntryContentInner",
+            "target": "src/renderer/editors/log-view/LogEntryContent.tsx::UnknownEntryView"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogEntryWrapper.tsx::LogEntryWrapper",
+            "target": "src/renderer/editors/log-view/LogEntryContent.tsx::LogEntryContent"
+        },
+        {
+            "source": "src/renderer/components/virtualization/RenderGrid/RenderFlexGrid.tsx::RenderFlexGrid",
+            "target": "src/renderer/components/virtualization/RenderGrid/RenderFlexGrid.tsx::FlexCell"
+        },
+        {
+            "source": "src/renderer/components/virtualization/RenderGrid/RenderFlexGrid.tsx::FlexCell",
+            "target": "src/renderer/components/virtualization/RenderGrid/RenderGrid.tsx::RenderGrid"
+        },
+        {
+            "source": "src/renderer/components/virtualization/RenderGrid/RenderFlexGrid.tsx::RenderFlexGrid",
+            "target": "src/renderer/components/virtualization/RenderGrid/RenderGrid.tsx::RenderGrid"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogViewEditor.tsx::TimestampIcon",
+            "target": "src/renderer/editors/log-view/LogEntryWrapper.tsx::LogEntryWrapper"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogViewEditor.tsx::ClearIcon",
+            "target": "src/renderer/editors/log-view/LogEntryWrapper.tsx::LogEntryWrapper"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogViewEditor.tsx::LogViewEditor",
+            "target": "src/renderer/editors/log-view/LogEntryWrapper.tsx::LogEntryWrapper"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogViewEditor.tsx::TimestampIcon",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogViewEditor.tsx::ClearIcon",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogViewEditor.tsx::LogViewEditor",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogViewEditor.tsx::TimestampIcon",
+            "target": "src/renderer/editors/log-view/LogViewEditor.tsx::ClearIcon"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogViewEditor.tsx::LogViewEditor",
+            "target": "src/renderer/editors/log-view/LogViewEditor.tsx::ClearIcon"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogViewEditor.tsx::ClearIcon",
+            "target": "src/renderer/editors/log-view/LogViewEditor.tsx::TimestampIcon"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogViewEditor.tsx::LogViewEditor",
+            "target": "src/renderer/editors/log-view/LogViewEditor.tsx::TimestampIcon"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogViewEditor.tsx::TimestampIcon",
+            "target": "src/renderer/components/virtualization/RenderGrid/RenderFlexGrid.tsx::RenderFlexGrid"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogViewEditor.tsx::ClearIcon",
+            "target": "src/renderer/components/virtualization/RenderGrid/RenderFlexGrid.tsx::RenderFlexGrid"
+        },
+        {
+            "source": "src/renderer/editors/log-view/LogViewEditor.tsx::LogViewEditor",
+            "target": "src/renderer/components/virtualization/RenderGrid/RenderFlexGrid.tsx::RenderFlexGrid"
+        },
+        {
+            "source": "src/renderer/editors/markdown/MarkdownView.tsx::MarkdownView",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/editors/markdown/MarkdownView.tsx::MarkdownView",
+            "target": "src/renderer/editors/markdown/MarkdownSearchBar.tsx::MarkdownSearchBar"
+        },
+        {
+            "source": "src/renderer/editors/markdown/MarkdownView.tsx::MarkdownView",
+            "target": "src/renderer/editors/markdown/MarkdownBlock.tsx::MarkdownBlock"
+        },
+        {
+            "source": "src/renderer/editors/markdown/MarkdownView.tsx::MarkdownView",
+            "target": "src/renderer/components/layout/Minimap.tsx::Minimap"
+        },
+        {
+            "source": "src/renderer/editors/pdf/PdfViewer.tsx::PdfViewer",
+            "target": "src/renderer/components/icons/FileIcon.tsx::FileIcon"
+        },
+        {
+            "source": "src/renderer/editors/pdf/PdfViewer.tsx::PdfViewer",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/editors/notebook/note-editor/NoteItemToolbar.tsx::NoteItemToolbar",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/editors/notebook/note-editor/NoteItemToolbar.tsx::NoteItemToolbar",
+            "target": "src/renderer/components/form/SwitchButtons.tsx::SwitchButtons"
+        },
+        {
+            "source": "src/renderer/editors/notebook/note-editor/NoteItemToolbar.tsx::NoteItemToolbar",
+            "target": "src/renderer/components/overlay/WithPopupMenu.tsx::WithPopupMenu"
+        },
+        {
+            "source": "src/renderer/editors/notebook/note-editor/NoteItemActiveEditor.tsx::NoteItemActiveEditor",
+            "target": "src/renderer/ui/app/AsyncEditor.tsx::AsyncEditor"
+        },
+        {
+            "source": "src/renderer/editors/notebook/note-editor/NoteItemActiveEditor.tsx::NoteItemActiveEditor",
+            "target": "src/renderer/editors/notebook/note-editor/MiniTextEditor.tsx::MiniTextEditor"
+        },
+        {
+            "source": "src/renderer/editors/notebook/NoteItemView.tsx::NoteItemView",
+            "target": "src/renderer/components/basic/PathInput.tsx::PathInput"
+        },
+        {
+            "source": "src/renderer/editors/notebook/NoteItemView.tsx::NoteItemView",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/editors/notebook/NoteItemView.tsx::NoteItemView",
+            "target": "src/renderer/editors/notebook/note-editor/NoteItemToolbar.tsx::NoteItemToolbar"
+        },
+        {
+            "source": "src/renderer/editors/notebook/NoteItemView.tsx::NoteItemView",
+            "target": "src/renderer/editors/notebook/note-editor/NoteItemActiveEditor.tsx::NoteItemActiveEditor"
+        },
+        {
+            "source": "src/renderer/editors/notebook/NoteItemView.tsx::NoteItemView",
+            "target": "src/renderer/components/basic/TextAreaField.tsx::TextAreaField"
+        },
+        {
+            "source": "src/renderer/editors/notebook/ExpandedNoteView.tsx::ExpandedNoteView",
+            "target": "src/renderer/components/basic/PathInput.tsx::PathInput"
+        },
+        {
+            "source": "src/renderer/editors/notebook/ExpandedNoteView.tsx::ExpandedNoteView",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/editors/notebook/ExpandedNoteView.tsx::ExpandedNoteView",
+            "target": "src/renderer/editors/notebook/note-editor/NoteItemToolbar.tsx::NoteItemToolbar"
+        },
+        {
+            "source": "src/renderer/editors/notebook/ExpandedNoteView.tsx::ExpandedNoteView",
+            "target": "src/renderer/editors/notebook/note-editor/NoteItemActiveEditor.tsx::NoteItemActiveEditor"
+        },
+        {
+            "source": "src/renderer/editors/notebook/ExpandedNoteView.tsx::ExpandedNoteView",
+            "target": "src/renderer/components/basic/TextAreaField.tsx::TextAreaField"
+        },
+        {
+            "source": "src/renderer/editors/notebook/NotebookEditor.tsx::NotebookEditor",
+            "target": "src/renderer/editors/notebook/NoteItemView.tsx::NoteItemView"
+        },
+        {
+            "source": "src/renderer/editors/notebook/NotebookEditor.tsx::NotebookEditor",
+            "target": "src/renderer/components/basic/Breadcrumb.tsx::Breadcrumb"
+        },
+        {
+            "source": "src/renderer/editors/notebook/NotebookEditor.tsx::NotebookEditor",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/editors/notebook/NotebookEditor.tsx::NotebookEditor",
+            "target": "src/renderer/components/basic/TextField.tsx::TextField"
+        },
+        {
+            "source": "src/renderer/editors/notebook/NotebookEditor.tsx::NotebookEditor",
+            "target": "src/renderer/components/layout/CollapsiblePanelStack.tsx::CollapsiblePanelStack"
+        },
+        {
+            "source": "src/renderer/editors/notebook/NotebookEditor.tsx::NotebookEditor",
+            "target": "src/renderer/components/basic/TagsList.tsx::TagsList"
+        },
+        {
+            "source": "src/renderer/editors/notebook/NotebookEditor.tsx::NotebookEditor",
+            "target": "src/renderer/components/layout/Splitter.tsx::Splitter"
+        },
+        {
+            "source": "src/renderer/editors/notebook/NotebookEditor.tsx::NotebookEditor",
+            "target": "src/renderer/components/virtualization/RenderGrid/RenderFlexGrid.tsx::RenderFlexGrid"
+        },
+        {
+            "source": "src/renderer/editors/notebook/NotebookEditor.tsx::NotebookEditor",
+            "target": "src/renderer/editors/notebook/ExpandedNoteView.tsx::ExpandedNoteView"
+        },
+        {
+            "source": "src/renderer/editors/svg/SvgView.tsx::SvgView",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/editors/mermaid/MermaidView.tsx::MermaidView",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/editors/todo/components/TodoListPanel.tsx::TodoListPanel",
+            "target": "src/renderer/components/basic/TextField.tsx::TextField"
+        },
+        {
+            "source": "src/renderer/editors/todo/components/TodoListPanel.tsx::TodoListPanel",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/editors/todo/components/TodoListPanel.tsx::TodoListPanel",
+            "target": "src/renderer/components/overlay/WithPopupMenu.tsx::WithPopupMenu"
+        },
+        {
+            "source": "src/renderer/editors/todo/components/TodoItemView.tsx::TodoItemView",
+            "target": "src/renderer/components/basic/TextAreaField.tsx::TextAreaField"
+        },
+        {
+            "source": "src/renderer/editors/todo/components/TodoItemView.tsx::TodoItemView",
+            "target": "src/renderer/components/overlay/WithPopupMenu.tsx::WithPopupMenu"
+        },
+        {
+            "source": "src/renderer/editors/todo/components/TodoItemView.tsx::TodoItemView",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/editors/todo/TodoEditor.tsx::TodoEditor",
+            "target": "src/renderer/editors/todo/components/TodoItemView.tsx::TodoItemView"
+        },
+        {
+            "source": "src/renderer/editors/todo/TodoEditor.tsx::TodoEditor",
+            "target": "src/renderer/components/basic/TextField.tsx::TextField"
+        },
+        {
+            "source": "src/renderer/editors/todo/TodoEditor.tsx::TodoEditor",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/editors/todo/TodoEditor.tsx::TodoEditor",
+            "target": "src/renderer/editors/todo/components/TodoListPanel.tsx::TodoListPanel"
+        },
+        {
+            "source": "src/renderer/editors/todo/TodoEditor.tsx::TodoEditor",
+            "target": "src/renderer/components/layout/Splitter.tsx::Splitter"
+        },
+        {
+            "source": "src/renderer/editors/todo/TodoEditor.tsx::TodoEditor",
+            "target": "src/renderer/components/basic/TextAreaField.tsx::TextAreaField"
+        },
+        {
+            "source": "src/renderer/editors/todo/TodoEditor.tsx::TodoEditor",
+            "target": "src/renderer/components/virtualization/RenderGrid/RenderFlexGrid.tsx::RenderFlexGrid"
+        },
+        {
+            "source": "src/renderer/editors/graph/GraphDetailPanel.tsx::GraphDetailPanel",
+            "target": "src/renderer/editors/graph/GraphDetailPanel.tsx::InfoTab"
+        },
+        {
+            "source": "src/renderer/editors/graph/GraphDetailPanel.tsx::LinksTab",
+            "target": "src/renderer/editors/graph/GraphDetailPanel.tsx::InfoTab"
+        },
+        {
+            "source": "src/renderer/editors/graph/GraphDetailPanel.tsx::PropertiesTab",
+            "target": "src/renderer/editors/graph/GraphDetailPanel.tsx::InfoTab"
+        },
+        {
+            "source": "src/renderer/editors/graph/GraphDetailPanel.tsx::ShapeIcon",
+            "target": "src/renderer/editors/graph/GraphDetailPanel.tsx::InfoTab"
+        },
+        {
+            "source": "src/renderer/editors/graph/GraphDetailPanel.tsx::LevelIcon",
+            "target": "src/renderer/editors/graph/GraphDetailPanel.tsx::InfoTab"
+        },
+        {
+            "source": "src/renderer/editors/graph/GraphDetailPanel.tsx::GraphDetailPanel",
+            "target": "src/renderer/editors/graph/GraphDetailPanel.tsx::LinksTab"
+        },
+        {
+            "source": "src/renderer/editors/graph/GraphDetailPanel.tsx::PropertiesTab",
+            "target": "src/renderer/editors/graph/GraphDetailPanel.tsx::LinksTab"
+        },
+        {
+            "source": "src/renderer/editors/graph/GraphDetailPanel.tsx::ShapeIcon",
+            "target": "src/renderer/editors/graph/GraphDetailPanel.tsx::LinksTab"
+        },
+        {
+            "source": "src/renderer/editors/graph/GraphDetailPanel.tsx::LevelIcon",
+            "target": "src/renderer/editors/graph/GraphDetailPanel.tsx::LinksTab"
+        },
+        {
+            "source": "src/renderer/editors/graph/GraphDetailPanel.tsx::InfoTab",
+            "target": "src/renderer/editors/graph/GraphDetailPanel.tsx::LinksTab"
+        },
+        {
+            "source": "src/renderer/editors/graph/GraphDetailPanel.tsx::GraphDetailPanel",
+            "target": "src/renderer/editors/graph/GraphDetailPanel.tsx::PropertiesTab"
+        },
+        {
+            "source": "src/renderer/editors/graph/GraphDetailPanel.tsx::LinksTab",
+            "target": "src/renderer/editors/graph/GraphDetailPanel.tsx::PropertiesTab"
+        },
+        {
+            "source": "src/renderer/editors/graph/GraphDetailPanel.tsx::ShapeIcon",
+            "target": "src/renderer/editors/graph/GraphDetailPanel.tsx::PropertiesTab"
+        },
+        {
+            "source": "src/renderer/editors/graph/GraphDetailPanel.tsx::LevelIcon",
+            "target": "src/renderer/editors/graph/GraphDetailPanel.tsx::PropertiesTab"
+        },
+        {
+            "source": "src/renderer/editors/graph/GraphDetailPanel.tsx::InfoTab",
+            "target": "src/renderer/editors/graph/GraphDetailPanel.tsx::PropertiesTab"
+        },
+        {
+            "source": "src/renderer/editors/graph/GraphDetailPanel.tsx::GraphDetailPanel",
+            "target": "src/renderer/components/data-grid/AVGrid/AVGrid.tsx::Cell"
+        },
+        {
+            "source": "src/renderer/editors/graph/GraphDetailPanel.tsx::LinksTab",
+            "target": "src/renderer/components/data-grid/AVGrid/AVGrid.tsx::Cell"
+        },
+        {
+            "source": "src/renderer/editors/graph/GraphDetailPanel.tsx::PropertiesTab",
+            "target": "src/renderer/components/data-grid/AVGrid/AVGrid.tsx::Cell"
+        },
+        {
+            "source": "src/renderer/editors/graph/GraphDetailPanel.tsx::ShapeIcon",
+            "target": "src/renderer/components/data-grid/AVGrid/AVGrid.tsx::Cell"
+        },
+        {
+            "source": "src/renderer/editors/graph/GraphDetailPanel.tsx::LevelIcon",
+            "target": "src/renderer/components/data-grid/AVGrid/AVGrid.tsx::Cell"
+        },
+        {
+            "source": "src/renderer/editors/graph/GraphDetailPanel.tsx::InfoTab",
+            "target": "src/renderer/components/data-grid/AVGrid/AVGrid.tsx::Cell"
+        },
+        {
+            "source": "src/renderer/editors/graph/GraphDetailPanel.tsx::GraphDetailPanel",
+            "target": "src/renderer/editors/graph/GraphDetailPanel.tsx::LevelIcon"
+        },
+        {
+            "source": "src/renderer/editors/graph/GraphDetailPanel.tsx::LinksTab",
+            "target": "src/renderer/editors/graph/GraphDetailPanel.tsx::LevelIcon"
+        },
+        {
+            "source": "src/renderer/editors/graph/GraphDetailPanel.tsx::PropertiesTab",
+            "target": "src/renderer/editors/graph/GraphDetailPanel.tsx::LevelIcon"
+        },
+        {
+            "source": "src/renderer/editors/graph/GraphDetailPanel.tsx::ShapeIcon",
+            "target": "src/renderer/editors/graph/GraphDetailPanel.tsx::LevelIcon"
+        },
+        {
+            "source": "src/renderer/editors/graph/GraphDetailPanel.tsx::InfoTab",
+            "target": "src/renderer/editors/graph/GraphDetailPanel.tsx::LevelIcon"
+        },
+        {
+            "source": "src/renderer/editors/graph/GraphDetailPanel.tsx::GraphDetailPanel",
+            "target": "src/renderer/editors/graph/GraphDetailPanel.tsx::ShapeIcon"
+        },
+        {
+            "source": "src/renderer/editors/graph/GraphDetailPanel.tsx::LinksTab",
+            "target": "src/renderer/editors/graph/GraphDetailPanel.tsx::ShapeIcon"
+        },
+        {
+            "source": "src/renderer/editors/graph/GraphDetailPanel.tsx::PropertiesTab",
+            "target": "src/renderer/editors/graph/GraphDetailPanel.tsx::ShapeIcon"
+        },
+        {
+            "source": "src/renderer/editors/graph/GraphDetailPanel.tsx::LevelIcon",
+            "target": "src/renderer/editors/graph/GraphDetailPanel.tsx::ShapeIcon"
+        },
+        {
+            "source": "src/renderer/editors/graph/GraphDetailPanel.tsx::InfoTab",
+            "target": "src/renderer/editors/graph/GraphDetailPanel.tsx::ShapeIcon"
+        },
+        {
+            "source": "src/renderer/editors/graph/GraphExpansionSettings.tsx::GraphExpansionSettings",
+            "target": "src/renderer/components/form/ComboSelect.tsx::ComboSelect"
+        },
+        {
+            "source": "src/renderer/editors/graph/GraphView.tsx::GraphSearchResults",
+            "target": "src/renderer/editors/graph/GraphTuningSliders.tsx::GraphTuningSliders"
+        },
+        {
+            "source": "src/renderer/editors/graph/GraphView.tsx::GraphView",
+            "target": "src/renderer/editors/graph/GraphTuningSliders.tsx::GraphTuningSliders"
+        },
+        {
+            "source": "src/renderer/editors/graph/GraphView.tsx::GraphSearchResults",
+            "target": "src/renderer/editors/graph/GraphExpansionSettings.tsx::GraphExpansionSettings"
+        },
+        {
+            "source": "src/renderer/editors/graph/GraphView.tsx::GraphView",
+            "target": "src/renderer/editors/graph/GraphExpansionSettings.tsx::GraphExpansionSettings"
+        },
+        {
+            "source": "src/renderer/editors/graph/GraphView.tsx::GraphView",
+            "target": "src/renderer/editors/graph/GraphView.tsx::GraphSearchResults"
+        },
+        {
+            "source": "src/renderer/editors/graph/GraphView.tsx::GraphSearchResults",
+            "target": "src/renderer/editors/graph/GraphTooltip.tsx::GraphTooltip"
+        },
+        {
+            "source": "src/renderer/editors/graph/GraphView.tsx::GraphView",
+            "target": "src/renderer/editors/graph/GraphTooltip.tsx::GraphTooltip"
+        },
+        {
+            "source": "src/renderer/editors/graph/GraphView.tsx::GraphSearchResults",
+            "target": "src/renderer/editors/graph/GraphDetailPanel.tsx::GraphDetailPanel"
+        },
+        {
+            "source": "src/renderer/editors/graph/GraphView.tsx::GraphView",
+            "target": "src/renderer/editors/graph/GraphDetailPanel.tsx::GraphDetailPanel"
+        },
+        {
+            "source": "src/renderer/index.tsx::AppContent",
+            "target": "src/renderer/theme/GlobalStyles.tsx::GlobalStyles"
+        },
+        {
+            "source": "src/renderer/index.tsx::AppContent",
+            "target": "src/renderer/ui/app/MainPage.tsx::MainPage"
+        },
+        {
+            "source": "src/renderer/index.tsx::AppContent",
+            "target": "src/renderer/ui/dialogs/Dialogs.tsx::Dialogs"
+        },
+        {
+            "source": "src/renderer/index.tsx::AppContent",
+            "target": "src/renderer/ui/dialogs/alerts/AlertsBar.tsx::AlertsBar"
+        },
+        {
+            "source": "src/renderer/index.tsx::AppContent",
+            "target": "src/renderer/ui/dialogs/poppers/Poppers.tsx::Poppers"
+        },
+        {
+            "source": "src/renderer/components/data-grid/AVGrid/SelectColumn.tsx::HeaderCell",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/components/data-grid/AVGrid/SelectColumn.tsx::DataCell",
+            "target": "src/renderer/components/basic/Button.tsx::Button"
+        },
+        {
+            "source": "src/renderer/components/data-grid/AVGrid/SelectColumn.tsx::DataCell",
+            "target": "src/renderer/components/data-grid/AVGrid/SelectColumn.tsx::HeaderCell"
+        },
+        {
+            "source": "src/renderer/components/data-grid/AVGrid/SelectColumn.tsx::HeaderCell",
+            "target": "src/renderer/components/data-grid/AVGrid/SelectColumn.tsx::DataCell"
+        }
+    ],
+    "options": {
+        "charge": -60,
+        "linkDistance": 40,
+        "collide": 0.6,
+        "maxVisible": 500,
+        "rootNode": "src/renderer/ui/app/MainPage.tsx::MainPage"
+    }
+}

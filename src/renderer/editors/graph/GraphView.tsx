@@ -116,7 +116,7 @@ const GraphViewRoot = styled.div({
             borderColor: color.graph.nodeHighlight,
         },
         "&::placeholder": {
-            color: color.border.default,
+            color: color.text.light,
         },
     },
     "& .graph-search-clear": {
@@ -350,7 +350,7 @@ const GraphViewRoot = styled.div({
             borderColor: color.graph.nodeHighlight,
         },
         "&::placeholder": {
-            color: color.border.default,
+            color: color.text.light,
         },
     },
 });

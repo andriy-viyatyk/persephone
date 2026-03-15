@@ -47,14 +47,14 @@ const GraphExpansionSettingsRoot = styled.div({
             borderColor: color.graph.nodeHighlight,
         },
         "&::placeholder": {
-            color: color.border.default,
+            color: color.text.light,
         },
     },
     "& .expansion-note": {
         fontSize: 10,
-        opacity: 0.5,
         fontStyle: "italic",
         paddingTop: 2,
+        color: color.warning.text,
     },
 });
 

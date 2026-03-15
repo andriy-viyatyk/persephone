@@ -125,11 +125,16 @@ export class GraphHighlightModel {
     }
 
     nodeBorderColor(node: GraphNode, colors: ResolvedColors): string {
-        if (this.activeChild.has(node.id)) return colors.borderSelected;
-        if (node.id === this.hoveredId) return colors.borderHighlight;
         if (node.id === this.activeId) return colors.borderSelected;
+        if (node.id === this.hoveredId) return colors.borderHighlight;
         if (this.hoveredChild.has(node.id)) return colors.borderHighlight;
         return colors.borderDefault;
+    }
+
+    labelTextColor(node: GraphNode, colors: ResolvedColors): string {
+        if (node.id === this.activeId) return colors.nodeSelected;
+        if (node.id === this.hoveredId || this.hoveredChild.has(node.id)) return colors.nodeHighlight;
+        return colors.labelText;
     }
 
     linkColor(link: GraphLink, colors: ResolvedColors): string {

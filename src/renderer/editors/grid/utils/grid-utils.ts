@@ -1,4 +1,5 @@
 import { Column } from "../../../components/data-grid/AVGrid/avGridTypes";
+import { detectColumnWidth } from "../../../components/data-grid/column-width";
 
 export interface GridData {
     columns: Column[];
@@ -12,9 +13,6 @@ export interface GridColumn {
     dataType?: "string" | "number" | "boolean";
 }
 
-const charWidth = 8; // Approximate width of a character in pixels
-const maxColumnWidth = 300; // Maximum column width in pixels
-
 const newColumnTypes = () => ({
     stringCount: 0,
     numberCount: 0,
@@ -25,68 +23,54 @@ function detectColumns(data: any[]): Column[] {
     const columnsMap = new Map<string, Column>();
     const columnTypes = new Map<string, ReturnType<typeof newColumnTypes>>();
 
-    const checkRowColumns = (row: any) => {
-        Object.keys(row).forEach((key) => {
-            let column = columnsMap.get(key);
-            if (!column) {
-                column = {
-                    name: key,
-                    key,
-                    width: 100,
-                    resizible: true,
-                    filterType: "options",
-                };
-                columnsMap.set(key, column);
-                columnTypes.set(key, newColumnTypes())
-            }
-            const colTypes = columnTypes.get(key)!;
-            const value = row[key];
-            if (value !== null && value !== undefined) {
-                const valueStr = String(value);
-                const width = Math.min(
-                    Math.max(
-                        Number(column.width),
-                        valueStr.length * charWidth + 20
-                    ), // 20px for padding
-                    maxColumnWidth
-                );
-                column.width = width;
-                if (typeof value === 'string') {
-                    colTypes.stringCount++;
-                } else if (typeof value === 'number') {
-                    colTypes.numberCount++;
-                } else if (typeof value === 'boolean') {
-                    colTypes.booleanCount++;
-                } else {
-                    colTypes.stringCount++;
-                }
-            }
-        });
-    }
-
-    // check ~1000 rows to detect columns:
-    // first 200, last 200 and 600 in the middle:
+    // Sample ~1000 rows: first 200, last 200, 600 spread across the middle
     const lastCheck = data.length - 200;
     const middleStep = Math.abs(Math.trunc((data.length - 400) / 600));
+    const sampledRows: any[] = [];
+
     data.forEach((row, idx) => {
         if (idx < 200 || idx >= lastCheck || middleStep === 0 || idx % middleStep === 0) {
-            checkRowColumns(row);
+            sampledRows.push(row);
+            // Discover columns and count types
+            Object.keys(row).forEach((key) => {
+                if (!columnsMap.has(key)) {
+                    columnsMap.set(key, {
+                        name: key,
+                        key,
+                        width: 100,
+                        resizible: true,
+                        filterType: "options",
+                    });
+                    columnTypes.set(key, newColumnTypes());
+                }
+                const value = row[key];
+                if (value !== null && value !== undefined) {
+                    const colTypes = columnTypes.get(key)!;
+                    if (typeof value === 'string') {
+                        colTypes.stringCount++;
+                    } else if (typeof value === 'number') {
+                        colTypes.numberCount++;
+                    } else if (typeof value === 'boolean') {
+                        colTypes.booleanCount++;
+                    } else {
+                        colTypes.stringCount++;
+                    }
+                }
+            });
         }
     });
 
     const columns = [...columnsMap.values()];
     columns.forEach(col => {
+        // Detect width from sampled rows
+        col.width = detectColumnWidth(sampledRows, col.key as string, col.name);
+
+        // Determine data type by majority vote
         const colTypes = columnTypes.get(col.key as string)!;
         if (colTypes.stringCount >= colTypes.numberCount) {
-            if (colTypes.stringCount >= colTypes.booleanCount) {
-                col.dataType = 'string';
-            } else {
-                col.dataType = 'boolean';
-            }
-        } else if (colTypes.numberCount >= colTypes.booleanCount) {
-            col.dataType = 'number';
+            col.dataType = colTypes.stringCount >= colTypes.booleanCount ? 'string' : 'boolean';
         } else {
-            col.dataType = 'boolean';
+            col.dataType = colTypes.numberCount >= colTypes.booleanCount ? 'number' : 'boolean';
         }
     })
 

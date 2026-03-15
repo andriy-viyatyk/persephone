@@ -337,8 +337,8 @@ export class ForceGraphRenderer {
             this.renderData();
         }
 
-        // Skip mouse hover when external hover is active (e.g. grid row focus)
-        if (!this.highlight.externalHoverId) {
+        // Skip mouse hover during drag or when external hover is active
+        if (!this.isDraggingNode && !this.highlight.externalHoverId) {
             const node = this.findNodeAt(event);
             this.setHoveredId(node?.id ?? "");
         }
@@ -507,6 +507,8 @@ export class ForceGraphRenderer {
             .on("start", (event: D3DragEvent<HTMLCanvasElement, unknown, GraphNode>) => {
                 if (!event.subject) return;
                 this.isDraggingNode = true;
+                // Clear hover/tooltip immediately when drag begins
+                this.setHoveredId("");
                 this.simulation?.alphaTarget(0.2).restart();
             })
             .on("drag", (event: D3DragEvent<HTMLCanvasElement, unknown, GraphNode>) => {
@@ -702,47 +704,61 @@ export class ForceGraphRenderer {
 
         if (dimming) ctx.globalAlpha = 1.0;
 
-        // Draw labels at sufficient zoom
-        if (transform.k > 0.8) {
+        // Draw labels
+        const showImportantLabels = transform.k > 0.8;
+        const hasHighlight = !!highlight.activeId || !!highlight.hoveredId;
+
+        if (showImportantLabels || hasHighlight) {
             const c = colors;
             ctx.textAlign = "left";
             ctx.textBaseline = "middle";
 
             graphData.nodes.forEach((d) => {
-                const isHighlighted =
-                    d.id === highlight.activeId ||
-                    d.id === highlight.hoveredId ||
-                    highlight.activeChild.has(d.id) ||
-                    highlight.hoveredChild.has(d.id);
+                const isSelected = d.id === highlight.activeId;
+                const isHovered = d.id === highlight.hoveredId;
+                const isHoveredChild = highlight.hoveredChild.has(d.id);
+                const isHighlighted = isSelected || isHovered || isHoveredChild;
                 const isRoot = rootId !== "" && d.id === rootId;
-                const isImportant = isRoot || (typeof d.level === "number" && d.level >= 1 && d.level <= 2);
 
-                if (isHighlighted || isImportant) {
-                    if (dimming) ctx.globalAlpha = dimSet!.has(d.id) ? 1.0 : 0.15;
-                    const text = nodeLabel(d);
-                    const r = effectiveNodeRadius(d, rootId);
-                    const paddingY = 1;
-                    const paddingX = 2;
-
-                    const textWidth = ctx.measureText(text).width;
-                    const textHeight = 10;
-
-                    const labelX = (d.x || 0) + r + 4;
-                    const labelY = d.y || 0;
-
-                    // Label background
-                    ctx.fillStyle = c.labelBg;
-                    ctx.fillRect(
-                        labelX - paddingX,
-                        labelY - textHeight / 2 - paddingY,
-                        textWidth + 2 * paddingX,
-                        textHeight + 2 * paddingY,
-                    );
-
-                    // Label text
-                    ctx.fillStyle = c.labelText;
-                    ctx.fillText(text, labelX, labelY);
+                // Highlighted labels always shown; important labels only when zoomed in
+                if (!isHighlighted) {
+                    if (!showImportantLabels) return;
+                    const isImportant = isRoot || (typeof d.level === "number" && d.level >= 1 && d.level <= 2);
+                    if (!isImportant) return;
                 }
+
+                // Highlighted labels are always fully visible, even for dimmed nodes
+                if (dimming) ctx.globalAlpha = isHighlighted ? 1.0 : (dimSet!.has(d.id) ? 1.0 : 0.15);
+                const text = nodeLabel(d);
+                const r = effectiveNodeRadius(d, rootId);
+
+                // Font size based on node level (root = level 1)
+                const level = isRoot ? 1 : (typeof d.level === "number" ? d.level : 5);
+                const fontSize = level <= 1 ? 14 : level === 2 ? 12 : level === 3 ? 11 : 10;
+                ctx.font = `${fontSize}px sans-serif`;
+
+                const paddingY = 1;
+                const paddingX = 2;
+                const textWidth = ctx.measureText(text).width;
+                const textHeight = fontSize * 0.75;
+
+                const labelX = (d.x || 0) + r + 4;
+                const labelY = d.y || 0;
+
+                // Label background
+                ctx.fillStyle = c.labelBg;
+                ctx.fillRect(
+                    labelX - paddingX,
+                    labelY - textHeight / 2 - paddingY,
+                    textWidth + 2 * paddingX,
+                    textHeight + 2 * paddingY,
+                );
+
+                // Label text: colored for highlighted nodes, default for important-only
+                ctx.fillStyle = isHighlighted
+                    ? highlight.labelTextColor(d, c)
+                    : c.labelText;
+                ctx.fillText(text, labelX, labelY);
             });
         }
 

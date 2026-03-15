@@ -185,8 +185,9 @@ For `.fg.json` files — a force-directed graph viewer. Also activates for any J
 - **Drag nodes** — click and drag individual nodes to reposition them
 - **Select** — click a node to select it; selected node and its direct neighbors are highlighted
 - **Double-click node** — expands the detail panel for the clicked node
-- **Hover** — hover over a node to highlight it; after ~500 ms a tooltip appears showing the node's title, id, and any custom user-defined properties
-- **Labels** — node labels appear for selected and hovered nodes when zoomed in sufficiently. Level 1 and 2 nodes always show their label regardless of selection or zoom state. Labels display the node's `title` if present, otherwise its `id`.
+- **Hover** — hover over a node to highlight it and its children; after ~500 ms a tooltip appears showing the node's title, id, and any custom user-defined properties. Tooltips do not appear during node drag.
+- **Labels** — node labels appear for selected and hovered nodes when zoomed in sufficiently. Level 1 and 2 nodes always show their label regardless of selection or zoom state. Highlighted node labels are always visible regardless of zoom level. Font size scales by level (larger for root/level 1, smaller for deeper levels). Labels display the node's `title` if present, otherwise its `id`.
+- **Selection highlight** — selected node label text turns orange. Hovered node and its children get green label text.
 
 **Node properties:**
 - `id` — unique identifier (required)
@@ -210,8 +211,8 @@ A collapsible overlay panel in the top-right corner for editing the selected nod
 - **Info tab** — editable fields for ID (with rename validation), Title, Level (1–5 icon selector), and Shape (6 shape icons: circle, square, diamond, triangle, star, hexagon)
 - Changes immediately update the canvas and JSON
 - Resizable via the bottom-left corner drag handle
-- **Links tab** — an AVGrid showing all nodes linked to the selected node. Three column presets are available: Default (ID, Title), View (adds Level, Shape with combobox editors), and Custom (adds all custom properties). Supports batch editing with Apply/Cancel buttons, adding new linked nodes (including paste from Excel), and deleting rows (removes the link, and also removes the node if it becomes orphaned). Unsaved edits block panel collapse and node selection changes. When the Links tab is active, non-linked nodes are dimmed on the canvas. Focusing a grid row highlights the corresponding node in green on the canvas and draws a green link line from the selected node to the hovered node. Hidden children are automatically expanded when the Links tab is activated.
 - **Properties tab** — an AVGrid showing all custom (non-core) key-value properties of the selected node. Supports inline editing (double-click), adding and deleting rows (`Ctrl+Insert` / `Ctrl+Delete` or context menu), copy/paste from spreadsheets, and the same Apply/Cancel batch workflow as the Links tab. Reserved keys (`id`, `title`, `level`, `shape`, and system keys) are highlighted and blocked from being added. Unsaved edits block tab switching, panel collapse, and node selection changes.
+- **Links tab** — an AVGrid showing all nodes linked to the selected node with columns for ID, Title, Level, Shape, and any custom properties. Column widths are auto-detected and the ID column is sticky. Supports batch editing with Apply/Cancel buttons, adding new linked nodes (including paste from Excel), and deleting rows (removes the link, and also removes the node if it becomes orphaned). Unsaved edits block panel collapse and node selection changes. When the Links tab is active, non-linked nodes are dimmed on the canvas. Focusing a grid row highlights the corresponding node in green on the canvas and draws a green link line from the selected node to the hovered node. Hidden children are automatically expanded when the Links tab is activated.
 
 **Editing:**
 - **Add Node** — right-click on empty canvas area and choose "Add Node" to create a new node at the click position
