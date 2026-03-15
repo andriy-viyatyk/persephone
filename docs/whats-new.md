@@ -12,9 +12,13 @@ Release notes and changelog for js-notepad.
 
 - **Graph View Legend Panel** — A collapsible panel at the bottom-left corner of the graph editor for documenting node levels and shapes. Expand to see two tabs (Level and Shape), each listing the levels or shapes present in the graph. Check boxes to highlight matching nodes (others are dimmed); type free-form descriptions that persist to the JSON `options.legend` object. The root node appears in both tabs with a shared description. Legend highlighting integrates with existing search and link highlighting (intersection when multiple are active).
 
+- **Graph View Node Multi-Selection** — `Ctrl+Click` to toggle individual nodes in and out of a multi-selection. The edit panel header shows "N nodes selected" and the Info tab supports batch editing of Level and Shape (mixed values highlighted in yellow). The Properties tab displays a union of all selected nodes' properties with yellow highlights for differing values. The Links tab is hidden during multi-selection. Right-clicking a selected node preserves the multi-selection. Search results status bar adds **[select all]** and **[add to selection]** actions for bulk selection from search matches.
+- **Graph View Legend Selection Tab** — The Legend panel gains a new **Selection** tab with radio filters for selected/not-selected nodes, enabling quick visual isolation of multi-selected subsets.
+
 ### Improvements
 
 - **Graph View UI polish** — Node labels now scale font size by level (larger nodes get bigger text). Selection highlight reworked: selected node label is orange, hovered node and its children get green labels. Tooltips no longer appear during node drag. Edit panel tabs reordered to Info → Properties → Links. Links tab now shows all columns (ID, Title, Level, Shape + custom properties) with auto-detected widths and sticky ID column.
+- **Graph View toolbar and panel UX** — Collapsed search toolbar stays visible with a green border when a search is active. Clicking on empty canvas collapses expanded panels without changing selection. Legend panel chevron turns green when expanded (replaces the previous green border indicator).
 
 ---
 

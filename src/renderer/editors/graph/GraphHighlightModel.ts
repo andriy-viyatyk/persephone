@@ -31,6 +31,10 @@ export class GraphHighlightModel {
     // Selection/hover state
     activeId = "";
     activeChild = new Set<string>();
+    /** All currently selected node IDs (superset — includes activeId). */
+    selectedIds = new Set<string>();
+    /** Union of neighbors of all selected nodes. */
+    selectedChildren = new Set<string>();
     hoveredId = "";
     hoveredChild = new Set<string>();
     externalHoverId = "";
@@ -74,10 +78,56 @@ export class GraphHighlightModel {
     // Selection/hover
     // =========================================================================
 
-    /** Set the active (selected) node. Computes neighbor set from links. */
-    setActiveId(id: string, links: GraphLink[]): void {
+    /** Set single selection (replaces any multi-selection). */
+    selectSingle(id: string, links: GraphLink[]): void {
         this.activeId = id;
         this.activeChild = id ? this.computeNeighborIds(id, links) : new Set();
+        this.selectedIds = id ? new Set([id]) : new Set();
+        this.selectedChildren = this.activeChild;
+    }
+
+    /** Toggle a node in/out of multi-selection. */
+    toggleSelected(id: string, links: GraphLink[]): void {
+        if (this.selectedIds.has(id)) {
+            this.selectedIds.delete(id);
+        } else {
+            this.selectedIds.add(id);
+        }
+        // Update activeId to the last toggled-in node (or first remaining, or empty)
+        if (this.selectedIds.has(id)) {
+            this.activeId = id;
+            this.activeChild = this.computeNeighborIds(id, links);
+        } else if (this.selectedIds.size > 0) {
+            const last = [...this.selectedIds].pop()!;
+            this.activeId = last;
+            this.activeChild = this.computeNeighborIds(last, links);
+        } else {
+            this.activeId = "";
+            this.activeChild = new Set();
+        }
+        this.recomputeSelectedChildren(links);
+    }
+
+    /** Clear all selection state. */
+    clearSelection(links: GraphLink[]): void {
+        this.selectSingle("", links);
+    }
+
+    /** Recompute the union of neighbors for all selected nodes. */
+    private recomputeSelectedChildren(links: GraphLink[]): void {
+        if (this.selectedIds.size === 0) {
+            this.selectedChildren = new Set();
+            return;
+        }
+        const children = new Set<string>();
+        for (const nodeId of this.selectedIds) {
+            for (const neighborId of this.computeNeighborIds(nodeId, links)) {
+                if (!this.selectedIds.has(neighborId)) {
+                    children.add(neighborId);
+                }
+            }
+        }
+        this.selectedChildren = children;
     }
 
     /** Set the hovered node. Computes neighbor set from links. */
@@ -100,6 +150,17 @@ export class GraphHighlightModel {
             this.activeId = "";
             this.activeChild = new Set();
         }
+        // Remove any selected nodes that no longer exist
+        let selectionChanged = false;
+        for (const id of this.selectedIds) {
+            if (!nodeIds.has(id)) {
+                this.selectedIds.delete(id);
+                selectionChanged = true;
+            }
+        }
+        if (selectionChanged) {
+            this.selectedChildren = new Set(); // Will be recomputed on next render if needed
+        }
         if (this.hoveredId && !nodeIds.has(this.hoveredId) && !this.externalHoverId) {
             this.hoveredId = "";
             this.hoveredChild = new Set();
@@ -110,6 +171,8 @@ export class GraphHighlightModel {
     clearAll(): void {
         this.activeId = "";
         this.activeChild = new Set();
+        this.selectedIds = new Set();
+        this.selectedChildren = new Set();
         this.hoveredId = "";
         this.hoveredChild = new Set();
     }
@@ -119,33 +182,33 @@ export class GraphHighlightModel {
     // =========================================================================
 
     nodeColor(node: GraphNode, colors: ResolvedColors): string {
-        if (node.id === this.activeId) return colors.nodeSelected;
+        if (this.selectedIds.has(node.id)) return colors.nodeSelected;
         if (node.id === this.hoveredId) return colors.nodeHighlight;
         return colors.nodeDefault;
     }
 
     nodeBorderColor(node: GraphNode, colors: ResolvedColors): string {
-        if (node.id === this.activeId) return colors.borderSelected;
+        if (this.selectedIds.has(node.id)) return colors.borderSelected;
         if (node.id === this.hoveredId) return colors.borderHighlight;
         if (this.hoveredChild.has(node.id)) return colors.borderHighlight;
         return colors.borderDefault;
     }
 
     labelTextColor(node: GraphNode, colors: ResolvedColors): string {
-        if (node.id === this.activeId) return colors.nodeSelected;
+        if (this.selectedIds.has(node.id)) return colors.nodeSelected;
         if (node.id === this.hoveredId || this.hoveredChild.has(node.id)) return colors.nodeHighlight;
         return colors.labelText;
     }
 
     linkColor(link: GraphLink, colors: ResolvedColors): string {
         const { source, target } = linkIds(link);
-        // Green highlight for the link between selected and hovered node
-        if (this.hoveredId && this.activeId
-            && ((source === this.activeId && target === this.hoveredId)
-             || (target === this.activeId && source === this.hoveredId))) {
+        // Green highlight for the link between any selected node and hovered node
+        if (this.hoveredId && this.selectedIds.size > 0
+            && ((this.selectedIds.has(source) && target === this.hoveredId)
+             || (this.selectedIds.has(target) && source === this.hoveredId))) {
             return colors.borderHighlight;
         }
-        return source === this.activeId || target === this.activeId
+        return this.selectedIds.has(source) || this.selectedIds.has(target)
             ? colors.linkSelected
             : colors.linkDefault;
     }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { GraphViewModel } from "./GraphViewModel";
 import { NodeShape } from "./types";
 import { ShapeIcon, LevelIcon } from "./GraphIcons";
@@ -8,7 +8,8 @@ import { ShapeIcon, LevelIcon } from "./GraphIcons";
 // =============================================================================
 
 const ALL_SHAPES: NodeShape[] = ["circle", "square", "diamond", "triangle", "star", "hexagon"];
-type LegendTab = "level" | "shape";
+type LegendTab = "level" | "shape" | "selection";
+type SelectionFilter = "" | "selected" | "not-selected";
 
 // =============================================================================
 // Component
@@ -23,7 +24,13 @@ export function GraphLegendPanel({ vm }: GraphLegendPanelProps) {
     const [activeTab, setActiveTab] = useState<LegendTab>("level");
     const [checkedLevels, setCheckedLevels] = useState<Set<string>>(new Set());
     const [checkedShapes, setCheckedShapes] = useState<Set<string>>(new Set());
+    const [selectionFilter, setSelectionFilter] = useState<SelectionFilter>("");
     const [descriptions, setDescriptions] = useState<Record<string, Record<string, string>>>({ levels: {}, shapes: {} });
+    // Track selection count to reactively update the Selection tab highlight
+    const selectedCount = useSyncExternalStore(
+        (cb) => vm.state.subscribe(cb),
+        () => vm.state.get().selectedNodes.length,
+    );
     const debounceTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
     // Load descriptions from VM on mount and when data changes
@@ -52,6 +59,26 @@ export function GraphLegendPanel({ vm }: GraphLegendPanelProps) {
             return;
         }
 
+        if (activeTab === "selection") {
+            if (!selectionFilter) {
+                vm.setLegendHighlight(null);
+                return;
+            }
+            const selectedIds = vm.renderer.selectedIds;
+            if (selectedIds.size === 0) {
+                vm.setLegendHighlight(null);
+                return;
+            }
+            if (selectionFilter === "selected") {
+                vm.setLegendHighlight(new Set(selectedIds));
+            } else {
+                const allIds = new Set(vm.renderer.getNodes().map((n) => n.id));
+                for (const id of selectedIds) allIds.delete(id);
+                vm.setLegendHighlight(allIds.size > 0 ? allIds : new Set());
+            }
+            return;
+        }
+
         const checked = activeTab === "level" ? checkedLevels : checkedShapes;
         if (checked.size === 0) {
             vm.setLegendHighlight(null);
@@ -77,7 +104,7 @@ export function GraphLegendPanel({ vm }: GraphLegendPanelProps) {
             const ids = vm.getNodeIdsByLegendFilter({ shapes: shapeNames.size > 0 ? shapeNames : undefined, includeRoot });
             vm.setLegendHighlight(ids.size > 0 ? ids : new Set());
         }
-    }, [vm, expanded, activeTab, checkedLevels, checkedShapes]);
+    }, [vm, expanded, activeTab, checkedLevels, checkedShapes, selectionFilter, selectedCount]);
 
     const toggleCheck = useCallback((tab: LegendTab, key: string) => {
         const setter = tab === "level" ? setCheckedLevels : setCheckedShapes;
@@ -124,7 +151,7 @@ export function GraphLegendPanel({ vm }: GraphLegendPanelProps) {
         <div className={`graph-legend${expanded ? " expanded" : ""}`}>
             <div className="legend-header" onClick={toggleExpanded}>
                 <span className="legend-title">Legend</span>
-                <span className="legend-chevron">{expanded ? "\u25BC" : "\u25B2"}</span>
+                <span className={`legend-chevron${expanded ? " expanded" : ""}`}>{expanded ? "\u25BC" : "\u25B2"}</span>
             </div>
             {expanded && (
                 <>
@@ -140,6 +167,12 @@ export function GraphLegendPanel({ vm }: GraphLegendPanelProps) {
                             onClick={() => setActiveTab("shape")}
                         >
                             Shape
+                        </button>
+                        <button
+                            className={`legend-tab${activeTab === "selection" ? " active" : ""}`}
+                            onClick={() => setActiveTab("selection")}
+                        >
+                            Selection
                         </button>
                     </div>
                     <div className="legend-content">
@@ -199,6 +232,20 @@ export function GraphLegendPanel({ vm }: GraphLegendPanelProps) {
                                 ))}
                             </>
                         )}
+                        {activeTab === "selection" && (
+                            <>
+                                <SelectionRadioRow
+                                    label="Selected"
+                                    checked={selectionFilter === "selected"}
+                                    onToggle={() => setSelectionFilter((prev) => prev === "selected" ? "" : "selected")}
+                                />
+                                <SelectionRadioRow
+                                    label="Not selected"
+                                    checked={selectionFilter === "not-selected"}
+                                    onToggle={() => setSelectionFilter((prev) => prev === "not-selected" ? "" : "not-selected")}
+                                />
+                            </>
+                        )}
                     </div>
                 </>
             )}
@@ -237,6 +284,30 @@ function LegendRow({ label, icon, checked, description, onToggle, onDescriptionC
                 value={description}
                 onChange={(e) => onDescriptionChange(e.target.value)}
             />
+        </div>
+    );
+}
+
+// =============================================================================
+// SelectionRadioRow
+// =============================================================================
+
+interface SelectionRadioRowProps {
+    label: string;
+    checked: boolean;
+    onToggle: () => void;
+}
+
+function SelectionRadioRow({ label, checked, onToggle }: SelectionRadioRowProps) {
+    return (
+        <div className="legend-row">
+            <input
+                type="radio"
+                className="legend-checkbox"
+                checked={checked}
+                onChange={onToggle}
+            />
+            <span className="legend-label">{label}</span>
         </div>
     );
 }

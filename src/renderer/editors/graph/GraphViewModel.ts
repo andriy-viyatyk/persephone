@@ -29,7 +29,9 @@ export const defaultGraphViewState = {
     searchInfo: null as SearchInfo | null,
     searchResults: null as SearchResult[] | null,
     tooltip: null as TooltipInfo | null,
-    selectedNode: null as GraphNode | null,
+    /** All currently selected nodes (snapshots). Empty array = no selection. */
+    selectedNodes: [] as GraphNode[],
+    /** Linked nodes for the single selected node (empty when multi-selected). */
     linkedNodes: [] as GraphNode[],
     statusHint: "",
 };
@@ -73,7 +75,7 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
         this.renderer.onHoverChanged = (nodeId, cx, cy) => this.handleHoverChanged(nodeId, cx, cy);
         this.renderer.onContextMenuAction = (nodeId, cx, cy) => this.handleContextMenu(nodeId, cx, cy);
         this.renderer.onAltClick = (nodeId) => this.handleAltClick(nodeId);
-        this.renderer.onSelectionChanged = (nodeId) => this.handleSelectionChanged(nodeId);
+        this.renderer.onSelectionChanged = (selectedIds) => this.handleSelectionChanged(selectedIds);
         this.renderer.onDoubleClick = (nodeId) => this.onDoubleClickNode?.(nodeId);
         this.parseContent();
     }
@@ -240,6 +242,17 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
         if (changed) this.recomputeSearch();
     }
 
+    /** Reveal hidden matches and add all search result nodes to the current selection. */
+    selectSearchResults(): void {
+        const results = this.state.get().searchResults;
+        if (!results || results.length === 0) return;
+        // Reveal hidden nodes first so they become visible
+        const changed = this.searchModel.revealHiddenMatches(results);
+        if (changed) this.recomputeSearch();
+        const nodeIds = results.map((r) => r.nodeId);
+        this.renderer.addToSelection(nodeIds);
+    }
+
     private recomputeSearch(): void {
         const query = this.state.get().searchQuery;
         const result = this.searchModel.computeSearch(query);
@@ -270,9 +283,9 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
             return;
         }
 
-        // Status hint: Alt+Click to link/unlink
+        // Status hint: Alt+Click to link/unlink (only for single selection)
         const selectedId = this.renderer.selectedId;
-        if (selectedId && nodeId !== selectedId && this.dataModel.sourceData) {
+        if (selectedId && this.renderer.selectedIds.size === 1 && nodeId !== selectedId && this.dataModel.sourceData) {
             const linked = this.dataModel.linkExists(selectedId, nodeId);
             const label = nodeLabel(this.dataModel.sourceData.nodes.find((n) => n.id === selectedId) ?? { id: selectedId });
             this.updateStatusHint(linked
@@ -421,7 +434,10 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
             const items = buildEmptyAreaContextMenu(worldPos.x, worldPos.y, this.contextMenuActions);
             showAppPopupMenu(clientX, clientY, items);
         } else {
-            this.renderer.selectNode(nodeId);
+            // Only replace selection if right-clicked node is not already selected
+            if (!this.renderer.selectedIds.has(nodeId)) {
+                this.renderer.selectNode(nodeId);
+            }
             const items = buildNodeContextMenu(
                 nodeId,
                 this.dataModel.getNeighborIdsFromSource(nodeId),
@@ -439,6 +455,8 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
     // =========================================================================
 
     private handleAltClick(nodeId: string): void {
+        // Alt+Click link toggle only works with single selection
+        if (this.renderer.selectedIds.size !== 1) return;
         const selectedId = this.renderer.selectedId;
         if (!selectedId || selectedId === nodeId) return;
         if (!this.dataModel.sourceData) return;
@@ -455,28 +473,45 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
     // Selection
     // =========================================================================
 
-    private handleSelectionChanged(nodeId: string): void {
+    private handleSelectionChanged(selectedIds: Set<string>): void {
         this.state.update((s) => {
             s.statusHint = "";
-            if (!nodeId) {
-                s.selectedNode = null;
+            if (selectedIds.size === 0) {
+                s.selectedNodes = [];
                 s.linkedNodes = [];
             } else {
-                const node = this.dataModel.sourceData?.nodes.find((n) => n.id === nodeId);
-                s.selectedNode = node ? { ...node } : null;
-                s.linkedNodes = this.dataModel.computeLinkedNodes(nodeId);
+                const nodes = this.dataModel.sourceData?.nodes ?? [];
+                s.selectedNodes = [...selectedIds]
+                    .map((id) => nodes.find((n) => n.id === id))
+                    .filter((n): n is GraphNode => !!n)
+                    .map((n) => ({ ...n }));
+                // Only compute linked nodes for single selection
+                if (selectedIds.size === 1) {
+                    const id = [...selectedIds][0];
+                    s.linkedNodes = this.dataModel.computeLinkedNodes(id);
+                } else {
+                    s.linkedNodes = [];
+                }
             }
         });
     }
 
-    /** Refresh the selectedNode snapshot from sourceData (after edits). */
-    private refreshSelectedNode(): void {
-        const selectedId = this.renderer.selectedId;
-        if (!selectedId) return;
+    /** Refresh selectedNodes snapshots from sourceData (after edits). */
+    private refreshSelectedNodes(): void {
+        const selectedIds = this.renderer.selectedIds;
+        if (selectedIds.size === 0) return;
         this.state.update((s) => {
-            const node = this.dataModel.sourceData?.nodes.find((n) => n.id === selectedId);
-            s.selectedNode = node ? { ...node } : null;
-            s.linkedNodes = this.dataModel.computeLinkedNodes(selectedId);
+            const nodes = this.dataModel.sourceData?.nodes ?? [];
+            s.selectedNodes = [...selectedIds]
+                .map((id) => nodes.find((n) => n.id === id))
+                .filter((n): n is GraphNode => !!n)
+                .map((n) => ({ ...n }));
+            if (selectedIds.size === 1) {
+                const id = [...selectedIds][0];
+                s.linkedNodes = this.dataModel.computeLinkedNodes(id);
+            } else {
+                s.linkedNodes = [];
+            }
         });
     }
 
@@ -488,7 +523,7 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
         this.dataModel.updateNodeProps(nodeId, props);
         this.rebuildAndRender();
         this.serializeToHost();
-        this.refreshSelectedNode();
+        this.refreshSelectedNodes();
     }
 
     renameNode(oldId: string, newId: string): boolean {
@@ -507,7 +542,7 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
         this.renderer.selectNode(newId);
         this.rebuildAndRender(undefined, posHint);
         this.serializeToHost();
-        this.refreshSelectedNode();
+        this.refreshSelectedNodes();
         return true;
     }
 
@@ -527,9 +562,12 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
     deleteNode(nodeId: string): void {
         this.dataModel.deleteNode(nodeId);
 
-        // Clear selection if deleted node was selected
-        if (this.renderer.selectedId === nodeId) {
-            this.renderer.selectNode("");
+        // Clear selection if deleted node was selected (handles both single and multi)
+        if (this.renderer.selectedIds.has(nodeId)) {
+            if (this.renderer.selectedIds.size <= 1) {
+                this.renderer.selectNode("");
+            }
+            // For multi-selection, clearSelectionIf in updateVisibleData will handle cleanup
         }
 
         this.rebuildAndRender();
@@ -566,7 +604,7 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
         this.dataModel.applyPropertiesUpdate(nodeId, propsToSet, keysToRemove);
         this.rebuildAndRender();
         this.serializeToHost();
-        this.refreshSelectedNode();
+        this.refreshSelectedNodes();
     }
 
     applyLinkedNodesUpdate(
@@ -577,7 +615,31 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
         this.dataModel.applyLinkedNodesUpdate(selectedNodeId, rows, originalIds);
         this.rebuildAndRender();
         this.serializeToHost();
-        this.refreshSelectedNode();
+        this.refreshSelectedNodes();
+    }
+
+    /** Batch update properties on multiple nodes at once. */
+    batchUpdateNodeProps(nodeIds: string[], props: Partial<GraphNode>): void {
+        for (const id of nodeIds) {
+            this.dataModel.updateNodeProps(id, props);
+        }
+        this.rebuildAndRender();
+        this.serializeToHost();
+        this.refreshSelectedNodes();
+    }
+
+    /** Batch apply custom properties update to multiple nodes. */
+    batchApplyPropertiesUpdate(
+        nodeIds: string[],
+        propsToSet: Record<string, string>,
+        keysToRemove: string[],
+    ): void {
+        for (const id of nodeIds) {
+            this.dataModel.applyPropertiesUpdate(id, propsToSet, keysToRemove);
+        }
+        this.rebuildAndRender();
+        this.serializeToHost();
+        this.refreshSelectedNodes();
     }
 
     // =========================================================================
@@ -694,7 +756,7 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
             this.renderer.rootNodeId = opts.rootNode ?? "";
 
             // Refresh panel snapshot — selected node may have changed or been deleted externally
-            this.refreshSelectedNode();
+            this.refreshSelectedNodes();
         } catch (e: any) {
             this.state.update((s) => {
                 s.error = e.message || "Invalid JSON";

@@ -183,7 +183,7 @@ For `.fg.json` files — a force-directed graph viewer. Also activates for any J
 - **Zoom** — scroll wheel to zoom in/out (double-click zoom is disabled)
 - **Pan** — drag the canvas background
 - **Drag nodes** — click and drag individual nodes to reposition them
-- **Select** — click a node to select it; selected node and its direct neighbors are highlighted
+- **Select** — click a node to select it; selected node and its direct neighbors are highlighted. `Ctrl+Click` to toggle nodes in and out of a multi-selection.
 - **Double-click node** — expands the detail panel for the clicked node
 - **Hover** — hover over a node to highlight it and its children; after ~500 ms a tooltip appears showing the node's title, id, and any custom user-defined properties. Tooltips do not appear during node drag.
 - **Labels** — node labels appear for selected and hovered nodes when zoomed in sufficiently. Level 1 and 2 nodes always show their label regardless of selection or zoom state. Highlighted node labels are always visible regardless of zoom level. Font size scales by level (larger for root/level 1, smaller for deeper levels). Labels display the node's `title` if present, otherwise its `id`.
@@ -206,18 +206,18 @@ For `.fg.json` files — a force-directed graph viewer. Also activates for any J
 
 **Detail Panel:**
 
-A collapsible overlay panel in the top-right corner for editing the selected node's properties. The header always shows the selected node's title (or "select node for edit" when nothing is selected). Click the header or double-click a node to expand the panel. The panel auto-collapses when you deselect all nodes. Clicking the canvas background also collapses the panel.
+A collapsible overlay panel in the top-right corner for editing the selected node's properties. The header always shows the selected node's title (or "select node for edit" when nothing is selected). When multiple nodes are selected, the header shows "N nodes selected". Click the header or double-click a node to expand the panel. The panel auto-collapses when you deselect all nodes. Clicking the canvas background collapses expanded panels without changing the selection.
 
-- **Info tab** — editable fields for ID (with rename validation), Title, Level (1–5 icon selector), and Shape (6 shape icons: circle, square, diamond, triangle, star, hexagon)
+- **Info tab** — editable fields for ID (with rename validation), Title, Level (1–5 icon selector), and Shape (6 shape icons: circle, square, diamond, triangle, star, hexagon). In multi-selection mode, only Level and Shape are shown; mixed values across selected nodes are highlighted in yellow.
 - Changes immediately update the canvas and JSON
 - Resizable via the bottom-left corner drag handle
-- **Properties tab** — an AVGrid showing all custom (non-core) key-value properties of the selected node. Supports inline editing (double-click), adding and deleting rows (`Ctrl+Insert` / `Ctrl+Delete` or context menu), copy/paste from spreadsheets, and the same Apply/Cancel batch workflow as the Links tab. Reserved keys (`id`, `title`, `level`, `shape`, and system keys) are highlighted and blocked from being added. Unsaved edits block tab switching, panel collapse, and node selection changes.
-- **Links tab** — an AVGrid showing all nodes linked to the selected node with columns for ID, Title, Level, Shape, and any custom properties. Column widths are auto-detected and the ID column is sticky. Supports batch editing with Apply/Cancel buttons, adding new linked nodes (including paste from Excel), and deleting rows (removes the link, and also removes the node if it becomes orphaned). Unsaved edits block panel collapse and node selection changes. When the Links tab is active, non-linked nodes are dimmed on the canvas. Focusing a grid row highlights the corresponding node in green on the canvas and draws a green link line from the selected node to the hovered node. Hidden children are automatically expanded when the Links tab is activated.
+- **Properties tab** — an AVGrid showing all custom (non-core) key-value properties of the selected node. Supports inline editing (double-click), adding and deleting rows (`Ctrl+Insert` / `Ctrl+Delete` or context menu), copy/paste from spreadsheets, and the same Apply/Cancel batch workflow as the Links tab. Reserved keys (`id`, `title`, `level`, `shape`, and system keys) are highlighted and blocked from being added. Unsaved edits block tab switching, panel collapse, and node selection changes. In multi-selection mode, the grid shows the union of all selected nodes' properties; values that differ across nodes are highlighted in yellow, with a status message indicating mixed values.
+- **Links tab** — an AVGrid showing all nodes linked to the selected node with columns for ID, Title, Level, Shape, and any custom properties. Hidden during multi-selection. Column widths are auto-detected and the ID column is sticky. Supports batch editing with Apply/Cancel buttons, adding new linked nodes (including paste from Excel), and deleting rows (removes the link, and also removes the node if it becomes orphaned). Unsaved edits block panel collapse and node selection changes. When the Links tab is active, non-linked nodes are dimmed on the canvas. Focusing a grid row highlights the corresponding node in green on the canvas and draws a green link line from the selected node to the hovered node. Hidden children are automatically expanded when the Links tab is activated.
 
 **Editing:**
 - **Add Node** — right-click on empty canvas area and choose "Add Node" to create a new node at the click position
 - **Add Child** — right-click on a node and choose "Add Child" to create a new node linked to the clicked node
-- **Delete Node** — right-click on a node and choose "Delete Node" to remove it and all its links
+- **Delete Node** — right-click on a node and choose "Delete Node" to remove it and all its links. Right-clicking a node that is part of a multi-selection preserves the selection.
 - **Delete Link** — right-click on a node and use the "Delete Link" submenu to remove a specific link from that node
 - **Set as Root** — right-click on a node and choose "Set as Root" to designate it as the root node
 - **Collapse** — right-click on a node and choose "Collapse" to hide its descendant nodes (those discovered later in BFS order from the root). Only available when visibility filtering is active.
@@ -236,7 +236,7 @@ A collapsible overlay panel in the top-right corner for editing the selected nod
 
 When matches are found, the **Results** tab shows the match count and opens a scrollable results panel listing matching nodes with highlighted matches. Hidden nodes appear at reduced opacity and can be clicked to reveal them. Use **ArrowUp/Down** to navigate results, **Enter** to select, and **Escape** to close the results panel.
 
-A status bar below the results shows "matched N visible" and, when hidden nodes also match, a clickable **"+K hidden"** link for bulk reveal. Press Escape or the **×** button to clear the search.
+A status bar below the results shows "matched N visible" and, when hidden nodes also match, a clickable **"+K hidden"** link for bulk reveal. The status bar also provides **[select all]** and **[add to selection]** actions to select matching nodes in bulk. The collapsed search toolbar remains visible with a green border when a search is active. Press Escape or the **×** button to clear the search.
 
 **Force Tuning:** Click the gear icon in the toolbar (or select the **Physics** tab) to toggle an expandable tuning panel with three sliders that control the force simulation in real time:
 - **Charge** (-200 to 0) — how strongly nodes repel each other
@@ -252,7 +252,7 @@ Adjustments take effect immediately. Click **Reset** to restore the default valu
 
 Changes to Expand Depth and Max Visible are deferred — they take effect when the file is reopened.
 
-**Legend Panel:** A collapsible panel at the bottom-left corner for documenting what node levels and shapes mean. Click to expand; the panel has two tabs — **Level** and **Shape**. Each tab lists levels or shapes present in the graph, with a checkbox to highlight matching nodes and a text input for a free-form description. Descriptions are persisted to the JSON `options.legend` object. The root node (if set) appears in both tabs with a shared description. When checkboxes are checked, matching nodes are highlighted and non-matching nodes are dimmed. Collapsing the panel clears the highlighting but preserves checkbox state.
+**Legend Panel:** A collapsible panel at the bottom-left corner for documenting what node levels and shapes mean. Click to expand (the chevron turns green when expanded); the panel has three tabs — **Level**, **Shape**, and **Selection**. The Level and Shape tabs list levels or shapes present in the graph, with a checkbox to highlight matching nodes and a text input for a free-form description. Descriptions are persisted to the JSON `options.legend` object. The root node (if set) appears in both tabs with a shared description. The **Selection** tab provides radio filters for selected/not-selected nodes, enabling quick visual isolation of multi-selected subsets. When checkboxes or radio filters are active, matching nodes are highlighted and non-matching nodes are dimmed. Collapsing the panel clears the highlighting but preserves checkbox state.
 
 **Theme support:** Graph colors (node fill, edge color, selected/hover highlights) adapt to whichever of the 9 app themes is active.
 

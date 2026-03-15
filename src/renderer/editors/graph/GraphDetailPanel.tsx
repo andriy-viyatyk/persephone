@@ -181,6 +181,16 @@ const GraphDetailPanelRoot = styled.div({
         color: color.text.default,
         backgroundColor: color.background.dark,
     },
+    "& .info-icon-btn.mixed": {
+        borderColor: "transparent",
+        color: color.warning.text,
+    },
+    "& .multi-info": {
+        fontSize: 11,
+        color: color.warning.text,
+        fontStyle: "italic",
+        marginBottom: 8,
+    },
 
     // Links tab
     "& .links-tab": {
@@ -239,8 +249,23 @@ const GraphDetailPanelRoot = styled.div({
         flex: 1,
         overflow: "hidden",
     },
-    "& .cell-error": {
+    "& .data-cell.cell-error": {
         color: color.error.text,
+    },
+    "& .data-cell.cell-mixed": {
+        color: color.warning.text,
+    },
+    "& .properties-status": {
+        fontSize: 10,
+        color: color.warning.text,
+        padding: "2px 6px",
+        borderTop: `1px solid ${color.border.default}`,
+        flexShrink: 0,
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+        whiteSpace: "nowrap",
+        userSelect: "text",
+        cursor: "text",
     },
 
     // Resizer
@@ -263,19 +288,24 @@ const GraphDetailPanelRoot = styled.div({
 // =============================================================================
 
 interface GraphDetailPanelProps {
-    node: GraphNode | null;
+    nodes: GraphNode[];
     linkedNodes: GraphNode[];
     onUpdateProps: (nodeId: string, props: Partial<GraphNode>) => void;
+    onBatchUpdateProps: (nodeIds: string[], props: Partial<GraphNode>) => void;
     onRenameNode: (oldId: string, newId: string) => boolean;
     onApplyLinks: (selectedNodeId: string, rows: Record<string, unknown>[], originalIds: Set<string>) => void;
     onApplyProperties: (nodeId: string, propsToSet: Record<string, string>, keysToRemove: string[]) => void;
+    onBatchApplyProperties: (nodeIds: string[], propsToSet: Record<string, string>, keysToRemove: string[]) => void;
     onPanelDirtyChange?: (dirty: boolean) => void;
+    onPanelExpandedChange?: (expanded: boolean) => void;
     onHighlightSet?: (ids: Set<string> | null) => void;
     onExternalHover?: (id: string) => void;
     onExpandNode?: (nodeId: string) => void;
     containerRef?: React.RefObject<HTMLElement | null>;
     /** Increment to request panel expansion (e.g. on double-click). */
     expandRequest?: number;
+    /** Increment to request panel collapse (e.g. on canvas click). */
+    collapseRequest?: number;
 }
 
 // =============================================================================
@@ -283,9 +313,15 @@ interface GraphDetailPanelProps {
 // =============================================================================
 
 function GraphDetailPanel({
-    node, linkedNodes, onUpdateProps, onRenameNode, onApplyLinks, onApplyProperties,
-    onPanelDirtyChange, onHighlightSet, onExternalHover, onExpandNode, containerRef, expandRequest,
+    nodes, linkedNodes, onUpdateProps, onBatchUpdateProps, onRenameNode, onApplyLinks,
+    onApplyProperties, onBatchApplyProperties,
+    onPanelDirtyChange, onPanelExpandedChange, onHighlightSet, onExternalHover, onExpandNode,
+    containerRef, expandRequest, collapseRequest,
 }: GraphDetailPanelProps) {
+    const hasSelection = nodes.length > 0;
+    const isMulti = nodes.length > 1;
+    const singleNode = nodes.length === 1 ? nodes[0] : null;
+
     // Panel expand/collapse state
     const [expanded, setExpanded] = useState(false);
     const wasExpandedRef = useRef(true); // remember user preference
@@ -300,7 +336,7 @@ function GraphDetailPanel({
     const resizingRef = useRef(false);
     const resizeStartRef = useRef({ x: 0, y: 0, width: 0, height: 0 });
 
-    // Form state for text fields (commit on blur/Enter)
+    // Form state for text fields (commit on blur/Enter) — single selection only
     const [editId, setEditId] = useState("");
     const [editTitle, setEditTitle] = useState("");
     const [idError, setIdError] = useState("");
@@ -316,88 +352,107 @@ function GraphDetailPanel({
         onPanelDirtyChange?.(dirty || linksDirty);
     }, [onPanelDirtyChange, linksDirty]);
 
-    // Sync form state when node changes
+    // Stable key for tracking selection identity changes
+    const selectionKey = useMemo(() => nodes.map((n) => n.id).sort().join(","), [nodes]);
+
+    // Sync form state when single node changes
     useEffect(() => {
-        if (node) {
-            setEditId(node.id);
-            setEditTitle(node.title || "");
+        if (singleNode) {
+            setEditId(singleNode.id);
+            setEditTitle(singleNode.title || "");
             setIdError("");
         }
-    }, [node?.id, node?.title]);
+    }, [singleNode?.id, singleNode?.title]);
+
+    // Force active tab to "info" if switching to multi and currently on "links"
+    useEffect(() => {
+        if (isMulti && activeTab === "links") {
+            setActiveTab("info");
+        }
+    }, [isMulti]);
 
     // Handle expand/collapse transitions based on selection
     useEffect(() => {
-        if (node) {
+        if (hasSelection) {
             if (!hadSelectionRef.current) {
-                // First selection or re-selection after deselection: restore wasExpanded
                 setExpanded(wasExpandedRef.current);
             }
             hadSelectionRef.current = true;
         } else {
-            // Lost selection: collapse and reset remembered state
             wasExpandedRef.current = false;
             setExpanded(false);
             hadSelectionRef.current = false;
         }
-    }, [node?.id]);
+    }, [selectionKey]);
     // External expand request (e.g. double-click on node)
     useEffect(() => {
-        if (expandRequest && node) {
+        if (expandRequest && hasSelection) {
             setExpanded(true);
             wasExpandedRef.current = true;
         }
     }, [expandRequest]);
+    // External collapse request (e.g. canvas click)
+    useEffect(() => {
+        if (collapseRequest && expanded && !anyDirty) {
+            setExpanded(false);
+            wasExpandedRef.current = false;
+        }
+    }, [collapseRequest]);
+    // Notify parent of expanded state changes
+    useEffect(() => {
+        onPanelExpandedChange?.(expanded);
+    }, [expanded, onPanelExpandedChange]);
     const toggleExpanded = useCallback(() => {
-        if (!node || anyDirty) return; // Block collapse when dirty
+        if (!hasSelection || anyDirty) return;
         setExpanded((prev) => {
             wasExpandedRef.current = !prev;
             return !prev;
         });
-    }, [node, anyDirty]);
+    }, [hasSelection, anyDirty]);
 
-    // Links tab highlighting: dim non-linked nodes when Links tab is active
-    const linksTabActive = expanded && activeTab === "links" && !!node;
+    // Links tab highlighting: dim non-linked nodes when Links tab is active (single selection only)
+    const linksTabActive = expanded && activeTab === "links" && !!singleNode;
     useEffect(() => {
         if (linksTabActive) {
-            onExpandNode?.(node!.id);
-            const ids = new Set([node!.id, ...linkedNodes.map((n) => n.id)]);
+            onExpandNode?.(singleNode!.id);
+            const ids = new Set([singleNode!.id, ...linkedNodes.map((n) => n.id)]);
             onHighlightSet?.(ids);
         } else {
             onHighlightSet?.(null);
             onExternalHover?.("");
         }
-    }, [linksTabActive, node?.id, linkedNodes]);
+    }, [linksTabActive, singleNode?.id, linkedNodes]);
     // Cleanup on unmount
     useEffect(() => () => { onHighlightSet?.(null); onExternalHover?.(""); }, []);
 
-    // ID commit on blur or Enter
+    // ID commit on blur or Enter (single selection only)
     const commitId = useCallback(() => {
-        if (!node) return;
+        if (!singleNode) return;
         const trimmed = editId.trim();
-        if (trimmed === node.id) {
+        if (trimmed === singleNode.id) {
             setIdError("");
             return;
         }
         if (!trimmed) {
-            setEditId(node.id);
+            setEditId(singleNode.id);
             setIdError("");
             return;
         }
-        const ok = onRenameNode(node.id, trimmed);
+        const ok = onRenameNode(singleNode.id, trimmed);
         if (!ok) {
             setIdError("ID already exists");
         } else {
             setIdError("");
         }
-    }, [node, editId, onRenameNode]);
+    }, [singleNode, editId, onRenameNode]);
 
-    // Title commit on blur or Enter
+    // Title commit on blur or Enter (single selection only)
     const commitTitle = useCallback(() => {
-        if (!node) return;
+        if (!singleNode) return;
         const value = editTitle.trim();
-        if (value === (node.title || "")) return;
-        onUpdateProps(node.id, { title: value || undefined });
-    }, [node, editTitle, onUpdateProps]);
+        if (value === (singleNode.title || "")) return;
+        onUpdateProps(singleNode.id, { title: value || undefined });
+    }, [singleNode, editTitle, onUpdateProps]);
 
     const handleKeyDown = useCallback((_commit: () => void) => (e: React.KeyboardEvent) => {
         if (e.key === "Enter") {
@@ -405,15 +460,14 @@ function GraphDetailPanel({
             (e.target as HTMLElement).blur();
         } else if (e.key === "Escape") {
             e.preventDefault();
-            // Revert and blur
-            if (node) {
-                setEditId(node.id);
-                setEditTitle(node.title || "");
+            if (singleNode) {
+                setEditId(singleNode.id);
+                setEditTitle(singleNode.title || "");
                 setIdError("");
             }
             (e.target as HTMLElement).blur();
         }
-    }, [node]);
+    }, [singleNode]);
 
     // Resizer handlers
     const handleResizeStart = useCallback((e: React.MouseEvent) => {
@@ -424,17 +478,15 @@ function GraphDetailPanel({
 
         const handleMouseMove = (e: MouseEvent) => {
             if (!resizingRef.current) return;
-            const dx = resizeStartRef.current.x - e.clientX; // Left drag increases width
-            const dy = e.clientY - resizeStartRef.current.y; // Down drag increases height
+            const dx = resizeStartRef.current.x - e.clientX;
+            const dy = e.clientY - resizeStartRef.current.y;
 
             let newWidth = resizeStartRef.current.width + dx;
             let newHeight = resizeStartRef.current.height + dy;
 
-            // Clamp to min
             newWidth = Math.max(MIN_WIDTH, newWidth);
             newHeight = Math.max(MIN_HEIGHT, newHeight);
 
-            // Clamp to max (90% of container)
             const container = containerRef?.current;
             if (container) {
                 const rect = container.getBoundingClientRect();
@@ -456,23 +508,30 @@ function GraphDetailPanel({
     }, [size, containerRef]);
 
     // Header text
-    const headerText = node ? nodeLabel(node) : "select node for edit";
-    const headerClass = node
+    const headerText = isMulti
+        ? `${nodes.length} nodes selected`
+        : singleNode
+            ? nodeLabel(singleNode)
+            : "select node for edit";
+    const headerClass = hasSelection
         ? `panel-header${anyDirty ? " locked" : ""}`
         : "panel-header no-selection";
+
+    // Whether links tab is available (single selection only)
+    const linksAvailable = !isMulti;
 
     return (
         <GraphDetailPanelRoot>
             <div className={headerClass} onClick={toggleExpanded}>
                 <span className="panel-title" title={headerText}>{headerText}</span>
-                {node && (
+                {hasSelection && (
                     <span className="panel-chevron">
                         {expanded ? <ChevronUpIcon width={14} height={14} /> : <ChevronDownIcon width={14} height={14} />}
                     </span>
                 )}
             </div>
 
-            {expanded && node && (
+            {expanded && hasSelection && (
                 <div className="panel-body" style={{ width: size.width, height: size.height }}>
                     <div className="panel-tabs">
                         <button
@@ -487,40 +546,50 @@ function GraphDetailPanel({
                         >
                             Properties
                         </button>
-                        <button
-                            className={`panel-tab ${activeTab === "links" ? "active" : ""}${anyDirty && activeTab !== "links" ? " disabled" : ""}`}
-                            onClick={() => { if (!anyDirty) setActiveTab("links"); }}
-                        >
-                            Links
-                        </button>
+                        {linksAvailable && (
+                            <button
+                                className={`panel-tab ${activeTab === "links" ? "active" : ""}${anyDirty && activeTab !== "links" ? " disabled" : ""}`}
+                                onClick={() => { if (!anyDirty) setActiveTab("links"); }}
+                            >
+                                Links
+                            </button>
+                        )}
                     </div>
 
                     <div className={`panel-content${activeTab !== "info" ? " no-pad" : ""}`}>
                         {activeTab === "info" && (
-                            <InfoTab
-                                node={node}
-                                editId={editId}
-                                setEditId={setEditId}
-                                editTitle={editTitle}
-                                setEditTitle={setEditTitle}
-                                idError={idError}
-                                commitId={commitId}
-                                commitTitle={commitTitle}
-                                handleKeyDown={handleKeyDown}
-                                onUpdateProps={onUpdateProps}
-                            />
+                            isMulti ? (
+                                <MultiInfoTab
+                                    nodes={nodes}
+                                    onBatchUpdateProps={onBatchUpdateProps}
+                                />
+                            ) : singleNode ? (
+                                <InfoTab
+                                    node={singleNode}
+                                    editId={editId}
+                                    setEditId={setEditId}
+                                    editTitle={editTitle}
+                                    setEditTitle={setEditTitle}
+                                    idError={idError}
+                                    commitId={commitId}
+                                    commitTitle={commitTitle}
+                                    handleKeyDown={handleKeyDown}
+                                    onUpdateProps={onUpdateProps}
+                                />
+                            ) : null
                         )}
                         {activeTab === "properties" && (
                             <PropertiesTab
-                                node={node}
+                                nodes={nodes}
                                 onApply={onApplyProperties}
+                                onBatchApply={onBatchApplyProperties}
                                 onDirtyChange={handlePropertiesDirtyChange}
                             />
                         )}
-                        {activeTab === "links" && (
+                        {activeTab === "links" && singleNode && (
                             <LinksTab
                                 linkedNodes={linkedNodes}
-                                selectedNodeId={node.id}
+                                selectedNodeId={singleNode.id}
                                 onApply={onApplyLinks}
                                 onDirtyChange={handleLinksDirtyChange}
                                 onExternalHover={onExternalHover}
@@ -730,26 +799,55 @@ function LinksTab({ linkedNodes, selectedNodeId, onApply, onDirtyChange, onExter
 // Properties Tab
 // =============================================================================
 
-type PropertyRow = { _rowKey: string; key: string; value: string };
+type PropertyRow = { _rowKey: string; key: string; value: string; _isChanged?: boolean };
 
 interface PropertiesTabProps {
-    node: GraphNode;
+    nodes: GraphNode[];
     onApply: (nodeId: string, propsToSet: Record<string, string>, keysToRemove: string[]) => void;
+    onBatchApply: (nodeIds: string[], propsToSet: Record<string, string>, keysToRemove: string[]) => void;
     onDirtyChange: (dirty: boolean) => void;
 }
 
-function extractCustomProperties(node: GraphNode): PropertyRow[] {
-    const rows: PropertyRow[] = [];
-    let counter = 0;
+/** Extract custom properties from a single node. */
+function extractCustomProperties(node: GraphNode): { key: string; value: string }[] {
+    const rows: { key: string; value: string }[] = [];
     for (const [key, value] of Object.entries(node)) {
         if (isReservedPropertyKey(key)) continue;
-        rows.push({
-            _rowKey: `prop-${++counter}`,
-            key,
-            value: value == null ? "" : String(value),
-        });
+        rows.push({ key, value: value == null ? "" : String(value) });
     }
     return rows;
+}
+
+/** Build merged properties from multiple nodes.
+ *  Returns rows with value set when all nodes agree, empty when values differ. */
+function extractMultiProperties(nodes: GraphNode[]): { key: string; value: string; allSame: boolean; uniqueValues: string[] }[] {
+    // Collect all custom keys across all nodes
+    const keySet = new Set<string>();
+    for (const node of nodes) {
+        for (const key of Object.keys(node)) {
+            if (!isReservedPropertyKey(key)) keySet.add(key);
+        }
+    }
+
+    const result: { key: string; value: string; allSame: boolean; uniqueValues: string[] }[] = [];
+    for (const key of [...keySet].sort()) {
+        const values: string[] = [];
+        for (const node of nodes) {
+            const v = (node as unknown as Record<string, unknown>)[key];
+            if (v !== undefined && v !== null) {
+                values.push(String(v));
+            }
+        }
+        const uniqueValues = [...new Set(values)];
+        const allSame = uniqueValues.length === 1 && values.length === nodes.length;
+        result.push({
+            key,
+            value: allSame ? uniqueValues[0] : "",
+            allSame,
+            uniqueValues,
+        });
+    }
+    return result;
 }
 
 const PROPERTY_COLUMNS: Column<PropertyRow>[] = [
@@ -757,28 +855,76 @@ const PROPERTY_COLUMNS: Column<PropertyRow>[] = [
     { key: "value", name: "Value", width: 200, resizible: true },
 ];
 
-function PropertiesTab({ node, onApply, onDirtyChange }: PropertiesTabProps) {
+function PropertiesTab({ nodes, onApply, onBatchApply, onDirtyChange }: PropertiesTabProps) {
+    const isMulti = nodes.length > 1;
+    const singleNode = nodes.length === 1 ? nodes[0] : null;
+    const selectionKey = useMemo(() => nodes.map((n) => n.id).sort().join(","), [nodes]);
+
     const [rows, setRows] = useState<PropertyRow[]>([]);
     const [columns, setColumns] = useState<Column<PropertyRow>[]>(PROPERTY_COLUMNS);
     const [dirty, setDirty] = useState(false);
     const [focus, setFocus] = useState<CellFocus<PropertyRow> | undefined>();
+    const [statusMessage, setStatusMessage] = useState("");
     const originalKeysRef = useRef<Set<string>>(new Set());
     const rowCounterRef = useRef(0);
+    /** For multi-selection: stores value info per key for status messages. */
+    const multiInfoRef = useRef<Map<string, { allSame: boolean; uniqueValues: string[] }>>(new Map());
 
-    // Initialize from node props
+    // Initialize from node(s) props
     useEffect(() => {
-        const extracted = extractCustomProperties(node);
-        // Re-number row keys using our counter
         rowCounterRef.current = 0;
-        const mapped = extracted.map((r) => ({
-            ...r,
-            _rowKey: `prop-${++rowCounterRef.current}`,
-        }));
-        setRows(mapped);
+        if (isMulti) {
+            const merged = extractMultiProperties(nodes);
+            multiInfoRef.current = new Map(merged.map((r) => [r.key, { allSame: r.allSame, uniqueValues: r.uniqueValues }]));
+            const mapped: PropertyRow[] = merged.map((r) => ({
+                _rowKey: `prop-${++rowCounterRef.current}`,
+                key: r.key,
+                value: r.value,
+                _isChanged: false,
+            }));
+            setRows(mapped);
+            originalKeysRef.current = new Set(merged.map((r) => r.key));
+        } else if (singleNode) {
+            const extracted = extractCustomProperties(singleNode);
+            multiInfoRef.current = new Map();
+            const mapped: PropertyRow[] = extracted.map((r) => ({
+                _rowKey: `prop-${++rowCounterRef.current}`,
+                key: r.key,
+                value: r.value,
+                _isChanged: false,
+            }));
+            setRows(mapped);
+            originalKeysRef.current = new Set(extracted.map((r) => r.key));
+        }
         setDirty(false);
         onDirtyChange(false);
-        originalKeysRef.current = new Set(extracted.map((r) => r.key));
-    }, [node.id, node]);
+        setStatusMessage("");
+    }, [selectionKey, nodes]);
+
+    // Update status message when focus changes
+    useEffect(() => {
+        if (!isMulti || !focus?.rowKey) {
+            setStatusMessage("");
+            return;
+        }
+        const row = rows.find((r) => r._rowKey === focus.rowKey);
+        if (!row || !row.key) {
+            setStatusMessage("");
+            return;
+        }
+        const info = multiInfoRef.current.get(row.key);
+        if (!info) {
+            setStatusMessage("");
+        } else if (info.allSame) {
+            setStatusMessage("All nodes have the same value");
+        } else if (info.uniqueValues.length === 0) {
+            setStatusMessage("No nodes have this property");
+        } else {
+            const shown = info.uniqueValues.slice(0, 2).map((v) => `"${v}"`).join(", ");
+            const suffix = info.uniqueValues.length > 2 ? ", ..." : "";
+            setStatusMessage(`Values: ${shown}${suffix}`);
+        }
+    }, [focus?.rowKey, isMulti, rows]);
 
     // Check for reserved keys in rows
     const hasInvalidKeys = useMemo(() =>
@@ -792,7 +938,7 @@ function PropertiesTab({ node, onApply, onDirtyChange }: PropertiesTabProps) {
 
     const editRow = useCallback((columnKey: string, rowKey: string, value: any) => {
         setRows((prev) => prev.map((r) =>
-            r._rowKey === rowKey ? { ...r, [columnKey]: String(value ?? "") } : r
+            r._rowKey === rowKey ? { ...r, [columnKey]: String(value ?? ""), _isChanged: true } : r
         ));
         markDirty();
     }, [markDirty]);
@@ -802,6 +948,7 @@ function PropertiesTab({ node, onApply, onDirtyChange }: PropertiesTabProps) {
             _rowKey: `prop-${++rowCounterRef.current}`,
             key: "",
             value: "",
+            _isChanged: true,
         }));
         setRows((prev) => {
             if (insertIndex !== undefined) {
@@ -824,39 +971,77 @@ function PropertiesTab({ node, onApply, onDirtyChange }: PropertiesTabProps) {
     const getRowKey = useCallback((r: PropertyRow) => r._rowKey, []);
 
     const handleApply = useCallback(() => {
-        const propsToSet: Record<string, string> = {};
-        for (const row of rows) {
-            const k = row.key.trim();
-            if (!k || isReservedPropertyKey(k)) continue; // skip empty and reserved
-            propsToSet[k] = row.value; // last-wins for duplicates
+        if (isMulti) {
+            // Only apply changed rows
+            const propsToSet: Record<string, string> = {};
+            for (const row of rows) {
+                if (!row._isChanged) continue;
+                const k = row.key.trim();
+                if (!k || isReservedPropertyKey(k)) continue;
+                propsToSet[k] = row.value;
+            }
+            // Keys that were originally present but are no longer in rows (deleted rows)
+            const currentKeys = new Set(rows.map((r) => r.key.trim()).filter(Boolean));
+            const keysToRemove = [...originalKeysRef.current].filter((k) => !currentKeys.has(k));
+
+            const nodeIds = nodes.map((n) => n.id);
+            onBatchApply(nodeIds, propsToSet, keysToRemove);
+        } else if (singleNode) {
+            // For single node: also only apply changed rows
+            const propsToSet: Record<string, string> = {};
+            for (const row of rows) {
+                if (!row._isChanged) continue;
+                const k = row.key.trim();
+                if (!k || isReservedPropertyKey(k)) continue;
+                propsToSet[k] = row.value;
+            }
+            const currentKeys = new Set(rows.map((r) => r.key.trim()).filter(Boolean));
+            const keysToRemove = [...originalKeysRef.current].filter((k) => !currentKeys.has(k));
+
+            onApply(singleNode.id, propsToSet, keysToRemove);
         }
-
-        // Keys that were originally present but are no longer in rows
-        const currentKeys = new Set(rows.map((r) => r.key.trim()).filter(Boolean));
-        const keysToRemove = [...originalKeysRef.current].filter((k) => !currentKeys.has(k));
-
-        onApply(node.id, propsToSet, keysToRemove);
-    }, [rows, node.id, onApply]);
+    }, [rows, nodes, singleNode, isMulti, onApply, onBatchApply]);
 
     const handleCancel = useCallback(() => {
-        const extracted = extractCustomProperties(node);
         rowCounterRef.current = 0;
-        const mapped = extracted.map((r) => ({
-            ...r,
-            _rowKey: `prop-${++rowCounterRef.current}`,
-        }));
-        setRows(mapped);
+        if (isMulti) {
+            const merged = extractMultiProperties(nodes);
+            multiInfoRef.current = new Map(merged.map((r) => [r.key, { allSame: r.allSame, uniqueValues: r.uniqueValues }]));
+            const mapped: PropertyRow[] = merged.map((r) => ({
+                _rowKey: `prop-${++rowCounterRef.current}`,
+                key: r.key,
+                value: r.value,
+                _isChanged: false,
+            }));
+            setRows(mapped);
+        } else if (singleNode) {
+            const extracted = extractCustomProperties(singleNode);
+            const mapped: PropertyRow[] = extracted.map((r) => ({
+                _rowKey: `prop-${++rowCounterRef.current}`,
+                key: r.key,
+                value: r.value,
+                _isChanged: false,
+            }));
+            setRows(mapped);
+        }
         setDirty(false);
         onDirtyChange(false);
-    }, [node, onDirtyChange]);
+        setStatusMessage("");
+    }, [nodes, singleNode, isMulti, onDirtyChange]);
 
-    // Highlight reserved keys with error class
+    // Highlight reserved keys with error class; mixed values with warning class
     const cellClass = useCallback((row: PropertyRow, col: Column<PropertyRow>) => {
         if (col.key === "key" && row.key && isReservedPropertyKey(row.key)) {
             return "cell-error";
         }
+        if (col.key === "key" && isMulti && row.key) {
+            const info = multiInfoRef.current.get(row.key);
+            if (info && !info.allSame && !row._isChanged) {
+                return "cell-mixed";
+            }
+        }
         return "";
-    }, []);
+    }, [isMulti]);
 
     return (
         <div className="properties-tab">
@@ -878,6 +1063,9 @@ function PropertiesTab({ node, onApply, onDirtyChange }: PropertiesTabProps) {
                     rowHeight={24}
                 />
             </div>
+            {statusMessage && (
+                <div className="properties-status">{statusMessage}</div>
+            )}
             {dirty && (
                 <div className="tab-action-row">
                     <button className="tab-cancel-btn" onClick={handleCancel}>
@@ -899,7 +1087,87 @@ function PropertiesTab({ node, onApply, onDirtyChange }: PropertiesTabProps) {
 // (see GraphIcons.tsx for ShapeIcon and LevelIcon)
 
 // =============================================================================
-// Info Tab
+// Multi-Selection Info Tab
+// =============================================================================
+
+interface MultiInfoTabProps {
+    nodes: GraphNode[];
+    onBatchUpdateProps: (nodeIds: string[], props: Partial<GraphNode>) => void;
+}
+
+function MultiInfoTab({ nodes, onBatchUpdateProps }: MultiInfoTabProps) {
+    const nodeIds = useMemo(() => nodes.map((n) => n.id), [nodes]);
+
+    // Compute common level/shape across all selected nodes
+    const commonLevel = useMemo(() => {
+        const levels = new Set(nodes.map((n) => n.level ?? 5));
+        return levels.size === 1 ? [...levels][0] : null;
+    }, [nodes]);
+
+    const presentLevels = useMemo(() =>
+        new Set(nodes.map((n) => n.level ?? 5)),
+    [nodes]);
+
+    const commonShape = useMemo(() => {
+        const shapes = new Set(nodes.map((n) => n.shape ?? "circle"));
+        return shapes.size === 1 ? [...shapes][0] : null;
+    }, [nodes]);
+
+    const presentShapes = useMemo(() =>
+        new Set(nodes.map((n) => n.shape ?? "circle")),
+    [nodes]);
+
+    return (
+        <>
+            <div className="multi-info">
+                Batch edit level and shape for {nodes.length} selected nodes
+            </div>
+
+            <div className="info-field">
+                <label className="info-label">Level</label>
+                <div className="info-icons">
+                    {LEVELS.map((lvl) => {
+                        const isSelected = commonLevel === lvl;
+                        const isMixed = !isSelected && presentLevels.has(lvl);
+                        return (
+                            <button
+                                key={lvl}
+                                className={`info-icon-btn${isSelected ? " selected" : ""}${isMixed ? " mixed" : ""}`}
+                                onClick={() => onBatchUpdateProps(nodeIds, { level: lvl })}
+                                title={`Level ${lvl}`}
+                            >
+                                <LevelIcon level={lvl} />
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
+
+            <div className="info-field">
+                <label className="info-label">Shape</label>
+                <div className="info-icons">
+                    {SHAPES.map((shape) => {
+                        const isSelected = commonShape === shape;
+                        const isMixed = !isSelected && presentShapes.has(shape);
+                        return (
+                            <button
+                                key={shape}
+                                className={`info-icon-btn${isSelected ? " selected" : ""}${isMixed ? " mixed" : ""}`}
+                                onClick={() => onBatchUpdateProps(nodeIds, { shape: shape === "circle" ? undefined : shape })}
+                                title={shape}
+                            >
+                                <ShapeIcon shape={shape} />
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
+        </>
+    );
+}
+
+// =============================================================================
+// Info Tab (single selection)
 // =============================================================================
 
 interface InfoTabProps {

@@ -67,8 +67,8 @@ export class ForceGraphRenderer {
     onContextMenuAction: ((nodeId: string, clientX: number, clientY: number) => void) | null = null;
     /** Callback for Alt+Click on a node (link toggle). */
     onAltClick: ((nodeId: string) => void) | null = null;
-    /** Callback when selected node changes. Provides node ID (empty = deselected). */
-    onSelectionChanged: ((nodeId: string) => void) | null = null;
+    /** Callback when selection changes. Provides set of selected node IDs. */
+    onSelectionChanged: ((selectedIds: Set<string>) => void) | null = null;
     /** Callback for double-click on a node. */
     onDoubleClick: ((nodeId: string) => void) | null = null;
     private _rootNodeId = "";
@@ -198,14 +198,32 @@ export class ForceGraphRenderer {
         return this.isDraggingNode;
     }
 
-    /** Currently selected (active) node ID. */
+    /** Currently selected (active) node ID (primary — last clicked). */
     get selectedId(): string {
         return this.highlight.activeId;
     }
 
-    /** Programmatically select a node. */
+    /** All currently selected node IDs. */
+    get selectedIds(): Set<string> {
+        return this.highlight.selectedIds;
+    }
+
+    /** Programmatically select a single node (clears multi-selection). */
     selectNode(nodeId: string): void {
         this.setActiveId(nodeId);
+    }
+
+    /** Add multiple nodes to the current selection. */
+    addToSelection(nodeIds: string[]): void {
+        if (nodeIds.length === 0) return;
+        const links = this.graphData.links;
+        for (const id of nodeIds) {
+            if (!this.highlight.selectedIds.has(id)) {
+                this.highlight.toggleSelected(id, links);
+            }
+        }
+        this.renderData();
+        this.onSelectionChanged?.(new Set(this.highlight.selectedIds));
     }
 
     /** Convert screen coordinates (clientX/clientY) to world coordinates (D3 simulation space). */
@@ -309,6 +327,15 @@ export class ForceGraphRenderer {
             return;
         }
 
+        // Ctrl+Click on a node → toggle multi-selection
+        if (event.ctrlKey && node) {
+            this.highlight.toggleSelected(node.id, this.graphData.links);
+            this.renderData();
+            this.onSelectionChanged?.(new Set(this.highlight.selectedIds));
+            return;
+        }
+
+        // Plain click → single selection (or deselect if empty area)
         this.setActiveId(node?.id ?? "");
     };
 
@@ -584,10 +611,11 @@ export class ForceGraphRenderer {
     // =========================================================================
 
     private setActiveId(id: string): void {
-        const changed = this.highlight.activeId !== id;
-        this.highlight.setActiveId(id, this.graphData.links);
+        const prevIds = this.highlight.selectedIds;
+        const changed = prevIds.size !== (id ? 1 : 0) || (id && !prevIds.has(id));
+        this.highlight.selectSingle(id, this.graphData.links);
         this.renderData();
-        if (changed) this.onSelectionChanged?.(id);
+        if (changed) this.onSelectionChanged?.(new Set(this.highlight.selectedIds));
     }
 
     private setHoveredId(id: string): void {
@@ -706,7 +734,7 @@ export class ForceGraphRenderer {
 
         // Draw labels
         const showImportantLabels = transform.k > 0.8;
-        const hasHighlight = !!highlight.activeId || !!highlight.hoveredId;
+        const hasHighlight = highlight.selectedIds.size > 0 || !!highlight.hoveredId;
 
         if (showImportantLabels || hasHighlight) {
             const c = colors;
@@ -714,7 +742,7 @@ export class ForceGraphRenderer {
             ctx.textBaseline = "middle";
 
             graphData.nodes.forEach((d) => {
-                const isSelected = d.id === highlight.activeId;
+                const isSelected = highlight.selectedIds.has(d.id);
                 const isHovered = d.id === highlight.hoveredId;
                 const isHoveredChild = highlight.hoveredChild.has(d.id);
                 const isHighlighted = isSelected || isHovered || isHoveredChild;

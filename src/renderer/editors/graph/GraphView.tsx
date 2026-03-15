@@ -59,10 +59,10 @@ const GraphViewRoot = styled.div({
         zIndex: 1,
         opacity: 0.5,
         transition: "opacity 0.15s",
-        "&:hover, &.expanded, &:focus-within": {
+        "&:hover, &.expanded, &:focus-within, &.has-search": {
             opacity: 1,
         },
-        "&.expanded": {
+        "&.expanded, &.has-search": {
             borderColor: color.graph.nodeHighlight,
         },
     },
@@ -260,9 +260,6 @@ const GraphViewRoot = styled.div({
         "&:hover, &.expanded, &:focus-within": {
             opacity: 1,
         },
-        "&.expanded": {
-            borderColor: color.graph.nodeHighlight,
-        },
     },
     "& .legend-header": {
         display: "flex",
@@ -278,9 +275,13 @@ const GraphViewRoot = styled.div({
         color: color.graph.labelText,
     },
     "& .legend-chevron": {
-        fontSize: 8,
+        fontSize: 11,
         color: color.graph.labelText,
         opacity: 0.6,
+        "&.expanded": {
+            color: color.graph.nodeHighlight,
+            opacity: 1,
+        },
     },
     "& .legend-tabs": {
         display: "flex",
@@ -426,8 +427,10 @@ function GraphView({ model }: GraphViewProps) {
     const containerRef = useRef<HTMLDivElement>(null);
     const [toolbarPanel, setToolbarPanel] = useState<ToolbarPanel>("closed");
     const [expandRequest, setExpandRequest] = useState(0);
+    const [collapseRequest, setCollapseRequest] = useState(0);
     const [selectedResultIndex, setSelectedResultIndex] = useState(-1);
     const panelDirtyRef = useRef(false);
+    const panelExpandedRef = useRef(false);
 
     const toggleSettings = useCallback(() => {
         setToolbarPanel((prev) => prev === "settings" ? "closed" : "settings");
@@ -451,7 +454,7 @@ function GraphView({ model }: GraphViewProps) {
     });
 
     // Auto-switch to results tab when search results appear
-    const { searchQuery, searchInfo, searchResults, tooltip, selectedNode, linkedNodes, statusHint } = pageState;
+    const { searchQuery, searchInfo, searchResults, tooltip, selectedNodes, linkedNodes, statusHint } = pageState;
     useEffect(() => {
         if (searchResults && searchResults.length > 0) {
             setToolbarPanel("results");
@@ -535,6 +538,10 @@ function GraphView({ model }: GraphViewProps) {
         panelDirtyRef.current = dirty;
     }, []);
 
+    const onPanelExpandedChange = useCallback((exp: boolean) => {
+        panelExpandedRef.current = exp;
+    }, []);
+
     // Capture-phase mousedown to dismiss open popups (e.g. quick-add menu).
     // D3 zoom/drag calls stopImmediatePropagation() on canvas mousedown, preventing
     // it from bubbling to document where Popper's click-outside listener lives.
@@ -561,7 +568,15 @@ function GraphView({ model }: GraphViewProps) {
                     <canvas
                         className="graph-canvas"
                         ref={canvasRef}
-                        onClick={(e) => { if (panelDirtyRef.current) return; setToolbarPanel("closed"); vm.renderer.onClick(e); }}
+                        onClick={(e) => {
+                            if (panelDirtyRef.current) return;
+                            if (isExpanded || panelExpandedRef.current) {
+                                setToolbarPanel("closed");
+                                setCollapseRequest((n) => n + 1);
+                                return;
+                            }
+                            vm.renderer.onClick(e);
+                        }}
                         onDoubleClick={(e) => { if (panelDirtyRef.current) return; vm.renderer.onDblClick(e); }}
                         onContextMenu={(e) => { if (panelDirtyRef.current) return; setToolbarPanel("closed"); vm.renderer.onContextMenu(e); }}
                         onMouseMove={vm.renderer.onMouseMove}
@@ -571,7 +586,7 @@ function GraphView({ model }: GraphViewProps) {
                             Right-click → Add Node to start building the graph
                         </div>
                     )}
-                    <div className={`graph-toolbar${isExpanded ? " expanded" : ""}`}>
+                    <div className={`graph-toolbar${isExpanded ? " expanded" : ""}${searchQuery ? " has-search" : ""}`}>
                         <div className="graph-toolbar-row">
                             <button
                                 className={`graph-icon-btn${toolbarPanel === "settings" ? " active" : ""}`}
@@ -659,12 +674,15 @@ function GraphView({ model }: GraphViewProps) {
                                         )}
                                         {searchInfo && (
                                             <div className="search-status-bar">
-                                                <span>matched {searchInfo.visible} visible</span>
+                                                <span>{searchInfo.visible} visible</span>
                                                 {searchInfo.hidden > 0 && (
                                                     <span className="search-reveal" onClick={onRevealHidden}>
-                                                        +{searchInfo.hidden} hidden
+                                                        [+{searchInfo.hidden} hidden]
                                                     </span>
                                                 )}
+                                                <span className="search-reveal" onClick={() => vm.selectSearchResults()}>
+                                                    [{selectedNodes.length > 0 ? "add to selection" : "select all"}]
+                                                </span>
                                             </div>
                                         )}
                                     </>
@@ -676,18 +694,22 @@ function GraphView({ model }: GraphViewProps) {
                         <GraphTooltip node={tooltip.node} x={tooltip.x} y={tooltip.y} />
                     )}
                     <GraphDetailPanel
-                        node={selectedNode}
+                        nodes={selectedNodes}
                         linkedNodes={linkedNodes}
                         onUpdateProps={(nodeId, props) => vm.updateNodeProps(nodeId, props)}
+                        onBatchUpdateProps={(nodeIds, props) => vm.batchUpdateNodeProps(nodeIds, props)}
                         onRenameNode={(oldId, newId) => vm.renameNode(oldId, newId)}
                         onApplyLinks={(nodeId, rows, origIds) => vm.applyLinkedNodesUpdate(nodeId, rows, origIds)}
                         onApplyProperties={(nodeId, propsToSet, keysToRemove) => vm.applyPropertiesUpdate(nodeId, propsToSet, keysToRemove)}
+                        onBatchApplyProperties={(nodeIds, propsToSet, keysToRemove) => vm.batchApplyPropertiesUpdate(nodeIds, propsToSet, keysToRemove)}
                         onPanelDirtyChange={onPanelDirtyChange}
+                        onPanelExpandedChange={onPanelExpandedChange}
                         onHighlightSet={(ids) => vm.setHighlightSet(ids)}
                         onExternalHover={(id) => vm.setExternalHover(id)}
                         onExpandNode={(id) => vm.expandNode(id)}
                         containerRef={containerRef}
                         expandRequest={expandRequest}
+                        collapseRequest={collapseRequest}
                     />
                     <GraphLegendPanel vm={vm} />
                 </>
