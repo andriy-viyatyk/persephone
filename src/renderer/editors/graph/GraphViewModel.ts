@@ -21,8 +21,8 @@ export interface TooltipInfo {
     node: GraphNode;
     x: number;
     y: number;
-    /** Number of group members (only set for group nodes). */
-    memberCount?: number;
+    /** Whether this node is the root node. */
+    isRoot?: boolean;
 }
 
 export const defaultGraphViewState = {
@@ -302,9 +302,9 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
         this._tooltipTimer = setTimeout(() => {
             const node = this.renderer.getNodes().find((n) => n.id === nodeId);
             if (node) {
-                const memberCount = node.isGroup ? (this.groupModel.getMembers(node.id)?.size ?? 0) : undefined;
+                const isRoot = !!(this.dataModel.sourceData?.options?.rootNode && node.id === this.dataModel.sourceData.options.rootNode);
                 this.state.update((s) => {
-                    s.tooltip = { node: { ...node }, x: clientX, y: clientY, memberCount };
+                    s.tooltip = { node: { ...node }, x: clientX, y: clientY, isRoot: isRoot || undefined };
                 });
             }
         }, 500);
@@ -669,18 +669,25 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
         // Rebuild group membership from source data
         this.groupModel.rebuild(nodes, links);
 
+        // Pre-process links for visualization (hide membership, split cross-group)
+        const rootId = options?.rootNode ?? "";
+        const processed = this.groupModel.preprocess(nodes, links, rootId);
+
         let filtering: boolean;
         if (this.isFirstLoad) {
             // First load: full reset (computes initial BFS visible set)
-            filtering = this.visibilityModel.setFullGraph(nodes, links, options);
+            filtering = this.visibilityModel.setFullGraph(processed.nodes, processed.links, options);
         } else {
             // Subsequent: incremental update (preserves expand/collapse state)
-            filtering = this.visibilityModel.updateGraph(nodes, links, ensureVisible);
+            filtering = this.visibilityModel.updateGraph(processed.nodes, processed.links, ensureVisible);
         }
 
         const copy: GraphData = filtering
             ? this.visibilityModel.getVisibleGraph()
-            : { nodes: nodes.map((n) => ({ ...n })), links: links.map((l) => ({ ...l })), options };
+            : { nodes: processed.nodes.map((n) => ({ ...n })), links: processed.links.map((l) => ({ ...l })), options };
+
+        // Pass synthetic link counts to renderer for per-link force distance
+        this.renderer.syntheticLinkCounts = processed.syntheticLinkCounts;
 
         if (this.isFirstLoad) {
             this.renderer.updateData(copy);

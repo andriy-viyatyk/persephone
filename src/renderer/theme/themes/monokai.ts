@@ -105,6 +105,8 @@ export const monokai: ThemeDefinition = {
         "--color-graph-label-bg": "rgba(73, 72, 62, 0.5)",
         "--color-graph-label-text": "#f8f8f2",
         "--color-graph-group-border": "#3a6ea5",
+        "--color-graph-node-special": "#b07ce8",
+        "--color-graph-border-special": "#9055c8",
     },
     monaco: {
         base: "vs-dark",

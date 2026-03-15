@@ -60,6 +60,23 @@ When the user says **"let's create a task for [description]"** (or similar), fol
 
 **Important:** Do not rush this phase. Spend time reading code thoroughly. Missing a pattern or dependency during investigation leads to rework during implementation.
 
+### Preparing a task document for context compaction
+
+Complex tasks often consume most of the context window during investigation, document creation, and concern resolution — leaving little room for implementation. When the user says **"prepare document for compact"**, **"I need to compact before implementation"**, or similar:
+
+1. **Re-read the task document** from start to finish
+2. **Make it fully self-contained** — an agent starting fresh after compaction must understand everything without access to the conversation history:
+   - Replace vague references with exact file paths and method names
+   - Include current code snippets that will be changed (before → after)
+   - Spell out the algorithm logic step by step — no "see above" or "as discussed"
+   - List all edge cases explicitly
+   - State which files need NO changes (so the agent doesn't waste time investigating)
+   - Add a **Files Changed summary table** at the bottom
+3. **Resolve any remaining ambiguity** — if a concern was discussed and resolved in conversation but the document still says "TBD" or "open question", update it with the resolution
+4. **Remove conversational artifacts** — delete thinking-out-loud notes like "Wait —", "Actually...", "Hmm" that made sense during investigation but confuse a fresh reader
+
+The goal: after `/compact`, the agent reads the task README.md and can implement correctly without asking the user to repeat decisions already made.
+
 ### When starting a new task (not already in progress):
 1. **Review first, don't implement immediately**
 2. Read the task documentation (if it exists) and provide a summary of:
@@ -77,9 +94,9 @@ When the user says **"let's create a task for [description]"** (or similar), fol
 - Ask for clarification when uncertain
 - Do NOT commit automatically - wait for user to request commits
 
-### Completing a task (MANDATORY steps):
+### Completing a task (user-initiated):
 
-After implementation is done, ALWAYS run these steps in order:
+**Do NOT run completion steps automatically after implementation.** After implementation, the user will test the changes manually. During testing, bugs or adjustments may appear that require additional code changes. Only when the user explicitly says **"let's complete the task"** (or similar) should you proceed with the completion steps below.
 
 1. Verify all acceptance criteria are met
 2. **Run `/project:review`** — validates code against architecture docs, reports concerns
@@ -91,9 +108,7 @@ After implementation is done, ALWAYS run these steps in order:
    - If the task is part of an active epic — **keep the folder** (do not ask, do not delete). Task documents are useful for reference while the epic is in progress.
    - If the task is standalone (no epic) or the epic is completed — **ask user for confirmation** before deleting.
 
-**Steps 2-4 are mandatory.** Only skip if the user explicitly says to skip them. The agent must not forget these steps — they ensure documentation stays in sync with code.
-
-This step-by-step approach ensures user understands what's happening and can review changes properly.
+**Steps 2-4 are mandatory.** Only skip if the user explicitly says to skip them.
 
 ## Release Workflow
 

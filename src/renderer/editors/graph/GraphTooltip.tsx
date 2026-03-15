@@ -21,6 +21,14 @@ const GraphTooltipRoot = styled.div({
     maxWidth: 300,
     boxShadow: `0 2px 8px ${color.shadow.default}`,
     lineHeight: 1.4,
+    "& .tooltip-badge": {
+        fontSize: 10,
+        fontWeight: 600,
+        textTransform: "uppercase" as const,
+        letterSpacing: 0.5,
+        color: color.graph.nodeSpecial,
+        marginBottom: 2,
+    },
     "& .tooltip-title": {
         fontWeight: 600,
         marginBottom: 2,
@@ -57,13 +65,13 @@ interface GraphTooltipProps {
     node: GraphNode;
     x: number;
     y: number;
-    /** Number of group members (only set for group nodes). */
-    memberCount?: number;
+    /** Whether this node is the root node. */
+    isRoot?: boolean;
 }
 
 const OFFSET = 12;
 
-function GraphTooltip({ node, x, y, memberCount }: GraphTooltipProps) {
+function GraphTooltip({ node, x, y, isRoot }: GraphTooltipProps) {
     const ref = useRef<HTMLDivElement>(null);
     const [pos, setPos] = useState({ left: x + OFFSET, top: y + OFFSET });
 
@@ -90,11 +98,10 @@ function GraphTooltip({ node, x, y, memberCount }: GraphTooltipProps) {
 
     return ReactDOM.createPortal(
         <GraphTooltipRoot ref={ref} style={{ left: pos.left, top: pos.top }}>
+            {isRoot && <div className="tooltip-badge">Root Node</div>}
+            {node.isGroup && <div className="tooltip-badge">Group</div>}
             <div className="tooltip-title">{title}</div>
             {showId && <div className="tooltip-id">{node.id}</div>}
-            {memberCount !== undefined && (
-                <div className="tooltip-id">Group · {memberCount} member{memberCount !== 1 ? "s" : ""}</div>
-            )}
             {customProps.length > 0 && (
                 <div className="tooltip-props">
                     {customProps.map(([key, value]) => (

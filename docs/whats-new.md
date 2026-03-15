@@ -16,6 +16,10 @@ Release notes and changelog for js-notepad.
 - **Graph View Legend Selection Tab** — The Legend panel gains a new **Selection** tab with radio filters for selected/not-selected nodes, enabling quick visual isolation of multi-selected subsets.
 - **Graph View Group Nodes** — Nodes with `isGroup: true` are rendered as double circles (filled inner circle with a dark blue outer ring). Group nodes use level-1 size, always-visible labels, and appear in the Legend panel with their own "Group" row in both Level and Shape tabs. Tooltips show "Group · N members" where membership is derived from links from the group to non-group nodes. Group nodes are excluded from the detail edit panel and from legend level/shape counting.
 
+- **Graph View Group Link Pre-processing** — When groups exist in a force graph, links are automatically pre-processed for cleaner visualization. Membership links (between a group and its members) are hidden. Cross-group links (from an external node to a group member) are routed through the group node. Inter-group links (between members of different groups) are routed through both group nodes. Intra-group links (between members of the same group) are preserved as-is. Synthetic links are deduplicated with count-based distance scaling.
+- **Graph View Special Node Coloring** — Root nodes and group nodes now appear in violet, making them visually distinct from regular nodes. Selection (orange) and hover (green) highlights still override the violet color.
+- **Graph View Tooltip Badges** — Root nodes show a "ROOT NODE" badge and group nodes show a "GROUP" badge as the first line in their tooltip, above the title.
+
 ### Improvements
 
 - **Graph View UI polish** — Node labels now scale font size by level (larger nodes get bigger text). Selection highlight reworked: selected node label is orange, hovered node and its children get green labels. Tooltips no longer appear during node drag. Edit panel tabs reordered to Info → Properties → Links. Links tab now shows all columns (ID, Title, Level, Shape + custom properties) with auto-detected widths and sticky ID column.

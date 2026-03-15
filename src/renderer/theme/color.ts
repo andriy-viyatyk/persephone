@@ -91,6 +91,8 @@ const color = {
         labelBackground: "var(--color-graph-label-bg)",
         labelText: "var(--color-graph-label-text)",
         groupBorder: "var(--color-graph-group-border)",
+        nodeSpecial: "var(--color-graph-node-special)",
+        borderSpecial: "var(--color-graph-border-special)",
     },
 };
 

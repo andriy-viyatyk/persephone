@@ -16,6 +16,8 @@ export interface ResolvedColors {
     labelBg: string;
     labelText: string;
     groupBorder: string;
+    nodeSpecial: string;
+    borderSpecial: string;
 }
 
 /**
@@ -182,23 +184,23 @@ export class GraphHighlightModel {
     // Color helpers
     // =========================================================================
 
-    nodeColor(node: GraphNode, colors: ResolvedColors): string {
+    nodeColor(node: GraphNode, colors: ResolvedColors, isSpecial?: boolean): string {
         if (this.selectedIds.has(node.id)) return colors.nodeSelected;
         if (node.id === this.hoveredId) return colors.nodeHighlight;
-        return colors.nodeDefault;
+        return isSpecial ? colors.nodeSpecial : colors.nodeDefault;
     }
 
-    nodeBorderColor(node: GraphNode, colors: ResolvedColors): string {
+    nodeBorderColor(node: GraphNode, colors: ResolvedColors, isSpecial?: boolean): string {
         if (this.selectedIds.has(node.id)) return colors.borderSelected;
         if (node.id === this.hoveredId) return colors.borderHighlight;
         if (this.hoveredChild.has(node.id)) return colors.borderHighlight;
-        return colors.borderDefault;
+        return isSpecial ? colors.borderSpecial : colors.borderDefault;
     }
 
-    labelTextColor(node: GraphNode, colors: ResolvedColors): string {
+    labelTextColor(node: GraphNode, colors: ResolvedColors, isSpecial?: boolean): string {
         if (this.selectedIds.has(node.id)) return colors.nodeSelected;
         if (node.id === this.hoveredId || this.hoveredChild.has(node.id)) return colors.nodeHighlight;
-        return colors.labelText;
+        return isSpecial ? colors.nodeSpecial : colors.labelText;
     }
 
     linkColor(link: GraphLink, colors: ResolvedColors): string {

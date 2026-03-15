@@ -697,7 +697,7 @@ function GraphView({ model }: GraphViewProps) {
                         )}
                     </div>
                     {tooltip && (
-                        <GraphTooltip node={tooltip.node} x={tooltip.x} y={tooltip.y} memberCount={tooltip.memberCount} />
+                        <GraphTooltip node={tooltip.node} x={tooltip.x} y={tooltip.y} isRoot={tooltip.isRoot} />
                     )}
                     <GraphDetailPanel
                         nodes={selectedNodes.filter((n) => !n.isGroup)}

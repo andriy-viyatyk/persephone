@@ -27,6 +27,8 @@ function resolveColors(): ResolvedColors {
         labelBg: resolveVar(color.graph.labelBackground),
         labelText: resolveVar(color.graph.labelText),
         groupBorder: resolveVar(color.graph.groupBorder),
+        nodeSpecial: resolveVar(color.graph.nodeSpecial),
+        borderSpecial: resolveVar(color.graph.borderSpecial),
     };
 }
 
@@ -72,6 +74,8 @@ export class ForceGraphRenderer {
     onSelectionChanged: ((selectedIds: Set<string>) => void) | null = null;
     /** Callback for double-click on a node. */
     onDoubleClick: ((nodeId: string) => void) | null = null;
+    /** Synthetic link counts from group pre-processing (for per-link force distance). */
+    syntheticLinkCounts: Map<string, number> | null = null;
     private _rootNodeId = "";
     private _lastClientX = 0;
     private _lastClientY = 0;
@@ -291,10 +295,24 @@ export class ForceGraphRenderer {
         // Update existing link force distance (don't recreate)
         const linkForce = this.simulation.force("link") as d3.ForceLink<GraphNode, GraphLink> | null;
         if (linkForce) {
-            linkForce.distance(this._forceParams.linkDistance);
+            linkForce.distance((link: GraphLink) => this.computeLinkDistance(link));
         }
 
         this.simulation.alpha(1).restart();
+    }
+
+    /** Compute per-link distance, applying log2 scaling for group↔group synthetic links. */
+    private computeLinkDistance(link: GraphLink): number {
+        if (!this.syntheticLinkCounts || this.syntheticLinkCounts.size === 0) {
+            return this._forceParams.linkDistance;
+        }
+        const { source, target } = linkIds(link);
+        const key = source < target ? `${source}→${target}` : `${target}→${source}`;
+        const count = this.syntheticLinkCounts.get(key);
+        if (count && count > 1) {
+            return this._forceParams.linkDistance / Math.log2(count);
+        }
+        return this._forceParams.linkDistance;
     }
 
     dispose(): void {
@@ -425,7 +443,7 @@ export class ForceGraphRenderer {
             forceProperties.link.enabled
                 ? d3.forceLink<GraphNode, GraphLink>(links)
                     .id((d) => d.id)
-                    .distance(this._forceParams.linkDistance)
+                    .distance((link: GraphLink) => this.computeLinkDistance(link))
                     .iterations(forceProperties.link.iterations)
                 : null,
         );
@@ -691,12 +709,13 @@ export class ForceGraphRenderer {
         graphData.nodes.forEach((d) => {
             if (dimming) ctx.globalAlpha = dimSet!.has(d.id) ? 1.0 : 0.15;
             const isRoot = rootId !== "" && d.id === rootId;
+            const isSpecial = isRoot || !!d.isGroup;
             const r = effectiveNodeRadius(d, rootId);
             const shape = isRoot ? "compass" as const : d.isGroup ? "group" as const : d.shape;
             this.drawShape(ctx, shape, d.x || 0, d.y || 0, r);
-            ctx.fillStyle = highlight.nodeColor(d, colors);
+            ctx.fillStyle = highlight.nodeColor(d, colors, isSpecial);
             ctx.fill();
-            ctx.strokeStyle = highlight.nodeBorderColor(d, colors);
+            ctx.strokeStyle = highlight.nodeBorderColor(d, colors, isSpecial);
             ctx.lineWidth = 1.5;
             ctx.stroke();
 
@@ -800,10 +819,11 @@ export class ForceGraphRenderer {
                     textHeight + 2 * paddingY,
                 );
 
-                // Label text: colored for highlighted nodes, default for important-only
+                // Label text: colored for highlighted/special nodes, default for important-only
+                const isSpecialLabel = isRoot || !!d.isGroup;
                 ctx.fillStyle = isHighlighted
-                    ? highlight.labelTextColor(d, c)
-                    : c.labelText;
+                    ? highlight.labelTextColor(d, c, isSpecialLabel)
+                    : isSpecialLabel ? c.nodeSpecial : c.labelText;
                 ctx.fillText(text, labelX, labelY);
             });
         }

@@ -105,6 +105,8 @@ export const solarizedDark: ThemeDefinition = {
         "--color-graph-label-bg": "rgba(7, 54, 66, 0.6)",
         "--color-graph-label-text": "#839496",
         "--color-graph-group-border": "#3a6ea5",
+        "--color-graph-node-special": "#b07ce8",
+        "--color-graph-border-special": "#9055c8",
     },
     monaco: {
         base: "vs-dark",

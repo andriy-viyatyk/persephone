@@ -104,6 +104,8 @@ export const lightModern: ThemeDefinition = {
         "--color-graph-label-bg": "rgba(243, 243, 243, 0.85)",
         "--color-graph-label-text": "#3B3B3B",
         "--color-graph-group-border": "#2a5a8a",
+        "--color-graph-node-special": "#7c3aed",
+        "--color-graph-border-special": "#6d28d9",
     },
     monaco: {
         base: "vs",

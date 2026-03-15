@@ -101,7 +101,7 @@ Sample data file: `D:\js-notepad-notes\temp\miserables.fg.json`
 | US-186 | Graph editor — UI polish & highlight rework | Done |
 | US-187 | Graph editor — Node multiselection | Done |
 | US-188 | Group node data model & rendering | Done |
-| US-189 | Group link pre-processing | Planned |
+| US-189 | Group link pre-processing | Done |
 | US-190 | Group management UI | Planned |
 
 ## Phase 3 — Node Grouping
