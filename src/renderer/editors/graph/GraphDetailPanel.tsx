@@ -5,6 +5,7 @@ import AVGrid from "../../components/data-grid/AVGrid/AVGrid";
 import type { CellFocus, Column } from "../../components/data-grid/AVGrid/avGridTypes";
 import color from "../../theme/color";
 import { ChevronDownIcon, ChevronUpIcon } from "../../theme/icons";
+import { ShapeIcon, LevelIcon } from "./GraphIcons";
 
 // =============================================================================
 // Constants
@@ -938,73 +939,8 @@ function PropertiesTab({ node, onApply, onDirtyChange }: PropertiesTabProps) {
     );
 }
 
-// =============================================================================
-// Shape & Level Icons (SVG)
-// =============================================================================
-
-const S = 16; // icon viewBox size
-const C = S / 2; // center
-const R = 6; // shape radius
-
-function ShapeIcon({ shape }: { shape: NodeShape }) {
-    return (
-        <svg width={S} height={S} viewBox={`0 0 ${S} ${S}`}>
-            {shape === "circle" && (
-                <circle cx={C} cy={C} r={R} fill="currentColor" />
-            )}
-            {shape === "square" && (
-                <rect x={C - R} y={C - R} width={R * 2} height={R * 2} fill="currentColor" />
-            )}
-            {shape === "diamond" && (
-                <polygon
-                    points={`${C},${C - R * 1.2} ${C + R},${C} ${C},${C + R * 1.2} ${C - R},${C}`}
-                    fill="currentColor"
-                />
-            )}
-            {shape === "triangle" && (
-                <polygon
-                    points={`${C},${C - R * 1.15} ${C + R},${C + R * 0.7} ${C - R},${C + R * 0.7}`}
-                    fill="currentColor"
-                />
-            )}
-            {shape === "star" && (
-                <polygon points={starPoints(C, C, R * 1.1, R * 0.5, 5)} fill="currentColor" />
-            )}
-            {shape === "hexagon" && (
-                <polygon points={hexPoints(C, C, R)} fill="currentColor" />
-            )}
-        </svg>
-    );
-}
-
-function starPoints(cx: number, cy: number, outerR: number, innerR: number, spikes: number): string {
-    const pts: string[] = [];
-    for (let i = 0; i < spikes * 2; i++) {
-        const angle = (i * Math.PI) / spikes - Math.PI / 2;
-        const r = i % 2 === 0 ? outerR : innerR;
-        pts.push(`${cx + r * Math.cos(angle)},${cy + r * Math.sin(angle)}`);
-    }
-    return pts.join(" ");
-}
-
-function hexPoints(cx: number, cy: number, r: number): string {
-    const pts: string[] = [];
-    for (let i = 0; i < 6; i++) {
-        const angle = (i * Math.PI) / 3 - Math.PI / 6;
-        pts.push(`${cx + r * Math.cos(angle)},${cy + r * Math.sin(angle)}`);
-    }
-    return pts.join(" ");
-}
-
-/** Filled circles of decreasing size: level 1 = biggest, level 5 = smallest. */
-function LevelIcon({ level }: { level: number }) {
-    const r = 8 - level; // 7, 6, 5, 4, 3
-    return (
-        <svg width={S} height={S} viewBox={`0 0 ${S} ${S}`}>
-            <circle cx={C} cy={C} r={r} fill="currentColor" />
-        </svg>
-    );
-}
+// Shape & Level Icons — imported from shared module
+// (see GraphIcons.tsx for ShapeIcon and LevelIcon)
 
 // =============================================================================
 // Info Tab

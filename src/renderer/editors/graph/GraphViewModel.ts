@@ -1,32 +1,20 @@
 import { ContentViewModel } from "../base/ContentViewModel";
 import { IContentHost } from "../base/IContentHost";
-import { GraphData, GraphLegend, GraphLink, GraphNode, GraphOptions, NodeShape, SYS_PREFIX, linkIds, nodeLabel, getCustomProperties } from "./types";
+import { GraphData, GraphNode, GraphOptions, nodeLabel } from "./types";
 import { ForceGraphRenderer, ForceParams } from "./ForceGraphRenderer";
 import { GraphVisibilityModel } from "./GraphVisibilityModel";
+import { GraphDataModel } from "./GraphDataModel";
+import { GraphSearchModel } from "./GraphSearchModel";
 import { showAppPopupMenu } from "../../ui/dialogs/poppers/showPopupMenu";
-import type { MenuItem } from "../../components/overlay/PopupMenu";
+import { buildNodeContextMenu, buildEmptyAreaContextMenu, ContextMenuActions } from "./GraphContextMenu";
+
+// Re-export search types for consumers (GraphView.tsx imports from here)
+export type { SearchInfo, SearchPropertyMatch, SearchResult } from "./GraphSearchModel";
+import type { SearchInfo, SearchResult } from "./GraphSearchModel";
 
 // =============================================================================
 // State
 // =============================================================================
-
-export interface SearchInfo {
-    visible: number;
-    hidden: number;
-    total: number;
-}
-
-export interface SearchPropertyMatch {
-    key: string;
-    value: string;
-}
-
-export interface SearchResult {
-    nodeId: string;
-    label: string;
-    visible: boolean;
-    matchedProps: SearchPropertyMatch[];
-}
 
 export interface TooltipInfo {
     node: GraphNode;
@@ -49,67 +37,19 @@ export const defaultGraphViewState = {
 export type GraphViewState = typeof defaultGraphViewState;
 
 // =============================================================================
-// Search matching
-// =============================================================================
-
-/** Match a node against multi-word search. Returns result details or null if no match. */
-function matchNodeSearch(
-    node: GraphNode,
-    words: string[],
-): Omit<SearchResult, "visible"> | null {
-    const label = nodeLabel(node);
-    const labelLower = label.toLowerCase();
-    const customProps = getCustomProperties(node);
-
-    // Build all searchable text fields
-    const fields = [labelLower];
-    for (const [key, value] of customProps) {
-        fields.push(key.toLowerCase());
-        fields.push(value.toLowerCase());
-    }
-
-    // All words must match at least one field (AND logic)
-    for (const word of words) {
-        if (!fields.some((f) => f.includes(word))) return null;
-    }
-
-    // Determine which custom properties contributed to the match
-    const matchedProps: SearchPropertyMatch[] = [];
-    for (const [key, value] of customProps) {
-        const keyLower = key.toLowerCase();
-        const valueLower = value.toLowerCase();
-        if (words.some((w) => keyLower.includes(w) || valueLower.includes(w))) {
-            matchedProps.push({ key, value });
-        }
-    }
-
-    return { nodeId: node.id, label, matchedProps };
-}
-
-// =============================================================================
-// Source data (Layer 1 — clean, editable, serializable)
-// =============================================================================
-
-interface SourceData {
-    nodes: GraphNode[];
-    links: GraphLink[];
-    options?: GraphOptions;
-}
-
-// =============================================================================
 // ViewModel
 // =============================================================================
 
 export class GraphViewModel extends ContentViewModel<GraphViewState> {
     readonly renderer = new ForceGraphRenderer();
     readonly visibilityModel = new GraphVisibilityModel();
+    readonly dataModel = new GraphDataModel();
+    readonly searchModel: GraphSearchModel;
     /** Set by GraphView to handle double-click on a node (e.g. expand detail panel). */
     onDoubleClickNode: ((nodeId: string) => void) | null = null;
     private _parseTimer: ReturnType<typeof setTimeout> | undefined;
     private _tooltipTimer: ReturnType<typeof setTimeout> | undefined;
 
-    /** Clean source data — never has _$ or D3 properties. Edits happen here. */
-    private sourceData: SourceData | null = null;
     /** Full parsed JSON — preserved for serialization (keeps `type` and any extra user properties). */
     private originalJson: Record<string, unknown> = {};
     /** Skip flag to prevent re-parsing our own serialized changes. */
@@ -119,6 +59,7 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
 
     constructor(host: IContentHost) {
         super(host, defaultGraphViewState);
+        this.searchModel = new GraphSearchModel(this.renderer, this.visibilityModel);
     }
 
     // =========================================================================
@@ -166,9 +107,9 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
     updateForceParams(params: Partial<ForceParams>): void {
         this.renderer.updateForceParams(params);
         // Persist to data options
-        if (this.sourceData) {
-            if (!this.sourceData.options) this.sourceData.options = {};
-            Object.assign(this.sourceData.options, params);
+        if (this.dataModel.sourceData) {
+            if (!this.dataModel.sourceData.options) this.dataModel.sourceData.options = {};
+            Object.assign(this.dataModel.sourceData.options, params);
             this.serializeToHost();
         }
     }
@@ -176,10 +117,10 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
     resetForceParams(): void {
         this.renderer.resetForceParams();
         // Clear physics from options (next open uses defaults)
-        if (this.sourceData?.options) {
-            delete this.sourceData.options.charge;
-            delete this.sourceData.options.linkDistance;
-            delete this.sourceData.options.collide;
+        if (this.dataModel.sourceData?.options) {
+            delete this.dataModel.sourceData.options.charge;
+            delete this.dataModel.sourceData.options.linkDistance;
+            delete this.dataModel.sourceData.options.collide;
             this.serializeToHost();
         }
     }
@@ -190,16 +131,16 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
 
     /** Current root node ID (from options or auto-selected). Undefined if no explicit root. */
     get rootNodeId(): string | undefined {
-        return this.sourceData?.options?.rootNode || undefined;
+        return this.dataModel.sourceData?.options?.rootNode || undefined;
     }
 
     setRootNode(nodeId: string | undefined): void {
-        if (!this.sourceData) return;
-        if (!this.sourceData.options) this.sourceData.options = {};
+        if (!this.dataModel.sourceData) return;
+        if (!this.dataModel.sourceData.options) this.dataModel.sourceData.options = {};
         if (nodeId) {
-            this.sourceData.options.rootNode = nodeId;
+            this.dataModel.sourceData.options.rootNode = nodeId;
         } else {
-            delete this.sourceData.options.rootNode;
+            delete this.dataModel.sourceData.options.rootNode;
         }
         // Update renderer visual immediately
         this.renderer.rootNodeId = nodeId ?? "";
@@ -212,19 +153,19 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
 
     /** Get current expansion options for UI. */
     getExpansionOptions(): { rootNode?: string; expandDepth?: number; maxVisible?: number } {
-        const opts = this.sourceData?.options ?? {};
+        const opts = this.dataModel.sourceData?.options ?? {};
         return { rootNode: opts.rootNode, expandDepth: opts.expandDepth, maxVisible: opts.maxVisible };
     }
 
     /** Update expansion options (rootNode excluded — use setRootNode). Does NOT recalculate graph. */
     updateExpansionOptions(patch: Partial<Pick<GraphOptions, "expandDepth" | "maxVisible">>): void {
-        if (!this.sourceData) return;
-        if (!this.sourceData.options) this.sourceData.options = {};
+        if (!this.dataModel.sourceData) return;
+        if (!this.dataModel.sourceData.options) this.dataModel.sourceData.options = {};
         for (const [key, value] of Object.entries(patch)) {
             if (value === undefined) {
-                delete (this.sourceData.options as any)[key];
+                delete (this.dataModel.sourceData.options as any)[key];
             } else {
-                (this.sourceData.options as any)[key] = value;
+                (this.dataModel.sourceData.options as any)[key] = value;
             }
         }
         this.serializeToHost();
@@ -232,7 +173,7 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
 
     /** Get all nodes from source data (for ComboSelect in expansion settings). */
     getAllNodes(): GraphNode[] {
-        return this.sourceData?.nodes ?? [];
+        return this.dataModel.sourceData?.nodes ?? [];
     }
 
     // =========================================================================
@@ -255,105 +196,32 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
     }
 
     // =========================================================================
-    // Legend
+    // Legend (delegates to dataModel)
     // =========================================================================
 
     /** Get legend descriptions from options. */
-    getLegendDescriptions(): GraphLegend {
-        return this.sourceData?.options?.legend ?? {};
+    getLegendDescriptions() {
+        return this.dataModel.getLegendDescriptions();
     }
 
     /** Set a single legend description. */
     setLegendDescription(tab: "levels" | "shapes", key: string, value: string): void {
-        if (!this.sourceData) return;
-        if (!this.sourceData.options) this.sourceData.options = {};
-        if (!this.sourceData.options.legend) this.sourceData.options.legend = {};
-        const legend = this.sourceData.options.legend;
-
-        // Root description is canonical in levels.root — sync to both
-        if (key === "root") {
-            if (!legend.levels) legend.levels = {};
-            if (!legend.shapes) legend.shapes = {};
-            if (value) {
-                legend.levels.root = value;
-                legend.shapes.root = value;
-            } else {
-                delete legend.levels.root;
-                delete legend.shapes.root;
-            }
-        } else {
-            if (!legend[tab]) legend[tab] = {};
-            if (value) {
-                legend[tab]![key] = value;
-            } else {
-                delete legend[tab]![key];
-            }
-        }
-
-        // Cleanup empty objects
-        if (legend.levels && Object.keys(legend.levels).length === 0) delete legend.levels;
-        if (legend.shapes && Object.keys(legend.shapes).length === 0) delete legend.shapes;
-        if (!legend.levels && !legend.shapes) delete this.sourceData.options.legend;
-
+        this.dataModel.setLegendDescription(tab, key, value);
         this.serializeToHost();
     }
 
     /** Get node IDs matching a filter (for legend highlighting). Operates on visible nodes. */
     getNodeIdsByLegendFilter(filter: { levels?: Set<number>; shapes?: Set<string>; includeRoot?: boolean }): Set<string> {
-        const result = new Set<string>();
-        const visibleNodes = this.renderer.getNodes();
-        const rootId = this.sourceData?.options?.rootNode ?? "";
-
-        for (const node of visibleNodes) {
-            const isRoot = rootId !== "" && node.id === rootId;
-
-            if (filter.includeRoot && isRoot) {
-                result.add(node.id);
-                continue;
-            }
-
-            if (filter.levels) {
-                const level = typeof node.level === "number" && node.level >= 1 && node.level <= 5 ? node.level : 5;
-                if (filter.levels.has(level)) {
-                    result.add(node.id);
-                    continue;
-                }
-            }
-
-            if (filter.shapes) {
-                const shape = isRoot ? "compass" : (node.shape || "circle");
-                if (filter.shapes.has(shape)) {
-                    result.add(node.id);
-                }
-            }
-        }
-
-        return result;
+        return this.dataModel.getNodeIdsByLegendFilter(filter, this.renderer.getNodes());
     }
 
     /** Get set of levels and shapes present in visible nodes. */
-    getPresentLevelsAndShapes(): { levels: Set<number>; shapes: Set<NodeShape>; hasRoot: boolean } {
-        const levels = new Set<number>();
-        const shapes = new Set<NodeShape>();
-        const visibleNodes = this.renderer.getNodes();
-        const rootId = this.sourceData?.options?.rootNode ?? "";
-        let hasRoot = false;
-
-        for (const node of visibleNodes) {
-            if (rootId !== "" && node.id === rootId) {
-                hasRoot = true;
-                continue; // root has its own entry, don't count its level/shape
-            }
-            const level = typeof node.level === "number" && node.level >= 1 && node.level <= 5 ? node.level : 5;
-            levels.add(level);
-            shapes.add(node.shape || "circle");
-        }
-
-        return { levels, shapes, hasRoot };
+    getPresentLevelsAndShapes() {
+        return this.dataModel.getPresentLevelsAndShapes(this.renderer.getNodes());
     }
 
     // =========================================================================
-    // Search
+    // Search (delegates to searchModel)
     // =========================================================================
 
     setSearchQuery(query: string): void {
@@ -362,78 +230,30 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
     }
 
     revealHiddenMatches(): void {
-        if (!this.visibilityModel.active) return;
         const results = this.state.get().searchResults;
-        if (!results) return;
-
-        const hiddenIds = results.filter((r) => !r.visible).map((r) => r.nodeId);
-        if (hiddenIds.length === 0) return;
-
-        const changed = this.visibilityModel.revealPaths(hiddenIds);
-        if (!changed) return;
-
-        const visibleGraph = this.visibilityModel.getVisibleGraph();
-        this.renderer.updateVisibleData(visibleGraph);
-        this.recomputeSearch();
+        const changed = this.searchModel.revealHiddenMatches(results);
+        if (changed) this.recomputeSearch();
     }
 
     revealAndSelectNode(nodeId: string): void {
-        // Reveal if hidden
-        if (this.visibilityModel.active && !this.visibilityModel.isNodeVisible(nodeId)) {
-            const changed = this.visibilityModel.revealPaths([nodeId]);
-            if (changed) {
-                const visibleGraph = this.visibilityModel.getVisibleGraph();
-                this.renderer.updateVisibleData(visibleGraph);
-                this.recomputeSearch();
-            }
-        }
-        // Select the node
-        this.renderer.selectNode(nodeId);
+        const changed = this.searchModel.revealAndSelectNode(nodeId);
+        if (changed) this.recomputeSearch();
     }
 
     private recomputeSearch(): void {
-        const query = this.state.get().searchQuery.trim().toLowerCase();
-        if (!query) {
+        const query = this.state.get().searchQuery;
+        const result = this.searchModel.computeSearch(query);
+
+        if (!result) {
             this.renderer.setSearchMatches(null);
             this.state.update((s) => { s.searchInfo = null; s.searchResults = null; });
             return;
         }
 
-        const words = query.split(/\s+/).filter(Boolean);
-
-        // Match against visible nodes
-        const visibleNodes = this.renderer.getNodes();
-        const matchIds = new Set<string>();
-        const results: SearchResult[] = [];
-
-        for (const node of visibleNodes) {
-            const matched = matchNodeSearch(node, words);
-            if (matched) {
-                matchIds.add(node.id);
-                results.push({ ...matched, visible: true });
-            }
-        }
-
-        // Match hidden nodes (when visibility filtering is active)
-        const hiddenResults: SearchResult[] = [];
-        if (this.visibilityModel.active) {
-            for (const node of this.visibilityModel.getHiddenNodes()) {
-                const matched = matchNodeSearch(node, words);
-                if (matched) {
-                    hiddenResults.push({ ...matched, visible: false });
-                }
-            }
-        }
-
-        // Sort: visible first (alphabetical), then hidden (alphabetical)
-        results.sort((a, b) => a.label.localeCompare(b.label));
-        hiddenResults.sort((a, b) => a.label.localeCompare(b.label));
-        const allResults = [...results, ...hiddenResults];
-
-        this.renderer.setSearchMatches(matchIds.size > 0 ? matchIds : new Set());
+        this.renderer.setSearchMatches(result.matchIds);
         this.state.update((s) => {
-            s.searchInfo = { visible: matchIds.size, hidden: hiddenResults.length, total: visibleNodes.length };
-            s.searchResults = allResults.length > 0 ? allResults : null;
+            s.searchInfo = result.searchInfo;
+            s.searchResults = result.searchResults;
         });
     }
 
@@ -452,9 +272,9 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
 
         // Status hint: Alt+Click to link/unlink
         const selectedId = this.renderer.selectedId;
-        if (selectedId && nodeId !== selectedId && this.sourceData) {
-            const linked = this.linkExists(selectedId, nodeId);
-            const label = nodeLabel(this.sourceData.nodes.find((n) => n.id === selectedId) ?? { id: selectedId });
+        if (selectedId && nodeId !== selectedId && this.dataModel.sourceData) {
+            const linked = this.dataModel.linkExists(selectedId, nodeId);
+            const label = nodeLabel(this.dataModel.sourceData.nodes.find((n) => n.id === selectedId) ?? { id: selectedId });
             this.updateStatusHint(linked
                 ? `Alt+Click to unlink from "${label}"`
                 : `Alt+Click to link with "${label}"`);
@@ -563,7 +383,7 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
 
     /** Status bar text: "N of M nodes" when filtered, "N nodes" when all visible. */
     get recordsCount(): string {
-        const total = this.sourceData?.nodes.length ?? 0;
+        const total = this.dataModel.sourceData?.nodes.length ?? 0;
         if (!this.visibilityModel.active) return `${total} nodes`;
         const visible = this.renderer.getNodes().length;
         return `${visible} of ${total} nodes`;
@@ -571,7 +391,7 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
 
     /** True when the graph has no nodes (empty content or parsed with zero nodes). */
     get isEmpty(): boolean {
-        if (this.sourceData) return this.sourceData.nodes.length === 0;
+        if (this.dataModel.sourceData) return this.dataModel.sourceData.nodes.length === 0;
         // No sourceData — empty if not loading and no error (i.e. blank content)
         const { loading, error } = this.state.get();
         return !loading && !error;
@@ -581,40 +401,35 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
     // Context menu
     // =========================================================================
 
+    /** Context menu action handlers bound to this ViewModel. */
+    private get contextMenuActions(): ContextMenuActions {
+        return {
+            addNode: (wx, wy) => this.addNode(wx, wy),
+            addChild: (id) => this.addChild(id),
+            deleteNode: (id) => this.deleteNode(id),
+            deleteLink: (s, t) => this.deleteLink(s, t),
+            setRootNode: (id) => this.setRootNode(id),
+            collapseNode: (id) => this.collapseNode(id),
+        };
+    }
+
     private handleContextMenu(nodeId: string, clientX: number, clientY: number): void {
         this.clearTooltip();
 
         if (!nodeId) {
-            // Right-click on empty area
             const worldPos = this.renderer.screenToWorld(clientX, clientY);
-            showAppPopupMenu(clientX, clientY, [
-                { label: "Add Node", onClick: () => this.addNode(worldPos.x, worldPos.y) },
-            ]);
+            const items = buildEmptyAreaContextMenu(worldPos.x, worldPos.y, this.contextMenuActions);
+            showAppPopupMenu(clientX, clientY, items);
         } else {
-            // Right-click on a node — select it
             this.renderer.selectNode(nodeId);
-
-            const isRoot = nodeId === this.rootNodeId;
-            const items: MenuItem[] = [
-                { label: "Add Child", onClick: () => this.addChild(nodeId) },
-                { label: "Set as Root", onClick: () => this.setRootNode(nodeId), disabled: isRoot },
-                { label: "Collapse", onClick: () => this.collapseNode(nodeId), disabled: !this.visibilityModel.active },
-                { label: "Delete Node", onClick: () => this.deleteNode(nodeId), startGroup: true },
-            ];
-
-            // Build "Delete Link" submenu for connected nodes
-            const neighbors = this.getNeighborIdsFromSource(nodeId);
-            if (neighbors.length > 0) {
-                items.push({
-                    label: "Delete Link",
-                    startGroup: true,
-                    items: neighbors.map((nId) => ({
-                        label: this.getNodeLabel(nId),
-                        onClick: () => this.deleteLink(nodeId, nId),
-                    })),
-                });
-            }
-
+            const items = buildNodeContextMenu(
+                nodeId,
+                this.dataModel.getNeighborIdsFromSource(nodeId),
+                (id) => this.dataModel.getNodeLabel(id),
+                nodeId === this.rootNodeId,
+                this.visibilityModel.active,
+                this.contextMenuActions,
+            );
             showAppPopupMenu(clientX, clientY, items);
         }
     }
@@ -626,9 +441,9 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
     private handleAltClick(nodeId: string): void {
         const selectedId = this.renderer.selectedId;
         if (!selectedId || selectedId === nodeId) return;
-        if (!this.sourceData) return;
+        if (!this.dataModel.sourceData) return;
 
-        const exists = this.linkExists(selectedId, nodeId);
+        const exists = this.dataModel.linkExists(selectedId, nodeId);
         if (exists) {
             this.deleteLink(selectedId, nodeId);
         } else {
@@ -647,9 +462,9 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
                 s.selectedNode = null;
                 s.linkedNodes = [];
             } else {
-                const node = this.sourceData?.nodes.find((n) => n.id === nodeId);
+                const node = this.dataModel.sourceData?.nodes.find((n) => n.id === nodeId);
                 s.selectedNode = node ? { ...node } : null;
-                s.linkedNodes = this.computeLinkedNodes(nodeId);
+                s.linkedNodes = this.dataModel.computeLinkedNodes(nodeId);
             }
         });
     }
@@ -659,56 +474,26 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
         const selectedId = this.renderer.selectedId;
         if (!selectedId) return;
         this.state.update((s) => {
-            const node = this.sourceData?.nodes.find((n) => n.id === selectedId);
+            const node = this.dataModel.sourceData?.nodes.find((n) => n.id === selectedId);
             s.selectedNode = node ? { ...node } : null;
-            s.linkedNodes = this.computeLinkedNodes(selectedId);
+            s.linkedNodes = this.dataModel.computeLinkedNodes(selectedId);
         });
     }
 
     // =========================================================================
-    // Node property editing
+    // Editing operations (delegate to dataModel → rebuild → serialize)
     // =========================================================================
 
     updateNodeProps(nodeId: string, props: Partial<GraphNode>): void {
-        if (!this.sourceData) return;
-        const node = this.sourceData.nodes.find((n) => n.id === nodeId);
-        if (!node) return;
-
-        for (const [key, value] of Object.entries(props)) {
-            if (key === "id") continue; // Use renameNode for ID changes
-            if (value === undefined || value === "" || value === null) {
-                delete (node as any)[key];
-            } else {
-                (node as any)[key] = value;
-            }
-        }
-
+        this.dataModel.updateNodeProps(nodeId, props);
         this.rebuildAndRender();
         this.serializeToHost();
         this.refreshSelectedNode();
     }
 
     renameNode(oldId: string, newId: string): boolean {
-        if (!this.sourceData) return false;
-        newId = newId.trim();
-        if (!newId || newId === oldId) return false;
-        if (this.sourceData.nodes.some((n) => n.id === newId)) return false;
-
-        // Update node ID
-        const node = this.sourceData.nodes.find((n) => n.id === oldId);
-        if (!node) return false;
-        node.id = newId;
-
-        // Update all links referencing old ID
-        for (const link of this.sourceData.links) {
-            if (typeof link.source === "string" && link.source === oldId) link.source = newId;
-            if (typeof link.target === "string" && link.target === oldId) link.target = newId;
-        }
-
-        // Update options.rootNode if it matches
-        if (this.sourceData.options?.rootNode === oldId) {
-            this.sourceData.options.rootNode = newId;
-        }
+        const ok = this.dataModel.renameNode(oldId, newId);
+        if (!ok) return false;
 
         // Update visibility state so renamed node stays visible
         this.visibilityModel.renameId(oldId, newId);
@@ -726,32 +511,21 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
         return true;
     }
 
-    // =========================================================================
-    // Editing operations (mutate sourceData → rebuild → serialize)
-    // =========================================================================
-
     addNode(worldX: number, worldY: number): string {
-        if (!this.sourceData) {
+        if (!this.dataModel.sourceData) {
             // Initialize empty graph (first node on blank page)
-            this.sourceData = { nodes: [], links: [] };
+            this.dataModel.sourceData = { nodes: [], links: [] };
             this.originalJson = { type: "force-graph" };
         }
 
-        const id = this.generateNodeId();
-        this.sourceData.nodes.push({ id });
+        const id = this.dataModel.addNode();
         this.rebuildAndRender(undefined, new Map([[id, { x: worldX, y: worldY }]]), [id]);
         this.serializeToHost();
         return id;
     }
 
     deleteNode(nodeId: string): void {
-        if (!this.sourceData) return;
-
-        this.sourceData.nodes = this.sourceData.nodes.filter((n) => n.id !== nodeId);
-        this.sourceData.links = this.sourceData.links.filter((link) => {
-            const { source, target } = linkIds(link);
-            return source !== nodeId && target !== nodeId;
-        });
+        this.dataModel.deleteNode(nodeId);
 
         // Clear selection if deleted node was selected
         if (this.renderer.selectedId === nodeId) {
@@ -763,41 +537,47 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
     }
 
     addLink(sourceId: string, targetId: string): void {
-        if (!this.sourceData) return;
-        if (sourceId === targetId) return;
-        if (this.linkExists(sourceId, targetId)) return;
-
-        this.sourceData.links.push({ source: sourceId, target: targetId });
+        this.dataModel.addLink(sourceId, targetId);
         this.rebuildAndRender();
         this.serializeToHost();
     }
 
     deleteLink(sourceId: string, targetId: string): void {
-        if (!this.sourceData) return;
-
-        this.sourceData.links = this.sourceData.links.filter((link) => {
-            const { source, target } = linkIds(link);
-            return !(
-                (source === sourceId && target === targetId) ||
-                (source === targetId && target === sourceId)
-            );
-        });
-
+        this.dataModel.deleteLink(sourceId, targetId);
         this.rebuildAndRender();
         this.serializeToHost();
     }
 
     addChild(parentId: string): string {
-        if (!this.sourceData) return "";
-
-        const id = this.generateNodeId();
-        this.sourceData.nodes.push({ id });
-        this.sourceData.links.push({ source: parentId, target: id });
+        const id = this.dataModel.addChild(parentId);
+        if (!id) return "";
 
         // Anchor near parent so new node appears close to it; ensure both parent and child are visible
         this.rebuildAndRender(parentId, undefined, [id, parentId]);
         this.serializeToHost();
         return id;
+    }
+
+    applyPropertiesUpdate(
+        nodeId: string,
+        propsToSet: Record<string, string>,
+        keysToRemove: string[],
+    ): void {
+        this.dataModel.applyPropertiesUpdate(nodeId, propsToSet, keysToRemove);
+        this.rebuildAndRender();
+        this.serializeToHost();
+        this.refreshSelectedNode();
+    }
+
+    applyLinkedNodesUpdate(
+        selectedNodeId: string,
+        rows: Record<string, unknown>[],
+        originalIds: Set<string>,
+    ): void {
+        this.dataModel.applyLinkedNodesUpdate(selectedNodeId, rows, originalIds);
+        this.rebuildAndRender();
+        this.serializeToHost();
+        this.refreshSelectedNode();
     }
 
     // =========================================================================
@@ -815,9 +595,9 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
         newNodePositions?: Map<string, { x: number; y: number }>,
         ensureVisible?: string[],
     ): void {
-        if (!this.sourceData) return;
+        if (!this.dataModel.sourceData) return;
 
-        const { nodes, links, options } = this.sourceData;
+        const { nodes, links, options } = this.dataModel.sourceData;
 
         let filtering: boolean;
         if (this.isFirstLoad) {
@@ -848,13 +628,13 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
     // =========================================================================
 
     private serializeToHost(): void {
-        if (!this.sourceData) return;
+        if (!this.dataModel.sourceData) return;
 
         const json: Record<string, unknown> = { ...this.originalJson };
-        json.nodes = this.sourceData.nodes;
-        json.links = this.sourceData.links;
-        if (this.sourceData.options) {
-            json.options = this.sourceData.options;
+        json.nodes = this.dataModel.sourceData.nodes;
+        json.links = this.dataModel.sourceData.links;
+        if (this.dataModel.sourceData.options) {
+            json.options = this.dataModel.sourceData.options;
         }
 
         this.skipNextContentUpdate = true;
@@ -873,7 +653,7 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
     private parseContent(): void {
         const content = this.host.state.get().content;
         if (!content.trim()) {
-            this.sourceData = null;
+            this.dataModel.sourceData = null;
             this.originalJson = {};
             this.state.update((s) => {
                 s.error = "";
@@ -885,14 +665,14 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
         try {
             const json = JSON.parse(content);
             this.originalJson = json;
-            this.sourceData = {
+            this.dataModel.sourceData = {
                 nodes: Array.isArray(json.nodes) ? json.nodes : [],
                 links: Array.isArray(json.links) ? json.links : [],
                 options: json.options,
             };
 
             // Restore physics params from options (before first render)
-            const opts = this.sourceData.options ?? {};
+            const opts = this.dataModel.sourceData.options ?? {};
             if (this.isFirstLoad) {
                 const initialParams: Partial<ForceParams> = {};
                 if (opts.charge !== undefined) initialParams.charge = opts.charge;
@@ -921,195 +701,6 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
                 s.loading = false;
             });
         }
-    }
-
-    // =========================================================================
-    // Linked nodes (for Links tab)
-    // =========================================================================
-
-    /** Keys added by D3 simulation — not part of user data. */
-    private static readonly SIM_KEYS = new Set(["x", "y", "vx", "vy", "fx", "fy", "index"]);
-
-    /** Strip _$ runtime and D3 simulation properties, return clean copy. */
-    private cleanNode(node: GraphNode): GraphNode {
-        const clean: Record<string, unknown> = {};
-        for (const [key, value] of Object.entries(node)) {
-            if (!key.startsWith(SYS_PREFIX) && !GraphViewModel.SIM_KEYS.has(key)) {
-                clean[key] = value;
-            }
-        }
-        return clean as unknown as GraphNode;
-    }
-
-    private computeLinkedNodes(nodeId: string): GraphNode[] {
-        if (!this.sourceData || !nodeId) return [];
-        const neighborIds = new Set(this.getNeighborIdsFromSource(nodeId));
-        return this.sourceData.nodes
-            .filter((n) => neighborIds.has(n.id))
-            .map((n) => this.cleanNode(n));
-    }
-
-    // =========================================================================
-    // Batch apply (Properties tab)
-    // =========================================================================
-
-    /**
-     * Apply batch property changes from the Properties tab grid.
-     * @param nodeId — the selected node
-     * @param propsToSet — key-value pairs to set (overwrites existing)
-     * @param keysToRemove — property keys to delete from the node
-     */
-    applyPropertiesUpdate(
-        nodeId: string,
-        propsToSet: Record<string, string>,
-        keysToRemove: string[],
-    ): void {
-        if (!this.sourceData) return;
-        const node = this.sourceData.nodes.find((n) => n.id === nodeId);
-        if (!node) return;
-
-        for (const key of keysToRemove) {
-            delete (node as any)[key];
-        }
-
-        for (const [key, value] of Object.entries(propsToSet)) {
-            (node as any)[key] = value;
-        }
-
-        this.rebuildAndRender();
-        this.serializeToHost();
-        this.refreshSelectedNode();
-    }
-
-    // =========================================================================
-    // Batch apply (Links tab)
-    // =========================================================================
-
-    /**
-     * Apply batch changes from the Links tab grid.
-     * @param selectedNodeId — the currently selected node (parent)
-     * @param rows — grid rows after user edits (each has at least `id`)
-     * @param originalIds — set of IDs that were in the grid when it was loaded
-     */
-    applyLinkedNodesUpdate(
-        selectedNodeId: string,
-        rows: Record<string, unknown>[],
-        originalIds: Set<string>,
-    ): void {
-        if (!this.sourceData) return;
-
-        const currentIds = new Set(rows.map((r) => r.id as string).filter(Boolean));
-
-        // 1. Removed rows: in original but not in current
-        for (const oldId of originalIds) {
-            if (!currentIds.has(oldId)) {
-                this.removeLinkSmart(selectedNodeId, oldId);
-            }
-        }
-
-        // 2. New + modified rows
-        for (const row of rows) {
-            const id = (row.id as string)?.trim();
-            if (!id) continue;
-
-            if (!originalIds.has(id)) {
-                // New row — create node if needed, add link
-                if (!this.sourceData.nodes.some((n) => n.id === id)) {
-                    this.sourceData.nodes.push({ id });
-                }
-                if (!this.linkExists(selectedNodeId, id) && selectedNodeId !== id) {
-                    this.sourceData.links.push({ source: selectedNodeId, target: id });
-                }
-            }
-
-            // Update properties (for both new and existing)
-            const node = this.sourceData.nodes.find((n) => n.id === id);
-            if (node) {
-                this.applyRowPropsToNode(node, row);
-            }
-        }
-
-        // 3. Rebuild
-        this.rebuildAndRender();
-        this.serializeToHost();
-        this.refreshSelectedNode();
-    }
-
-    /**
-     * Smart link removal:
-     * - Always removes the link between aId and bId
-     * - If bId has no other links after removal, also deletes the node
-     */
-    private removeLinkSmart(aId: string, bId: string): void {
-        if (!this.sourceData) return;
-
-        // Remove the link
-        this.sourceData.links = this.sourceData.links.filter((link) => {
-            const { source, target } = linkIds(link);
-            return !(
-                (source === aId && target === bId) ||
-                (source === bId && target === aId)
-            );
-        });
-
-        // Check if bId has any remaining links
-        const hasOtherLinks = this.sourceData.links.some((link) => {
-            const { source, target } = linkIds(link);
-            return source === bId || target === bId;
-        });
-
-        // If orphaned, delete the node too
-        if (!hasOtherLinks) {
-            this.sourceData.nodes = this.sourceData.nodes.filter((n) => n.id !== bId);
-        }
-    }
-
-    /** Apply row properties to a node, skipping 'id' and empty values. */
-    private applyRowPropsToNode(node: GraphNode, row: Record<string, unknown>): void {
-        for (const [key, value] of Object.entries(row)) {
-            if (key === "id") continue;
-            if (value === undefined || value === null || value === "") {
-                delete (node as any)[key];
-            } else {
-                (node as any)[key] = value;
-            }
-        }
-    }
-
-    // =========================================================================
-    // Helpers
-    // =========================================================================
-
-    private generateNodeId(): string {
-        if (!this.sourceData) return "node-1";
-        const existingIds = new Set(this.sourceData.nodes.map((n) => n.id));
-        let i = 1;
-        while (existingIds.has(`node-${i}`)) i++;
-        return `node-${i}`;
-    }
-
-    private linkExists(aId: string, bId: string): boolean {
-        if (!this.sourceData) return false;
-        return this.sourceData.links.some((link) => {
-            const { source, target } = linkIds(link);
-            return (source === aId && target === bId) || (source === bId && target === aId);
-        });
-    }
-
-    private getNeighborIdsFromSource(nodeId: string): string[] {
-        if (!this.sourceData) return [];
-        const neighbors: string[] = [];
-        for (const link of this.sourceData.links) {
-            const { source, target } = linkIds(link);
-            if (source === nodeId) neighbors.push(target);
-            else if (target === nodeId) neighbors.push(source);
-        }
-        return neighbors;
-    }
-
-    private getNodeLabel(nodeId: string): string {
-        const node = this.sourceData?.nodes.find((n) => n.id === nodeId);
-        return node ? nodeLabel(node) : nodeId;
     }
 }
 

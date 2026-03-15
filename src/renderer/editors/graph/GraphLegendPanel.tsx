@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { GraphViewModel } from "./GraphViewModel";
 import { NodeShape } from "./types";
+import { ShapeIcon, LevelIcon } from "./GraphIcons";
 
 // =============================================================================
 // Constants
@@ -8,81 +9,6 @@ import { NodeShape } from "./types";
 
 const ALL_SHAPES: NodeShape[] = ["circle", "square", "diamond", "triangle", "star", "hexagon"];
 type LegendTab = "level" | "shape";
-
-// SVG icon helpers (shared with GraphDetailPanel pattern)
-const S = 14;
-const C = S / 2;
-const R = 5;
-
-function starPoints(cx: number, cy: number, outerR: number, innerR: number, spikes: number): string {
-    const pts: string[] = [];
-    for (let i = 0; i < spikes * 2; i++) {
-        const angle = (i * Math.PI) / spikes - Math.PI / 2;
-        const r = i % 2 === 0 ? outerR : innerR;
-        pts.push(`${cx + r * Math.cos(angle)},${cy + r * Math.sin(angle)}`);
-    }
-    return pts.join(" ");
-}
-
-function hexPoints(cx: number, cy: number, r: number): string {
-    const pts: string[] = [];
-    for (let i = 0; i < 6; i++) {
-        const angle = (i * Math.PI) / 3 - Math.PI / 6;
-        pts.push(`${cx + r * Math.cos(angle)},${cy + r * Math.sin(angle)}`);
-    }
-    return pts.join(" ");
-}
-
-function compassPoints(cx: number, cy: number, outerR: number, innerR: number): string {
-    const spikes = 4;
-    const pts: string[] = [];
-    for (let i = 0; i < spikes * 2; i++) {
-        const angle = (i * Math.PI) / spikes - Math.PI / 2;
-        const rad = i % 2 === 0 ? outerR : innerR;
-        pts.push(`${cx + rad * Math.cos(angle)},${cy + rad * Math.sin(angle)}`);
-    }
-    return pts.join(" ");
-}
-
-function ShapeIcon({ shape }: { shape: NodeShape | "root" }) {
-    if (shape === "root") {
-        return (
-            <svg className="legend-shape-icon" width={S} height={S} viewBox={`0 0 ${S} ${S}`}>
-                <polygon points={compassPoints(C, C, R * 1.1, R * 0.35)} fill="currentColor" />
-            </svg>
-        );
-    }
-    return (
-        <svg className="legend-shape-icon" width={S} height={S} viewBox={`0 0 ${S} ${S}`}>
-            {shape === "circle" && <circle cx={C} cy={C} r={R} fill="currentColor" />}
-            {shape === "square" && <rect x={C - R} y={C - R} width={R * 2} height={R * 2} fill="currentColor" />}
-            {shape === "diamond" && (
-                <polygon points={`${C},${C - R * 1.2} ${C + R},${C} ${C},${C + R * 1.2} ${C - R},${C}`} fill="currentColor" />
-            )}
-            {shape === "triangle" && (
-                <polygon points={`${C},${C - R * 1.15} ${C + R},${C + R * 0.7} ${C - R},${C + R * 0.7}`} fill="currentColor" />
-            )}
-            {shape === "star" && <polygon points={starPoints(C, C, R * 1.1, R * 0.5, 5)} fill="currentColor" />}
-            {shape === "hexagon" && <polygon points={hexPoints(C, C, R)} fill="currentColor" />}
-        </svg>
-    );
-}
-
-function LevelIcon({ level }: { level: number | "root" }) {
-    if (level === "root") {
-        return (
-            <svg className="legend-shape-icon" width={S} height={S} viewBox={`0 0 ${S} ${S}`}>
-                <polygon points={compassPoints(C, C, R * 1.1, R * 0.35)} fill="currentColor" />
-            </svg>
-        );
-    }
-    const r = 7 - level; // 6, 5, 4, 3, 2
-    return (
-        <svg className="legend-shape-icon" width={S} height={S} viewBox={`0 0 ${S} ${S}`}>
-            <circle cx={C} cy={C} r={r} fill="currentColor" />
-        </svg>
-    );
-}
 
 // =============================================================================
 // Component
@@ -224,7 +150,7 @@ export function GraphLegendPanel({ vm }: GraphLegendPanelProps) {
                                         key="root"
 
                                         label="Root"
-                                        icon={<LevelIcon level="root" />}
+                                        icon={<LevelIcon level="root" size={14} />}
                                         checked={checkedLevels.has("root")}
                                         description={descriptions.levels?.root ?? ""}
                                         onToggle={() => toggleCheck("level", "root")}
@@ -236,7 +162,7 @@ export function GraphLegendPanel({ vm }: GraphLegendPanelProps) {
                                         key={level}
 
                                         label={`Level ${level}`}
-                                        icon={<LevelIcon level={level} />}
+                                        icon={<LevelIcon level={level} size={14} />}
                                         checked={checkedLevels.has(String(level))}
                                         description={descriptions.levels?.[String(level)] ?? ""}
                                         onToggle={() => toggleCheck("level", String(level))}
@@ -252,7 +178,7 @@ export function GraphLegendPanel({ vm }: GraphLegendPanelProps) {
                                         key="root"
 
                                         label="Root"
-                                        icon={<ShapeIcon shape="root" />}
+                                        icon={<ShapeIcon shape="root" size={14} />}
                                         checked={checkedShapes.has("root")}
                                         description={descriptions.shapes?.root ?? ""}
                                         onToggle={() => toggleCheck("shape", "root")}
@@ -264,7 +190,7 @@ export function GraphLegendPanel({ vm }: GraphLegendPanelProps) {
                                         key={shape}
 
                                         label={shape.charAt(0).toUpperCase() + shape.slice(1)}
-                                        icon={<ShapeIcon shape={shape} />}
+                                        icon={<ShapeIcon shape={shape} size={14} />}
                                         checked={checkedShapes.has(shape)}
                                         description={descriptions.shapes?.[shape] ?? ""}
                                         onToggle={() => toggleCheck("shape", shape)}

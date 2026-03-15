@@ -99,3 +99,8 @@ export function nodeRadius(node: GraphNode): number {
     if (typeof level === "number" && level >= 1 && level <= 5) return levelRadii[level - 1];
     return 4; // invalid or missing level → level 5 (smallest)
 }
+
+/** Get effective radius for a node, accounting for root node override. */
+export function effectiveNodeRadius(node: GraphNode, rootNodeId: string): number {
+    return rootNodeId && node.id === rootNodeId ? levelRadii[0] : nodeRadius(node);
+}

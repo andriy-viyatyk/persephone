@@ -250,15 +250,21 @@ js-notepad/
 │   │   └── index.ts
 │   ├── graph/              # Force graph viewer (content-view)
 │   │   ├── GraphView.tsx           # Canvas-based graph component (toolbar with search results/physics/expansion tabs, tooltip, detail panel)
-│   │   ├── GraphViewModel.ts       # ContentViewModel — JSON parsing, editing, orchestrates sub-models
-│   │   ├── ForceGraphRenderer.ts   # D3 force simulation + canvas rendering (badges, context menu, Alt+Click, force tuning)
+│   │   ├── GraphViewModel.ts       # ContentViewModel — JSON parsing, orchestration, delegates to sub-models
+│   │   ├── GraphDataModel.ts      # Source data ownership + node/link CRUD + legend data
+│   │   ├── GraphSearchModel.ts    # Search query matching + result computation
+│   │   ├── GraphHighlightModel.ts # Highlight layers (search, legend, links tab) + selection/hover state + color helpers
+│   │   ├── GraphContextMenu.ts    # Context menu item builders (node menu, empty area menu)
+│   │   ├── ForceGraphRenderer.ts   # D3 force simulation + canvas rendering
 │   │   ├── GraphVisibilityModel.ts # BFS-based visibility filtering for large graphs
 │   │   ├── GraphDetailPanel.tsx    # Collapsible detail panel overlay (Info tab, Links tab, Properties tab — AVGrid batch editing)
 │   │   ├── GraphTuningSliders.tsx  # Force tuning sliders (charge, distance, collide) — expandable from toolbar
 │   │   ├── GraphExpansionSettings.tsx # Expansion settings panel (root node, expand depth, max visible)
 │   │   ├── GraphLegendPanel.tsx    # Collapsible legend panel (bottom-left, Level/Shape tabs, checkbox highlighting, description persistence)
+│   │   ├── GraphIcons.tsx         # Shared SVG icon components (ShapeIcon, LevelIcon)
 │   │   ├── GraphTooltip.tsx        # Node tooltip (fixed-position portal, custom properties)
-│   │   ├── types.ts                # GraphNode, GraphLink, GraphLegend, GraphData, GraphOptions, NodeShape, nodeLabel(), nodeRadius(), getCustomProperties(), isReservedPropertyKey()
+│   │   ├── shapeGeometry.ts       # Pure shape point generation (shared between canvas + SVG icons)
+│   │   ├── types.ts                # GraphNode, GraphLink, GraphLegend, GraphData, GraphOptions, NodeShape, nodeLabel(), nodeRadius(), effectiveNodeRadius(), getCustomProperties(), isReservedPropertyKey()
 │   │   ├── constants.ts            # Force simulation parameters
 │   │   └── index.ts
 │   ├── log-view/           # Log viewer (content-view)

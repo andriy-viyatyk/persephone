@@ -1,31 +1,12 @@
 import * as d3 from "d3";
 import { zoom as d3Zoom, D3ZoomEvent } from "d3-zoom";
 import { drag as d3Drag, D3DragEvent } from "d3-drag";
-import { GraphData, GraphNode, GraphLink, NodeShape, linkIds, nodeLabel, nodeRadius, levelRadii } from "./types";
+import { GraphData, GraphNode, GraphLink, NodeShape, linkIds, nodeLabel, effectiveNodeRadius } from "./types";
+import { getShapePoints } from "./shapeGeometry";
 import { forceProperties } from "./constants";
+import { GraphHighlightModel, ResolvedColors } from "./GraphHighlightModel";
 import color from "../../theme/color";
 import { closeAppPopupMenu } from "../../ui/dialogs/poppers/showPopupMenu";
-
-interface ActiveState {
-    activeId: string;
-    activeChild: Set<string>;
-    hoveredId: string;
-    hoveredChild: Set<string>;
-}
-
-/** Resolved (computed) color values for canvas rendering. */
-interface ResolvedColors {
-    nodeDefault: string;
-    nodeHighlight: string;
-    nodeSelected: string;
-    borderDefault: string;
-    borderHighlight: string;
-    borderSelected: string;
-    linkDefault: string;
-    linkSelected: string;
-    labelBg: string;
-    labelText: string;
-}
 
 function resolveVar(cssVar: string): string {
     if (!cssVar.startsWith("var(")) return cssVar;
@@ -74,11 +55,7 @@ export class ForceGraphRenderer {
     private transform = d3.zoomIdentity;
     private _forceParams: ForceParams = { ...defaultForceParams };
 
-    private activeId = "";
-    private activeChild = new Set<string>();
-    private hoveredId = "";
-    private hoveredChild = new Set<string>();
-
+    private readonly highlight = new GraphHighlightModel();
     private colors: ResolvedColors = resolveColors();
     private resizeObserver: ResizeObserver | null = null;
 
@@ -94,12 +71,7 @@ export class ForceGraphRenderer {
     onSelectionChanged: ((nodeId: string) => void) | null = null;
     /** Callback for double-click on a node. */
     onDoubleClick: ((nodeId: string) => void) | null = null;
-    private hoveredBadgeNodeId = "";
     private _rootNodeId = "";
-    private searchMatches: Set<string> | null = null;
-    private highlightSet: Set<string> | null = null;
-    private legendHighlight: Set<string> | null = null;
-    private externalHoverId = "";
     private _lastClientX = 0;
     private _lastClientY = 0;
 
@@ -133,10 +105,7 @@ export class ForceGraphRenderer {
 
     updateData(graphData: GraphData): void {
         this.graphData = graphData;
-        this.activeId = "";
-        this.activeChild = new Set();
-        this.hoveredId = "";
-        this.hoveredChild = new Set();
+        this.highlight.clearAll();
 
         if (this.simulation) {
             this.simulation.nodes(graphData.nodes);
@@ -180,16 +149,9 @@ export class ForceGraphRenderer {
 
         this.graphData = graphData;
 
-        // Clear selection if the selected node is no longer visible
+        // Clear selection if the selected/hovered node is no longer visible
         const nodeIds = new Set(graphData.nodes.map((n) => n.id));
-        if (this.activeId && !nodeIds.has(this.activeId)) {
-            this.activeId = "";
-            this.activeChild = new Set();
-        }
-        if (this.hoveredId && !nodeIds.has(this.hoveredId) && !this.externalHoverId) {
-            this.hoveredId = "";
-            this.hoveredChild = new Set();
-        }
+        this.highlight.clearSelectionIf(nodeIds);
 
         if (this.simulation) {
             this.simulation.nodes(graphData.nodes);
@@ -207,28 +169,26 @@ export class ForceGraphRenderer {
 
     /** Set of node IDs matching search. Null = no search active. */
     setSearchMatches(matchIds: Set<string> | null): void {
-        this.searchMatches = matchIds;
+        this.highlight.setLayer("search", matchIds);
         this.renderData();
     }
 
     /** Set of node IDs to highlight (e.g. links tab). Null = no highlight active. */
     setHighlightSet(ids: Set<string> | null): void {
-        this.highlightSet = ids;
+        this.highlight.setLayer("linksTab", ids);
         this.renderData();
     }
 
     /** Set of node IDs to highlight from the legend panel. Null = no legend highlight active. */
     setLegendHighlight(ids: Set<string> | null): void {
-        this.legendHighlight = ids;
+        this.highlight.setLayer("legend", ids);
         this.renderData();
     }
 
     /** Set hover state from external source (e.g. grid row focus). Empty string clears. */
     setExternalHover(id: string): void {
-        this.externalHoverId = id;
-        if (this.hoveredId === id) return;
-        this.hoveredId = id;
-        this.hoveredChild = id ? this.getNeighborIds(id) : new Set();
+        if (this.highlight.hoveredId === id && this.highlight.externalHoverId === id) return;
+        this.highlight.setExternalHover(id, this.graphData.links);
         this.renderData();
         // Don't fire onHoverChanged — tooltip is not meaningful for external hover
     }
@@ -240,7 +200,7 @@ export class ForceGraphRenderer {
 
     /** Currently selected (active) node ID. */
     get selectedId(): string {
-        return this.activeId;
+        return this.highlight.activeId;
     }
 
     /** Programmatically select a node. */
@@ -364,8 +324,8 @@ export class ForceGraphRenderer {
         this._lastClientY = event.clientY;
 
         const badgeNode = this.findBadgeAt(event);
-        const prevBadgeId = this.hoveredBadgeNodeId;
-        this.hoveredBadgeNodeId = badgeNode?.id ?? "";
+        const prevBadgeId = this.highlight.hoveredBadgeNodeId;
+        this.highlight.hoveredBadgeNodeId = badgeNode?.id ?? "";
 
         // Update cursor for badge hover
         if (this.canvas) {
@@ -373,12 +333,12 @@ export class ForceGraphRenderer {
         }
 
         // Re-render if badge hover state changed (for highlight effect)
-        if (prevBadgeId !== this.hoveredBadgeNodeId) {
+        if (prevBadgeId !== this.highlight.hoveredBadgeNodeId) {
             this.renderData();
         }
 
         // Skip mouse hover when external hover is active (e.g. grid row focus)
-        if (!this.externalHoverId) {
+        if (!this.highlight.externalHoverId) {
             const node = this.findNodeAt(event);
             this.setHoveredId(node?.id ?? "");
         }
@@ -481,7 +441,7 @@ export class ForceGraphRenderer {
                 forceProperties.collide.enabled
                     ? d3.forceCollide<GraphNode>()
                         .strength(this._forceParams.collide)
-                        .radius((d) => (this._rootNodeId && d.id === this._rootNodeId ? levelRadii[0] : nodeRadius(d)) + 1)
+                        .radius((d) => effectiveNodeRadius(d, this._rootNodeId) + 1)
                         .iterations(forceProperties.collide.iterations)
                     : null,
             )
@@ -517,9 +477,9 @@ export class ForceGraphRenderer {
                 this.transform = event.transform;
                 this.renderData();
                 // Clear tooltip during zoom (but preserve external hover)
-                if (this.hoveredId && !this.externalHoverId) {
-                    this.hoveredId = "";
-                    this.hoveredChild = new Set();
+                if (this.highlight.hoveredId && !this.highlight.externalHoverId) {
+                    this.highlight.hoveredId = "";
+                    this.highlight.hoveredChild = new Set();
                     this.onHoverChanged?.("", 0, 0);
                 }
             });
@@ -578,7 +538,7 @@ export class ForceGraphRenderer {
         return this.graphData.nodes.find((node) => {
             const dx = tx - (node.x || 0);
             const dy = ty - (node.y || 0);
-            const r = this._rootNodeId && node.id === this._rootNodeId ? levelRadii[0] : nodeRadius(node);
+            const r = effectiveNodeRadius(node, this._rootNodeId);
             return Math.sqrt(dx * dx + dy * dy) <= r;
         });
     }
@@ -605,7 +565,7 @@ export class ForceGraphRenderer {
             const hiddenCount = d._$hiddenCount ?? 0;
             if (hiddenCount <= 0) continue;
 
-            const r = this._rootNodeId && d.id === this._rootNodeId ? levelRadii[0] : nodeRadius(d);
+            const r = effectiveNodeRadius(d, this._rootNodeId);
             const badgeX = (d.x || 0) + r * 0.7;
             const badgeY = (d.y || 0) - r * 0.7;
             const badgeR = this.badgeRadius(hiddenCount);
@@ -618,70 +578,21 @@ export class ForceGraphRenderer {
     }
 
     // =========================================================================
-    // Internals — active/hovered state
+    // Internals — active/hovered state (delegates to highlight model)
     // =========================================================================
 
     private setActiveId(id: string): void {
-        const changed = this.activeId !== id;
-        this.activeId = id;
-        this.activeChild = id ? this.getNeighborIds(id) : new Set();
+        const changed = this.highlight.activeId !== id;
+        this.highlight.setActiveId(id, this.graphData.links);
         this.renderData();
         if (changed) this.onSelectionChanged?.(id);
     }
 
     private setHoveredId(id: string): void {
-        const changed = this.hoveredId !== id;
-        this.hoveredId = id;
-        this.hoveredChild = id ? this.getNeighborIds(id) : new Set();
+        const changed = this.highlight.hoveredId !== id;
+        this.highlight.setHoveredId(id, this.graphData.links);
         this.renderData();
         if (changed) this.onHoverChanged?.(id, this._lastClientX, this._lastClientY);
-    }
-
-    private getNeighborIds(nodeId: string): Set<string> {
-        const ids = this.graphData.links
-            .filter((link) => {
-                const { source, target } = linkIds(link);
-                return source === nodeId || target === nodeId;
-            })
-            .flatMap((link) => {
-                const { source, target } = linkIds(link);
-                return [source, target].filter((id) => id !== nodeId);
-            });
-        return new Set(ids);
-    }
-
-    // =========================================================================
-    // Internals — color helpers
-    // =========================================================================
-
-    private nodeColor(node: GraphNode, state: ActiveState): string {
-        const c = this.colors;
-        if (node.id === state.activeId) return c.nodeSelected;
-        if (node.id === state.hoveredId) return c.nodeHighlight;
-        return c.nodeDefault;
-    }
-
-    private nodeBorderColor(node: GraphNode, state: ActiveState): string {
-        const c = this.colors;
-        if (state.activeChild.has(node.id)) return c.borderSelected;
-        if (node.id === state.hoveredId) return c.borderHighlight;
-        if (node.id === state.activeId) return c.borderSelected;
-        if (state.hoveredChild.has(node.id)) return c.borderHighlight;
-        return c.borderDefault;
-    }
-
-    private linkColor(link: GraphLink, state: ActiveState): string {
-        const c = this.colors;
-        const { source, target } = linkIds(link);
-        // Green highlight for the link between selected and hovered node
-        if (state.hoveredId && state.activeId
-            && ((source === state.activeId && target === state.hoveredId)
-             || (target === state.activeId && source === state.hoveredId))) {
-            return c.borderHighlight;
-        }
-        return source === state.activeId || target === state.activeId
-            ? c.linkSelected
-            : c.linkDefault;
     }
 
     // =========================================================================
@@ -690,70 +601,21 @@ export class ForceGraphRenderer {
 
     private drawShape(ctx: CanvasRenderingContext2D, shape: NodeShape | "compass" | undefined, x: number, y: number, r: number): void {
         ctx.beginPath();
-        switch (shape) {
-            case "square":
+        const pts = getShapePoints(shape, x, y, r);
+        if (pts) {
+            // Square uses rect for crispness
+            if (shape === "square") {
                 ctx.rect(x - r, y - r, r * 2, r * 2);
-                break;
-            case "diamond": {
-                const dy = r * 1.2;
-                ctx.moveTo(x, y - dy);
-                ctx.lineTo(x + r, y);
-                ctx.lineTo(x, y + dy);
-                ctx.lineTo(x - r, y);
-                ctx.closePath();
-                break;
-            }
-            case "triangle": {
-                const h = r * 1.15;
-                ctx.moveTo(x, y - h);
-                ctx.lineTo(x + r, y + h * 0.6);
-                ctx.lineTo(x - r, y + h * 0.6);
-                ctx.closePath();
-                break;
-            }
-            case "star": {
-                const spikes = 5;
-                const outerR = r * 1.1;
-                const innerR = r * 0.5;
-                for (let i = 0; i < spikes * 2; i++) {
-                    const angle = (i * Math.PI) / spikes - Math.PI / 2;
-                    const rad = i % 2 === 0 ? outerR : innerR;
-                    const px = x + rad * Math.cos(angle);
-                    const py = y + rad * Math.sin(angle);
-                    if (i === 0) ctx.moveTo(px, py);
-                    else ctx.lineTo(px, py);
+            } else {
+                ctx.moveTo(pts[0][0], pts[0][1]);
+                for (let i = 1; i < pts.length; i++) {
+                    ctx.lineTo(pts[i][0], pts[i][1]);
                 }
                 ctx.closePath();
-                break;
             }
-            case "compass": {
-                const spikes = 4;
-                const outerR = r * 1.2;
-                const innerR = r * 0.4;
-                for (let i = 0; i < spikes * 2; i++) {
-                    const angle = (i * Math.PI) / spikes - Math.PI / 2;
-                    const rad = i % 2 === 0 ? outerR : innerR;
-                    const px = x + rad * Math.cos(angle);
-                    const py = y + rad * Math.sin(angle);
-                    if (i === 0) ctx.moveTo(px, py);
-                    else ctx.lineTo(px, py);
-                }
-                ctx.closePath();
-                break;
-            }
-            case "hexagon":
-                for (let i = 0; i < 6; i++) {
-                    const angle = (i * Math.PI) / 3 - Math.PI / 6;
-                    const px = x + r * Math.cos(angle);
-                    const py = y + r * Math.sin(angle);
-                    if (i === 0) ctx.moveTo(px, py);
-                    else ctx.lineTo(px, py);
-                }
-                ctx.closePath();
-                break;
-            default: // "circle" or undefined
-                ctx.arc(x, y, r, 0, 2 * Math.PI);
-                break;
+        } else {
+            // circle
+            ctx.arc(x, y, r, 0, 2 * Math.PI);
         }
     }
 
@@ -768,16 +630,8 @@ export class ForceGraphRenderer {
         ctx.save();
         ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
-        const { transform, graphData, activeId, activeChild, hoveredId, hoveredChild, searchMatches, highlightSet, legendHighlight } = this;
-        const activeState: ActiveState = { activeId, activeChild, hoveredId, hoveredChild };
-        // Merge all active highlight layers (intersection when multiple active)
-        const layers = [searchMatches, highlightSet, legendHighlight].filter(Boolean) as Set<string>[];
-        let dimSet: Set<string> | null = null;
-        if (layers.length === 1) {
-            dimSet = layers[0];
-        } else if (layers.length > 1) {
-            dimSet = new Set([...layers[0]].filter((id) => layers.every((s) => s.has(id))));
-        }
+        const { transform, graphData, highlight, colors } = this;
+        const dimSet = highlight.computeDimSet();
         const dimming = dimSet !== null;
 
         ctx.translate(transform.x, transform.y);
@@ -792,9 +646,9 @@ export class ForceGraphRenderer {
             ctx.beginPath();
             ctx.moveTo((d.source as GraphNode).x || 0, (d.source as GraphNode).y || 0);
             ctx.lineTo((d.target as GraphNode).x || 0, (d.target as GraphNode).y || 0);
-            const linkCol = this.linkColor(d, activeState);
+            const linkCol = highlight.linkColor(d, colors);
             ctx.strokeStyle = linkCol;
-            ctx.lineWidth = linkCol === this.colors.borderHighlight ? 2 : 0.5;
+            ctx.lineWidth = linkCol === colors.borderHighlight ? 2 : 0.5;
             ctx.stroke();
         });
 
@@ -803,12 +657,12 @@ export class ForceGraphRenderer {
         graphData.nodes.forEach((d) => {
             if (dimming) ctx.globalAlpha = dimSet!.has(d.id) ? 1.0 : 0.15;
             const isRoot = rootId !== "" && d.id === rootId;
-            const r = isRoot ? levelRadii[0] : nodeRadius(d);
+            const r = effectiveNodeRadius(d, rootId);
             const shape = isRoot ? "compass" as const : d.shape;
             this.drawShape(ctx, shape, d.x || 0, d.y || 0, r);
-            ctx.fillStyle = this.nodeColor(d, activeState);
+            ctx.fillStyle = highlight.nodeColor(d, colors);
             ctx.fill();
-            ctx.strokeStyle = this.nodeBorderColor(d, activeState);
+            ctx.strokeStyle = highlight.nodeBorderColor(d, colors);
             ctx.lineWidth = 1.5;
             ctx.stroke();
         });
@@ -817,7 +671,7 @@ export class ForceGraphRenderer {
 
         // Draw "+" badges on nodes with hidden neighbors
         if (transform.k > 0.5) {
-            const c = this.colors;
+            const c = colors;
             ctx.font = "bold 5px sans-serif";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
@@ -826,12 +680,11 @@ export class ForceGraphRenderer {
                 const hiddenCount = d._$hiddenCount ?? 0;
                 if (hiddenCount > 0) {
                     if (dimming) ctx.globalAlpha = dimSet!.has(d.id) ? 1.0 : 0.15;
-                    const isRoot = rootId !== "" && d.id === rootId;
-                    const r = isRoot ? levelRadii[0] : nodeRadius(d);
+                    const r = effectiveNodeRadius(d, rootId);
                     const badgeX = (d.x || 0) + r * 0.7;
                     const badgeY = (d.y || 0) - r * 0.7;
                     const badgeR = this.badgeRadius(hiddenCount);
-                    const isHovered = d.id === this.hoveredBadgeNodeId;
+                    const isHovered = d.id === highlight.hoveredBadgeNodeId;
 
                     ctx.beginPath();
                     ctx.arc(badgeX, badgeY, badgeR, 0, 2 * Math.PI);
@@ -851,23 +704,23 @@ export class ForceGraphRenderer {
 
         // Draw labels at sufficient zoom
         if (transform.k > 0.8) {
-            const c = this.colors;
+            const c = colors;
             ctx.textAlign = "left";
             ctx.textBaseline = "middle";
 
             graphData.nodes.forEach((d) => {
                 const isHighlighted =
-                    d.id === activeState.activeId ||
-                    d.id === activeState.hoveredId ||
-                    activeState.activeChild.has(d.id) ||
-                    activeState.hoveredChild.has(d.id);
+                    d.id === highlight.activeId ||
+                    d.id === highlight.hoveredId ||
+                    highlight.activeChild.has(d.id) ||
+                    highlight.hoveredChild.has(d.id);
                 const isRoot = rootId !== "" && d.id === rootId;
                 const isImportant = isRoot || (typeof d.level === "number" && d.level >= 1 && d.level <= 2);
 
                 if (isHighlighted || isImportant) {
                     if (dimming) ctx.globalAlpha = dimSet!.has(d.id) ? 1.0 : 0.15;
                     const text = nodeLabel(d);
-                    const r = isRoot ? levelRadii[0] : nodeRadius(d);
+                    const r = effectiveNodeRadius(d, rootId);
                     const paddingY = 1;
                     const paddingX = 2;
 
