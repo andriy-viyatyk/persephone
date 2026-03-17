@@ -1363,6 +1363,13 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
         const id = this.dataModel.addChild(parentId);
         if (!id) return "";
 
+        // Inherit group membership from parent — so the new child stays visually
+        // connected instead of having its link routed through the group node.
+        const parentGroup = this.groupModel.getGroupOf(parentId);
+        if (parentGroup) {
+            this.dataModel.addLink(parentGroup, id);
+        }
+
         // Anchor near parent so new node appears close to it; ensure both parent and child are visible
         this.rebuildAndRender(parentId, undefined, [id, parentId]);
         this.serializeToHost();
