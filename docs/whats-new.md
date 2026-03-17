@@ -28,6 +28,9 @@ Release notes and changelog for js-notepad.
 - **Graph View toolbar and panel UX** — Collapsed search toolbar stays visible with a green border when a search is active. Clicking on empty canvas collapses expanded panels without changing selection. Legend panel chevron turns green when expanded (replaces the previous green border indicator).
 - **Graph View group membership detection** — Group membership now works with links in either direction (group→member or member→group), making group setup more flexible.
 - **Graph View BFS visibility** — Initial visibility calculation now uses real graph depth instead of discovery order, producing more accurate node visibility for complex graphs. Focus node starts component detection so connected graphs no longer show disconnected clusters.
+- **Graph View path highlighting** — Selecting a node now highlights the full visual path (orange) to all its real neighbors, including through group nodes. When hovering a node while another is selected, the green highlight also traces the full visual path through groups. The Links tab hover highlights only the selected node's children (not the hovered child's neighbors).
+- **Graph View detail panel persistence** — Clicking a different node while the detail panel is expanded now keeps it open and updates the panel with the new selection, instead of collapsing it. Clicking the empty canvas still collapses.
+- **Graph View "Selected with children" highlighting** — The Legend panel's Selection tab gains a new **Selected with children** radio option that highlights selected nodes plus all their visual and real neighbors. Hold **Shift** as a keyboard shortcut to temporarily apply this highlighting without opening the Legend panel.
 
 ---
 

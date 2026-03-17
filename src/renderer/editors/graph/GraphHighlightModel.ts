@@ -42,6 +42,10 @@ export class GraphHighlightModel {
     hoveredChild = new Set<string>();
     externalHoverId = "";
     hoveredBadgeNodeId = "";
+    /** Canonical link keys on visual paths from selected nodes to their real neighbors. */
+    selectedLinkKeys = new Set<string>();
+    /** Canonical link keys on visual path from selected node(s) to the hovered node. */
+    hoveredLinkKeys = new Set<string>();
 
     // =========================================================================
     // Layer management
@@ -82,15 +86,15 @@ export class GraphHighlightModel {
     // =========================================================================
 
     /** Set single selection (replaces any multi-selection). */
-    selectSingle(id: string, links: GraphLink[]): void {
+    selectSingle(id: string, neighbors: ReadonlySet<string>): void {
         this.activeId = id;
-        this.activeChild = id ? this.computeNeighborIds(id, links) : new Set();
+        this.activeChild = id ? new Set(neighbors) : new Set();
         this.selectedIds = id ? new Set([id]) : new Set();
         this.selectedChildren = this.activeChild;
     }
 
     /** Toggle a node in/out of multi-selection. */
-    toggleSelected(id: string, links: GraphLink[]): void {
+    toggleSelected(id: string, getNeighbors: (nodeId: string) => ReadonlySet<string>): void {
         if (this.selectedIds.has(id)) {
             this.selectedIds.delete(id);
         } else {
@@ -99,32 +103,19 @@ export class GraphHighlightModel {
         // Update activeId to the last toggled-in node (or first remaining, or empty)
         if (this.selectedIds.has(id)) {
             this.activeId = id;
-            this.activeChild = this.computeNeighborIds(id, links);
+            this.activeChild = new Set(getNeighbors(id));
         } else if (this.selectedIds.size > 0) {
             const last = [...this.selectedIds].pop()!;
             this.activeId = last;
-            this.activeChild = this.computeNeighborIds(last, links);
+            this.activeChild = new Set(getNeighbors(last));
         } else {
             this.activeId = "";
             this.activeChild = new Set();
         }
-        this.recomputeSelectedChildren(links);
-    }
-
-    /** Clear all selection state. */
-    clearSelection(links: GraphLink[]): void {
-        this.selectSingle("", links);
-    }
-
-    /** Recompute the union of neighbors for all selected nodes. */
-    private recomputeSelectedChildren(links: GraphLink[]): void {
-        if (this.selectedIds.size === 0) {
-            this.selectedChildren = new Set();
-            return;
-        }
+        // Recompute union of neighbors for all selected nodes
         const children = new Set<string>();
         for (const nodeId of this.selectedIds) {
-            for (const neighborId of this.computeNeighborIds(nodeId, links)) {
+            for (const neighborId of getNeighbors(nodeId)) {
                 if (!this.selectedIds.has(neighborId)) {
                     children.add(neighborId);
                 }
@@ -133,18 +124,23 @@ export class GraphHighlightModel {
         this.selectedChildren = children;
     }
 
-    /** Set the hovered node. Computes neighbor set from links. */
-    setHoveredId(id: string, links: GraphLink[]): void {
+    /** Clear all selection state. */
+    clearSelection(): void {
+        this.selectSingle("", new Set());
+    }
+
+    /** Set the hovered node with pre-computed neighbors. */
+    setHoveredId(id: string, neighbors: ReadonlySet<string>): void {
         this.hoveredId = id;
-        this.hoveredChild = id ? this.computeNeighborIds(id, links) : new Set();
+        this.hoveredChild = id ? new Set(neighbors) : new Set();
     }
 
     /** Set hover from external source (e.g. grid row focus). */
-    setExternalHover(id: string, links: GraphLink[]): void {
+    setExternalHover(id: string, neighbors: ReadonlySet<string>): void {
         this.externalHoverId = id;
         if (this.hoveredId === id) return;
         this.hoveredId = id;
-        this.hoveredChild = id ? this.computeNeighborIds(id, links) : new Set();
+        this.hoveredChild = id ? new Set(neighbors) : new Set();
     }
 
     /** Clear active/hovered state if the node is not in the given set. */
@@ -205,31 +201,16 @@ export class GraphHighlightModel {
 
     linkColor(link: GraphLink, colors: ResolvedColors): string {
         const { source, target } = linkIds(link);
-        // Green highlight for the link between any selected node and hovered node
-        if (this.hoveredId && this.selectedIds.size > 0
-            && ((this.selectedIds.has(source) && target === this.hoveredId)
-             || (this.selectedIds.has(target) && source === this.hoveredId))) {
-            return colors.borderHighlight;
-        }
+        const key = (this.selectedLinkKeys.size > 0 || this.hoveredLinkKeys.size > 0)
+            ? (source < target ? `${source}→${target}` : `${target}→${source}`)
+            : "";
+        // Green highlight for the full visual path between selected node(s) and hovered node
+        if (key && this.hoveredLinkKeys.has(key)) return colors.borderHighlight;
+        // Orange for links on visual paths to real neighbors of selected nodes
+        if (key && this.selectedLinkKeys.has(key)) return colors.linkSelected;
         return this.selectedIds.has(source) || this.selectedIds.has(target)
             ? colors.linkSelected
             : colors.linkDefault;
     }
 
-    // =========================================================================
-    // Internals
-    // =========================================================================
-
-    private computeNeighborIds(nodeId: string, links: GraphLink[]): Set<string> {
-        const ids = links
-            .filter((link) => {
-                const { source, target } = linkIds(link);
-                return source === nodeId || target === nodeId;
-            })
-            .flatMap((link) => {
-                const { source, target } = linkIds(link);
-                return [source, target].filter((id) => id !== nodeId);
-            });
-        return new Set(ids);
-    }
 }

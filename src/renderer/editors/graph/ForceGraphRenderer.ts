@@ -5,6 +5,7 @@ import { GraphData, GraphNode, GraphLink, NodeShape, linkIds, nodeLabel, effecti
 import { getShapePoints } from "./shapeGeometry";
 import { forceProperties } from "./constants";
 import { GraphHighlightModel, ResolvedColors } from "./GraphHighlightModel";
+import type { GraphConnectivityModel } from "./GraphConnectivityModel";
 import color from "../../theme/color";
 import { closeAppPopupMenu } from "../../ui/dialogs/poppers/showPopupMenu";
 
@@ -76,6 +77,8 @@ export class ForceGraphRenderer {
     onDoubleClick: ((nodeId: string) => void) | null = null;
     /** Synthetic link counts from group pre-processing (for per-link force distance). */
     syntheticLinkCounts: Map<string, number> | null = null;
+    /** Connectivity model for neighbor lookups. */
+    connectivityModel: GraphConnectivityModel | null = null;
     private _rootNodeId = "";
     private _lastClientX = 0;
     private _lastClientY = 0;
@@ -190,10 +193,17 @@ export class ForceGraphRenderer {
         this.renderData();
     }
 
+    /** Set Alt-key highlight layer (selected + children). Null to clear. */
+    setAltKeyHighlight(ids: Set<string> | null): void {
+        this.highlight.setLayer("altKey", ids);
+        this.renderData();
+    }
+
     /** Set hover state from external source (e.g. grid row focus). Empty string clears. */
-    setExternalHover(id: string): void {
+    setExternalHover(id: string, neighbors: ReadonlySet<string>): void {
         if (this.highlight.hoveredId === id && this.highlight.externalHoverId === id) return;
-        this.highlight.setExternalHover(id, this.graphData.links);
+        this.highlight.setExternalHover(id, neighbors);
+        this.computeHoveredLinkKeys();
         this.renderData();
         // Don't fire onHoverChanged — tooltip is not meaningful for external hover
     }
@@ -221,12 +231,14 @@ export class ForceGraphRenderer {
     /** Add multiple nodes to the current selection. */
     addToSelection(nodeIds: string[]): void {
         if (nodeIds.length === 0) return;
-        const links = this.graphData.links;
+        const getNeighbors = (nid: string): ReadonlySet<string> =>
+            this.connectivityModel?.getProcessedNeighborIds(nid) ?? new Set();
         for (const id of nodeIds) {
             if (!this.highlight.selectedIds.has(id)) {
-                this.highlight.toggleSelected(id, links);
+                this.highlight.toggleSelected(id, getNeighbors);
             }
         }
+        this.computeSelectedLinkKeys();
         this.renderData();
         this.onSelectionChanged?.(new Set(this.highlight.selectedIds));
     }
@@ -348,7 +360,10 @@ export class ForceGraphRenderer {
 
         // Ctrl+Click on a node → toggle multi-selection
         if (event.ctrlKey && node) {
-            this.highlight.toggleSelected(node.id, this.graphData.links);
+            const getNeighbors = (nid: string): ReadonlySet<string> =>
+                this.connectivityModel?.getProcessedNeighborIds(nid) ?? new Set();
+            this.highlight.toggleSelected(node.id, getNeighbors);
+            this.computeSelectedLinkKeys();
             this.renderData();
             this.onSelectionChanged?.(new Set(this.highlight.selectedIds));
             return;
@@ -591,6 +606,11 @@ export class ForceGraphRenderer {
         });
     }
 
+    /** Check if there is a node at the given mouse event position (for auto-collapse decisions). */
+    hasNodeAt(event: React.MouseEvent<HTMLCanvasElement>): boolean {
+        return this.findNodeAt(event) !== undefined;
+    }
+
     private findNodeAt(event: React.MouseEvent<HTMLCanvasElement>): GraphNode | undefined {
         if (!this.canvas) return undefined;
         const rect = this.canvas.getBoundingClientRect();
@@ -632,16 +652,51 @@ export class ForceGraphRenderer {
     private setActiveId(id: string): void {
         const prevIds = this.highlight.selectedIds;
         const changed = prevIds.size !== (id ? 1 : 0) || (id && !prevIds.has(id));
-        this.highlight.selectSingle(id, this.graphData.links);
+        this.highlight.selectSingle(id, this.connectivityModel?.getProcessedNeighborIds(id) ?? new Set());
+        this.computeSelectedLinkKeys();
         this.renderData();
         if (changed) this.onSelectionChanged?.(new Set(this.highlight.selectedIds));
     }
 
+    /** Compute canonical link keys on visual paths from selected nodes to their real neighbors. */
+    private computeSelectedLinkKeys(): void {
+        const cm = this.connectivityModel;
+        const keys = new Set<string>();
+        if (cm && this.highlight.selectedIds.size > 0) {
+            for (const nodeId of this.highlight.selectedIds) {
+                for (const realNeighborId of cm.getRealNeighborIds(nodeId)) {
+                    for (const key of cm.getVisualPath(nodeId, realNeighborId)) {
+                        keys.add(key);
+                    }
+                }
+            }
+        }
+        this.highlight.selectedLinkKeys = keys;
+    }
+
     private setHoveredId(id: string): void {
         const changed = this.highlight.hoveredId !== id;
-        this.highlight.setHoveredId(id, this.graphData.links);
+        this.highlight.setHoveredId(id, this.connectivityModel?.getRealNeighborIds(id) ?? new Set());
+        this.computeHoveredLinkKeys();
         this.renderData();
         if (changed) this.onHoverChanged?.(id, this._lastClientX, this._lastClientY);
+    }
+
+    /** Compute canonical link keys on visual path from selected node(s) to hovered node (only if direct real neighbor). */
+    private computeHoveredLinkKeys(): void {
+        const cm = this.connectivityModel;
+        const hoveredId = this.highlight.hoveredId;
+        const keys = new Set<string>();
+        if (cm && hoveredId && this.highlight.selectedIds.size > 0) {
+            for (const nodeId of this.highlight.selectedIds) {
+                // Only highlight path if hovered node is a real (direct) neighbor
+                if (!cm.getRealNeighborIds(nodeId).has(hoveredId)) continue;
+                for (const key of cm.getVisualPath(nodeId, hoveredId)) {
+                    keys.add(key);
+                }
+            }
+        }
+        this.highlight.hoveredLinkKeys = keys;
     }
 
     // =========================================================================
@@ -691,16 +746,17 @@ export class ForceGraphRenderer {
 
         // Draw links
         graphData.links.forEach((d) => {
-            if (dimming) {
-                const { source, target } = linkIds(d);
-                ctx.globalAlpha = dimSet!.has(source) || dimSet!.has(target) ? 1.0 : 0.15;
-            }
             ctx.beginPath();
             ctx.moveTo((d.source as GraphNode).x || 0, (d.source as GraphNode).y || 0);
             ctx.lineTo((d.target as GraphNode).x || 0, (d.target as GraphNode).y || 0);
             const linkCol = highlight.linkColor(d, colors);
+            const isHighlighted = linkCol !== colors.linkDefault && linkCol !== colors.linkSelected;
+            if (dimming) {
+                const { source, target } = linkIds(d);
+                ctx.globalAlpha = isHighlighted || dimSet!.has(source) || dimSet!.has(target) ? 1.0 : 0.15;
+            }
             ctx.strokeStyle = linkCol;
-            ctx.lineWidth = linkCol === colors.borderHighlight ? 2 : 0.5;
+            ctx.lineWidth = isHighlighted ? 2 : 0.5;
             ctx.stroke();
         });
 

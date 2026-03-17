@@ -556,6 +556,43 @@ function GraphView({ model }: GraphViewProps) {
         document.body.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
     }, []);
 
+    // Shift key: show "selected with children" highlighting while held
+    useEffect(() => {
+        if (!vm) return;
+        const activeRef = { current: false };
+        const onKeyDown = (e: KeyboardEvent) => {
+            if (e.key !== "Shift" || activeRef.current) return;
+            const selectedIds = vm.renderer.selectedIds;
+            if (selectedIds.size === 0) return;
+            activeRef.current = true;
+            const ids = new Set(selectedIds);
+            const cm = vm.connectivityModel;
+            for (const nodeId of selectedIds) {
+                for (const id of cm.getProcessedNeighborIds(nodeId)) ids.add(id);
+                for (const id of cm.getRealNeighborIds(nodeId)) ids.add(id);
+            }
+            vm.renderer.setAltKeyHighlight(ids);
+        };
+        const onKeyUp = (e: KeyboardEvent) => {
+            if (e.key !== "Shift" || !activeRef.current) return;
+            activeRef.current = false;
+            vm.renderer.setAltKeyHighlight(null);
+        };
+        const onBlur = () => {
+            if (!activeRef.current) return;
+            activeRef.current = false;
+            vm.renderer.setAltKeyHighlight(null);
+        };
+        document.addEventListener("keydown", onKeyDown);
+        document.addEventListener("keyup", onKeyUp);
+        window.addEventListener("blur", onBlur);
+        return () => {
+            document.removeEventListener("keydown", onKeyDown);
+            document.removeEventListener("keyup", onKeyUp);
+            window.removeEventListener("blur", onBlur);
+        };
+    }, [vm]);
+
     if (!vm) return null;
 
     const { error, loading } = pageState;
@@ -577,6 +614,11 @@ function GraphView({ model }: GraphViewProps) {
                         onClick={(e) => {
                             if (panelDirtyRef.current) return;
                             if (isExpanded || panelExpandedRef.current) {
+                                // If clicking a node and only detail panel is expanded, keep it open
+                                if (!isExpanded && panelExpandedRef.current && vm.renderer.hasNodeAt(e)) {
+                                    vm.renderer.onClick(e);
+                                    return;
+                                }
                                 setToolbarPanel("closed");
                                 setCollapseRequest((n) => n + 1);
                                 return;

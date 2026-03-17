@@ -103,3 +103,6 @@ launcher/target/
 
 # Claude environment temporary files
 tmpclaude-*
+
+# Scratch files
+scratches/

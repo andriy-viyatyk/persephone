@@ -103,6 +103,9 @@ Sample data file: `D:\js-notepad-notes\temp\miserables.fg.json`
 | US-188 | Group node data model & rendering | Done |
 | US-189 | Group link pre-processing | Done |
 | US-190 | Group management UI | Done |
+| US-191 | Graph connectivity model | Done |
+| US-192 | Graph editor — Ongoing enhancements | Done |
+| US-193 | Multigrouping (Nested Group Hierarchy) | Planned |
 
 ## Phase 3 — Node Grouping
 

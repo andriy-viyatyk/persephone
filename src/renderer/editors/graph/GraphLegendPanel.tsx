@@ -9,7 +9,7 @@ import { ShapeIcon, LevelIcon } from "./GraphIcons";
 
 const ALL_SHAPES: NodeShape[] = ["circle", "square", "diamond", "triangle", "star", "hexagon"];
 type LegendTab = "level" | "shape" | "selection";
-type SelectionFilter = "" | "selected" | "not-selected";
+type SelectionFilter = "" | "selected" | "not-selected" | "selected-with-children";
 
 // =============================================================================
 // Component
@@ -26,10 +26,10 @@ export function GraphLegendPanel({ vm }: GraphLegendPanelProps) {
     const [checkedShapes, setCheckedShapes] = useState<Set<string>>(new Set());
     const [selectionFilter, setSelectionFilter] = useState<SelectionFilter>("");
     const [descriptions, setDescriptions] = useState<Record<string, Record<string, string>>>({ levels: {}, shapes: {} });
-    // Track selection count to reactively update the Selection tab highlight
-    const selectedCount = useSyncExternalStore(
+    // Track selected node IDs to reactively update the Selection tab highlight
+    const selectedKey = useSyncExternalStore(
         (cb) => vm.state.subscribe(cb),
-        () => vm.state.get().selectedNodes.length,
+        () => vm.state.get().selectedNodes.map((n) => n.id).join(","),
     );
     const debounceTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
@@ -72,6 +72,14 @@ export function GraphLegendPanel({ vm }: GraphLegendPanelProps) {
             }
             if (selectionFilter === "selected") {
                 vm.setLegendHighlight(new Set(selectedIds));
+            } else if (selectionFilter === "selected-with-children") {
+                const ids = new Set(selectedIds);
+                const cm = vm.connectivityModel;
+                for (const nodeId of selectedIds) {
+                    for (const id of cm.getProcessedNeighborIds(nodeId)) ids.add(id);
+                    for (const id of cm.getRealNeighborIds(nodeId)) ids.add(id);
+                }
+                vm.setLegendHighlight(ids);
             } else {
                 const allIds = new Set(vm.renderer.getNodes().map((n) => n.id));
                 for (const id of selectedIds) allIds.delete(id);
@@ -109,7 +117,7 @@ export function GraphLegendPanel({ vm }: GraphLegendPanelProps) {
             const ids = vm.getNodeIdsByLegendFilter({ shapes: shapeNames.size > 0 ? shapeNames : undefined, includeRoot, includeGroup });
             vm.setLegendHighlight(ids.size > 0 ? ids : new Set());
         }
-    }, [vm, expanded, activeTab, checkedLevels, checkedShapes, selectionFilter, selectedCount]);
+    }, [vm, expanded, activeTab, checkedLevels, checkedShapes, selectionFilter, selectedKey]);
 
     const toggleCheck = useCallback((tab: LegendTab, key: string) => {
         const setter = tab === "level" ? setCheckedLevels : setCheckedShapes;
@@ -267,6 +275,11 @@ export function GraphLegendPanel({ vm }: GraphLegendPanelProps) {
                                     label="Selected"
                                     checked={selectionFilter === "selected"}
                                     onToggle={() => setSelectionFilter((prev) => prev === "selected" ? "" : "selected")}
+                                />
+                                <SelectionRadioRow
+                                    label="Selected with children"
+                                    checked={selectionFilter === "selected-with-children"}
+                                    onToggle={() => setSelectionFilter((prev) => prev === "selected-with-children" ? "" : "selected-with-children")}
                                 />
                                 <SelectionRadioRow
                                     label="Not selected"

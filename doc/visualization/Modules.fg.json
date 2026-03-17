@@ -3636,6 +3636,26 @@
             "folder": "src/renderer/ui/tabs",
             "importedBy": 0,
             "imports": 2
+        },
+        {
+            "id": "group-1",
+            "isGroup": true,
+            "title": "Components"
+        },
+        {
+            "id": "group-2",
+            "isGroup": true,
+            "title": "Graph"
+        },
+        {
+            "id": "group-3",
+            "isGroup": true,
+            "title": "Scripting"
+        },
+        {
+            "id": "group-4",
+            "isGroup": true,
+            "title": "Core"
         }
     ],
     "links": [
@@ -10710,6 +10730,558 @@
         {
             "source": "src/renderer/ui/tabs/index.ts",
             "target": "src/renderer/ui/tabs/PageTab.tsx"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/virtualization/RenderGrid/AsyncRef.ts"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/data-grid/AVGrid/AVGrid.tsx"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/data-grid/AVGrid/model/AVGridActions.ts"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/data-grid/AVGrid/model/AVGridData.ts"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/data-grid/AVGrid/model/AVGridEvents.ts"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/data-grid/AVGrid/model/AVGridModel.ts"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/data-grid/AVGrid/avGridTypes.ts"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/data-grid/AVGrid/avGridUtils.ts"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/basic/Breadcrumb.tsx"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/TreeView/CategoryTree.tsx"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/basic/Checkbox.tsx"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/basic/Chip.tsx"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/basic/CircularProgress.tsx"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/layout/CollapsiblePanelStack.tsx"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/data-grid/AVGrid/model/ColumnsModel.ts"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/editors/grid/components/ColumnsOptions.tsx"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/form/ComboSelect.tsx"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/form/ComboTemplate.tsx"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/data-grid/AVGrid/model/ContextMenuModel.tsx"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/data-grid/AVGrid/model/CopyPasteModel.ts"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/editors/grid/components/CsvOptions.tsx"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/data-grid/AVGrid/DataCell.tsx"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/data-grid/AVGrid/DefaultEditFormater.tsx"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/data-grid/AVGrid/model/EditingModel.ts"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/basic/EditorErrorBoundary.tsx"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/data-grid/AVGrid/model/EffectsModel.ts"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/layout/Elements.tsx"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/file-explorer/file-tree-builder.ts"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/file-explorer/FileExplorer.tsx"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/file-explorer/FileExplorerModel.tsx"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/icons/FileIcon.tsx"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/data-grid/AVGrid/filters/FilterBar.tsx"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/data-grid/AVGrid/filters/FilterPoper.tsx"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/data-grid/AVGrid/model/FocusModel.ts"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/data-grid/AVGrid/HeaderCell.tsx"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/TreeView/index.ts"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/file-explorer/index.ts"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/basic/index.ts"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/form/index.ts"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/layout/index.ts"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/overlay/index.ts"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/virtualization/index.ts"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/data-grid/index.ts"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/index.ts"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/basic/Input.tsx"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/basic/InputBase.tsx"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/icons/LanguageIcon.tsx"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/form/List.tsx"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/form/ListMultiselect.tsx"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/layout/Minimap.tsx"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/data-grid/AVGrid/filters/OptionsFilterContent.tsx"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/basic/OverflowTooltipText.tsx"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/basic/PathInput.tsx"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/overlay/Popper.tsx"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/overlay/PopupMenu.tsx"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/basic/Radio.tsx"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/virtualization/RenderGrid/RenderFlexGrid.tsx"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/virtualization/RenderGrid/RenderGrid.tsx"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/virtualization/RenderGrid/RenderGridModel.ts"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/virtualization/RenderGrid/renderInfo.ts"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/virtualization/RenderGrid/rerender-check.ts"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/data-grid/AVGrid/model/RowsModel.ts"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/data-grid/AVGrid/SelectColumn.tsx"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/data-grid/AVGrid/model/SelectedModel.ts"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/data-grid/AVGrid/model/SortColumnModel.ts"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/layout/Splitter.tsx"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/form/SwitchButtons.tsx"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/basic/TagsList.tsx"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/basic/TextAreaField.tsx"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/basic/TextField.tsx"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/editors/todo/components/TodoItemView.tsx"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/editors/todo/components/TodoListPanel.tsx"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/basic/Tooltip.tsx"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/TreeView/TreeView.model.ts"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/TreeView/TreeView.tsx"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/virtualization/RenderGrid/types.ts"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/basic/types.ts"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/data-grid/AVGrid/useAVGridContext.ts"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/data-grid/AVGrid/filters/useFilters.tsx"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/basic/useHighlightedText.tsx"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/data-grid/useResolveOptions.ts"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/form/utils.ts"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/data-grid/AVGrid/utils.tsx"
+        },
+        {
+            "source": "group-1",
+            "target": "src/renderer/components/overlay/WithPopupMenu.tsx"
+        },
+        {
+            "source": "group-2",
+            "target": "src/renderer/components/basic/Button.tsx"
+        },
+        {
+            "source": "group-2",
+            "target": "src/renderer/editors/graph/constants.ts"
+        },
+        {
+            "source": "group-2",
+            "target": "src/renderer/editors/graph/ForceGraphRenderer.ts"
+        },
+        {
+            "source": "group-2",
+            "target": "src/renderer/editors/graph/GraphDetailPanel.tsx"
+        },
+        {
+            "source": "group-2",
+            "target": "src/renderer/editors/graph/GraphExpansionSettings.tsx"
+        },
+        {
+            "source": "group-2",
+            "target": "src/renderer/editors/graph/GraphTooltip.tsx"
+        },
+        {
+            "source": "group-2",
+            "target": "src/renderer/editors/graph/GraphTuningSliders.tsx"
+        },
+        {
+            "source": "group-2",
+            "target": "src/renderer/editors/graph/GraphView.tsx"
+        },
+        {
+            "source": "group-2",
+            "target": "src/renderer/editors/graph/GraphViewModel.ts"
+        },
+        {
+            "source": "group-2",
+            "target": "src/renderer/editors/graph/GraphVisibilityModel.ts"
+        },
+        {
+            "source": "group-2",
+            "target": "src/renderer/editors/graph/index.ts"
+        },
+        {
+            "source": "group-2",
+            "target": "src/renderer/editors/graph/types.ts"
+        },
+        {
+            "source": "group-3",
+            "target": "src/renderer/scripting/api-wrapper/AppWrapper.ts"
+        },
+        {
+            "source": "group-3",
+            "target": "src/renderer/scripting/api-wrapper/BrowserEditorFacade.ts"
+        },
+        {
+            "source": "group-3",
+            "target": "src/renderer/scripting/api-wrapper/Grid.ts"
+        },
+        {
+            "source": "group-3",
+            "target": "src/renderer/scripting/api-wrapper/GridEditorFacade.ts"
+        },
+        {
+            "source": "group-3",
+            "target": "src/renderer/scripting/api-wrapper/HtmlEditorFacade.ts"
+        },
+        {
+            "source": "group-3",
+            "target": "src/renderer/scripting/library-require.ts"
+        },
+        {
+            "source": "group-3",
+            "target": "src/renderer/scripting/api-wrapper/LinkEditorFacade.ts"
+        },
+        {
+            "source": "group-3",
+            "target": "src/renderer/scripting/api-wrapper/Markdown.ts"
+        },
+        {
+            "source": "group-3",
+            "target": "src/renderer/scripting/api-wrapper/MarkdownEditorFacade.ts"
+        },
+        {
+            "source": "group-3",
+            "target": "src/renderer/scripting/api-wrapper/Mermaid.ts"
+        },
+        {
+            "source": "group-3",
+            "target": "src/renderer/scripting/api-wrapper/MermaidEditorFacade.ts"
+        },
+        {
+            "source": "group-3",
+            "target": "src/renderer/scripting/api-wrapper/NotebookEditorFacade.ts"
+        },
+        {
+            "source": "group-3",
+            "target": "src/renderer/scripting/api-wrapper/PageCollectionWrapper.ts"
+        },
+        {
+            "source": "group-3",
+            "target": "src/renderer/scripting/api-wrapper/PageWrapper.ts"
+        },
+        {
+            "source": "group-3",
+            "target": "src/renderer/scripting/api-wrapper/Progress.ts"
+        },
+        {
+            "source": "group-3",
+            "target": "src/renderer/scripting/ScriptContext.ts"
+        },
+        {
+            "source": "group-3",
+            "target": "src/renderer/scripting/ScriptRunner.ts"
+        },
+        {
+            "source": "group-3",
+            "target": "src/renderer/scripting/api-wrapper/StyledTextBuilder.ts"
+        },
+        {
+            "source": "group-3",
+            "target": "src/renderer/scripting/api-wrapper/SvgEditorFacade.ts"
+        },
+        {
+            "source": "group-3",
+            "target": "src/renderer/scripting/api-wrapper/Text.ts"
+        },
+        {
+            "source": "group-3",
+            "target": "src/renderer/scripting/api-wrapper/TextEditorFacade.ts"
+        },
+        {
+            "source": "group-3",
+            "target": "src/renderer/scripting/api-wrapper/TodoEditorFacade.ts"
+        },
+        {
+            "source": "group-3",
+            "target": "src/renderer/scripting/transpile.ts"
+        },
+        {
+            "source": "group-3",
+            "target": "src/renderer/scripting/api-wrapper/UiFacade.ts"
+        },
+        {
+            "source": "group-4",
+            "target": "src/renderer/core/utils/csv-utils.ts"
+        },
+        {
+            "source": "group-4",
+            "target": "src/renderer/core/state/events.ts"
+        },
+        {
+            "source": "group-4",
+            "target": "src/renderer/core/utils/file-path.ts"
+        },
+        {
+            "source": "group-4",
+            "target": "src/renderer/core/utils/file-watcher.ts"
+        },
+        {
+            "source": "group-4",
+            "target": "src/renderer/core/utils/index.ts"
+        },
+        {
+            "source": "group-4",
+            "target": "src/renderer/core/state/index.ts"
+        },
+        {
+            "source": "group-4",
+            "target": "src/renderer/core/index.ts"
+        },
+        {
+            "source": "group-4",
+            "target": "src/renderer/core/utils/language-mapping.ts"
+        },
+        {
+            "source": "group-4",
+            "target": "src/renderer/core/utils/memorize.ts"
+        },
+        {
+            "source": "group-4",
+            "target": "src/renderer/core/state/model.ts"
+        },
+        {
+            "source": "group-4",
+            "target": "src/renderer/core/utils/monaco-languages.ts"
+        },
+        {
+            "source": "group-4",
+            "target": "src/renderer/core/utils/obj-path.ts"
+        },
+        {
+            "source": "group-4",
+            "target": "src/renderer/core/utils/parse-utils.ts"
+        },
+        {
+            "source": "group-4",
+            "target": "src/renderer/core/utils/path-utils.ts"
+        },
+        {
+            "source": "group-4",
+            "target": "src/renderer/core/state/state.ts"
+        },
+        {
+            "source": "group-4",
+            "target": "src/renderer/core/utils/types.ts"
+        },
+        {
+            "source": "group-4",
+            "target": "src/renderer/core/utils/utils.ts"
+        },
+        {
+            "source": "group-4",
+            "target": "src/renderer/core/state/view.tsx"
         }
     ],
     "options": {

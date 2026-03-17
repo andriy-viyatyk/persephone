@@ -6,6 +6,7 @@ import { GraphVisibilityModel } from "./GraphVisibilityModel";
 import { GraphDataModel } from "./GraphDataModel";
 import { GraphSearchModel } from "./GraphSearchModel";
 import { GraphGroupModel } from "./GraphGroupModel";
+import { GraphConnectivityModel } from "./GraphConnectivityModel";
 import { showAppPopupMenu } from "../../ui/dialogs/poppers/showPopupMenu";
 import { buildNodeContextMenu, buildEmptyAreaContextMenu, buildGroupNodeContextMenu, ContextMenuActions } from "./GraphContextMenu";
 import { showInputDialog } from "../../ui/dialogs/InputDialog";
@@ -53,6 +54,7 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
     readonly visibilityModel = new GraphVisibilityModel();
     readonly dataModel = new GraphDataModel();
     readonly groupModel = new GraphGroupModel();
+    readonly connectivityModel = new GraphConnectivityModel();
     readonly searchModel: GraphSearchModel;
     /** Set by GraphView to handle double-click on a node (e.g. expand detail panel). */
     onDoubleClickNode: ((nodeId: string) => void) | null = null;
@@ -202,9 +204,13 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
         this.renderer.setHighlightSet(ids);
     }
 
-    /** Set hover highlight on a node from external source (e.g. grid focus). Empty to clear. */
+    /** Set hover highlight on a node from external source (e.g. Links tab grid focus). Empty to clear.
+     *  Uses selected node's real neighbors (not the hovered child's) so only the selected node's
+     *  children get green borders/labels. */
     setExternalHover(id: string): void {
-        this.renderer.setExternalHover(id);
+        const selectedId = this.renderer.selectedId;
+        const neighbors = selectedId ? this.connectivityModel.getRealNeighborIds(selectedId) : new Set<string>();
+        this.renderer.setExternalHover(id, neighbors);
     }
 
     /** Highlight a set of node IDs from legend panel. Null to clear. */
@@ -503,7 +509,7 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
 
             const items = buildNodeContextMenu(
                 nodeId,
-                this.dataModel.getNeighborIdsFromSource(nodeId),
+                [...this.connectivityModel.getRealNeighborIds(nodeId)],
                 (id) => this.dataModel.getNodeLabel(id),
                 nodeId === this.rootNodeId,
                 this.visibilityModel.active,
@@ -583,7 +589,9 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
                 // Only compute linked nodes for single selection
                 if (selectedIds.size === 1) {
                     const id = [...selectedIds][0];
-                    s.linkedNodes = this.dataModel.computeLinkedNodes(id);
+                    s.linkedNodes = this.connectivityModel.getRealNeighborNodes(
+                        id, this.dataModel.sourceData?.nodes ?? [], (n) => this.dataModel.cleanNode(n),
+                    );
                 } else {
                     s.linkedNodes = [];
                 }
@@ -603,7 +611,9 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
                 .map((n) => ({ ...n }));
             if (selectedIds.size === 1) {
                 const id = [...selectedIds][0];
-                s.linkedNodes = this.dataModel.computeLinkedNodes(id);
+                s.linkedNodes = this.connectivityModel.getRealNeighborNodes(
+                    id, nodes, (n) => this.dataModel.cleanNode(n),
+                );
             } else {
                 s.linkedNodes = [];
             }
@@ -913,6 +923,9 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
         const rootId = options?.rootNode ?? "";
         const processed = this.groupModel.preprocess(nodes, links, rootId);
 
+        // Build connectivity model (real + processed adjacency)
+        this.connectivityModel.rebuild(nodes, links, processed, this.groupModel);
+
         let filtering: boolean;
         if (this.isFirstLoad) {
             // First load: full reset (computes initial BFS visible set)
@@ -926,8 +939,9 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
             ? this.visibilityModel.getVisibleGraph()
             : { nodes: processed.nodes.map((n) => ({ ...n })), links: processed.links.map((l) => ({ ...l })), options };
 
-        // Pass synthetic link counts to renderer for per-link force distance
+        // Pass synthetic link counts and connectivity model to renderer
         this.renderer.syntheticLinkCounts = processed.syntheticLinkCounts;
+        this.renderer.connectivityModel = this.connectivityModel;
 
         if (this.isFirstLoad) {
             this.renderer.updateData(copy);

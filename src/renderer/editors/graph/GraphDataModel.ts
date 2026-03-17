@@ -324,14 +324,6 @@ export class GraphDataModel {
         return clean as unknown as GraphNode;
     }
 
-    computeLinkedNodes(nodeId: string): GraphNode[] {
-        if (!this.sourceData || !nodeId) return [];
-        const neighborIds = new Set(this.getNeighborIdsFromSource(nodeId));
-        return this.sourceData.nodes
-            .filter((n) => neighborIds.has(n.id))
-            .map((n) => this.cleanNode(n));
-    }
-
     // =========================================================================
     // Helpers
     // =========================================================================
@@ -366,17 +358,6 @@ export class GraphDataModel {
             const { source, target } = linkIds(link);
             return (source === aId && target === bId) || (source === bId && target === aId);
         });
-    }
-
-    getNeighborIdsFromSource(nodeId: string): string[] {
-        if (!this.sourceData) return [];
-        const neighbors: string[] = [];
-        for (const link of this.sourceData.links) {
-            const { source, target } = linkIds(link);
-            if (source === nodeId) neighbors.push(target);
-            else if (target === nodeId) neighbors.push(source);
-        }
-        return neighbors;
     }
 
     getNodeLabel(nodeId: string): string {

@@ -11,6 +11,7 @@ Current work in progress and planned tasks.
 
 | ID | Title | Epic | Notes |
 |----|-------|------|-------|
+| US-193 | Multigrouping (Nested Group Hierarchy) | EPIC-006 | Sub-groups, group-in-group, multi-level link routing |
 
 
 ## Completed
