@@ -105,7 +105,12 @@ Sample data file: `D:\js-notepad-notes\temp\miserables.fg.json`
 | US-190 | Group management UI | Done |
 | US-191 | Graph connectivity model | Done |
 | US-192 | Graph editor — Ongoing enhancements | Done |
-| US-193 | Multigrouping (Nested Group Hierarchy) | Planned |
+| US-193 | Multigrouping (Nested Group Hierarchy) | Done |
+| US-196 | Graph selection enhancements | Done |
+| US-197 | Disable graph grouping | Done |
+| US-198 | Graph editor — Ongoing enhancements 2 | Done |
+| US-199 | Graph editor scripting API | Done |
+| US-200 | Graph editor — Ongoing enhancements 3 | Done |
 
 ## Phase 3 — Node Grouping
 

@@ -73,13 +73,18 @@ export function formatPropertyValue(value: unknown): string {
     return json.length > 100 ? json.slice(0, 97) + "..." : json;
 }
 
+/** Strip indexed suffix (e.g. "function#1" → "function") for display. */
+function stripIndexedSuffix(key: string): string {
+    return key.replace(/#\d+$/, "");
+}
+
 /** Get custom (non-core, non-system) properties from a GraphNode as [key, formattedValue] pairs. */
 export function getCustomProperties(node: GraphNode): Array<[string, string]> {
     const result: Array<[string, string]> = [];
     for (const [key, value] of Object.entries(node)) {
         if (CUSTOM_PROP_EXCLUDED_KEYS.has(key) || key.startsWith(SYS_PREFIX)) continue;
         if (value === undefined) continue;
-        result.push([key, formatPropertyValue(value)]);
+        result.push([stripIndexedSuffix(key), formatPropertyValue(value)]);
     }
     return result;
 }
@@ -87,6 +92,55 @@ export function getCustomProperties(node: GraphNode): Array<[string, string]> {
 /** Check if a key is reserved (core, presentation, D3, or system prefix). */
 export function isReservedPropertyKey(key: string): boolean {
     return CUSTOM_PROP_EXCLUDED_KEYS.has(key) || key.startsWith(SYS_PREFIX);
+}
+
+// =============================================================================
+// Link extraction
+// =============================================================================
+
+/** Regex to match markdown links: [text](href) */
+const LINK_RE = /\[([^\]]+)\]\(([^)]+)\)/g;
+
+/** A link found in a node's custom property. */
+export interface NodePropertyLink {
+    /** Custom property key (e.g. "path", "url"). */
+    propertyKey: string;
+    /** Link text from markdown syntax. */
+    text: string;
+    /** Raw href from markdown syntax. */
+    href: string;
+}
+
+/** Convert a href to a navigable URL. Local file paths become file:// URLs. */
+export function toNavigableHref(href: string): string {
+    if (/^https?:\/\/|^file:\/\/|^mailto:/i.test(href)) return href;
+    const normalized = href.replace(/\\/g, "/");
+    return `file:///${normalized.replace(/^\//, "")}`;
+}
+
+/** Extract all markdown links from a node's custom properties. */
+export function getNodeLinks(node: GraphNode): NodePropertyLink[] {
+    const links: NodePropertyLink[] = [];
+    for (const [key, value] of Object.entries(node)) {
+        if (CUSTOM_PROP_EXCLUDED_KEYS.has(key) || key.startsWith(SYS_PREFIX)) continue;
+        if (typeof value !== "string") continue;
+        LINK_RE.lastIndex = 0;
+        let match: RegExpExecArray | null;
+        while ((match = LINK_RE.exec(value)) !== null) {
+            links.push({ propertyKey: stripIndexedSuffix(key), text: match[1], href: match[2] });
+        }
+    }
+    return links;
+}
+
+/** Open a link by simulating an <a> tag click (lets Electron main process handle navigation). */
+export function openNodeLink(href: string): void {
+    const a = document.createElement("a");
+    a.href = toNavigableHref(href);
+    a.style.display = "none";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
 }
 
 // =============================================================================

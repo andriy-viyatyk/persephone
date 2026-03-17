@@ -269,6 +269,7 @@ See [/doc/standards/coding-style.md](doc/standards/coding-style.md) for complete
 | Log view editor          | `/src/renderer/editors/log-view/LogViewModel.ts`  |
 | Notebook editor model    | `/src/renderer/editors/notebook/NotebookEditorModel.ts` |
 | Notebook types           | `/src/renderer/editors/notebook/notebookTypes.ts` |
+| Graph editor model       | `/src/renderer/editors/graph/GraphViewModel.ts`   |
 | Base virtualization      | `/src/renderer/components/virtualization/RenderGrid.tsx` |
 | Advanced grid            | `/src/renderer/components/data-grid/AVGrid.tsx`   |
 | Color tokens             | `/src/renderer/theme/color.ts`                    |

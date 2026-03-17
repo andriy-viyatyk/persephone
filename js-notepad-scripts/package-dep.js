@@ -144,6 +144,20 @@ const graphData = {
         linkDistance: 35,
         collide: 0.6,
         maxVisible: 500,
+        legend: {
+            levels: {
+                root: "project root",
+                "1": "20+ dependents",
+                "2": "10–19 dependents",
+                "3": "5–9 dependents",
+                "4": "2–4 dependents",
+                "5": "0–1 dependents",
+            },
+            shapes: {
+                star: "project root",
+                circle: "npm packages",
+            },
+        },
     },
 };
 

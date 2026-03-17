@@ -21,7 +21,7 @@ interface GraphLegendPanelProps {
 
 export function GraphLegendPanel({ vm }: GraphLegendPanelProps) {
     const [expanded, setExpanded] = useState(false);
-    const [activeTab, setActiveTab] = useState<LegendTab>("level");
+    const [activeTab, setActiveTab] = useState<LegendTab>("selection");
     const [checkedLevels, setCheckedLevels] = useState<Set<string>>(new Set());
     const [checkedShapes, setCheckedShapes] = useState<Set<string>>(new Set());
     const [selectionFilter, setSelectionFilter] = useState<SelectionFilter>("");
@@ -31,7 +31,21 @@ export function GraphLegendPanel({ vm }: GraphLegendPanelProps) {
         (cb) => vm.state.subscribe(cb),
         () => vm.state.get().selectedNodes.map((n) => n.id).join(","),
     );
+    const searchQuery = useSyncExternalStore(
+        (cb) => vm.state.subscribe(cb),
+        () => vm.state.get().searchQuery,
+    );
     const debounceTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+
+    // Register callback for "Highlight" action from selection menu
+    useEffect(() => {
+        vm.onHighlightSelection = () => {
+            setExpanded(true);
+            setActiveTab("selection");
+            setSelectionFilter("selected");
+        };
+        return () => { vm.onHighlightSelection = null; };
+    }, [vm]);
 
     // Load descriptions from VM on mount and when data changes
     useEffect(() => {
@@ -168,7 +182,20 @@ export function GraphLegendPanel({ vm }: GraphLegendPanelProps) {
             </div>
             {expanded && (
                 <>
+                    {searchQuery ? (
+                        <div className="legend-search-notice">
+                            <span>Search highlighting is active</span>
+                            <button className="legend-clear-search" onClick={() => vm.setSearchQuery("")}>Clear search</button>
+                        </div>
+                    ) : (
+                    <>
                     <div className="legend-tabs">
+                        <button
+                            className={`legend-tab${activeTab === "selection" ? " active" : ""}`}
+                            onClick={() => setActiveTab("selection")}
+                        >
+                            Selection
+                        </button>
                         <button
                             className={`legend-tab${activeTab === "level" ? " active" : ""}`}
                             onClick={() => setActiveTab("level")}
@@ -180,12 +207,6 @@ export function GraphLegendPanel({ vm }: GraphLegendPanelProps) {
                             onClick={() => setActiveTab("shape")}
                         >
                             Shape
-                        </button>
-                        <button
-                            className={`legend-tab${activeTab === "selection" ? " active" : ""}`}
-                            onClick={() => setActiveTab("selection")}
-                        >
-                            Selection
                         </button>
                     </div>
                     <div className="legend-content">
@@ -289,6 +310,8 @@ export function GraphLegendPanel({ vm }: GraphLegendPanelProps) {
                             </>
                         )}
                     </div>
+                    </>
+                    )}
                 </>
             )}
         </div>

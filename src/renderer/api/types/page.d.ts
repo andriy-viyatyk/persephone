@@ -9,6 +9,7 @@ import type { IMarkdownEditor } from "./markdown-editor";
 import type { ISvgEditor } from "./svg-editor";
 import type { IHtmlEditor } from "./html-editor";
 import type { IMermaidEditor } from "./mermaid-editor";
+import type { IGraphEditor } from "./graph-editor";
 
 /**
  * IPage — represents a page (tab) in the current window.
@@ -93,6 +94,9 @@ export interface IPage {
 
     /** Get Mermaid diagram preview interface. Only for text pages with mermaid content. */
     asMermaid(): Promise<IMermaidEditor>;
+
+    /** Get graph editor interface. Only for text pages with force-graph JSON content. */
+    asGraph(): Promise<IGraphEditor>;
 
     /** Get browser editor interface. Only for browser pages. */
     asBrowser(): Promise<IBrowserEditor>;

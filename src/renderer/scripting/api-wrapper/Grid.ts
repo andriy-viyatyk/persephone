@@ -2,7 +2,6 @@ import type { LogViewModel } from "../../editors/log-view/LogViewModel";
 import type { StyledText, GridOutputEntry } from "../../editors/log-view/logTypes";
 import type { GridColumn } from "../../editors/grid/utils/grid-utils";
 import { pagesModel } from "../../api/pages";
-import { isTextFileModel } from "../../editors/text/TextPageModel";
 
 /**
  * Grid helper returned by `ui.show.grid()`.
@@ -43,9 +42,6 @@ export class Grid {
 
     openInEditor(pageTitle?: string): void {
         const title = pageTitle ?? (typeof this._title === "string" ? this._title : "Grid Data");
-        const page = pagesModel.addEditorPage("grid-json", "json", title);
-        if (isTextFileModel(page)) {
-            page.changeContent(JSON.stringify(this._data, null, 2));
-        }
+        pagesModel.addEditorPage("grid-json", "json", title, JSON.stringify(this._data, null, 2));
     }
 }

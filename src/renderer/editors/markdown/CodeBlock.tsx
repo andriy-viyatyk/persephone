@@ -127,8 +127,7 @@ function MermaidBlock({ code, lightMode }: { code: string; lightMode: boolean })
     }, []);
 
     const handleOpen = useCallback(() => {
-        const page = pagesModel.addEditorPage("mermaid-view", "mermaid", "Mermaid Diagram");
-        (page as any).changeContent(code);
+        pagesModel.addEditorPage("mermaid-view", "mermaid", "Mermaid Diagram", code);
     }, [code]);
 
     if (error) {

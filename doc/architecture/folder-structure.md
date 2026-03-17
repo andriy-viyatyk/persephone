@@ -24,7 +24,8 @@ js-notepad/
 │   ├── script-library/     # Bundled example scripts (copied to user library on setup)
 │   ├── mcp-res-ui-push.md  # MCP resource: ui_push tool guide
 │   ├── mcp-res-pages.md    # MCP resource: pages & windows guide
-│   └── mcp-res-scripting.md # MCP resource: scripting API reference
+│   ├── mcp-res-scripting.md # MCP resource: scripting API reference
+│   └── mcp-res-graph.md    # MCP resource: force-graph data format & page.asGraph() API
 ├── patches/                # Dependency patches (patch-package)
 ├── .mcp.json               # MCP server config for Claude Code (points to MCP HTTP server)
 ├── doc/                    # Developer documentation
@@ -110,7 +111,8 @@ js-notepad/
 │       ├── markdown-editor.d.ts # IMarkdownEditor
 │       ├── svg-editor.d.ts     # ISvgEditor
 │       ├── html-editor.d.ts    # IHtmlEditor
-│       └── mermaid-editor.d.ts # IMermaidEditor
+│       ├── mermaid-editor.d.ts # IMermaidEditor
+│       └── graph-editor.d.ts  # IGraphEditor, IGraphNode, IGraphComponent, IGraphSearchResult
 │
 ├── ui/                     # Application Shell
 │   ├── app/                # Root layout
@@ -249,24 +251,24 @@ js-notepad/
 │   │   ├── render-mermaid.ts       # Rendering utilities (shared with Markdown)
 │   │   └── index.ts
 │   ├── graph/              # Force graph viewer (content-view)
-│   │   ├── GraphView.tsx           # Canvas-based graph component (toolbar with search results/physics/expansion tabs, tooltip, detail panel)
+│   │   ├── GraphView.tsx           # Canvas-based graph component (toolbar with search/selection/physics/expansion tabs, tooltip, detail panel)
 │   │   ├── GraphViewModel.ts       # ContentViewModel — JSON parsing, orchestration, delegates to sub-models
 │   │   ├── GraphDataModel.ts      # Source data ownership + node/link CRUD + legend data
 │   │   ├── GraphSearchModel.ts    # Search query matching + result computation
 │   │   ├── GraphGroupModel.ts    # Group membership analysis + link pre-processing (hide membership, split cross-group, dedup)
 │   │   ├── GraphConnectivityModel.ts # Read-only query layer bridging original/preprocessed graphs (real neighbors, visual paths, group analysis)
 │   │   ├── GraphHighlightModel.ts # Highlight layers (search, legend, links tab) + selection/hover state + color helpers
-│   │   ├── GraphContextMenu.ts    # Context menu item builders (node menu, group node menu, empty area menu)
+│   │   ├── GraphContextMenu.ts    # Context menu item builders (node menu with link opening, group node menu, empty area menu, selection menu)
 │   │   ├── ForceGraphRenderer.ts   # D3 force simulation + canvas rendering
 │   │   ├── GraphVisibilityModel.ts # BFS-based visibility filtering for large graphs
 │   │   ├── GraphDetailPanel.tsx    # Collapsible detail panel overlay (Info tab, Links tab, Properties tab — AVGrid batch editing)
 │   │   ├── GraphTuningSliders.tsx  # Force tuning sliders (charge, distance, collide) — expandable from toolbar
 │   │   ├── GraphExpansionSettings.tsx # Expansion settings panel (root node, expand depth, max visible)
-│   │   ├── GraphLegendPanel.tsx    # Collapsible legend panel (bottom-left, Level/Shape tabs, checkbox highlighting, description persistence)
+│   │   ├── GraphLegendPanel.tsx    # Collapsible legend panel (bottom-left, Selection/Level/Shape tabs, checkbox highlighting, description persistence)
 │   │   ├── GraphIcons.tsx         # Shared SVG icon components (ShapeIcon, LevelIcon)
-│   │   ├── GraphTooltip.tsx        # Node tooltip (fixed-position portal, custom properties)
+│   │   ├── GraphTooltip.tsx        # Node tooltip (fixed-position portal, custom properties, markdown link rendering, copy as markdown, open in page)
 │   │   ├── shapeGeometry.ts       # Pure shape point generation (shared between canvas + SVG icons)
-│   │   ├── types.ts                # GraphNode, GraphLink, GraphLegend, GraphData, GraphOptions, NodeShape, nodeLabel(), nodeRadius(), effectiveNodeRadius(), getCustomProperties(), isReservedPropertyKey()
+│   │   ├── types.ts                # GraphNode, GraphLink, GraphLegend, GraphData, GraphOptions, NodeShape, nodeLabel(), nodeRadius(), effectiveNodeRadius(), getCustomProperties(), isReservedPropertyKey(), NodePropertyLink, getNodeLinks(), toNavigableHref(), openNodeLink()
 │   │   ├── constants.ts            # Force simulation parameters
 │   │   └── index.ts
 │   ├── log-view/           # Log viewer (content-view)
@@ -336,6 +338,7 @@ js-notepad/
 │       ├── SvgEditorFacade.ts      # ISvgEditor facade
 │       ├── HtmlEditorFacade.ts     # IHtmlEditor facade
 │       ├── MermaidEditorFacade.ts  # IMermaidEditor facade
+│       ├── GraphEditorFacade.ts   # IGraphEditor facade (graph query/analysis, designed for MCP)
 │       ├── UiFacade.ts             # Log View UI (logging + dialogs + output)
 │       ├── Progress.ts            # Progress helper class (returned by ui.show.progress)
 │       ├── Grid.ts                # Grid helper class (returned by ui.show.grid)

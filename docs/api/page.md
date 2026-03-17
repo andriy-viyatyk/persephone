@@ -283,3 +283,75 @@ if (!mermaid.loading && !mermaid.error) {
     console.log(mermaid.svgUrl); // data URL of the rendered diagram
 }
 ```
+
+---
+
+### asGraph() → `Promise<IGraphEditor>`
+
+Graph query and analysis. Only for text pages with force-graph JSON content. Primarily designed for AI agent usage via MCP (`execute_script`), but works in any script. Focuses on read/query operations — editing is done via `page.content` JSON.
+
+**Data access:**
+
+| Member | Type | Description |
+|--------|------|-------------|
+| `nodes` | `IGraphNode[]` | All nodes (cleaned, no D3 runtime fields). |
+| `links` | `Array<{source, target}>` | All links as ID pairs. |
+| `nodeCount` | `number` | Total node count. |
+| `linkCount` | `number` | Total link count. |
+| `getNode(id)` | `IGraphNode \| undefined` | Get a single node by ID. |
+
+**Selection:**
+
+| Member | Type | Description |
+|--------|------|-------------|
+| `selectedIds` | `string[]` | Currently selected node IDs. |
+| `selectedNodes` | `IGraphNode[]` | Currently selected nodes (cleaned). |
+| `select(ids)` | `void` | Select nodes by IDs (replaces selection). Updates the UI. |
+| `addToSelection(ids)` | `void` | Add nodes to current selection. Updates the UI. |
+| `clearSelection()` | `void` | Clear selection. Updates the UI. |
+
+**Relationships:**
+
+| Member | Type | Description |
+|--------|------|-------------|
+| `getNeighborIds(nodeId)` | `string[]` | Direct neighbor IDs from real data links (excludes group membership). |
+| `getVisualNeighborIds(nodeId)` | `string[]` | Visual neighbor IDs (links may route through groups when grouping is enabled). |
+| `getGroupOf(nodeId)` | `string \| undefined` | Group ID that a node belongs to. |
+| `getGroupMembers(groupId)` | `string[]` | Direct member IDs of a group node. |
+| `getGroupMembersDeep(groupId)` | `string[]` | All member IDs recursively (includes sub-group members). |
+| `getGroupChain(nodeId)` | `string[]` | Group chain from node to top-level group. |
+| `isGroup(nodeId)` | `boolean` | Whether a node is a group node. |
+
+**Search & traversal:**
+
+| Member | Type | Description |
+|--------|------|-------------|
+| `search(query, includeHidden?)` | `IGraphSearchResult[]` | Search nodes (multi-word AND). Does not affect the UI. `includeHidden` defaults to `true`. |
+| `bfs(startId, maxDepth?, visual?)` | `Array<{id, depth}>` | BFS traversal. `visual` follows processed links when `true`, real links when `false` (default). |
+| `getComponents()` | `IGraphComponent[]` | Connected components sorted by size (largest first). |
+
+**Options:**
+
+| Member | Type | Description |
+|--------|------|-------------|
+| `rootNodeId` | `string` | Current root node ID, or empty string. |
+| `groupingEnabled` | `boolean` | Whether grouping is currently enabled. |
+
+```javascript
+const graph = await page.asGraph();
+
+// Find neighbors
+const neighbors = graph.getNeighborIds("my-node");
+
+// Search and select results
+const results = graph.search("auth");
+graph.select(results.map(r => r.nodeId));
+
+// BFS traversal from root
+const reachable = graph.bfs(graph.rootNodeId, 3);
+console.log(`${reachable.length} nodes within depth 3`);
+
+// Analyze components
+const components = graph.getComponents();
+components.forEach(c => console.log(`Component: ${c.nodeCount} nodes`));
+```

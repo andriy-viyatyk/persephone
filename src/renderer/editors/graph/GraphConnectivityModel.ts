@@ -15,8 +15,8 @@ export class GraphConnectivityModel {
     private realAdjacency = new Map<string, Set<string>>();
     /** From preprocessed links — visual connections on canvas. */
     private processedAdjacency = new Map<string, Set<string>>();
-    /** Canonical keys for all processed links (for quick lookup). */
-    private processedLinkSet = new Set<string>();
+    /** Maps original real-data link key → visual link keys (from preprocessing). */
+    private originalToVisualLinks = new Map<string, string[]>();
     /** Reference to group model for membership queries. */
     private groupModel: GraphGroupModel | null = null;
     /** All group node IDs (for membership link detection). */
@@ -46,20 +46,27 @@ export class GraphConnectivityModel {
             const { source, target } = linkIds(link);
             const sourceIsGroup = this.groupIds.has(source);
             const targetIsGroup = this.groupIds.has(target);
-            const isMembership = sourceIsGroup !== targetIsGroup;
+            let isMembership = false;
+            if (sourceIsGroup !== targetIsGroup) {
+                isMembership = true;
+            } else if (sourceIsGroup && targetIsGroup) {
+                isMembership = this.groupModel!.getGroupOf(source) === target
+                            || this.groupModel!.getGroupOf(target) === source;
+            }
             if (isMembership) continue;
 
             this.addEdge(this.realAdjacency, source, target);
         }
 
-        // Build processedAdjacency + processedLinkSet from preprocessed links
+        // Build processedAdjacency from preprocessed links
         this.processedAdjacency.clear();
-        this.processedLinkSet.clear();
         for (const link of preprocessed.links) {
             const { source, target } = linkIds(link);
             this.addEdge(this.processedAdjacency, source, target);
-            this.processedLinkSet.add(this.canonicalKey(source, target));
         }
+
+        // Store original-to-visual link mapping for O(1) path highlighting
+        this.originalToVisualLinks = preprocessed.originalToVisualLinks;
     }
 
     // =========================================================================
@@ -94,52 +101,14 @@ export class GraphConnectivityModel {
     }
 
     // =========================================================================
-    // Visual path queries (preprocessed graph)
+    // Visual link queries (preprocessed graph)
     // =========================================================================
 
-    /** BFS on processedAdjacency. Returns canonical link keys along the path. */
-    getVisualPath(fromId: string, toId: string): string[] {
-        if (fromId === toId) return [];
-        const adj = this.processedAdjacency;
-        if (!adj.has(fromId) || !adj.has(toId)) return [];
-
-        const visited = new Set<string>([fromId]);
-        const parent = new Map<string, string>();
-        const queue = [fromId];
-
-        while (queue.length > 0) {
-            const current = queue.shift()!;
-            const neighbors = adj.get(current);
-            if (!neighbors) continue;
-            for (const next of neighbors) {
-                if (visited.has(next)) continue;
-                visited.add(next);
-                parent.set(next, current);
-                if (next === toId) {
-                    // Reconstruct path as canonical link keys
-                    const path: string[] = [];
-                    let node = toId;
-                    while (parent.has(node)) {
-                        const prev = parent.get(node)!;
-                        path.push(this.canonicalKey(prev, node));
-                        node = prev;
-                    }
-                    return path.reverse();
-                }
-                queue.push(next);
-            }
-        }
-        return []; // No path found
-    }
-
-    /** Check if a canonical link key exists in the processed graph. */
-    hasProcessedLink(key: string): boolean {
-        return this.processedLinkSet.has(key);
-    }
-
-    /** Produce a canonical key for an undirected link (consistent ordering). */
-    linkKey(a: string, b: string): string {
-        return this.canonicalKey(a, b);
+    /** Get visual link keys for a real-data link between two nodes. O(1) lookup. */
+    getVisualLinkKeys(fromId: string, toId: string): string[] {
+        const key = this.canonicalKey(fromId, toId);
+        // When no groups exist, originalToVisualLinks is empty — fall back to direct key
+        return this.originalToVisualLinks.get(key) ?? (this.groupIds.size === 0 ? [key] : []);
     }
 
     // =========================================================================
@@ -187,13 +156,11 @@ export class GraphConnectivityModel {
     getGroupChain(nodeId: string): string[] {
         if (!this.groupModel) return [];
         const chain: string[] = [];
-        let current = nodeId;
+        let current: string | undefined = this.groupModel.getGroupOf(nodeId);
         // Walk up: for nested groups, a group node itself can be a member of another group
-        while (true) {
-            const group = this.groupModel.getGroupOf(current);
-            if (!group) break;
-            chain.push(group);
-            current = group;
+        while (current) {
+            chain.push(current);
+            current = this.groupModel.getGroupOf(current);
         }
         return chain;
     }

@@ -56,6 +56,20 @@ page.editor = "grid-json";  // Switch to grid view
 page.data.myValue = 123;
 ```
 
+### Editor Facades
+
+For specialized access to editor-specific features, use `page.asX()` methods. Each returns an async facade tailored to a particular editor type:
+
+```javascript
+const grid = await page.asGrid();    // Grid — rows, columns, cells
+const graph = await page.asGraph();  // Graph — nodes, links, search, traversal
+const nb = await page.asNotebook();  // Notebook — notes, categories
+const todo = await page.asTodo();    // Todo — items, lists, tags
+const text = await page.asText();    // Text — Monaco selection, cursor
+```
+
+All facades are auto-released when the script finishes. See the [page API reference](./api/page.md#editor-facades) for the full list and detailed documentation.
+
 ## Grouped Pages (Output)
 
 When a script runs, the result is displayed in a grouped (side-by-side) output page:
@@ -131,6 +145,13 @@ if (result.button === "Yes") {
 ```
 
 Key points:
+- **`await ui()` yield** — call `await ui()` inside long-running loops to yield to the event loop, keeping the UI responsive. This works whether or not you use any logging methods:
+  ```javascript
+  for (const item of largeArray) {
+      // ... heavy processing ...
+      await ui(); // let the UI breathe
+  }
+  ```
 - **Lazy initialization** — the Log View page is created on the first `ui` access and auto-grouped with the source page
 - **Suppresses default output** — accessing `ui` automatically prevents the return value from being written to a grouped page (same as `preventOutput()`)
 - **Console forwarding** — when `ui` is active, `console.log/info/warn/error` are automatically forwarded to the Log View (`console.log` → lighter text, `console.info` → info, etc.). The native console is always called too. Suppress with `ui.preventConsoleLog()`, `ui.preventConsoleWarn()`, `ui.preventConsoleError()`.

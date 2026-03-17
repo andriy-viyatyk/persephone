@@ -1,7 +1,6 @@
 import type { LogViewModel } from "../../editors/log-view/LogViewModel";
 import type { StyledText, TextOutputEntry } from "../../editors/log-view/logTypes";
 import { pagesModel } from "../../api/pages";
-import { isTextFileModel } from "../../editors/text/TextPageModel";
 
 /**
  * Text helper returned by `ui.show.text()`.
@@ -60,9 +59,6 @@ export class Text {
 
     openInEditor(pageTitle?: string): void {
         const title = pageTitle ?? (typeof this._title === "string" ? this._title : "Text");
-        const page = pagesModel.addEditorPage("monaco", this._language || "plaintext", title);
-        if (isTextFileModel(page)) {
-            page.changeContent(this._text);
-        }
+        pagesModel.addEditorPage("monaco", this._language || "plaintext", title, this._text);
     }
 }

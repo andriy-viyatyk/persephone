@@ -6,7 +6,6 @@ import { DialogHeader } from "./DialogHeader";
 import { Button } from "../../../components/basic/Button";
 import { OpenLinkIcon } from "../../../theme/icons";
 import { pagesModel } from "../../../api/pages";
-import { isTextFileModel } from "../../text/TextPageModel";
 import { DIALOG_CONTENT_MAX_HEIGHT } from "../logConstants";
 import color from "../../../theme/color";
 
@@ -131,10 +130,7 @@ export function TextOutputView({ entry }: TextOutputViewProps) {
 
     const handleOpenInEditor = useCallback(() => {
         const title = typeof entry.title === "string" ? entry.title : "Text";
-        const page = pagesModel.addEditorPage("monaco", entry.language || "plaintext", title);
-        if (isTextFileModel(page)) {
-            page.changeContent(entry.text);
-        }
+        pagesModel.addEditorPage("monaco", entry.language || "plaintext", title, entry.text);
     }, [entry.text, entry.language, entry.title]);
 
     return (

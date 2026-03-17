@@ -1,6 +1,6 @@
 import { ContentViewModel } from "../base/ContentViewModel";
 import { IContentHost } from "../base/IContentHost";
-import { GraphData, GraphNode, GraphOptions, nodeLabel } from "./types";
+import { GraphData, GraphLink, GraphNode, GraphOptions, SYS_PREFIX, linkIds, nodeLabel, getNodeLinks, openNodeLink } from "./types";
 import { ForceGraphRenderer, ForceParams } from "./ForceGraphRenderer";
 import { GraphVisibilityModel } from "./GraphVisibilityModel";
 import { GraphDataModel } from "./GraphDataModel";
@@ -9,9 +9,15 @@ import { GraphGroupModel } from "./GraphGroupModel";
 import { GraphConnectivityModel } from "./GraphConnectivityModel";
 import { showAppPopupMenu } from "../../ui/dialogs/poppers/showPopupMenu";
 import { buildNodeContextMenu, buildEmptyAreaContextMenu, buildGroupNodeContextMenu, ContextMenuActions } from "./GraphContextMenu";
+import type { MenuItem } from "../../components/overlay/PopupMenu";
 import { showInputDialog } from "../../ui/dialogs/InputDialog";
 import { showConfirmationDialog } from "../../ui/dialogs/ConfirmationDialog";
 import { alertsBarModel } from "../../ui/dialogs/alerts/AlertsBar";
+import { buildMarkdown } from "./GraphTooltip";
+import { pagesModel } from "../../api/pages";
+
+/** D3 simulation fields to strip when extracting nodes. */
+const SIM_FIELDS = new Set(["x", "y", "vx", "vy", "fx", "fy", "index"]);
 
 // Re-export search types for consumers (GraphView.tsx imports from here)
 export type { SearchInfo, SearchPropertyMatch, SearchResult } from "./GraphSearchModel";
@@ -41,6 +47,7 @@ export const defaultGraphViewState = {
     /** Linked nodes for the single selected node (empty when multi-selected). */
     linkedNodes: [] as GraphNode[],
     statusHint: "",
+    groupingEnabled: true,
 };
 
 export type GraphViewState = typeof defaultGraphViewState;
@@ -58,8 +65,14 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
     readonly searchModel: GraphSearchModel;
     /** Set by GraphView to handle double-click on a node (e.g. expand detail panel). */
     onDoubleClickNode: ((nodeId: string) => void) | null = null;
+    /** True while a popup menu (context menu or selection menu) is open. */
+    isPopupOpen = false;
+    /** Set by GraphLegendPanel to handle "Highlight" action from selection menu. */
+    onHighlightSelection: (() => void) | null = null;
     private _parseTimer: ReturnType<typeof setTimeout> | undefined;
     private _tooltipTimer: ReturnType<typeof setTimeout> | undefined;
+    private _tooltipHideTimer: ReturnType<typeof setTimeout> | undefined;
+    private _tooltipHovered = false;
 
     /** Full parsed JSON — preserved for serialization (keeps `type` and any extra user properties). */
     private originalJson: Record<string, unknown> = {};
@@ -80,6 +93,7 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
     protected onInit(): void {
         this.addSubscription(() => clearTimeout(this._parseTimer));
         this.addSubscription(() => clearTimeout(this._tooltipTimer));
+        this.addSubscription(() => clearTimeout(this._tooltipHideTimer));
         this.renderer.onBadgeExpand = (nodeId, deep) => this.handleBadgeExpand(nodeId, deep);
         this.renderer.onHoverChanged = (nodeId, cx, cy) => this.handleHoverChanged(nodeId, cx, cy);
         this.renderer.onContextMenuAction = (nodeId, cx, cy) => this.handleContextMenu(nodeId, cx, cy);
@@ -100,6 +114,7 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
     protected onDispose(): void {
         clearTimeout(this._parseTimer);
         clearTimeout(this._tooltipTimer);
+        clearTimeout(this._tooltipHideTimer);
         this.renderer.dispose();
     }
 
@@ -298,10 +313,20 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
     private handleHoverChanged(nodeId: string, clientX: number, clientY: number): void {
         clearTimeout(this._tooltipTimer);
 
-        if (!nodeId || this.renderer.isDragging) {
-            this.clearTooltip();
+        if (!nodeId || this.renderer.isDragging || this.isPopupOpen) {
+            // Don't clear immediately — give time for mouse to enter the tooltip
+            this.clearTooltipDelayed();
             this.updateStatusHint("");
             return;
+        }
+        // Mouse moved to a node — cancel any pending hide and reset hover state
+        clearTimeout(this._tooltipHideTimer);
+        this._tooltipHovered = false;
+
+        // If hovering a different node than the current tooltip, clear immediately
+        const currentTooltip = this.state.get().tooltip;
+        if (currentTooltip && currentTooltip.node.id !== nodeId) {
+            this.state.update((s) => { s.tooltip = null; });
         }
 
         // Status hint: Alt+Click to link/unlink (only for single selection)
@@ -311,8 +336,17 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
             const hoveredNode = this.dataModel.sourceData.nodes.find((n) => n.id === nodeId);
 
             if (selectedNode?.isGroup && hoveredNode?.isGroup) {
-                // Both groups → no hint
-                this.updateStatusHint("");
+                const hoveredLabel = nodeLabel(hoveredNode);
+                const selectedLabel = nodeLabel(selectedNode);
+                const isMember = this.groupModel.getGroupOf(nodeId) === selectedId;
+                const isReverseMember = this.groupModel.getGroupOf(selectedId) === nodeId;
+                if (isMember) {
+                    this.updateStatusHint(`Alt+Click to remove "${hoveredLabel}" from "${selectedLabel}"`);
+                } else if (isReverseMember) {
+                    this.updateStatusHint(`Alt+Click to remove "${selectedLabel}" from "${hoveredLabel}"`);
+                } else {
+                    this.updateStatusHint(`Alt+Click to add "${hoveredLabel}" into "${selectedLabel}"`);
+                }
             } else if (selectedNode?.isGroup && !hoveredNode?.isGroup) {
                 const isMember = this.groupModel.getGroupOf(nodeId) === selectedId;
                 const label = nodeLabel(selectedNode);
@@ -349,8 +383,30 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
 
     private clearTooltip(): void {
         clearTimeout(this._tooltipTimer);
+        clearTimeout(this._tooltipHideTimer);
+        this._tooltipHovered = false;
         if (this.state.get().tooltip) {
             this.state.update((s) => { s.tooltip = null; });
+        }
+    }
+
+    /** Clear tooltip after a short grace period (allows mouse to travel to the tooltip). */
+    private clearTooltipDelayed(): void {
+        clearTimeout(this._tooltipHideTimer);
+        this._tooltipHideTimer = setTimeout(() => {
+            if (!this._tooltipHovered) {
+                this.clearTooltip();
+            }
+        }, 150);
+    }
+
+    /** Called by the tooltip component when mouse enters/leaves it. */
+    setTooltipHovered(hovered: boolean): void {
+        this._tooltipHovered = hovered;
+        if (!hovered) {
+            this.clearTooltipDelayed();
+        } else {
+            clearTimeout(this._tooltipHideTimer);
         }
     }
 
@@ -366,6 +422,14 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
 
     get hasVisibilityFilter(): boolean {
         return this.visibilityModel.active;
+    }
+
+    /** Reset the view: recompute BFS visibility and restart D3 simulation from scratch. */
+    resetView(): void {
+        this.isFirstLoad = true;
+        this.rebuildAndRender();
+        this.renderer.rootNodeId = this.dataModel.sourceData?.options?.rootNode ?? "";
+        this.refreshSelectedNodes();
     }
 
     resetVisibility(): void {
@@ -452,6 +516,25 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
         return !loading && !error;
     }
 
+    /** Whether source data contains any group nodes. */
+    get hasGroups(): boolean {
+        return this.dataModel.sourceData?.nodes.some(n => n.isGroup) ?? false;
+    }
+
+    /** Whether grouping is currently enabled for rendering. */
+    get groupingEnabled(): boolean {
+        return this.state.get().groupingEnabled;
+    }
+
+    /** Toggle grouping on/off. Clears selection and fully re-simulates. */
+    toggleGrouping(): void {
+        this.state.update(s => { s.groupingEnabled = !s.groupingEnabled; });
+        this.renderer.selectNode("");
+        this.isFirstLoad = true;
+        this.rebuildAndRender();
+        this.renderer.rootNodeId = this.dataModel.sourceData?.options?.rootNode ?? "";
+    }
+
     // =========================================================================
     // Context menu
     // =========================================================================
@@ -462,9 +545,13 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
             addNode: (wx, wy) => this.addNode(wx, wy),
             addChild: (id) => this.addChild(id),
             deleteNode: (id) => this.deleteNode(id),
+            deleteSelected: () => this.deleteSelectedNodes(),
             deleteLink: (s, t) => this.deleteLink(s, t),
             setRootNode: (id) => this.setRootNode(id),
             collapseNode: (id) => this.collapseNode(id),
+            selectChildren: () => this.selectChildren(),
+            selectMembers: () => this.selectMembers(),
+            selectMembersDeep: () => this.selectMembersDeep(),
             editGroupTitle: (id) => this.editGroupTitle(id),
             ungroupNode: (id) => this.ungroupNode(id),
             deleteGroup: (id) => this.deleteGroupNode(id),
@@ -473,52 +560,53 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
         };
     }
 
-    private handleContextMenu(nodeId: string, clientX: number, clientY: number): void {
+    private async handleContextMenu(nodeId: string, clientX: number, clientY: number): Promise<void> {
         this.clearTooltip();
+
+        let items: MenuItem[];
 
         if (!nodeId) {
             const worldPos = this.renderer.screenToWorld(clientX, clientY);
-            const items = buildEmptyAreaContextMenu(worldPos.x, worldPos.y, this.contextMenuActions);
-            showAppPopupMenu(clientX, clientY, items);
-            return;
-        }
-
-        // Only replace selection if right-clicked node is not already selected
-        if (!this.renderer.selectedIds.has(nodeId)) {
-            this.renderer.selectNode(nodeId);
-        }
-
-        const clickedNode = this.dataModel.sourceData?.nodes.find((n) => n.id === nodeId);
-
-        if (clickedNode?.isGroup) {
-            // Group node gets its own context menu
-            const items = buildGroupNodeContextMenu(
-                nodeId,
-                this.visibilityModel.active,
-                this.contextMenuActions,
-            );
-            showAppPopupMenu(clientX, clientY, items);
+            items = buildEmptyAreaContextMenu(worldPos.x, worldPos.y, this.contextMenuActions);
         } else {
-            // Regular node context menu with optional group actions
-            const isInGroup = this.groupModel.getGroupOf(nodeId);
-            const nodes = this.dataModel.sourceData?.nodes ?? [];
-            const nonGroupCount = [...this.renderer.selectedIds].filter((id) => {
-                const n = nodes.find((node) => node.id === id);
-                return n && !n.isGroup;
-            }).length;
+            // Only replace selection if right-clicked node is not already selected
+            if (!this.renderer.selectedIds.has(nodeId)) {
+                this.renderer.selectNode(nodeId);
+            }
 
-            const items = buildNodeContextMenu(
-                nodeId,
-                [...this.connectivityModel.getRealNeighborIds(nodeId)],
-                (id) => this.dataModel.getNodeLabel(id),
-                nodeId === this.rootNodeId,
-                this.visibilityModel.active,
-                this.contextMenuActions,
-                isInGroup,
-                nonGroupCount,
-            );
-            showAppPopupMenu(clientX, clientY, items);
+            const clickedNode = this.dataModel.sourceData?.nodes.find((n) => n.id === nodeId);
+            const multiSelectedCount = this.renderer.selectedIds.size;
+
+            if (clickedNode?.isGroup) {
+                items = buildGroupNodeContextMenu(
+                    nodeId,
+                    this.visibilityModel.active,
+                    this.contextMenuActions,
+                    multiSelectedCount,
+                    this.groupingEnabled,
+                );
+            } else {
+                const isInGroup = this.groupModel.getGroupOf(nodeId);
+                const links = clickedNode ? getNodeLinks(clickedNode) : [];
+                items = buildNodeContextMenu(
+                    nodeId,
+                    [...this.connectivityModel.getRealNeighborIds(nodeId)],
+                    (id) => this.dataModel.getNodeLabel(id),
+                    nodeId === this.rootNodeId,
+                    this.visibilityModel.active,
+                    this.contextMenuActions,
+                    isInGroup,
+                    multiSelectedCount,
+                    this.groupingEnabled,
+                    links.length > 0 ? { links, onOpen: openNodeLink } : undefined,
+                );
+            }
         }
+
+        this.isPopupOpen = true;
+        this.clearTooltip();
+        await showAppPopupMenu(clientX, clientY, items);
+        setTimeout(() => { this.isPopupOpen = false; }, 0);
     }
 
     // =========================================================================
@@ -538,8 +626,31 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
         const selectedIsGroup = !!selectedNode.isGroup;
         const clickedIsGroup = !!clickedNode.isGroup;
 
-        // Both groups → no-op
-        if (selectedIsGroup && clickedIsGroup) return;
+        // Both groups → toggle group membership (selected becomes parent of clicked)
+        if (selectedIsGroup && clickedIsGroup) {
+            const clickedParent = this.groupModel.getGroupOf(nodeId);
+
+            if (clickedParent === selectedId) {
+                // Clicked is already a member of selected → remove
+                this.dataModel.deleteLink(selectedId, nodeId);
+            } else if (this.groupModel.getGroupOf(selectedId) === nodeId) {
+                // Selected is a member of clicked → remove (reverse)
+                this.dataModel.deleteLink(nodeId, selectedId);
+            } else {
+                // Add clicked as member of selected (with cycle check)
+                if (this.groupModel.wouldCreateCycle(selectedId, nodeId)) {
+                    alertsBarModel.addAlert("Cannot add: would create circular group hierarchy.", "warning");
+                    return;
+                }
+                if (clickedParent) {
+                    this.dataModel.deleteLink(clickedParent, nodeId);
+                }
+                this.dataModel.addLink(selectedId, nodeId);
+            }
+            this.rebuildAndRender();
+            this.serializeToHost();
+            return;
+        }
 
         // One is group, other is regular → toggle membership
         if (selectedIsGroup || clickedIsGroup) {
@@ -638,74 +749,177 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
             else if (node) regularIds.push(id);
         }
 
-        // Case C: 2+ group nodes
-        if (groupIds.length >= 2) {
-            alertsBarModel.addAlert("Cannot group: more than one group node is selected.", "warning");
-            return;
+        // Determine parent groups of regular nodes
+        const uniqueRegularParents = new Set<string | undefined>();
+        for (const id of regularIds) {
+            uniqueRegularParents.add(this.groupModel.getGroupOf(id));
         }
 
-        // Case B: Exactly 1 group + regular nodes → add to existing group
-        if (groupIds.length === 1) {
-            const groupId = groupIds[0];
-            const groupNode = nodes.find((n) => n.id === groupId);
-            const groupTitle = nodeLabel(groupNode ?? { id: groupId });
-            const result = await showConfirmationDialog({
-                title: "Add to Group",
-                message: `Add ${regularIds.length} node(s) to group "${groupTitle}"?`,
-            });
-            if (result !== "Yes") return;
+        // CASE 1: Only regular nodes (no groups selected)
+        if (groupIds.length === 0) {
+            if (regularIds.length < 2) return;
+
+            if (uniqueRegularParents.size > 1) {
+                alertsBarModel.addAlert("Cannot group: selected nodes belong to different groups.", "warning");
+                return;
+            }
+
+            const parentGroup = [...uniqueRegularParents][0]; // undefined if top-level
+
+            const result = await showInputDialog({ title: "Group Title", message: "Enter a title for the group:", value: "" });
+            if (result?.button !== "OK") return;
 
             for (const id of regularIds) {
                 const oldGroup = this.groupModel.getGroupOf(id);
                 if (oldGroup) this.dataModel.deleteLink(oldGroup, id);
-                this.dataModel.addLink(groupId, id);
             }
-            this.rebuildAndRender();
+
+            const newGroupId = this.dataModel.generateGroupId();
+            this.dataModel.sourceData.nodes.push({ id: newGroupId, isGroup: true });
+            for (const id of regularIds) {
+                this.dataModel.sourceData.links.push({ source: newGroupId, target: id });
+            }
+            // Nest inside parent group if nodes were in one
+            if (parentGroup) {
+                this.dataModel.sourceData.links.push({ source: parentGroup, target: newGroupId });
+            }
+
+            if (result.value) this.dataModel.updateNodeProps(newGroupId, { title: result.value });
+
+            // Position at centroid of selected members
+            const renderedNodes = this.renderer.getNodes();
+            let cx = 0, cy = 0, count = 0;
+            for (const id of regularIds) {
+                const rn = renderedNodes.find((n) => n.id === id);
+                if (rn?.x != null && rn?.y != null) { cx += rn.x; cy += rn.y; count++; }
+            }
+            const posHint = count > 0 ? new Map([[newGroupId, { x: cx / count, y: cy / count }]]) : undefined;
+
+            this.rebuildAndRender(undefined, posHint, [newGroupId]);
             this.serializeToHost();
+            this.renderer.selectNode(newGroupId);
             return;
         }
 
-        // Case A: All regular nodes (≥ 2)
-        if (regularIds.length < 2) return;
+        // CASE 2: Exactly 1 group + regular nodes
+        if (groupIds.length === 1 && regularIds.length > 0) {
+            const groupId = groupIds[0];
+            const groupNode = nodes.find((n) => n.id === groupId);
+            const groupTitle = nodeLabel(groupNode ?? { id: groupId });
 
-        // Show dialog BEFORE mutating data — cancel means no changes
-        const result = await showInputDialog({ title: "Group Title", message: "Enter a title for the group:", value: "" });
-        if (result?.button !== "OK") return;
+            const choice = await showConfirmationDialog({
+                title: "Group Options",
+                message: `Add ${regularIds.length} node(s) to group "${groupTitle}", or create a new group containing all selected?`,
+                buttons: ["Add to Group", "Create New Group", "Cancel"],
+            });
 
-        // Remove from old groups
-        for (const id of regularIds) {
-            const oldGroup = this.groupModel.getGroupOf(id);
-            if (oldGroup) this.dataModel.deleteLink(oldGroup, id);
-        }
+            if (choice === "Add to Group") {
+                for (const id of regularIds) {
+                    const oldGroup = this.groupModel.getGroupOf(id);
+                    if (oldGroup) this.dataModel.deleteLink(oldGroup, id);
+                    this.dataModel.addLink(groupId, id);
+                }
+                this.rebuildAndRender();
+                this.serializeToHost();
+            } else if (choice === "Create New Group") {
+                const result = await showInputDialog({ title: "Group Title", message: "Enter a title for the group:", value: "" });
+                if (result?.button !== "OK") return;
 
-        const groupId = this.dataModel.generateGroupId();
-        this.dataModel.sourceData.nodes.push({ id: groupId, isGroup: true });
-        for (const id of regularIds) {
-            this.dataModel.sourceData.links.push({ source: groupId, target: id });
-        }
+                const oldParent = this.groupModel.getGroupOf(groupId);
 
-        if (result.value) {
-            this.dataModel.updateNodeProps(groupId, { title: result.value });
-        }
+                const newGroupId = this.dataModel.generateGroupId();
+                this.dataModel.sourceData.nodes.push({ id: newGroupId, isGroup: true });
 
-        // Place new group node at centroid of selected members
-        const renderedNodes = this.renderer.getNodes();
-        let cx = 0, cy = 0, count = 0;
-        for (const id of regularIds) {
-            const rn = renderedNodes.find((n) => n.id === id);
-            if (rn?.x != null && rn?.y != null) {
-                cx += rn.x;
-                cy += rn.y;
-                count++;
+                // Move existing group into new group
+                if (oldParent) this.dataModel.deleteLink(oldParent, groupId);
+                this.dataModel.sourceData.links.push({ source: newGroupId, target: groupId });
+
+                // Move regular nodes into new group
+                for (const id of regularIds) {
+                    const oldGroup = this.groupModel.getGroupOf(id);
+                    if (oldGroup) this.dataModel.deleteLink(oldGroup, id);
+                    this.dataModel.sourceData.links.push({ source: newGroupId, target: id });
+                }
+
+                // Nest under old parent if existed
+                if (oldParent) {
+                    this.dataModel.sourceData.links.push({ source: oldParent, target: newGroupId });
+                }
+
+                if (result.value) this.dataModel.updateNodeProps(newGroupId, { title: result.value });
+
+                const renderedNodes = this.renderer.getNodes();
+                let cx = 0, cy = 0, count = 0;
+                for (const id of [...regularIds, groupId]) {
+                    const rn = renderedNodes.find((n) => n.id === id);
+                    if (rn?.x != null && rn?.y != null) { cx += rn.x; cy += rn.y; count++; }
+                }
+                const posHint = count > 0 ? new Map([[newGroupId, { x: cx / count, y: cy / count }]]) : undefined;
+
+                this.rebuildAndRender(undefined, posHint, [newGroupId]);
+                this.serializeToHost();
+                this.renderer.selectNode(newGroupId);
             }
+            return;
         }
-        const posHint = count > 0
-            ? new Map([[groupId, { x: cx / count, y: cy / count }]])
-            : undefined;
 
-        this.rebuildAndRender(undefined, posHint, [groupId]);
-        this.serializeToHost();
-        this.renderer.selectNode(groupId);
+        // CASE 3: Multiple groups selected (with or without regular nodes)
+        if (groupIds.length >= 2) {
+            const groupParents = new Set(groupIds.map((id) => this.groupModel.getGroupOf(id)));
+            if (groupParents.size > 1) {
+                alertsBarModel.addAlert("Cannot group: selected groups belong to different parent groups.", "warning");
+                return;
+            }
+
+            // Validate regular nodes are from same level
+            const selectedGroupSet = new Set(groupIds);
+            for (const id of regularIds) {
+                const nodeParent = this.groupModel.getGroupOf(id);
+                if (nodeParent && !selectedGroupSet.has(nodeParent) && nodeParent !== [...groupParents][0]) {
+                    alertsBarModel.addAlert("Cannot group: selected nodes belong to different groups.", "warning");
+                    return;
+                }
+            }
+
+            const result = await showInputDialog({ title: "Group Title", message: "Enter a title for the group:", value: "" });
+            if (result?.button !== "OK") return;
+
+            const newGroupId = this.dataModel.generateGroupId();
+            this.dataModel.sourceData.nodes.push({ id: newGroupId, isGroup: true });
+
+            for (const gId of groupIds) {
+                const oldParent = this.groupModel.getGroupOf(gId);
+                if (oldParent) this.dataModel.deleteLink(oldParent, gId);
+                this.dataModel.sourceData.links.push({ source: newGroupId, target: gId });
+            }
+            for (const id of regularIds) {
+                const oldGroup = this.groupModel.getGroupOf(id);
+                if (oldGroup) this.dataModel.deleteLink(oldGroup, id);
+                this.dataModel.sourceData.links.push({ source: newGroupId, target: id });
+            }
+
+            const commonParent = [...groupParents][0]; // undefined if top-level
+            if (commonParent) {
+                this.dataModel.sourceData.links.push({ source: commonParent, target: newGroupId });
+            }
+
+            if (result.value) this.dataModel.updateNodeProps(newGroupId, { title: result.value });
+
+            const renderedNodes = this.renderer.getNodes();
+            let cx = 0, cy = 0, count = 0;
+            for (const id of selectedIds) {
+                const rn = renderedNodes.find((n) => n.id === id);
+                if (rn?.x != null && rn?.y != null) { cx += rn.x; cy += rn.y; count++; }
+            }
+            const posHint = count > 0 ? new Map([[newGroupId, { x: cx / count, y: cy / count }]]) : undefined;
+
+            this.rebuildAndRender(undefined, posHint, [newGroupId]);
+            this.serializeToHost();
+            this.renderer.selectNode(newGroupId);
+            return;
+        }
+
+        // CASE 4: Only 1 group, no regular nodes → nothing to do
     }
 
     async editGroupTitle(groupId: string): Promise<void> {
@@ -722,16 +936,33 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
         const node = this.dataModel.sourceData.nodes.find((n) => n.id === groupId);
         if (!node?.isGroup) return;
 
-        const count = this.groupModel.getMembers(groupId).size;
+        const members = [...this.groupModel.getMembers(groupId)];
+        const parentGroup = this.groupModel.getGroupOf(groupId);
         const label = nodeLabel(node);
-        const result = await showConfirmationDialog({
-            title: "Ungroup",
-            message: `Ungroup "${label}"? ${count} member node(s) will be ungrouped.`,
-        });
+
+        let message = `Ungroup "${label}"?`;
+        if (parentGroup) {
+            message += ` ${members.length} member(s) will be moved to the parent group.`;
+        } else {
+            message += ` ${members.length} member(s) will become top-level nodes.`;
+        }
+
+        const result = await showConfirmationDialog({ title: "Ungroup", message });
         if (result !== "Yes") return;
 
+        // Remove all links from this group node (membership to members + link from parent)
         this.dataModel.removeAllNodeLinks(groupId);
+
+        // Promote members to parent group
+        if (parentGroup) {
+            for (const memberId of members) {
+                this.dataModel.addLink(parentGroup, memberId);
+            }
+        }
+
+        // Delete the group node
         this.dataModel.sourceData.nodes = this.dataModel.sourceData.nodes.filter((n) => n.id !== groupId);
+
         this.renderer.selectNode("");
         this.rebuildAndRender();
         this.serializeToHost();
@@ -742,29 +973,113 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
         const node = this.dataModel.sourceData.nodes.find((n) => n.id === groupId);
         if (!node?.isGroup) return;
 
-        const memberIds = [...this.groupModel.getMembers(groupId)];
+        // Determine which members are visually connected (have processed links on canvas)
+        const visualNeighbors = this.connectivityModel.getProcessedNeighborIds(groupId);
+        const directMembers = this.groupModel.getMembers(groupId);
+        const parentGroup = this.groupModel.getGroupOf(groupId);
         const label = nodeLabel(node);
-        const result = await showConfirmationDialog({
-            title: "Delete Group",
-            message: `Delete group "${label}" and its ${memberIds.length} member node(s)?`,
-        });
+
+        // Collect members to delete: only those with visual links through this group
+        // Recursively include their sub-trees
+        const toDelete = new Set<string>();
+        const toPromote = new Set<string>();
+
+        for (const memberId of directMembers) {
+            if (visualNeighbors.has(memberId)) {
+                // Visually connected → mark for deletion (with sub-tree)
+                toDelete.add(memberId);
+                if (this.groupModel.isGroup(memberId)) {
+                    for (const sub of this.collectAllSubGroups(memberId)) toDelete.add(sub);
+                    for (const sub of this.connectivityModel.getAllRealMembers(memberId)) toDelete.add(sub);
+                }
+            } else {
+                // Not visually connected → promote to parent group
+                toPromote.add(memberId);
+            }
+        }
+
+        // Also count real members being deleted
+        const realDeleteCount = [...toDelete].filter((id) => !this.groupModel.isGroup(id)).length;
+        const subGroupDeleteCount = [...toDelete].filter((id) => this.groupModel.isGroup(id)).length;
+
+        let message: string;
+        if (toDelete.size === 0) {
+            message = `Delete group "${label}"? ${toPromote.size} member(s) will be ${parentGroup ? "moved to parent group" : "promoted to top level"}.`;
+        } else if (toPromote.size === 0) {
+            if (subGroupDeleteCount > 0) {
+                message = `Delete group "${label}" and all ${realDeleteCount + subGroupDeleteCount} descendants (${realDeleteCount} nodes, ${subGroupDeleteCount} sub-groups)?`;
+            } else {
+                message = `Delete group "${label}" and its ${realDeleteCount} member node(s)?`;
+            }
+        } else {
+            message = `Delete group "${label}" with ${toDelete.size} visually connected descendant(s)? ${toPromote.size} unconnected member(s) will be ${parentGroup ? "moved to parent group" : "promoted to top level"}.`;
+        }
+
+        const result = await showConfirmationDialog({ title: "Delete Group", message });
         if (result !== "Yes") return;
 
-        for (const memberId of memberIds) {
-            this.dataModel.deleteNode(memberId);
-            this.clearRootIfDeleted(memberId);
+        // Promote unconnected members to parent group
+        for (const id of toPromote) {
+            this.dataModel.deleteLink(groupId, id);
+            if (parentGroup) {
+                this.dataModel.addLink(parentGroup, id);
+            }
         }
+
+        // Delete visually connected members
+        for (const id of toDelete) {
+            this.dataModel.deleteNode(id);
+            this.clearRootIfDeleted(id);
+        }
+
+        // Delete the group node itself
         this.dataModel.deleteNode(groupId);
         this.clearRootIfDeleted(groupId);
+
         this.renderer.selectNode("");
         this.rebuildAndRender();
         this.serializeToHost();
+    }
+
+    /** Collect all sub-group IDs recursively (depth-first). */
+    private collectAllSubGroups(groupId: string): string[] {
+        const result: string[] = [];
+        const members = this.groupModel.getMembers(groupId);
+        for (const memberId of members) {
+            if (this.groupModel.isGroup(memberId)) {
+                result.push(memberId);
+                result.push(...this.collectAllSubGroups(memberId));
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Remove empty groups iteratively (handles cascading: group → subgroup → node).
+     * Must only be called during user-initiated edit operations — never on passive load.
+     */
+    private cleanupEmptyGroups(): boolean {
+        if (!this.dataModel.sourceData) return false;
+        let anyRemoved = false;
+        for (;;) {
+            const { nodes, links } = this.dataModel.sourceData;
+            this.groupModel.rebuild(nodes, links);
+            const emptyIds = this.groupModel.getEmptyGroupIds();
+            if (emptyIds.length === 0) break;
+            anyRemoved = true;
+            for (const id of emptyIds) {
+                this.dataModel.deleteNode(id);
+                this.clearRootIfDeleted(id);
+            }
+        }
+        return anyRemoved;
     }
 
     removeFromGroup(nodeId: string): void {
         const groupId = this.groupModel.getGroupOf(nodeId);
         if (!groupId) return;
         this.dataModel.deleteLink(groupId, nodeId);
+        this.cleanupEmptyGroups();
         this.rebuildAndRender();
         this.serializeToHost();
     }
@@ -825,8 +1140,211 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
             // For multi-selection, clearSelectionIf in updateVisibleData will handle cleanup
         }
 
+        this.cleanupEmptyGroups();
         this.rebuildAndRender();
         this.serializeToHost();
+    }
+
+    async deleteSelectedNodes(): Promise<void> {
+        const ids = [...this.renderer.selectedIds];
+        if (ids.length === 0) return;
+
+        if (ids.length > 1) {
+            const result = await showConfirmationDialog({
+                title: "Delete Nodes",
+                message: `Delete ${ids.length} selected nodes?`,
+            });
+            if (result !== "Yes") return;
+        }
+
+        for (const id of ids) {
+            this.dataModel.deleteNode(id);
+            this.clearRootIfDeleted(id);
+        }
+        this.cleanupEmptyGroups();
+        this.renderer.selectNode("");
+        this.rebuildAndRender();
+        this.serializeToHost();
+    }
+
+    private buildSelectedMarkdown(): string | null {
+        const nodes = this.state.get().selectedNodes;
+        if (nodes.length === 0) return null;
+        const rootId = this.dataModel.sourceData?.options?.rootNode;
+        const parts = nodes.map(node => buildMarkdown(node, node.id === rootId));
+
+        // For multiple nodes, prepend a summary table
+        if (nodes.length > 1) {
+            const table = ["| Title | ID |", "|-------|-----|"];
+            for (const node of nodes) {
+                const title = (node.title || "").replace(/\|/g, "\\|");
+                table.push(`| ${title} | ${node.id} |`);
+            }
+            return table.join("\n") + "\n\n---\n\n" + parts.join("\n\n---\n\n");
+        }
+
+        return parts[0];
+    }
+
+    copySelectedMarkdown(): void {
+        const md = this.buildSelectedMarkdown();
+        if (md) navigator.clipboard.writeText(md);
+    }
+
+    openSelectedMarkdown(): void {
+        const md = this.buildSelectedMarkdown();
+        if (!md) return;
+        const count = this.renderer.selectedIds.size;
+        const title = count === 1 ? (this.state.get().selectedNodes[0]?.title || "Node") : `${count} nodes`;
+        pagesModel.addEditorPage("md-view", "markdown", title, md);
+    }
+
+    openSelectedGrid(): void {
+        const selectedIds = this.renderer.selectedIds;
+        if (selectedIds.size === 0) return;
+        const nodes = (this.dataModel.sourceData?.nodes ?? [])
+            .filter(n => selectedIds.has(n.id))
+            .map(n => this.dataModel.cleanNode(n));
+        const count = nodes.length;
+        const title = count === 1 ? (nodes[0].title || nodes[0].id) : `${count} nodes`;
+        pagesModel.addEditorPage("grid-json", "json", `${title}.grid.json`, JSON.stringify(nodes, null, 2));
+    }
+
+    /** Add direct children (real neighbors) of selected non-group nodes to the selection. */
+    selectChildren(): void {
+        const toAdd: string[] = [];
+        for (const id of this.renderer.selectedIds) {
+            if (this.groupModel.isGroup(id)) continue;
+            for (const neighborId of this.connectivityModel.getRealNeighborIds(id)) {
+                if (!this.renderer.selectedIds.has(neighborId)) {
+                    toAdd.push(neighborId);
+                }
+            }
+        }
+        if (toAdd.length > 0) {
+            this.renderer.addToSelection(toAdd);
+        }
+    }
+
+    /** Add direct members of selected group nodes to the selection. */
+    selectMembers(): void {
+        const toAdd: string[] = [];
+        for (const id of this.renderer.selectedIds) {
+            if (!this.groupModel.isGroup(id)) continue;
+            for (const memberId of this.groupModel.getMembers(id)) {
+                if (!this.renderer.selectedIds.has(memberId)) {
+                    toAdd.push(memberId);
+                }
+            }
+        }
+        if (toAdd.length > 0) {
+            this.renderer.addToSelection(toAdd);
+        }
+    }
+
+    /** Recursively add all members (including sub-group members) of selected groups to the selection. */
+    selectMembersDeep(): void {
+        const toAdd: string[] = [];
+        const visited = new Set<string>();
+        const queue: string[] = [];
+        for (const id of this.renderer.selectedIds) {
+            if (this.groupModel.isGroup(id)) queue.push(id);
+        }
+        while (queue.length > 0) {
+            const groupId = queue.pop()!;
+            if (visited.has(groupId)) continue;
+            visited.add(groupId);
+            for (const memberId of this.groupModel.getMembers(groupId)) {
+                if (!this.renderer.selectedIds.has(memberId)) {
+                    toAdd.push(memberId);
+                }
+                if (this.groupModel.isGroup(memberId)) {
+                    queue.push(memberId);
+                }
+            }
+        }
+        if (toAdd.length > 0) {
+            this.renderer.addToSelection(toAdd);
+        }
+    }
+
+    /** Signal the legend panel to open with Selection tab and "selected" filter active. */
+    highlightSelection(): void {
+        this.onHighlightSelection?.();
+    }
+
+    /** Extract selected nodes (and optionally their direct children) into a new graph page. */
+    extractSelected(withChildren: boolean): void {
+        if (!this.dataModel.sourceData) return;
+        const selectedIds = new Set(this.renderer.selectedIds);
+        if (selectedIds.size === 0) return;
+
+        // Optionally expand with direct children (real neighbors / group members, 1 hop)
+        if (withChildren) {
+            const toAdd: string[] = [];
+            for (const id of selectedIds) {
+                for (const neighborId of this.connectivityModel.getRealNeighborIds(id)) {
+                    toAdd.push(neighborId);
+                }
+            }
+            for (const id of toAdd) selectedIds.add(id);
+        }
+
+        const allNodes = this.dataModel.sourceData.nodes;
+        const allLinks = this.dataModel.sourceData.links;
+        const nodeMap = new Map(allNodes.map(n => [n.id, n]));
+
+        // Filter out standalone groups (groups with no members in the extracted set)
+        for (const id of [...selectedIds]) {
+            const node = nodeMap.get(id);
+            if (!node?.isGroup) continue;
+            const members = this.groupModel.getMembers(id);
+            if (!members) continue;
+            const hasExtractedMember = [...members].some(m => selectedIds.has(m));
+            if (!hasExtractedMember) {
+                selectedIds.delete(id);
+            }
+        }
+
+        // If nothing left after filtering, show warning
+        if (selectedIds.size === 0) {
+            alertsBarModel.addAlert(
+                "Cannot extract group(s) only — select regular nodes or use 'Extract with children'",
+                "warning",
+            );
+            return;
+        }
+
+        // Clean nodes: strip D3 simulation fields and internal system properties
+        const extractedNodes: GraphNode[] = [];
+        for (const id of selectedIds) {
+            const node = nodeMap.get(id);
+            if (!node) continue;
+            const clean: Record<string, unknown> = {};
+            for (const [k, v] of Object.entries(node)) {
+                if (!k.startsWith(SYS_PREFIX) && !SIM_FIELDS.has(k)) {
+                    clean[k] = v;
+                }
+            }
+            extractedNodes.push(clean as unknown as GraphNode);
+        }
+
+        // Filter links — only those where both endpoints are in selectedIds
+        const extractedLinks: GraphLink[] = [];
+        for (const link of allLinks) {
+            const { source: sId, target: tId } = linkIds(link);
+            if (selectedIds.has(sId) && selectedIds.has(tId)) {
+                extractedLinks.push({ source: sId, target: tId });
+            }
+        }
+
+        const graphData: GraphData = {
+            nodes: extractedNodes,
+            links: extractedLinks,
+        };
+
+        const title = withChildren ? "Extract with children.fg.json" : "Extract.fg.json";
+        pagesModel.addEditorPage("graph-view", "json", title, JSON.stringify(graphData, null, 2));
     }
 
     addLink(sourceId: string, targetId: string): void {
@@ -914,7 +1432,18 @@ export class GraphViewModel extends ContentViewModel<GraphViewState> {
     ): void {
         if (!this.dataModel.sourceData) return;
 
-        const { nodes, links, options } = this.dataModel.sourceData;
+        let { nodes, links } = this.dataModel.sourceData;
+        const { options } = this.dataModel.sourceData;
+
+        // When grouping disabled, filter out group nodes and all their links
+        if (!this.state.get().groupingEnabled) {
+            const groupIds = new Set(nodes.filter(n => n.isGroup).map(n => n.id));
+            nodes = nodes.filter(n => !n.isGroup);
+            links = links.filter(l => {
+                const { source, target } = linkIds(l);
+                return !groupIds.has(source) && !groupIds.has(target);
+            });
+        }
 
         // Rebuild group membership from source data
         this.groupModel.rebuild(nodes, links);

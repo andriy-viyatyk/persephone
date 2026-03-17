@@ -12,6 +12,19 @@ ui.info("Loaded 42 items");
 ui.success("Done!");
 ```
 
+## await ui()
+
+Call `await ui()` to yield to the event loop, allowing the UI to update. Use this inside long-running loops to prevent the interface from freezing:
+
+```javascript
+for (const item of largeArray) {
+    // ... heavy processing ...
+    await ui(); // let the UI breathe
+}
+```
+
+This does not create a Log View page or suppress default output — it simply pauses execution briefly so the UI can repaint and respond to user input.
+
 ## Logging Methods
 
 All logging methods accept either a plain string or an array of styled segments (see [Styled Text](#styled-text) below). They return a `StyledLogBuilder` that can optionally be used to build styled text via fluent chaining (see [Fluent Styled Text](#fluent-styled-text) below).

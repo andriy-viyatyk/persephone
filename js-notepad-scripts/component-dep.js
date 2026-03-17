@@ -5,10 +5,6 @@
 const originalFs = require("original-fs");
 const path = require("path");
 
-// Use js-notepad's own TypeScript installation
-const typescriptModule = path.join(process.cwd(), "node_modules", "typescript");
-const ts = require(typescriptModule);
-
 // Ask user to select tsconfig.json
 const selected = await app.fs.showOpenDialog({
     title: "Select tsconfig.json of the project to analyze",
@@ -22,6 +18,14 @@ if (!selected || selected.length === 0) {
 
 const tsconfigPath = selected[0];
 const projectRoot = path.dirname(tsconfigPath);
+
+// Use the project's own TypeScript installation
+const typescriptModule = path.join(projectRoot, "node_modules", "typescript");
+if (!originalFs.existsSync(typescriptModule)) {
+    ui.error(`TypeScript not found at: ${typescriptModule}\nRun "npm install" in the project first.`);
+    return;
+}
+const ts = require(typescriptModule);
 
 ui.info(`Parsing ${tsconfigPath}...`);
 const progress = ui.show.progress({ label: "Loading TypeScript program...", value: 0 });
@@ -348,6 +352,7 @@ for (const link of renderLinks) {
 for (const [id, { file, name }] of components) {
     if (!linkedComponents.has(id)) continue;
     const folder = path.dirname(file);
+    const absPath = path.resolve(projectRoot, file).replace(/\\/g, "/");
 
     nodes.push({
         id,
@@ -355,6 +360,7 @@ for (const [id, { file, name }] of components) {
         level: getLevel(id),
         file,
         folder: folder === "." ? "(root)" : folder,
+        path: `[${absPath}](${absPath})`,
         renderedBy: inDegree.get(id) || 0,
     });
 }
@@ -366,7 +372,63 @@ for (const link of renderLinks) {
     }
 }
 
-nodes.sort((a, b) => b.renderedBy - a.renderedBy);
+// Build folder group hierarchy
+const folderSet = new Set();
+for (const node of nodes) {
+    if (node.folder && node.folder !== "(root)") {
+        let dir = node.folder;
+        while (dir && dir !== ".") {
+            folderSet.add(dir);
+            dir = path.dirname(dir);
+        }
+    }
+}
+
+// Skip common root folder(s) that contain ALL file nodes
+const fileNodes = nodes.filter((n) => !n.isGroup);
+const topLevelFolders = [...folderSet].filter((f) => !folderSet.has(path.dirname(f)) || path.dirname(f) === ".");
+if (topLevelFolders.length === 1) {
+    let root = topLevelFolders[0];
+    while (root) {
+        const children = [...folderSet].filter((f) => path.dirname(f) === root);
+        const directFiles = fileNodes.filter((n) => n.folder === root);
+        if (children.length <= 1 && directFiles.length === 0) {
+            folderSet.delete(root);
+            root = children.length === 1 ? children[0] : null;
+        } else {
+            break;
+        }
+    }
+}
+
+const sortedFolders = [...folderSet].sort();
+
+// Create group nodes for each folder
+for (const folder of sortedFolders) {
+    nodes.push({
+        id: folder,
+        title: path.basename(folder),
+        isGroup: true,
+    });
+}
+
+// Create membership links: folder → component nodes
+for (const node of nodes) {
+    if (node.isGroup) continue;
+    if (node.folder && node.folder !== "(root)" && folderSet.has(node.folder)) {
+        links.push({ source: node.folder, target: node.id });
+    }
+}
+
+// Create nesting links: parent folder → child folder
+for (const folder of sortedFolders) {
+    const parent = path.dirname(folder);
+    if (parent !== "." && folderSet.has(parent)) {
+        links.push({ source: parent, target: folder });
+    }
+}
+
+nodes.sort((a, b) => (b.renderedBy || 0) - (a.renderedBy || 0));
 
 const projectName = path.basename(projectRoot);
 
@@ -379,6 +441,19 @@ const graphData = {
         linkDistance: 40,
         collide: 0.6,
         maxVisible: 500,
+        legend: {
+            levels: {
+                "1": "15+ parents",
+                "2": "8–14 parents",
+                "3": "4–7 parents",
+                "4": "2–3 parents",
+                "5": "0–1 parents",
+            },
+            shapes: {
+                circle: "React components",
+                group: "component folders",
+            },
+        },
     },
 };
 

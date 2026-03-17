@@ -5,10 +5,6 @@
 const originalFs = require("original-fs");
 const path = require("path");
 
-// Use js-notepad's own TypeScript installation
-const typescriptModule = path.join(process.cwd(), "node_modules", "typescript");
-const ts = require(typescriptModule);
-
 // Ask user to select tsconfig.json
 const selected = await app.fs.showOpenDialog({
     title: "Select tsconfig.json of the project to analyze",
@@ -22,6 +18,14 @@ if (!selected || selected.length === 0) {
 
 const tsconfigPath = selected[0];
 const projectRoot = path.dirname(tsconfigPath);
+
+// Use the project's own TypeScript installation
+const typescriptModule = path.join(projectRoot, "node_modules", "typescript");
+if (!originalFs.existsSync(typescriptModule)) {
+    ui.error(`TypeScript not found at: ${typescriptModule}\nRun "npm install" in the project first.`);
+    return;
+}
+const ts = require(typescriptModule);
 
 ui.info(`Parsing ${tsconfigPath}...`);
 const progress = ui.show.progress({ label: "Loading TypeScript program...", value: 0 });
@@ -49,11 +53,14 @@ function fileId(filePath) {
 
 // Collect all modules and their imports
 const modules = new Map(); // fileId -> Set<fileId>
+const declarations = new Map(); // fileId -> { functions: string[], classes: string[], types: string[] }
 
 let processed = 0;
 for (const sourceFile of sourceFiles) {
     const id = fileId(sourceFile.fileName);
     if (!modules.has(id)) modules.set(id, new Set());
+    if (!declarations.has(id)) declarations.set(id, { functions: [], classes: [], types: [] });
+    const decl = declarations.get(id);
 
     ts.forEachChild(sourceFile, (node) => {
         // import ... from "..."
@@ -67,6 +74,35 @@ for (const sourceFile of sourceFiles) {
         // import("...")  — dynamic imports at top level
         if (ts.isExpressionStatement(node) || ts.isVariableStatement(node)) {
             findDynamicImports(node, id, sourceFile.fileName);
+        }
+
+        // Collect top-level declarations
+        if (ts.isFunctionDeclaration(node) && node.name) {
+            decl.functions.push(node.name.text);
+        }
+        if (ts.isClassDeclaration(node) && node.name) {
+            decl.classes.push(node.name.text);
+        }
+        if (ts.isInterfaceDeclaration(node) && node.name) {
+            decl.types.push(node.name.text);
+        }
+        if (ts.isTypeAliasDeclaration(node) && node.name) {
+            decl.types.push(node.name.text);
+        }
+        if (ts.isEnumDeclaration(node) && node.name) {
+            decl.types.push(node.name.text);
+        }
+        // Top-level const/let/var — extract variable names
+        if (ts.isVariableStatement(node)) {
+            for (const d of node.declarationList.declarations) {
+                if (ts.isIdentifier(d.name)) {
+                    // Heuristic: UPPER_CASE → likely a constant, skip; PascalCase with arrow/function → function
+                    const name = d.name.text;
+                    if (d.initializer && (ts.isArrowFunction(d.initializer) || ts.isFunctionExpression(d.initializer))) {
+                        decl.functions.push(name);
+                    }
+                }
+            }
         }
     });
 
@@ -146,15 +182,28 @@ function getFolder(id) {
 }
 
 for (const [id, deps] of modules) {
-    nodes.push({
+    const absPath = path.resolve(projectRoot, id).replace(/\\/g, "/");
+    const nodeObj = {
         id,
         title: path.basename(id),
         level: getLevel(id),
         shape: getShape(id),
         folder: getFolder(id),
+        path: `[${absPath}](${absPath})`,
         importedBy: inDegree.get(id) || 0,
         imports: deps.size,
-    });
+    };
+
+    // Add numbered declaration properties for search
+    const decl = declarations.get(id);
+    if (decl) {
+        let ci = 1, fi = 1, ti = 1;
+        for (const name of decl.classes) nodeObj[`class#${ci++}`] = name;
+        for (const name of decl.functions) nodeObj[`function#${fi++}`] = name;
+        for (const name of decl.types) nodeObj[`type#${ti++}`] = name;
+    }
+
+    nodes.push(nodeObj);
 
     for (const dep of deps) {
         if (allIds.has(dep)) {
@@ -163,8 +212,68 @@ for (const [id, deps] of modules) {
     }
 }
 
+// Build folder group hierarchy
+const folderSet = new Set();
+for (const node of nodes) {
+    if (node.folder && node.folder !== "(root)") {
+        // Add this folder and all parent folders
+        let dir = node.folder;
+        while (dir && dir !== ".") {
+            folderSet.add(dir);
+            dir = path.dirname(dir);
+        }
+    }
+}
+
+// Find common root folder(s) that contain ALL file nodes — skip them
+// (e.g., if every file is under "src/", don't create a "src" group)
+const fileNodes = nodes.filter((n) => !n.isGroup);
+const topLevelFolders = [...folderSet].filter((f) => !folderSet.has(path.dirname(f)) || path.dirname(f) === ".");
+if (topLevelFolders.length === 1) {
+    // Single root folder — remove it and any single-child chain
+    let root = topLevelFolders[0];
+    while (root) {
+        const children = [...folderSet].filter((f) => path.dirname(f) === root);
+        const directFiles = fileNodes.filter((n) => n.folder === root);
+        if (children.length <= 1 && directFiles.length === 0) {
+            folderSet.delete(root);
+            root = children.length === 1 ? children[0] : null;
+        } else {
+            break;
+        }
+    }
+}
+
+// Sort folders so parents come before children
+const sortedFolders = [...folderSet].sort();
+
+// Create group nodes for each folder
+for (const folder of sortedFolders) {
+    nodes.push({
+        id: folder,
+        title: path.basename(folder),
+        isGroup: true,
+    });
+}
+
+// Create membership links: folder → file nodes
+for (const node of nodes) {
+    if (node.isGroup) continue;
+    if (node.folder && node.folder !== "(root)" && folderSet.has(node.folder)) {
+        links.push({ source: node.folder, target: node.id });
+    }
+}
+
+// Create nesting links: parent folder → child folder
+for (const folder of sortedFolders) {
+    const parent = path.dirname(folder);
+    if (parent !== "." && folderSet.has(parent)) {
+        links.push({ source: parent, target: folder });
+    }
+}
+
 // Sort by importedBy for the summary
-nodes.sort((a, b) => b.importedBy - a.importedBy);
+nodes.sort((a, b) => (b.importedBy || 0) - (a.importedBy || 0));
 
 const projectName = path.basename(projectRoot);
 
@@ -177,6 +286,21 @@ const graphData = {
         linkDistance: 30,
         collide: 0.5,
         maxVisible: 500,
+        legend: {
+            levels: {
+                "1": "20+ dependents",
+                "2": "10–19 dependents",
+                "3": "5–9 dependents",
+                "4": "2–4 dependents",
+                "5": "0–1 dependents",
+            },
+            shapes: {
+                diamond: ".tsx modules",
+                circle: ".ts modules",
+                square: ".js modules",
+                group: "module folders",
+            },
+        },
     },
 };
 

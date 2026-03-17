@@ -1,7 +1,6 @@
 import type { LogViewModel } from "../../editors/log-view/LogViewModel";
 import type { StyledText, MarkdownOutputEntry } from "../../editors/log-view/logTypes";
 import { pagesModel } from "../../api/pages";
-import { isTextFileModel } from "../../editors/text/TextPageModel";
 
 /**
  * Markdown helper returned by `ui.show.markdown()`.
@@ -36,9 +35,6 @@ export class Markdown {
 
     openInEditor(pageTitle?: string): void {
         const title = pageTitle ?? (typeof this._title === "string" ? this._title : "Markdown");
-        const page = pagesModel.addEditorPage("md-view", "markdown", title);
-        if (isTextFileModel(page)) {
-            page.changeContent(this._text);
-        }
+        pagesModel.addEditorPage("md-view", "markdown", title, this._text);
     }
 }

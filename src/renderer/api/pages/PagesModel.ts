@@ -154,8 +154,8 @@ export class PagesModel extends TModel<OpenFilesState> {
     addEmptyPage = () => this.lifecycle.addEmptyPage();
     addEmptyPageWithNavPanel = (folderPath: string) =>
         this.lifecycle.addEmptyPageWithNavPanel(folderPath);
-    addEditorPage = (editor: PageEditor, language: string, title: string) =>
-        this.lifecycle.addEditorPage(editor, language, title);
+    addEditorPage = (editor: PageEditor, language: string, title: string, content?: string) =>
+        this.lifecycle.addEditorPage(editor, language, title, content);
     createPageFromFile = (filePath: string) =>
         this.lifecycle.createPageFromFile(filePath);
     openFile = (filePath?: string) => this.lifecycle.openFile(filePath);

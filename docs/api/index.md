@@ -39,6 +39,7 @@ const theme = app.settings.theme;
 | [page.asSvg()](./page.md#assvgpromiseisvgeditor) | SVG preview |
 | [page.asHtml()](./page.md#ashtmlpromiseihtmleditor) | HTML preview |
 | [page.asMermaid()](./page.md#asmermaidpromiseimermaideditor) | Mermaid diagram preview |
+| [page.asGraph()](./page.md#asgraphpromiseigrapheditor) | Graph — nodes, links, search, traversal |
 
 ### Application
 

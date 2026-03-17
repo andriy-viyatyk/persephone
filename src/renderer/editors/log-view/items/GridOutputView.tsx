@@ -10,7 +10,6 @@ import AVGrid from "../../../components/data-grid/AVGrid/AVGrid";
 import { Button } from "../../../components/basic/Button";
 import { OpenLinkIcon } from "../../../theme/icons";
 import { pagesModel } from "../../../api/pages";
-import { isTextFileModel } from "../../text/TextPageModel";
 import { DIALOG_CONTENT_MAX_HEIGHT } from "../logConstants";
 import { resolveState } from "../../../core/utils/utils";
 import color from "../../../theme/color";
@@ -123,10 +122,7 @@ export function GridOutputView({ entry }: GridOutputViewProps) {
 
     const handleOpenInGrid = useCallback(() => {
         const title = typeof entry.title === "string" ? entry.title : "Grid Data";
-        const page = pagesModel.addEditorPage("grid-json", "json", title);
-        if (isTextFileModel(page)) {
-            page.changeContent(JSON.stringify(entry.data, null, 2));
-        }
+        pagesModel.addEditorPage("grid-json", "json", title, JSON.stringify(entry.data, null, 2));
     }, [entry.data, entry.title]);
 
     return (

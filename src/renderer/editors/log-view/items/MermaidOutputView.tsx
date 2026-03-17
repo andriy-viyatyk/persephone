@@ -5,7 +5,6 @@ import { DialogHeader } from "./DialogHeader";
 import { Button } from "../../../components/basic/Button";
 import { CopyIcon, OpenLinkIcon } from "../../../theme/icons";
 import { pagesModel } from "../../../api/pages";
-import { isTextFileModel } from "../../text/TextPageModel";
 import { renderMermaidSvg, svgToDataUrl } from "../../mermaid/render-mermaid";
 import { settings } from "../../../api/settings";
 import { isCurrentThemeDark } from "../../../theme/themes";
@@ -125,10 +124,7 @@ export function MermaidOutputView({ entry }: MermaidOutputViewProps) {
 
     const handleOpenInEditor = useCallback(() => {
         const title = typeof entry.title === "string" ? entry.title : "Mermaid Diagram";
-        const page = pagesModel.addEditorPage("mermaid-view", "mermaid", title);
-        if (isTextFileModel(page)) {
-            page.changeContent(entry.text);
-        }
+        pagesModel.addEditorPage("mermaid-view", "mermaid", title, entry.text);
     }, [entry.text, entry.title]);
 
     return (

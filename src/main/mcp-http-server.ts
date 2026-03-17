@@ -177,6 +177,12 @@ function createMcpServer(): InstanceType<typeof McpServer> {
                 "Page-editors (browser-view, pdf-view, image-view) are NOT supported by `create_page` — use `open_url` for browser, `execute_script` with `app.pages.openFile()` for PDF/image.",
                 "",
                 "Before using non-monaco editors with structured content (notebook, todo, link, grid, graph), read `notepad://guides/pages` for the required JSON format.",
+                "",
+                "## Working with force-graph pages",
+                "",
+                "Force-graph pages (`.fg.json`) contain node-link data visualized as an interactive graph. **Before reading or editing graph JSON, read `notepad://guides/graph`** for the data format and the `page.asGraph()` scripting API.",
+                "",
+                "Key: use `execute_script` with `page.asGraph()` to query graph structure (neighbors, groups, search, BFS traversal). Edit data by modifying `page.content` JSON directly.",
             ].join("\n"),
         },
     );
@@ -381,6 +387,12 @@ function createMcpServer(): InstanceType<typeof McpServer> {
             uri: "notepad://guides/scripting",
             file: "mcp-res-scripting.md",
             description: "Scripting API reference — app object (pages, fs, settings, ui, shell, window), editor facades (grid, notebook, todo, links, browser), TypeScript, Node.js access. Read when using execute_script.",
+        },
+        {
+            name: "graph-guide",
+            uri: "notepad://guides/graph",
+            file: "mcp-res-graph.md",
+            description: "Force-graph editor guide — JSON data format, page.asGraph() API, editing graph data, group nodes. Read BEFORE working with graph pages.",
         },
     ];
 

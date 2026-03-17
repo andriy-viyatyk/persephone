@@ -109,7 +109,8 @@ export class PagesLifecycleModel {
     addEditorPage = (
         editor: PageEditor,
         language: string,
-        title: string
+        title: string,
+        content?: string,
     ): PageModel => {
         const editorDef = editorRegistry.getById(editor);
         if (editorDef?.category === "page-editor") {
@@ -124,6 +125,10 @@ export class PagesLifecycleModel {
             // Validate editor is compatible with language (e.g., md-view requires markdown)
             s.editor = editorRegistry.validateForLanguage(editor, language);
         });
+        if (content) {
+            page.changeContent(content);
+            page.state.update((s) => { s.modified = false; });
+        }
         page.restore();
         return this.addPage(page as unknown as PageModel);
     };

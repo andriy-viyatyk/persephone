@@ -6,7 +6,6 @@ import { MarkdownBlock } from "../../markdown/MarkdownBlock";
 import { Button } from "../../../components/basic/Button";
 import { OpenLinkIcon } from "../../../theme/icons";
 import { pagesModel } from "../../../api/pages";
-import { isTextFileModel } from "../../text/TextPageModel";
 
 // =============================================================================
 // Styled Components
@@ -45,10 +44,7 @@ interface MarkdownOutputViewProps {
 export function MarkdownOutputView({ entry }: MarkdownOutputViewProps) {
     const handleOpenInEditor = useCallback(() => {
         const title = typeof entry.title === "string" ? entry.title : "Markdown";
-        const page = pagesModel.addEditorPage("md-view", "markdown", title);
-        if (isTextFileModel(page)) {
-            page.changeContent(entry.text);
-        }
+        pagesModel.addEditorPage("md-view", "markdown", title, entry.text);
     }, [entry.text, entry.title]);
 
     return (

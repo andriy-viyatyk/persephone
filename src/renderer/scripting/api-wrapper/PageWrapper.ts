@@ -11,6 +11,7 @@ import type { MarkdownViewModel } from "../../editors/markdown/MarkdownViewModel
 import type { SvgViewModel } from "../../editors/svg/SvgViewModel";
 import type { HtmlViewModel } from "../../editors/html/HtmlViewModel";
 import type { MermaidViewModel } from "../../editors/mermaid/MermaidViewModel";
+import type { GraphViewModel } from "../../editors/graph/GraphViewModel";
 import type { BrowserPageModel } from "../../editors/browser/BrowserPageModel";
 import { TextEditorFacade } from "./TextEditorFacade";
 import { GridEditorFacade } from "./GridEditorFacade";
@@ -21,6 +22,7 @@ import { MarkdownEditorFacade } from "./MarkdownEditorFacade";
 import { SvgEditorFacade } from "./SvgEditorFacade";
 import { HtmlEditorFacade } from "./HtmlEditorFacade";
 import { MermaidEditorFacade } from "./MermaidEditorFacade";
+import { GraphEditorFacade } from "./GraphEditorFacade";
 import { BrowserEditorFacade } from "./BrowserEditorFacade";
 import type { ScriptOutputFlags } from "../ScriptContext";
 
@@ -225,6 +227,17 @@ export class PageWrapper {
         const vm = await model.acquireViewModel("mermaid-view") as MermaidViewModel;
         this.releaseList.push(() => model.releaseViewModel("mermaid-view"));
         return new MermaidEditorFacade(vm);
+    }
+
+    async asGraph(): Promise<GraphEditorFacade> {
+        const model = this.model;
+        if (!isTextFileModel(model)) {
+            throw new Error("asGraph() is only available for text pages");
+        }
+
+        const vm = await model.acquireViewModel("graph-view") as GraphViewModel;
+        this.releaseList.push(() => model.releaseViewModel("graph-view"));
+        return new GraphEditorFacade(vm);
     }
 
     async asBrowser(): Promise<BrowserEditorFacade> {

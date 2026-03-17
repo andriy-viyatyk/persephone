@@ -6,6 +6,10 @@ export interface PreprocessedGraph {
     nodes: GraphNode[];
     links: GraphLink[];
     syntheticLinkCounts: Map<string, number>;
+    /** Maps original real-data link key → array of visual link keys it was split into.
+     *  For unsplit links (intra-group, external), the array contains the original key itself.
+     *  Used for O(1) path highlighting instead of BFS. */
+    originalToVisualLinks: Map<string, string[]>;
 }
 
 /**
@@ -29,7 +33,7 @@ export class GraphGroupModel {
         this.groups.clear();
         this.memberOf.clear();
 
-        // Find all group nodes
+        // Phase 1: Collect group IDs
         const groupIds = new Set<string>();
         for (const node of nodes) {
             if (node.isGroup) {
@@ -40,26 +44,39 @@ export class GraphGroupModel {
 
         if (groupIds.size === 0) return;
 
-        // Find membership links: any link between a group node and a non-group node
-        // (either direction — group→member or member→group)
+        // Phase 2a: Process links where exactly one endpoint is a group (unambiguous)
         for (const link of links) {
             const { source, target } = linkIds(link);
-            let groupId: string | undefined;
-            let memberId: string | undefined;
-
             if (groupIds.has(source) && !groupIds.has(target)) {
-                groupId = source;
-                memberId = target;
+                this.groups.get(source)!.add(target);
+                if (!this.memberOf.has(target)) this.memberOf.set(target, source);
             } else if (groupIds.has(target) && !groupIds.has(source)) {
-                groupId = target;
-                memberId = source;
+                this.groups.get(target)!.add(source);
+                if (!this.memberOf.has(source)) this.memberOf.set(source, target);
             }
+        }
 
-            if (groupId && memberId) {
-                this.groups.get(groupId)!.add(memberId);
-                // A node can belong to at most one group (first wins)
-                if (!this.memberOf.has(memberId)) {
-                    this.memberOf.set(memberId, groupId);
+        // Phase 2b: Process group-to-group links (with cycle detection)
+        for (const link of links) {
+            const { source, target } = linkIds(link);
+            if (!groupIds.has(source) || !groupIds.has(target)) continue;
+            // Skip if already resolved
+            if (this.memberOf.has(source) && this.memberOf.get(source) === target) continue;
+            if (this.memberOf.has(target) && this.memberOf.get(target) === source) continue;
+            if (this.memberOf.has(target) && this.memberOf.has(source)) continue;
+
+            // Try source-as-parent first; if cycle, try target-as-parent
+            if (!this.memberOf.has(target)) {
+                if (!this.wouldCreateCycleInternal(source, target)) {
+                    this.groups.get(source)!.add(target);
+                    this.memberOf.set(target, source);
+                    continue;
+                }
+            }
+            if (!this.memberOf.has(source)) {
+                if (!this.wouldCreateCycleInternal(target, source)) {
+                    this.groups.get(target)!.add(source);
+                    this.memberOf.set(source, target);
                 }
             }
         }
@@ -85,6 +102,29 @@ export class GraphGroupModel {
         return this.groups.size;
     }
 
+    /** Get IDs of group nodes that have zero members. */
+    getEmptyGroupIds(): string[] {
+        const result: string[] = [];
+        for (const [groupId, members] of this.groups) {
+            if (members.size === 0) result.push(groupId);
+        }
+        return result;
+    }
+
+    /** Check if adding childId as member of parentGroupId would create a cycle. */
+    wouldCreateCycle(parentGroupId: string, childId: string): boolean {
+        return this.wouldCreateCycleInternal(parentGroupId, childId);
+    }
+
+    private wouldCreateCycleInternal(parentId: string, childId: string): boolean {
+        let current: string | undefined = parentId;
+        while (current) {
+            if (current === childId) return true;
+            current = this.memberOf.get(current);
+        }
+        return false;
+    }
+
     /**
      * Pre-process links for visualization: hide membership links, split cross-group
      * and inter-group links through group nodes, deduplicate synthetic links.
@@ -93,7 +133,9 @@ export class GraphGroupModel {
      * The root node is excluded from group membership so it stays outside all groups.
      */
     preprocess(nodes: GraphNode[], links: GraphLink[], rootNodeId: string): PreprocessedGraph {
-        const empty: PreprocessedGraph = { nodes, links, syntheticLinkCounts: new Map() };
+        const empty: PreprocessedGraph = {
+            nodes, links, syntheticLinkCounts: new Map(), originalToVisualLinks: new Map(),
+        };
         if (this.groups.size === 0) return empty;
 
         // 1. Build effective memberOf map (exclude root from membership)
@@ -108,21 +150,32 @@ export class GraphGroupModel {
             effectiveGroups.set(groupId, copy);
         }
 
-        // Helper: get effective group of a node (group nodes themselves are NOT "in" any group)
-        const groupOf = (id: string): string | undefined => effectiveMemberOf.get(id);
+        // Helper: get ancestor chain [immediateGroup, parentGroup, ...] (excludes node itself)
+        const getAncestorChain = (id: string): string[] => {
+            const chain: string[] = [];
+            let current: string | undefined = effectiveMemberOf.get(id);
+            while (current) {
+                chain.push(current);
+                current = effectiveMemberOf.get(current);
+            }
+            return chain;
+        };
 
         // 3. Classify links and collect output
-        // Dedup map: canonical key → GraphLink (for synthetic links)
         const syntheticMap = new Map<string, GraphLink>();
         const syntheticCounts = new Map<string, number>();
         const outputLinks: GraphLink[] = [];
+        const originalToVisualLinks = new Map<string, string[]>();
 
         const canonicalKey = (a: string, b: string): string =>
             a < b ? `${a}→${b}` : `${b}→${a}`;
 
+        let currentVisualKeys: string[] = [];
+
         const addSynthetic = (source: string, target: string): void => {
             if (source === target) return;
             const key = canonicalKey(source, target);
+            currentVisualKeys.push(key);
             const existing = syntheticCounts.get(key) ?? 0;
             syntheticCounts.set(key, existing + 1);
             if (!syntheticMap.has(key)) {
@@ -133,33 +186,66 @@ export class GraphGroupModel {
         for (const link of links) {
             const { source, target } = linkIds(link);
 
-            // Rule 1: Membership link — source is group AND target is effective member (or vice versa)
+            // Rule 1: Membership link — skip
             if (this.groups.has(source) && effectiveGroups.get(source)?.has(target)) continue;
             if (this.groups.has(target) && effectiveGroups.get(target)?.has(source)) continue;
 
-            const sourceGroup = groupOf(source);
-            const targetGroup = groupOf(target);
+            const originalKey = canonicalKey(source, target);
+            currentVisualKeys = [];
 
-            if (sourceGroup !== undefined && sourceGroup === targetGroup) {
-                // Rule 2: Intra-group — keep as-is
-                outputLinks.push(link);
-            } else if (sourceGroup !== undefined && targetGroup !== undefined) {
-                // Rule 4: Inter-group — split through both group nodes
-                addSynthetic(source, sourceGroup);
-                addSynthetic(sourceGroup, targetGroup);
-                addSynthetic(targetGroup, target);
-            } else if (sourceGroup !== undefined) {
-                // Rule 3: Cross-group (source in group, target outside)
-                addSynthetic(source, sourceGroup);
-                addSynthetic(sourceGroup, target);
-            } else if (targetGroup !== undefined) {
-                // Rule 3: Cross-group (target in group, source outside)
-                addSynthetic(source, targetGroup);
-                addSynthetic(targetGroup, target);
-            } else {
-                // Rule 5: External — keep as-is
-                outputLinks.push(link);
+            // Build full paths: [node, immediateGroup, parentGroup, ...]
+            const sAncestors = getAncestorChain(source);
+            const tAncestors = getAncestorChain(target);
+            const sPath = [source, ...sAncestors];
+            const tPath = [target, ...tAncestors];
+
+            // Find LCA: first node in tPath that also appears in sPath
+            const sSet = new Set(sPath);
+            let lca: string | null = null;
+            let lcaIndexInT = -1;
+            for (let i = 0; i < tPath.length; i++) {
+                if (sSet.has(tPath[i])) {
+                    lca = tPath[i];
+                    lcaIndexInT = i;
+                    break;
+                }
             }
+            let lcaIndexInS = -1;
+            if (lca !== null) {
+                lcaIndexInS = sPath.indexOf(lca);
+            }
+
+            // Determine routing
+            if (sAncestors.length === 0 && tAncestors.length === 0) {
+                // Neither in any group → keep as-is (External)
+                outputLinks.push(link);
+                currentVisualKeys.push(originalKey);
+            } else if (sAncestors.length > 0 && tAncestors.length > 0 && sAncestors[0] === tAncestors[0]) {
+                // Same immediate group → keep as-is (Intra-group)
+                outputLinks.push(link);
+                currentVisualKeys.push(originalKey);
+            } else {
+                // Route through group hierarchy via LCA
+                const sTrimmed = lca !== null ? sPath.slice(0, lcaIndexInS) : sPath;
+                const tTrimmed = lca !== null ? tPath.slice(0, lcaIndexInT) : tPath;
+
+                // Synthetic links along source side (ascending)
+                for (let i = 0; i < sTrimmed.length - 1; i++) {
+                    addSynthetic(sTrimmed[i], sTrimmed[i + 1]);
+                }
+                // Synthetic links along target side (ascending)
+                for (let i = 0; i < tTrimmed.length - 1; i++) {
+                    addSynthetic(tTrimmed[i], tTrimmed[i + 1]);
+                }
+                // Bridge between tops of both sides
+                const sTop = sTrimmed[sTrimmed.length - 1];
+                const tTop = tTrimmed[tTrimmed.length - 1];
+                if (sTop !== tTop) {
+                    addSynthetic(sTop, tTop);
+                }
+            }
+
+            originalToVisualLinks.set(originalKey, currentVisualKeys);
         }
 
         // 4. Add deduplicated synthetic links to output
@@ -167,6 +253,6 @@ export class GraphGroupModel {
             outputLinks.push(link);
         }
 
-        return { nodes, links: outputLinks, syntheticLinkCounts: syntheticCounts };
+        return { nodes, links: outputLinks, syntheticLinkCounts: syntheticCounts, originalToVisualLinks };
     }
 }

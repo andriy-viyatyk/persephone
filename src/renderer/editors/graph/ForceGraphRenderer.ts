@@ -313,7 +313,7 @@ export class ForceGraphRenderer {
         this.simulation.alpha(1).restart();
     }
 
-    /** Compute per-link distance, applying log2 scaling for group↔group synthetic links. */
+    /** Compute per-link distance, scaling down synthetic group↔group links linearly by collapsed count. */
     private computeLinkDistance(link: GraphLink): number {
         if (!this.syntheticLinkCounts || this.syntheticLinkCounts.size === 0) {
             return this._forceParams.linkDistance;
@@ -322,7 +322,9 @@ export class ForceGraphRenderer {
         const key = source < target ? `${source}→${target}` : `${target}→${source}`;
         const count = this.syntheticLinkCounts.get(key);
         if (count && count > 1) {
-            return this._forceParams.linkDistance / Math.log2(count);
+            // Linear scaling: more collapsed links → proportionally shorter distance,
+            // clamped to a minimum of 10% of base distance.
+            return this._forceParams.linkDistance * Math.max(0.1, 1 / count);
         }
         return this._forceParams.linkDistance;
     }
@@ -665,7 +667,7 @@ export class ForceGraphRenderer {
         if (cm && this.highlight.selectedIds.size > 0) {
             for (const nodeId of this.highlight.selectedIds) {
                 for (const realNeighborId of cm.getRealNeighborIds(nodeId)) {
-                    for (const key of cm.getVisualPath(nodeId, realNeighborId)) {
+                    for (const key of cm.getVisualLinkKeys(nodeId, realNeighborId)) {
                         keys.add(key);
                     }
                 }
@@ -691,7 +693,7 @@ export class ForceGraphRenderer {
             for (const nodeId of this.highlight.selectedIds) {
                 // Only highlight path if hovered node is a real (direct) neighbor
                 if (!cm.getRealNeighborIds(nodeId).has(hoveredId)) continue;
-                for (const key of cm.getVisualPath(nodeId, hoveredId)) {
+                for (const key of cm.getVisualLinkKeys(nodeId, hoveredId)) {
                     keys.add(key);
                 }
             }

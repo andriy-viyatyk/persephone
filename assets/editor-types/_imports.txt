@@ -4,6 +4,7 @@ common.d.ts
 downloads.d.ts
 editors.d.ts
 fs.d.ts
+graph-editor.d.ts
 grid-editor.d.ts
 html-editor.d.ts
 link-editor.d.ts

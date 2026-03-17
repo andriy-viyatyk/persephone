@@ -26,7 +26,7 @@ ScriptRunner.run(script, page?, language?)
     │       ├── AppWrapper        ← wraps `app` global
     │       │     └── PageCollectionWrapper  ← wraps `app.pages`
     │       ├── PageWrapper       ← wraps `page` global
-    │       │     └── EditorFacades (10)  ← page.asText(), page.asGrid(), ...
+    │       │     └── EditorFacades (11)  ← page.asText(), page.asGrid(), ...
     │       ├── UiFacade (lazy)   ← wraps `ui` global (Log View logging + dialogs)
     │       ├── styledText()     ← standalone styled text builder for dialog labels
     │       ├── preventOutput()   ← suppresses default grouped-page output
@@ -95,6 +95,7 @@ interface IPage {
     asSvg(): Promise<ISvgEditor>;
     asHtml(): Promise<IHtmlEditor>;
     asMermaid(): Promise<IMermaidEditor>;
+    asGraph(): Promise<IGraphEditor>;
     asBrowser(): Promise<IBrowserEditor>;
 
     // Run this page as a script (same as F5)
@@ -190,6 +191,15 @@ await ui.dialog.confirm(label);
 - Native console is always called (forwarding is additive, not a replacement)
 - For MCP scripts, console output is captured in both `consoleLogs` (returned to agent) and Log View (visible to user)
 - Suppress forwarding per-level with `ui.preventConsoleLog()`, `ui.preventConsoleWarn()`, `ui.preventConsoleError()`
+
+**Callable `ui()` yield:** The `ui` global is also callable — `await ui()` yields to the event loop (via `setTimeout(0)`), preventing long-running scripts from freezing the UI. This is implemented via a `Proxy` that delegates property access to `UiFacade` but treats function calls as event-loop yields.
+
+```javascript
+for (const item of largeArray) {
+    // ... heavy processing ...
+    await ui(); // let UI breathe
+}
+```
 
 **Key behaviors:**
 - Accessing `ui` auto-creates a Log View page grouped with the source page (or standalone if no page context)
@@ -320,6 +330,7 @@ Facades provide safe, typed access to editor-specific features. Each facade wrap
 | `page.asSvg()` | `SvgEditorFacade` | `SvgViewModel` | `svg` (read-only) |
 | `page.asHtml()` | `HtmlEditorFacade` | `HtmlViewModel` | `html` (read-only) |
 | `page.asMermaid()` | `MermaidEditorFacade` | `MermaidViewModel` | `svgUrl`, `loading`, `error` (read-only) |
+| `page.asGraph()` | `GraphEditorFacade` | `GraphViewModel` | `nodes`, `links`, `search()`, `bfs()`, `getComponents()`, `select()`, selection, groups, neighbors |
 | `page.asBrowser()` | `BrowserEditorFacade` | `BrowserPageModel` | `url`, `title`, `navigate()`, `back()`, `forward()`, `reload()` |
 
 **Exception:** `BrowserEditorFacade` wraps `BrowserPageModel` directly (no ViewModel, no ref-counting) because browser is a page-editor, not a content-view.
@@ -529,6 +540,7 @@ Script API types are defined in `/src/renderer/api/types/`:
 | `svg-editor.d.ts` | `ISvgEditor` |
 | `html-editor.d.ts` | `IHtmlEditor` |
 | `mermaid-editor.d.ts` | `IMermaidEditor` |
+| `graph-editor.d.ts` | `IGraphEditor`, `IGraphNode`, `IGraphComponent`, `IGraphSearchResult` |
 | `browser-editor.d.ts` | `IBrowserEditor` — browser page operations |
 | `ui.d.ts` | `IUserInterface`, `ITextDialogOptions`, `ITextDialogResult` — dialogs and notifications |
 | `ui-log.d.ts` | `IUiLog`, `IUiDialog`, `IUiShow`, `IProgress`, `IGrid`, `IGridColumn`, `IDialogResult`, `IStyledTextBuilder`, `IStyledLogBuilder` — Log View UI facade |
@@ -556,6 +568,7 @@ These files serve dual purpose: TypeScript type checking **and** IDE IntelliSens
     ├── SvgEditorFacade.ts       # SVG preview (read-only)
     ├── HtmlEditorFacade.ts      # HTML preview (read-only)
     ├── MermaidEditorFacade.ts   # Mermaid diagram (read-only)
+    ├── GraphEditorFacade.ts     # Graph query/analysis (read-only, designed for MCP)
     ├── BrowserEditorFacade.ts   # Browser page operations
     ├── UiFacade.ts              # Log View UI (logging + dialogs + output)
     ├── Progress.ts              # Progress helper class (returned by ui.show.progress)
@@ -582,6 +595,7 @@ These files serve dual purpose: TypeScript type checking **and** IDE IntelliSens
 ├── svg-editor.d.ts              # ISvgEditor
 ├── html-editor.d.ts             # IHtmlEditor
 ├── mermaid-editor.d.ts          # IMermaidEditor
+├── graph-editor.d.ts            # IGraphEditor, IGraphNode, IGraphComponent, IGraphSearchResult
 └── browser-editor.d.ts          # IBrowserEditor
 ```
 

@@ -363,6 +363,7 @@ js-notepad
 
 | Issue | Description | Complexity |
 |-------|-------------|------------|
+| US-195: Simplify `addEditorPage` + content | `addEditorPage` now accepts optional `content` param (added in PagesLifecycleModel). ~6 callsites still use `isTextFileModel(page)` + `page.changeContent()` pattern instead: mcp-handler `set_page_content`/`ui_push`, ScriptContext log pages, Grid/Markdown/Mermaid/Text `openInEditor()`. Migrate them to use the new parameter. | Low |
 | TypeScript Strict Mode | Enable stricter type checking | Medium |
 | Reduce Bundle Size | Analyze and optimize bundle | Medium |
 | Accessibility Audit | Keyboard nav, screen readers | Medium |

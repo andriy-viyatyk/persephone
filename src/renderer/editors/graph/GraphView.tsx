@@ -7,12 +7,14 @@ import { EditorError } from "../base/EditorError";
 import { useContentViewModel } from "../base/useContentViewModel";
 import { GraphViewModel, GraphViewState, SearchResult, defaultGraphViewState } from "./GraphViewModel";
 import { GraphTooltip } from "./GraphTooltip";
+import { buildSelectionMenu, SelectionMenuActions, SelectionMenuInfo } from "./GraphContextMenu";
+import { showAppPopupMenu } from "../../ui/dialogs/poppers/showPopupMenu";
 import { GraphDetailPanel } from "./GraphDetailPanel";
 import { GraphTuningSliders } from "./GraphTuningSliders";
 import { GraphExpansionSettings } from "./GraphExpansionSettings";
 import { GraphLegendPanel } from "./GraphLegendPanel";
 import { highlightText } from "../../components/basic/useHighlightedText";
-import { SettingsIcon, RefreshIcon, ExpandAllIcon } from "../../theme/icons";
+import { SettingsIcon, RefreshIcon, ExpandAllIcon, GraphGroupIcon } from "../../theme/icons";
 import { showConfirmationDialog } from "../../ui/dialogs/ConfirmationDialog";
 import color from "../../theme/color";
 
@@ -52,7 +54,7 @@ const GraphViewRoot = styled.div({
         left: 8,
         display: "flex",
         flexDirection: "column" as const,
-        width: 280,
+        width: "fit-content",
         backgroundColor: color.graph.background,
         border: `1px solid ${color.border.default}`,
         borderRadius: 4,
@@ -96,12 +98,25 @@ const GraphViewRoot = styled.div({
             pointerEvents: "none" as const,
         },
     },
+    "& .graph-icon-btn.strikethrough": {
+        position: "relative",
+        "&::after": {
+            content: '""',
+            position: "absolute",
+            top: "50%",
+            left: 2,
+            right: 2,
+            height: 1,
+            backgroundColor: color.text.default,
+            transform: "rotate(-45deg)",
+        },
+    },
     "& .graph-search-wrap": {
         position: "relative",
         display: "inline-flex",
         alignItems: "center",
-        flex: 1,
-        minWidth: 0,
+        width: 130,
+        flexShrink: 0,
     },
     "& .graph-search-input": {
         width: "100%",
@@ -152,6 +167,16 @@ const GraphViewRoot = styled.div({
         color: color.graph.labelText,
         whiteSpace: "nowrap",
         flexShrink: 0,
+    },
+    "& .graph-selection-info": {
+        fontSize: 11,
+        color: color.graph.nodeHighlight,
+        whiteSpace: "nowrap",
+        flexShrink: 0,
+        cursor: "pointer",
+        "&:hover": {
+            textDecoration: "underline",
+        },
     },
     // Toolbar tabs
     "& .toolbar-tabs": {
@@ -343,6 +368,27 @@ const GraphViewRoot = styled.div({
         flexShrink: 0,
         minWidth: 50,
     },
+    "& .legend-search-notice": {
+        display: "flex",
+        flexDirection: "column" as const,
+        alignItems: "center",
+        gap: 6,
+        padding: "10px 8px",
+        fontSize: 11,
+        color: color.warning.text,
+    },
+    "& .legend-clear-search": {
+        padding: "2px 10px",
+        fontSize: 11,
+        cursor: "pointer",
+        color: color.graph.labelText,
+        backgroundColor: "transparent",
+        border: `1px solid ${color.border.default}`,
+        borderRadius: 3,
+        "&:hover": {
+            borderColor: color.graph.nodeHighlight,
+        },
+    },
     "& .legend-description": {
         flex: 1,
         minWidth: 0,
@@ -437,6 +483,8 @@ function GraphView({ model }: GraphViewProps) {
     const [selectedResultIndex, setSelectedResultIndex] = useState(-1);
     const panelDirtyRef = useRef(false);
     const panelExpandedRef = useRef(false);
+    /** Timestamp (ms) when the last popup was dismissed. Used to ignore the click that closed it. */
+    const popupClosedAtRef = useRef(0);
 
     const toggleSettings = useCallback(() => {
         setToolbarPanel((prev) => prev === "settings" ? "closed" : "settings");
@@ -460,7 +508,7 @@ function GraphView({ model }: GraphViewProps) {
     });
 
     // Auto-switch to results tab when search results appear
-    const { searchQuery, searchInfo, searchResults, tooltip, selectedNodes, linkedNodes, statusHint } = pageState;
+    const { searchQuery, searchInfo, searchResults, tooltip, selectedNodes, linkedNodes, statusHint, groupingEnabled } = pageState;
     useEffect(() => {
         if (searchResults && searchResults.length > 0) {
             setToolbarPanel("results");
@@ -553,8 +601,13 @@ function GraphView({ model }: GraphViewProps) {
     // it from bubbling to document where Popper's click-outside listener lives.
     const onMouseDownCapture = useCallback((e: React.MouseEvent) => {
         if (e.target === e.currentTarget) return; // only for child elements (canvas)
+        // If a popup is open (context menu or selection menu), record the
+        // dismiss timestamp so the subsequent click handler can ignore it.
+        if (vm?.isPopupOpen) {
+            popupClosedAtRef.current = Date.now();
+        }
         document.body.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
-    }, []);
+    }, [vm]);
 
     // Shift key: show "selected with children" highlighting while held
     useEffect(() => {
@@ -593,6 +646,52 @@ function GraphView({ model }: GraphViewProps) {
         };
     }, [vm]);
 
+    // Ctrl+F: focus search input, Ctrl+A: select all nodes
+    useEffect(() => {
+        const onKeyDown = (e: KeyboardEvent) => {
+            if (e.ctrlKey && e.key === "f") {
+                e.preventDefault();
+                inputRef.current?.focus();
+                inputRef.current?.select();
+            }
+            if (e.ctrlKey && e.key === "a" && vm) {
+                e.preventDefault();
+                const allIds = vm.renderer.getNodes().map(n => n.id);
+                vm.renderer.selectNode("");
+                vm.renderer.addToSelection(allIds);
+            }
+        };
+        document.addEventListener("keydown", onKeyDown);
+        return () => document.removeEventListener("keydown", onKeyDown);
+    }, [vm]);
+
+    // Selection menu handler
+    const onSelectionClick = useCallback(async (e: React.MouseEvent) => {
+        if (!vm) return;
+        const count = selectedNodes.length;
+        if (count === 0) return;
+        const hasGroups = selectedNodes.some(n => n.isGroup);
+        const hasNonGroups = selectedNodes.some(n => !n.isGroup);
+        const info: SelectionMenuInfo = { count, hasGroups, hasNonGroups };
+        const actions: SelectionMenuActions = {
+            selectChildren: () => vm.selectChildren(),
+            selectMembers: () => vm.selectMembers(),
+            selectMembersDeep: () => vm.selectMembersDeep(),
+            highlight: () => vm.highlightSelection(),
+            copyMarkdown: () => vm.copySelectedMarkdown(),
+            openMarkdown: () => vm.openSelectedMarkdown(),
+            openGrid: () => vm.openSelectedGrid(),
+            extract: () => vm.extractSelected(false),
+            extractWithChildren: () => vm.extractSelected(true),
+            deleteNodes: () => vm.deleteSelectedNodes(),
+            groupSelected: () => vm.groupSelectedNodes(),
+        };
+        const rect = (e.target as HTMLElement).getBoundingClientRect();
+        vm.isPopupOpen = true;
+        await showAppPopupMenu(rect.left, rect.bottom + 2, buildSelectionMenu(info, actions, groupingEnabled));
+        vm.isPopupOpen = false;
+    }, [vm, selectedNodes, groupingEnabled]);
+
     if (!vm) return null;
 
     const { error, loading } = pageState;
@@ -613,6 +712,8 @@ function GraphView({ model }: GraphViewProps) {
                         ref={canvasRef}
                         onClick={(e) => {
                             if (panelDirtyRef.current) return;
+                            // Ignore the click that dismissed a popup menu (context or selection)
+                            if (Date.now() - popupClosedAtRef.current < 300) return;
                             if (isExpanded || panelExpandedRef.current) {
                                 // If clicking a node and only detail panel is expanded, keep it open
                                 if (!isExpanded && panelExpandedRef.current && vm.renderer.hasNodeAt(e)) {
@@ -644,21 +745,29 @@ function GraphView({ model }: GraphViewProps) {
                                 <SettingsIcon width={14} height={14} />
                             </button>
                             <button
-                                className={`graph-icon-btn${!vm.hasVisibilityFilter ? " disabled" : ""}`}
-                                onClick={() => vm.resetVisibility()}
+                                className={`graph-icon-btn${groupingEnabled ? " strikethrough" : ""}${!vm.hasGroups ? " disabled" : ""}`}
+                                onClick={() => vm.toggleGrouping()}
+                                title={groupingEnabled ? "Disable grouping" : "Enable grouping"}
+                                disabled={!vm.hasGroups}
+                            >
+                                <GraphGroupIcon width={14} height={14} />
+                            </button>
+                            <button
+                                className="graph-icon-btn"
+                                onClick={() => vm.resetView()}
                                 title="Reset view"
-                                disabled={!vm.hasVisibilityFilter}
                             >
                                 <RefreshIcon width={14} height={14} />
                             </button>
-                            <button
-                                className={`graph-icon-btn${!vm.hasVisibilityFilter ? " disabled" : ""}`}
-                                onClick={handleExpandAll}
-                                title="Expand all nodes"
-                                disabled={!vm.hasVisibilityFilter}
-                            >
-                                <ExpandAllIcon width={14} height={14} />
-                            </button>
+                            {vm.hasVisibilityFilter && (
+                                <button
+                                    className="graph-icon-btn"
+                                    onClick={handleExpandAll}
+                                    title="Expand all nodes"
+                                >
+                                    <ExpandAllIcon width={14} height={14} />
+                                </button>
+                            )}
                             <div className="graph-search-wrap">
                                 <input
                                     ref={inputRef}
@@ -679,6 +788,11 @@ function GraphView({ model }: GraphViewProps) {
                             {searchInfo && !isExpanded && (
                                 <span className="graph-search-info">
                                     {searchInfo.visible} matched
+                                </span>
+                            )}
+                            {selectedNodes.length > 0 && (
+                                <span className="graph-selection-info" onClick={onSelectionClick}>
+                                    {selectedNodes.length} selected ▾
                                 </span>
                             )}
                         </div>
@@ -739,7 +853,11 @@ function GraphView({ model }: GraphViewProps) {
                         )}
                     </div>
                     {tooltip && (
-                        <GraphTooltip node={tooltip.node} x={tooltip.x} y={tooltip.y} isRoot={tooltip.isRoot} />
+                        <GraphTooltip
+                            node={tooltip.node} x={tooltip.x} y={tooltip.y} isRoot={tooltip.isRoot}
+                            onMouseEnter={() => vm.setTooltipHovered(true)}
+                            onMouseLeave={() => vm.setTooltipHovered(false)}
+                        />
                     )}
                     <GraphDetailPanel
                         nodes={selectedNodes.filter((n) => !n.isGroup)}

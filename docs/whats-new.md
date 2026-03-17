@@ -22,6 +22,28 @@ Release notes and changelog for js-notepad.
 
 - **Graph View Group Management** — Full UI for creating, editing, and removing groups. Multi-select 2+ regular nodes → right-click → "Group Selected" to create a new group (prompts for title). Select one group plus regular nodes → "Group Selected" to add nodes to the existing group. Right-click a group for "Ungroup" (dissolve group, keep members), "Delete Group" (remove group and all members), or "Edit Title" (rename). Right-click a member node for "Remove from Group". `Alt+Click` a regular node while a group is selected to toggle membership. Each node can belong to only one group — reassigning silently removes from the old group. Group membership is direction-agnostic (links in either direction count).
 
+- **Graph View Tooltip Enhancements** — Node tooltips are now hoverable — move the mouse into the tooltip to interact with its content. Two new buttons in the tooltip header: **Copy as Markdown** (copies node info as a formatted markdown table) and **Open in new page** (opens the node info as a Markdown preview page). Property values containing markdown links (`[text](url)`) are rendered as clickable links within the tooltip.
+
+- **Graph View Selection Toolbar** — When nodes are selected, an "N selected ▾" button appears in the graph toolbar. Clicking opens a popup menu with actions: "Select children" (expand selection to neighbors), "Select members" / "Select members deep" (expand to group members), "Highlight" (open Legend panel with Selection filter), "Copy (markdown)" / "Open (markdown)" for exporting selected nodes, "Group Selected", "Extract" / "Extract with children" (create new graph from selection), and "Delete N Nodes".
+
+- **Graph View Context Menu Enhancements** — Node context menu gains "Select children". Group node context menu gains "Select members" and "Select members deep". Multi-select delete shows "Delete N Nodes" with confirmation for 2+. "Delete Link" renamed to "Delete Link to..." for clarity.
+
+- **Graph View Disable Grouping** — A new toggle button (violet circle icon) in the toolbar lets you disable/enable group node rendering. When grouping is enabled, the button shows a diagonal strikethrough line (click to disable). When disabled, group nodes and their membership links are stripped from the graph, and all group-related context menu items are hidden. The button is greyed out when the graph has no groups. Deleting the last member of a group now auto-deletes the empty group (including cascading cleanup of nested groups).
+
+- **Graph View Scripting API** — New `page.asGraph()` editor facade for querying and analyzing force-graph data from scripts and MCP agents. Provides read-only access to nodes, links, selection, neighbor/group relationships, search (multi-word AND), BFS traversal, and connected component analysis. A new MCP resource `notepad://guides/graph` documents the graph data format and API.
+
+- **Graph View `Ctrl+A` Select All** — Press `Ctrl+A` in the graph editor to select all visible nodes.
+
+- **Graph View "Open in grid" Selection Action** — The selection toolbar menu gains an "Open in grid" action that exports selected nodes as a JSON array to a new Grid editor page.
+
+- **Graph View Indexed Property Display** — Node properties with `key#N` indexed suffixes (e.g., `tag#1`, `tag#2`) now display with the suffix stripped in tooltips and markdown export, showing the values as a clean list under the base key name.
+
+- **Graph View `Ctrl+F` Search Focus** — Press `Ctrl+F` in the graph editor to focus the search input.
+
+- **Graph View Toolbar Layout** — Toolbar auto-grows to fit content (min 280px) with fixed-width search input (130px).
+
+- **Callable `await ui()` Yield** — Long-running scripts can now call `await ui()` to yield to the event loop, preventing the UI from freezing. Insert `await ui()` inside heavy loops to let the interface remain responsive during processing.
+
 ### Improvements
 
 - **Graph View UI polish** — Node labels now scale font size by level (larger nodes get bigger text). Selection highlight reworked: selected node label is orange, hovered node and its children get green labels. Tooltips no longer appear during node drag. Edit panel tabs reordered to Info → Properties → Links. Links tab now shows all columns (ID, Title, Level, Shape + custom properties) with auto-detected widths and sticky ID column.
@@ -31,6 +53,12 @@ Release notes and changelog for js-notepad.
 - **Graph View path highlighting** — Selecting a node now highlights the full visual path (orange) to all its real neighbors, including through group nodes. When hovering a node while another is selected, the green highlight also traces the full visual path through groups. The Links tab hover highlights only the selected node's children (not the hovered child's neighbors).
 - **Graph View detail panel persistence** — Clicking a different node while the detail panel is expanded now keeps it open and updates the panel with the new selection, instead of collapsing it. Clicking the empty canvas still collapses.
 - **Graph View "Selected with children" highlighting** — The Legend panel's Selection tab gains a new **Selected with children** radio option that highlights selected nodes plus all their visual and real neighbors. Hold **Shift** as a keyboard shortcut to temporarily apply this highlighting without opening the Legend panel.
+- **Graph View Reset View button** — Now always enabled (previously disabled when no visibility filter was active). Resets BFS visibility and restarts the D3 simulation, re-compacting drifted nodes.
+- **Graph View Expand All button** — Now hidden when no visibility filter is active, instead of showing as disabled.
+- **Graph View Legend + Search interaction** — When search highlighting is active and the Legend panel is expanded, the Legend shows a "Search highlighting is active" message with a "Clear search" button instead of the normal tabs/content.
+- **Graph View Legend Panel tab order** — The Selection tab is now the first and default tab in the Legend panel (previously the order was Level, Shape, Selection).
+- **Graph View "Open link" context menu** — Right-clicking a node whose custom properties contain markdown links (`[text](path)`) now shows "Open {property}" at the top of the context menu. When multiple links exist, a "Open link..." submenu lists each one.
+- **Graph View tooltip suppression** — Tooltips no longer appear while a context menu is open.
 
 ---
 

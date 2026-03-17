@@ -153,11 +153,7 @@ function createPage(params: any): McpResponse {
         };
     }
 
-    const page = pagesModel.addEditorPage(editor, language, title);
-    if (content && isTextFileModel(page)) {
-        page.changeContent(content);
-        page.state.update((s) => { s.modified = false; });
-    }
+    const page = pagesModel.addEditorPage(editor, language, title, content || undefined);
 
     const s = page.state.get();
     return {
