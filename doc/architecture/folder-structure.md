@@ -21,11 +21,13 @@ js-notepad/
 │   ├── editor-types/       # Auto-copied .d.ts files for Monaco IntelliSense
 │   ├── icons/              # App icons
 │   ├── pdfjs/              # PDF.js library
+│   ├── excalidraw/fonts/   # Self-hosted Excalidraw fonts (woff2, OFL-1.1 licensed)
 │   ├── script-library/     # Bundled example scripts (copied to user library on setup)
 │   ├── mcp-res-ui-push.md  # MCP resource: ui_push tool guide
 │   ├── mcp-res-pages.md    # MCP resource: pages & windows guide
 │   ├── mcp-res-scripting.md # MCP resource: scripting API reference
-│   └── mcp-res-graph.md    # MCP resource: force-graph data format & page.asGraph() API
+│   ├── mcp-res-graph.md    # MCP resource: force-graph data format & page.asGraph() API
+│   └── snip-overlay.html   # Screen snip overlay (plain HTML/JS, canvas-based selection UI)
 ├── patches/                # Dependency patches (patch-package)
 ├── .mcp.json               # MCP server config for Claude Code (points to MCP HTTP server)
 ├── doc/                    # Developer documentation
@@ -271,6 +273,11 @@ js-notepad/
 │   │   ├── types.ts                # GraphNode, GraphLink, GraphLegend, GraphData, GraphOptions, NodeShape, nodeLabel(), nodeRadius(), effectiveNodeRadius(), getCustomProperties(), isReservedPropertyKey(), NodePropertyLink, getNodeLinks(), toNavigableHref(), openNodeLink()
 │   │   ├── constants.ts            # Force simulation parameters
 │   │   └── index.ts
+│   ├── draw/               # Excalidraw drawing editor (content-view)
+│   │   ├── DrawView.tsx           # Wraps <Excalidraw> component (debounced onChange, asset path setup, export toolbar)
+│   │   ├── DrawViewModel.ts       # ContentViewModel — JSON parsing, fingerprint-based change detection, dark mode state
+│   │   ├── drawExport.ts         # Export helpers — exportAsSvgText(), exportAsPngBlob(), buildExcalidrawJsonWithImage() (embed image as Excalidraw element)
+│   │   └── index.ts
 │   ├── log-view/           # Log viewer (content-view)
 │   │   ├── LogViewEditor.tsx       # Log viewer component (RenderFlexGrid + auto-scroll)
 │   │   ├── LogViewModel.ts         # ContentViewModel — JSONL parsing, entry management
@@ -409,6 +416,7 @@ js-notepad/
 ├── browser-registration.ts # Default browser registration
 ├── download-service.ts     # Download management
 ├── search-service.ts       # File search service
+├── snip-service.ts         # Screen snip tool (capture, overlay windows, crop)
 ├── version-service.ts      # Version checking (runs in main, not renderer)
 ├── tray-setup.ts           # System tray
 ├── drag-model.ts           # Tab drag between windows

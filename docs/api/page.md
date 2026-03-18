@@ -33,7 +33,7 @@ page.data.counter = (page.data.counter || 0) + 1;
 
 ### PageEditor values
 
-`"monaco"` · `"grid-json"` · `"grid-csv"` · `"md-view"` · `"notebook-view"` · `"todo-view"` · `"link-view"` · `"svg-view"` · `"html-view"` · `"mermaid-view"` · `"pdf-view"` · `"image-view"` · `"browser-view"` · `"about-view"` · `"settings-view"`
+`"monaco"` · `"grid-json"` · `"grid-csv"` · `"grid-jsonl"` · `"md-view"` · `"notebook-view"` · `"todo-view"` · `"link-view"` · `"svg-view"` · `"html-view"` · `"mermaid-view"` · `"pdf-view"` · `"image-view"` · `"browser-view"` · `"graph-view"` · `"draw-view"` · `"log-view"` · `"about-view"` · `"settings-view"`
 
 ## Methods
 
@@ -354,4 +354,32 @@ console.log(`${reachable.length} nodes within depth 3`);
 // Analyze components
 const components = graph.getComponents();
 components.forEach(c => console.log(`Component: ${c.nodeCount} nodes`));
+```
+
+---
+
+### asDraw() → `Promise<IDrawEditor>`
+
+Drawing editor (Excalidraw canvas). Only for `.excalidraw` pages. To create a new drawing page with an embedded image, use [`app.pages.addDrawPage()`](./pages.md#adddrawpagedataurl-title--promiseipage).
+
+| Member | Type | Description |
+|--------|------|-------------|
+| `elementCount` | `number` | Number of elements on the canvas. |
+| `editorIsMounted` | `boolean` | True when the Excalidraw editor is visible and mounted. |
+| `addImage(dataUrl, options?)` | `Promise<void>` | Insert an image onto the live canvas. Requires `editorIsMounted`. Options: `x`, `y` (position, default 0), `maxDimension` (cap longer side, default 1200). |
+| `exportAsSvg()` | `Promise<string>` | Export the drawing as an SVG markup string. Works even when the editor is not mounted. |
+| `exportAsPng(options?)` | `Promise<string>` | Export the drawing as a PNG data URL. Options: `scale` (default 2). Works even when the editor is not mounted. |
+
+```javascript
+const draw = await page.asDraw();
+
+// Export as SVG
+const svg = await draw.exportAsSvg();
+page.grouped.content = svg;
+page.grouped.editor = "svg-view";
+
+// Insert an image (editor must be visible)
+if (draw.editorIsMounted) {
+    await draw.addImage("data:image/png;base64,...", { x: 100, y: 100 });
+}
 ```

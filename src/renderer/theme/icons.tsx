@@ -1251,6 +1251,15 @@ export const ScriptLibraryIcon = createIcon(16)(
     </>,
 );
 
+export const SnipIcon = createIcon(24)(
+    <g fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="6" cy="17" r="3" />
+        <circle cx="6" cy="7" r="3" />
+        <line x1="8.5" y1="15" x2="18" y2="5" />
+        <line x1="8.5" y1="9" x2="18" y2="19" />
+    </g>,
+);
+
 export const DownloadIcon = createIcon(24)(
     <g fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <path d="M12 3v12" />

@@ -133,6 +133,15 @@ export class PagesLifecycleModel {
         return this.addPage(page as unknown as PageModel);
     };
 
+    /** Create a new drawing page with an embedded image. */
+    addDrawPage = async (dataUrl: string, title?: string): Promise<PageModel> => {
+        const { getImageDimensions, buildExcalidrawJsonWithImage } =
+            await import("../../editors/draw/drawExport");
+        const dims = await getImageDimensions(dataUrl);
+        const json = buildExcalidrawJsonWithImage(dataUrl, "image/png", dims.width, dims.height);
+        return this.addEditorPage("draw-view", "json", title ?? "untitled.excalidraw", json);
+    };
+
     replacePage = (oldModel: PageModel, newModel: PageModel) => {
         const state = this.model.state.get();
         const rightId = state.leftRight.get(oldModel.id);

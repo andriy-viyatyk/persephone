@@ -64,6 +64,12 @@ export interface IPageCollection {
     /** Add a page with a specific editor, language, and title. */
     addEditorPage(editor: PageEditor, language: string, title: string): IPage;
 
+    /** Create a new drawing page with an embedded image.
+     * @param dataUrl Image as data URL (e.g., `"data:image/png;base64,..."`)
+     * @param title Optional page title (default: `"untitled.excalidraw"`)
+     */
+    addDrawPage(dataUrl: string, title?: string): Promise<IPage>;
+
     /** Open a diff view for two files side by side. */
     openDiff(params: { firstPath: string; secondPath: string }): Promise<void>;
 

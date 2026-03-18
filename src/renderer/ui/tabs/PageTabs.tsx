@@ -8,7 +8,7 @@ import {
     GlobeIcon,
     PlusIcon,
 } from "../../theme/icons";
-import { IncognitoIcon, GraphIcon, GridIcon, JavascriptIcon, TypescriptIcon, LinkIcon, NotebookIcon, TodoIcon } from "../../theme/language-icons";
+import { IncognitoIcon, GraphIcon, GridIcon, JavascriptIcon, TypescriptIcon, LinkIcon, NotebookIcon, TodoIcon, DrawIcon } from "../../theme/language-icons";
 import { DEFAULT_BROWSER_COLOR } from "../../theme/palette-colors";
 import { Button } from "../../components/basic/Button";
 import { WithPopupMenu } from "../../components/overlay/WithPopupMenu";
@@ -233,6 +233,11 @@ export function PageTabs(props: object) {
                 label: "Force Graph",
                 icon: <GraphIcon />,
                 onClick: () => pagesModel.addEditorPage("graph-view", "json", "untitled.fg.json"),
+            },
+            {
+                label: "Drawing",
+                icon: <DrawIcon />,
+                onClick: () => pagesModel.addEditorPage("draw-view", "json", "untitled.excalidraw"),
             },
             {
                 label: "Browser",

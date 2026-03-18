@@ -72,6 +72,18 @@ Add a page with a specific editor, language, and title.
 app.pages.addEditorPage("grid-json", "json", "My Data");
 ```
 
+### addDrawPage(dataUrl, title?) → `Promise<IPage>`
+
+Create a new drawing page with an embedded image. The image is converted to an Excalidraw scene with the image element pre-inserted.
+
+- `dataUrl` — image as a data URL (e.g., `"data:image/png;base64,..."`)
+- `title` — optional page title (default: `"untitled.excalidraw"`)
+
+```javascript
+// Capture something as a data URL, then open in the drawing editor
+const drawPage = await app.pages.addDrawPage(dataUrl, "annotated-screenshot.excalidraw");
+```
+
 ### openDiff(params) → `Promise<void>`
 
 Open a diff view for two files side by side.

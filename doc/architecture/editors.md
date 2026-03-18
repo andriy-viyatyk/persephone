@@ -31,6 +31,7 @@ Views of text-based content that share `TextFileModel` for state management. The
 | `link-view` | Links | `.link.json` | `LinkViewModel` |
 | `log-view` | Log View | `.log.jsonl` | `LogViewModel` |
 | `graph-view` | Graph | `.fg.json` | `GraphViewModel` |
+| `draw-view` | Drawing | `.excalidraw` | `DrawViewModel` |
 
 **Characteristics:**
 - Rendered inside `TextPageView` via `ActiveEditor` component

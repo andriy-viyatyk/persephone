@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; cursor: crosshair; background: transparent; }
+    canvas { position: absolute; top: 0; left: 0; }
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<script>
+    const { ipcRenderer } = require("electron");
+
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+    let img = null;
+    let displayId = 0;
+    let scaleX = 1, scaleY = 1; // canvas DIP → thumbnail pixel scaling
+    let startX = 0, startY = 0;
+    let isDragging = false;
+
+    ipcRenderer.on("snip-init", (_event, data) => {
+        displayId = data.displayId;
+
+        // Canvas is in DIP coordinates (matches overlay window size)
+        canvas.width = data.canvasWidth;
+        canvas.height = data.canvasHeight;
+
+        // Compute scaling from canvas DIP to thumbnail pixels
+        // Used when sending crop coordinates back to main process
+        scaleX = data.thumbWidth / data.canvasWidth;
+        scaleY = data.thumbHeight / data.canvasHeight;
+
+        img = new Image();
+        img.onload = () => {
+            URL.revokeObjectURL(img.src);
+            drawOverlay(null);
+        };
+        // Create blob URL from raw PNG buffer — faster than base64 dataURL
+        const blob = new Blob([data.screenshotPng], { type: "image/png" });
+        img.src = URL.createObjectURL(blob);
+    });
+
+    function drawOverlay(rect) {
+        if (!img) return;
+
+        // Draw screenshot scaled to canvas DIP dimensions
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        // Dim everything
+        ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Show selected area at full brightness
+        if (rect && rect.w > 2 && rect.h > 2) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(rect.x, rect.y, rect.w, rect.h);
+            ctx.clip();
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            ctx.restore();
+
+            // Selection border
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.9)";
+            ctx.lineWidth = 1;
+            ctx.strokeRect(rect.x + 0.5, rect.y + 0.5, rect.w - 1, rect.h - 1);
+        }
+    }
+
+    function getRect(e) {
+        return {
+            x: Math.min(startX, e.clientX),
+            y: Math.min(startY, e.clientY),
+            w: Math.abs(e.clientX - startX),
+            h: Math.abs(e.clientY - startY),
+        };
+    }
+
+    canvas.addEventListener("mousedown", (e) => {
+        if (e.button !== 0) { cancel(); return; }
+        startX = e.clientX;
+        startY = e.clientY;
+        isDragging = true;
+    });
+
+    canvas.addEventListener("mousemove", (e) => {
+        if (!isDragging) return;
+        drawOverlay(getRect(e));
+    });
+
+    canvas.addEventListener("mouseup", (e) => {
+        if (!isDragging) return;
+        isDragging = false;
+        const rect = getRect(e);
+        if (rect.w > 5 && rect.h > 5) {
+            // Convert from canvas DIP coordinates to thumbnail pixel coordinates
+            ipcRenderer.send("snip-complete", {
+                x: rect.x * scaleX,
+                y: rect.y * scaleY,
+                w: rect.w * scaleX,
+                h: rect.h * scaleY,
+            }, displayId);
+        } else {
+            cancel();
+        }
+    });
+
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") cancel();
+    });
+
+    function cancel() {
+        ipcRenderer.send("snip-cancel");
+    }
+</script>
+</body>
+</html>

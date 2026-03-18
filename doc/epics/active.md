@@ -4,7 +4,7 @@ Epics represent big ideas with high-level overviews. Each epic links to tasks in
 
 ## Active
 
-(none)
+- **EPIC-007** — [Drawing Editor (Excalidraw)](EPIC-007.md)
 
 ## Completed
 

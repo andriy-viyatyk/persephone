@@ -26,7 +26,7 @@ ScriptRunner.run(script, page?, language?)
     │       ├── AppWrapper        ← wraps `app` global
     │       │     └── PageCollectionWrapper  ← wraps `app.pages`
     │       ├── PageWrapper       ← wraps `page` global
-    │       │     └── EditorFacades (11)  ← page.asText(), page.asGrid(), ...
+    │       │     └── EditorFacades (12)  ← page.asText(), page.asGrid(), ...
     │       ├── UiFacade (lazy)   ← wraps `ui` global (Log View logging + dialogs)
     │       ├── styledText()     ← standalone styled text builder for dialog labels
     │       ├── preventOutput()   ← suppresses default grouped-page output
@@ -96,6 +96,7 @@ interface IPage {
     asHtml(): Promise<IHtmlEditor>;
     asMermaid(): Promise<IMermaidEditor>;
     asGraph(): Promise<IGraphEditor>;
+    asDraw(): Promise<IDrawEditor>;
     asBrowser(): Promise<IBrowserEditor>;
 
     // Run this page as a script (same as F5)
@@ -331,6 +332,7 @@ Facades provide safe, typed access to editor-specific features. Each facade wrap
 | `page.asHtml()` | `HtmlEditorFacade` | `HtmlViewModel` | `html` (read-only) |
 | `page.asMermaid()` | `MermaidEditorFacade` | `MermaidViewModel` | `svgUrl`, `loading`, `error` (read-only) |
 | `page.asGraph()` | `GraphEditorFacade` | `GraphViewModel` | `nodes`, `links`, `search()`, `bfs()`, `getComponents()`, `select()`, selection, groups, neighbors |
+| `page.asDraw()` | `DrawEditorFacade` | `DrawViewModel` | `addImage()`, `exportAsSvg()`, `exportAsPng()`, `elementCount`, `editorIsMounted` |
 | `page.asBrowser()` | `BrowserEditorFacade` | `BrowserPageModel` | `url`, `title`, `navigate()`, `back()`, `forward()`, `reload()` |
 
 **Exception:** `BrowserEditorFacade` wraps `BrowserPageModel` directly (no ViewModel, no ref-counting) because browser is a page-editor, not a content-view.

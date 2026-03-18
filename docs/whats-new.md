@@ -8,7 +8,16 @@ Release notes and changelog for js-notepad.
 
 ## Version 1.0.23 (Upcoming)
 
-*No changes yet.*
+### New Features
+
+- **Drawing Editor** — New editor for `.excalidraw` files using the Excalidraw canvas. Supports shapes, arrows, text, and freehand drawing. Self-hosted fonts for full offline support. Dark/light theme syncs with the app theme automatically. Available from the quick-add menu ("Drawing") and can switch to Monaco for raw JSON editing.
+  - **Theme toggle** — independent dark/light switch for the drawing canvas
+  - **Copy to clipboard** — export the drawing as a PNG image (2x scale)
+  - **Save as file** — export as SVG or PNG (2x scale) via a dropdown menu
+  - **Open in new tab** — open the drawing as an SVG preview or PNG image in a new tab
+  - **Screen Snip** — toolbar button (scissors icon) captures a screen region and inserts it as an image into the canvas. Hides all windows, shows a dimmed overlay on each monitor, drag-select a region to capture. Escape or right-click cancels. Supports multi-monitor setups with mixed DPI scaling.
+  - **Scripting API** — `page.asDraw()` facade for scripts and MCP agents: `addImage()` inserts images onto the canvas, `exportAsSvg()` and `exportAsPng()` export the drawing. `app.pages.addDrawPage(dataUrl)` creates a new drawing page with an embedded image.
+- **Open in Drawing Editor** — SVG Preview, Image Viewer, and Mermaid Diagram editors now have an "Open in Drawing Editor" toolbar button. Embeds the image/SVG as an Excalidraw element in a new drawing tab, where you can annotate it with shapes, arrows, and text. Images are capped to 1200px on the longer side, preserving aspect ratio.
 
 ---
 

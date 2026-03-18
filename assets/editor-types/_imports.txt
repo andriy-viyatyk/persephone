@@ -2,6 +2,7 @@ app.d.ts
 browser-editor.d.ts
 common.d.ts
 downloads.d.ts
+draw-editor.d.ts
 editors.d.ts
 fs.d.ts
 graph-editor.d.ts

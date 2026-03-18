@@ -8,12 +8,15 @@ import { FileIcon } from "../../components/icons/FileIcon";
 import { Button } from "../../components/basic/Button";
 import { FlexSpace } from "../../components/layout/Elements";
 import { CopyIcon, NavPanelIcon, SaveIcon } from "../../theme/icons";
+import { DrawIcon } from "../../theme/language-icons";
 import { fs } from "../../api/fs";
 import { ui } from "../../api/ui";
+import { pagesModel } from "../../api/pages";
 import { NavPanelModel } from "../../ui/navigation/nav-panel-store";
 import { BaseImageView } from "./BaseImageView";
 import type { BaseImageViewRef } from "./BaseImageView";
-import { fpBasename, fpDirname } from "../../core/utils/file-path";
+import { fpBasename, fpDirname, fpExtname } from "../../core/utils/file-path";
+import { buildExcalidrawJsonWithImage, getImageDimensions, extToMime } from "../draw/drawExport";
 
 // ============================================================================
 // ImageViewerModel (Page Model) - manages page state and lifecycle
@@ -31,6 +34,14 @@ const getDefaultImageViewerModelState = (): ImageViewerModelState => ({
 
 class ImageViewerModel extends PageModel<ImageViewerModelState, void> {
     noLanguage = true;
+
+    async dispose(): Promise<void> {
+        const url = this.state.get().url;
+        if (url && url.startsWith("blob:")) {
+            URL.revokeObjectURL(url);
+        }
+        await super.dispose();
+    }
 
     async restore() {
         await super.restore();
@@ -144,6 +155,36 @@ function ImageViewer({ model }: ImageViewerProps) {
                         <SaveIcon />
                     </Button>
                 )}
+                <Button
+                    type="icon"
+                    size="small"
+                    title="Open in Drawing Editor"
+                    onClick={async () => {
+                        const { filePath: fp, url: u } = model.state.get();
+                        let dataUrl: string;
+                        let mimeType: string;
+                        if (fp) {
+                            const buffer = await fs.readBinary(fp);
+                            const ext = fpExtname(fp).toLowerCase();
+                            mimeType = extToMime(ext);
+                            dataUrl = `data:${mimeType};base64,${buffer.toString("base64")}`;
+                        } else if (u) {
+                            const response = await fetch(u);
+                            const blob = await response.blob();
+                            mimeType = blob.type || "image/png";
+                            const buffer = Buffer.from(await blob.arrayBuffer());
+                            dataUrl = `data:${mimeType};base64,${buffer.toString("base64")}`;
+                        } else {
+                            return;
+                        }
+                        const dims = await getImageDimensions(dataUrl);
+                        const json = buildExcalidrawJsonWithImage(dataUrl, mimeType, dims.width, dims.height);
+                        const baseName = fp ? fpBasename(fp).replace(/\.\w+$/, "") : "image";
+                        pagesModel.addEditorPage("draw-view", "json", baseName + ".excalidraw", json);
+                    }}
+                >
+                    <DrawIcon />
+                </Button>
                 <Button
                     type="icon"
                     size="small"

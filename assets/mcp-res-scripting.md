@@ -246,6 +246,30 @@ browser.back() / browser.forward() / browser.reload()
 
 Preview facades for rendered content. Check `viewMounted` / `loading` before accessing.
 
+### asDraw()
+
+Drawing editor facade for Excalidraw pages (`.excalidraw`).
+
+```
+const draw = await page.asDraw();
+draw.editorIsMounted  // true if editor is mounted (pages stay mounted)
+draw.elementCount     // number of canvas elements
+
+// Insert image into live canvas (editor must be mounted)
+await draw.addImage(dataUrl, { x: 0, y: 0, maxDimension: 1200 });
+
+// Export
+const svg = await draw.exportAsSvg();    // SVG markup string
+const png = await draw.exportAsPng();    // PNG data URL
+const png2x = await draw.exportAsPng({ scale: 3 });
+```
+
+To create a **new** drawing page with an image (without opening the editor first):
+
+```
+await app.pages.addDrawPage(dataUrl, "Screenshot.excalidraw");
+```
+
 ## TypeScript Support
 
 The `execute_script` tool accepts an optional `language` parameter. Set it to `"typescript"` to write scripts with type annotations — types are stripped via sucrase before execution.

@@ -61,7 +61,7 @@ The current page (tab). Available as a global in scripts.
 
 ### Editor Types
 
-`"monaco"` · `"grid-json"` · `"grid-csv"` · `"md-view"` · `"notebook-view"` · `"todo-view"` · `"link-view"` · `"graph-view"` · `"svg-view"` · `"html-view"` · `"mermaid-view"` · `"pdf-view"` · `"image-view"` · `"browser-view"` · `"about-view"` · `"settings-view"`
+`"monaco"` · `"grid-json"` · `"grid-csv"` · `"md-view"` · `"notebook-view"` · `"todo-view"` · `"link-view"` · `"graph-view"` · `"draw-view"` · `"svg-view"` · `"html-view"` · `"mermaid-view"` · `"pdf-view"` · `"image-view"` · `"browser-view"` · `"about-view"` · `"settings-view"`
 
 ### Creating Pages with Specialized Editors
 
@@ -79,6 +79,7 @@ The current page (tab). Available as a global in scripts.
 | `svg-view` | **`xml`** | `.svg` | `"Logo.svg"` |
 | `html-view` | **`html`** | — | `"Page.html"` |
 | `graph-view` | **`json`** | `.fg.json` | `"Network.fg.json"` |
+| `draw-view` | **`json`** | `.excalidraw` | `"Sketch.excalidraw"` |
 | `mermaid-view` | **`mermaid`** | — | `"Diagram"` |
 
 **Common mistake:** `create_page({ editor: "md-view", language: "plaintext", ... })` — this creates a broken page. Use `language: "markdown"` with `md-view`.

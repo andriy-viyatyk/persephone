@@ -98,6 +98,9 @@ export interface IPage {
     /** Get graph editor interface. Only for text pages with force-graph JSON content. */
     asGraph(): Promise<IGraphEditor>;
 
+    /** Get drawing editor interface. Only for text pages with `.excalidraw` content. */
+    asDraw(): Promise<IDrawEditor>;
+
     /** Get browser editor interface. Only for browser pages. */
     asBrowser(): Promise<IBrowserEditor>;
 

@@ -1065,7 +1065,8 @@ const monacoBuildInLanguages: MonacoLanguage[] = [
             ".jscsrc",
             ".eslintrc",
             ".babelrc",
-            ".har"
+            ".har",
+            ".excalidraw"
         ],
         "id": "json"
     }

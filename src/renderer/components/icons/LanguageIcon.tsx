@@ -18,6 +18,7 @@ import {
     DartIcon,
     DefaultIcon,
     DockerfileIcon,
+    DrawIcon,
     ElixirIcon,
     FshartIcon,
     GoIcon,
@@ -126,6 +127,7 @@ const filePatternIcons: Array<{ pattern: RegExp; icon: SvgIconComponent }> = [
     { pattern: /\.grid\.csv$/i, icon: GridIcon },
     { pattern: /\.link\.json$/i, icon: LinkIcon },
     { pattern: /\.fg\.json$/i, icon: GraphIcon },
+    { pattern: /\.excalidraw$/i, icon: DrawIcon },
 ];
 
 function getFilePatternIcon(fileName: string): SvgIconComponent | undefined {

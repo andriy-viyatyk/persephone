@@ -89,6 +89,11 @@ export class PageCollectionWrapper {
         return new PageWrapper(model, this.releaseList);
     }
 
+    async addDrawPage(dataUrl: string, title?: string): Promise<PageWrapper> {
+        const model = await this.pages.addDrawPage(dataUrl, title);
+        return new PageWrapper(model, this.releaseList);
+    }
+
     openDiff(params: {
         firstPath: string;
         secondPath: string;

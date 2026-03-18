@@ -215,6 +215,10 @@ class ApiCalls implements Api {
     getMcpStatus = async () => {
         return executeOnce<McpStatus>(Endpoint.getMcpStatus);
     }
+
+    startScreenSnip = async (): Promise<string | null> => {
+        return executeOnce<string | null>(Endpoint.startScreenSnip);
+    }
 }
 
 export const api = new ApiCalls();

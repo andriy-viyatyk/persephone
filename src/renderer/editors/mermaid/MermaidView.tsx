@@ -6,6 +6,9 @@ import type { BaseImageViewRef } from "../image";
 import { TextFileModel } from "../text/TextPageModel";
 import { Button } from "../../components/basic/Button";
 import { CopyIcon, SunIcon, MoonIcon } from "../../theme/icons";
+import { DrawIcon } from "../../theme/language-icons";
+import { pagesModel } from "../../api/pages";
+import { buildExcalidrawJsonWithImage, getImageDimensions } from "../draw/drawExport";
 import { CircularProgress } from "../../components/basic/CircularProgress";
 import { EditorError } from "../base/EditorError";
 import color from "../../theme/color";
@@ -77,6 +80,24 @@ function MermaidView({ model }: MermaidViewProps) {
                             onClick={vm.toggleLightMode}
                         >
                             {lightMode ? <MoonIcon /> : <SunIcon />}
+                        </Button>
+                        <Button
+                            type="icon"
+                            size="small"
+                            title="Open in Drawing Editor"
+                            disabled={!svgUrl}
+                            onClick={async () => {
+                                if (!svgUrl) return;
+                                // svgUrl is data:image/svg+xml,<percent-encoded> — decode to raw SVG, re-encode as base64
+                                const svgText = decodeURIComponent(svgUrl.replace("data:image/svg+xml,", ""));
+                                const dataUrl = `data:image/svg+xml;base64,${Buffer.from(svgText, "utf-8").toString("base64")}`;
+                                const dims = await getImageDimensions(dataUrl);
+                                const json = buildExcalidrawJsonWithImage(dataUrl, "image/svg+xml", dims.width, dims.height);
+                                const title = model.state.get().title.replace(/\.\w+$/, "") + ".excalidraw";
+                                pagesModel.addEditorPage("draw-view", "json", title, json);
+                            }}
+                        >
+                            <DrawIcon />
                         </Button>
                         <Button
                             type="icon"

@@ -589,5 +589,18 @@ export const GridIcon = createIconWithViewBox("0 0 32 32")(
         <rect x="4" y="21" width="7" height="6" rx="1" fill="#4DD0E1" opacity="0.7" />
         <rect x="12.5" y="21" width="7" height="6" rx="1" fill="#4DD0E1" opacity="0.55" />
         <rect x="21" y="21" width="7" height="6" rx="1" fill="#4DD0E1" opacity="0.4" />
-    </g>
+    </g>,
+);
+
+export const DrawIcon = createIconWithViewBox("0 0 32 32")(
+    <g>
+        {/* Pencil body */}
+        <rect x="18" y="4" width="4" height="18" rx="1" fill="#4DD0E1" opacity="0.85"
+            transform="rotate(35 20 13)" />
+        {/* Pencil tip */}
+        <polygon points="8,25 6,28 10,27" fill="#4DD0E1" opacity="0.7" />
+        {/* Sketch line — hand-drawn feel */}
+        <path d="M14,22 Q18,17 22,20 Q26,23 28,19" stroke="#4DD0E1" strokeWidth="1.5"
+            fill="none" opacity="0.5" strokeLinecap="round" />
+    </g>,
 );

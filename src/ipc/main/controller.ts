@@ -205,6 +205,11 @@ class Controller implements MainApi {
             clientCount: getMcpClientCount(),
         };
     }
+
+    startScreenSnip = async (): Promise<string | null> => {
+        const { startScreenSnip } = await import("../../main/snip-service");
+        return startScreenSnip();
+    }
 }
 
 const controllerInstance = new Controller();
@@ -263,6 +268,7 @@ const init = () => {
     bindEndpoint(Endpoint.clearCompletedDownloads, controllerInstance.clearCompletedDownloads);
     bindEndpoint(Endpoint.setMcpEnabled, controllerInstance.setMcpEnabled);
     bindEndpoint(Endpoint.getMcpStatus, controllerInstance.getMcpStatus);
+    bindEndpoint(Endpoint.startScreenSnip, controllerInstance.startScreenSnip);
 
     initRendererEvents();
 }

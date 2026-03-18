@@ -75,6 +75,7 @@ For image files (`.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`, `.bmp`, `.ico`) — o
 - **Reset zoom** — click the zoom percentage indicator
 - **Copy to clipboard** — `Ctrl+C` or toolbar button (copies as PNG)
 - **Save Image to File** — for URL-based images, a toolbar button downloads the image and saves it to disk
+- **Open in Drawing Editor** — toolbar button embeds the image into a new Excalidraw drawing tab for annotation
 
 ## SVG Preview
 
@@ -82,6 +83,7 @@ For `.svg` files — opens in text editor by default, click **Preview** in the t
 
 - Same zoom/pan/copy controls as Image Viewer
 - **Live preview** of unsaved changes
+- **Open in Drawing Editor** — toolbar button embeds the SVG into a new Excalidraw drawing tab for annotation
 - Switch between text editor and preview anytime
 
 ## Mermaid Diagram Viewer
@@ -92,6 +94,7 @@ For `.mmd` and `.mermaid` files — click **Mermaid** in the toolbar:
 - Same zoom/pan controls as Image Viewer
 - **Light/dark theme toggle** (dark by default, light for copying into documents)
 - **Copy diagram** to clipboard as image
+- **Open in Drawing Editor** — toolbar button embeds the rendered diagram into a new Excalidraw drawing tab for annotation
 - **Live preview** with debounced re-rendering
 - Mermaid syntax highlighting in the text editor
 
@@ -268,6 +271,27 @@ Changes to Expand Depth and Max Visible are deferred — they take effect when t
 
 **Theme support:** Graph colors (node fill, edge color, selected/hover highlights) adapt to whichever of the 9 app themes is active.
 
+## Drawing Editor
+
+For `.excalidraw` files — an Excalidraw-based drawing canvas. Click **Drawing** in the toolbar to switch between the text editor and the drawing view.
+
+- **Shapes** — rectangles, ellipses, diamonds, arrows, lines, and freehand drawing
+- **Text** — add text labels anywhere on the canvas
+- **Arrows and connectors** — link shapes with arrows
+- **Freehand drawing** — sketch freely with the pencil tool
+- **Fonts** — Helvetica (default), Excalifont, Cascadia, Virgil, and more — all self-hosted for offline support
+- **Theme support** — canvas syncs dark/light theme with the app; an independent toggle button lets you switch the canvas theme without changing the app theme
+- **Export** — toolbar buttons for exporting the drawing:
+  - **Copy to clipboard** — copies the drawing as a PNG image at 2x scale
+  - **Save as file** — dropdown menu to save as SVG or PNG (2x scale)
+  - **Open in new tab** — dropdown menu to open as an SVG preview or PNG image in a new tab
+  - Exports respect the current canvas theme (dark or light)
+- **Screen Snip** — toolbar button (scissors icon) captures a screen region and inserts it as an image into the canvas. Hides all js-notepad windows, shows a dimmed fullscreen overlay on each monitor, and lets you drag-select a region. Press Escape or right-click to cancel. Works on multi-monitor setups with mixed DPI scaling.
+- **Offline ready** — no external dependencies; all assets are bundled
+- Can switch to Monaco for raw JSON editing
+
+**Scripting API:** Scripts and MCP agents can interact with drawings via `const draw = await page.asDraw()`. The facade supports inserting images (`addImage`), exporting as SVG or PNG, and querying element count. Use `app.pages.addDrawPage(dataUrl)` to create a new drawing page with an embedded image. See the [asDraw() API reference](./api/page.md#asdrawpromiseidraweditor) for details.
+
 ## Link Editor
 
 For `.link.json` files — a structured link manager:
@@ -306,6 +330,7 @@ Some files support multiple editors:
 | `.svg` | Text, Preview |
 | `.html` | Text, Preview |
 | `.mmd` | Text, Mermaid |
+| `.excalidraw` | Text, Drawing |
 | `.fg.json` | Text, Graph |
 | `.pdf` | PDF only |
 | Images | Image Viewer only |
@@ -315,4 +340,4 @@ Use the buttons in the toolbar to switch between available editors.
 
 **Content-based detection:** JSON pages that contain a `"type"` property (`"note-editor"`, `"todo-editor"`, `"link-editor"`, or `"force-graph"`) automatically show the corresponding switch button — even without the special file extension. For the Graph View, the JSON must also contain a `"nodes"` property. This is useful for pages created via MCP or scripting.
 
-**Quick Add:** Click the dropdown arrow (&#9662;) next to the **+** button in the tab bar to create a new page with a specific editor: Script (JS), Script (TS), Grid (JSON), Grid (CSV), Notebook, Todo, Links, Force Graph, Browser, or Browser profile (with Incognito and named profiles).
+**Quick Add:** Click the dropdown arrow (&#9662;) next to the **+** button in the tab bar to create a new page with a specific editor: Script (JS), Script (TS), Grid (JSON), Grid (CSV), Notebook, Todo, Links, Drawing, Force Graph, Browser, or Browser profile (with Incognito and named profiles).

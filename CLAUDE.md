@@ -270,6 +270,7 @@ See [/doc/standards/coding-style.md](doc/standards/coding-style.md) for complete
 | Notebook editor model    | `/src/renderer/editors/notebook/NotebookEditorModel.ts` |
 | Notebook types           | `/src/renderer/editors/notebook/notebookTypes.ts` |
 | Graph editor model       | `/src/renderer/editors/graph/GraphViewModel.ts`   |
+| Draw editor model        | `/src/renderer/editors/draw/DrawViewModel.ts`     |
 | Base virtualization      | `/src/renderer/components/virtualization/RenderGrid.tsx` |
 | Advanced grid            | `/src/renderer/components/data-grid/AVGrid.tsx`   |
 | Color tokens             | `/src/renderer/theme/color.ts`                    |

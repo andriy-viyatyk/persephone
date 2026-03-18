@@ -22,6 +22,7 @@ const SPECIALIZED_JSON_PATTERNS = [
     /\.todo\.json$/i,
     /\.link\.json$/i,
     /\.fg\.json$/i,
+    /\.excalidraw$/i,
 ];
 
 const isSpecializedJson = (fileName?: string): boolean => {
@@ -485,6 +486,39 @@ editorRegistry.register({
         return {
             Editor: module.GraphView,
             createViewModel: createGraphViewModel,
+            newPageModel: textEditorModule.newPageModel,
+            newEmptyPageModel: textEditorModule.newEmptyPageModel,
+            newPageModelFromState: textEditorModule.newPageModelFromState,
+        };
+    },
+});
+
+// Drawing editor (content-view for .excalidraw files — Excalidraw canvas)
+editorRegistry.register({
+    id: "draw-view",
+    name: "Drawing",
+    pageType: "textFile",
+    category: "content-view",
+    acceptFile: (fileName) => {
+        if (matchesExtension(fileName, [".excalidraw"])) return 50;
+        return -1;
+    },
+    validForLanguage: (languageId) => languageId === "json",
+    switchOption: (_languageId, fileName) => {
+        if (fileName && matchesExtension(fileName, [".excalidraw"])) return 10;
+        return -1;
+    },
+    isEditorContent: (_languageId, content) => {
+        return /^\s*\{\s*"type"\s*:\s*"excalidraw"/.test(content);
+    },
+    loadModule: async () => {
+        const [module, { createDrawViewModel }] = await Promise.all([
+            import("./draw/DrawView"),
+            import("./draw/DrawViewModel"),
+        ]);
+        return {
+            Editor: module.DrawView,
+            createViewModel: createDrawViewModel,
             newPageModel: textEditorModule.newPageModel,
             newEmptyPageModel: textEditorModule.newEmptyPageModel,
             newPageModelFromState: textEditorModule.newPageModelFromState,
