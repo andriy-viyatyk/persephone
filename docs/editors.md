@@ -287,6 +287,7 @@ For `.excalidraw` files — an Excalidraw-based drawing canvas. Click **Drawing*
   - **Open in new tab** — dropdown menu to open as an SVG preview or PNG image in a new tab
   - Exports respect the current canvas theme (dark or light)
 - **Screen Snip** — toolbar button (scissors icon) captures a screen region and inserts it as an image into the canvas. Hides all js-notepad windows, shows a dimmed fullscreen overlay on each monitor, and lets you drag-select a region. Press Escape or right-click to cancel. Works on multi-monitor setups with mixed DPI scaling.
+- **Library persistence** — custom shape libraries are saved to disk and restored across sessions. Use the "Browse libraries" button to open the Excalidraw libraries site in the internal browser — installing a library adds it directly to the editor. Library storage path is configurable via `drawing.library-path` in Settings (defaults to `<userData>/data/excalidraw-lib/`).
 - **Offline ready** — no external dependencies; all assets are bundled
 - Can switch to Monaco for raw JSON editing
 

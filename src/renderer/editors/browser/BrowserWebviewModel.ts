@@ -11,6 +11,7 @@ import { newTextFileModel } from "../text/TextPageModel";
 import { PageModel } from "../base";
 import { showEditLinkDialog } from "../link-editor/EditLinkDialog";
 import { globalPopupRateLimiter } from "../../../ipc/popup-rate-limiter";
+import { browserUrlChanged } from "../../core/state/events";
 import type { BrowserPageModel } from "./BrowserPageModel";
 
 /**
@@ -190,6 +191,7 @@ export class BrowserWebviewModel {
                 });
                 this.model.addNavHistory(internalTabId, data.url || "");
                 this.model.bookmarksUI.shiftTrackedImages(internalTabId);
+                if (data.url) browserUrlChanged.send({ url: data.url });
                 break;
             }
             case "did-navigate-in-page": {
@@ -203,6 +205,7 @@ export class BrowserWebviewModel {
                     canGoForward: data.canGoForward,
                 });
                 this.model.addNavHistory(internalTabId, data.url || "");
+                if (data.url) browserUrlChanged.send({ url: data.url });
                 break;
             }
             case "did-start-loading":
@@ -233,6 +236,7 @@ export class BrowserWebviewModel {
                         break;
                     }
                     this.model.addTab(data.url);
+                    browserUrlChanged.send({ url: data.url });
                 }
                 break;
             }

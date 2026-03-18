@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
-import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
-import { Excalidraw, FONT_FAMILY, THEME } from "@excalidraw/excalidraw";
+import { Excalidraw, FONT_FAMILY, THEME, useHandleLibrary } from "@excalidraw/excalidraw";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/dist/types/excalidraw/types";
 import "@excalidraw/excalidraw/index.css";
 import { TextFileModel } from "../text/TextPageModel";
@@ -22,6 +22,10 @@ import { ui } from "../../api/ui";
 import { api } from "../../../ipc/renderer/api";
 import { pagesModel } from "../../api/pages";
 import { fpBasename } from "../../core/utils/file-path";
+import { browserUrlChanged } from "../../core/state/events";
+import { createLibraryAdapter, initDefaultLibraryPath } from "./drawLibrary";
+
+const LIBRARY_RETURN_URL = "https://jsnotepad.excalidraw-library/";
 
 // Set Excalidraw asset path to local fonts (must be set before component mounts)
 if (!(window as any).__EXCALIDRAW_ASSET_PATH_SET) {
@@ -61,6 +65,7 @@ export function DrawView({ model }: DrawViewProps) {
     const vm = useContentViewModel<DrawViewModel>(model, "draw-view");
     const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
     const apiRef = useRef<ExcalidrawImperativeAPI | null>(null);
+    const [excalidrawAPI, setExcalidrawAPI] = useState<ExcalidrawImperativeAPI | null>(null);
 
     // Subscribe to VM state
     const pageState: DrawViewState = useSyncExternalStore(
@@ -83,6 +88,63 @@ export function DrawView({ model }: DrawViewProps) {
             vm?.clearExcalidrawApi();
         };
     }, [vm]);
+
+    // =========================================================================
+    // Library persistence
+    // =========================================================================
+
+    const libraryAdapter = useMemo(() => createLibraryAdapter(), []);
+
+    // Initialize default library path on first mount
+    useEffect(() => { initDefaultLibraryPath(); }, []);
+
+    useHandleLibrary({ excalidrawAPI, adapter: libraryAdapter });
+
+    // Intercept "Browse libraries" <a> click → open in internal browser
+    const handleWrapperClick = useCallback((e: React.MouseEvent) => {
+        const anchor = (e.target as HTMLElement).closest("a.library-menu-browse-button");
+        if (anchor) {
+            e.preventDefault();
+            const href = anchor.getAttribute("href");
+            if (href) {
+                pagesModel.openUrlInBrowserTab(href);
+            }
+        }
+    }, []);
+
+    // Listen for browser URL changes → handle Excalidraw library install URLs
+    useEffect(() => {
+        const sub = browserUrlChanged.subscribe((event) => {
+            if (!event || event.handled || !apiRef.current) return;
+            const { url } = event;
+            if (!url.startsWith(LIBRARY_RETURN_URL)) return;
+
+            const hashIndex = url.indexOf("#");
+            if (hashIndex === -1) return;
+            const params = new URLSearchParams(url.slice(hashIndex + 1));
+            const libraryUrl = params.get("addLibrary");
+            if (!libraryUrl) return;
+
+            event.handled = true;
+            pagesModel.showPage(model.id);
+
+            const decoded = decodeURIComponent(libraryUrl);
+            fetch(decoded)
+                .then((res) => res.blob())
+                .then((blob) => {
+                    apiRef.current?.updateLibrary({
+                        libraryItems: blob as any,
+                        merge: true,
+                        prompt: true,
+                        openLibraryMenu: true,
+                    });
+                })
+                .catch((err) => {
+                    ui.notify(`Failed to install library: ${(err as Error).message}`, "error");
+                });
+        });
+        return () => sub.unsubscribe();
+    }, [model.id]);
 
     const handleChange = useCallback(
         (elements: readonly any[], appState: any, files: any) => {
@@ -297,9 +359,10 @@ export function DrawView({ model }: DrawViewProps) {
                     </>,
                     model.editorToolbarRefLast!
                 )}
-            <div className="excalidraw-wrapper" onContextMenu={(e) => e.stopPropagation()}>
+            <div className="excalidraw-wrapper" onContextMenu={(e) => e.stopPropagation()} onClick={handleWrapperClick}>
                 <Excalidraw
-                    excalidrawAPI={(excApi) => { apiRef.current = excApi; vm?.setExcalidrawApi(excApi); }}
+                    excalidrawAPI={(excApi) => { apiRef.current = excApi; setExcalidrawAPI(excApi); vm?.setExcalidrawApi(excApi); }}
+                    libraryReturnUrl={LIBRARY_RETURN_URL}
                     initialData={{
                         elements: vm.elements,
                         appState: {

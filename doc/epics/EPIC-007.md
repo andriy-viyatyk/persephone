@@ -2,7 +2,7 @@
 
 ## Status
 
-**Status:** Active
+**Status:** Complete
 **Created:** 2026-03-17
 
 ## Overview
@@ -109,7 +109,7 @@ Hide Excalidraw's built-in file management (doesn't work in Electron):
 | US-202 | Drawing editor — theme sync & UI polish | Done |
 | US-203 | Drawing editor — export (SVG/PNG) | Done |
 | US-204 | Drawing editor — MCP & scripting API | Done |
-| US-206 | Drawing editor — library persistence & folder config | Planned |
+| US-206 | Drawing editor — library persistence & folder config | Done |
 | US-207 | Open image/SVG in Excalidraw editor | Done |
 | US-208 | Drawing editor — screen snip tool | Done |
 

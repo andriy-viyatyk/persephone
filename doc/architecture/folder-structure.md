@@ -277,6 +277,7 @@ js-notepad/
 │   │   ├── DrawView.tsx           # Wraps <Excalidraw> component (debounced onChange, asset path setup, export toolbar)
 │   │   ├── DrawViewModel.ts       # ContentViewModel — JSON parsing, fingerprint-based change detection, dark mode state
 │   │   ├── drawExport.ts         # Export helpers — exportAsSvgText(), exportAsPngBlob(), buildExcalidrawJsonWithImage() (embed image as Excalidraw element)
+│   │   ├── drawLibrary.ts        # Library persistence — LibraryPersistenceAdapter for useHandleLibrary, default path init
 │   │   └── index.ts
 │   ├── log-view/           # Log viewer (content-view)
 │   │   ├── LogViewEditor.tsx       # Log viewer component (RenderFlexGrid + auto-scroll)

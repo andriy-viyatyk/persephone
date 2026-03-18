@@ -4,10 +4,11 @@ Epics represent big ideas with high-level overviews. Each epic links to tasks in
 
 ## Active
 
-- **EPIC-007** — [Drawing Editor (Excalidraw)](EPIC-007.md)
+(none)
 
 ## Completed
 
+- **EPIC-007** — [Drawing Editor (Excalidraw)](EPIC-007.md)
 - **EPIC-006** — [Graph Editor (Force Graph)](EPIC-006.md)
 - **EPIC-005** — [Archive File Support (ZIP/DOCX/XLSX)](EPIC-005.md)
 - **EPIC-004** — [Log View Editor](EPIC-004.md)

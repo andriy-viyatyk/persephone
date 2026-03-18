@@ -17,6 +17,7 @@ Release notes and changelog for js-notepad.
   - **Open in new tab** — open the drawing as an SVG preview or PNG image in a new tab
   - **Screen Snip** — toolbar button (scissors icon) captures a screen region and inserts it as an image into the canvas. Hides all windows, shows a dimmed overlay on each monitor, drag-select a region to capture. Escape or right-click cancels. Supports multi-monitor setups with mixed DPI scaling.
   - **Scripting API** — `page.asDraw()` facade for scripts and MCP agents: `addImage()` inserts images onto the canvas, `exportAsSvg()` and `exportAsPng()` export the drawing. `app.pages.addDrawPage(dataUrl)` creates a new drawing page with an embedded image.
+  - **Library persistence** — Excalidraw library items now persist to disk and survive page close and app restart. The "Browse libraries" button opens the Excalidraw libraries site in the internal browser, and installing a library adds it directly to the editor. Library storage location is configurable via the `drawing.library-path` setting (defaults to `<userData>/data/excalidraw-lib/`).
 - **Open in Drawing Editor** — SVG Preview, Image Viewer, and Mermaid Diagram editors now have an "Open in Drawing Editor" toolbar button. Embeds the image/SVG as an Excalidraw element in a new drawing tab, where you can annotate it with shapes, arrows, and text. Images are capped to 1200px on the longer side, preserving aspect ratio.
 
 ---

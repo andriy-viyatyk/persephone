@@ -31,7 +31,8 @@ export type AppSettingsKey =
     | "link-open-behavior"
     | "mcp.enabled"
     | "mcp.port"
-    | "script-library.path";
+    | "script-library.path"
+    | "drawing.library-path";
 
 // =============================================================================
 // State
@@ -53,6 +54,7 @@ const settingsComments: Partial<Record<AppSettingsKey, string>> = {
     "mcp.enabled": "Enable MCP (Model Context Protocol) HTTP server.\nAllows AI agents like Claude Desktop and Claude Code to control js-notepad.",
     "mcp.port": "Port number for the MCP HTTP server.\nDefault: 7865. Change requires toggling MCP off and on.",
     "script-library.path": "Path to the script library folder.\nA folder on disk where saved scripts and reusable modules are stored.",
+    "drawing.library-path": "Path to Excalidraw library folder.\nStores reusable shapes and components for the drawing editor.",
 };
 
 const defaultAppSettingsState = {
@@ -69,6 +71,7 @@ const defaultAppSettingsState = {
         "mcp.enabled": false,
         "mcp.port": 7865,
         "script-library.path": "",
+        "drawing.library-path": "",
     },
 };
 

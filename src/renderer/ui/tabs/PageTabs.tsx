@@ -205,6 +205,11 @@ export function PageTabs(props: object) {
                 onClick: () => pagesModel.addEditorPage("monaco", "typescript", "untitled.ts"),
             },
             {
+                label: "Drawing",
+                icon: <DrawIcon />,
+                onClick: () => pagesModel.addEditorPage("draw-view", "json", "untitled.excalidraw"),
+            },
+            {
                 label: "Grid (JSON)",
                 icon: <GridIcon />,
                 onClick: () => pagesModel.addEditorPage("grid-json", "json", "untitled.grid.json"),
@@ -233,11 +238,6 @@ export function PageTabs(props: object) {
                 label: "Force Graph",
                 icon: <GraphIcon />,
                 onClick: () => pagesModel.addEditorPage("graph-view", "json", "untitled.fg.json"),
-            },
-            {
-                label: "Drawing",
-                icon: <DrawIcon />,
-                onClick: () => pagesModel.addEditorPage("draw-view", "json", "untitled.excalidraw"),
             },
             {
                 label: "Browser",

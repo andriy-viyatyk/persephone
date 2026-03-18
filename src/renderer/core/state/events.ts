@@ -42,3 +42,12 @@ export const logoutSubscription = new Subscription<void>();
 
 /** Global keyboard event broadcast. Sent from MainPage's window keydown listener. */
 export const globalKeyDown = new Subscription<KeyboardEvent>();
+
+export interface BrowserUrlEvent {
+    url: string;
+    /** Set to `true` by the first handler that processes this URL. */
+    handled?: boolean;
+}
+
+/** Fired by browser editor on every URL change (navigation, redirect). */
+export const browserUrlChanged = new Subscription<BrowserUrlEvent>();

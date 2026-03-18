@@ -1106,6 +1106,54 @@ function ScriptLibrarySection() {
 }
 
 // ============================================================================
+// Drawing Library Section
+// ============================================================================
+
+function DrawingLibrarySection() {
+    const libraryPath = settings.use("drawing.library-path");
+
+    const handleBrowse = async () => {
+        const result = await api.showOpenFolderDialog({
+            title: "Select Drawing Library Folder",
+            defaultPath: libraryPath || undefined,
+        });
+        if (result && result.length > 0) {
+            settings.set("drawing.library-path", result[0]);
+        }
+    };
+
+    const handleReset = () => {
+        settings.set("drawing.library-path", "");
+    };
+
+    return (
+        <>
+            <div className="section-label">Drawing Library</div>
+            <div className="section-hint">
+                Folder for Excalidraw library items (reusable shapes)
+            </div>
+            <div className="library-path-row">
+                <div className="library-path-display">
+                    {libraryPath ? (
+                        <span title={libraryPath}>{libraryPath}</span>
+                    ) : (
+                        <span className="library-path-placeholder">Default (auto)</span>
+                    )}
+                </div>
+                <button className="link-button" onClick={handleBrowse}>
+                    Browse...
+                </button>
+                {libraryPath && (
+                    <button className="link-button" onClick={handleReset}>
+                        Reset
+                    </button>
+                )}
+            </div>
+        </>
+    );
+}
+
+// ============================================================================
 // SettingsPage Component
 // ============================================================================
 
@@ -1215,6 +1263,10 @@ function SettingsPage({ model }: SettingsPageProps) {
                 <hr className="divider" />
 
                 <ScriptLibrarySection />
+
+                <hr className="divider" />
+
+                <DrawingLibrarySection />
 
                 <hr className="divider" />
 
