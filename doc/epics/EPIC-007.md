@@ -109,7 +109,6 @@ Hide Excalidraw's built-in file management (doesn't work in Electron):
 | US-202 | Drawing editor — theme sync & UI polish | Done |
 | US-203 | Drawing editor — export (SVG/PNG) | Done |
 | US-204 | Drawing editor — MCP & scripting API | Done |
-| US-205 | Drawing editor — polish & enhancements | Planned |
 | US-206 | Drawing editor — library persistence & folder config | Planned |
 | US-207 | Open image/SVG in Excalidraw editor | Done |
 | US-208 | Drawing editor — screen snip tool | Done |
@@ -158,14 +157,6 @@ Scope:
 - MCP: register `.excalidraw` in page creation, content format documentation
 - Type definitions in `draw-editor.d.ts`
 - MCP resource guide update
-
-### US-205: Drawing editor — polish & enhancements
-
-Final polish after user testing. Potential items:
-- Collaboration between grouped pages
-- Performance tuning for large drawings
-- Keyboard shortcut integration
-- Additional items TBD from testing
 
 ### US-206: Drawing editor — library persistence & folder config
 

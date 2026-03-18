@@ -297,7 +297,7 @@ export function DrawView({ model }: DrawViewProps) {
                     </>,
                     model.editorToolbarRefLast!
                 )}
-            <div className="excalidraw-wrapper">
+            <div className="excalidraw-wrapper" onContextMenu={(e) => e.stopPropagation()}>
                 <Excalidraw
                     excalidrawAPI={(excApi) => { apiRef.current = excApi; vm?.setExcalidrawApi(excApi); }}
                     initialData={{
