@@ -20,8 +20,20 @@ export interface IMcpInspectorEditor {
     /** Connected server name (empty when disconnected). */
     readonly serverName: string;
 
+    /** Display-friendly server title (empty if not provided). */
+    readonly serverTitle: string;
+
     /** Connected server version (empty when disconnected). */
     readonly serverVersion: string;
+
+    /** Short server description (empty if not provided). */
+    readonly serverDescription: string;
+
+    /** Server website URL (empty if not provided). */
+    readonly serverWebsiteUrl: string;
+
+    /** Server instructions received during initialization (empty when disconnected). */
+    readonly instructions: string;
 
     /** Last error message (empty when no error). */
     readonly errorMessage: string;

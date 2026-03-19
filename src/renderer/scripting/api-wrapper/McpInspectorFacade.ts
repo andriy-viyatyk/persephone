@@ -20,8 +20,24 @@ export class McpInspectorFacade {
         return this.model.state.get().serverName;
     }
 
+    get serverTitle(): string {
+        return this.model.state.get().serverTitle;
+    }
+
     get serverVersion(): string {
         return this.model.state.get().serverVersion;
+    }
+
+    get serverDescription(): string {
+        return this.model.state.get().serverDescription;
+    }
+
+    get serverWebsiteUrl(): string {
+        return this.model.state.get().serverWebsiteUrl;
+    }
+
+    get instructions(): string {
+        return this.model.state.get().instructions;
     }
 
     get errorMessage(): string {

@@ -17,7 +17,8 @@ Release notes and changelog for js-notepad.
   - **Saved connections** — Connections auto-save on successful connect. A dropdown in the connection bar lists saved servers for quick reconnect, and a connections list appears when disconnected with click-to-fill and delete.
   - **Stdio transport fix** — Fixed stdio transport connectivity that was broken by the Vite build process.
   - **Request history** — A new "History" tab in the MCP Inspector records all outgoing requests with method, duration, and error status. Click "Open in Log View" to inspect details, or "Clear" to reset.
-  - **Scripting API** — `page.asMcpInspector()` facade for scripts and MCP agents: read/write connection parameters (URL, transport type, command, args, connection name), check connection status and server info, connect/disconnect programmatically, and access request history for troubleshooting.
+  - **Server Info tab** — When connected, a new "Server Info" tab (shown by default) displays full server metadata: name, title, version, description, website URL (clickable), and instructions (rendered as markdown). Empty optional fields are hidden automatically.
+  - **Scripting API** — `page.asMcpInspector()` facade for scripts and MCP agents: read/write connection parameters (URL, transport type, command, args, connection name), check connection status and server info, connect/disconnect programmatically, and access request history for troubleshooting. New read-only properties: `serverTitle`, `serverDescription`, `serverWebsiteUrl`, `instructions`.
 
 - **MCP Request Log** — The MCP indicator in the title bar is now clickable — opens the "MCP Server Log" page showing all incoming MCP requests. Each log entry displays a direction arrow (incoming/outgoing), method name, detail (tool name or resource URI), duration, and error badge. Expand any entry to see full request/response JSON with syntax highlighting.
 

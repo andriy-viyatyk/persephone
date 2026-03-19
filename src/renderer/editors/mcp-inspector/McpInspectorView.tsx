@@ -11,6 +11,7 @@ import { mcpConnectionStore } from "./McpConnectionStore";
 import { ToolsPanel } from "./ToolsPanel";
 import { ResourcesPanel } from "./ResourcesPanel";
 import { PromptsPanel } from "./PromptsPanel";
+import { MarkdownBlock } from "../markdown/MarkdownBlock";
 
 // ============================================================================
 // Styles
@@ -177,6 +178,53 @@ const McpInspectorViewRoot = styled.div({
 
     "& .status-dot.error": {
         background: color.error.text,
+    },
+
+    // Server Info panel
+    "& .info-panel": {
+        flex: "1 1 auto",
+        overflow: "auto",
+        padding: "16px 20px",
+        display: "flex",
+        flexDirection: "column",
+        gap: 16,
+    },
+
+    "& .info-field": {
+        display: "flex",
+        flexDirection: "column",
+        gap: 4,
+    },
+
+    "& .info-label": {
+        fontSize: 11,
+        fontWeight: 500,
+        color: color.text.light,
+        textTransform: "uppercase" as const,
+        letterSpacing: "0.5px",
+    },
+
+    "& .info-value": {
+        fontSize: 13,
+        color: color.text.default,
+    },
+
+    "& .info-link": {
+        fontSize: 13,
+        color: color.border.active,
+        textDecoration: "none",
+        cursor: "pointer",
+        "&:hover": {
+            textDecoration: "underline",
+        },
+    },
+
+    "& .info-instructions": {
+        flex: "1 1 auto",
+        border: `1px solid ${color.border.default}`,
+        borderRadius: 4,
+        overflow: "auto",
+        padding: "8px 12px",
     },
 
     // Connections list (when disconnected)
@@ -414,9 +462,15 @@ function McpInspectorView({ model }: McpInspectorViewProps) {
             {isConnected && (
                 <div className="server-info">
                     <span className="status-dot connected" />
-                    <span className="server-name">{s.serverName}</span>
+                    <span className="server-name">{s.serverTitle || s.serverName}</span>
                     {s.serverVersion && <span>v{s.serverVersion}</span>}
                     <span style={{ margin: "0 4px" }}>—</span>
+                    <span
+                        className={`capability-badge${s.activePanel === "info" ? " active" : ""}`}
+                        onClick={() => model.setActivePanel("info")}
+                    >
+                        Info
+                    </span>
                     {s.hasTools && (
                         <span
                             className={`capability-badge${s.activePanel === "tools" ? " active" : ""}`}
@@ -452,6 +506,9 @@ function McpInspectorView({ model }: McpInspectorViewProps) {
 
             {/* Body: panel content */}
             <div className="body">
+                {isConnected && s.activePanel === "info" && (
+                    <ServerInfoPanel state={s} />
+                )}
                 {isConnected && s.activePanel === "tools" && (
                     <ToolsPanel model={model} />
                 )}
@@ -520,6 +577,63 @@ function McpInspectorView({ model }: McpInspectorViewProps) {
                 )}
             </div>
         </McpInspectorViewRoot>
+    );
+}
+
+// ============================================================================
+// Server Info Panel
+// ============================================================================
+
+function ServerInfoPanel({ state }: { state: McpInspectorPageState }) {
+    const displayName = state.serverTitle || state.serverName;
+    const handleWebsiteClick = useCallback((e: React.MouseEvent) => {
+        e.preventDefault();
+        if (state.serverWebsiteUrl) {
+            import("../../api/pages").then(({ pagesModel }) =>
+                pagesModel.openUrlInBrowserTab(state.serverWebsiteUrl),
+            );
+        }
+    }, [state.serverWebsiteUrl]);
+
+    return (
+        <div className="info-panel">
+            <div className="info-field">
+                <div className="info-label">Server Name</div>
+                <div className="info-value">{displayName}</div>
+            </div>
+            {state.serverVersion && (
+                <div className="info-field">
+                    <div className="info-label">Version</div>
+                    <div className="info-value">{state.serverVersion}</div>
+                </div>
+            )}
+            {state.serverDescription && (
+                <div className="info-field">
+                    <div className="info-label">Description</div>
+                    <div className="info-value">{state.serverDescription}</div>
+                </div>
+            )}
+            {state.serverWebsiteUrl && (
+                <div className="info-field">
+                    <div className="info-label">Website</div>
+                    <a
+                        className="info-link"
+                        href={state.serverWebsiteUrl}
+                        onClick={handleWebsiteClick}
+                    >
+                        {state.serverWebsiteUrl}
+                    </a>
+                </div>
+            )}
+            {state.instructions && (
+                <div className="info-field" style={{ flex: "1 1 auto" }}>
+                    <div className="info-label">Instructions</div>
+                    <div className="info-instructions">
+                        <MarkdownBlock content={state.instructions} compact />
+                    </div>
+                </div>
+            )}
+        </div>
     );
 }
 

@@ -131,6 +131,9 @@ function createMcpServer(): InstanceType<typeof McpServer> {
         {
             name: "js-notepad",
             version: electronApp.getVersion(),
+            title: "JS Notepad",
+            description: "Developer notepad with tabbed pages, specialized editors, JavaScript/TypeScript scripting, and full Node.js access.",
+            websiteUrl: "https://github.com/andriy-viyatyk/js-notepad",
         },
         {
             instructions: [

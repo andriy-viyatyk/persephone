@@ -396,7 +396,11 @@ MCP Inspector connection management and troubleshooting. Only for MCP Inspector 
 |--------|------|-------------|
 | `connectionStatus` | `string` | `"disconnected"`, `"connecting"`, `"connected"`, or `"error"`. |
 | `serverName` | `string` | Connected server name (empty when disconnected). |
+| `serverTitle` | `string` | Display-friendly server title (empty if not provided by the server). |
 | `serverVersion` | `string` | Connected server version (empty when disconnected). |
+| `serverDescription` | `string` | Short server description (empty if not provided by the server). |
+| `serverWebsiteUrl` | `string` | Server website URL (empty if not provided by the server). |
+| `instructions` | `string` | Server instructions received during initialization (empty when disconnected). |
 | `errorMessage` | `string` | Last error message (empty when no error). |
 
 **Connection parameters (read/write):**
@@ -436,6 +440,7 @@ mcp.transportType = "http";
 await mcp.connect();
 console.log(mcp.connectionStatus); // "connected"
 console.log(mcp.serverName);       // "js-notepad"
+console.log(mcp.serverTitle);      // "JS Notepad"
 
 // Check request history
 console.log(`${mcp.historyCount} requests recorded`);

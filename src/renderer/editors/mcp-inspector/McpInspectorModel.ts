@@ -152,7 +152,7 @@ const getDefaultPromptsPanelState = (): McpPromptsPanelState => ({
 // State — Page
 // ============================================================================
 
-export type McpPanelId = "tools" | "resources" | "prompts" | "history";
+export type McpPanelId = "info" | "tools" | "resources" | "prompts" | "history";
 
 export interface McpInspectorPageState extends IPageState {
     // Connection config
@@ -168,7 +168,11 @@ export interface McpInspectorPageState extends IPageState {
 
     // Server info (populated after connect)
     serverName: string;
+    serverTitle: string;
     serverVersion: string;
+    serverDescription: string;
+    serverWebsiteUrl: string;
+    instructions: string;
     hasTools: boolean;
     hasResources: boolean;
     hasPrompts: boolean;
@@ -193,12 +197,16 @@ export const getDefaultMcpInspectorPageState = (): McpInspectorPageState => ({
     errorMessage: "",
 
     serverName: "",
+    serverTitle: "",
     serverVersion: "",
+    serverDescription: "",
+    serverWebsiteUrl: "",
+    instructions: "",
     hasTools: false,
     hasResources: false,
     hasPrompts: false,
 
-    activePanel: "tools",
+    activePanel: "info",
 });
 
 // ============================================================================
@@ -225,13 +233,21 @@ export class McpInspectorModel extends PageModel<McpInspectorPageState, void> {
                 s.errorMessage = error || "";
                 if (info) {
                     s.serverName = info.name;
+                    s.serverTitle = info.title;
                     s.serverVersion = info.version;
+                    s.serverDescription = info.description;
+                    s.serverWebsiteUrl = info.websiteUrl;
+                    s.instructions = info.instructions;
                     s.hasTools = !!info.capabilities.tools;
                     s.hasResources = !!info.capabilities.resources;
                     s.hasPrompts = !!info.capabilities.prompts;
                 } else if (status === "disconnected" || status === "error") {
                     s.serverName = "";
+                    s.serverTitle = "";
                     s.serverVersion = "";
+                    s.serverDescription = "";
+                    s.serverWebsiteUrl = "";
+                    s.instructions = "";
                     s.hasTools = false;
                     s.hasResources = false;
                     s.hasPrompts = false;

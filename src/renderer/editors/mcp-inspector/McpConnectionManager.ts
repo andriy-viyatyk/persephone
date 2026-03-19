@@ -19,7 +19,11 @@ export type McpConnectionStatus = "disconnected" | "connecting" | "connected" | 
 
 export interface McpServerInfo {
     name: string;
+    title: string;
     version: string;
+    description: string;
+    websiteUrl: string;
+    instructions: string;
     capabilities: {
         tools?: boolean;
         resources?: boolean;
@@ -120,9 +124,14 @@ export class McpConnectionManager {
             // Read server info
             const serverVersion = this.client.getServerVersion();
             const serverCaps = this.client.getServerCapabilities();
+            const instructions = this.client.getInstructions();
             this._serverInfo = {
                 name: serverVersion?.name || config.name || "Unknown",
+                title: serverVersion?.title || "",
                 version: serverVersion?.version || "",
+                description: serverVersion?.description || "",
+                websiteUrl: serverVersion?.websiteUrl || "",
+                instructions: instructions || "",
                 capabilities: {
                     tools: !!serverCaps?.tools,
                     resources: !!serverCaps?.resources,

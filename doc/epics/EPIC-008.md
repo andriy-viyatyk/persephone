@@ -127,6 +127,8 @@ Connections are auto-saved on successful connect. Default name is generated from
 | US-213 | MCP Browser — connections store & management UI | Done |
 | US-214 | MCP Inspector — scripting API (connection & troubleshooting) | Done |
 | US-216 | Rename mcp-browser → mcp-inspector across codebase | Done |
+| US-217 | MCP Inspector — Server Info tab with full server metadata | Done |
+| US-218 | MCP Inspector — explore advanced capabilities (logging, completions, tasks) | Planned |
 
 ## Task Details
 

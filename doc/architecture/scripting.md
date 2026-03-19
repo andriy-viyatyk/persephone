@@ -335,7 +335,7 @@ Facades provide safe, typed access to editor-specific features. Each facade wrap
 | `page.asGraph()` | `GraphEditorFacade` | `GraphViewModel` | `nodes`, `links`, `search()`, `bfs()`, `getComponents()`, `select()`, selection, groups, neighbors |
 | `page.asDraw()` | `DrawEditorFacade` | `DrawViewModel` | `addImage()`, `exportAsSvg()`, `exportAsPng()`, `elementCount`, `editorIsMounted` |
 | `page.asBrowser()` | `BrowserEditorFacade` | `BrowserPageModel` | `url`, `title`, `navigate()`, `back()`, `forward()`, `reload()` |
-| `page.asMcpInspector()` | `McpInspectorFacade` | `McpInspectorModel` | `connect()`, `disconnect()`, connection params, `history`, `clearHistory()`, `showHistory()` |
+| `page.asMcpInspector()` | `McpInspectorFacade` | `McpInspectorModel` | `connect()`, `disconnect()`, connection params, server info (title, description, websiteUrl, instructions), `history`, `clearHistory()`, `showHistory()` |
 
 **Exception:** `BrowserEditorFacade` and `McpInspectorFacade` wrap their PageModel directly (no ViewModel, no ref-counting) because they are page-editors, not content-views.
 
