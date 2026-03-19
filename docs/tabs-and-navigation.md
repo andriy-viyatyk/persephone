@@ -11,7 +11,7 @@ Each open file appears as a tab in the tab bar. Tabs show the file name, a langu
 | Action | How |
 |--------|-----|
 | New empty tab | `Ctrl+N` or click the **+** button |
-| New with specific editor | Click the dropdown arrow (&#9662;) next to **+** — choose Script (JS), Grid (JSON), Grid (CSV), Notebook, Todo, or Browser |
+| New with specific editor | Click the dropdown arrow (&#9662;) next to **+** — shows your pinned editors plus "Show All..." to open the Tools & Editors panel |
 | Open a file | `Ctrl+O`, or drag a file onto the window |
 
 ### Closing Tabs
@@ -113,6 +113,7 @@ The left side shows your folder shortcuts:
 
 - **Open Tabs** — Lists all open pages in the current window and other open windows
 - **Recent Files** — Recently opened files
+- **Tools & Editors** — All creatable editors and tools (see below)
 - **Script Library** — A dedicated folder for your reusable scripts (see below)
 - **Custom Folders** — Your bookmarked filesystem folders
 
@@ -156,6 +157,17 @@ The right panel shows the contents of the selected folder:
 | New Window | Opens a new js-notepad window (`Ctrl+Shift+N`) |
 | About | Opens the About page (version info, update check) |
 | Settings | Opens the Settings page (themes, preferences) |
+
+### Tools & Editors
+
+The **Tools & Editors** entry appears between Recent Files and Script Library. It lists all creatable editors and tools in two sections:
+
+- **Pinned** — Your favorite editors, shown at the top. Drag to reorder. These are also the items that appear in the **+** dropdown menu in the tab bar.
+- **All** — Every available editor/tool, sorted alphabetically. Click the pin button to add an item to your pinned list.
+
+Click any item to create a new page with that editor. Pinned editors are saved in settings (`pinned-editors`) and persist across restarts. The default pinned set is: Script (JS), Script (TS), Drawing, Grid (JSON), Grid (CSV), Browser.
+
+Items include all standard editors (Script, Grid, Notebook, Todo, Links, Drawing, Force Graph, Browser) as well as MCP Inspector and individual browser profiles (Incognito and named profiles).
 
 ### Script Library
 

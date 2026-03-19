@@ -131,6 +131,8 @@ js-notepad/
 │   │   ├── MenuBar.tsx             # Top menu bar
 │   │   ├── OpenTabsList.tsx         # Open tabs list
 │   │   ├── RecentFileList.tsx       # Recent files panel
+│   │   ├── ToolsEditorsPanel.tsx    # Tools & Editors panel (pin/unpin, drag reorder)
+│   │   ├── tools-editors-registry.ts # Creatable items registry (editors + tools)
 │   │   ├── ScriptLibraryPanel.tsx   # Script library folder panel
 │   │   ├── FileList.tsx            # File browser list
 │   │   ├── FolderItem.tsx          # Folder tree item

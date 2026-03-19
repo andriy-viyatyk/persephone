@@ -4,7 +4,7 @@
 
 A built-in web browser for viewing documentation, APIs, and web resources without leaving js-notepad.
 
-**Opening:** Click the dropdown arrow (&#9662;) next to the **+** button in the tab bar → **Browser**. Or use **Browser profile...** to open with a specific profile or in incognito mode.
+**Opening:** Click the dropdown arrow (&#9662;) next to the **+** button → **Browser** (if pinned), or open the **Tools & Editors** sidebar panel to find Browser, Browser Incognito, and individual browser profiles.
 
 ---
 

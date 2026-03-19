@@ -32,7 +32,8 @@ export type AppSettingsKey =
     | "mcp.enabled"
     | "mcp.port"
     | "script-library.path"
-    | "drawing.library-path";
+    | "drawing.library-path"
+    | "pinned-editors";
 
 // =============================================================================
 // State
@@ -55,6 +56,7 @@ const settingsComments: Partial<Record<AppSettingsKey, string>> = {
     "mcp.port": "Port number for the MCP HTTP server.\nDefault: 7865. Change requires toggling MCP off and on.",
     "script-library.path": "Path to the script library folder.\nA folder on disk where saved scripts and reusable modules are stored.",
     "drawing.library-path": "Path to Excalidraw library folder.\nStores reusable shapes and components for the drawing editor.",
+    "pinned-editors": "Pinned editors shown in the '+' new-page menu.\nArray of creatable item IDs. Reorder to change menu order.",
 };
 
 const defaultAppSettingsState = {
@@ -72,6 +74,7 @@ const defaultAppSettingsState = {
         "mcp.port": 7865,
         "script-library.path": "",
         "drawing.library-path": "",
+        "pinned-editors": ["script-js", "script-ts", "draw-view", "grid-json", "grid-csv", "browser"] as string[],
     },
 };
 

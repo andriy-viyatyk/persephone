@@ -41,6 +41,9 @@ export interface IWindow {
     /** Toggle the menu bar (sidebar) open/closed. */
     toggleMenuBar(): void;
 
+    /** Open the sidebar, optionally selecting a panel by ID. */
+    openMenuBar(panelId?: string): void;
+
     // ── Zoom ─────────────────────────────────────────────────────────
 
     /**

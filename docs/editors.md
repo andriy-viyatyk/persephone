@@ -111,7 +111,7 @@ For `.html` files — click **Preview** in the toolbar:
 
 A built-in web browser for viewing documentation, APIs, and web resources without leaving js-notepad.
 
-**Opening:** Click the dropdown arrow (&#9662;) next to the **+** button in the tab bar → **Browser**.
+**Opening:** Click the dropdown arrow (&#9662;) next to the **+** button → **Browser** (if pinned), or find it in the **Tools & Editors** sidebar panel.
 
 **Key features:**
 - **URL bar** with search, suggestions, and 11 search engines
@@ -341,4 +341,4 @@ Use the buttons in the toolbar to switch between available editors.
 
 **Content-based detection:** JSON pages that contain a `"type"` property (`"note-editor"`, `"todo-editor"`, `"link-editor"`, or `"force-graph"`) automatically show the corresponding switch button — even without the special file extension. For the Graph View, the JSON must also contain a `"nodes"` property. This is useful for pages created via MCP or scripting.
 
-**Quick Add:** Click the dropdown arrow (&#9662;) next to the **+** button in the tab bar to create a new page with a specific editor: Script (JS), Script (TS), Grid (JSON), Grid (CSV), Notebook, Todo, Links, Drawing, Force Graph, Browser, or Browser profile (with Incognito and named profiles).
+**Quick Add:** Click the dropdown arrow (&#9662;) next to the **+** button in the tab bar to create a new page from your pinned editors. Choose "Show All..." to open the **Tools & Editors** sidebar panel, which lists every available editor and tool. You can pin/unpin items and drag to reorder your pinned set. See [Tabs & Navigation](./tabs-and-navigation.md#tools--editors) for details.

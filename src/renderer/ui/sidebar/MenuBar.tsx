@@ -33,7 +33,9 @@ import { FolderIcon } from "../../components/icons/FileIcon";
 import { Splitter } from "../../components/layout/Splitter";
 import { FolderItem } from "./FolderItem";
 import { ScriptLibraryPanel } from "./ScriptLibraryPanel";
+import { ToolsEditorsPanel } from "./ToolsEditorsPanel";
 import { settings } from "../../api/settings";
+import { app } from "../../api/app";
 import { fpBasename } from "../../core/utils/file-path";
 
 const MenuBarRoot = styled("div")({
@@ -143,10 +145,12 @@ interface MenuBarProps {
 
 const openTabsId = "open-tabs";
 const recentFilesId = "recent-files";
+const toolsEditorsId = "tools-editors";
 const scriptLibraryId = "script-library";
 const staticFolders: MenuFolder[] = [
     { id: openTabsId, name: "Open Tabs" },
     { id: recentFilesId, name: "Recent Files" },
+    { id: toolsEditorsId, name: "Tools & Editors" },
     { id: scriptLibraryId, name: "Script Library" },
 ];
 
@@ -202,6 +206,18 @@ class MenuBarModel extends TComponentModel<MenuBarState, MenuBarProps> {
                 this.state.update((s) => { s.isAnimating = false; });
             }
         }, () => [this.props.open]);
+
+        // React to openMenuBar(panelId) calls
+        this.effect(() => {
+            const panelId = app.window.state.get().menuBarPanelId;
+            if (panelId) {
+                const folder = this.allFolders.value.find((f) => f.id === panelId);
+                if (folder) {
+                    this.setLeftItem(folder);
+                }
+                app.window.consumeMenuBarPanelId();
+            }
+        }, () => [app.window.state.get().menuBarPanelId]);
     }
 
     contentClick = (e: React.MouseEvent) => {
@@ -260,6 +276,8 @@ class MenuBarModel extends TComponentModel<MenuBarState, MenuBarProps> {
                 return "🗔";
             case recentFilesId:
                 return "🕘";
+            case toolsEditorsId:
+                return "⊞";
             case scriptLibraryId:
                 return <ScriptLibraryIcon />;
             default:
@@ -438,6 +456,8 @@ export function MenuBar(props: MenuBarProps) {
                 );
             case recentFilesId:
                 return <RecentFileList ref={model.setFileListRef} onClose={props.onClose} />;
+            case toolsEditorsId:
+                return <ToolsEditorsPanel onClose={props.onClose} />;
             case scriptLibraryId:
                 return (
                     <ScriptLibraryPanel

@@ -5,17 +5,16 @@ import {
     ArrowLeftIcon,
     ArrowRightIcon,
     ChevronDownIcon,
-    GlobeIcon,
     PlusIcon,
 } from "../../theme/icons";
-import { IncognitoIcon, GraphIcon, GridIcon, JavascriptIcon, TypescriptIcon, LinkIcon, NotebookIcon, TodoIcon, DrawIcon } from "../../theme/language-icons";
-import { DEFAULT_BROWSER_COLOR } from "../../theme/palette-colors";
 import { Button } from "../../components/basic/Button";
 import { WithPopupMenu } from "../../components/overlay/WithPopupMenu";
 import { MenuItem } from "../../components/overlay/PopupMenu";
 import { TComponentModel, useComponentModel } from "../../core/state/model";
 import { useMemo } from "react";
 import { settings } from "../../api/settings";
+import { app } from "../../api/app";
+import { DEFAULT_PINNED_EDITORS, getCreatableItems } from "../sidebar/tools-editors-registry";
 import { minTabWidth, PageTab, pinnedTabWidth, pinnedTabEncryptedWidth } from "./PageTab";
 import color from "../../theme/color";
 import { isTextFileModel } from "../../editors/text";
@@ -165,94 +164,27 @@ export function PageTabs(props: object) {
     const state = pagesModel.state.use();
 
     const browserProfiles = settings.use("browser-profiles");
-    const defaultProfileName = settings.use("browser-default-profile");
-    const defaultBrowserColor = browserProfiles.find((p) => p.name === defaultProfileName)?.color || DEFAULT_BROWSER_COLOR;
+    const pinnedIds: string[] = settings.use("pinned-editors") ?? DEFAULT_PINNED_EDITORS;
 
     const addPageMenuItems = useMemo((): MenuItem[] => {
-        const browserProfileSubmenu: MenuItem[] = [
-            {
-                label: "Incognito",
-                icon: <IncognitoIcon />,
-                onClick: async () => {
-                    pagesModel.showBrowserPage({ incognito: true });
-                },
-            },
-            ...browserProfiles.map((profile) => ({
-                label: profile.name,
-                icon: <GlobeIcon color={profile.color} />,
-                onClick: async () => {
-                    pagesModel.showBrowserPage({ profileName: profile.name });
-                },
-            })),
-            {
-                label: "Manage profiles...",
-                startGroup: true,
-                onClick: async () => {
-                    pagesModel.showSettingsPage();
-                },
-            },
-        ];
+        const allItems = getCreatableItems(browserProfiles);
+        const pinned = pinnedIds
+            .map((id) => allItems.find((item) => item.id === id))
+            .filter(Boolean);
 
         return [
+            ...pinned.map((item) => ({
+                label: item!.label,
+                icon: item!.icon,
+                onClick: item!.create,
+            })),
             {
-                label: "Script (JS)",
-                icon: <JavascriptIcon />,
-                onClick: () => pagesModel.addEditorPage("monaco", "javascript", "untitled.js"),
-            },
-            {
-                label: "Script (TS)",
-                icon: <TypescriptIcon />,
-                onClick: () => pagesModel.addEditorPage("monaco", "typescript", "untitled.ts"),
-            },
-            {
-                label: "Drawing",
-                icon: <DrawIcon />,
-                onClick: () => pagesModel.addEditorPage("draw-view", "json", "untitled.excalidraw"),
-            },
-            {
-                label: "Grid (JSON)",
-                icon: <GridIcon />,
-                onClick: () => pagesModel.addEditorPage("grid-json", "json", "untitled.grid.json"),
-            },
-            {
-                label: "Grid (CSV)",
-                icon: <GridIcon />,
-                onClick: () => pagesModel.addEditorPage("grid-csv", "csv", "untitled.grid.csv"),
-            },
-            {
-                label: "Notebook",
-                icon: <NotebookIcon />,
-                onClick: () => pagesModel.addEditorPage("notebook-view", "json", "untitled.note.json"),
-            },
-            {
-                label: "Todo",
-                icon: <TodoIcon />,
-                onClick: () => pagesModel.addEditorPage("todo-view", "json", "untitled.todo.json"),
-            },
-            {
-                label: "Links",
-                icon: <LinkIcon />,
-                onClick: () => pagesModel.addEditorPage("link-view", "json", "untitled.link.json"),
-            },
-            {
-                label: "Force Graph",
-                icon: <GraphIcon />,
-                onClick: () => pagesModel.addEditorPage("graph-view", "json", "untitled.fg.json"),
-            },
-            {
-                label: "Browser",
-                icon: <GlobeIcon color={defaultBrowserColor} />,
-                onClick: async () => {
-                    pagesModel.showBrowserPage();
-                },
-            },
-            {
-                label: "Browser profile...",
-                icon: <GlobeIcon color={defaultBrowserColor} />,
-                items: browserProfileSubmenu,
+                label: "Show All…",
+                startGroup: true,
+                onClick: () => app.window.openMenuBar("tools-editors"),
             },
         ];
-    }, [browserProfiles, defaultBrowserColor]);
+    }, [browserProfiles, pinnedIds]);
 
     return (
         <PageTabsRoot className="page-tabs">

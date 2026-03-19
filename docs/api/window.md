@@ -32,6 +32,7 @@ app.window.zoom(1);  // zoom in one step
 |--------|------|-------------|
 | `menuBarOpen` | `boolean` | Whether the sidebar is open. Read-only. |
 | `toggleMenuBar()` | `void` | Toggle sidebar open/closed. |
+| `openMenuBar(panelId?)` | `void` | Open the sidebar. Pass an optional panel ID to navigate to a specific panel (e.g., `"tools-and-editors"`). |
 
 ## Zoom
 

@@ -22,6 +22,10 @@ Release notes and changelog for js-notepad.
 
 - **MCP Request Log** — The MCP indicator in the title bar is now clickable — opens the "MCP Server Log" page showing all incoming MCP requests. Each log entry displays a direction arrow (incoming/outgoing), method name, detail (tool name or resource URI), duration, and error badge. Expand any entry to see full request/response JSON with syntax highlighting.
 
+- **Tools & Editors sidebar panel** — A new panel in the sidebar (between Recent Files and Script Library) that lists all creatable editors and tools in one place. Two sections: **Pinned** (drag-to-reorder, shown in the "+" new-page menu) and **All** (alphabetically sorted). Click any item to create a new page with that editor. Pin/unpin items with a button — pinned editors are saved in settings and persist across restarts. Default pinned: Script (JS), Script (TS), Drawing, Grid (JSON), Grid (CSV), Browser. The **+** new-page dropdown menu now shows only pinned editors plus a "Show All..." option that opens the sidebar to the Tools & Editors panel. Browser profiles (Incognito, named profiles) and MCP Inspector are accessible from the panel.
+
+- **`app.window.openMenuBar(panelId?)`** — New scripting API to open the sidebar programmatically, optionally navigating to a specific panel (e.g., `"tools-and-editors"`).
+
 ---
 
 ## Version 1.0.23
