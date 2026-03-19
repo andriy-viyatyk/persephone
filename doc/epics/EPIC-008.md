@@ -2,7 +2,7 @@
 
 ## Status
 
-**Status:** Active
+**Status:** Complete
 **Created:** 2026-03-19
 
 ## Overview
@@ -128,7 +128,7 @@ Connections are auto-saved on successful connect. Default name is generated from
 | US-214 | MCP Inspector — scripting API (connection & troubleshooting) | Done |
 | US-216 | Rename mcp-browser → mcp-inspector across codebase | Done |
 | US-217 | MCP Inspector — Server Info tab with full server metadata | Done |
-| US-218 | MCP Inspector — explore advanced capabilities (logging, completions, tasks) | Planned |
+| US-218 | MCP Inspector — explore advanced capabilities (logging, completions, tasks) | Done |
 
 ## Task Details
 

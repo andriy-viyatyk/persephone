@@ -11,7 +11,6 @@ Current work in progress and planned tasks.
 
 | ID | Title | Epic | Notes |
 |----|-------|------|-------|
-| US-218 | MCP Inspector — explore advanced capabilities (logging, completions, tasks) | EPIC-008 | Discussion/investigation task: understand what MCP logging, completions, tasks, and experimental capabilities are, and decide what to expose in the Inspector UI. |
 
 
 ## Completed
