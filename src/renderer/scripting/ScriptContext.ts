@@ -6,7 +6,6 @@ import { UiFacade } from "./api-wrapper/UiFacade";
 import { styledText } from "./api-wrapper/StyledTextBuilder";
 import { createLibraryRequire, createUnlinkedLibraryRequire } from "./library-require";
 import { isTextFileModel } from "../editors/text/TextPageModel";
-import { mcpLogState } from "../api/mcp-log-state";
 import type { LogViewModel } from "../editors/log-view/LogViewModel";
 import React from "react";
 
@@ -206,20 +205,14 @@ function initializeUiFacade(
     let isExisting = false;
 
     if (isMcp) {
-        // MCP mode: use shared standalone MCP Log View (same as ui_push)
-        if (mcpLogState.pageId) {
-            const existing = pagesModel.findPage(mcpLogState.pageId);
-            if (existing) {
-                logPage = existing;
-                isExisting = true;
-            } else {
-                mcpLogState.pageId = undefined;
-                logPage = pagesModel.addEditorPage("log-view", "jsonl", formatLogTitle());
-                mcpLogState.pageId = logPage.id;
-            }
+        // MCP mode: reuse the well-known MCP Log page (created by mcp-handler before script runs)
+        const existing = pagesModel.findPage("mcp-ui-log");
+        if (existing) {
+            logPage = existing;
+            isExisting = true;
         } else {
-            logPage = pagesModel.addEditorPage("log-view", "jsonl", formatLogTitle());
-            mcpLogState.pageId = logPage.id;
+            // Fallback: create a regular log page if well-known page wasn't created yet
+            logPage = pagesModel.addEditorPage("log-view", "jsonl", "MCP Log");
         }
     } else if (page) {
         const grouped = pagesModel.getGroupedPage(page.id);

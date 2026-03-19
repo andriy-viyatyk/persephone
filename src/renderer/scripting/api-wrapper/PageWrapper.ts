@@ -14,6 +14,7 @@ import type { MermaidViewModel } from "../../editors/mermaid/MermaidViewModel";
 import type { GraphViewModel } from "../../editors/graph/GraphViewModel";
 import type { DrawViewModel } from "../../editors/draw/DrawViewModel";
 import type { BrowserPageModel } from "../../editors/browser/BrowserPageModel";
+import type { McpInspectorModel } from "../../editors/mcp-inspector/McpInspectorModel";
 import { TextEditorFacade } from "./TextEditorFacade";
 import { GridEditorFacade } from "./GridEditorFacade";
 import { NotebookEditorFacade } from "./NotebookEditorFacade";
@@ -26,6 +27,7 @@ import { MermaidEditorFacade } from "./MermaidEditorFacade";
 import { GraphEditorFacade } from "./GraphEditorFacade";
 import { DrawEditorFacade } from "./DrawEditorFacade";
 import { BrowserEditorFacade } from "./BrowserEditorFacade";
+import { McpInspectorFacade } from "./McpInspectorFacade";
 import type { ScriptOutputFlags } from "../ScriptContext";
 
 /**
@@ -259,6 +261,14 @@ export class PageWrapper {
         }
 
         return new BrowserEditorFacade(this.model as unknown as BrowserPageModel);
+    }
+
+    async asMcpInspector(): Promise<McpInspectorFacade> {
+        if (this.model.state.get().type !== "mcpInspectorPage") {
+            throw new Error("asMcpInspector() is only available for MCP Inspector pages");
+        }
+
+        return new McpInspectorFacade(this.model as unknown as McpInspectorModel);
     }
 
     async runScript(): Promise<string> {

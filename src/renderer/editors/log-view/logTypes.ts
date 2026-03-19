@@ -151,12 +151,24 @@ export interface MermaidOutputEntry extends LogEntryBase {
     text: string;
 }
 
+export interface McpRequestEntry extends LogEntryBase {
+    type: "output.mcp-request";
+    title?: StyledText;
+    direction: "outgoing" | "incoming";
+    method: string;
+    params: any;
+    result: any;
+    error: string | null;
+    durationMs: number;
+}
+
 export type OutputEntryType =
     | "output.progress"
     | "output.grid"
     | "output.text"
     | "output.markdown"
-    | "output.mermaid";
+    | "output.mermaid"
+    | "output.mcp-request";
 
 // =============================================================================
 // Type Guards
@@ -164,7 +176,7 @@ export type OutputEntryType =
 
 const LOG_LEVELS = new Set<string>(["log.log", "log.text", "log.info", "log.warn", "log.error", "log.success"]);
 const DIALOG_TYPES = new Set<string>(["input.confirm", "input.text", "input.buttons", "input.checkboxes", "input.radioboxes", "input.select"]);
-const OUTPUT_TYPES = new Set<string>(["output.progress", "output.grid", "output.text", "output.markdown", "output.mermaid"]);
+const OUTPUT_TYPES = new Set<string>(["output.progress", "output.grid", "output.text", "output.markdown", "output.mermaid", "output.mcp-request"]);
 
 export function isLogEntry(entry: LogEntry): entry is LogMessageEntry {
     return LOG_LEVELS.has(entry.type);

@@ -10,6 +10,7 @@ import {
     WindowRestoreIcon,
 } from "../../theme/icons";
 import { app } from "../../api/app";
+import { showMcpRequestLog } from "../../api/mcp-handler";
 import { Pages } from "./Pages";
 import { PageTabs } from "../tabs/PageTabs";
 import clsx from "clsx";
@@ -100,6 +101,10 @@ const AppRoot = styled.div({
         gap: 3,
         WebkitAppRegion: "no-drag",
         pointerEvents: "auto",
+        cursor: "pointer",
+        "&:hover": {
+            opacity: 1,
+        },
         "& .mcp-dot": {
             width: 7,
             height: 7,
@@ -169,9 +174,10 @@ export function MainPage() {
                     <span
                         className="mcp-indicator"
                         title={state.mcpClientCount > 0
-                            ? `MCP is active, ${state.mcpClientCount} active connection${state.mcpClientCount !== 1 ? "s" : ""}`
-                            : "MCP server is running"
+                            ? `MCP is active, ${state.mcpClientCount} active connection${state.mcpClientCount !== 1 ? "s" : ""} — click to view request log`
+                            : "MCP server is running — click to view request log"
                         }
+                        onClick={() => showMcpRequestLog()}
                     >
                         {state.mcpClientCount > 0
                             ? <><span className="mcp-count">{state.mcpClientCount}</span> MCP</>

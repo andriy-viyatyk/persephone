@@ -1267,3 +1267,7 @@ export const DownloadIcon = createIcon(24)(
         <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
     </g>,
 );
+
+export const McpIcon = createIcon(24)(
+    <circle cx="12" cy="12" r="7" fill="none" stroke="#4ec964" strokeWidth="2.5" />,
+);

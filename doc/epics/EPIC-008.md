@@ -1,4 +1,4 @@
-# EPIC-008: MCP Browser Editor
+# EPIC-008: MCP Inspector Editor
 
 ## Status
 
@@ -15,8 +15,8 @@ Add an MCP (Model Context Protocol) browser/inspector editor to js-notepad. This
 - Browse and inspect tools, resources, and prompts with full schema details
 - Call tools and read resources interactively with dynamic argument forms
 - Track request/response history for debugging
-- Save connection profiles for quick reconnect
-- Expose scripting API for automation (`page.asMcpBrowser()`)
+- Manage saved connections in a centralized store with auto-save on successful connect
+- Expose scripting API for automation (`page.asMcpInspector()`)
 
 ## Why Custom (No Embeddable Library)
 
@@ -40,7 +40,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 
-const client = new Client({ name: "js-notepad-mcp-browser", version: "1.0.0" });
+const client = new Client({ name: "js-notepad-mcp-inspector", version: "1.0.0" });
 await client.connect(transport);
 
 await client.listTools();
@@ -54,79 +54,79 @@ await client.getPrompt({ name: "prompt-name", arguments: {} });
 ### Transport Options
 
 - **HTTP** (`StreamableHTTPClientTransport`): Connect to running HTTP-based MCP servers by URL. Works from renderer process directly.
-- **Stdio** (`StdioClientTransport`): Spawn a child process (e.g., `npx @modelcontextprotocol/server-filesystem /path`). Since js-notepad runs with `nodeIntegration: true`, can spawn from renderer, but may be cleaner via main process IPC.
+- **Stdio** (`StdioClientTransport`): Spawn a child process (e.g., `npx @modelcontextprotocol/server-filesystem /path`). Runs in renderer process — process is killed when editor tab is closed or app exits. Acceptable for an inspector tool.
 
 ### Editor Registration
 
 - **Editor ID:** `mcp-view`
 - **Category:** `page-editor` (own PageModel, manages its own state — not a text content view)
-- **Page type:** New `mcpBrowserPage` added to `PageType`
-- **File association:** `.mcp.json` files (connection config + state)
-- **Dynamic import:** `await import("./mcp-browser")` for code splitting
+- **Page type:** `mcpInspectorPage` (renamed from `mcpBrowserPage` in US-216)
+- **No file association** — standalone page like About or Settings
+- **Dynamic import:** `await import("./mcp-inspector")` for code splitting
 
-### Data Format (`.mcp.json`)
+### Connections Store
 
-Connection configuration file that can be saved/opened:
-```json
-{
-  "type": "mcp-connection",
-  "version": 1,
-  "connection": {
-    "name": "My Server",
-    "transport": "http",
-    "url": "http://localhost:7865/mcp"
-  }
-}
+All saved connections are stored in a single centralized file:
+```
+%APPDATA%/js-notepad/data/mcp-connections.json
 ```
 
-For stdio:
+Format:
 ```json
-{
-  "type": "mcp-connection",
-  "version": 1,
-  "connection": {
+[
+  {
+    "id": "uuid-1",
+    "name": "js-notepad MCP",
+    "transport": "http",
+    "url": "http://localhost:7865/mcp"
+  },
+  {
+    "id": "uuid-2",
     "name": "Filesystem Server",
     "transport": "stdio",
     "command": "npx",
     "args": ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/dir"]
   }
-}
+]
 ```
+
+Connections are auto-saved on successful connect. Default name is generated from URL or command. Users can rename, edit, or delete connections from the editor UI.
 
 ### UI Layout Concept
 
 ```
-+----------------------------------------------+
-| [Connect] URL: http://localhost:7865/mcp  [▼] |
-| Status: Connected — js-notepad MCP v1.0.24    |
-+------+---------------------------------------+
-| Side | Main Panel                            |
-| bar  |                                       |
-| ──── | Tool: execute_script                  |
-| Tools| Description: Run JS/TS code...        |
-|  9   | ─────────────────────────────────      |
-| ──── | Arguments:                            |
-| Res  |   script: [...................]        |
-|  4   |   windowIndex: [0]                    |
-| ──── | ─────────────────────────────────      |
-| Prm  | [▶ Call Tool]                          |
-|  2   | ─────────────────────────────────      |
-| ──── | Result:                               |
-| Hist | { "content": [{ "type": "text", ... }]|
-|      |                                       |
-+------+---------------------------------------+
++----------------------------------------------------+
+| [Saved ▼] [HTTP ▼] [url input..........] [Connect] |
+| Status: Connected — js-notepad MCP v1.0.24         |
++------+---------------------------------------------+
+| Side | Main Panel                                  |
+| bar  |                                             |
+| ──── | Tool: execute_script                        |
+| Tools| Description: Run JS/TS code...              |
+|  9   | ─────────────────────────────────            |
+| ──── | Arguments:                                  |
+| Res  |   script: [...................]              |
+|  4   |   windowIndex: [0]                           |
+| ──── | ─────────────────────────────────            |
+| Prm  | [▶ Call Tool]                                |
+|  2   | ─────────────────────────────────            |
+| ──── | Result:                                     |
+| Hist | { "content": [{ "type": "text", ... }]      |
+|      |                                             |
++------+---------------------------------------------+
 ```
 
 ## Linked Tasks
 
 | Task | Title | Status |
 |------|-------|--------|
-| US-209 | MCP Browser — editor scaffold & connection manager | Planned |
-| US-210 | MCP Browser — tools panel (list, inspect, call) | Planned |
-| US-211 | MCP Browser — resources & prompts panels | Planned |
-| US-212 | MCP Browser — request history & logging | Planned |
-| US-213 | MCP Browser — saved connections & profiles | Planned |
-| US-214 | MCP Browser — scripting API & MCP integration | Planned |
+| US-209 | MCP Browser — editor scaffold & connection manager | Done |
+| US-210 | MCP Browser — tools panel (list, inspect, call) | Done |
+| US-211 | MCP Browser — resources & prompts panels | Done |
+| US-212 | MCP request log (new log-view entry type) | Done |
+| US-213 | MCP Browser — connections store & management UI | Done |
+| US-214 | MCP Inspector — scripting API (connection & troubleshooting) | Done |
+| US-216 | Rename mcp-browser → mcp-inspector across codebase | Done |
 
 ## Task Details
 
@@ -139,14 +139,13 @@ Scope:
 - Create `/src/renderer/editors/mcp-browser/` folder:
   - `McpBrowserModel.ts` — PageModel managing connection state, server capabilities, active panel
   - `McpBrowserView.tsx` — Main editor component with connection bar and panel layout
-  - `McpConnectionManager.ts` — Wraps MCP SDK Client: connect, disconnect, reconnect, error handling
+  - `McpConnectionManager.ts` — Wraps MCP SDK Client: connect, disconnect, error handling
   - `index.ts` — EditorModule exports
-- Register in `register-editors.ts` (page-editor, `.mcp.json`, priority 50)
+- Register in `register-editors.ts` (page-editor, no file association)
 - Connection bar UI: transport selector (HTTP/stdio), URL or command input, connect/disconnect button
 - Display server info after connection: name, version, capabilities
 - Connection state: disconnected → connecting → connected → error
-- Parse `.mcp.json` files on open to restore connection config
-- "New MCP Browser" option in new-page menu or command palette
+- Lifecycle method `showMcpBrowserPage()` on pages API
 - Verify: connect to js-notepad's own MCP server at `localhost:7865/mcp`
 
 ### US-210: MCP Browser — tools panel (list, inspect, call)
@@ -182,47 +181,81 @@ Scope:
   - "Get Prompt" → `client.getPrompt()` → display messages array
   - Message display: role + content formatting
 
-### US-212: MCP Browser — request history & logging
+### US-212: MCP request log (new log-view entry type)
+
+**Reuses the existing log-view editor** by adding a new `output.mcp-request` entry type. No new editor — just a new entry renderer in `log-view/items/`.
+
+Two consumers:
+1. **MCP Inspector** — collects history entries from SDK calls, "Show History" opens a log page
+2. **js-notepad's own MCP server** — MCP handler logs incoming requests, MCP indicator click opens the log
 
 Scope:
-- Log all MCP JSON-RPC requests and responses with timestamps
-- History panel in sidebar (or bottom section)
-- Click to view request/response details (formatted JSON)
-- Timing info (request duration)
-- "Re-execute" button to replay a request
-- Clear history action
-- Optional: filter by method type (tools/resources/prompts)
+- New entry type `output.mcp-request` in `logTypes.ts` with: method, params, result, error, durationMs, direction
+- `McpRequestView.tsx` renderer in `log-view/items/` — header row (direction badge, method, tool name, duration) + collapsible request/response JSON sections
+- Routing case in `LogEntryContent.tsx`
+- MCP Inspector model: history collection array, `logRequest()` helper, `showHistory()` opens log page
+- MCP handler: wrap `handleCommand()` to log incoming requests to the MCP log page
+- MCP indicator click: opens/focuses the MCP log page
 
-### US-213: MCP Browser — saved connections & profiles
+### US-213: MCP Browser — connections store & management UI
 
-Scope:
-- Save current connection as a named profile
-- Profiles stored in app settings or a dedicated config file
-- Quick-connect dropdown showing saved profiles
-- Edit/delete saved profiles
-- Default profiles: js-notepad MCP server (auto-detected URL from running instance)
-- Import/export connection configs (`.mcp.json` files)
-- Remember last used connection per editor instance
-
-### US-214: MCP Browser — scripting API & MCP integration
+**Centralized connections management.** All saved connections live in a single JSON file in the app data folder.
 
 Scope:
-- `page.asMcpBrowser()` facade for scripting:
-  - `connect(url)` / `connectStdio(command, args)`
-  - `disconnect()`
-  - `listTools()`, `callTool(name, args)`
-  - `listResources()`, `readResource(uri)`
-  - `listPrompts()`, `getPrompt(name, args)`
-  - `connectionStatus` property
-- Type definitions in `mcp-browser-editor.d.ts`
-- MCP handler: support creating MCP browser pages via `create_page`
-- MCP resource guide update for the new editor type
+- `McpConnectionStore` service — reads/writes `%APPDATA%/js-notepad/data/mcp-connections.json`
+  - `loadConnections()`, `saveConnection(config)`, `deleteConnection(id)`, `updateConnection(id, changes)`
+  - Uses `app.fs` for file I/O
+- Auto-save connection on successful connect:
+  - Default name = URL (for HTTP) or command + first arg (for stdio)
+  - Deduplication: if a connection with the same URL/command already exists, don't create a duplicate
+- Connections dropdown/panel in the editor UI:
+  - Quick-connect: select a saved connection → fills connection bar → optional auto-connect
+  - Edit connection name inline
+  - Delete connection with confirmation
+- Default connection: js-notepad MCP server (auto-detected from running instance URL)
+- Session restore remembers which saved connection was used (by ID)
+- **Per-connection UI state persistence:** save selected tool, entered arguments, selected resource/prompt per connection ID in `mcp-connections.json`. Restores state when reconnecting to the same server. (Deferred from US-210 which clears args on tool switch.)
+
+### US-214: MCP Inspector — scripting API (connection & troubleshooting)
+
+**Slimmed-down scope.** The full MCP client API (listTools, callTool, readResource, getPrompt) is deliberately excluded — AI agents already interact with MCP servers directly through `@modelcontextprotocol/sdk`. The facade focuses on connection management and troubleshooting, which is what agents actually need to help users.
+
+Scope:
+- `page.asMcpInspector()` facade for scripting:
+  - **Connection management:**
+    - `connect()` — connect using current page config
+    - `disconnect()`
+    - `connectionStatus` — read-only (`"disconnected"` | `"connecting"` | `"connected"` | `"error"`)
+    - `serverName`, `serverVersion` — read-only (populated after connect)
+    - `errorMessage` — read-only
+  - **Connection parameters** (read/write):
+    - `url`, `command`, `args`, `transportType`
+  - **Troubleshooting:**
+    - `history` — read-only array of `McpRequestEntry` objects (request log)
+    - `clearHistory()`
+- Type definitions in `mcp-inspector-editor.d.ts`
+- MCP resource guide update for the editor type
+
+### US-216: Rename mcp-browser → mcp-inspector across codebase
+
+**Consistency rename.** The UI already shows "MCP Inspector" but all code still uses "mcp-browser" naming. This creates confusion when reading code, docs, and file paths.
+
+Scope:
+- Rename folder: `editors/mcp-browser/` → `editors/mcp-inspector/`
+- Rename files: `McpBrowserModel.ts` → `McpInspectorModel.ts`, `McpBrowserView.tsx` → `McpInspectorView.tsx`
+- Rename classes: `McpBrowserModel` → `McpInspectorModel`, `McpBrowserPageState` → `McpInspectorPageState`
+- Rename page type: `mcpBrowserPage` → `mcpInspectorPage` (with backward-compat in session restore)
+- Editor ID stays `mcp-view` (no user-visible change)
+- Update all imports, references in register-editors, CLAUDE.md, architecture docs
+- Keep `showMcpBrowserPage()` as deprecated alias → `showMcpInspectorPage()` (one release cycle)
 
 ## Notes
 
 ### 2026-03-19
 - Evaluated MCP Inspector (standalone, not embeddable), use-mcp (hook only, no UI), MCP-UI SDK (for rendering server UIs, not inspecting)
 - Decision: build custom UI on `@modelcontextprotocol/sdk` Client — SDK already in project dependencies
-- Two transports: HTTP (easy, direct from renderer) and stdio (spawn processes, may need main process IPC)
+- Two transports: HTTP (easy, direct from renderer) and stdio (spawn processes, runs in renderer — killed on tab close)
 - Key inspiration: MCP Inspector UI layout, Postman-style request/response flow
-- `.mcp.json` file format for saving/sharing connection configs
+- Redesign: dropped `.mcp.json` file association in favor of centralized connections store (`mcp-connections.json` in app data folder). Auto-save on successful connect, manage all connections from the editor UI. Simpler UX than scattered config files.
+- Use Monaco editor instances for all text input/output fields (tool arguments, tool results, prompt messages). Provides syntax highlighting, autocompletion, and a consistent editing experience instead of plain textareas.
+- Resource content rendering should be adaptive based on `mimeType`: `text/markdown` → md-view component, `application/json` → Monaco with JSON language, other `text/*` → Monaco with language detection, `image/*` → inline image render, fallback → Monaco as plain text.

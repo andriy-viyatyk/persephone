@@ -194,6 +194,7 @@ export class PagesModel extends TModel<OpenFilesState> {
         this.lifecycle.openPathInNewWindow(filePath);
     requireGroupedText = (pageId: string, suggestedLanguage?: string) =>
         this.lifecycle.requireGroupedText(pageId, suggestedLanguage);
+    requireWellKnownPage = (id: string) => this.lifecycle.requireWellKnownPage(id);
     showAboutPage = () => this.lifecycle.showAboutPage();
     showSettingsPage = () => this.lifecycle.showSettingsPage();
     showBrowserPage = (options?: {
@@ -201,6 +202,8 @@ export class PagesModel extends TModel<OpenFilesState> {
         incognito?: boolean;
         url?: string;
     }) => this.lifecycle.showBrowserPage(options);
+    showMcpInspectorPage = (options?: { url?: string }) =>
+        this.lifecycle.showMcpInspectorPage(options);
     openImageInNewTab = (imageUrl: string) =>
         this.lifecycle.openImageInNewTab(imageUrl);
     openUrlInBrowserTab = (

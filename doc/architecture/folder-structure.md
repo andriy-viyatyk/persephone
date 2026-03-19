@@ -57,7 +57,6 @@ js-notepad/
 │   ├── library-service.ts  # LibraryService — script library scanning, caching, file watching
 │   ├── pages.ts            # PagesModel singleton export
 │   ├── mcp-handler.ts      # MCP command handler (receives IPC from main, dispatches commands)
-│   ├── mcp-log-state.ts    # Shared MCP Log View page tracking (avoids circular deps)
 │   ├── internal.ts         # Disposable utilities (wrapSubscription, etc.)
 │   │
 │   ├── pages/              # Page collection — composed submodels
@@ -66,7 +65,8 @@ js-notepad/
 │   │   ├── PagesNavigationModel.ts # Navigation: show, focus, next/prev
 │   │   ├── PagesLifecycleModel.ts  # Lifecycle: create, close, empty page
 │   │   ├── PagesLayoutModel.ts     # Layout: grouping (side-by-side)
-│   │   └── PagesPersistenceModel.ts # Persistence: save/restore, debounced
+│   │   ├── PagesPersistenceModel.ts # Persistence: save/restore, debounced
+│   │   └── well-known-pages.ts     # Singleton page definitions (MCP Log, etc.)
 │   │
 │   ├── internal/           # Event services (init-only, not public API)
 │   │   ├── GlobalEventService.ts    # contextmenu, dragover, drop, unhandled rejections
@@ -303,13 +303,26 @@ js-notepad/
 │   │       ├── GridOutputView.tsx       # output.grid renderer (inline AVGrid)
 │   │       ├── TextOutputView.tsx       # output.text renderer (inline Monaco editor)
 │   │       ├── MarkdownOutputView.tsx  # output.markdown renderer (inline MarkdownBlock)
-│   │       └── MermaidOutputView.tsx  # output.mermaid renderer (inline mermaid diagram)
+│   │       ├── MermaidOutputView.tsx  # output.mermaid renderer (inline mermaid diagram)
+│   │       └── McpRequestView.tsx   # output.mcp-request renderer (direction, method, collapsible JSON)
 │   ├── pdf/                # PDF viewer (page-editor)
 │   │   ├── PdfViewer.tsx
 │   │   └── index.ts
 │   ├── image/              # Image viewer (page-editor)
 │   │   ├── ImageViewer.tsx
 │   │   ├── BaseImageView.tsx
+│   │   └── index.ts
+│   ├── mcp-inspector/      # MCP Inspector (page-editor)
+│   │   ├── McpInspectorModel.ts      # PageModel — connection, tools, resources, prompts state
+│   │   ├── McpInspectorView.tsx      # Main view — connection bar, panel routing
+│   │   ├── McpConnectionManager.ts   # MCP SDK Client wrapper (connect/disconnect)
+│   │   ├── ToolsPanel.tsx            # Tools panel — sidebar list, detail, arg form, result
+│   │   ├── ToolArgForm.tsx           # JSON Schema → argument form generator
+│   │   ├── ToolResultView.tsx        # Tool call result renderer (text/image/resource)
+│   │   ├── ResourcesPanel.tsx        # Resources panel — sidebar, read resource, content display
+│   │   ├── ResourceContentView.tsx   # Adaptive content renderer (markdown/monaco/image)
+│   │   ├── PromptsPanel.tsx          # Prompts panel — sidebar, arg form, messages display
+│   │   ├── McpConnectionStore.ts    # Saved connections store (mcp-connections.json persistence)
 │   │   └── index.ts
 │   ├── compare/            # Diff editor (page-editor)
 │   │   ├── CompareEditor.tsx

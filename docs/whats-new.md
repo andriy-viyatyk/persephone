@@ -8,7 +8,18 @@ Release notes and changelog for js-notepad.
 
 ## Version 1.0.24 (Upcoming)
 
-*No changes yet.*
+### New Features
+
+- **MCP Inspector** (early preview) — A new editor for connecting to MCP (Model Context Protocol) servers. Supports HTTP and stdio transports, displays server info (name, version, capabilities). Open via scripting: `app.pages.showMcpInspectorPage()`. More features coming in future releases.
+  - **Tools panel** — Browse and call MCP tools from a resizable sidebar. View tool details (name, description, annotations), fill in arguments via a dynamic form with type-aware inputs, and see results in a Monaco editor. Use Ctrl+Enter to call quickly.
+  - **Resources panel** — Browse resources and resource templates from the server. Read resource content with a single click — renders adaptively by type (Markdown, JSON/code, images).
+  - **Prompts panel** — Browse server prompts, fill in arguments, and call `getPrompt` to see returned messages with role badges.
+  - **Saved connections** — Connections auto-save on successful connect. A dropdown in the connection bar lists saved servers for quick reconnect, and a connections list appears when disconnected with click-to-fill and delete.
+  - **Stdio transport fix** — Fixed stdio transport connectivity that was broken by the Vite build process.
+  - **Request history** — A new "History" tab in the MCP Inspector records all outgoing requests with method, duration, and error status. Click "Open in Log View" to inspect details, or "Clear" to reset.
+  - **Scripting API** — `page.asMcpInspector()` facade for scripts and MCP agents: read/write connection parameters (URL, transport type, command, args, connection name), check connection status and server info, connect/disconnect programmatically, and access request history for troubleshooting.
+
+- **MCP Request Log** — The MCP indicator in the title bar is now clickable — opens the "MCP Server Log" page showing all incoming MCP requests. Each log entry displays a direction arrow (incoming/outgoing), method name, detail (tool name or resource URI), duration, and error badge. Expand any entry to see full request/response JSON with syntax highlighting.
 
 ---
 

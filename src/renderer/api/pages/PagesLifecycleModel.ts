@@ -1,6 +1,6 @@
 import type { PagesModel } from "./PagesModel";
 import { PageModel } from "../../editors/base";
-import { IPageState, PageEditor } from "../../../shared/types";
+import { IPageState, PageEditor, PageType } from "../../../shared/types";
 import {
     isTextFileModel,
     newTextFileModel,
@@ -17,6 +17,7 @@ import { NavPanelModel } from "../../ui/navigation/nav-panel-store";
 
 import { fpBasename, fpExtname, isArchivePath } from "../../core/utils/file-path";
 import { fs as appFs } from "../fs";
+import { getWellKnownPageDef } from "./well-known-pages";
 
 /**
  * PagesLifecycleModel — Page creation, opening, closing, and navigation.
@@ -39,9 +40,17 @@ export class PagesLifecycleModel {
         return module.newPageModel(filePath);
     };
 
+    /** Legacy page type migration: maps old renamed page types to current names. */
+    private static PAGE_TYPE_MIGRATIONS: Record<string, PageType> = {
+        mcpBrowserPage: "mcpInspectorPage",
+    };
+
     private newPageModelFromState = async (
         state: Partial<IPageState>
     ): Promise<PageModel> => {
+        if (state.type && PagesLifecycleModel.PAGE_TYPE_MIGRATIONS[state.type]) {
+            state = { ...state, type: PagesLifecycleModel.PAGE_TYPE_MIGRATIONS[state.type] };
+        }
         const editors = editorRegistry.getAll();
         const editorDef = editors.find((e) => e.pageType === state.type);
         if (editorDef) {
@@ -129,6 +138,36 @@ export class PagesLifecycleModel {
             page.changeContent(content);
             page.state.update((s) => { s.modified = false; });
         }
+        page.restore();
+        return this.addPage(page as unknown as PageModel);
+    };
+
+    /**
+     * Get or create a well-known page by predefined ID.
+     * If a page with this ID exists, focuses and returns it.
+     * If not, creates a new page with the predefined editor/language/title.
+     */
+    requireWellKnownPage = async (id: string): Promise<PageModel> => {
+        const existing = this.model.query.findPage(id);
+        if (existing) {
+            this.model.navigation.showPage(id);
+            return existing;
+        }
+
+        const def = getWellKnownPageDef(id);
+        if (!def) throw new Error(`Unknown well-known page ID: "${id}"`);
+
+        await editorRegistry.loadViewModelFactory(def.editor as PageEditor);
+        const page = newTextFileModel("");
+        page.state.update((s) => {
+            s.id = id;
+            s.title = def.title;
+            s.language = def.language;
+            s.editor = editorRegistry.validateForLanguage(
+                def.editor as PageEditor,
+                def.language,
+            );
+        });
         page.restore();
         return this.addPage(page as unknown as PageModel);
     };
@@ -576,6 +615,20 @@ export class PagesLifecycleModel {
                 });
             }
             await model.restore();
+            this.addPage(model);
+        }
+    };
+
+    showMcpInspectorPage = async (options?: { url?: string }): Promise<void> => {
+        const mcpModule = await import(
+            "../../editors/mcp-inspector/McpInspectorView"
+        );
+        const model =
+            await mcpModule.default.newEmptyPageModel("mcpInspectorPage");
+        if (model) {
+            if (options?.url) {
+                model.state.update((s: any) => { s.url = options.url; });
+            }
             this.addPage(model);
         }
     };

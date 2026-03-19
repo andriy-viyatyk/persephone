@@ -259,3 +259,62 @@ When a tab is dragged to another window:
 **Critical dependency:** The target window must have called `api.windowReady()` before the main process sends `eMovePageIn`. The main process holds a `whenReady` promise per window and awaits it before forwarding events.
 
 **Implementation:** [`/src/main/open-windows.ts`](../../src/main/open-windows.ts) (main process), [`PagesLifecycleModel.ts`](../../src/renderer/api/pages/PagesLifecycleModel.ts) (renderer)
+
+## 8. Well-Known Pages
+
+Some pages are **singletons** — they should exist as a single instance and be found by a stable ID rather than a random UUID. The well-known pages system provides this.
+
+**Source:** [`/src/renderer/api/pages/well-known-pages.ts`](../../src/renderer/api/pages/well-known-pages.ts)
+
+### How it works
+
+1. **Registry:** Well-known pages are defined in `well-known-pages.ts` with a fixed ID, editor, language, and title:
+   ```typescript
+   registerWellKnownPage({
+       id: "mcp-ui-log",
+       editor: "log-view",
+       language: "jsonl",
+       title: "MCP Log",
+   });
+   ```
+
+2. **Get-or-create:** Use `pagesModel.requireWellKnownPage(id)` to get the page:
+   - If a page with this ID exists → focuses and returns it
+   - If not → creates a new page with the predefined config and the well-known ID (not a UUID)
+   - The existing `addPage()` deduplication ensures no duplicates
+
+3. **Session restore:** Well-known pages are persisted with their fixed ID. On restore, they're recreated with the same ID. Next `requireWellKnownPage()` call finds the restored page.
+
+### Current well-known pages
+
+| ID | Editor | Purpose |
+|----|--------|---------|
+| `mcp-ui-log` | `log-view` | MCP `ui_push` log — shared between MCP handler and script execution |
+| `mcp-server-log` | `log-view` | MCP server incoming request log — logs every incoming MCP command with method, params, result, error, duration. Capped at 200 entries. Opened by clicking the MCP indicator in the title bar. |
+
+### Pre-existing singleton pages
+
+About and Settings pages use a similar pattern with hardcoded IDs directly in their modules:
+- `ABOUT_PAGE_ID = "about-page"` in `AboutPage.tsx`
+- `SETTINGS_PAGE_ID = "settings-page"` in `SettingsPage.tsx`
+
+These work as singletons through the same `addPage()` deduplication — `newEmptyPageModel()` always creates with the same ID.
+
+### When to use well-known pages
+
+Use this pattern when:
+- A page should be a **singleton** (one instance at a time)
+- Multiple code paths need to **find the same page** (e.g., MCP handler and ScriptContext both need the same log page)
+- The page has a **fixed configuration** (editor, language, title) that callers shouldn't need to know
+
+Do NOT use for:
+- User-created pages (scripts, file open) — these should have unique UUIDs
+- Pages that can be opened multiple times (browser tabs, text files)
+
+### Adding a new well-known page
+
+1. Add a `registerWellKnownPage()` call in `well-known-pages.ts`
+2. Use `await pagesModel.requireWellKnownPage("your-id")` wherever you need the page
+3. No other changes needed — `addPage()` handles deduplication automatically
+
+**Note:** `requireWellKnownPage` is an internal API — not exposed to scripts or the MCP handler's `create_page` command.

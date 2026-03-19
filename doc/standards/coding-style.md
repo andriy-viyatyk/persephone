@@ -213,6 +213,20 @@ const nodefs = require("fs");
 
 When in doubt: if `app.fs` or `file-path` can do the job, use them.
 
+### Bypassing Vite Bundling with `require()`
+
+In the renderer process, Vite bundles `import` statements and externalizes `node:*` builtins into broken browser stubs. When a Node.js library must work with real `node:*` modules (e.g., `@modelcontextprotocol/sdk` uses `import process from 'node:process'` for stdio transport), use `require()` instead of `import` to load it at runtime via Electron's Node.js integration:
+
+```typescript
+// GOOD — require() bypasses Vite, Node.js resolves from node_modules at runtime
+const { Client } = require("@modelcontextprotocol/sdk/client/index.js");
+
+// BAD — import() goes through Vite bundling, node:process gets externalized
+const { Client } = await import("@modelcontextprotocol/sdk/client/index.js");
+```
+
+This pattern is used in `McpConnectionManager.ts` for the MCP SDK client modules.
+
 ## File Organization
 
 ### One Component Per File

@@ -79,6 +79,9 @@ export interface IPageCollection {
     /** Show the Settings page. */
     showSettingsPage(): Promise<void>;
 
+    /** Show an MCP Inspector page, optionally with a pre-filled URL. */
+    showMcpInspectorPage(options?: { url?: string }): Promise<void>;
+
     /** Show a browser page, optionally with a profile or URL. */
     showBrowserPage(options?: {
         profileName?: string;

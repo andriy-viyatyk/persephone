@@ -253,6 +253,7 @@ See [/doc/standards/coding-style.md](doc/standards/coding-style.md) for complete
 |--------------------------|---------------------------------------------------|
 | App object model         | `/src/renderer/api/app.ts`                        |
 | Page/tab management      | `/src/renderer/api/pages/PagesModel.ts`           |
+| Well-known pages         | `/src/renderer/api/pages/well-known-pages.ts`     |
 | File operations          | `/src/renderer/api/fs.ts`                         |
 | Archive I/O (ZIP)        | `/src/renderer/api/archive-service.ts`             |
 | Path utilities           | `/src/renderer/core/utils/file-path.ts`           |
@@ -271,6 +272,7 @@ See [/doc/standards/coding-style.md](doc/standards/coding-style.md) for complete
 | Notebook types           | `/src/renderer/editors/notebook/notebookTypes.ts` |
 | Graph editor model       | `/src/renderer/editors/graph/GraphViewModel.ts`   |
 | Draw editor model        | `/src/renderer/editors/draw/DrawViewModel.ts`     |
+| MCP Inspector model      | `/src/renderer/editors/mcp-inspector/McpInspectorModel.ts` |
 | Base virtualization      | `/src/renderer/components/virtualization/RenderGrid.tsx` |
 | Advanced grid            | `/src/renderer/components/data-grid/AVGrid.tsx`   |
 | Color tokens             | `/src/renderer/theme/color.ts`                    |

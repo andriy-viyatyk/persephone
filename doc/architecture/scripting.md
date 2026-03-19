@@ -26,7 +26,7 @@ ScriptRunner.run(script, page?, language?)
     │       ├── AppWrapper        ← wraps `app` global
     │       │     └── PageCollectionWrapper  ← wraps `app.pages`
     │       ├── PageWrapper       ← wraps `page` global
-    │       │     └── EditorFacades (12)  ← page.asText(), page.asGrid(), ...
+    │       │     └── EditorFacades (13)  ← page.asText(), page.asGrid(), ...
     │       ├── UiFacade (lazy)   ← wraps `ui` global (Log View logging + dialogs)
     │       ├── styledText()     ← standalone styled text builder for dialog labels
     │       ├── preventOutput()   ← suppresses default grouped-page output
@@ -98,6 +98,7 @@ interface IPage {
     asGraph(): Promise<IGraphEditor>;
     asDraw(): Promise<IDrawEditor>;
     asBrowser(): Promise<IBrowserEditor>;
+    asMcpInspector(): Promise<IMcpInspectorEditor>;
 
     // Run this page as a script (same as F5)
     runScript(): Promise<string>;
@@ -204,7 +205,7 @@ for (const item of largeArray) {
 
 **Key behaviors:**
 - Accessing `ui` auto-creates a Log View page grouped with the source page (or standalone if no page context)
-- For MCP scripts (`runWithCapture`), `ui` uses a shared standalone MCP Log View (same page as `ui_push`), tracked via `mcpLogState.pageId` in `/src/renderer/api/mcp-log-state.ts`
+- For MCP scripts (`runWithCapture`), `ui` uses the well-known MCP Log page (`mcp-ui-log`) — same page as `ui_push`. See [pages-architecture.md § Well-Known Pages](pages-architecture.md#8-well-known-pages)
 - Accessing `ui` sets `groupedContentWritten = true`, suppressing default script output
 - Re-running a script reuses the existing grouped Log View (appends with separator)
 - Dialog results are always objects — `button` is `undefined` if canceled (page closed while pending)
@@ -334,8 +335,9 @@ Facades provide safe, typed access to editor-specific features. Each facade wrap
 | `page.asGraph()` | `GraphEditorFacade` | `GraphViewModel` | `nodes`, `links`, `search()`, `bfs()`, `getComponents()`, `select()`, selection, groups, neighbors |
 | `page.asDraw()` | `DrawEditorFacade` | `DrawViewModel` | `addImage()`, `exportAsSvg()`, `exportAsPng()`, `elementCount`, `editorIsMounted` |
 | `page.asBrowser()` | `BrowserEditorFacade` | `BrowserPageModel` | `url`, `title`, `navigate()`, `back()`, `forward()`, `reload()` |
+| `page.asMcpInspector()` | `McpInspectorFacade` | `McpInspectorModel` | `connect()`, `disconnect()`, connection params, `history`, `clearHistory()`, `showHistory()` |
 
-**Exception:** `BrowserEditorFacade` wraps `BrowserPageModel` directly (no ViewModel, no ref-counting) because browser is a page-editor, not a content-view.
+**Exception:** `BrowserEditorFacade` and `McpInspectorFacade` wrap their PageModel directly (no ViewModel, no ref-counting) because they are page-editors, not content-views.
 
 Facade source: `/src/renderer/scripting/api-wrapper/`
 Interface definitions: `/src/renderer/api/types/*.d.ts`
@@ -572,6 +574,7 @@ These files serve dual purpose: TypeScript type checking **and** IDE IntelliSens
     ├── MermaidEditorFacade.ts   # Mermaid diagram (read-only)
     ├── GraphEditorFacade.ts     # Graph query/analysis (read-only, designed for MCP)
     ├── BrowserEditorFacade.ts   # Browser page operations
+    ├── McpInspectorFacade.ts    # MCP Inspector connection & troubleshooting
     ├── UiFacade.ts              # Log View UI (logging + dialogs + output)
     ├── Progress.ts              # Progress helper class (returned by ui.show.progress)
     ├── Grid.ts                  # Grid helper class (returned by ui.show.grid)

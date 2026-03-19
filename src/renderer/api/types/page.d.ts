@@ -10,6 +10,7 @@ import type { ISvgEditor } from "./svg-editor";
 import type { IHtmlEditor } from "./html-editor";
 import type { IMermaidEditor } from "./mermaid-editor";
 import type { IGraphEditor } from "./graph-editor";
+import type { IMcpInspectorEditor } from "./mcp-inspector-editor";
 
 /**
  * IPage — represents a page (tab) in the current window.
@@ -103,6 +104,9 @@ export interface IPage {
 
     /** Get browser editor interface. Only for browser pages. */
     asBrowser(): Promise<IBrowserEditor>;
+
+    /** Get MCP Inspector interface. Only for MCP Inspector pages. */
+    asMcpInspector(): Promise<IMcpInspectorEditor>;
 
     /**
      * Run this page's content as a script (same as pressing F5).

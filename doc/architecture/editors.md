@@ -53,6 +53,7 @@ Standalone editors with their own PageModel.
 > **Image Viewer URL support:** ImageViewer can display images from external URLs (e.g. opened from a browser webview context menu) via the `url` field in its state. URL-based images show a "Save Image to File" toolbar button that fetches the image, saves it locally via a save dialog, and switches the page from URL mode to file mode.
 
 | `browser-view` | Browser | `browserPage` | (none — opened via UI) |
+| `mcp-view` | MCP Inspector | `mcpInspectorPage` | (none — opened via UI) |
 | `about-view` | About | `aboutPage` | (none — opened via UI) |
 | `settings-view` | Settings | `settingsPage` | (none — opened via UI) |
 | `compare` | Compare | (triggered) | (none — opened via diff command) |
@@ -67,7 +68,7 @@ Standalone editors with their own PageModel.
 
 ```
 RenderEditor
-├── [page-editor] → AsyncEditor → EditorErrorBoundary → PdfViewer / ImageViewer / Browser / About / Settings
+├── [page-editor] → AsyncEditor → EditorErrorBoundary → PdfViewer / ImageViewer / Browser / McpInspector / About / Settings
 └── [content-view] → TextPageView
                          ├── TextToolbar
                          ├── ActiveEditor → AsyncEditor → EditorErrorBoundary → Monaco / Grid / Markdown / Notebook / Todo / Link / Log View / SVG / HTML / Mermaid / Graph
@@ -154,6 +155,7 @@ TDialogModel<T, R>   (from core/state/model.ts)
 └── PageModel<T, R>   (from editors/base/PageModel.ts)
     ├── TextFileModel         # Content-view host (Monaco, Grid, Markdown, etc.)
     ├── BrowserPageModel      # Browser (multi-tab, webview, IPC)
+    ├── McpInspectorModel     # MCP Inspector (connection manager, server inspection)
     ├── NotebookEditorModel   # Notebook (.note.json — page-level model)
     └── (PdfViewer, ImageViewer, About, Settings, Compare — inline models)
 

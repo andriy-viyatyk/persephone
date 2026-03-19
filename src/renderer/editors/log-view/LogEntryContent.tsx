@@ -1,5 +1,5 @@
 import { Component, ReactNode } from "react";
-import { LogEntry, ConfirmEntry, TextInputEntry, ButtonsEntry, CheckboxesEntry, RadioboxesEntry, SelectEntry, ProgressOutputEntry, GridOutputEntry, TextOutputEntry, MarkdownOutputEntry, MermaidOutputEntry, isLogEntry, isOutputEntry } from "./logTypes";
+import { LogEntry, ConfirmEntry, TextInputEntry, ButtonsEntry, CheckboxesEntry, RadioboxesEntry, SelectEntry, ProgressOutputEntry, GridOutputEntry, TextOutputEntry, MarkdownOutputEntry, MermaidOutputEntry, McpRequestEntry, isLogEntry, isOutputEntry } from "./logTypes";
 import { LogMessageView } from "./LogMessageView";
 import { ConfirmDialogView } from "./items/ConfirmDialogView";
 import { TextInputDialogView } from "./items/TextInputDialogView";
@@ -12,6 +12,7 @@ import { GridOutputView } from "./items/GridOutputView";
 import { TextOutputView } from "./items/TextOutputView";
 import { MarkdownOutputView } from "./items/MarkdownOutputView";
 import { MermaidOutputView } from "./items/MermaidOutputView";
+import { McpRequestView } from "./items/McpRequestView";
 import color from "../../theme/color";
 
 // =============================================================================
@@ -162,6 +163,8 @@ function LogEntryContentInner({ entry, updateEntry }: LogEntryContentProps) {
             return <MarkdownOutputView entry={entry as MarkdownOutputEntry} />;
         case "output.mermaid":
             return <MermaidOutputView entry={entry as MermaidOutputEntry} />;
+        case "output.mcp-request":
+            return <McpRequestView entry={entry as McpRequestEntry} />;
     }
 
     if (entry.type.startsWith("input.")) {

@@ -526,6 +526,18 @@ editorRegistry.register({
     },
 });
 
+// MCP Inspector (standalone page editor — no file association)
+editorRegistry.register({
+    id: "mcp-view",
+    name: "MCP Inspector",
+    pageType: "mcpInspectorPage",
+    category: "page-editor",
+    loadModule: async () => {
+        const module = await import("./mcp-inspector/McpInspectorView");
+        return module.default;
+    },
+});
+
 // Browser (standalone page editor - no file acceptance)
 editorRegistry.register({
     id: "browser-view",

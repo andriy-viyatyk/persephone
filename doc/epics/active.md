@@ -4,7 +4,7 @@ Epics represent big ideas with high-level overviews. Each epic links to tasks in
 
 ## Active
 
-- **EPIC-008** — [MCP Browser Editor](EPIC-008.md)
+- **EPIC-008** — [MCP Inspector Editor](EPIC-008.md)
 
 ## Completed
 

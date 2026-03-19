@@ -66,6 +66,7 @@ const graph = await page.asGraph();  // Graph — nodes, links, search, traversa
 const nb = await page.asNotebook();  // Notebook — notes, categories
 const todo = await page.asTodo();    // Todo — items, lists, tags
 const text = await page.asText();    // Text — Monaco selection, cursor
+const mcp = await page.asMcpInspector(); // MCP Inspector — connection, history
 ```
 
 All facades are auto-released when the script finishes. See the [page API reference](./api/page.md#editor-facades) for the full list and detailed documentation.

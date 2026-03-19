@@ -6,7 +6,7 @@ js-notepad includes a built-in [Model Context Protocol (MCP)](https://modelconte
 
 1. Open js-notepad Settings (`Ctrl+,` or Settings tab)
 2. Find the **MCP Server** section and check **Enable MCP server**
-3. The server starts automatically — a green status dot and the server URL appear below the toggle, and a small **MCP indicator** appears in the title bar showing the connection count
+3. The server starts automatically — a green status dot and the server URL appear below the toggle, and a small **MCP indicator** appears in the title bar showing the connection count. Click the indicator to open the **MCP Server Log** — a live log of all incoming requests with method names, durations, and expandable request/response JSON.
 4. Click **Copy URL** to grab the server address, or **Copy Config** to get a ready-to-paste JSON snippet for your AI client
 5. Paste the configuration into your AI client (see below)
 
@@ -56,7 +56,7 @@ gemini --mcp-server http://localhost:7865/mcp
 | **list_pages** | List all open pages (tabs) with IDs, titles, editors, metadata. |
 | **get_page_content** | Get text content of a page by ID. |
 | **get_active_page** | Get the active page with content and metadata. |
-| **create_page** | Create a new page with optional content, language, and editor. Returns a clear error for page-editor types (browser, PDF, image) — use `open_url` or `execute_script` instead. |
+| **create_page** | Create a new page with optional content, language, and editor. Returns a clear error with specific hints for page-editor types (browser, PDF, image, MCP Inspector, etc.) — use `open_url` or `execute_script` instead. |
 | **set_page_content** | Update text content of a page by ID. |
 | **open_url** | Open a URL in the [built-in browser](./browser.md). Accepts optional `profileName` (browser profile) and `incognito` (boolean) parameters. Reuses an existing browser page if one is open, otherwise creates a new one. |
 | **ui_push** | Push log entries, interactive dialogs, and output widgets to a Log View page — the recommended output channel for AI agents. Strings are shorthand for `log.info`. Dialog entries (`input.confirm`, `input.text`, `input.buttons`, `input.checkboxes`, `input.radioboxes`, `input.select`) block until the user responds. Output entries (`output.progress`, `output.grid`) support rich display — progress bars with upsert-by-id for real-time updates, and inline data grids from JSON or CSV strings. The Log View page is created automatically on first call and reused on subsequent calls. |

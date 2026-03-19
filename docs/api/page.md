@@ -33,7 +33,7 @@ page.data.counter = (page.data.counter || 0) + 1;
 
 ### PageEditor values
 
-`"monaco"` · `"grid-json"` · `"grid-csv"` · `"grid-jsonl"` · `"md-view"` · `"notebook-view"` · `"todo-view"` · `"link-view"` · `"svg-view"` · `"html-view"` · `"mermaid-view"` · `"pdf-view"` · `"image-view"` · `"browser-view"` · `"graph-view"` · `"draw-view"` · `"log-view"` · `"about-view"` · `"settings-view"`
+`"monaco"` · `"grid-json"` · `"grid-csv"` · `"grid-jsonl"` · `"md-view"` · `"notebook-view"` · `"todo-view"` · `"link-view"` · `"svg-view"` · `"html-view"` · `"mermaid-view"` · `"pdf-view"` · `"image-view"` · `"browser-view"` · `"graph-view"` · `"draw-view"` · `"mcp-view"` · `"log-view"` · `"about-view"` · `"settings-view"`
 
 ## Methods
 
@@ -381,5 +381,65 @@ page.grouped.editor = "svg-view";
 // Insert an image (editor must be visible)
 if (draw.editorIsMounted) {
     await draw.addImage("data:image/png;base64,...", { x: 100, y: 100 });
+}
+```
+
+---
+
+### asMcpInspector() → `Promise<IMcpInspectorEditor>`
+
+MCP Inspector connection management and troubleshooting. Only for MCP Inspector pages (created via `app.pages.showMcpInspectorPage()`). Provides access to connection parameters, status, and request history — but not the MCP client API itself (agents use `@modelcontextprotocol/sdk` directly for tool calls, resource reads, etc.).
+
+**Connection status (read-only):**
+
+| Member | Type | Description |
+|--------|------|-------------|
+| `connectionStatus` | `string` | `"disconnected"`, `"connecting"`, `"connected"`, or `"error"`. |
+| `serverName` | `string` | Connected server name (empty when disconnected). |
+| `serverVersion` | `string` | Connected server version (empty when disconnected). |
+| `errorMessage` | `string` | Last error message (empty when no error). |
+
+**Connection parameters (read/write):**
+
+| Member | Type | Description |
+|--------|------|-------------|
+| `transportType` | `string` | `"http"` or `"stdio"`. |
+| `url` | `string` | Server URL (for HTTP transport). |
+| `command` | `string` | Command to spawn (for stdio transport). |
+| `args` | `string` | Space-separated arguments (for stdio transport). |
+| `connectionName` | `string` | Display name for the connection. |
+
+**Actions:**
+
+| Member | Type | Description |
+|--------|------|-------------|
+| `connect()` | `Promise<void>` | Connect using current parameters. |
+| `disconnect()` | `Promise<void>` | Disconnect from the current server. |
+
+**History (troubleshooting):**
+
+| Member | Type | Description |
+|--------|------|-------------|
+| `historyCount` | `number` | Number of recorded request entries. |
+| `history` | `ReadonlyArray<{...}>` | Array of request/response entries with `direction`, `method`, `params`, `result`, `error`, `durationMs`, `timestamp`. |
+| `clearHistory()` | `void` | Clear all recorded history. |
+| `showHistory()` | `Promise<void>` | Open history in a new Log View page. |
+
+> **Note:** Writing connection parameters while connected does not auto-reconnect. Call `disconnect()` then `connect()` to apply changes.
+
+```javascript
+const mcp = await page.asMcpInspector();
+
+// Connect to a server
+mcp.url = "http://localhost:7865/mcp";
+mcp.transportType = "http";
+await mcp.connect();
+console.log(mcp.connectionStatus); // "connected"
+console.log(mcp.serverName);       // "js-notepad"
+
+// Check request history
+console.log(`${mcp.historyCount} requests recorded`);
+for (const entry of mcp.history) {
+    console.log(`${entry.method} — ${entry.durationMs}ms${entry.error ? " ERROR" : ""}`);
 }
 ```

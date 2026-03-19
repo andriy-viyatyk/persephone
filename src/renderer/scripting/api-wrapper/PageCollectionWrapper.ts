@@ -109,6 +109,10 @@ export class PageCollectionWrapper {
         return this.pages.showSettingsPage();
     }
 
+    showMcpInspectorPage(options?: { url?: string }): Promise<void> {
+        return this.pages.showMcpInspectorPage(options);
+    }
+
     showBrowserPage(options?: {
         profileName?: string;
         incognito?: boolean;

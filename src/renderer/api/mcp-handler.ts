@@ -7,8 +7,7 @@ import { editorRegistry } from "../editors/registry";
 import { MCP_EXECUTE, MCP_RESULT } from "../../shared/constants";
 import { app } from "./app";
 import type { LogViewModel } from "../editors/log-view/LogViewModel";
-import type { LogEntry } from "../editors/log-view/logTypes";
-import { mcpLogState } from "./mcp-log-state";
+import type { LogEntry, McpRequestEntry } from "../editors/log-view/logTypes";
 import { csvToRecords } from "../core/utils/csv-utils";
 
 // ── Types ───────────────────────────────────────────────────────────
@@ -141,14 +140,22 @@ function createPage(params: any): McpResponse {
     }
 
     if (editorDef.category === "page-editor") {
+        const hints: Record<string, string> = {
+            "browser-view": "Use the open_url tool to open a URL in the built-in browser.",
+            "pdf-view": 'Use execute_script with: await app.pages.openFile("/path/to/file.pdf")',
+            "image-view": 'Use execute_script with: await app.pages.openFile("/path/to/image.png")',
+            "mcp-view": "Use execute_script with: await app.pages.showMcpInspectorPage() "
+                + "or await app.pages.showMcpInspectorPage({ url: \"http://host:port/mcp\" })",
+            "about-view": "Use execute_script with: await app.pages.showAboutPage()",
+            "settings-view": "Use execute_script with: await app.pages.showSettingsPage()",
+        };
+        const hint = hints[editor]
+            ?? `Read resource 'notepad://guides/pages' for details on editor types.`;
         return {
             error: {
                 code: -32602,
                 message: `Editor '${editor}' is a page-editor and cannot be created with create_page. `
-                    + `Page-editors require specialized models. `
-                    + `To open a URL in the browser, use the open_url tool. `
-                    + `To open a file (PDF, image), use execute_script with: await app.pages.openFile("/path/to/file"). `
-                    + `Read resource 'notepad://guides/pages' for details on editor types.`,
+                    + `Page-editors require specialized models. ${hint}`,
             },
         };
     }
@@ -197,38 +204,65 @@ function setPageContent(params: any): McpResponse {
 
 // ── Active MCP Log Page ────────────────────────────────────────────
 
-function formatLogTitle(): string {
-    const now = new Date();
-    const date = now.toISOString().slice(0, 10);
-    const time = now.toTimeString().slice(0, 5);
-    return `${date} ${time}.log.jsonl`;
-}
+const MCP_UI_LOG_ID = "mcp-ui-log";
 
 async function getOrCreateMcpLogViewModel(): Promise<LogViewModel> {
-    // Reuse existing active MCP log page if still valid
-    if (mcpLogState.pageId) {
-        const page = pagesModel.findPage(mcpLogState.pageId);
-        if (page && isTextFileModel(page)) {
-            const vm = page.acquireViewModelSync("log-view") as LogViewModel | undefined;
-            if (vm) return vm;
-        }
-        mcpLogState.pageId = undefined;
-    }
-
-    // Ensure log-view editor module is loaded (async import)
-    await editorRegistry.loadViewModelFactory("log-view");
-
-    const page = pagesModel.addEditorPage("log-view", "jsonl", formatLogTitle());
-    mcpLogState.pageId = page.id;
-
-    if (!isTextFileModel(page)) {
-        throw new Error("Log view page is not a text file model.");
-    }
+    const page = await pagesModel.requireWellKnownPage(MCP_UI_LOG_ID);
+    if (!isTextFileModel(page)) throw new Error("MCP log page is not a TextFileModel");
     const vm = page.acquireViewModelSync("log-view") as LogViewModel | undefined;
-    if (!vm) {
-        throw new Error("Log view module not loaded.");
-    }
+    if (!vm) throw new Error("Log view module not loaded");
     return vm;
+}
+
+// ── MCP Request Log ───────────────────────────────────────────────
+
+const MAX_REQUEST_LOG_ENTRIES = 200;
+const requestHistory: McpRequestEntry[] = [];
+
+function logIncomingRequest(
+    method: string,
+    params: any,
+    response: McpResponse,
+    durationMs: number,
+): void {
+    requestHistory.push({
+        type: "output.mcp-request",
+        id: crypto.randomUUID(),
+        timestamp: Date.now(),
+        direction: "incoming",
+        method,
+        params,
+        result: response.result ?? null,
+        error: response.error?.message ?? null,
+        durationMs,
+    });
+    if (requestHistory.length > MAX_REQUEST_LOG_ENTRIES) {
+        requestHistory.splice(0, requestHistory.length - MAX_REQUEST_LOG_ENTRIES);
+    }
+
+    // If the live request log page is open, push the entry to it
+    const logPage = pagesModel.findPage("mcp-server-log");
+    if (logPage && isTextFileModel(logPage)) {
+        const vm = logPage.acquireViewModelSync("log-view") as LogViewModel | undefined;
+        if (vm) vm.addEntry("output.mcp-request", requestHistory[requestHistory.length - 1]);
+    }
+}
+
+/** Show the MCP server request log page (creates if needed, backfills history). */
+export async function showMcpRequestLog(): Promise<void> {
+    const page = await pagesModel.requireWellKnownPage("mcp-server-log");
+    if (!isTextFileModel(page)) return;
+
+    const vm = page.acquireViewModelSync("log-view") as LogViewModel | undefined;
+    if (!vm) return;
+
+    // Backfill history if the page was just created (empty)
+    const state = vm.state.get();
+    if (state.entries.length === 0 && requestHistory.length > 0) {
+        for (const entry of requestHistory) {
+            vm.addEntry("output.mcp-request", entry);
+        }
+    }
 }
 
 // ── ui_push Handler ────────────────────────────────────────────────
@@ -328,12 +362,14 @@ async function openUrl(params: any): Promise<McpResponse> {
 
 export function initMcpHandler(): void {
     ipcRenderer.on(MCP_EXECUTE, async (_event: any, requestId: string, method: string, params: any) => {
+        const startTime = Date.now();
         let response: McpResponse;
         try {
             response = await handleCommand(method, params);
         } catch (err: any) {
             response = { error: { code: -32603, message: err.message || "Internal error" } };
         }
+        logIncomingRequest(method, params, response, Date.now() - startTime);
         ipcRenderer.send(MCP_RESULT, requestId, response);
     });
 }
