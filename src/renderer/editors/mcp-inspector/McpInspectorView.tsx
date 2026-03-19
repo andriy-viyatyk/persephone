@@ -286,7 +286,7 @@ const McpInspectorViewRoot = styled.div({
     },
 
     "& .conn-transport-badge": {
-        fontSize: 10,
+        fontSize: 11,
         color: color.text.light,
         background: color.background.light,
         border: `1px solid ${color.border.light}`,

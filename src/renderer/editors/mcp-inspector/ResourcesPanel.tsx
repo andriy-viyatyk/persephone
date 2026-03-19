@@ -37,7 +37,7 @@ const ResourcesPanelRoot = styled.div({
     },
 
     "& .sidebar-count": {
-        fontSize: 10,
+        fontSize: 11,
         fontWeight: 400,
         color: color.text.light,
         background: color.background.light,
@@ -92,7 +92,7 @@ const ResourcesPanelRoot = styled.div({
 
     "& .section-label": {
         padding: "6px 12px",
-        fontSize: 10,
+        fontSize: 11,
         fontWeight: 600,
         color: color.text.light,
         textTransform: "uppercase",
@@ -146,11 +146,31 @@ const ResourcesPanelRoot = styled.div({
 
     "& .detail-mime": {
         display: "inline-block",
-        fontSize: 10,
+        fontSize: 11,
         color: color.text.light,
         background: color.background.light,
         padding: "2px 6px",
         borderRadius: 2,
+    },
+
+    "& .read-btn": {
+        marginTop: 4,
+        "& button": {
+            background: color.background.selection,
+            color: color.text.selection,
+            border: `1px solid ${color.background.selection}`,
+            borderRadius: 4,
+            padding: "3px 8px",
+            fontWeight: 500,
+            "&:hover": {
+                backgroundColor: color.background.selection,
+                filter: "brightness(1.1)",
+            },
+            "&:disabled": {
+                opacity: 0.6,
+                filter: "none",
+            },
+        },
     },
 
     "& .error-text": {
@@ -245,16 +265,16 @@ export function ResourcesPanel({ model }: ResourcesPanelProps) {
                         {selectedRes.mimeType && (
                             <span className="detail-mime">{selectedRes.mimeType}</span>
                         )}
-                        <div>
+                        <span className="read-btn">
                             <Button
                                 type="flat"
                                 size="small"
                                 onClick={handleRead}
                                 disabled={rs.readLoading}
                             >
-                                {rs.readLoading ? "Reading…" : "Read Resource"}
+                                {rs.readLoading ? "Reading…" : "▶ Read Resource"}
                             </Button>
-                        </div>
+                        </span>
                         {rs.readError && (
                             <div className="error-text">{rs.readError}</div>
                         )}

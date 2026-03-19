@@ -37,7 +37,7 @@ const PromptsPanelRoot = styled.div({
     },
 
     "& .sidebar-count": {
-        fontSize: 10,
+        fontSize: 11,
         fontWeight: 400,
         color: color.text.light,
         background: color.background.light,
@@ -81,7 +81,7 @@ const PromptsPanelRoot = styled.div({
     },
 
     "& .prompt-desc-preview": {
-        fontSize: 10,
+        fontSize: 11,
         color: color.text.light,
         overflow: "hidden",
         textOverflow: "ellipsis",
@@ -149,7 +149,7 @@ const PromptsPanelRoot = styled.div({
     },
 
     "& .arg-required": {
-        fontSize: 10,
+        fontSize: 11,
         color: color.error.text,
     },
 
@@ -174,7 +174,7 @@ const PromptsPanelRoot = styled.div({
 
     "& .message-role": {
         display: "inline-block",
-        fontSize: 10,
+        fontSize: 11,
         fontWeight: 600,
         textTransform: "uppercase",
         letterSpacing: 0.5,

@@ -38,7 +38,7 @@ const ToolsPanelRoot = styled.div({
     },
 
     "& .sidebar-count": {
-        fontSize: 10,
+        fontSize: 11,
         fontWeight: 400,
         color: color.text.light,
         background: color.background.light,
@@ -117,7 +117,7 @@ const ToolsPanelRoot = styled.div({
     },
 
     "& .annotation-badge": {
-        fontSize: 10,
+        fontSize: 11,
         padding: "1px 5px",
         borderRadius: 3,
         background: color.background.light,
@@ -172,7 +172,7 @@ const ToolsPanelRoot = styled.div({
     },
 
     "& .tool-panel-bottom-header .result-duration": {
-        fontSize: 10,
+        fontSize: 11,
         fontWeight: 400,
         color: color.text.light,
         background: color.background.light,
@@ -183,7 +183,7 @@ const ToolsPanelRoot = styled.div({
     },
 
     "& .tool-panel-bottom-header .result-error-badge": {
-        fontSize: 10,
+        fontSize: 11,
         fontWeight: 500,
         color: color.error.text,
         textTransform: "none",
