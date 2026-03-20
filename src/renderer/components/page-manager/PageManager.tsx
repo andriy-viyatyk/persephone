@@ -26,30 +26,38 @@ export function PageManager({ pageIds, activeId, renderPage, className }: PageMa
     const containerRef = useRef<HTMLDivElement>(null);
     const placeholdersRef = useRef(new Map<string, HTMLDivElement>());
 
+    // Create placeholders for new IDs eagerly during render so they
+    // exist when createPortal runs. Append to DOM in useLayoutEffect.
+    const placeholders = placeholdersRef.current;
+    for (const id of pageIds) {
+        if (!placeholders.has(id)) {
+            const el = document.createElement("div");
+            el.style.position = "absolute";
+            el.style.inset = "0";
+            el.style.display = "none";
+            placeholders.set(id, el);
+        }
+    }
+
     useLayoutEffect(() => {
         const container = containerRef.current;
         if (!container) return;
-        const placeholders = placeholdersRef.current;
 
         const currentIds = new Set(pageIds);
 
         // Remove placeholders for IDs that no longer exist
         for (const [id, el] of placeholders) {
             if (!currentIds.has(id)) {
-                container.removeChild(el);
+                if (el.parentNode) container.removeChild(el);
                 placeholders.delete(id);
             }
         }
 
-        // Add placeholders for new IDs
+        // Append new placeholders that aren't in the DOM yet
         for (const id of pageIds) {
-            if (!placeholders.has(id)) {
-                const el = document.createElement("div");
-                el.style.position = "absolute";
-                el.style.inset = "0";
-                el.style.display = "none";
+            const el = placeholders.get(id);
+            if (el && !el.parentNode) {
                 container.appendChild(el);
-                placeholders.set(id, el);
             }
         }
 
@@ -57,13 +65,13 @@ export function PageManager({ pageIds, activeId, renderPage, className }: PageMa
         for (const [id, el] of placeholders) {
             el.style.display = id === activeId ? "" : "none";
         }
-    }, [pageIds, activeId]);
+    }, [pageIds, activeId, placeholders]);
 
     return (
         <>
             <div ref={containerRef} className={className} />
             {pageIds.map((id) => {
-                const placeholder = placeholdersRef.current.get(id);
+                const placeholder = placeholders.get(id);
                 return placeholder
                     ? createPortal(renderPage(id), placeholder, id)
                     : null;
