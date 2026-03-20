@@ -41,6 +41,7 @@ import { BrowserBookmarks } from "./BrowserBookmarks";
 import { DownloadButton } from "./DownloadButton";
 import { BrowserDownloadsPopup } from "./BrowserDownloadsPopup";
 import { BrowserFindBar } from "./BrowserFindBar";
+import { PageManager } from "../../components/page-manager/PageManager";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const WEBVIEW_PRELOAD_URL = (window as any).webviewPreloadUrl as string;
@@ -107,14 +108,15 @@ const BrowserPageViewRoot = styled.div({
         overflow: "hidden",
     },
 
+    "& .webview-tabs-host": {
+        position: "absolute",
+        inset: 0,
+    },
+
     "& .webview-wrapper": {
         position: "absolute",
         inset: 0,
         display: "flex",
-        "&.hidden": {
-            visibility: "hidden",
-            pointerEvents: "none",
-        },
         "& webview": {
             flex: "1 1 auto",
             border: "none",
@@ -350,7 +352,7 @@ function BrowserWebviewItem({
     }, [model, tabId, internalTabId]);
 
     return (
-        <div className={`webview-wrapper${isActive ? "" : " hidden"}`}>
+        <div className="webview-wrapper">
             <webview
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 ref={webviewRef as any}
@@ -660,18 +662,28 @@ function BrowserPageView({ model }: BrowserPageViewProps) {
                     style={{ left: tabsPanelWidth }}
                 />
                 <div className="webview-area">
-                    {bookmarksReady && model.bookmarks && (!url || url === "about:blank") && (
-                        <BlankPageLinks bookmarks={model.bookmarks} />
-                    )}
-                    {tabs.map((tab) => (
-                        <BrowserWebviewItem
-                            key={tab.id}
-                            model={model}
-                            tab={tab}
-                            isActive={tab.id === activeTabId}
-                            partition={model.partition}
-                        />
-                    ))}
+                    <PageManager
+                        className="webview-tabs-host"
+                        pageIds={tabs.map((t) => t.id)}
+                        activeId={activeTabId}
+                        renderPage={(tabId) => {
+                            const tab = tabs.find((t) => t.id === tabId)!;
+                            const isBlank = !tab.url || tab.url === "about:blank";
+                            return (
+                                <>
+                                    {isBlank && bookmarksReady && model.bookmarks && (
+                                        <BlankPageLinks bookmarks={model.bookmarks} />
+                                    )}
+                                    <BrowserWebviewItem
+                                        model={model}
+                                        tab={tab}
+                                        isActive={tab.id === activeTabId}
+                                        partition={model.partition}
+                                    />
+                                </>
+                            );
+                        }}
+                    />
                     {popupOpen && <div className="webview-click-overlay" />}
                     {findBarVisible && (
                         <BrowserFindBar
