@@ -55,7 +55,21 @@ A notification bar appears below the loading indicator showing the blocked count
 
 ## Multi-Webview Rendering
 
-Each internal tab has its own `<webview>` element. All webviews are rendered in the DOM simultaneously, but only the active tab's webview is visible (`display: flex` vs `display: none`). This preserves each tab's state (scroll position, form data, session) without re-navigation on tab switch.
+Each internal tab has its own `<webview>` element. All webviews are rendered in the DOM simultaneously, but only the active tab's webview is visible (`display` vs `display: none`). This preserves each tab's state (scroll position, form data, session) without re-navigation on tab switch.
+
+### PageManager (Portal-Based DOM Stability)
+
+Webview elements are rendered through a `PageManager` component (`src/renderer/components/page-manager/PageManager.tsx`) that uses React portals with imperatively managed placeholder divs. This prevents `<webview>` elements from being destroyed and recreated when the tab array changes (tabs closed, reordered).
+
+Without PageManager, React's list reconciliation would detach and reinsert DOM nodes when array positions shift — even with stable keys. Reinserted `<webview>` elements are treated as new by the browser and reload, losing user data.
+
+**How it works:**
+1. For each tab ID, a stable placeholder `<div>` is created via `document.createElement()` and appended to a container
+2. React content (the `BrowserWebviewItem`) is rendered into each placeholder via `createPortal()`
+3. When a tab is closed, only its placeholder is removed with `removeChild()` — siblings are untouched
+4. Visibility is controlled via `display: none` on inactive placeholders
+
+The `BlankPageLinks` component (bookmarks on empty tabs) is also rendered inside the portal per-tab, so its scroll position is preserved across tab switches.
 
 ### dom-ready Gating
 

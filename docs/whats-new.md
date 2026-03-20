@@ -19,6 +19,7 @@ Release notes and changelog for js-notepad.
 - **Pinned links favicons** — Fixed favicons not appearing the first time the pinned links panel is opened.
 - **Browser URL bar** — When the current page is `about:blank`, the URL bar now treats it as empty and shows recent suggestions instead of filtering by the literal text "about:blank".
 - **Browser blank page bookmarks** — When a bookmarks file is configured for the current profile, opening a new browser tab now displays your bookmarks directly on the blank page. Click a link to navigate the current tab; `Ctrl+Click` opens the link in a new tab while keeping your bookmarks visible on the original. Encrypted bookmark files are not unlocked automatically — use the star button or bookmarks drawer to trigger decryption manually.
+- **Browser tab stability** — Closing or reordering internal browser tabs no longer causes the remaining tabs to reload. Blank-page bookmarks also preserve their scroll position when switching between tabs.
 - **File Explorer context menu** — The folder context menu option was renamed from "Open in New Panel" to "Open in New Tab" for clarity.
 
 ---

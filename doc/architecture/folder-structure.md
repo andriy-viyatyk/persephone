@@ -382,7 +382,8 @@ js-notepad/
 │   ├── data-grid/          # Advanced data grid (AVGrid)
 │   ├── virtualization/     # Base virtualization (RenderGrid)
 │   ├── file-explorer/      # File explorer component
-│   └── icons/              # FileIcon, LanguageIcon
+│   ├── icons/              # FileIcon, LanguageIcon
+│   └── page-manager/       # Portal-based page/tab host (prevents iframe/webview reload on reorder)
 │
 ├── core/                   # Core Infrastructure
 │   ├── state/              # State management primitives

@@ -11,7 +11,6 @@ Current work in progress and planned tasks.
 
 | ID | Title | Epic | Notes |
 |----|-------|------|-------|
-| US-223 | PageManager — Portal-based DOM stability for browser tabs | | Prevent webview reload on tab close/reorder using React portals with imperative DOM |
 
 
 ## Completed

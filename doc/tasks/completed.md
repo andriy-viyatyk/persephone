@@ -4,6 +4,7 @@ All completed tasks, newest first.
 
 | ID | Title | Epic | Notes |
 |----|-------|------|-------|
+| US-223 | PageManager — Portal-based DOM stability for browser tabs | | New `PageManager` component using React portals with imperative DOM placeholders. Applied to browser editor internal tabs — closing/reordering tabs no longer reloads remaining webviews. BlankPageLinks moved inside portal per-tab, fixing scroll position preservation. |
 | US-222 | Show Link Editor on browser empty pages | | Bookmarks displayed on blank tabs (about:blank). Eager preload with silent encryption mode. Portal refs via props pattern for multiple LinkEditor instances. `onInternalLinkOpen` callback routes links to correct browser page. Ctrl+Click opens in new tab. BlankPageLinks component with own toolbar (hides Add Link/browser selector). |
 | US-221 | MCP documentation improvements | | Test-driven MCP doc improvement. New resources: notebook, todo, links guides. Improved tool descriptions with strict warnings to read resources. Dialog validation (known properties, required fields, usage examples). output.grid validation (string content, valid JSON). addEditorPage() argument validation. MCP Log page .log.jsonl suffix. QA test framework with test agent and 4 test files. |
 | US-220 | Bug fixes and small enhancements | | 7 fixes: Graph switch button, legend always visible, toolbar overflow, browser sidebar icon color, pinned links favicons, URL bar about:blank, FileExplorer menu label rename. |
