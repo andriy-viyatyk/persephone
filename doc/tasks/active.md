@@ -11,7 +11,6 @@ Current work in progress and planned tasks.
 
 | ID | Title | Epic | Notes |
 |----|-------|------|-------|
-| US-224 | PageManager for app pages — portal-based DOM stability with grouping | | Extend PageManager to main app pages with imperative grouping, splitter, and compare mode support |
 
 ## Completed
 

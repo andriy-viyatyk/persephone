@@ -109,6 +109,8 @@ stateDiagram-v2
 - **Initialized ↔ Active:** Controlled by `show(pageId)`. Only one page is active at a time (or two when grouped side-by-side).
 - **Active/Inactive → Disposed:** `close()` prompts save if modified, then disposes all resources (file watcher, editor model, script context, navigation panel, cache files).
 
+**Portal-based rendering:** Pages are rendered through `AppPageManager` (`src/renderer/components/page-manager/AppPageManager.tsx`) using React portals with imperatively managed placeholder divs. Each page gets a stable placeholder that is never destroyed until the page closes. This prevents iframes, webviews, and canvas elements from reloading when pages are closed, reordered, grouped, or ungrouped. Placeholders are never reparented (moved between containers) — grouping is achieved purely via CSS absolute positioning within the same container. See `GroupContainer` and `ImperativeSplitter` in the same folder.
+
 **Multi-window transfer:** A page can be serialized and transferred to another window via IPC. The source window calls `movePageOut()` (removes from collection without disposing), and the target window calls `movePageIn()` (reconstructs from serialized data). See [`PagesLifecycleModel`](../../src/renderer/api/pages/PagesLifecycleModel.ts).
 
 ---

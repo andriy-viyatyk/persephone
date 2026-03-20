@@ -1,67 +1,13 @@
 import styled from "@emotion/styled";
-import clsx from "clsx";
-import { CSSProperties, useCallback, useMemo, useRef, useState } from "react";
 import { Splitter } from "../../components/layout/Splitter";
 import { PageModel } from "../../editors/base";
 import { pagesModel } from "../../api/pages";
-import color from "../../theme/color";
 import { RenderEditor } from "./RenderEditor";
 import { CompareEditor } from "../../editors/compare";
 import { isTextFileModel } from "../../editors/text";
 import { NavPanelModel } from "../navigation/nav-panel-store";
 import { NavigationPanel } from "../navigation/NavigationPanel";
-
-const navPanelContainerStyles = {
-    "& .nav-panel-container": {
-        flexShrink: 0,
-        overflow: "hidden",
-        height: "100%",
-    },
-} as const;
-
-const SinglePageRoot = styled.div(
-    {
-        flex: "1 1 auto",
-        position: "relative",
-        display: "flex",
-        flexDirection: "row",
-        overflow: "hidden",
-        height: "100%",
-        "&:not(.isActive)": {
-            display: "none",
-        },
-        ...navPanelContainerStyles,
-    },
-    { label: "SinglePageRoot" },
-);
-
-const GroupedPagesRoot = styled.div(
-    {
-        display: "flex",
-        flexDirection: "row",
-        flex: "1 1 auto",
-        overflow: "hidden",
-        "&:not(.isActive)": {
-            display: "none",
-        },
-        "& .page-container": {
-            display: "flex",
-            flexDirection: "row",
-            position: "relative",
-            overflow: "hidden",
-            width: "50%",
-            ...navPanelContainerStyles,
-        },
-        "& .page-spliter": {
-            backgroundColor: color.background.dark,
-            width: 8,
-            "&:hover": {
-                backgroundColor: color.background.light,
-            },
-        },
-    },
-    { label: "GroupedPagesRoot" },
-);
+import { AppPageManager } from "../../components/page-manager/AppPageManager";
 
 const PageEditorContainer = styled.div(
     {
@@ -88,7 +34,7 @@ function NavPanelContent({ model, pageId }: { model: NavPanelModel; pageId: stri
 
     return (
         <>
-            <div className="nav-panel-container" style={{ width }}>
+            <div className="nav-panel-container" style={{ width, flexShrink: 0, overflow: "hidden", height: "100%" }}>
                 <NavigationPanel model={model} pageId={pageId} />
             </div>
             <Splitter
@@ -100,173 +46,63 @@ function NavPanelContent({ model, pageId }: { model: NavPanelModel; pageId: stri
     );
 }
 
-function RenderGroupedPages({
-    model,
-    groupedModel,
-    isActive,
-}: {
-    model: PageModel;
-    groupedModel?: PageModel;
-    isActive: boolean;
-}) {
-    // Defer rendering until this page is activated for the first time.
-    // Once rendered, keep in DOM (with display:none) to preserve state.
-    const hasBeenActiveRef = useRef(isActive);
-    if (isActive) {
-        hasBeenActiveRef.current = true;
+/** Renders a single page's content (NavPanel + Editor), or CompareEditor if in compare mode */
+function PageContent({ pageId }: { pageId: string }) {
+    const page = pagesModel.query.findPage(pageId);
+    if (!page) return null;
+
+    // Subscribe to compareMode if this is a text page
+    const compareMode = isTextFileModel(page)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ? page.state.use((s: any) => s.compareMode)
+        : false;
+
+    // If this page is the LEFT side of a group and in compare mode, render CompareEditor
+    const groupedPage = pagesModel.getGroupedPage(pageId);
+    if (compareMode && groupedPage && isTextFileModel(page) && isTextFileModel(groupedPage)) {
+        return <CompareEditor model={page} groupedModel={groupedPage} />;
     }
 
-    const [leftWidth, setLeftWidth] = useState<CSSProperties["width"]>("50%");
-    const widthK = useRef<number>(0.5);
-    const containerRef = useRef<HTMLDivElement>(null);
-    const leftRef = useRef<HTMLDivElement>(null);
-    const compareMode = model.state.use((s: any) => s.compareMode);
-
-    const setLeftRef = useCallback((el: HTMLDivElement | null) => {
-        leftRef.current = el;
-        if (leftRef.current) {
-            setLeftWidth(leftRef.current.clientWidth);
-        }
-    }, []);
-
-    const setContainerRef = useCallback((el: HTMLDivElement | null) => {
-        containerRef.current = el;
-
-        const objserver = new ResizeObserver(() => {
-            if (containerRef.current) {
-                const newWidth =
-                    (containerRef.current.clientWidth - 8) * widthK.current;
-                setLeftWidth(newWidth);
-            }
-        });
-
-        if (containerRef.current) {
-            const lWidth = (containerRef.current.clientWidth - 8) / 2;
-            setLeftWidth(lWidth);
-            objserver.observe(containerRef.current);
-        }
-
-        return () => {
-            objserver.disconnect();
-        };
-    }, []);
-
-    const resizeWidth = useCallback((width: number) => {
-        setLeftWidth(width);
-        if (containerRef.current) {
-            widthK.current = width / (containerRef.current.clientWidth - 8);
-        }
-    }, []);
-
-    const splitterDubleClick = useCallback(() => {
-        if (containerRef.current) {
-            const newWidth = (containerRef.current.clientWidth - 8) / 2;
-            setLeftWidth(newWidth);
-            widthK.current = 0.5;
-        }
-    }, []);
-
-    if (!hasBeenActiveRef.current) {
-        return null;
-    }
-
-    if (!groupedModel) {
-        return (
-            <SinglePageRoot
-                id={`editor-container-${model.id}`}
-                className={clsx({ isActive })}
-            >
-                <NavPanelWrapper model={model} />
-                <PageEditorContainer>
-                    <RenderEditor key={`render-editor-${model.id}`} model={model} />
-                </PageEditorContainer>
-            </SinglePageRoot>
-        );
-    }
-
-    if (
-        groupedModel &&
-        compareMode &&
-        isTextFileModel(model) &&
-        isTextFileModel(groupedModel)
-    ) {
-        return (
-            <SinglePageRoot
-                id={`editor-container-${model.id}`}
-                className={clsx({ isActive })}
-            >
-                <CompareEditor
-                    key={`render-editor-${model.id}`}
-                    model={model}
-                    groupedModel={groupedModel}
-                />
-            </SinglePageRoot>
-        );
+    // If this page is the RIGHT side of a compare-mode group, render nothing
+    // (CompareEditor handles both pages from the left side's portal)
+    const leftPage = findLeftPage(pageId);
+    if (leftPage && isTextFileModel(leftPage)) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const leftCompare = (leftPage.state.get() as any).compareMode;
+        if (leftCompare) return null;
     }
 
     return (
-        <GroupedPagesRoot className={clsx({ isActive })} ref={setContainerRef}>
-            <div
-                id={`editor-container-${model.id}`}
-                ref={setLeftRef}
-                className="page-container"
-                style={{
-                    width: leftWidth,
-                    minWidth: 100,
-                    maxWidth: containerRef.current
-                        ? containerRef.current.clientWidth - 100
-                        : undefined,
-                    flexShrink: 0,
-                }}
-            >
-                <NavPanelWrapper model={model} />
-                <PageEditorContainer>
-                    <RenderEditor key={`render-editor-${model.id}`} model={model} />
-                </PageEditorContainer>
-            </div>
-            <Splitter
-                type="vertical"
-                className="page-splitter"
-                initialWidth={typeof leftWidth === "number" ? leftWidth : 200}
-                onChangeWidth={resizeWidth}
-                onDoubleClick={splitterDubleClick}
-            />
-            <div
-                id={`editor-container-${groupedModel.id}`}
-                className="page-container"
-                style={{ flex: "1 1 auto" }}
-            >
-                <NavPanelWrapper model={groupedModel} />
-                <PageEditorContainer>
-                    <RenderEditor
-                        key={`render-editor-${groupedModel.id}`}
-                        model={groupedModel}
-                    />
-                </PageEditorContainer>
-            </div>
-        </GroupedPagesRoot>
+        <>
+            <NavPanelWrapper model={page} />
+            <PageEditorContainer>
+                <RenderEditor model={page} />
+            </PageEditorContainer>
+        </>
     );
 }
 
+/** Find the left page if this page is the right side of a group */
+function findLeftPage(pageId: string): PageModel | undefined {
+    const { leftRight } = pagesModel.state.get();
+    for (const [leftId, rightId] of leftRight) {
+        if (rightId === pageId) return pagesModel.query.findPage(leftId);
+    }
+    return undefined;
+}
+
 export function Pages() {
-    const { pages: pgs, rightLeft } = pagesModel.state.use();
+    const { pages, leftRight } = pagesModel.state.use();
     const activePage = pagesModel.activePage;
     const groupedPage = pagesModel.groupedPage;
 
-    const pagesToRender = useMemo(() => {
-        return pgs.filter((p) => !rightLeft.has(p.id));
-    }, [pgs, rightLeft]);
-
-    return pagesToRender.map((page) => {
-        const groupedModel = pagesModel.getGroupedPage(page.id);
-
-        return (
-            <RenderGroupedPages
-                key={`group-page-${page.id}`}
-                model={page}
-                groupedModel={groupedModel}
-                isActive={page === activePage || page === groupedPage}
-            />
-        );
-    });
+    return (
+        <AppPageManager
+            pageIds={pages.map((p) => p.id)}
+            activeId={activePage?.id ?? ""}
+            groupedActiveId={groupedPage?.id}
+            grouping={leftRight}
+            renderPage={(id) => <PageContent pageId={id} />}
+        />
+    );
 }
