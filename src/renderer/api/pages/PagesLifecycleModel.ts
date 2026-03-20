@@ -146,7 +146,6 @@ export class PagesLifecycleModel {
         });
         if (content) {
             page.changeContent(content);
-            page.state.update((s) => { s.modified = false; });
         }
         page.restore();
         return this.addPage(page as unknown as PageModel);
