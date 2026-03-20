@@ -22,6 +22,7 @@ Release notes and changelog for js-notepad.
 - **Page stability during grouping** — Grouping, ungrouping, closing, or reordering pages no longer causes remaining pages to reload their content. PDF documents, browser tabs, drawings, and other stateful editors now preserve their full state (scroll position, loaded content, canvas objects) through all tab operations.
 - **Browser tab stability** — Closing or reordering internal browser tabs no longer causes the remaining tabs to reload. Blank-page bookmarks also preserve their scroll position when switching between tabs.
 - **File Explorer context menu** — The folder context menu option was renamed from "Open in New Panel" to "Open in New Tab" for clarity.
+- **MCP page content persistence** — Pages created via MCP or scripting with pre-filled content now correctly persist across app restarts. Previously the content was cached to disk but the page was not marked as modified, so the cache was never read back on restore.
 
 ---
 
