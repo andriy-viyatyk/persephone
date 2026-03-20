@@ -595,7 +595,7 @@ export class FileExplorerModel extends TComponentModel<FileExplorerState, FileEx
         }
 
         items.push({
-            label: "Open in New Panel",
+            label: "Open in New Tab",
             icon: <NewWindowIcon />,
             onClick: () => pagesModel.addEmptyPageWithNavPanel(item.filePath),
         });

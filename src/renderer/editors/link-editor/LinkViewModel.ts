@@ -66,6 +66,14 @@ export class LinkViewModel extends ContentViewModel<LinkEditorState> {
     gridModel: RenderGridModel | null = null;
     containerElement: HTMLElement | null = null;
 
+    /**
+     * Optional callback for handling default link clicks internally.
+     * When set, clicking a link (with no specific browser selected) calls this instead of pagesModel.handleOpenUrl.
+     * Used by browser editor to route links to the correct browser page/tab.
+     * @param url The URL to open
+     */
+    onInternalLinkOpen?: (url: string) => void;
+
     constructor(host: IContentHost) {
         super(host, defaultLinkEditorState);
     }
@@ -749,6 +757,12 @@ export class LinkViewModel extends ContentViewModel<LinkEditorState> {
     };
 
     openLink = async (url: string) => {
+        // If a browser page owns this link model, route links there
+        if (this.onInternalLinkOpen) {
+            this.onInternalLinkOpen(url);
+            return;
+        }
+
         const { selectedBrowser } = this.state.get();
 
         if (!selectedBrowser) {

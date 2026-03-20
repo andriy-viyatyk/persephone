@@ -163,23 +163,23 @@ function createMcpServer(): InstanceType<typeof McpServer> {
                 "",
                 "Non-monaco editors REQUIRE a matching `language` parameter. Wrong language = broken rendering.",
                 "",
-                "| editor | language (required) | title suffix (recommended) |",
-                "|--------|-------------------|--------------------------|",
-                "| `monaco` (default) | any (`plaintext`, `javascript`, `json`, etc.) | — |",
-                "| `md-view` | `markdown` | — |",
-                "| `grid-json` | `json` | `.grid.json` |",
-                "| `grid-csv` | `csv` | — |",
-                "| `notebook-view` | `json` | `.note.json` |",
-                "| `todo-view` | `json` | `.todo.json` |",
-                "| `link-view` | `json` | `.link.json` |",
-                "| `graph-view` | `json` | `.fg.json` |",
-                "| `svg-view` | `xml` | `.svg` |",
-                "| `html-view` | `html` | — |",
-                "| `mermaid-view` | `mermaid` | — |",
+                "| editor | language (required) | title suffix | use when |",
+                "|--------|-------------------|--------------------------|----------|",
+                "| `monaco` (default) | any (`plaintext`, `javascript`, `json`, etc.) | — | editing code or plain text |",
+                "| `md-view` | `markdown` | — | rendered markdown document (rich text with headings, lists, tables) |",
+                "| `mermaid-view` | `mermaid` | — | **diagram only** — flowchart, sequence, gantt, etc. Do NOT use md-view for diagrams |",
+                "| `grid-json` | `json` | `.grid.json` (optional) | tabular data from JSON array |",
+                "| `grid-csv` | `csv` | — | tabular data from CSV |",
+                "| `notebook-view` | `json` | `.note.json` (**required**) | notebook with notes — **read `notepad://guides/notebook` BEFORE use** |",
+                "| `todo-view` | `json` | `.todo.json` (**required**) | task/todo list — **read `notepad://guides/todo` BEFORE use** |",
+                "| `link-view` | `json` | `.link.json` (**required**) | bookmarks/links collection — **read `notepad://guides/links` BEFORE use** |",
+                "| `graph-view` | `json` | `.fg.json` (**required**) | force-directed graph — **read `notepad://guides/graph` BEFORE use** |",
+                "| `svg-view` | `xml` | `.svg` (**required**) | SVG image |",
+                "| `html-view` | `html` | — | rendered HTML page |",
                 "",
                 "Page-editors (browser-view, pdf-view, image-view) are NOT supported by `create_page` — use `open_url` for browser, `execute_script` with `app.pages.openFile()` for PDF/image.",
                 "",
-                "Before using non-monaco editors with structured content (notebook, todo, link, grid, graph), read `notepad://guides/pages` for the required JSON format.",
+                "Before using non-monaco editors with structured content (notebook, todo, link, graph), read their dedicated guide: notebook → `notepad://guides/notebook`, todo → `notepad://guides/todo`, link → `notepad://guides/links`, graph → `notepad://guides/graph`.",
                 "",
                 "## Working with force-graph pages",
                 "",
@@ -262,9 +262,9 @@ function createMcpServer(): InstanceType<typeof McpServer> {
     // ── Page & script tools ──────────────────────────────────────────
     server.tool(
         "execute_script",
-        "Execute JavaScript or TypeScript in js-notepad. The script has access to `page` (active page — content, language, editor, grouped) and `app` (pages, fs, settings, ui, shell, window). Returns { text, language, isError, consoleLogs }. Use for complex operations, transformations, and accessing structured editors via page facades (asGrid, asNotebook, asTodo, etc.). TypeScript is transpiled via sucrase before execution.",
+        "Execute JavaScript or TypeScript in js-notepad. Returns { text, language, isError, consoleLogs }. IMPORTANT: Read notepad://guides/scripting BEFORE using this tool — it documents the full API for `page` (active page), `app` (pages, fs, settings, ui, shell, window), and editor facades (asGrid, asNotebook, asTodo, etc.). Do NOT guess API method names or signatures — the scripting API has specific conventions that differ from typical Node.js patterns.",
         {
-            script: z.string().describe("JavaScript or TypeScript code to execute. Supports async/await. Last expression is returned as result."),
+            script: z.string().describe("JavaScript or TypeScript code to execute. Supports async/await. Last expression is returned as result. Read notepad://guides/scripting for the API reference before writing scripts."),
             pageId: z.string().optional().describe("Target page ID. If omitted, uses the active page."),
             language: z.enum(["javascript", "typescript"]).optional().describe("Script language. Defaults to 'javascript'. Use 'typescript' to write scripts with type annotations."),
             windowIndex: windowIndexParam,
@@ -302,12 +302,12 @@ function createMcpServer(): InstanceType<typeof McpServer> {
 
     server.tool(
         "create_page",
-        "Create a new page (tab) with optional content. Use this only for editable documents — for showing results/analysis to the user, prefer ui_push instead. Returns { id, title, editor, language }. CRITICAL: non-monaco editors require a matching language parameter or rendering will break. Key pairings: md-view requires language='markdown', grid-json requires language='json', grid-csv requires language='csv'. For structured editors (notebook, todo, link), read notepad://guides/pages for required JSON content format. Page-editors (browser-view, pdf-view, image-view) are not supported — use open_url or execute_script.",
+        "Create a new page (tab) with optional content. Use this only for editable documents — for showing results/analysis to the user, prefer ui_push instead. Returns { id, title, editor, language }. CRITICAL: non-monaco editors require a matching language parameter or rendering will break. Key pairings: md-view requires language='markdown', grid-json requires language='json', grid-csv requires language='csv'. IMPORTANT: Structured editors have strict JSON formats — you MUST read the dedicated guide BEFORE creating: notebook-view → read notepad://guides/notebook, todo-view → read notepad://guides/todo, link-view → read notepad://guides/links, graph-view → read notepad://guides/graph. Incorrect JSON WILL crash the editor. Do NOT guess the JSON format — always read the guide first. Page-editors (browser-view, pdf-view, image-view) are not supported — use open_url or execute_script.",
         {
             title: z.string().optional().describe("Page title. Defaults to 'Untitled'."),
-            content: z.string().optional().describe("Initial text content."),
+            content: z.string().optional().describe("Initial text content. For structured editors (notebook, todo, link, graph) you MUST read the dedicated resource guide first — do NOT guess the JSON format."),
             language: z.string().optional().describe("Monaco language ID (e.g. 'javascript', 'json', 'markdown'). Defaults to 'plaintext'."),
-            editor: z.string().optional().describe("Editor type (e.g. 'monaco', 'grid-json', 'md-view'). Defaults to 'monaco'."),
+            editor: z.string().optional().describe("Editor type (e.g. 'monaco', 'grid-json', 'md-view'). Defaults to 'monaco'. For notebook/todo/link/graph editors: STOP — read the dedicated resource guide before proceeding."),
             windowIndex: windowIndexParam,
         },
         async ({ title, content, language, editor, windowIndex }) =>
@@ -316,7 +316,7 @@ function createMcpServer(): InstanceType<typeof McpServer> {
 
     server.tool(
         "set_page_content",
-        "Update the text content of a page by ID. Works for text-based pages only. IMPORTANT: For non-monaco editors, read resource `notepad://guides/pages` first to learn the required content format. For structured editors (grid, notebook, todo), use execute_script with page facades instead.",
+        "Update the text content of a page by ID. Works for text-based pages only. IMPORTANT: For structured editors, read the dedicated guide BEFORE updating content: notebook → notepad://guides/notebook, todo → notepad://guides/todo, link → notepad://guides/links, graph → notepad://guides/graph. Incorrect JSON WILL crash the editor.",
         {
             pageId: z.string().describe("The page ID (from list_pages)."),
             content: z.string().describe("The new text content to set."),
@@ -334,7 +334,8 @@ function createMcpServer(): InstanceType<typeof McpServer> {
                 z.object({
                     type: z.string(),
                 }).passthrough(),
-            ])).describe("Array of flat entries. Strings are shorthand for log.info. Objects: { type, ...fields } — type-specific fields at top level.\n\nLog types: log.text/info/warn/error/success — fields: text.\nDialog types: input.confirm/text/buttons/checkboxes/radioboxes/select — read resource for fields.\nOutput types:\n  output.text — fields: text, language?, title?, wordWrap?, lineNumbers?, minimap?\n  output.markdown — fields: text, title?\n  output.mermaid — fields: text, title?\n  output.grid — fields: content (JSON array or CSV string), contentType? ('json'|'csv'), title?\n  output.progress — fields: label?, value?, max?, completed?"),
+            ])).describe("Array of flat entries. Strings are shorthand for log.info. Objects: { type, ...fields } — type-specific fields at top level.\n\nLog types: log.text/info/warn/error/success — fields: text.\nDialog types: supports confirm, text input, buttons, checkboxes, radio buttons, and dropdown select. IMPORTANT: dialogs BLOCK until the user responds. Incorrect fields will crash the dialog and cause a permanent hang. You MUST read notepad://guides/ui-push BEFORE using any dialog type. Do NOT guess dialog fields.\nOutput types:\n  output.text — fields: text, language?, title?, wordWrap?, lineNumbers?, minimap?\n  output.markdown — fields: text, title?\n  output.mermaid — fields: text, title?\n  output.grid — fields: content (JSON array or CSV string), contentType? ('json'|'csv'), title?\n  output.progress — fields: label?, value?, max?, completed?"),
+
             windowIndex: windowIndexParam,
         },
         async ({ entries, windowIndex }) => {
@@ -396,6 +397,24 @@ function createMcpServer(): InstanceType<typeof McpServer> {
             uri: "notepad://guides/graph",
             file: "mcp-res-graph.md",
             description: "Force-graph editor guide — JSON data format, page.asGraph() API, editing graph data, group nodes. Read BEFORE working with graph pages.",
+        },
+        {
+            name: "notebook-guide",
+            uri: "notepad://guides/notebook",
+            file: "mcp-res-notebook.md",
+            description: "Notebook editor guide — NoteItem JSON format, content types (text, markdown, code, mermaid, grid). Read BEFORE creating or updating notebook pages.",
+        },
+        {
+            name: "todo-guide",
+            uri: "notepad://guides/todo",
+            file: "mcp-res-todo.md",
+            description: "Todo editor guide — TodoItem JSON format, lists, tags. Read BEFORE creating or updating todo pages.",
+        },
+        {
+            name: "links-guide",
+            uri: "notepad://guides/links",
+            file: "mcp-res-links.md",
+            description: "Links editor guide — LinkItem JSON format, categories, tags. Read BEFORE creating or updating links pages.",
         },
     ];
 

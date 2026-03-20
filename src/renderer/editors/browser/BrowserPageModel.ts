@@ -313,6 +313,8 @@ export class BrowserPageModel extends PageModel<BrowserPageState, void> {
         this.urlBar = new BrowserUrlBarModel(this);
         this.bookmarksUI = new BrowserBookmarksUIModel(this);
         this.keyDownSub = globalKeyDown.subscribe((e) => this.handleGlobalKeyDown(e!));
+        // Preload bookmarks silently after a short delay (don't block browser page opening)
+        setTimeout(() => this.preloadBookmarks(), 300);
     }
 
     /** Stable random ID for incognito partitions (generated once per model instance). */
@@ -352,6 +354,25 @@ export class BrowserPageModel extends PageModel<BrowserPageState, void> {
         return settings.get("browser-default-bookmarks-file") || "";
     }
 
+    /**
+     * Preload bookmarks silently (no password dialog for encrypted files).
+     * Called automatically after browser page is created.
+     */
+    preloadBookmarks = async (): Promise<void> => {
+        const filePath = this.getBookmarksFilePath();
+        if (!filePath) return; // no bookmarks configured
+        if (this.bookmarks) return; // already loaded
+        const bm = new BrowserBookmarks(filePath);
+        const ok = await bm.init({ silent: true });
+        if (!ok) {
+            await bm.dispose();
+            return; // encrypted or failed — user will trigger manually
+        }
+        this.bookmarks = bm;
+        bm.linkModel.onInternalLinkOpen = (url) => this.bookmarksUI.handleBookmarkLinkClick(url);
+        this.state.update((s) => { s.bookmarksReady = true; });
+    };
+
     /** Initialize bookmarks from a file path. Returns null if user cancels (e.g. encrypted file). */
     async initBookmarks(filePath: string): Promise<BrowserBookmarks | null> {
         if (this.bookmarks) {
@@ -364,6 +385,7 @@ export class BrowserPageModel extends PageModel<BrowserPageState, void> {
             return null;
         }
         this.bookmarks = bm;
+        bm.linkModel.onInternalLinkOpen = (url) => this.bookmarksUI.handleBookmarkLinkClick(url);
         return this.bookmarks;
     }
 

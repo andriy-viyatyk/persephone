@@ -67,30 +67,30 @@ The current page (tab). Available as a global in scripts.
 
 **CRITICAL: Each non-monaco editor REQUIRES a specific `language` parameter. Using the wrong language (e.g., `language: "plaintext"` with `editor: "md-view"`) will result in broken rendering — the page will appear empty or display raw text instead of rendered content.**
 
-| Editor | Required `language` | Recommended title suffix | Example |
+| Editor | Required `language` | Title suffix | Example |
 |--------|-------------------|------------------------|---------|
 | `monaco` (default) | any (`plaintext`, `javascript`, `json`, etc.) | — | `"script.js"` |
 | `md-view` | **`markdown`** | — | `"README.md"` |
 | `grid-json` | **`json`** | `.grid.json` (optional) | `"Data.grid.json"` or `"Data"` |
 | `grid-csv` | **`csv`** | — | `"Data"` |
-| `notebook-view` | **`json`** | `.note.json` | `"My Notes.note.json"` |
-| `todo-view` | **`json`** | `.todo.json` | `"Tasks.todo.json"` |
-| `link-view` | **`json`** | `.link.json` | `"Bookmarks.link.json"` |
-| `svg-view` | **`xml`** | `.svg` | `"Logo.svg"` |
+| `notebook-view` | **`json`** | `.note.json` (**required**) | `"My Notes.note.json"` |
+| `todo-view` | **`json`** | `.todo.json` (**required**) | `"Tasks.todo.json"` |
+| `link-view` | **`json`** | `.link.json` (**required**) | `"Bookmarks.link.json"` |
+| `svg-view` | **`xml`** | `.svg` (**required**) | `"Logo.svg"` |
 | `html-view` | **`html`** | — | `"Page.html"` |
-| `graph-view` | **`json`** | `.fg.json` | `"Network.fg.json"` |
-| `draw-view` | **`json`** | `.excalidraw` | `"Sketch.excalidraw"` |
+| `graph-view` | **`json`** | `.fg.json` (**required**) | `"Network.fg.json"` |
+| `draw-view` | **`json`** | `.excalidraw` (**required**) | `"Sketch.excalidraw"` |
 | `mermaid-view` | **`mermaid`** | — | `"Diagram"` |
 
 **Common mistake:** `create_page({ editor: "md-view", language: "plaintext", ... })` — this creates a broken page. Use `language: "markdown"` with `md-view`.
 
-**Title suffix:** Without the correct title suffix, the editor will work but the toolbar switch buttons may not show all available editor options (e.g., a link editor page titled `"Links"` won't show the "Links" switch button, but `"Links.link.json"` will).
+**Title suffix:** Suffixes marked **required** are needed for the editor switch buttons to appear (e.g., XML/Preview toggle for SVG, JSON/Graph toggle for graphs). Without the suffix, the page renders but the user cannot switch between editor modes.
 
-**Initial content:** Notebook, todo, link, and graph editors expect valid JSON content on creation:
-- **Notebook:** `{"notes":[],"state":{}}`
-- **Todo:** `{"lists":[],"tags":[],"items":[],"state":{}}`
-- **Links:** `{"links":[],"state":{}}`
-- **Graph:** `{"nodes":[],"links":[],"options":{}}` — see Graph Format below
+**Initial content:** Structured editors expect valid JSON content on creation. **Read the dedicated resource guide BEFORE creating pages with these editors** — incorrect JSON will crash the editor:
+- **Notebook:** Read `notepad://guides/notebook` for NoteItem format. Empty: `{"notes":[],"state":{}}`
+- **Todo:** Read `notepad://guides/todo` for TodoItem format. Empty: `{"lists":[],"tags":[],"items":[],"state":{}}`
+- **Links:** Read `notepad://guides/links` for LinkItem format. Empty: `{"links":[],"state":{}}`
+- **Graph:** Read `notepad://guides/graph` for node/link format. Empty: `{"nodes":[],"links":[],"options":{}}`
 
 ### Graph Editor Format (`graph-view`)
 

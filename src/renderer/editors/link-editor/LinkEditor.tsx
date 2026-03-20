@@ -274,9 +274,14 @@ export function LinkEditor(props: LinkEditorProps) {
         );
     }
 
+    // Portal refs: use props when provided, otherwise fall back to model refs
+    const toolbarFirst = props.toolbarRefFirst !== undefined ? props.toolbarRefFirst : model.editorToolbarRefFirst;
+    const toolbarLast = props.toolbarRefLast !== undefined ? props.toolbarRefLast : model.editorToolbarRefLast;
+    const footerLast = props.footerRefLast !== undefined ? props.footerRefLast : model.editorFooterRefLast;
+
     return (
         <>
-            {Boolean(model.editorToolbarRefFirst) &&
+            {Boolean(toolbarFirst) &&
                 createPortal(
                     pageState.expandedPanel === "tags" ? (
                         <Breadcrumb
@@ -299,13 +304,14 @@ export function LinkEditor(props: LinkEditorProps) {
                             onChange={vm.setSelectedCategory}
                         />
                     ),
-                    model.editorToolbarRefFirst,
+                    toolbarFirst!,
                 )}
-            {Boolean(model.editorToolbarRefLast) &&
+            {Boolean(toolbarLast) &&
                 createPortal(
                     <>
                         {!swapLayout && (
                             <Button
+                                className="link-btn-browser-selector"
                                 size="small"
                                 type="flat"
                                 title="Open links in..."
@@ -317,6 +323,7 @@ export function LinkEditor(props: LinkEditorProps) {
                             </Button>
                         )}
                         <Button
+                            className="link-btn-add"
                             size="small"
                             type="raised"
                             title="Add Link"
@@ -353,7 +360,7 @@ export function LinkEditor(props: LinkEditorProps) {
                             }
                         />
                     </>,
-                    model.editorToolbarRefLast,
+                    toolbarLast!,
                 )}
             <LinkEditorRoot ref={(el) => { vm.containerElement = el; }} tabIndex={-1} className={clsx({ "swap-layout": swapLayout })}>
                 <CollapsiblePanelStack
@@ -457,14 +464,14 @@ export function LinkEditor(props: LinkEditorProps) {
                     </>
                 )}
             </LinkEditorRoot>
-            {Boolean(model.editorFooterRefLast) &&
+            {Boolean(footerLast) &&
                 createPortal(
                     <span>
                         {links.length === allLinks.length
                             ? `${allLinks.length} links`
                             : `${links.length} of ${allLinks.length} links`}
                     </span>,
-                    model.editorFooterRefLast,
+                    footerLast!,
                 )}
         </>
     );

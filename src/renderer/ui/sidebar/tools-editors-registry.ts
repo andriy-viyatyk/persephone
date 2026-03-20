@@ -6,6 +6,7 @@ import {
     JavascriptIcon, LinkIcon, NotebookIcon, TodoIcon, TypescriptIcon,
 } from "../../theme/language-icons";
 import { GlobeIcon, McpIcon } from "../../theme/icons";
+import { DEFAULT_BROWSER_COLOR } from "../../theme/palette-colors";
 
 // =============================================================================
 // Types
@@ -103,7 +104,7 @@ const staticItems: CreatableItem[] = [
     {
         id: "browser",
         label: "Browser",
-        icon: React.createElement(GlobeIcon),
+        icon: React.createElement(GlobeIcon, { color: DEFAULT_BROWSER_COLOR }),
         create: () => { pagesModel.showBrowserPage(); },
         category: "tool",
     },

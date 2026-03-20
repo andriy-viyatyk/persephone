@@ -27,6 +27,9 @@ js-notepad/
 │   ├── mcp-res-pages.md    # MCP resource: pages & windows guide
 │   ├── mcp-res-scripting.md # MCP resource: scripting API reference
 │   ├── mcp-res-graph.md    # MCP resource: force-graph data format & page.asGraph() API
+│   ├── mcp-res-notebook.md # MCP resource: notebook editor JSON format
+│   ├── mcp-res-todo.md     # MCP resource: todo editor JSON format
+│   ├── mcp-res-links.md    # MCP resource: links editor JSON format
 │   └── snip-overlay.html   # Screen snip overlay (plain HTML/JS, canvas-based selection UI)
 ├── patches/                # Dependency patches (patch-package)
 ├── .mcp.json               # MCP server config for Claude Code (points to MCP HTTP server)

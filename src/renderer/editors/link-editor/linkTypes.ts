@@ -63,4 +63,10 @@ export interface LinkEditorProps {
     model: TextFileModel;
     /** When true, the categories/tags panel appears on the right instead of the left. */
     swapLayout?: boolean;
+    /** Portal target for the first toolbar section (breadcrumb). When omitted, portal is not rendered. */
+    toolbarRefFirst?: HTMLDivElement | null;
+    /** Portal target for the last toolbar section (buttons, search). When omitted, portal is not rendered. */
+    toolbarRefLast?: HTMLDivElement | null;
+    /** Portal target for the footer section (link count). When omitted, portal is not rendered. */
+    footerRefLast?: HTMLDivElement | null;
 }

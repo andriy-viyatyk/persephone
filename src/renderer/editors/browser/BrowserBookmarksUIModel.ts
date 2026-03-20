@@ -170,10 +170,13 @@ export class BrowserBookmarksUIModel {
         const s = this.model.state.get();
         const currentTab = s.tabs.find((t) => t.id === s.activeTabId);
         const currentUrl = currentTab?.url || "";
-        if (!currentUrl || currentUrl === "about:blank") {
-            this.model.navigate(url);
-        } else {
+        // Ctrl+Click (or Cmd+Click on Mac) opens in a new tab; plain click navigates current blank tab
+        const e = window.event as KeyboardEvent | MouseEvent | undefined;
+        const ctrlPressed = e?.ctrlKey || e?.metaKey;
+        if (ctrlPressed || (currentUrl && currentUrl !== "about:blank")) {
             this.model.addTab(url);
+        } else {
+            this.model.navigate(url);
         }
         this.model.state.update((st) => { st.bookmarksOpen = false; });
     };

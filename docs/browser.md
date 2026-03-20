@@ -123,10 +123,18 @@ Click the **"Open Links" button** on the toolbar to open a sliding bookmarks pan
 - Right-click a **link** on a web page → **"Add to Bookmarks"** — captures URL, title, and image
 - Right-click an **image** → **"Use Image for Bookmark"** — tracks the image for the next bookmark
 
+### Blank Page
+
+When a bookmarks file is configured for the current profile, new blank tabs display your bookmarks directly instead of an empty page:
+
+- Click a link to **navigate the current tab**
+- `Ctrl+Click` opens the link in a **new internal tab**, keeping bookmarks visible on the original tab
+- Encrypted bookmark files are not unlocked automatically on blank page load — use the star button or bookmarks drawer to trigger decryption, after which the blank page will show the links
+
 ### Additional Details
 
 - **Image discovery** — automatically collects images from page meta tags (`og:image`, `twitter:image`), clicked link elements, and context menu items for bookmark thumbnails
-- **Encrypted bookmarks** — supports encrypted `.link.json` files; a password dialog appears on first access
+- **Encrypted bookmarks** — supports encrypted `.link.json` files; a password dialog appears on first access via the star button or bookmarks drawer
 - **Auto-save** — all edits are automatically saved to the `.link.json` file
 - If no bookmarks file is associated with the profile, clicking the star or bookmarks button prompts you to select or create a file
 

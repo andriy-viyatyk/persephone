@@ -136,17 +136,10 @@ export function BookmarksDrawer({
         }
     }, [open]);
 
-    // Assign portal placeholder refs to the TextFileModel.
-    // Uses a callback ref pattern — refs are set synchronously before LinkEditor renders.
-    const setToolbarFirstRef = useCallback((el: HTMLDivElement | null) => {
-        if (bookmarks) bookmarks.textModel.editorToolbarRefFirst = el;
-    }, [bookmarks]);
-    const setToolbarLastRef = useCallback((el: HTMLDivElement | null) => {
-        if (bookmarks) bookmarks.textModel.editorToolbarRefLast = el;
-    }, [bookmarks]);
-    const setFooterLastRef = useCallback((el: HTMLDivElement | null) => {
-        if (bookmarks) bookmarks.textModel.editorFooterRefLast = el;
-    }, [bookmarks]);
+    // Portal placeholder refs — passed directly to LinkEditor via props
+    const [toolbarFirstRef, setToolbarFirstRef] = useState<HTMLDivElement | null>(null);
+    const [toolbarLastRef, setToolbarLastRef] = useState<HTMLDivElement | null>(null);
+    const [footerLastRef, setFooterLastRef] = useState<HTMLDivElement | null>(null);
 
     // Close on Escape key
     const handleKeyDown = useCallback(
@@ -198,7 +191,13 @@ export function BookmarksDrawer({
                     <div className="bookmarks-toolbar-placeholder" ref={setToolbarLastRef} />
                 </div>
                 <div className="bookmarks-editor-container">
-                    <LinkEditor model={bookmarks.textModel} swapLayout />
+                    <LinkEditor
+                        model={bookmarks.textModel}
+                        swapLayout
+                        toolbarRefFirst={toolbarFirstRef}
+                        toolbarRefLast={toolbarLastRef}
+                        footerRefLast={footerLastRef}
+                    />
                 </div>
                 <div className="bookmarks-footer">
                     <div className="bookmarks-footer-placeholder" ref={setFooterLastRef} />

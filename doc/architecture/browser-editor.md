@@ -346,17 +346,19 @@ BrowserBookmarks (stored on BrowserPageModel.bookmarks)
 
 `BrowserBookmarks` wraps both models. `TextFileModel` handles reading/writing the `.link.json` file (including encryption/decryption), while `LinkEditorModel` provides the structured data layer. Every mutation flows through `LinkEditorModel.onDataChanged()` → `TextFileModel.changeContent()` → debounced save to disk.
 
-### Lazy Initialization Flow
+### Initialization Flow
 
-1. User clicks ☆ (star) or "Open Links" → check `model.bookmarks !== null`
-2. If null → read profile's bookmarks file path from settings
-3. If no file path (or file missing on disk) → show "Associate Bookmarks File" dialog ("Select a file" / "Create a file" / Cancel)
-4. Create `BrowserBookmarks(filePath)` → `textModel.restore()` → if encrypted, show async password dialog → `linkModel.updateContent(content)`
-5. If password cancelled → abort, return null
-6. Store on `BrowserPageModel.bookmarks`, proceed with action
+Bookmarks load through two paths:
 
-### Two Entry Points
+**Eager preload (silent):** On browser page creation, `preloadBookmarks()` runs after a 300ms delay. It checks for a configured bookmarks file, calls `BrowserBookmarks.init({ silent: true })` which skips the password dialog for encrypted files. If successful, bookmarks appear immediately on blank tabs. If encrypted, bookmarks stay null until the user triggers manually.
 
+**Manual trigger (interactive):** User clicks ☆ (star) or "Open Links" → check `model.bookmarks !== null` → if null, read profile's bookmarks file path from settings → if no file path, show "Associate Bookmarks File" dialog → create `BrowserBookmarks(filePath)` → `init()` with password dialog if encrypted → store on `BrowserPageModel.bookmarks`.
+
+After initialization, `BrowserPageModel` sets `linkModel.onInternalLinkOpen` callback to route link clicks to the correct browser page (navigates current blank tab, or adds new tab if current tab has content). `Ctrl+Click` always opens in a new tab (detected via `window.event.ctrlKey` in the callback).
+
+### Three Entry Points
+
+- **Blank page overlay** — when a tab shows `about:blank` and bookmarks are loaded (not encrypted), the `BlankPageLinks` component renders the Link Editor over the empty webview. Has its own toolbar (with breadcrumb, view mode, search) but hides "Add Link" and browser selector buttons via CSS. Disappears when user navigates to a URL.
 - **Star button (☆)** in the URL bar — quick bookmark add/edit. Empty star when URL not bookmarked, filled star when bookmarked. Opens Edit Link Dialog with URL/title prefilled and discovered images.
 - **"Open Links" button** on the toolbar — opens the `BookmarksDrawer`, a right-anchored overlay with the full Link Editor. Link clicks navigate to the URL (in current tab if `about:blank`, otherwise new internal tab) and close the drawer.
 
@@ -377,12 +379,16 @@ A right-anchored overlay that renders the Link Editor with a `swapLayout` prop (
 
 - Initial width = 60% of browser page, max 90%, resizable via Splitter
 - Width persisted in component state
-- Renders portal placeholder divs for the Link Editor's toolbar/footer portals
+- Portal refs passed via `LinkEditorProps` (`toolbarRefFirst`, `toolbarRefLast`, `footerRefLast`) — each consumer provides its own portal targets so multiple LinkEditor instances don't conflict
 - Closes on Escape, backdrop click, or link click navigation
+
+### Portal Refs Pattern
+
+The Link Editor uses React portals for toolbar and footer content. To support multiple simultaneous instances (blank page overlay + BookmarksDrawer), portal target refs are passed via `LinkEditorProps` instead of being stored on the shared TextFileModel. When props are omitted, the editor falls back to model refs (backward compatible with standalone link editor pages). Each consumer (BlankPageLinks, BookmarksDrawer) creates its own placeholder divs and passes them as props.
 
 ### Encrypted Bookmarks
 
-If the `.link.json` file is encrypted, `BrowserBookmarks.init()` detects this via `isEncrypted(content)` and calls `showPasswordDialog({ mode: "decrypt" })`. This is the same async password dialog used by the text editor's encryption feature. If the user cancels, `init()` returns `false` and the bookmarks are not loaded.
+If the `.link.json` file is encrypted, `BrowserBookmarks.init()` detects this via `isEncrypted(content)` and calls `showPasswordDialog({ mode: "decrypt" })`. This is the same async password dialog used by the text editor's encryption feature. If the user cancels, `init()` returns `false` and the bookmarks are not loaded. The `silent: true` option skips the dialog entirely (used by eager preload).
 
 ## Keyboard Shortcuts
 

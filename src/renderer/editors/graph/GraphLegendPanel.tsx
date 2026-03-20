@@ -8,6 +8,7 @@ import { ShapeIcon, LevelIcon } from "./GraphIcons";
 // =============================================================================
 
 const ALL_SHAPES: NodeShape[] = ["circle", "square", "diamond", "triangle", "star", "hexagon"];
+const ALL_LEVELS = [1, 2, 3, 4, 5];
 type LegendTab = "level" | "shape" | "selection";
 type SelectionFilter = "" | "selected" | "not-selected" | "selected-with-children";
 
@@ -56,15 +57,10 @@ export function GraphLegendPanel({ vm }: GraphLegendPanelProps) {
         });
     }, [vm]);
 
-    // Compute which levels/shapes are present
-    const { presentLevels, presentShapes, hasRoot, hasGroup } = useMemo(() => {
+    // Always show all levels and shapes; root/group are conditional on actual graph data
+    const { hasRoot, hasGroup } = useMemo(() => {
         const info = vm.getPresentLevelsAndShapes();
-        return {
-            presentLevels: [...info.levels].sort((a, b) => a - b),
-            presentShapes: ALL_SHAPES.filter((s) => info.shapes.has(s)),
-            hasRoot: info.hasRoot,
-            hasGroup: info.hasGroup,
-        };
+        return { hasRoot: info.hasRoot, hasGroup: info.hasGroup };
     }, [vm]);
 
     // Update highlighting when checkboxes change or panel expands/collapses
@@ -171,9 +167,6 @@ export function GraphLegendPanel({ vm }: GraphLegendPanelProps) {
         setExpanded((prev) => !prev);
     }, []);
 
-    // Nothing to show if no levels/shapes present
-    if (presentLevels.length === 0 && presentShapes.length === 0 && !hasRoot && !hasGroup) return null;
-
     return (
         <div className={`graph-legend${expanded ? " expanded" : ""}`}>
             <div className="legend-header" onClick={toggleExpanded}>
@@ -236,7 +229,7 @@ export function GraphLegendPanel({ vm }: GraphLegendPanelProps) {
                                         onDescriptionChange={(v) => handleDescriptionChange("levels", "group", v)}
                                     />
                                 )}
-                                {presentLevels.map((level) => (
+                                {ALL_LEVELS.map((level) => (
                                     <LegendRow
                                         key={level}
 
@@ -276,7 +269,7 @@ export function GraphLegendPanel({ vm }: GraphLegendPanelProps) {
                                         onDescriptionChange={(v) => handleDescriptionChange("shapes", "group", v)}
                                     />
                                 )}
-                                {presentShapes.map((shape) => (
+                                {ALL_SHAPES.map((shape) => (
                                     <LegendRow
                                         key={shape}
 

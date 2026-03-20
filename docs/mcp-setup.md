@@ -80,6 +80,9 @@ MCP resources are read-only documents that AI clients can discover and read to g
 | **Pages Guide** | `notepad://guides/pages` | Pages & windows — page properties, editor types, creating pages, multi-window support. Read when working with tabs or documents. |
 | **Scripting Guide** | `notepad://guides/scripting` | Full scripting API — `app` object, editor facades, TypeScript, Node.js access. Read when using `execute_script`. |
 | **Graph Guide** | `notepad://guides/graph` | Graph editor data format and scripting API — node/link schema, `page.asGraph()` facade, query and traversal methods. Read when working with force-graph pages. |
+| **Notebook Guide** | `notepad://guides/notebook` | Notebook editor JSON format — NoteItem structure, content types (text, markdown, code, mermaid, grid). Read before creating or editing notebook pages. |
+| **Todo Guide** | `notepad://guides/todo` | Todo editor JSON format — TodoItem structure, lists, tags. Read before creating or editing todo pages. |
+| **Links Guide** | `notepad://guides/links` | Links editor JSON format — LinkItem structure, categories, tags. Read before creating or editing links pages. |
 | **Full Guide** | `notepad://guides/full` | All guides combined into one document. Only read if you need the complete reference. |
 
 AI agents also receive **server instructions** on connection — a concise overview of js-notepad and its main workflows, with pointers to which resource to read for each task. This means agents have immediate context without reading any resource.

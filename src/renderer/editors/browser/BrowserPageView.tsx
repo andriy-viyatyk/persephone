@@ -36,6 +36,8 @@ import { BrowserTabsPanel } from "./BrowserTabsPanel";
 import { WithPopupMenu } from "../../components/overlay/WithPopupMenu";
 import { UrlSuggestionsDropdown } from "./UrlSuggestionsDropdown";
 import { BookmarksDrawer } from "./BookmarksDrawer";
+import { LinkEditor } from "../link-editor/LinkEditor";
+import { BrowserBookmarks } from "./BrowserBookmarks";
 import { DownloadButton } from "./DownloadButton";
 import { BrowserDownloadsPopup } from "./BrowserDownloadsPopup";
 import { BrowserFindBar } from "./BrowserFindBar";
@@ -123,6 +125,39 @@ const BrowserPageViewRoot = styled.div({
         position: "absolute",
         inset: 0,
         zIndex: 1,
+    },
+
+    "& .blank-page-links": {
+        position: "absolute",
+        inset: 0,
+        zIndex: 3,
+        display: "flex",
+        flexDirection: "column",
+        backgroundColor: color.background.default,
+    },
+    "& .blank-page-toolbar": {
+        display: "flex",
+        alignItems: "center",
+        gap: 4,
+        padding: "4px 8px",
+        borderBottom: `1px solid ${color.border.default}`,
+        backgroundColor: color.background.dark,
+        minHeight: 32,
+        flexShrink: 0,
+        // Portal placeholder divs need flex layout for horizontal items
+        "& > div": {
+            display: "flex",
+            alignItems: "center",
+            gap: 4,
+        },
+        // Hide "Add Link" and browser selector buttons on the empty page toolbar
+        "& .link-btn-add": { display: "none" },
+        "& .link-btn-browser-selector": { display: "none" },
+    },
+    "& .blank-page-editor": {
+        flex: "1 1 auto",
+        display: "flex",
+        overflow: "hidden",
     },
 
     "& .tabs-panel": {
@@ -334,6 +369,36 @@ function BrowserWebviewItem({
                 // @ts-expect-error -- webview boolean attribute not in React types
                 allowpopups="true"
             />
+        </div>
+    );
+}
+
+// ============================================================================
+// BlankPageLinks — Shows link editor on empty (about:blank) tabs
+// ============================================================================
+
+interface BlankPageLinksProps {
+    bookmarks: BrowserBookmarks;
+}
+
+function BlankPageLinks({ bookmarks }: BlankPageLinksProps) {
+    const [toolbarFirstRef, setToolbarFirstRef] = useState<HTMLDivElement | null>(null);
+    const [toolbarLastRef, setToolbarLastRef] = useState<HTMLDivElement | null>(null);
+
+    return (
+        <div className="blank-page-links">
+            <div className="blank-page-toolbar">
+                <div ref={setToolbarFirstRef} />
+                <div style={{ flex: 1 }} />
+                <div ref={setToolbarLastRef} />
+            </div>
+            <div className="blank-page-editor">
+                <LinkEditor
+                    model={bookmarks.textModel}
+                    toolbarRefFirst={toolbarFirstRef}
+                    toolbarRefLast={toolbarLastRef}
+                />
+            </div>
         </div>
     );
 }
@@ -595,6 +660,9 @@ function BrowserPageView({ model }: BrowserPageViewProps) {
                     style={{ left: tabsPanelWidth }}
                 />
                 <div className="webview-area">
+                    {bookmarksReady && model.bookmarks && (!url || url === "about:blank") && (
+                        <BlankPageLinks bookmarks={model.bookmarks} />
+                    )}
                     {tabs.map((tab) => (
                         <BrowserWebviewItem
                             key={tab.id}

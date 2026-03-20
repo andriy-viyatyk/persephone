@@ -34,11 +34,16 @@ export class BrowserBookmarks {
         this.textModel.skipSave = true;
     }
 
-    async init(): Promise<boolean> {
+    /**
+     * Initialize bookmarks: load file, handle encryption, acquire LinkViewModel.
+     * @param options.silent When true, skip password dialog for encrypted files (return false instead).
+     */
+    async init(options?: { silent?: boolean }): Promise<boolean> {
         await this.textModel.restore();
 
-        // If the bookmarks file is encrypted, prompt for password
+        // If the bookmarks file is encrypted, prompt for password (unless silent)
         if (shell.encryption.isEncrypted(this.textModel.state.get().content || "")) {
+            if (options?.silent) return false; // silent mode — don't prompt
             const password = await ui.password({ mode: "decrypt" });
             if (!password) return false; // user cancelled
             const ok = await this.textModel.decript(password);

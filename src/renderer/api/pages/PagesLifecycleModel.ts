@@ -121,7 +121,17 @@ export class PagesLifecycleModel {
         title: string,
         content?: string,
     ): PageModel => {
+        if (typeof editor !== "string") {
+            throw new Error(
+                `addEditorPage() expects positional arguments: (editor, language, title, content?). Got ${typeof editor} for editor. Example: addEditorPage("monaco", "plaintext", "My Page", "content")`
+            );
+        }
         const editorDef = editorRegistry.getById(editor);
+        if (!editorDef && editor !== "monaco") {
+            throw new Error(
+                `Editor '${editor}' is not registered. Available editors: ${editorRegistry.getAll().map((e) => e.id).join(", ")}`
+            );
+        }
         if (editorDef?.category === "page-editor") {
             throw new Error(
                 `Cannot create '${editor}' with addEditorPage() — it is a page-editor that requires a specialized model. Use the dedicated method instead (e.g., showBrowserPage(), showAboutPage(), openFile()).`

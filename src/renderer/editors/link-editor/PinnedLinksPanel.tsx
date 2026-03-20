@@ -5,7 +5,7 @@ import color from "../../theme/color";
 import { GlobeIcon, OpenLinkIcon, PinFilledIcon } from "../../theme/icons";
 import { LinkItem, LINK_PIN_DRAG } from "./linkTypes";
 import { LinkViewModel } from "./LinkViewModel";
-import { getHostname, getFaviconPathSync, requestFaviconSave } from "./favicon-cache";
+import { getHostname, getFaviconPathSync, requestFaviconSave, useFavicons } from "./favicon-cache";
 
 // =============================================================================
 // Styles
@@ -219,6 +219,8 @@ interface PinnedLinksPanelProps {
 }
 
 export function PinnedLinksPanel({ pinnedLinks, model, style }: PinnedLinksPanelProps) {
+    useFavicons(pinnedLinks);
+
     const handleOpenLink = useCallback((link: LinkItem) => {
         if (link.href) {
             requestFaviconSave(getHostname(link.href));

@@ -139,6 +139,7 @@ When user says **"let's publish new build"** (or similar), follow [/doc/standard
 | See active epics              | [/doc/epics/active.md](doc/epics/active.md) |
 | See future ideas              | [/doc/tasks/backlog.md](doc/tasks/backlog.md) |
 | Publish a new build           | [/doc/standards/release-process.md](doc/standards/release-process.md) |
+| Test MCP documentation        | [/qa/README.md](qa/README.md) |
 | User documentation            | [/docs/index.md](docs/index.md) |
 
 ## Project Overview

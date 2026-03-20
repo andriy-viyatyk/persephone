@@ -55,6 +55,7 @@ const GraphViewRoot = styled.div({
         display: "flex",
         flexDirection: "column" as const,
         width: "fit-content",
+        maxWidth: "80%",
         backgroundColor: color.graph.background,
         border: `1px solid ${color.border.default}`,
         borderRadius: 4,

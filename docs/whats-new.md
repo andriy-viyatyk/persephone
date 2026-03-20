@@ -8,7 +8,18 @@ Release notes and changelog for js-notepad.
 
 ## Version 1.0.25 (Upcoming)
 
-*No changes yet.*
+### Fixes and Improvements
+
+- **MCP resource guides** — Three new resource guides are now available for AI agents: `notepad://guides/notebook` (notebook editor JSON format), `notepad://guides/todo` (todo editor JSON format), and `notepad://guides/links` (links editor JSON format). Agents are now directed to read the relevant guide before creating or editing these structured pages.
+- **MCP input validation** — Better error messages when agents pass invalid arguments: dialog entries (`input.*`) are validated for unknown properties and missing required fields; `output.grid` content is validated to be a string and a valid JSON array; `addEditorPage` detects wrong argument types. Each error message includes a corrected usage example.
+- **MCP Log page titles** — The MCP Server Log pages now use `.log.jsonl` suffixes in their titles, ensuring the Log View editor activates automatically instead of opening as plain text.
+- **Graph editor** — The "Graph" view switch now only appears for `.fg.json` files or files whose content is recognized as force-graph data. It no longer shows up on arbitrary JSON files.
+- **Graph legend panel** — The legend panel now always shows all five levels and all six shapes, even when the graph is new or empty, making it easier to set up before adding nodes.
+- **Browser sidebar** — The Browser entry in the Tools & Editors sidebar now shows the correct cyan color, matching the browser tab icon.
+- **Pinned links favicons** — Fixed favicons not appearing the first time the pinned links panel is opened.
+- **Browser URL bar** — When the current page is `about:blank`, the URL bar now treats it as empty and shows recent suggestions instead of filtering by the literal text "about:blank".
+- **Browser blank page bookmarks** — When a bookmarks file is configured for the current profile, opening a new browser tab now displays your bookmarks directly on the blank page. Click a link to navigate the current tab; `Ctrl+Click` opens the link in a new tab while keeping your bookmarks visible on the original. Encrypted bookmark files are not unlocked automatically — use the star button or bookmarks drawer to trigger decryption manually.
+- **File Explorer context menu** — The folder context menu option was renamed from "Open in New Panel" to "Open in New Tab" for clarity.
 
 ---
 
