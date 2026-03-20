@@ -18,6 +18,7 @@ import { ImperativeSplitter } from "./ImperativeSplitter";
 export class GroupContainer {
     readonly splitter: ImperativeSplitter;
     private disposed = false;
+    private _compareMode = false;
 
     constructor(
         private container: HTMLDivElement,
@@ -41,6 +42,22 @@ export class GroupContainer {
         // Both placeholders are visible inside the group
         leftPlaceholder.style.display = "flex";
         rightPlaceholder.style.display = "flex";
+    }
+
+    get compareMode() { return this._compareMode; }
+
+    /** Enter compare mode — pause splitter layout */
+    setCompareMode(enabled: boolean) {
+        this._compareMode = enabled;
+        this.splitter.paused = enabled;
+        if (!enabled) {
+            // Exiting compare mode — restore grouped layout
+            this.setGroupedStyle(this.leftPlaceholder, "left");
+            this.setGroupedStyle(this.rightPlaceholder, "right");
+            this.splitter.reapplyLayout();
+            this.leftPlaceholder.style.display = "flex";
+            this.rightPlaceholder.style.display = "flex";
+        }
     }
 
     dispose() {

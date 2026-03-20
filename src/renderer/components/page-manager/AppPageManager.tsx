@@ -11,6 +11,8 @@ interface AppPageManagerProps {
     groupedActiveId?: string;
     /** Grouping map: left page ID → right page ID */
     grouping: Map<string, string>;
+    /** Set of left page IDs in compare mode — hides splitter and right placeholder */
+    compareModeIds?: Set<string>;
     /** Render function for page content */
     renderPage: (id: string) => ReactNode;
     /** Optional CSS class for the container */
@@ -32,6 +34,7 @@ export function AppPageManager({
     activeId,
     groupedActiveId,
     grouping,
+    compareModeIds,
     renderPage,
     className,
 }: AppPageManagerProps) {
@@ -112,19 +115,41 @@ export function AppPageManager({
         for (const [id, el] of placeholders) {
             const groupKey = findGroupKey(id, grouping);
             if (groupKey !== undefined) {
-                // Page is in a group — visible only if this group is active
-                el.style.display = groupKey === activeGroupKey ? "flex" : "none";
+                const isActiveGroup = groupKey === activeGroupKey;
+                const inCompareMode = compareModeIds?.has(groupKey);
+                if (!isActiveGroup) {
+                    el.style.display = "none";
+                } else if (inCompareMode) {
+                    // Compare mode: left page takes full width, right page hidden
+                    const isLeft = grouping.has(id);
+                    if (isLeft) {
+                        applyStandaloneStyle(el);
+                        el.style.display = "flex";
+                    } else {
+                        el.style.display = "none";
+                    }
+                } else {
+                    el.style.display = "flex";
+                }
             } else {
                 // Standalone page
                 el.style.display = id === activeId ? "flex" : "none";
             }
         }
 
-        // Show/hide splitter elements for active/inactive groups
+        // Update compare mode state and splitter visibility for each group
         for (const [leftId, gc] of groupContainers) {
-            gc.splitter.element.style.display = leftId === activeGroupKey ? "" : "none";
+            const isActive = leftId === activeGroupKey;
+            const inCompareMode = !!compareModeIds?.has(leftId);
+
+            // Notify GroupContainer of compare mode change (handles pause/restore)
+            if (gc.compareMode !== inCompareMode) {
+                gc.setCompareMode(inCompareMode);
+            }
+
+            gc.splitter.element.style.display = isActive && !inCompareMode ? "" : "none";
         }
-    }, [pageIds, activeId, groupedActiveId, grouping, placeholders]);
+    }, [pageIds, activeId, groupedActiveId, grouping, compareModeIds, placeholders]);
 
     // Build the list of portals to render
     const hasBeenActive = hasBeenActiveRef.current;
@@ -145,8 +170,20 @@ export function AppPageManager({
     );
 }
 
-/** Apply styles for a standalone (non-grouped) page placeholder */
+/** Apply styles for a standalone (non-grouped) page placeholder.
+ *  Clears individual positioning properties first so `inset: 0` takes full effect. */
 function applyStandaloneStyle(el: HTMLDivElement) {
+    Object.assign(el.style, {
+        top: "",
+        bottom: "",
+        left: "",
+        right: "",
+        width: "",
+        minWidth: "",
+        maxWidth: "",
+        flex: "",
+        flexShrink: "",
+    });
     Object.assign(el.style, {
         position: "absolute",
         inset: "0",

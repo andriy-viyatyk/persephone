@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+import { useEffect, useRef, useState } from "react";
 import { Splitter } from "../../components/layout/Splitter";
 import { PageModel } from "../../editors/base";
 import { pagesModel } from "../../api/pages";
@@ -57,19 +58,20 @@ function PageContent({ pageId }: { pageId: string }) {
         ? page.state.use((s: any) => s.compareMode)
         : false;
 
-    // If this page is the LEFT side of a group and in compare mode, render CompareEditor
-    const groupedPage = pagesModel.getGroupedPage(pageId);
-    if (compareMode && groupedPage && isTextFileModel(page) && isTextFileModel(groupedPage)) {
-        return <CompareEditor model={page} groupedModel={groupedPage} />;
-    }
+    if (compareMode) {
+        // Check if this page is the LEFT side of a group — render CompareEditor
+        const { leftRight } = pagesModel.state.get();
+        const rightId = leftRight.get(pageId);
+        if (rightId) {
+            const rightPage = pagesModel.query.findPage(rightId);
+            if (rightPage && isTextFileModel(page) && isTextFileModel(rightPage)) {
+                return <CompareEditor model={page} groupedModel={rightPage} />;
+            }
+        }
 
-    // If this page is the RIGHT side of a compare-mode group, render nothing
-    // (CompareEditor handles both pages from the left side's portal)
-    const leftPage = findLeftPage(pageId);
-    if (leftPage && isTextFileModel(leftPage)) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const leftCompare = (leftPage.state.get() as any).compareMode;
-        if (leftCompare) return null;
+        // This page is the RIGHT side of a compare-mode group — render nothing
+        // (CompareEditor is rendered in the left page's portal)
+        return null;
     }
 
     return (
@@ -82,19 +84,36 @@ function PageContent({ pageId }: { pageId: string }) {
     );
 }
 
-/** Find the left page if this page is the right side of a group */
-function findLeftPage(pageId: string): PageModel | undefined {
-    const { leftRight } = pagesModel.state.get();
-    for (const [leftId, rightId] of leftRight) {
-        if (rightId === pageId) return pagesModel.query.findPage(leftId);
-    }
-    return undefined;
-}
-
 export function Pages() {
     const { pages, leftRight } = pagesModel.state.use();
     const activePage = pagesModel.activePage;
     const groupedPage = pagesModel.groupedPage;
+
+    // Subscribe to compareMode changes on the active page to update layout
+    const [, forceUpdate] = useState(0);
+    const prevCompareModeRef = useRef(false);
+    useEffect(() => {
+        if (!activePage || !isTextFileModel(activePage)) return;
+        const unsubscribe = activePage.state.subscribe(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const cm = (activePage.state.get() as any).compareMode as boolean;
+            if (cm !== prevCompareModeRef.current) {
+                prevCompareModeRef.current = cm;
+                forceUpdate((n) => n + 1);
+            }
+        });
+        return unsubscribe;
+    }, [activePage]);
+
+    // Build compareModeIds from current state
+    const compareModeIds = new Set<string>();
+    for (const [leftId] of leftRight) {
+        const page = pages.find((p) => p.id === leftId);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        if (page && isTextFileModel(page) && (page.state.get() as any).compareMode) {
+            compareModeIds.add(leftId);
+        }
+    }
 
     return (
         <AppPageManager
@@ -102,6 +121,7 @@ export function Pages() {
             activeId={activePage?.id ?? ""}
             groupedActiveId={groupedPage?.id}
             grouping={leftRight}
+            compareModeIds={compareModeIds}
             renderPage={(id) => <PageContent pageId={id} />}
         />
     );

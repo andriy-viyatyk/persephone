@@ -10,6 +10,8 @@
  */
 export class ImperativeSplitter {
     readonly element: HTMLDivElement;
+    /** When true, resize observer and drag are disabled (e.g. during compare mode) */
+    paused = false;
     private widthK = 0.5;
     private observer: ResizeObserver;
     private dragging = false;
@@ -55,6 +57,11 @@ export class ImperativeSplitter {
         this.element.removeEventListener("pointermove", this.handlePointerMove);
         this.element.removeEventListener("pointerup", this.handlePointerUp);
         this.element.removeEventListener("dblclick", this.handleDoubleClick);
+    }
+
+    /** Re-apply the current layout (call after compare mode exit restores grouped view) */
+    reapplyLayout() {
+        this.applyLayout();
     }
 
     private getAvailableWidth() {
@@ -118,6 +125,6 @@ export class ImperativeSplitter {
     };
 
     private handleResize = () => {
-        this.applyLayout();
+        if (!this.paused) this.applyLayout();
     };
 }
