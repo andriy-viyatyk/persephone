@@ -713,6 +713,11 @@ export class PagesLifecycleModel {
                 }
             }
         } else {
+            // Check active page first, then search outward
+            if (activeIndex >= 0 && matchesBrowser(pages[activeIndex].state.get())) {
+                addTabToPage(activeIndex);
+                return;
+            }
             for (let i = activeIndex + 1; i < pages.length; i++) {
                 if (matchesBrowser(pages[i].state.get())) {
                     addTabToPage(i);

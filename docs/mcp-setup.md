@@ -60,6 +60,7 @@ gemini --mcp-server http://localhost:7865/mcp
 | **set_page_content** | Update text content of a page by ID. |
 | **open_url** | Open a URL in the [built-in browser](./browser.md). Accepts optional `profileName` (browser profile) and `incognito` (boolean) parameters. Reuses an existing browser page if one is open, otherwise creates a new one. |
 | **ui_push** | Push log entries, interactive dialogs, and output widgets to a Log View page — the recommended output channel for AI agents. Strings are shorthand for `log.info`. Dialog entries (`input.confirm`, `input.text`, `input.buttons`, `input.checkboxes`, `input.radioboxes`, `input.select`) block until the user responds. Output entries (`output.progress`, `output.grid`) support rich display — progress bars with upsert-by-id for real-time updates, and inline data grids from JSON or CSV strings. The Log View page is created automatically on first call and reused on subsequent calls. |
+| **read_guide** | Read a documentation guide by name (`ui-push`, `pages`, `scripting`, `graph`, `notebook`, `todo`, `links`). Returns the guide content as text. An alternative to fetching `notepad://guides/*` resources — works with AI clients that don't support MCP resources. |
 | **get_app_info** | Get app version, page count, and active page ID. |
 
 ### Multi-Window Support
@@ -85,7 +86,9 @@ MCP resources are read-only documents that AI clients can discover and read to g
 | **Links Guide** | `notepad://guides/links` | Links editor JSON format — LinkItem structure, categories, tags. Read before creating or editing links pages. |
 | **Full Guide** | `notepad://guides/full` | All guides combined into one document. Only read if you need the complete reference. |
 
-AI agents also receive **server instructions** on connection — a concise overview of js-notepad and its main workflows, with pointers to which resource to read for each task. This means agents have immediate context without reading any resource.
+AI agents also receive **server instructions** on connection — a concise overview of js-notepad and its main workflows, with pointers to which guide to read for each task. This means agents have immediate context without reading any resource.
+
+> **Tip:** All guides are also available via the `read_guide` tool — call `read_guide({ guide: "scripting" })` instead of fetching `notepad://guides/scripting`. This is useful for AI clients that don't support MCP resources.
 
 > **Note:** Claude Code users working inside the js-notepad project already have full documentation context via CLAUDE.md, so they rarely need to fetch resources explicitly. Resources are most useful for standalone AI clients connecting without any project context.
 
