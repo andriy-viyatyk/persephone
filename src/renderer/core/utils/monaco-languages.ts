@@ -20,6 +20,11 @@ const extraLanguages: MonacoLanguage[] = [
         "aliases": ['JSONL', 'JSON Lines', 'jsonl', 'NDJSON', 'ndjson'],
         "extensions": [".jsonl", ".ndjson", ".log.jsonl"],
         "id": "jsonl"
+    },
+    {
+        "aliases": ['Log', 'log'],
+        "extensions": [".log"],
+        "id": "log"
     }
 ];
 

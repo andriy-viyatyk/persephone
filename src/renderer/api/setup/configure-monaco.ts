@@ -8,6 +8,7 @@ import { defineRegLanguage } from "./monaco-languages/reg";
 import { defineCSVLanguage } from "./monaco-languages/csv";
 import { defineMermaidLanguage } from "./monaco-languages/mermaid";
 import { defineJsonlLanguage } from "./monaco-languages/jsonl";
+import { defineLogLanguage } from "./monaco-languages/log";
 import { loadLibraryIntelliSense } from "./library-intellisense";
 
 loader.config({ monaco });
@@ -66,6 +67,20 @@ const customTokenRules: monaco.editor.ITokenThemeRule[] = [
     { token: "csv.column8", foreground: "ff6347" },
     { token: "csv.column9", foreground: "32cd32" },
     { token: "delimiter.csv", foreground: "808080" },
+
+    // Log file colors
+    { token: "date.log", foreground: "6a9955" },
+    { token: "keyword.error.log", foreground: "f44747" },
+    { token: "keyword.warn.log", foreground: "cca700" },
+    { token: "keyword.info.log", foreground: "4fc1ff" },
+    { token: "keyword.debug.log", foreground: "4ec9b0" },
+    { token: "keyword.trace.log", foreground: "6a9955" },
+    { token: "string.log", foreground: "a0a0a0" },
+    { token: "string.escape.log", foreground: "a0a0a0" },
+    { token: "number.log", foreground: "b5cea8" },
+    { token: "constant.log", foreground: "569cd6" },
+    { token: "constant.guid.log", foreground: "b5cea8" },
+    { token: "constant.url.log", foreground: "4fc1ff" },
 ];
 
 const MONACO_THEME_NAME = "custom-dark";
@@ -215,6 +230,7 @@ export async function initMonaco() {
     defineCSVLanguage(monaco);
     defineMermaidLanguage(monaco);
     defineJsonlLanguage(monaco);
+    defineLogLanguage(monaco);
 
     await loadEditorTypes(monaco);
     loadLibraryIntelliSense();

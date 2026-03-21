@@ -4,6 +4,7 @@ All completed tasks, newest first.
 
 | ID | Title | Epic | Notes |
 |----|-------|------|-------|
+| US-226 | Log language for Monaco with syntax highlighting | | Custom Monarch tokenizer for `.log` files — timestamps, log levels (error/warn/info/debug/trace with bracketed abbreviations), strings in gray/silver, numbers, GUIDs, URLs, hex literals, constants, exception types, stack traces. 12 token color rules. |
 | US-225 | Add `read_guide` MCP tool | | New `read_guide` tool with `z.enum()` for all 7 guides. Rewrote MCP instructions block (shorter, scenario-focused, GitHub link). Updated all tool descriptions to reference `read_guide()` alongside `notepad://` URIs. Fixed `openUrlInBrowserTab` bug where active browser page was skipped, causing duplicate pages on consecutive `open_url` calls. |
 | US-224 | AppPageManager — Portal-based DOM stability with grouping for app pages | | `AppPageManager` with `GroupContainer` and `ImperativeSplitter`. CSS-based positioning (no reparenting) preserves iframes/webviews during group/ungroup. Pages.tsx rewritten to use portals. Compare mode handled per-page via `PageContent` component. |
 | US-223 | PageManager — Portal-based DOM stability for browser tabs | | New `PageManager` component using React portals with imperative DOM placeholders. Applied to browser editor internal tabs — closing/reordering tabs no longer reloads remaining webviews. BlankPageLinks moved inside portal per-tab, fixing scroll position preservation. |

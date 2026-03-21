@@ -10,6 +10,7 @@ Release notes and changelog for js-notepad.
 
 ### Fixes and Improvements
 
+- **Log file syntax highlighting** — `.log` files now get dedicated syntax coloring in the text editor: timestamps in muted green, log levels color-coded by severity (error in red, warn in yellow, info in cyan, debug in teal, trace in green), bracketed abbreviations like `[ERR]`/`[INF]`/`[WRN]`, quoted strings, numbers, GUIDs, URLs, hex literals, constants, and exception/stack trace lines.
 - **`read_guide` MCP tool** — AI agents can now read documentation guides via a dedicated `read_guide` tool call, as an alternative to fetching `notepad://` resource URIs. This works better with AI clients that don't support MCP resources natively.
 - **MCP server instructions and tool descriptions** — Rewritten to be shorter and scenario-focused, with all tool descriptions now referencing `read_guide()` alongside `notepad://` URIs for discovering documentation.
 - **Browser duplicate page fix** — Fixed a bug where calling `open_url` a second time via MCP would create a duplicate browser page instead of adding a tab to the existing one.
