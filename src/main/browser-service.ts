@@ -10,7 +10,7 @@
  * Registration key is `${tabId}/${internalTabId}` to support multiple
  * internal browser tabs per js-notepad page tab.
  */
-import { BrowserWindow, ipcMain, IpcMainEvent, session, webContents, WebContents } from "electron";
+import { app, BrowserWindow, ipcMain, IpcMainEvent, session, webContents, WebContents } from "electron";
 import {
     BrowserChannel,
     BrowserRegisterRequest,
@@ -19,6 +19,22 @@ import {
 import { globalPopupRateLimiter } from "../ipc/popup-rate-limiter";
 
 const BLOCKED_PROTOCOLS = ["file:", "app-asset:", "safe-file:"];
+
+// Track sessions whose User-Agent has already been cleaned
+const cleanedSessions = new WeakSet<Electron.Session>();
+
+/**
+ * Strip app name and Electron version from User-Agent so websites
+ * see a standard Chrome UA instead of "js-notepad/x.x.x ... Electron/x.x.x".
+ */
+function cleanUserAgent(ses: Electron.Session): void {
+    if (cleanedSessions.has(ses)) return;
+    cleanedSessions.add(ses);
+    const ua = ses.getUserAgent()
+        .replace(/\s*js-notepad\/\S+/i, "")
+        .replace(/\s*Electron\/\S+/i, "");
+    ses.setUserAgent(ua);
+}
 
 /** Extract a numeric value from a window.open() features string (e.g. "width=500,height=600"). */
 function parseFeature(features: string, name: string): number | undefined {
@@ -37,7 +53,8 @@ interface RegisteredWebview {
 // Active registrations: `${tabId}/${internalTabId}` → registration
 const registrations = new Map<string, RegisteredWebview>();
 
-// Use the global rate limiter for popup windows (window.open calls)
+// Track senders that already have a "destroyed" listener to avoid stacking
+const watchedSenders = new WeakSet<WebContents>();
 
 function regKey(tabId: string, internalTabId: string): string {
     return `${tabId}/${internalTabId}`;
@@ -314,10 +331,18 @@ function registerWebview(event: IpcMainEvent, request: BrowserRegisterRequest) {
         registrations.delete(key);
     });
 
-    // Clean up if the sender (renderer window) is destroyed
-    sender.once("destroyed", () => {
-        unregisterWebview(key);
-    });
+    // Clean up all registrations for this sender when the renderer window is destroyed.
+    // Only attach one listener per sender to avoid exceeding MaxListeners.
+    if (!watchedSenders.has(sender)) {
+        watchedSenders.add(sender);
+        sender.once("destroyed", () => {
+            for (const [k, reg] of registrations) {
+                if (reg.senderWebContents === sender) {
+                    unregisterWebview(k);
+                }
+            }
+        });
+    }
 
     registrations.set(key, {
         tabId,
@@ -350,6 +375,13 @@ function unregisterWebview(key: string) {
  * Initialize browser IPC handlers. Call once during app startup.
  */
 export function initBrowserHandlers(): void {
+    // Clean User-Agent for every browser partition session as soon as it's created.
+    // This must happen before any request is made, so we hook session-created
+    // rather than waiting for webview registration.
+    app.on("session-created", (ses) => {
+        cleanUserAgent(ses);
+    });
+
     ipcMain.on(
         BrowserChannel.register,
         (event, request: BrowserRegisterRequest) => {

@@ -51,3 +51,6 @@ export interface BrowserUrlEvent {
 
 /** Fired by browser editor on every URL change (navigation, redirect). */
 export const browserUrlChanged = new Subscription<BrowserUrlEvent>();
+
+/** Fired when the renderer window is about to close. Subscribers should release resources. */
+export const windowClosing = new Subscription<void>();

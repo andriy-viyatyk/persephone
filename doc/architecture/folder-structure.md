@@ -435,6 +435,7 @@ js-notepad/
 ├── mcp-http-server.ts      # MCP Streamable HTTP server (MCP SDK, AI agent integration)
 ├── browser-service.ts      # Browser page support (webview management)
 ├── browser-registration.ts # Default browser registration
+├── tor-service.ts          # Tor process lifecycle and per-partition SOCKS5 proxy
 ├── download-service.ts     # Download management
 ├── search-service.ts       # File search service
 ├── snip-service.ts         # Screen snip tool (capture, overlay windows, crop)
@@ -454,6 +455,7 @@ js-notepad/
 ├── api-types.ts            # IPC channel definitions
 ├── api-param-types.ts      # IPC parameter types
 ├── browser-ipc.ts          # Browser-specific IPC channels
+├── tor-ipc.ts              # Tor service IPC channels (start, stop, log)
 ├── search-ipc.ts           # Search IPC channels
 ├── popup-rate-limiter.ts   # Global popup/tab rate limiter (app-wide singleton)
 ├── main/                   # Main process handlers

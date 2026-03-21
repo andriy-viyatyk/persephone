@@ -278,6 +278,7 @@ See [/doc/standards/coding-style.md](doc/standards/coding-style.md) for complete
 | Advanced grid            | `/src/renderer/components/data-grid/AVGrid.tsx`   |
 | Color tokens             | `/src/renderer/theme/color.ts`                    |
 | Theme definitions        | `/src/renderer/theme/themes/`                     |
+| Tor service              | `/src/main/tor-service.ts`                        |
 | Named Pipe server        | `/src/main/pipe-server.ts`                        |
 | MCP HTTP server          | `/src/main/mcp-http-server.ts`                    |
 | MCP resource guides      | `/assets/mcp-res-*.md`                            |

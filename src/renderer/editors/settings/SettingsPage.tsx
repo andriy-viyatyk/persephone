@@ -14,7 +14,7 @@ import { WithPopupMenu } from "../../components/overlay/WithPopupMenu";
 import { MenuItem } from "../../components/overlay/PopupMenu";
 import { ui } from "../../api/ui";
 import { getPartitionString } from "../browser/BrowserPageModel";
-import { IncognitoIcon } from "../../theme/language-icons";
+import { IncognitoIcon, TorIcon } from "../../theme/language-icons";
 import { api } from "../../../ipc/renderer/api";
 import rendererEvents from "../../../ipc/renderer/renderer-events";
 const { ipcRenderer } = require("electron");
@@ -377,6 +377,27 @@ const SettingsPageRoot = styled.div({
         },
     },
 
+    "& .tor-field-label": {
+        fontSize: 11,
+        color: color.text.dark,
+        minWidth: 42,
+        flexShrink: 0,
+    },
+
+    "& .tor-port-input": {
+        width: 56,
+        fontSize: 11,
+        padding: "2px 6px",
+        backgroundColor: color.background.dark,
+        border: `1px solid ${color.border.default}`,
+        borderRadius: 3,
+        color: color.text.default,
+        outline: "none",
+        "&:focus": {
+            borderColor: color.border.active,
+        },
+    },
+
     "& .browser-reg-row": {
         display: "flex",
         alignItems: "center",
@@ -638,6 +659,100 @@ function BookmarksFileLine({ filePath, onBrowse, onClear }: {
     );
 }
 
+async function browseTorExe(): Promise<string | undefined> {
+    const result = await api.showOpenFileDialog({
+        title: "Select tor.exe",
+        filters: [{ name: "Executable Files", extensions: ["exe"] }],
+    });
+    return result?.[0];
+}
+
+function TorProfileRow() {
+    const torExePath = settings.use("tor.exe-path");
+    const torSocksPort = settings.use("tor.socks-port");
+    const torBookmarksFile = settings.use("tor.bookmarks-file");
+    const [portValue, setPortValue] = useState(String(torSocksPort));
+
+    useEffect(() => {
+        setPortValue(String(torSocksPort));
+    }, [torSocksPort]);
+
+    const handleBrowseTorExe = async () => {
+        const filePath = await browseTorExe();
+        if (filePath) {
+            settings.set("tor.exe-path", filePath);
+        }
+    };
+
+    const handleClearTorExe = () => {
+        settings.set("tor.exe-path", "");
+    };
+
+    const handleBrowseTorBookmarks = async () => {
+        const filePath = await browseBookmarksFile();
+        if (filePath) {
+            settings.set("tor.bookmarks-file", filePath);
+        }
+    };
+
+    const handlePortBlur = () => {
+        const num = parseInt(portValue, 10);
+        if (num >= 1024 && num <= 65535) {
+            settings.set("tor.socks-port", num);
+        } else {
+            setPortValue(String(torSocksPort));
+        }
+    };
+
+    const handlePortKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === "Enter") {
+            (e.target as HTMLInputElement).blur();
+        }
+    };
+
+    const torExeFilename = torExePath ? fpBasename(torExePath) : "";
+
+    return (
+        <div className="profile-row-group">
+            <div className="profile-row">
+                <TorIcon style={{ width: 14, height: 14, flexShrink: 0 }} />
+                <span className="profile-name">Tor</span>
+            </div>
+            <div className="profile-bookmarks-line">
+                <span className="tor-field-label">tor.exe:</span>
+                {torExeFilename ? (
+                    <span className="profile-bookmarks-path" title={torExePath} onClick={handleBrowseTorExe}>
+                        {torExeFilename}
+                    </span>
+                ) : (
+                    <span className="profile-bookmarks-placeholder" onClick={handleBrowseTorExe}>
+                        Not configured
+                    </span>
+                )}
+                {torExeFilename && (
+                    <button className="profile-bookmarks-clear" onClick={handleClearTorExe} title="Remove tor.exe path">×</button>
+                )}
+            </div>
+            <div className="profile-bookmarks-line">
+                <span className="tor-field-label">Port:</span>
+                <input
+                    className="tor-port-input"
+                    type="text"
+                    value={portValue}
+                    onChange={(e) => setPortValue(e.target.value)}
+                    onBlur={handlePortBlur}
+                    onKeyDown={handlePortKeyDown}
+                />
+            </div>
+            <BookmarksFileLine
+                filePath={torBookmarksFile}
+                onBrowse={handleBrowseTorBookmarks}
+                onClear={() => settings.set("tor.bookmarks-file", "")}
+            />
+        </div>
+    );
+}
+
 function BrowserProfilesSection() {
     const profiles = settings.use("browser-profiles");
     const defaultProfile = settings.use("browser-default-profile");
@@ -823,6 +938,7 @@ function BrowserProfilesSection() {
                         onClear={() => settings.set("browser-incognito-bookmarks-file", "")}
                     />
                 </div>
+                <TorProfileRow />
             </div>
 
             <div className="profile-add-form">

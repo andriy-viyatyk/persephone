@@ -82,10 +82,11 @@ export interface IPageCollection {
     /** Show an MCP Inspector page, optionally with a pre-filled URL. */
     showMcpInspectorPage(options?: { url?: string }): Promise<void>;
 
-    /** Show a browser page, optionally with a profile or URL. */
+    /** Show a browser page, optionally with a profile, Tor mode, or URL. */
     showBrowserPage(options?: {
         profileName?: string;
         incognito?: boolean;
+        tor?: boolean;
         url?: string;
     }): Promise<void>;
 

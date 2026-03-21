@@ -10,6 +10,7 @@ Release notes and changelog for js-notepad.
 
 ### New Features
 
+- **Browser (Tor) mode** — A new Tor browsing mode routes all traffic through the Tor network via SOCKS5 proxy for anonymous browsing. Ephemeral session like Incognito — no data is persisted. Requires `tor.exe` path configured in Settings → Browser Profiles. Shows a live status overlay during connection, a Tor indicator in the URL bar, and auto-stops `tor.exe` when the last Tor page closes. After session restore, a "Reconnect" button lets you resume.
 - **Bookmark context menu in browser** — Right-clicking a bookmark in the bookmarks panel or blank-page bookmarks now shows a full context menu: Open in New Tab, Edit, Open in Default Browser, browser profiles, Open in Incognito, Copy URL, Pin/Unpin, Delete.
 - **Pinned links context menu** — Pinned links now have the same full context menu (Edit, Open in..., Copy URL, Unpin, Delete), replacing the previous unpin-only action.
 - **Rich link tooltips** — Hovering a link in the bookmarks panel, blank-page bookmarks, or pinned links panel shows a tooltip with the link's title, URL, and thumbnail image.

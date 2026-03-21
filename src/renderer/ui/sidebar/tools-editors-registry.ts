@@ -2,7 +2,7 @@ import React, { ReactNode } from "react";
 import { pagesModel } from "../../api/pages";
 import { BrowserProfile } from "../../api/settings";
 import {
-    DrawIcon, GraphIcon, GridIcon, IncognitoIcon,
+    DrawIcon, GraphIcon, GridIcon, IncognitoIcon, TorIcon,
     JavascriptIcon, LinkIcon, NotebookIcon, TodoIcon, TypescriptIcon,
 } from "../../theme/language-icons";
 import { GlobeIcon, McpIcon } from "../../theme/icons";
@@ -113,6 +113,13 @@ const staticItems: CreatableItem[] = [
         label: "Browser (Incognito)",
         icon: React.createElement(IncognitoIcon),
         create: () => { pagesModel.showBrowserPage({ incognito: true }); },
+        category: "tool",
+    },
+    {
+        id: "browser-tor",
+        label: "Browser (Tor)",
+        icon: React.createElement(TorIcon),
+        create: () => { pagesModel.showBrowserPage({ tor: true }); },
         category: "tool",
     },
     {

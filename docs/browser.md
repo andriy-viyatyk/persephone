@@ -4,7 +4,7 @@
 
 A built-in web browser for viewing documentation, APIs, and web resources without leaving js-notepad.
 
-**Opening:** Click the dropdown arrow (&#9662;) next to the **+** button → **Browser** (if pinned), or open the **Tools & Editors** sidebar panel to find Browser, Browser Incognito, and individual browser profiles.
+**Opening:** Click the dropdown arrow (&#9662;) next to the **+** button → **Browser** (if pinned), or open the **Tools & Editors** sidebar panel to find Browser, Browser Incognito, Browser (Tor), and individual browser profiles.
 
 ---
 
@@ -93,6 +93,31 @@ Go to **Settings → Browser Profiles**:
 - All cookies, storage, and cache are automatically discarded when the tab closes
 - Search history is not saved
 - Bookmarks still work normally in incognito (only browsing data is ephemeral)
+
+### Tor Mode
+
+Browse through the [Tor network](https://www.torproject.org/) for anonymous, traffic-routed browsing. Like Incognito, Tor mode is ephemeral — no data is persisted after the tab closes.
+
+#### Setup
+
+1. Download the [Tor Expert Bundle](https://www.torproject.org/download/tor/) (contains `tor.exe`)
+2. Go to **Settings → Browser Profiles** — find the **Tor** row
+3. Set the **tor.exe path** (e.g., `C:\tor\tor.exe`)
+4. Optionally adjust the **SOCKS port** (default: `9050`)
+5. Optionally set a **bookmarks file** for the Tor profile
+
+#### Using Tor Mode
+
+- Open from the **Tools & Editors** sidebar panel → **Browser (Tor)**
+- On launch, js-notepad starts `tor.exe` and shows a **status overlay** with a live log of the Tor bootstrap process
+- Once connected, all traffic is routed through the Tor network via a SOCKS5 proxy
+- A **Tor indicator** appears in the URL bar — click it to show or hide the status overlay; a colored dot shows the connection status
+
+#### Lifecycle
+
+- `tor.exe` is started automatically when the first Tor browser page opens
+- `tor.exe` is stopped automatically when the last Tor browser page closes
+- After a **session restore** (app restart), Tor pages show a **"Reconnect"** button instead of auto-connecting — click it to restart `tor.exe` and resume browsing
 
 ---
 
@@ -251,7 +276,7 @@ The browser saves and restores the following across app restarts:
 - Navigation history per tab
 - Profile selection
 - Search engine selection and last search query
-- Search history (per profile, not saved for incognito)
+- Search history (per profile, not saved for incognito or Tor)
 - Tabs panel width
 - Bookmarks panel width
 - Home URL per tab

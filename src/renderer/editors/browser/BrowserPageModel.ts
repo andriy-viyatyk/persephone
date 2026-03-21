@@ -3,13 +3,14 @@ const { ipcRenderer } = require("electron");
 import { IPageState } from "../../../shared/types";
 import { getDefaultPageModelState, PageModel } from "../base";
 import { TComponentState } from "../../core/state/state";
-import { globalKeyDown, SubscriptionObject } from "../../core/state/events";
+import { globalKeyDown, windowClosing, SubscriptionObject } from "../../core/state/events";
 import { pagesModel } from "../../api/pages";
-import { IncognitoIcon } from "../../theme/language-icons";
+import { IncognitoIcon, TorIcon } from "../../theme/language-icons";
 import { GlobeIcon, OpenLinkIcon } from "../../theme/icons";
 import { settings, BrowserProfile } from "../../api/settings";
 import { DEFAULT_BROWSER_COLOR } from "../../theme/palette-colors";
 import { BrowserChannel } from "../../../ipc/browser-ipc";
+import { TorChannel } from "../../../ipc/tor-ipc";
 import { globalPopupRateLimiter } from "../../../ipc/popup-rate-limiter";
 import { searchHistoryManager } from "./browser-search-history";
 import { BrowserBookmarks } from "./BrowserBookmarks";
@@ -176,6 +177,14 @@ export interface BrowserPageState extends IPageState {
     profileName: string;
     /** Whether this is an incognito session. */
     isIncognito: boolean;
+    /** Whether this is a Tor browsing session. */
+    isTor: boolean;
+    /** Tor connection status. */
+    torStatus: "disconnected" | "connecting" | "connected" | "error";
+    /** Accumulated Tor log text (stdout from tor.exe). */
+    torLog: string;
+    /** Whether the Tor status overlay is visible. */
+    torOverlayVisible: boolean;
     /** Page-level mute — mutes all internal tabs. */
     pageMuted: boolean;
     /** True if any internal tab is currently emitting audio (for PageTab icon). */
@@ -263,6 +272,10 @@ export const getDefaultBrowserPageState = (): BrowserPageState => {
         tabsPanelWidth: 34,
         profileName: "",
         isIncognito: false,
+        isTor: false,
+        torStatus: "disconnected",
+        torLog: "",
+        torOverlayVisible: false,
         pageMuted: false,
         _anyTabAudible: false,
         searchEngineId: "google",
@@ -287,7 +300,16 @@ export const getDefaultBrowserPageState = (): BrowserPageState => {
 };
 
 /** Compute the Electron session partition string for a browser page. */
-export function getPartitionString(profileName: string, isIncognito: boolean, incognitoId?: string): string {
+export function getPartitionString(
+    profileName: string,
+    isIncognito: boolean,
+    incognitoId?: string,
+    isTor?: boolean,
+    torId?: string,
+): string {
+    if (isTor) {
+        return `browser-tor-${torId || crypto.randomUUID()}`;
+    }
     if (isIncognito) {
         return `browser-incognito-${incognitoId || crypto.randomUUID()}`;
     }
@@ -306,6 +328,7 @@ export class BrowserPageModel extends PageModel<BrowserPageState, void> {
     readonly bookmarksUI: BrowserBookmarksUIModel;
 
     private keyDownSub: SubscriptionObject;
+    private windowClosingSub: SubscriptionObject;
 
     constructor(state: TComponentState<BrowserPageState>) {
         super(state);
@@ -313,17 +336,20 @@ export class BrowserPageModel extends PageModel<BrowserPageState, void> {
         this.urlBar = new BrowserUrlBarModel(this);
         this.bookmarksUI = new BrowserBookmarksUIModel(this);
         this.keyDownSub = globalKeyDown.subscribe((e) => this.handleGlobalKeyDown(e!));
+        this.windowClosingSub = windowClosing.subscribe(() => this.handleWindowClosing());
         // Preload bookmarks silently after a short delay (don't block browser page opening)
         setTimeout(() => this.preloadBookmarks(), 300);
     }
 
     /** Stable random ID for incognito partitions (generated once per model instance). */
     private incognitoId = crypto.randomUUID();
+    /** Stable random ID for Tor partitions (generated once per model instance). */
+    private torId = crypto.randomUUID();
 
     /** Electron session partition string, derived from profile state. */
     get partition(): string {
         const s = this.state.get();
-        return getPartitionString(s.profileName, s.isIncognito, this.incognitoId);
+        return getPartitionString(s.profileName, s.isIncognito, this.incognitoId, s.isTor, this.torId);
     }
 
     /** Per-tab actual current URL (may differ from state after redirects). Keyed by internalTabId. */
@@ -335,7 +361,10 @@ export class BrowserPageModel extends PageModel<BrowserPageState, void> {
 
     /** Get the bookmarks file path for the current profile from settings. */
     getBookmarksFilePath(): string {
-        const { profileName, isIncognito } = this.state.get();
+        const { profileName, isIncognito, isTor } = this.state.get();
+        if (isTor) {
+            return settings.get("tor.bookmarks-file") || "";
+        }
         if (isIncognito) {
             return settings.get("browser-incognito-bookmarks-file") || "";
         }
@@ -399,18 +428,88 @@ export class BrowserPageModel extends PageModel<BrowserPageState, void> {
         return this.bookmarks;
     }
 
+    // -------------------------------------------------------------------------
+    // Tor proxy
+    // -------------------------------------------------------------------------
+
+    /** Listener for Tor log events from the main process. */
+    private torLogListener = (_event: any, line: string) => {
+        this.state.update((s) => {
+            s.torLog += (s.torLog ? "\n" : "") + line;
+        });
+    };
+
+    /** Start Tor proxy for this page's partition. Shows overlay with progress. */
+    initTorProxy = async (): Promise<{ success: boolean; error?: string }> => {
+        this.state.update((s) => {
+            s.torStatus = "connecting";
+            s.torOverlayVisible = true;
+            s.torLog = "";
+        });
+        ipcRenderer.on(TorChannel.log, this.torLogListener);
+
+        const torExePath = settings.get("tor.exe-path");
+        const socksPort = settings.get("tor.socks-port");
+        const result = await ipcRenderer.invoke(
+            TorChannel.start, torExePath, socksPort, this.partition,
+        );
+
+        this.state.update((s) => {
+            s.torStatus = result.success ? "connected" : "error";
+            if (result.error) {
+                s.torLog += (s.torLog ? "\n" : "") + result.error;
+            }
+            if (result.success) {
+                // Auto-hide overlay after brief delay
+                setTimeout(() => {
+                    this.state.update((s2) => { s2.torOverlayVisible = false; });
+                }, 500);
+            }
+        });
+        return result;
+    };
+
+    /** Reconnect Tor (e.g. after session restore). */
+    reconnectTor = async (): Promise<void> => {
+        await this.initTorProxy();
+    };
+
+    /** Toggle the Tor status overlay visibility. */
+    toggleTorOverlay = () => {
+        this.state.update((s) => { s.torOverlayVisible = !s.torOverlayVisible; });
+    };
+
+    /** Release Tor resources when the renderer window is closing. */
+    private handleWindowClosing = () => {
+        const s = this.state.get();
+        if (s.isTor) {
+            ipcRenderer.removeListener(TorChannel.log, this.torLogListener);
+            ipcRenderer.invoke(TorChannel.stop, this.partition);
+        }
+    };
+
     async dispose(): Promise<void> {
         this.keyDownSub.unsubscribe();
+        this.windowClosingSub.unsubscribe();
         this.bookmarksUI.dispose();
         if (this.bookmarks) {
             await this.bookmarks.dispose();
             this.bookmarks = null;
         }
+
+        const s = this.state.get();
+
+        // Clean up Tor listener and stop partition
+        if (s.isTor) {
+            ipcRenderer.removeListener(TorChannel.log, this.torLogListener);
+            ipcRenderer.invoke(TorChannel.stop, this.partition);
+        }
+
         await super.dispose();
 
         // Clear HTTP cache for this partition to free disk space.
-        // Skip incognito — no persist: prefix means no disk storage.
-        if (!this.state.get().isIncognito) {
+        // Skip incognito/tor — no persist: prefix means no disk storage.
+        if (!s.isIncognito && !s.isTor) {
             ipcRenderer.invoke(BrowserChannel.clearCache, this.partition);
         }
     }
@@ -495,6 +594,7 @@ export class BrowserPageModel extends PageModel<BrowserPageState, void> {
         data.pageTitle = s.pageTitle;
         data.profileName = s.profileName;
         data.isIncognito = s.isIncognito;
+        data.isTor = s.isTor;
         data.searchEngineId = s.searchEngineId;
         data.lastSearchQuery = s.lastSearchQuery;
         // Top-level url = active tab's actual URL
@@ -535,6 +635,20 @@ export class BrowserPageModel extends PageModel<BrowserPageState, void> {
             if (data.tabsPanelWidth) s.tabsPanelWidth = data.tabsPanelWidth;
             if (data.profileName !== undefined) s.profileName = data.profileName;
             if (data.isIncognito !== undefined) s.isIncognito = data.isIncognito;
+            if (data.isTor !== undefined) {
+                s.isTor = data.isTor;
+                if (data.isTor) {
+                    // After restore: show overlay with "Reconnect", clear tabs
+                    s.torStatus = "disconnected";
+                    s.torOverlayVisible = true;
+                    const fresh = createTab();
+                    s.tabs = [fresh];
+                    s.activeTabId = fresh.id;
+                    s.url = DEFAULT_URL;
+                    s.pageTitle = "";
+                    s.title = "Browser";
+                }
+            }
             if (data.searchEngineId) s.searchEngineId = data.searchEngineId;
             if (data.lastSearchQuery) s.lastSearchQuery = data.lastSearchQuery;
         });
@@ -542,6 +656,9 @@ export class BrowserPageModel extends PageModel<BrowserPageState, void> {
 
     getIcon = (): ReactNode => {
         const s = this.state.get();
+        if (s.isTor) {
+            return createElement(TorIcon);
+        }
         if (s.isIncognito) {
             return createElement(IncognitoIcon);
         }
@@ -708,9 +825,9 @@ export class BrowserPageModel extends PageModel<BrowserPageState, void> {
                 ...tab.navHistory.filter((u) => u !== url),
             ].slice(0, 100);
         });
-        // Add hostname to search history (unless incognito)
+        // Add hostname to search history (unless incognito/tor)
         const s = this.state.get();
-        if (!s.isIncognito) {
+        if (!s.isIncognito && !s.isTor) {
             try {
                 const hostname = new URL(url).hostname;
                 if (hostname) {

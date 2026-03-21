@@ -69,7 +69,7 @@ export class BrowserUrlBarModel {
 
     get isBlankPage() {
         const { urlInput } = this.model.state.get();
-        return !urlInput || urlInput === "about:blank";
+        return !urlInput;
     }
 
     get showSearchEngineSelector() {
@@ -85,7 +85,7 @@ export class BrowserUrlBarModel {
 
     get suggestionsMode(): "navigation" | "search" {
         const { userHasTyped, urlInput } = this.model.state.get();
-        return (!userHasTyped && urlInput && urlInput !== "about:blank")
+        return (!userHasTyped && urlInput)
             ? "navigation"
             : "search";
     }
@@ -99,7 +99,7 @@ export class BrowserUrlBarModel {
             return activeTab?.navHistory ?? [];
         }
         const text = s.urlInput.trim();
-        if (!text || text === "about:blank") return s.searchEntries;
+        if (!text) return s.searchEntries;
         const words = text.toLowerCase().split(/\s+/).filter((w) => w);
         if (!words.length) return s.searchEntries;
         return s.searchEntries.filter((entry) => {

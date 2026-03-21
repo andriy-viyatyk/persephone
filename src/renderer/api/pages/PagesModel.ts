@@ -200,6 +200,7 @@ export class PagesModel extends TModel<OpenFilesState> {
     showBrowserPage = (options?: {
         profileName?: string;
         incognito?: boolean;
+        tor?: boolean;
         url?: string;
     }) => this.lifecycle.showBrowserPage(options);
     showMcpInspectorPage = (options?: { url?: string }) =>

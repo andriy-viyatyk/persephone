@@ -33,7 +33,10 @@ export type AppSettingsKey =
     | "mcp.port"
     | "script-library.path"
     | "drawing.library-path"
-    | "pinned-editors";
+    | "pinned-editors"
+    | "tor.exe-path"
+    | "tor.socks-port"
+    | "tor.bookmarks-file";
 
 // =============================================================================
 // State
@@ -57,6 +60,9 @@ const settingsComments: Partial<Record<AppSettingsKey, string>> = {
     "script-library.path": "Path to the script library folder.\nA folder on disk where saved scripts and reusable modules are stored.",
     "drawing.library-path": "Path to Excalidraw library folder.\nStores reusable shapes and components for the drawing editor.",
     "pinned-editors": "Pinned editors shown in the '+' new-page menu.\nArray of creatable item IDs. Reorder to change menu order.",
+    "tor.exe-path": "Path to tor.exe. Required for Browser (Tor) mode.\nDownload the Tor Expert Bundle or find tor.exe in your Tor Browser installation folder.",
+    "tor.socks-port": "SOCKS proxy port for Tor.\nDefault: 9050. Change if port 9050 is already in use.",
+    "tor.bookmarks-file": "Path to the .link.json bookmarks file for Browser (Tor) mode.",
 };
 
 const defaultAppSettingsState = {
@@ -75,6 +81,9 @@ const defaultAppSettingsState = {
         "script-library.path": "",
         "drawing.library-path": "",
         "pinned-editors": ["script-js", "script-ts", "draw-view", "grid-json", "grid-csv", "browser"] as string[],
+        "tor.exe-path": "",
+        "tor.socks-port": 9050,
+        "tor.bookmarks-file": "",
     },
 };
 

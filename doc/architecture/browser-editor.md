@@ -190,12 +190,15 @@ The renderer builds the menu dynamically based on `params` fields from the `cont
 | `src/renderer/editors/browser/BookmarksDrawer.tsx` | Renderer | Sliding overlay drawer rendering the Link Editor for bookmarks |
 | `src/renderer/editors/browser/UrlSuggestionsDropdown.tsx` | Renderer | URL bar dropdown with search history and navigation history |
 | `src/renderer/editors/browser/browser-search-history.ts` | Renderer | Per-profile persistent search history storage (file-based) |
+| `src/renderer/editors/browser/TorStatusOverlay.tsx` | Renderer | Tor connection overlay with spinner, log, reconnect button |
 | `src/main/browser-service.ts` | Main | Attaches to webContents, relays events via IPC, audio state, hotkeys, cache cleanup |
+| `src/main/tor-service.ts` | Main | Tor process lifecycle: spawn/kill tor.exe, per-partition SOCKS5 proxy, torrc generation |
 | `src/preload-webview.ts` | Guest | MutationObserver for title/favicon, image tracking on link clicks |
 | `src/ipc/browser-ipc.ts` | Shared | IPC channel names and type definitions |
+| `src/ipc/tor-ipc.ts` | Shared | Tor IPC channels: start, stop, log |
 | `src/ipc/popup-rate-limiter.ts` | Shared | Time-window rate limiter for popup/tab spam blocking |
 | `src/renderer/editors/shared/link-open-menu.tsx` | Renderer | Shared helper for "Open in..." browser menu items |
-| `src/renderer/core/state/events.ts` | Renderer | `globalKeyDown` Subscription for keyboard event broadcasting, `browserUrlChanged` for cross-editor URL event broadcasting |
+| `src/renderer/core/state/events.ts` | Renderer | `globalKeyDown` Subscription for keyboard event broadcasting, `browserUrlChanged` for cross-editor URL event broadcasting, `windowClosing` for resource cleanup on window close |
 
 ## Why the Main Process Bridge?
 
@@ -248,9 +251,11 @@ The main preload (`src/preload.ts`) exposes the path to the webview preload:
 
 ## Session Restore
 
-`getRestoreData()` saves all internal tabs with their actual current URLs (from `currentUrls` map, which tracks post-redirect URLs). `applyRestoreData()` restores them with fresh internal tab IDs (since IDs are ephemeral). The active tab is identified by index position during restore. Profile name and incognito flag are also saved/restored.
+`getRestoreData()` saves all internal tabs with their actual current URLs (from `currentUrls` map, which tracks post-redirect URLs). `applyRestoreData()` restores them with fresh internal tab IDs (since IDs are ephemeral). The active tab is identified by index position during restore. Profile name, incognito flag, and Tor flag are also saved/restored.
 
-Navigation history (`navHistory` on each `BrowserTabData`) is persisted as part of the tab state via `getRestoreData()`. Search history is stored separately per profile in the app data folder using `SearchHistoryStorage` (file-based, max 2000 entries). Incognito profiles skip search history persistence.
+Navigation history (`navHistory` on each `BrowserTabData`) is persisted as part of the tab state via `getRestoreData()`. Search history is stored separately per profile in the app data folder using `SearchHistoryStorage` (file-based, max 2000 entries). Incognito and Tor profiles skip search history persistence.
+
+Tor pages are restored with a fresh empty tab (no URLs from previous session) and `torStatus: "disconnected"`. The Tor overlay is shown with a "Reconnect" button — the user must explicitly reconnect.
 
 ## Profiles & Incognito
 
@@ -263,8 +268,9 @@ Each browser page is bound to a **profile** that determines its Electron session
 | Default profile | `persist:browser-default` | Persists across restarts |
 | Named profile "work" | `persist:browser-work` | Persists across restarts |
 | Incognito | `browser-incognito-<uuid>` | Cleared when page closes |
+| Tor | `browser-tor-<uuid>` | Cleared when page closes |
 
-`getPartitionString()` in `BrowserPageModel.ts` computes the partition. `BrowserPageModel.partition` is a **getter** (not a stored field) because the profile state may be set after model construction in `showBrowserPage()`. Each incognito model has a stable `incognitoId` (random UUID generated once per instance) to keep the partition consistent across getter calls.
+`getPartitionString()` in `BrowserPageModel.ts` computes the partition. `BrowserPageModel.partition` is a **getter** (not a stored field) because the profile state may be set after model construction in `showBrowserPage()`. Each incognito/tor model has a stable `incognitoId`/`torId` (random UUID generated once per instance) to keep the partition consistent across getter calls.
 
 ### Profile Settings
 
@@ -277,12 +283,29 @@ Profiles are stored in app settings as `BrowserProfile[]` (`{ name, color }`). A
 | Default profile (no name) | GlobeIcon tinted with `DEFAULT_BROWSER_COLOR` or default profile's color |
 | Named profile | GlobeIcon tinted with the profile's color |
 | Incognito | IncognitoIcon |
+| Tor | TorIcon (purple onion, branded colors) |
 
 The `resolvedColor` getter on `BrowserPageModel` resolves the color chain: explicit profile → default profile setting → `DEFAULT_BROWSER_COLOR`.
 
 ### Incognito Indicator
 
 Incognito pages show an `IncognitoIcon` inside the URL bar's left edge, using the `startButtons` prop on `TextField`.
+
+### Tor Mode
+
+Tor mode routes all webview traffic through the Tor network via a SOCKS5 proxy. Like incognito, Tor partitions are ephemeral (no `persist:` prefix). The Tor process is managed lazily — started on first Tor page open, stopped when the last Tor page closes.
+
+**Architecture:**
+- `src/main/tor-service.ts` — manages `tor.exe` child process lifecycle, generates minimal torrc, sets `socks5://` proxy per partition via `session.fromPartition().setProxy()`
+- `src/ipc/tor-ipc.ts` — IPC channels: `tor:start`, `tor:stop`, `tor:log`
+- `src/renderer/editors/browser/TorStatusOverlay.tsx` — overlay shown during connection with live log, spinner, and reconnect button
+- `activePartitions: Set<string>` acts as consumer counter — Tor stops only when all partitions are released
+
+**Tor indicator in URL bar:** A clickable TorIcon with a small status dot (green=connected, red=error, yellow=disconnected). Clicking toggles the `TorStatusOverlay`.
+
+**Session restore:** Tor pages are restored with `torStatus: "disconnected"`, `torOverlayVisible: true`, and an empty tab. User must click "Reconnect" — no auto-connect on restore.
+
+**Window close cleanup:** `BrowserPageModel` subscribes to the `windowClosing` event (from `GlobalEventService.beforeunload`) to release Tor partitions when the window closes without explicit tab disposal.
 
 ### Clear Profile Data
 
@@ -299,7 +322,7 @@ The `clearCache` IPC handler runs three operations in parallel:
 - `session.clearCodeCaches({})` — V8 compiled bytecode cache
 - `session.clearStorageData({ storages: ["serviceworkers", "cachestorage"] })` — service worker scripts and CacheStorage
 
-Skipped for incognito pages since they use non-persistent partitions (no `persist:` prefix = memory-only).
+Skipped for incognito and Tor pages since they use non-persistent partitions (no `persist:` prefix = memory-only).
 
 **Disposal lifecycle:** `page.dispose()` is called from the `onClose` callback in `PagesModel.ts`, which fires when the user closes a tab. The `movePageOut` flow (tab transfer to another window) calls `detachPage()` first, which clears `onClose`, preventing disposal of transferred pages.
 

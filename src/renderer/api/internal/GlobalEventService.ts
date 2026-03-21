@@ -6,6 +6,7 @@ import { scriptRunner } from "../../scripting/ScriptRunner";
 import { fs } from "../fs";
 import { appWindow } from "../window";
 import { RendererEvent } from "../../../ipc/api-types";
+import { windowClosing } from "../../core/state/events";
 
 /**
  * Global event service for document/window listeners.
@@ -19,6 +20,7 @@ export class GlobalEventService {
         document.addEventListener("drop", this.handleDrop);
         document.addEventListener("wheel", this.handleWheel, { passive: false });
         window.addEventListener("unhandledrejection", this.handleUnhandledRejection);
+        window.addEventListener("beforeunload", this.handleBeforeUnload);
     }
 
     private handleContextMenu = (e: PointerEvent) => {
@@ -84,5 +86,9 @@ export class GlobalEventService {
         if (scriptRunner.handlePromiseException) {
             ui.notify(`Unhandled promise rejection: ${e.reason}`, "error");
         }
+    };
+
+    private handleBeforeUnload = () => {
+        windowClosing.send(undefined as any);
     };
 }

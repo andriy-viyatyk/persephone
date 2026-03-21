@@ -1,6 +1,9 @@
 /** Default cyan color for the built-in browser profile. */
 export const DEFAULT_BROWSER_COLOR = "#4DD0E1";
 
+/** Tor Browser purple color for the Tor profile icon. */
+export const TOR_BROWSER_COLOR = "#7D4698";
+
 /** Predefined color palette — uses named browser colors for simplicity.
  *  Shared across features: todo tags, browser profiles. */
 export const TAG_COLORS = [

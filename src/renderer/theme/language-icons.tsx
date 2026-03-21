@@ -560,6 +560,22 @@ export const IncognitoIcon = createIconWithViewBox("0 0 32 32")(
     </g>,
 );
 
+/** Tor (onion) icon — purple layers matching the Tor Browser brand. */
+export const TorIcon = createIconWithViewBox("0 0 32 32")(
+    <g>
+        {/* Outer layer */}
+        <ellipse cx="16" cy="17" rx="10" ry="11" fill="#7D4698" />
+        {/* Middle layer */}
+        <ellipse cx="16" cy="17" rx="6.5" ry="7.5" fill="#A06AB4" />
+        {/* Inner core */}
+        <ellipse cx="16" cy="17" rx="3" ry="3.5" fill="#C49ED2" />
+        {/* Stem */}
+        <path d="M16 6V3" stroke="#7D4698" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+        {/* Leaf */}
+        <path d="M16 5c2-2 4.5-2 5-1s-1 3-3 3" stroke="#7D4698" strokeWidth="1.2" strokeLinecap="round" fill="none" />
+    </g>,
+);
+
 export const GraphIcon = createIconWithViewBox("0 0 32 32")(
     <g>
         {/* Links */}

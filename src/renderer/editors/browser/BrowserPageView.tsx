@@ -20,7 +20,9 @@ import {
     StarIcon,
     StopIcon,
 } from "../../theme/icons";
-import { IncognitoIcon } from "../../theme/language-icons";
+import { IncognitoIcon, TorIcon } from "../../theme/language-icons";
+import { CircularProgress } from "../../components/basic/CircularProgress";
+import { TorStatusOverlay } from "./TorStatusOverlay";
 import {
     BrowserPageModel,
     BrowserPageState,
@@ -81,6 +83,31 @@ const BrowserPageViewRoot = styled.div({
             color: color.text.default,
             backgroundColor: color.background.light,
         },
+    },
+
+    "& .tor-indicator": {
+        cursor: "pointer",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "0 2px",
+        position: "relative",
+        "& svg": {
+            width: 14,
+            height: 14,
+        },
+    },
+
+    "& .tor-status-dot": {
+        position: "absolute",
+        bottom: 0,
+        right: 0,
+        width: 6,
+        height: 6,
+        borderRadius: "50%",
+        "&.connected": { backgroundColor: color.misc.green },
+        "&.error": { backgroundColor: color.misc.red },
+        "&.disconnected": { backgroundColor: color.misc.yellow },
     },
 
     "& .loading-bar": {
@@ -294,8 +321,8 @@ function BrowserWebviewItem({
                         webview.getURL() || model.currentUrls.get(internalTabId) || "";
                     model.cacheFavicon(currentUrl, faviconUrl);
                     model.updateTab(internalTabId, { favicon: faviconUrl });
-                    // Save favicon to disk cache when not incognito
-                    if (!model.state.get().isIncognito) {
+                    // Save favicon to disk cache when not incognito/tor
+                    if (!model.state.get().isIncognito && !model.state.get().isTor) {
                         import("../link-editor/favicon-cache").then(({ getHostname, saveFavicon, consumeFaviconSaveRequest }) => {
                             const hostname = getHostname(currentUrl);
                             if (!hostname) return;
@@ -417,7 +444,7 @@ function BrowserPageView({ model }: BrowserPageViewProps) {
     const {
         url, loading, canGoBack, canGoForward,
         tabs, activeTabId, tabsPanelWidth,
-        homeUrl, isIncognito,
+        homeUrl, isIncognito, isTor, torStatus, torLog, torOverlayVisible,
         urlInput, suggestionsOpen, hoveredIndex,
         popupOpen, bookmarksOpen, bookmarksWidth,
         bookmarksReady, isBookmarked, blockedPopupCount,
@@ -434,6 +461,10 @@ function BrowserPageView({ model }: BrowserPageViewProps) {
             tabsPanelWidth: s.tabsPanelWidth,
             homeUrl: activeTab?.homeUrl ?? "",
             isIncognito: s.isIncognito,
+            isTor: s.isTor,
+            torStatus: s.torStatus,
+            torLog: s.torLog,
+            torOverlayVisible: s.torOverlayVisible,
             // Ephemeral state from sub-models
             urlInput: s.urlInput,
             suggestionsOpen: s.suggestionsOpen,
@@ -552,6 +583,23 @@ function BrowserPageView({ model }: BrowserPageViewProps) {
                         placeholder="Enter URL or search term..."
                         startButtons={(() => {
                             const btns = [
+                                ...(isTor ? [
+                                    <span
+                                        key="tor"
+                                        className="tor-indicator"
+                                        onClick={(e) => { e.stopPropagation(); model.toggleTorOverlay(); }}
+                                        title="Tor status"
+                                    >
+                                        {torStatus === "connecting" ? (
+                                            <CircularProgress size={14} />
+                                        ) : (
+                                            <TorIcon />
+                                        )}
+                                        {torStatus !== "connecting" && (
+                                            <span className={`tor-status-dot ${torStatus}`} />
+                                        )}
+                                    </span>,
+                                ] : []),
                                 ...(isIncognito ? [
                                     <IncognitoIcon key="incognito" color={color.icon.light} />,
                                 ] : []),
@@ -568,8 +616,8 @@ function BrowserPageView({ model }: BrowserPageViewProps) {
                         })()}
                         startButtonsWidth={
                             showSearchEngineSelector
-                                ? (currentEngineName.length * 7 + 20) + (isIncognito ? 20 : 0)
-                                : undefined
+                                ? (currentEngineName.length * 7 + 20) + (isIncognito ? 20 : 0) + (isTor ? 22 : 0)
+                                : (isTor ? 22 : undefined)
                         }
                         endButtons={[
                             <Button
@@ -684,6 +732,13 @@ function BrowserPageView({ model }: BrowserPageViewProps) {
                             );
                         }}
                     />
+                    {isTor && torOverlayVisible && (
+                        <TorStatusOverlay
+                            model={model}
+                            torStatus={torStatus}
+                            torLog={torLog}
+                        />
+                    )}
                     {popupOpen && <div className="webview-click-overlay" />}
                     {findBarVisible && (
                         <BrowserFindBar

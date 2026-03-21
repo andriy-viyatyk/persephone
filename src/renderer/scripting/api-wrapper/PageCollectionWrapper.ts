@@ -116,6 +116,7 @@ export class PageCollectionWrapper {
     showBrowserPage(options?: {
         profileName?: string;
         incognito?: boolean;
+        tor?: boolean;
         url?: string;
     }): Promise<void> {
         return this.pages.showBrowserPage(options);

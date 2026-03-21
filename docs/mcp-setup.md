@@ -58,7 +58,7 @@ gemini --mcp-server http://localhost:7865/mcp
 | **get_active_page** | Get the active page with content and metadata. |
 | **create_page** | Create a new page with optional content, language, and editor. Returns a clear error with specific hints for page-editor types (browser, PDF, image, MCP Inspector, etc.) — use `open_url` or `execute_script` instead. |
 | **set_page_content** | Update text content of a page by ID. |
-| **open_url** | Open a URL in the [built-in browser](./browser.md). Accepts optional `profileName` (browser profile) and `incognito` (boolean) parameters. Reuses an existing browser page if one is open, otherwise creates a new one. |
+| **open_url** | Open a URL in the [built-in browser](./browser.md). Accepts optional `profileName` (browser profile), `incognito` (boolean), and `tor` (boolean) parameters. Reuses an existing browser page if one is open, otherwise creates a new one. |
 | **ui_push** | Push log entries, interactive dialogs, and output widgets to a Log View page — the recommended output channel for AI agents. Strings are shorthand for `log.info`. Dialog entries (`input.confirm`, `input.text`, `input.buttons`, `input.checkboxes`, `input.radioboxes`, `input.select`) block until the user responds. Output entries (`output.progress`, `output.grid`) support rich display — progress bars with upsert-by-id for real-time updates, and inline data grids from JSON or CSV strings. The Log View page is created automatically on first call and reused on subsequent calls. |
 | **read_guide** | Read a documentation guide by name (`ui-push`, `pages`, `scripting`, `graph`, `notebook`, `todo`, `links`). Returns the guide content as text. An alternative to fetching `notepad://guides/*` resources — works with AI clients that don't support MCP resources. |
 | **get_app_info** | Get app version, page count, and active page ID. |
@@ -117,7 +117,7 @@ The agent will use `create_page` with `language: "javascript"` and the content.
 
 Ask: *"Open the GitHub API docs in js-notepad"*
 
-The agent will use `open_url` with the URL. You can also ask for a specific profile or incognito mode: *"Open google.com in incognito"*.
+The agent will use `open_url` with the URL. You can also ask for a specific profile, incognito mode, or Tor mode: *"Open google.com in incognito"*, *"Open this page through Tor"*.
 
 ### Transform data
 

@@ -599,18 +599,36 @@ export class PagesLifecycleModel {
     showBrowserPage = async (options?: {
         profileName?: string;
         incognito?: boolean;
+        tor?: boolean;
         url?: string;
     }): Promise<void> => {
+        // Validate Tor configuration before creating the page
+        if (options?.tor) {
+            const torPath = settings.get("tor.exe-path");
+            if (!torPath) {
+                ui.notify(
+                    "Browser (Tor) requires tor.exe path. Configure it in Settings → tor.exe-path",
+                    "error",
+                );
+                return;
+            }
+            if (!(await appFs.exists(torPath))) {
+                ui.notify(`tor.exe not found at: ${torPath}`, "error");
+                return;
+            }
+        }
+
         const browserModule = await import(
             "../../editors/browser/BrowserPageView"
         );
         const model =
             await browserModule.default.newEmptyPageModel("browserPage");
         if (model) {
-            if (options?.profileName || options?.incognito) {
+            if (options?.profileName || options?.incognito || options?.tor) {
                 model.state.update((s: any) => {
                     if (options.profileName) s.profileName = options.profileName;
                     if (options.incognito) s.isIncognito = true;
+                    if (options.tor) s.isTor = true;
                 });
             }
             if (options?.url) {
@@ -625,6 +643,11 @@ export class PagesLifecycleModel {
             }
             await model.restore();
             this.addPage(model);
+
+            // Start Tor proxy after page is visible (overlay shows progress)
+            if (options?.tor) {
+                (model as any).initTorProxy();
+            }
         }
     };
 

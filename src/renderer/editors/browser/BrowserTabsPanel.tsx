@@ -76,10 +76,13 @@ const BrowserTabsPanelRoot = styled.div({
             width: 14,
             height: 14,
             color: color.icon.default,
+            "&.hidden": { display: "none" },
         },
         "& img": {
             width: 14,
             height: 14,
+            display: "block",
+            objectFit: "contain",
         },
     },
 
@@ -198,10 +201,18 @@ function TabItem({
         >
             <div className="tab-favicon">
                 {tab.favicon ? (
-                    <img src={tab.favicon} alt="" />
-                ) : (
-                    <GlobeIcon />
-                )}
+                    <img
+                        src={tab.favicon}
+                        alt=""
+                        referrerPolicy="no-referrer"
+                        onError={(e) => {
+                            // Hide broken image, show fallback globe icon
+                            (e.target as HTMLImageElement).style.display = "none";
+                            (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden");
+                        }}
+                    />
+                ) : null}
+                <GlobeIcon className={tab.favicon ? "hidden" : ""} />
             </div>
             {!compact && (
                 <div className="tab-title">
