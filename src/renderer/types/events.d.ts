@@ -1,4 +1,4 @@
-import { MenuItem } from '../components/overlay/PopupMenu';
+import { MenuItem } from '../api/events/MenuItem';
 
 declare global {
   interface MouseEvent {

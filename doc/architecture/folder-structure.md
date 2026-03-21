@@ -77,6 +77,13 @@ js-notepad/
 │   │   ├── WindowStateService.ts    # Window maximize/zoom state tracking
 │   │   └── RendererEventsService.ts # IPC event subscriptions (open file, quit, etc.)
 │   │
+│   ├── events/             # Event channel system (scriptable events)
+│   │   ├── BaseEvent.ts             # Base event class with `handled` flag
+│   │   ├── EventChannel.ts          # EventChannel<T> — subscribe, send, sendAsync
+│   │   ├── MenuItem.ts              # MenuItem interface (canonical location)
+│   │   ├── events.ts                # Event subclasses (ContextMenuEvent<T>, etc.)
+│   │   └── index.ts
+│   │
 │   ├── shell/              # Shell service — OS integration
 │   │   ├── index.ts                 # IShell facade (composes sub-services)
 │   │   ├── shell-calls.ts           # IPC calls to main process
@@ -118,7 +125,8 @@ js-notepad/
 │       ├── svg-editor.d.ts     # ISvgEditor
 │       ├── html-editor.d.ts    # IHtmlEditor
 │       ├── mermaid-editor.d.ts # IMermaidEditor
-│       └── graph-editor.d.ts  # IGraphEditor, IGraphNode, IGraphComponent, IGraphSearchResult
+│       ├── graph-editor.d.ts  # IGraphEditor, IGraphNode, IGraphComponent, IGraphSearchResult
+│       └── events.d.ts       # IEventChannel, IBaseEvent, IContextMenuEvent, MenuItem, IFileTarget
 │
 ├── ui/                     # Application Shell
 │   ├── app/                # Root layout

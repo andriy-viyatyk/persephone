@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import React, { CSSProperties, ReactNode, useCallback, useEffect } from "react";
+import React, { CSSProperties, useCallback, useEffect } from "react";
 import clsx from "clsx";
 
 import { Popper, PopperProps, PopperRoot } from "./Popper";
@@ -15,6 +15,8 @@ import ReactDOM from "react-dom";
 import { TComponentState } from "../../core/state/state";
 import { showPopper } from "../../ui/dialogs/poppers/Poppers";
 import { FlexSpace } from "../layout/Elements";
+import type { MenuItem } from "../../api/events/MenuItem";
+export type { MenuItem } from "../../api/events/MenuItem";
 
 const PopupMenuRoot = styled(PopperRoot)<{
     height?: CSSProperties["height"];
@@ -77,20 +79,6 @@ const PopupMenuRoot = styled(PopperRoot)<{
     }),
     { label: "PopupMenuRoot" },
 );
-
-export interface MenuItem {
-    label: string;
-    onClick?: () => void;
-    disabled?: boolean;
-    icon?: ReactNode;
-    invisible?: boolean;
-    startGroup?: boolean;
-    hotKey?: string;
-    selected?: boolean; // initially highlighted item
-    id?: string;
-    items?: MenuItem[];
-    minor?: boolean;
-}
 
 export interface PopupMenuProps extends PopperProps {
     items: ComponentOptions<MenuItem>;

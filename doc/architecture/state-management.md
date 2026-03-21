@@ -243,6 +243,28 @@ const sub = event.subscribe(data => {}); // listen
 sub.unsubscribe();                       // cleanup
 ```
 
+### EventChannel\<T\>
+
+Scriptable event channel in `api/events/EventChannel.ts`. Supports both fire-and-forget and async pipeline patterns. Designed for events that user scripts can subscribe to.
+
+```typescript
+const channel = new EventChannel<ContextMenuEvent<IFileTarget>>({ name: "fileExplorer.onContextMenu" });
+
+// Fire-and-forget (sync, event frozen — subscribers observe only)
+channel.send(event);
+
+// Async pipeline (subscribers can modify event, short-circuits on handled)
+const ok = await channel.sendAsync(event);
+
+// Subscribe (sync or async handlers)
+const sub = channel.subscribe((event) => { event.addItem({ label: "Custom", onClick: () => {} }); });
+
+// Default handler (runs last, skipped if event.handled)
+channel.subscribeDefault((event) => { showMenu(event.items); });
+```
+
+Unlike `Subscription<T>`, `EventChannel` uses a handler array (not `EventTarget`), supports async pipelines with sequential execution, and provides `subscribeDefault()` for fallback behavior.
+
 ## Object Model State Pattern
 
 The Object Model (`/src/renderer/api/`) uses these primitives internally. Each API module owns its state and exposes it through typed interfaces.
