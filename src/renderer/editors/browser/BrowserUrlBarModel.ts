@@ -220,6 +220,9 @@ export class BrowserUrlBarModel {
     };
 
     handleUrlBlur = () => {
+        // Clear any lingering DOM selection from the URL input so it doesn't
+        // leak into global context menus as phantom "selected text".
+        window.getSelection()?.removeAllRanges();
         this.model.state.update((s) => {
             s.suggestionsOpen = false;
         });

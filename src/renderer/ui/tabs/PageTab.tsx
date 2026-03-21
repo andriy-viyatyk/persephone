@@ -81,6 +81,13 @@ const PageTabRoot = styled.div({
         flexShrink: 0,
         visibility: "hidden",
     },
+    "& .sound-button": {
+        flexShrink: 0,
+        visibility: "hidden",
+        "&.sound-active": {
+            visibility: "visible",
+        },
+    },
     "&.isActive": {
         backgroundColor: color.background.default,
         borderColor: color.border.default,
@@ -95,6 +102,9 @@ const PageTabRoot = styled.div({
     "&:hover": {
         borderColor: color.border.default,
         "& .close-button": {
+            visibility: "visible",
+        },
+        "& .sound-button": {
             visibility: "visible",
         },
     },
@@ -625,10 +635,11 @@ export function PageTab(props: PageTabProps) {
                 )}
                 {!pinned && title}
             </span>
-            {(_anyTabAudible || _pageMuted) && (
+            {(_anyTabAudible || _pageMuted || (model as any).toggleMuteAll) && (
                 <Button
                     size="small"
                     type="icon"
+                    className={clsx("sound-button", { "sound-active": _anyTabAudible || _pageMuted })}
                     onClick={(e) => {
                         e.stopPropagation();
                         (model as any).toggleMuteAll?.();

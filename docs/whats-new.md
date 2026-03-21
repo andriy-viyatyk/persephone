@@ -8,12 +8,21 @@ Release notes and changelog for js-notepad.
 
 ## Version 1.0.26 (Upcoming)
 
+### New Features
+
+- **Bookmark context menu in browser** — Right-clicking a bookmark in the bookmarks panel or blank-page bookmarks now shows a full context menu: Open in New Tab, Edit, Open in Default Browser, browser profiles, Open in Incognito, Copy URL, Pin/Unpin, Delete.
+- **Pinned links context menu** — Pinned links now have the same full context menu (Edit, Open in..., Copy URL, Unpin, Delete), replacing the previous unpin-only action.
+- **Rich link tooltips** — Hovering a link in the bookmarks panel, blank-page bookmarks, or pinned links panel shows a tooltip with the link's title, URL, and thumbnail image.
+- **Browser internal tab reordering** — Internal browser tabs can now be reordered by dragging within the tabs panel.
+- **Browser page tab sound indicator** — The sound/mute button on a browser page tab is now always visible on hover (previously it only appeared while audio was actually playing).
+
 ### Fixes and Improvements
 
 - **Log file syntax highlighting** — `.log` files now get dedicated syntax coloring in the text editor: timestamps in muted green, log levels color-coded by severity (error in red, warn in yellow, info in cyan, debug in teal, trace in green), bracketed abbreviations like `[ERR]`/`[INF]`/`[WRN]`, quoted strings, numbers, GUIDs, URLs, hex literals, constants, and exception/stack trace lines.
 - **`read_guide` MCP tool** — AI agents can now read documentation guides via a dedicated `read_guide` tool call, as an alternative to fetching `notepad://` resource URIs. This works better with AI clients that don't support MCP resources natively.
 - **MCP server instructions and tool descriptions** — Rewritten to be shorter and scenario-focused, with all tool descriptions now referencing `read_guide()` alongside `notepad://` URIs for discovering documentation.
 - **Browser duplicate page fix** — Fixed a bug where calling `open_url` a second time via MCP would create a duplicate browser page instead of adding a tab to the existing one.
+- **Link category normalization** — Categories with trailing slashes no longer create phantom subcategories in the link editor.
 
 ---
 

@@ -14,6 +14,10 @@ The browser editor uses three levels of tab nesting:
 2. **js-notepad tabs** — Multiple browser editor pages as separate js-notepad tabs
 3. **js-notepad windows** — Browser editor pages across separate application windows
 
+### Tab Reordering
+
+Internal browser tabs support drag-and-drop reordering via `react-dnd`. Each tab in `BrowserTabsPanel` uses `useDrag`/`useDrop` hooks (drag type: `BROWSER_TAB_DRAG`). On drop, `BrowserPageModel.moveTab(fromId, toId)` splices the tab from its source position and inserts it at the target position. Since webviews are rendered through `PageManager` with stable DOM placeholders, reordering the `state.tabs` array doesn't cause webview reloads.
+
 ### New Window Handling
 
 | Source | Disposition | Behavior |
@@ -181,7 +185,7 @@ The renderer builds the menu dynamically based on `params` fields from the `cont
 |------|---------|---------|
 | `src/renderer/editors/browser/BrowserPageView.tsx` | Renderer | UI component: toolbar, URL bar, multi-webview management, URL suggestions, bookmarks |
 | `src/renderer/editors/browser/BrowserPageModel.ts` | Renderer | Multi-tab state management, navigation logic, favicon caching, search engines |
-| `src/renderer/editors/browser/BrowserTabsPanel.tsx` | Renderer | Left-side internal tabs panel with compact extension popup |
+| `src/renderer/editors/browser/BrowserTabsPanel.tsx` | Renderer | Left-side internal tabs panel with compact extension popup, drag-to-reorder |
 | `src/renderer/editors/browser/BrowserBookmarks.ts` | Renderer | Wraps TextFileModel + LinkEditorModel for bookmark file I/O |
 | `src/renderer/editors/browser/BookmarksDrawer.tsx` | Renderer | Sliding overlay drawer rendering the Link Editor for bookmarks |
 | `src/renderer/editors/browser/UrlSuggestionsDropdown.tsx` | Renderer | URL bar dropdown with search history and navigation history |
@@ -368,7 +372,9 @@ Bookmarks load through two paths:
 
 **Manual trigger (interactive):** User clicks ☆ (star) or "Open Links" → check `model.bookmarks !== null` → if null, read profile's bookmarks file path from settings → if no file path, show "Associate Bookmarks File" dialog → create `BrowserBookmarks(filePath)` → `init()` with password dialog if encrypted → store on `BrowserPageModel.bookmarks`.
 
-After initialization, `BrowserPageModel` sets `linkModel.onInternalLinkOpen` callback to route link clicks to the correct browser page (navigates current blank tab, or adds new tab if current tab has content). `Ctrl+Click` always opens in a new tab (detected via `window.event.ctrlKey` in the callback).
+After initialization, `BrowserPageModel` sets two callbacks on `linkModel`:
+- `onInternalLinkOpen` — routes link clicks to the correct browser page (navigates current blank tab, or adds new tab if current tab has content). `Ctrl+Click` always opens in a new tab (detected via `window.event.ctrlKey` in the callback).
+- `onGetLinkMenuItems` — returns an "Open in New Tab" menu item that calls `model.addTab(url)`. These items are prepended to the link context menu (before "Edit"), providing mouse-only access to new-tab behavior without requiring `Ctrl+Click`.
 
 ### Three Entry Points
 
@@ -454,6 +460,8 @@ browser.reload();
 ## Link Open Menu Helper
 
 `appendLinkOpenMenuItems()` in `src/renderer/editors/shared/link-open-menu.tsx` is a reusable function that appends "Open in..." browser menu items to a `MenuItem[]` array. It generates items for: OS default browser, internal browser, all configured user profiles, and incognito. Used by Link Editor (list, tiles, pinned links) and Markdown Preview link context menus.
+
+Additionally, `LinkViewModel.onGetLinkMenuItems` is an optional callback that allows the host (e.g., browser editor) to inject custom menu items at the top of the link context menu. Items returned by this callback are prepended before the "Edit" item with a separator.
 
 ## Common Pitfalls
 

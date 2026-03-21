@@ -4,6 +4,7 @@ All completed tasks, newest first.
 
 | ID | Title | Epic | Notes |
 |----|-------|------|-------|
+| US-227 | Small improvements and enhancements | | 8 fixes: Link list view cleanup (removed href, border, full-width title), rich LinkTooltip component, browser `onGetLinkMenuItems` callback ("Open in New Tab"), pinned links context menu, browser tab drag-to-reorder, URL bar blur selection fix, link category normalization (trailing slash), page tab sound indicator always visible on hover. |
 | US-226 | Log language for Monaco with syntax highlighting | | Custom Monarch tokenizer for `.log` files — timestamps, log levels (error/warn/info/debug/trace with bracketed abbreviations), strings in gray/silver, numbers, GUIDs, URLs, hex literals, constants, exception types, stack traces. 12 token color rules. |
 | US-225 | Add `read_guide` MCP tool | | New `read_guide` tool with `z.enum()` for all 7 guides. Rewrote MCP instructions block (shorter, scenario-focused, GitHub link). Updated all tool descriptions to reference `read_guide()` alongside `notepad://` URIs. Fixed `openUrlInBrowserTab` bug where active browser page was skipped, causing duplicate pages on consecutive `open_url` calls. |
 | US-224 | AppPageManager — Portal-based DOM stability with grouping for app pages | | `AppPageManager` with `GroupContainer` and `ImperativeSplitter`. CSS-based positioning (no reparenting) preserves iframes/webviews during group/ungroup. Pages.tsx rewritten to use portals. Compare mode handled per-page via `PageContent` component. |

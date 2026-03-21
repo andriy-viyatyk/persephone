@@ -329,11 +329,16 @@ export function LinkItemTiles({ links, model, viewMode, selectedLinkId, pinnedLi
         model.selectLink(link.id);
         const nativeEvent = e.nativeEvent as any;
         if (!nativeEvent.menuItems) nativeEvent.menuItems = [];
+        const customItems = model.onGetLinkMenuItems?.(link);
+        if (customItems?.length) {
+            nativeEvent.menuItems.push(...customItems);
+        }
         nativeEvent.menuItems.push(
             {
                 label: "Edit",
                 icon: <RenameIcon />,
                 onClick: () => model.showLinkDialog(link.id),
+                startGroup: customItems?.length ? true : undefined,
             },
         );
         if (link.href) {

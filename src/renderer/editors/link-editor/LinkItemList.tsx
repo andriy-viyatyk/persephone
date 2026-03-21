@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDrag } from "react-dnd";
 import RenderGrid from "../../components/virtualization/RenderGrid/RenderGrid";
 import RenderGridModel from "../../components/virtualization/RenderGrid/RenderGridModel";
@@ -11,6 +11,7 @@ import { CopyIcon, DeleteIcon, GlobeIcon, OpenFileIcon, OpenLinkIcon, PinFilledI
 import { appendLinkOpenMenuItems } from "../shared/link-open-menu";
 import { LinkItem, LINK_DRAG } from "./linkTypes";
 import { LinkViewModel } from "./LinkViewModel";
+import { LinkTooltip } from "./LinkTooltip";
 import { getHostname, getFaviconPathSync, useFavicons, requestFaviconSave } from "./favicon-cache";
 
 const { clipboard } = require("electron");
@@ -94,24 +95,11 @@ const LinkItemListRoot = styled(RenderGrid)({
             display: "flex",
         },
         "& .link-title": {
-            width: "fit-content",
-            maxWidth: "60%",
-            flexShrink: 0,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-            color: color.text.strong,
-            border: `1px solid ${color.border.default}`,
-            borderRadius: 4,
-            padding: "0 6px",
-        },
-        "& .link-href": {
             flex: "1 1 auto",
             overflow: "hidden",
             textOverflow: "ellipsis",
             whiteSpace: "nowrap",
-            color: color.text.light,
-            fontSize: 12,
+            color: color.text.strong,
             minWidth: 0,
         },
         "& .link-pin-icon": {
@@ -153,6 +141,7 @@ interface LinkRowProps {
 function LinkRow({ link, model, isSelected, isPinned, searchText, onLinkClick, onContextMenu }: LinkRowProps) {
     const hostname = getHostname(link.href);
     const faviconPath = getFaviconPathSync(hostname);
+    const tooltipId = useMemo(() => crypto.randomUUID(), []);
 
     const [{ isDragging }, drag] = useDrag({
         type: LINK_DRAG,
@@ -175,7 +164,6 @@ function LinkRow({ link, model, isSelected, isPinned, searchText, onLinkClick, o
                 className="link-open-btn"
                 size="small"
                 type="flat"
-                title="Open link"
                 onClick={(e) => {
                     e.stopPropagation();
                     model.selectLink(link.id);
@@ -189,15 +177,12 @@ function LinkRow({ link, model, isSelected, isPinned, searchText, onLinkClick, o
             </Button>
             <span
                 className="link-title"
-                title={link.href || link.title}
+                data-tooltip-id={tooltipId}
             >
                 {searchText ? highlightText(searchText, link.title || "Untitled") : (link.title || "Untitled")}
             </span>
-            <span className="link-href">
-                {link.href}
-            </span>
             {isPinned && (
-                <span className="link-pin-icon" title="Pinned">
+                <span className="link-pin-icon">
                     <PinFilledIcon />
                 </span>
             )}
@@ -227,6 +212,7 @@ function LinkRow({ link, model, isSelected, isPinned, searchText, onLinkClick, o
                     <DeleteIcon />
                 </Button>
             </span>
+            <LinkTooltip id={tooltipId} link={link} />
         </div>
     );
 }
@@ -280,11 +266,16 @@ export function LinkItemList({ links, model, selectedLinkId, pinnedLinkIds }: Li
         model.selectLink(link.id);
         const nativeEvent = e.nativeEvent as any;
         if (!nativeEvent.menuItems) nativeEvent.menuItems = [];
+        const customItems = model.onGetLinkMenuItems?.(link);
+        if (customItems?.length) {
+            nativeEvent.menuItems.push(...customItems);
+        }
         nativeEvent.menuItems.push(
             {
                 label: "Edit",
                 icon: <RenameIcon />,
                 onClick: () => model.showLinkDialog(link.id),
+                startGroup: customItems?.length ? true : undefined,
             },
         );
         if (link.href) {

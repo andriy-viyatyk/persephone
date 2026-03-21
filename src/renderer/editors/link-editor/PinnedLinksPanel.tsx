@@ -2,10 +2,14 @@ import styled from "@emotion/styled";
 import { useCallback } from "react";
 import { useDrag, useDrop } from "react-dnd";
 import color from "../../theme/color";
-import { GlobeIcon, OpenLinkIcon, PinFilledIcon } from "../../theme/icons";
+import { CopyIcon, DeleteIcon, GlobeIcon, OpenFileIcon, OpenLinkIcon, PinFilledIcon, RenameIcon } from "../../theme/icons";
+import { appendLinkOpenMenuItems } from "../shared/link-open-menu";
 import { LinkItem, LINK_PIN_DRAG } from "./linkTypes";
 import { LinkViewModel } from "./LinkViewModel";
+import { LinkTooltip } from "./LinkTooltip";
 import { getHostname, getFaviconPathSync, requestFaviconSave, useFavicons } from "./favicon-cache";
+
+const { clipboard } = require("electron");
 
 // =============================================================================
 // Styles
@@ -133,9 +137,10 @@ interface PinnedItemProps {
     index: number;
     model: LinkViewModel;
     onOpenLink: (link: LinkItem) => void;
+    onContextMenu: (e: React.MouseEvent, link: LinkItem) => void;
 }
 
-function PinnedItem({ link, index, model, onOpenLink }: PinnedItemProps) {
+function PinnedItem({ link, index, model, onOpenLink, onContextMenu }: PinnedItemProps) {
     const hostname = getHostname(link.href);
     const faviconPath = getFaviconPathSync(hostname);
 
@@ -179,17 +184,18 @@ function PinnedItem({ link, index, model, onOpenLink }: PinnedItemProps) {
     if (isOver && dropPosition === "above") className += " drop-above";
     if (isOver && dropPosition === "below") className += " drop-below";
 
+    const tooltipId = `pinned-${link.id}`;
+
     return (
         <div
             ref={setRef}
             className={className}
-            title={link.href || link.title}
             onClick={() => model.selectLink(link.id)}
             onDoubleClick={() => model.showLinkDialog(link.id)}
+            onContextMenu={(e) => onContextMenu(e, link)}
         >
             <span
                 className="pinned-open-btn"
-                title="Open link"
                 onClick={(e) => {
                     e.stopPropagation();
                     model.selectLink(link.id);
@@ -201,9 +207,10 @@ function PinnedItem({ link, index, model, onOpenLink }: PinnedItemProps) {
                     : <GlobeIcon className="pinned-globe" />}
                 <span className="pinned-icon-open"><div className="pinned-icon-open-bg" /><OpenLinkIcon /></span>
             </span>
-            <span className="pinned-title">
+            <span className="pinned-title" data-tooltip-id={tooltipId}>
                 {link.title || "Untitled"}
             </span>
+            <LinkTooltip id={tooltipId} link={link} />
         </div>
     );
 }
@@ -228,6 +235,67 @@ export function PinnedLinksPanel({ pinnedLinks, model, style }: PinnedLinksPanel
         }
     }, [model]);
 
+    const handleContextMenu = useCallback((e: React.MouseEvent, link: LinkItem) => {
+        model.selectLink(link.id);
+        const nativeEvent = e.nativeEvent as any;
+        if (!nativeEvent.menuItems) nativeEvent.menuItems = [];
+        const customItems = model.onGetLinkMenuItems?.(link);
+        if (customItems?.length) {
+            nativeEvent.menuItems.push(...customItems);
+        }
+        nativeEvent.menuItems.push(
+            {
+                label: "Edit",
+                icon: <RenameIcon />,
+                onClick: () => model.showLinkDialog(link.id),
+                startGroup: customItems?.length ? true : undefined,
+            },
+        );
+        if (link.href) {
+            appendLinkOpenMenuItems(nativeEvent.menuItems, link.href, { startGroup: true });
+        }
+        nativeEvent.menuItems.push(
+            {
+                label: "Copy URL",
+                icon: <CopyIcon />,
+                onClick: () => { if (link.href) clipboard.writeText(link.href); },
+                disabled: !link.href,
+            },
+        );
+        if (link.imgSrc) {
+            const imgUrl = link.imgSrc;
+            nativeEvent.menuItems.push(
+                {
+                    label: "Copy Image URL",
+                    icon: <CopyIcon />,
+                    onClick: () => clipboard.writeText(imgUrl),
+                    startGroup: true,
+                },
+                {
+                    label: "Open Image in New Tab",
+                    icon: <OpenFileIcon />,
+                    onClick: async () => {
+                        const { pagesModel } = await import("../../api/pages");
+                        pagesModel.openImageInNewTab(imgUrl);
+                    },
+                },
+            );
+        }
+        nativeEvent.menuItems.push(
+            {
+                label: "Unpin",
+                icon: <PinFilledIcon />,
+                onClick: () => model.togglePinLink(link.id),
+                startGroup: true,
+            },
+            {
+                label: "Delete",
+                icon: <DeleteIcon />,
+                onClick: () => model.deleteLink(link.id),
+            },
+        );
+    }, [model]);
+
     return (
         <PinnedLinksPanelRoot style={style}>
             <div className="pinned-header">
@@ -241,6 +309,7 @@ export function PinnedLinksPanel({ pinnedLinks, model, style }: PinnedLinksPanel
                         index={i}
                         model={model}
                         onOpenLink={handleOpenLink}
+                        onContextMenu={handleContextMenu}
                     />
                 ))}
             </div>

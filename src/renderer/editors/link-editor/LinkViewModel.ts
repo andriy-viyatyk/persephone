@@ -2,6 +2,7 @@ import { debounce } from "../../../shared/utils";
 import { ContentViewModel } from "../base/ContentViewModel";
 import { IContentHost } from "../base/IContentHost";
 import { CategoryTreeItem, DragItem } from "../../components/TreeView";
+import { MenuItem } from "../../components/overlay/PopupMenu";
 import RenderGridModel from "../../components/virtualization/RenderGrid/RenderGridModel";
 
 import { splitWithSeparators } from "../../core/utils/utils";
@@ -73,6 +74,13 @@ export class LinkViewModel extends ContentViewModel<LinkEditorState> {
      * @param url The URL to open
      */
     onInternalLinkOpen?: (url: string) => void;
+
+    /**
+     * Optional callback to provide extra context menu items for a link.
+     * Returned items are prepended to the context menu (before Edit).
+     * Used by browser editor to add "Open in New Tab" action.
+     */
+    onGetLinkMenuItems?: (link: LinkItem) => MenuItem[];
 
     constructor(host: IContentHost) {
         super(host, defaultLinkEditorState);
@@ -164,8 +172,15 @@ export class LinkViewModel extends ContentViewModel<LinkEditorState> {
         try {
             const parsed = content.trim() ? JSON.parse(content) : {};
             this.state.update((s) => {
+                const links: LinkItem[] = Array.isArray(parsed.links) ? parsed.links : [];
+                // Normalize categories: trim leading/trailing separators
+                for (const link of links) {
+                    if (link.category) {
+                        link.category = link.category.replace(/^[/\\]+|[/\\]+$/g, "");
+                    }
+                }
                 s.data = {
-                    links: Array.isArray(parsed.links) ? parsed.links : [],
+                    links,
                     state: parsed.state || {},
                 };
                 s.error = undefined;

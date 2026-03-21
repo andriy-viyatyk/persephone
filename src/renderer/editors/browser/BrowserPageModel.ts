@@ -6,7 +6,7 @@ import { TComponentState } from "../../core/state/state";
 import { globalKeyDown, SubscriptionObject } from "../../core/state/events";
 import { pagesModel } from "../../api/pages";
 import { IncognitoIcon } from "../../theme/language-icons";
-import { GlobeIcon } from "../../theme/icons";
+import { GlobeIcon, OpenLinkIcon } from "../../theme/icons";
 import { settings, BrowserProfile } from "../../api/settings";
 import { DEFAULT_BROWSER_COLOR } from "../../theme/palette-colors";
 import { BrowserChannel } from "../../../ipc/browser-ipc";
@@ -370,6 +370,11 @@ export class BrowserPageModel extends PageModel<BrowserPageState, void> {
         }
         this.bookmarks = bm;
         bm.linkModel.onInternalLinkOpen = (url) => this.bookmarksUI.handleBookmarkLinkClick(url);
+        bm.linkModel.onGetLinkMenuItems = (link) => link.href ? [{
+            label: "Open in New Tab",
+            icon: createElement(OpenLinkIcon),
+            onClick: () => this.addTab(link.href),
+        }] : [];
         this.state.update((s) => { s.bookmarksReady = true; });
     };
 
@@ -386,6 +391,11 @@ export class BrowserPageModel extends PageModel<BrowserPageState, void> {
         }
         this.bookmarks = bm;
         bm.linkModel.onInternalLinkOpen = (url) => this.bookmarksUI.handleBookmarkLinkClick(url);
+        bm.linkModel.onGetLinkMenuItems = (link) => link.href ? [{
+            label: "Open in New Tab",
+            icon: createElement(OpenLinkIcon),
+            onClick: () => this.addTab(link.href),
+        }] : [];
         return this.bookmarks;
     }
 
@@ -793,6 +803,17 @@ export class BrowserPageModel extends PageModel<BrowserPageState, void> {
     };
 
     /** Switch to a different internal tab. */
+    moveTab = (fromId: string, toId: string) => {
+        if (fromId === toId) return;
+        this.state.update((s) => {
+            const fromIndex = s.tabs.findIndex((t) => t.id === fromId);
+            const toIndex = s.tabs.findIndex((t) => t.id === toId);
+            if (fromIndex === -1 || toIndex === -1) return;
+            const [moved] = s.tabs.splice(fromIndex, 1);
+            s.tabs.splice(toIndex, 0, moved);
+        });
+    };
+
     switchTab = (internalTabId: string) => {
         this.state.update((s) => {
             if (s.activeTabId === internalTabId) return;

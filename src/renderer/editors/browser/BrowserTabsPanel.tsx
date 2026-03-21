@@ -1,11 +1,14 @@
 import styled from "@emotion/styled";
 import { useCallback, useRef, useState } from "react";
+import { useDrag, useDrop } from "react-dnd";
 import { useFloating, offset as floatingOffset, autoUpdate } from "@floating-ui/react";
 import color from "../../theme/color";
 import { CloseIcon, GlobeIcon, PlusIcon, VolumeIcon, VolumeMutedIcon } from "../../theme/icons";
 import { BrowserPageModel, BrowserTabData } from "./BrowserPageModel";
 import { Button } from "../../components/basic/Button";
 import { MenuItem } from "../../components/overlay/PopupMenu";
+
+const BROWSER_TAB_DRAG = "BROWSER_TAB_DRAG";
 
 /** Below this width, hide tab titles and show icon-only compact mode. */
 const COMPACT_THRESHOLD = 70;
@@ -46,6 +49,12 @@ const BrowserTabsPanelRoot = styled.div({
         },
         "&:hover .tab-close, &.active .tab-close": {
             opacity: 1,
+        },
+        "&.dragging": {
+            opacity: 0.4,
+        },
+        "&.drop-target": {
+            borderColor: color.border.active,
         },
     },
 
@@ -127,6 +136,107 @@ const BrowserTabsPanelRoot = styled.div({
         },
     },
 });
+
+// =============================================================================
+// Tab Item (extracted for react-dnd hooks)
+// =============================================================================
+
+interface TabItemProps {
+    tab: BrowserTabData;
+    model: BrowserPageModel;
+    isActive: boolean;
+    compact: boolean;
+    showClose: boolean;
+    isHovered: boolean;
+    onSwitch: (tabId: string) => void;
+    onClose: (e: React.MouseEvent, tabId: string) => void;
+    onToggleMute: (e: React.MouseEvent, tabId: string) => void;
+    onContextMenu: (e: React.MouseEvent, tabId: string) => void;
+    onMouseEnter?: (e: React.MouseEvent<HTMLDivElement>, tabId: string) => void;
+    onMouseLeave?: () => void;
+}
+
+function TabItem({
+    tab, model, isActive, compact, showClose, isHovered,
+    onSwitch, onClose, onToggleMute, onContextMenu, onMouseEnter, onMouseLeave,
+}: TabItemProps) {
+    const [{ isDragging }, drag] = useDrag({
+        type: BROWSER_TAB_DRAG,
+        item: { tabId: tab.id },
+        collect: (monitor) => ({
+            isDragging: monitor.isDragging(),
+        }),
+    });
+
+    const [{ isOver }, drop] = useDrop({
+        accept: BROWSER_TAB_DRAG,
+        drop(item: { tabId: string }) {
+            model.moveTab(item.tabId, tab.id);
+        },
+        collect: (monitor) => ({
+            isOver: monitor.isOver(),
+        }),
+    });
+
+    const cls = [
+        "tab-item",
+        isActive && "active",
+        compact && "compact",
+        isHovered && "extended",
+        isDragging && "dragging",
+        isOver && "drop-target",
+    ].filter(Boolean).join(" ");
+
+    return (
+        <div
+            ref={(node) => { drag(drop(node)); }}
+            className={cls}
+            onClick={() => onSwitch(tab.id)}
+            onContextMenu={(e) => onContextMenu(e, tab.id)}
+            onMouseEnter={onMouseEnter ? (e) => onMouseEnter(e, tab.id) : undefined}
+            onMouseLeave={onMouseLeave}
+        >
+            <div className="tab-favicon">
+                {tab.favicon ? (
+                    <img src={tab.favicon} alt="" />
+                ) : (
+                    <GlobeIcon />
+                )}
+            </div>
+            {!compact && (
+                <div className="tab-title">
+                    {tab.pageTitle || tab.url || "New Tab"}
+                </div>
+            )}
+            {!compact && (tab.audible || tab.muted) && (
+                <Button
+                    type="icon"
+                    size="small"
+                    title={tab.muted ? "Unmute Tab" : "Mute Tab"}
+                    onClick={(e) => onToggleMute(e, tab.id)}
+                >
+                    {tab.muted ? <VolumeMutedIcon /> : <VolumeIcon />}
+                </Button>
+            )}
+            {showClose && (
+                <div className="tab-close">
+                    <Button
+                        type="icon"
+                        size="small"
+                        title="Close Tab"
+                        onClick={(e) => onClose(e, tab.id)}
+                    >
+                        <CloseIcon />
+                    </Button>
+                </div>
+            )}
+        </div>
+    );
+}
+
+// =============================================================================
+// Panel
+// =============================================================================
 
 interface BrowserTabsPanelProps {
     model: BrowserPageModel;
@@ -259,51 +369,21 @@ export function BrowserTabsPanel({
         <BrowserTabsPanelRoot>
             <div className="tabs-list">
                 {tabs.map((tab) => (
-                    <div
+                    <TabItem
                         key={tab.id}
-                        className={`tab-item${tab.id === activeTabId ? " active" : ""}${compact ? " compact" : ""}${tab.id === hoveredTabId ? " extended" : ""}`}
-                        onClick={() => handleSwitchTab(tab.id)}
-                        onContextMenu={(e) => handleContextMenu(e, tab.id)}
-                        onMouseEnter={compact ? (e) => handleTabHover(e, tab.id) : undefined}
+                        tab={tab}
+                        model={model}
+                        isActive={tab.id === activeTabId}
+                        compact={compact}
+                        showClose={showClose}
+                        isHovered={tab.id === hoveredTabId}
+                        onSwitch={handleSwitchTab}
+                        onClose={handleCloseTab}
+                        onToggleMute={handleToggleMute}
+                        onContextMenu={handleContextMenu}
+                        onMouseEnter={compact ? handleTabHover : undefined}
                         onMouseLeave={compact ? scheduleClose : undefined}
-                    >
-                        <div className="tab-favicon">
-                            {tab.favicon ? (
-                                <img src={tab.favicon} alt="" />
-                            ) : (
-                                <GlobeIcon />
-                            )}
-                        </div>
-                        {!compact && (
-                            <div className="tab-title">
-                                {tab.pageTitle || tab.url || "New Tab"}
-                            </div>
-                        )}
-                        {!compact && (tab.audible || tab.muted) && (
-                            <Button
-                                type="icon"
-                                size="small"
-                                title={tab.muted ? "Unmute Tab" : "Mute Tab"}
-                                onClick={(e) => handleToggleMute(e, tab.id)}
-                            >
-                                {tab.muted ? <VolumeMutedIcon /> : <VolumeIcon />}
-                            </Button>
-                        )}
-                        {showClose && (
-                            <div className="tab-close">
-                                <Button
-                                    type="icon"
-                                    size="small"
-                                    title="Close Tab"
-                                    onClick={(e) =>
-                                        handleCloseTab(e, tab.id)
-                                    }
-                                >
-                                    <CloseIcon />
-                                </Button>
-                            </div>
-                        )}
-                    </div>
+                    />
                 ))}
                 <div className={`add-tab-button${compact ? " compact" : ""}`}>
                     <Button
