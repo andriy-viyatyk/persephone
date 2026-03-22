@@ -82,9 +82,12 @@ export function AppPageManager({
             }
         }
 
-        // 3. Dispose group containers that no longer exist
+        // 3. Dispose group containers that no longer exist or whose right page changed
         for (const [leftId, gc] of groupContainers) {
-            if (!currentGroupKeys.has(leftId)) {
+            const expectedRightEl = currentGroupKeys.has(leftId)
+                ? placeholders.get(grouping.get(leftId)!)
+                : undefined;
+            if (!expectedRightEl || gc.rightPlaceholder !== expectedRightEl) {
                 gc.dispose();
                 groupContainers.delete(leftId);
             }

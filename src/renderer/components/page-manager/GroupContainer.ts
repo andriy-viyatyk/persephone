@@ -23,7 +23,7 @@ export class GroupContainer {
     constructor(
         private container: HTMLDivElement,
         private leftPlaceholder: HTMLDivElement,
-        private rightPlaceholder: HTMLDivElement,
+        readonly rightPlaceholder: HTMLDivElement,
     ) {
         // Style placeholders for grouped mode
         this.setGroupedStyle(leftPlaceholder, "left");
