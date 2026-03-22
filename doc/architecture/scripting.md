@@ -18,13 +18,20 @@ Type definitions for the script API live in `/src/renderer/api/types/*.d.ts`.
 ```
 ScriptRunner.run(script, page?, language?)
     │
-    ├── transpileIfNeeded(script, language)   ← strips TS types via sucrase (lazy-loaded)
-    ├── ensureSucraseLoaded() + registerLibraryExtensions()  ← for require(".ts"/".js") in library
-    ├── clearLibraryRequireCache() if dirty   ← invalidate cached library modules
+    ├── ScriptRunnerBase.execute(script, context, language?)
+    │       ├── prepare(script, language)
+    │       │     ├── transpileIfNeeded()   ← strips TS types via sucrase (lazy-loaded)
+    │       │     ├── ensureSucraseLoaded() + registerLibraryExtensions()
+    │       │     └── clearLibraryRequireCache() if dirty
+    │       └── executeInternal(script, context)
+    │             ├── Expression/statement detection
+    │             ├── Wrap in async function with lexical globals
+    │             └── Await result if Promise
     │
-    ├── ScriptContext.createScriptContext(page?, consoleLogs?, libraryPath?)
+    ├── new ScriptContext(page?, consoleLogs?, libraryPath?)
     │       ├── AppWrapper        ← wraps `app` global
-    │       │     └── PageCollectionWrapper  ← wraps `app.pages`
+    │       │     ├── PageCollectionWrapper  ← wraps `app.pages`
+    │       │     └── Events proxy ← wraps `app.events` (auto-tracks subscriptions)
     │       ├── PageWrapper       ← wraps `page` global
     │       │     └── EditorFacades (13)  ← page.asText(), page.asGrid(), ...
     │       ├── UiFacade (lazy)   ← wraps `ui` global (Log View logging + dialogs)
@@ -35,9 +42,7 @@ ScriptRunner.run(script, page?, language?)
     │       ├── ScriptOutputFlags ← tracks output suppression state
     │       └── Proxy (globalThis interception)
     │
-    ├── Execute script in sandbox (with + Function constructor)
-    │
-    └── cleanup()  ← releases all acquired ViewModels
+    └── context.dispose()  ← releases all acquired ViewModels + unsubscribes events
 ```
 
 ## Execution Modes
@@ -344,25 +349,29 @@ Interface definitions: `/src/renderer/api/types/*.d.ts`
 
 ## Auto-Release Lifecycle
 
-Facades acquire ViewModels via ref-counting. A `releaseList` ensures cleanup after script completion:
+Facades acquire ViewModels via ref-counting. Event subscriptions are tracked via proxy. A shared `releaseList` ensures cleanup after script completion:
 
 ```
-1. Script starts → ScriptContext creates releaseList = []
+1. Script starts → new ScriptContext() creates releaseList = []
 2. Script calls page.asGrid()
    → acquireViewModel("grid-json")  (ref count +1)
    → releaseList.push(() => releaseViewModel("grid-json"))
    → return GridEditorFacade
-3. Script calls page.asText()
-   → acquireViewModel("monaco")  (ref count +1)
-   → releaseList.push(() => releaseViewModel("monaco"))
-   → return TextEditorFacade
+3. Script calls app.events.fileExplorer.itemContextMenu.subscribe(handler)
+   → events proxy intercepts subscribe(), calls real subscribe()
+   → releaseList.push(() => sub.unsubscribe())
+   → return SubscriptionObject
 4. Script completes (or throws)
-5. cleanup() iterates releaseList
+5. context.dispose() iterates releaseList
    → releaseViewModel("grid-json")  (ref count -1 → 0 → dispose)
-   → releaseViewModel("monaco")  (ref count -1 → 0 → dispose)
+   → sub.unsubscribe()  (removes event handler)
 ```
 
-The `releaseList` is shared across all wrappers: `AppWrapper → PageCollectionWrapper → PageWrapper → Facades`. This means any ViewModel acquired through any path is automatically released.
+The `releaseList` is shared across all wrappers: `AppWrapper → PageCollectionWrapper → PageWrapper → Facades`. This means any ViewModel acquired through any path is automatically released. Event subscriptions made through `app.events` are also automatically unsubscribed.
+
+### Events Proxy
+
+`AppWrapper.events` returns a recursive proxy that wraps `app.events`. When a script calls `subscribe()` or `subscribeDefault()` on any EventChannel, the proxy intercepts the call, subscribes on the real channel, and pushes the `unsubscribe()` handle to the `releaseList`. This means scripts never need to manually unsubscribe — cleanup happens automatically when `ScriptContext.dispose()` is called.
 
 ## Wrapper Architecture
 
@@ -411,19 +420,27 @@ Wraps the `app` singleton, implements `IApp`. Delegates most properties directly
 
 Wraps `PagesModel`, implements `IPageCollection`. Returns `PageWrapper` instances instead of raw `PageModel` for all query methods.
 
-## Script Execution (ScriptRunner)
+## Script Execution
 
-Located in `/src/renderer/scripting/ScriptRunner.ts`.
+### ScriptRunnerBase (core engine)
+
+Located in `/src/renderer/scripting/ScriptRunnerBase.ts`.
+
+Pure execution engine with no context creation or cleanup. Handles:
+- **`execute(script, context, language?)`** — prepares (transpile + library) then executes
+- **`prepare()`** — transpiles TypeScript, loads sucrase, registers Script Library extensions
+- **`executeInternal()`** — expression/statement detection, `with(this)` wrapping, implicit return, async await
+- **`invalidateLibraryCache()`** — marks library require cache as dirty
+
+### ScriptRunner (orchestrator)
+
+Located in `/src/renderer/scripting/ScriptRunner.ts`. Extends `ScriptRunnerBase`.
 
 ### `run(script, page?, language?)`
 
-1. Calls `transpileIfNeeded(script, language)` — strips TypeScript types if `language === "typescript"`
-2. Creates `ScriptContext` with `app` and `page` wrappers
-3. Wraps script code in `async function` with `with(this)` block
-4. Injects lexical JS globals (Array, Date, JSON, etc.) to prevent accidental `window` access
-5. Handles implicit return: last expression auto-returns (REPL-like)
-6. Awaits result if Promise
-7. Calls `cleanup()` in `finally` block
+1. Creates `ScriptContext`
+2. Calls `execute(script, context, language)` (base handles transpilation + execution)
+3. Calls `context.dispose()` in `finally` block
 
 ### `runWithResult(pageId, script, page?, language?)`
 
@@ -448,9 +465,9 @@ interface McpScriptResult {
 
 Captures `console.log/error/warn/info` calls during script execution via `ScriptContext`'s console capture support. If the script accesses `ui`, console output is forwarded to both `consoleLogs` (returned to agent) and the shared MCP Log View (visible to user).
 
-### `convertToText(value)` (public)
+### `convertToText(value)` (utility)
 
-Converts any JS value to displayable `{ text, language }`:
+Located in `/src/renderer/scripting/script-utils.ts`. Converts any JS value to displayable `{ text, language }`:
 
 | Return Type | Output | Language |
 |-------------|--------|----------|
@@ -464,7 +481,15 @@ Converts any JS value to displayable `{ text, language }`:
 
 Located in `/src/renderer/scripting/ScriptContext.ts`.
 
-`createScriptContext(page?, consoleLogs?, libraryPath?)` builds the execution environment:
+`ScriptContext` is a class that builds the execution environment and manages cleanup:
+
+```typescript
+const ctx = new ScriptContext(page?, consoleLogs?, libraryPath?);
+// ... execute script with ctx.context ...
+ctx.dispose();  // releases ViewModels + unsubscribes events
+```
+
+The constructor:
 
 1. Creates `releaseList` (shared cleanup array)
 2. Creates `AppWrapper` (always) and `PageWrapper` (if page provided)
@@ -484,7 +509,7 @@ Located in `/src/renderer/scripting/ScriptContext.ts`.
    - Falls back to `globalThis` for standard APIs
    - Functions auto-bound to `globalThis` (except constructors)
    - Set operations go to custom context (scripts can create variables)
-5. Returns `{ context, cleanup, outputFlags }` — cleanup releases all ViewModels, outputFlags tracks suppression state
+5. `dispose()` releases all ViewModels and unsubscribes all event subscriptions made through `app.events`
 
 ## Grouped Pages & Output Suppression
 
@@ -555,8 +580,10 @@ These files serve dual purpose: TypeScript type checking **and** IDE IntelliSens
 
 ```
 /src/renderer/scripting/
-├── ScriptRunner.ts              # Execution engine
-├── ScriptContext.ts             # Context builder with cleanup
+├── ScriptRunnerBase.ts          # Core execution engine (transpile, execute)
+├── ScriptRunner.ts              # Orchestrator (context lifecycle, result handling)
+├── ScriptContext.ts             # Execution scope (context proxy, cleanup)
+├── script-utils.ts              # Utilities (convertToText)
 ├── transpile.ts                 # TypeScript transpilation (sucrase, lazy-loaded)
 ├── library-require.ts           # Library require() resolution + .ts/.js extension handlers
 └── api-wrapper/                 # Facade layer

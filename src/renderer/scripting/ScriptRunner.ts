@@ -2,9 +2,9 @@ import { PageModel } from "../editors/base";
 import { pagesModel } from "../api/pages";
 import { editorRegistry } from "../editors/registry";
 import type { ConsoleLogEntry, ScriptOutputFlags } from "./ScriptContext";
-import { transpileIfNeeded, ensureSucraseLoaded } from "./transpile";
-import { registerLibraryExtensions, clearLibraryRequireCache } from "./library-require";
 import { settings } from "../api/settings";
+import { convertToText } from "./script-utils";
+import { ScriptRunnerBase } from "./ScriptRunnerBase";
 
 export interface McpScriptResult {
     text: string;
@@ -13,77 +13,29 @@ export interface McpScriptResult {
     isError: boolean;
 }
 
-const lexicalObjects = `
-    const React = globalThis.React;
-
-    const Array = globalThis.Array;
-    const Boolean = globalThis.Boolean;
-    const Date = globalThis.Date;
-    const Error = globalThis.Error;
-    const EvalError = globalThis.EvalError;
-    const Function = globalThis.Function;
-    const Infinity = globalThis.Infinity;
-    const JSON = globalThis.JSON;
-    const Map = globalThis.Map;
-    const Math = globalThis.Math;
-    const NaN = globalThis.NaN;
-    const Number = globalThis.Number;
-    const Object = globalThis.Object;
-    const Promise = globalThis.Promise;
-    const RegExp = globalThis.RegExp;
-    const Set = globalThis.Set;
-    const String = globalThis.String;
-    const Symbol = globalThis.Symbol;
-    const TypeError = globalThis.TypeError;
-    const URIError = globalThis.URIError;
-    const WeakMap = globalThis.WeakMap;
-    const WeakSet = globalThis.WeakSet;
-    const BigInt = globalThis.BigInt;
-    const BigInt64Array = globalThis.BigInt64Array;
-    const BigUint64Array = globalThis.BigUint64Array;
-    const Int8Array = globalThis.Int8Array;
-    const Uint8Array = globalThis.Uint8Array;
-    const Uint8ClampedArray = globalThis.Uint8ClampedArray;
-    const Int16Array = globalThis.Int16Array;
-    const Uint16Array = globalThis.Uint16Array;
-    const Int32Array = globalThis.Int32Array;
-    const Uint32Array = globalThis.Uint32Array;
-    const Float32Array = globalThis.Float32Array;
-    const Float64Array = globalThis.Float64Array;
-    const SharedArrayBuffer = globalThis.SharedArrayBuffer;
-    const ArrayBuffer = globalThis.ArrayBuffer;
-    const DataView = globalThis.DataView;
-    const Atomics = globalThis.Atomics;
-    const Reflect = globalThis.Reflect;
-    const Proxy = globalThis.Proxy;
-    const TextEncoder = globalThis.TextEncoder;
-    const TextDecoder = globalThis.TextDecoder;
-    const URL = globalThis.URL;
-    const URLSearchParams = globalThis.URLSearchParams;
-    const AggregateError = globalThis.AggregateError;
-    const FinalizationRegistry = globalThis.FinalizationRegistry;
-    const WeakRef = globalThis.WeakRef;
-`
-
-class ScriptRunner {
+/**
+ * Script execution orchestrator. Provides multiple entry points for different
+ * execution modes (simple, MCP capture, UI result). Each creates a ScriptContext,
+ * executes the script, handles the result, and disposes the context.
+ */
+class ScriptRunner extends ScriptRunnerBase {
     handlePromiseException = 0;
-    private libraryDirty = true;
 
-    /** Mark library cache as dirty. Called by file watcher when library files change. */
-    invalidateLibraryCache = () => {
-        this.libraryDirty = true;
-    };
-
+    /**
+     * Simple run — creates context, executes, cleans up, returns raw result.
+     */
     run = async (script: string, page?: PageModel, language?: string): Promise<any> => {
-        const { result } = await this.executeScript(script, page, undefined, language);
-        return result;
+        return this.executeWithContext(script, page, undefined, language);
     };
 
+    /**
+     * MCP mode — creates context, captures console, cleans up, returns structured result.
+     */
     runWithCapture = async (script: string, page?: PageModel, language?: string): Promise<McpScriptResult> => {
         const consoleLogs: ConsoleLogEntry[] = [];
-        const { result } = await this.executeScript(script, page, consoleLogs, language);
+        const result = await this.executeWithContext(script, page, consoleLogs, language);
         const isError = result instanceof Error;
-        const textAndLang = this.convertToText(result);
+        const textAndLang = convertToText(result);
         return {
             text: textAndLang.text,
             language: textAndLang.language,
@@ -92,119 +44,19 @@ class ScriptRunner {
         };
     };
 
-    private executeScript = async (
-        script: string,
-        page?: PageModel,
-        consoleLogs?: ConsoleLogEntry[],
-        language?: string,
-    ): Promise<{ result: any; outputFlags: ScriptOutputFlags }> => {
-        this.handlePromiseException += 1;
-        let cleanup: (() => void) | undefined;
-        let outputFlags: ScriptOutputFlags = { outputPrevented: false, groupedContentWritten: false };
-        try {
-            try {
-                script = await transpileIfNeeded(script, language);
-
-                // Ensure sucrase is loaded and extension handlers are registered
-                // (needed for require() of .ts and .js library files)
-                // Also pre-load log-view module so UiFacade can create VM synchronously
-                await Promise.all([
-                    ensureSucraseLoaded(),
-                    editorRegistry.loadViewModelFactory("log-view"),
-                ]);
-                const libraryPath = settings.get("script-library.path");
-                if (libraryPath) {
-                    registerLibraryExtensions(libraryPath);
-                }
-
-                // Clear library require cache if dirty
-                if (this.libraryDirty && libraryPath) {
-                    clearLibraryRequireCache(libraryPath);
-                    this.libraryDirty = false;
-                }
-
-                const contextModule = await import("./ScriptContext");
-                const ctxResult = contextModule.createScriptContext(page, consoleLogs, libraryPath);
-                const context = ctxResult.context;
-                cleanup = ctxResult.cleanup;
-                outputFlags = ctxResult.outputFlags;
-
-                // Check if script contains statement keywords at the start
-                const trimmedScript = script.trim();
-                const statementKeywords =
-                    /^(const|let|var|if|for|while|do|switch|function|class|try|throw|return)\s/;
-                const hasStatements = statementKeywords.test(trimmedScript);
-
-                if (!hasStatements) {
-                    // Try as expression first (for simple cases like "5 + 5" or "'hello'")
-                    const expressionScript = `
-                    with (this) {
-                        return (async function() {
-                            ${lexicalObjects}
-                            return (${script});
-                        }).call(this);
-                    }
-                `;
-
-                    try {
-                        const fn = new Function(expressionScript);
-                        const scriptResult = fn.call(context);
-
-                        if (this.isPromiseLike(scriptResult)) {
-                            try {
-                                return { result: await scriptResult, outputFlags };
-                            } catch (asyncError) {
-                                return { result: asyncError instanceof Error
-                                    ? asyncError
-                                    : new Error(String(asyncError)), outputFlags };
-                            }
-                        }
-
-                        return { result: scriptResult, outputFlags };
-                    } catch (expressionError) {
-                        // Fall through to statement handling
-                    }
-                }
-
-                // Try to extract the last expression and make it return
-                // This handles cases like: const a = 5; a * 8
-                const statementScript = this.wrapScriptWithImplicitReturn(script);
-
-                const fn = new Function(statementScript);
-                const scriptResult = fn.call(context);
-
-                if (this.isPromiseLike(scriptResult)) {
-                    try {
-                        return { result: await scriptResult, outputFlags };
-                    } catch (asyncError) {
-                        return { result: asyncError instanceof Error
-                            ? asyncError
-                            : new Error(String(asyncError)), outputFlags };
-                    }
-                }
-
-                return { result: scriptResult, outputFlags };
-            } catch (error) {
-                return { result: error instanceof Error ? error : new Error(String(error)), outputFlags };
-            }
-        } finally {
-            cleanup?.();
-            setTimeout(() => {
-                this.handlePromiseException -= 1;
-            }, 1000);
-        }
-    };
-
+    /**
+     * UI mode — creates context, writes output to grouped page, cleans up.
+     */
     runWithResult = async (
         pageId: string,
         script: string,
         page?: PageModel,
         language?: string,
     ): Promise<string> => {
-        const { result, outputFlags } = await this.executeScript(script, page, undefined, language);
+        const { result, outputFlags } = await this.executeWithContextAndFlags(script, page, undefined, language);
         const isError = result instanceof Error;
         const outputSuppressed = outputFlags.outputPrevented || outputFlags.groupedContentWritten;
-        const textAndLang = this.convertToText(result);
+        const textAndLang = convertToText(result);
 
         if (outputSuppressed && isError) {
             import("../ui/dialogs/TextDialog").then(({ showTextDialog }) => {
@@ -221,239 +73,58 @@ class ScriptRunner {
         return textAndLang.text;
     };
 
-    private wrapScriptWithImplicitReturn(script: string): string {
-        const lines = script.trim().split("\n");
+    // -------------------------------------------------------------------------
+    // Internal: context lifecycle management
+    // -------------------------------------------------------------------------
 
-        // If there's already a return statement, use as-is
-        if (/\breturn\b/.test(script)) {
-            return `
-            with (this) {
-                return (async function() {
-                    ${lexicalObjects}
-                    ${script}
-                }).call(this);
-            }
-        `;
-        }
-
-        // Try to make the last line/statement return its value
-        // This is a simplified approach - handles most common cases
-        const lastLine = lines[lines.length - 1].trim();
-
-        // Check if last line looks like an expression (not a statement or block closer)
-        const isStatement =
-            /^(const|let|var|if|for|while|do|switch|function|class|try|throw|return)\s/.test(
-                lastLine
-            );
-        const isBlockCloser = /^[}\]]/.test(lastLine);
-
-        if (
-            !isStatement &&
-            !isBlockCloser &&
-            lastLine &&
-            !lastLine.endsWith(";") &&
-            !lastLine.endsWith("}")
-        ) {
-            // Last line looks like an expression, make it return
-            const beforeLast = lines.slice(0, -1).join("\n");
-            return `
-            with (this) {
-                return (async function() {
-                    ${lexicalObjects}
-                    ${beforeLast}
-                    return (${lastLine});
-                }).call(this);
-            }
-        `;
-        } else if (!isStatement && !isBlockCloser && lastLine && lastLine.endsWith(";")) {
-            // Remove trailing semicolon and return
-            const beforeLast = lines.slice(0, -1).join("\n");
-            const expressionPart = lastLine.slice(0, -1); // Remove semicolon
-            return `
-            with (this) {
-                return (async function() {
-                    ${lexicalObjects}
-                    ${beforeLast}
-                    return (${expressionPart});
-                }).call(this);
-            }
-        `;
-        }
-
-        // Default: execute as-is (will return undefined)
-        return `
-        with (this) {
-            return (async function() {
-                ${lexicalObjects}
-                ${script}
-            }).call(this);
-        }
-    `;
+    /**
+     * Execute script with auto-created context. Disposes context on completion.
+     * Returns the raw result.
+     */
+    private async executeWithContext(
+        script: string,
+        page?: PageModel,
+        consoleLogs?: ConsoleLogEntry[],
+        language?: string,
+    ): Promise<any> {
+        const { result } = await this.executeWithContextAndFlags(script, page, consoleLogs, language);
+        return result;
     }
 
     /**
-     * Check if a value is a genuine Promise-like object (not just any object with a .then method).
-     * StyledLogBuilder has a .then() method for chaining styled text segments — it is NOT a Promise.
-     * Using `typeof value.then === "function"` would misidentify it as a thenable and hang forever.
+     * Execute script with auto-created context. Disposes context on completion.
+     * Returns result + outputFlags (needed by runWithResult).
      */
-    private isPromiseLike(value: any): boolean {
-        return value instanceof Promise
-            || (value && typeof value.then === "function" && typeof value.catch === "function");
-    }
-
-    convertToText = (
-        value: any
-    ): { text: string; language: string } => {
-        // Handle Error objects (including exceptions)
-        if (value instanceof Error) {
-            let errorText = `Error: ${value.message}\n`;
-            if (value.stack) {
-                errorText += `\nStack trace:\n${value.stack}`;
-            }
-            return { text: errorText, language: "plaintext" };
-        }
-
-        // Handle undefined
-        if (value === undefined) {
-            return { text: "undefined", language: "plaintext" };
-        }
-
-        // Handle null
-        if (value === null) {
-            return { text: "null", language: "plaintext" };
-        }
-
-        // Handle string
-        if (typeof value === "string") {
-            return { text: value, language: "plaintext" };
-        }
-
-        // Handle number
-        if (typeof value === "number") {
-            return { text: String(value), language: "plaintext" };
-        }
-
-        // Handle boolean
-        if (typeof value === "boolean") {
-            return { text: String(value), language: "plaintext" };
-        }
-
-        // Handle BigInt
-        if (typeof value === "bigint") {
-            return { text: value.toString() + "n", language: "plaintext" };
-        }
-
-        // Handle Symbol
-        if (typeof value === "symbol") {
-            return { text: value.toString(), language: "plaintext" };
-        }
-
-        // Handle Function
-        if (typeof value === "function") {
-            return { text: value.toString(), language: "javascript" };
-        }
-
-        // Handle Date
-        if (value instanceof Date) {
-            return { text: value.toISOString(), language: "plaintext" };
-        }
-
-        // Handle RegExp
-        if (value instanceof RegExp) {
-            return { text: value.toString(), language: "plaintext" };
-        }
-
-        // Handle Map
-        if (value instanceof Map) {
-            const entries = Array.from(value.entries());
-            return { text: JSON.stringify(entries, null, 4), language: "json" };
-        }
-
-        // Handle Set
-        if (value instanceof Set) {
-            const items = Array.from(value);
-            return { text: JSON.stringify(items, null, 4), language: "json" };
-        }
-
-        // Handle ArrayBuffer and TypedArrays
-        if (value instanceof ArrayBuffer) {
-            return {
-                text: `ArrayBuffer(${value.byteLength} bytes)`,
-                language: "plaintext",
-            };
-        }
-
-        if (ArrayBuffer.isView(value)) {
-            // TypedArray or DataView
-            const typeName = value.constructor.name;
-            if (value instanceof DataView) {
-                return {
-                    text: `DataView(${value.byteLength} bytes)`,
-                    language: "plaintext",
-                };
-            }
-            // For TypedArrays, show as JSON array
-            const arr = Array.from(value as any);
-            if (arr.length > 100) {
-                return {
-                    text: `${typeName}(${arr.length} items): [${arr.slice(0, 100).join(", ")}, ...]`,
-                    language: "plaintext",
-                };
-            }
-            return { text: JSON.stringify(arr, null, 4), language: "json" };
-        }
-
-        // Handle Promise (shouldn't happen as run() awaits them, but just in case)
-        if (value && typeof value.then === "function") {
-            return { text: "[Promise - not awaited]", language: "plaintext" };
-        }
-
-        // Handle DOM elements (in Electron renderer)
-        if (
-            typeof HTMLElement !== "undefined" &&
-            value instanceof HTMLElement
-        ) {
-            return { text: value.outerHTML, language: "html" };
-        }
-
-        if (typeof Node !== "undefined" && value instanceof Node) {
-            return {
-                text: `[${value.constructor.name}]`,
-                language: "plaintext",
-            };
-        }
-
-        // Handle regular objects and arrays with JSON.stringify
+    private async executeWithContextAndFlags(
+        script: string,
+        page?: PageModel,
+        consoleLogs?: ConsoleLogEntry[],
+        language?: string,
+    ): Promise<{ result: any; outputFlags: ScriptOutputFlags }> {
+        this.handlePromiseException += 1;
+        let scriptContext: import("./ScriptContext").ScriptContext | undefined;
         try {
-            return { text: JSON.stringify(value, null, 4), language: "json" };
+            // Pre-load log-view module so UiFacade can create VM synchronously
+            await editorRegistry.loadViewModelFactory("log-view");
+
+            const contextModule = await import("./ScriptContext");
+            const libraryPath = settings.get("script-library.path") as string | undefined;
+            scriptContext = new contextModule.ScriptContext(page, consoleLogs, libraryPath);
+
+            const result = await this.execute(script, scriptContext.context, language);
+            return { result, outputFlags: scriptContext.outputFlags };
         } catch (error) {
-            // Handle circular references or non-serializable objects
-            try {
-                // Try with a circular reference replacer
-                const seen = new WeakSet();
-                const json = JSON.stringify(
-                    value,
-                    (key, val) => {
-                        if (typeof val === "object" && val !== null) {
-                            if (seen.has(val)) {
-                                return "[Circular Reference]";
-                            }
-                            seen.add(val);
-                        }
-                        return val;
-                    },
-                    4
-                );
-                return { text: json, language: "json" };
-            } catch {
-                // Last resort - use toString
-                return {
-                    text: `[Object: ${value.constructor?.name || "Unknown"}]`,
-                    language: "plaintext",
-                };
-            }
+            return {
+                result: error instanceof Error ? error : new Error(String(error)),
+                outputFlags: scriptContext?.outputFlags ?? { outputPrevented: false, groupedContentWritten: false },
+            };
+        } finally {
+            scriptContext?.dispose();
+            setTimeout(() => {
+                this.handlePromiseException -= 1;
+            }, 1000);
         }
-    };
+    }
 }
 
 export const scriptRunner = new ScriptRunner();

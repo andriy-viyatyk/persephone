@@ -355,12 +355,14 @@ js-notepad/
 │   └── index.ts
 │
 ├── scripting/              # Script Execution
-│   ├── ScriptRunner.ts     # Script engine (expression/statement, async, errors)
-│   ├── ScriptContext.ts    # Sandbox context (globals, cleanup, read-only proxy)
+│   ├── ScriptRunnerBase.ts # Core execution engine (transpile, execute, library)
+│   ├── ScriptRunner.ts     # Orchestrator (context lifecycle, result handling)
+│   ├── ScriptContext.ts    # Execution scope class (context proxy, cleanup)
+│   ├── script-utils.ts     # Utilities (convertToText)
 │   ├── transpile.ts        # TypeScript transpilation via sucrase (lazy-loaded)
 │   ├── library-require.ts  # Library require() resolution + .ts extension handler
 │   └── api-wrapper/        # Safe wrappers for script access
-│       ├── AppWrapper.ts           # Wraps app → IApp
+│       ├── AppWrapper.ts           # Wraps app → IApp (events proxy for auto-cleanup)
 │       ├── PageCollectionWrapper.ts # Wraps pages → IPageCollection
 │       ├── PageWrapper.ts          # Wraps page → IPage (with asX() + auto-release)
 │       ├── TextEditorFacade.ts     # ITextEditor facade

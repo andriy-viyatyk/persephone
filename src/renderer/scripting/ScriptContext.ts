@@ -33,155 +33,165 @@ export interface ScriptOutputFlags {
     groupedContentWritten: boolean;
 }
 
-export function createScriptContext(page?: PageModel, consoleLogs?: ConsoleLogEntry[], libraryPath?: string) {
-    const releaseList: Array<() => void> = [];
-    const outputFlags: ScriptOutputFlags = {
-        outputPrevented: false,
-        groupedContentWritten: false,
-    };
+/**
+ * Script execution scope. Manages the proxy context, cleanup of acquired
+ * resources (ViewModels, event subscriptions), and console forwarding.
+ *
+ * Usage:
+ * - Regular scripts: create, execute, dispose in finally block.
+ * - Registration scripts: create, execute register(), store instance,
+ *   dispose on reload.
+ */
+export class ScriptContext {
+    readonly releaseList: Array<() => void> = [];
+    readonly outputFlags: ScriptOutputFlags = { outputPrevented: false, groupedContentWritten: false };
 
-    const appWrapper = new AppWrapper(releaseList);
-    const pageWrapper = page ? new PageWrapper(page, releaseList, outputFlags) : undefined;
+    /** The proxy object passed as `this` to scripts. */
+    readonly context: Record<string, any>;
 
-    const customContext: Record<string, any> = {
-        app: appWrapper,
-        page: pageWrapper,
-        React,
-        styledText,
-        preventOutput: () => { outputFlags.outputPrevented = true; },
-        require: libraryPath
-            ? createLibraryRequire(libraryPath)
-            : createUnlinkedLibraryRequire(),
-    };
+    constructor(page?: PageModel, consoleLogs?: ConsoleLogEntry[], libraryPath?: string) {
+        const appWrapper = new AppWrapper(this.releaseList);
+        const pageWrapper = page ? new PageWrapper(page, this.releaseList, this.outputFlags) : undefined;
 
-    // Lazy `ui` global — Log View page created on first access.
-    // Wrapped in a callable Proxy so `await ui()` yields to the event loop,
-    // preventing long-running scripts from freezing the UI.
-    const isMcp = !!consoleLogs;
-    let uiFacade: UiFacade | undefined;
-    let callableUi: unknown;
-    Object.defineProperty(customContext, "ui", {
-        get: () => {
-            if (!uiFacade) {
-                uiFacade = initializeUiFacade(page, releaseList, outputFlags, isMcp);
-                // Install console forwarding now that LogViewModel exists
-                installConsoleForwarding(uiFacade, customContext, consoleLogs);
-                // Create callable proxy: await ui() yields, ui.log() etc. delegate to facade
-                const yieldFn = () => new Promise<void>((r) => setTimeout(r, 0));
-                callableUi = new Proxy(yieldFn, {
-                    get: (_target, prop, receiver) => Reflect.get(uiFacade!, prop, receiver),
-                    set: (_target, prop, value, receiver) => Reflect.set(uiFacade!, prop, value, receiver),
-                });
-            }
-            return callableUi;
-        },
-        enumerable: true,
-        configurable: false,
-    });
-
-    if (consoleLogs) {
-        customContext.console = {
-            log: (...args: any[]) => { consoleLogs.push({ level: "log", args: args.map(serializeArg), timestamp: Date.now() }); },
-            error: (...args: any[]) => { consoleLogs.push({ level: "error", args: args.map(serializeArg), timestamp: Date.now() }); },
-            warn: (...args: any[]) => { consoleLogs.push({ level: "warn", args: args.map(serializeArg), timestamp: Date.now() }); },
-            info: (...args: any[]) => { consoleLogs.push({ level: "info", args: args.map(serializeArg), timestamp: Date.now() }); },
+        const customContext: Record<string, any> = {
+            app: appWrapper,
+            page: pageWrapper,
+            React,
+            styledText,
+            preventOutput: () => { this.outputFlags.outputPrevented = true; },
+            require: libraryPath
+                ? createLibraryRequire(libraryPath)
+                : createUnlinkedLibraryRequire(),
         };
-    }
 
-    function cleanup() {
-        for (const release of releaseList) {
-            try { release(); } catch { /* don't block other releases */ }
-        }
-        releaseList.length = 0;
-    }
-
-    // Create a read-only proxy for window/globalThis
-    const readOnlyGlobalThis = new Proxy(globalThis, {
-        get(target, prop) {
-            if (Object.hasOwn(customContext, prop)) {
-                return customContext[prop as string];
-            }
-            const value = (globalThis as any)[prop];
-
-            // If it's a function, bind it to globalThis
-            if (typeof value === "function") {
-                if (value.prototype) {
-                    // Do NOT bind constructors or classes
-                    return value;
+        // Lazy `ui` global — Log View page created on first access.
+        // Wrapped in a callable Proxy so `await ui()` yields to the event loop,
+        // preventing long-running scripts from freezing the UI.
+        const isMcp = !!consoleLogs;
+        let uiFacade: UiFacade | undefined;
+        let callableUi: unknown;
+        Object.defineProperty(customContext, "ui", {
+            get: () => {
+                if (!uiFacade) {
+                    uiFacade = initializeUiFacade(page, this.releaseList, this.outputFlags, isMcp);
+                    // Install console forwarding now that LogViewModel exists
+                    installConsoleForwarding(uiFacade, customContext, consoleLogs);
+                    // Create callable proxy: await ui() yields, ui.log() etc. delegate to facade
+                    const yieldFn = () => new Promise<void>((r) => setTimeout(r, 0));
+                    callableUi = new Proxy(yieldFn, {
+                        get: (_target, prop, receiver) => Reflect.get(uiFacade!, prop, receiver),
+                        set: (_target, prop, value, receiver) => Reflect.set(uiFacade!, prop, value, receiver),
+                    });
                 }
+                return callableUi;
+            },
+            enumerable: true,
+            configurable: false,
+        });
 
-                return value.bind(globalThis);
-            }
+        if (consoleLogs) {
+            customContext.console = {
+                log: (...args: any[]) => { consoleLogs.push({ level: "log", args: args.map(serializeArg), timestamp: Date.now() }); },
+                error: (...args: any[]) => { consoleLogs.push({ level: "error", args: args.map(serializeArg), timestamp: Date.now() }); },
+                warn: (...args: any[]) => { consoleLogs.push({ level: "warn", args: args.map(serializeArg), timestamp: Date.now() }); },
+                info: (...args: any[]) => { consoleLogs.push({ level: "info", args: args.map(serializeArg), timestamp: Date.now() }); },
+            };
+        }
 
-            return value;
-        },
-        set(target, prop, value) {
-            customContext[prop as string] = value;
-            return true;
-        },
-        deleteProperty() {
-            // Prevent deletions
-            return false;
-        },
-        defineProperty() {
-            // Prevent defining new properties
-            return false;
-        },
-    });
-
-    const context = new Proxy(customContext, {
-        get(target, prop) {
-            // First check custom context
-            if (prop in target) {
-                return target[prop as string];
-            }
-
-            // Special handling for 'window' and 'globalThis'
-            if (prop === "window" || prop === "globalThis") {
-                return readOnlyGlobalThis;
-            }
-
-            // Then check globalThis
-            if (prop in globalThis) {
+        // Create a read-only proxy for window/globalThis
+        const readOnlyGlobalThis = new Proxy(globalThis, {
+            get(target, prop) {
+                if (Object.hasOwn(customContext, prop)) {
+                    return customContext[prop as string];
+                }
                 const value = (globalThis as any)[prop];
 
                 // If it's a function, bind it to globalThis
                 if (typeof value === "function") {
                     if (value.prototype) {
-                        // Do NOT bind constructors or classes (e.g. Buffer, URL)
-                        // — binding loses static methods like Buffer.from()
+                        // Do NOT bind constructors or classes
                         return value;
                     }
+
                     return value.bind(globalThis);
                 }
 
                 return value;
-            }
-
-            return undefined;
-        },
-
-        has(target, prop) {
-            return prop in target || prop in globalThis;
-        },
-
-        set(target, prop, value) {
-            target[prop as string] = value;
-            return true;
-        },
-
-        deleteProperty(target, prop) {
-            // Only allow deleting custom context properties
-            if (prop in target) {
-                delete target[prop as string];
+            },
+            set(target, prop, value) {
+                customContext[prop as string] = value;
                 return true;
-            }
-            // Prevent deleting global properties
-            return false;
-        },
-    });
+            },
+            deleteProperty() {
+                // Prevent deletions
+                return false;
+            },
+            defineProperty() {
+                // Prevent defining new properties
+                return false;
+            },
+        });
 
-    return { context, cleanup, outputFlags };
+        this.context = new Proxy(customContext, {
+            get(target, prop) {
+                // First check custom context
+                if (prop in target) {
+                    return target[prop as string];
+                }
+
+                // Special handling for 'window' and 'globalThis'
+                if (prop === "window" || prop === "globalThis") {
+                    return readOnlyGlobalThis;
+                }
+
+                // Then check globalThis
+                if (prop in globalThis) {
+                    const value = (globalThis as any)[prop];
+
+                    // If it's a function, bind it to globalThis
+                    if (typeof value === "function") {
+                        if (value.prototype) {
+                            // Do NOT bind constructors or classes (e.g. Buffer, URL)
+                            // — binding loses static methods like Buffer.from()
+                            return value;
+                        }
+                        return value.bind(globalThis);
+                    }
+
+                    return value;
+                }
+
+                return undefined;
+            },
+
+            has(target, prop) {
+                return prop in target || prop in globalThis;
+            },
+
+            set(target, prop, value) {
+                target[prop as string] = value;
+                return true;
+            },
+
+            deleteProperty(target, prop) {
+                // Only allow deleting custom context properties
+                if (prop in target) {
+                    delete target[prop as string];
+                    return true;
+                }
+                // Prevent deleting global properties
+                return false;
+            },
+        });
+    }
+
+    /** Release all acquired resources (ViewModels, event subscriptions, etc.). */
+    dispose() {
+        for (const release of this.releaseList) {
+            try { release(); } catch { /* don't block other releases */ }
+        }
+        this.releaseList.length = 0;
+    }
 }
 
 // =============================================================================

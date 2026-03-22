@@ -263,6 +263,7 @@ See [/doc/standards/coding-style.md](doc/standards/coding-style.md) for complete
 | Event channel system     | `/src/renderer/api/events/EventChannel.ts`        |
 | App events namespace     | `/src/renderer/api/events/AppEvents.ts`           |
 | Script library service   | `/src/renderer/api/library-service.ts`            |
+| Script execution (core)  | `/src/renderer/scripting/ScriptRunnerBase.ts`     |
 | Script execution         | `/src/renderer/scripting/ScriptRunner.ts`         |
 | TypeScript transpilation | `/src/renderer/scripting/transpile.ts`            |
 | Script API types         | `/src/renderer/api/types/*.d.ts`                  |

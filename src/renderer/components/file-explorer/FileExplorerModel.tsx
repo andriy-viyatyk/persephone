@@ -483,9 +483,11 @@ export class FileExplorerModel extends TComponentModel<FileExplorerState, FileEx
 
     onBackgroundContextMenu = (e: React.MouseEvent) => {
         const ctxEvent = e.nativeEvent.contextMenuEvent;
+        const isFolder = ctxEvent?.target && (ctxEvent.target as any).isDirectory;
 
-        // Add background items if file operations enabled
-        if (this.props.enableFileOperations) {
+        // Add background items if file operations enabled and not a folder
+        // (folder items already include "New File..."/"New Folder...")
+        if (this.props.enableFileOperations && !isFolder) {
             const bgEvent = ContextMenuEvent.fromNativeEvent(e, "file-explorer-background");
             bgEvent.items.push(
                 {
