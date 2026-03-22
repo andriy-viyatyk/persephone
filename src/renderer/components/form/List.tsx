@@ -24,7 +24,8 @@ import { OverflowTooltipText } from "../basic/OverflowTooltipText";
 import { highlightText, useHighlightedText } from "../basic/useHighlightedText";
 import { Tooltip } from "../basic/Tooltip";
 
-import { MenuItem } from "../overlay/PopupMenu";
+import type { MenuItem } from "../overlay/PopupMenu";
+import { ContextMenuEvent } from "../../api/events/events";
 
 const NoRowsRoot = styled.div({
     flex: "1 1 auto",
@@ -178,10 +179,8 @@ function DefaultCell({
         (e: React.MouseEvent<Element>) => {
             const menuItems = getContextMenu?.(row, index);
             if (menuItems) {
-                if (!e.nativeEvent.menuItems) {
-                    e.nativeEvent.menuItems = [];
-                }
-                e.nativeEvent.menuItems.push(...menuItems);
+                const ctxEvent = ContextMenuEvent.fromNativeEvent(e, "generic");
+                ctxEvent.items.push(...menuItems);
             }
         },
         [getContextMenu, row, index]

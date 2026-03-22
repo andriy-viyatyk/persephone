@@ -130,6 +130,7 @@ When user says **"let's publish new build"** (or similar), follow [/doc/standard
 | Add a new editor              | [/doc/standards/editor-guide.md](doc/standards/editor-guide.md) |
 | Modify the browser editor     | [/doc/architecture/browser-editor.md](doc/architecture/browser-editor.md) |
 | Add a UI component            | [/doc/standards/component-guide.md](doc/standards/component-guide.md) |
+| Work with context menus       | [/doc/architecture/context-menu.md](doc/architecture/context-menu.md) |
 | Build complex components      | [/doc/standards/model-view-pattern.md](doc/standards/model-view-pattern.md) |
 | Understand state management   | [/doc/architecture/state-management.md](doc/architecture/state-management.md) |
 | Work with pages/tabs          | [/doc/architecture/pages-architecture.md](doc/architecture/pages-architecture.md) |
@@ -260,6 +261,7 @@ See [/doc/standards/coding-style.md](doc/standards/coding-style.md) for complete
 | Path utilities           | `/src/renderer/core/utils/file-path.ts`           |
 | App settings             | `/src/renderer/api/settings.ts`                   |
 | Event channel system     | `/src/renderer/api/events/EventChannel.ts`        |
+| App events namespace     | `/src/renderer/api/events/AppEvents.ts`           |
 | Script library service   | `/src/renderer/api/library-service.ts`            |
 | Script execution         | `/src/renderer/scripting/ScriptRunner.ts`         |
 | TypeScript transpilation | `/src/renderer/scripting/transpile.ts`            |

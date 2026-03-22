@@ -6,6 +6,7 @@ import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRe
 import color from "../../theme/color";
 import { CheckedIcon, CopyIcon, UncheckedIcon } from "../../theme/icons";
 import { appendLinkOpenMenuItems } from "../shared/link-open-menu";
+import { ContextMenuEvent } from "../../api/events/events";
 import { createRehypeHighlight } from "./rehypeHighlight";
 import { CodeBlock, createPreBlock } from "./CodeBlock";
 import { isCurrentThemeDark } from "../../theme/themes";
@@ -417,17 +418,15 @@ export const MarkdownBlock = forwardRef<MarkdownBlockHandle, MarkdownBlockProps>
             if (anchor) {
                 const href = anchor.getAttribute("href");
                 if (href) {
-                    if (!e.nativeEvent.menuItems) {
-                        e.nativeEvent.menuItems = [];
-                    }
-                    e.nativeEvent.menuItems.push({
+                    const ctxEvent = ContextMenuEvent.fromNativeEvent(e, "markdown-link");
+                    ctxEvent.items.push({
                         label: "Copy Link",
                         icon: <CopyIcon />,
                         onClick: () => navigator.clipboard.writeText(href),
                     });
                     const isExternal = href.startsWith("http://") || href.startsWith("https://");
                     if (isExternal) {
-                        appendLinkOpenMenuItems(e.nativeEvent.menuItems!, href);
+                        appendLinkOpenMenuItems(ctxEvent.items, href);
                     }
                 }
             }

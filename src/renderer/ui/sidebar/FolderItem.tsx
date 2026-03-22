@@ -8,7 +8,8 @@ import { Tooltip } from "../../components/basic/Tooltip";
 
 import { menuFolders } from "../../api/menu-folders";
 import type { MenuFolder } from "../../api/menu-folders";
-import { MenuItem } from "../../components/overlay/PopupMenu";
+import type { MenuItem } from "../../components/overlay/PopupMenu";
+import { ContextMenuEvent } from "../../api/events/events";
 
 const FOLDER_DRAG_TYPE = "FOLDER_DRAG";
 
@@ -123,10 +124,8 @@ export function FolderItem(props: FolderItemProps) {
         (e: React.MouseEvent) => {
             const menuItems = getContextMenu?.(folder, index);
             if (menuItems) {
-                if (!e.nativeEvent.menuItems) {
-                    e.nativeEvent.menuItems = [];
-                }
-                e.nativeEvent.menuItems.push(...menuItems);
+                const ctxEvent = ContextMenuEvent.fromNativeEvent(e, "sidebar-folder");
+                ctxEvent.items.push(...menuItems);
             }
         },
         [getContextMenu, folder, index]

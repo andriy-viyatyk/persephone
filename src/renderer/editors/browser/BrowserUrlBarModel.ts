@@ -4,7 +4,8 @@ import {
     SEARCH_ENGINES,
 } from "./BrowserPageModel";
 import { searchHistoryManager } from "./browser-search-history";
-import { MenuItem } from "../../components/overlay/PopupMenu";
+import type { MenuItem } from "../../components/overlay/PopupMenu";
+import { ContextMenuEvent } from "../../api/events/events";
 import type { BrowserPageModel } from "./BrowserPageModel";
 
 /**
@@ -191,10 +192,8 @@ export class BrowserUrlBarModel {
     };
 
     handleUrlContextMenu = (e: React.MouseEvent) => {
-        if (!e.nativeEvent.menuItems) {
-            e.nativeEvent.menuItems = [];
-        }
-        e.nativeEvent.menuItems.push({
+        const ctxEvent = ContextMenuEvent.fromNativeEvent(e, "browser-url-bar");
+        ctxEvent.items.push({
             label: "Paste and Go",
             startGroup: true,
             onClick: async () => {

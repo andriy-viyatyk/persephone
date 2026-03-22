@@ -9,6 +9,7 @@ import { Button } from "../../components/basic/Button";
 import color from "../../theme/color";
 import { CopyIcon, DeleteIcon, GlobeIcon, OpenFileIcon, OpenLinkIcon, PinFilledIcon, PinIcon, RenameIcon } from "../../theme/icons";
 import { appendLinkOpenMenuItems } from "../shared/link-open-menu";
+import { ContextMenuEvent } from "../../api/events/events";
 import { LinkItem, LINK_DRAG } from "./linkTypes";
 import { LinkViewModel } from "./LinkViewModel";
 import { LinkTooltip } from "./LinkTooltip";
@@ -264,13 +265,12 @@ export function LinkItemList({ links, model, selectedLinkId, pinnedLinkIds }: Li
 
     const handleContextMenu = useCallback((e: React.MouseEvent, link: LinkItem) => {
         model.selectLink(link.id);
-        const nativeEvent = e.nativeEvent as any;
-        if (!nativeEvent.menuItems) nativeEvent.menuItems = [];
+        const ctxEvent = ContextMenuEvent.fromNativeEvent(e, "link-item");
         const customItems = model.onGetLinkMenuItems?.(link);
         if (customItems?.length) {
-            nativeEvent.menuItems.push(...customItems);
+            ctxEvent.items.push(...customItems);
         }
-        nativeEvent.menuItems.push(
+        ctxEvent.items.push(
             {
                 label: "Edit",
                 icon: <RenameIcon />,
@@ -279,9 +279,9 @@ export function LinkItemList({ links, model, selectedLinkId, pinnedLinkIds }: Li
             },
         );
         if (link.href) {
-            appendLinkOpenMenuItems(nativeEvent.menuItems, link.href, { startGroup: true });
+            appendLinkOpenMenuItems(ctxEvent.items, link.href, { startGroup: true });
         }
-        nativeEvent.menuItems.push(
+        ctxEvent.items.push(
             {
                 label: "Copy URL",
                 icon: <CopyIcon />,
@@ -291,7 +291,7 @@ export function LinkItemList({ links, model, selectedLinkId, pinnedLinkIds }: Li
         );
         if (link.imgSrc) {
             const imgUrl = link.imgSrc;
-            nativeEvent.menuItems.push(
+            ctxEvent.items.push(
                 {
                     label: "Copy Image URL",
                     icon: <CopyIcon />,
@@ -309,7 +309,7 @@ export function LinkItemList({ links, model, selectedLinkId, pinnedLinkIds }: Li
             );
         }
         const isPinned = model.isLinkPinned(link.id);
-        nativeEvent.menuItems.push(
+        ctxEvent.items.push(
             {
                 label: isPinned ? "Unpin" : "Pin",
                 icon: isPinned ? <PinFilledIcon /> : <PinIcon />,

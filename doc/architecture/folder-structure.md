@@ -78,9 +78,9 @@ js-notepad/
 │   │   └── RendererEventsService.ts # IPC event subscriptions (open file, quit, etc.)
 │   │
 │   ├── events/             # Event channel system (scriptable events)
+│   │   ├── AppEvents.ts             # app.events namespace (FileExplorerEvents, etc.)
 │   │   ├── BaseEvent.ts             # Base event class with `handled` flag
 │   │   ├── EventChannel.ts          # EventChannel<T> — subscribe, send, sendAsync
-│   │   ├── MenuItem.ts              # MenuItem interface (canonical location)
 │   │   ├── events.ts                # Event subclasses (ContextMenuEvent<T>, etc.)
 │   │   └── index.ts
 │   │

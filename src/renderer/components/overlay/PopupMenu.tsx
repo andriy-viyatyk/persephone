@@ -15,8 +15,8 @@ import ReactDOM from "react-dom";
 import { TComponentState } from "../../core/state/state";
 import { showPopper } from "../../ui/dialogs/poppers/Poppers";
 import { FlexSpace } from "../layout/Elements";
-import type { MenuItem } from "../../api/events/MenuItem";
-export type { MenuItem } from "../../api/events/MenuItem";
+import type { MenuItem } from "../../api/types/events";
+export type { MenuItem } from "../../api/types/events";
 
 const PopupMenuRoot = styled(PopperRoot)<{
     height?: CSSProperties["height"];

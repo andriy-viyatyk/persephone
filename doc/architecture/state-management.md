@@ -248,7 +248,7 @@ sub.unsubscribe();                       // cleanup
 Scriptable event channel in `api/events/EventChannel.ts`. Supports both fire-and-forget and async pipeline patterns. Designed for events that user scripts can subscribe to.
 
 ```typescript
-const channel = new EventChannel<ContextMenuEvent<IFileTarget>>({ name: "fileExplorer.onContextMenu" });
+const channel = new EventChannel<ContextMenuEvent<IFileTarget>>({ name: "fileExplorer.itemContextMenu" });
 
 // Fire-and-forget (sync, event frozen — subscribers observe only)
 channel.send(event);
@@ -257,7 +257,7 @@ channel.send(event);
 const ok = await channel.sendAsync(event);
 
 // Subscribe (sync or async handlers)
-const sub = channel.subscribe((event) => { event.addItem({ label: "Custom", onClick: () => {} }); });
+const sub = channel.subscribe((event) => { event.items.push({ label: "Custom", onClick: () => {} }); });
 
 // Default handler (runs last, skipped if event.handled)
 channel.subscribeDefault((event) => { showMenu(event.items); });

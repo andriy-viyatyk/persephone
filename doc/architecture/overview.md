@@ -228,3 +228,4 @@ Every editor follows the same pattern:
 - [State Management](./state-management.md) — State patterns and primitives
 - [Scripting](./scripting.md) — Script execution and API wrappers
 - [Pages Architecture](./pages-architecture.md) — Pages lifecycle and submodels
+- [Context Menu](./context-menu.md) — Context menu event flow, bubbling, and EventChannel integration

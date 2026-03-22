@@ -270,6 +270,8 @@ These are research/design tasks to resolve open questions before implementation 
 | Task | Title | Status |
 |------|-------|--------|
 | US-229 | App Event Primitives | Done |
+| US-230 | Context Menu ContextMenuEvent Refactor | Done |
+| US-231 | File Explorer Item Context Menu EventChannel | Done |
 
 ## Notes
 

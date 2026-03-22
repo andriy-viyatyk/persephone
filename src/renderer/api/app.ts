@@ -9,6 +9,7 @@ import type { IUserInterface } from "./types/ui";
 import type { IDownloads } from "./types/downloads";
 import type { IMenuFolders } from "./types/menu-folders";
 import type { PagesModel } from "./pages/PagesModel";
+import { AppEvents } from "./events/AppEvents";
 
 // Note: IApp (.d.ts) is the script-facing interface for Monaco IntelliSense.
 // App class has additional internal methods (init, initServices, initPages, initEvents)
@@ -33,6 +34,7 @@ class App {
     private _downloads = undefined as unknown as IDownloads;
     private _menuFolders = undefined as unknown as IMenuFolders;
     private _pages = undefined as unknown as PagesModel;
+    private _events = new AppEvents();
 
     get version(): string {
         return this._version;
@@ -76,6 +78,10 @@ class App {
 
     get pages(): PagesModel {
         return this._pages;
+    }
+
+    get events(): AppEvents {
+        return this._events;
     }
 
     /**

@@ -1,24 +1,46 @@
+import React from "react";
 import { BaseEvent } from "./BaseEvent";
-import type { MenuItem } from "./MenuItem";
+import type { MenuItem } from "../types/events";
+
+/**
+ * Identifies the source/kind of context menu.
+ * Used to filter events in a global `onContextMenu` channel.
+ */
+export type ContextMenuTargetKind =
+    | "page-tab"
+    | "file-explorer-item"
+    | "file-explorer-background"
+    | "sidebar-folder"
+    | "sidebar-background"
+    | "markdown-link"
+    | "browser-webview"
+    | "browser-url-bar"
+    | "browser-tab"
+    | "grid-cell"
+    | "graph-node"
+    | "graph-area"
+    | "link-item"
+    | "link-pinned"
+    | "generic";
 
 /** Generic context menu event. T defines the target that was right-clicked. */
 export class ContextMenuEvent<T> extends BaseEvent {
-    readonly target: T;
-    readonly items: MenuItem[];
+    readonly targetKind: ContextMenuTargetKind;
+    target: T;
+    items: MenuItem[];
 
-    constructor(target: T, items: MenuItem[] = []) {
+    constructor(targetKind: ContextMenuTargetKind, target: T, items: MenuItem[] = []) {
         super();
+        this.targetKind = targetKind;
         this.target = target;
         this.items = items;
     }
 
-    /** Add a menu item. */
-    addItem(item: MenuItem): void {
-        this.items.push(item);
-    }
-
-    /** Add a menu item with a separator line above it. */
-    addGroupItem(item: MenuItem): void {
-        this.items.push({ ...item, startGroup: true });
+    /** Get or create a ContextMenuEvent on the native mouse event. */
+    static fromNativeEvent(e: React.MouseEvent, targetKind: ContextMenuTargetKind): ContextMenuEvent<unknown> {
+        if (!e.nativeEvent.contextMenuEvent) {
+            e.nativeEvent.contextMenuEvent = new ContextMenuEvent(targetKind, null);
+        }
+        return e.nativeEvent.contextMenuEvent;
     }
 }

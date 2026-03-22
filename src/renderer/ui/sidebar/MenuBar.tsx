@@ -28,7 +28,8 @@ import { FlexSpace } from "../../components/layout/Elements";
 import { RecentFileList } from "./RecentFileList";
 import { FileExplorer, FileExplorerRef, FileExplorerSavedState } from "../../components/file-explorer";
 import { FileListRef } from "./FileList";
-import { MenuItem } from "../../components/overlay/PopupMenu";
+import type { MenuItem } from "../../components/overlay/PopupMenu";
+import { ContextMenuEvent } from "../../api/events/events";
 import { FolderIcon } from "../../components/icons/FileIcon";
 import { Splitter } from "../../components/layout/Splitter";
 import { FolderItem } from "./FolderItem";
@@ -398,16 +399,15 @@ class MenuBarModel extends TComponentModel<MenuBarState, MenuBarProps> {
     };
 
     onLeftPanelContextMenu = (e: React.MouseEvent) => {
-        if (e.nativeEvent.menuItems === undefined) {
-            e.nativeEvent.menuItems = [
-                {
-                    label: "Add Folder",
-                    icon: <FolderPlusIcon />,
-                    onClick: () => {
-                        this.addFolder();
-                    },
+        if (!e.nativeEvent.contextMenuEvent) {
+            const ctxEvent = ContextMenuEvent.fromNativeEvent(e, "sidebar-background");
+            ctxEvent.items.push({
+                label: "Add Folder",
+                icon: <FolderPlusIcon />,
+                onClick: () => {
+                    this.addFolder();
                 },
-            ];
+            });
         }
     };
 

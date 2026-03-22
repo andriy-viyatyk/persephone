@@ -6,7 +6,8 @@ import color from "../../theme/color";
 import { CloseIcon, GlobeIcon, PlusIcon, VolumeIcon, VolumeMutedIcon } from "../../theme/icons";
 import { BrowserPageModel, BrowserTabData } from "./BrowserPageModel";
 import { Button } from "../../components/basic/Button";
-import { MenuItem } from "../../components/overlay/PopupMenu";
+import type { MenuItem } from "../../components/overlay/PopupMenu";
+import { ContextMenuEvent } from "../../api/events/events";
 
 const BROWSER_TAB_DRAG = "BROWSER_TAB_DRAG";
 
@@ -345,10 +346,7 @@ export function BrowserTabsPanel({
 
     const handleContextMenu = useCallback(
         (e: React.MouseEvent, tabId: string) => {
-            const nativeEvent = e.nativeEvent;
-            if (!nativeEvent.menuItems) {
-                nativeEvent.menuItems = [];
-            }
+            const ctxEvent = ContextMenuEvent.fromNativeEvent(e, "browser-tab");
 
             const tabIndex = tabs.findIndex((t) => t.id === tabId);
             const hasTabsBelow = tabIndex < tabs.length - 1;
@@ -371,7 +369,7 @@ export function BrowserTabsPanel({
                 },
             ];
 
-            nativeEvent.menuItems.push(...menuItems);
+            ctxEvent.items.push(...menuItems);
         },
         [model, tabs],
     );

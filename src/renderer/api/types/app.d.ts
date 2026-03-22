@@ -8,6 +8,7 @@ import type { IUserInterface } from "./ui";
 import type { IDownloads } from "./downloads";
 import type { IMenuFolders } from "./menu-folders";
 import type { IPageCollection } from "./pages";
+import type { IAppEvents } from "./events";
 
 /**
  * Root application object. Entry point to all app functionality.
@@ -52,4 +53,7 @@ export interface IApp {
 
     /** Open pages (tabs) in the current window. */
     readonly pages: IPageCollection;
+
+    /** Application event channels for scripting integration. */
+    readonly events: IAppEvents;
 }

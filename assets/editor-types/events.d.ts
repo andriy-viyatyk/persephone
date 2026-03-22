@@ -31,22 +31,42 @@ export interface IBaseEvent {
 }
 
 /**
+ * Identifies the source/kind of context menu.
+ * Allows scripts to filter events in a global `onContextMenu` channel.
+ */
+export type ContextMenuTargetKind =
+    | "page-tab"
+    | "file-explorer-item"
+    | "file-explorer-background"
+    | "sidebar-folder"
+    | "sidebar-background"
+    | "markdown-link"
+    | "browser-webview"
+    | "browser-url-bar"
+    | "browser-tab"
+    | "grid-cell"
+    | "graph-node"
+    | "graph-area"
+    | "link-item"
+    | "link-pinned"
+    | "generic";
+
+/**
  * Context menu event. Generic over the target type.
  *
  * @example
- * app.events.fileExplorer.onContextMenu.subscribe((event) => {
+ * app.events.fileExplorer.itemContextMenu.subscribe((event) => {
  *     if (event.target.name === "package.json") {
- *         event.addItem({ label: "Generate Deps Graph", onClick: () => { ... } });
+ *         event.items.push({ label: "Generate Deps Graph", onClick: () => { ... } });
  *     }
  * });
  */
 export interface IContextMenuEvent<T> extends IBaseEvent {
+    /** Identifies the source of this context menu event. */
+    readonly targetKind: ContextMenuTargetKind;
     readonly target: T;
-    readonly items: MenuItem[];
-    /** Add a menu item. */
-    addItem(item: MenuItem): void;
-    /** Add a menu item with a separator line above it. */
-    addGroupItem(item: MenuItem): void;
+    /** Menu items. Subscribers can push, remove, or replace items. */
+    items: MenuItem[];
 }
 
 /** File target for file explorer context menu events. */
@@ -81,4 +101,24 @@ export interface IEventChannel<T extends IBaseEvent> {
     subscribe(handler: (event: T) => void | Promise<void>): ISubscriptionObject;
     /** Register a default handler that runs last (skipped if event.handled is true). */
     subscribeDefault(handler: (event: T) => void | Promise<void>): ISubscriptionObject;
+}
+
+/** File explorer event channels. */
+export interface IFileExplorerEvents {
+    /** Fired when right-clicking a file or folder in the file explorer. */
+    readonly itemContextMenu: IEventChannel<FileContextMenuEvent>;
+}
+
+/**
+ * Application event channels for scripting integration.
+ *
+ * @example
+ * app.events.fileExplorer.itemContextMenu.subscribe((event) => {
+ *     if (event.target.name === "package.json") {
+ *         event.items.push({ label: "Generate Deps Graph", onClick: () => runScript() });
+ *     }
+ * });
+ */
+export interface IAppEvents {
+    readonly fileExplorer: IFileExplorerEvents;
 }

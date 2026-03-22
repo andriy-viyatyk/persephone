@@ -1,5 +1,8 @@
 import { TComponentModel } from "../../core/state/model";
-import { MenuItem } from "../overlay/PopupMenu";
+import type { MenuItem } from "../overlay/PopupMenu";
+import { ContextMenuEvent } from "../../api/events/events";
+import type { IFileTarget } from "../../api/types/events";
+import { app } from "../../api/app";
 import { TreeViewRef } from "../TreeView";
 import { FileTreeItem, FileSortType, buildFileTree, loadFolderChildren, filterTreeShallow, filterTreeDeep, filterTreeByPaths } from "./file-tree-builder";
 import { pagesModel } from "../../api/pages";
@@ -457,9 +460,14 @@ export class FileExplorerModel extends TComponentModel<FileExplorerState, FileEx
     // --- Context menus ---
 
     onItemContextMenu = (item: FileTreeItem, e: React.MouseEvent) => {
-        if (!e.nativeEvent.menuItems) {
-            e.nativeEvent.menuItems = [];
-        }
+        const ctxEvent = ContextMenuEvent.fromNativeEvent(e, "file-explorer-item");
+
+        // Set typed target for EventChannel subscribers
+        ctxEvent.target = {
+            path: item.filePath,
+            name: item.label,
+            isDirectory: item.isFolder,
+        } as IFileTarget;
 
         const menuItems: MenuItem[] = item.isFolder
             ? this.getFolderMenuItems(item)
@@ -470,26 +478,36 @@ export class FileExplorerModel extends TComponentModel<FileExplorerState, FileEx
             menuItems.push(...extraItems);
         }
 
-        e.nativeEvent.menuItems.push(...menuItems);
+        ctxEvent.items.push(...menuItems);
     };
 
     onBackgroundContextMenu = (e: React.MouseEvent) => {
-        if (!this.props.enableFileOperations) return;
-        if (!e.nativeEvent.menuItems) {
-            e.nativeEvent.menuItems = [];
+        const ctxEvent = e.nativeEvent.contextMenuEvent;
+
+        // Add background items if file operations enabled
+        if (this.props.enableFileOperations) {
+            const bgEvent = ContextMenuEvent.fromNativeEvent(e, "file-explorer-background");
+            bgEvent.items.push(
+                {
+                    label: "New File...",
+                    icon: <NewFileIcon />,
+                    onClick: () => this.createNewFile(this.props.rootPath),
+                },
+                {
+                    label: "New Folder...",
+                    icon: <NewFolderIcon />,
+                    onClick: () => this.createNewFolder(this.props.rootPath),
+                },
+            );
         }
-        e.nativeEvent.menuItems.push(
-            {
-                label: "New File...",
-                icon: <NewFileIcon />,
-                onClick: () => this.createNewFile(this.props.rootPath),
-            },
-            {
-                label: "New Folder...",
-                icon: <NewFolderIcon />,
-                onClick: () => this.createNewFolder(this.props.rootPath),
-            },
-        );
+
+        // Fire EventChannel only for item context menus
+        if (ctxEvent && ctxEvent.targetKind === "file-explorer-item") {
+            const promise = app.events.fileExplorer.itemContextMenu.sendAsync(
+                ctxEvent as ContextMenuEvent<IFileTarget>
+            );
+            e.nativeEvent.contextMenuPromise = promise;
+        }
     };
 
     private getFileMenuItems = (item: FileTreeItem): MenuItem[] => {

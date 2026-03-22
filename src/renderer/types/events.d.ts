@@ -1,8 +1,9 @@
-import { MenuItem } from '../api/events/MenuItem';
+import { ContextMenuEvent } from '../api/events/events';
 
 declare global {
   interface MouseEvent {
-    menuItems?: MenuItem[];
+    contextMenuEvent?: ContextMenuEvent<unknown>;
+    contextMenuPromise?: Promise<boolean>;
   }
 }
 

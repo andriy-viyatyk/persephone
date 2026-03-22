@@ -24,8 +24,9 @@ import {
 } from "../../theme/icons";
 import { LanguageIcon } from "../../components/icons/LanguageIcon";
 import { TComponentModel, useComponentModel } from "../../core/state/model";
-import { MenuItem } from "../../components/overlay/PopupMenu";
+import type { MenuItem } from "../../components/overlay/PopupMenu";
 import { WithPopupMenu } from "../../components/overlay/WithPopupMenu";
+import { ContextMenuEvent } from "../../api/events/events";
 import { monacoLanguages } from "../../core/utils/monaco-languages";
 import { useDrag, useDrop } from "react-dnd";
 import { useMemo } from "react";
@@ -246,9 +247,7 @@ class PageTabModel extends TComponentModel<null, PageTabProps> {
     };
 
     handleContextMenu = (e: React.MouseEvent) => {
-        if (!e.nativeEvent.menuItems) {
-            e.nativeEvent.menuItems = [];
-        }
+        const ctxEvent = ContextMenuEvent.fromNativeEvent(e, "page-tab");
         const isPinned = this.props.model.state.get().pinned;
         const pinUnpinItem: MenuItem = {
             label: isPinned ? "Unpin Tab" : "Pin Tab",
@@ -410,7 +409,7 @@ class PageTabModel extends TComponentModel<null, PageTabProps> {
                     !this.props.model.decripted,
             },
         );
-        e.nativeEvent.menuItems.push(...menuItems);
+        ctxEvent.items.push(...menuItems);
     };
 
     private getDragData = (drop = false): PageDragData => {

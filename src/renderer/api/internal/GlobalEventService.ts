@@ -23,9 +23,13 @@ export class GlobalEventService {
         window.addEventListener("beforeunload", this.handleBeforeUnload);
     }
 
-    private handleContextMenu = (e: PointerEvent) => {
-        showAppPopupMenu(e.clientX, e.clientY, e.menuItems || []);
+    private handleContextMenu = async (e: PointerEvent) => {
         e.preventDefault();
+        if (e.contextMenuPromise) {
+            await e.contextMenuPromise;
+        }
+        const event = e.contextMenuEvent;
+        showAppPopupMenu(e.clientX, e.clientY, event?.items || []);
     };
 
     private handleDragOver = (e: DragEvent) => {

@@ -1,0 +1,253 @@
+# Context Menu Architecture
+
+## Overview
+
+js-notepad uses a custom context menu system that replaces the native browser context menu. Right-click anywhere in the application shows a styled popup menu with context-specific items. The system uses **DOM event bubbling** — child components attach menu items to the native `contextmenu` event, and a global listener collects and displays them.
+
+## Event Flow
+
+```
+User right-clicks
+    |
+    v
+React onContextMenu handler (deepest child)
+    -> ContextMenuEvent.fromNativeEvent(e, targetKind)
+    -> Pushes items to ctxEvent.items
+    |
+    v  (DOM event bubbles up)
+React onContextMenu handler (parent)
+    -> Reuses same ContextMenuEvent via fromNativeEvent()
+    -> Pushes more items
+    -> Optionally fires EventChannel (sendAsync) for script integration
+    -> Attaches promise to e.nativeEvent.contextMenuPromise
+    |
+    v  (DOM event bubbles to document)
+GlobalEventService.handleContextMenu()
+    -> e.preventDefault() (blocks native menu)
+    -> Awaits contextMenuPromise if present
+    -> Calls showAppPopupMenu(x, y, event.items)
+    |
+    v
+AppPopupMenuModel
+    -> Adds default items (Copy, Paste, Inspect)
+    -> Shows PopupMenu component via portal
+```
+
+## ContextMenuEvent on the Native Event
+
+All context menu handlers communicate through a shared `ContextMenuEvent` object attached to the native DOM event:
+
+```typescript
+// Type augmentation (src/renderer/types/events.d.ts)
+declare global {
+    interface MouseEvent {
+        contextMenuEvent?: ContextMenuEvent<unknown>;
+        contextMenuPromise?: Promise<boolean>;
+    }
+}
+```
+
+### Creating or reusing the event
+
+Use the static helper — it creates the event on first call and returns the existing one on subsequent calls:
+
+```typescript
+const ctxEvent = ContextMenuEvent.fromNativeEvent(e, "my-target-kind");
+ctxEvent.items.push({ label: "My Item", onClick: () => { ... } });
+```
+
+The first handler to call `fromNativeEvent()` sets the `targetKind`. Subsequent handlers in the bubbling chain reuse the same event object, so `targetKind` always reflects the deepest (most specific) component.
+
+### ContextMenuEvent properties
+
+```typescript
+class ContextMenuEvent<T> extends BaseEvent {
+    readonly targetKind: ContextMenuTargetKind;  // Source identifier
+    target: T;                                    // Typed target data
+    items: MenuItem[];                            // Mutable menu items
+    handled: boolean;                             // Short-circuit flag (from BaseEvent)
+}
+```
+
+- `targetKind` — string literal identifying the source (see Target Kinds below)
+- `target` — typed data about what was right-clicked (e.g., `IFileTarget` for files)
+- `items` — mutable array; handlers push, splice, or replace items freely
+- `handled` — set to `true` by EventChannel subscribers to short-circuit the async pipeline
+
+### Target Kinds
+
+| Kind | Source | Target type |
+|------|--------|-------------|
+| `"page-tab"` | Tab bar | — |
+| `"file-explorer-item"` | File/folder in explorer | `IFileTarget` |
+| `"file-explorer-background"` | Empty space in explorer | — |
+| `"sidebar-folder"` | Sidebar folder item | — |
+| `"sidebar-background"` | Sidebar empty space | — |
+| `"markdown-link"` | Link in markdown preview | — |
+| `"browser-webview"` | Browser page content | — |
+| `"browser-url-bar"` | URL bar | — |
+| `"browser-tab"` | Browser tab | — |
+| `"grid-cell"` | Grid cell | — |
+| `"graph-node"` | Graph node | — |
+| `"graph-area"` | Graph empty area | — |
+| `"link-item"` | Link editor item | — |
+| `"link-pinned"` | Pinned link item | — |
+| `"generic"` | Generic list/component | — |
+
+Target types marked with "—" are not yet wired to EventChannels. As new EventChannels are added, each will define its own typed target interface.
+
+## Two Handler Patterns
+
+### Pattern 1: Bubbling handlers (most common)
+
+Handlers push items to `ContextMenuEvent.items` and let the event bubble to `GlobalEventService`:
+
+```typescript
+onContextMenu = (e: React.MouseEvent) => {
+    const ctxEvent = ContextMenuEvent.fromNativeEvent(e, "my-kind");
+    ctxEvent.items.push(
+        { label: "Action 1", onClick: () => { ... } },
+        { label: "Action 2", onClick: () => { ... }, startGroup: true },
+    );
+    // No stopPropagation — event bubbles to GlobalEventService
+};
+```
+
+**Used by:** PageTab, FileExplorer, FolderItem, MenuBar, MarkdownBlock, BrowserTabs, BrowserUrlBar, LinkEditor, List component.
+
+### Pattern 2: Non-bubbling handlers (direct display)
+
+Some editors manage their own menus entirely, bypassing the bubbling system:
+
+```typescript
+// Build items manually, call showAppPopupMenu directly
+const items: MenuItem[] = [ ... ];
+showAppPopupMenu(clientX, clientY, items);
+```
+
+**Used by:** BrowserWebviewModel (IPC from webview), GraphViewModel (canvas events), AVGrid/ContextMenuModel (internal subscription). These handlers call `e.stopPropagation()` to prevent `GlobalEventService` from showing a duplicate menu.
+
+## EventChannel Integration (Script Extension)
+
+The EventChannel system allows scripts to subscribe to context menu events and modify items. Currently wired for file explorer items.
+
+### How it works
+
+1. **Item handler** sets the typed `target` on the event
+2. **Container handler** (parent in the DOM tree) fires `sendAsync()` after all built-in items are collected
+3. The promise is attached to `e.nativeEvent.contextMenuPromise`
+4. `GlobalEventService` awaits the promise before showing the menu
+5. Scripts see all items and can push, remove, or replace them
+
+### Example: File Explorer
+
+```
+TreeView cell onContextMenu
+    -> onItemContextMenu: sets target (IFileTarget), pushes file/folder items
+    |
+    v  (bubbles)
+FileExplorerRoot onContextMenu
+    -> onBackgroundContextMenu: pushes "New File"/"New Folder"
+    -> Checks targetKind === "file-explorer-item"
+    -> Fires app.events.fileExplorer.itemContextMenu.sendAsync(event)
+    -> Attaches promise to contextMenuPromise
+    |
+    v  (bubbles)
+GlobalEventService
+    -> Awaits contextMenuPromise
+    -> showAppPopupMenu with final items
+```
+
+### Script subscription example
+
+```typescript
+app.events.fileExplorer.itemContextMenu.subscribe((event) => {
+    if (event.target.name === "package.json") {
+        event.items.push({
+            label: "Generate Deps Graph",
+            onClick: () => { /* run script */ },
+        });
+    }
+});
+```
+
+## Default Menu Items
+
+`showAppPopupMenu()` calls `AppPopupMenuModel.addDefaultMenus()` which appends:
+
+1. **Paste** — if clipboard has text and a text input/editable element is focused
+2. **Copy** — if text is selected (via `window.getSelection()`)
+3. **Inspect** — opens DevTools at click position (unless `skipInspect: true`)
+
+These are added **after** all handler items, so custom items always appear first.
+
+## MenuItem Interface
+
+```typescript
+interface MenuItem {
+    label: string;              // Display text
+    onClick?: () => void;       // Click handler
+    icon?: any;                 // ReactNode icon (left side)
+    disabled?: boolean;         // Greyed out, not clickable
+    invisible?: boolean;        // Hidden from menu
+    startGroup?: boolean;       // Separator line above this item
+    hotKey?: string;            // Display shortcut text (right side)
+    selected?: boolean;         // Initially highlighted
+    id?: string;                // Identifier
+    items?: MenuItem[];         // Submenu items (renders arrow icon)
+    minor?: boolean;            // Lighter text styling
+}
+```
+
+## PopupMenu Component
+
+`PopupMenu` (`/src/renderer/components/overlay/PopupMenu.tsx`) renders the actual menu:
+
+- **Portal-based** — renders to `document.body` via React portal
+- **Virtualized** — uses `<List>` component for performance with many items
+- **Search filtering** — shows search field when items > 20
+- **Submenu support** — items with `items[]` property render a submenu on hover
+- **Keyboard navigation** — arrow keys, Enter, Escape, Page Up/Down
+- **Dynamic sizing** — calculates width/height based on content
+
+## Adding a New Context Menu
+
+### For a new bubbling handler
+
+1. Import `ContextMenuEvent` from `api/events/events`
+2. In your `onContextMenu` handler:
+   ```typescript
+   const ctxEvent = ContextMenuEvent.fromNativeEvent(e, "your-target-kind");
+   ctxEvent.items.push(...yourItems);
+   ```
+3. Add your target kind to `ContextMenuTargetKind` union in `api/events/events.ts` and `api/types/events.d.ts`
+4. Do NOT call `stopPropagation` — let the event bubble to `GlobalEventService`
+
+### For a non-bubbling handler (canvas, IPC, etc.)
+
+1. Build your `MenuItem[]` array
+2. Call `showAppPopupMenu(x, y, items)` directly
+3. Call `e.stopPropagation()` and `e.preventDefault()` to prevent duplicate menus
+
+### For EventChannel integration (scriptable context menu)
+
+1. Define a target interface (e.g., `IMyTarget`) in `api/types/events.d.ts`
+2. Add an EventChannel to `AppEvents` (in `api/events/AppEvents.ts`)
+3. In the deepest handler: set `ctxEvent.target` with typed data
+4. In a parent handler (after all items collected): fire `sendAsync()` and attach promise to `contextMenuPromise`
+5. Add the interface to `IAppEvents` in `api/types/events.d.ts`
+6. Update `IApp` or event types for IntelliSense
+
+## Key Files
+
+| Purpose | File |
+|---------|------|
+| ContextMenuEvent class | `/src/renderer/api/events/events.ts` |
+| EventChannel class | `/src/renderer/api/events/EventChannel.ts` |
+| AppEvents namespace | `/src/renderer/api/events/AppEvents.ts` |
+| Event type definitions | `/src/renderer/api/types/events.d.ts` |
+| Native event augmentation | `/src/renderer/types/events.d.ts` |
+| Global event handler | `/src/renderer/api/internal/GlobalEventService.ts` |
+| PopupMenu component | `/src/renderer/components/overlay/PopupMenu.tsx` |
+| showAppPopupMenu | `/src/renderer/ui/dialogs/poppers/showPopupMenu.tsx` |
+| MenuItem type | `/src/renderer/api/types/events.d.ts` |
