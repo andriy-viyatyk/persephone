@@ -81,14 +81,11 @@ const AppRoot = styled.div({
         },
     },
     "& button.autoload-reload": {
-        fontSize: 12,
         padding: "2px 4px",
-        borderRadius: 4,
-        backgroundColor: color.warning.background,
         color: color.warning.text,
         "& svg": {
-            width: 14,
-            height: 14,
+            width: 20,
+            height: 20,
             color: color.warning.text,
         },
         "&:hover": {
