@@ -5,6 +5,7 @@ import { settings } from "../api/settings";
 import { fpJoin, fpResolve } from "../core/utils/file-path";
 import { fs } from "../api/fs";
 import { TOneState } from "../core/state/state";
+import { editorRegistry } from "../editors/registry";
 
 interface AutoloadState {
     /** Whether autoload scripts are currently loaded. */
@@ -91,6 +92,10 @@ class AutoloadRunner {
 
         // Create shared ScriptContext (no page, no consoleLogs)
         this.scriptContext = new ScriptContext(undefined, undefined, libraryPath);
+
+        // Pre-load log-view module so UiFacade can create VM synchronously
+        // when event handlers access `ui` later (outside ScriptRunner flow)
+        await editorRegistry.loadViewModelFactory("log-view");
 
         // Ensure sucrase is loaded and library extensions registered
         await ensureSucraseLoaded();
