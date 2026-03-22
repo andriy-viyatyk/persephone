@@ -16,6 +16,7 @@ Release notes and changelog for js-notepad.
 - **Rich link tooltips** — Hovering a link in the bookmarks panel, blank-page bookmarks, or pinned links panel shows a tooltip with the link's title, URL, and thumbnail image.
 - **Browser internal tab reordering** — Internal browser tabs can now be reordered by dragging within the tabs panel.
 - **Browser page tab sound indicator** — The sound/mute button on a browser page tab is now always visible on hover (previously it only appeared while audio was actually playing).
+- **Script autoloading** — Place `.ts` or `.js` scripts in an `autoload/` subfolder of your Script Library and they run automatically when the window opens. Scripts that export a `register()` function have it called — use this to subscribe to application events (like context menus) that persist for the session. Files without a `register` export are skipped. Loading order is alphabetical (prefix with `01-`, `02-` to control order). A yellow reload indicator appears in the header when library files change; click it to reload all autoload scripts.
 
 ### Fixes and Improvements
 

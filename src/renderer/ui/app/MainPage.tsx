@@ -5,12 +5,14 @@ import { Button } from "../../components/basic/Button";
 import {
     CloseIcon,
     JsNotepadIcon,
+    RefreshIcon,
     WindowMaximizeIcon,
     WindowMinimizeIcon,
     WindowRestoreIcon,
 } from "../../theme/icons";
 import { app } from "../../api/app";
 import { showMcpRequestLog } from "../../api/mcp-handler";
+import { autoloadService } from "../../api/autoload-service";
 import { Pages } from "./Pages";
 import { PageTabs } from "../tabs/PageTabs";
 import clsx from "clsx";
@@ -78,6 +80,24 @@ const AppRoot = styled.div({
             position: "relative",
         },
     },
+    "& button.autoload-reload": {
+        fontSize: 12,
+        padding: "2px 4px",
+        borderRadius: 4,
+        backgroundColor: color.warning.background,
+        color: color.warning.text,
+        "& svg": {
+            width: 14,
+            height: 14,
+            color: color.warning.text,
+        },
+        "&:hover": {
+            color: color.warning.textHover,
+            "& svg": {
+                color: color.warning.textHover,
+            },
+        },
+    },
     "& button.zoom-indicator": {
         fontSize: 12,
         padding: "2px 6px",
@@ -134,6 +154,7 @@ export function MainPage() {
                 </Button>
                 <PageTabs />
                 <FlexSpace style={{ minWidth: 40 }} />
+                <AutoloadReloadButton />
                 <Button
                     size="small"
                     type="icon"
@@ -196,5 +217,23 @@ export function MainPage() {
                 />
             </div>
         </AppRoot>
+    );
+}
+
+function AutoloadReloadButton() {
+    const autoloadState = autoloadService.state.use();
+
+    if (!autoloadState.needsReload) return null;
+
+    return (
+        <Button
+            size="small"
+            type="icon"
+            className="autoload-reload"
+            title="Application scripts need to be reloaded. Click to reload."
+            onClick={() => autoloadService.loadScripts()}
+        >
+            <RefreshIcon />
+        </Button>
     );
 }

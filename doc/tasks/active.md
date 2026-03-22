@@ -11,7 +11,7 @@ Current work in progress and planned tasks.
 
 | ID | Title | Epic | Notes |
 |----|-------|------|-------|
-| US-233 | Script Autoloading from Script Library | EPIC-009 | Load registration scripts from autoload/ subfolder on window open |
+| US-236 | Lazy require() in event handlers loses script context | EPIC-009 | Placeholder: `clearLibraryRequireCache()` clears cached modules; if an event handler does lazy `require()` after cache clear, `__scriptContext__` is undefined. Need to investigate. |
 
 
 ## Completed

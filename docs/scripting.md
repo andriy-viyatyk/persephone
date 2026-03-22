@@ -359,6 +359,42 @@ The built-in `require()` and `preventOutput()` functions also appear in autocomp
 
 This lets you build a reusable toolkit — database helpers, formatters, API clients — and use it from any script or the Script Panel.
 
+### Autoload Scripts
+
+Place scripts in an `autoload/` subfolder of your Script Library to have them run automatically when the window opens:
+
+```
+script-library/
+├── script-panel/     ← Scripts shown in Script Panel UI
+├── autoload/         ← Registration scripts loaded on window open
+│   ├── 01-custom-menus.ts
+│   ├── 02-bookmark-fixer.ts
+│   └── helper-utils.ts       ← Skipped (no register export)
+└── utils/            ← Shared library code (imported via require)
+```
+
+Scripts must export a named `register` function to be executed:
+
+```typescript
+// autoload/01-custom-menus.ts
+export function register() {
+    app.events.fileExplorer.itemContextMenu.subscribe((event) => {
+        // Add custom context menu items for certain files
+    });
+}
+```
+
+**How it works:**
+
+- On window startup, all `.ts` and `.js` files in `autoload/` are loaded **alphabetically** — prefix filenames with `01-`, `02-` to control order
+- Each file is checked for a `register` export. If found, `register()` is called (async functions are awaited). Files without a `register` export are silently skipped — they can serve as utility modules imported by other autoload scripts
+- All event subscriptions made during registration persist for the window session
+- **All-or-nothing error handling** — if any script fails during registration, all subscriptions from all scripts are unsubscribed and an error notification is shown
+- Autoload scripts can import shared modules with `require("library/...")` just like regular scripts
+- The `app` global is available (but not `page` — autoload scripts run outside any specific page context)
+
+**Reloading:** When library files change on disk, a yellow reload indicator button appears in the header. Click it to reload all autoload scripts — the previous session is disposed (all event subscriptions removed) and scripts are loaded fresh.
+
 ## Node.js Access
 
 Scripts have full Node.js access:

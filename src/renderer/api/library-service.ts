@@ -211,6 +211,10 @@ class LibraryService extends TModel<LibraryServiceState> {
     private onChangeDebounced = debounce(async (libraryPath: string) => {
         await this.scan(libraryPath);
         scriptRunner.invalidateLibraryCache();
+
+        // Mark autoload scripts as needing reload (user-controlled via header button)
+        const { autoloadService } = await import("./autoload-service");
+        autoloadService.markNeedsReload();
     }, 300);
 }
 

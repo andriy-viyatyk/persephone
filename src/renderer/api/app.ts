@@ -209,11 +209,19 @@ class App {
         const { settings: settingsInstance } = await import("./settings");
         await settingsInstance.wait();
 
-        // Defer MCP auto-start to not block window rendering
-        setTimeout(() => {
+        // Defer MCP auto-start and autoload scripts to not block window rendering
+        setTimeout(async () => {
             if (this._settings.get("mcp.enabled")) {
                 const port = this._settings.get("mcp.port") as number | undefined;
                 api.setMcpEnabled(true, port || undefined);
+            }
+
+            // Load autoload scripts from Script Library
+            try {
+                const { autoloadService } = await import("./autoload-service");
+                await autoloadService.loadScripts();
+            } catch (error) {
+                console.error("Autoload scripts failed:", error);
             }
         }, 1500);
 

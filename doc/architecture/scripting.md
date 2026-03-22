@@ -546,6 +546,53 @@ When output is suppressed and the script throws an error, the error is displayed
 | F5 (notebook JS/TS note) | `NoteItemEditModel` | From note language | Note content as script |
 | Run button (script panel) | `ScriptPanel.tsx` | Always `"typescript"` | Script panel content |
 | MCP `execute_script` | `mcp-handler.ts` | Caller-specified (optional) | Script from MCP tool call |
+| Autoload (window open) | `AutoloadRunner.ts` | Determined by file extension | Registration scripts from `library/autoload/` |
+
+## Autoload Scripts
+
+Registration scripts in the Script Library's `autoload/` subfolder are loaded automatically when the window opens. They subscribe to application events via `app.events` and persist for the window session.
+
+### Convention
+
+```typescript
+// autoload/01-custom-menu.ts
+export function register() {
+    app.events.fileExplorer.itemContextMenu.subscribe((event) => {
+        event.items.push({ label: "Custom Action", onClick: () => { ... } });
+    });
+}
+```
+
+Scripts must export a named `register` function. Files without it are skipped (utility modules). Loading order is alphabetical by filename (prefix with `01-`, `02-` to control order).
+
+### Architecture
+
+```
+AutoloadRunner (scripting/)
+    │
+    ├── autoloadService (api/autoload-service.ts)  ← thin wrapper for lifecycle
+    │
+    ├── loadScripts()
+    │     ├── new ScriptContext(no page, no consoleLogs, libraryPath)
+    │     ├── ensureSucraseLoaded() + registerLibraryExtensions()
+    │     ├── clearLibraryRequireCache()
+    │     └── for each .ts/.js in autoload/ (sorted):
+    │           ├── require(filePath)  ← extension handler transpiles + injects CONTEXT_PREFIX
+    │           └── mod.register()     ← await if async
+    │
+    ├── markNeedsReload()  ← called by LibraryService on file changes
+    │     └── Sets state.needsReload = true (reactive via TOneState)
+    │
+    └── dispose()  ← ScriptContext.dispose() unsubscribes all events
+```
+
+**Bootstrap:** Deferred in `app.initEvents()` via `setTimeout(1500)` to not block window rendering.
+
+**Reload:** When `LibraryService` detects file changes, it calls `markNeedsReload()`. A yellow refresh button appears in the header (next to zoom indicator). User clicks to reload all scripts (disposes old context, loads fresh).
+
+**Error handling:** All-or-nothing. If any `register()` throws, all subscriptions from all scripts are unsubscribed, error notification shown.
+
+**State:** `AutoloadRunner.state` is a `TOneState<{ isLoaded, needsReload }>`. The `AutoloadReloadButton` in `MainPage.tsx` subscribes to this state.
 
 ## Type Definitions
 
@@ -581,6 +628,7 @@ These files serve dual purpose: TypeScript type checking **and** IDE IntelliSens
 ├── ScriptRunnerBase.ts          # Core execution engine (transpile, execute)
 ├── ScriptRunner.ts              # Orchestrator (context lifecycle, result handling)
 ├── ScriptContext.ts             # Execution scope (context proxy, cleanup)
+├── AutoloadRunner.ts            # Autoload registration scripts from library/autoload/
 ├── script-utils.ts              # Utilities (convertToText)
 ├── transpile.ts                 # TypeScript transpilation (sucrase, lazy-loaded)
 ├── library-require.ts           # Library require() resolution + .ts/.js extension handlers

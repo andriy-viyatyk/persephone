@@ -58,6 +58,7 @@ js-notepad/
 │   ├── downloads.ts        # IDownloads implementation
 │   ├── menu-folders.ts     # IMenuFolders implementation
 │   ├── library-service.ts  # LibraryService — script library scanning, caching, file watching
+│   ├── autoload-service.ts # Thin wrapper exposing AutoloadRunner to app lifecycle
 │   ├── pages.ts            # PagesModel singleton export
 │   ├── mcp-handler.ts      # MCP command handler (receives IPC from main, dispatches commands)
 │   ├── internal.ts         # Disposable utilities (wrapSubscription, etc.)
@@ -358,6 +359,7 @@ js-notepad/
 │   ├── ScriptRunnerBase.ts # Core execution engine (transpile, execute, library)
 │   ├── ScriptRunner.ts     # Orchestrator (context lifecycle, result handling)
 │   ├── ScriptContext.ts    # Execution scope class (context proxy, cleanup)
+│   ├── AutoloadRunner.ts   # Autoload registration scripts from library/autoload/
 │   ├── script-utils.ts     # Utilities (convertToText)
 │   ├── transpile.ts        # TypeScript transpilation via sucrase (lazy-loaded)
 │   ├── library-require.ts  # Library require() resolution + .ts extension handler
