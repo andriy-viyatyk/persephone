@@ -89,21 +89,27 @@ export class ScriptContext {
         // On dispose, restore previous. This ensures autoload's getter survives F5 runs.
         this.previousUiDescriptor = Object.getOwnPropertyDescriptor(globalThis, "ui");
         const isMcp = !!consoleLogs;
+        const context = this;
         let uiFacade: UiFacade | undefined;
-        let callableUi: unknown;
+
+        const ensureFacade = () => {
+            if (!uiFacade) {
+                uiFacade = initializeUiFacade(page, context.releaseList, context.outputFlags, isMcp);
+                installConsoleForwarding(uiFacade, context, consoleLogs);
+            }
+            return uiFacade;
+        };
+
+        // Callable proxy: await ui() yields to event loop (no Log View created),
+        // ui.log() etc. lazily create the Log View facade on first property access.
+        const yieldFn = () => new Promise<void>((r) => setTimeout(r, 0));
+        const callableUi = new Proxy(yieldFn, {
+            get: (_target, prop, receiver) => Reflect.get(ensureFacade(), prop, receiver),
+            set: (_target, prop, value, receiver) => Reflect.set(ensureFacade(), prop, value, receiver),
+        });
+
         Object.defineProperty(globalThis, "ui", {
-            get: () => {
-                if (!uiFacade) {
-                    uiFacade = initializeUiFacade(page, this.releaseList, this.outputFlags, isMcp);
-                    installConsoleForwarding(uiFacade, this, consoleLogs);
-                    const yieldFn = () => new Promise<void>((r) => setTimeout(r, 0));
-                    callableUi = new Proxy(yieldFn, {
-                        get: (_target, prop, receiver) => Reflect.get(uiFacade!, prop, receiver),
-                        set: (_target, prop, value, receiver) => Reflect.set(uiFacade!, prop, value, receiver),
-                    });
-                }
-                return callableUi;
-            },
+            get: () => callableUi,
             enumerable: false,
             configurable: true,
         });

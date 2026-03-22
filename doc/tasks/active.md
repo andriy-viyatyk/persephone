@@ -11,7 +11,7 @@ Current work in progress and planned tasks.
 
 | ID | Title | Epic | Notes |
 |----|-------|------|-------|
-| | | | |
+| US-238 | LogView re-creation after page closed | | UiFacade caches LogViewModel on first `ui.log()` access. If user closes the LogView page, subsequent `ui.log()` calls write to a stale facade — no new page opens. Needs investigation: check if page exists before each call, re-create if closed, handle autoload long-lived context vs F5 short-lived. |
 
 
 ## Completed
