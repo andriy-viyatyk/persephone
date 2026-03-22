@@ -203,4 +203,4 @@ Each new EventChannel follows the same pattern documented in [context-menu.md](.
 | US-234 | Fix Script Context in Library Modules | Done |
 | US-235 | Unified Script Context Injection | Done |
 | US-233 | Script Autoloading from Script Library | Done |
-| US-236 | Lazy require() in event handlers loses script context | Planned |
+| US-236 | Script Context Coexistence | Done |

@@ -1,6 +1,6 @@
 import { ScriptContext } from "./ScriptContext";
 import { ensureSucraseLoaded } from "./transpile";
-import { registerLibraryExtensions, clearLibraryRequireCache } from "./library-require";
+import { registerLibraryExtensions } from "./library-require";
 import { settings } from "../api/settings";
 import { fpJoin, fpResolve } from "../core/utils/file-path";
 import { fs } from "../api/fs";
@@ -22,6 +22,9 @@ interface AutoloadState {
  * All scripts share one ScriptContext — event subscriptions are tracked
  * in a single releaseList. On reload (or error), everything is disposed
  * at once (all-or-nothing model).
+ *
+ * Uses ScriptContext.customRequire() to load modules directly — this
+ * propagates the correct context through the entire require chain.
  *
  * Lives in `scripting/` because it's script execution logic.
  * Exposed to the app lifecycle via `api/autoload-service.ts`.
@@ -90,9 +93,6 @@ class AutoloadRunner {
 
         if (files.length === 0) return;
 
-        // Create shared ScriptContext (no page, no consoleLogs)
-        this.scriptContext = new ScriptContext(undefined, undefined, libraryPath);
-
         // Pre-load log-view module so UiFacade can create VM synchronously
         // when event handlers access `ui` later (outside ScriptRunner flow)
         await editorRegistry.loadViewModelFactory("log-view");
@@ -100,17 +100,17 @@ class AutoloadRunner {
         // Ensure sucrase is loaded and library extensions registered
         await ensureSucraseLoaded();
         registerLibraryExtensions(libraryPath);
-        clearLibraryRequireCache(libraryPath);
+
+        // Create shared ScriptContext (no page, no consoleLogs)
+        this.scriptContext = new ScriptContext(undefined, undefined, libraryPath);
 
         try {
             for (const file of files) {
                 const filePath = fpJoin(autoloadPath, file);
                 const resolvedPath = fpResolve(filePath);
 
-                // Clear from require cache to ensure fresh load
-                delete require.cache[resolvedPath];
-
-                const mod = require(resolvedPath);
+                // Load module via context's customRequire — propagates context
+                const mod = this.scriptContext.customRequire(resolvedPath);
 
                 if (typeof mod.register === "function") {
                     const result = mod.register();

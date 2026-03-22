@@ -18,32 +18,33 @@ Type definitions for the script API live in `/src/renderer/api/types/*.d.ts`.
 ```
 ScriptRunner.run(script, page?, language?)
     │
+    ├── new ScriptContext(page?, consoleLogs?, libraryPath?)
+    │       ├── app = AppWrapper        ← wraps `app` global
+    │       │     ├── PageCollectionWrapper  ← wraps `app.pages`
+    │       │     └── Events proxy ← wraps `app.events` (auto-tracks subscriptions)
+    │       ├── page = PageWrapper      ← wraps `page` global
+    │       │     └── EditorFacades (13)  ← page.asText(), page.asGrid(), ...
+    │       ├── ui getter (lazy, stack-based on globalThis)
+    │       ├── styledText()     ← standalone styled text builder for dialog labels
+    │       ├── preventOutput()   ← suppresses default grouped-page output
+    │       ├── customRequire    ← context-bound require with library/ resolution
+    │       ├── console          ← native or MCP-capturing
+    │       ├── React             ← React library
+    │       └── ScriptOutputFlags ← tracks output suppression state
+    │
     ├── ScriptRunnerBase.execute(script, context, language?)
     │       ├── prepare(script, language)
     │       │     ├── transpileIfNeeded()   ← strips TS types via sucrase (lazy-loaded)
     │       │     ├── ensureSucraseLoaded() + registerLibraryExtensions()
-    │       │     └── clearLibraryRequireCache() if dirty
+    │       │     └── clearLibraryRequireCache() if dirty (file watcher only)
     │       └── executeInternal(script, context)
     │             ├── Expression/statement detection
-    │             ├── Wrap in async function with lexical globals
+    │             ├── Wrap in async function, fn.call(context)
+    │             ├── SCRIPT_PREFIX reads from `this` (context)
     │             └── Await result if Promise
     │
-    ├── new ScriptContext(page?, consoleLogs?, libraryPath?)
-    │       ├── AppWrapper        ← wraps `app` global
-    │       │     ├── PageCollectionWrapper  ← wraps `app.pages`
-    │       │     └── Events proxy ← wraps `app.events` (auto-tracks subscriptions)
-    │       ├── PageWrapper       ← wraps `page` global
-    │       │     └── EditorFacades (13)  ← page.asText(), page.asGrid(), ...
-    │       ├── UiFacade (lazy)   ← wraps `ui` global (Log View logging + dialogs)
-    │       ├── styledText()     ← standalone styled text builder for dialog labels
-    │       ├── preventOutput()   ← suppresses default grouped-page output
-    │       ├── require           ← patched require with library/ resolution
-    │       ├── React             ← React library
-    │       ├── ScriptOutputFlags ← tracks output suppression state
-    │       └── globalThis.__scriptContext__ = customContext
-    │             (CONTEXT_PREFIX injects as local vars in scripts + library modules)
-    │
-    └── context.dispose()  ← releases all acquired ViewModels + unsubscribes events
+    └── context.dispose()  ← restores previous ui getter, releases ViewModels,
+                              unsubscribes events
 ```
 
 ## Execution Modes
@@ -268,11 +269,16 @@ const config = require("library/config");
 - Supports `.ts` and `.js` files — TypeScript files are transpiled via sucrase; `.js` files with ES module syntax (`export`/`import`) are also transpiled (imports transform only)
 - Extension auto-resolution: tries exact path, `.ts`, `.js`, `/index.ts`, `/index.js`
 - Relative requires within library modules work naturally (e.g., `require('./db-config')` inside a library file)
-- **Context injection:** Both top-level scripts and library modules share the same `CONTEXT_PREFIX` — a one-line `var` declaration that reads `app`, `page`, `React`, `styledText`, `preventOutput`, `require`, and `console` from `globalThis.__scriptContext__` as local variables. `ScriptContext` sets `globalThis.__scriptContext__` in its constructor and clears it in `dispose()`. `ui` is excluded from the prefix — it's a lazy getter on `globalThis` to avoid eagerly creating the Log View.
-- Library require cache is cleared on every script execution (in `ScriptRunnerBase.prepare()`) so modules always get fresh context globals
-- When the library is not linked, `require("library/...")` throws a descriptive error
+- **Context injection — two mechanisms:**
+  - **Top-level scripts:** `fn.call(context)` where context is the `ScriptContext` instance. `SCRIPT_PREFIX` reads from `this`: `var app=this.app, page=this.page, require=this.customRequire, ...`
+  - **Library modules:** Extension handler reads `globalThis.__activeScriptContext__` (set by `ScriptContext.customRequire()` before native require) and injects `MODULE_CONTEXT_PREFIX`: `var __ctx=globalThis.__activeScriptContext__, app=__ctx?.app, ...`
+- **Context-bound require chain:** Each `ScriptContext` creates a `customRequire` function bound to itself. It's injected as the `require` local var in every script and module. When a module calls `require("library/X")`, it calls the context's `customRequire`, which sets `__activeScriptContext__`, calls native require, and the extension handler injects the same context's properties. Sub-modules get the same `customRequire` injected, so the chain propagates through the entire dependency tree.
+- **Always-fresh cache:** `customRequire()` deletes the specific module from `require.cache` before loading. This ensures fresh compilation with the current context's bindings. Library modules cannot share state across script executions (use `page.data` or `app.settings` for shared state).
+- **Cache clearing on file changes:** Bulk `clearLibraryRequireCache()` only runs when `libraryDirty` is set by the file watcher — not on every execution.
+- `ui` is excluded from both prefixes — it's a lazy getter on `globalThis` (stack-based per context) to avoid eagerly creating the Log View.
+- When the library is not linked, `customRequire("library/...")` throws a descriptive error.
 
-Implementation: `library-require.ts` provides `createLibraryRequire()` (patched require function), `registerLibraryExtensions()` (`.ts` and `.js` handlers via `require.extensions` — `.js` handler only transpiles files inside the library folder, both inject context prefix), and exports `CONTEXT_PREFIX` (shared with `ScriptRunnerBase` for top-level scripts).
+Implementation: `library-require.ts` provides `registerLibraryExtensions()` (`.ts` and `.js` handlers via `require.extensions`), `resolveLibraryModule()` (path resolution), and `clearLibraryRequireCache()`. The `customRequire` function is created per-context in `ScriptContext.createCustomRequire()`.
 
 ### Library IntelliSense
 
@@ -428,10 +434,10 @@ Wraps `PagesModel`, implements `IPageCollection`. Returns `PageWrapper` instance
 
 Located in `/src/renderer/scripting/ScriptRunnerBase.ts`.
 
-Pure execution engine with no context creation or cleanup. Handles:
-- **`execute(script, language?)`** — prepares (transpile + library) then executes
+Stateless singleton execution engine. Takes a `ScriptContext` parameter — does not create or own context. Handles:
+- **`execute(script, context, language?)`** — prepares (transpile + library) then executes with `fn.call(context)`
 - **`prepare()`** — transpiles TypeScript, loads sucrase, registers Script Library extensions
-- **`executeInternal()`** — expression/statement detection, CONTEXT_PREFIX injection, implicit return, async await
+- **`executeInternal(script, context)`** — expression/statement detection, `SCRIPT_PREFIX` reads from `this` (context), implicit return, async await
 - **`invalidateLibraryCache()`** — marks library require cache as dirty
 
 ### ScriptRunner (orchestrator)
@@ -440,9 +446,9 @@ Located in `/src/renderer/scripting/ScriptRunner.ts`. Extends `ScriptRunnerBase`
 
 ### `run(script, page?, language?)`
 
-1. Creates `ScriptContext` (sets `globalThis.__scriptContext__`)
-2. Calls `execute(script, language)` (base handles transpilation + execution)
-3. Calls `context.dispose()` in `finally` block
+1. Creates `ScriptContext` (owns `app`, `page`, `customRequire`, stack-based `ui` getter)
+2. Calls `execute(script, context, language)` (base handles transpilation + execution via `fn.call(context)`)
+3. Calls `context.dispose()` in `finally` block (restores previous `ui` getter, releases resources)
 
 ### `runWithResult(pageId, script, page?, language?)`
 
@@ -483,19 +489,19 @@ Located in `/src/renderer/scripting/script-utils.ts`. Converts any JS value to d
 
 Located in `/src/renderer/scripting/ScriptContext.ts`.
 
-`ScriptContext` is a class that builds the execution environment and manages cleanup:
+`ScriptContext` is the context owner — each instance holds `app`, `page`, `customRequire`, `console`, and other context properties. It serves as the `this` object for script execution via `fn.call(context)`. Multiple instances can coexist (e.g., long-lived autoload context + short-lived F5 context).
 
 ```typescript
 const ctx = new ScriptContext(page?, consoleLogs?, libraryPath?);
-// ... execute script (context is on globalThis.__scriptContext__) ...
-ctx.dispose();  // releases ViewModels + unsubscribes events
+// ... execute script via fn.call(ctx) ...
+ctx.dispose();  // restores previous ui getter, releases ViewModels, unsubscribes events
 ```
 
 The constructor:
 
 1. Creates `releaseList` (shared cleanup array)
-2. Creates `AppWrapper` (always) and `PageWrapper` (if page provided)
-3. If `consoleLogs` array is provided (MCP mode), injects a basic capturing `console` object that records `log`, `error`, `warn`, `info` calls as `ConsoleLogEntry` items. This basic capture is replaced with full forwarding when `ui` is accessed (see step 6).
+2. Creates `AppWrapper` (always) and `PageWrapper` (if page provided) — stored as instance properties
+3. If `consoleLogs` array is provided (MCP mode), sets `this.console` to a capturing console that records `log`, `error`, `warn`, `info` calls. Otherwise uses native `console`. Capture is replaced with full forwarding when `ui` is accessed (see step 6).
    ```typescript
    interface ConsoleLogEntry {
        level: "log" | "error" | "warn" | "info";
@@ -503,11 +509,12 @@ The constructor:
        timestamp: number;
    }
    ```
-4. If `libraryPath` provided, adds patched `require` that resolves `library/` paths to the library folder; otherwise adds a require wrapper that throws a clear error for `library/` paths
-5. Adds `styledText` factory function for standalone styled text building
-6. Sets `globalThis.__scriptContext__` to the custom context object — `CONTEXT_PREFIX` (shared with library modules) reads from this to inject `app`, `page`, `React`, `styledText`, `preventOutput`, `require`, and `console` as local variables in every script
-7. Adds lazy `ui` getter on `globalThis` via `Object.defineProperty` — creates `UiFacade` on first access, then installs console forwarding (`installConsoleForwarding`) which replaces the basic capture console with one that forwards to both the Log View and (if MCP) the `consoleLogs` array. Must be on `globalThis` (not in CONTEXT_PREFIX) to preserve laziness — `var ui=__scriptContext__.ui` would eagerly trigger the getter.
-8. `dispose()` clears `globalThis.__scriptContext__`, removes the `ui` getter from `globalThis`, and releases all ViewModels and unsubscribes all event subscriptions made through `app.events`
+4. Creates `customRequire` — a context-bound require function. Resolves `library/` paths to the library folder. Sets `globalThis.__activeScriptContext__` before calling native `require()` so extension handlers inject the correct context prefix. Always clears the specific module from `require.cache` before loading (always-fresh). If library not linked, throws a descriptive error.
+5. Adds `styledText` and `React` as instance properties
+6. **Stack-based `ui` getter** on `globalThis` — saves the previous `ui` property descriptor (if any, e.g., autoload's getter), then defines a new lazy getter via `Object.defineProperty`. Creates `UiFacade` on first access, then installs console forwarding. Must be on `globalThis` (not in prefix) to preserve laziness — `var ui=this.ui` would eagerly trigger the getter.
+7. `dispose()` restores the previous `ui` getter (or deletes if none), then releases all ViewModels and unsubscribes all event subscriptions made through `app.events`
+
+**Context coexistence:** The stack-based `ui` getter ensures autoload's getter survives F5 script runs: F5 saves autoload's getter → defines its own → on dispose restores autoload's getter. Context properties (`app`, `page`, `customRequire`) are per-instance and don't use global state — no conflicts between contexts.
 
 ## Grouped Pages & Output Suppression
 
@@ -575,15 +582,14 @@ AutoloadRunner (scripting/)
     ├── loadScripts()
     │     ├── new ScriptContext(no page, no consoleLogs, libraryPath)
     │     ├── ensureSucraseLoaded() + registerLibraryExtensions()
-    │     ├── clearLibraryRequireCache()
     │     └── for each .ts/.js in autoload/ (sorted):
-    │           ├── require(filePath)  ← extension handler transpiles + injects CONTEXT_PREFIX
+    │           ├── context.customRequire(filePath)  ← always-fresh, injects context
     │           └── mod.register()     ← await if async
     │
     ├── markNeedsReload()  ← called by LibraryService on file changes
     │     └── Sets state.needsReload = true (reactive via TOneState)
     │
-    └── dispose()  ← ScriptContext.dispose() unsubscribes all events
+    └── dispose()  ← ScriptContext.dispose() restores ui getter, unsubscribes all
 ```
 
 **Bootstrap:** Deferred in `app.initEvents()` via `setTimeout(1500)` to not block window rendering.
@@ -679,10 +685,18 @@ These files serve dual purpose: TypeScript type checking **and** IDE IntelliSens
 
 ## Execution Model
 
-Scripts execute inside an `async function` with `CONTEXT_PREFIX` injecting context globals as local `var` declarations. There is no `with(this)` proxy chain — scripts access `globalThis` directly for standard APIs (like `Buffer`, `URL`, `setTimeout`), and script-specific globals (`app`, `page`, `ui`, `require`) are injected as local variables that shadow any globals of the same name.
+Scripts execute inside an `async function` with `fn.call(context)` where `context` is the `ScriptContext` instance. `SCRIPT_PREFIX` injects context properties as local `var` declarations reading from `this` (the context). There is no `with(this)` proxy chain — scripts access `globalThis` directly for standard APIs (like `Buffer`, `URL`, `setTimeout`).
 
-- **`require()`** — patched to support `library/` path resolution (see Script Library Imports above). Falls back to Node.js native `require` for other paths.
-- **`ui`** — lazy getter on `globalThis` (not a local variable). Eagerly accessing `ui` creates a Log View page.
+Two injection mechanisms exist:
+- **Top-level scripts:** `SCRIPT_PREFIX` reads from `this` — `var app=this.app, page=this.page, require=this.customRequire, ...`
+- **Library modules (require'd):** `MODULE_CONTEXT_PREFIX` reads from `globalThis.__activeScriptContext__` — set by `customRequire()` during the synchronous `require()` call
+
+Both produce the same result: `app`, `page`, `React`, `styledText`, `preventOutput`, `require`, and `console` are available as local variables in scripts and modules.
+
+- **`require()`** — context-bound `customRequire` on `ScriptContext`. Supports `library/` path resolution. Always clears specific module from cache before loading (always-fresh). Falls back to Node.js native `require` for non-library paths.
+- **`ui`** — lazy getter on `globalThis` (not a local variable, not in prefix). Stack-based: each `ScriptContext` saves the previous getter and restores it on dispose. Eagerly accessing `ui` creates a Log View page.
+- **Context coexistence** — multiple `ScriptContext` instances can coexist. Long-lived autoload context persists while short-lived F5 contexts come and go. Per-instance properties prevent interference. Stack-based `ui` getter ensures autoload's `ui` survives F5 dispose.
+- **Always-fresh modules** — library modules are reloaded on every `require()` call (cache cleared per-module). Modules cannot share state across script executions. Use `page.data` or `app.settings` for persistent state.
 - **Global pollution** — scripts run in sloppy mode. Unqualified assignments (`x = 5` without `var`/`let`/`const`) leak to `globalThis`. Use `let`/`const` to avoid this.
 
 ## Security Considerations

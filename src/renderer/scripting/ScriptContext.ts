@@ -4,10 +4,11 @@ import { AppWrapper } from "./api-wrapper/AppWrapper";
 import { PageWrapper } from "./api-wrapper/PageWrapper";
 import { UiFacade } from "./api-wrapper/UiFacade";
 import { styledText } from "./api-wrapper/StyledTextBuilder";
-import { createLibraryRequire, createUnlinkedLibraryRequire } from "./library-require";
+import { resolveLibraryModule } from "./library-require";
 import { isTextFileModel } from "../editors/text/TextPageModel";
 import type { LogViewModel } from "../editors/log-view/LogViewModel";
 import React from "react";
+import { fpResolve } from "../core/utils/file-path";
 
 export interface ConsoleLogEntry {
     level: "log" | "error" | "warn" | "info";
@@ -33,51 +34,60 @@ export interface ScriptOutputFlags {
     groupedContentWritten: boolean;
 }
 
+const LIBRARY_PREFIX = "library/";
+const nativeRequire = require;
+
 /**
- * Script execution scope. Manages the proxy context, cleanup of acquired
- * resources (ViewModels, event subscriptions), and console forwarding.
+ * Script execution context. Owns all context state (app, page, customRequire,
+ * console) and serves as the `this` object for script execution via
+ * `fn.call(context)`.
+ *
+ * Each instance is independent — multiple contexts can coexist (e.g.,
+ * long-lived autoload context + short-lived F5 context). The `ui` getter
+ * on globalThis uses a stack-based save/restore to avoid conflicts.
  *
  * Usage:
- * - Regular scripts: create, execute, dispose in finally block.
- * - Registration scripts: create, execute register(), store instance,
+ * - Regular scripts: create, fn.call(context), dispose in finally block.
+ * - Autoload scripts: create, customRequire() each module, store instance,
  *   dispose on reload.
  */
 export class ScriptContext {
     readonly releaseList: Array<() => void> = [];
     readonly outputFlags: ScriptOutputFlags = { outputPrevented: false, groupedContentWritten: false };
 
+    // Context properties — available in scripts via prefix (var app=this.app, ...)
+    readonly app: AppWrapper;
+    readonly page: PageWrapper | undefined;
+    readonly React = React;
+    readonly styledText = styledText;
+    readonly preventOutput: () => void;
+    console: Console | Record<string, any>;
+    readonly customRequire: NodeRequire;
+
+    // Stack-based ui getter
+    private previousUiDescriptor: PropertyDescriptor | undefined;
+
     constructor(page?: PageModel, consoleLogs?: ConsoleLogEntry[], libraryPath?: string) {
-        const appWrapper = new AppWrapper(this.releaseList);
-        const pageWrapper = page ? new PageWrapper(page, this.releaseList, this.outputFlags) : undefined;
+        this.app = new AppWrapper(this.releaseList);
+        this.page = page ? new PageWrapper(page, this.releaseList, this.outputFlags) : undefined;
+        this.preventOutput = () => { this.outputFlags.outputPrevented = true; };
+        this.customRequire = this.createCustomRequire(libraryPath);
 
-        const customContext: Record<string, any> = {
-            app: appWrapper,
-            page: pageWrapper,
-            React,
-            styledText,
-            preventOutput: () => { this.outputFlags.outputPrevented = true; },
-            require: libraryPath
-                ? createLibraryRequire(libraryPath)
-                : createUnlinkedLibraryRequire(),
-        };
-
-        // MCP mode: install basic console capture (replaced with forwarding when ui is accessed)
+        // MCP mode: basic console capture (replaced with forwarding when ui is accessed)
         if (consoleLogs) {
-            customContext.console = {
+            this.console = {
                 log: (...args: any[]) => { consoleLogs.push({ level: "log", args: args.map(serializeArg), timestamp: Date.now() }); },
                 error: (...args: any[]) => { consoleLogs.push({ level: "error", args: args.map(serializeArg), timestamp: Date.now() }); },
                 warn: (...args: any[]) => { consoleLogs.push({ level: "warn", args: args.map(serializeArg), timestamp: Date.now() }); },
                 info: (...args: any[]) => { consoleLogs.push({ level: "info", args: args.map(serializeArg), timestamp: Date.now() }); },
             };
+        } else {
+            this.console = globalThis.console;
         }
 
-        // Expose script context globals to library modules and top-level scripts.
-        // CONTEXT_PREFIX (in library-require.ts) reads these as local variables.
-        globalThis.__scriptContext__ = customContext;
-
-        // Lazy `ui` global on globalThis — Log View page created on first access.
-        // Wrapped in a callable Proxy so `await ui()` yields to the event loop.
-        // Must be on globalThis (not in CONTEXT_PREFIX) to preserve laziness.
+        // Stack-based ui getter — save previous (e.g., autoload's) and define ours.
+        // On dispose, restore previous. This ensures autoload's getter survives F5 runs.
+        this.previousUiDescriptor = Object.getOwnPropertyDescriptor(globalThis, "ui");
         const isMcp = !!consoleLogs;
         let uiFacade: UiFacade | undefined;
         let callableUi: unknown;
@@ -85,7 +95,7 @@ export class ScriptContext {
             get: () => {
                 if (!uiFacade) {
                     uiFacade = initializeUiFacade(page, this.releaseList, this.outputFlags, isMcp);
-                    installConsoleForwarding(uiFacade, customContext, consoleLogs);
+                    installConsoleForwarding(uiFacade, this, consoleLogs);
                     const yieldFn = () => new Promise<void>((r) => setTimeout(r, 0));
                     callableUi = new Proxy(yieldFn, {
                         get: (_target, prop, receiver) => Reflect.get(uiFacade!, prop, receiver),
@@ -97,15 +107,65 @@ export class ScriptContext {
             enumerable: false,
             configurable: true,
         });
+    }
 
+    /**
+     * Create a context-bound require function. Resolves `library/...` paths
+     * to the Script Library folder. Sets `globalThis.__activeScriptContext__`
+     * before calling native require so the extension handler can inject the
+     * correct context prefix.
+     *
+     * Always clears the specific module from require.cache before loading
+     * to ensure fresh compilation with this context's bindings.
+     */
+    private createCustomRequire(libraryPath?: string): NodeRequire {
+        const self = this;
+
+        const req = ((id: string) => {
+            if (typeof id === "string" && id.startsWith(LIBRARY_PREFIX)) {
+                if (!libraryPath) {
+                    throw new Error(
+                        `Script library is not linked. Set the library folder in Settings → Script Library.`
+                    );
+                }
+                const modulePath = id.slice(LIBRARY_PREFIX.length);
+                const resolvedPath = fpResolve(resolveLibraryModule(libraryPath, modulePath));
+                delete nativeRequire.cache[resolvedPath];
+                globalThis.__activeScriptContext__ = self;
+                try { return nativeRequire(resolvedPath); }
+                finally { globalThis.__activeScriptContext__ = null; }
+            }
+
+            // Non-library require: clear cache if it's inside the library folder
+            // (autoload scripts are loaded by absolute path, not library/ prefix)
+            if (libraryPath) {
+                try {
+                    const resolved = fpResolve(nativeRequire.resolve(id));
+                    if (resolved.startsWith(fpResolve(libraryPath))) {
+                        delete nativeRequire.cache[resolved];
+                    }
+                } catch { /* resolve failed — let native require handle the error */ }
+            }
+            globalThis.__activeScriptContext__ = self;
+            try { return nativeRequire(id); }
+            finally { globalThis.__activeScriptContext__ = null; }
+        }) as NodeRequire;
+
+        req.resolve = nativeRequire.resolve;
+        req.cache = nativeRequire.cache;
+        req.extensions = nativeRequire.extensions;
+        req.main = nativeRequire.main;
+        return req;
     }
 
     /** Release all acquired resources (ViewModels, event subscriptions, etc.). */
     dispose() {
-        globalThis.__scriptContext__ = undefined;
-
-        // Remove lazy ui getter from globalThis
-        delete (globalThis as any).ui;
+        // Restore previous ui getter (stack-based)
+        if (this.previousUiDescriptor) {
+            Object.defineProperty(globalThis, "ui", this.previousUiDescriptor);
+        } else {
+            delete (globalThis as any).ui;
+        }
 
         for (const release of this.releaseList) {
             try { release(); } catch { /* don't block other releases */ }
@@ -135,13 +195,11 @@ function initializeUiFacade(
     let isExisting = false;
 
     if (isMcp) {
-        // MCP mode: reuse the well-known MCP Log page (created by mcp-handler before script runs)
         const existing = pagesModel.findPage("mcp-ui-log");
         if (existing) {
             logPage = existing;
             isExisting = true;
         } else {
-            // Fallback: create a regular log page if well-known page wasn't created yet
             logPage = pagesModel.addEditorPage("log-view", "jsonl", "MCP Log");
         }
     } else if (page) {
@@ -166,10 +224,8 @@ function initializeUiFacade(
     }
     releaseList.push(() => logPage.releaseViewModel("log-view"));
 
-    // Mark grouped content as written — prevents default script output
     outputFlags.groupedContentWritten = true;
 
-    // Append separator when reusing existing log
     if (isExisting) {
         vm.addEntry("log.info", "");
     }
@@ -190,7 +246,7 @@ function initializeUiFacade(
 
 function installConsoleForwarding(
     facade: UiFacade,
-    customContext: Record<string, any>,
+    context: ScriptContext,
     consoleLogs?: ConsoleLogEntry[],
 ) {
     const formatArgs = (args: any[]) => args.map(serializeArg).join(" ");
@@ -202,7 +258,7 @@ function installConsoleForwarding(
         }
         : undefined;
 
-    customContext.console = {
+    context.console = {
         log: (...args: any[]) => {
             nativeConsole.log(...args);
             capture?.("log", args);

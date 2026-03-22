@@ -11,7 +11,7 @@ Current work in progress and planned tasks.
 
 | ID | Title | Epic | Notes |
 |----|-------|------|-------|
-| US-236 | Script Context Coexistence Issues | EPIC-009 | Two problems: (1) autoload handlers break after F5 — dispose clears `__scriptContext__` and `ui` getter; (2) lazy require() in handlers loses context after cache clear. See task doc for details. |
+| | | | |
 
 
 ## Completed

@@ -111,7 +111,7 @@ class ScriptRunner extends ScriptRunnerBase {
             const libraryPath = settings.get("script-library.path") as string | undefined;
             scriptContext = new contextModule.ScriptContext(page, consoleLogs, libraryPath);
 
-            const result = await this.execute(script, language);
+            const result = await this.execute(script, scriptContext, language);
             return { result, outputFlags: scriptContext.outputFlags };
         } catch (error) {
             return {

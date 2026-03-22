@@ -1,8 +1,9 @@
 import { Endpoint, EventEndpoint } from "../../ipc/api-types";
 
 declare global {
-    /** Script context globals injected into library modules via require() extension handlers. */
-    var __scriptContext__: Record<string, any> | undefined;
+    /** Active script context set by ScriptContext.customRequire() during require() calls.
+     *  Extension handlers read this to inject context prefix into library modules. */
+    var __activeScriptContext__: import("../scripting/ScriptContext").ScriptContext | null;
 
     interface Window {
         electron: {
