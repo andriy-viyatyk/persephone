@@ -160,6 +160,9 @@ js-notepad/
 │   │   ├── alerts/                 # Notification bar
 │   │   │   ├── AlertsBar.tsx
 │   │   │   └── AlertItem.tsx
+│   │   ├── progress/               # Progress overlay, notifications, screen lock
+│   │   │   ├── ProgressModel.ts    # State + API (showProgress, createProgress, notifyProgress, addScreenLock)
+│   │   │   └── Progress.tsx        # React component (two-zone overlay)
 │   │   ├── poppers/                # Floating menus
 │   │   │   ├── Poppers.tsx
 │   │   │   ├── showPopupMenu.tsx

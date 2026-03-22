@@ -44,6 +44,28 @@ class UserInterface implements IUserInterface {
         const result = await showTextDialog(options);
         return result ?? null;
     }
+
+    async showProgress<T>(promise: Promise<T>, label?: string): Promise<T> {
+        const { showProgress } = await import("../ui/dialogs/progress/ProgressModel");
+        return showProgress(promise, label ?? "Processing...");
+    }
+
+    async createProgress(label?: string): Promise<import("../ui/dialogs/progress/ProgressModel").ProgressHandle> {
+        const { createProgress } = await import("../ui/dialogs/progress/ProgressModel");
+        return createProgress(label ?? "Processing...");
+    }
+
+    notifyProgress(label: string, timeout?: number): void {
+        import("../ui/dialogs/progress/ProgressModel").then(({ notifyProgress }) => {
+            notifyProgress(label, timeout);
+        });
+    }
+
+    async addScreenLock(): Promise<{ release: () => void }> {
+        const { addScreenLock, removeScreenLock } = await import("../ui/dialogs/progress/ProgressModel");
+        const lock = addScreenLock();
+        return { release: () => removeScreenLock(lock) };
+    }
 }
 
 export const ui = new UserInterface();

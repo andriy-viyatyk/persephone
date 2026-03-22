@@ -17,6 +17,7 @@ Release notes and changelog for js-notepad.
 - **Browser internal tab reordering** — Internal browser tabs can now be reordered by dragging within the tabs panel.
 - **Browser page tab sound indicator** — The sound/mute button on a browser page tab is now always visible on hover (previously it only appeared while audio was actually playing).
 - **Script autoloading** — Place `.ts` or `.js` scripts in an `autoload/` subfolder of your Script Library and they run automatically when the window opens. Scripts that export a `register()` function have it called — use this to subscribe to application events (like context menus) that persist for the session. Files without a `register` export are skipped. Loading order is alphabetical (prefix with `01-`, `02-` to control order). A yellow reload indicator appears in the header when library files change; click it to reload all autoload scripts.
+- **Progress API** — New [`app.ui`](./api/ui.md) methods for showing progress indicators during long-running operations. `showProgress(promise, label)` displays a blocking overlay with spinner (300ms debounce, auto-closes on resolve). `createProgress(label)` returns a handle with an updatable `.label` property and `.show(promise)` method for multi-step workflows. `notifyProgress(label, timeout?)` shows a brief non-blocking notification toast. `addScreenLock()` returns a `{ release() }` handle for manual screen lock without a spinner.
 
 ### Fixes and Improvements
 

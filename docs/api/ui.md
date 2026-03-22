@@ -2,7 +2,7 @@
 
 # app.ui
 
-Dialogs and toast notifications.
+Dialogs, toast notifications, and progress indicators.
 
 ```javascript
 const answer = await app.ui.confirm("Save changes?");
@@ -110,6 +110,64 @@ await app.ui.textDialog({
     height: 600,
     options: { lineNumbers: "on", wordWrap: "off" },
 });
+```
+
+### showProgress(promise, label?) → `Promise<T>`
+
+Show a blocking overlay with a spinner while a promise is in progress. The overlay appears after a 300ms debounce (so fast operations never show it) and auto-closes when the promise resolves or rejects.
+
+```javascript
+// Simple usage — overlay appears if the fetch takes longer than 300ms
+const data = await app.ui.showProgress(
+    fetch("https://api.example.com/data").then(r => r.json()),
+    "Loading data..."
+);
+
+// Without label
+const result = await app.ui.showProgress(longRunningOperation());
+```
+
+### createProgress(label?) → `IProgressHandle`
+
+Create a reusable progress handle for multi-step workflows. The handle has an updatable `.label` property and a `.show(promise)` method.
+
+Returns `{ label: string, show(promise): Promise<T> }`.
+
+```javascript
+const progress = app.ui.createProgress("Step 1 of 3...");
+await progress.show(stepOne());
+
+progress.label = "Step 2 of 3...";
+await progress.show(stepTwo());
+
+progress.label = "Step 3 of 3...";
+await progress.show(stepThree());
+```
+
+### notifyProgress(label, timeout?) → `void`
+
+Show a brief non-blocking notification toast for background progress. Disappears automatically after the timeout (default varies).
+
+```javascript
+// Brief toast — does not block the UI
+app.ui.notifyProgress("Syncing files...");
+
+// Custom timeout in milliseconds
+app.ui.notifyProgress("Uploading...", 5000);
+```
+
+### addScreenLock() → `{ release() }`
+
+Manually lock the screen with an overlay (no spinner). Returns a handle with a `release()` method to remove the lock. Useful when you need to prevent user interaction during a sequence of operations that aren't wrapped in a single promise.
+
+```javascript
+const lock = app.ui.addScreenLock();
+try {
+    await doSomething();
+    await doSomethingElse();
+} finally {
+    lock.release();
+}
 ```
 
 ### notify(message, type?) → `Promise<string | undefined>`

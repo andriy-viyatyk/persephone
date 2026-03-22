@@ -76,12 +76,21 @@ Implementation: `AppEvents` class in `api/events/AppEvents.ts`, `FileExplorerEve
 4. Scripts see all items and can push, remove, or replace them
 
 ```typescript
-// Script subscription:
-app.events.fileExplorer.itemContextMenu.subscribe((event) => {
-    if (event.target.name === "package.json") {
-        event.items.push({ label: "Generate Deps Graph", onClick: () => { ... } });
-    }
-});
+// Autoload registration script with lazy module loading:
+export function register() {
+    app.events.fileExplorer.itemContextMenu.subscribe((event) => {
+        if (event.target.name === "package.json") {
+            event.items.unshift({
+                icon: "🔗",
+                label: "Generate Dependencies Graph",
+                onClick: () => {
+                    const { generateGraph } = require("library/file-scripts/package-dep-graph");
+                    generateGraph(event.target.path);
+                },
+            });
+        }
+    });
+}
 ```
 
 ### Type System
@@ -94,28 +103,49 @@ All script-facing types in `api/types/events.d.ts`:
 
 `IApp` interface includes `readonly events: IAppEvents` for IntelliSense.
 
+### Script Context Isolation (US-232, US-234, US-235, US-236)
+
+Per-instance `ScriptContext` that owns all context state (`app`, `page`, `customRequire`, `console`, etc.). Multiple contexts coexist — long-lived autoload context + short-lived F5 contexts don't interfere.
+
+**Two injection mechanisms:**
+- **Top-level scripts:** `fn.call(context)` with `SCRIPT_PREFIX` reading from `this` — `var app=this.app, page=this.page, require=this.customRequire, ...`
+- **Library modules (via require):** Extension handler reads `globalThis.__activeScriptContext__` (set by `customRequire` before native require) and injects `MODULE_CONTEXT_PREFIX`
+
+**Context-bound require chain:** Each `ScriptContext` creates a `customRequire` function bound to itself. Injected as local `require` in every script and module. When a module calls `require("library/X")`, it goes through `customRequire` → sets `__activeScriptContext__` → native require → extension handler injects context prefix → sub-module gets same `customRequire`. The chain propagates through the entire dependency tree.
+
+**Stack-based `ui` getter:** Each ScriptContext saves the previous `globalThis.ui` descriptor and restores it on dispose. Autoload's `ui` getter survives F5 script runs.
+
+**Always-fresh require cache:** `customRequire()` deletes the specific module from `require.cache` before every load. Library modules are reloaded with the current context's bindings on each require. No shared module state between script executions — use `page.data` or `app.settings` for persistent state.
+
+**Auto-cleanup:** `AppWrapper.events` returns a recursive proxy that intercepts `subscribe()`/`subscribeDefault()` calls and pushes `unsubscribe()` handles to `releaseList`. `ScriptContext.dispose()` runs the entire list — scripts never need to manually unsubscribe.
+
+See [/doc/architecture/scripting.md](../architecture/scripting.md) for full architecture.
+
+### Script Autoloading (US-233)
+
+Registration scripts in the Script Library's `autoload/` subfolder are loaded automatically when the window opens:
+
+```
+script-library/
+├── autoload/                  ← Registration scripts (loaded at startup)
+│   ├── 01-package-tools.ts
+│   └── 02-browser-hooks.ts
+├── file-scripts/              ← Heavy modules (lazy-loaded by handlers)
+│   ├── package-dep-graph.ts
+│   └── module-dep-graph.ts
+├── script-panel/              ← Scripts shown in script panel UI
+└── utils/                     ← Shared library code
+```
+
+**Convention:** Scripts must export a named `register` function. Files without it are skipped (utility modules).
+
+**Implementation:** `AutoloadRunner` in `scripting/AutoloadRunner.ts`. Uses `context.customRequire()` to load each module — propagates correct context through the require chain. One shared `ScriptContext` for all autoload scripts with all-or-nothing error handling.
+
+**Reload:** `LibraryService` detects file changes → `markNeedsReload()` → yellow refresh button in header. User clicks to reload (disposes old context + subscriptions, loads fresh). Also triggers when scripts first appear in an empty autoload folder.
+
+**Bootstrap:** Deferred in `app.initEvents()` via `setTimeout(1500)` to not block window rendering.
+
 ## What's Next
-
-### Registration Scripts (Auto-loading)
-
-Scripts that load when the js-notepad window opens. This is the key missing piece — without it, scripts can't subscribe to events automatically.
-
-**Design decisions (resolved):**
-
-- **Location:** A designated subfolder in Script Library (e.g., `startup/` or `autoload/`)
-- **Convention:** Each script exports a default `register()` function
-- **Loading:** js-notepad compiles and calls `register()` for each script at startup
-- **Order:** Alphabetical by filename (user can prefix with `01-`, `02-` to control order)
-- **Proxy-based auto-cleanup:** Before calling `register()`, create a proxy `app.events` object. The proxy intercepts `subscribe()` calls and stores `unsubscribe()` handles. On reload, call all stored handles — scripts never need to unsubscribe manually.
-- **Error handling:** All-or-nothing. If any `register()` throws, unsubscribe ALL handlers from all scripts, show error, stop loading. User fixes the broken script, triggers reload.
-- **Reload trigger:** User-controlled. Library file watcher detects changes and shows a reload indicator. User clicks to reload all scripts.
-- **No scope isolation:** Scripts run in the same scope as the application. Developer responsibility.
-- **No dependency system:** Scripts should be independent. Developer manages load order via filename prefixes.
-
-**Still to investigate:**
-- Exact subfolder name and how it integrates with Script Library UI
-- How the reload indicator looks (badge? status bar?)
-- Whether `register()` should receive parameters or just use globals
 
 ### More EventChannels
 
@@ -130,12 +160,17 @@ Each new EventChannel follows the same pattern documented in [context-menu.md](.
 
 ### Hypothetical Use Cases
 
-1. **File explorer context menu for package.json** — Script subscribes to `app.events.fileExplorer.itemContextMenu`, checks if target file is `package.json`, adds "Generate Dependency Graph" item
-2. **YouTube bookmark image fix** — Script subscribes to `app.events.browser.onBookmark`, detects YouTube URLs, replaces expiring thumbnail URL with public one
-3. **Video link interception** — Script subscribes to `app.events.onOpenLink`, matches known video hosting patterns, cancels default behavior, scrapes `.m3u8` URL, opens built-in player
-4. **Auto-format on save** — Script subscribes to `app.events.pages.onBeforeSave`, runs formatter on content
-5. **Custom keyboard shortcuts** — Script subscribes to `app.events.onKeyDown`, adds custom hotkeys
-6. **Page template injection** — Script subscribes to `app.events.pages.onCreated`, pre-fills content based on file extension
+1. **YouTube bookmark image fix** — Script subscribes to `app.events.browser.onBookmark`, detects YouTube URLs, replaces expiring thumbnail URL with public one
+2. **Video link interception** — Script subscribes to `app.events.onOpenLink`, matches known video hosting patterns, cancels default behavior, scrapes `.m3u8` URL, opens built-in player
+3. **Auto-format on save** — Script subscribes to `app.events.pages.onBeforeSave`, runs formatter on content
+4. **Custom keyboard shortcuts** — Script subscribes to `app.events.onKeyDown`, adds custom hotkeys
+5. **Page template injection** — Script subscribes to `app.events.pages.onCreated`, pre-fills content based on file extension
+
+### Cancellation mechanism (not yet implemented)
+
+- After ~300ms, show blocking semi-transparent overlay with "Cancel" button
+- On cancel: resolve pipeline immediately, silently ignore hung handler's result
+- UX safety net, not a guarantee
 
 ## Design Decisions (Resolved)
 
@@ -164,33 +199,34 @@ Each new EventChannel follows the same pattern documented in [context-menu.md](.
 - **Only item menus fire EventChannel.** White-space clicks do not — they have no `IFileTarget`.
 - **`target` is mutable on class, `readonly` on interface.** Implementation sets it; scripts read it.
 
-### Script context injection (US-234, US-235)
+### Script context isolation (US-232, US-234, US-235, US-236)
 
-- **Unified `CONTEXT_PREFIX`** — both top-level scripts and library modules share the same one-line `var` declaration injecting `app`, `page`, `React`, `styledText`, `preventOutput`, `require`, `console` from `globalThis.__scriptContext__`
-- **No `with(this)` proxy chain** — removed. Scripts run in plain `async function` scope, accessing `globalThis` directly for standard APIs
-- **No `lexicalObjects`** — removed (50+ lines). Native constructors like `Array`, `Buffer`, `URL` work directly since there's no proxy intercepting lookups
-- **`ui` is lazy getter on `globalThis`** — cannot be in CONTEXT_PREFIX (would eagerly create Log View). Set via `Object.defineProperty` in ScriptContext constructor, removed in `dispose()`
-- **`console` override scoped to prefix** — MCP mode injects capturing console via `__scriptContext__`, does not replace `globalThis.console` (which broke React)
+- **Per-instance `ScriptContext`** — owns `app`, `page`, `customRequire`, `console`. Serves as `this` for `fn.call(context)`. Multiple instances coexist independently.
+- **`ScriptRunnerBase` stays stateless singleton** — pure execution engine, takes context as parameter.
+- **Two injection mechanisms:** `fn.call(context)` + `SCRIPT_PREFIX` for top-level scripts; `__activeScriptContext__` + `MODULE_CONTEXT_PREFIX` for library modules.
+- **Context-bound `customRequire`** chain — each module gets the same context's require injected, propagating through the entire dependency tree. Synchronous `require()` ensures no interleaving.
+- **Stack-based `ui` getter on `globalThis`** — each context saves/restores previous descriptor. Autoload survives F5 dispose.
+- **Always-fresh require cache** — `customRequire` deletes specific module from `require.cache` before every load. No shared module state. Trade-off documented: use `page.data` or `app.settings` for persistent state.
+- **No `with(this)` proxy chain** — removed. No `lexicalObjects`. Native constructors (`Array`, `Buffer`, `URL`) work directly.
+- **`console` override scoped per-context** — MCP mode gets capturing console, regular scripts get native. No globalThis.console replacement.
+- **Alternatives evaluated and rejected:** AsyncLocalStorage (event handler propagation issue), vm module (require incompatible), worker threads (can't share live objects), stack-based global (async interleaving).
 
-### Registration scripts lifecycle (design only, not implemented)
+### Registration scripts lifecycle (US-233)
 
-- **Proxy-based auto-cleanup** — scripts only subscribe, system handles unsubscribe on reload
-- **All-or-nothing error handling** — if any `register()` fails, unsubscribe everything, show error
-- **User-controlled reload** — file watcher shows indicator, user triggers reload
-- **No scope isolation, no dependency system** — developer responsibility
+- **`autoload/` subfolder** in Script Library — user creates scripts there
 - **Named `register` export** — modules must export `register` function (not default export), so utility modules without `register` are not accidentally invoked
-
-### Cancellation mechanism (design only, not implemented)
-
-- After ~300ms, show blocking semi-transparent overlay with "Cancel" button
-- On cancel: resolve pipeline immediately, silently ignore hung handler's result
-- UX safety net, not a guarantee
+- **All-or-nothing error handling** — if any `register()` throws, unsubscribe everything, show error
+- **User-controlled reload** — file watcher shows yellow indicator in header, user clicks to reload
+- **Auto-cleanup via AppWrapper.events proxy** — scripts only subscribe, system handles unsubscribe on reload
+- **Lazy module loading** — registration scripts should be lightweight facades; heavy modules (graph generators, DB clients) lazy-loaded inside event handlers via `require("library/...")`
+- **No scope isolation, no dependency system** — developer responsibility
+- **Bootstrap deferred** — `setTimeout(1500)` in `app.initEvents()` to not block rendering
 
 ## Ideas Worth Investigating
 
-1. **VS Code extension API as inspiration** — Their `activationEvents` and `Disposable` patterns are proven. Worth studying.
-2. **Event logging/debugging** — Log all events to Log View for debugging handlers.
-3. **Should registration scripts be a special script type or just a convention?** — Files in a magic folder vs. a new "category" in the script panel.
+1. **Event logging/debugging** — Log all events to Log View for debugging handlers
+2. **Per-editor scripts** — Scripts embedded in editor files (e.g., `.link.json` with custom handlers). Scoped to editor lifecycle.
+3. **Cancellation overlay** — Semi-transparent overlay with "Cancel" button for long-running async event handlers
 
 ## Linked Tasks
 
@@ -204,3 +240,4 @@ Each new EventChannel follows the same pattern documented in [context-menu.md](.
 | US-235 | Unified Script Context Injection | Done |
 | US-233 | Script Autoloading from Script Library | Done |
 | US-236 | Script Context Coexistence | Done |
+| US-237 | Progress Dialog Component | Done |

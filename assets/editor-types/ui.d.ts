@@ -1,4 +1,18 @@
 /**
+ * Handle for a progress overlay with updatable label.
+ * Created by `app.ui.createProgress()`.
+ */
+export interface IProgressHandle {
+    /** Update the progress label. Triggers UI re-render. */
+    label: string;
+    /**
+     * Show the overlay while promise is pending. Auto-closes on resolve/reject.
+     * Returns the same promise (pass-through).
+     */
+    show<T>(promise: Promise<T>): Promise<T>;
+}
+
+/**
  * Options for the confirmation dialog.
  *
  * @example
@@ -173,4 +187,55 @@ export interface IUserInterface {
      * if (result?.button === "Execute") { runQuery(result.text); }
      */
     textDialog(options: ITextDialogOptions): Promise<ITextDialogResult | null>;
+
+    /**
+     * Show a blocking progress overlay while a promise is pending.
+     * The overlay auto-closes when the promise resolves or rejects.
+     * Returns the same promise so the caller can await the result.
+     *
+     * The overlay appears after a 300ms delay — if the promise resolves faster,
+     * no overlay is shown (avoids blinking for quick operations).
+     *
+     * For updatable labels, use `createProgress()` instead.
+     *
+     * @example
+     * const data = await app.ui.showProgress(fetchData(), "Loading data...");
+     */
+    showProgress<T>(promise: Promise<T>, label?: string): Promise<T>;
+
+    /**
+     * Create a progress handle with an updatable label.
+     * Call `progress.show(promise)` to display the overlay.
+     *
+     * @example
+     * const progress = await app.ui.createProgress("Starting...");
+     * async function run() {
+     *     progress.label = "Loading files...";
+     *     // ... work ...
+     *     progress.label = "Processing...";
+     * }
+     * await progress.show(run());
+     */
+    createProgress(label?: string): Promise<IProgressHandle>;
+
+    /**
+     * Show a brief centered notification that auto-dismisses.
+     * Does not block user interaction.
+     *
+     * @example
+     * app.ui.notifyProgress("Copied to clipboard");
+     * app.ui.notifyProgress("Settings saved", 3000);
+     */
+    notifyProgress(label: string, timeout?: number): void;
+
+    /**
+     * Lock the screen with a blocking overlay. Returns an object with
+     * a `release()` method to remove the lock.
+     *
+     * @example
+     * const lock = await app.ui.addScreenLock();
+     * try { await multiStepOperation(); }
+     * finally { lock.release(); }
+     */
+    addScreenLock(): Promise<{ release: () => void }>;
 }
