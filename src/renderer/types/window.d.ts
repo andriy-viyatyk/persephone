@@ -1,6 +1,9 @@
 import { Endpoint, EventEndpoint } from "../../ipc/api-types";
 
 declare global {
+    /** Script context globals injected into library modules via require() extension handlers. */
+    var __scriptContext__: Record<string, any> | undefined;
+
     interface Window {
         electron: {
             ipcRenderer: {

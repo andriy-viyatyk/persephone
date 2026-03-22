@@ -90,9 +90,9 @@ export class ScriptRunnerBase {
         const libraryPath = settings.get("script-library.path") as string | undefined;
         if (libraryPath) {
             registerLibraryExtensions(libraryPath);
-        }
-
-        if (this.libraryDirty && libraryPath) {
+            // Always clear library require cache so modules get fresh script context
+            // globals (app, page, etc.) injected via the extension handler prefix.
+            // Also clears stale modules when libraryDirty is set by file watcher.
             clearLibraryRequireCache(libraryPath);
             this.libraryDirty = false;
         }

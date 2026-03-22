@@ -343,6 +343,7 @@ return helpers.formatTable(result);
 - Extension auto-resolution: `.ts`, `.js`, `/index.ts`, `/index.js` are tried automatically — no need to specify the extension
 - TypeScript files are transpiled automatically; `.js` files using ES module syntax (`export`/`import`) are also transpiled
 - Relative requires within library modules work as expected (e.g., `require('./db-config')` inside a library file)
+- Library modules have access to the same globals as the top-level script — `app`, `page`, `React`, `styledText`, `ui`, `preventOutput()`, and `require()` all work inside library code
 - The library require cache is invalidated between script runs when source files change, so edits take effect immediately
 - If no library folder is linked, `require("library/...")` throws a clear error message
 

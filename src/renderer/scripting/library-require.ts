@@ -7,9 +7,20 @@ const LIBRARY_PREFIX = "library/";
 let extensionsRegistered = false;
 
 /**
+ * One-line prefix injected at the top of every library module.
+ * Makes script context globals (app, page, React, styledText) available
+ * as local variables inside require()-d library modules.
+ * Uses optional chaining so modules loaded outside script execution get undefined.
+ */
+const CONTEXT_PREFIX = "var app=globalThis.__scriptContext__?.app,page=globalThis.__scriptContext__?.page,React=globalThis.__scriptContext__?.React,styledText=globalThis.__scriptContext__?.styledText;\n";
+
+/**
  * Register custom extension handlers for Node.js require():
  * - `.ts` — transpiles TypeScript + ES module imports via sucrase
  * - `.js` — transpiles ES module imports via sucrase (for library files using export/import)
+ *
+ * Both handlers inject script context globals (app, page, etc.) so library
+ * modules have access to the same context as the top-level script.
  *
  * The `.js` handler only applies to files inside the library folder to avoid
  * breaking non-library CommonJS modules.
@@ -35,7 +46,7 @@ export function registerLibraryExtensions(libraryPath: string): void {
             transforms: ["typescript", "imports"],
             filePath: filename,
         });
-        (module as any)._compile(compiled, filename);
+        (module as any)._compile(CONTEXT_PREFIX + compiled, filename);
     };
 
     require.extensions[".js"] = (module: NodeModule, filename: string) => {
@@ -47,7 +58,7 @@ export function registerLibraryExtensions(libraryPath: string): void {
                 transforms: ["imports"],
                 filePath: filename,
             });
-            (module as any)._compile(compiled, filename);
+            (module as any)._compile(CONTEXT_PREFIX + compiled, filename);
             return;
         }
 

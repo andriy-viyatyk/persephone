@@ -23,6 +23,7 @@ Release notes and changelog for js-notepad.
 - **`read_guide` MCP tool** — AI agents can now read documentation guides via a dedicated `read_guide` tool call, as an alternative to fetching `notepad://` resource URIs. This works better with AI clients that don't support MCP resources natively.
 - **MCP server instructions and tool descriptions** — Rewritten to be shorter and scenario-focused, with all tool descriptions now referencing `read_guide()` alongside `notepad://` URIs for discovering documentation.
 - **Browser duplicate page fix** — Fixed a bug where calling `open_url` a second time via MCP would create a duplicate browser page instead of adding a tab to the existing one.
+- **Library module globals** — Library modules loaded via `require("library/...")` now have access to the same globals as the top-level script (`app`, `page`, `React`, `styledText`, `ui`, etc.). Previously, only the main script had these — library code would get a `ReferenceError`.
 - **Link category normalization** — Categories with trailing slashes no longer create phantom subcategories in the link editor.
 
 ---

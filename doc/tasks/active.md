@@ -11,6 +11,8 @@ Current work in progress and planned tasks.
 
 | ID | Title | Epic | Notes |
 |----|-------|------|-------|
+| US-235 | Unified Script Context Injection | EPIC-009 | Remove with(this) and lexicalObjects, use same prefix as sub-modules |
+| US-233 | Script Autoloading from Script Library | EPIC-009 | Load registration scripts from autoload/ subfolder on window open |
 
 
 ## Completed

@@ -267,10 +267,11 @@ const config = require("library/config");
 - Supports `.ts` and `.js` files — TypeScript files are transpiled via sucrase; `.js` files with ES module syntax (`export`/`import`) are also transpiled (imports transform only)
 - Extension auto-resolution: tries exact path, `.ts`, `.js`, `/index.ts`, `/index.js`
 - Relative requires within library modules work naturally (e.g., `require('./db-config')` inside a library file)
-- Library require cache is invalidated via `LibraryService` file watcher → calls `scriptRunner.invalidateLibraryCache()` which marks the cache as stale → next script execution clears it
+- **Context injection:** Extension handlers prepend a one-line prefix to every library module, injecting `app`, `page`, `React`, `styledText` as local variables from `globalThis.__scriptContext__`. This ensures library modules have access to the same script context globals as the top-level script. `ScriptContext` sets `globalThis.__scriptContext__` in its constructor and clears it in `dispose()`.
+- Library require cache is cleared on every script execution (in `ScriptRunnerBase.prepare()`) so modules always get fresh context globals
 - When the library is not linked, `require("library/...")` throws a descriptive error
 
-Implementation: `library-require.ts` provides `createLibraryRequire()` (patched require function) and `registerLibraryExtensions()` (`.ts` and `.js` handlers via `require.extensions` — `.js` handler only transpiles files inside the library folder).
+Implementation: `library-require.ts` provides `createLibraryRequire()` (patched require function) and `registerLibraryExtensions()` (`.ts` and `.js` handlers via `require.extensions` — `.js` handler only transpiles files inside the library folder, both inject context prefix).
 
 ### Library IntelliSense
 

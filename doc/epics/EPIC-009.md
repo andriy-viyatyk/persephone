@@ -191,3 +191,6 @@ Each new EventChannel follows the same pattern documented in [context-menu.md](.
 | US-230 | Context Menu ContextMenuEvent Refactor | Done |
 | US-231 | File Explorer Item Context Menu EventChannel | Done |
 | US-232 | Script Scope — Auto-Cleanup of Event Subscriptions | Done |
+| US-234 | Fix Script Context in Library Modules | Done |
+| US-235 | Unified Script Context Injection | Planned |
+| US-233 | Script Autoloading from Script Library | Planned |

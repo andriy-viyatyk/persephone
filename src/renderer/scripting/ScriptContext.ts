@@ -183,10 +183,17 @@ export class ScriptContext {
                 return false;
             },
         });
+
+        // Expose script context globals to library modules loaded via require().
+        // Extension handlers in library-require.ts inject these as local variables.
+        globalThis.__scriptContext__ = customContext;
     }
 
     /** Release all acquired resources (ViewModels, event subscriptions, etc.). */
     dispose() {
+        if (globalThis.__scriptContext__) {
+            globalThis.__scriptContext__ = undefined;
+        }
         for (const release of this.releaseList) {
             try { release(); } catch { /* don't block other releases */ }
         }
