@@ -91,10 +91,18 @@ export class ScriptContext {
         const isMcp = !!consoleLogs;
         const context = this;
         let uiFacade: UiFacade | undefined;
+        let uiLogPageId: string | undefined;
 
         const ensureFacade = () => {
+            // Re-create facade if Log View page was closed by the user
+            if (uiFacade && uiLogPageId && !pagesModel.findPage(uiLogPageId)) {
+                uiFacade = undefined;
+                uiLogPageId = undefined;
+            }
             if (!uiFacade) {
-                uiFacade = initializeUiFacade(page, context.releaseList, context.outputFlags, isMcp);
+                const result = initializeUiFacade(page, context.releaseList, context.outputFlags, isMcp);
+                uiFacade = result.facade;
+                uiLogPageId = result.pageId;
                 installConsoleForwarding(uiFacade, context, consoleLogs);
             }
             return uiFacade;
@@ -196,7 +204,7 @@ function initializeUiFacade(
     releaseList: Array<() => void>,
     outputFlags: ScriptOutputFlags,
     isMcp = false,
-): UiFacade {
+): { facade: UiFacade; pageId: string } {
     let logPage: PageModel;
     let isExisting = false;
 
@@ -243,7 +251,7 @@ function initializeUiFacade(
         vm.addEntry("log.info", `Script ${title} started`);
     }
 
-    return new UiFacade(vm);
+    return { facade: new UiFacade(vm), pageId: logPage.id };
 }
 
 // =============================================================================
