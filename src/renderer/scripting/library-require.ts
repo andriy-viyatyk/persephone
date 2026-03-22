@@ -7,12 +7,22 @@ const LIBRARY_PREFIX = "library/";
 let extensionsRegistered = false;
 
 /**
- * One-line prefix injected at the top of every library module.
- * Makes script context globals (app, page, React, styledText) available
- * as local variables inside require()-d library modules.
+ * One-line prefix injected at the top of every library module AND top-level scripts.
+ * Makes script context globals available as local variables.
  * Uses optional chaining so modules loaded outside script execution get undefined.
+ *
+ * `ui` and `console` are NOT included — they are lazy getters on globalThis
+ * (set by ScriptContext) to avoid eagerly creating the Log View page.
  */
-const CONTEXT_PREFIX = "var app=globalThis.__scriptContext__?.app,page=globalThis.__scriptContext__?.page,React=globalThis.__scriptContext__?.React,styledText=globalThis.__scriptContext__?.styledText;\n";
+export const CONTEXT_PREFIX =
+    "var app=globalThis.__scriptContext__?.app" +
+    ",page=globalThis.__scriptContext__?.page" +
+    ",React=globalThis.__scriptContext__?.React" +
+    ",styledText=globalThis.__scriptContext__?.styledText" +
+    ",preventOutput=globalThis.__scriptContext__?.preventOutput" +
+    ",require=globalThis.__scriptContext__?.require||require" +
+    ",console=globalThis.__scriptContext__?.console||console" +
+    ";\n";
 
 /**
  * Register custom extension handlers for Node.js require():

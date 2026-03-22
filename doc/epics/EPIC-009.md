@@ -164,12 +164,21 @@ Each new EventChannel follows the same pattern documented in [context-menu.md](.
 - **Only item menus fire EventChannel.** White-space clicks do not — they have no `IFileTarget`.
 - **`target` is mutable on class, `readonly` on interface.** Implementation sets it; scripts read it.
 
+### Script context injection (US-234, US-235)
+
+- **Unified `CONTEXT_PREFIX`** — both top-level scripts and library modules share the same one-line `var` declaration injecting `app`, `page`, `React`, `styledText`, `preventOutput`, `require`, `console` from `globalThis.__scriptContext__`
+- **No `with(this)` proxy chain** — removed. Scripts run in plain `async function` scope, accessing `globalThis` directly for standard APIs
+- **No `lexicalObjects`** — removed (50+ lines). Native constructors like `Array`, `Buffer`, `URL` work directly since there's no proxy intercepting lookups
+- **`ui` is lazy getter on `globalThis`** — cannot be in CONTEXT_PREFIX (would eagerly create Log View). Set via `Object.defineProperty` in ScriptContext constructor, removed in `dispose()`
+- **`console` override scoped to prefix** — MCP mode injects capturing console via `__scriptContext__`, does not replace `globalThis.console` (which broke React)
+
 ### Registration scripts lifecycle (design only, not implemented)
 
 - **Proxy-based auto-cleanup** — scripts only subscribe, system handles unsubscribe on reload
 - **All-or-nothing error handling** — if any `register()` fails, unsubscribe everything, show error
 - **User-controlled reload** — file watcher shows indicator, user triggers reload
 - **No scope isolation, no dependency system** — developer responsibility
+- **Named `register` export** — modules must export `register` function (not default export), so utility modules without `register` are not accidentally invoked
 
 ### Cancellation mechanism (design only, not implemented)
 
@@ -192,5 +201,5 @@ Each new EventChannel follows the same pattern documented in [context-menu.md](.
 | US-231 | File Explorer Item Context Menu EventChannel | Done |
 | US-232 | Script Scope — Auto-Cleanup of Event Subscriptions | Done |
 | US-234 | Fix Script Context in Library Modules | Done |
-| US-235 | Unified Script Context Injection | Planned |
+| US-235 | Unified Script Context Injection | Done |
 | US-233 | Script Autoloading from Script Library | Planned |

@@ -25,6 +25,7 @@ Release notes and changelog for js-notepad.
 - **Browser duplicate page fix** — Fixed a bug where calling `open_url` a second time via MCP would create a duplicate browser page instead of adding a tab to the existing one.
 - **Library module globals** — Library modules loaded via `require("library/...")` now have access to the same globals as the top-level script (`app`, `page`, `React`, `styledText`, `ui`, etc.). Previously, only the main script had these — library code would get a `ReferenceError`.
 - **Link category normalization** — Categories with trailing slashes no longer create phantom subcategories in the link editor.
+- **`Buffer` now works in scripts** — `Buffer.from()`, `Buffer.alloc()`, and other `Buffer` methods are now accessible in scripts. Previously, the script execution sandbox blocked access to `Buffer`; this limitation has been removed.
 
 ---
 

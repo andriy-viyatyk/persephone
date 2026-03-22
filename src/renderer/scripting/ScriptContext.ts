@@ -46,9 +46,6 @@ export class ScriptContext {
     readonly releaseList: Array<() => void> = [];
     readonly outputFlags: ScriptOutputFlags = { outputPrevented: false, groupedContentWritten: false };
 
-    /** The proxy object passed as `this` to scripts. */
-    readonly context: Record<string, any>;
-
     constructor(page?: PageModel, consoleLogs?: ConsoleLogEntry[], libraryPath?: string) {
         const appWrapper = new AppWrapper(this.releaseList);
         const pageWrapper = page ? new PageWrapper(page, this.releaseList, this.outputFlags) : undefined;
@@ -64,31 +61,7 @@ export class ScriptContext {
                 : createUnlinkedLibraryRequire(),
         };
 
-        // Lazy `ui` global — Log View page created on first access.
-        // Wrapped in a callable Proxy so `await ui()` yields to the event loop,
-        // preventing long-running scripts from freezing the UI.
-        const isMcp = !!consoleLogs;
-        let uiFacade: UiFacade | undefined;
-        let callableUi: unknown;
-        Object.defineProperty(customContext, "ui", {
-            get: () => {
-                if (!uiFacade) {
-                    uiFacade = initializeUiFacade(page, this.releaseList, this.outputFlags, isMcp);
-                    // Install console forwarding now that LogViewModel exists
-                    installConsoleForwarding(uiFacade, customContext, consoleLogs);
-                    // Create callable proxy: await ui() yields, ui.log() etc. delegate to facade
-                    const yieldFn = () => new Promise<void>((r) => setTimeout(r, 0));
-                    callableUi = new Proxy(yieldFn, {
-                        get: (_target, prop, receiver) => Reflect.get(uiFacade!, prop, receiver),
-                        set: (_target, prop, value, receiver) => Reflect.set(uiFacade!, prop, value, receiver),
-                    });
-                }
-                return callableUi;
-            },
-            enumerable: true,
-            configurable: false,
-        });
-
+        // MCP mode: install basic console capture (replaced with forwarding when ui is accessed)
         if (consoleLogs) {
             customContext.console = {
                 log: (...args: any[]) => { consoleLogs.push({ level: "log", args: args.map(serializeArg), timestamp: Date.now() }); },
@@ -98,102 +71,42 @@ export class ScriptContext {
             };
         }
 
-        // Create a read-only proxy for window/globalThis
-        const readOnlyGlobalThis = new Proxy(globalThis, {
-            get(target, prop) {
-                if (Object.hasOwn(customContext, prop)) {
-                    return customContext[prop as string];
-                }
-                const value = (globalThis as any)[prop];
-
-                // If it's a function, bind it to globalThis
-                if (typeof value === "function") {
-                    if (value.prototype) {
-                        // Do NOT bind constructors or classes
-                        return value;
-                    }
-
-                    return value.bind(globalThis);
-                }
-
-                return value;
-            },
-            set(target, prop, value) {
-                customContext[prop as string] = value;
-                return true;
-            },
-            deleteProperty() {
-                // Prevent deletions
-                return false;
-            },
-            defineProperty() {
-                // Prevent defining new properties
-                return false;
-            },
-        });
-
-        this.context = new Proxy(customContext, {
-            get(target, prop) {
-                // First check custom context
-                if (prop in target) {
-                    return target[prop as string];
-                }
-
-                // Special handling for 'window' and 'globalThis'
-                if (prop === "window" || prop === "globalThis") {
-                    return readOnlyGlobalThis;
-                }
-
-                // Then check globalThis
-                if (prop in globalThis) {
-                    const value = (globalThis as any)[prop];
-
-                    // If it's a function, bind it to globalThis
-                    if (typeof value === "function") {
-                        if (value.prototype) {
-                            // Do NOT bind constructors or classes (e.g. Buffer, URL)
-                            // — binding loses static methods like Buffer.from()
-                            return value;
-                        }
-                        return value.bind(globalThis);
-                    }
-
-                    return value;
-                }
-
-                return undefined;
-            },
-
-            has(target, prop) {
-                return prop in target || prop in globalThis;
-            },
-
-            set(target, prop, value) {
-                target[prop as string] = value;
-                return true;
-            },
-
-            deleteProperty(target, prop) {
-                // Only allow deleting custom context properties
-                if (prop in target) {
-                    delete target[prop as string];
-                    return true;
-                }
-                // Prevent deleting global properties
-                return false;
-            },
-        });
-
-        // Expose script context globals to library modules loaded via require().
-        // Extension handlers in library-require.ts inject these as local variables.
+        // Expose script context globals to library modules and top-level scripts.
+        // CONTEXT_PREFIX (in library-require.ts) reads these as local variables.
         globalThis.__scriptContext__ = customContext;
+
+        // Lazy `ui` global on globalThis — Log View page created on first access.
+        // Wrapped in a callable Proxy so `await ui()` yields to the event loop.
+        // Must be on globalThis (not in CONTEXT_PREFIX) to preserve laziness.
+        const isMcp = !!consoleLogs;
+        let uiFacade: UiFacade | undefined;
+        let callableUi: unknown;
+        Object.defineProperty(globalThis, "ui", {
+            get: () => {
+                if (!uiFacade) {
+                    uiFacade = initializeUiFacade(page, this.releaseList, this.outputFlags, isMcp);
+                    installConsoleForwarding(uiFacade, customContext, consoleLogs);
+                    const yieldFn = () => new Promise<void>((r) => setTimeout(r, 0));
+                    callableUi = new Proxy(yieldFn, {
+                        get: (_target, prop, receiver) => Reflect.get(uiFacade!, prop, receiver),
+                        set: (_target, prop, value, receiver) => Reflect.set(uiFacade!, prop, value, receiver),
+                    });
+                }
+                return callableUi;
+            },
+            enumerable: false,
+            configurable: true,
+        });
+
     }
 
     /** Release all acquired resources (ViewModels, event subscriptions, etc.). */
     dispose() {
-        if (globalThis.__scriptContext__) {
-            globalThis.__scriptContext__ = undefined;
-        }
+        globalThis.__scriptContext__ = undefined;
+
+        // Remove lazy ui getter from globalThis
+        delete (globalThis as any).ui;
+
         for (const release of this.releaseList) {
             try { release(); } catch { /* don't block other releases */ }
         }

@@ -375,7 +375,7 @@ const config = fs.readFileSync('config.json', 'utf8');
 const _ = require(path.join('D:\\myproject\\node_modules', 'lodash'));
 ```
 
-> **Note:** `Buffer` is not available in the script sandbox. Use browser APIs instead — `btoa()` / `atob()` for Base64 encoding/decoding, and `TextEncoder` / `TextDecoder` for binary conversions.
+> **Tip:** For Base64 encoding/decoding, you can use either Node.js `Buffer` (`Buffer.from(str).toString('base64')`) or browser APIs (`btoa()` / `atob()`). For binary conversions, `TextEncoder` / `TextDecoder` are also available.
 
 ## Output Types
 

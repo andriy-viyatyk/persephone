@@ -40,7 +40,8 @@ ScriptRunner.run(script, page?, language?)
     │       ├── require           ← patched require with library/ resolution
     │       ├── React             ← React library
     │       ├── ScriptOutputFlags ← tracks output suppression state
-    │       └── Proxy (globalThis interception)
+    │       └── globalThis.__scriptContext__ = customContext
+    │             (CONTEXT_PREFIX injects as local vars in scripts + library modules)
     │
     └── context.dispose()  ← releases all acquired ViewModels + unsubscribes events
 ```
@@ -267,11 +268,11 @@ const config = require("library/config");
 - Supports `.ts` and `.js` files — TypeScript files are transpiled via sucrase; `.js` files with ES module syntax (`export`/`import`) are also transpiled (imports transform only)
 - Extension auto-resolution: tries exact path, `.ts`, `.js`, `/index.ts`, `/index.js`
 - Relative requires within library modules work naturally (e.g., `require('./db-config')` inside a library file)
-- **Context injection:** Extension handlers prepend a one-line prefix to every library module, injecting `app`, `page`, `React`, `styledText` as local variables from `globalThis.__scriptContext__`. This ensures library modules have access to the same script context globals as the top-level script. `ScriptContext` sets `globalThis.__scriptContext__` in its constructor and clears it in `dispose()`.
+- **Context injection:** Both top-level scripts and library modules share the same `CONTEXT_PREFIX` — a one-line `var` declaration that reads `app`, `page`, `React`, `styledText`, `preventOutput`, `require`, and `console` from `globalThis.__scriptContext__` as local variables. `ScriptContext` sets `globalThis.__scriptContext__` in its constructor and clears it in `dispose()`. `ui` is excluded from the prefix — it's a lazy getter on `globalThis` to avoid eagerly creating the Log View.
 - Library require cache is cleared on every script execution (in `ScriptRunnerBase.prepare()`) so modules always get fresh context globals
 - When the library is not linked, `require("library/...")` throws a descriptive error
 
-Implementation: `library-require.ts` provides `createLibraryRequire()` (patched require function) and `registerLibraryExtensions()` (`.ts` and `.js` handlers via `require.extensions` — `.js` handler only transpiles files inside the library folder, both inject context prefix).
+Implementation: `library-require.ts` provides `createLibraryRequire()` (patched require function), `registerLibraryExtensions()` (`.ts` and `.js` handlers via `require.extensions` — `.js` handler only transpiles files inside the library folder, both inject context prefix), and exports `CONTEXT_PREFIX` (shared with `ScriptRunnerBase` for top-level scripts).
 
 ### Library IntelliSense
 
@@ -428,9 +429,9 @@ Wraps `PagesModel`, implements `IPageCollection`. Returns `PageWrapper` instance
 Located in `/src/renderer/scripting/ScriptRunnerBase.ts`.
 
 Pure execution engine with no context creation or cleanup. Handles:
-- **`execute(script, context, language?)`** — prepares (transpile + library) then executes
+- **`execute(script, language?)`** — prepares (transpile + library) then executes
 - **`prepare()`** — transpiles TypeScript, loads sucrase, registers Script Library extensions
-- **`executeInternal()`** — expression/statement detection, `with(this)` wrapping, implicit return, async await
+- **`executeInternal()`** — expression/statement detection, CONTEXT_PREFIX injection, implicit return, async await
 - **`invalidateLibraryCache()`** — marks library require cache as dirty
 
 ### ScriptRunner (orchestrator)
@@ -439,8 +440,8 @@ Located in `/src/renderer/scripting/ScriptRunner.ts`. Extends `ScriptRunnerBase`
 
 ### `run(script, page?, language?)`
 
-1. Creates `ScriptContext`
-2. Calls `execute(script, context, language)` (base handles transpilation + execution)
+1. Creates `ScriptContext` (sets `globalThis.__scriptContext__`)
+2. Calls `execute(script, language)` (base handles transpilation + execution)
 3. Calls `context.dispose()` in `finally` block
 
 ### `runWithResult(pageId, script, page?, language?)`
@@ -486,7 +487,7 @@ Located in `/src/renderer/scripting/ScriptContext.ts`.
 
 ```typescript
 const ctx = new ScriptContext(page?, consoleLogs?, libraryPath?);
-// ... execute script with ctx.context ...
+// ... execute script (context is on globalThis.__scriptContext__) ...
 ctx.dispose();  // releases ViewModels + unsubscribes events
 ```
 
@@ -504,13 +505,9 @@ The constructor:
    ```
 4. If `libraryPath` provided, adds patched `require` that resolves `library/` paths to the library folder; otherwise adds a require wrapper that throws a clear error for `library/` paths
 5. Adds `styledText` factory function for standalone styled text building
-6. Adds lazy `ui` getter via `Object.defineProperty` — creates `UiFacade` on first access, then installs console forwarding (`installConsoleForwarding`) which replaces the basic capture console with one that forwards to both the Log View and (if MCP) the `consoleLogs` array
-7. Builds proxy chain:
-   - Custom context checked first (`app`, `page`, `ui`, `styledText`, `require`, `React`)
-   - Falls back to `globalThis` for standard APIs
-   - Functions auto-bound to `globalThis` (except constructors)
-   - Set operations go to custom context (scripts can create variables)
-5. `dispose()` releases all ViewModels and unsubscribes all event subscriptions made through `app.events`
+6. Sets `globalThis.__scriptContext__` to the custom context object — `CONTEXT_PREFIX` (shared with library modules) reads from this to inject `app`, `page`, `React`, `styledText`, `preventOutput`, `require`, and `console` as local variables in every script
+7. Adds lazy `ui` getter on `globalThis` via `Object.defineProperty` — creates `UiFacade` on first access, then installs console forwarding (`installConsoleForwarding`) which replaces the basic capture console with one that forwards to both the Log View and (if MCP) the `consoleLogs` array. Must be on `globalThis` (not in CONTEXT_PREFIX) to preserve laziness — `var ui=__scriptContext__.ui` would eagerly trigger the getter.
+8. `dispose()` clears `globalThis.__scriptContext__`, removes the `ui` getter from `globalThis`, and releases all ViewModels and unsubscribes all event subscriptions made through `app.events`
 
 ## Grouped Pages & Output Suppression
 
@@ -632,14 +629,13 @@ These files serve dual purpose: TypeScript type checking **and** IDE IntelliSens
 └── browser-editor.d.ts          # IBrowserEditor
 ```
 
-## Sandbox Limitations
+## Execution Model
 
-Although scripts have access to `globalThis` via proxy fallback, some Node.js globals don't work correctly through the `with(this)` proxy chain. Known limitation:
+Scripts execute inside an `async function` with `CONTEXT_PREFIX` injecting context globals as local `var` declarations. There is no `with(this)` proxy chain — scripts access `globalThis` directly for standard APIs (like `Buffer`, `URL`, `setTimeout`), and script-specific globals (`app`, `page`, `ui`, `require`) are injected as local variables that shadow any globals of the same name.
 
-- **`Buffer`** — `Buffer.from()` fails in the sandbox. Use browser APIs instead: `btoa()`/`atob()` for base64, `TextEncoder`/`TextDecoder` for encoding.
-- **`require()`** — works for Node.js modules and `library/` paths (see above), but the built-in `require` is patched to support library resolution.
-
-Bundled example scripts use browser APIs (`atob`/`btoa`) instead of `Buffer` for this reason.
+- **`require()`** — patched to support `library/` path resolution (see Script Library Imports above). Falls back to Node.js native `require` for other paths.
+- **`ui`** — lazy getter on `globalThis` (not a local variable). Eagerly accessing `ui` creates a Log View page.
+- **Global pollution** — scripts run in sloppy mode. Unqualified assignments (`x = 5` without `var`/`let`/`const`) leak to `globalThis`. Use `let`/`const` to avoid this.
 
 ## Security Considerations
 

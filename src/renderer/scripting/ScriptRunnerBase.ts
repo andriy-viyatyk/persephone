@@ -1,64 +1,16 @@
 import { transpileIfNeeded, ensureSucraseLoaded } from "./transpile";
-import { registerLibraryExtensions, clearLibraryRequireCache } from "./library-require";
+import { registerLibraryExtensions, clearLibraryRequireCache, CONTEXT_PREFIX } from "./library-require";
 import { settings } from "../api/settings";
-
-const lexicalObjects = `
-    const React = globalThis.React;
-
-    const Array = globalThis.Array;
-    const Boolean = globalThis.Boolean;
-    const Date = globalThis.Date;
-    const Error = globalThis.Error;
-    const EvalError = globalThis.EvalError;
-    const Function = globalThis.Function;
-    const Infinity = globalThis.Infinity;
-    const JSON = globalThis.JSON;
-    const Map = globalThis.Map;
-    const Math = globalThis.Math;
-    const NaN = globalThis.NaN;
-    const Number = globalThis.Number;
-    const Object = globalThis.Object;
-    const Promise = globalThis.Promise;
-    const RegExp = globalThis.RegExp;
-    const Set = globalThis.Set;
-    const String = globalThis.String;
-    const Symbol = globalThis.Symbol;
-    const TypeError = globalThis.TypeError;
-    const URIError = globalThis.URIError;
-    const WeakMap = globalThis.WeakMap;
-    const WeakSet = globalThis.WeakSet;
-    const BigInt = globalThis.BigInt;
-    const BigInt64Array = globalThis.BigInt64Array;
-    const BigUint64Array = globalThis.BigUint64Array;
-    const Int8Array = globalThis.Int8Array;
-    const Uint8Array = globalThis.Uint8Array;
-    const Uint8ClampedArray = globalThis.Uint8ClampedArray;
-    const Int16Array = globalThis.Int16Array;
-    const Uint16Array = globalThis.Uint16Array;
-    const Int32Array = globalThis.Int32Array;
-    const Uint32Array = globalThis.Uint32Array;
-    const Float32Array = globalThis.Float32Array;
-    const Float64Array = globalThis.Float64Array;
-    const SharedArrayBuffer = globalThis.SharedArrayBuffer;
-    const ArrayBuffer = globalThis.ArrayBuffer;
-    const DataView = globalThis.DataView;
-    const Atomics = globalThis.Atomics;
-    const Reflect = globalThis.Reflect;
-    const Proxy = globalThis.Proxy;
-    const TextEncoder = globalThis.TextEncoder;
-    const TextDecoder = globalThis.TextDecoder;
-    const URL = globalThis.URL;
-    const URLSearchParams = globalThis.URLSearchParams;
-    const AggregateError = globalThis.AggregateError;
-    const FinalizationRegistry = globalThis.FinalizationRegistry;
-    const WeakRef = globalThis.WeakRef;
-`;
 
 /**
  * Core script execution engine. Handles TypeScript transpilation, Script Library
  * registration, expression/statement detection, implicit return wrapping,
  * and async await. No context creation, no cleanup, no output handling —
  * caller manages the lifecycle.
+ *
+ * Scripts and library modules share the same context injection mechanism:
+ * CONTEXT_PREFIX injects `app`, `page`, `React`, etc. as local variables
+ * from `globalThis.__scriptContext__` (set by ScriptContext).
  */
 export class ScriptRunnerBase {
     protected libraryDirty = true;
@@ -69,13 +21,13 @@ export class ScriptRunnerBase {
     };
 
     /**
-     * Prepare and execute a script string with a given context proxy.
+     * Prepare and execute a script string.
      * Handles transpilation (TS → JS) and Script Library registration
      * before executing. Returns the script result.
      */
-    protected async execute(script: string, context: Record<string, any>, language?: string): Promise<any> {
+    protected async execute(script: string, language?: string): Promise<any> {
         const prepared = await this.prepare(script, language);
-        return this.executeInternal(prepared, context);
+        return this.executeInternal(prepared);
     }
 
     /**
@@ -101,10 +53,11 @@ export class ScriptRunnerBase {
     }
 
     /**
-     * Execute a prepared (already transpiled) script string with a given context proxy.
+     * Execute a prepared (already transpiled) script string.
+     * Context globals are injected via CONTEXT_PREFIX (same mechanism as library modules).
      * Handles expression/statement detection, implicit return, and async await.
      */
-    private async executeInternal(script: string, context: Record<string, any>): Promise<any> {
+    private async executeInternal(script: string): Promise<any> {
         // Check if script contains statement keywords at the start
         const trimmedScript = script.trim();
         const statementKeywords =
@@ -113,18 +66,11 @@ export class ScriptRunnerBase {
 
         if (!hasStatements) {
             // Try as expression first (for simple cases like "5 + 5" or "'hello'")
-            const expressionScript = `
-            with (this) {
-                return (async function() {
-                    ${lexicalObjects}
-                    return (${script});
-                }).call(this);
-            }
-            `;
+            const expressionScript = `return (async function() {\n${CONTEXT_PREFIX}return (${script});\n})();`;
 
             try {
                 const fn = new Function(expressionScript);
-                const scriptResult = fn.call(context);
+                const scriptResult = fn();
                 return this.isPromiseLike(scriptResult)
                     ? await scriptResult
                     : scriptResult;
@@ -136,7 +82,7 @@ export class ScriptRunnerBase {
         // Try to extract the last expression and make it return
         const statementScript = this.wrapScriptWithImplicitReturn(script);
         const fn = new Function(statementScript);
-        const scriptResult = fn.call(context);
+        const scriptResult = fn();
         return this.isPromiseLike(scriptResult)
             ? await scriptResult
             : scriptResult;
@@ -147,14 +93,7 @@ export class ScriptRunnerBase {
 
         // If there's already a return statement, use as-is
         if (/\breturn\b/.test(script)) {
-            return `
-            with (this) {
-                return (async function() {
-                    ${lexicalObjects}
-                    ${script}
-                }).call(this);
-            }
-        `;
+            return `return (async function() {\n${CONTEXT_PREFIX}${script}\n})();`;
         }
 
         // Try to make the last line/statement return its value
@@ -176,39 +115,16 @@ export class ScriptRunnerBase {
         ) {
             // Last line looks like an expression, make it return
             const beforeLast = lines.slice(0, -1).join("\n");
-            return `
-            with (this) {
-                return (async function() {
-                    ${lexicalObjects}
-                    ${beforeLast}
-                    return (${lastLine});
-                }).call(this);
-            }
-        `;
+            return `return (async function() {\n${CONTEXT_PREFIX}${beforeLast}\nreturn (${lastLine});\n})();`;
         } else if (!isStatement && !isBlockCloser && lastLine && lastLine.endsWith(";")) {
             // Remove trailing semicolon and return
             const beforeLast = lines.slice(0, -1).join("\n");
-            const expressionPart = lastLine.slice(0, -1); // Remove semicolon
-            return `
-            with (this) {
-                return (async function() {
-                    ${lexicalObjects}
-                    ${beforeLast}
-                    return (${expressionPart});
-                }).call(this);
-            }
-        `;
+            const expressionPart = lastLine.slice(0, -1);
+            return `return (async function() {\n${CONTEXT_PREFIX}${beforeLast}\nreturn (${expressionPart});\n})();`;
         }
 
         // Default: execute as-is (will return undefined)
-        return `
-        with (this) {
-            return (async function() {
-                ${lexicalObjects}
-                ${script}
-            }).call(this);
-        }
-    `;
+        return `return (async function() {\n${CONTEXT_PREFIX}${script}\n})();`;
     }
 
     /**
