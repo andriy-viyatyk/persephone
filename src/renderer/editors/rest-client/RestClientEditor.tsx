@@ -154,6 +154,7 @@ const RestClientRoot = styled.div({
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
+        fontStyle: "italic",
     },
 
     // ── Split panel headers (double-click to toggle) ──
@@ -266,6 +267,7 @@ const RestClientRoot = styled.div({
         padding: 12,
         fontSize: 13,
         color: color.text.light,
+        fontStyle: "italic",
     },
 }, { label: "RestClientRoot" });
 

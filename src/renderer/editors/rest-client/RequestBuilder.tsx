@@ -203,6 +203,7 @@ const RequestBuilderRoot = styled.div({
         padding: 12,
         fontSize: 13,
         color: color.text.light,
+        fontStyle: "italic",
     },
     "& .binary-body": {
         padding: "8px 12px",

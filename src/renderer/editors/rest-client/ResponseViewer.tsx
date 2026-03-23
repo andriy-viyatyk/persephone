@@ -117,6 +117,7 @@ const ResponseViewerRoot = styled.div({
         padding: 12,
         fontSize: 13,
         color: color.text.light,
+        fontStyle: "italic",
     },
     "& .binary-response": {
         flex: "1 1 auto",
@@ -132,6 +133,7 @@ const ResponseViewerRoot = styled.div({
         fontSize: 13,
         color: color.text.light,
         textAlign: "center",
+        fontStyle: "italic",
     },
     "& .binary-actions": {
         display: "flex",
