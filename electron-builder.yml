@@ -29,8 +29,10 @@ electronDownload:
   mirror: "https://github.com/castlabs/electron-releases/releases/download/v"
 
 # VMP-sign the Electron binary for Widevine DRM (Netflix, Disney+, etc.)
-# Set VMP_SIGN=true environment variable to enable signing
-afterPack: scripts/vmp-sign.mjs
+# Uses afterSign (not afterPack) because on Windows VMP signing must happen
+# AFTER code-signing (Authenticode/signtool), otherwise signtool overwrites the VMP signature.
+# Set VMP_SIGN=true environment variable to enable signing.
+afterSign: scripts/vmp-sign.mjs
 
 win:
   icon: assets/icon.ico
