@@ -601,6 +601,8 @@ function RequestTree({ vm, root, selectedId }: {
             if (item.isRoot) return;
             e.preventDefault();
 
+            if (item.request) vm.selectRequest(item.id);
+
             if (item.isCollection) {
                 const colName = item.collectionName ?? "";
                 const menuItems: MenuItem[] = [
