@@ -61,7 +61,7 @@ The current page (tab). Available as a global in scripts.
 
 ### Editor Types
 
-`"monaco"` · `"grid-json"` · `"grid-csv"` · `"md-view"` · `"notebook-view"` · `"todo-view"` · `"link-view"` · `"graph-view"` · `"draw-view"` · `"svg-view"` · `"html-view"` · `"mermaid-view"` · `"pdf-view"` · `"image-view"` · `"browser-view"` · `"about-view"` · `"settings-view"`
+`"monaco"` · `"grid-json"` · `"grid-csv"` · `"grid-jsonl"` · `"md-view"` · `"notebook-view"` · `"todo-view"` · `"link-view"` · `"graph-view"` · `"draw-view"` · `"svg-view"` · `"html-view"` · `"mermaid-view"` · `"log-view"` · `"rest-client"` · `"pdf-view"` · `"image-view"` · `"browser-view"` · `"about-view"` · `"settings-view"` · `"mcp-view"`
 
 ### Creating Pages with Specialized Editors
 
@@ -81,6 +81,9 @@ The current page (tab). Available as a global in scripts.
 | `graph-view` | **`json`** | `.fg.json` (**required**) | `"Network.fg.json"` |
 | `draw-view` | **`json`** | `.excalidraw` (**required**) | `"Sketch.excalidraw"` |
 | `mermaid-view` | **`mermaid`** | — | `"Diagram"` |
+| `grid-jsonl` | **`jsonl`** | — | `"Logs"` |
+| `log-view` | **`jsonl`** | `.log.jsonl` (optional) | `"Output.log.jsonl"` |
+| `rest-client` | **`json`** | `.rest.json` (**required**) | `"API Collection.rest.json"` |
 
 **Common mistake:** `create_page({ editor: "md-view", language: "plaintext", ... })` — this creates a broken page. Use `language: "markdown"` with `md-view`.
 
@@ -91,6 +94,7 @@ The current page (tab). Available as a global in scripts.
 - **Todo:** Read `notepad://guides/todo` for TodoItem format. Empty: `{"lists":[],"tags":[],"items":[],"state":{}}`
 - **Links:** Read `notepad://guides/links` for LinkItem format. Empty: `{"links":[],"state":{}}`
 - **Graph:** Read `notepad://guides/graph` for node/link format. Empty: `{"nodes":[],"links":[],"options":{}}`
+- **Rest Client:** Empty: `{"type":"rest-client","requests":[]}`
 
 ### Graph Editor Format (`graph-view`)
 
@@ -153,6 +157,71 @@ The graph editor renders an interactive force-directed graph. Content is JSON wi
 - Add custom properties for metadata (e.g., `"team"`, `"status"`, `"url"`) — they appear in the detail panel
 - For large graphs (>200 nodes), set `rootNode` and `expandDepth` to avoid overwhelming the view
 - Title suffix `.fg.json` ensures the graph editor opens by default and shows the JSON/Graph switch
+
+### Rest Client Format (`rest-client`)
+
+The Rest Client editor displays a collection of HTTP requests organized in collections. Content is JSON:
+
+```json
+{
+  "type": "rest-client",
+  "requests": [
+    {
+      "id": "unique-id-1",
+      "name": "Get Users",
+      "collection": "User API",
+      "method": "GET",
+      "url": "https://api.example.com/users",
+      "headers": [
+        { "key": "Authorization", "value": "Bearer token123", "enabled": true },
+        { "key": "Accept", "value": "application/json", "enabled": true }
+      ],
+      "body": "",
+      "bodyType": "none",
+      "bodyLanguage": "plaintext",
+      "formData": []
+    },
+    {
+      "id": "unique-id-2",
+      "name": "Create User",
+      "collection": "User API",
+      "method": "POST",
+      "url": "https://api.example.com/users",
+      "headers": [
+        { "key": "Content-Type", "value": "application/json", "enabled": true }
+      ],
+      "body": "{ \"name\": \"John\", \"email\": \"john@example.com\" }",
+      "bodyType": "raw",
+      "bodyLanguage": "json",
+      "formData": []
+    }
+  ]
+}
+```
+
+**Request properties:**
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `id` | string (required) | Unique identifier (use `crypto.randomUUID()` or any unique string) |
+| `name` | string | Display name (empty string allowed — shows as italic "(empty)") |
+| `collection` | string | Collection group name (empty string = ungrouped) |
+| `method` | string | HTTP method: `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `HEAD`, `OPTIONS` |
+| `url` | string | Request URL |
+| `headers` | array | Array of `{ key, value, enabled }` objects |
+| `body` | string | Request body text (used when `bodyType` is `"raw"`) |
+| `bodyType` | string | `"none"`, `"raw"`, or `"form-urlencoded"` |
+| `bodyLanguage` | string | Language for raw body: `"plaintext"`, `"json"`, `"javascript"`, `"html"`, `"xml"` |
+| `formData` | array | Array of `{ key, value, enabled }` for form-urlencoded body |
+
+**Tips for generating Rest Client pages:**
+- Always include `"type": "rest-client"` for content detection
+- Generate unique `id` values for each request (e.g., `"req-1"`, `"req-2"`)
+- Use `collection` to group related requests (e.g., `"Auth"`, `"Users"`, `"Products"`)
+- Set `bodyType: "raw"` + `bodyLanguage: "json"` for JSON request bodies
+- Set `bodyType: "form-urlencoded"` and populate `formData` for form submissions
+- Title suffix `.rest.json` is **required** for the editor to activate
+- Scripts can use `app.fetch(url, options)` to execute HTTP requests directly — no need to go through the editor
 
 ## Grouped Pages (Script Output)
 

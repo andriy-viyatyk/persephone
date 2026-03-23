@@ -4,10 +4,11 @@ Epics represent big ideas with high-level overviews. Each epic links to tasks in
 
 ## Active
 
-- **EPIC-009** — [Scriptable Application Events](EPIC-009.md)
+- **EPIC-010** — [Rest Client](EPIC-010.md)
 
 ## Completed
 
+- **EPIC-009** — [Scriptable Application Events](EPIC-009.md)
 - **EPIC-008** — [MCP Inspector Editor](EPIC-008.md)
 - **EPIC-007** — [Drawing Editor (Excalidraw)](EPIC-007.md)
 - **EPIC-006** — [Graph Editor (Force Graph)](EPIC-006.md)

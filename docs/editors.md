@@ -315,6 +315,23 @@ For `.link.json` files — a structured link manager:
 - **Session state persistence** — selected category, tag, hostname, and expanded panel are remembered across app restarts
 - Can switch to Monaco for raw JSON editing
 
+## Rest Client
+
+For `.rest.json` files — an HTTP request collection editor:
+
+- **Two-panel layout** — collection tree on the left, request detail on the right
+- **Request collection** — organize multiple HTTP requests in a single file
+- **Collection grouping** — requests can be organized into named collections (one level deep). Collections are virtual — derived from each request's `collection` field. Drag-drop requests between collections, use context menus to add/delete/duplicate, and edit collection and request names inline in the header bar. New requests inherit the collection of the currently selected request.
+- **Add, delete, rename, reorder** requests within the collection
+- **Request body types** — choose between **none**, **x-www-form-urlencoded** (key-value editor), **raw** body with a language sub-selector (JSON, JavaScript, HTML, XML, plaintext), **binary** (file picker that streams from disk), or **form-data** (multipart/form-data with text and file fields per row). Raw body uses Monaco Editor with syntax highlighting. Content-Type header is set automatically when you switch body type or language. Binary uploads stream directly from disk with no file size limit.
+- **Smart defaults** — changing the HTTP method syncs the body type (e.g., GET clears the body, POST defaults to raw). Pasting from clipboard auto-detects JSON or form-urlencoded content.
+- **Binary response handling** — Binary responses (images, PDFs, octet-stream, etc.) are automatically detected. A dedicated panel shows the content type, size, and a "Save to File" button. Image responses also display an inline preview with an "Open in Image Viewer" button.
+- **Result integration** — "Open in new tab" opens the response body in a Monaco tab with the correct language. "Copy as JSON" on response headers and request headers copies them as a JSON object. "Copy as..." on the request bar exports as cURL (bash/cmd), fetch, or fetch (Node.js). Collections and requests can be opened in a new rest-client tab via the tree context menu.
+- **Content-based detection** — JSON files with `"type": "rest-client"` and a `"requests"` property automatically show the Rest Client switch button
+- Can switch to Monaco for raw JSON editing
+
+Create a new Rest Client page via the **+** menu → **Rest Client**.
+
 ## Switching Editors
 
 Some files support multiple editors:
@@ -333,12 +350,13 @@ Some files support multiple editors:
 | `.mmd` | Text, Mermaid |
 | `.excalidraw` | Text, Drawing |
 | `.fg.json` | Text, Graph |
+| `.rest.json` | Text, Rest Client |
 | `.pdf` | PDF only |
 | Images | Image Viewer only |
 | Other | Text only |
 
 Use the buttons in the toolbar to switch between available editors.
 
-**Content-based detection:** JSON pages that contain a `"type"` property (`"note-editor"`, `"todo-editor"`, `"link-editor"`, or `"force-graph"`) automatically show the corresponding switch button — even without the special file extension. For the Graph View, the JSON must also contain a `"nodes"` property. This is useful for pages created via MCP or scripting.
+**Content-based detection:** JSON pages that contain a `"type"` property (`"note-editor"`, `"todo-editor"`, `"link-editor"`, `"rest-client"`, or `"force-graph"`) automatically show the corresponding switch button — even without the special file extension. For the Graph View, the JSON must also contain a `"nodes"` property; for the Rest Client, it must also contain a `"requests"` property. This is useful for pages created via MCP or scripting.
 
 **Quick Add:** Click the dropdown arrow (&#9662;) next to the **+** button in the tab bar to create a new page from your pinned editors. Choose "Show All..." to open the **Tools & Editors** sidebar panel, which lists every available editor and tool. You can pin/unpin items and drag to reorder your pinned set. See [Tabs & Navigation](./tabs-and-navigation.md#tools--editors) for details.

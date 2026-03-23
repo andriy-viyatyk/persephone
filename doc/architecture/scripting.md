@@ -422,7 +422,7 @@ class GroupedPageWrapper extends PageWrapper {
 
 ### AppWrapper
 
-Wraps the `app` singleton, implements `IApp`. Delegates most properties directly. Wraps `pages` in `PageCollectionWrapper`.
+Wraps the `app` singleton, implements `IApp`. Delegates most properties directly. Wraps `pages` in `PageCollectionWrapper`. `fetch` delegates directly to `app.fetch` (Node.js HTTP client with full header control — see `src/renderer/api/node-fetch.ts`).
 
 ### PageCollectionWrapper
 

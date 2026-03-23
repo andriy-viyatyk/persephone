@@ -110,4 +110,6 @@ export class AppWrapper {
         }
         return this._events;
     }
+
+    fetch = app.fetch;
 }

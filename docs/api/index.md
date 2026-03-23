@@ -55,6 +55,7 @@ const theme = app.settings.theme;
 | [app.editors](./editors.md) | Editor registry — list editors, resolve by file |
 | [app.recent](./recent.md) | Recent files — load, add, remove, clear |
 | [app.downloads](./downloads.md) | Downloads — track, cancel, open downloaded files |
+| [app.fetch()](./app.md#fetchurl-options) | HTTP client — Node.js requests with full header control |
 
 ### Log View
 

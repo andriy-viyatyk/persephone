@@ -620,3 +620,12 @@ export const DrawIcon = createIconWithViewBox("0 0 32 32")(
             fill="none" opacity="0.5" strokeLinecap="round" />
     </g>,
 );
+
+export const RestClientIcon = createIconWithViewBox("2 2 28 28")(
+    <g>
+        {/* Right arrow (request) */}
+        <path d="M6 11h14l-4-4" stroke="#61affe" strokeWidth="2.2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+        {/* Left arrow (response) */}
+        <path d="M26 21H12l4 4" stroke="#49cc90" strokeWidth="2.2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+    </g>,
+);
