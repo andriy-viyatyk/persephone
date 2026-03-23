@@ -75,21 +75,12 @@ const RestClientRoot = styled.div({
         maxWidth: "80%",
         flexShrink: 0,
     },
-    "& .left-panel-header": {
-        display: "flex",
-        flexDirection: "row",
-        alignItems: "center",
-        padding: "4px 8px",
-        gap: 4,
-        borderBottom: `1px solid ${color.border.default}`,
+    // Reduce indentation for leaf request items (no expand button needed)
+    "& .left-panel .empty-button": {
+        width: 4,
     },
-    "& .left-panel-title": {
-        flex: "1 1 auto",
-        fontSize: 12,
-        fontWeight: 600,
-        color: color.text.light,
-        textTransform: "uppercase",
-        letterSpacing: "0.5px",
+    "& .left-panel .level-shift": {
+        width: 10,
     },
     "& .left-panel-tree": {
         flex: "1 1 auto",
@@ -112,6 +103,27 @@ const RestClientRoot = styled.div({
         overflow: "hidden",
         textOverflow: "ellipsis",
         whiteSpace: "nowrap",
+    },
+    "& .root-label": {
+        display: "flex",
+        flexDirection: "row",
+        alignItems: "center",
+        flex: "1 1 auto",
+        paddingLeft: 4,
+        fontSize: 12,
+        fontWeight: 600,
+        color: color.text.light,
+        textTransform: "uppercase",
+        letterSpacing: "0.5px",
+    },
+    "& .root-label-spacer": {
+        flex: "1 1 auto",
+    },
+    "& .root-add-button": {
+        opacity: 0.5,
+        "&:hover": {
+            opacity: 1,
+        },
     },
     "& .collection-name": {
         fontSize: 13,
@@ -300,17 +312,6 @@ export function RestClientEditor({ model }: { model: IContentHost }) {
     return (
         <RestClientRoot>
             <div className="left-panel" style={{ width: leftPanelWidth }}>
-                <div className="left-panel-header">
-                    <span className="left-panel-title">Requests</span>
-                    <Button
-                        size="small"
-                        type="icon"
-                        title="Add request"
-                        onClick={() => vm.addRequest()}
-                    >
-                        <PlusIcon />
-                    </Button>
-                </div>
                 <div className="left-panel-tree">
                     <RequestTree vm={vm} root={rootItem} selectedId={state.selectedRequestId} />
                 </div>
@@ -541,7 +542,24 @@ function RequestTree({ vm, root, selectedId }: {
     selectedId: string;
 }) {
     const getLabel = useCallback((item: RequestTreeItem) => {
-        if (item.isRoot) return "Collection";
+        if (item.isRoot) return (
+            <span className="root-label">
+                Requests
+                <span className="root-label-spacer" />
+                <Button
+                    size="small"
+                    type="icon"
+                    className="root-add-button"
+                    title="Add request"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        vm.addRequest();
+                    }}
+                >
+                    <PlusIcon />
+                </Button>
+            </span>
+        );
         if (item.isCollection) {
             const name = item.collectionName;
             return (
@@ -562,7 +580,7 @@ function RequestTree({ vm, root, selectedId }: {
                 </span>
             </>
         );
-    }, []);
+    }, [vm]);
 
     const getId = useCallback((item: RequestTreeItem) => item.id, []);
 
