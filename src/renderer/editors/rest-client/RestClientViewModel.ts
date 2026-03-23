@@ -115,7 +115,6 @@ export class RestClientViewModel extends ContentViewModel<RestClientEditorState>
         if (error) return;
         if (data.requests !== this.lastSerializedData?.requests) {
             this.lastSerializedData = data;
-            this.skipNextContentUpdate = true;
             // Strip empty trailing header/formData rows before serializing
             const cleanData: RestClientData = {
                 ...data,
@@ -127,7 +126,12 @@ export class RestClientViewModel extends ContentViewModel<RestClientEditorState>
                 })),
             };
             const content = JSON.stringify(cleanData, null, 4);
-            this.host.changeContent(content, true);
+            // Only update host if content actually changed (avoid false dirty on load)
+            const currentContent = this.host.state.get().content || "";
+            if (content !== currentContent) {
+                this.skipNextContentUpdate = true;
+                this.host.changeContent(content, true);
+            }
         }
     };
 
@@ -258,7 +262,7 @@ export class RestClientViewModel extends ContentViewModel<RestClientEditorState>
                 this.restoreResponseCache();
             }
 
-            // Ensure selected request has empty last rows
+            // Ensure selected request has empty last rows (for UI)
             const selectedId = this.state.get().selectedRequestId;
             if (selectedId) {
                 this.ensureEmptyLastHeader(selectedId);
