@@ -56,4 +56,43 @@ export interface IApp {
 
     /** Application event channels for scripting integration. */
     readonly events: IAppEvents;
+
+    /**
+     * Make an HTTP request using Node.js (bypasses Chromium headers).
+     * Full header control — no automatic Origin, User-Agent, Sec-Fetch-*, etc.
+     * Returns a standard web Response object.
+     *
+     * @example
+     * const res = await app.fetch("https://api.example.com/users");
+     * const data = await res.json();
+     *
+     * @example
+     * const res = await app.fetch("https://api.example.com/users", {
+     *     method: "POST",
+     *     headers: {
+     *         "Content-Type": "application/json",
+     *         "Authorization": "Bearer token123",
+     *     },
+     *     body: JSON.stringify({ name: "John" }),
+     * });
+     */
+    fetch(url: string, options?: IFetchOptions): Promise<Response>;
+}
+
+/**
+ * Options for `app.fetch()`.
+ */
+export interface IFetchOptions {
+    /** HTTP method. Default: "GET". */
+    method?: string;
+    /** Request headers. Sent exactly as specified — no automatic headers added. */
+    headers?: Record<string, string>;
+    /** Request body — string or ReadableStream. */
+    body?: string | ReadableStream | null;
+    /** Request timeout in milliseconds. Default: 30000. */
+    timeout?: number;
+    /** Maximum number of redirects to follow. Default: 10. */
+    maxRedirects?: number;
+    /** Set to false to skip SSL certificate validation (e.g. self-signed certs). Default: true. */
+    rejectUnauthorized?: boolean;
 }

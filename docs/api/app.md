@@ -28,6 +28,44 @@ app.pages.activePage.content;
 | [downloads](./downloads.md) | `IDownloads` | Global download tracking. |
 | `menuFolders` | `IMenuFolders` | User-configured sidebar folders. |
 
+## Methods
+
+### fetch(url, options?)
+
+Make an HTTP request using Node.js. Unlike browser `fetch()`, this sends **only the headers you specify** — no automatic Chromium headers (Origin, User-Agent, Sec-Fetch-*, etc.). Returns a standard `Response` object.
+
+```javascript
+// Simple GET
+const res = await app.fetch("https://api.example.com/users");
+const data = await res.json();
+```
+
+```javascript
+// POST with custom headers
+const res = await app.fetch("https://api.example.com/users", {
+    method: "POST",
+    headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer token123",
+    },
+    body: JSON.stringify({ name: "John" }),
+});
+const result = await res.json();
+```
+
+#### Options
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `method` | `string` | `"GET"` | HTTP method. |
+| `headers` | `Record<string, string>` | — | Request headers. Sent exactly as specified. |
+| `body` | `string \| ReadableStream \| null` | — | Request body. |
+| `timeout` | `number` | `30000` | Request timeout in milliseconds. |
+| `maxRedirects` | `number` | `10` | Maximum number of redirects to follow. |
+| `rejectUnauthorized` | `boolean` | `true` | Set to `false` to skip SSL certificate validation (e.g. self-signed certs). |
+
+---
+
 ## menuFolders
 
 Manage sidebar folders (persisted to `menuFolders.json`).

@@ -419,6 +419,42 @@ editorRegistry.register({
     },
 });
 
+// Rest Client (content-view for .rest.json files)
+editorRegistry.register({
+    id: "rest-client",
+    name: "Rest Client",
+    pageType: "textFile",
+    category: "content-view",
+    acceptFile: (fileName) => {
+        if (matchesPattern(fileName, /\.rest\.json$/i)) return 20;
+        return -1;
+    },
+    validForLanguage: (languageId) => languageId === "json",
+    switchOption: (languageId, fileName) => {
+        if (languageId !== "json") return -1;
+        if (!fileName || !matchesPattern(fileName, /\.rest\.json$/i)) return -1;
+        return 10;
+    },
+    isEditorContent: (languageId, content) => {
+        if (languageId !== "json") return false;
+        if (!content.includes('"type"')) return false;
+        return /"type"\s*:\s*"rest-client"/.test(content) && content.includes('"requests"');
+    },
+    loadModule: async () => {
+        const [module, { createRestClientViewModel }] = await Promise.all([
+            import("./rest-client/RestClientEditor"),
+            import("./rest-client/RestClientViewModel"),
+        ]);
+        return {
+            Editor: module.RestClientEditor,
+            createViewModel: createRestClientViewModel,
+            newPageModel: textEditorModule.newPageModel,
+            newEmptyPageModel: textEditorModule.newEmptyPageModel,
+            newPageModelFromState: textEditorModule.newPageModelFromState,
+        };
+    },
+});
+
 // Link editor (content-view for .link.json files)
 editorRegistry.register({
     id: "link-view",

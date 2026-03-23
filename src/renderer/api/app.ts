@@ -84,6 +84,11 @@ class App {
         return this._events;
     }
 
+    fetch = async (url: string, options?: any): Promise<Response> => {
+        const { nodeFetch } = await import("./node-fetch");
+        return nodeFetch(url, options);
+    };
+
     /**
      * Initialize version. Called early in bootstrap (renderer.tsx).
      * Not exposed to scripts.

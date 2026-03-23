@@ -38,6 +38,7 @@ import {
     MarkdownIcon,
     MermaidIcon,
     NotebookIcon,
+    RestClientIcon,
     TodoIcon,
     LinkIcon,
     PascalIcon,
@@ -127,6 +128,7 @@ const filePatternIcons: Array<{ pattern: RegExp; icon: SvgIconComponent }> = [
     { pattern: /\.grid\.csv$/i, icon: GridIcon },
     { pattern: /\.link\.json$/i, icon: LinkIcon },
     { pattern: /\.fg\.json$/i, icon: GraphIcon },
+    { pattern: /\.rest\.json$/i, icon: RestClientIcon },
     { pattern: /\.excalidraw$/i, icon: DrawIcon },
 ];
 

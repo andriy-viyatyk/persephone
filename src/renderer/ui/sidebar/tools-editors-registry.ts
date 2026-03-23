@@ -2,7 +2,7 @@ import React, { ReactNode } from "react";
 import { pagesModel } from "../../api/pages";
 import { BrowserProfile } from "../../api/settings";
 import {
-    DrawIcon, GraphIcon, GridIcon, IncognitoIcon, TorIcon,
+    DrawIcon, GraphIcon, GridIcon, IncognitoIcon, RestClientIcon, TorIcon,
     JavascriptIcon, LinkIcon, NotebookIcon, TodoIcon, TypescriptIcon,
 } from "../../theme/language-icons";
 import { GlobeIcon, McpIcon } from "../../theme/icons";
@@ -100,6 +100,13 @@ const staticItems: CreatableItem[] = [
         icon: React.createElement(GraphIcon),
         create: () => pagesModel.addEditorPage("graph-view", "json", "untitled.fg.json"),
         category: "editor",
+    },
+    {
+        id: "rest-client",
+        label: "Rest Client",
+        icon: React.createElement(RestClientIcon),
+        create: () => pagesModel.addEditorPage("rest-client", "json", "untitled.rest.json"),
+        category: "tool",
     },
     {
         id: "browser",

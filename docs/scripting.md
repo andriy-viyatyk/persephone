@@ -241,17 +241,23 @@ TypeScript type annotations are stripped before execution. You get the readabili
 ### Fetch API Data
 
 ```javascript
-const https = require('https');
-
-const data = await new Promise((resolve, reject) => {
-  https.get('https://api.example.com/users', (res) => {
-    let body = '';
-    res.on('data', chunk => body += chunk);
-    res.on('end', () => resolve(JSON.parse(body)));
-  }).on('error', reject);
-});
-
+// Simple GET — app.fetch uses Node.js with no automatic Chromium headers
+const res = await app.fetch("https://api.example.com/users");
+const data = await res.json();
 return data;
+```
+
+```javascript
+// POST with custom headers and body
+const res = await app.fetch("https://api.example.com/users", {
+    method: "POST",
+    headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer my-token",
+    },
+    body: JSON.stringify({ name: "John" }),
+});
+return await res.json();
 ```
 
 ## The `app` Object
@@ -295,6 +301,7 @@ await app.shell.openExternal("https://github.com");
 | [`app.shell`](./api/shell.md) | OS integration (open URLs, encryption, version info) |
 | [`app.pages`](./api/pages.md) | Open tabs management |
 | [`app.downloads`](./api/downloads.md) | Download tracking |
+| [`app.fetch()`](./api/app.md#fetchurl-options) | HTTP client (Node.js, no automatic headers) |
 
 For the complete API with all methods and parameters, see the [Scripting API Reference](./api/index.md).
 

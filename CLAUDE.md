@@ -159,6 +159,7 @@ JS-Notepad is a Windows Notepad replacement for developers. Built with Electron 
 - **Grid Editors** - JSON/CSV viewing with sorting, filtering, Excel copy-paste
 - **Markdown Preview** - Live rendered preview
 - **PDF Viewer** - Integrated pdf.js
+- **Rest Client** - HTTP request builder with collections (`.rest.json` files)
 
 ## Tech Stack
 
@@ -258,6 +259,7 @@ See [/doc/standards/coding-style.md](doc/standards/coding-style.md) for complete
 | Well-known pages         | `/src/renderer/api/pages/well-known-pages.ts`     |
 | File operations          | `/src/renderer/api/fs.ts`                         |
 | Archive I/O (ZIP)        | `/src/renderer/api/archive-service.ts`             |
+| Node.js HTTP client      | `/src/renderer/api/node-fetch.ts`                 |
 | Path utilities           | `/src/renderer/core/utils/file-path.ts`           |
 | App settings             | `/src/renderer/api/settings.ts`                   |
 | Event channel system     | `/src/renderer/api/events/EventChannel.ts`        |
@@ -278,6 +280,7 @@ See [/doc/standards/coding-style.md](doc/standards/coding-style.md) for complete
 | Notebook types           | `/src/renderer/editors/notebook/notebookTypes.ts` |
 | Graph editor model       | `/src/renderer/editors/graph/GraphViewModel.ts`   |
 | Draw editor model        | `/src/renderer/editors/draw/DrawViewModel.ts`     |
+| Rest Client editor       | `/src/renderer/editors/rest-client/RestClientViewModel.ts` |
 | MCP Inspector model      | `/src/renderer/editors/mcp-inspector/McpInspectorModel.ts` |
 | Base virtualization      | `/src/renderer/components/virtualization/RenderGrid.tsx` |
 | Advanced grid            | `/src/renderer/components/data-grid/AVGrid.tsx`   |

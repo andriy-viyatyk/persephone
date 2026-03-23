@@ -32,6 +32,7 @@ Views of text-based content that share `TextFileModel` for state management. The
 | `log-view` | Log View | `.log.jsonl` | `LogViewModel` |
 | `graph-view` | Graph | `.fg.json` | `GraphViewModel` |
 | `draw-view` | Drawing | `.excalidraw` | `DrawViewModel` |
+| `rest-client` | Rest Client | `.rest.json` | `RestClientViewModel` |
 
 **Characteristics:**
 - Rendered inside `TextPageView` via `ActiveEditor` component
@@ -307,6 +308,7 @@ Structured JSON editors (notebook, todo, link) embed a `"type"` property in thei
 - `"type": "todo-editor"` → todo-view
 - `"type": "link-editor"` → link-view
 - `"type": "force-graph"` → graph-view
+- `"type": "rest-client"` → rest-client
 
 This allows the correct switch button to appear even when the file name doesn't match the expected pattern (e.g., `.note.json`). Detection uses fast regex checks (no JSON parsing) via the `isEditorContent()` hook on `EditorDefinition`.
 
