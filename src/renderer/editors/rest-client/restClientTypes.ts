@@ -4,10 +4,17 @@ export interface RestHeader {
     enabled: boolean;
 }
 
-export type BodyType = "none" | "form-urlencoded" | "raw";
+export type BodyType = "none" | "form-urlencoded" | "raw" | "binary" | "form-data";
 
 export const RAW_LANGUAGES = ["plaintext", "json", "javascript", "html", "xml"] as const;
 export type RawLanguage = typeof RAW_LANGUAGES[number];
+
+export interface FormDataEntry {
+    key: string;
+    value: string;
+    type: "text" | "file";
+    enabled: boolean;
+}
 
 export interface RestRequest {
     id: string;
@@ -20,6 +27,8 @@ export interface RestRequest {
     bodyType: BodyType;
     bodyLanguage: RawLanguage;
     formData: RestHeader[];
+    binaryFilePath: string;
+    formDataEntries: FormDataEntry[];
 }
 
 export interface RestClientData {
@@ -32,6 +41,8 @@ export interface RestResponse {
     statusText: string;
     headers: RestHeader[];
     body: string;
+    isBinary?: boolean;
+    contentType?: string;
 }
 
 export interface CachedResponse {
@@ -51,5 +62,7 @@ export function createDefaultRequest(name?: string, collection?: string): RestRe
         bodyType: "none",
         bodyLanguage: "plaintext",
         formData: [],
+        binaryFilePath: "",
+        formDataEntries: [],
     };
 }

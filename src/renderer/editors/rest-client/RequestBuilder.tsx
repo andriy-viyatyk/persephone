@@ -7,7 +7,9 @@ import { Splitter } from "../../components/layout/Splitter";
 import { LanguageIcon } from "../../components/icons/LanguageIcon";
 import { WithPopupMenu } from "../../components/overlay/WithPopupMenu";
 import type { MenuItem } from "../../components/overlay/PopupMenu";
-import { CopyIcon } from "../../theme/icons";
+import { CloseIcon, CopyIcon, FolderOpenIcon } from "../../theme/icons";
+import { Checkbox } from "../../components/basic/Checkbox";
+import { app } from "../../api/app";
 import color from "../../theme/color";
 import { RestClientViewModel, RestClientEditorState } from "./RestClientViewModel";
 import { BodyType, RAW_LANGUAGES, RestRequest } from "./restClientTypes";
@@ -20,8 +22,10 @@ import { KeyValueEditor } from "./KeyValueEditor";
 
 const BODY_TYPES: { type: BodyType; label: string }[] = [
     { type: "none", label: "none" },
+    { type: "form-data", label: "form-data" },
     { type: "form-urlencoded", label: "x-www-form-urlencoded" },
     { type: "raw", label: "raw" },
+    { type: "binary", label: "binary" },
 ];
 
 const BODY_EDITOR_OPTIONS: any = {
@@ -199,6 +203,51 @@ const RequestBuilderRoot = styled.div({
         padding: 12,
         fontSize: 13,
         color: color.text.light,
+    },
+    "& .binary-body": {
+        padding: "8px 12px",
+        display: "flex",
+        flexDirection: "column",
+        gap: 8,
+    },
+    "& .binary-file-row": {
+        display: "flex",
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 8,
+    },
+    "& .binary-file-path": {
+        flex: "1 1 auto",
+        fontSize: 13,
+        fontFamily: "monospace",
+        color: color.text.default,
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+        whiteSpace: "nowrap",
+    },
+    "& .binary-no-file": {
+        color: color.text.light,
+        fontStyle: "italic",
+    },
+    "& .form-data-row": {
+        display: "flex",
+        flexDirection: "row",
+        alignItems: "flex-start",
+        gap: 4,
+        paddingTop: 2,
+    },
+    "& .form-data-type-toggle": {
+        flexShrink: 0,
+        fontSize: 11,
+        padding: "3px 6px",
+        cursor: "pointer",
+        borderRadius: 3,
+        color: color.text.light,
+        userSelect: "none",
+        "&:hover": {
+            color: color.text.default,
+            backgroundColor: color.background.light,
+        },
     },
 }, { label: "RequestBuilderRoot" });
 
@@ -449,10 +498,44 @@ function BodyContent({ vm, request, onMonacoChange }: {
     request: RestRequest;
     onMonacoChange: (value: string | undefined) => void;
 }) {
+    const handleSelectFile = useCallback(async () => {
+        const result = await app.fs.showOpenDialog();
+        if (result?.[0]) {
+            vm.updateRequest(request.id, { binaryFilePath: result[0] });
+        }
+    }, [vm, request.id]);
+
     if (request.bodyType === "none") {
         return (
             <div className="body-content">
                 <div className="body-none-message">This request has no body.</div>
+            </div>
+        );
+    }
+
+    if (request.bodyType === "binary") {
+        return (
+            <div className="body-content">
+                <div className="binary-body">
+                    <div className="binary-file-row">
+                        <Button size="small" title="Select file" onClick={handleSelectFile}>
+                            <FolderOpenIcon /> Select File
+                        </Button>
+                        <span className={`binary-file-path ${!request.binaryFilePath ? "binary-no-file" : ""}`}>
+                            {request.binaryFilePath || "No file selected"}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (request.bodyType === "form-data") {
+        return (
+            <div className="body-content">
+                <div className="body-content-scroll">
+                    <FormDataEditor vm={vm} request={request} />
+                </div>
             </div>
         );
     }
@@ -484,6 +567,92 @@ function BodyContent({ vm, request, onMonacoChange }: {
                 options={BODY_EDITOR_OPTIONS}
                 onChange={onMonacoChange}
             />
+        </div>
+    );
+}
+
+// =============================================================================
+// FormDataEditor sub-component (multipart/form-data)
+// =============================================================================
+
+function FormDataEditor({ vm, request }: { vm: RestClientViewModel; request: RestRequest }) {
+    const handleBrowse = useCallback(async (index: number) => {
+        const result = await app.fs.showOpenDialog();
+        if (result?.[0]) {
+            vm.updateFormDataEntry(request.id, index, { value: result[0] });
+        }
+    }, [vm, request.id]);
+
+    return (
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            {request.formDataEntries.map((entry, index) => {
+                const isEmpty = !entry.key && !entry.value;
+                const isLast = index === request.formDataEntries.length - 1;
+                return (
+                    <div key={index} className={`form-data-row ${!entry.enabled ? "kv-row-disabled" : ""}`}
+                        style={{ opacity: entry.enabled ? 1 : 0.5 }}
+                    >
+                        <Checkbox
+                            className="kv-checkbox"
+                            checked={entry.enabled}
+                            onChange={() => vm.toggleFormDataEntry(request.id, index)}
+                        />
+                        <span
+                            className="form-data-type-toggle"
+                            title="Toggle text/file"
+                            onClick={() => vm.updateFormDataEntry(request.id, index, {
+                                type: entry.type === "text" ? "file" : "text",
+                                value: "",
+                            })}
+                        >
+                            {entry.type === "file" ? "File" : "Text"}
+                        </span>
+                        <TextAreaField
+                            style={{ width: "30%", minWidth: 80, flexShrink: 0, minHeight: 24, padding: "2px 6px", fontSize: 14, fontFamily: "monospace" }}
+                            value={entry.key}
+                            onChange={(v) => vm.updateFormDataEntry(request.id, index, { key: v || "" })}
+                            placeholder="Key"
+                            singleLine
+                        />
+                        {entry.type === "file" ? (
+                            <div style={{ flex: "1 1 auto", display: "flex", alignItems: "center", gap: 4, minWidth: 0 }}>
+                                <Button size="small" type="icon" title="Browse" onClick={() => handleBrowse(index)}>
+                                    <FolderOpenIcon />
+                                </Button>
+                                <span style={{
+                                    fontSize: 13, fontFamily: "monospace", color: entry.value ? color.text.default : color.text.light,
+                                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontStyle: entry.value ? "normal" : "italic",
+                                }}>
+                                    {entry.value || "No file selected"}
+                                </span>
+                            </div>
+                        ) : (
+                            <TextAreaField
+                                style={{ flex: "1 1 auto", minHeight: 24, minWidth: 0, padding: "2px 6px", fontSize: 14, fontFamily: "monospace" }}
+                                value={entry.value}
+                                onChange={(v) => vm.updateFormDataEntry(request.id, index, { value: v || "" })}
+                                placeholder="Value"
+                                singleLine
+                            />
+                        )}
+                        {isLast && isEmpty ? (
+                            <Button size="small" type="icon" style={{ visibility: "hidden" }}>
+                                <CloseIcon />
+                            </Button>
+                        ) : (
+                            <Button
+                                size="small"
+                                type="icon"
+                                style={{ opacity: 0.5 }}
+                                title="Delete"
+                                onClick={() => vm.deleteFormDataEntry(request.id, index)}
+                            >
+                                <CloseIcon />
+                            </Button>
+                        )}
+                    </div>
+                );
+            })}
         </div>
     );
 }

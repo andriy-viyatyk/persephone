@@ -629,6 +629,8 @@ function RequestTree({ vm, root, selectedId }: {
                             bodyType: req.bodyType,
                             bodyLanguage: req.bodyLanguage,
                             formData: [...req.formData],
+                            binaryFilePath: req.binaryFilePath,
+                            formDataEntries: [...req.formDataEntries],
                         });
                     },
                 },

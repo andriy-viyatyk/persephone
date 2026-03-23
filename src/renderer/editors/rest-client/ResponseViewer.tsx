@@ -5,8 +5,9 @@ import { LanguageIcon } from "../../components/icons/LanguageIcon";
 import { Button } from "../../components/basic/Button";
 import { WithPopupMenu } from "../../components/overlay/WithPopupMenu";
 import type { MenuItem } from "../../components/overlay/PopupMenu";
-import { CopyIcon, NewWindowIcon } from "../../theme/icons";
+import { CopyIcon, NewWindowIcon, SaveIcon } from "../../theme/icons";
 import { app } from "../../api/app";
+import { pagesModel } from "../../api/pages";
 import color from "../../theme/color";
 import { RestResponse } from "./restClientTypes";
 
@@ -117,6 +118,33 @@ const ResponseViewerRoot = styled.div({
         fontSize: 13,
         color: color.text.light,
     },
+    "& .binary-response": {
+        flex: "1 1 auto",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 12,
+        padding: 16,
+        overflow: "auto",
+    },
+    "& .binary-info": {
+        fontSize: 13,
+        color: color.text.light,
+        textAlign: "center",
+    },
+    "& .binary-actions": {
+        display: "flex",
+        flexDirection: "row",
+        gap: 8,
+    },
+    "& .binary-image-preview": {
+        maxWidth: "100%",
+        maxHeight: 300,
+        objectFit: "contain",
+        borderRadius: 4,
+        border: `1px solid ${color.border.default}`,
+    },
 }, { label: "ResponseViewerRoot" });
 
 // =============================================================================
@@ -163,6 +191,24 @@ function formatSize(bytes: number): string {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function getExtensionFromContentType(ct: string): string {
+    const map: Record<string, string> = {
+        "image/png": ".png",
+        "image/jpeg": ".jpg",
+        "image/gif": ".gif",
+        "image/webp": ".webp",
+        "image/svg+xml": ".svg",
+        "application/pdf": ".pdf",
+        "application/zip": ".zip",
+        "application/gzip": ".gz",
+        "application/octet-stream": ".bin",
+    };
+    for (const [key, ext] of Object.entries(map)) {
+        if (ct.includes(key)) return ext;
+    }
+    return ".bin";
+}
+
 // =============================================================================
 // Component
 // =============================================================================
@@ -191,10 +237,43 @@ export function ResponseViewer({ response, responseTime, executing }: ResponseVi
         [response, language],
     );
 
-    const bodySize = useMemo(
-        () => response ? formatSize(new Blob([response.body]).size) : "",
-        [response],
-    );
+    const bodySize = useMemo(() => {
+        if (!response) return "";
+        if (response.isBinary) {
+            // base64 string → actual binary size
+            return formatSize(Math.floor(response.body.length * 3 / 4));
+        }
+        return formatSize(new Blob([response.body]).size);
+    }, [response]);
+
+    const handleSaveBinary = useCallback(async () => {
+        if (!response?.isBinary) return;
+        const ext = getExtensionFromContentType(response.contentType || "");
+        const savePath = await app.fs.showSaveDialog({
+            defaultPath: `response${ext}`,
+        });
+        if (savePath) {
+            const buf = Buffer.from(response.body, "base64");
+            await app.fs.writeBinary(savePath, buf);
+        }
+    }, [response]);
+
+    const handleOpenImage = useCallback(() => {
+        if (!response?.isBinary) return;
+        const buf = Buffer.from(response.body, "base64");
+        const blob = new Blob([buf], { type: response.contentType || "image/png" });
+        const url = URL.createObjectURL(blob);
+        pagesModel.openImageInNewTab(url);
+    }, [response]);
+
+    const isImage = response?.isBinary && (response.contentType || "").startsWith("image/");
+
+    const blobUrl = useMemo(() => {
+        if (!isImage || !response?.isBinary) return "";
+        const buf = Buffer.from(response.body, "base64");
+        const blob = new Blob([buf], { type: response.contentType || "image/png" });
+        return URL.createObjectURL(blob);
+    }, [isImage, response]);
 
     const languageMenuItems: MenuItem[] = useMemo(
         () => RESPONSE_LANGUAGES.map((l) => ({
@@ -252,7 +331,7 @@ export function ResponseViewer({ response, responseTime, executing }: ResponseVi
                     Headers ({response.headers.length})
                 </div>
                 <div className="tab-bar-spacer" />
-                {activeTab === "body" && (
+                {activeTab === "body" && !response.isBinary && (
                     <>
                         <Button
                             size="small"
@@ -291,12 +370,33 @@ export function ResponseViewer({ response, responseTime, executing }: ResponseVi
             </div>
             <div className="response-tab-body">
                 {activeTab === "body" ? (
-                    <Editor
-                        value={formattedBody}
-                        language={language}
-                        theme="custom-dark"
-                        options={EDITOR_OPTIONS}
-                    />
+                    response.isBinary ? (
+                        <div className="binary-response">
+                            <div className="binary-info">
+                                Binary response — {response.contentType || "unknown type"} ({bodySize})
+                            </div>
+                            {isImage && blobUrl && (
+                                <img className="binary-image-preview" src={blobUrl} alt="Response" />
+                            )}
+                            <div className="binary-actions">
+                                <Button onClick={handleSaveBinary}>
+                                    <SaveIcon /> Save to File
+                                </Button>
+                                {isImage && (
+                                    <Button onClick={handleOpenImage}>
+                                        <NewWindowIcon /> Open in Image Viewer
+                                    </Button>
+                                )}
+                            </div>
+                        </div>
+                    ) : (
+                        <Editor
+                            value={formattedBody}
+                            language={language}
+                            theme="custom-dark"
+                            options={EDITOR_OPTIONS}
+                        />
+                    )
                 ) : (
                     <div className="response-headers-list">
                         <table className="headers-table">

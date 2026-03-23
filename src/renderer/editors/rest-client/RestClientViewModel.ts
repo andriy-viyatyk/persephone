@@ -4,6 +4,7 @@ import { IContentHost } from "../base/IContentHost";
 import {
     BodyType,
     CachedResponse,
+    FormDataEntry,
     RawLanguage,
     RestClientData,
     RestHeader,
@@ -11,6 +12,27 @@ import {
     RestResponse,
     createDefaultRequest,
 } from "./restClientTypes";
+
+// =============================================================================
+// Helpers
+// =============================================================================
+
+function isBinaryContentType(contentType: string): boolean {
+    const ct = contentType.toLowerCase();
+    if (ct.startsWith("text/")) return false;
+    if (ct.includes("json")) return false;
+    if (ct.includes("xml")) return false;
+    if (ct.includes("javascript")) return false;
+    if (ct.includes("css")) return false;
+    if (ct.includes("html")) return false;
+    if (ct.includes("yaml")) return false;
+    if (ct.includes("form-urlencoded")) return false;
+    // Everything else (image/*, audio/*, video/*, application/octet-stream, application/pdf, etc.)
+    if (ct.startsWith("image/") || ct.startsWith("audio/") || ct.startsWith("video/")) return true;
+    if (ct.includes("octet-stream") || ct.includes("pdf") || ct.includes("zip") || ct.includes("gzip")) return true;
+    // Default: if no content-type or unknown, treat as text
+    return false;
+}
 
 // =============================================================================
 // Content-Type mapping
@@ -101,6 +123,7 @@ export class RestClientViewModel extends ContentViewModel<RestClientEditorState>
                     ...r,
                     headers: r.headers.filter((h) => h.key || h.value),
                     formData: r.formData.filter((f) => f.key || f.value),
+                    formDataEntries: r.formDataEntries.filter((f) => f.key || f.value),
                 })),
             };
             const content = JSON.stringify(cleanData, null, 4);
@@ -213,6 +236,8 @@ export class RestClientViewModel extends ContentViewModel<RestClientEditorState>
                     bodyType: r.bodyType || (r.body ? "raw" : "none"),
                     bodyLanguage: r.bodyLanguage || "plaintext",
                     formData: Array.isArray(r.formData) ? r.formData : [],
+                    binaryFilePath: r.binaryFilePath || "",
+                    formDataEntries: Array.isArray(r.formDataEntries) ? r.formDataEntries : [],
                 }))
                 : [];
 
@@ -414,6 +439,11 @@ export class RestClientViewModel extends ContentViewModel<RestClientEditorState>
             if (req) {
                 this.autoSetContentType(requestId, LANGUAGE_CONTENT_TYPES[req.bodyLanguage]);
             }
+        } else if (bodyType === "form-data") {
+            this.ensureEmptyLastFormDataEntry(requestId);
+            // Don't auto-set Content-Type — it's set with boundary at send time
+        } else if (bodyType === "binary") {
+            this.autoSetContentType(requestId, "application/octet-stream");
         }
         // "none" — don't change Content-Type
     };
@@ -532,6 +562,48 @@ export class RestClientViewModel extends ContentViewModel<RestClientEditorState>
     };
 
     // =========================================================================
+    // Form Data Entries CRUD (multipart/form-data)
+    // =========================================================================
+
+    ensureEmptyLastFormDataEntry = (requestId: string) => {
+        const req = this.state.get().data.requests.find((r) => r.id === requestId);
+        if (!req) return;
+        const last = req.formDataEntries[req.formDataEntries.length - 1];
+        if (!last || last.key || last.value) {
+            this.updateRequest(requestId, {
+                formDataEntries: [...req.formDataEntries, { key: "", value: "", type: "text", enabled: true }],
+            });
+        }
+    };
+
+    deleteFormDataEntry = (requestId: string, index: number) => {
+        const req = this.state.get().data.requests.find((r) => r.id === requestId);
+        if (!req) return;
+        const formDataEntries = req.formDataEntries.filter((_, i) => i !== index);
+        this.updateRequest(requestId, { formDataEntries });
+        this.ensureEmptyLastFormDataEntry(requestId);
+    };
+
+    toggleFormDataEntry = (requestId: string, index: number) => {
+        const req = this.state.get().data.requests.find((r) => r.id === requestId);
+        if (!req) return;
+        const formDataEntries = req.formDataEntries.map((f, i) =>
+            i === index ? { ...f, enabled: !f.enabled } : f
+        );
+        this.updateRequest(requestId, { formDataEntries });
+    };
+
+    updateFormDataEntry = (requestId: string, index: number, changes: Partial<FormDataEntry>) => {
+        const req = this.state.get().data.requests.find((r) => r.id === requestId);
+        if (!req) return;
+        const formDataEntries = req.formDataEntries.map((f, i) =>
+            i === index ? { ...f, ...changes } : f
+        );
+        this.updateRequest(requestId, { formDataEntries });
+        this.ensureEmptyLastFormDataEntry(requestId);
+    };
+
+    // =========================================================================
     // Paste from clipboard
     // =========================================================================
 
@@ -583,7 +655,7 @@ export class RestClientViewModel extends ContentViewModel<RestClientEditorState>
             }
 
             // Build body based on bodyType
-            let body: string | undefined;
+            let body: string | ReadableStream | undefined;
             if (request.bodyType === "raw") {
                 body = request.body || undefined;
             } else if (request.bodyType === "form-urlencoded") {
@@ -591,6 +663,26 @@ export class RestClientViewModel extends ContentViewModel<RestClientEditorState>
                     .filter((f) => f.enabled && f.key.trim())
                     .map((f) => `${encodeURIComponent(f.key.trim())}=${encodeURIComponent(f.value)}`);
                 body = pairs.length > 0 ? pairs.join("&") : undefined;
+            } else if (request.bodyType === "binary") {
+                if (request.binaryFilePath) {
+                    const fs = require("fs") as typeof import("fs");
+                    if (!fs.existsSync(request.binaryFilePath)) {
+                        throw new Error(`File not found: ${request.binaryFilePath}`);
+                    }
+                    const nodeStream = fs.createReadStream(request.binaryFilePath);
+                    body = new ReadableStream({
+                        start(controller) {
+                            nodeStream.on("data", (chunk: Buffer) => controller.enqueue(chunk));
+                            nodeStream.on("end", () => controller.close());
+                            nodeStream.on("error", (err: Error) => controller.error(err));
+                        },
+                    });
+                }
+            } else if (request.bodyType === "form-data") {
+                const { buildMultipartBody } = await import("./multipartBuilder");
+                const result = buildMultipartBody(request.formDataEntries);
+                headers["Content-Type"] = `multipart/form-data; boundary=${result.boundary}`;
+                body = result.stream;
             }
             // "none" → body stays undefined
 
@@ -605,7 +697,17 @@ export class RestClientViewModel extends ContentViewModel<RestClientEditorState>
                 responseHeaders.push({ key: k, value: v, enabled: true });
             });
 
-            const responseBody = await res.text();
+            const contentType = res.headers.get("content-type") || "";
+            const isBinary = isBinaryContentType(contentType);
+
+            let responseBody: string;
+            if (isBinary) {
+                const buf = await res.arrayBuffer();
+                responseBody = Buffer.from(buf).toString("base64");
+            } else {
+                responseBody = await res.text();
+            }
+
             const responseTime = Date.now() - startTime;
 
             const response: RestResponse = {
@@ -613,10 +715,15 @@ export class RestClientViewModel extends ContentViewModel<RestClientEditorState>
                 statusText: res.statusText,
                 headers: responseHeaders,
                 body: responseBody,
+                isBinary,
+                contentType,
             };
 
+            // Don't persist binary responses to stateStorage (too large)
             this.responseCache[request.id] = { response, responseTime };
-            this.saveResponseCacheDebounced();
+            if (!isBinary) {
+                this.saveResponseCacheDebounced();
+            }
 
             this.state.update((s) => {
                 s.executing = false;
