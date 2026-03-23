@@ -312,6 +312,7 @@ export class RestClientViewModel extends ContentViewModel<RestClientEditorState>
             s.response = null;
             s.responseTime = 0;
         });
+        this.ensureEmptyLastHeader(request.id);
         this.saveSelectionStateDebounced();
         return request;
     };
