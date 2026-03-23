@@ -8,7 +8,9 @@ Release notes and changelog for js-notepad.
 
 ## Version 1.0.29 (Upcoming)
 
-*No changes yet.*
+### Improvements
+
+- **Rest Client — Header view switch** — Request and response headers now have a Table/JSON toggle. Table view shows the default key-value editor (request) or HTML table (response). JSON view displays headers as a JSON object in Monaco Editor — editable for request headers with live sync, read-only for response headers. Invalid JSON in request headers shows a warning on switch to Table or Send.
 
 ---
 

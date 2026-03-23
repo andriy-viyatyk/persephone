@@ -81,6 +81,21 @@ const ResponseViewerRoot = styled.div({
             backgroundColor: color.background.light,
         },
     },
+    "& .view-toggle": {
+        fontSize: 11,
+        color: color.text.light,
+        cursor: "pointer",
+        padding: "1px 6px",
+        borderRadius: 3,
+        userSelect: "none",
+        "&:hover": {
+            color: color.text.default,
+        },
+    },
+    "& .view-toggle.active": {
+        color: color.text.default,
+        backgroundColor: color.background.light,
+    },
     "& .response-tab-body": {
         flex: "1 1 auto",
         overflow: "hidden",
@@ -226,6 +241,14 @@ interface ResponseViewerProps {
 export function ResponseViewer({ response, responseTime, executing }: ResponseViewerProps) {
     const [activeTab, setActiveTab] = useState<ResponseTab>("body");
     const [languageOverride, setLanguageOverride] = useState<string | null>(null);
+    const [headersView, setHeadersView] = useState<"table" | "json">("table");
+
+    const headersAsJson = useMemo(() => {
+        if (!response) return "";
+        const obj: Record<string, string> = {};
+        for (const h of response.headers) obj[h.key] = h.value;
+        return JSON.stringify(obj, null, 2);
+    }, [response]);
 
     const detectedLanguage = useMemo(() => {
         setLanguageOverride(null);
@@ -359,15 +382,26 @@ export function ResponseViewer({ response, responseTime, executing }: ResponseVi
                     </>
                 )}
                 {activeTab === "headers" && (
-                    <Button
-                        size="small"
-                        type="icon"
-                        className="tab-bar-button"
-                        title="Copy headers as JSON"
-                        onClick={handleCopyHeaders}
-                    >
-                        <CopyIcon />
-                    </Button>
+                    <>
+                        <span
+                            className={`view-toggle ${headersView === "table" ? "active" : ""}`}
+                            onClick={() => setHeadersView("table")}
+                        >Table</span>
+                        <span
+                            className={`view-toggle ${headersView === "json" ? "active" : ""}`}
+                            style={{ marginRight: 32 }}
+                            onClick={() => setHeadersView("json")}
+                        >JSON</span>
+                        <Button
+                            size="small"
+                            type="icon"
+                            className="tab-bar-button"
+                            title="Copy headers as JSON"
+                            onClick={handleCopyHeaders}
+                        >
+                            <CopyIcon />
+                        </Button>
+                    </>
                 )}
             </div>
             <div className="response-tab-body">
@@ -399,7 +433,7 @@ export function ResponseViewer({ response, responseTime, executing }: ResponseVi
                             options={EDITOR_OPTIONS}
                         />
                     )
-                ) : (
+                ) : headersView === "table" ? (
                     <div className="response-headers-list">
                         <table className="headers-table">
                             <tbody>
@@ -412,6 +446,13 @@ export function ResponseViewer({ response, responseTime, executing }: ResponseVi
                             </tbody>
                         </table>
                     </div>
+                ) : (
+                    <Editor
+                        value={headersAsJson}
+                        language="json"
+                        theme="custom-dark"
+                        options={{ ...EDITOR_OPTIONS, readOnly: true }}
+                    />
                 )}
             </div>
         </ResponseViewerRoot>

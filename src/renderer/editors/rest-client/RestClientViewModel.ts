@@ -59,6 +59,7 @@ export const defaultRestClientEditorState = {
     executing: false,
     response: null as RestResponse | null,
     responseTime: 0,
+    headersJsonInvalid: false,
 };
 
 export type RestClientEditorState = typeof defaultRestClientEditorState;
@@ -640,9 +641,19 @@ export class RestClientViewModel extends ContentViewModel<RestClientEditorState>
     // Request execution
     // =========================================================================
 
+    setHeadersJsonInvalid = (invalid: boolean) => {
+        this.state.update((s) => { s.headersJsonInvalid = invalid; });
+    };
+
     sendRequest = async () => {
         const request = this.selectedRequest;
         if (!request || !request.url) return;
+
+        if (this.state.get().headersJsonInvalid) {
+            const { app } = await import("../../api/app");
+            app.ui.notify("Fix invalid JSON in headers before sending", "warning");
+            return;
+        }
 
         this.state.update((s) => {
             s.executing = true;

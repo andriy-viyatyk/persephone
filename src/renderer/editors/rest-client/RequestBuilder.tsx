@@ -3,6 +3,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { Editor } from "@monaco-editor/react";
 import { Button } from "../../components/basic/Button";
 import { TextAreaField } from "../../components/basic/TextAreaField";
+import { FlexSpace } from "../../components/layout/Elements";
 import { Splitter } from "../../components/layout/Splitter";
 import { LanguageIcon } from "../../components/icons/LanguageIcon";
 import { WithPopupMenu } from "../../components/overlay/WithPopupMenu";
@@ -138,6 +139,21 @@ const RequestBuilderRoot = styled.div({
         textTransform: "uppercase",
         letterSpacing: "0.5px",
     },
+    "& .view-toggle": {
+        fontSize: 11,
+        color: color.text.light,
+        cursor: "pointer",
+        padding: "1px 6px",
+        borderRadius: 3,
+        userSelect: "none",
+        "&:hover": {
+            color: color.text.default,
+        },
+    },
+    "& .view-toggle.active": {
+        color: color.text.default,
+        backgroundColor: color.background.light,
+    },
     "& .headers-scroll": {
         flex: "1 1 auto",
         overflow: "auto",
@@ -266,6 +282,52 @@ interface RequestBuilderProps {
 export function RequestBuilder({ vm, request, state }: RequestBuilderProps) {
     const splitRef = useRef<HTMLDivElement>(null);
     const [bodyHeight, setBodyHeight] = useState<number | null>(null);
+    const [headersView, setHeadersView] = useState<"table" | "json">("table");
+    const [headersJson, setHeadersJson] = useState("");
+
+    // Convert headers to JSON when switching to JSON view
+    const switchToJsonView = useCallback(() => {
+        const obj: Record<string, string> = {};
+        for (const h of request.headers) {
+            if (h.enabled && h.key.trim()) obj[h.key.trim()] = h.value;
+        }
+        setHeadersJson(JSON.stringify(obj, null, 2));
+        vm.setHeadersJsonInvalid(false);
+        setHeadersView("json");
+    }, [request.headers, vm]);
+
+    // Switch back to table view — validate first
+    const switchToTableView = useCallback(() => {
+        try {
+            const obj = JSON.parse(headersJson);
+            if (typeof obj !== "object" || Array.isArray(obj)) throw new Error("not an object");
+            const headers = Object.entries(obj).map(([key, value]) => ({
+                key, value: String(value), enabled: true,
+            }));
+            vm.updateRequest(request.id, { headers });
+            vm.setHeadersJsonInvalid(false);
+            setHeadersView("table");
+        } catch {
+            app.ui.notify("Invalid JSON — fix errors before switching to Table view", "warning");
+        }
+    }, [headersJson, vm, request.id]);
+
+    // Live sync: on every JSON change, try to parse and update headers
+    const handleHeadersJsonChange = useCallback((value: string | undefined) => {
+        const json = value ?? "";
+        setHeadersJson(json);
+        try {
+            const obj = JSON.parse(json);
+            if (typeof obj !== "object" || Array.isArray(obj)) throw new Error("not an object");
+            const headers = Object.entries(obj).map(([key, value]) => ({
+                key, value: String(value), enabled: true,
+            }));
+            vm.updateRequest(request.id, { headers });
+            vm.setHeadersJsonInvalid(false);
+        } catch {
+            vm.setHeadersJsonInvalid(true);
+        }
+    }, [vm, request.id]);
 
     const handleUrlChange = useCallback(
         (value: string) => {
@@ -415,6 +477,16 @@ export function RequestBuilder({ vm, request, state }: RequestBuilderProps) {
                 <div className="headers-panel" style={{ flex: headersFlex, overflow: "hidden", minHeight: 0 }}>
                     <div className="section-header" onDoubleClick={handleHeadersDblClick}>
                         <span className="section-title">Headers</span>
+                        <FlexSpace />
+                        <span
+                            className={`view-toggle ${headersView === "table" ? "active" : ""}`}
+                            onClick={() => headersView === "json" ? switchToTableView() : undefined}
+                        >Table</span>
+                        <span
+                            className={`view-toggle ${headersView === "json" ? "active" : ""}`}
+                            style={{ marginRight: 32 }}
+                            onClick={() => headersView === "table" ? switchToJsonView() : undefined}
+                        >JSON</span>
                         <Button
                             size="small"
                             type="icon"
@@ -432,17 +504,29 @@ export function RequestBuilder({ vm, request, state }: RequestBuilderProps) {
                             <CopyIcon />
                         </Button>
                     </div>
-                    <div className="headers-scroll">
-                        <KeyValueEditor
-                            items={request.headers}
-                            onUpdate={(i, changes) => vm.updateHeader(request.id, i, changes)}
-                            onDelete={(i) => vm.deleteHeader(request.id, i)}
-                            onToggle={(i) => vm.toggleHeader(request.id, i)}
-                            keyOptions={COMMON_HEADERS}
-                            keyPlaceholder="Header name"
-                            valuePlaceholder="Value"
-                        />
-                    </div>
+                    {headersView === "table" ? (
+                        <div className="headers-scroll">
+                            <KeyValueEditor
+                                items={request.headers}
+                                onUpdate={(i, changes) => vm.updateHeader(request.id, i, changes)}
+                                onDelete={(i) => vm.deleteHeader(request.id, i)}
+                                onToggle={(i) => vm.toggleHeader(request.id, i)}
+                                keyOptions={COMMON_HEADERS}
+                                keyPlaceholder="Header name"
+                                valuePlaceholder="Value"
+                            />
+                        </div>
+                    ) : (
+                        <div style={{ flex: "1 1 auto", overflow: "hidden" }}>
+                            <Editor
+                                value={headersJson}
+                                language="json"
+                                theme="custom-dark"
+                                options={BODY_EDITOR_OPTIONS}
+                                onChange={handleHeadersJsonChange}
+                            />
+                        </div>
+                    )}
                 </div>
 
                 {/* Body panel */}
