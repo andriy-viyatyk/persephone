@@ -30,9 +30,21 @@ jobs:
       - name: Install Dependencies
         run: npm install
 
+      - name: Setup Python (for VMP signing)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Castlabs EVS (VMP signing tool)
+        run: pip install castlabs-evs
+
       - name: Build and Publish
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VMP_SIGN: "true"
+          EVS_NO_ASK: "1"
+          EVS_ACCOUNT_NAME: ${{ secrets.EVS_ACCOUNT_NAME }}
+          EVS_PASSWD: ${{ secrets.EVS_PASSWD }}
         run: npm run dist:publish
 
       - name: Remove auto-update artifacts from release

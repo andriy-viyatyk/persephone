@@ -309,6 +309,7 @@ These shortcuts work regardless of where focus is within the browser page.
 - **Page title** — shown in the js-notepad tab (reflects the active internal tab)
 - **Favicon** — website icon displayed in the internal tabs panel
 - **DevTools** — click the gear icon or press `F12` to open the webview's developer tools
+- **DRM-protected video** — the browser supports Widevine DRM, so streaming services like Netflix, Disney+, and other DRM-protected platforms work out of the box
 - **Isolated storage** — each profile has its own cookies, storage, and cache, separated from the application
 - **Automatic cache cleanup** — HTTP cache, compiled code cache, and service worker caches are cleared when a browser page is closed to save disk space; cookies and site data are preserved
 - **Security** — navigation to local file protocols (`file://`, `app-asset://`) is blocked

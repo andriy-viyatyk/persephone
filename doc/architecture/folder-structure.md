@@ -17,6 +17,9 @@ js-notepad/
 │   ├── src/main.rs
 │   ├── build.rs
 │   └── Cargo.toml
+├── scripts/                # Build scripts
+│   ├── build-prod.mjs      # Vite production build (main, preload, renderer)
+│   └── vmp-sign.mjs        # electron-builder afterPack hook for Widevine VMP signing
 ├── assets/                 # Static assets
 │   ├── editor-types/       # Auto-copied .d.ts files for Monaco IntelliSense
 │   ├── icons/              # App icons

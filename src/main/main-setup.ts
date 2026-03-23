@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import { app, net, protocol, session } from "electron";
+import { app, components, net, protocol, session } from "electron";
 import path from "node:path";
 import { appPartition, fileAccessPersistPartition } from "./constants";
 import { controller } from "../ipc/main/controller";
@@ -99,7 +99,15 @@ export function setupMainProcess() {
         });
     }
 
-    app.on("ready", () => {
+    app.on("ready", async () => {
+        // Ensure Widevine CDM is available (Castlabs Electron downloads it automatically)
+        try {
+            await components.whenReady();
+            console.log("Widevine CDM ready:", components.status());
+        } catch (err) {
+            console.warn("Widevine CDM initialization failed:", err);
+        }
+
         registerAssetProtocol(appPartition);
         registerAssetProtocol(fileAccessPersistPartition);
         openWindows.restoreState();

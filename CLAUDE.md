@@ -162,7 +162,7 @@ JS-Notepad is a Windows Notepad replacement for developers. Built with Electron 
 
 ## Tech Stack
 
-- **Runtime:** Electron 39 (nodeIntegration: true, contextIsolation: false)
+- **Runtime:** Electron 39 — [Castlabs ECS](https://github.com/castlabs/electron-releases) fork with Widevine DRM support (nodeIntegration: true, contextIsolation: false)
 - **Frontend:** React 19 with TypeScript
 - **Editor:** Monaco Editor
 - **State:** Custom reactive primitives (TOneState, TGlobalState, TComponentState, TModel)
@@ -289,3 +289,4 @@ See [/doc/standards/coding-style.md](doc/standards/coding-style.md) for complete
 | MCP resource guides      | `/assets/mcp-res-*.md`                            |
 | MCP command handler      | `/src/renderer/api/mcp-handler.ts`                |
 | Rust launcher            | `/launcher/src/main.rs`                           |
+| VMP signing (build hook) | `/scripts/vmp-sign.mjs`                           |

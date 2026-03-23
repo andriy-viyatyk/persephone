@@ -505,3 +505,5 @@ Additionally, `LinkViewModel.onGetLinkMenuItems` is an optional callback that al
 8. **Webview background color.** Sites that don't set an explicit background rely on the browser default (white). The webview uses dynamic background: `color.background.default` for blank/new tabs (matching the app theme), switching to `#ffffff` once the user navigates to a real page.
 
 9. **Emotion `&` selector in nested rules.** In Emotion's object syntax, `&` always resolves to the root styled component's class. Inside nested selectors like `"& .tab-close"`, a child rule `".tab-item:hover &"` would generate `.tab-item:hover .ROOT` — not `.tab-item:hover .tab-close`. Always define hover-reveal rules at the parent level: `"& .tab-item": { "&:hover .tab-close": { opacity: 1 } }`.
+
+10. **DRM / Widevine CDM.** The app uses [Castlabs Electron (ECS)](https://github.com/castlabs/electron-releases) — a fork with Widevine DRM support. At startup, `components.whenReady()` in `main-setup.ts` ensures the CDM is downloaded. Production builds require VMP signing via Castlabs EVS (`scripts/vmp-sign.mjs`). Without VMP signing, DRM works on test pages but not on Netflix/Disney+.

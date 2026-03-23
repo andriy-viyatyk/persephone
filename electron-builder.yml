@@ -24,6 +24,14 @@ extraFiles:
 
 asar: true
 
+# Use Castlabs Electron for Widevine CDM (DRM) support
+electronDownload:
+  mirror: "https://github.com/castlabs/electron-releases/releases/download/v"
+
+# VMP-sign the Electron binary for Widevine DRM (Netflix, Disney+, etc.)
+# Set VMP_SIGN=true environment variable to enable signing
+afterPack: scripts/vmp-sign.mjs
+
 win:
   icon: assets/icon.ico
   target:

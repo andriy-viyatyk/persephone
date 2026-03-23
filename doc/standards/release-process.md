@@ -98,3 +98,17 @@ For releasing v1.0.15 and starting v1.0.16:
 | Bump version | `npm version 1.0.16 --no-git-tag-version` |
 | New branch | `git checkout -b upcoming-v16` |
 | Commit + push | `git commit ... && git push -u origin upcoming-v16` |
+
+## VMP Signing (Widevine DRM)
+
+The GitHub Actions pipeline automatically VMP-signs the production build using Castlabs EVS. This enables DRM playback (Netflix, Disney+) in the built-in browser.
+
+**Requirements:**
+- GitHub repo secrets: `EVS_ACCOUNT_NAME` and `EVS_PASSWD` (Castlabs EVS credentials)
+- The `afterPack` hook in `electron-builder.yml` runs `scripts/vmp-sign.mjs`
+
+**Local builds:** Set `VMP_SIGN=true` to enable VMP signing locally:
+```bash
+VMP_SIGN=true npm run dist
+```
+Without `VMP_SIGN=true`, signing is skipped (default for developers without EVS credentials).

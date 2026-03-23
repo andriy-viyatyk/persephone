@@ -12,6 +12,8 @@ Release notes and changelog for js-notepad.
 
 - **Browser bookmark event** — New `app.events.browser.onBookmark` EventChannel fires before the Add/Edit Bookmark dialog opens (from both the star button and the context menu). Subscribe in an autoload script to modify bookmark fields before the dialog appears — `title`, `href`, `discoveredImages`, `imgSrc`, `category`, and `tags` are all writable. The event's `isEdit` flag indicates whether a new bookmark is being added or an existing one edited.
 
+- **DRM-protected video playback** — The built-in browser now supports DRM-protected content (Widevine). Streaming services like Netflix, Disney+, and other platforms that require DRM can play directly inside js-notepad's browser. Production builds are signed for full compatibility.
+
 ---
 
 ## Version 1.0.26
