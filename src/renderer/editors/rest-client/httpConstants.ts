@@ -36,12 +36,14 @@ export const COMMON_HEADERS = [
     "X-Requested-With",
 ];
 
+import universalColors from "../../theme/universal-colors";
+
 export const METHOD_COLORS: Record<string, string> = {
-    GET: "#61affe",
-    POST: "#49cc90",
-    PUT: "#fca130",
-    PATCH: "#50e3c2",
-    DELETE: "#f93e3e",
-    HEAD: "#9012fe",
-    OPTIONS: "#0d5aa7",
+    GET: universalColors.http.method.get,
+    POST: universalColors.http.method.post,
+    PUT: universalColors.http.method.put,
+    PATCH: universalColors.http.method.patch,
+    DELETE: universalColors.http.method.delete,
+    HEAD: universalColors.http.method.head,
+    OPTIONS: universalColors.http.method.options,
 };

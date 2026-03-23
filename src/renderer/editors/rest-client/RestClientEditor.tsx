@@ -4,6 +4,7 @@ import { Splitter } from "../../components/layout/Splitter";
 import { TreeView, TreeItem } from "../../components/TreeView";
 import { TextAreaField } from "../../components/basic/TextAreaField";
 import color from "../../theme/color";
+import universalColors from "../../theme/universal-colors";
 import { CopyIcon, DeleteIcon, PlusIcon } from "../../theme/icons";
 import { Button } from "../../components/basic/Button";
 import { WithPopupMenu } from "../../components/overlay/WithPopupMenu";
@@ -527,11 +528,11 @@ function SplitDetailPanel({ vm, request, state }: {
 // =============================================================================
 
 function getStatusColor(status: number): string {
-    if (status === 0) return "#f93e3e";
-    if (status < 300) return "#49cc90";
-    if (status < 400) return "#61affe";
-    if (status < 500) return "#fca130";
-    return "#f93e3e";
+    if (status === 0) return universalColors.http.serverError;
+    if (status < 300) return universalColors.http.success;
+    if (status < 400) return universalColors.http.redirect;
+    if (status < 500) return universalColors.http.clientError;
+    return universalColors.http.serverError;
 }
 
 // =============================================================================
