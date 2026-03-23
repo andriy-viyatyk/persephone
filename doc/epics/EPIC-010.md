@@ -160,3 +160,4 @@ Chromium DevTools is a sandboxed component — no Electron API exists to add con
 | US-247 | Result integration | Done |
 | US-248 | Request body types & enhancements | Done |
 | US-249 | Requests management | Done |
+| US-250 | MCP & API integration | Done |
