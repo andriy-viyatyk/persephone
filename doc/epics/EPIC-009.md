@@ -99,9 +99,31 @@ All script-facing types in `api/types/events.d.ts`:
 - `MenuItem` — single source of truth (removed duplicate from `api/events/MenuItem.ts`)
 - `IBaseEvent`, `IContextMenuEvent<T>`, `IEventChannel<T>`, `ISubscriptionObject`
 - `IFileTarget`, `FileContextMenuEvent`, `ContextMenuTargetKind`
-- `IAppEvents`, `IFileExplorerEvents`
+- `IBookmarkEvent`, `IBrowserEvents`
+- `IAppEvents`, `IFileExplorerEvents`, `IBrowserEvents`
 
 `IApp` interface includes `readonly events: IAppEvents` for IntelliSense.
+
+### Browser Bookmark Event (US-239)
+
+`app.events.browser.onBookmark` fires before the Add/Edit Bookmark dialog. Scripts can modify title, URL, discovered images, selected image, category, and tags.
+
+```typescript
+// Script: fix YouTube expiring thumbnail URLs
+app.events.browser.onBookmark.subscribe(event => {
+    if (event.href.includes("youtube.com") || event.href.includes("youtu.be")) {
+        event.discoveredImages = event.discoveredImages.map(url => {
+            try {
+                const u = new URL(url);
+                if (u.hostname.includes("ytimg.com")) return u.origin + u.pathname;
+            } catch {}
+            return url;
+        });
+    }
+});
+```
+
+Implementation: `BrowserEvents` class in `AppEvents.ts`, `BookmarkEvent` in `events.ts`. Single `showBookmarkDialog()` method in `BrowserBookmarksUIModel` — both star button and context menu paths route through it.
 
 ### Script Context Isolation (US-232, US-234, US-235, US-236)
 
@@ -151,7 +173,6 @@ script-library/
 
 Additional events to wire as needed:
 - `app.events.fileExplorer.containerContextMenu` — white-space right-click in file explorer
-- `app.events.browser.onBookmark` — bookmark creation, YouTube image URL fix
 - `app.events.onOpenLink` — link interception, video scraping
 - `app.events.pages.onOpen` / `onClose` / `onBeforeSave` — page lifecycle
 - Other context menus: tab, browser, grid, graph, link editor
@@ -160,8 +181,7 @@ Each new EventChannel follows the same pattern documented in [context-menu.md](.
 
 ### Hypothetical Use Cases
 
-1. **YouTube bookmark image fix** — Script subscribes to `app.events.browser.onBookmark`, detects YouTube URLs, replaces expiring thumbnail URL with public one
-2. **Video link interception** — Script subscribes to `app.events.onOpenLink`, matches known video hosting patterns, cancels default behavior, scrapes `.m3u8` URL, opens built-in player
+1. **Video link interception** — Script subscribes to `app.events.onOpenLink`, matches known video hosting patterns, cancels default behavior, scrapes `.m3u8` URL, opens built-in player
 3. **Auto-format on save** — Script subscribes to `app.events.pages.onBeforeSave`, runs formatter on content
 4. **Custom keyboard shortcuts** — Script subscribes to `app.events.onKeyDown`, adds custom hotkeys
 5. **Page template injection** — Script subscribes to `app.events.pages.onCreated`, pre-fills content based on file extension
@@ -241,3 +261,5 @@ Each new EventChannel follows the same pattern documented in [context-menu.md](.
 | US-233 | Script Autoloading from Script Library | Done |
 | US-236 | Script Context Coexistence | Done |
 | US-237 | Progress Dialog Component | Done |
+| US-238 | LogView re-creation after page closed | Done |
+| US-239 | Browser Bookmark EventChannel | Done |

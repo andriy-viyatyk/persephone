@@ -103,10 +103,45 @@ export interface IEventChannel<T extends IBaseEvent> {
     subscribeDefault(handler: (event: T) => void | Promise<void>): ISubscriptionObject;
 }
 
+/**
+ * Bookmark event — fired before the Add/Edit Bookmark dialog opens.
+ * Scripts can modify properties to alter what the user sees in the dialog.
+ *
+ * @example
+ * app.events.browser.onBookmark.subscribe((event) => {
+ *     if (event.href.includes("youtube.com")) {
+ *         // Strip expiring query params from YouTube thumbnail URLs
+ *         event.discoveredImages = event.discoveredImages.map(url => url.split("?")[0]);
+ *     }
+ * });
+ */
+export interface IBookmarkEvent extends IBaseEvent {
+    /** Page title (editable). */
+    title: string;
+    /** Page URL (editable). */
+    href: string;
+    /** Images discovered on the page (editable — add, remove, or replace). */
+    discoveredImages: string[];
+    /** Currently selected image URL (editable). */
+    imgSrc: string;
+    /** Bookmark category (editable). */
+    category: string;
+    /** Bookmark tags (editable). */
+    tags: string[];
+    /** True if editing an existing bookmark, false if adding new. */
+    readonly isEdit: boolean;
+}
+
 /** File explorer event channels. */
 export interface IFileExplorerEvents {
     /** Fired when right-clicking a file or folder in the file explorer. */
     readonly itemContextMenu: IEventChannel<FileContextMenuEvent>;
+}
+
+/** Browser event channels. */
+export interface IBrowserEvents {
+    /** Fired before the Add/Edit Bookmark dialog opens. */
+    readonly onBookmark: IEventChannel<IBookmarkEvent>;
 }
 
 /**
@@ -121,4 +156,5 @@ export interface IFileExplorerEvents {
  */
 export interface IAppEvents {
     readonly fileExplorer: IFileExplorerEvents;
+    readonly browser: IBrowserEvents;
 }

@@ -9,7 +9,7 @@ import { MenuItem } from "../../components/overlay/PopupMenu";
 import { pagesModel } from "../../api/pages";
 import { newTextFileModel } from "../text/TextPageModel";
 import { PageModel } from "../base";
-import { showEditLinkDialog } from "../link-editor/EditLinkDialog";
+
 import { globalPopupRateLimiter } from "../../../ipc/popup-rate-limiter";
 import { browserUrlChanged } from "../../core/state/events";
 import type { BrowserPageModel } from "./BrowserPageModel";
@@ -346,35 +346,13 @@ export class BrowserWebviewModel {
                         })()
                     `);
                     const existingLink = bm.findByUrl(linkURL);
-                    const bmState = bm.linkModel.state.get();
-                    const discoveredImages = linkInfo.imgSrc ? [linkInfo.imgSrc] : [];
-                    if (existingLink) {
-                        const result = await showEditLinkDialog({
-                            title: "Edit Bookmark",
-                            link: existingLink,
-                            categories: bmState.categories,
-                            tags: bmState.tags,
-                            discoveredImages,
-                        });
-                        if (result) {
-                            bm.linkModel.updateLink(existingLink.id, result);
-                        }
-                    } else {
-                        const result = await showEditLinkDialog({
-                            title: "Add Bookmark",
-                            link: {
-                                title: linkInfo.title,
-                                href: linkURL,
-                                imgSrc: linkInfo.imgSrc || undefined,
-                            },
-                            categories: bmState.categories,
-                            tags: bmState.tags,
-                            discoveredImages,
-                        });
-                        if (result) {
-                            bm.linkModel.addLink(result);
-                        }
-                    }
+                    await this.model.bookmarksUI.showBookmarkDialog({
+                        title: linkInfo.title,
+                        href: linkURL,
+                        discoveredImages: linkInfo.imgSrc ? [linkInfo.imgSrc] : [],
+                        imgSrc: linkInfo.imgSrc || undefined,
+                        existingLink,
+                    });
                 },
             });
         }

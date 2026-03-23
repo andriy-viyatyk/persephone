@@ -5,6 +5,9 @@ import { ui } from "../../api/ui";
 import { api } from "../../../ipc/renderer/api";
 import { settings, BrowserProfile } from "../../api/settings";
 import type { BrowserPageModel } from "./BrowserPageModel";
+import type { LinkItem } from "../link-editor/linkTypes";
+import { app } from "../../api/app";
+import { BookmarkEvent } from "../../api/events/events";
 
 /** Tracked image URLs from a specific navigation level. */
 export interface TrackedImageLevel {
@@ -216,34 +219,69 @@ export class BrowserBookmarksUIModel {
                 allImages.push(url);
             }
         }
-        const bmState = bm.linkModel.state.get();
 
-        if (existingLink) {
-            const result = await showEditLinkDialog({
-                title: "Edit Bookmark",
-                link: existingLink,
-                categories: bmState.categories,
-                tags: bmState.tags,
-                discoveredImages: allImages,
-            });
-            if (result) {
-                bm.linkModel.updateLink(existingLink.id, result);
-            }
+        const activeTab = tabs.find((t) => t.id === activeTabId);
+        await this.showBookmarkDialog({
+            title: activeTab?.pageTitle || "",
+            href: urlInput,
+            discoveredImages: allImages,
+            existingLink,
+        });
+    };
+
+    /**
+     * Unified bookmark dialog entry point. Both star button and context menu
+     * route through this method. Fires app.events.browser.onBookmark before
+     * showing the dialog so scripts can modify bookmark data.
+     */
+    showBookmarkDialog = async (params: {
+        title: string;
+        href: string;
+        discoveredImages: string[];
+        imgSrc?: string;
+        category?: string;
+        tags?: string[];
+        existingLink?: LinkItem;
+    }): Promise<void> => {
+        const bm = this.model.bookmarks;
+        if (!bm) return;
+
+        const isEdit = !!params.existingLink;
+
+        // Fire onBookmark event — scripts can modify all parameters
+        const bookmarkEvent = new BookmarkEvent(
+            params.existingLink?.title ?? params.title,
+            params.existingLink?.href ?? params.href,
+            params.discoveredImages,
+            params.existingLink?.imgSrc ?? params.imgSrc ?? "",
+            params.existingLink?.category ?? params.category ?? "",
+            params.existingLink?.tags ?? params.tags ?? [],
+            isEdit,
+        );
+        await app.events.browser.onBookmark.sendAsync(bookmarkEvent);
+
+        // Show dialog with (possibly modified) event data
+        const bmState = bm.linkModel.state.get();
+        const result = await showEditLinkDialog({
+            title: isEdit ? "Edit Bookmark" : "Add Bookmark",
+            link: {
+                title: bookmarkEvent.title,
+                href: bookmarkEvent.href,
+                imgSrc: bookmarkEvent.imgSrc || undefined,
+                category: bookmarkEvent.category,
+                tags: bookmarkEvent.tags,
+            },
+            categories: bmState.categories,
+            tags: bmState.tags,
+            discoveredImages: bookmarkEvent.discoveredImages,
+        });
+
+        if (!result) return;
+
+        if (params.existingLink) {
+            bm.linkModel.updateLink(params.existingLink.id, result);
         } else {
-            const activeTab = tabs.find((t) => t.id === activeTabId);
-            const result = await showEditLinkDialog({
-                title: "Add Bookmark",
-                link: {
-                    title: activeTab?.pageTitle || "",
-                    href: urlInput,
-                },
-                categories: bmState.categories,
-                tags: bmState.tags,
-                discoveredImages: allImages,
-            });
-            if (result) {
-                bm.linkModel.addLink(result);
-            }
+            bm.linkModel.addLink(result);
         }
     };
 

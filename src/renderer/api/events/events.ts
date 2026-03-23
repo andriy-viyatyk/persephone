@@ -23,6 +23,21 @@ export type ContextMenuTargetKind =
     | "link-pinned"
     | "generic";
 
+/** Bookmark event — fired before the Add/Edit Bookmark dialog opens. */
+export class BookmarkEvent extends BaseEvent {
+    constructor(
+        public title: string,
+        public href: string,
+        public discoveredImages: string[],
+        public imgSrc: string,
+        public category: string,
+        public tags: string[],
+        public readonly isEdit: boolean,
+    ) {
+        super();
+    }
+}
+
 /** Generic context menu event. T defines the target that was right-clicked. */
 export class ContextMenuEvent<T> extends BaseEvent {
     readonly targetKind: ContextMenuTargetKind;

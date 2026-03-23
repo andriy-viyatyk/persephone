@@ -381,6 +381,14 @@ export function register() {
     app.events.fileExplorer.itemContextMenu.subscribe((event) => {
         // Add custom context menu items for certain files
     });
+
+    app.events.browser.onBookmark.subscribe((event) => {
+        // Modify bookmark fields before the Add/Edit dialog opens
+        // event.data has: title, href, discoveredImages, imgSrc, category, tags, isEdit
+        if (!event.data.isEdit) {
+            event.data.category = "Uncategorized";
+        }
+    });
 }
 ```
 
