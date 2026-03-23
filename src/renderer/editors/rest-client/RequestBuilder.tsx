@@ -63,7 +63,7 @@ const RequestBuilderRoot = styled.div({
     },
     "& .method-label": {
         flexShrink: 0,
-        padding: "2px 8px",
+        padding: "3px 8px",
         fontSize: 13,
         fontWeight: 700,
         fontFamily: "monospace",
@@ -90,7 +90,8 @@ const RequestBuilderRoot = styled.div({
     },
     "& .send-button": {
         flexShrink: 0,
-        padding: "4px 16px",
+        height: 24,
+        padding: "0 16px",
         fontSize: 13,
         fontWeight: 600,
     },
