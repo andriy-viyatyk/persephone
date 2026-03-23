@@ -6,11 +6,24 @@ Release notes and changelog for js-notepad.
 
 ---
 
-## Version 1.0.29 (Upcoming)
+## Version 1.0.30 (Upcoming)
+
+*No changes yet.*
+
+---
+
+## Version 1.0.29
 
 ### Improvements
 
-- **Rest Client — Header view switch** — Request and response headers now have a Table/JSON toggle. Table view shows the default key-value editor (request) or HTML table (response). JSON view displays headers as a JSON object in Monaco Editor — editable for request headers with live sync, read-only for response headers. Invalid JSON in request headers shows a warning on switch to Table or Send.
+- **Rest Client — Header view switch** — Request and response headers now have a Table/JSON toggle. JSON view displays headers as a JSON object in Monaco Editor — editable for request headers with live sync, read-only for response headers.
+- **Rest Client — Tree layout** — Moved add button into tree root item, reduced indentation for leaf request items, right-click selects request before showing context menu.
+- **Rest Client — UI polish** — Aligned URL bar items vertically, italic informative messages, consistent input backgrounds.
+
+### Bug Fixes
+
+- **Rest Client** — Fixed file marking dirty on open without edits (empty UI rows caused false dirty state).
+- **Rest Client** — Fixed new request missing empty header row.
 
 ---
 
