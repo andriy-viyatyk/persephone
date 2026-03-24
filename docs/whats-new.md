@@ -8,7 +8,9 @@ Release notes and changelog for js-notepad.
 
 ## Version 1.0.31 (Upcoming)
 
-*No changes yet.*
+### Bug Fixes
+
+- **Screen Snip** — Fixed screen snip tool not working in production builds (Rust snip-tool binary was missing from the CI build pipeline).
 
 ---
 
