@@ -1,6 +1,6 @@
 # JS-Notepad
 
-**JS-Notepad** is a high-performance, tabbed text editor built with Electron and Vite. It combines the simplicity of the classic Windows Notepad with the power of the Monaco Editor (VS Code engine), offering a versatile environment for coding, data manipulation, and document viewing.
+**JS-Notepad** is a developer notepad for Windows — built with Electron, Monaco Editor, and a JavaScript/TypeScript runtime. It extends the classic tabbed text editor with specialized viewers, a scripting engine, and an MCP server that lets AI agents drive the UI.
 
 
 
@@ -8,34 +8,23 @@
 
 ## Key Features
 
-### Modern Editor Core
-* **Monaco Editor:** Powered by the same engine as VS Code, providing industry-standard syntax highlighting, IntelliSense, and search/replace for over **50 languages**.
-* **Advanced Tab Management:** Seamlessly add, rearrange, or **drag tabs out** into entirely new windows for multi-monitor workflows.
+### Monaco Editor
+Syntax highlighting, IntelliSense, and search/replace for 50+ languages. Drag tabs between windows for multi-monitor workflows. Side-by-side grouping and a full diff editor for comparing files.
 
-### Compare & Grouping Mode
-* **Side-by-Side Viewing:** Hold `Ctrl` and select two tabs to view them in a split-pane layout with a custom resizer.
-* **Diff Editor:** Activate **Compare Mode** to use a full DiffEditor. Compare two files and merge/restore changes from one side to the other instantly.
+### Specialized Editors
+Beyond text: JSON/CSV grids with sorting and filtering, Markdown preview, Mermaid diagrams, SVG/HTML preview, PDF viewer, image viewer, a structured notebook, todo lists, force-directed graphs, Excalidraw drawings, and an HTTP Rest Client.
 
-### Alternative Viewers
-* **JSON Grid Editor:** Switch from raw code to a powerful **Grid View**. Perfect for tabular JSON data, featuring sorting, filtering, and Excel-compatible copy-pasting.
-* **Markdown Preview:** Real-time toggle between Markdown source and rendered preview.
-* **PDF Support:** Integrated **pdf.js** (Firefox engine) for viewing PDF documents directly within your tabs.
+### Scripting Engine
+Write and execute JavaScript or TypeScript directly in a tab. Scripts access open documents via the `page` object, the application via `app`, and have full Node.js access for file I/O, HTTP requests, and npm packages. A Script Library with autoload support lets you extend the application — add context menu items, hook into events, and automate workflows.
 
-### JavaScript & TypeScript Scripting Engine
-* **Standalone Runner:** Write and execute JavaScript or TypeScript directly in a tab. Results are automatically displayed in a grouped "output" page.
-* **Context-Aware Scripting:** Open the "Script Panel" on any text file to manipulate data using the `page` variable.
-  * *Example:* `return JSON.parse(page.content).map(i => i.name);`
-* **TypeScript Support:** Write scripts with full type annotations — TypeScript is transpiled automatically before execution.
+### Event System
+An extensible event channel system (`app.events`) lets scripts subscribe to application events — file explorer context menus, browser bookmarks, and more. Autoload scripts register handlers at startup that persist for the session.
 
 ### AI Agent Integration (MCP Server)
-* **Fully Controllable by AI:** JS-Notepad includes a built-in [MCP](https://modelcontextprotocol.io/) HTTP server that lets AI agents (Claude Desktop, Claude Code, ChatGPT, Gemini, etc.) control the editor programmatically.
-* **What AI Agents Can Do:** Create pages with generated content, execute JavaScript/TypeScript scripts, generate and display Mermaid diagrams, build HTML mockups and preview them in the HTML editor, manipulate grid data, read and transform any open document — all through a standard MCP protocol.
-* **Easy Setup:** Enable with a single checkbox in Settings → MCP Server. See the [MCP Setup Guide](docs/mcp-setup.md) for AI client configuration.
+A built-in [MCP](https://modelcontextprotocol.io/) HTTP server lets AI agents (Claude, ChatGPT, Gemini, etc.) create pages, execute scripts, display diagrams and grids, and manipulate documents — all programmatically. Enable with a single checkbox in Settings. See the [MCP Setup Guide](docs/mcp-setup.md).
 
 ### Built-in Web Browser
-* **Browse Without Leaving the Editor:** Open web pages in a dedicated browser tab — no need to switch to an external app for quick lookups, API docs, or testing.
-* **Profiles & Incognito:** Create isolated browser profiles with separate cookies and storage, or use incognito mode for throwaway sessions.
-* **Internal Tabs & Smart Routing:** Multiple browser tabs within a single editor tab, with external links from Markdown and Monaco automatically routed to the nearest browser tab.
+Browse the web in a dedicated tab with profiles, incognito mode, Tor routing, bookmarks, and DRM video support. Links from Markdown and Monaco open in the nearest browser tab automatically.
 
 ## Download (Windows)
 
@@ -61,16 +50,19 @@
 | **Todo** | `.todo.json` | Task lists with multiple lists, drag-to-reorder, and search |
 | **Force Graph** | `.fg.json` | Interactive force-directed graph with node editing, search, and BFS expansion |
 | **Drawing** | `.excalidraw` | Excalidraw-based drawing editor with library persistence, export, and screen snip |
+| **Links** | `.link.json` | Bookmark/link manager with tiles, list view, categories, and pinned links |
 | **Rest Client** | `.rest.json` | HTTP request builder with collections, body types, and response viewer |
-| **Browser** | — | Built-in web browser with profiles, incognito, internal tabs |
+| **Browser** | — | Web browser with profiles, incognito, Tor, bookmarks, and DRM support |
 | **Compare** | any two files | Side-by-side diff view |
 
 ---
 
 ## Documentation
 
-* **[User Guide](docs/index.md)** - Getting started, features, keyboard shortcuts
-* **[Scripting Guide](docs/scripting.md)** - JavaScript execution and the `page` API
+* **[User Guide](docs/index.md)** — Getting started, editors, keyboard shortcuts
+* **[Scripting Guide](docs/scripting.md)** — Script execution, `page`/`app` API, autoload scripts
+* **[API Reference](docs/api/index.md)** — `app.pages`, `app.fs`, `app.settings`, `app.ui`, `app.fetch`
+* **[MCP Setup](docs/mcp-setup.md)** — Configure AI agents to control js-notepad
 
 ---
 
