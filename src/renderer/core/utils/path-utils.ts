@@ -23,9 +23,15 @@ export function resolveRelatedLink(currentFilePath?: string, link?: string): str
     try {
         // Decode URL-encoded characters (e.g. %5C for backslashes from markdown parsers)
         const decoded = decodeURIComponent(link);
+
+        // Strip fragment (#section) before resolving — otherwise it becomes part of the filename
+        const hashIndex = decoded.indexOf("#");
+        const pathPart = hashIndex >= 0 ? decoded.slice(0, hashIndex) : decoded;
+        const fragment = hashIndex >= 0 ? decoded.slice(hashIndex) : "";
+
         const currentDir = fpDirname(currentFilePath);
-        const absolutePath = fpResolve(currentDir, decoded);
-        const fileUrl = url.pathToFileURL(absolutePath).href;
+        const absolutePath = fpResolve(currentDir, pathPart);
+        const fileUrl = url.pathToFileURL(absolutePath).href + fragment;
         return fileUrl;
     } catch {
         return link;

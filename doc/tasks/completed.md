@@ -4,6 +4,7 @@ All completed tasks, newest first.
 
 | ID | Title | Epic | Notes |
 |----|-------|------|-------|
+| US-253 | Native Rust Screen Snip Tool | | Replaced Electron overlay windows (BrowserWindow + desktopCapturer) with native Rust exe (`js-notepad-snip.exe`). Fixes silent crash on mixed-DPI multi-monitor setups (Castlabs Electron 39). Uses Win32 GDI for screen capture, native overlay windows for selection UI, PNG via stdout. Per-Monitor DPI V2 aware. |
 | US-252 | Rest Client — Header View Switch | EPIC-010 | Table/JSON toggle for request and response headers. Request JSON is editable Monaco with live sync — valid JSON updates headers immediately, invalid shows warning on switch/send. Response JSON is read-only Monaco. |
 | US-251 | Rest Client — Binary Data Support | EPIC-010 | Two new body types: "binary" (file picker, fs.createReadStream streaming) and "form-data" (multipart with text/file toggle per row, streamed via multipartBuilder.ts). Binary response detection by Content-Type. Binary response panel with save-to-file. Image preview + "Open in Image Viewer". Base64 in-memory cache, skip stateStorage persistence for binary. |
 | US-250 | Rest Client — MCP & API Integration | EPIC-010 | Updated `mcp-res-pages.md`: added `rest-client`, `log-view`, `grid-jsonl` to editor types list and language table. Added Rest Client data format section with full JSON schema, field descriptions, tips. Added empty content template. Updated `README.md` editors table. No editor facade — scripts use `app.fetch()` and JSON directly. |

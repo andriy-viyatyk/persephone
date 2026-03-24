@@ -4,10 +4,15 @@ Epics represent big ideas with high-level overviews. Each epic links to tasks in
 
 ## Active
 
-- **EPIC-010** — [Rest Client](EPIC-010.md)
+- **EPIC-012** — [Unified Link & Provider Architecture](EPIC-012.md)
+
+## Future
+
+- **EPIC-011** — [Chrome Extension Support for Built-in Browser](EPIC-011.md)
 
 ## Completed
 
+- **EPIC-010** — [Rest Client](EPIC-010.md)
 - **EPIC-009** — [Scriptable Application Events](EPIC-009.md)
 - **EPIC-008** — [MCP Inspector Editor](EPIC-008.md)
 - **EPIC-007** — [Drawing Editor (Excalidraw)](EPIC-007.md)

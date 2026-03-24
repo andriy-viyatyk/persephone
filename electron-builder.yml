@@ -17,10 +17,12 @@ extraResources:
   - from: assets
     to: assets
 
-# Rust launcher sits next to the main exe (outside asar)
+# Rust binaries sit next to the main exe (outside asar)
 extraFiles:
   - from: launcher/target/release/js-notepad-launcher.exe
     to: js-notepad-launcher.exe
+  - from: snip-tool/target/release/js-notepad-snip.exe
+    to: js-notepad-snip.exe
 
 asar: true
 

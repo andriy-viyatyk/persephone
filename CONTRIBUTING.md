@@ -33,8 +33,8 @@ Thank you for your interest in contributing to js-notepad! This document provide
 | Command | Description |
 |---------|-------------|
 | `npm start` | Run in development mode with hot reload |
-| `npm run package` | Package the app |
-| `npm run make` | Create distributables (MSI, ZIP) |
+| `npm run dist` | Build NSIS installer + ZIP (electron-builder) |
+| `npm run dist:publish` | Build and publish to GitHub Releases (draft) |
 | `npm run lint` | Run ESLint |
 
 ## Project Structure
@@ -45,14 +45,13 @@ js-notepad is an Electron application with the following structure:
 /src
   /main              # Electron main process
   /renderer          # React frontend
-    /app             # Application shell
-    /core            # State primitives, services, utilities
-    /store           # Application state (Zustand stores)
-    /editors         # Editor implementations
+    /api             # Object Model — app.settings, app.pages, app.fs, app.events, etc.
+    /ui              # Application shell — MainPage, tabs, sidebar, dialogs
+    /editors         # ALL editors (text, grid, markdown, pdf, browser, rest-client, etc.)
+    /scripting       # Script execution, context, library require, autoload
     /components      # Reusable UI components
-    /features        # App-specific features
-    /theme           # Styling
-    /setup           # Monaco configuration
+    /core            # State primitives, utilities
+    /theme           # Styling and color tokens
   /ipc               # Inter-process communication
 ```
 
@@ -125,7 +124,10 @@ const Container = styled.div`
 
 1. **Dynamic Imports** - Use `import()` for editors to maintain code splitting
 2. **Direct Imports** - Prefer direct imports over barrel imports to avoid circular dependencies
-3. **State Management** - Use stores in `/src/renderer/store/`
+3. **State Management** - Use Object Model APIs (`app.settings`, `app.pages`, etc.) and state primitives in `/src/renderer/core/state/`
+4. **No Hardcoded Colors** - All colors from `color.ts` theme tokens; use `universal-colors.ts` for theme-independent indicators
+5. **No Direct `require("path")`** - Use `file-path` utility; only `file-path.ts` may import `path`
+6. **No Direct `require("fs")`** - Use `app.fs`; only `fs.ts` and documented exceptions may import `fs`
 
 For complete coding standards, see [/doc/standards/coding-style.md](doc/standards/coding-style.md).
 
@@ -153,7 +155,7 @@ See [/doc/standards/component-guide.md](doc/standards/component-guide.md) for gu
 - [ ] Code follows project coding standards
 - [ ] `npm run lint` passes
 - [ ] App runs without errors (`npm start`)
-- [ ] Production build works (`npm run make`)
+- [ ] Production build works (`npm run dist`)
 - [ ] Changes are documented if needed
 
 ## Documentation

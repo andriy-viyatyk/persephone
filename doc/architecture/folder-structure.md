@@ -32,8 +32,13 @@ js-notepad/
 │   ├── mcp-res-graph.md    # MCP resource: force-graph data format & page.asGraph() API
 │   ├── mcp-res-notebook.md # MCP resource: notebook editor JSON format
 │   ├── mcp-res-todo.md     # MCP resource: todo editor JSON format
-│   ├── mcp-res-links.md    # MCP resource: links editor JSON format
-│   └── snip-overlay.html   # Screen snip overlay (plain HTML/JS, canvas-based selection UI)
+│   └── mcp-res-links.md    # MCP resource: links editor JSON format
+├── snip-tool/              # Rust native screen snip tool (js-notepad-snip.exe)
+│   ├── src/main.rs         # Entry point, PNG encoding, stdout output
+│   ├── src/capture.rs      # Monitor enumeration + GDI screen capture
+│   ├── src/overlay.rs      # Fullscreen overlay windows, selection UI
+│   ├── build.rs
+│   └── Cargo.toml
 ├── patches/                # Dependency patches (patch-package)
 ├── .mcp.json               # MCP server config for Claude Code (points to MCP HTTP server)
 ├── doc/                    # Developer documentation
@@ -456,7 +461,7 @@ js-notepad/
 ├── tor-service.ts          # Tor process lifecycle and per-partition SOCKS5 proxy
 ├── download-service.ts     # Download management
 ├── search-service.ts       # File search service
-├── snip-service.ts         # Screen snip tool (capture, overlay windows, crop)
+├── snip-service.ts         # Screen snip (spawns js-notepad-snip.exe, reads PNG from stdout)
 ├── version-service.ts      # Version checking (runs in main, not renderer)
 ├── tray-setup.ts           # System tray
 ├── drag-model.ts           # Tab drag between windows

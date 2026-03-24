@@ -292,4 +292,5 @@ See [/doc/standards/coding-style.md](doc/standards/coding-style.md) for complete
 | MCP resource guides      | `/assets/mcp-res-*.md`                            |
 | MCP command handler      | `/src/renderer/api/mcp-handler.ts`                |
 | Rust launcher            | `/launcher/src/main.rs`                           |
+| Rust screen snip tool    | `/snip-tool/src/main.rs`                          |
 | VMP signing (build hook) | `/scripts/vmp-sign.mjs`                           |

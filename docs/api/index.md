@@ -2,66 +2,196 @@
 
 # Scripting API Reference
 
-Complete reference for the scripting API available when running JavaScript or TypeScript in js-notepad.
-
-## Global Variables
-
-Scripts have access to these global variables:
-
-| Variable | Type | Description |
-|----------|------|-------------|
-| `page` | [IPage](./page.md) | The current page (tab). Read/write content, switch editors, access grouped output. |
-| `app` | [IApp](./app.md) | The application object. Access settings, file system, dialogs, pages, and more. |
-| `ui` | [IUiLog](./ui-log.md) | Log View UI — logging, styled text, and inline dialogs. Lazy-initialized on first access. |
-| `preventOutput()` | function | Suppress default script output to the grouped page. See [Output Suppression](../scripting.md#output-suppression). |
+Scripts have access to three globals — `page`, `app`, and `ui` — plus helpers `preventOutput()` and `styledText()`. No imports needed.
 
 ```javascript
-// Both are available as globals — no import needed
 const text = page.content;
 const theme = app.settings.theme;
+ui.log("Hello");
 ```
 
-## API by Area
+---
 
-### Page
+## API Tree
 
-| API | Description |
-|-----|-------------|
-| [page](./page.md) | Current page — content, language, editor, grouped output |
-| [page.runScript()](./page.md#runscriptpromisestring) | Run page content as a script (same as F5) |
-| [page.asText()](./page.md#astextpromiseitexteditor) | Monaco text editor — selection, cursor, insert |
-| [page.asGrid()](./page.md#asgridpromiseigrideditor) | Grid editor — rows, columns, cells |
-| [page.asNotebook()](./page.md#asnotebookpromiseinotebookeditor) | Notebook — notes, categories, tags |
-| [page.asTodo()](./page.md#astodopromiseitodoeditor) | Todo lists — items, lists, tags |
-| [page.asLink()](./page.md#aslinkpromiseilinkeditor) | Link collections — URLs, categories |
-| [page.asBrowser()](./page.md#asbrowserpromiseibrowsereditor) | Browser — navigate, back, forward |
-| [page.asMarkdown()](./page.md#asmarkdownpromiseimarkdowneditor) | Markdown preview — rendered HTML |
-| [page.asSvg()](./page.md#assvgpromiseisvgeditor) | SVG preview |
-| [page.asHtml()](./page.md#ashtmlpromiseihtmleditor) | HTML preview |
-| [page.asMermaid()](./page.md#asmermaidpromiseimermaideditor) | Mermaid diagram preview |
-| [page.asGraph()](./page.md#asgraphpromiseigrapheditor) | Graph — nodes, links, search, traversal |
+- **[page](./page.md)** — Current page (tab)
+  - `.id` — Unique page identifier
+  - `.type` — Page type (e.g. `"textFile"`)
+  - `.title` — Display title
+  - `.modified` — Has unsaved changes?
+  - `.pinned` — Is tab pinned?
+  - `.filePath` — File path (if file-backed)
+  - `.content` — Text content *(read/write)*
+  - `.language` — Language ID *(read/write)*
+  - `.editor` — Active editor ID *(read/write)*
+  - `.data` — In-memory storage across script runs
+  - `.grouped` — Grouped partner page (auto-creates) → `IPage`
+  - [`.runScript()`](./page.md#runscriptpromisestring) — Run page content as script (F5)
+  - **[.asText()](./page.md#astextpromiseitexteditor)** — Monaco text editor facade
+    - `.editorMounted` — True when editor is visible
+    - `.getSelectedText()` — Currently selected text
+    - `.getCursorPosition()` — `{lineNumber, column}`
+    - `.insertText(text)` — Insert at cursor
+    - `.replaceSelection(text)` — Replace selection
+    - `.revealLine(lineNumber)` — Scroll to line
+    - `.setHighlightText(text)` — Highlight occurrences
+  - **[.asGrid()](./page.md#asgridpromiseigrideditor)** — Grid data facade
+    - `.rows` — All rows as objects
+    - `.columns` — Column definitions
+    - `.rowCount` — Number of rows
+    - `.editCell(columnKey, rowKey, value)` — Edit a cell
+    - `.addRows(count?, insertIndex?)` — Add empty rows
+    - `.deleteRows(rowKeys)` — Delete rows by keys
+    - `.addColumns(count?, insertBeforeKey?)` — Add columns
+    - `.deleteColumns(columnKeys)` — Delete columns
+    - `.setSearch(text)` / `.clearSearch()` — Filter rows
+  - **[.asNotebook()](./page.md#asnotebookpromiseinotebookeditor)** — Notebook facade (`.note.json`)
+    - `.notes` — All notes
+    - `.categories` / `.tags` — Category and tag lists
+    - `.notesCount` — Total count
+    - `.addNote()` — Add note
+    - `.deleteNote(id)` — Delete note
+    - `.updateNoteTitle(id, title)` / `.updateNoteContent(id, content)` / `.updateNoteCategory(id, category)`
+    - `.addNoteTag(id, tag)` / `.removeNoteTag(id, tagIndex)`
+  - **[.asTodo()](./page.md#astodopromiseitodoeditor)** — Todo list facade (`.todo.json`)
+    - `.items` — All items
+    - `.lists` / `.tags` — List and tag definitions
+    - `.addItem(title)` / `.toggleItem(id)` / `.deleteItem(id)` / `.updateItemTitle(id, title)`
+    - `.addList(name)` / `.renameList(old, new)` / `.deleteList(name)`
+    - `.addTag(name)` / `.selectList(name)` / `.selectTag(name)`
+    - `.setSearch(text)` / `.clearSearch()`
+  - **[.asLink()](./page.md#aslinkpromiseilinkeditor)** — Link collection facade (`.link.json`)
+    - `.links` — All links
+    - `.categories` / `.tags` — Category and tag lists
+    - `.linksCount` — Total count
+    - `.addLink(url, title?, category?)` / `.deleteLink(id)` / `.updateLink(id, props)`
+  - **[.asBrowser()](./page.md#asbrowserpromiseibrowsereditor)** — Browser facade
+    - `.url` / `.title` — Current URL and page title
+    - `.navigate(url)` / `.back()` / `.forward()` / `.reload()`
+  - **[.asMarkdown()](./page.md#asmarkdownpromiseimarkdowneditor)** — Markdown preview facade
+    - `.viewMounted` — True if preview is mounted
+    - `.html` — Rendered HTML content
+  - **[.asSvg()](./page.md#assvgpromiseisvgeditor)** — SVG preview: `.svg`
+  - **[.asHtml()](./page.md#ashtmlpromiseihtmleditor)** — HTML preview: `.html`
+  - **[.asMermaid()](./page.md#asmermaidpromiseimermaideditor)** — Mermaid diagram preview
+    - `.svgUrl` — Rendered SVG data URL
+    - `.loading` / `.error` — Render state
+  - **[.asGraph()](./page.md#asgraphpromiseigrapheditor)** — Graph query facade
+    - `.nodes` / `.links` / `.nodeCount` / `.linkCount` / `.getNode(id)`
+    - `.selectedIds` / `.selectedNodes` / `.select(ids)` / `.addToSelection(ids)` / `.clearSelection()`
+    - `.getNeighborIds(id)` / `.getVisualNeighborIds(id)`
+    - `.getGroupOf(id)` / `.getGroupMembers(id)` / `.getGroupMembersDeep(id)` / `.getGroupChain(id)` / `.isGroup(id)`
+    - `.search(query)` / `.bfs(startId, maxDepth?)` / `.getComponents()`
+    - `.rootNodeId` / `.groupingEnabled`
+  - **[.asDraw()](./page.md#asdrawpromiseidraweditor)** — Drawing (Excalidraw) facade
+    - `.elementCount` / `.editorIsMounted`
+    - `.addImage(dataUrl, options?)` — Insert image onto canvas
+    - `.exportAsSvg()` / `.exportAsPng(options?)` — Export drawing
+  - **[.asMcpInspector()](./page.md#asmcpinspectorpromiseimcpinspectoreditor)** — MCP Inspector facade
+    - `.connectionStatus` / `.serverName` / `.serverTitle` / `.serverVersion` / `.errorMessage`
+    - `.transportType` / `.url` / `.command` / `.args` / `.connectionName` *(read/write)*
+    - `.connect()` / `.disconnect()`
+    - `.history` / `.historyCount` / `.clearHistory()` / `.showHistory()`
 
-### Application
+---
 
-| API | Description |
-|-----|-------------|
-| [app](./app.md) | Application root — version, all services |
-| [app.pages](./pages.md) | Open tabs — open files, navigate, group, pin |
-| [app.fs](./fs.md) | File system — read, write, dialogs, OS folders |
-| [app.settings](./settings.md) | Configuration — get/set settings, change events |
-| [app.ui](./ui.md) | User interface — confirm, input, password, notifications |
-| [app.shell](./shell.md) | OS integration — open URLs, encryption, version info |
-| [app.window](./window.md) | Window — minimize, maximize, zoom, multi-window |
-| [app.editors](./editors.md) | Editor registry — list editors, resolve by file |
-| [app.recent](./recent.md) | Recent files — load, add, remove, clear |
-| [app.downloads](./downloads.md) | Downloads — track, cancel, open downloaded files |
-| [app.fetch()](./app.md#fetchurl-options) | HTTP client — Node.js requests with full header control |
+- **[app](./app.md)** — Application root
+  - `.version` — Application version string
+  - [`.fetch(url, options?)`](./app.md#fetchurl-options) — Node.js HTTP client (no browser headers)
+  - **[.pages](./pages.md)** — Open pages (tabs)
+    - `.activePage` — Currently active page → `IPage`
+    - `.groupedPage` — Grouped partner of active page → `IPage`
+    - `.findPage(pageId)` / `.getGroupedPage(withPageId)` / `.isLastPage(pageId?)` / `.isGrouped(pageId)`
+    - `.openFile(filePath)` — Open a file
+    - `.openFileWithDialog()` — Open file via native dialog
+    - `.navigatePageTo(pageId, filePath, options?)` — Navigate page to different file
+    - `.addEmptyPage()` / `.addEditorPage(editor, language, title)` / `.addDrawPage(dataUrl, title?)`
+    - `.openDiff(params)` — Diff view for two files
+    - `.showAboutPage()` / `.showSettingsPage()` / `.showBrowserPage(options?)` / `.showMcpInspectorPage()`
+    - `.openUrlInBrowserTab(url, options?)`
+    - `.showPage(pageId)` / `.showNext()` / `.showPrevious()`
+    - `.moveTab(fromId, toId)` / `.pinTab(pageId)` / `.unpinTab(pageId)`
+    - `.group(leftId, rightId)` / `.ungroup(pageId)`
+  - **[.fs](./fs.md)** — File system
+    - `.read(filePath)` / `.readFile(filePath)` / `.readBinary(filePath)` — Read files
+    - `.write(filePath, content)` / `.writeBinary(filePath, data)` — Write files
+    - `.exists(filePath)` / `.delete(filePath)` / `.rename(old, new)` / `.copyFile(src, dest)` / `.stat(filePath)`
+    - `.listDir(dirPath, pattern?)` / `.listDirWithTypes(dirPath)` — List directory
+    - `.mkdir(dirPath)` / `.removeDir(dirPath, recursive?)`
+    - `.resolveDataPath(rel)` / `.resolveCachePath(rel)` / `.commonFolder(name)` — Path resolution
+    - `.showOpenDialog(options?)` / `.showSaveDialog(options?)` / `.showFolderDialog(options?)` — Native dialogs
+    - `.showInExplorer(filePath)` / `.showFolder(folderPath)` — OS integration
+  - **[.settings](./settings.md)** — Configuration
+    - `.theme` — Current theme name
+    - `.get(key)` / `.set(key, value)` — Read/write settings
+    - `.onChanged` — Setting change event
+  - **[.ui](./ui.md)** — Dialogs and notifications
+    - `.confirm(message, options?)` — Confirmation dialog
+    - `.input(message, options?)` — Text input dialog
+    - `.password(options?)` — Password dialog
+    - `.textDialog(options)` — Monaco editor dialog
+    - `.showProgress(promise, label?)` / `.createProgress(label?)` — Progress overlay
+    - `.notifyProgress(label, timeout?)` — Progress toast
+    - `.addScreenLock()` — Manual screen lock
+    - `.notify(message, type?)` — Toast notification
+  - **[.shell](./shell.md)** — OS integration
+    - `.openExternal(url)` — Open in default browser
+    - **[.version](./shell.md#appshellversion)** — Version info
+      - `.runtimeVersions()` — Electron/Node/Chrome versions
+      - `.checkForUpdates(force?)` — Check for app updates
+    - **[.encryption](./shell.md#appshellencryption)** — AES-GCM encryption
+      - `.encrypt(text, password)` / `.decrypt(text, password)` / `.isEncrypted(text)`
+  - **[.window](./window.md)** — Window management
+    - `.minimize()` / `.maximize()` / `.restore()` / `.close()` / `.toggleWindow()`
+    - `.isMaximized` / `.windowIndex`
+    - `.menuBarOpen` / `.toggleMenuBar()` / `.openMenuBar(panelId?)`
+    - `.zoom(delta)` / `.resetZoom()` / `.zoomLevel`
+    - `.openNew(filePath?)` — Open new window
+  - **[.events](./events.md)** — Event channels for scripting integration
+    - **[.fileExplorer](./events.md#fileexploreritemcontextmenu)** — File explorer events
+      - `.itemContextMenu` — Right-click on file/folder → add custom menu items
+    - **[.browser](./events.md#browseronbookmark)** — Browser events
+      - `.onBookmark` — Before Add/Edit Bookmark dialog → modify title, URL, images, category, tags
+  - **[.editors](./editors.md)** — Editor registry
+    - `.getAll()` / `.getById(id)` / `.resolve(filePath)` / `.resolveId(filePath)`
+    - `.getSwitchOptions(languageId, filePath?)`
+  - **[.recent](./recent.md)** — Recent files
+    - `.files` — Recent file paths (call `.load()` first)
+    - `.load()` / `.add(filePath)` / `.remove(filePath)` / `.clear()`
+  - **[.downloads](./downloads.md)** — Download tracking
+    - `.downloads` / `.hasActiveDownloads` / `.aggregateProgress`
+    - `.cancelDownload(id)` / `.openDownload(id)` / `.showInFolder(id)` / `.clearCompleted()`
+  - **[.menuFolders](./app.md#menufolders)** — Sidebar folders
+    - `.folders` — Current folder list
+    - `.add(options)` / `.remove(id)` / `.find(id)` / `.move(sourceId, targetId)`
 
-### Log View
+---
 
-| API | Description |
-|-----|-------------|
-| [ui](./ui-log.md) | Log View — structured logging, styled text, and inline dialogs |
+- **[ui](./ui-log.md)** — Log View (lazy-initialized on first access)
+  - `await ui()` — Yield to event loop (UI refresh)
+  - `.log(msg)` / `.info(msg)` / `.warn(msg)` / `.error(msg)` / `.success(msg)` / `.text(msg)` — Logging
+  - `.clear()` — Clear all entries
+  - `.preventConsoleLog()` / `.preventConsoleWarn()` / `.preventConsoleError()` — Suppress forwarding
+  - **[.dialog](./ui-log.md#dialogs)** — Inline dialogs
+    - `.confirm(message, buttons?)` — Confirmation
+    - `.buttons(buttons, title?)` — Custom buttons
+    - `.textInput(title?, options?)` — Text input
+    - `.checkboxes(items, title?, buttons?)` — Multi-select
+    - `.radioboxes(items, title?, buttons?)` — Single-select
+    - `.select(items, title?, buttons?)` — Dropdown select
+  - **[.show](./ui-log.md#progress-bars)** — Rich output
+    - `.progress(label?)` — Progress bar → `{value, max, label, completed}`
+    - `.grid(data)` — Inline data grid → `{data, columns, title, openInEditor()}`
+    - `.text(text, language?)` — Syntax-highlighted block → `{text, language, title, openInEditor()}`
+    - `.markdown(text)` — Rendered markdown → `{text, title, openInEditor()}`
+    - `.mermaid(text)` — Rendered diagram → `{text, title, openInEditor()}`
+
+---
+
+- **[preventOutput()](../scripting.md#output-suppression)** — Suppress default script output to grouped page
+- **[styledText(text)](./ui-log.md#styledtext-global)** — Create styled text builder for dialogs
+
+---
 
 ## Node.js Access
 
@@ -71,9 +201,6 @@ Scripts have full Node.js access via `require()`:
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-
-// Use npm packages
-const _ = require(path.join('D:\\myproject\\node_modules', 'lodash'));
 ```
 
 ## Output
