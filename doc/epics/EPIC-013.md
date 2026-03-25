@@ -106,7 +106,7 @@ The NSIS installer (`build/installer.nsh`) is the most complex file — it conta
 | 1 | US-280 Core rebrand | Phase 1: rename all runtime identifiers + icon | Done |
 | 2 | US-285 Version bump to 2.0.1 | Bump version to 2.0.1 to signal breaking change | Done |
 | 3 | US-281 Doc rebrand | Phase 2: update all documentation | Done |
-| 4 | US-282 Repo rename | Phase 3: rename GitHub repo, update URLs | Planned |
+| 4 | US-282 Repo rename | Phase 3: rename GitHub repo, update URLs | Done |
 | 5 | US-284 Cleanup | Phase 4: historical docs, visualizations, mockups | Planned |
 
 ## Icon

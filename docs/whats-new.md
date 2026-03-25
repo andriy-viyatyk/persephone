@@ -971,7 +971,7 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ## Planned Features
 
-See [GitHub Issues](https://github.com/andriy-viyatyk/js-notepad/issues) for planned features and known issues.
+See [GitHub Issues](https://github.com/andriy-viyatyk/persephone/issues) for planned features and known issues.
 
 ### Coming Soon
 
