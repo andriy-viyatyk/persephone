@@ -9,6 +9,7 @@ Epics represent big ideas with high-level overviews. Each epic links to tasks in
 ## Future
 
 - **EPIC-011** — [Chrome Extension Support for Built-in Browser](EPIC-011.md)
+- **EPIC-013** — [Rebrand to "Persephone"](EPIC-013.md)
 
 ## Completed
 
