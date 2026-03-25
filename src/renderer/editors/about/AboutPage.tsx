@@ -278,7 +278,7 @@ function AboutPage({ model }: AboutPageProps) {
         <AboutPageRoot>
             <div className="about-card">
                 <div className="app-icon">
-                    <PersephoneIcon />
+                    <PersephoneIcon width={64} height={64} />
                 </div>
 
                 <h1 className="app-name">Persephone</h1>

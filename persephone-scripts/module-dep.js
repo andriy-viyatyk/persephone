@@ -1,6 +1,6 @@
 // Module Dependencies Graph
 // Parses TypeScript/JavaScript imports and builds a force-graph of module dependencies.
-// Run inside js-notepad ScriptRunner.
+// Run inside persephone ScriptRunner.
 
 const originalFs = require("original-fs");
 const path = require("path");

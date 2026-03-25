@@ -1,6 +1,6 @@
 // React Components Graph
 // Parses TSX files to find React components and their rendering relationships.
-// Run inside js-notepad ScriptRunner.
+// Run inside persephone ScriptRunner.
 
 const originalFs = require("original-fs");
 const path = require("path");

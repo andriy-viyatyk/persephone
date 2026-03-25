@@ -43,9 +43,6 @@ const AppRoot = styled.div({
             alignSelf: "flex-end",
             padding: 0,
             marginBottom: 3,
-            "& svg": {
-                color: color.icon.default,
-            },
         },
         "& .system-button": {
             alignSelf: "flex-start",

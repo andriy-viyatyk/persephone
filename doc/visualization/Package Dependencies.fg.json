@@ -6032,7 +6032,7 @@
       "dependencies": 0
     },
     {
-      "id": "js-notepad",
+      "id": "persephone",
       "level": 1,
       "shape": "star",
       "dependents": 0,
@@ -14469,224 +14469,224 @@
       "target": "fd-slicer"
     },
     {
-      "source": "js-notepad",
+      "source": "persephone",
       "target": "@emotion/react"
     },
     {
-      "source": "js-notepad",
+      "source": "persephone",
       "target": "@emotion/styled"
     },
     {
-      "source": "js-notepad",
+      "source": "persephone",
       "target": "@floating-ui/react"
     },
     {
-      "source": "js-notepad",
+      "source": "persephone",
       "target": "@modelcontextprotocol/sdk"
     },
     {
-      "source": "js-notepad",
+      "source": "persephone",
       "target": "@monaco-editor/react"
     },
     {
-      "source": "js-notepad",
+      "source": "persephone",
       "target": "cheerio"
     },
     {
-      "source": "js-notepad",
+      "source": "persephone",
       "target": "clsx"
     },
     {
-      "source": "js-notepad",
+      "source": "persephone",
       "target": "csv-parse"
     },
     {
-      "source": "js-notepad",
+      "source": "persephone",
       "target": "csv-stringify"
     },
     {
-      "source": "js-notepad",
+      "source": "persephone",
       "target": "d3"
     },
     {
-      "source": "js-notepad",
+      "source": "persephone",
       "target": "d3-drag"
     },
     {
-      "source": "js-notepad",
+      "source": "persephone",
       "target": "d3-zoom"
     },
     {
-      "source": "js-notepad",
+      "source": "persephone",
       "target": "electron-store"
     },
     {
-      "source": "js-notepad",
+      "source": "persephone",
       "target": "iconv-lite"
     },
     {
-      "source": "js-notepad",
+      "source": "persephone",
       "target": "immer"
     },
     {
-      "source": "js-notepad",
+      "source": "persephone",
       "target": "jschardet"
     },
     {
-      "source": "js-notepad",
+      "source": "persephone",
       "target": "json5"
     },
     {
-      "source": "js-notepad",
+      "source": "persephone",
       "target": "jszip"
     },
     {
-      "source": "js-notepad",
+      "source": "persephone",
       "target": "mermaid"
     },
     {
-      "source": "js-notepad",
+      "source": "persephone",
       "target": "monaco-editor"
     },
     {
-      "source": "js-notepad",
+      "source": "persephone",
       "target": "picomatch"
     },
     {
-      "source": "js-notepad",
+      "source": "persephone",
       "target": "react"
     },
     {
-      "source": "js-notepad",
+      "source": "persephone",
       "target": "react-dnd"
     },
     {
-      "source": "js-notepad",
+      "source": "persephone",
       "target": "react-dnd-html5-backend"
     },
     {
-      "source": "js-notepad",
+      "source": "persephone",
       "target": "react-dom"
     },
     {
-      "source": "js-notepad",
+      "source": "persephone",
       "target": "react-markdown"
     },
     {
-      "source": "js-notepad",
+      "source": "persephone",
       "target": "react-tooltip"
     },
     {
-      "source": "js-notepad",
+      "source": "persephone",
       "target": "rehype-raw"
     },
     {
-      "source": "js-notepad",
+      "source": "persephone",
       "target": "remark-gfm"
     },
     {
-      "source": "js-notepad",
+      "source": "persephone",
       "target": "sucrase"
     },
     {
-      "source": "js-notepad",
+      "source": "persephone",
       "target": "use-sync-external-store"
     },
     {
-      "source": "js-notepad",
+      "source": "persephone",
       "target": "zustand"
     },
     {
-      "source": "js-notepad",
+      "source": "persephone",
       "target": "@electron-forge/cli"
     },
     {
-      "source": "js-notepad",
+      "source": "persephone",
       "target": "@electron-forge/plugin-auto-unpack-natives"
     },
     {
-      "source": "js-notepad",
+      "source": "persephone",
       "target": "@electron-forge/plugin-fuses"
     },
     {
-      "source": "js-notepad",
+      "source": "persephone",
       "target": "@electron-forge/plugin-vite"
     },
     {
-      "source": "js-notepad",
+      "source": "persephone",
       "target": "@electron/fuses"
     },
     {
-      "source": "js-notepad",
+      "source": "persephone",
       "target": "@types/d3"
     },
     {
-      "source": "js-notepad",
+      "source": "persephone",
       "target": "@types/d3-drag"
     },
     {
-      "source": "js-notepad",
+      "source": "persephone",
       "target": "@types/d3-zoom"
     },
     {
-      "source": "js-notepad",
+      "source": "persephone",
       "target": "@types/iconv-lite"
     },
     {
-      "source": "js-notepad",
+      "source": "persephone",
       "target": "@types/node"
     },
     {
-      "source": "js-notepad",
+      "source": "persephone",
       "target": "@types/react"
     },
     {
-      "source": "js-notepad",
+      "source": "persephone",
       "target": "@types/react-dom"
     },
     {
-      "source": "js-notepad",
+      "source": "persephone",
       "target": "@typescript-eslint/eslint-plugin"
     },
     {
-      "source": "js-notepad",
+      "source": "persephone",
       "target": "@typescript-eslint/parser"
     },
     {
-      "source": "js-notepad",
+      "source": "persephone",
       "target": "electron"
     },
     {
-      "source": "js-notepad",
+      "source": "persephone",
       "target": "electron-builder"
     },
     {
-      "source": "js-notepad",
+      "source": "persephone",
       "target": "eslint"
     },
     {
-      "source": "js-notepad",
+      "source": "persephone",
       "target": "eslint-plugin-import"
     },
     {
-      "source": "js-notepad",
+      "source": "persephone",
       "target": "patch-package"
     },
     {
-      "source": "js-notepad",
+      "source": "persephone",
       "target": "typescript"
     },
     {
-      "source": "js-notepad",
+      "source": "persephone",
       "target": "vite"
     },
     {
-      "source": "js-notepad",
+      "source": "persephone",
       "target": "vite-plugin-monaco-editor"
     }
   ],
   "options": {
-    "rootNode": "js-notepad",
+    "rootNode": "persephone",
     "charge": -50,
     "linkDistance": 35,
     "collide": 0.6,

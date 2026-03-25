@@ -4,6 +4,7 @@ All completed tasks, newest first.
 
 | ID | Title | Epic | Notes |
 |----|-------|------|-------|
+| US-284 | Cleanup — Rebrand Remaining Files | EPIC-013 | Updated backlog.md, mockups (6 HTML files), visualization graphs (3 fg.json, 657 refs), renamed js-notepad-scripts → persephone-scripts. Full-color theme-aware PersephoneIcon (lily badge) for sidebar button and About page. Historical epics kept as-is. |
 | US-282 | Repo Rename — js-notepad → persephone | EPIC-013 | Renamed GitHub repo, updated local git remote, fixed stale URLs in CONTRIBUTING.md and whats-new.md. |
 | US-285 | Version Bump to 2.0.1 | EPIC-013 | Major version bump to signal breaking change (rebrand). |
 | US-281 | Doc Rebrand — js-notepad → Persephone | EPIC-013 | Renamed all documentation references across 33+ files (~130 refs). Developer docs, user docs, README, MCP guides, QA docs, Claude agents, script library. Added v2.0.1 entry in whats-new.md. Historical changelog entries kept as-is. |

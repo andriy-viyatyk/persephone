@@ -7,7 +7,7 @@
       "level": 1,
       "file": "src/renderer/components/basic/Button.tsx",
       "folder": "src/renderer/components/basic",
-      "path": "[D:/projects/js-notepad/src/renderer/components/basic/Button.tsx](D:/projects/js-notepad/src/renderer/components/basic/Button.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/components/basic/Button.tsx](D:/projects/persephone/src/renderer/components/basic/Button.tsx)",
       "renderedBy": 65
     },
     {
@@ -16,7 +16,7 @@
       "level": 1,
       "file": "src/renderer/components/basic/TextField.tsx",
       "folder": "src/renderer/components/basic",
-      "path": "[D:/projects/js-notepad/src/renderer/components/basic/TextField.tsx](D:/projects/js-notepad/src/renderer/components/basic/TextField.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/components/basic/TextField.tsx](D:/projects/persephone/src/renderer/components/basic/TextField.tsx)",
       "renderedBy": 22
     },
     {
@@ -25,7 +25,7 @@
       "level": 1,
       "file": "src/renderer/components/overlay/WithPopupMenu.tsx",
       "folder": "src/renderer/components/overlay",
-      "path": "[D:/projects/js-notepad/src/renderer/components/overlay/WithPopupMenu.tsx](D:/projects/js-notepad/src/renderer/components/overlay/WithPopupMenu.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/components/overlay/WithPopupMenu.tsx](D:/projects/persephone/src/renderer/components/overlay/WithPopupMenu.tsx)",
       "renderedBy": 15
     },
     {
@@ -34,7 +34,7 @@
       "level": 2,
       "file": "src/renderer/components/layout/Splitter.tsx",
       "folder": "src/renderer/components/layout",
-      "path": "[D:/projects/js-notepad/src/renderer/components/layout/Splitter.tsx](D:/projects/js-notepad/src/renderer/components/layout/Splitter.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/components/layout/Splitter.tsx](D:/projects/persephone/src/renderer/components/layout/Splitter.tsx)",
       "renderedBy": 13
     },
     {
@@ -43,7 +43,7 @@
       "level": 2,
       "file": "src/renderer/components/basic/TextAreaField.tsx",
       "folder": "src/renderer/components/basic",
-      "path": "[D:/projects/js-notepad/src/renderer/components/basic/TextAreaField.tsx](D:/projects/js-notepad/src/renderer/components/basic/TextAreaField.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/components/basic/TextAreaField.tsx](D:/projects/persephone/src/renderer/components/basic/TextAreaField.tsx)",
       "renderedBy": 13
     },
     {
@@ -52,7 +52,7 @@
       "level": 2,
       "file": "src/renderer/components/virtualization/RenderGrid/RenderGrid.tsx",
       "folder": "src/renderer/components/virtualization/RenderGrid",
-      "path": "[D:/projects/js-notepad/src/renderer/components/virtualization/RenderGrid/RenderGrid.tsx](D:/projects/js-notepad/src/renderer/components/virtualization/RenderGrid/RenderGrid.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/components/virtualization/RenderGrid/RenderGrid.tsx](D:/projects/persephone/src/renderer/components/virtualization/RenderGrid/RenderGrid.tsx)",
       "renderedBy": 12
     },
     {
@@ -61,7 +61,7 @@
       "level": 2,
       "file": "src/renderer/components/overlay/Popper.tsx",
       "folder": "src/renderer/components/overlay",
-      "path": "[D:/projects/js-notepad/src/renderer/components/overlay/Popper.tsx](D:/projects/js-notepad/src/renderer/components/overlay/Popper.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/components/overlay/Popper.tsx](D:/projects/persephone/src/renderer/components/overlay/Popper.tsx)",
       "renderedBy": 10
     },
     {
@@ -70,7 +70,7 @@
       "level": 2,
       "file": "src/renderer/components/data-grid/AVGrid/AVGrid.tsx",
       "folder": "src/renderer/components/data-grid/AVGrid",
-      "path": "[D:/projects/js-notepad/src/renderer/components/data-grid/AVGrid/AVGrid.tsx](D:/projects/js-notepad/src/renderer/components/data-grid/AVGrid/AVGrid.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/components/data-grid/AVGrid/AVGrid.tsx](D:/projects/persephone/src/renderer/components/data-grid/AVGrid/AVGrid.tsx)",
       "renderedBy": 9
     },
     {
@@ -79,7 +79,7 @@
       "level": 2,
       "file": "src/renderer/editors/log-view/items/DialogHeader.tsx",
       "folder": "src/renderer/editors/log-view/items",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/log-view/items/DialogHeader.tsx](D:/projects/js-notepad/src/renderer/editors/log-view/items/DialogHeader.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/log-view/items/DialogHeader.tsx](D:/projects/persephone/src/renderer/editors/log-view/items/DialogHeader.tsx)",
       "renderedBy": 9
     },
     {
@@ -88,7 +88,7 @@
       "level": 2,
       "file": "src/renderer/editors/graph/GraphIcons.tsx",
       "folder": "src/renderer/editors/graph",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/graph/GraphIcons.tsx](D:/projects/js-notepad/src/renderer/editors/graph/GraphIcons.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/graph/GraphIcons.tsx](D:/projects/persephone/src/renderer/editors/graph/GraphIcons.tsx)",
       "renderedBy": 8
     },
     {
@@ -97,7 +97,7 @@
       "level": 2,
       "file": "src/renderer/editors/graph/GraphIcons.tsx",
       "folder": "src/renderer/editors/graph",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/graph/GraphIcons.tsx](D:/projects/js-notepad/src/renderer/editors/graph/GraphIcons.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/graph/GraphIcons.tsx](D:/projects/persephone/src/renderer/editors/graph/GraphIcons.tsx)",
       "renderedBy": 8
     },
     {
@@ -106,7 +106,7 @@
       "level": 3,
       "file": "src/renderer/editors/settings/SettingsPage.tsx",
       "folder": "src/renderer/editors/settings",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/settings/SettingsPage.tsx](D:/projects/js-notepad/src/renderer/editors/settings/SettingsPage.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/settings/SettingsPage.tsx](D:/projects/persephone/src/renderer/editors/settings/SettingsPage.tsx)",
       "renderedBy": 7
     },
     {
@@ -115,7 +115,7 @@
       "level": 3,
       "file": "src/renderer/editors/settings/SettingsPage.tsx",
       "folder": "src/renderer/editors/settings",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/settings/SettingsPage.tsx](D:/projects/js-notepad/src/renderer/editors/settings/SettingsPage.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/settings/SettingsPage.tsx](D:/projects/persephone/src/renderer/editors/settings/SettingsPage.tsx)",
       "renderedBy": 7
     },
     {
@@ -124,7 +124,7 @@
       "level": 3,
       "file": "src/renderer/editors/settings/SettingsPage.tsx",
       "folder": "src/renderer/editors/settings",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/settings/SettingsPage.tsx](D:/projects/js-notepad/src/renderer/editors/settings/SettingsPage.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/settings/SettingsPage.tsx](D:/projects/persephone/src/renderer/editors/settings/SettingsPage.tsx)",
       "renderedBy": 7
     },
     {
@@ -133,7 +133,7 @@
       "level": 3,
       "file": "src/renderer/editors/settings/SettingsPage.tsx",
       "folder": "src/renderer/editors/settings",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/settings/SettingsPage.tsx](D:/projects/js-notepad/src/renderer/editors/settings/SettingsPage.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/settings/SettingsPage.tsx](D:/projects/persephone/src/renderer/editors/settings/SettingsPage.tsx)",
       "renderedBy": 7
     },
     {
@@ -142,7 +142,7 @@
       "level": 3,
       "file": "src/renderer/editors/settings/SettingsPage.tsx",
       "folder": "src/renderer/editors/settings",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/settings/SettingsPage.tsx](D:/projects/js-notepad/src/renderer/editors/settings/SettingsPage.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/settings/SettingsPage.tsx](D:/projects/persephone/src/renderer/editors/settings/SettingsPage.tsx)",
       "renderedBy": 7
     },
     {
@@ -151,7 +151,7 @@
       "level": 3,
       "file": "src/renderer/editors/settings/SettingsPage.tsx",
       "folder": "src/renderer/editors/settings",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/settings/SettingsPage.tsx](D:/projects/js-notepad/src/renderer/editors/settings/SettingsPage.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/settings/SettingsPage.tsx](D:/projects/persephone/src/renderer/editors/settings/SettingsPage.tsx)",
       "renderedBy": 7
     },
     {
@@ -160,7 +160,7 @@
       "level": 3,
       "file": "src/renderer/editors/settings/SettingsPage.tsx",
       "folder": "src/renderer/editors/settings",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/settings/SettingsPage.tsx](D:/projects/js-notepad/src/renderer/editors/settings/SettingsPage.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/settings/SettingsPage.tsx](D:/projects/persephone/src/renderer/editors/settings/SettingsPage.tsx)",
       "renderedBy": 7
     },
     {
@@ -169,7 +169,7 @@
       "level": 3,
       "file": "src/renderer/editors/settings/SettingsPage.tsx",
       "folder": "src/renderer/editors/settings",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/settings/SettingsPage.tsx](D:/projects/js-notepad/src/renderer/editors/settings/SettingsPage.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/settings/SettingsPage.tsx](D:/projects/persephone/src/renderer/editors/settings/SettingsPage.tsx)",
       "renderedBy": 7
     },
     {
@@ -178,7 +178,7 @@
       "level": 3,
       "file": "src/renderer/components/basic/Tooltip.tsx",
       "folder": "src/renderer/components/basic",
-      "path": "[D:/projects/js-notepad/src/renderer/components/basic/Tooltip.tsx](D:/projects/js-notepad/src/renderer/components/basic/Tooltip.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/components/basic/Tooltip.tsx](D:/projects/persephone/src/renderer/components/basic/Tooltip.tsx)",
       "renderedBy": 6
     },
     {
@@ -187,7 +187,7 @@
       "level": 3,
       "file": "src/renderer/components/basic/OverflowTooltipText.tsx",
       "folder": "src/renderer/components/basic",
-      "path": "[D:/projects/js-notepad/src/renderer/components/basic/OverflowTooltipText.tsx](D:/projects/js-notepad/src/renderer/components/basic/OverflowTooltipText.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/components/basic/OverflowTooltipText.tsx](D:/projects/persephone/src/renderer/components/basic/OverflowTooltipText.tsx)",
       "renderedBy": 6
     },
     {
@@ -196,7 +196,7 @@
       "level": 3,
       "file": "src/renderer/ui/dialogs/Dialog.tsx",
       "folder": "src/renderer/ui/dialogs",
-      "path": "[D:/projects/js-notepad/src/renderer/ui/dialogs/Dialog.tsx](D:/projects/js-notepad/src/renderer/ui/dialogs/Dialog.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/ui/dialogs/Dialog.tsx](D:/projects/persephone/src/renderer/ui/dialogs/Dialog.tsx)",
       "renderedBy": 6
     },
     {
@@ -205,7 +205,7 @@
       "level": 3,
       "file": "src/renderer/ui/dialogs/Dialog.tsx",
       "folder": "src/renderer/ui/dialogs",
-      "path": "[D:/projects/js-notepad/src/renderer/ui/dialogs/Dialog.tsx](D:/projects/js-notepad/src/renderer/ui/dialogs/Dialog.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/ui/dialogs/Dialog.tsx](D:/projects/persephone/src/renderer/ui/dialogs/Dialog.tsx)",
       "renderedBy": 6
     },
     {
@@ -214,7 +214,7 @@
       "level": 3,
       "file": "src/renderer/components/form/ComboSelect.tsx",
       "folder": "src/renderer/components/form",
-      "path": "[D:/projects/js-notepad/src/renderer/components/form/ComboSelect.tsx](D:/projects/js-notepad/src/renderer/components/form/ComboSelect.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/components/form/ComboSelect.tsx](D:/projects/persephone/src/renderer/components/form/ComboSelect.tsx)",
       "renderedBy": 6
     },
     {
@@ -223,7 +223,7 @@
       "level": 3,
       "file": "src/renderer/editors/log-view/items/DialogContainer.tsx",
       "folder": "src/renderer/editors/log-view/items",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/log-view/items/DialogContainer.tsx](D:/projects/js-notepad/src/renderer/editors/log-view/items/DialogContainer.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/log-view/items/DialogContainer.tsx](D:/projects/persephone/src/renderer/editors/log-view/items/DialogContainer.tsx)",
       "renderedBy": 6
     },
     {
@@ -232,7 +232,7 @@
       "level": 3,
       "file": "src/renderer/editors/log-view/items/ButtonsPanel.tsx",
       "folder": "src/renderer/editors/log-view/items",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/log-view/items/ButtonsPanel.tsx](D:/projects/js-notepad/src/renderer/editors/log-view/items/ButtonsPanel.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/log-view/items/ButtonsPanel.tsx](D:/projects/persephone/src/renderer/editors/log-view/items/ButtonsPanel.tsx)",
       "renderedBy": 6
     },
     {
@@ -241,7 +241,7 @@
       "level": 3,
       "file": "src/renderer/editors/log-view/LogMessageView.tsx",
       "folder": "src/renderer/editors/log-view",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/log-view/LogMessageView.tsx](D:/projects/js-notepad/src/renderer/editors/log-view/LogMessageView.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/log-view/LogMessageView.tsx](D:/projects/persephone/src/renderer/editors/log-view/LogMessageView.tsx)",
       "renderedBy": 5
     },
     {
@@ -250,7 +250,7 @@
       "level": 3,
       "file": "src/renderer/editors/log-view/items/ConfirmDialogView.tsx",
       "folder": "src/renderer/editors/log-view/items",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/log-view/items/ConfirmDialogView.tsx](D:/projects/js-notepad/src/renderer/editors/log-view/items/ConfirmDialogView.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/log-view/items/ConfirmDialogView.tsx](D:/projects/persephone/src/renderer/editors/log-view/items/ConfirmDialogView.tsx)",
       "renderedBy": 5
     },
     {
@@ -259,7 +259,7 @@
       "level": 3,
       "file": "src/renderer/editors/log-view/items/TextInputDialogView.tsx",
       "folder": "src/renderer/editors/log-view/items",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/log-view/items/TextInputDialogView.tsx](D:/projects/js-notepad/src/renderer/editors/log-view/items/TextInputDialogView.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/log-view/items/TextInputDialogView.tsx](D:/projects/persephone/src/renderer/editors/log-view/items/TextInputDialogView.tsx)",
       "renderedBy": 5
     },
     {
@@ -268,7 +268,7 @@
       "level": 3,
       "file": "src/renderer/editors/log-view/items/ButtonsDialogView.tsx",
       "folder": "src/renderer/editors/log-view/items",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/log-view/items/ButtonsDialogView.tsx](D:/projects/js-notepad/src/renderer/editors/log-view/items/ButtonsDialogView.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/log-view/items/ButtonsDialogView.tsx](D:/projects/persephone/src/renderer/editors/log-view/items/ButtonsDialogView.tsx)",
       "renderedBy": 5
     },
     {
@@ -277,7 +277,7 @@
       "level": 3,
       "file": "src/renderer/editors/log-view/items/CheckboxesDialogView.tsx",
       "folder": "src/renderer/editors/log-view/items",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/log-view/items/CheckboxesDialogView.tsx](D:/projects/js-notepad/src/renderer/editors/log-view/items/CheckboxesDialogView.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/log-view/items/CheckboxesDialogView.tsx](D:/projects/persephone/src/renderer/editors/log-view/items/CheckboxesDialogView.tsx)",
       "renderedBy": 5
     },
     {
@@ -286,7 +286,7 @@
       "level": 3,
       "file": "src/renderer/editors/log-view/items/RadioboxesDialogView.tsx",
       "folder": "src/renderer/editors/log-view/items",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/log-view/items/RadioboxesDialogView.tsx](D:/projects/js-notepad/src/renderer/editors/log-view/items/RadioboxesDialogView.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/log-view/items/RadioboxesDialogView.tsx](D:/projects/persephone/src/renderer/editors/log-view/items/RadioboxesDialogView.tsx)",
       "renderedBy": 5
     },
     {
@@ -295,7 +295,7 @@
       "level": 3,
       "file": "src/renderer/editors/log-view/items/SelectDialogView.tsx",
       "folder": "src/renderer/editors/log-view/items",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/log-view/items/SelectDialogView.tsx](D:/projects/js-notepad/src/renderer/editors/log-view/items/SelectDialogView.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/log-view/items/SelectDialogView.tsx](D:/projects/persephone/src/renderer/editors/log-view/items/SelectDialogView.tsx)",
       "renderedBy": 5
     },
     {
@@ -304,7 +304,7 @@
       "level": 3,
       "file": "src/renderer/editors/log-view/items/ProgressOutputView.tsx",
       "folder": "src/renderer/editors/log-view/items",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/log-view/items/ProgressOutputView.tsx](D:/projects/js-notepad/src/renderer/editors/log-view/items/ProgressOutputView.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/log-view/items/ProgressOutputView.tsx](D:/projects/persephone/src/renderer/editors/log-view/items/ProgressOutputView.tsx)",
       "renderedBy": 5
     },
     {
@@ -313,7 +313,7 @@
       "level": 3,
       "file": "src/renderer/editors/log-view/items/GridOutputView.tsx",
       "folder": "src/renderer/editors/log-view/items",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/log-view/items/GridOutputView.tsx](D:/projects/js-notepad/src/renderer/editors/log-view/items/GridOutputView.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/log-view/items/GridOutputView.tsx](D:/projects/persephone/src/renderer/editors/log-view/items/GridOutputView.tsx)",
       "renderedBy": 5
     },
     {
@@ -322,7 +322,7 @@
       "level": 3,
       "file": "src/renderer/editors/log-view/items/TextOutputView.tsx",
       "folder": "src/renderer/editors/log-view/items",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/log-view/items/TextOutputView.tsx](D:/projects/js-notepad/src/renderer/editors/log-view/items/TextOutputView.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/log-view/items/TextOutputView.tsx](D:/projects/persephone/src/renderer/editors/log-view/items/TextOutputView.tsx)",
       "renderedBy": 5
     },
     {
@@ -331,7 +331,7 @@
       "level": 3,
       "file": "src/renderer/editors/log-view/items/MarkdownOutputView.tsx",
       "folder": "src/renderer/editors/log-view/items",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/log-view/items/MarkdownOutputView.tsx](D:/projects/js-notepad/src/renderer/editors/log-view/items/MarkdownOutputView.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/log-view/items/MarkdownOutputView.tsx](D:/projects/persephone/src/renderer/editors/log-view/items/MarkdownOutputView.tsx)",
       "renderedBy": 5
     },
     {
@@ -340,7 +340,7 @@
       "level": 3,
       "file": "src/renderer/editors/log-view/items/MermaidOutputView.tsx",
       "folder": "src/renderer/editors/log-view/items",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/log-view/items/MermaidOutputView.tsx](D:/projects/js-notepad/src/renderer/editors/log-view/items/MermaidOutputView.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/log-view/items/MermaidOutputView.tsx](D:/projects/persephone/src/renderer/editors/log-view/items/MermaidOutputView.tsx)",
       "renderedBy": 5
     },
     {
@@ -349,7 +349,7 @@
       "level": 3,
       "file": "src/renderer/components/virtualization/RenderGrid/RenderFlexGrid.tsx",
       "folder": "src/renderer/components/virtualization/RenderGrid",
-      "path": "[D:/projects/js-notepad/src/renderer/components/virtualization/RenderGrid/RenderFlexGrid.tsx](D:/projects/js-notepad/src/renderer/components/virtualization/RenderGrid/RenderFlexGrid.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/components/virtualization/RenderGrid/RenderFlexGrid.tsx](D:/projects/persephone/src/renderer/components/virtualization/RenderGrid/RenderFlexGrid.tsx)",
       "renderedBy": 5
     },
     {
@@ -358,7 +358,7 @@
       "level": 3,
       "file": "src/renderer/ui/app/RenderEditor.tsx",
       "folder": "src/renderer/ui/app",
-      "path": "[D:/projects/js-notepad/src/renderer/ui/app/RenderEditor.tsx](D:/projects/js-notepad/src/renderer/ui/app/RenderEditor.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/ui/app/RenderEditor.tsx](D:/projects/persephone/src/renderer/ui/app/RenderEditor.tsx)",
       "renderedBy": 4
     },
     {
@@ -367,7 +367,7 @@
       "level": 3,
       "file": "src/renderer/ui/navigation/NavigationPanel.tsx",
       "folder": "src/renderer/ui/navigation",
-      "path": "[D:/projects/js-notepad/src/renderer/ui/navigation/NavigationPanel.tsx](D:/projects/js-notepad/src/renderer/ui/navigation/NavigationPanel.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/ui/navigation/NavigationPanel.tsx](D:/projects/persephone/src/renderer/ui/navigation/NavigationPanel.tsx)",
       "renderedBy": 4
     },
     {
@@ -376,7 +376,7 @@
       "level": 3,
       "file": "src/renderer/editors/log-view/StyledTextView.tsx",
       "folder": "src/renderer/editors/log-view",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/log-view/StyledTextView.tsx](D:/projects/js-notepad/src/renderer/editors/log-view/StyledTextView.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/log-view/StyledTextView.tsx](D:/projects/persephone/src/renderer/editors/log-view/StyledTextView.tsx)",
       "renderedBy": 4
     },
     {
@@ -385,7 +385,7 @@
       "level": 3,
       "file": "src/renderer/editors/log-view/LogEntryContent.tsx",
       "folder": "src/renderer/editors/log-view",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/log-view/LogEntryContent.tsx](D:/projects/js-notepad/src/renderer/editors/log-view/LogEntryContent.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/log-view/LogEntryContent.tsx](D:/projects/persephone/src/renderer/editors/log-view/LogEntryContent.tsx)",
       "renderedBy": 4
     },
     {
@@ -394,7 +394,7 @@
       "level": 3,
       "file": "src/renderer/editors/log-view/LogEntryContent.tsx",
       "folder": "src/renderer/editors/log-view",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/log-view/LogEntryContent.tsx](D:/projects/js-notepad/src/renderer/editors/log-view/LogEntryContent.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/log-view/LogEntryContent.tsx](D:/projects/persephone/src/renderer/editors/log-view/LogEntryContent.tsx)",
       "renderedBy": 4
     },
     {
@@ -403,7 +403,7 @@
       "level": 3,
       "file": "src/renderer/editors/log-view/LogEntryContent.tsx",
       "folder": "src/renderer/editors/log-view",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/log-view/LogEntryContent.tsx](D:/projects/js-notepad/src/renderer/editors/log-view/LogEntryContent.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/log-view/LogEntryContent.tsx](D:/projects/persephone/src/renderer/editors/log-view/LogEntryContent.tsx)",
       "renderedBy": 4
     },
     {
@@ -412,7 +412,7 @@
       "level": 3,
       "file": "src/renderer/editors/log-view/LogEntryContent.tsx",
       "folder": "src/renderer/editors/log-view",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/log-view/LogEntryContent.tsx](D:/projects/js-notepad/src/renderer/editors/log-view/LogEntryContent.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/log-view/LogEntryContent.tsx](D:/projects/persephone/src/renderer/editors/log-view/LogEntryContent.tsx)",
       "renderedBy": 4
     },
     {
@@ -421,7 +421,7 @@
       "level": 3,
       "file": "src/renderer/editors/graph/GraphDetailPanel.tsx",
       "folder": "src/renderer/editors/graph",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/graph/GraphDetailPanel.tsx](D:/projects/js-notepad/src/renderer/editors/graph/GraphDetailPanel.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/graph/GraphDetailPanel.tsx](D:/projects/persephone/src/renderer/editors/graph/GraphDetailPanel.tsx)",
       "renderedBy": 4
     },
     {
@@ -430,7 +430,7 @@
       "level": 3,
       "file": "src/renderer/editors/graph/GraphDetailPanel.tsx",
       "folder": "src/renderer/editors/graph",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/graph/GraphDetailPanel.tsx](D:/projects/js-notepad/src/renderer/editors/graph/GraphDetailPanel.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/graph/GraphDetailPanel.tsx](D:/projects/persephone/src/renderer/editors/graph/GraphDetailPanel.tsx)",
       "renderedBy": 4
     },
     {
@@ -439,7 +439,7 @@
       "level": 3,
       "file": "src/renderer/editors/graph/GraphDetailPanel.tsx",
       "folder": "src/renderer/editors/graph",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/graph/GraphDetailPanel.tsx](D:/projects/js-notepad/src/renderer/editors/graph/GraphDetailPanel.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/graph/GraphDetailPanel.tsx](D:/projects/persephone/src/renderer/editors/graph/GraphDetailPanel.tsx)",
       "renderedBy": 4
     },
     {
@@ -448,7 +448,7 @@
       "level": 3,
       "file": "src/renderer/editors/graph/GraphDetailPanel.tsx",
       "folder": "src/renderer/editors/graph",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/graph/GraphDetailPanel.tsx](D:/projects/js-notepad/src/renderer/editors/graph/GraphDetailPanel.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/graph/GraphDetailPanel.tsx](D:/projects/persephone/src/renderer/editors/graph/GraphDetailPanel.tsx)",
       "renderedBy": 4
     },
     {
@@ -457,7 +457,7 @@
       "level": 4,
       "file": "src/renderer/components/icons/LanguageIcon.tsx",
       "folder": "src/renderer/components/icons",
-      "path": "[D:/projects/js-notepad/src/renderer/components/icons/LanguageIcon.tsx](D:/projects/js-notepad/src/renderer/components/icons/LanguageIcon.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/components/icons/LanguageIcon.tsx](D:/projects/persephone/src/renderer/components/icons/LanguageIcon.tsx)",
       "renderedBy": 3
     },
     {
@@ -466,7 +466,7 @@
       "level": 4,
       "file": "src/renderer/components/icons/FileIcon.tsx",
       "folder": "src/renderer/components/icons",
-      "path": "[D:/projects/js-notepad/src/renderer/components/icons/FileIcon.tsx](D:/projects/js-notepad/src/renderer/components/icons/FileIcon.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/components/icons/FileIcon.tsx](D:/projects/persephone/src/renderer/components/icons/FileIcon.tsx)",
       "renderedBy": 3
     },
     {
@@ -475,7 +475,7 @@
       "level": 4,
       "file": "src/renderer/components/icons/FileIcon.tsx",
       "folder": "src/renderer/components/icons",
-      "path": "[D:/projects/js-notepad/src/renderer/components/icons/FileIcon.tsx](D:/projects/js-notepad/src/renderer/components/icons/FileIcon.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/components/icons/FileIcon.tsx](D:/projects/persephone/src/renderer/components/icons/FileIcon.tsx)",
       "renderedBy": 3
     },
     {
@@ -484,7 +484,7 @@
       "level": 4,
       "file": "src/renderer/components/overlay/PopupMenu.tsx",
       "folder": "src/renderer/components/overlay",
-      "path": "[D:/projects/js-notepad/src/renderer/components/overlay/PopupMenu.tsx](D:/projects/js-notepad/src/renderer/components/overlay/PopupMenu.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/components/overlay/PopupMenu.tsx](D:/projects/persephone/src/renderer/components/overlay/PopupMenu.tsx)",
       "renderedBy": 3
     },
     {
@@ -493,7 +493,7 @@
       "level": 4,
       "file": "src/renderer/ui/app/AsyncEditor.tsx",
       "folder": "src/renderer/ui/app",
-      "path": "[D:/projects/js-notepad/src/renderer/ui/app/AsyncEditor.tsx](D:/projects/js-notepad/src/renderer/ui/app/AsyncEditor.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/ui/app/AsyncEditor.tsx](D:/projects/persephone/src/renderer/ui/app/AsyncEditor.tsx)",
       "renderedBy": 3
     },
     {
@@ -502,7 +502,7 @@
       "level": 4,
       "file": "src/renderer/components/basic/PathInput.tsx",
       "folder": "src/renderer/components/basic",
-      "path": "[D:/projects/js-notepad/src/renderer/components/basic/PathInput.tsx](D:/projects/js-notepad/src/renderer/components/basic/PathInput.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/components/basic/PathInput.tsx](D:/projects/persephone/src/renderer/components/basic/PathInput.tsx)",
       "renderedBy": 3
     },
     {
@@ -511,7 +511,7 @@
       "level": 4,
       "file": "src/renderer/editors/graph/GraphTooltip.tsx",
       "folder": "src/renderer/editors/graph",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/graph/GraphTooltip.tsx](D:/projects/js-notepad/src/renderer/editors/graph/GraphTooltip.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/graph/GraphTooltip.tsx](D:/projects/persephone/src/renderer/editors/graph/GraphTooltip.tsx)",
       "renderedBy": 3
     },
     {
@@ -520,7 +520,7 @@
       "level": 4,
       "file": "src/renderer/editors/graph/GraphTooltip.tsx",
       "folder": "src/renderer/editors/graph",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/graph/GraphTooltip.tsx](D:/projects/js-notepad/src/renderer/editors/graph/GraphTooltip.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/graph/GraphTooltip.tsx](D:/projects/persephone/src/renderer/editors/graph/GraphTooltip.tsx)",
       "renderedBy": 3
     },
     {
@@ -529,7 +529,7 @@
       "level": 4,
       "file": "src/renderer/editors/graph/GraphTooltip.tsx",
       "folder": "src/renderer/editors/graph",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/graph/GraphTooltip.tsx](D:/projects/js-notepad/src/renderer/editors/graph/GraphTooltip.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/graph/GraphTooltip.tsx](D:/projects/persephone/src/renderer/editors/graph/GraphTooltip.tsx)",
       "renderedBy": 3
     },
     {
@@ -538,7 +538,7 @@
       "level": 4,
       "file": "src/renderer/ui/app/Pages.tsx",
       "folder": "src/renderer/ui/app",
-      "path": "[D:/projects/js-notepad/src/renderer/ui/app/Pages.tsx](D:/projects/js-notepad/src/renderer/ui/app/Pages.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/ui/app/Pages.tsx](D:/projects/persephone/src/renderer/ui/app/Pages.tsx)",
       "renderedBy": 3
     },
     {
@@ -547,7 +547,7 @@
       "level": 4,
       "file": "src/renderer/ui/app/Pages.tsx",
       "folder": "src/renderer/ui/app",
-      "path": "[D:/projects/js-notepad/src/renderer/ui/app/Pages.tsx](D:/projects/js-notepad/src/renderer/ui/app/Pages.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/ui/app/Pages.tsx](D:/projects/persephone/src/renderer/ui/app/Pages.tsx)",
       "renderedBy": 3
     },
     {
@@ -556,7 +556,7 @@
       "level": 4,
       "file": "src/renderer/ui/app/Pages.tsx",
       "folder": "src/renderer/ui/app",
-      "path": "[D:/projects/js-notepad/src/renderer/ui/app/Pages.tsx](D:/projects/js-notepad/src/renderer/ui/app/Pages.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/ui/app/Pages.tsx](D:/projects/persephone/src/renderer/ui/app/Pages.tsx)",
       "renderedBy": 3
     },
     {
@@ -565,7 +565,7 @@
       "level": 4,
       "file": "src/renderer/editors/log-view/LogEntryWrapper.tsx",
       "folder": "src/renderer/editors/log-view",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/log-view/LogEntryWrapper.tsx](D:/projects/js-notepad/src/renderer/editors/log-view/LogEntryWrapper.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/log-view/LogEntryWrapper.tsx](D:/projects/persephone/src/renderer/editors/log-view/LogEntryWrapper.tsx)",
       "renderedBy": 3
     },
     {
@@ -574,7 +574,7 @@
       "level": 4,
       "file": "src/renderer/components/TreeView/TreeView.tsx",
       "folder": "src/renderer/components/TreeView",
-      "path": "[D:/projects/js-notepad/src/renderer/components/TreeView/TreeView.tsx](D:/projects/js-notepad/src/renderer/components/TreeView/TreeView.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/components/TreeView/TreeView.tsx](D:/projects/persephone/src/renderer/components/TreeView/TreeView.tsx)",
       "renderedBy": 2
     },
     {
@@ -583,7 +583,7 @@
       "level": 4,
       "file": "src/renderer/components/form/SwitchButtons.tsx",
       "folder": "src/renderer/components/form",
-      "path": "[D:/projects/js-notepad/src/renderer/components/form/SwitchButtons.tsx](D:/projects/js-notepad/src/renderer/components/form/SwitchButtons.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/components/form/SwitchButtons.tsx](D:/projects/persephone/src/renderer/components/form/SwitchButtons.tsx)",
       "renderedBy": 2
     },
     {
@@ -592,7 +592,7 @@
       "level": 4,
       "file": "src/renderer/editors/graph/GraphTooltip.tsx",
       "folder": "src/renderer/editors/graph",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/graph/GraphTooltip.tsx](D:/projects/js-notepad/src/renderer/editors/graph/GraphTooltip.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/graph/GraphTooltip.tsx](D:/projects/persephone/src/renderer/editors/graph/GraphTooltip.tsx)",
       "renderedBy": 2
     },
     {
@@ -601,7 +601,7 @@
       "level": 4,
       "file": "src/renderer/editors/browser/BrowserTabsPanel.tsx",
       "folder": "src/renderer/editors/browser",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/browser/BrowserTabsPanel.tsx](D:/projects/js-notepad/src/renderer/editors/browser/BrowserTabsPanel.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/browser/BrowserTabsPanel.tsx](D:/projects/persephone/src/renderer/editors/browser/BrowserTabsPanel.tsx)",
       "renderedBy": 2
     },
     {
@@ -610,7 +610,7 @@
       "level": 4,
       "file": "src/renderer/editors/browser/UrlSuggestionsDropdown.tsx",
       "folder": "src/renderer/editors/browser",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/browser/UrlSuggestionsDropdown.tsx](D:/projects/js-notepad/src/renderer/editors/browser/UrlSuggestionsDropdown.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/browser/UrlSuggestionsDropdown.tsx](D:/projects/persephone/src/renderer/editors/browser/UrlSuggestionsDropdown.tsx)",
       "renderedBy": 2
     },
     {
@@ -619,7 +619,7 @@
       "level": 4,
       "file": "src/renderer/components/basic/Breadcrumb.tsx",
       "folder": "src/renderer/components/basic",
-      "path": "[D:/projects/js-notepad/src/renderer/components/basic/Breadcrumb.tsx](D:/projects/js-notepad/src/renderer/components/basic/Breadcrumb.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/components/basic/Breadcrumb.tsx](D:/projects/persephone/src/renderer/components/basic/Breadcrumb.tsx)",
       "renderedBy": 2
     },
     {
@@ -628,7 +628,7 @@
       "level": 4,
       "file": "src/renderer/components/basic/TagsList.tsx",
       "folder": "src/renderer/components/basic",
-      "path": "[D:/projects/js-notepad/src/renderer/components/basic/TagsList.tsx](D:/projects/js-notepad/src/renderer/components/basic/TagsList.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/components/basic/TagsList.tsx](D:/projects/persephone/src/renderer/components/basic/TagsList.tsx)",
       "renderedBy": 2
     },
     {
@@ -637,7 +637,7 @@
       "level": 4,
       "file": "src/renderer/components/layout/CollapsiblePanelStack.tsx",
       "folder": "src/renderer/components/layout",
-      "path": "[D:/projects/js-notepad/src/renderer/components/layout/CollapsiblePanelStack.tsx](D:/projects/js-notepad/src/renderer/components/layout/CollapsiblePanelStack.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/components/layout/CollapsiblePanelStack.tsx](D:/projects/persephone/src/renderer/components/layout/CollapsiblePanelStack.tsx)",
       "renderedBy": 2
     },
     {
@@ -646,7 +646,7 @@
       "level": 4,
       "file": "src/renderer/editors/browser/BookmarksDrawer.tsx",
       "folder": "src/renderer/editors/browser",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/browser/BookmarksDrawer.tsx](D:/projects/js-notepad/src/renderer/editors/browser/BookmarksDrawer.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/browser/BookmarksDrawer.tsx](D:/projects/persephone/src/renderer/editors/browser/BookmarksDrawer.tsx)",
       "renderedBy": 2
     },
     {
@@ -655,7 +655,7 @@
       "level": 4,
       "file": "src/renderer/editors/browser/DownloadButton.tsx",
       "folder": "src/renderer/editors/browser",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/browser/DownloadButton.tsx](D:/projects/js-notepad/src/renderer/editors/browser/DownloadButton.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/browser/DownloadButton.tsx](D:/projects/persephone/src/renderer/editors/browser/DownloadButton.tsx)",
       "renderedBy": 2
     },
     {
@@ -664,7 +664,7 @@
       "level": 4,
       "file": "src/renderer/editors/browser/BrowserDownloadsPopup.tsx",
       "folder": "src/renderer/editors/browser",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/browser/BrowserDownloadsPopup.tsx](D:/projects/js-notepad/src/renderer/editors/browser/BrowserDownloadsPopup.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/browser/BrowserDownloadsPopup.tsx](D:/projects/persephone/src/renderer/editors/browser/BrowserDownloadsPopup.tsx)",
       "renderedBy": 2
     },
     {
@@ -673,7 +673,7 @@
       "level": 4,
       "file": "src/renderer/editors/browser/BrowserFindBar.tsx",
       "folder": "src/renderer/editors/browser",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/browser/BrowserFindBar.tsx](D:/projects/js-notepad/src/renderer/editors/browser/BrowserFindBar.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/browser/BrowserFindBar.tsx](D:/projects/persephone/src/renderer/editors/browser/BrowserFindBar.tsx)",
       "renderedBy": 2
     },
     {
@@ -682,7 +682,7 @@
       "level": 4,
       "file": "src/renderer/ui/navigation/SearchResultsPanel.tsx",
       "folder": "src/renderer/ui/navigation",
-      "path": "[D:/projects/js-notepad/src/renderer/ui/navigation/SearchResultsPanel.tsx](D:/projects/js-notepad/src/renderer/ui/navigation/SearchResultsPanel.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/ui/navigation/SearchResultsPanel.tsx](D:/projects/persephone/src/renderer/ui/navigation/SearchResultsPanel.tsx)",
       "renderedBy": 2
     },
     {
@@ -691,7 +691,7 @@
       "level": 4,
       "file": "src/renderer/ui/navigation/SearchResultsPanel.tsx",
       "folder": "src/renderer/ui/navigation",
-      "path": "[D:/projects/js-notepad/src/renderer/ui/navigation/SearchResultsPanel.tsx](D:/projects/js-notepad/src/renderer/ui/navigation/SearchResultsPanel.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/ui/navigation/SearchResultsPanel.tsx](D:/projects/persephone/src/renderer/ui/navigation/SearchResultsPanel.tsx)",
       "renderedBy": 2
     },
     {
@@ -700,7 +700,7 @@
       "level": 4,
       "file": "src/renderer/components/data-grid/AVGrid/DefaultEditFormater.tsx",
       "folder": "src/renderer/components/data-grid/AVGrid",
-      "path": "[D:/projects/js-notepad/src/renderer/components/data-grid/AVGrid/DefaultEditFormater.tsx](D:/projects/js-notepad/src/renderer/components/data-grid/AVGrid/DefaultEditFormater.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/components/data-grid/AVGrid/DefaultEditFormater.tsx](D:/projects/persephone/src/renderer/components/data-grid/AVGrid/DefaultEditFormater.tsx)",
       "renderedBy": 2
     },
     {
@@ -709,7 +709,7 @@
       "level": 4,
       "file": "src/renderer/components/data-grid/AVGrid/DefaultEditFormater.tsx",
       "folder": "src/renderer/components/data-grid/AVGrid",
-      "path": "[D:/projects/js-notepad/src/renderer/components/data-grid/AVGrid/DefaultEditFormater.tsx](D:/projects/js-notepad/src/renderer/components/data-grid/AVGrid/DefaultEditFormater.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/components/data-grid/AVGrid/DefaultEditFormater.tsx](D:/projects/persephone/src/renderer/components/data-grid/AVGrid/DefaultEditFormater.tsx)",
       "renderedBy": 2
     },
     {
@@ -718,7 +718,7 @@
       "level": 4,
       "file": "src/renderer/components/data-grid/AVGrid/DataCell.tsx",
       "folder": "src/renderer/components/data-grid/AVGrid",
-      "path": "[D:/projects/js-notepad/src/renderer/components/data-grid/AVGrid/DataCell.tsx](D:/projects/js-notepad/src/renderer/components/data-grid/AVGrid/DataCell.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/components/data-grid/AVGrid/DataCell.tsx](D:/projects/persephone/src/renderer/components/data-grid/AVGrid/DataCell.tsx)",
       "renderedBy": 2
     },
     {
@@ -727,7 +727,7 @@
       "level": 4,
       "file": "src/renderer/components/data-grid/AVGrid/filters/OptionsFilterContent.tsx",
       "folder": "src/renderer/components/data-grid/AVGrid/filters",
-      "path": "[D:/projects/js-notepad/src/renderer/components/data-grid/AVGrid/filters/OptionsFilterContent.tsx](D:/projects/js-notepad/src/renderer/components/data-grid/AVGrid/filters/OptionsFilterContent.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/components/data-grid/AVGrid/filters/OptionsFilterContent.tsx](D:/projects/persephone/src/renderer/components/data-grid/AVGrid/filters/OptionsFilterContent.tsx)",
       "renderedBy": 2
     },
     {
@@ -736,7 +736,7 @@
       "level": 4,
       "file": "src/renderer/components/data-grid/AVGrid/filters/FilterPoper.tsx",
       "folder": "src/renderer/components/data-grid/AVGrid/filters",
-      "path": "[D:/projects/js-notepad/src/renderer/components/data-grid/AVGrid/filters/FilterPoper.tsx](D:/projects/js-notepad/src/renderer/components/data-grid/AVGrid/filters/FilterPoper.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/components/data-grid/AVGrid/filters/FilterPoper.tsx](D:/projects/persephone/src/renderer/components/data-grid/AVGrid/filters/FilterPoper.tsx)",
       "renderedBy": 2
     },
     {
@@ -745,7 +745,7 @@
       "level": 4,
       "file": "src/renderer/components/basic/Chip.tsx",
       "folder": "src/renderer/components/basic",
-      "path": "[D:/projects/js-notepad/src/renderer/components/basic/Chip.tsx](D:/projects/js-notepad/src/renderer/components/basic/Chip.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/components/basic/Chip.tsx](D:/projects/persephone/src/renderer/components/basic/Chip.tsx)",
       "renderedBy": 2
     },
     {
@@ -754,7 +754,7 @@
       "level": 4,
       "file": "src/renderer/editors/markdown/CodeBlock.tsx",
       "folder": "src/renderer/editors/markdown",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/markdown/CodeBlock.tsx](D:/projects/js-notepad/src/renderer/editors/markdown/CodeBlock.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/markdown/CodeBlock.tsx](D:/projects/persephone/src/renderer/editors/markdown/CodeBlock.tsx)",
       "renderedBy": 2
     },
     {
@@ -763,7 +763,7 @@
       "level": 4,
       "file": "src/renderer/editors/markdown/CodeBlock.tsx",
       "folder": "src/renderer/editors/markdown",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/markdown/CodeBlock.tsx](D:/projects/js-notepad/src/renderer/editors/markdown/CodeBlock.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/markdown/CodeBlock.tsx](D:/projects/persephone/src/renderer/editors/markdown/CodeBlock.tsx)",
       "renderedBy": 2
     },
     {
@@ -772,7 +772,7 @@
       "level": 4,
       "file": "src/renderer/editors/markdown/MarkdownBlock.tsx",
       "folder": "src/renderer/editors/markdown",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/markdown/MarkdownBlock.tsx](D:/projects/js-notepad/src/renderer/editors/markdown/MarkdownBlock.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/markdown/MarkdownBlock.tsx](D:/projects/persephone/src/renderer/editors/markdown/MarkdownBlock.tsx)",
       "renderedBy": 2
     },
     {
@@ -781,7 +781,7 @@
       "level": 4,
       "file": "src/renderer/editors/log-view/LogViewEditor.tsx",
       "folder": "src/renderer/editors/log-view",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/log-view/LogViewEditor.tsx](D:/projects/js-notepad/src/renderer/editors/log-view/LogViewEditor.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/log-view/LogViewEditor.tsx](D:/projects/persephone/src/renderer/editors/log-view/LogViewEditor.tsx)",
       "renderedBy": 2
     },
     {
@@ -790,7 +790,7 @@
       "level": 4,
       "file": "src/renderer/editors/log-view/LogViewEditor.tsx",
       "folder": "src/renderer/editors/log-view",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/log-view/LogViewEditor.tsx](D:/projects/js-notepad/src/renderer/editors/log-view/LogViewEditor.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/log-view/LogViewEditor.tsx](D:/projects/persephone/src/renderer/editors/log-view/LogViewEditor.tsx)",
       "renderedBy": 2
     },
     {
@@ -799,7 +799,7 @@
       "level": 4,
       "file": "src/renderer/editors/notebook/note-editor/NoteItemToolbar.tsx",
       "folder": "src/renderer/editors/notebook/note-editor",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/notebook/note-editor/NoteItemToolbar.tsx](D:/projects/js-notepad/src/renderer/editors/notebook/note-editor/NoteItemToolbar.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/notebook/note-editor/NoteItemToolbar.tsx](D:/projects/persephone/src/renderer/editors/notebook/note-editor/NoteItemToolbar.tsx)",
       "renderedBy": 2
     },
     {
@@ -808,7 +808,7 @@
       "level": 4,
       "file": "src/renderer/editors/notebook/note-editor/NoteItemActiveEditor.tsx",
       "folder": "src/renderer/editors/notebook/note-editor",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/notebook/note-editor/NoteItemActiveEditor.tsx](D:/projects/js-notepad/src/renderer/editors/notebook/note-editor/NoteItemActiveEditor.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/notebook/note-editor/NoteItemActiveEditor.tsx](D:/projects/persephone/src/renderer/editors/notebook/note-editor/NoteItemActiveEditor.tsx)",
       "renderedBy": 2
     },
     {
@@ -817,7 +817,7 @@
       "level": 4,
       "file": "src/renderer/editors/graph/GraphDetailPanel.tsx",
       "folder": "src/renderer/editors/graph",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/graph/GraphDetailPanel.tsx](D:/projects/js-notepad/src/renderer/editors/graph/GraphDetailPanel.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/graph/GraphDetailPanel.tsx](D:/projects/persephone/src/renderer/editors/graph/GraphDetailPanel.tsx)",
       "renderedBy": 2
     },
     {
@@ -826,7 +826,7 @@
       "level": 4,
       "file": "src/renderer/editors/graph/GraphTuningSliders.tsx",
       "folder": "src/renderer/editors/graph",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/graph/GraphTuningSliders.tsx](D:/projects/js-notepad/src/renderer/editors/graph/GraphTuningSliders.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/graph/GraphTuningSliders.tsx](D:/projects/persephone/src/renderer/editors/graph/GraphTuningSliders.tsx)",
       "renderedBy": 2
     },
     {
@@ -835,7 +835,7 @@
       "level": 4,
       "file": "src/renderer/editors/graph/GraphExpansionSettings.tsx",
       "folder": "src/renderer/editors/graph",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/graph/GraphExpansionSettings.tsx](D:/projects/js-notepad/src/renderer/editors/graph/GraphExpansionSettings.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/graph/GraphExpansionSettings.tsx](D:/projects/persephone/src/renderer/editors/graph/GraphExpansionSettings.tsx)",
       "renderedBy": 2
     },
     {
@@ -844,7 +844,7 @@
       "level": 4,
       "file": "src/renderer/editors/graph/GraphLegendPanel.tsx",
       "folder": "src/renderer/editors/graph",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/graph/GraphLegendPanel.tsx](D:/projects/js-notepad/src/renderer/editors/graph/GraphLegendPanel.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/graph/GraphLegendPanel.tsx](D:/projects/persephone/src/renderer/editors/graph/GraphLegendPanel.tsx)",
       "renderedBy": 2
     },
     {
@@ -853,7 +853,7 @@
       "level": 4,
       "file": "src/renderer/editors/graph/GraphLegendPanel.tsx",
       "folder": "src/renderer/editors/graph",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/graph/GraphLegendPanel.tsx](D:/projects/js-notepad/src/renderer/editors/graph/GraphLegendPanel.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/graph/GraphLegendPanel.tsx](D:/projects/persephone/src/renderer/editors/graph/GraphLegendPanel.tsx)",
       "renderedBy": 2
     },
     {
@@ -862,7 +862,7 @@
       "level": 4,
       "file": "src/renderer/editors/graph/GraphLegendPanel.tsx",
       "folder": "src/renderer/editors/graph",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/graph/GraphLegendPanel.tsx](D:/projects/js-notepad/src/renderer/editors/graph/GraphLegendPanel.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/graph/GraphLegendPanel.tsx](D:/projects/persephone/src/renderer/editors/graph/GraphLegendPanel.tsx)",
       "renderedBy": 2
     },
     {
@@ -871,7 +871,7 @@
       "level": 5,
       "file": "src/renderer/components/TreeView/TreeView.tsx",
       "folder": "src/renderer/components/TreeView",
-      "path": "[D:/projects/js-notepad/src/renderer/components/TreeView/TreeView.tsx](D:/projects/js-notepad/src/renderer/components/TreeView/TreeView.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/components/TreeView/TreeView.tsx](D:/projects/persephone/src/renderer/components/TreeView/TreeView.tsx)",
       "renderedBy": 1
     },
     {
@@ -880,7 +880,7 @@
       "level": 5,
       "file": "src/renderer/components/basic/InputBase.tsx",
       "folder": "src/renderer/components/basic",
-      "path": "[D:/projects/js-notepad/src/renderer/components/basic/InputBase.tsx](D:/projects/js-notepad/src/renderer/components/basic/InputBase.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/components/basic/InputBase.tsx](D:/projects/persephone/src/renderer/components/basic/InputBase.tsx)",
       "renderedBy": 1
     },
     {
@@ -889,7 +889,7 @@
       "level": 5,
       "file": "src/renderer/components/basic/Input.tsx",
       "folder": "src/renderer/components/basic",
-      "path": "[D:/projects/js-notepad/src/renderer/components/basic/Input.tsx](D:/projects/js-notepad/src/renderer/components/basic/Input.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/components/basic/Input.tsx](D:/projects/persephone/src/renderer/components/basic/Input.tsx)",
       "renderedBy": 1
     },
     {
@@ -898,7 +898,7 @@
       "level": 5,
       "file": "src/renderer/components/form/List.tsx",
       "folder": "src/renderer/components/form",
-      "path": "[D:/projects/js-notepad/src/renderer/components/form/List.tsx](D:/projects/js-notepad/src/renderer/components/form/List.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/components/form/List.tsx](D:/projects/persephone/src/renderer/components/form/List.tsx)",
       "renderedBy": 1
     },
     {
@@ -907,7 +907,7 @@
       "level": 5,
       "file": "src/renderer/ui/dialogs/poppers/Poppers.tsx",
       "folder": "src/renderer/ui/dialogs/poppers",
-      "path": "[D:/projects/js-notepad/src/renderer/ui/dialogs/poppers/Poppers.tsx](D:/projects/js-notepad/src/renderer/ui/dialogs/poppers/Poppers.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/ui/dialogs/poppers/Poppers.tsx](D:/projects/persephone/src/renderer/ui/dialogs/poppers/Poppers.tsx)",
       "renderedBy": 1
     },
     {
@@ -916,7 +916,7 @@
       "level": 5,
       "file": "src/renderer/editors/text/TextEditor.tsx",
       "folder": "src/renderer/editors/text",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/text/TextEditor.tsx](D:/projects/js-notepad/src/renderer/editors/text/TextEditor.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/text/TextEditor.tsx](D:/projects/persephone/src/renderer/editors/text/TextEditor.tsx)",
       "renderedBy": 1
     },
     {
@@ -925,7 +925,7 @@
       "level": 5,
       "file": "src/renderer/components/data-grid/AVGrid/filters/useFilters.tsx",
       "folder": "src/renderer/components/data-grid/AVGrid/filters",
-      "path": "[D:/projects/js-notepad/src/renderer/components/data-grid/AVGrid/filters/useFilters.tsx](D:/projects/js-notepad/src/renderer/components/data-grid/AVGrid/filters/useFilters.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/components/data-grid/AVGrid/filters/useFilters.tsx](D:/projects/persephone/src/renderer/components/data-grid/AVGrid/filters/useFilters.tsx)",
       "renderedBy": 1
     },
     {
@@ -934,7 +934,7 @@
       "level": 5,
       "file": "src/renderer/ui/dialogs/alerts/AlertItem.tsx",
       "folder": "src/renderer/ui/dialogs/alerts",
-      "path": "[D:/projects/js-notepad/src/renderer/ui/dialogs/alerts/AlertItem.tsx](D:/projects/js-notepad/src/renderer/ui/dialogs/alerts/AlertItem.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/ui/dialogs/alerts/AlertItem.tsx](D:/projects/persephone/src/renderer/ui/dialogs/alerts/AlertItem.tsx)",
       "renderedBy": 1
     },
     {
@@ -943,7 +943,7 @@
       "level": 5,
       "file": "src/renderer/ui/dialogs/alerts/AlertsBar.tsx",
       "folder": "src/renderer/ui/dialogs/alerts",
-      "path": "[D:/projects/js-notepad/src/renderer/ui/dialogs/alerts/AlertsBar.tsx](D:/projects/js-notepad/src/renderer/ui/dialogs/alerts/AlertsBar.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/ui/dialogs/alerts/AlertsBar.tsx](D:/projects/persephone/src/renderer/ui/dialogs/alerts/AlertsBar.tsx)",
       "renderedBy": 1
     },
     {
@@ -952,7 +952,7 @@
       "level": 5,
       "file": "src/renderer/ui/dialogs/Dialogs.tsx",
       "folder": "src/renderer/ui/dialogs",
-      "path": "[D:/projects/js-notepad/src/renderer/ui/dialogs/Dialogs.tsx](D:/projects/js-notepad/src/renderer/ui/dialogs/Dialogs.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/ui/dialogs/Dialogs.tsx](D:/projects/persephone/src/renderer/ui/dialogs/Dialogs.tsx)",
       "renderedBy": 1
     },
     {
@@ -961,7 +961,7 @@
       "level": 5,
       "file": "src/renderer/editors/text/TextToolbar.tsx",
       "folder": "src/renderer/editors/text",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/text/TextToolbar.tsx](D:/projects/js-notepad/src/renderer/editors/text/TextToolbar.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/text/TextToolbar.tsx](D:/projects/persephone/src/renderer/editors/text/TextToolbar.tsx)",
       "renderedBy": 1
     },
     {
@@ -970,7 +970,7 @@
       "level": 5,
       "file": "src/renderer/editors/text/TextFooter.tsx",
       "folder": "src/renderer/editors/text",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/text/TextFooter.tsx](D:/projects/js-notepad/src/renderer/editors/text/TextFooter.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/text/TextFooter.tsx](D:/projects/persephone/src/renderer/editors/text/TextFooter.tsx)",
       "renderedBy": 1
     },
     {
@@ -979,7 +979,7 @@
       "level": 5,
       "file": "src/renderer/editors/text/ActiveEditor.tsx",
       "folder": "src/renderer/editors/text",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/text/ActiveEditor.tsx](D:/projects/js-notepad/src/renderer/editors/text/ActiveEditor.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/text/ActiveEditor.tsx](D:/projects/persephone/src/renderer/editors/text/ActiveEditor.tsx)",
       "renderedBy": 1
     },
     {
@@ -988,7 +988,7 @@
       "level": 5,
       "file": "src/renderer/components/form/ComboTemplate.tsx",
       "folder": "src/renderer/components/form",
-      "path": "[D:/projects/js-notepad/src/renderer/components/form/ComboTemplate.tsx](D:/projects/js-notepad/src/renderer/components/form/ComboTemplate.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/components/form/ComboTemplate.tsx](D:/projects/persephone/src/renderer/components/form/ComboTemplate.tsx)",
       "renderedBy": 1
     },
     {
@@ -997,7 +997,7 @@
       "level": 5,
       "file": "src/renderer/editors/text/ScriptPanel.tsx",
       "folder": "src/renderer/editors/text",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/text/ScriptPanel.tsx](D:/projects/js-notepad/src/renderer/editors/text/ScriptPanel.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/text/ScriptPanel.tsx](D:/projects/persephone/src/renderer/editors/text/ScriptPanel.tsx)",
       "renderedBy": 1
     },
     {
@@ -1006,7 +1006,7 @@
       "level": 5,
       "file": "src/renderer/editors/link-editor/LinkItemList.tsx",
       "folder": "src/renderer/editors/link-editor",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/link-editor/LinkItemList.tsx](D:/projects/js-notepad/src/renderer/editors/link-editor/LinkItemList.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/link-editor/LinkItemList.tsx](D:/projects/persephone/src/renderer/editors/link-editor/LinkItemList.tsx)",
       "renderedBy": 1
     },
     {
@@ -1015,7 +1015,7 @@
       "level": 5,
       "file": "src/renderer/editors/link-editor/LinkItemList.tsx",
       "folder": "src/renderer/editors/link-editor",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/link-editor/LinkItemList.tsx](D:/projects/js-notepad/src/renderer/editors/link-editor/LinkItemList.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/link-editor/LinkItemList.tsx](D:/projects/persephone/src/renderer/editors/link-editor/LinkItemList.tsx)",
       "renderedBy": 1
     },
     {
@@ -1024,7 +1024,7 @@
       "level": 5,
       "file": "src/renderer/editors/link-editor/LinkItemTiles.tsx",
       "folder": "src/renderer/editors/link-editor",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/link-editor/LinkItemTiles.tsx](D:/projects/js-notepad/src/renderer/editors/link-editor/LinkItemTiles.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/link-editor/LinkItemTiles.tsx](D:/projects/persephone/src/renderer/editors/link-editor/LinkItemTiles.tsx)",
       "renderedBy": 1
     },
     {
@@ -1033,7 +1033,7 @@
       "level": 5,
       "file": "src/renderer/editors/link-editor/LinkItemTiles.tsx",
       "folder": "src/renderer/editors/link-editor",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/link-editor/LinkItemTiles.tsx](D:/projects/js-notepad/src/renderer/editors/link-editor/LinkItemTiles.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/link-editor/LinkItemTiles.tsx](D:/projects/persephone/src/renderer/editors/link-editor/LinkItemTiles.tsx)",
       "renderedBy": 1
     },
     {
@@ -1042,7 +1042,7 @@
       "level": 5,
       "file": "src/renderer/editors/link-editor/PinnedLinksPanel.tsx",
       "folder": "src/renderer/editors/link-editor",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/link-editor/PinnedLinksPanel.tsx](D:/projects/js-notepad/src/renderer/editors/link-editor/PinnedLinksPanel.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/link-editor/PinnedLinksPanel.tsx](D:/projects/persephone/src/renderer/editors/link-editor/PinnedLinksPanel.tsx)",
       "renderedBy": 1
     },
     {
@@ -1051,7 +1051,7 @@
       "level": 5,
       "file": "src/renderer/editors/link-editor/PinnedLinksPanel.tsx",
       "folder": "src/renderer/editors/link-editor",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/link-editor/PinnedLinksPanel.tsx](D:/projects/js-notepad/src/renderer/editors/link-editor/PinnedLinksPanel.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/link-editor/PinnedLinksPanel.tsx](D:/projects/persephone/src/renderer/editors/link-editor/PinnedLinksPanel.tsx)",
       "renderedBy": 1
     },
     {
@@ -1060,7 +1060,7 @@
       "level": 5,
       "file": "src/renderer/editors/link-editor/LinkEditor.tsx",
       "folder": "src/renderer/editors/link-editor",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/link-editor/LinkEditor.tsx](D:/projects/js-notepad/src/renderer/editors/link-editor/LinkEditor.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/link-editor/LinkEditor.tsx](D:/projects/persephone/src/renderer/editors/link-editor/LinkEditor.tsx)",
       "renderedBy": 1
     },
     {
@@ -1069,7 +1069,7 @@
       "level": 5,
       "file": "src/renderer/editors/browser/BrowserDownloadsPopup.tsx",
       "folder": "src/renderer/editors/browser",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/browser/BrowserDownloadsPopup.tsx](D:/projects/js-notepad/src/renderer/editors/browser/BrowserDownloadsPopup.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/browser/BrowserDownloadsPopup.tsx](D:/projects/persephone/src/renderer/editors/browser/BrowserDownloadsPopup.tsx)",
       "renderedBy": 1
     },
     {
@@ -1078,7 +1078,7 @@
       "level": 5,
       "file": "src/renderer/editors/browser/BrowserPageView.tsx",
       "folder": "src/renderer/editors/browser",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/browser/BrowserPageView.tsx](D:/projects/js-notepad/src/renderer/editors/browser/BrowserPageView.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/browser/BrowserPageView.tsx](D:/projects/persephone/src/renderer/editors/browser/BrowserPageView.tsx)",
       "renderedBy": 1
     },
     {
@@ -1087,7 +1087,7 @@
       "level": 5,
       "file": "src/renderer/editors/browser/BrowserPageView.tsx",
       "folder": "src/renderer/editors/browser",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/browser/BrowserPageView.tsx](D:/projects/js-notepad/src/renderer/editors/browser/BrowserPageView.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/browser/BrowserPageView.tsx](D:/projects/persephone/src/renderer/editors/browser/BrowserPageView.tsx)",
       "renderedBy": 1
     },
     {
@@ -1096,7 +1096,7 @@
       "level": 5,
       "file": "src/renderer/editors/image/BaseImageView.tsx",
       "folder": "src/renderer/editors/image",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/image/BaseImageView.tsx](D:/projects/js-notepad/src/renderer/editors/image/BaseImageView.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/image/BaseImageView.tsx](D:/projects/persephone/src/renderer/editors/image/BaseImageView.tsx)",
       "renderedBy": 1
     },
     {
@@ -1105,7 +1105,7 @@
       "level": 5,
       "file": "src/renderer/ui/navigation/SearchResultsPanel.tsx",
       "folder": "src/renderer/ui/navigation",
-      "path": "[D:/projects/js-notepad/src/renderer/ui/navigation/SearchResultsPanel.tsx](D:/projects/js-notepad/src/renderer/ui/navigation/SearchResultsPanel.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/ui/navigation/SearchResultsPanel.tsx](D:/projects/persephone/src/renderer/ui/navigation/SearchResultsPanel.tsx)",
       "renderedBy": 1
     },
     {
@@ -1114,7 +1114,7 @@
       "level": 5,
       "file": "src/renderer/ui/app/Pages.tsx",
       "folder": "src/renderer/ui/app",
-      "path": "[D:/projects/js-notepad/src/renderer/ui/app/Pages.tsx](D:/projects/js-notepad/src/renderer/ui/app/Pages.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/ui/app/Pages.tsx](D:/projects/persephone/src/renderer/ui/app/Pages.tsx)",
       "renderedBy": 1
     },
     {
@@ -1123,7 +1123,7 @@
       "level": 5,
       "file": "src/renderer/ui/tabs/PageTab.tsx",
       "folder": "src/renderer/ui/tabs",
-      "path": "[D:/projects/js-notepad/src/renderer/ui/tabs/PageTab.tsx](D:/projects/js-notepad/src/renderer/ui/tabs/PageTab.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/ui/tabs/PageTab.tsx](D:/projects/persephone/src/renderer/ui/tabs/PageTab.tsx)",
       "renderedBy": 1
     },
     {
@@ -1132,7 +1132,7 @@
       "level": 5,
       "file": "src/renderer/ui/tabs/PageTabs.tsx",
       "folder": "src/renderer/ui/tabs",
-      "path": "[D:/projects/js-notepad/src/renderer/ui/tabs/PageTabs.tsx](D:/projects/js-notepad/src/renderer/ui/tabs/PageTabs.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/ui/tabs/PageTabs.tsx](D:/projects/persephone/src/renderer/ui/tabs/PageTabs.tsx)",
       "renderedBy": 1
     },
     {
@@ -1141,7 +1141,7 @@
       "level": 5,
       "file": "src/renderer/ui/sidebar/OpenTabsList.tsx",
       "folder": "src/renderer/ui/sidebar",
-      "path": "[D:/projects/js-notepad/src/renderer/ui/sidebar/OpenTabsList.tsx](D:/projects/js-notepad/src/renderer/ui/sidebar/OpenTabsList.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/ui/sidebar/OpenTabsList.tsx](D:/projects/persephone/src/renderer/ui/sidebar/OpenTabsList.tsx)",
       "renderedBy": 1
     },
     {
@@ -1150,7 +1150,7 @@
       "level": 5,
       "file": "src/renderer/ui/sidebar/FileList.tsx",
       "folder": "src/renderer/ui/sidebar",
-      "path": "[D:/projects/js-notepad/src/renderer/ui/sidebar/FileList.tsx](D:/projects/js-notepad/src/renderer/ui/sidebar/FileList.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/ui/sidebar/FileList.tsx](D:/projects/persephone/src/renderer/ui/sidebar/FileList.tsx)",
       "renderedBy": 1
     },
     {
@@ -1159,7 +1159,7 @@
       "level": 5,
       "file": "src/renderer/ui/sidebar/RecentFileList.tsx",
       "folder": "src/renderer/ui/sidebar",
-      "path": "[D:/projects/js-notepad/src/renderer/ui/sidebar/RecentFileList.tsx](D:/projects/js-notepad/src/renderer/ui/sidebar/RecentFileList.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/ui/sidebar/RecentFileList.tsx](D:/projects/persephone/src/renderer/ui/sidebar/RecentFileList.tsx)",
       "renderedBy": 1
     },
     {
@@ -1168,7 +1168,7 @@
       "level": 5,
       "file": "src/renderer/ui/sidebar/FolderItem.tsx",
       "folder": "src/renderer/ui/sidebar",
-      "path": "[D:/projects/js-notepad/src/renderer/ui/sidebar/FolderItem.tsx](D:/projects/js-notepad/src/renderer/ui/sidebar/FolderItem.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/ui/sidebar/FolderItem.tsx](D:/projects/persephone/src/renderer/ui/sidebar/FolderItem.tsx)",
       "renderedBy": 1
     },
     {
@@ -1177,7 +1177,7 @@
       "level": 5,
       "file": "src/renderer/ui/sidebar/ScriptLibraryPanel.tsx",
       "folder": "src/renderer/ui/sidebar",
-      "path": "[D:/projects/js-notepad/src/renderer/ui/sidebar/ScriptLibraryPanel.tsx](D:/projects/js-notepad/src/renderer/ui/sidebar/ScriptLibraryPanel.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/ui/sidebar/ScriptLibraryPanel.tsx](D:/projects/persephone/src/renderer/ui/sidebar/ScriptLibraryPanel.tsx)",
       "renderedBy": 1
     },
     {
@@ -1186,7 +1186,7 @@
       "level": 5,
       "file": "src/renderer/ui/sidebar/MenuBar.tsx",
       "folder": "src/renderer/ui/sidebar",
-      "path": "[D:/projects/js-notepad/src/renderer/ui/sidebar/MenuBar.tsx](D:/projects/js-notepad/src/renderer/ui/sidebar/MenuBar.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/ui/sidebar/MenuBar.tsx](D:/projects/persephone/src/renderer/ui/sidebar/MenuBar.tsx)",
       "renderedBy": 1
     },
     {
@@ -1195,7 +1195,7 @@
       "level": 5,
       "file": "src/renderer/ui/app/MainPage.tsx",
       "folder": "src/renderer/ui/app",
-      "path": "[D:/projects/js-notepad/src/renderer/ui/app/MainPage.tsx](D:/projects/js-notepad/src/renderer/ui/app/MainPage.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/ui/app/MainPage.tsx](D:/projects/persephone/src/renderer/ui/app/MainPage.tsx)",
       "renderedBy": 1
     },
     {
@@ -1204,7 +1204,7 @@
       "level": 5,
       "file": "src/renderer/components/data-grid/AVGrid/HeaderCell.tsx",
       "folder": "src/renderer/components/data-grid/AVGrid",
-      "path": "[D:/projects/js-notepad/src/renderer/components/data-grid/AVGrid/HeaderCell.tsx](D:/projects/js-notepad/src/renderer/components/data-grid/AVGrid/HeaderCell.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/components/data-grid/AVGrid/HeaderCell.tsx](D:/projects/persephone/src/renderer/components/data-grid/AVGrid/HeaderCell.tsx)",
       "renderedBy": 1
     },
     {
@@ -1213,7 +1213,7 @@
       "level": 5,
       "file": "src/renderer/components/data-grid/AVGrid/filters/FilterPoper.tsx",
       "folder": "src/renderer/components/data-grid/AVGrid/filters",
-      "path": "[D:/projects/js-notepad/src/renderer/components/data-grid/AVGrid/filters/FilterPoper.tsx](D:/projects/js-notepad/src/renderer/components/data-grid/AVGrid/filters/FilterPoper.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/components/data-grid/AVGrid/filters/FilterPoper.tsx](D:/projects/persephone/src/renderer/components/data-grid/AVGrid/filters/FilterPoper.tsx)",
       "renderedBy": 1
     },
     {
@@ -1222,7 +1222,7 @@
       "level": 5,
       "file": "src/renderer/components/data-grid/AVGrid/filters/FilterBar.tsx",
       "folder": "src/renderer/components/data-grid/AVGrid/filters",
-      "path": "[D:/projects/js-notepad/src/renderer/components/data-grid/AVGrid/filters/FilterBar.tsx](D:/projects/js-notepad/src/renderer/components/data-grid/AVGrid/filters/FilterBar.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/components/data-grid/AVGrid/filters/FilterBar.tsx](D:/projects/persephone/src/renderer/components/data-grid/AVGrid/filters/FilterBar.tsx)",
       "renderedBy": 1
     },
     {
@@ -1231,7 +1231,7 @@
       "level": 5,
       "file": "src/renderer/components/data-grid/AVGrid/filters/FilterBar.tsx",
       "folder": "src/renderer/components/data-grid/AVGrid/filters",
-      "path": "[D:/projects/js-notepad/src/renderer/components/data-grid/AVGrid/filters/FilterBar.tsx](D:/projects/js-notepad/src/renderer/components/data-grid/AVGrid/filters/FilterBar.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/components/data-grid/AVGrid/filters/FilterBar.tsx](D:/projects/persephone/src/renderer/components/data-grid/AVGrid/filters/FilterBar.tsx)",
       "renderedBy": 1
     },
     {
@@ -1240,7 +1240,7 @@
       "level": 5,
       "file": "src/renderer/components/basic/Checkbox.tsx",
       "folder": "src/renderer/components/basic",
-      "path": "[D:/projects/js-notepad/src/renderer/components/basic/Checkbox.tsx](D:/projects/js-notepad/src/renderer/components/basic/Checkbox.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/components/basic/Checkbox.tsx](D:/projects/persephone/src/renderer/components/basic/Checkbox.tsx)",
       "renderedBy": 1
     },
     {
@@ -1249,7 +1249,7 @@
       "level": 5,
       "file": "src/renderer/components/basic/Radio.tsx",
       "folder": "src/renderer/components/basic",
-      "path": "[D:/projects/js-notepad/src/renderer/components/basic/Radio.tsx](D:/projects/js-notepad/src/renderer/components/basic/Radio.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/components/basic/Radio.tsx](D:/projects/persephone/src/renderer/components/basic/Radio.tsx)",
       "renderedBy": 1
     },
     {
@@ -1258,7 +1258,7 @@
       "level": 5,
       "file": "src/renderer/editors/markdown/CodeBlock.tsx",
       "folder": "src/renderer/editors/markdown",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/markdown/CodeBlock.tsx](D:/projects/js-notepad/src/renderer/editors/markdown/CodeBlock.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/markdown/CodeBlock.tsx](D:/projects/persephone/src/renderer/editors/markdown/CodeBlock.tsx)",
       "renderedBy": 1
     },
     {
@@ -1267,7 +1267,7 @@
       "level": 5,
       "file": "src/renderer/editors/log-view/LogEntryContent.tsx",
       "folder": "src/renderer/editors/log-view",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/log-view/LogEntryContent.tsx](D:/projects/js-notepad/src/renderer/editors/log-view/LogEntryContent.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/log-view/LogEntryContent.tsx](D:/projects/persephone/src/renderer/editors/log-view/LogEntryContent.tsx)",
       "renderedBy": 1
     },
     {
@@ -1276,7 +1276,7 @@
       "level": 5,
       "file": "src/renderer/components/virtualization/RenderGrid/RenderFlexGrid.tsx",
       "folder": "src/renderer/components/virtualization/RenderGrid",
-      "path": "[D:/projects/js-notepad/src/renderer/components/virtualization/RenderGrid/RenderFlexGrid.tsx](D:/projects/js-notepad/src/renderer/components/virtualization/RenderGrid/RenderFlexGrid.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/components/virtualization/RenderGrid/RenderFlexGrid.tsx](D:/projects/persephone/src/renderer/components/virtualization/RenderGrid/RenderFlexGrid.tsx)",
       "renderedBy": 1
     },
     {
@@ -1285,7 +1285,7 @@
       "level": 5,
       "file": "src/renderer/components/layout/Minimap.tsx",
       "folder": "src/renderer/components/layout",
-      "path": "[D:/projects/js-notepad/src/renderer/components/layout/Minimap.tsx](D:/projects/js-notepad/src/renderer/components/layout/Minimap.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/components/layout/Minimap.tsx](D:/projects/persephone/src/renderer/components/layout/Minimap.tsx)",
       "renderedBy": 1
     },
     {
@@ -1294,7 +1294,7 @@
       "level": 5,
       "file": "src/renderer/editors/markdown/MarkdownSearchBar.tsx",
       "folder": "src/renderer/editors/markdown",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/markdown/MarkdownSearchBar.tsx](D:/projects/js-notepad/src/renderer/editors/markdown/MarkdownSearchBar.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/markdown/MarkdownSearchBar.tsx](D:/projects/persephone/src/renderer/editors/markdown/MarkdownSearchBar.tsx)",
       "renderedBy": 1
     },
     {
@@ -1303,7 +1303,7 @@
       "level": 5,
       "file": "src/renderer/editors/notebook/note-editor/MiniTextEditor.tsx",
       "folder": "src/renderer/editors/notebook/note-editor",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/notebook/note-editor/MiniTextEditor.tsx](D:/projects/js-notepad/src/renderer/editors/notebook/note-editor/MiniTextEditor.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/notebook/note-editor/MiniTextEditor.tsx](D:/projects/persephone/src/renderer/editors/notebook/note-editor/MiniTextEditor.tsx)",
       "renderedBy": 1
     },
     {
@@ -1312,7 +1312,7 @@
       "level": 5,
       "file": "src/renderer/editors/notebook/NoteItemView.tsx",
       "folder": "src/renderer/editors/notebook",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/notebook/NoteItemView.tsx](D:/projects/js-notepad/src/renderer/editors/notebook/NoteItemView.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/notebook/NoteItemView.tsx](D:/projects/persephone/src/renderer/editors/notebook/NoteItemView.tsx)",
       "renderedBy": 1
     },
     {
@@ -1321,7 +1321,7 @@
       "level": 5,
       "file": "src/renderer/editors/notebook/ExpandedNoteView.tsx",
       "folder": "src/renderer/editors/notebook",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/notebook/ExpandedNoteView.tsx](D:/projects/js-notepad/src/renderer/editors/notebook/ExpandedNoteView.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/notebook/ExpandedNoteView.tsx](D:/projects/persephone/src/renderer/editors/notebook/ExpandedNoteView.tsx)",
       "renderedBy": 1
     },
     {
@@ -1330,7 +1330,7 @@
       "level": 5,
       "file": "src/renderer/editors/todo/components/TodoListPanel.tsx",
       "folder": "src/renderer/editors/todo/components",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/todo/components/TodoListPanel.tsx](D:/projects/js-notepad/src/renderer/editors/todo/components/TodoListPanel.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/todo/components/TodoListPanel.tsx](D:/projects/persephone/src/renderer/editors/todo/components/TodoListPanel.tsx)",
       "renderedBy": 1
     },
     {
@@ -1339,7 +1339,7 @@
       "level": 5,
       "file": "src/renderer/editors/todo/components/TodoItemView.tsx",
       "folder": "src/renderer/editors/todo/components",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/todo/components/TodoItemView.tsx](D:/projects/js-notepad/src/renderer/editors/todo/components/TodoItemView.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/todo/components/TodoItemView.tsx](D:/projects/persephone/src/renderer/editors/todo/components/TodoItemView.tsx)",
       "renderedBy": 1
     },
     {
@@ -1348,7 +1348,7 @@
       "level": 5,
       "file": "src/renderer/editors/graph/GraphView.tsx",
       "folder": "src/renderer/editors/graph",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/graph/GraphView.tsx](D:/projects/js-notepad/src/renderer/editors/graph/GraphView.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/graph/GraphView.tsx](D:/projects/persephone/src/renderer/editors/graph/GraphView.tsx)",
       "renderedBy": 1
     },
     {
@@ -1357,7 +1357,7 @@
       "level": 5,
       "file": "src/renderer/theme/GlobalStyles.tsx",
       "folder": "src/renderer/theme",
-      "path": "[D:/projects/js-notepad/src/renderer/theme/GlobalStyles.tsx](D:/projects/js-notepad/src/renderer/theme/GlobalStyles.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/theme/GlobalStyles.tsx](D:/projects/persephone/src/renderer/theme/GlobalStyles.tsx)",
       "renderedBy": 1
     },
     {
@@ -1366,7 +1366,7 @@
       "level": 5,
       "file": "src/renderer/components/data-grid/AVGrid/SelectColumn.tsx",
       "folder": "src/renderer/components/data-grid/AVGrid",
-      "path": "[D:/projects/js-notepad/src/renderer/components/data-grid/AVGrid/SelectColumn.tsx](D:/projects/js-notepad/src/renderer/components/data-grid/AVGrid/SelectColumn.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/components/data-grid/AVGrid/SelectColumn.tsx](D:/projects/persephone/src/renderer/components/data-grid/AVGrid/SelectColumn.tsx)",
       "renderedBy": 1
     },
     {
@@ -1375,7 +1375,7 @@
       "level": 5,
       "file": "src/renderer/components/data-grid/AVGrid/SelectColumn.tsx",
       "folder": "src/renderer/components/data-grid/AVGrid",
-      "path": "[D:/projects/js-notepad/src/renderer/components/data-grid/AVGrid/SelectColumn.tsx](D:/projects/js-notepad/src/renderer/components/data-grid/AVGrid/SelectColumn.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/components/data-grid/AVGrid/SelectColumn.tsx](D:/projects/persephone/src/renderer/components/data-grid/AVGrid/SelectColumn.tsx)",
       "renderedBy": 1
     },
     {
@@ -1384,7 +1384,7 @@
       "level": 5,
       "file": "src/renderer/components/TreeView/CategoryTree.tsx",
       "folder": "src/renderer/components/TreeView",
-      "path": "[D:/projects/js-notepad/src/renderer/components/TreeView/CategoryTree.tsx](D:/projects/js-notepad/src/renderer/components/TreeView/CategoryTree.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/components/TreeView/CategoryTree.tsx](D:/projects/persephone/src/renderer/components/TreeView/CategoryTree.tsx)",
       "renderedBy": 0
     },
     {
@@ -1393,7 +1393,7 @@
       "level": 5,
       "file": "src/renderer/components/form/List.tsx",
       "folder": "src/renderer/components/form",
-      "path": "[D:/projects/js-notepad/src/renderer/components/form/List.tsx](D:/projects/js-notepad/src/renderer/components/form/List.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/components/form/List.tsx](D:/projects/persephone/src/renderer/components/form/List.tsx)",
       "renderedBy": 0
     },
     {
@@ -1402,7 +1402,7 @@
       "level": 5,
       "file": "src/renderer/components/overlay/PopupMenu.tsx",
       "folder": "src/renderer/components/overlay",
-      "path": "[D:/projects/js-notepad/src/renderer/components/overlay/PopupMenu.tsx](D:/projects/js-notepad/src/renderer/components/overlay/PopupMenu.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/components/overlay/PopupMenu.tsx](D:/projects/persephone/src/renderer/components/overlay/PopupMenu.tsx)",
       "renderedBy": 0
     },
     {
@@ -1411,7 +1411,7 @@
       "level": 5,
       "file": "src/renderer/ui/dialogs/poppers/showPopupMenu.tsx",
       "folder": "src/renderer/ui/dialogs/poppers",
-      "path": "[D:/projects/js-notepad/src/renderer/ui/dialogs/poppers/showPopupMenu.tsx](D:/projects/js-notepad/src/renderer/ui/dialogs/poppers/showPopupMenu.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/ui/dialogs/poppers/showPopupMenu.tsx](D:/projects/persephone/src/renderer/ui/dialogs/poppers/showPopupMenu.tsx)",
       "renderedBy": 0
     },
     {
@@ -1420,7 +1420,7 @@
       "level": 5,
       "file": "src/renderer/ui/dialogs/ConfirmationDialog.tsx",
       "folder": "src/renderer/ui/dialogs",
-      "path": "[D:/projects/js-notepad/src/renderer/ui/dialogs/ConfirmationDialog.tsx](D:/projects/js-notepad/src/renderer/ui/dialogs/ConfirmationDialog.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/ui/dialogs/ConfirmationDialog.tsx](D:/projects/persephone/src/renderer/ui/dialogs/ConfirmationDialog.tsx)",
       "renderedBy": 0
     },
     {
@@ -1429,7 +1429,7 @@
       "level": 5,
       "file": "src/renderer/ui/dialogs/InputDialog.tsx",
       "folder": "src/renderer/ui/dialogs",
-      "path": "[D:/projects/js-notepad/src/renderer/ui/dialogs/InputDialog.tsx](D:/projects/js-notepad/src/renderer/ui/dialogs/InputDialog.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/ui/dialogs/InputDialog.tsx](D:/projects/persephone/src/renderer/ui/dialogs/InputDialog.tsx)",
       "renderedBy": 0
     },
     {
@@ -1438,7 +1438,7 @@
       "level": 5,
       "file": "src/renderer/ui/dialogs/PasswordDialog.tsx",
       "folder": "src/renderer/ui/dialogs",
-      "path": "[D:/projects/js-notepad/src/renderer/ui/dialogs/PasswordDialog.tsx](D:/projects/js-notepad/src/renderer/ui/dialogs/PasswordDialog.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/ui/dialogs/PasswordDialog.tsx](D:/projects/persephone/src/renderer/ui/dialogs/PasswordDialog.tsx)",
       "renderedBy": 0
     },
     {
@@ -1447,7 +1447,7 @@
       "level": 5,
       "file": "src/renderer/ui/dialogs/TextDialog.tsx",
       "folder": "src/renderer/ui/dialogs",
-      "path": "[D:/projects/js-notepad/src/renderer/ui/dialogs/TextDialog.tsx](D:/projects/js-notepad/src/renderer/ui/dialogs/TextDialog.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/ui/dialogs/TextDialog.tsx](D:/projects/persephone/src/renderer/ui/dialogs/TextDialog.tsx)",
       "renderedBy": 0
     },
     {
@@ -1456,7 +1456,7 @@
       "level": 5,
       "file": "src/renderer/editors/text/TextPageView.tsx",
       "folder": "src/renderer/editors/text",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/text/TextPageView.tsx](D:/projects/js-notepad/src/renderer/editors/text/TextPageView.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/text/TextPageView.tsx](D:/projects/persephone/src/renderer/editors/text/TextPageView.tsx)",
       "renderedBy": 0
     },
     {
@@ -1465,7 +1465,7 @@
       "level": 5,
       "file": "src/renderer/editors/text/EncryptionPanel.tsx",
       "folder": "src/renderer/editors/text",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/text/EncryptionPanel.tsx](D:/projects/js-notepad/src/renderer/editors/text/EncryptionPanel.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/text/EncryptionPanel.tsx](D:/projects/persephone/src/renderer/editors/text/EncryptionPanel.tsx)",
       "renderedBy": 0
     },
     {
@@ -1474,7 +1474,7 @@
       "level": 5,
       "file": "src/renderer/editors/link-editor/EditLinkDialog.tsx",
       "folder": "src/renderer/editors/link-editor",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/link-editor/EditLinkDialog.tsx](D:/projects/js-notepad/src/renderer/editors/link-editor/EditLinkDialog.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/link-editor/EditLinkDialog.tsx](D:/projects/persephone/src/renderer/editors/link-editor/EditLinkDialog.tsx)",
       "renderedBy": 0
     },
     {
@@ -1483,7 +1483,7 @@
       "level": 5,
       "file": "src/renderer/ui/dialogs/LibrarySetupDialog.tsx",
       "folder": "src/renderer/ui/dialogs",
-      "path": "[D:/projects/js-notepad/src/renderer/ui/dialogs/LibrarySetupDialog.tsx](D:/projects/js-notepad/src/renderer/ui/dialogs/LibrarySetupDialog.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/ui/dialogs/LibrarySetupDialog.tsx](D:/projects/persephone/src/renderer/ui/dialogs/LibrarySetupDialog.tsx)",
       "renderedBy": 0
     },
     {
@@ -1492,7 +1492,7 @@
       "level": 5,
       "file": "src/renderer/components/file-explorer/FileExplorer.tsx",
       "folder": "src/renderer/components/file-explorer",
-      "path": "[D:/projects/js-notepad/src/renderer/components/file-explorer/FileExplorer.tsx](D:/projects/js-notepad/src/renderer/components/file-explorer/FileExplorer.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/components/file-explorer/FileExplorer.tsx](D:/projects/persephone/src/renderer/components/file-explorer/FileExplorer.tsx)",
       "renderedBy": 0
     },
     {
@@ -1501,7 +1501,7 @@
       "level": 5,
       "file": "src/renderer/editors/image/ImageViewer.tsx",
       "folder": "src/renderer/editors/image",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/image/ImageViewer.tsx](D:/projects/js-notepad/src/renderer/editors/image/ImageViewer.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/image/ImageViewer.tsx](D:/projects/persephone/src/renderer/editors/image/ImageViewer.tsx)",
       "renderedBy": 0
     },
     {
@@ -1510,7 +1510,7 @@
       "level": 5,
       "file": "src/renderer/editors/compare/CompareEditor.tsx",
       "folder": "src/renderer/editors/compare",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/compare/CompareEditor.tsx](D:/projects/js-notepad/src/renderer/editors/compare/CompareEditor.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/compare/CompareEditor.tsx](D:/projects/persephone/src/renderer/editors/compare/CompareEditor.tsx)",
       "renderedBy": 0
     },
     {
@@ -1519,7 +1519,7 @@
       "level": 5,
       "file": "src/renderer/components/data-grid/AVGrid/HeaderCell.tsx",
       "folder": "src/renderer/components/data-grid/AVGrid",
-      "path": "[D:/projects/js-notepad/src/renderer/components/data-grid/AVGrid/HeaderCell.tsx](D:/projects/js-notepad/src/renderer/components/data-grid/AVGrid/HeaderCell.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/components/data-grid/AVGrid/HeaderCell.tsx](D:/projects/persephone/src/renderer/components/data-grid/AVGrid/HeaderCell.tsx)",
       "renderedBy": 0
     },
     {
@@ -1528,7 +1528,7 @@
       "level": 5,
       "file": "src/renderer/components/data-grid/AVGrid/DefaultEditFormater.tsx",
       "folder": "src/renderer/components/data-grid/AVGrid",
-      "path": "[D:/projects/js-notepad/src/renderer/components/data-grid/AVGrid/DefaultEditFormater.tsx](D:/projects/js-notepad/src/renderer/components/data-grid/AVGrid/DefaultEditFormater.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/components/data-grid/AVGrid/DefaultEditFormater.tsx](D:/projects/persephone/src/renderer/components/data-grid/AVGrid/DefaultEditFormater.tsx)",
       "renderedBy": 0
     },
     {
@@ -1537,7 +1537,7 @@
       "level": 5,
       "file": "src/renderer/components/data-grid/AVGrid/DataCell.tsx",
       "folder": "src/renderer/components/data-grid/AVGrid",
-      "path": "[D:/projects/js-notepad/src/renderer/components/data-grid/AVGrid/DataCell.tsx](D:/projects/js-notepad/src/renderer/components/data-grid/AVGrid/DataCell.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/components/data-grid/AVGrid/DataCell.tsx](D:/projects/persephone/src/renderer/components/data-grid/AVGrid/DataCell.tsx)",
       "renderedBy": 0
     },
     {
@@ -1546,7 +1546,7 @@
       "level": 5,
       "file": "src/renderer/components/data-grid/AVGrid/DataCell.tsx",
       "folder": "src/renderer/components/data-grid/AVGrid",
-      "path": "[D:/projects/js-notepad/src/renderer/components/data-grid/AVGrid/DataCell.tsx](D:/projects/js-notepad/src/renderer/components/data-grid/AVGrid/DataCell.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/components/data-grid/AVGrid/DataCell.tsx](D:/projects/persephone/src/renderer/components/data-grid/AVGrid/DataCell.tsx)",
       "renderedBy": 0
     },
     {
@@ -1555,7 +1555,7 @@
       "level": 5,
       "file": "src/renderer/components/data-grid/AVGrid/AVGrid.tsx",
       "folder": "src/renderer/components/data-grid/AVGrid",
-      "path": "[D:/projects/js-notepad/src/renderer/components/data-grid/AVGrid/AVGrid.tsx](D:/projects/js-notepad/src/renderer/components/data-grid/AVGrid/AVGrid.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/components/data-grid/AVGrid/AVGrid.tsx](D:/projects/persephone/src/renderer/components/data-grid/AVGrid/AVGrid.tsx)",
       "renderedBy": 0
     },
     {
@@ -1564,7 +1564,7 @@
       "level": 5,
       "file": "src/renderer/editors/grid/components/ColumnsOptions.tsx",
       "folder": "src/renderer/editors/grid/components",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/grid/components/ColumnsOptions.tsx](D:/projects/js-notepad/src/renderer/editors/grid/components/ColumnsOptions.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/grid/components/ColumnsOptions.tsx](D:/projects/persephone/src/renderer/editors/grid/components/ColumnsOptions.tsx)",
       "renderedBy": 0
     },
     {
@@ -1573,7 +1573,7 @@
       "level": 5,
       "file": "src/renderer/editors/grid/components/CsvOptions.tsx",
       "folder": "src/renderer/editors/grid/components",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/grid/components/CsvOptions.tsx](D:/projects/js-notepad/src/renderer/editors/grid/components/CsvOptions.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/grid/components/CsvOptions.tsx](D:/projects/persephone/src/renderer/editors/grid/components/CsvOptions.tsx)",
       "renderedBy": 0
     },
     {
@@ -1582,7 +1582,7 @@
       "level": 5,
       "file": "src/renderer/editors/grid/GridEditor.tsx",
       "folder": "src/renderer/editors/grid",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/grid/GridEditor.tsx](D:/projects/js-notepad/src/renderer/editors/grid/GridEditor.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/grid/GridEditor.tsx](D:/projects/persephone/src/renderer/editors/grid/GridEditor.tsx)",
       "renderedBy": 0
     },
     {
@@ -1591,7 +1591,7 @@
       "level": 5,
       "file": "src/renderer/editors/log-view/LogViewEditor.tsx",
       "folder": "src/renderer/editors/log-view",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/log-view/LogViewEditor.tsx](D:/projects/js-notepad/src/renderer/editors/log-view/LogViewEditor.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/log-view/LogViewEditor.tsx](D:/projects/persephone/src/renderer/editors/log-view/LogViewEditor.tsx)",
       "renderedBy": 0
     },
     {
@@ -1600,7 +1600,7 @@
       "level": 5,
       "file": "src/renderer/editors/markdown/MarkdownView.tsx",
       "folder": "src/renderer/editors/markdown",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/markdown/MarkdownView.tsx](D:/projects/js-notepad/src/renderer/editors/markdown/MarkdownView.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/markdown/MarkdownView.tsx](D:/projects/persephone/src/renderer/editors/markdown/MarkdownView.tsx)",
       "renderedBy": 0
     },
     {
@@ -1609,7 +1609,7 @@
       "level": 5,
       "file": "src/renderer/editors/pdf/PdfViewer.tsx",
       "folder": "src/renderer/editors/pdf",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/pdf/PdfViewer.tsx](D:/projects/js-notepad/src/renderer/editors/pdf/PdfViewer.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/pdf/PdfViewer.tsx](D:/projects/persephone/src/renderer/editors/pdf/PdfViewer.tsx)",
       "renderedBy": 0
     },
     {
@@ -1618,7 +1618,7 @@
       "level": 5,
       "file": "src/renderer/editors/notebook/NotebookEditor.tsx",
       "folder": "src/renderer/editors/notebook",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/notebook/NotebookEditor.tsx](D:/projects/js-notepad/src/renderer/editors/notebook/NotebookEditor.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/notebook/NotebookEditor.tsx](D:/projects/persephone/src/renderer/editors/notebook/NotebookEditor.tsx)",
       "renderedBy": 0
     },
     {
@@ -1627,7 +1627,7 @@
       "level": 5,
       "file": "src/renderer/editors/svg/SvgView.tsx",
       "folder": "src/renderer/editors/svg",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/svg/SvgView.tsx](D:/projects/js-notepad/src/renderer/editors/svg/SvgView.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/svg/SvgView.tsx](D:/projects/persephone/src/renderer/editors/svg/SvgView.tsx)",
       "renderedBy": 0
     },
     {
@@ -1636,7 +1636,7 @@
       "level": 5,
       "file": "src/renderer/editors/mermaid/MermaidView.tsx",
       "folder": "src/renderer/editors/mermaid",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/mermaid/MermaidView.tsx](D:/projects/js-notepad/src/renderer/editors/mermaid/MermaidView.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/mermaid/MermaidView.tsx](D:/projects/persephone/src/renderer/editors/mermaid/MermaidView.tsx)",
       "renderedBy": 0
     },
     {
@@ -1645,7 +1645,7 @@
       "level": 5,
       "file": "src/renderer/editors/todo/TodoEditor.tsx",
       "folder": "src/renderer/editors/todo",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/todo/TodoEditor.tsx](D:/projects/js-notepad/src/renderer/editors/todo/TodoEditor.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/todo/TodoEditor.tsx](D:/projects/persephone/src/renderer/editors/todo/TodoEditor.tsx)",
       "renderedBy": 0
     },
     {
@@ -1654,7 +1654,7 @@
       "level": 5,
       "file": "src/renderer/editors/graph/GraphView.tsx",
       "folder": "src/renderer/editors/graph",
-      "path": "[D:/projects/js-notepad/src/renderer/editors/graph/GraphView.tsx](D:/projects/js-notepad/src/renderer/editors/graph/GraphView.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/editors/graph/GraphView.tsx](D:/projects/persephone/src/renderer/editors/graph/GraphView.tsx)",
       "renderedBy": 0
     },
     {
@@ -1663,7 +1663,7 @@
       "level": 5,
       "file": "src/renderer/index.tsx",
       "folder": "src/renderer",
-      "path": "[D:/projects/js-notepad/src/renderer/index.tsx](D:/projects/js-notepad/src/renderer/index.tsx)",
+      "path": "[D:/projects/persephone/src/renderer/index.tsx](D:/projects/persephone/src/renderer/index.tsx)",
       "renderedBy": 0
     },
     {
