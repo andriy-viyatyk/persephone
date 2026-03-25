@@ -1,10 +1,10 @@
-# Persephone
+# <img src="assets/icon.png" width="38" /> Persephone
 
 **Persephone** is a developer notepad for Windows — built with Electron, Monaco Editor, and a JavaScript/TypeScript runtime. It extends the classic tabbed text editor with specialized viewers, a scripting engine, and an MCP server that lets AI agents drive the UI.
 
 
 
-![Demo Video](https://github.com/user-attachments/assets/c91b35c6-6add-41a7-b815-ab3eb158de53)
+![Demo Video](https://github.com/user-attachments/assets/bfe1df27-1c16-45b5-89e6-6510387f3a7c)
 
 ## Key Features
 

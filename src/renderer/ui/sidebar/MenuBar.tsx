@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import clsx from "clsx";
-import { useCallback } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { TComponentModel, useComponentModel } from "../../core/state/model";
 import { Button } from "../../components/basic/Button";
 import { List, ListOptionRenderer } from "../../components/form/List";
@@ -188,13 +188,6 @@ class MenuBarModel extends TComponentModel<MenuBarState, MenuBarProps> {
     );
 
     init() {
-        this.effect(() => {
-            const selected = this.state.get().leftItemId;
-            if (!this.allFolders.value.find((f) => f.id === selected)) {
-                this.setLeftItem(staticFolders[0]);
-            }
-        }, () => [menuFolders.state.get().folders]);
-
         this.effect(() => {
             if (this.props.open) {
                 this.fileExplorerRef?.refresh();
@@ -421,6 +414,15 @@ class MenuBarModel extends TComponentModel<MenuBarState, MenuBarProps> {
 export function MenuBar(props: MenuBarProps) {
     const model = useComponentModel(props, MenuBarModel, defaultMenuBarState);
     const state = model.state.use();
+    const { folders } = menuFolders.state.use();
+    const allFolders = useMemo(() => [...staticFolders, ...folders], [folders]);
+
+    // If the selected folder was removed, fall back to the first static folder
+    useEffect(() => {
+        if (!allFolders.find((f) => f.id === state.leftItemId)) {
+            model.setLeftItem(staticFolders[0]);
+        }
+    }, [folders]);
 
     const folderRowRenderer: ListOptionRenderer<MenuFolder> = useCallback(
         ({ row, index, style, onClick, selected, selectedIcon, itemMarginY, getTooltip, getContextMenu }) => {
@@ -550,7 +552,7 @@ export function MenuBar(props: MenuBarProps) {
                         </Button>
                     </div>
                     <List
-                        options={model.allFolders.value}
+                        options={allFolders}
                         getLabel={model.getFolderLabel}
                         getSelected={model.getLeftItemsHovered}
                         onClick={model.setLeftItem}

@@ -1,0 +1,42 @@
+graph TD
+    CTX["ScriptContext"] --> AW["AppWrapper<br/><i>implements IApp</i>"]
+    CTX --> PW["PageWrapper<br/><i>implements IPage</i>"]
+    CTX --> RE["React"]
+
+    AW --> |"app.pages"| PCW["PageCollectionWrapper<br/><i>implements IPageCollection</i>"]
+    AW --> |"app.settings"| SET["settings (direct)"]
+    AW --> |"app.fs"| FS["fs (direct)"]
+    AW --> |"app.ui"| UI["ui (direct)"]
+    AW --> |"app.window"| WIN["window (direct)"]
+    AW --> |"app.shell"| SH["shell (direct)"]
+
+    PCW --> |"returns"| PW2["PageWrapper<br/><i>for each page</i>"]
+
+    PW --> |"page.asText()"| TF["TextEditorFacade"]
+    PW --> |"page.asGrid()"| GF["GridEditorFacade"]
+    PW --> |"page.asNotebook()"| NF["NotebookEditorFacade"]
+    PW --> |"page.asTodo()"| TDF["TodoEditorFacade"]
+    PW --> |"page.asLink()"| LF["LinkEditorFacade"]
+    PW --> |"page.asBrowser()"| BF["BrowserEditorFacade"]
+    PW --> |"page.asMarkdown()"| MF["MarkdownEditorFacade"]
+    PW --> |"page.asSvg()"| SF["SvgEditorFacade"]
+    PW --> |"page.asHtml()"| HF["HtmlEditorFacade"]
+    PW --> |"page.asMermaid()"| MMF["MermaidEditorFacade"]
+
+    PW --> |"page.grouped"| PW3["PageWrapper<br/><i>auto-created</i>"]
+
+    subgraph RL["Shared releaseList"]
+        R1["() => release grid-json"]
+        R2["() => release notebook"]
+        R3["..."]
+    end
+
+    TF -.-> RL
+    GF -.-> RL
+    NF -.-> RL
+
+    style CTX fill:#fff3e0
+    style AW fill:#e8f5e9
+    style PW fill:#e8f5e9
+    style PCW fill:#e8f5e9
+    style RL fill:#ffebee

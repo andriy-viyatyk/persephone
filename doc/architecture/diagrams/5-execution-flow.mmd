@@ -1,0 +1,77 @@
+sequenceDiagram
+    participant U as User
+    participant AM as TextFileActionsModel
+    participant SR as ScriptRunner
+    participant SC as ScriptContext
+    participant AW as AppWrapper
+    participant PW as PageWrapper
+    participant F as EditorFacade
+    participant VM as ContentViewModel
+    participant GP as Grouped Page
+
+    U->>AM: Press F5
+    AM->>AM: Determine script source
+    Note right of AM: Script panel open?<br/>→ run panel content<br/>JS file + no panel?<br/>→ run page content/selection
+
+    AM->>SR: runWithResult(pageId, script, page)
+    SR->>SC: createScriptContext(page)
+
+    rect rgb(232, 245, 233)
+        Note over SC,PW: Context Creation
+        SC->>SC: releaseList = []
+        SC->>AW: new AppWrapper(releaseList)
+        AW->>AW: Wrap app singleton
+        SC->>PW: new PageWrapper(model, releaseList)
+        PW->>PW: Wrap PageModel → IPage
+
+        SC->>SC: Build Proxy chain
+        Note right of SC: 1. Check customContext<br/>   (app, page, React)<br/>2. Fall back to globalThis<br/>3. Auto-bind functions
+    end
+
+    SC-->>SR: { context, cleanup }
+
+    rect rgb(240, 248, 255)
+        Note over SR,GP: Script Execution
+        SR->>SR: Wrap script in async function
+        Note right of SR: with(this) { ... }<br/>+ lexical JS globals<br/>+ implicit return
+
+        SR->>SR: Execute script
+
+        Note over PW,VM: Script accesses page.content
+        SR->>PW: page.content (getter)
+        PW-->>SR: model.state.get().content
+
+        Note over PW,VM: Script calls page.asGrid()
+        SR->>PW: await page.asGrid()
+        PW->>VM: host.acquireViewModel("grid-json")
+        VM-->>PW: GridViewModel (refs +1)
+        PW->>PW: releaseList.push(release fn)
+        PW->>F: new GridEditorFacade(vm)
+        F-->>SR: IGridEditor
+
+        Note over F: Script uses facade
+        SR->>F: facade.addRows(5)
+        F->>VM: vm.addRows(5)
+
+        Note over PW,GP: Script accesses page.grouped
+        SR->>PW: page.grouped.content = result
+        PW->>PW: Auto-create grouped page
+        PW->>GP: new PageWrapper(grouped, releaseList)
+        GP->>GP: changeContent(result)
+    end
+
+    SR->>SR: await result (if Promise)
+    SR->>SR: convertToText(result)
+    Note right of SR: object → JSON<br/>string → as-is<br/>Error → stack trace
+
+    rect rgb(255, 243, 224)
+        Note over SR,VM: Cleanup (always runs)
+        SR->>SC: cleanup()
+        SC->>SC: Iterate releaseList
+        SC->>VM: releaseViewModel("grid-json")
+        Note right of VM: refs -1 → 0 → dispose
+        SC->>SC: releaseList = []
+    end
+
+    SR->>GP: Write result to grouped page
+    SR-->>AM: result string

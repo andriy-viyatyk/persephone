@@ -4,10 +4,10 @@ How to publish a new version of persephone.
 
 ## Branch & Version Convention
 
-- Development happens on a **working branch** named `upcoming-vN` (e.g., `upcoming-v15` for version 1.0.15).
-- The `package.json` version matches the working branch (e.g., `1.0.15`).
+- Development happens on a **working branch** named `upcoming-vX.Y.Z` (e.g., `upcoming-v2.0.2` for version 2.0.2).
+- The `package.json` version matches the working branch (e.g., `2.0.2`).
 - The `main` branch always reflects the latest released version.
-- Git tags `v1.0.N` on `main` trigger the GitHub Actions build pipeline.
+- Git tags `vX.Y.Z` on `main` trigger the GitHub Actions build pipeline.
 
 ## Trigger
 
@@ -23,27 +23,27 @@ When the user says **"let's publish new build"** (or similar), follow the steps 
 2. **Merge working branch into main.**
    ```bash
    git checkout main
-   git merge upcoming-vN
+   git merge upcoming-vX.Y.Z
    ```
 
 3. **Update `docs/whats-new.md`** on `main`:
    - Change the current version header from `(Upcoming)` to a release (remove the word "Upcoming").
    - Add a new section above it for the next version:
      ```markdown
-     ## Version 1.0.{N+1} (Upcoming)
+     ## Version X.Y.{Z+1} (Upcoming)
 
      *No changes yet.*
 
      ---
 
-     ## Version 1.0.N
+     ## Version X.Y.Z
      ```
 
 4. **Commit and tag** on `main`:
    ```bash
    git add docs/whats-new.md
-   git commit -m "Mark v1.0.N as released and add v1.0.{N+1} upcoming section"
-   git tag v1.0.N
+   git commit -m "Mark vX.Y.Z as released and add vX.Y.{Z+1} upcoming section"
+   git tag vX.Y.Z
    ```
 
 5. **Push main with tag:**
@@ -61,43 +61,43 @@ When the user says **"let's publish new build"** (or similar), follow the steps 
 
 ### Phase 2: Prepare Next Version (after user confirms)
 
-8. **Bump version** in `package.json` to `1.0.{N+1}`:
+8. **Bump version** in `package.json` to `X.Y.{Z+1}`:
    ```bash
-   npm version 1.0.{N+1} --no-git-tag-version
+   npm version X.Y.{Z+1} --no-git-tag-version
    ```
 
 9. **Create and switch to the new working branch:**
    ```bash
-   git checkout -b upcoming-v{N+1}
+   git checkout -b upcoming-vX.Y.{Z+1}
    ```
 
 10. **Commit the version bump:**
     ```bash
     git add package.json package-lock.json
-    git commit -m "Bump version to 1.0.{N+1}"
+    git commit -m "Bump version to X.Y.{Z+1}"
     ```
 
 11. **Push the new working branch:**
     ```bash
-    git push -u origin upcoming-v{N+1}
+    git push -u origin upcoming-vX.Y.{Z+1}
     ```
 
 12. **Confirm** to the user that the new working branch is ready.
 
 ## Example
 
-For releasing v1.0.15 and starting v1.0.16:
+For releasing v2.0.1 and starting v2.0.2:
 
 | Step | Command / Action |
 |------|-----------------|
-| Merge | `git checkout main && git merge upcoming-v15` |
-| Update whats-new | Add `v1.0.16 (Upcoming)` section, mark `v1.0.15` as released |
-| Commit + tag | `git commit ... && git tag v1.0.15` |
+| Merge | `git checkout main && git merge upcoming-v2.0.1` |
+| Update whats-new | Add `v2.0.2 (Upcoming)` section, mark `v2.0.1` as released |
+| Commit + tag | `git commit ... && git tag v2.0.1` |
 | Push | `git push origin main --tags` |
 | *Wait for build* | User confirms release is published |
-| Bump version | `npm version 1.0.16 --no-git-tag-version` |
-| New branch | `git checkout -b upcoming-v16` |
-| Commit + push | `git commit ... && git push -u origin upcoming-v16` |
+| Bump version | `npm version 2.0.2 --no-git-tag-version` |
+| New branch | `git checkout -b upcoming-v2.0.2` |
+| Commit + push | `git commit ... && git push -u origin upcoming-v2.0.2` |
 
 ## VMP Signing (Widevine DRM)
 

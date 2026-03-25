@@ -1,9 +1,3 @@
-# Bootstrap Sequence
-
-How the renderer window initializes from Electron launch to interactive UI.
-Each phase completes before the next starts — no race conditions.
-
-```mermaid
 sequenceDiagram
     participant E as Electron
     participant R as renderer.tsx
@@ -91,23 +85,3 @@ sequenceDiagram
         UI->>UI: React renders MainPage
         Note right of UI: Tabs + Active Editor<br/>User can interact ✓
     end
-```
-
-## Guard Flags
-
-Each `init*()` method has a boolean guard preventing re-initialization:
-
-```
-_initialized         → app.init()
-_setupInitialized    → app.initSetup()
-_servicesInitialized → app.initServices()
-_pagesInitialized    → app.initPages()
-_eventsInitialized   → app.initEvents()
-```
-
-## Key Timing Dependencies
-
-- **Services before Pages** — `pages.init()` needs `fs.wait()` to be ready
-- **Pages before Events** — `RendererEventsService` needs `pages` to delegate to
-- **Events before windowReady** — main process waits for ready signal before sending `eMovePageIn`
-- **windowReady before React** — ensures no flash of empty state
