@@ -1,6 +1,6 @@
 # EPIC-013: Rebrand to "Persephone"
 
-**Status:** Future
+**Status:** Completed
 **Priority:** Low
 **Created:** 2026-03-25
 
