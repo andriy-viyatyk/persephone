@@ -1033,7 +1033,7 @@ function DefaultBrowserSection() {
     return (
         <>
             <div className="section-hint">
-                Register js-notepad as a browser so it appears in Windows Default Apps
+                Register Persephone as a browser so it appears in Windows Default Apps
             </div>
             <div className="browser-reg-row">
                 {registered === null ? (
@@ -1111,7 +1111,7 @@ function McpSection() {
     const mcpUrl = `http://localhost:${mcpPort}/mcp`;
     const configJson = JSON.stringify({
         mcpServers: {
-            "js-notepad": {
+            "persephone": {
                 type: "http",
                 url: mcpUrl,
             },
@@ -1122,7 +1122,7 @@ function McpSection() {
         <>
             <div className="section-label">MCP Server</div>
             <div className="section-hint">
-                AI agents (Claude, ChatGPT, Gemini) can control js-notepad via MCP
+                AI agents (Claude, ChatGPT, Gemini) can control Persephone via MCP
             </div>
 
             <div className="mcp-toggle-row">

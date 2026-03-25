@@ -2,13 +2,27 @@
 
 # What's New
 
-Release notes and changelog for js-notepad.
+Release notes and changelog for Persephone (formerly js-notepad).
 
 ---
 
-## Version 1.0.32 (Upcoming)
+## Version 2.0.2 (Upcoming)
 
 *No changes yet.*
+
+---
+
+## Version 2.0.1
+
+### Breaking Changes
+
+- **Rebranded to Persephone** — The application has been renamed from "js-notepad" to "Persephone". This is a clean break — users should uninstall js-notepad before installing Persephone. All runtime identifiers changed: package name, executables (`persephone-launcher.exe`, `persephone-snip.exe`), named pipe, Windows registry keys, MCP server name, MIME types, app data folder (`%APPDATA%\persephone`).
+- **New app icon** — Lily flower badge replacing the old curly-braces icon.
+- **Version jump to 2.0.1** — Major version bump signals the breaking change.
+
+### Bug Fixes
+
+- **Sidebar folder refresh** — Fixed left panel not updating when adding, removing, or reordering folders via drag-and-drop.
 
 ---
 
@@ -967,7 +981,7 @@ Release notes and changelog for js-notepad.
 
 ## Planned Features
 
-See [GitHub Issues](https://github.com/andriy-viyatyk/js-notepad/issues) for planned features and known issues.
+See [GitHub Issues](https://github.com/andriy-viyatyk/persephone/issues) for planned features and known issues.
 
 ### Coming Soon
 

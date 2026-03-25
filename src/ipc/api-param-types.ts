@@ -23,7 +23,7 @@ export interface OpenFolderDialogParams {
 }
 
 export type CommonFolder =
-    | "userData" // C:\Users\USERNAME\AppData\Roaming\js-notepad
+    | "userData" // C:\Users\USERNAME\AppData\Roaming\persephone
     | "appData"  // C:\Users\USERNAME\AppData\Roaming
     | "documents"
     | "exe"

@@ -6,26 +6,26 @@
 
 ### Windows
 
-1. Download the latest release from [GitHub Releases](https://github.com/andriy-viyatyk/js-notepad/releases)
+1. Download the latest release from [GitHub Releases](https://github.com/andriy-viyatyk/persephone/releases)
 2. Run the installer or extract the ZIP
-3. Launch js-notepad
+3. Launch persephone
 
 ### From Source
 
 ```bash
-git clone https://github.com/andriy-viyatyk/js-notepad.git
-cd js-notepad
+git clone https://github.com/andriy-viyatyk/persephone.git
+cd persephone
 npm install
 npm start
 ```
 
 ## First Launch
 
-When you first open js-notepad, you'll see a clean, simple interface:
+When you first open persephone, you'll see a clean, simple interface:
 - Tab bar at the top
 - An empty text editor
 
-The application looks like a simple notepad by default. To access additional features (recent files, folder bookmarks, settings, about), click the **js-notepad icon** at the top-left corner of the tab bar — a sidebar slides in from the left. Click anywhere outside the sidebar to dismiss it.
+The application looks like a simple notepad by default. To access additional features (recent files, folder bookmarks, settings, about), click the **persephone icon** at the top-left corner of the tab bar — a sidebar slides in from the left. Click anywhere outside the sidebar to dismiss it.
 
 ## Basic Operations
 
@@ -56,7 +56,7 @@ The application looks like a simple notepad by default. To access additional fea
 
 ## Language Selection
 
-js-notepad automatically detects the programming language based on file extension (.js, .py, .json, etc.).
+persephone automatically detects the programming language based on file extension (.js, .py, .json, etc.).
 
 To manually change the language:
 - Click the language icon button on the left side of the tab
@@ -64,10 +64,10 @@ To manually change the language:
 
 ## Checking for Updates
 
-js-notepad automatically checks for updates once every 24 hours. When a new version is available, you'll see a notification.
+persephone automatically checks for updates once every 24 hours. When a new version is available, you'll see a notification.
 
 To manually check for updates:
-1. Click the app button (js-notepad icon) in the top-left corner to open the sidebar menu
+1. Click the app button (persephone icon) in the top-left corner to open the sidebar menu
 2. Click the Info button (ℹ) to open the About page
 3. Click "Check for Updates"
 
@@ -78,9 +78,9 @@ The About page also shows:
 
 ## Changing the Theme
 
-js-notepad includes 9 color themes (6 dark, 3 light) inspired by VSCode:
+persephone includes 9 color themes (6 dark, 3 light) inspired by VSCode:
 
-1. Click the app button (js-notepad icon) in the top-left corner to open the sidebar menu
+1. Click the app button (persephone icon) in the top-left corner to open the sidebar menu
 2. Click the Settings button (gear icon) to open the Settings page
 3. Click a theme card to switch instantly
 

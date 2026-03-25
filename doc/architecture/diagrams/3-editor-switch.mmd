@@ -1,0 +1,16 @@
+flowchart LR
+    JSON["data.json"] --> SW["Switch Dropdown"]
+    SW -->|"switchOption()"| OPT1["JSON (Monaco)"]
+    SW -->|"switchOption()"| OPT2["Grid"]
+
+    NOTE["tasks.note.json"] --> SW2["Switch Dropdown"]
+    SW2 -->|"switchOption()"| OPT3["JSON (Monaco)"]
+    SW2 -->|"switchOption()"| OPT4["Notebook"]
+
+    MD2["readme.md"] --> SW3["Switch Dropdown"]
+    SW3 -->|"switchOption()"| OPT5["Markdown (Monaco)"]
+    SW3 -->|"switchOption()"| OPT6["Preview"]
+
+    style SW fill:#fff3e0
+    style SW2 fill:#fff3e0
+    style SW3 fill:#fff3e0

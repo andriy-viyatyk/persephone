@@ -4,6 +4,11 @@ All completed tasks, newest first.
 
 | ID | Title | Epic | Notes |
 |----|-------|------|-------|
+| US-284 | Cleanup — Rebrand Remaining Files | EPIC-013 | Updated backlog.md, mockups (6 HTML files), visualization graphs (3 fg.json, 657 refs), renamed js-notepad-scripts → persephone-scripts. Full-color theme-aware PersephoneIcon (lily badge) for sidebar button and About page. Historical epics kept as-is. |
+| US-282 | Repo Rename — js-notepad → persephone | EPIC-013 | Renamed GitHub repo, updated local git remote, fixed stale URLs in CONTRIBUTING.md and whats-new.md. |
+| US-285 | Version Bump to 2.0.1 | EPIC-013 | Major version bump to signal breaking change (rebrand). |
+| US-281 | Doc Rebrand — js-notepad → Persephone | EPIC-013 | Renamed all documentation references across 33+ files (~130 refs). Developer docs, user docs, README, MCP guides, QA docs, Claude agents, script library. Added v2.0.1 entry in whats-new.md. Historical changelog entries kept as-is. |
+| US-280 | Core Rebrand — js-notepad → Persephone | EPIC-013 | Renamed all runtime identifiers across 30+ files (~260 references). Updated package.json, electron-builder, Rust launcher/snip binaries, NSIS installer, main process, renderer, IPC, registry handlers. New lily flower app icon (ICO/PNG/SVG). Renamed JsNotepadIcon → PersephoneIcon. |
 | US-253 | Native Rust Screen Snip Tool | | Replaced Electron overlay windows (BrowserWindow + desktopCapturer) with native Rust exe (`js-notepad-snip.exe`). Fixes silent crash on mixed-DPI multi-monitor setups (Castlabs Electron 39). Uses Win32 GDI for screen capture, native overlay windows for selection UI, PNG via stdout. Per-Monitor DPI V2 aware. |
 | US-252 | Rest Client — Header View Switch | EPIC-010 | Table/JSON toggle for request and response headers. Request JSON is editable Monaco with live sync — valid JSON updates headers immediately, invalid shows warning on switch/send. Response JSON is read-only Monaco. |
 | US-251 | Rest Client — Binary Data Support | EPIC-010 | Two new body types: "binary" (file picker, fs.createReadStream streaming) and "form-data" (multipart with text/file toggle per row, streamed via multipartBuilder.ts). Binary response detection by Content-Type. Binary response panel with save-to-file. Image preview + "Open in Image Viewer". Base64 in-memory cache, skip stateStorage persistence for binary. |

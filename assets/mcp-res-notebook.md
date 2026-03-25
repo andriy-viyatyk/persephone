@@ -61,7 +61,7 @@ Every field is **required** unless marked optional:
 
 ## NoteContent (the `content` field)
 
-Each note contains a `content` object that behaves like a mini page — it supports the same editor types as regular js-notepad pages:
+Each note contains a `content` object that behaves like a mini page — it supports the same editor types as regular Persephone pages:
 
 ```json
 {

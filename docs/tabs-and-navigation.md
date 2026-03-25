@@ -37,7 +37,7 @@ If a file has unsaved changes, you'll be prompted to save before closing.
 
 - **Reorder** — drag and drop tabs within the tab bar to rearrange them
 - **Detach to new window** — drag a tab outside the window and drop it to open it in a separate window
-- **Move between windows** — drag a tab from one js-notepad window and drop it into another window's tab bar
+- **Move between windows** — drag a tab from one persephone window and drop it into another window's tab bar
 - **Open in New Window** — right-click a tab and select "Open in New Window"
 
 ### Pinning Tabs
@@ -105,7 +105,7 @@ When two text files are grouped, a **Compare** button appears in the toolbar. Cl
 
 ## Sidebar
 
-Click the **js-notepad icon** (top-left) to open the sidebar menu. The sidebar has a two-panel layout:
+Click the **persephone icon** (top-left) to open the sidebar menu. The sidebar has a two-panel layout:
 
 ### Left Panel — Folder List
 
@@ -133,7 +133,7 @@ The right panel shows the contents of the selected folder:
 
 **Open Tabs view:**
 - Lists all open tabs in the current window
-- Shows tabs from other open js-notepad windows (grouped by window)
+- Shows tabs from other open persephone windows (grouped by window)
 - Click any entry to switch to that tab
 
 **Recent Files view:**
@@ -154,7 +154,7 @@ The right panel shows the contents of the selected folder:
 | Button | Action |
 |--------|--------|
 | Open File | Opens file dialog (`Ctrl+O`) |
-| New Window | Opens a new js-notepad window (`Ctrl+Shift+N`) |
+| New Window | Opens a new persephone window (`Ctrl+Shift+N`) |
 | About | Opens the About page (version info, update check) |
 | Settings | Opens the Settings page (themes, preferences) |
 
@@ -215,7 +215,7 @@ Any saved file can open a **File Explorer** panel alongside the editor. Click th
 
 ## Session Restore
 
-js-notepad automatically saves your session when you close the application. On next launch:
+persephone automatically saves your session when you close the application. On next launch:
 
 - All previously open tabs are restored
 - Editor content, scroll positions, and state are preserved
@@ -224,7 +224,7 @@ js-notepad automatically saves your session when you close the application. On n
 
 ## File Watching
 
-When a file that is open in js-notepad is modified by another application:
+When a file that is open in persephone is modified by another application:
 
 - The editor detects the change automatically
 - If you haven't made local edits, the content refreshes silently

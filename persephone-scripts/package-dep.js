@@ -1,6 +1,6 @@
 // Package Dependencies Graph
 // Scans node_modules and builds a force-graph of package dependencies.
-// Run inside js-notepad ScriptRunner.
+// Run inside persephone ScriptRunner.
 
 // Use original fs to avoid Electron's .asar patching that crashes on some packages
 const originalFs = require("original-fs");

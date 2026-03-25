@@ -43,7 +43,7 @@ Tests for reading, listing, and updating pages via MCP.
 **Verify:** Incognito browser page opens
 
 ## Test 4.8: App info
-**Request:** "What version of js-notepad is running?"
+**Request:** "What version of persephone is running?"
 **Expected:** get_app_info called, version returned
 **Verify:** Version matches actual app version
 

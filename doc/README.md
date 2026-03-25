@@ -1,6 +1,6 @@
 # Documentation Index
 
-This folder contains developer documentation for js-notepad.
+This folder contains developer documentation for Persephone.
 
 ## Structure
 

@@ -154,7 +154,7 @@ Developers deal with logs daily and plain text editors don't help. A dedicated v
 
 **Goal:** Lightweight API testing tool using `.http` file format (same as VS Code REST Client extension).
 
-Note: js-notepad already supports a basic REST workflow — create a JS file, write `const resp = await fetch(...); return await resp.json()` and execute it. A dedicated REST editor would add a more visual experience with request/response panels, headers UI, and history. Discussable whether the added value justifies the effort.
+Note: persephone already supports a basic REST workflow — create a JS file, write `const resp = await fetch(...); return await resp.json()` and execute it. A dedicated REST editor would add a more visual experience with request/response panels, headers UI, and history. Discussable whether the added value justifies the effort.
 
 **Complexity:** High
 
@@ -271,7 +271,7 @@ Frontend developers occasionally need to inspect fonts. Could show glyph table, 
 
 ### Custom Editor Plugins (Single-File HTML)
 
-**Goal:** Allow loading external React (or any web) applications as custom editors inside js-notepad, enabling a plugin-like extensibility model without a full plugin framework.
+**Goal:** Allow loading external React (or any web) applications as custom editors inside persephone, enabling a plugin-like extensibility model without a full plugin framework.
 
 **Concept:**
 - Any React application bundled into a single `.html` file (via `vite-plugin-singlefile` or similar) can be loaded as a custom editor
@@ -280,7 +280,7 @@ Frontend developers occasionally need to inspect fonts. Could show glyph table, 
 
 **Architecture:**
 ```
-js-notepad
+persephone
   └─ CustomEditorHost (registered as a page-editor)
        └─ <webview src="file:///path/to/editor.html" preload="custom-editor-api.js">
             └─ Custom React/HTML App
@@ -301,12 +301,12 @@ js-notepad
 
 **Use Cases:**
 - Domain-specific editors (diagram editors, form builders, visual config editors)
-- Third-party integrations without modifying js-notepad core
+- Third-party integrations without modifying persephone core
 - User-created tools that need richer UI than the scripting system provides
 
 **Tasks:**
 - [ ] Design the `jsNotepad` API contract (TypeScript interface)
-- [ ] Create preload script that bridges webview ↔ js-notepad stores
+- [ ] Create preload script that bridges webview ↔ persephone stores
 - [ ] Create `CustomEditorHost` component with `<webview>` management
 - [ ] Register custom editors in EditorRegistry (manifest or settings-based)
 - [ ] Build a sample custom editor as a proof of concept

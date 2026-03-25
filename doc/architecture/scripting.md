@@ -2,7 +2,7 @@
 
 ## Overview
 
-js-notepad includes a JavaScript/TypeScript execution environment that allows users to:
+persephone includes a JavaScript/TypeScript execution environment that allows users to:
 - Transform content programmatically
 - Automate repetitive tasks
 - Connect to databases and APIs

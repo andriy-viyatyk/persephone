@@ -1,4 +1,4 @@
-# js-notepad Project Guidelines
+# Persephone Project Guidelines
 
 ## English Correction (MANDATORY)
 
@@ -145,7 +145,7 @@ When user says **"let's publish new build"** (or similar), follow [/doc/standard
 
 ## Project Overview
 
-JS-Notepad is a Windows Notepad replacement for developers. Built with Electron and Monaco Editor (VS Code engine), it extends classic notepad with powerful code editing and a JavaScript/TypeScript execution environment.
+Persephone (formerly js-notepad) is a Windows Notepad replacement for developers. Built with Electron and Monaco Editor (VS Code engine), it extends classic notepad with powerful code editing and a JavaScript/TypeScript execution environment.
 
 ### Design Philosophy
 - **Core First:** Keep core functionality fast and lightweight

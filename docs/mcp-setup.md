@@ -1,10 +1,10 @@
 # MCP Server Setup
 
-js-notepad includes a built-in [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server that allows AI agents to control the application — execute scripts, create and read pages, and more.
+persephone includes a built-in [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server that allows AI agents to control the application — execute scripts, create and read pages, and more.
 
 ## Quick Start
 
-1. Open js-notepad Settings (`Ctrl+,` or Settings tab)
+1. Open persephone Settings (`Ctrl+,` or Settings tab)
 2. Find the **MCP Server** section and check **Enable MCP server**
 3. The server starts automatically — a green status dot and the server URL appear below the toggle, and a small **MCP indicator** appears in the title bar showing the connection count. Click the indicator to open the **MCP Server Log** — a live log of all incoming requests with method names, durations, and expandable request/response JSON.
 4. Click **Copy URL** to grab the server address, or **Copy Config** to get a ready-to-paste JSON snippet for your AI client
@@ -21,7 +21,7 @@ Add to your `.mcp.json` (in project root or `~/.claude/.mcp.json`):
 ```json
 {
   "mcpServers": {
-    "js-notepad": {
+    "persephone": {
       "type": "http",
       "url": "http://localhost:7865/mcp"
     }
@@ -32,7 +32,7 @@ Add to your `.mcp.json` (in project root or `~/.claude/.mcp.json`):
 ### Claude Desktop
 
 In Claude Desktop settings, add an MCP server:
-- **Name:** js-notepad
+- **Name:** persephone
 - **URL:** `http://localhost:7865/mcp`
 
 ### ChatGPT Desktop
@@ -86,11 +86,11 @@ MCP resources are read-only documents that AI clients can discover and read to g
 | **Links Guide** | `notepad://guides/links` | Links editor JSON format — LinkItem structure, categories, tags. Read before creating or editing links pages. |
 | **Full Guide** | `notepad://guides/full` | All guides combined into one document. Only read if you need the complete reference. |
 
-AI agents also receive **server instructions** on connection — a concise overview of js-notepad and its main workflows, with pointers to which guide to read for each task. This means agents have immediate context without reading any resource.
+AI agents also receive **server instructions** on connection — a concise overview of persephone and its main workflows, with pointers to which guide to read for each task. This means agents have immediate context without reading any resource.
 
 > **Tip:** All guides are also available via the `read_guide` tool — call `read_guide({ guide: "scripting" })` instead of fetching `notepad://guides/scripting`. This is useful for AI clients that don't support MCP resources.
 
-> **Note:** Claude Code users working inside the js-notepad project already have full documentation context via CLAUDE.md, so they rarely need to fetch resources explicitly. Resources are most useful for standalone AI clients connecting without any project context.
+> **Note:** Claude Code users working inside the persephone project already have full documentation context via CLAUDE.md, so they rarely need to fetch resources explicitly. Resources are most useful for standalone AI clients connecting without any project context.
 
 ## Settings
 
@@ -103,19 +103,19 @@ AI agents also receive **server instructions** on connection — a concise overv
 
 ### Read the active page
 
-Ask your AI agent: *"Read the current page in js-notepad"*
+Ask your AI agent: *"Read the current page in persephone"*
 
 The agent will use `get_active_page` to retrieve the content.
 
 ### Create a page with content
 
-Ask: *"Create a new JavaScript page in js-notepad with a hello world script"*
+Ask: *"Create a new JavaScript page in persephone with a hello world script"*
 
 The agent will use `create_page` with `language: "javascript"` and the content.
 
 ### Open a URL in the browser
 
-Ask: *"Open the GitHub API docs in js-notepad"*
+Ask: *"Open the GitHub API docs in persephone"*
 
 The agent will use `open_url` with the URL. You can also ask for a specific profile, incognito mode, or Tor mode: *"Open google.com in incognito"*, *"Open this page through Tor"*.
 
@@ -161,7 +161,7 @@ The `execute_script` tool gives AI access to the full [Scripting API](scripting.
 - Try changing the port: disable MCP, enter a different port number, then re-enable
 
 **AI client can't connect?**
-- Make sure js-notepad is running with MCP enabled (green status dot visible in Settings, or look for the MCP indicator in the title bar)
+- Make sure persephone is running with MCP enabled (green status dot visible in Settings, or look for the MCP indicator in the title bar)
 - Verify the URL matches the one shown in Settings (use the **Copy URL** button to be sure)
 - The server only accepts connections from localhost (127.0.0.1)
 

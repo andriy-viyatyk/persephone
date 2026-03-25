@@ -4,7 +4,7 @@
 
 ## Current State
 
-js-notepad currently does not have automated tests. Testing is done manually.
+persephone currently does not have automated tests. Testing is done manually.
 
 ## Planned Testing Strategy
 

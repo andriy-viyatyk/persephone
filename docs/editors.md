@@ -2,7 +2,7 @@
 
 # Editors
 
-js-notepad includes multiple editors for different file types. Some files support switching between editors using toolbar buttons.
+persephone includes multiple editors for different file types. Some files support switching between editors using toolbar buttons.
 
 ## Text Editor (Default)
 
@@ -109,19 +109,19 @@ For `.html` files — click **Preview** in the toolbar:
 
 ## Browser
 
-A built-in web browser for viewing documentation, APIs, and web resources without leaving js-notepad.
+A built-in web browser for viewing documentation, APIs, and web resources without leaving persephone.
 
 **Opening:** Click the dropdown arrow (&#9662;) next to the **+** button → **Browser** (if pinned), or find it in the **Tools & Editors** sidebar panel.
 
 **Key features:**
 - **URL bar** with search, suggestions, and 11 search engines
-- **Internal tabs** — multiple browser tabs within a single js-notepad tab
+- **Internal tabs** — multiple browser tabs within a single persephone tab
 - **Browser Profiles** — isolated sessions with separate cookies, storage, and cache
 - **Incognito mode** — ephemeral browsing with no persistent data
 - **Bookmarks** — per-profile bookmark management with star button and bookmarks panel
 - **Downloads** — toolbar button with progress tracking, download history popup
 - **Context menu** — contextual actions for links, images, text, SVG elements, and developer tools
-- **Default browser registration** — set js-notepad as your Windows default browser
+- **Default browser registration** — set persephone as your Windows default browser
 - **Session restore** — all tabs, URLs, history, and profile selection saved across restarts
 - **Find in page** — `Ctrl+F` opens inline search bar with match counter and navigation
 - **Keyboard shortcuts** — `Ctrl+L` URL bar, `Ctrl+F` find, `F5` reload, `F12` DevTools, `Alt+Left/Right` back/forward, and more
@@ -286,7 +286,7 @@ For `.excalidraw` files — an Excalidraw-based drawing canvas. Click **Drawing*
   - **Save as file** — dropdown menu to save as SVG or PNG (2x scale)
   - **Open in new tab** — dropdown menu to open as an SVG preview or PNG image in a new tab
   - Exports respect the current canvas theme (dark or light)
-- **Screen Snip** — toolbar button (scissors icon) captures a screen region and inserts it as an image into the canvas. Hides all js-notepad windows, shows a dimmed fullscreen overlay on each monitor, and lets you drag-select a region. Press Escape or right-click to cancel. Works on multi-monitor setups with mixed DPI scaling.
+- **Screen Snip** — toolbar button (scissors icon) captures a screen region and inserts it as an image into the canvas. Hides all persephone windows, shows a dimmed fullscreen overlay on each monitor, and lets you drag-select a region. Press Escape or right-click to cancel. Works on multi-monitor setups with mixed DPI scaling.
 - **Library persistence** — custom shape libraries are saved to disk and restored across sessions. Use the "Browse libraries" button to open the Excalidraw libraries site in the internal browser — installing a library adds it directly to the editor. Library storage path is configurable via `drawing.library-path` in Settings (defaults to `<userData>/data/excalidraw-lib/`).
 - **Offline ready** — no external dependencies; all assets are bundled
 - Can switch to Monaco for raw JSON editing

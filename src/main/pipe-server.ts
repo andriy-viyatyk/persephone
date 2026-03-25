@@ -3,7 +3,7 @@ import os from "node:os";
 import { openWindows } from "./open-windows";
 import { isValidFilePath } from "./utils";
 
-const PIPE_NAME = `js-notepad-${os.userInfo().username}`;
+const PIPE_NAME = `persephone-${os.userInfo().username}`;
 const PIPE_PATH = `\\\\.\\pipe\\${PIPE_NAME}`;
 
 let server: net.Server | undefined;

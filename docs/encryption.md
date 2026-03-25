@@ -2,7 +2,7 @@
 
 # File Encryption
 
-js-notepad can encrypt and decrypt text files using a password. Encrypted files are saved with AES-256-GCM encryption and can only be opened with the correct password.
+persephone can encrypt and decrypt text files using a password. Encrypted files are saved with AES-256-GCM encryption and can only be opened with the correct password.
 
 ## Encrypting a File
 

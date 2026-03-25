@@ -1,6 +1,6 @@
-# Contributing to js-notepad
+# Contributing to Persephone
 
-Thank you for your interest in contributing to js-notepad! This document provides guidelines for contributing to the project.
+Thank you for your interest in contributing to Persephone! This document provides guidelines for contributing to the project.
 
 ## Getting Started
 
@@ -14,7 +14,7 @@ Thank you for your interest in contributing to js-notepad! This document provide
 
 1. Fork and clone the repository:
    ```bash
-   git clone https://github.com/andriy-viyatyk/js-notepad.git
+   git clone https://github.com/andriy-viyatyk/persephone.git
    cd js-notepad
    ```
 
@@ -61,7 +61,7 @@ For detailed architecture documentation, see [/doc/architecture/](doc/architectu
 
 ### Reporting Bugs
 
-1. Check if the issue already exists in [GitHub Issues](https://github.com/andriy-viyatyk/js-notepad/issues)
+1. Check if the issue already exists in [GitHub Issues](https://github.com/andriy-viyatyk/persephone/issues)
 2. If not, create a new issue with:
    - Clear title and description
    - Steps to reproduce

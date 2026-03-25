@@ -1,10 +1,10 @@
 # Pages & Windows
 
-js-notepad uses tabbed pages (like browser tabs). Each page has a type and editor.
+Persephone uses tabbed pages (like browser tabs). Each page has a type and editor.
 
 ## Multi-Window Support
 
-js-notepad supports multiple windows. Each window has a stable `windowIndex` (starting from 0) and its own set of pages.
+Persephone supports multiple windows. Each window has a stable `windowIndex` (starting from 0) and its own set of pages.
 
 ### Discovering Windows
 

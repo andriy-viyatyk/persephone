@@ -439,7 +439,7 @@ class PageTabModel extends TComponentModel<null, PageTabProps> {
 
     handleDragStart = (e: React.DragEvent) => {
         e.dataTransfer.setData(
-            "application/js-notepad-tab",
+            "application/persephone-tab",
             JSON.stringify(this.getDragData())
         );
         e.dataTransfer.effectAllowed = "move";
@@ -459,7 +459,7 @@ class PageTabModel extends TComponentModel<null, PageTabProps> {
     };
 
     handleDrop = (e: React.DragEvent) => {
-        const dataStr = e.dataTransfer?.getData("application/js-notepad-tab");
+        const dataStr = e.dataTransfer?.getData("application/persephone-tab");
         const data = parseObject(dataStr);
         if (
             data &&

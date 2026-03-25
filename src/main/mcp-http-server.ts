@@ -129,16 +129,16 @@ function broadcastMcpStatus(): void {
 function createMcpServer(): InstanceType<typeof McpServer> {
     const server = new McpServer(
         {
-            name: "js-notepad",
+            name: "persephone",
             version: electronApp.getVersion(),
-            title: "JS Notepad",
+            title: "Persephone",
             description: "Developer notepad with tabbed pages, specialized editors, JavaScript/TypeScript scripting, and full Node.js access.",
-            websiteUrl: "https://github.com/andriy-viyatyk/js-notepad",
+            websiteUrl: "https://github.com/andriy-viyatyk/persephone",
         },
         {
             instructions: [
-                "js-notepad is a developer notepad with tabbed pages, specialized editors, and JavaScript/TypeScript scripting. GitHub: https://github.com/andriy-viyatyk/js-notepad",
-                "Use js-notepad to display rich content to the user: code with syntax highlighting, diagrams, tables/grids, images, and web pages.",
+                "Persephone is a developer notepad with tabbed pages, specialized editors, and JavaScript/TypeScript scripting. GitHub: https://github.com/andriy-viyatyk/persephone",
+                "Use Persephone to display rich content to the user: code with syntax highlighting, diagrams, tables/grids, images, and web pages.",
                 "",
                 "## IMPORTANT: Read guides before using tools",
                 "",
@@ -289,7 +289,7 @@ function createMcpServer(): InstanceType<typeof McpServer> {
     // ── Page & script tools ──────────────────────────────────────────
     server.tool(
         "execute_script",
-        "Execute JavaScript or TypeScript in js-notepad. Returns { text, language, isError, consoleLogs }. IMPORTANT: use read_guide(\"scripting\") (or read resource notepad://guides/scripting) BEFORE using this tool — it documents the full API for `page` (active page), `app` (pages, fs, settings, ui, shell, window), and editor facades (asGrid, asNotebook, asTodo, etc.). Do NOT guess API method names or signatures — the scripting API has specific conventions that differ from typical Node.js patterns.",
+        "Execute JavaScript or TypeScript in Persephone. Returns { text, language, isError, consoleLogs }. IMPORTANT: use read_guide(\"scripting\") (or read resource notepad://guides/scripting) BEFORE using this tool — it documents the full API for `page` (active page), `app` (pages, fs, settings, ui, shell, window), and editor facades (asGrid, asNotebook, asTodo, etc.). Do NOT guess API method names or signatures — the scripting API has specific conventions that differ from typical Node.js patterns.",
         {
             script: z.string().describe("JavaScript or TypeScript code to execute. Supports async/await. Last expression is returned as result. Use read_guide(\"scripting\") for the API reference before writing scripts."),
             pageId: z.string().optional().describe("Target page ID. If omitted, uses the active page."),
@@ -387,7 +387,7 @@ function createMcpServer(): InstanceType<typeof McpServer> {
 
     server.tool(
         "open_url",
-        "Open a URL in the built-in browser. js-notepad has a full browser with tabs, profiles, and incognito mode. Reuses an existing browser page if one is open (adds a new tab), or creates a new browser page. Returns { opened: url }.",
+        "Open a URL in the built-in browser. Persephone has a full browser with tabs, profiles, and incognito mode. Reuses an existing browser page if one is open (adds a new tab), or creates a new browser page. Returns { opened: url }.",
         {
             url: z.string().describe("The URL to open."),
             profileName: z.string().optional().describe("Browser profile name. Uses the default profile if omitted."),
@@ -402,7 +402,7 @@ function createMcpServer(): InstanceType<typeof McpServer> {
     server.tool(
         "read_guide",
         [
-            "Read a js-notepad documentation guide. IMPORTANT: You MUST use this tool to read the relevant guide BEFORE using tools that require it. Tool descriptions will tell you which guide to read.",
+            "Read a Persephone documentation guide. IMPORTANT: You MUST use this tool to read the relevant guide BEFORE using tools that require it. Tool descriptions will tell you which guide to read.",
             "",
             "Available guides:",
             "- ui-push — log messages, dialogs, output types (markdown, mermaid, grid, code). For ui_push tool.",

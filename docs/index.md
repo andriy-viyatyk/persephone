@@ -1,10 +1,10 @@
-# js-notepad User Guide
+# persephone User Guide
 
 A powerful notepad for developers, built with Monaco Editor.
 
-## What is js-notepad?
+## What is persephone?
 
-js-notepad is a Windows Notepad replacement designed for developers. It combines the simplicity of Notepad with powerful features from VS Code:
+persephone is a Windows Notepad replacement designed for developers. It combines the simplicity of Notepad with powerful features from VS Code:
 
 - **Monaco Editor** - The same editor that powers VS Code
 - **Syntax Highlighting** - 50+ programming languages
@@ -28,7 +28,7 @@ js-notepad is a Windows Notepad replacement designed for developers. It combines
 - [Browser](./browser.md) - Built-in web browser with profiles, bookmarks, and downloads
 - [Scripting](./scripting.md) - JavaScript/TypeScript execution and content transformation
 - [Scripting API Reference](./api/index.md) - Complete API for `page` and `app` objects
-- [MCP Server Setup](./mcp-setup.md) - Connect AI agents (Claude, ChatGPT, Gemini) to control js-notepad
+- [MCP Server Setup](./mcp-setup.md) - Connect AI agents (Claude, ChatGPT, Gemini) to control persephone
 - [Tabs & Navigation](./tabs-and-navigation.md) - Tab management, grouping, sidebar, and session restore
 - [Encryption](./encryption.md) - Password-based file encryption
 - [Keyboard Shortcuts](./shortcuts.md) - Complete shortcut reference
@@ -54,9 +54,9 @@ js-notepad is a Windows Notepad replacement designed for developers. It combines
 - File comparison (diff view)
 - File encryption
 - Full Node.js access in scripts
-- AI agent integration — connect external tools like Claude Desktop, Claude Code, or ChatGPT to control js-notepad via HTTP (MCP)
+- AI agent integration — connect external tools like Claude Desktop, Claude Code, or ChatGPT to control persephone via HTTP (MCP)
 
 ## Getting Help
 
-- [GitHub Issues](https://github.com/andriy-viyatyk/js-notepad/issues) - Report bugs
+- [GitHub Issues](https://github.com/andriy-viyatyk/persephone/issues) - Report bugs
 - [What's New](./whats-new.md) - Latest changes

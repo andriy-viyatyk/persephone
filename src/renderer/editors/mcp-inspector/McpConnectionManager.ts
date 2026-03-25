@@ -97,7 +97,7 @@ export class McpConnectionManager {
 
             // Create client and connect
             this.client = new ClientClass(
-                { name: "js-notepad-mcp-inspector", version: "1.0.0" },
+                { name: "persephone-mcp-inspector", version: "1.0.0" },
                 { capabilities: {} },
             );
 

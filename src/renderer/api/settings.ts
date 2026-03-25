@@ -55,7 +55,7 @@ const settingsComments: Partial<Record<AppSettingsKey, string>> = {
     "browser-default-bookmarks-file": "Path to the .link.json bookmarks file for the default browser profile.",
     "browser-incognito-bookmarks-file": "Path to the .link.json bookmarks file for incognito mode.",
     "link-open-behavior": "How external links open from editors.\n\"default-browser\" opens in the OS default browser, \"internal-browser\" opens in the nearest Browser tab.",
-    "mcp.enabled": "Enable MCP (Model Context Protocol) HTTP server.\nAllows AI agents like Claude Desktop and Claude Code to control js-notepad.",
+    "mcp.enabled": "Enable MCP (Model Context Protocol) HTTP server.\nAllows AI agents like Claude Desktop and Claude Code to control persephone.",
     "mcp.port": "Port number for the MCP HTTP server.\nDefault: 7865. Change requires toggling MCP off and on.",
     "script-library.path": "Path to the script library folder.\nA folder on disk where saved scripts and reusable modules are stored.",
     "drawing.library-path": "Path to Excalidraw library folder.\nStores reusable shapes and components for the drawing editor.",

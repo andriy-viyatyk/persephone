@@ -4,7 +4,7 @@
 
 ## Application Type
 
-js-notepad is an **Electron desktop application** — a Windows Notepad replacement designed for developers. It combines:
+persephone is an **Electron desktop application** — a Windows Notepad replacement designed for developers. It combines:
 - Monaco Editor (VS Code engine) for text editing
 - Custom editors for specific file types (Grid, PDF, Markdown, Notebook, Todo, etc.)
 - JavaScript/TypeScript execution environment for data transformation
@@ -160,7 +160,7 @@ See [scripting.md](./scripting.md).
 
 ### 4. MCP Integration (Model Context Protocol)
 
-- External AI agents (Claude Desktop, Claude Code) control js-notepad via a Streamable HTTP MCP server
+- External AI agents (Claude Desktop, Claude Code) control persephone via a Streamable HTTP MCP server
 - Protocol: MCP over HTTP at `http://127.0.0.1:{port}/mcp` (default port 7865)
 - Main process: `mcp-http-server.ts` accepts connections using `@modelcontextprotocol/sdk`, forwards requests to renderer via IPC
 - Renderer process: `mcp-handler.ts` dispatches 9 commands (`execute_script`, `list_pages`, `get_page_content`, `get_active_page`, `create_page`, `set_page_content`, `get_app_info`, `open_url`, `ui_push`)
@@ -197,7 +197,7 @@ import { PdfViewer } from "../editors/pdf/PdfViewer";
 ```
 
 ### 3. Container with Building Blocks
-js-notepad provides UI building blocks (toolbar, editors, grouped pages). Users bring their own integrations via Node.js/npm — the app doesn't need built-in database or API integrations.
+persephone provides UI building blocks (toolbar, editors, grouped pages). Users bring their own integrations via Node.js/npm — the app doesn't need built-in database or API integrations.
 
 ### 4. Consistent Editor Structure
 Every editor follows the same pattern:

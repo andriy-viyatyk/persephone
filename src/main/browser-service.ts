@@ -8,7 +8,7 @@
  * compared to the <webview> DOM element's event API.
  *
  * Registration key is `${tabId}/${internalTabId}` to support multiple
- * internal browser tabs per js-notepad page tab.
+ * internal browser tabs per persephone page tab.
  */
 import { app, BrowserWindow, ipcMain, IpcMainEvent, session, webContents, WebContents } from "electron";
 import {
@@ -25,13 +25,13 @@ const cleanedSessions = new WeakSet<Electron.Session>();
 
 /**
  * Strip app name and Electron version from User-Agent so websites
- * see a standard Chrome UA instead of "js-notepad/x.x.x ... Electron/x.x.x".
+ * see a standard Chrome UA instead of "persephone/x.x.x ... Electron/x.x.x".
  */
 function cleanUserAgent(ses: Electron.Session): void {
     if (cleanedSessions.has(ses)) return;
     cleanedSessions.add(ses);
     const ua = ses.getUserAgent()
-        .replace(/\s*js-notepad\/\S+/i, "")
+        .replace(/\s*persephone\/\S+/i, "")
         .replace(/\s*Electron\/\S+/i, "");
     ses.setUserAgent(ua);
 }

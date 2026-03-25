@@ -1,6 +1,6 @@
 # Scripting API — execute_script
 
-The `execute_script` tool runs JavaScript or TypeScript in js-notepad's context. Scripts have access to `page` (current tab), `app` (application services), and full Node.js APIs.
+The `execute_script` tool runs JavaScript or TypeScript in Persephone's context. Scripts have access to `page` (current tab), `app` (application services), and full Node.js APIs.
 
 ## The `app` Object
 

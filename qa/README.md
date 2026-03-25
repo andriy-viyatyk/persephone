@@ -1,12 +1,12 @@
 # MCP Documentation QA Testing
 
-Quality assurance tests for js-notepad MCP server documentation. The goal is to ensure AI agents can use js-notepad MCP tools correctly based solely on tool descriptions and resource guides — without prior knowledge of the project.
+Quality assurance tests for persephone MCP server documentation. The goal is to ensure AI agents can use persephone MCP tools correctly based solely on tool descriptions and resource guides — without prior knowledge of the project.
 
 ## How It Works
 
-A **test agent** (`.claude/agents/mcp-test-agent.md`) simulates a generic AI assistant that only knows about js-notepad through its MCP connection. It has no access to CLAUDE.md, source code, or project files — only MCP tools and resources.
+A **test agent** (`.claude/agents/mcp-test-agent.md`) simulates a generic AI assistant that only knows about persephone through its MCP connection. It has no access to CLAUDE.md, source code, or project files — only MCP tools and resources.
 
-The **test runner** (you, in the main conversation) sends test prompts to the agent, then verifies the results by checking js-notepad pages via MCP.
+The **test runner** (you, in the main conversation) sends test prompts to the agent, then verifies the results by checking persephone pages via MCP.
 
 ## Test Files
 
@@ -21,7 +21,7 @@ The **test runner** (you, in the main conversation) sends test prompts to the ag
 
 ### Prerequisites
 
-- js-notepad running with MCP server enabled
+- persephone running with MCP server enabled
 - MCP connection established (verify with `list_pages` call)
 
 ### Important Rules
@@ -50,7 +50,7 @@ For each test:
 3. **Verify results** — Check what the agent created:
    - `list_pages` — verify page exists with correct editor/language/title
    - `get_page_content` — verify content structure
-   - Visual check — confirm the page renders correctly in js-notepad (no crashes, correct editor shown)
+   - Visual check — confirm the page renders correctly in persephone (no crashes, correct editor shown)
 
 4. **Record result** — PASS, PARTIAL (works but suboptimal), or FAIL (broken/wrong)
 
@@ -70,7 +70,7 @@ For **simple editors** (text, markdown, mermaid, grid, SVG, HTML):
 1. **Investigate why** — check the agent's tool call sequence in the stream output
 2. **Ask the agent** — if it guessed instead of reading a resource, ask why
 3. **Improve documentation** — update tool descriptions, resource guides, or server instructions
-4. **Re-test** — restart js-notepad (to reload MCP server) and re-run the failing test
+4. **Re-test** — restart persephone (to reload MCP server) and re-run the failing test
 
 ### Common Failure Patterns
 

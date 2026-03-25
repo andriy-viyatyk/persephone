@@ -116,7 +116,7 @@ export function buildExcalidrawJsonWithImage(
     return JSON.stringify({
         type: "excalidraw",
         version: 2,
-        source: "js-notepad",
+        source: "persephone",
         elements,
         appState: { currentItemFontFamily: FONT_FAMILY.Helvetica },
         files: {

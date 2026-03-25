@@ -1,0 +1,55 @@
+classDiagram
+    class IContentHost {
+        <<interface>>
+        +id: string
+        +state: IState~IContentHostState~
+        +changeContent(content, byUser?)
+        +changeEditor(editor)
+        +changeLanguage(language)
+        +stateStorage: EditorStateStorage
+        +acquireViewModel(editorId): Promise~ContentViewModel~
+        +releaseViewModel(editorId)
+    }
+
+    class ContentViewModelHost {
+        -viewModels: Map~string, Entry~
+        +acquire(editorId): Promise~ContentViewModel~
+        +release(editorId)
+        +tryGet(editorId): ContentViewModel?
+        +disposeAll()
+    }
+
+    class ContentViewModel~TState~ {
+        <<abstract>>
+        +host: IContentHost
+        +state: TGlobalState~TState~
+        #onInit()*
+        #onContentChanged(content)*
+        #onDispose()
+    }
+
+    class TextFileModel {
+        implements IContentHost
+        -_vmHost: ContentViewModelHost
+    }
+
+    class NoteItemEditModel {
+        implements IContentHost
+        -_vmHost: ContentViewModelHost
+    }
+
+    IContentHost <|.. TextFileModel
+    IContentHost <|.. NoteItemEditModel
+    TextFileModel *-- ContentViewModelHost
+    NoteItemEditModel *-- ContentViewModelHost
+    ContentViewModelHost o-- ContentViewModel
+
+    ContentViewModel <|-- TextViewModel
+    ContentViewModel <|-- GridViewModel
+    ContentViewModel <|-- MarkdownViewModel
+    ContentViewModel <|-- NotebookViewModel
+    ContentViewModel <|-- TodoViewModel
+    ContentViewModel <|-- LinkViewModel
+    ContentViewModel <|-- SvgViewModel
+    ContentViewModel <|-- HtmlViewModel
+    ContentViewModel <|-- MermaidViewModel

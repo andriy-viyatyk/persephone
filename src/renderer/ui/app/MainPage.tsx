@@ -4,7 +4,7 @@ import { FlexSpace } from "../../components/layout/Elements";
 import { Button } from "../../components/basic/Button";
 import {
     CloseIcon,
-    JsNotepadIcon,
+    PersephoneIcon,
     RefreshIcon,
     WindowMaximizeIcon,
     WindowMinimizeIcon,
@@ -147,7 +147,7 @@ export function MainPage() {
                     type="icon"
                     className="app-button"
                 >
-                    <JsNotepadIcon />
+                    <PersephoneIcon />
                 </Button>
                 <PageTabs />
                 <FlexSpace style={{ minWidth: 40 }} />

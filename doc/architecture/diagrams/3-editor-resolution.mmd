@@ -1,0 +1,14 @@
+flowchart LR
+    FILE["File Opened<br/><i>example.note.json</i>"] --> REG["EditorRegistry<br/>.resolve(filePath)"]
+
+    REG --> |"Query all editors'<br/>acceptFile()"| BEST["Best Match<br/><i>highest priority wins</i>"]
+
+    BEST --> |"category:<br/>content-view"| CV["Content View<br/><i>Shares TextFileModel</i>"]
+    BEST --> |"category:<br/>page-editor"| PE["Page Editor<br/><i>Own PageModel</i>"]
+    BEST --> |"no match<br/>(priority 0)"| MONACO["Monaco Fallback<br/><i>default text editor</i>"]
+
+    style FILE fill:#e3f2fd
+    style REG fill:#fff3e0
+    style CV fill:#e8f5e9
+    style PE fill:#f3e5f5
+    style MONACO fill:#e8f5e9

@@ -34,7 +34,7 @@ function executeRegFile(regFilePath: string): Promise<void> {
 }
 
 /**
- * Registers the 'Open with js-notepad' context menu option for all files (*)
+ * Registers the 'Open with persephone' context menu option for all files (*)
  * and specific extensions.
  * @param extensions A comma-separated list of extensions (e.g., ".txt,.log").
  * NOTE: This implementation focuses on the simple '*' entry.
@@ -57,11 +57,11 @@ export async function registerOpenWithOption(
     // The * key applies the menu item to ALL files.
     const regContent = `Windows Registry Editor Version 5.00
 
-[HKEY_CURRENT_USER\\Software\\Classes\\*\\shell\\js-notepad]
-@="Open with js-notepad"
+[HKEY_CURRENT_USER\\Software\\Classes\\*\\shell\\persephone]
+@="Open with persephone"
 "Icon"="${escapedExePath},0"
 
-[HKEY_CURRENT_USER\\Software\\Classes\\*\\shell\\js-notepad\\command]
+[HKEY_CURRENT_USER\\Software\\Classes\\*\\shell\\persephone\\command]
 @="\\"${escapedExePath}\\" \\"%1\\""
 `;
 
@@ -73,7 +73,7 @@ export async function registerOpenWithOption(
         await executeRegFile(regFilePath);
 
         console.log(
-            "Registry: 'Open with js-notepad' registered successfully."
+            "Registry: 'Open with persephone' registered successfully."
         );
 
         // NOTE: While you included extensions parameter, the most straightforward and common
@@ -81,7 +81,7 @@ export async function registerOpenWithOption(
         // For 'Open With' list, you would need to iterate and add entries under:
         // HKEY_CURRENT_USER\Software\Classes\.ext\OpenWithList\YourApp.exe
     } catch (error) {
-        console.error("Failed to register 'Open with js-notepad':", error);
+        console.error("Failed to register 'Open with persephone':", error);
         throw new Error("Failed to register context menu option.");
     }
 }
@@ -89,7 +89,7 @@ export async function registerOpenWithOption(
 // ---
 
 /**
- * Unregisters the 'Open with js-notepad' context menu option by deleting the registry key.
+ * Unregisters the 'Open with persephone' context menu option by deleting the registry key.
  */
 export async function unregisterOpenWithOption(): Promise<void> {
     const regFileName = "unregister.reg";
@@ -100,7 +100,7 @@ export async function unregisterOpenWithOption(): Promise<void> {
     // and all its subkeys/values.
     const regContent = `Windows Registry Editor Version 5.00
 
-[-HKEY_CURRENT_USER\\Software\\Classes\\*\\shell\\js-notepad]
+[-HKEY_CURRENT_USER\\Software\\Classes\\*\\shell\\persephone]
 `;
 
     try {
@@ -111,10 +111,10 @@ export async function unregisterOpenWithOption(): Promise<void> {
         await executeRegFile(regFilePath);
 
         console.log(
-            "Registry: 'Open with js-notepad' unregistered successfully."
+            "Registry: 'Open with persephone' unregistered successfully."
         );
     } catch (error) {
-        console.error("Failed to unregister 'Open with js-notepad':", error);
+        console.error("Failed to unregister 'Open with persephone':", error);
         throw new Error("Failed to unregister context menu option.");
     }
 }

@@ -5,7 +5,7 @@ Detailed organization of the codebase. Verified against actual source files.
 ## Root Structure
 
 ```
-js-notepad/
+persephone/
 ├── src/                    # Source code
 │   ├── main/               # Electron main process
 │   ├── renderer/           # React frontend (see below)
@@ -33,7 +33,7 @@ js-notepad/
 │   ├── mcp-res-notebook.md # MCP resource: notebook editor JSON format
 │   ├── mcp-res-todo.md     # MCP resource: todo editor JSON format
 │   └── mcp-res-links.md    # MCP resource: links editor JSON format
-├── snip-tool/              # Rust native screen snip tool (js-notepad-snip.exe)
+├── snip-tool/              # Rust native screen snip tool (persephone-snip.exe)
 │   ├── src/main.rs         # Entry point, PNG encoding, stdout output
 │   ├── src/capture.rs      # Monitor enumeration + GDI screen capture
 │   ├── src/overlay.rs      # Fullscreen overlay windows, selection UI
@@ -461,7 +461,7 @@ js-notepad/
 ├── tor-service.ts          # Tor process lifecycle and per-partition SOCKS5 proxy
 ├── download-service.ts     # Download management
 ├── search-service.ts       # File search service
-├── snip-service.ts         # Screen snip (spawns js-notepad-snip.exe, reads PNG from stdout)
+├── snip-service.ts         # Screen snip (spawns persephone-snip.exe, reads PNG from stdout)
 ├── version-service.ts      # Version checking (runs in main, not renderer)
 ├── tray-setup.ts           # System tray
 ├── drag-model.ts           # Tab drag between windows

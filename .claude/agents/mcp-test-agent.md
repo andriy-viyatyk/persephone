@@ -1,7 +1,7 @@
 ---
 model: sonnet
-tools: mcp__js-notepad__ui_push, mcp__js-notepad__create_page, mcp__js-notepad__set_page_content, mcp__js-notepad__get_page_content, mcp__js-notepad__get_active_page, mcp__js-notepad__list_pages, mcp__js-notepad__list_windows, mcp__js-notepad__open_window, mcp__js-notepad__open_url, mcp__js-notepad__execute_script, mcp__js-notepad__get_app_info, ReadMcpResourceTool, ListMcpResourcesTool
-description: Test agent that simulates a generic AI assistant with MCP tools available. No prior knowledge of js-notepad.
+tools: mcp__persephone__ui_push, mcp__persephone__create_page, mcp__persephone__set_page_content, mcp__persephone__get_page_content, mcp__persephone__get_active_page, mcp__persephone__list_pages, mcp__persephone__list_windows, mcp__persephone__open_window, mcp__persephone__open_url, mcp__persephone__execute_script, mcp__persephone__get_app_info, ReadMcpResourceTool, ListMcpResourcesTool
+description: Test agent that simulates a generic AI assistant with MCP tools available. No prior knowledge of persephone.
 ---
 
 # MCP Test Agent
