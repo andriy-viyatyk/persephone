@@ -1,6 +1,6 @@
-# JS-Notepad
+# Persephone
 
-**JS-Notepad** is a developer notepad for Windows — built with Electron, Monaco Editor, and a JavaScript/TypeScript runtime. It extends the classic tabbed text editor with specialized viewers, a scripting engine, and an MCP server that lets AI agents drive the UI.
+**Persephone** is a developer notepad for Windows — built with Electron, Monaco Editor, and a JavaScript/TypeScript runtime. It extends the classic tabbed text editor with specialized viewers, a scripting engine, and an MCP server that lets AI agents drive the UI.
 
 
 
@@ -30,8 +30,8 @@ Browse the web in a dedicated tab with profiles, incognito mode, Tor routing, bo
 
 | Format | Link |
 | :--- | :--- |
-| **Installer** | [![Download EXE](https://img.shields.io/badge/Download-Installer%20(.exe)-blue?style=for-the-badge&logo=windows)](https://github.com/andriy-viyatyk/js-notepad/releases/latest) |
-| **Portable** | [![Download ZIP](https://img.shields.io/badge/Download-Portable%20(.zip)-orange?style=for-the-badge&logo=windows)](https://github.com/andriy-viyatyk/js-notepad/releases/latest) |
+| **Installer** | [![Download EXE](https://img.shields.io/badge/Download-Installer%20(.exe)-blue?style=for-the-badge&logo=windows)](https://github.com/andriy-viyatyk/persephone/releases/latest) |
+| **Portable** | [![Download ZIP](https://img.shields.io/badge/Download-Portable%20(.zip)-orange?style=for-the-badge&logo=windows)](https://github.com/andriy-viyatyk/persephone/releases/latest) |
 
 ## Editors
 
@@ -62,7 +62,7 @@ Browse the web in a dedicated tab with profiles, incognito mode, Tor routing, bo
 * **[User Guide](docs/index.md)** — Getting started, editors, keyboard shortcuts
 * **[Scripting Guide](docs/scripting.md)** — Script execution, `page`/`app` API, autoload scripts
 * **[API Reference](docs/api/index.md)** — `app.pages`, `app.fs`, `app.settings`, `app.ui`, `app.fetch`
-* **[MCP Setup](docs/mcp-setup.md)** — Configure AI agents to control js-notepad
+* **[MCP Setup](docs/mcp-setup.md)** — Configure AI agents to control Persephone
 
 ---
 
@@ -70,9 +70,9 @@ Browse the web in a dedicated tab with profiles, incognito mode, Tor routing, bo
 
 Contributions, bug reports, and feature requests are more than welcome!
 
-* **Found a bug?** Please [open an issue](https://github.com/andriy-viyatyk/js-notepad/issues) with a description and steps to reproduce.
+* **Found a bug?** Please [open an issue](https://github.com/andriy-viyatyk/persephone/issues) with a description and steps to reproduce.
 * **Want to contribute?** Feel free to fork the repository and submit a pull request. Whether it's a new "Alternative Editor," a bug fix, or a typo in the documentation, every bit helps!
-* **Ideas?** If you have a "cool idea" for a tool that should be built into JS-Notepad, jump into the [discussions](https://github.com/andriy-viyatyk/js-notepad/discussions) and let's talk about it.
+* **Ideas?** If you have a "cool idea" for a tool that should be built into Persephone, jump into the [discussions](https://github.com/andriy-viyatyk/persephone/discussions) and let's talk about it.
 
 ### For Contributors
 

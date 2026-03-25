@@ -2,7 +2,7 @@
 
 The `ui_push` tool is the **recommended way for AI agents to show information** to the user. It pushes entries to a Log View page — a scrollable, styled log with support for interactive dialogs.
 
-js-notepad manages the Log View page automatically:
+Persephone manages the Log View page automatically:
 - On first `ui_push` call, a new Log View page is created
 - Subsequent `ui_push` calls reuse the same page
 - If the user closes the page, the next `ui_push` creates a new one

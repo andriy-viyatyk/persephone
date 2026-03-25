@@ -6,7 +6,7 @@ description: Reviews and updates user-facing documentation in /docs/ after code 
 
 # User Documentation Update
 
-You are updating the user-facing documentation in `/docs/` to reflect recent code changes in the js-notepad project.
+You are updating the user-facing documentation in `/docs/` to reflect recent code changes in the Persephone project.
 
 ## Scope
 

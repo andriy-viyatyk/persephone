@@ -1,4 +1,4 @@
-// js-notepad-snip: Native screen snip tool.
+// persephone-snip: Native screen snip tool.
 //
 // Captures all monitors, shows fullscreen overlays, lets the user
 // draw a selection rectangle, then writes the cropped PNG to stdout.

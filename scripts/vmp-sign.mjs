@@ -4,7 +4,7 @@
  *
  * The EVS tool tries to sign all .exe files in the directory, but only
  * the Electron binary is a valid ECS binary. Non-Electron executables
- * (e.g. js-notepad-launcher.exe) are temporarily moved out before signing.
+ * (e.g. persephone-launcher.exe) are temporarily moved out before signing.
  *
  * Requires:
  *   - Python 3.7+ with castlabs-evs installed: pip install castlabs-evs

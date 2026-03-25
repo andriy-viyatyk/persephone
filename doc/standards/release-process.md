@@ -1,6 +1,6 @@
 # Release Process
 
-How to publish a new version of js-notepad.
+How to publish a new version of persephone.
 
 ## Branch & Version Convention
 
@@ -54,7 +54,7 @@ When the user says **"let's publish new build"** (or similar), follow the steps 
 
 6. **Notify the user** that the tag has been pushed and the build is running. Provide a link:
    ```
-   https://github.com/andriy-viyatyk/js-notepad/actions
+   https://github.com/andriy-viyatyk/persephone/actions
    ```
 
 7. **Wait** for the user to confirm that the GitHub build is complete and the release is published.

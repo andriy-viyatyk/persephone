@@ -97,16 +97,16 @@ The NSIS installer (`build/installer.nsh`) is the most complex file — it conta
 - Browser registration (if used as default browser)
 - Uninstaller cleanup
 
-**Important:** When users upgrade from "js-notepad" to "Persephone", the old registry entries and start menu shortcuts won't be cleaned up automatically. Consider adding migration logic to the installer that removes old `js-notepad` registry keys.
+**Breaking change:** Persephone is a clean break from js-notepad. Users must uninstall js-notepad manually before installing Persephone. No migration logic — old registry entries, shortcuts, and user data remain until the user uninstalls. Version bumps to **2.0.1** to signal the breaking change.
 
 ## Tasks
 
 | # | Task | Description | Status |
 |---|------|-------------|--------|
-| 1 | US-280 Core rebrand | Phase 1: rename all runtime identifiers in a single commit | Planned |
-| 2 | US-281 Doc rebrand | Phase 2: update all documentation | Planned |
-| 3 | US-282 Repo rename | Phase 3: rename GitHub repo, update URLs | Planned |
-| 4 | US-283 Installer migration | Add cleanup of old "js-notepad" registry entries to installer | Planned |
+| 1 | US-280 Core rebrand | Phase 1: rename all runtime identifiers + icon | Done |
+| 2 | US-285 Version bump to 2.0.1 | Bump version to 2.0.1 to signal breaking change | Done |
+| 3 | US-281 Doc rebrand | Phase 2: update all documentation | Done |
+| 4 | US-282 Repo rename | Phase 3: rename GitHub repo, update URLs | Planned |
 | 5 | US-284 Cleanup | Phase 4: historical docs, visualizations, mockups | Planned |
 
 ## Icon

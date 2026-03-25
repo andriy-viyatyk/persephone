@@ -1,6 +1,6 @@
 # Pages Architecture
 
-How pages (tabs) work in js-notepad. Covers the window bootstrap lifecycle,
+How pages (tabs) work in persephone. Covers the window bootstrap lifecycle,
 page lifecycle, action taxonomy, and internal submodel structure.
 
 **Source code:** [`/src/renderer/api/pages/`](../../src/renderer/api/pages/)

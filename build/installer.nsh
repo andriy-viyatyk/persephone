@@ -1,18 +1,18 @@
 ; ===================================================================
-; installer.nsh — Custom NSIS installer options for JS-Notepad
+; installer.nsh — Custom NSIS installer options for Persephone
 ; ===================================================================
 ;
 ; Adds a custom page after directory selection with checkboxes:
 ;   1. Create desktop shortcut                        (checked by default)
 ;   2. Create Start menu shortcut                     (checked by default)
-;   3. "Open with js-notepad" Explorer context menu   (checked by default)
+;   3. "Open with persephone" Explorer context menu   (checked by default)
 ;   4. Set as default app for text files              (unchecked by default)
 ;   5. Register as default browser                    (unchecked by default)
 ;
 ; Selected options are persisted to the registry so the uninstaller
 ; (and future upgrades) know exactly what to clean up.
 ;
-; Registry root: HKCU\Software\js-notepad\Install
+; Registry root: HKCU\Software\persephone\Install
 ; ===================================================================
 
 !include "nsDialogs.nsh"
@@ -39,19 +39,19 @@ Var OptBrowser
     ; Save the current default handler so we can restore it on uninstall.
     ClearErrors
     ReadRegStr $R0 HKCU "Software\Classes\.${EXT}" ""
-    ${If} $R0 != "JSNotepad.Document"
+    ${If} $R0 != "Persephone.Document"
         ; Only save if it wasn't already ours (avoids clobbering the backup).
-        WriteRegStr HKCU "Software\js-notepad\Install\PrevAssoc" ".${EXT}" $R0
+        WriteRegStr HKCU "Software\persephone\Install\PrevAssoc" ".${EXT}" $R0
     ${EndIf}
-    WriteRegStr HKCU "Software\Classes\.${EXT}" "" "JSNotepad.Document"
+    WriteRegStr HKCU "Software\Classes\.${EXT}" "" "Persephone.Document"
 !macroend
 
 !macro _UnRegisterFileAssoc EXT
     ; Only touch the extension if we currently own it.
     ReadRegStr $R0 HKCU "Software\Classes\.${EXT}" ""
-    ${If} $R0 == "JSNotepad.Document"
+    ${If} $R0 == "Persephone.Document"
         ClearErrors
-        ReadRegStr $R1 HKCU "Software\js-notepad\Install\PrevAssoc" ".${EXT}"
+        ReadRegStr $R1 HKCU "Software\persephone\Install\PrevAssoc" ".${EXT}"
         ${If} ${Errors}
             DeleteRegValue HKCU "Software\Classes\.${EXT}" ""
         ${ElseIf} $R1 != ""
@@ -68,31 +68,31 @@ Var OptBrowser
 
 !macro customInit
     ClearErrors
-    ReadRegDWORD $OptDesktop HKCU "Software\js-notepad\Install" "Desktop"
+    ReadRegDWORD $OptDesktop HKCU "Software\persephone\Install" "Desktop"
     ${If} ${Errors}
         StrCpy $OptDesktop ${BST_CHECKED}       ; first install → checked
     ${EndIf}
 
     ClearErrors
-    ReadRegDWORD $OptStartMenu HKCU "Software\js-notepad\Install" "StartMenu"
+    ReadRegDWORD $OptStartMenu HKCU "Software\persephone\Install" "StartMenu"
     ${If} ${Errors}
         StrCpy $OptStartMenu ${BST_CHECKED}     ; first install → checked
     ${EndIf}
 
     ClearErrors
-    ReadRegDWORD $OptContextMenu HKCU "Software\js-notepad\Install" "ContextMenu"
+    ReadRegDWORD $OptContextMenu HKCU "Software\persephone\Install" "ContextMenu"
     ${If} ${Errors}
         StrCpy $OptContextMenu ${BST_CHECKED}   ; first install → checked
     ${EndIf}
 
     ClearErrors
-    ReadRegDWORD $OptTextFiles HKCU "Software\js-notepad\Install" "TextFiles"
+    ReadRegDWORD $OptTextFiles HKCU "Software\persephone\Install" "TextFiles"
     ${If} ${Errors}
         StrCpy $OptTextFiles ${BST_UNCHECKED}   ; first install → unchecked
     ${EndIf}
 
     ClearErrors
-    ReadRegDWORD $OptBrowser HKCU "Software\js-notepad\Install" "Browser"
+    ReadRegDWORD $OptBrowser HKCU "Software\persephone\Install" "Browser"
     ${If} ${Errors}
         StrCpy $OptBrowser ${BST_UNCHECKED}     ; first install → unchecked
     ${EndIf}
@@ -145,7 +145,7 @@ Function optionsPageCreate
     Pop $0
 
     ${NSD_CreateCheckbox} 10u 60u 95% 12u \
-        'Add "Open with js-notepad" to Explorer context menu'
+        'Add "Open with persephone" to Explorer context menu'
     Pop $hChkContextMenu
     ${If} $OptContextMenu == ${BST_CHECKED}
         ${NSD_Check} $hChkContextMenu
@@ -189,15 +189,15 @@ FunctionEnd
 
 !macro customInstall
     ; ── Persist selections for uninstaller / future upgrades ──
-    WriteRegDWORD HKCU "Software\js-notepad\Install" "Desktop"     $OptDesktop
-    WriteRegDWORD HKCU "Software\js-notepad\Install" "StartMenu"   $OptStartMenu
-    WriteRegDWORD HKCU "Software\js-notepad\Install" "ContextMenu" $OptContextMenu
-    WriteRegDWORD HKCU "Software\js-notepad\Install" "TextFiles"   $OptTextFiles
-    WriteRegDWORD HKCU "Software\js-notepad\Install" "Browser"     $OptBrowser
+    WriteRegDWORD HKCU "Software\persephone\Install" "Desktop"     $OptDesktop
+    WriteRegDWORD HKCU "Software\persephone\Install" "StartMenu"   $OptStartMenu
+    WriteRegDWORD HKCU "Software\persephone\Install" "ContextMenu" $OptContextMenu
+    WriteRegDWORD HKCU "Software\persephone\Install" "TextFiles"   $OptTextFiles
+    WriteRegDWORD HKCU "Software\persephone\Install" "Browser"     $OptBrowser
 
     ; ── 1. Desktop shortcut ──
     ${If} $OptDesktop == ${BST_CHECKED}
-        CreateShortCut "$DESKTOP\${SHORTCUT_NAME}.lnk" "$INSTDIR\js-notepad-launcher.exe"
+        CreateShortCut "$DESKTOP\${SHORTCUT_NAME}.lnk" "$INSTDIR\persephone-launcher.exe"
     ${Else}
         Delete "$DESKTOP\${SHORTCUT_NAME}.lnk"
     ${EndIf}
@@ -205,7 +205,7 @@ FunctionEnd
     ; ── 2. Start menu shortcut ──
     ${If} $OptStartMenu == ${BST_CHECKED}
         CreateDirectory "$SMPROGRAMS\${MENU_FILENAME}"
-        CreateShortCut "$SMPROGRAMS\${MENU_FILENAME}\${SHORTCUT_NAME}.lnk" "$INSTDIR\js-notepad-launcher.exe"
+        CreateShortCut "$SMPROGRAMS\${MENU_FILENAME}\${SHORTCUT_NAME}.lnk" "$INSTDIR\persephone-launcher.exe"
     ${Else}
         Delete "$SMPROGRAMS\${MENU_FILENAME}\${SHORTCUT_NAME}.lnk"
         RMDir "$SMPROGRAMS\${MENU_FILENAME}"
@@ -213,18 +213,18 @@ FunctionEnd
 
     ; ── 3. Explorer "Open with" context menu for ALL files ──
     ${If} $OptContextMenu == ${BST_CHECKED}
-        WriteRegStr HKCU "Software\Classes\*\shell\js-notepad" "" "Open with js-notepad"
-        WriteRegStr HKCU "Software\Classes\*\shell\js-notepad" "Icon" "$INSTDIR\js-notepad-launcher.exe,0"
-        WriteRegStr HKCU "Software\Classes\*\shell\js-notepad\command" "" '"$INSTDIR\js-notepad-launcher.exe" "%1"'
+        WriteRegStr HKCU "Software\Classes\*\shell\persephone" "" "Open with persephone"
+        WriteRegStr HKCU "Software\Classes\*\shell\persephone" "Icon" "$INSTDIR\persephone-launcher.exe,0"
+        WriteRegStr HKCU "Software\Classes\*\shell\persephone\command" "" '"$INSTDIR\persephone-launcher.exe" "%1"'
     ${Else}
-        DeleteRegKey HKCU "Software\Classes\*\shell\js-notepad"
+        DeleteRegKey HKCU "Software\Classes\*\shell\persephone"
     ${EndIf}
 
     ; ── 4. File associations for text/code files ──
     ;   Always create the ProgID (harmless if no extensions point to it).
-    WriteRegStr HKCU "Software\Classes\JSNotepad.Document" "" "JS-Notepad Document"
-    WriteRegStr HKCU "Software\Classes\JSNotepad.Document\DefaultIcon" "" "$INSTDIR\js-notepad-launcher.exe,0"
-    WriteRegStr HKCU "Software\Classes\JSNotepad.Document\shell\open\command" "" '"$INSTDIR\js-notepad-launcher.exe" "%1"'
+    WriteRegStr HKCU "Software\Classes\Persephone.Document" "" "Persephone Document"
+    WriteRegStr HKCU "Software\Classes\Persephone.Document\DefaultIcon" "" "$INSTDIR\persephone-launcher.exe,0"
+    WriteRegStr HKCU "Software\Classes\Persephone.Document\shell\open\command" "" '"$INSTDIR\persephone-launcher.exe" "%1"'
 
     ${If} $OptTextFiles == ${BST_CHECKED}
         !insertmacro _RegisterFileAssoc "txt"
@@ -264,47 +264,47 @@ FunctionEnd
     ; ── 5. Browser registration ──
     ${If} $OptBrowser == ${BST_CHECKED}
         ; --- Internet client registration ---
-        WriteRegStr HKCU "Software\Clients\StartMenuInternet\js-notepad" "" "JS-Notepad"
-        WriteRegStr HKCU "Software\Clients\StartMenuInternet\js-notepad\Capabilities" \
-            "ApplicationName" "JS-Notepad"
-        WriteRegStr HKCU "Software\Clients\StartMenuInternet\js-notepad\Capabilities" \
-            "ApplicationDescription" "JS Notepad"
-        WriteRegStr HKCU "Software\Clients\StartMenuInternet\js-notepad\Capabilities\URLAssociations" \
-            "http" "JSNotepadURL"
-        WriteRegStr HKCU "Software\Clients\StartMenuInternet\js-notepad\Capabilities\URLAssociations" \
-            "https" "JSNotepadURL"
-        WriteRegStr HKCU "Software\Clients\StartMenuInternet\js-notepad\Capabilities\FileAssociations" \
-            ".htm" "JSNotepadHTM"
-        WriteRegStr HKCU "Software\Clients\StartMenuInternet\js-notepad\Capabilities\FileAssociations" \
-            ".html" "JSNotepadHTM"
-        WriteRegStr HKCU "Software\Clients\StartMenuInternet\js-notepad\DefaultIcon" "" \
-            "$INSTDIR\js-notepad-launcher.exe,0"
-        WriteRegStr HKCU "Software\Clients\StartMenuInternet\js-notepad\shell\open\command" "" \
-            '"$INSTDIR\js-notepad-launcher.exe"'
+        WriteRegStr HKCU "Software\Clients\StartMenuInternet\persephone" "" "Persephone"
+        WriteRegStr HKCU "Software\Clients\StartMenuInternet\persephone\Capabilities" \
+            "ApplicationName" "Persephone"
+        WriteRegStr HKCU "Software\Clients\StartMenuInternet\persephone\Capabilities" \
+            "ApplicationDescription" "Persephone"
+        WriteRegStr HKCU "Software\Clients\StartMenuInternet\persephone\Capabilities\URLAssociations" \
+            "http" "PersephoneURL"
+        WriteRegStr HKCU "Software\Clients\StartMenuInternet\persephone\Capabilities\URLAssociations" \
+            "https" "PersephoneURL"
+        WriteRegStr HKCU "Software\Clients\StartMenuInternet\persephone\Capabilities\FileAssociations" \
+            ".htm" "PersephoneHTM"
+        WriteRegStr HKCU "Software\Clients\StartMenuInternet\persephone\Capabilities\FileAssociations" \
+            ".html" "PersephoneHTM"
+        WriteRegStr HKCU "Software\Clients\StartMenuInternet\persephone\DefaultIcon" "" \
+            "$INSTDIR\persephone-launcher.exe,0"
+        WriteRegStr HKCU "Software\Clients\StartMenuInternet\persephone\shell\open\command" "" \
+            '"$INSTDIR\persephone-launcher.exe"'
 
         ; --- URL protocol handler ---
-        WriteRegStr HKCU "Software\Classes\JSNotepadURL" "" "JS-Notepad URL"
-        WriteRegStr HKCU "Software\Classes\JSNotepadURL" "URL Protocol" ""
-        WriteRegStr HKCU "Software\Classes\JSNotepadURL\DefaultIcon" "" \
-            "$INSTDIR\js-notepad-launcher.exe,0"
-        WriteRegStr HKCU "Software\Classes\JSNotepadURL\shell\open\command" "" \
-            '"$INSTDIR\js-notepad-launcher.exe" "%1"'
+        WriteRegStr HKCU "Software\Classes\PersephoneURL" "" "Persephone URL"
+        WriteRegStr HKCU "Software\Classes\PersephoneURL" "URL Protocol" ""
+        WriteRegStr HKCU "Software\Classes\PersephoneURL\DefaultIcon" "" \
+            "$INSTDIR\persephone-launcher.exe,0"
+        WriteRegStr HKCU "Software\Classes\PersephoneURL\shell\open\command" "" \
+            '"$INSTDIR\persephone-launcher.exe" "%1"'
 
         ; --- HTML file handler ---
-        WriteRegStr HKCU "Software\Classes\JSNotepadHTM" "" "JS-Notepad HTML Document"
-        WriteRegStr HKCU "Software\Classes\JSNotepadHTM\DefaultIcon" "" \
-            "$INSTDIR\js-notepad-launcher.exe,0"
-        WriteRegStr HKCU "Software\Classes\JSNotepadHTM\shell\open\command" "" \
-            '"$INSTDIR\js-notepad-launcher.exe" "%1"'
+        WriteRegStr HKCU "Software\Classes\PersephoneHTM" "" "Persephone HTML Document"
+        WriteRegStr HKCU "Software\Classes\PersephoneHTM\DefaultIcon" "" \
+            "$INSTDIR\persephone-launcher.exe,0"
+        WriteRegStr HKCU "Software\Classes\PersephoneHTM\shell\open\command" "" \
+            '"$INSTDIR\persephone-launcher.exe" "%1"'
 
         ; --- Registered application (makes it appear in Default Apps) ---
-        WriteRegStr HKCU "Software\RegisteredApplications" "js-notepad" \
-            "Software\Clients\StartMenuInternet\js-notepad\Capabilities"
+        WriteRegStr HKCU "Software\RegisteredApplications" "persephone" \
+            "Software\Clients\StartMenuInternet\persephone\Capabilities"
     ${Else}
-        DeleteRegKey HKCU "Software\Clients\StartMenuInternet\js-notepad"
-        DeleteRegKey HKCU "Software\Classes\JSNotepadURL"
-        DeleteRegKey HKCU "Software\Classes\JSNotepadHTM"
-        DeleteRegValue HKCU "Software\RegisteredApplications" "js-notepad"
+        DeleteRegKey HKCU "Software\Clients\StartMenuInternet\persephone"
+        DeleteRegKey HKCU "Software\Classes\PersephoneURL"
+        DeleteRegKey HKCU "Software\Classes\PersephoneHTM"
+        DeleteRegValue HKCU "Software\RegisteredApplications" "persephone"
     ${EndIf}
 
     ; ── Notify the shell so Explorer picks up changes immediately ──
@@ -317,11 +317,11 @@ FunctionEnd
 
 !macro customUnInstall
     ; Read what was installed
-    ReadRegDWORD $R0 HKCU "Software\js-notepad\Install" "Desktop"
-    ReadRegDWORD $R1 HKCU "Software\js-notepad\Install" "StartMenu"
-    ReadRegDWORD $R2 HKCU "Software\js-notepad\Install" "ContextMenu"
-    ReadRegDWORD $R3 HKCU "Software\js-notepad\Install" "TextFiles"
-    ReadRegDWORD $R4 HKCU "Software\js-notepad\Install" "Browser"
+    ReadRegDWORD $R0 HKCU "Software\persephone\Install" "Desktop"
+    ReadRegDWORD $R1 HKCU "Software\persephone\Install" "StartMenu"
+    ReadRegDWORD $R2 HKCU "Software\persephone\Install" "ContextMenu"
+    ReadRegDWORD $R3 HKCU "Software\persephone\Install" "TextFiles"
+    ReadRegDWORD $R4 HKCU "Software\persephone\Install" "Browser"
 
     ; ── 1. Desktop shortcut ──
     ${If} $R0 == ${BST_CHECKED}
@@ -336,7 +336,7 @@ FunctionEnd
 
     ; ── 3. Context menu ──
     ${If} $R2 == ${BST_CHECKED}
-        DeleteRegKey HKCU "Software\Classes\*\shell\js-notepad"
+        DeleteRegKey HKCU "Software\Classes\*\shell\persephone"
     ${EndIf}
 
     ; ── 4. File associations ──
@@ -359,18 +359,18 @@ FunctionEnd
     ${EndIf}
 
     ; Always remove the ProgID
-    DeleteRegKey HKCU "Software\Classes\JSNotepad.Document"
+    DeleteRegKey HKCU "Software\Classes\Persephone.Document"
 
     ; ── 5. Browser registration ──
     ${If} $R4 == ${BST_CHECKED}
-        DeleteRegKey HKCU "Software\Clients\StartMenuInternet\js-notepad"
-        DeleteRegKey HKCU "Software\Classes\JSNotepadURL"
-        DeleteRegKey HKCU "Software\Classes\JSNotepadHTM"
-        DeleteRegValue HKCU "Software\RegisteredApplications" "js-notepad"
+        DeleteRegKey HKCU "Software\Clients\StartMenuInternet\persephone"
+        DeleteRegKey HKCU "Software\Classes\PersephoneURL"
+        DeleteRegKey HKCU "Software\Classes\PersephoneHTM"
+        DeleteRegValue HKCU "Software\RegisteredApplications" "persephone"
     ${EndIf}
 
     ; ── Clean up our own registry branch ──
-    DeleteRegKey HKCU "Software\js-notepad\Install"
+    DeleteRegKey HKCU "Software\persephone\Install"
 
     ; Notify the shell
     System::Call 'Shell32::SHChangeNotify(i 0x08000000, i 0, p 0, p 0)'

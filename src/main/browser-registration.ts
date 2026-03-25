@@ -11,9 +11,9 @@ import { app } from "electron";
  */
 
 function getLauncherPath(): string {
-    // In production: js-notepad-launcher.exe sits next to js-notepad.exe
+    // In production: persephone-launcher.exe sits next to persephone.exe
     const exeDir = path.dirname(app.getPath("exe"));
-    const launcherPath = path.join(exeDir, "js-notepad-launcher.exe");
+    const launcherPath = path.join(exeDir, "persephone-launcher.exe");
     if (fs.existsSync(launcherPath)) {
         return launcherPath;
     }
@@ -79,58 +79,58 @@ function shellNotify(): void {
 
 export function registerAsDefaultBrowser(): void {
     const launcher = getLauncherPath();
-    const prefix = "SOFTWARE\\Clients\\StartMenuInternet\\js-notepad";
+    const prefix = "SOFTWARE\\Clients\\StartMenuInternet\\persephone";
 
     // --- Internet client registration ---
-    regAdd(prefix, null, "JS-Notepad");
-    regAdd(`${prefix}\\Capabilities`, "ApplicationName", "JS-Notepad");
-    regAdd(`${prefix}\\Capabilities`, "ApplicationDescription", "JS Notepad");
-    regAdd(`${prefix}\\Capabilities\\URLAssociations`, "http", "JSNotepadURL");
-    regAdd(`${prefix}\\Capabilities\\URLAssociations`, "https", "JSNotepadURL");
-    regAdd(`${prefix}\\Capabilities\\FileAssociations`, ".htm", "JSNotepadHTM");
-    regAdd(`${prefix}\\Capabilities\\FileAssociations`, ".html", "JSNotepadHTM");
+    regAdd(prefix, null, "Persephone");
+    regAdd(`${prefix}\\Capabilities`, "ApplicationName", "Persephone");
+    regAdd(`${prefix}\\Capabilities`, "ApplicationDescription", "Persephone");
+    regAdd(`${prefix}\\Capabilities\\URLAssociations`, "http", "PersephoneURL");
+    regAdd(`${prefix}\\Capabilities\\URLAssociations`, "https", "PersephoneURL");
+    regAdd(`${prefix}\\Capabilities\\FileAssociations`, ".htm", "PersephoneHTM");
+    regAdd(`${prefix}\\Capabilities\\FileAssociations`, ".html", "PersephoneHTM");
     regAdd(`${prefix}\\DefaultIcon`, null, `${launcher},0`);
     regAdd(`${prefix}\\shell\\open\\command`, null, `"${launcher}"`);
 
     // --- URL protocol handler ---
-    regAdd("SOFTWARE\\Classes\\JSNotepadURL", null, "JS-Notepad URL");
-    regAdd("SOFTWARE\\Classes\\JSNotepadURL", "URL Protocol", "");
-    regAdd("SOFTWARE\\Classes\\JSNotepadURL\\DefaultIcon", null, `${launcher},0`);
-    regAdd("SOFTWARE\\Classes\\JSNotepadURL\\shell\\open\\command", null, `"${launcher}" "%1"`);
+    regAdd("SOFTWARE\\Classes\\PersephoneURL", null, "Persephone URL");
+    regAdd("SOFTWARE\\Classes\\PersephoneURL", "URL Protocol", "");
+    regAdd("SOFTWARE\\Classes\\PersephoneURL\\DefaultIcon", null, `${launcher},0`);
+    regAdd("SOFTWARE\\Classes\\PersephoneURL\\shell\\open\\command", null, `"${launcher}" "%1"`);
 
     // --- HTML file handler ---
-    regAdd("SOFTWARE\\Classes\\JSNotepadHTM", null, "JS-Notepad HTML Document");
-    regAdd("SOFTWARE\\Classes\\JSNotepadHTM\\DefaultIcon", null, `${launcher},0`);
-    regAdd("SOFTWARE\\Classes\\JSNotepadHTM\\shell\\open\\command", null, `"${launcher}" "%1"`);
+    regAdd("SOFTWARE\\Classes\\PersephoneHTM", null, "Persephone HTML Document");
+    regAdd("SOFTWARE\\Classes\\PersephoneHTM\\DefaultIcon", null, `${launcher},0`);
+    regAdd("SOFTWARE\\Classes\\PersephoneHTM\\shell\\open\\command", null, `"${launcher}" "%1"`);
 
     // --- Registered application (makes it appear in Default Apps) ---
-    regAdd("SOFTWARE\\RegisteredApplications", "js-notepad",
-        "SOFTWARE\\Clients\\StartMenuInternet\\js-notepad\\Capabilities");
+    regAdd("SOFTWARE\\RegisteredApplications", "persephone",
+        "SOFTWARE\\Clients\\StartMenuInternet\\persephone\\Capabilities");
 
     // --- Record in our install registry that browser registration is active ---
-    regAdd("SOFTWARE\\js-notepad\\Install", "Browser", "1", "REG_DWORD");
+    regAdd("SOFTWARE\\persephone\\Install", "Browser", "1", "REG_DWORD");
 
     shellNotify();
 }
 
 export function unregisterAsDefaultBrowser(): void {
-    regDelete("SOFTWARE\\Clients\\StartMenuInternet\\js-notepad");
-    regDelete("SOFTWARE\\Classes\\JSNotepadURL");
-    regDelete("SOFTWARE\\Classes\\JSNotepadHTM");
-    regDeleteValue("SOFTWARE\\RegisteredApplications", "js-notepad");
-    regAdd("SOFTWARE\\js-notepad\\Install", "Browser", "0", "REG_DWORD");
+    regDelete("SOFTWARE\\Clients\\StartMenuInternet\\persephone");
+    regDelete("SOFTWARE\\Classes\\PersephoneURL");
+    regDelete("SOFTWARE\\Classes\\PersephoneHTM");
+    regDeleteValue("SOFTWARE\\RegisteredApplications", "persephone");
+    regAdd("SOFTWARE\\persephone\\Install", "Browser", "0", "REG_DWORD");
 
     shellNotify();
 }
 
 export function isRegisteredAsDefaultBrowser(): boolean {
-    const result = regQuery("SOFTWARE\\Clients\\StartMenuInternet\\js-notepad");
+    const result = regQuery("SOFTWARE\\Clients\\StartMenuInternet\\persephone");
     return result !== null;
 }
 
 export function openDefaultAppsSettings(): void {
     try {
-        execSync("start ms-settings:defaultapps?registeredAppUser=js-notepad", { windowsHide: true, stdio: "ignore" });
+        execSync("start ms-settings:defaultapps?registeredAppUser=persephone", { windowsHide: true, stdio: "ignore" });
     } catch {
         // Ignore
     }

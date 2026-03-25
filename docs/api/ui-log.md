@@ -659,7 +659,7 @@ The same Log View is available to external AI agents via the MCP `ui_push` tool.
 
 ### How it works
 
-- On the first `ui_push` call, js-notepad creates a new Log View page (titled with the current date/time)
+- On the first `ui_push` call, persephone creates a new Log View page (titled with the current date/time)
 - Subsequent calls reuse the same page, appending new entries
 - If the user closes the page, the next `ui_push` call creates a fresh one
 

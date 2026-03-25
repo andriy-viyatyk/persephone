@@ -29,7 +29,7 @@ function readStartupThemeId(): string {
     try {
         const fs = require("fs");
         const settingsPath = fpJoin(
-            process.env.APPDATA, "js-notepad", "data", "appSettings.json"
+            process.env.APPDATA, "persephone", "data", "appSettings.json"
         );
         const raw = fs.readFileSync(settingsPath, "utf-8");
         // Strip // comments — appSettings.json uses JSON5 comments

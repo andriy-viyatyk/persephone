@@ -9,7 +9,7 @@
  * inspector.url = "http://localhost:7865/mcp";
  * await inspector.connect();
  * console.log(inspector.connectionStatus); // "connected"
- * console.log(inspector.serverName);       // "js-notepad"
+ * console.log(inspector.serverName);       // "persephone"
  */
 export interface IMcpInspectorEditor {
     // -- Connection status (read-only) --

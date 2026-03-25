@@ -2,7 +2,7 @@
 
 ## Overview
 
-js-notepad uses a custom context menu system that replaces the native browser context menu. Right-click anywhere in the application shows a styled popup menu with context-specific items. The system uses **DOM event bubbling** — child components attach menu items to the native `contextmenu` event, and a global listener collects and displays them.
+persephone uses a custom context menu system that replaces the native browser context menu. Right-click anywhere in the application shows a styled popup menu with context-specific items. The system uses **DOM event bubbling** — child components attach menu items to the native `contextmenu` event, and a global listener collects and displays them.
 
 ## Event Flow
 

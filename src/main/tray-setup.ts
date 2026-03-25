@@ -21,7 +21,7 @@ export function setupTray() {
             },
         },
     ]);
-    tray.setToolTip('js-notepad');
+    tray.setToolTip('Persephone');
     tray.setContextMenu(contextMenu);
     tray.on('click', () => {
         if (openWindows.anyVisible()) {

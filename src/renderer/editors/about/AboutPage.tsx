@@ -5,7 +5,7 @@ import { getDefaultPageModelState, PageModel } from "../base";
 import { TComponentState } from "../../core/state/state";
 import { EditorModule } from "../types";
 import color from "../../theme/color";
-import { JsNotepadIcon } from "../../theme/icons";
+import { PersephoneIcon } from "../../theme/icons";
 import { app } from "../../api/app";
 import { shell } from "../../api/shell";
 import type { IRuntimeVersions, IUpdateInfo } from "../../api/types/shell";
@@ -260,7 +260,7 @@ function AboutPage({ model }: AboutPageProps) {
                             className="link-button"
                             onClick={() =>
                                 shell.openExternal(
-                                    "https://github.com/andriy-viyatyk/js-notepad/blob/main/docs/whats-new.md"
+                                    "https://github.com/andriy-viyatyk/persephone/blob/main/docs/whats-new.md"
                                 )
                             }
                         >
@@ -278,10 +278,10 @@ function AboutPage({ model }: AboutPageProps) {
         <AboutPageRoot>
             <div className="about-card">
                 <div className="app-icon">
-                    <JsNotepadIcon />
+                    <PersephoneIcon />
                 </div>
 
-                <h1 className="app-name">js-notepad</h1>
+                <h1 className="app-name">Persephone</h1>
                 <div className="version-text">Version {app.version || "..."}</div>
 
                 <hr className="divider" />
@@ -320,7 +320,7 @@ function AboutPage({ model }: AboutPageProps) {
                     <button
                         className="link-button"
                         onClick={() =>
-                            shell.openExternal("https://github.com/andriy-viyatyk/js-notepad")
+                            shell.openExternal("https://github.com/andriy-viyatyk/persephone")
                         }
                     >
                         GitHub Repository
@@ -328,7 +328,7 @@ function AboutPage({ model }: AboutPageProps) {
                     <button
                         className="link-button"
                         onClick={() =>
-                            shell.openExternal("https://github.com/andriy-viyatyk/js-notepad/issues")
+                            shell.openExternal("https://github.com/andriy-viyatyk/persephone/issues")
                         }
                     >
                         Report Issue

@@ -4,15 +4,15 @@
 
 ## Overview
 
-The browser editor embeds Chromium `<webview>` elements inside a tab, providing an in-app web browser with **multi-tab support**. Each browser page (js-notepad tab) contains its own set of internal browser tabs, displayed in a left-side panel. Unlike other editors that live entirely in the renderer process, the browser editor spans **three process boundaries** with IPC bridges between each.
+The browser editor embeds Chromium `<webview>` elements inside a tab, providing an in-app web browser with **multi-tab support**. Each browser page (persephone tab) contains its own set of internal browser tabs, displayed in a left-side panel. Unlike other editors that live entirely in the renderer process, the browser editor spans **three process boundaries** with IPC bridges between each.
 
 ## Tab Architecture
 
 The browser editor uses three levels of tab nesting:
 
 1. **Internal browser tabs** — Multiple tabs within a single browser editor page, shown on the left panel
-2. **js-notepad tabs** — Multiple browser editor pages as separate js-notepad tabs
-3. **js-notepad windows** — Browser editor pages across separate application windows
+2. **persephone tabs** — Multiple browser editor pages as separate persephone tabs
+3. **persephone windows** — Browser editor pages across separate application windows
 
 ### Tab Reordering
 
@@ -81,7 +81,7 @@ A `webviewReady` ref (a `Set<string>` of internal tab IDs) tracks which webviews
 
 ### IPC Registration
 
-Each webview registers with the main process using a composite key: `${tabId}/${internalTabId}`. This supports multiple internal tabs per js-notepad page tab. Registration happens on `dom-ready`, and cleanup happens on component unmount.
+Each webview registers with the main process using a composite key: `${tabId}/${internalTabId}`. This supports multiple internal tabs per persephone page tab. Registration happens on `dom-ready`, and cleanup happens on component unmount.
 
 **Important:** The IPC registration effect must NOT include `tab.url` in its dependency array. If it does, the effect cleanup runs on every URL change, which clears the `webviewReady` state and breaks navigation.
 

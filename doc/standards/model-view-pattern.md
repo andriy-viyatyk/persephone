@@ -1,6 +1,6 @@
 # Model-View Pattern
 
-This document describes the model-view pattern used for complex React components in js-notepad.
+This document describes the model-view pattern used for complex React components in persephone.
 
 ## Overview
 

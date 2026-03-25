@@ -167,25 +167,23 @@ export const ProgressIcon = createIcon(32)(
     </>,
 );
 
-export const JsNotepadIcon = createIconWithViewBox("2 2 20 20")(
-    <g fill="note">
-        <path
-            d="M8 5C7 5 6 5.5 6 7V9.5C6 10.5 5.5 11 4.5 11.5C5.5 12 6 12.5 6 13.5V16C6 17.5 7 18 8 18"
-            stroke="currentColor"
-            strokeWidth="1"
-            strokeLinecap="round"
-            fill="none"
-        />
-
-        <path
-            d="M16 5C17 5 18 5.5 18 7V9.5C18 10.5 18.5 11 19.5 11.5C18.5 12 18 12.5 18 13.5V16C18 17.5 17 18 16 18"
-            stroke="currentColor"
-            strokeWidth="1"
-            strokeLinecap="round"
-            fill="none"
-        />
-
-        <rect x="9" y="8" width="6" height="8" stroke="currentColor" rx="0.5" fill="none" />
+export const PersephoneIcon = createIconWithViewBox("0 0 128 128")(
+    <g>
+        {/* Stem */}
+        <path d="M 64 70 Q 63 90 62 110" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" opacity="0.6" />
+        {/* Leaves */}
+        <path d="M 63 92 Q 42 82 32 68" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" opacity="0.6" />
+        <path d="M 63 84 Q 82 76 92 64" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" opacity="0.5" />
+        {/* Petals */}
+        <path d="M 64 68 Q 30 40 26 16 Q 40 30 64 60" fill="currentColor" opacity="0.8" />
+        <path d="M 64 68 Q 98 40 102 16 Q 88 30 64 60" fill="currentColor" opacity="0.7" />
+        <path d="M 64 66 Q 64 22 64 10 Q 65 22 65 66" fill="currentColor" opacity="0.8" />
+        <path d="M 64 68 Q 34 60 18 42 Q 40 52 64 62" fill="currentColor" opacity="0.6" />
+        <path d="M 64 68 Q 94 60 110 42 Q 88 52 64 62" fill="currentColor" opacity="0.6" />
+        {/* Stamens */}
+        <line x1="58" y1="62" x2="50" y2="46" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.5" />
+        <line x1="64" y1="60" x2="64" y2="42" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.5" />
+        <line x1="70" y1="62" x2="78" y2="46" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.5" />
     </g>,
 );
 

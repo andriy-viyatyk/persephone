@@ -1,7 +1,7 @@
-// js-notepad-launcher: Fast entry point for file/URL opening.
+// persephone-launcher: Fast entry point for file/URL opening.
 //
-// When js-notepad is running, sends arguments via Named Pipe and exits instantly.
-// When not running, spawns js-notepad.exe with the arguments.
+// When persephone is running, sends arguments via Named Pipe and exits instantly.
+// When not running, spawns persephone.exe with the arguments.
 //
 // Protocol:
 //   SHOW\n                          — bring existing window to front
@@ -10,9 +10,9 @@
 //   END\n                           — signal end of messages
 //
 // Usage:
-//   js-notepad-launcher.exe                   (no args: show or launch)
-//   js-notepad-launcher.exe <file-or-url> ...
-//   js-notepad-launcher.exe diff <file1> <file2>
+//   persephone-launcher.exe                   (no args: show or launch)
+//   persephone-launcher.exe <file-or-url> ...
+//   persephone-launcher.exe diff <file1> <file2>
 
 #![windows_subsystem = "windows"]
 
@@ -34,14 +34,14 @@ extern "system" {
 
 /// Grant any process permission to steal foreground focus.
 /// The launcher is the foreground app (just launched by Explorer),
-/// so Windows allows it to pass this right to js-notepad.
+/// so Windows allows it to pass this right to persephone.
 fn allow_foreground() {
     unsafe { AllowSetForegroundWindow(ASFW_ANY); }
 }
 
 fn get_pipe_path() -> String {
     let username = env::var("USERNAME").unwrap_or_else(|_| "unknown".to_string());
-    format!(r"\\.\pipe\js-notepad-{}", username)
+    format!(r"\\.\pipe\persephone-{}", username)
 }
 
 fn is_url(arg: &str) -> bool {
@@ -98,10 +98,10 @@ fn try_send_via_pipe(pipe_path: &str, messages: &str) -> io::Result<()> {
 }
 
 fn get_exe_path() -> PathBuf {
-    // js-notepad.exe is in the same directory as the launcher
+    // persephone.exe is in the same directory as the launcher
     let launcher_path = env::current_exe().unwrap_or_default();
     let launcher_dir = launcher_path.parent().unwrap_or_else(|| Path::new("."));
-    launcher_dir.join("js-notepad.exe")
+    launcher_dir.join("persephone.exe")
 }
 
 fn spawn_electron(args: &[String]) {
@@ -137,7 +137,7 @@ fn main() {
         return;
     }
 
-    // Detect "diff" mode: js-notepad-launcher.exe diff <file1> <file2>
+    // Detect "diff" mode: persephone-launcher.exe diff <file1> <file2>
     let is_diff = raw_args[0].eq_ignore_ascii_case("diff") && raw_args.len() >= 3;
 
     // Build the pipe message

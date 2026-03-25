@@ -4,7 +4,7 @@ import { openWindows } from "./open-windows";
 import { EventEndpoint } from "../ipc/api-types";
 import { ReleaseInfo, RuntimeVersions, UpdateCheckResult } from "../ipc/api-param-types";
 
-const GITHUB_API_URL = "https://api.github.com/repos/andriy-viyatyk/js-notepad/releases/latest";
+const GITHUB_API_URL = "https://api.github.com/repos/andriy-viyatyk/persephone/releases/latest";
 const CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 const STORE_KEYS = {
@@ -39,7 +39,7 @@ async function fetchLatestRelease(): Promise<ReleaseInfo | null> {
         const response = await net.fetch(GITHUB_API_URL, {
             headers: {
                 "Accept": "application/vnd.github.v3+json",
-                "User-Agent": "js-notepad",
+                "User-Agent": "persephone",
             },
         });
 

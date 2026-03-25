@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "js-notepad": {
+    "persephone": {
       "type": "http",
       "url": "http://localhost:7865/mcp"
     }

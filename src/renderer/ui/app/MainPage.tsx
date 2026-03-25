@@ -4,7 +4,7 @@ import { FlexSpace } from "../../components/layout/Elements";
 import { Button } from "../../components/basic/Button";
 import {
     CloseIcon,
-    JsNotepadIcon,
+    PersephoneIcon,
     RefreshIcon,
     WindowMaximizeIcon,
     WindowMinimizeIcon,
@@ -43,6 +43,9 @@ const AppRoot = styled.div({
             alignSelf: "flex-end",
             padding: 0,
             marginBottom: 3,
+            "& svg": {
+                color: color.icon.default,
+            },
         },
         "& .system-button": {
             alignSelf: "flex-start",
@@ -147,7 +150,7 @@ export function MainPage() {
                     type="icon"
                     className="app-button"
                 >
-                    <JsNotepadIcon />
+                    <PersephoneIcon />
                 </Button>
                 <PageTabs />
                 <FlexSpace style={{ minWidth: 40 }} />

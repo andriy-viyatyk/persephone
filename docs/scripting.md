@@ -2,7 +2,7 @@
 
 # Scripting
 
-js-notepad lets you run JavaScript and TypeScript to transform and process content. TypeScript is fully supported — type annotations are stripped automatically before execution.
+persephone lets you run JavaScript and TypeScript to transform and process content. TypeScript is fully supported — type annotations are stripped automatically before execution.
 
 ## Quick Start
 

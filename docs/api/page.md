@@ -439,8 +439,8 @@ mcp.url = "http://localhost:7865/mcp";
 mcp.transportType = "http";
 await mcp.connect();
 console.log(mcp.connectionStatus); // "connected"
-console.log(mcp.serverName);       // "js-notepad"
-console.log(mcp.serverTitle);      // "JS Notepad"
+console.log(mcp.serverName);       // "persephone"
+console.log(mcp.serverTitle);      // "Persephone"
 
 // Check request history
 console.log(`${mcp.historyCount} requests recorded`);

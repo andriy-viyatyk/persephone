@@ -2,7 +2,7 @@
 
 # Browser
 
-A built-in web browser for viewing documentation, APIs, and web resources without leaving js-notepad.
+A built-in web browser for viewing documentation, APIs, and web resources without leaving persephone.
 
 **Opening:** Click the dropdown arrow (&#9662;) next to the **+** button → **Browser** (if pinned), or open the **Tools & Editors** sidebar panel to find Browser, Browser Incognito, Browser (Tor), and individual browser profiles.
 
@@ -46,7 +46,7 @@ A clickable label appears in the URL bar on blank pages and search result pages:
 
 ## Internal Tabs
 
-Multiple browser tabs live within a single js-notepad tab, shown on a left-side panel.
+Multiple browser tabs live within a single persephone tab, shown on a left-side panel.
 
 - Clicking `target="_blank"` links opens a **new internal tab**
 - `window.open()` from JavaScript opens a **real popup window** (for OAuth/auth flows)
@@ -61,7 +61,7 @@ Multiple browser tabs live within a single js-notepad tab, shown on a left-side 
 ### Audio Controls
 
 - **Volume icon** appears on tabs playing audio — click to mute/unmute individual tabs
-- **Page-level mute** — a sound/mute button appears on the js-notepad page tab; it is always visible on hover, and stays visible (without hovering) whenever any internal tab is audible. Click to mute/unmute all internal tabs at once.
+- **Page-level mute** — a sound/mute button appears on the persephone page tab; it is always visible on hover, and stays visible (without hovering) whenever any internal tab is audible. Click to mute/unmute all internal tabs at once.
 - Both tab-level and page-level must be unmuted for sound to play
 
 ---
@@ -109,7 +109,7 @@ Browse through the [Tor network](https://www.torproject.org/) for anonymous, tra
 #### Using Tor Mode
 
 - Open from the **Tools & Editors** sidebar panel → **Browser (Tor)**
-- On launch, js-notepad starts `tor.exe` and shows a **status overlay** with a live log of the Tor bootstrap process
+- On launch, persephone starts `tor.exe` and shows a **status overlay** with a live log of the Tor bootstrap process
 - Once connected, all traffic is routed through the Tor network via a SOCKS5 proxy
 - A **Tor indicator** appears in the URL bar — click it to show or hide the status overlay; a colored dot shows the connection status
 
@@ -228,26 +228,26 @@ Press `Ctrl+F` to open the search bar (works whether focus is on the toolbar or 
 
 ## Default Browser Registration
 
-js-notepad can register itself as the **Windows default browser** so that clicking links in other applications (email, chat, documents) opens them in js-notepad's browser.
+persephone can register itself as the **Windows default browser** so that clicking links in other applications (email, chat, documents) opens them in persephone's browser.
 
 ### How to Register
 
 1. Go to **Settings → Default Browser**
 2. Click **Register** — this writes registry keys to HKCU (no admin privileges required)
-3. Click **"Open Windows Default Apps"** — this navigates directly to the js-notepad page in Windows Settings
-4. In Windows Settings, set js-notepad as the default for HTTP/HTTPS links
+3. Click **"Open Windows Default Apps"** — this navigates directly to the persephone page in Windows Settings
+4. In Windows Settings, set persephone as the default for HTTP/HTTPS links
 
 ### How It Works
 
 - URLs received from the OS always open in the internal browser tab using the **default profile**, regardless of the "Link open behavior" setting
-- Works on cold start (via command-line arguments) and when js-notepad is already running (via the launcher's named pipe)
+- Works on cold start (via command-line arguments) and when persephone is already running (via the launcher's named pipe)
 - To unregister, click **Unregister** in Settings — all registry keys are removed
 
 ---
 
 ## Link Open Behavior
 
-External links clicked in the **text editor** (Monaco) or **Markdown preview** can open in the default OS browser or in js-notepad's internal browser.
+External links clicked in the **text editor** (Monaco) or **Markdown preview** can open in the default OS browser or in persephone's internal browser.
 
 Configure in **Settings → Links**:
 
@@ -306,7 +306,7 @@ These shortcuts work regardless of where focus is within the browser page.
 
 ## Additional Details
 
-- **Page title** — shown in the js-notepad tab (reflects the active internal tab)
+- **Page title** — shown in the persephone tab (reflects the active internal tab)
 - **Favicon** — website icon displayed in the internal tabs panel
 - **DevTools** — click the gear icon or press `F12` to open the webview's developer tools
 - **DRM-protected video** — the browser supports Widevine DRM, so streaming services like Netflix, Disney+, and other DRM-protected platforms work out of the box

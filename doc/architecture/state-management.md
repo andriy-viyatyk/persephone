@@ -2,7 +2,7 @@
 
 ## Overview
 
-js-notepad uses a custom reactive state system built on Zustand + Immer:
+persephone uses a custom reactive state system built on Zustand + Immer:
 - Immutable updates via Immer's `produce()`
 - React hooks for subscriptions with shallow comparison
 - Type-safe state access via `TOneState<T>`

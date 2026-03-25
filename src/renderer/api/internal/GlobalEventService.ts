@@ -34,7 +34,7 @@ export class GlobalEventService {
 
     private handleDragOver = (e: DragEvent) => {
         const types = e.dataTransfer?.types || [];
-        if (types.includes("application/js-notepad-tab")) {
+        if (types.includes("application/persephone-tab")) {
             e.dataTransfer.dropEffect = "move";
         }
         e.preventDefault();
@@ -42,7 +42,7 @@ export class GlobalEventService {
     };
 
     private handleDrop = (e: DragEvent) => {
-        const dataStr = e.dataTransfer?.getData("application/js-notepad-tab");
+        const dataStr = e.dataTransfer?.getData("application/persephone-tab");
         const data = parseObject(dataStr);
         if (
             data &&

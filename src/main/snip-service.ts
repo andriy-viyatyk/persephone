@@ -5,9 +5,9 @@ import { openWindows } from "./open-windows";
 
 function getSnipToolPath(): string {
     if (app.isPackaged) {
-        return path.join(path.dirname(process.execPath), "js-notepad-snip.exe");
+        return path.join(path.dirname(process.execPath), "persephone-snip.exe");
     }
-    return path.join(__dirname, "../../snip-tool/target/release/js-notepad-snip.exe");
+    return path.join(__dirname, "../../snip-tool/target/release/persephone-snip.exe");
 }
 
 export async function startScreenSnip(): Promise<string | null> {
