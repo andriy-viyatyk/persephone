@@ -13,7 +13,7 @@ import { WithPopupMenu } from "../../components/overlay/WithPopupMenu";
 import type { MenuItem } from "../../components/overlay/PopupMenu";
 import { SunIcon, MoonIcon, CopyIcon, DownloadIcon, NewWindowIcon, SnipIcon } from "../../theme/icons";
 import { DrawViewModel, DrawViewState, defaultDrawViewState } from "./DrawViewModel";
-import { exportAsSvgText, exportAsPngBlob, getImageDimensions } from "./drawExport";
+import { exportAsSvgText, exportAsPngBlob, getImageDimensions, IMAGE_OFFSET_X, IMAGE_OFFSET_Y } from "./drawExport";
 import { convertToExcalidrawElements } from "@excalidraw/excalidraw";
 import { isCurrentThemeDark } from "../../theme/themes";
 import { settings } from "../../api/settings";
@@ -212,8 +212,8 @@ export function DrawView({ model }: DrawViewProps) {
 
         const newElements = convertToExcalidrawElements([{
             type: "image",
-            x: 0,
-            y: 0,
+            x: IMAGE_OFFSET_X,
+            y: IMAGE_OFFSET_Y,
             width: w,
             height: h,
             fileId: fileId as any,

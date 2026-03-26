@@ -243,7 +243,7 @@ A collapsible overlay panel in the top-right corner for editing the selected nod
 
 **Empty graph:** New empty graph pages show a centered hint: "Right-click → Add Node".
 
-**Toolbar:** The toolbar auto-grows to fit its content (minimum 280px). It displays a search input (fixed 130px width), an expand-all icon (hidden when no visibility filter), a reset view icon, a grouping toggle button, and a gear icon in a single row. The **grouping toggle** (violet circle icon) disables/enables group node rendering — when grouping is enabled, the button shows a diagonal strikethrough line (meaning "click to disable"); when disabled, group nodes and membership links are stripped from the graph and all group-related menu items are hidden. The button is greyed out when the graph has no groups. Below the toolbar, three tabs — **Physics**, **Expansion**, and **Results (N)** — switch between the force tuning panel, expansion settings panel, and search results panel. The toolbar is semi-transparent when idle and becomes fully opaque on hover, focus, or when a panel is expanded.
+**Toolbar:** The toolbar auto-grows to fit its content (minimum 280px). It displays a search input (fixed 130px width), an expand-all icon (hidden when no visibility filter), a reset view icon, a grouping toggle button, a **Copy to clipboard** button (copies the graph as a PNG image), an **Open in Drawing editor** button (exports the graph as an image and opens it in the Excalidraw drawing editor for annotation), and a gear icon in a single row. The **grouping toggle** (violet circle icon) disables/enables group node rendering — when grouping is enabled, the button shows a diagonal strikethrough line (meaning "click to disable"); when disabled, group nodes and membership links are stripped from the graph and all group-related menu items are hidden. The button is greyed out when the graph has no groups. Below the toolbar, three tabs — **Physics**, **Expansion**, and **Results (N)** — switch between the force tuning panel, expansion settings panel, and search results panel. The toolbar is semi-transparent when idle and becomes fully opaque on hover, focus, or when a panel is expanded.
 
 **Search:** Press `Ctrl+F` to focus the search input. The search input supports **multi-word AND matching**. Type multiple words separated by spaces — all words must match somewhere in a node's title, ID, or custom property names/values. Non-matching nodes and their links are dimmed.
 
@@ -270,6 +270,8 @@ Changes to Expand Depth and Max Visible are deferred — they take effect when t
 **Scripting API:** Scripts and MCP agents can query and analyze graph data via `const graph = await page.asGraph()`. The facade provides read-only access to nodes, links, selection, neighbor/group relationships, search, BFS traversal, and connected component analysis. See the [asGraph() API reference](./api/page.md#asgraphpromiseigrapheditor) for details.
 
 **Theme support:** Graph colors (node fill, edge color, selected/hover highlights) adapt to whichever of the 9 app themes is active.
+
+**Example file:** See [greek-gods.fg.json](./examples/greek-gods.fg.json) — a family tree of Greek gods showing parent-child and spouse relationships. This is also where the name "Persephone" comes from — the goddess of spring and queen of the underworld.
 
 ## Drawing Editor
 

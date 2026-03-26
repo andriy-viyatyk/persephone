@@ -25,7 +25,7 @@ export function GraphLegendPanel({ vm }: GraphLegendPanelProps) {
     const [activeTab, setActiveTab] = useState<LegendTab>("selection");
     const [checkedLevels, setCheckedLevels] = useState<Set<string>>(new Set());
     const [checkedShapes, setCheckedShapes] = useState<Set<string>>(new Set());
-    const [selectionFilter, setSelectionFilter] = useState<SelectionFilter>("");
+    const [selectionFilter, setSelectionFilter] = useState<SelectionFilter>("selected-with-children");
     const [descriptions, setDescriptions] = useState<Record<string, Record<string, string>>>({ levels: {}, shapes: {} });
     // Track selected node IDs to reactively update the Selection tab highlight
     const selectedKey = useSyncExternalStore(

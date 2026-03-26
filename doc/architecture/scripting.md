@@ -235,6 +235,12 @@ interface IApp {
     readonly downloads: IDownloads;
     readonly menuFolders: IMenuFolders;
     readonly pages: IPageCollection;
+
+    runAsync<TData, TProxy, TResult>(
+        fn: (data: TData, proxy: TProxy) => Promise<TResult>,
+        data: TData,
+        proxy?: TProxy
+    ): Promise<TResult>;
 }
 ```
 
@@ -638,6 +644,8 @@ These files serve dual purpose: TypeScript type checking **and** IDE IntelliSens
 ├── script-utils.ts              # Utilities (convertToText)
 ├── transpile.ts                 # TypeScript transpilation (sucrase, lazy-loaded)
 ├── library-require.ts           # Library require() resolution + .ts/.js extension handlers
+├── worker/                      # Background worker execution (app.runAsync)
+│   └── WorkerRunner.ts          # Renderer-side: IPC to main, proxy dispatch
 └── api-wrapper/                 # Facade layer
     ├── AppWrapper.ts            # Wraps app singleton
     ├── PageWrapper.ts           # Wraps PageModel → IPage
@@ -698,6 +706,65 @@ Both produce the same result: `app`, `page`, `React`, `styledText`, `preventOutp
 - **Context coexistence** — multiple `ScriptContext` instances can coexist. Long-lived autoload context persists while short-lived F5 contexts come and go. Per-instance properties prevent interference. Stack-based `ui` getter ensures autoload's `ui` survives F5 dispose.
 - **Always-fresh modules** — library modules are reloaded on every `require()` call (cache cleared per-module). Modules cannot share state across script executions. Use `page.data` or `app.settings` for persistent state.
 - **Global pollution** — scripts run in sloppy mode. Unqualified assignments (`x = 5` without `var`/`let`/`const`) leak to `globalThis`. Use `let`/`const` to avoid this.
+
+## Background Worker Execution (`app.runAsync`)
+
+Scripts run on the renderer main thread, which means CPU-intensive operations (file scanning, TypeScript program creation, large data processing) freeze the UI. `await ui()` helps with short pauses but can't prevent freezes during CPU-bound loops.
+
+`app.runAsync(fn, data, proxy?)` offloads a function to a background worker thread via the main process:
+
+```
+Renderer                    Main Process               Worker Thread
+────────                    ────────────               ─────────────
+app.runAsync(fn, data, proxy)
+  │
+  ├─ IPC: WorkerChannel.start ──▶ spawn worker_thread
+  │                                  │
+  │                                  ├──▶ fn(data, proxy)
+  │                                  │      require('fs') ✓
+  │                                  │      require('path') ✓
+  │                                  │
+  │  ◀── WorkerChannel.proxyCall ────┤     await proxy.onProgress(...)
+  │  execute callback on renderer    │
+  │  ─── WorkerChannel.proxyResult ──┤──▶  continues
+  │                                  │
+  │  ◀── WorkerChannel.result ───────┘     return result
+  │
+  resolve promise
+```
+
+### Two-parameter design
+
+- **`data`** — Plain serializable data cloned into the worker. Fast local access, no round-trips. Must be structured-clone-compatible (no functions, DOM elements, class instances).
+- **`proxy`** — Any object transparently proxied back to the renderer. Every property read, write, or method call round-trips via IPC. Use for callbacks, progress handles, app API references.
+
+### Architecture
+
+The renderer cannot use Node.js `worker_threads` directly (Electron V8 limitation). Instead:
+
+1. **WorkerRunner** (`/src/renderer/scripting/worker/WorkerRunner.ts`) — Renderer side. Sends IPC to main, handles proxy call/set messages, wraps `proxyObj` in `Proxy.revocable()` for safe cleanup.
+2. **worker-host** (`/src/main/worker-host.ts`) — Main process. Receives IPC, spawns `worker_threads.Worker` with inline code (eval mode), forwards proxy messages between worker and renderer.
+3. **Inline worker code** — Embedded as a string in `worker-host.ts`. Includes Sucrase helpers (`_optionalChain`, `_nullishCoalesce`, etc.) so transpiled functions work correctly, a recursive `Proxy` factory for the proxy parameter, and a message handler.
+4. **IPC channels** — Defined in `/src/ipc/worker-channels.ts`. Protocol: `start`, `result`, `error`, `proxyCall`, `proxySet`, `proxyResult`.
+
+### Proxy mechanism
+
+The worker-side proxy is a recursive `Proxy` over a function target:
+- **`get`** — returns a new proxy with extended path (supports nested access like `proxy.progress.setLabel`)
+- **`set`** — sends fire-and-forget `proxy-set` message (no await needed)
+- **`apply`** — sends `proxy-call` message, returns a Promise that resolves when the renderer responds
+
+On the renderer side, `WorkerRunner` resolves the path on the real `proxyObj`, executes the method or reads the property, and sends the result back.
+
+### Lifecycle
+
+- Each `runAsync` call spawns a fresh worker thread and terminates it after completion
+- The proxy object is wrapped in `Proxy.revocable()` — after completion, any access throws `TypeError`
+- Worker errors propagate to the renderer as rejected promises
+
+### AppWrapper integration
+
+`AppWrapper.runAsync` uses dynamic `import()` to load `WorkerRunner` on first use (same pattern as `app.fetch`). The worker module is only loaded when a script actually calls `app.runAsync`.
 
 ## Security Considerations
 

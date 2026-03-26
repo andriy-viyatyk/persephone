@@ -714,6 +714,70 @@ export class FileExplorerModel extends TComponentModel<FileExplorerState, FileEx
         }
     };
 
+    moveItem = async (sourceItem: FileTreeItem, targetFolder: FileTreeItem) => {
+        const sourcePath = sourceItem.filePath;
+        const targetDir = targetFolder.filePath;
+        const sourceDir = fpDirname(sourcePath);
+
+        // Same folder — nothing to do
+        if (sourceDir === targetDir) return;
+
+        // Prevent moving across archive boundary (e.g. zip → filesystem or vice versa)
+        const sourceInArchive = isArchivePath(sourcePath);
+        const targetInArchive = isArchivePath(targetDir);
+        if (sourceInArchive !== targetInArchive) {
+            ui.notify("Cannot move files between archives and the filesystem.", "warning");
+            return;
+        }
+
+        const fileName = fpBasename(sourcePath);
+        const newPath = fpJoin(targetDir, fileName);
+
+        const targetExists = await fs.exists(newPath);
+
+        if (targetExists) {
+            // File exists at destination — ask to overwrite
+            const overwriteBt = await ui.confirm(
+                `"${fileName}" already exists in "${targetFolder.label}/". Overwrite?`,
+                { title: "Move File", buttons: ["Overwrite", "Cancel"] },
+            );
+            if (overwriteBt !== "Overwrite") return;
+        } else {
+            const bt = await ui.confirm(
+                `Move "${fileName}" to "${targetFolder.label}/"?`,
+                { title: "Move File", buttons: ["Move", "Cancel"] },
+            );
+            if (bt !== "Move") return;
+        }
+
+        try {
+            // Delete existing target first (required on Windows and for archives)
+            if (targetExists) {
+                if (sourceItem.isFolder) {
+                    await fs.removeDir(newPath, true);
+                } else {
+                    await fs.delete(newPath);
+                }
+            }
+            await fs.rename(sourcePath, newPath);
+        } catch (err: any) {
+            ui.notify(err.message || "Failed to move file.", "warning");
+            return;
+        }
+
+        // Update open page path if the moved file is open
+        if (!sourceItem.isFolder) {
+            const page = pagesModel.state.get().pages.find(
+                (p) => p.state.get().filePath === sourcePath,
+            );
+            if (page instanceof TextFileModel) {
+                await page.applyRenamedPath(newPath);
+            }
+        }
+
+        await this.buildTree();
+    };
+
     private deleteItem = async (item: FileTreeItem) => {
         const bt = await ui.confirm(
             `Are you sure you want to delete "${item.label}" ${item.isFolder ? "folder" : "file"}?`,

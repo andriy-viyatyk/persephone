@@ -302,6 +302,7 @@ await app.shell.openExternal("https://github.com");
 | [`app.pages`](./api/pages.md) | Open tabs management |
 | [`app.downloads`](./api/downloads.md) | Download tracking |
 | [`app.fetch()`](./api/app.md#fetchurl-options) | HTTP client (Node.js, no automatic headers) |
+| [`app.runAsync()`](./api/app.md#runasyncfn-data-proxy) | Run a function in a background worker thread |
 
 For the complete API with all methods and parameters, see the [Scripting API Reference](./api/index.md).
 
@@ -427,6 +428,79 @@ const _ = require(path.join('D:\\myproject\\node_modules', 'lodash'));
 ```
 
 > **Tip:** For Base64 encoding/decoding, you can use either Node.js `Buffer` (`Buffer.from(str).toString('base64')`) or browser APIs (`btoa()` / `atob()`). For binary conversions, `TextEncoder` / `TextDecoder` are also available.
+
+## Background Workers (`app.runAsync`)
+
+Scripts run on the renderer main thread, so CPU-intensive operations (recursive file scans, large data processing, TypeScript program creation) can freeze the UI. `app.runAsync()` offloads a function to a background worker thread — the UI stays responsive while the function executes.
+
+```javascript
+const result = await app.runAsync(fn, data, proxy?);
+```
+
+**Parameters:**
+
+| Parameter | Description |
+|-----------|-------------|
+| `fn` | The function to run in the worker. Must be **self-contained** — closures and outer-scope variables are not available. Has full Node.js access via `require()`. |
+| `data` | Plain serializable data cloned into the worker (primitives, objects, arrays, `Map`, `Set`, `Date`, `RegExp`, `ArrayBuffer`). Does **not** support functions, DOM elements, or class instances. |
+| `proxy` | *(Optional)* Object transparently proxied back to the renderer. Every access on `proxy` inside the worker is async (round-trips via `postMessage`). Use for callbacks, progress reporting, and app API access. |
+
+### Simple example — offload heavy computation
+
+```javascript
+const files = await app.runAsync(
+    async (data) => {
+        const fs = require("fs");
+        return fs.readdirSync(data.dir, { recursive: true });
+    },
+    { dir: "C:/projects/my-app/src" }
+);
+return files;
+```
+
+### With proxy — progress updates from the worker
+
+```javascript
+const progress = await app.ui.createProgress("Processing...");
+const result = await progress.show(app.runAsync(
+    async (data, proxy) => {
+        const fs = require("fs");
+        const files = fs.readdirSync(data.dir);
+        for (let i = 0; i < files.length; i++) {
+            // proxy.onProgress runs on the renderer — UI stays responsive
+            await proxy.onProgress(`${i + 1}/${files.length}`);
+            // ... process file ...
+        }
+        return files;
+    },
+    { dir: "C:/my-project" },
+    { onProgress: (msg: string) => { progress.label = msg; } }
+));
+```
+
+### With proxy — passing app API objects
+
+```javascript
+const result = await app.runAsync(
+    async (data, proxy) => {
+        const content = await proxy.fs.readFile(data.path);
+        return JSON.parse(content);
+    },
+    { path: "C:/data.json" },
+    { fs: app.fs }
+);
+```
+
+### Key points
+
+- **Self-contained function** — the function is serialized as a string, so it cannot reference variables from the outer scope. Pass everything it needs via `data` or `proxy`.
+- **`data` vs `proxy`** — use `data` for values the worker needs fast (tight loops, local access). Use `proxy` when you need to call back into the renderer (progress updates, app API, UI dialogs).
+- **Proxy property sets are fire-and-forget** — setting `proxy.something = value` sends the update but does not wait for confirmation. Use callback methods (`await proxy.onProgress(msg)`) when you need to be sure the renderer processed the call.
+- **Node.js access** — `require("fs")`, `require("path")`, `require("child_process")`, npm packages, etc. all work inside the worker.
+- **Worker lifecycle** — each `app.runAsync` call spawns a fresh worker and terminates it after completion. No state persists between calls.
+- **Error handling** — errors thrown inside the worker propagate as rejected promises to the caller.
+
+See the [app.runAsync() API reference](./api/app.md#runasyncfn-data-proxy) for full type signatures.
 
 ## Output Types
 

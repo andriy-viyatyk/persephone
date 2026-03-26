@@ -77,6 +77,67 @@ export interface IApp {
      * });
      */
     fetch(url: string, options?: IFetchOptions): Promise<Response>;
+
+    /**
+     * Run a function in a background worker thread.
+     * The renderer stays responsive while the function executes.
+     *
+     * The function runs in an isolated worker thread with full Node.js access.
+     * It cannot access outer scope variables (closures are lost during serialization).
+     * Use `data` for input and `proxy` for renderer communication.
+     *
+     * @param fn - The function to run in the worker. Must be self-contained.
+     *   Has full access to Node.js APIs via `require()` (fs, path, child_process, etc.).
+     * @param data - Plain serializable data passed to the function (cloned via structured clone).
+     *   Supports: primitives, plain objects, arrays, Map, Set, ArrayBuffer, Date, RegExp.
+     *   Does NOT support: functions, DOM elements, class instances, circular references.
+     * @param proxy - Optional object transparently proxied back to the renderer.
+     *   Every access on `proxy` inside the worker is async (round-trips via postMessage).
+     *   Property sets on proxy are fire-and-forget (sent but not awaited).
+     *   Use callback methods when you need confirmation: `await proxy.onProgress(msg)`.
+     *
+     * @example
+     * // Simple: offload heavy computation
+     * const result = await app.runAsync(
+     *     async (data) => {
+     *         const fs = require("fs");
+     *         return fs.readdirSync(data.dir, { recursive: true });
+     *     },
+     *     { dir: "C:/projects/my-app/src" }
+     * );
+     *
+     * @example
+     * // With proxy: progress updates from worker
+     * const progress = await app.ui.createProgress("Processing...");
+     * await progress.show(app.runAsync(
+     *     async (data, proxy) => {
+     *         const fs = require("fs");
+     *         const files = fs.readdirSync(data.dir);
+     *         for (let i = 0; i < files.length; i++) {
+     *             await proxy.onProgress(`${i + 1}/${files.length}`);
+     *         }
+     *         return files;
+     *     },
+     *     { dir: "C:/my-project" },
+     *     { onProgress: (msg: string) => { progress.label = msg; } }
+     * ));
+     *
+     * @example
+     * // With proxy: passing app API objects
+     * const result = await app.runAsync(
+     *     async (data, proxy) => {
+     *         const content = await proxy.fs.readFile(data.path);
+     *         return JSON.parse(content);
+     *     },
+     *     { path: "C:/data.json" },
+     *     { fs: app.fs }
+     * );
+     */
+    runAsync<TData = unknown, TProxy = unknown, TResult = unknown>(
+        fn: (data: TData, proxy: TProxy) => Promise<TResult>,
+        data: TData,
+        proxy?: TProxy
+    ): Promise<TResult>;
 }
 
 /**

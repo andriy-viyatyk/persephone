@@ -14,7 +14,10 @@ import { GraphTuningSliders } from "./GraphTuningSliders";
 import { GraphExpansionSettings } from "./GraphExpansionSettings";
 import { GraphLegendPanel } from "./GraphLegendPanel";
 import { highlightText } from "../../components/basic/useHighlightedText";
-import { SettingsIcon, RefreshIcon, ExpandAllIcon, GraphGroupIcon } from "../../theme/icons";
+import { SettingsIcon, RefreshIcon, ExpandAllIcon, GraphGroupIcon, CopyIcon } from "../../theme/icons";
+import { DrawIcon } from "../../theme/language-icons";
+import { Button } from "../../components/basic/Button";
+import { pagesModel } from "../../api/pages";
 import { showConfirmationDialog } from "../../ui/dialogs/ConfirmationDialog";
 import color from "../../theme/color";
 
@@ -585,7 +588,9 @@ function GraphView({ model }: GraphViewProps) {
         vm.expandAll();
     }, [vm]);
 
+    const canvasElRef = useRef<HTMLCanvasElement | null>(null);
     const canvasRef = useCallback((el: HTMLCanvasElement | null) => {
+        canvasElRef.current = el;
         vm?.renderer.setCanvas(el);
     }, [vm]);
 
@@ -881,6 +886,46 @@ function GraphView({ model }: GraphViewProps) {
                     <GraphLegendPanel vm={vm} />
                 </>
             )}
+            {Boolean(model.editorToolbarRefLast) &&
+                createPortal(
+                    <>
+                        <Button
+                            type="icon"
+                            size="small"
+                            title="Open in Drawing Editor"
+                            onClick={async () => {
+                                const canvas = canvasElRef.current;
+                                if (!canvas) return;
+                                const dataUrl = canvas.toDataURL("image/png");
+                                const { buildExcalidrawJsonWithImage } = await import("../draw/drawExport");
+                                const json = buildExcalidrawJsonWithImage(dataUrl, "image/png", canvas.width, canvas.height);
+                                const title = model.state.get().title.replace(/\.fg\.json$/i, "") + ".excalidraw";
+                                pagesModel.addEditorPage("draw-view", "json", title, json);
+                            }}
+                        >
+                            <DrawIcon />
+                        </Button>
+                        <Button
+                            type="icon"
+                            size="small"
+                            title="Copy Image to Clipboard"
+                            onClick={() => {
+                                const canvas = canvasElRef.current;
+                                if (!canvas) return;
+                                canvas.toBlob((blob) => {
+                                    if (blob) {
+                                        navigator.clipboard.write([
+                                            new ClipboardItem({ "image/png": blob }),
+                                        ]);
+                                    }
+                                }, "image/png");
+                            }}
+                        >
+                            <CopyIcon />
+                        </Button>
+                    </>,
+                    model.editorToolbarRefLast!,
+                )}
             {Boolean(model.editorFooterRefLast) &&
                 createPortal(
                     <>

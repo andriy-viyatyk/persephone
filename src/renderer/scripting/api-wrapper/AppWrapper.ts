@@ -112,4 +112,13 @@ export class AppWrapper {
     }
 
     fetch = app.fetch;
+
+    runAsync = async <TData, TProxy, TResult>(
+        fn: (data: TData, proxy: TProxy) => Promise<TResult>,
+        data: TData,
+        proxyObj?: TProxy
+    ): Promise<TResult> => {
+        const { runAsync: workerRunAsync } = await import("../worker/WorkerRunner");
+        return workerRunAsync(fn, data, proxyObj);
+    };
 }

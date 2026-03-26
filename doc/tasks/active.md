@@ -11,7 +11,6 @@ Current work in progress and planned tasks.
 
 | ID | Title | Epic | Notes |
 |----|-------|------|-------|
-| US-241 | Tray Quit Timeout | | Tray "Quit" should force-quit after 2-3s if main window doesn't respond |
 
 
 ## Completed

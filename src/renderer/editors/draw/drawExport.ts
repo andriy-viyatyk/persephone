@@ -1,6 +1,13 @@
 import { exportToSvg, exportToBlob, convertToExcalidrawElements, FONT_FAMILY } from "@excalidraw/excalidraw";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/dist/types/excalidraw/types";
 
+/**
+ * Default position offset for images added to the canvas.
+ * Shifts right/down to avoid being covered by Excalidraw's side panel and toolbar.
+ */
+export const IMAGE_OFFSET_X = 250;
+export const IMAGE_OFFSET_Y = 120;
+
 export interface SceneData {
     elements: readonly any[];
     appState: Record<string, any>;
@@ -105,8 +112,8 @@ export function buildExcalidrawJsonWithImage(
 
     const elements = convertToExcalidrawElements([{
         type: "image",
-        x: 0,
-        y: 0,
+        x: IMAGE_OFFSET_X,
+        y: IMAGE_OFFSET_Y,
         width,
         height,
         fileId: fileId as any,

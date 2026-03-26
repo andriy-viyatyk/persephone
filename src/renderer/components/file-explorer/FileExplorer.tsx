@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef } from "react";
 import styled from "@emotion/styled";
 import { useComponentModel } from "../../core/state/model";
 import { TreeView } from "../TreeView/TreeView";
-import { TreeViewRef } from "../TreeView";
+import { TreeViewRef, DragItem } from "../TreeView";
 import { FileTypeIcon } from "../icons/LanguageIcon";
 import { FolderIcon } from "../icons/FileIcon";
 import { TextField } from "../basic/TextField";
@@ -10,7 +10,7 @@ import { Button } from "../basic/Button";
 import { CloseIcon, OpenLinkIcon } from "../../theme/icons";
 import { highlightText } from "../basic/useHighlightedText";
 import color from "../../theme/color";
-import { isArchiveFile } from "../../core/utils/file-path";
+import { isArchiveFile, fpBasename, fpDirname } from "../../core/utils/file-path";
 import { FileTreeItem } from "./file-tree-builder";
 import {
     FileExplorerModel,
@@ -18,6 +18,8 @@ import {
     FileExplorerSavedState,
     defaultFileExplorerState,
 } from "./FileExplorerModel";
+
+const FILE_EXPLORER_DRAG = "file-explorer-item";
 
 const FileExplorerRoot = styled.div({
     display: "flex",
@@ -169,6 +171,27 @@ export function FileExplorer(props: FileExplorerProps & { ref?: React.Ref<FileEx
         return item.filePath.toLowerCase() === props.selectedFilePath.toLowerCase();
     }, [props.selectedFilePath]);
 
+    const getDragItem = useCallback((item: FileTreeItem) => {
+        // Don't allow dragging root folders
+        if (item === state.displayTree) return null;
+        return { type: FILE_EXPLORER_DRAG, filePath: item.filePath, isFolder: item.isFolder, item };
+    }, [state.displayTree]);
+
+    const canDrop = useCallback((dropItem: FileTreeItem, dragItem: DragItem) => {
+        // Don't allow dropping on self
+        if (dragItem.filePath === dropItem.filePath) return false;
+        return true;
+    }, []);
+
+    const onDrop = useCallback((dropItem: FileTreeItem, dragItem: DragItem) => {
+        if (!dragItem.item) return;
+        // Dropping on a file → resolve its parent folder
+        const targetFolder: FileTreeItem = dropItem.isFolder
+            ? dropItem
+            : { label: fpBasename(fpDirname(dropItem.filePath)), filePath: fpDirname(dropItem.filePath), isFolder: true };
+        model.moveItem(dragItem.item, targetFolder);
+    }, [model]);
+
     const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
         if (searchable && e.ctrlKey && e.key === "f") {
             e.preventDefault();
@@ -242,6 +265,11 @@ export function FileExplorer(props: FileExplorerProps & { ref?: React.Ref<FileEx
                     onItemDoubleClick={model.onItemDoubleClick}
                     onItemContextMenu={model.onItemContextMenu}
                     onExpandChange={model.onExpandChange}
+                    dragType={FILE_EXPLORER_DRAG}
+                    getDragItem={getDragItem}
+                    dropTypes={[FILE_EXPLORER_DRAG]}
+                    canDrop={canDrop}
+                    onDrop={onDrop}
                     rootCollapsible={false}
                     defaultExpandAll={isDeepSearch || hasFilterPaths || !defaultCollapsed}
                     initialExpandMap={model.initialExpandMap}

@@ -122,11 +122,14 @@ function TreeCell<T extends TreeItem = TreeItem>({
 
     const [{ isOver }, drop] = useDrop({
         accept: model.props.dropTypes ?? [],
+        canDrop(dragItem: DragItem) {
+            return model.props.canDrop?.(item.item, dragItem) ?? true;
+        },
         drop(dragItem: DragItem) {
             model.props.onDrop?.(item.item, dragItem);
         },
         collect: (monitor) => ({
-            isOver: monitor.isOver(),
+            isOver: monitor.isOver() && monitor.canDrop(),
         }),
     });
 

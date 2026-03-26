@@ -188,7 +188,7 @@ npm run lint        # Run ESLint
     /api             # Object Model — app.settings, app.pages, app.fs, etc.
     /ui              # Application shell — MainPage, tabs, sidebar, dialogs
     /editors         # ALL editors (text, grid, markdown, pdf, compare, notebook)
-    /scripting       # Script execution, wrappers, editor facades
+    /scripting       # Script execution, wrappers, editor facades, worker
     /components      # Reusable UI components
     /core            # State primitives, utilities
     /theme           # Styling
@@ -269,6 +269,8 @@ See [/doc/standards/coding-style.md](doc/standards/coding-style.md) for complete
 | Script execution (core)  | `/src/renderer/scripting/ScriptRunnerBase.ts`     |
 | Script execution         | `/src/renderer/scripting/ScriptRunner.ts`         |
 | TypeScript transpilation | `/src/renderer/scripting/transpile.ts`            |
+| Async worker (renderer)  | `/src/renderer/scripting/worker/WorkerRunner.ts`  |
+| Async worker (main)      | `/src/main/worker-host.ts`                        |
 | Script API types         | `/src/renderer/api/types/*.d.ts`                  |
 | Monaco setup             | `/src/renderer/api/setup/configure-monaco.ts`     |
 | Editor registry          | `/src/renderer/editors/registry.ts`               |

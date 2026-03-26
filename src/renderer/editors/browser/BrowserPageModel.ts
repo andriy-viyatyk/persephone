@@ -837,11 +837,12 @@ export class BrowserPageModel extends PageModel<BrowserPageState, void> {
         }
     };
 
-    /** Add a new internal tab and switch to it. Returns the new tab's ID. */
+    /** Add a new internal tab after the active tab and switch to it. Returns the new tab's ID. */
     addTab = (url = DEFAULT_URL): string => {
         const tab = createTab(url);
         this.state.update((s) => {
-            s.tabs.push(tab);
+            const activeIdx = s.tabs.findIndex((t) => t.id === s.activeTabId);
+            s.tabs.splice(activeIdx + 1, 0, tab);
             s.activeTabId = tab.id;
             // Sync top-level state
             s.url = tab.url;

@@ -19,6 +19,7 @@ export class OpenWindow {
     window: BrowserWindow;
     customSession = null as Electron.Session | null;
     canQuit = false;
+    private quitTimeout: ReturnType<typeof setTimeout> | null = null;
     onClose?: (window: OpenWindow) => void;
 
     constructor(position?: { x: number; y: number }) {
@@ -66,9 +67,20 @@ export class OpenWindow {
             if (!this.canQuit) {
                 event.preventDefault();
                 this.send(EventEndpoint.eBeforeQuit, undefined);
+                // If renderer is crashed or unresponsive, force-quit after timeout
+                if (!this.quitTimeout) {
+                    this.quitTimeout = setTimeout(() => {
+                        this.canQuit = true;
+                        this.window?.close();
+                    }, 2000);
+                }
                 return;
             }
 
+            if (this.quitTimeout) {
+                clearTimeout(this.quitTimeout);
+                this.quitTimeout = null;
+            }
             this.window = null;
             this.onClose?.(this);
         });
@@ -193,6 +205,16 @@ export class OpenWindow {
             if (this.window.isMinimized()) {
                 this.window.restore();
             }
+            // Re-check position against current display layout (display may have
+            // changed since window was last shown, e.g. VM disconnect, dock/undock)
+            const currentBounds = this.window.getBounds();
+            const fixed = this.ensureVisiblePosition(currentBounds);
+            if (
+                fixed.x !== currentBounds.x || fixed.y !== currentBounds.y ||
+                fixed.width !== currentBounds.width || fixed.height !== currentBounds.height
+            ) {
+                this.window.setBounds(fixed);
+            }
             this.window.focus();
         }
     };
@@ -224,8 +246,8 @@ export class OpenWindow {
         }
 
         const displays = screen.getAllDisplays();
-        const headerHeight = 40; // Adjust this to match your actual header height
-        const minVisibleArea = 100; // Minimum pixels that should be visible horizontally
+        const headerHeight = 40;
+        const minVisibleArea = 100;
 
         // Find which display the window is on (based on center point)
         const centerX = bounds.x + Math.floor(bounds.width / 2);
@@ -255,6 +277,18 @@ export class OpenWindow {
 
         let newX = bounds.x;
         let newY = bounds.y;
+        let newWidth = bounds.width;
+        let newHeight = bounds.height;
+
+        // If window is too large for the display, shrink it to fit
+        if (newWidth > displayWidth) {
+            newWidth = displayWidth;
+            newX = displayX;
+        }
+        if (newHeight > displayHeight) {
+            newHeight = displayHeight;
+            newY = displayY;
+        }
 
         // Ensure header is visible (top of window must be below top of work area)
         if (newY < displayY) {
@@ -272,25 +306,15 @@ export class OpenWindow {
         }
 
         // Ensure enough of the window is visible horizontally (right side)
-        if (newX + bounds.width < displayX + minVisibleArea) {
-            newX = displayX + minVisibleArea - bounds.width;
-        }
-
-        // If window is too large for the display, center it
-        if (bounds.width > displayWidth || bounds.height > displayHeight) {
-            return {
-                x: displayX + Math.floor((displayWidth - bounds.width) / 2),
-                y: displayY + Math.floor((displayHeight - bounds.height) / 2),
-                width: bounds.width,
-                height: bounds.height,
-            };
+        if (newX + newWidth < displayX + minVisibleArea) {
+            newX = displayX + minVisibleArea - newWidth;
         }
 
         return {
             x: newX,
             y: newY,
-            width: bounds.width,
-            height: bounds.height,
+            width: newWidth,
+            height: newHeight,
         };
     };
 }

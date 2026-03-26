@@ -4,6 +4,9 @@ All completed tasks, newest first.
 
 | ID | Title | Epic | Notes |
 |----|-------|------|-------|
+| US-241 | Tray Quit Timeout | | 2s timeout in window close handler — if renderer is crashed/unresponsive, force-closes window without waiting for renderer response |
+| US-287 | Miscellaneous Adjustments & Bug Fixes | | Draw image offset, graph tooltip wrap/scroll, graph export buttons, Rest Client auto-expand, browser tab insert after active, window position fix, file explorer drag-drop move |
+| US-286 | app.runAsync — Worker Thread Execution | | Run script functions in background worker threads via main-process IPC + worker_threads. Two-parameter design: data (cloned) + proxy (transparent RPC). Sucrase helpers in worker. Revocable proxy cleanup. |
 | US-284 | Cleanup — Rebrand Remaining Files | EPIC-013 | Updated backlog.md, mockups (6 HTML files), visualization graphs (3 fg.json, 657 refs), renamed js-notepad-scripts → persephone-scripts. Full-color theme-aware PersephoneIcon (lily badge) for sidebar button and About page. Historical epics kept as-is. |
 | US-282 | Repo Rename — js-notepad → persephone | EPIC-013 | Renamed GitHub repo, updated local git remote, fixed stale URLs in CONTRIBUTING.md and whats-new.md. |
 | US-285 | Version Bump to 2.0.1 | EPIC-013 | Major version bump to signal breaking change (rebrand). |

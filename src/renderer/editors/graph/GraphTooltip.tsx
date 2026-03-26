@@ -21,7 +21,7 @@ const GraphTooltipRoot = styled.div({
     borderRadius: 4,
     padding: "6px 8px",
     fontSize: 12,
-    maxWidth: 300,
+    maxWidth: 400,
     boxShadow: `0 2px 8px ${color.shadow.default}`,
     lineHeight: 1.4,
     "& .tooltip-badge": {
@@ -54,9 +54,8 @@ const GraphTooltipRoot = styled.div({
         opacity: 0.7,
     },
     "& .tooltip-value": {
-        overflow: "hidden",
-        textOverflow: "ellipsis",
-        whiteSpace: "nowrap",
+        whiteSpace: "pre-wrap",
+        wordBreak: "break-word",
     },
     "& .tooltip-link": {
         color: color.graph.nodeSpecial,
@@ -192,7 +191,9 @@ const OpenIcon = () => (
 
 function GraphTooltip({ node, x, y, isRoot, onMouseEnter, onMouseLeave }: GraphTooltipProps) {
     const ref = useRef<HTMLDivElement>(null);
-    const [pos, setPos] = useState({ left: x + OFFSET, top: y + OFFSET });
+    const [pos, setPos] = useState<{ left: number; top: number; maxHeight?: number }>({
+        left: x + OFFSET, top: y + OFFSET,
+    });
 
     useLayoutEffect(() => {
         const el = ref.current;
@@ -200,15 +201,26 @@ function GraphTooltip({ node, x, y, isRoot, onMouseEnter, onMouseLeave }: GraphT
         const rect = el.getBoundingClientRect();
         let left = x + OFFSET;
         let top = y + OFFSET;
+        let maxHeight: number | undefined;
 
         if (left + rect.width > window.innerWidth - OFFSET) {
             left = x - rect.width - OFFSET;
         }
+
         if (top + rect.height > window.innerHeight - OFFSET) {
+            // Try flipping above the cursor
             top = y - rect.height - OFFSET;
         }
 
-        setPos({ left, top });
+        // If tooltip still overflows viewport, clamp and constrain height
+        if (top < OFFSET) {
+            top = OFFSET;
+            maxHeight = window.innerHeight - OFFSET * 2;
+        } else if (top + rect.height > window.innerHeight - OFFSET) {
+            maxHeight = window.innerHeight - top - OFFSET;
+        }
+
+        setPos({ left, top, maxHeight });
     }, [x, y]);
 
     const [copied, setCopied] = useState(false);
@@ -232,7 +244,7 @@ function GraphTooltip({ node, x, y, isRoot, onMouseEnter, onMouseLeave }: GraphT
     const customProps = getCustomProperties(node);
 
     return ReactDOM.createPortal(
-        <GraphTooltipRoot ref={ref} style={{ left: pos.left, top: pos.top }} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>
+        <GraphTooltipRoot ref={ref} style={{ left: pos.left, top: pos.top, maxHeight: pos.maxHeight, overflowY: pos.maxHeight ? "auto" : undefined }} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>
             <div className="tooltip-header">
                 <div className="tooltip-header-content">
                     {isRoot && <div className="tooltip-badge">Root Node</div>}

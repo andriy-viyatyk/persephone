@@ -11,6 +11,7 @@ import { versionService } from "./version-service";
 import { initSearchHandlers } from "./search-service";
 import { initBrowserHandlers } from "./browser-service";
 import { initTorHandlers, torService } from "./tor-service";
+import { initWorkerHost } from "./worker-host";
 import { startPipeServer, stopPipeServer } from "./pipe-server";
 import { stopMcpHttpServer } from "./mcp-http-server";
 import { downloadService } from "./download-service";
@@ -41,6 +42,7 @@ export function setupMainProcess() {
     initSearchHandlers();
     initBrowserHandlers();
     initTorHandlers();
+    initWorkerHost();
     downloadService.init();
 
     function registerAssetProtocol(partition: string) {

@@ -374,6 +374,8 @@ persephone/
 │   ├── script-utils.ts     # Utilities (convertToText)
 │   ├── transpile.ts        # TypeScript transpilation via sucrase (lazy-loaded)
 │   ├── library-require.ts  # Library require() resolution + .ts extension handler
+│   ├── worker/             # Background worker execution (app.runAsync)
+│   │   └── WorkerRunner.ts # Renderer-side: IPC to main, proxy dispatch
 │   └── api-wrapper/        # Safe wrappers for script access
 │       ├── AppWrapper.ts           # Wraps app → IApp (events proxy for auto-cleanup)
 │       ├── PageCollectionWrapper.ts # Wraps pages → IPageCollection
@@ -461,6 +463,7 @@ persephone/
 ├── tor-service.ts          # Tor process lifecycle and per-partition SOCKS5 proxy
 ├── download-service.ts     # Download management
 ├── search-service.ts       # File search service
+├── worker-host.ts          # Worker thread host for app.runAsync (IPC + worker_threads)
 ├── snip-service.ts         # Screen snip (spawns persephone-snip.exe, reads PNG from stdout)
 ├── version-service.ts      # Version checking (runs in main, not renderer)
 ├── tray-setup.ts           # System tray
@@ -480,6 +483,7 @@ persephone/
 ├── browser-ipc.ts          # Browser-specific IPC channels
 ├── tor-ipc.ts              # Tor service IPC channels (start, stop, log)
 ├── search-ipc.ts           # Search IPC channels
+├── worker-channels.ts      # Worker thread IPC channels (app.runAsync)
 ├── popup-rate-limiter.ts   # Global popup/tab rate limiter (app-wide singleton)
 ├── main/                   # Main process handlers
 │   ├── controller.ts       # IPC handler registration

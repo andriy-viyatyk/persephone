@@ -64,6 +64,52 @@ const result = await res.json();
 | `maxRedirects` | `number` | `10` | Maximum number of redirects to follow. |
 | `rejectUnauthorized` | `boolean` | `true` | Set to `false` to skip SSL certificate validation (e.g. self-signed certs). |
 
+### runAsync(fn, data, proxy?)
+
+Run a function in a background worker thread. The renderer stays responsive while the function executes. The function runs in an isolated worker with full Node.js access (`require`, `fs`, `path`, `child_process`, npm packages, etc.).
+
+The function is serialized as a string — it must be **self-contained** and cannot reference outer-scope variables (closures are lost). Pass all inputs via `data` (cloned) or `proxy` (proxied).
+
+```javascript
+// Simple: offload heavy computation
+const files = await app.runAsync(
+    async (data) => {
+        const fs = require("fs");
+        return fs.readdirSync(data.dir, { recursive: true });
+    },
+    { dir: "C:/projects/my-app/src" }
+);
+```
+
+```javascript
+// With proxy: progress updates from the worker
+const progress = await app.ui.createProgress("Processing...");
+const result = await progress.show(app.runAsync(
+    async (data, proxy) => {
+        const fs = require("fs");
+        const files = fs.readdirSync(data.dir);
+        for (let i = 0; i < files.length; i++) {
+            await proxy.onProgress(`${i + 1}/${files.length}`);
+        }
+        return files;
+    },
+    { dir: "C:/my-project" },
+    { onProgress: (msg: string) => { progress.label = msg; } }
+));
+```
+
+#### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `fn` | `(data: TData, proxy: TProxy) => Promise<TResult>` | Self-contained function to run in the worker. |
+| `data` | `TData` | Plain serializable data cloned into the worker via structured clone. Supports: primitives, plain objects, arrays, `Map`, `Set`, `ArrayBuffer`, `Date`, `RegExp`. Does **not** support: functions, DOM elements, class instances, circular references. |
+| `proxy` | `TProxy?` | Optional object transparently proxied back to the renderer. Every access on `proxy` inside the worker is async (round-trips via `postMessage`). Property sets are fire-and-forget — use callback methods (`await proxy.onProgress(msg)`) when confirmation is needed. |
+
+**Returns:** `Promise<TResult>` — the value returned by `fn`, cloned back to the renderer.
+
+See [Scripting — Background Workers](../scripting.md#background-workers-apprunasync) for usage guide and examples.
+
 ---
 
 ## menuFolders

@@ -8,7 +8,21 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ## Version 2.0.2 (Upcoming)
 
-*No changes yet.*
+### New Features
+
+- **`app.runAsync()` background worker** — New scripting API that runs a function in a background worker thread, keeping the UI responsive during CPU-intensive or blocking I/O operations. The function has full Node.js access (`require`, `fs`, `path`, etc.). Pass plain data via the `data` parameter (cloned into the worker) and renderer callbacks or app API objects via the optional `proxy` parameter (transparently proxied back). See [Scripting — Background Workers](./scripting.md#background-workers-apprunasync) and [app.runAsync() API reference](./api/app.md#runasyncfn-data-proxy).
+- **Graph View — Copy to clipboard** — New toolbar button copies the current graph view as a PNG image to the clipboard.
+- **Graph View — Open in Drawing editor** — New toolbar button exports the graph as an image and opens it in the Excalidraw drawing editor for annotation.
+- **File Explorer — Drag-and-drop file moving** — Drag files between folders in the sidebar to move them on disk. Overwrite confirmation is shown when a file with the same name already exists in the target folder.
+
+### Improvements
+
+- **Draw editor — Image offset** — Images pasted or inserted into the drawing canvas now appear offset from the top-left corner so they are not covered by tool panels.
+- **Graph tooltip — Long value wrapping** — Tooltip property values now wrap instead of truncating, and the tooltip is scrollable when taller than the viewport.
+- **Graph legend — "Selected with children" preselected** — The Legend panel's Selection tab now defaults to "Selected with children" instead of "Selected".
+- **Rest Client — Auto-expand new collection** — When the first request is added to a new collection, the collection tree node auto-expands to show it.
+- **Browser — New tab position** — New browser tabs now open immediately after the active tab instead of at the end of the tab list.
+- **Window position fix** — The window header is now always kept visible when displays change (resolution, arrangement, disconnect). The tray "Show" action also re-checks the window position before restoring.
 
 ---
 

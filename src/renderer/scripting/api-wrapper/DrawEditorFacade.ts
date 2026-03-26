@@ -49,8 +49,8 @@ export class DrawEditorFacade {
 
         const newElements = convertToExcalidrawElements([{
             type: "image",
-            x: options?.x ?? 0,
-            y: options?.y ?? 0,
+            x: options?.x ?? 250,
+            y: options?.y ?? 120,
             width,
             height,
             fileId: fileId as any,

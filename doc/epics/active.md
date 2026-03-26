@@ -8,6 +8,7 @@ Epics represent big ideas with high-level overviews. Each epic links to tasks in
 
 ## Future
 
+- **EPIC-014** — [Claude Integration via Terminal Editor](EPIC-014.md)
 - **EPIC-011** — [Chrome Extension Support for Built-in Browser](EPIC-011.md)
 
 ## Completed

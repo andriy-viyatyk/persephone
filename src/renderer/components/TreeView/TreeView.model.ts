@@ -57,6 +57,8 @@ export interface TreeViewProps<T extends TreeItem = TreeItem> {
     onItemContextMenu?: (item: T, e: React.MouseEvent) => void;
     dropTypes?: DragType[];
     onDrop?: (dropItem: T, dragItem: DragItem) => void;
+    /** Whether a drop on this item is allowed. Return false to prevent drop highlight and action. */
+    canDrop?: (dropItem: T, dragItem: DragItem) => boolean;
     /** Drag type for making tree cells draggable */
     dragType?: DragType;
     /** Get drag item data for a tree node. Return null to prevent dragging. */
@@ -172,6 +174,7 @@ export class TreeViewModel<
         const getExpanded = (i: T) => {
             const id = this.props.getId(i);
             if (id in map) return map[id];
+            if (isRebuild && this.props.defaultExpandAll) return undefined;
             return isRebuild ? false : undefined;
         };
         const item = buildTreeViewItem(root, 0, undefined, getExpanded, this.props.defaultExpandAll);
