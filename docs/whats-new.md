@@ -6,7 +6,13 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ---
 
-## Version 2.0.2 (Upcoming)
+## Version 2.0.3 (Upcoming)
+
+*No changes yet.*
+
+---
+
+## Version 2.0.2
 
 ### New Features
 
