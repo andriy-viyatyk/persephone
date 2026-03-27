@@ -6,6 +6,7 @@ Current work in progress and planned tasks.
 
 | ID | Title | Epic | Notes |
 |----|-------|------|-------|
+| US-288 | Review EPIC-012 Changes and Architecture | EPIC-012 | Review-only task: 9 phases covering pipeline core, providers, editors, entry points, script API, serialization, and docs |
 
 ## Planned (Next)
 
