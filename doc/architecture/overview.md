@@ -97,6 +97,7 @@ Steps 1-3 run in parallel. Steps 4-7 are sequential (each depends on the previou
 ├── api/              # Object Model — application interfaces
 ├── ui/               # Application shell (layout, tabs, sidebar, dialogs)
 ├── editors/          # ALL editor implementations (lazy-loaded)
+├── content/          # Content delivery — providers, transformers, pipes
 ├── scripting/        # Script execution engine and API wrappers
 ├── components/       # Reusable UI components
 ├── core/             # State primitives and utilities
@@ -111,6 +112,7 @@ Steps 1-3 run in parallel. Steps 4-7 are sequential (each depends on the previou
 | **api/** | Object Model interfaces + implementations | `app.ts`, `settings.ts`, `fs.ts`, `pages/`, `internal/`, `types/` |
 | **ui/** | Application shell, tabs, sidebar, dialogs | `MainPage.tsx`, `PageTabs.tsx`, `MenuBar.tsx`, `Dialogs.tsx` |
 | **editors/** | File type handling, content editing | `registry.ts`, `text/`, `grid/`, `browser/`, etc. |
+| **content/** | Content I/O pipeline — providers, transformers, pipes | `ContentPipe.ts`, `parsers.ts`, `resolvers.ts`, `providers/`, `transformers/` |
 | **scripting/** | Script sandbox, API wrappers, facades | `ScriptRunner.ts`, `ScriptContext.ts`, `api-wrapper/` |
 | **components/** | Reusable UI building blocks | `basic/`, `data-grid/`, `overlay/`, `virtualization/` |
 | **core/** | State primitives, utilities | `state/` (TOneState, TModel), `utils/` |
@@ -173,7 +175,26 @@ See [scripting.md](./scripting.md).
 - Script execution uses `ScriptRunner.runWithCapture()` for headless operation with console capture
 - Status broadcasting: main process pushes `eMcpStatusChanged` events to all windows on server start/stop and session connect/disconnect — renderer `Window` class holds reactive `mcpRunning`/`mcpClientCount` state, UI shows a title-bar indicator
 
-### 5. Theming System
+### 5. Content Delivery Pipeline
+
+Unified content I/O layer in `/src/renderer/content/` that decouples editors from data sources.
+
+**Architecture:**
+- **IProvider** — data backend (FileProvider, CacheFileProvider, HttpProvider). Reads/writes raw bytes.
+- **ITransformer** — data effect applied in chain (ZipTransformer, DecryptTransformer). Bidirectional read/write.
+- **IContentPipe** — composes a provider with transformers. Handles encoding detection (`readText()`/`writeText()`).
+- **IPipeDescriptor** — serializable pipe state for persistence across app restarts.
+
+**3-layer open flow:**
+1. **Parsers** (`parsers.ts`): raw string → structured link event (`openRawLink` → `openLink`)
+2. **Resolvers** (`resolvers.ts`): link event → provider + transformers + target editor (`openLink` → `openContent`)
+3. **Open Handler** (`open-handler.ts`): content pipe → page creation with pipe assigned
+
+**Dual pipe pattern:** TextFileIOModel maintains two pipes — primary (source file/URL) and cache (auto-save). Both share the same transformer chain, ensuring cached content has the same format as the source (e.g., encrypted files stay encrypted in cache).
+
+**Script access:** The `io` global namespace exposes providers, transformers, `createPipe()`, and event constructors to scripts.
+
+### 6. Theming System
 
 - CSS Custom Properties — `color.ts` returns `var()` references, theme definitions set actual values on `:root`
 - 55+ component files import `color` unchanged — zero migration when adding themes

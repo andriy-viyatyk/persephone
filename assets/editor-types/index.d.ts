@@ -2,6 +2,7 @@
 import type { IApp } from "./app";
 import type { IPage } from "./page";
 import type { IUiLog, IStyledTextBuilder } from "./ui-log";
+import type { IIoNamespace } from "./io";
 
 declare global {
     /** The application object. Access all app functionality through this. */
@@ -19,6 +20,15 @@ declare global {
      * const result = await ui.dialog.confirm("Continue?");
      */
     const ui: IUiLog;
+
+    /**
+     * Content pipe building: providers, transformers, assembly, and link events.
+     *
+     * @example
+     * const pipe = io.createPipe(new io.FileProvider("C:\\data.json"));
+     * const text = await pipe.readText();
+     */
+    const io: IIoNamespace;
 
     /**
      * Import a module. Use `require("library/...")` to load modules from the script library.

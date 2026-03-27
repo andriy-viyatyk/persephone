@@ -16,16 +16,13 @@ export interface EventChannelOptions {
 /**
  * A typed event channel that supports both fire-and-forget and async pipeline patterns.
  *
- * - `send(event)` — sync, freezes the event, all subscribers run (observe-only)
- * - `sendAsync(event)` — async pipeline, subscribers can modify the event,
- *   short-circuits on `event.handled === true`
+ * - `send(event)` — sync, freezes the event, all subscribers run in FIFO order (observe-only)
+ * - `sendAsync(event)` — async pipeline, subscribers run in LIFO order (newest first),
+ *   subscribers can modify the event, short-circuits on `event.handled === true`
  * - `subscribe(handler)` — register a handler (sync or async)
- * - `subscribeDefault(handler)` — register a default handler that runs last
- *   (skipped if `event.handled === true`)
  */
 export class EventChannel<TEvent extends BaseEvent> {
     private handlers: EventHandler<TEvent>[] = [];
-    private defaultHandler: EventHandler<TEvent> | null = null;
     private readonly channelName: string;
     private readonly errorHandler: (error: unknown, channelName: string) => void;
 
@@ -36,9 +33,9 @@ export class EventChannel<TEvent extends BaseEvent> {
         });
     }
 
-    /** Whether any handlers (including default) are registered. */
+    /** Whether any handlers are registered. */
     get hasSubscribers(): boolean {
-        return this.handlers.length > 0 || this.defaultHandler !== null;
+        return this.handlers.length > 0;
     }
 
     /**
@@ -58,23 +55,7 @@ export class EventChannel<TEvent extends BaseEvent> {
     };
 
     /**
-     * Register a default handler that runs last, after all regular subscribers.
-     * Only one default handler per channel — calling again overrides the previous.
-     * Skipped if `event.handled === true` after regular subscribers.
-     */
-    subscribeDefault = (handler: EventHandler<TEvent>): SubscriptionObject => {
-        this.defaultHandler = handler;
-        return {
-            unsubscribe: () => {
-                if (this.defaultHandler === handler) {
-                    this.defaultHandler = null;
-                }
-            },
-        };
-    };
-
-    /**
-     * Fire-and-forget: freezes the event and calls all subscribers synchronously.
+     * Fire-and-forget: freezes the event and calls all subscribers in FIFO order.
      * Subscribers cannot modify the event. Errors are caught and logged.
      */
     send = (event: TEvent): void => {
@@ -86,24 +67,18 @@ export class EventChannel<TEvent extends BaseEvent> {
                 this.errorHandler(error, this.channelName);
             }
         }
-        if (this.defaultHandler) {
-            try {
-                this.defaultHandler(frozen);
-            } catch (error) {
-                this.errorHandler(error, this.channelName);
-            }
-        }
     };
 
     /**
-     * Async pipeline: calls subscribers sequentially, awaiting async handlers.
+     * Async pipeline: calls subscribers in LIFO order (newest first), awaiting async handlers.
      * Subscribers can modify the event. Short-circuits if `event.handled` becomes true.
-     * Default handler runs last (skipped if handled).
      *
      * @returns `true` if completed normally, `false` if cancelled (future).
      */
     sendAsync = async (event: TEvent): Promise<boolean> => {
-        for (const handler of [...this.handlers]) {
+        const snapshot = [...this.handlers];
+        for (let i = snapshot.length - 1; i >= 0; i--) {
+            const handler = snapshot[i];
             try {
                 const result = handler(event);
                 if (result && typeof (result as Promise<void>).then === "function") {
@@ -114,16 +89,6 @@ export class EventChannel<TEvent extends BaseEvent> {
             }
             if (event.handled) {
                 return true;
-            }
-        }
-        if (this.defaultHandler && !event.handled) {
-            try {
-                const result = this.defaultHandler(event);
-                if (result && typeof (result as Promise<void>).then === "function") {
-                    await result;
-                }
-            } catch (error) {
-                this.errorHandler(error, this.channelName);
             }
         }
         return true;

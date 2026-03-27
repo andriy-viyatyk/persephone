@@ -9,6 +9,7 @@ import { isTextFileModel } from "../editors/text/TextPageModel";
 import type { LogViewModel } from "../editors/log-view/LogViewModel";
 import React from "react";
 import { fpResolve } from "../core/utils/file-path";
+import { createIoNamespace } from "./api-wrapper/IoNamespace";
 
 export interface ConsoleLogEntry {
     level: "log" | "error" | "warn" | "info";
@@ -55,9 +56,10 @@ export class ScriptContext {
     readonly releaseList: Array<() => void> = [];
     readonly outputFlags: ScriptOutputFlags = { outputPrevented: false, groupedContentWritten: false };
 
-    // Context properties — available in scripts via prefix (var app=this.app, ...)
+    // Context properties — available in scripts via prefix (var app=this.app, io=this.io, ...)
     readonly app: AppWrapper;
     readonly page: PageWrapper | undefined;
+    readonly io = createIoNamespace();
     readonly React = React;
     readonly styledText = styledText;
     readonly preventOutput: () => void;

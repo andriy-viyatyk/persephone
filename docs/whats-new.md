@@ -8,7 +8,14 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ## Version 2.0.3 (Upcoming)
 
-*No changes yet.*
+### New Features
+
+- **Open URL dialog (Ctrl+O)** — The file-open shortcut now shows a text-area dialog instead of the native file picker. Paste a file path, an HTTP/HTTPS URL, or a cURL command and press **Open**. A separate **Open File** button in the dialog brings up the classic file picker. Supports `Ctrl+Enter` to confirm and `Escape` to cancel.
+- **HTTP URL support** — Paste an `https://` URL into the Open dialog and Persephone fetches and opens it directly in the right editor: Monaco for code and text files, Image Viewer for images, PDF Viewer for PDFs. No browser tab is opened for direct content links.
+- **cURL command support** — Copy a request from browser DevTools as cURL (bash, cmd, fetch, or Node.js fetch format) and paste it into the Open dialog. Persephone parses the command and fetches the URL with the original headers, method, and body.
+- **PDF and Image from URLs and ZIP archives** — The PDF Viewer and Image Viewer can now display content loaded from HTTP URLs and entries inside ZIP archives, in addition to local files.
+- **Script API: `io` namespace** — New global available in scripts for building content pipes programmatically. See [Scripting — io namespace](./scripting.md#the-io-namespace).
+- **Script API: `app.events.send` / `app.events.sendAsync`** — Scripts can now fire events into the link pipeline (and any other event channel), not just subscribe to them. See [Events API](./api/events.md#ieventchannel).
 
 ---
 

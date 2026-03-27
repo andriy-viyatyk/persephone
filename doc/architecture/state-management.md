@@ -188,6 +188,24 @@ function GridEditor({ host }: { host: IContentHost }) {
 
 On mount: calls `host.acquireViewModel(editorId)`. On unmount: calls `host.releaseViewModel(editorId)`. Handles unmount-during-async-load safely.
 
+### Content Pipe State (IPipeDescriptor)
+
+Content pipes are serializable for persistence across app restarts. `IPipeDescriptor` stores the provider type/config and transformer chain:
+
+```typescript
+interface IPipeDescriptor {
+    provider: IProviderDescriptor;   // { type, config }
+    transformers: ITransformerDescriptor[];  // [{ type, config }]
+    encoding?: string;  // detected encoding (persisted for write-back)
+}
+```
+
+**Dual pipe pattern:** `TextFileIOModel` maintains two pipes — `primaryPipe` (source file/URL) and `cachePipe` (auto-save). Both share the same transformer chain. The primary pipe's descriptor is stored in `IPageState.pipe` for restore. The cache pipe is reconstructed on restore from the primary descriptor + `CacheFileProvider`.
+
+**Non-persistent transformers:** `DecryptTransformer` is marked `persistent: false` — it is excluded from serialized descriptors. After restart, encrypted files show as encrypted (user must re-enter password).
+
+**Pipe registry:** `src/renderer/content/registry.ts` maps type strings to factory functions for deserialization (`createPipeFromDescriptor()`).
+
 ## Disposable Pattern
 
 Located in `/src/renderer/api/types/common.d.ts` and `/src/renderer/api/internal.ts`.
@@ -250,20 +268,17 @@ Scriptable event channel in `api/events/EventChannel.ts`. Supports both fire-and
 ```typescript
 const channel = new EventChannel<ContextMenuEvent<IFileTarget>>({ name: "fileExplorer.itemContextMenu" });
 
-// Fire-and-forget (sync, event frozen — subscribers observe only)
+// Fire-and-forget (sync, event frozen — subscribers observe only, FIFO order)
 channel.send(event);
 
-// Async pipeline (subscribers can modify event, short-circuits on handled)
+// Async pipeline (LIFO order — newest subscriber runs first, short-circuits on handled)
 const ok = await channel.sendAsync(event);
 
 // Subscribe (sync or async handlers)
 const sub = channel.subscribe((event) => { event.items.push({ label: "Custom", onClick: () => {} }); });
-
-// Default handler (runs last, skipped if event.handled)
-channel.subscribeDefault((event) => { showMenu(event.items); });
 ```
 
-Unlike `Subscription<T>`, `EventChannel` uses a handler array (not `EventTarget`), supports async pipelines with sequential execution, and provides `subscribeDefault()` for fallback behavior.
+Unlike `Subscription<T>`, `EventChannel` uses a handler array (not `EventTarget`) and supports async pipelines with sequential execution. `send()` uses FIFO order (all handlers always run). `sendAsync()` uses LIFO order (newest subscriber runs first) and short-circuits when `event.handled` is set — this allows scripts registered after bootstrap to intercept events before app handlers.
 
 ## Object Model State Pattern
 

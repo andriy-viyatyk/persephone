@@ -3,6 +3,7 @@ import { TModel } from "../../core/state/model";
 import { TGlobalState } from "../../core/state/state";
 import { PageModel } from "../../editors/base";
 import { IPageState, PageEditor } from "../../../shared/types";
+import { RawLinkEvent } from "../events/events";
 
 import { PagesQueryModel } from "./PagesQueryModel";
 import { PagesNavigationModel } from "./PagesNavigationModel";
@@ -160,7 +161,14 @@ export class PagesModel extends TModel<OpenFilesState> {
         this.lifecycle.addDrawPage(dataUrl, title);
     createPageFromFile = (filePath: string) =>
         this.lifecycle.createPageFromFile(filePath);
-    openFile = (filePath?: string) => this.lifecycle.openFile(filePath);
+    openFile = async (filePath?: string) => {
+        if (!filePath) return undefined;
+        // Route through the link pipeline (Layer 1 → 2 → 3)
+        const { app } = await import("../app");
+        await app.events.openRawLink.sendAsync(new RawLinkEvent(filePath));
+        // Return the page if it was opened (for backward compatibility)
+        return this.state.get().pages.find((p) => p.state.get().filePath === filePath);
+    };
     openFileAsArchive = (filePath: string) =>
         this.lifecycle.openFileAsArchive(filePath);
     closePage = (pageId: string) => this.lifecycle.closePage(pageId);

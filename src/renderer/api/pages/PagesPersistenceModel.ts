@@ -7,6 +7,8 @@ import { PageModel } from "../../editors/base";
 import { api } from "../../../ipc/renderer/api";
 import { fs as appFs } from "../fs";
 import { editorRegistry } from "../../editors/registry";
+import { app } from "../app";
+import { RawLinkEvent } from "../events/events";
 
 /**
  * PagesPersistenceModel — Load/save window state to storage.
@@ -98,7 +100,7 @@ export class PagesPersistenceModel {
 
         const fileToOpen = await api.getFileToOpen();
         if (fileToOpen) {
-            await this.model.lifecycle.openFile(fileToOpen);
+            await app.events.openRawLink.sendAsync(new RawLinkEvent(fileToOpen));
         }
 
         const urlToOpen = await api.getUrlToOpen();

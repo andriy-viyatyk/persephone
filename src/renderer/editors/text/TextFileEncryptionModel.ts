@@ -1,6 +1,7 @@
 import { ui } from "../../api/ui";
 import { shell } from "../../api/shell";
 import type { TextFileModel } from "./TextPageModel";
+import { DecryptTransformer } from "../../content/transformers/DecryptTransformer";
 
 export class TextFileEncryptionModel {
     constructor(private model: TextFileModel) {}
@@ -17,6 +18,10 @@ export class TextFileEncryptionModel {
         return this.decripted || this.encripted;
     }
 
+    /**
+     * Encrypt plaintext content — writes encrypted text to disk.
+     * After: pipe has NO DecryptTransformer, content on disk is encrypted, page shows encrypted text.
+     */
     encript = async (password: string): Promise<void> => {
         if (this.encripted) {
             ui.notify("File is already encrypted", "warning");
@@ -27,6 +32,12 @@ export class TextFileEncryptionModel {
                 this.model.state.get().content,
                 password,
             );
+
+            // Write encrypted content through pipe (no DecryptTransformer — writes as-is)
+            if (this.model.pipe?.writeText) {
+                await this.model.pipe.writeText(encryptedContent);
+            }
+
             const modified =
                 this.model.state.get().modified ||
                 this.model.state.get().password !== password;
@@ -43,32 +54,101 @@ export class TextFileEncryptionModel {
         }
     };
 
+    /**
+     * Re-encrypt and lock — clone pipe without DecryptTransformer.
+     * After: pipe has NO DecryptTransformer, shows encrypted text, 🔒.
+     */
     encryptWithCurrentPassword = async (): Promise<void> => {
         const password = this.model.state.get().password;
         if (!password) {
             ui.notify("No password set for encryption", "warning");
             return;
         }
-        await this.encript(password);
+
+        const pipe = this.model.pipe;
+        if (!pipe) {
+            // Fallback: use old direct encryption
+            await this.encript(password);
+            return;
+        }
+
+        try {
+            // Clone pipe without DecryptTransformer
+            const candidate = pipe.clone();
+            candidate.removeTransformer("decrypt");
+
+            // Re-read content through pipe without DecryptTransformer → encrypted text
+            const encryptedContent = await candidate.readText();
+
+            // Swap pipes
+            pipe.dispose();
+            this.model.pipe = candidate;
+            this.model.io.setupWatch();
+            this.model.io.recreateCachePipe();
+
+            this.model.state.update((s) => {
+                s.content = encryptedContent;
+                s.encripted = true;
+                s.password = undefined;
+            });
+            this.model.io.markModificationUnsaved();
+        } catch (error) {
+            this.alertEncryptionError(error as Error);
+        }
     };
 
+    /**
+     * Decrypt — clone-and-try with DecryptTransformer.
+     * After: pipe HAS DecryptTransformer, shows plaintext, 🔓.
+     */
     decript = async (password: string): Promise<boolean> => {
         if (!this.encripted) {
             return false;
         }
+
+        const pipe = this.model.pipe;
+        if (!pipe) {
+            // Fallback: use old direct decryption
+            try {
+                const decrypted = await shell.encryption.decrypt(
+                    this.model.state.get().content,
+                    password,
+                );
+                this.model.state.update((s) => {
+                    s.content = decrypted;
+                    s.encripted = false;
+                    s.password = password;
+                });
+                return true;
+            } catch (error) {
+                this.alertEncryptionError(error as Error);
+                return false;
+            }
+        }
+
+        // Clone-and-try: clone pipe, add DecryptTransformer, try readText
+        const candidate = pipe.clone();
+        candidate.addTransformer(new DecryptTransformer(password));
         try {
-            const decrypted = await shell.encryption.decrypt(
-                this.model.state.get().content,
-                password,
-            );
+            const plaintext = await candidate.readText();
+
+            // Success — swap pipes
+            pipe.dispose();
+            this.model.pipe = candidate;
+            this.model.io.setupWatch();
+            this.model.io.recreateCachePipe();
+
             this.model.state.update((s) => {
-                s.content = decrypted;
+                s.content = plaintext;
                 s.encripted = false;
                 s.password = password;
             });
             return true;
         } catch (error) {
+            // Failed — discard clone
+            candidate.dispose();
             this.alertEncryptionError(error as Error);
+            return false;
         }
     };
 
@@ -85,7 +165,33 @@ export class TextFileEncryptionModel {
         this.model.focusEditor();
     };
 
-    makeUnencrypted = () => {
+    /**
+     * Remove encryption permanently — write plaintext to disk.
+     * After: pipe has NO DecryptTransformer, plaintext on disk.
+     */
+    makeUnencrypted = async () => {
+        const pipe = this.model.pipe;
+        const content = this.model.state.get().content;
+
+        if (pipe) {
+            // Clone without DecryptTransformer and write plaintext
+            const candidate = pipe.clone();
+            candidate.removeTransformer("decrypt");
+
+            try {
+                if (candidate.writeText) {
+                    await candidate.writeText(content);
+                }
+            } catch {
+                // Write failed — still update state (will save on next Ctrl+S)
+            }
+
+            pipe.dispose();
+            this.model.pipe = candidate;
+            this.model.io.setupWatch();
+            this.model.io.recreateCachePipe();
+        }
+
         this.model.state.update((s) => {
             s.password = undefined;
             s.modified = true;
@@ -97,34 +203,4 @@ export class TextFileEncryptionModel {
         ui.notify(err.message || err.name || "Unknown encryption error", "warning");
     };
 
-    /** Encrypt content for saving to disk. Returns undefined on error. */
-    mapContentToSave = async (): Promise<string | undefined> => {
-        const text = this.model.state.get().content;
-        const password = this.model.state.get().password;
-        if (password) {
-            try {
-                return await shell.encryption.encrypt(text, password);
-            } catch (error) {
-                this.alertEncryptionError(error as Error);
-                return undefined;
-            }
-        }
-        return text;
-    };
-
-    /** Decrypt content loaded from disk. Returns undefined on error. */
-    mapContentFromFile = async (
-        text: string,
-    ): Promise<string | undefined> => {
-        const password = this.model.state.get().password;
-        if (shell.encryption.isEncrypted(text) && password) {
-            try {
-                return await shell.encryption.decrypt(text, password);
-            } catch (error) {
-                this.alertEncryptionError(error as Error);
-                return undefined;
-            }
-        }
-        return text;
-    };
 }

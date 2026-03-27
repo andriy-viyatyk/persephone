@@ -84,6 +84,9 @@ class AppPopupMenuModel extends TPopperModel<AppPopupMenuState, void> {
                                 savedSelection.removeAllRanges();
                                 savedSelection.addRange(savedRange);
                             }
+
+                            // Dispatch input event so contentEditable handlers (e.g., TextAreaField) update
+                            activeElement.dispatchEvent(new Event("input", { bubbles: true }));
                         }
                     },
                     icon: <CopyIcon />,

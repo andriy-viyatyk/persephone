@@ -1,5 +1,5 @@
 import { EventChannel } from "./EventChannel";
-import type { ContextMenuEvent, BookmarkEvent } from "./events";
+import type { ContextMenuEvent, BookmarkEvent, RawLinkEvent, OpenLinkEvent, OpenContentEvent } from "./events";
 import type { IFileTarget } from "../types/events";
 
 export class FileExplorerEvents {
@@ -13,4 +13,9 @@ export class BrowserEvents {
 export class AppEvents {
     readonly fileExplorer = new FileExplorerEvents();
     readonly browser = new BrowserEvents();
+
+    // Link pipeline (EPIC-012)
+    readonly openRawLink = new EventChannel<RawLinkEvent>({ name: "openRawLink" });
+    readonly openLink = new EventChannel<OpenLinkEvent>({ name: "openLink" });
+    readonly openContent = new EventChannel<OpenContentEvent>({ name: "openContent" });
 }

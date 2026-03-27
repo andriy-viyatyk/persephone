@@ -168,6 +168,87 @@ Key points:
 
 See the [ui API reference](./api/ui-log.md) for complete details.
 
+## The `io` Namespace
+
+Scripts have access to a global `io` object for building **content pipes** — a way to read (and sometimes write) binary content from files, HTTP URLs, and archives. This is the same pipeline that Persephone uses internally when you open a file or URL.
+
+### Providers
+
+Providers are data sources. Create one and pass it to `io.createPipe()`.
+
+| Constructor | Description |
+|-------------|-------------|
+| `new io.FileProvider(filePath)` | Reads/writes a local file |
+| `new io.HttpProvider(url, options?)` | Fetches from an HTTP/HTTPS URL |
+
+`HttpProvider` options: `{ method?, headers?, body? }` — useful when you need custom headers or a POST body.
+
+### Transformers
+
+Transformers process the raw bytes before they reach your code.
+
+| Constructor | Description |
+|-------------|-------------|
+| `new io.ZipTransformer(entryPath)` | Extracts a single entry from a ZIP archive |
+| `new io.DecryptTransformer(password)` | Decrypts AES-GCM encrypted content |
+
+### Creating a pipe
+
+```javascript
+const pipe = io.createPipe(provider, ...transformers);
+const text = await pipe.readText();
+```
+
+### Examples
+
+**Read a remote JSON file:**
+
+```javascript
+const provider = new io.HttpProvider("https://example.com/data.json");
+const pipe = io.createPipe(provider);
+const text = await pipe.readText();
+return JSON.parse(text);
+```
+
+**Read a file inside a ZIP archive:**
+
+```javascript
+const provider = new io.FileProvider("C:/reports/archive.zip");
+const zip = new io.ZipTransformer("reports/summary.csv");
+const pipe = io.createPipe(provider, zip);
+return await pipe.readText();
+```
+
+**Fetch with custom headers (like a cURL command):**
+
+```javascript
+const provider = new io.HttpProvider("https://api.example.com/data", {
+    method: "GET",
+    headers: { "Authorization": "Bearer my-token" },
+});
+const pipe = io.createPipe(provider);
+const text = await pipe.readText();
+return JSON.parse(text);
+```
+
+### Opening content in an editor
+
+To open content from a pipe in a new tab, fire it through the link pipeline:
+
+```javascript
+// Open a URL in Persephone (auto-selects editor by content type)
+const event = new io.RawLinkEvent("https://example.com/report.pdf");
+await app.events.openRawLink.sendAsync(event);
+```
+
+```javascript
+// Open a specific file path
+const event = new io.OpenLinkEvent("C:/data/file.json");
+await app.events.openLink.sendAsync(event);
+```
+
+See the [Events API](./api/events.md) for the full pipeline reference.
+
 ## Examples
 
 ### Transform JSON

@@ -178,6 +178,16 @@ class App {
         if (this._eventsInitialized) return;
         this._eventsInitialized = true;
 
+        // Register link pipeline handlers first — they're the fallback handlers
+        // (oldest in LIFO, run last). Scripts subscribe later and run first.
+        // Registration order: opener first (runs last in LIFO), then resolvers, then parsers.
+        const { registerOpenHandler } = await import("../content/open-handler");
+        const { registerResolvers } = await import("../content/resolvers");
+        const { registerRawLinkParsers } = await import("../content/parsers");
+        registerOpenHandler();
+        registerResolvers();
+        registerRawLinkParsers();
+
         // Import and initialize all event services
         const [
             { GlobalEventService },

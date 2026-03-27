@@ -8,6 +8,8 @@ export interface IPageState {
     modified: boolean,
     language?: string,
     filePath?: string,
+    /** Serialized content pipe descriptor (provider + persistent transformers). */
+    pipe?: { provider: { type: string; config: Record<string, unknown> }; transformers: { type: string; config: Record<string, unknown> }[]; encoding?: string },
     editor?: PageEditor,
     hasNavPanel?: boolean,
     pinned?: boolean,

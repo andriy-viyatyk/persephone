@@ -9,7 +9,6 @@ import {
 import { api } from "../../../ipc/renderer/api";
 import { recent } from "../recent";
 import { ui } from "../ui";
-import { shell } from "../shell";
 import { settings } from "../settings";
 import { editorRegistry } from "../../editors/registry";
 import { getLanguageByExtension } from "../../core/utils/language-mapping";
@@ -18,6 +17,7 @@ import { NavPanelModel } from "../../ui/navigation/nav-panel-store";
 import { fpBasename, fpExtname, isArchivePath } from "../../core/utils/file-path";
 import { fs as appFs } from "../fs";
 import { getWellKnownPageDef } from "./well-known-pages";
+import type { IContentPipe } from "../../api/types/io.pipe";
 
 /**
  * PagesLifecycleModel — Page creation, opening, closing, and navigation.
@@ -65,8 +65,11 @@ export class PagesLifecycleModel {
 
     // ── Core page operations ─────────────────────────────────────────
 
-    createPageFromFile = async (filePath: string): Promise<PageModel> => {
+    createPageFromFile = async (filePath: string, pipe?: IContentPipe): Promise<PageModel> => {
         const pageModel = await this.newPageModel(filePath);
+        if (pipe) {
+            pageModel.pipe = pipe;
+        }
         pageModel.state.update((s) => {
             s.language = "";
         });
@@ -215,17 +218,18 @@ export class PagesLifecycleModel {
 
     // ── File opening ─────────────────────────────────────────────────
 
-    openFile = async (filePath?: string): Promise<PageModel | undefined> => {
+    openFile = async (filePath?: string, pipe?: IContentPipe): Promise<PageModel | undefined> => {
         if (!filePath) return undefined;
         const existingPage = this.model.state
             .get()
             .pages.find((p) => p.state.get().filePath === filePath);
         if (existingPage) {
+            pipe?.dispose(); // Dispose unused pipe if page already open
             this.model.navigation.showPage(existingPage.state.get().id);
             return existingPage;
         }
 
-        const pageModel = await this.createPageFromFile(filePath);
+        const pageModel = await this.createPageFromFile(filePath, pipe);
         this.addPage(pageModel);
         recent.add(filePath);
 
@@ -261,12 +265,26 @@ export class PagesLifecycleModel {
     };
 
     openFileWithDialog = async () => {
-        const filePaths = await api.showOpenFileDialog({
-            title: "Open File",
-            multiSelections: false,
-        });
-        if (filePaths && filePaths.length > 0) {
-            await this.openFile(filePaths[0]);
+        const { showOpenUrlDialog } = await import("../../ui/dialogs/OpenUrlDialog");
+        const result = await showOpenUrlDialog();
+        if (!result) return;
+
+        if (result.type === "url") {
+            // User entered a raw link (file path, URL, cURL) — route through pipeline
+            const { app: appInstance } = await import("../app");
+            const { RawLinkEvent } = await import("../events/events");
+            await appInstance.events.openRawLink.sendAsync(new RawLinkEvent(result.value));
+        } else if (result.type === "file") {
+            // User clicked "Open File" — show OS file dialog
+            const filePaths = await api.showOpenFileDialog({
+                title: "Open File",
+                multiSelections: false,
+            });
+            if (filePaths && filePaths.length > 0) {
+                const { app: appInstance } = await import("../app");
+                const { RawLinkEvent } = await import("../events/events");
+                await appInstance.events.openRawLink.sendAsync(new RawLinkEvent(filePaths[0]));
+            }
         }
     };
 
@@ -531,16 +549,17 @@ export class PagesLifecycleModel {
     // ── URL handling ─────────────────────────────────────────────────
 
     handleOpenUrl = async (url: string) => {
-        const behavior = settings.get("link-open-behavior");
-        if (behavior === "internal-browser") {
-            await this.openUrlInBrowserTab(url);
-        } else {
-            shell.openExternal(url);
-        }
+        // Route through the link pipeline — HTTP resolver decides content vs browser
+        const { app: appInstance } = await import("../app");
+        const { RawLinkEvent } = await import("../events/events");
+        await appInstance.events.openRawLink.sendAsync(new RawLinkEvent(url));
     };
 
     handleExternalUrl = async (url: string) => {
-        await this.openUrlInBrowserTab(url, { external: true });
+        // Route through pipeline — HTTP resolver decides content vs browser based on extension
+        const { app: appInstance } = await import("../app");
+        const { RawLinkEvent } = await import("../events/events");
+        await appInstance.events.openRawLink.sendAsync(new RawLinkEvent(url));
     };
 
     openPathInNewWindow = (filePath: string) => {

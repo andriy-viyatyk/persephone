@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
 import { settings } from "../../api/settings";
-import { pagesModel } from "../../api/pages";
+import { app } from "../../api/app";
+import { RawLinkEvent } from "../../api/events/events";
 import { FileExplorer, FileExplorerRef, FileExplorerSavedState } from "../../components/file-explorer";
 import { FolderOpenIcon } from "../../theme/icons";
 import color from "../../theme/color";
@@ -92,7 +93,7 @@ export function ScriptLibraryPanel(props: ScriptLibraryPanelProps) {
                 initialState={props.expandState}
                 onStateChange={props.onExpandStateChange}
                 onFileClick={(filePath) => {
-                    pagesModel.openFile(filePath);
+                    app.events.openRawLink.sendAsync(new RawLinkEvent(filePath));
                     props.onClose?.();
                 }}
             />

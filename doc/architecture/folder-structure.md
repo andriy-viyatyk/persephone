@@ -135,7 +135,27 @@ persephone/
 │       ├── html-editor.d.ts    # IHtmlEditor
 │       ├── mermaid-editor.d.ts # IMermaidEditor
 │       ├── graph-editor.d.ts  # IGraphEditor, IGraphNode, IGraphComponent, IGraphSearchResult
-│       └── events.d.ts       # IEventChannel, IBaseEvent, IContextMenuEvent, MenuItem, IFileTarget
+│       ├── events.d.ts       # IEventChannel, IBaseEvent, IContextMenuEvent, MenuItem, IFileTarget
+│       ├── io.d.ts            # IIoNamespace — script `io` global (providers, transformers, createPipe)
+│       ├── io.provider.d.ts  # IProvider, IProviderStat, IProviderDescriptor
+│       ├── io.transformer.d.ts # ITransformer, ITransformerDescriptor
+│       ├── io.pipe.d.ts      # IContentPipe, IPipeDescriptor
+│       └── io.events.d.ts    # IRawLinkEvent, IOpenLinkEvent, IOpenContentEvent, ILinkMetadata
+│
+├── content/                # Content delivery layer — providers, transformers, pipes (EPIC-012)
+│   ├── ContentPipe.ts      # IContentPipe implementation, createPipe() factory
+│   ├── registry.ts         # Provider/transformer registries, createPipeFromDescriptor()
+│   ├── encoding.ts         # Text encoding detection (BOM, jschardet) and conversion (iconv-lite)
+│   ├── parsers.ts          # Layer 1: raw link parsers (file, HTTP/cURL, archive) on openRawLink
+│   ├── resolvers.ts        # Layer 2: pipe resolvers (file, HTTP, archive) on openLink
+│   ├── open-handler.ts     # Layer 3: open handler on openContent — creates/navigates pages
+│   ├── providers/
+│   │   ├── FileProvider.ts      # IProvider for local binary files (read/write/watch/stat)
+│   │   ├── CacheFileProvider.ts # IProvider for cache files by page ID (auto-save)
+│   │   └── HttpProvider.ts      # IProvider for HTTP/HTTPS URLs (read-only)
+│   └── transformers/
+│       ├── ZipTransformer.ts    # ITransformer for ZIP entry extraction/replacement
+│       └── DecryptTransformer.ts # ITransformer for AES-GCM decrypt/encrypt (non-persistent)
 │
 ├── ui/                     # Application Shell
 │   ├── app/                # Root layout
@@ -204,7 +224,7 @@ persephone/
 │   │   ├── TextFooter.tsx          # Status bar
 │   │   ├── ScriptPanel.tsx         # Inline script runner
 │   │   ├── EncryptionPanel.tsx     # Encryption UI
-│   │   ├── TextFileIOModel.ts      # File I/O operations
+│   │   ├── TextFileIOModel.ts      # File I/O via content pipes (read/write/watch/cache)
 │   │   ├── TextFileActionsModel.ts # Text actions (duplicate, transform)
 │   │   ├── TextFileEncryptionModel.ts # Encryption state
 │   │   └── index.ts

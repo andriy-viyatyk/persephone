@@ -12,10 +12,11 @@ function wrapEventChannel(channel: any, releaseList: Array<() => void>) {
             releaseList.push(() => sub.unsubscribe());
             return sub;
         },
-        subscribeDefault(handler: any) {
-            const sub = channel.subscribeDefault(handler);
-            releaseList.push(() => sub.unsubscribe());
-            return sub;
+        send(event: any) {
+            return channel.send(event);
+        },
+        sendAsync(event: any) {
+            return channel.sendAsync(event);
         },
     };
 }

@@ -105,9 +105,9 @@ stateDiagram-v2
 ```
 
 **Key transitions:**
-- **Created → Initialized:** `restore()` loads content from file or persistent storage. For text files this creates the Monaco model, starts the file watcher, and reads cached data.
+- **Created → Initialized:** `restore()` loads content from file or persistent storage. For text files this reads content through the content pipe (primary pipe for source, cache pipe for unsaved modifications). Pipe state (`IPipeDescriptor`) is restored from persisted page state. If no pipe exists (legacy state), one is created from `filePath`.
 - **Initialized ↔ Active:** Controlled by `show(pageId)`. Only one page is active at a time (or two when grouped side-by-side).
-- **Active/Inactive → Disposed:** `close()` prompts save if modified, then disposes all resources (file watcher, editor model, script context, navigation panel, cache files).
+- **Active/Inactive → Disposed:** `close()` prompts save if modified, then disposes all resources (content pipes, editor model, script context, navigation panel, cache files).
 
 **Portal-based rendering:** Pages are rendered through `AppPageManager` (`src/renderer/components/page-manager/AppPageManager.tsx`) using React portals with imperatively managed placeholder divs. Each page gets a stable placeholder that is never destroyed until the page closes. This prevents iframes, webviews, and canvas elements from reloading when pages are closed, reordered, grouped, or ungrouped. Placeholders are never reparented (moved between containers) — grouping is achieved purely via CSS absolute positioning within the same container. See `GroupContainer` and `ImperativeSplitter` in the same folder.
 

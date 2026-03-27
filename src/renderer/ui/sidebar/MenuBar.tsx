@@ -8,6 +8,8 @@ import { api } from "../../../ipc/renderer/api";
 import { pagesModel } from "../../api/pages";
 import { menuFolders } from "../../api/menu-folders";
 import { recent } from "../../api/recent";
+import { app } from "../../api/app";
+import { RawLinkEvent } from "../../api/events/events";
 import type { MenuFolder } from "../../api/menu-folders";
 import color from "../../theme/color";
 import {
@@ -36,7 +38,6 @@ import { FolderItem } from "./FolderItem";
 import { ScriptLibraryPanel } from "./ScriptLibraryPanel";
 import { ToolsEditorsPanel } from "./ToolsEditorsPanel";
 import { settings } from "../../api/settings";
-import { app } from "../../api/app";
 import { fpBasename } from "../../core/utils/file-path";
 
 const MenuBarRoot = styled("div")({
@@ -483,7 +484,7 @@ export function MenuBar(props: MenuBarProps) {
                             initialState={model.expandStateMap.get(folder.id!)}
                             onStateChange={(s) => model.expandStateMap.set(folder.id!, s)}
                             onFileClick={(filePath) => {
-                                pagesModel.openFile(filePath);
+                                app.events.openRawLink.sendAsync(new RawLinkEvent(filePath));
                                 props.onClose?.();
                             }}
                         />

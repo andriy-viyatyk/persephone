@@ -51,7 +51,9 @@ Standalone editors with their own PageModel.
 | `pdf-view` | PDF Viewer | `pdfFile` | `.pdf` |
 | `image-view` | Image Viewer | `imageFile` | `.png`, `.jpg`, `.gif`, `.webp`, `.bmp`, `.ico` |
 
-> **Image Viewer URL support:** ImageViewer can display images from external URLs (e.g. opened from a browser webview context menu) via the `url` field in its state. URL-based images show a "Save Image to File" toolbar button that fetches the image, saves it locally via a save dialog, and switches the page from URL mode to file mode.
+> **Content pipe integration:** PDF Viewer and Image Viewer use content pipes for I/O. For non-local sources (HTTP URLs, archive entries), they read content through the pipe and cache it as a temp file (`CacheFileProvider` path with `.pdf`/`.png` extension) for the rendering engine (`safe-file://` protocol for PDF iframe, `<img src>` for images). Cache files are cleaned up on page dispose. This allows both editors to transparently handle file paths, HTTP URLs, and archive entries.
+>
+> **Image Viewer URL support:** ImageViewer can also display images from external URLs (e.g. opened from a browser webview context menu) via the `url` field in its state. URL-based images show a "Save Image to File" toolbar button that fetches the image, saves it locally via a save dialog, and switches the page from URL mode to file mode.
 
 | `browser-view` | Browser | `browserPage` | (none — opened via UI) |
 | `mcp-view` | MCP Inspector | `mcpInspectorPage` | (none — opened via UI) |

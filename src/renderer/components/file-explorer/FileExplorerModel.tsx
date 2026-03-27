@@ -1,6 +1,6 @@
 import { TComponentModel } from "../../core/state/model";
 import type { MenuItem } from "../overlay/PopupMenu";
-import { ContextMenuEvent } from "../../api/events/events";
+import { ContextMenuEvent, RawLinkEvent } from "../../api/events/events";
 import type { IFileTarget } from "../../api/types/events";
 import { app } from "../../api/app";
 import { TreeViewRef } from "../TreeView";
@@ -527,7 +527,7 @@ export class FileExplorerModel extends TComponentModel<FileExplorerState, FileEx
             items.push({
                 label: "Open in New Tab",
                 icon: <OpenFileIcon />,
-                onClick: () => pagesModel.openFile(item.filePath),
+                onClick: () => app.events.openRawLink.sendAsync(new RawLinkEvent(item.filePath)),
             });
         }
 

@@ -10,7 +10,7 @@ These shortcuts work regardless of which editor is active.
 |----------|--------|
 | `Ctrl+N` | New tab |
 | `Ctrl+Shift+N` | New window |
-| `Ctrl+O` | Open file |
+| `Ctrl+O` | Open — paste file path, URL, or cURL command |
 | `Ctrl+S` | Save |
 | `Ctrl+Shift+S` | Save As |
 | `Ctrl+W` | Close tab |

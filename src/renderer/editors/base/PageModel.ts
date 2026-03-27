@@ -4,6 +4,8 @@ import { IPageState } from "../../../shared/types";
 import { editorRegistry } from "../registry";
 import { NavPanelModel } from "../../ui/navigation/nav-panel-store";
 import { fs } from "../../api/fs";
+import type { IContentPipe } from "../../api/types/io.pipe";
+import { createPipeFromDescriptor } from "../../content/registry";
 
 export const getDefaultPageModelState = (): IPageState => ({
     id: crypto.randomUUID(),
@@ -23,6 +25,8 @@ export class PageModel<T extends IPageState = IPageState, R = any> extends TDial
     /** In-memory data storage for scripts. Available on all page types. Does not persist to disk. */
     scriptData: Record<string, any> = {};
     navPanel: NavPanelModel | null = null;
+    /** Content pipe (provider + transformers). Owned by the page, disposed on close. */
+    pipe: IContentPipe | null = null;
     /** Flag for restore(): NavPanel needs to be created from cache */
     protected needsNavPanelRestore = false;
 
@@ -60,6 +64,8 @@ export class PageModel<T extends IPageState = IPageState, R = any> extends TDial
 
     async dispose(): Promise<void> {
         this.navPanel?.dispose();
+        this.pipe?.dispose();
+        this.pipe = null;
         await fs.deleteCacheFiles(this.state.get().id);
     }
 
@@ -84,6 +90,9 @@ export class PageModel<T extends IPageState = IPageState, R = any> extends TDial
         if (this.navPanel) {
             data.hasNavPanel = true;
         }
+        if (this.pipe) {
+            data.pipe = this.pipe.toDescriptor();
+        }
         return data;
     }
 
@@ -93,6 +102,15 @@ export class PageModel<T extends IPageState = IPageState, R = any> extends TDial
 
     applyRestoreData(data: Partial<T>): void {
         this.needsNavPanelRestore = !!data.hasNavPanel;
+        // Reconstruct pipe from descriptor if present
+        if (data.pipe) {
+            try {
+                this.pipe = createPipeFromDescriptor(data.pipe as any); // eslint-disable-line @typescript-eslint/no-explicit-any
+            } catch {
+                // Unknown provider/transformer type — fall back to filePath restore
+                this.pipe = null;
+            }
+        }
         this.state.update((s) => {
             s.id = data.id || s.id;
             s.type = data.type || s.type;

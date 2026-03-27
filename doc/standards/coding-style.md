@@ -206,6 +206,9 @@ const nodefs = require("fs");
 - `fs.ts` itself — the one module that wraps `require("fs")`
 - `archive-service.ts` — low-level archive I/O provider that `fs.ts` routes to (using `fs.ts` would create circular dependency)
 - `file-watcher.ts` — uses `fs.watch()` (callback-based watcher, not a simple read/write)
+- `content/providers/FileProvider.ts` — low-level binary I/O provider that intentionally bypasses `app.fs` archive transparency
+- `content/providers/CacheFileProvider.ts` — low-level cache I/O provider for content pipe cache files
+- `editors/pdf/PdfViewer.tsx` — writes PDF cache file for non-local sources (HTTP, archive)
 - `library-require.ts` — custom `require()` transpiler that uses `fs.readFileSync` for module compilation
 - `ScriptPanel.tsx` — uses `fs.readFileSync`/`writeFileSync` for script file operations (will be migrated in future tasks)
 - `themes/index.ts` — uses `fs.readFileSync` at startup before `app.fs` is initialized

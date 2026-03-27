@@ -10,6 +10,7 @@ import { FlexSpace } from "../../components/layout/Elements";
 import { NavPanelIcon } from "../../theme/icons";
 import { NavPanelModel } from "../../ui/navigation/nav-panel-store";
 import { fpBasename, fpDirname } from "../../core/utils/file-path";
+import { fs as appFs } from "../../api/fs";
 
 const PdfViewerRoot = styled.div({
     flex: "1 1 auto",
@@ -19,7 +20,10 @@ const PdfViewerRoot = styled.div({
     position: "relative",
 });
 
-interface PdfViewerModelState extends IPageState {}
+interface PdfViewerModelState extends IPageState {
+    /** Local file path to serve via safe-file:// (cache file for non-local sources). */
+    localPdfPath?: string;
+}
 
 const getDefaultPdfViewerModelState = (): PdfViewerModelState => ({
     ...getDefaultPageModelState(),
@@ -28,6 +32,7 @@ const getDefaultPdfViewerModelState = (): PdfViewerModelState => ({
 
 class PdfViewerModel extends PageModel<PdfViewerModelState, void> {
     noLanguage = true;
+    private cacheFileCreated = false;
 
     async restore() {
         await super.restore();
@@ -37,6 +42,40 @@ class PdfViewerModel extends PageModel<PdfViewerModelState, void> {
                 s.title = fpBasename(filePath);
             });
         }
+
+        // Determine local path for safe-file:// protocol
+        if (this.pipe) {
+            if (this.pipe.provider.type === "file" && this.pipe.transformers.length === 0) {
+                // Plain FileProvider — use source path directly (efficient streaming)
+                this.state.update((s) => {
+                    s.localPdfPath = this.pipe!.provider.sourceUrl;
+                });
+            } else {
+                // Non-local source (HTTP, archive, etc.) — read and cache as temp file
+                try {
+                    const buffer = await this.pipe.readBinary();
+                    const cachePath = appFs.resolveCachePath(this.id + ".pdf");
+                    await appFs.writeBinary(cachePath, buffer);
+                    this.cacheFileCreated = true;
+                    this.state.update((s) => {
+                        s.localPdfPath = cachePath;
+                    });
+                } catch {
+                    // Pipe read failed — localPdfPath stays undefined
+                }
+            }
+        }
+    }
+
+    async dispose(): Promise<void> {
+        // Clean up cache file for non-local sources
+        if (this.cacheFileCreated) {
+            const cachePath = this.state.get().localPdfPath;
+            if (cachePath) {
+                try { await appFs.delete(cachePath); } catch { /* ignore */ }
+            }
+        }
+        await super.dispose();
     }
 
     getIcon = () => {
@@ -52,9 +91,14 @@ interface PdfViewerProps {
 
 function PdfViewer({ model }: PdfViewerProps) {
     const filePath = model.state.use((s) => s.filePath);
-    const fileUrl = `safe-file://${filePath.replace(/\\/g, "/")}`;
+    const localPdfPath = model.state.use((s) => s.localPdfPath);
 
-    const viewerUrl = `app-asset://pdfjs/web/viewer.html?file=${encodeURIComponent(fileUrl)}`;
+    // Use localPdfPath (set by restore) or fall back to filePath for backward compat
+    const servePath = localPdfPath || filePath;
+    const fileUrl = servePath ? `safe-file://${servePath.replace(/\\/g, "/")}` : "";
+    const viewerUrl = fileUrl
+        ? `app-asset://pdfjs/web/viewer.html?file=${encodeURIComponent(fileUrl)}`
+        : "";
 
     return (
         <>
@@ -85,11 +129,13 @@ function PdfViewer({ model }: PdfViewerProps) {
                 <FlexSpace />
             </PageToolbar>
             <PdfViewerRoot>
-                <object
-                    data={viewerUrl}
-                    style={{ width: "100%", height: "100%", border: "none" }}
-                    type="text/html"
-                />
+                {viewerUrl && (
+                    <object
+                        data={viewerUrl}
+                        style={{ width: "100%", height: "100%", border: "none" }}
+                        type="text/html"
+                    />
+                )}
             </PdfViewerRoot>
         </>
     );

@@ -1,8 +1,8 @@
 import rendererEvents from "../../../ipc/renderer/renderer-events";
 import { pagesModel } from "../pages";
+import { app } from "../app";
+import { RawLinkEvent } from "../events/events";
 import { api } from "../../../ipc/renderer/api";
-import { settings } from "../settings";
-import { shell } from "../shell";
 import { ui } from "../ui";
 import { UpdateCheckResult } from "../../../ipc/api-param-types";
 import { EventEndpoint } from "../../../ipc/api-types";
@@ -34,7 +34,7 @@ export class RendererEventsService {
 
     private handleOpenFile = async (filePath: string) => {
         try {
-            await pagesModel.openFile(filePath);
+            await app.events.openRawLink.sendAsync(new RawLinkEvent(filePath));
         } catch (err) {
             ui.notify(`Failed to open file: ${err instanceof Error ? err.message : String(err)}`, "error");
         }
@@ -74,12 +74,7 @@ export class RendererEventsService {
 
     private handleOpenUrl = async (url: string) => {
         try {
-            const behavior = settings.get("link-open-behavior");
-            if (behavior === "internal-browser") {
-                pagesModel.openUrlInBrowserTab(url);
-            } else {
-                shell.openExternal(url);
-            }
+            await app.events.openRawLink.sendAsync(new RawLinkEvent(url));
         } catch (err) {
             ui.notify(`Failed to open URL: ${err instanceof Error ? err.message : String(err)}`, "error");
         }
@@ -87,7 +82,8 @@ export class RendererEventsService {
 
     private handleExternalUrl = async (url: string) => {
         try {
-            pagesModel.openUrlInBrowserTab(url, { external: true });
+            // Route through pipeline — HTTP resolver decides content vs browser based on extension
+            await app.events.openRawLink.sendAsync(new RawLinkEvent(url));
         } catch (err) {
             ui.notify(`Failed to open URL: ${err instanceof Error ? err.message : String(err)}`, "error");
         }

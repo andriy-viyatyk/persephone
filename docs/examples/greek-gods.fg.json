@@ -1,0 +1,842 @@
+{
+  "type": "force-graph",
+  "nodes": [
+    {
+      "id": "chaos",
+      "title": "Chaos",
+      "level": 1,
+      "shape": "star",
+      "domain": "Primordial Void",
+      "description": "The origin of all existence",
+      "wiki": "[Chaos](https://en.wikipedia.org/wiki/Chaos_(cosmogony))"
+    },
+    {
+      "id": "gaia",
+      "title": "Gaia",
+      "level": 1,
+      "shape": "diamond",
+      "domain": "Earth",
+      "description": "Goddess of the Earth, mother of all gods",
+      "parents": "From Chaos",
+      "spouse": "Uranus",
+      "wiki": "[Gaia](https://en.wikipedia.org/wiki/Gaia)"
+    },
+    {
+      "id": "tartarus",
+      "title": "Tartarus",
+      "level": 2,
+      "shape": "square",
+      "domain": "Abyss",
+      "description": "God of the abyss, the deepest part of the underworld",
+      "parents": "From Chaos",
+      "wiki": "[Tartarus](https://en.wikipedia.org/wiki/Tartarus)"
+    },
+    {
+      "id": "eros",
+      "title": "Eros",
+      "level": 2,
+      "shape": "circle",
+      "domain": "Love",
+      "description": "God of love and desire",
+      "parents": "From Chaos",
+      "wiki": "[Eros](https://en.wikipedia.org/wiki/Eros)"
+    },
+    {
+      "id": "erebus",
+      "title": "Erebus",
+      "level": 2,
+      "shape": "square",
+      "domain": "Darkness",
+      "description": "God of darkness",
+      "parents": "From Chaos",
+      "spouse": "Nyx",
+      "wiki": "[Erebus](https://en.wikipedia.org/wiki/Erebus)"
+    },
+    {
+      "id": "nyx",
+      "title": "Nyx",
+      "level": 2,
+      "shape": "diamond",
+      "domain": "Night",
+      "description": "Goddess of the night",
+      "parents": "From Chaos",
+      "spouse": "Erebus",
+      "wiki": "[Nyx](https://en.wikipedia.org/wiki/Nyx)"
+    },
+    {
+      "id": "uranus",
+      "title": "Uranus",
+      "level": 1,
+      "shape": "circle",
+      "domain": "Sky",
+      "description": "God of the sky, first king of the gods",
+      "parents": "Son of Gaia",
+      "spouse": "Gaia",
+      "wiki": "[Uranus](https://en.wikipedia.org/wiki/Uranus_(mythology))"
+    },
+    {
+      "id": "cronus",
+      "title": "Cronus",
+      "level": 1,
+      "shape": "circle",
+      "domain": "Time, Titan",
+      "description": "Titan, god of time, overthrew Uranus",
+      "parents": "Son of Uranus and Gaia",
+      "spouse": "Rhea",
+      "wiki": "[Cronus](https://en.wikipedia.org/wiki/Cronus)"
+    },
+    {
+      "id": "rhea",
+      "title": "Rhea",
+      "level": 2,
+      "shape": "diamond",
+      "domain": "Titaness",
+      "description": "Titaness, mother of the Olympian gods",
+      "parents": "Daughter of Uranus and Gaia",
+      "spouse": "Cronus",
+      "wiki": "[Rhea](https://en.wikipedia.org/wiki/Rhea_(mythology))"
+    },
+    {
+      "id": "oceanus",
+      "title": "Oceanus",
+      "level": 3,
+      "shape": "circle",
+      "domain": "Titan, Ocean",
+      "description": "Titan, god of the world ocean",
+      "parents": "Son of Uranus and Gaia",
+      "wiki": "[Oceanus](https://en.wikipedia.org/wiki/Oceanus)"
+    },
+    {
+      "id": "hyperion",
+      "title": "Hyperion",
+      "level": 3,
+      "shape": "circle",
+      "domain": "Titan, Light",
+      "description": "Titan, god of heavenly light",
+      "parents": "Son of Uranus and Gaia",
+      "wiki": "[Hyperion](https://en.wikipedia.org/wiki/Hyperion_(mythology))"
+    },
+    {
+      "id": "themis",
+      "title": "Themis",
+      "level": 3,
+      "shape": "diamond",
+      "domain": "Titaness, Justice",
+      "description": "Titaness, goddess of justice and order",
+      "parents": "Daughter of Uranus and Gaia",
+      "wiki": "[Themis](https://en.wikipedia.org/wiki/Themis)"
+    },
+    {
+      "id": "mnemosyne",
+      "title": "Mnemosyne",
+      "level": 3,
+      "shape": "diamond",
+      "domain": "Titaness, Memory",
+      "description": "Titaness, goddess of memory",
+      "parents": "Daughter of Uranus and Gaia",
+      "wiki": "[Mnemosyne](https://en.wikipedia.org/wiki/Mnemosyne)"
+    },
+    {
+      "id": "atlas",
+      "title": "Atlas",
+      "level": 3,
+      "shape": "circle",
+      "domain": "Titan",
+      "description": "Titan, holds the sky on his shoulders",
+      "parents": "Son of Iapetus",
+      "wiki": "[Atlas](https://en.wikipedia.org/wiki/Atlas_(mythology))"
+    },
+    {
+      "id": "prometheus",
+      "title": "Prometheus",
+      "level": 3,
+      "shape": "circle",
+      "domain": "Titan, Fire",
+      "description": "Titan, gave fire to humanity",
+      "parents": "Son of Iapetus",
+      "wiki": "[Prometheus](https://en.wikipedia.org/wiki/Prometheus)"
+    },
+    {
+      "id": "iapetus",
+      "title": "Iapetus",
+      "level": 3,
+      "shape": "circle",
+      "domain": "Titan",
+      "description": "Titan, father of Prometheus and Atlas",
+      "parents": "Son of Uranus and Gaia",
+      "wiki": "[Iapetus](https://en.wikipedia.org/wiki/Iapetus_(mythology))"
+    },
+    {
+      "id": "zeus",
+      "title": "Zeus",
+      "level": 1,
+      "shape": "star",
+      "domain": "King of Gods, Thunder",
+      "description": "King of the gods, god of thunder and lightning",
+      "parents": "Son of Cronus and Rhea",
+      "spouse": "Hera",
+      "wiki": "[Zeus](https://en.wikipedia.org/wiki/Zeus)"
+    },
+    {
+      "id": "hera",
+      "title": "Hera",
+      "level": 1,
+      "shape": "diamond",
+      "domain": "Marriage, Family",
+      "description": "Goddess of marriage, wife of Zeus",
+      "parents": "Daughter of Cronus and Rhea",
+      "spouse": "Zeus",
+      "wiki": "[Hera](https://en.wikipedia.org/wiki/Hera)"
+    },
+    {
+      "id": "poseidon",
+      "title": "Poseidon",
+      "level": 1,
+      "shape": "circle",
+      "domain": "Sea",
+      "description": "God of the seas and earthquakes",
+      "parents": "Son of Cronus and Rhea",
+      "wiki": "[Poseidon](https://en.wikipedia.org/wiki/Poseidon)"
+    },
+    {
+      "id": "hades",
+      "title": "Hades",
+      "level": 1,
+      "shape": "circle",
+      "domain": "Underworld",
+      "description": "God of the underworld, husband of Persephone",
+      "parents": "Son of Cronus and Rhea",
+      "spouse": "Persephone",
+      "wiki": "[Hades](https://en.wikipedia.org/wiki/Hades)"
+    },
+    {
+      "id": "demeter",
+      "title": "Demeter",
+      "level": 1,
+      "shape": "diamond",
+      "domain": "Agriculture",
+      "description": "Goddess of agriculture and harvest",
+      "parents": "Daughter of Cronus and Rhea",
+      "wiki": "[Demeter](https://en.wikipedia.org/wiki/Demeter)"
+    },
+    {
+      "id": "hestia",
+      "title": "Hestia",
+      "level": 2,
+      "shape": "diamond",
+      "domain": "Hearth",
+      "description": "Goddess of the hearth and home",
+      "parents": "Daughter of Cronus and Rhea",
+      "wiki": "[Hestia](https://en.wikipedia.org/wiki/Hestia)"
+    },
+    {
+      "id": "athena",
+      "title": "Athena",
+      "level": 2,
+      "shape": "diamond",
+      "domain": "Wisdom, War",
+      "description": "Goddess of wisdom and strategy",
+      "parents": "Daughter of Zeus (born from his head)",
+      "wiki": "[Athena](https://en.wikipedia.org/wiki/Athena)"
+    },
+    {
+      "id": "apollo",
+      "title": "Apollo",
+      "level": 2,
+      "shape": "circle",
+      "domain": "Sun, Arts",
+      "description": "God of the sun, arts, and prophecy",
+      "parents": "Son of Zeus and Leto",
+      "wiki": "[Apollo](https://en.wikipedia.org/wiki/Apollo)"
+    },
+    {
+      "id": "artemis",
+      "title": "Artemis",
+      "level": 2,
+      "shape": "diamond",
+      "domain": "Hunt, Moon",
+      "description": "Goddess of the hunt and the moon",
+      "parents": "Daughter of Zeus and Leto",
+      "wiki": "[Artemis](https://en.wikipedia.org/wiki/Artemis)"
+    },
+    {
+      "id": "ares",
+      "title": "Ares",
+      "level": 2,
+      "shape": "circle",
+      "domain": "War",
+      "description": "God of war and bloodshed",
+      "parents": "Son of Zeus and Hera",
+      "wiki": "[Ares](https://en.wikipedia.org/wiki/Ares)"
+    },
+    {
+      "id": "aphrodite",
+      "title": "Aphrodite",
+      "level": 2,
+      "shape": "diamond",
+      "domain": "Beauty, Love",
+      "description": "Goddess of beauty and love, born from sea foam",
+      "parents": "Born from sea foam (from Uranus)",
+      "spouse": "Hephaestus",
+      "wiki": "[Aphrodite](https://en.wikipedia.org/wiki/Aphrodite)"
+    },
+    {
+      "id": "hephaestus",
+      "title": "Hephaestus",
+      "level": 2,
+      "shape": "circle",
+      "domain": "Forge",
+      "description": "God of the forge and fire",
+      "parents": "Son of Zeus and Hera",
+      "spouse": "Aphrodite",
+      "wiki": "[Hephaestus](https://en.wikipedia.org/wiki/Hephaestus)"
+    },
+    {
+      "id": "hermes",
+      "title": "Hermes",
+      "level": 2,
+      "shape": "circle",
+      "domain": "Trade, Messenger",
+      "description": "God of trade, messenger of the gods",
+      "parents": "Son of Zeus and Maia",
+      "wiki": "[Hermes](https://en.wikipedia.org/wiki/Hermes)"
+    },
+    {
+      "id": "dionysus",
+      "title": "Dionysus",
+      "level": 2,
+      "shape": "circle",
+      "domain": "Wine, Festivity",
+      "description": "God of wine, festivity, and theatre",
+      "parents": "Son of Zeus and Semele",
+      "wiki": "[Dionysus](https://en.wikipedia.org/wiki/Dionysus)"
+    },
+    {
+      "id": "persephone",
+      "title": "⭐ Persephone",
+      "level": 1,
+      "shape": "star",
+      "domain": "Spring, Queen of the Underworld",
+      "description": "Goddess of spring and queen of the underworld",
+      "parents": "Daughter of Zeus and Demeter",
+      "spouse": "Hades",
+      "wiki": "[Persephone](https://en.wikipedia.org/wiki/Persephone)"
+    },
+    {
+      "id": "heracles",
+      "title": "Heracles",
+      "level": 3,
+      "shape": "circle",
+      "domain": "Hero, Strength",
+      "description": "Greatest hero, completed the 12 labours",
+      "parents": "Son of Zeus and Alcmene",
+      "wiki": "[Heracles](https://en.wikipedia.org/wiki/Heracles)"
+    },
+    {
+      "id": "perseus",
+      "title": "Perseus",
+      "level": 3,
+      "shape": "circle",
+      "domain": "Hero",
+      "description": "Hero who slew Medusa the Gorgon",
+      "parents": "Son of Zeus and Danaë",
+      "wiki": "[Perseus](https://en.wikipedia.org/wiki/Perseus)"
+    },
+    {
+      "id": "helen",
+      "title": "Helen of Troy",
+      "level": 3,
+      "shape": "diamond",
+      "domain": "Beauty",
+      "description": "Most beautiful woman, cause of the Trojan War",
+      "parents": "Daughter of Zeus and Leda",
+      "wiki": "[Helen of Troy](https://en.wikipedia.org/wiki/Helen_of_Troy)"
+    },
+    {
+      "id": "muses",
+      "title": "Muses",
+      "level": 3,
+      "shape": "diamond",
+      "domain": "Arts (9 sisters)",
+      "description": "Nine sister goddesses of arts and sciences",
+      "parents": "Daughters of Zeus and Mnemosyne",
+      "wiki": "[Muses](https://en.wikipedia.org/wiki/Muses)"
+    },
+    {
+      "id": "leto",
+      "title": "Leto",
+      "level": 3,
+      "shape": "diamond",
+      "domain": "Titaness",
+      "description": "Titaness, mother of Apollo and Artemis",
+      "wiki": "[Leto](https://en.wikipedia.org/wiki/Leto)"
+    },
+    {
+      "id": "maia",
+      "title": "Maia",
+      "level": 3,
+      "shape": "diamond",
+      "domain": "Pleiad",
+      "description": "Pleiad, mother of Hermes",
+      "wiki": "[Maia](https://en.wikipedia.org/wiki/Maia_(mythology))"
+    },
+    {
+      "id": "semele",
+      "title": "Semele",
+      "level": 3,
+      "shape": "diamond",
+      "domain": "Mortal",
+      "description": "Mortal princess, mother of Dionysus",
+      "wiki": "[Semele](https://en.wikipedia.org/wiki/Semele)"
+    },
+    {
+      "id": "alcmene",
+      "title": "Alcmene",
+      "level": 3,
+      "shape": "diamond",
+      "domain": "Mortal",
+      "description": "Mortal, mother of Heracles",
+      "wiki": "[Alcmene](https://en.wikipedia.org/wiki/Alcmene)"
+    },
+    {
+      "id": "danae",
+      "title": "Danaë",
+      "level": 3,
+      "shape": "diamond",
+      "domain": "Mortal",
+      "description": "Mortal princess, mother of Perseus",
+      "wiki": "[Danaë](https://en.wikipedia.org/wiki/Dana%C3%AB)"
+    },
+    {
+      "id": "leda",
+      "title": "Leda",
+      "level": 3,
+      "shape": "diamond",
+      "domain": "Mortal",
+      "description": "Mortal queen, mother of Helen",
+      "wiki": "[Leda](https://en.wikipedia.org/wiki/Leda_(mythology))"
+    },
+    {
+      "id": "helios",
+      "title": "Helios",
+      "level": 3,
+      "shape": "circle",
+      "domain": "Sun",
+      "description": "God of the sun, rides a fiery chariot",
+      "parents": "Son of Hyperion",
+      "wiki": "[Helios](https://en.wikipedia.org/wiki/Helios)"
+    },
+    {
+      "id": "selene",
+      "title": "Selene",
+      "level": 3,
+      "shape": "diamond",
+      "domain": "Moon",
+      "description": "Goddess of the moon",
+      "parents": "Daughter of Hyperion",
+      "wiki": "[Selene](https://en.wikipedia.org/wiki/Selene)"
+    },
+    {
+      "id": "eos",
+      "title": "Eos",
+      "level": 3,
+      "shape": "diamond",
+      "domain": "Dawn",
+      "description": "Goddess of the dawn",
+      "parents": "Daughter of Hyperion",
+      "wiki": "[Eos](https://en.wikipedia.org/wiki/Eos)"
+    },
+    {
+      "id": "hemera",
+      "title": "Hemera",
+      "level": 3,
+      "shape": "diamond",
+      "domain": "Day",
+      "description": "Goddess of daylight",
+      "parents": "Daughter of Erebus and Nyx",
+      "wiki": "[Hemera](https://en.wikipedia.org/wiki/Hemera)"
+    },
+    {
+      "id": "aether",
+      "title": "Aether",
+      "level": 3,
+      "shape": "circle",
+      "domain": "Upper Sky",
+      "description": "God of the upper heavenly light",
+      "parents": "Son of Erebus and Nyx",
+      "wiki": "[Aether](https://en.wikipedia.org/wiki/Aether_(mythology))"
+    },
+    {
+      "id": "thanatos",
+      "title": "Thanatos",
+      "level": 3,
+      "shape": "circle",
+      "domain": "Death",
+      "description": "God of peaceful death",
+      "parents": "Son of Nyx",
+      "wiki": "[Thanatos](https://en.wikipedia.org/wiki/Thanatos)"
+    },
+    {
+      "id": "hypnos",
+      "title": "Hypnos",
+      "level": 3,
+      "shape": "circle",
+      "domain": "Sleep",
+      "description": "God of sleep, twin brother of Thanatos",
+      "parents": "Son of Nyx",
+      "wiki": "[Hypnos](https://en.wikipedia.org/wiki/Hypnos)"
+    },
+    {
+      "id": "moirai",
+      "title": "Moirai (Fates)",
+      "level": 3,
+      "shape": "diamond",
+      "domain": "Fate",
+      "description": "Three goddesses of fate — Clotho, Lachesis, Atropos",
+      "parents": "Daughters of Nyx",
+      "wiki": "[Moirai](https://en.wikipedia.org/wiki/Moirai)"
+    },
+    {
+      "id": "nemesis",
+      "title": "Nemesis",
+      "level": 3,
+      "shape": "diamond",
+      "domain": "Retribution",
+      "description": "Goddess of righteous retribution",
+      "parents": "Daughter of Nyx",
+      "wiki": "[Nemesis](https://en.wikipedia.org/wiki/Nemesis)"
+    },
+    {
+      "id": "eris",
+      "title": "Eris",
+      "level": 3,
+      "shape": "diamond",
+      "domain": "Discord",
+      "description": "Goddess of discord and strife",
+      "parents": "Daughter of Nyx",
+      "wiki": "[Eris](https://en.wikipedia.org/wiki/Eris_(mythology))"
+    }
+  ],
+  "links": [
+    {
+      "source": "chaos",
+      "target": "gaia"
+    },
+    {
+      "source": "chaos",
+      "target": "tartarus"
+    },
+    {
+      "source": "chaos",
+      "target": "eros"
+    },
+    {
+      "source": "chaos",
+      "target": "erebus"
+    },
+    {
+      "source": "chaos",
+      "target": "nyx"
+    },
+    {
+      "source": "gaia",
+      "target": "uranus"
+    },
+    {
+      "source": "gaia",
+      "target": "cronus"
+    },
+    {
+      "source": "uranus",
+      "target": "cronus"
+    },
+    {
+      "source": "gaia",
+      "target": "rhea"
+    },
+    {
+      "source": "uranus",
+      "target": "rhea"
+    },
+    {
+      "source": "gaia",
+      "target": "oceanus"
+    },
+    {
+      "source": "uranus",
+      "target": "oceanus"
+    },
+    {
+      "source": "gaia",
+      "target": "hyperion"
+    },
+    {
+      "source": "uranus",
+      "target": "hyperion"
+    },
+    {
+      "source": "gaia",
+      "target": "themis"
+    },
+    {
+      "source": "uranus",
+      "target": "themis"
+    },
+    {
+      "source": "gaia",
+      "target": "mnemosyne"
+    },
+    {
+      "source": "uranus",
+      "target": "mnemosyne"
+    },
+    {
+      "source": "gaia",
+      "target": "iapetus"
+    },
+    {
+      "source": "uranus",
+      "target": "iapetus"
+    },
+    {
+      "source": "iapetus",
+      "target": "atlas"
+    },
+    {
+      "source": "iapetus",
+      "target": "prometheus"
+    },
+    {
+      "source": "hyperion",
+      "target": "helios"
+    },
+    {
+      "source": "hyperion",
+      "target": "selene"
+    },
+    {
+      "source": "hyperion",
+      "target": "eos"
+    },
+    {
+      "source": "cronus",
+      "target": "zeus"
+    },
+    {
+      "source": "rhea",
+      "target": "zeus"
+    },
+    {
+      "source": "cronus",
+      "target": "hera"
+    },
+    {
+      "source": "rhea",
+      "target": "hera"
+    },
+    {
+      "source": "cronus",
+      "target": "poseidon"
+    },
+    {
+      "source": "rhea",
+      "target": "poseidon"
+    },
+    {
+      "source": "cronus",
+      "target": "hades"
+    },
+    {
+      "source": "rhea",
+      "target": "hades"
+    },
+    {
+      "source": "cronus",
+      "target": "demeter"
+    },
+    {
+      "source": "rhea",
+      "target": "demeter"
+    },
+    {
+      "source": "cronus",
+      "target": "hestia"
+    },
+    {
+      "source": "rhea",
+      "target": "hestia"
+    },
+    {
+      "source": "zeus",
+      "target": "athena"
+    },
+    {
+      "source": "zeus",
+      "target": "ares"
+    },
+    {
+      "source": "hera",
+      "target": "ares"
+    },
+    {
+      "source": "zeus",
+      "target": "hephaestus"
+    },
+    {
+      "source": "hera",
+      "target": "hephaestus"
+    },
+    {
+      "source": "zeus",
+      "target": "apollo"
+    },
+    {
+      "source": "leto",
+      "target": "apollo"
+    },
+    {
+      "source": "zeus",
+      "target": "artemis"
+    },
+    {
+      "source": "leto",
+      "target": "artemis"
+    },
+    {
+      "source": "zeus",
+      "target": "hermes"
+    },
+    {
+      "source": "maia",
+      "target": "hermes"
+    },
+    {
+      "source": "zeus",
+      "target": "dionysus"
+    },
+    {
+      "source": "semele",
+      "target": "dionysus"
+    },
+    {
+      "source": "zeus",
+      "target": "persephone"
+    },
+    {
+      "source": "demeter",
+      "target": "persephone"
+    },
+    {
+      "source": "zeus",
+      "target": "heracles"
+    },
+    {
+      "source": "alcmene",
+      "target": "heracles"
+    },
+    {
+      "source": "zeus",
+      "target": "perseus"
+    },
+    {
+      "source": "danae",
+      "target": "perseus"
+    },
+    {
+      "source": "zeus",
+      "target": "helen"
+    },
+    {
+      "source": "leda",
+      "target": "helen"
+    },
+    {
+      "source": "zeus",
+      "target": "muses"
+    },
+    {
+      "source": "mnemosyne",
+      "target": "muses"
+    },
+    {
+      "source": "uranus",
+      "target": "aphrodite"
+    },
+    {
+      "source": "nyx",
+      "target": "hemera"
+    },
+    {
+      "source": "erebus",
+      "target": "hemera"
+    },
+    {
+      "source": "nyx",
+      "target": "aether"
+    },
+    {
+      "source": "erebus",
+      "target": "aether"
+    },
+    {
+      "source": "nyx",
+      "target": "thanatos"
+    },
+    {
+      "source": "nyx",
+      "target": "hypnos"
+    },
+    {
+      "source": "nyx",
+      "target": "moirai"
+    },
+    {
+      "source": "nyx",
+      "target": "nemesis"
+    },
+    {
+      "source": "nyx",
+      "target": "eris"
+    },
+    {
+      "source": "cronus",
+      "target": "rhea"
+    },
+    {
+      "source": "erebus",
+      "target": "nyx"
+    },
+    {
+      "source": "zeus",
+      "target": "hera"
+    },
+    {
+      "source": "hades",
+      "target": "persephone"
+    },
+    {
+      "source": "hephaestus",
+      "target": "aphrodite"
+    }
+  ],
+  "options": {
+    "rootNode": "chaos",
+    "expandDepth": 10,
+    "charge": -164,
+    "linkDistance": 125,
+    "collide": 0.45,
+    "legend": {
+      "levels": {
+        "1": "Major Gods / Primordial",
+        "2": "Olympians",
+        "3": "Titans, Heroes, Descendants"
+      },
+      "shapes": {
+        "star": "Key Figures",
+        "diamond": "Goddesses / Female",
+        "circle": "Gods / Male",
+        "square": "Primordial Forces"
+      }
+    }
+  }
+}

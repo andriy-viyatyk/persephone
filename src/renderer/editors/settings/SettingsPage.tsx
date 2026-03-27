@@ -6,7 +6,8 @@ import { TComponentState } from "../../core/state/state";
 import { EditorModule } from "../types";
 import color from "../../theme/color";
 import { settings } from "../../api/settings";
-import { pagesModel } from "../../api/pages";
+import { app } from "../../api/app";
+import { RawLinkEvent } from "../../api/events/events";
 import { applyTheme, getAvailableThemes } from "../../theme/themes";
 import { TextAreaField, TextAreaFieldRef } from "../../components/basic/TextAreaField";
 import { DEFAULT_BROWSER_COLOR, TAG_COLORS } from "../../theme/palette-colors";
@@ -1304,7 +1305,7 @@ function SettingsPage({ model }: SettingsPageProps) {
     const handleOpenSettingsFile = () => {
         const filePath = settings.settingsFilePath;
         if (filePath) {
-            pagesModel.openFile(filePath);
+            app.events.openRawLink.sendAsync(new RawLinkEvent(filePath));
         }
     };
 

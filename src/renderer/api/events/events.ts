@@ -1,6 +1,7 @@
 import React from "react";
 import { BaseEvent } from "./BaseEvent";
 import type { MenuItem } from "../types/events";
+import type { IContentPipe } from "../types/io.pipe";
 
 /**
  * Identifies the source/kind of context menu.
@@ -57,5 +58,38 @@ export class ContextMenuEvent<T> extends BaseEvent {
             e.nativeEvent.contextMenuEvent = new ContextMenuEvent(targetKind, null);
         }
         return e.nativeEvent.contextMenuEvent;
+    }
+}
+
+// ── Link Pipeline Events (EPIC-012) ────────────────────────────────
+
+/** Layer 1: Raw link string to be parsed. */
+export class RawLinkEvent extends BaseEvent {
+    constructor(
+        public readonly raw: string,
+    ) {
+        super();
+    }
+}
+
+/** Layer 2: Structured link to be resolved into provider + transformers. */
+export class OpenLinkEvent extends BaseEvent {
+    constructor(
+        public readonly url: string,
+        public target?: string,
+        public metadata?: Record<string, unknown>,
+    ) {
+        super();
+    }
+}
+
+/** Layer 3: Content pipe + target to be opened in an editor. */
+export class OpenContentEvent extends BaseEvent {
+    constructor(
+        public readonly pipe: IContentPipe,
+        public readonly target: string,
+        public readonly metadata?: Record<string, unknown>,
+    ) {
+        super();
     }
 }

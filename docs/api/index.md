@@ -2,7 +2,7 @@
 
 # Scripting API Reference
 
-Scripts have access to three globals — `page`, `app`, and `ui` — plus helpers `preventOutput()` and `styledText()`. No imports needed.
+Scripts have access to four globals — `page`, `app`, `ui`, and `io` — plus helpers `preventOutput()` and `styledText()`. No imports needed.
 
 ```javascript
 const text = page.content;
@@ -152,6 +152,9 @@ ui.log("Hello");
       - `.itemContextMenu` — Right-click on file/folder → add custom menu items
     - **[.browser](./events.md#browseronbookmark)** — Browser events
       - `.onBookmark` — Before Add/Edit Bookmark dialog → modify title, URL, images, category, tags
+    - **[.openRawLink](./events.md#openrawlink)** — Layer 1: parse a raw string (path, URL, cURL) into a structured link
+    - **[.openLink](./events.md#openlink)** — Layer 2: resolve a URL into a content pipe
+    - All channels support `.subscribe()`, `.send()`, and `.sendAsync()`
   - **[.editors](./editors.md)** — Editor registry
     - `.getAll()` / `.getById(id)` / `.resolve(filePath)` / `.resolveId(filePath)`
     - `.getSwitchOptions(languageId, filePath?)`
@@ -190,6 +193,17 @@ ui.log("Hello");
 
 - **[preventOutput()](../scripting.md#output-suppression)** — Suppress default script output to grouped page
 - **[styledText(text)](./ui-log.md#styledtext-global)** — Create styled text builder for dialogs
+
+---
+
+- **[io](../scripting.md#the-io-namespace)** — Content pipe builder (providers, transformers, event constructors)
+  - `new io.FileProvider(filePath)` — local file data source
+  - `new io.HttpProvider(url, options?)` — HTTP/HTTPS data source
+  - `new io.ZipTransformer(entryPath)` — extract a ZIP archive entry
+  - `new io.DecryptTransformer(password)` — decrypt AES-GCM content
+  - `io.createPipe(provider, ...transformers)` — assemble a content pipe
+  - `new io.RawLinkEvent(raw)` — create a Layer 1 raw link event
+  - `new io.OpenLinkEvent(url, target?, metadata?)` — create a Layer 2 open link event
 
 ---
 

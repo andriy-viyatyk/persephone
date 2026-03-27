@@ -51,6 +51,20 @@ class ImageViewerModel extends PageModel<ImageViewerModelState, void> {
                 s.title = fpBasename(filePath);
             });
         }
+
+        // Load image via content pipe → blob URL
+        if (this.pipe && !this.state.get().url) {
+            try {
+                const buffer = await this.pipe.readBinary();
+                const ext = fpExtname(filePath || this.pipe.provider.sourceUrl || ".png").toLowerCase();
+                const mimeType = extToMime(ext);
+                const blob = new Blob([new Uint8Array(buffer)], { type: mimeType });
+                const blobUrl = URL.createObjectURL(blob);
+                this.state.update((s) => { s.url = blobUrl; });
+            } catch {
+                // Pipe read failed — fall back to safe-file:// if filePath exists
+            }
+        }
     }
 
     getIcon = () => {

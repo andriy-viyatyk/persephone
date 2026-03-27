@@ -188,6 +188,7 @@ npm run lint        # Run ESLint
     /api             # Object Model — app.settings, app.pages, app.fs, etc.
     /ui              # Application shell — MainPage, tabs, sidebar, dialogs
     /editors         # ALL editors (text, grid, markdown, pdf, compare, notebook)
+    /content         # Content delivery — providers, transformers, pipes (EPIC-012)
     /scripting       # Script execution, wrappers, editor facades, worker
     /components      # Reusable UI components
     /core            # State primitives, utilities
@@ -215,8 +216,8 @@ const { PdfViewer } = await import("../pdf/PdfViewer");
 import { PdfViewer } from "../pdf/PdfViewer";
 ```
 
-### 2. Script Context (`page` and `app` objects)
-Scripts access content via `page` and the application via `app`:
+### 2. Script Context (`page`, `app`, and `io` objects)
+Scripts access content via `page`, the application via `app`, and the content pipe system via `io`:
 ```javascript
 const data = JSON.parse(page.content);
 page.grouped.content = JSON.stringify(result);
@@ -225,6 +226,11 @@ page.grouped.editor = "grid-json";
 // Typed editor access via facades
 const grid = await page.asGrid();
 grid.addRows(5);
+
+// Content pipe API — providers, transformers, events
+const pipe = io.createPipe(new io.HttpProvider(url, { headers }));
+const text = await pipe.readText();
+await app.events.openRawLink.sendAsync(new io.RawLinkEvent(url));
 ```
 
 ### 3. Grouped Pages
@@ -236,6 +242,24 @@ grid.addRows(5);
 - Object Model APIs in `/src/renderer/api/` (app.settings, app.pages, etc.)
 - State primitives in `/src/renderer/core/state/`
 - See [state-management.md](doc/architecture/state-management.md)
+
+### 5. Content Delivery Pipeline
+Content I/O flows through a 3-layer pipeline (`/src/renderer/content/`):
+- **Layer 1 (Parsers):** Raw string → structured link event (`openRawLink` → `openLink`)
+- **Layer 2 (Resolvers):** Link event → provider + transformers → content pipe (`openLink` → `openContent`)
+- **Layer 3 (Open Handler):** Content pipe → page creation with pipe assigned
+
+Content pipes (`IContentPipe`) compose a provider (data source) with transformers (data effects):
+```typescript
+// Provider reads/writes raw bytes; transformers process in chain
+const pipe = createPipe(new FileProvider(filePath), new ZipTransformer(entry));
+const text = await pipe.readText();  // FileProvider → ZipTransformer → decode
+```
+
+TextFileIOModel uses dual pipes: primary (source file) + cache (auto-save). Pipe state is serialized in `IPageState.pipe` (`IPipeDescriptor`) for restore across app restarts.
+
+### 6. Event Channels (LIFO)
+`EventChannel.sendAsync()` calls subscribers in LIFO order (newest first). This allows late subscribers (like the open handler) to intercept and handle events before earlier subscribers.
 
 ## Coding Standards (Quick Reference)
 
@@ -264,6 +288,18 @@ See [/doc/standards/coding-style.md](doc/standards/coding-style.md) for complete
 | App settings             | `/src/renderer/api/settings.ts`                   |
 | Event channel system     | `/src/renderer/api/events/EventChannel.ts`        |
 | App events namespace     | `/src/renderer/api/events/AppEvents.ts`           |
+| Content pipe             | `/src/renderer/content/ContentPipe.ts`            |
+| Content pipe registry    | `/src/renderer/content/registry.ts`               |
+| File provider            | `/src/renderer/content/providers/FileProvider.ts` |
+| Cache file provider      | `/src/renderer/content/providers/CacheFileProvider.ts` |
+| Encoding detection       | `/src/renderer/content/encoding.ts`               |
+| Link parsers (Layer 1)   | `/src/renderer/content/parsers.ts`                |
+| Pipe resolvers (Layer 2) | `/src/renderer/content/resolvers.ts`              |
+| Open handler (Layer 3)   | `/src/renderer/content/open-handler.ts`           |
+| HTTP provider            | `/src/renderer/content/providers/HttpProvider.ts`  |
+| cURL/fetch parser        | `/src/renderer/core/utils/curl-parser.ts`         |
+| Open URL dialog          | `/src/renderer/ui/dialogs/OpenUrlDialog.tsx`      |
+| Script `io` namespace    | `/src/renderer/scripting/api-wrapper/IoNamespace.ts` |
 | Script library service   | `/src/renderer/api/library-service.ts`            |
 | Script autoloading       | `/src/renderer/scripting/AutoloadRunner.ts`       |
 | Script execution (core)  | `/src/renderer/scripting/ScriptRunnerBase.ts`     |

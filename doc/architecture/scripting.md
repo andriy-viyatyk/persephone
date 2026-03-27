@@ -244,6 +244,48 @@ interface IApp {
 }
 ```
 
+### `io` — Content Delivery API
+
+Provides access to content pipe providers, transformers, pipe assembly, and link events.
+
+```typescript
+interface IIoNamespace {
+    readonly FileProvider: new (filePath: string) => IProvider;
+    readonly HttpProvider: new (url: string, options?: { method?: string; headers?: Record<string, string>; body?: string }) => IProvider;
+    readonly ZipTransformer: new (entryPath: string) => ITransformer;
+    readonly DecryptTransformer: new (password: string) => ITransformer;
+    readonly RawLinkEvent: new (raw: string) => IRawLinkEvent;
+    readonly OpenLinkEvent: new (url: string, target?: string, metadata?: Record<string, unknown>) => IOpenLinkEvent;
+    createPipe(provider: IProvider, ...transformers: ITransformer[]): IContentPipe;
+}
+```
+
+**Examples:**
+```javascript
+// Read a file through a pipe
+const pipe = io.createPipe(new io.FileProvider("C:\\data.json"));
+const text = await pipe.readText();
+
+// Fetch HTTP content with authentication
+const pipe = io.createPipe(new io.HttpProvider(url, { headers: { "Authorization": "Bearer token" } }));
+
+// Open a URL through the link pipeline
+await app.events.openRawLink.sendAsync(new io.RawLinkEvent("https://api.com/data.json"));
+```
+
+### `app.events` — Event Channels
+
+Scripts can both subscribe to and send events. `send()` is synchronous, `sendAsync()` is async with LIFO subscriber ordering.
+
+```javascript
+// Subscribe (auto-cleaned up when script ends)
+app.events.openRawLink.subscribe((event) => { /* handle */ });
+
+// Send events
+app.events.openRawLink.send(new io.RawLinkEvent("C:\\file.txt"));
+await app.events.openRawLink.sendAsync(new io.RawLinkEvent(url));
+```
+
 ### `React`
 
 The React library is available for advanced use cases.
@@ -276,7 +318,7 @@ const config = require("library/config");
 - Extension auto-resolution: tries exact path, `.ts`, `.js`, `/index.ts`, `/index.js`
 - Relative requires within library modules work naturally (e.g., `require('./db-config')` inside a library file)
 - **Context injection — two mechanisms:**
-  - **Top-level scripts:** `fn.call(context)` where context is the `ScriptContext` instance. `SCRIPT_PREFIX` reads from `this`: `var app=this.app, page=this.page, require=this.customRequire, ...`
+  - **Top-level scripts:** `fn.call(context)` where context is the `ScriptContext` instance. `SCRIPT_PREFIX` reads from `this`: `var app=this.app, page=this.page, io=this.io, require=this.customRequire, ...`
   - **Library modules:** Extension handler reads `globalThis.__activeScriptContext__` (set by `ScriptContext.customRequire()` before native require) and injects `MODULE_CONTEXT_PREFIX`: `var __ctx=globalThis.__activeScriptContext__, app=__ctx?.app, ...`
 - **Context-bound require chain:** Each `ScriptContext` creates a `customRequire` function bound to itself. It's injected as the `require` local var in every script and module. When a module calls `require("library/X")`, it calls the context's `customRequire`, which sets `__activeScriptContext__`, calls native require, and the extension handler injects the same context's properties. Sub-modules get the same `customRequire` injected, so the chain propagates through the entire dependency tree.
 - **Always-fresh cache:** `customRequire()` deletes the specific module from `require.cache` before loading. This ensures fresh compilation with the current context's bindings. Library modules cannot share state across script executions (use `page.data` or `app.settings` for shared state).
@@ -385,7 +427,7 @@ The `releaseList` is shared across all wrappers: `AppWrapper → PageCollectionW
 
 ### Events Proxy
 
-`AppWrapper.events` returns a recursive proxy that wraps `app.events`. When a script calls `subscribe()` or `subscribeDefault()` on any EventChannel, the proxy intercepts the call, subscribes on the real channel, and pushes the `unsubscribe()` handle to the `releaseList`. This means scripts never need to manually unsubscribe — cleanup happens automatically when `ScriptContext.dispose()` is called.
+`AppWrapper.events` returns a recursive proxy that wraps `app.events`. When a script calls `subscribe()` on any EventChannel, the proxy intercepts the call, subscribes on the real channel, and pushes the `unsubscribe()` handle to the `releaseList`. This means scripts never need to manually unsubscribe — cleanup happens automatically when `ScriptContext.dispose()` is called. The proxy also exposes `send()` and `sendAsync()` methods, allowing scripts to trigger events through the pipeline (e.g., `app.events.openRawLink.sendAsync(event)`).
 
 ## Wrapper Architecture
 
@@ -506,7 +548,7 @@ ctx.dispose();  // restores previous ui getter, releases ViewModels, unsubscribe
 The constructor:
 
 1. Creates `releaseList` (shared cleanup array)
-2. Creates `AppWrapper` (always) and `PageWrapper` (if page provided) — stored as instance properties
+2. Creates `AppWrapper` (always), `PageWrapper` (if page provided), and `io` namespace (`createIoNamespace()`) — stored as instance properties
 3. If `consoleLogs` array is provided (MCP mode), sets `this.console` to a capturing console that records `log`, `error`, `warn`, `info` calls. Otherwise uses native `console`. Capture is replaced with full forwarding when `ui` is accessed (see step 6).
    ```typescript
    interface ConsoleLogEntry {
@@ -696,7 +738,7 @@ These files serve dual purpose: TypeScript type checking **and** IDE IntelliSens
 Scripts execute inside an `async function` with `fn.call(context)` where `context` is the `ScriptContext` instance. `SCRIPT_PREFIX` injects context properties as local `var` declarations reading from `this` (the context). There is no `with(this)` proxy chain — scripts access `globalThis` directly for standard APIs (like `Buffer`, `URL`, `setTimeout`).
 
 Two injection mechanisms exist:
-- **Top-level scripts:** `SCRIPT_PREFIX` reads from `this` — `var app=this.app, page=this.page, require=this.customRequire, ...`
+- **Top-level scripts:** `SCRIPT_PREFIX` reads from `this` — `var app=this.app, page=this.page, io=this.io, require=this.customRequire, ...`
 - **Library modules (require'd):** `MODULE_CONTEXT_PREFIX` reads from `globalThis.__activeScriptContext__` — set by `customRequire()` during the synchronous `require()` call
 
 Both produce the same result: `app`, `page`, `React`, `styledText`, `preventOutput`, `require`, and `console` are available as local variables in scripts and modules.
