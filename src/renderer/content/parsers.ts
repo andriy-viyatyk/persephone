@@ -1,5 +1,6 @@
 import { app } from "../api/app";
 import { OpenLinkEvent } from "../api/events/events";
+import type { ILinkMetadata } from "../api/types/io.events";
 import { isArchivePath } from "../core/utils/file-path";
 import { parseHttpRequest } from "../core/utils/curl-parser";
 
@@ -83,7 +84,7 @@ export function registerRawLinkParsers(): void {
         const parsed = parseHttpRequest(trimmed);
         if (!parsed) return;
 
-        const metadata: Record<string, unknown> = {};
+        const metadata: ILinkMetadata = {};
         if (parsed.method !== "GET") metadata.method = parsed.method;
         if (Object.keys(parsed.headers).length > 0) metadata.headers = parsed.headers;
         if (parsed.body) metadata.body = parsed.body;

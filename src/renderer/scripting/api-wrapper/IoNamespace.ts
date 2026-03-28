@@ -3,7 +3,7 @@ import { HttpProvider } from "../../content/providers/HttpProvider";
 import { ZipTransformer } from "../../content/transformers/ZipTransformer";
 import { DecryptTransformer } from "../../content/transformers/DecryptTransformer";
 import { createPipe } from "../../content/ContentPipe";
-import { RawLinkEvent, OpenLinkEvent } from "../../api/events/events";
+import { RawLinkEvent, OpenLinkEvent, OpenContentEvent } from "../../api/events/events";
 
 /**
  * Create the `io` namespace object exposed to scripts.
@@ -27,5 +27,6 @@ export function createIoNamespace() {
         // Event constructors
         RawLinkEvent,
         OpenLinkEvent,
+        OpenContentEvent,
     };
 }

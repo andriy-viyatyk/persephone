@@ -12,16 +12,16 @@ import { pagesModel } from "../api/pages";
 export function registerOpenHandler(): void {
     app.events.openContent.subscribe(async (event) => {
         const filePath = event.pipe.provider.sourceUrl;
-        const metadata = event.metadata as Record<string, unknown> | undefined;
-        const pageId = metadata?.pageId as string | undefined;
+        const metadata = event.metadata;
+        const pageId = metadata?.pageId;
 
         if (pageId) {
             // Navigate existing page to the new file
             // navigatePageTo creates its own page model — always dispose this pipe
             try {
                 await pagesModel.lifecycle.navigatePageTo(pageId, filePath, {
-                    revealLine: metadata?.revealLine as number | undefined,
-                    highlightText: metadata?.highlightText as string | undefined,
+                    revealLine: metadata?.revealLine,
+                    highlightText: metadata?.highlightText,
                 });
             } finally {
                 event.pipe.dispose();

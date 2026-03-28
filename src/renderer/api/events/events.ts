@@ -2,6 +2,7 @@ import React from "react";
 import { BaseEvent } from "./BaseEvent";
 import type { MenuItem } from "../types/events";
 import type { IContentPipe } from "../types/io.pipe";
+import type { ILinkMetadata } from "../types/io.events";
 
 /**
  * Identifies the source/kind of context menu.
@@ -77,7 +78,7 @@ export class OpenLinkEvent extends BaseEvent {
     constructor(
         public readonly url: string,
         public target?: string,
-        public metadata?: Record<string, unknown>,
+        public metadata?: ILinkMetadata,
     ) {
         super();
     }
@@ -88,7 +89,7 @@ export class OpenContentEvent extends BaseEvent {
     constructor(
         public readonly pipe: IContentPipe,
         public readonly target: string,
-        public readonly metadata?: Record<string, unknown>,
+        public readonly metadata?: ILinkMetadata,
     ) {
         super();
     }

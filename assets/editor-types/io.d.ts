@@ -62,10 +62,24 @@ export interface IRawLinkEventConstructor {
  * }));
  */
 export interface IOpenLinkEventConstructor {
-    new(url: string, target?: string, metadata?: Record<string, unknown>): IBaseEvent & {
+    new(url: string, target?: string, metadata?: ILinkMetadata): IBaseEvent & {
         readonly url: string;
         target?: string;
-        metadata?: Record<string, unknown>;
+        metadata?: ILinkMetadata;
+    };
+}
+
+/**
+ * Open content event constructor — Layer 3 input.
+ * @example
+ * const pipe = io.createPipe(new io.FileProvider("C:\\data.zip"), new io.ZipTransformer("report.csv"));
+ * await app.events.openContent.sendAsync(new io.OpenContentEvent(pipe, "grid-csv"));
+ */
+export interface IOpenContentEventConstructor {
+    new(pipe: IContentPipe, target: string, metadata?: ILinkMetadata): IBaseEvent & {
+        readonly pipe: IContentPipe;
+        readonly target: string;
+        readonly metadata?: ILinkMetadata;
     };
 }
 
@@ -77,6 +91,7 @@ export interface IOpenLinkEventConstructor {
  * **Link pipeline (3 layers):**
  * - Use `io.RawLinkEvent` to open any link (file path, URL, cURL command) through the full pipeline (Layer 1 → 2 → 3)
  * - Use `io.OpenLinkEvent` to skip raw parsing and go directly to provider resolution (Layer 2 → 3)
+ * - Use `io.OpenContentEvent` to open a pre-assembled pipe directly in an editor (Layer 3)
  * - Use `io.createPipe()` with providers and transformers to build custom content pipes
  *
  * @example
@@ -106,6 +121,8 @@ export interface IIoNamespace {
     readonly RawLinkEvent: IRawLinkEventConstructor;
     /** Open link event constructor for Layer 2 (openLink). */
     readonly OpenLinkEvent: IOpenLinkEventConstructor;
+    /** Open content event constructor for Layer 3 (openContent). */
+    readonly OpenContentEvent: IOpenContentEventConstructor;
     /** Create a content pipe from a provider and optional transformers. */
     createPipe(provider: IProvider, ...transformers: ITransformer[]): IContentPipe;
 }

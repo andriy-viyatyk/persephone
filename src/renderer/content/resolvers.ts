@@ -141,8 +141,8 @@ export function registerResolvers(): void {
     app.events.openLink.subscribe(async (event) => {
         if (!isHttpUrl(event.url)) return;
 
-        const metadata = event.metadata as Record<string, unknown> | undefined;
-        const forceBrowser = metadata?.forceBrowser as boolean | undefined;
+        const metadata = event.metadata;
+        const openInBrowser = event.target === "browser";
         const effectivePath = extractEffectivePath(event.url);
         const ext = effectivePath.includes(".")
             ? effectivePath.slice(effectivePath.lastIndexOf(".")).toLowerCase()
@@ -151,8 +151,7 @@ export function registerResolvers(): void {
 
         // For cURL/fetch requests without file extension: use Accept header to pick editor
         if (!mapping && metadata?.headers) {
-            const headers = metadata.headers as Record<string, string>;
-            const accept = headers["accept"] || headers["Accept"] || "";
+            const accept = metadata.headers["accept"] || metadata.headers["Accept"] || "";
             if (accept.includes("json")) mapping = { editor: "monaco" };
             else if (accept.includes("xml")) mapping = { editor: "monaco" };
             else if (accept.includes("css")) mapping = { editor: "monaco" };
@@ -167,14 +166,14 @@ export function registerResolvers(): void {
             mapping = { editor: "monaco" };
         }
 
-        if (forceBrowser || !mapping) {
-            // No recognized extension or forced browser — open in browser tab
+        if (openInBrowser || !mapping) {
+            // No recognized extension or explicit browser target — open in browser tab
             const { settings } = await import("../api/settings");
             const behavior = settings.get("link-open-behavior");
-            if (behavior === "internal-browser" || forceBrowser) {
+            if (behavior === "internal-browser" || openInBrowser) {
                 const { pagesModel } = await import("../api/pages");
                 await pagesModel.lifecycle.openUrlInBrowserTab(event.url, {
-                    external: !!forceBrowser,
+                    external: openInBrowser,
                 });
             } else {
                 const { shell } = await import("../api/shell");
@@ -187,9 +186,9 @@ export function registerResolvers(): void {
         // Recognized extension — open as content via HttpProvider
         const target = event.target || mapping.editor;
         const httpOptions = {
-            method: metadata?.method as string | undefined,
-            headers: metadata?.headers as Record<string, string> | undefined,
-            body: metadata?.body as string | undefined,
+            method: metadata?.method,
+            headers: metadata?.headers,
+            body: metadata?.body,
         };
 
         let pipe: ContentPipe;
