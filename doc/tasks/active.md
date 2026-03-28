@@ -12,6 +12,7 @@ Current work in progress and planned tasks.
 
 | ID | Title | Epic | Notes |
 |----|-------|------|-------|
+| US-289 | Browser-webview images: persist across app restart | | Cache image binary to disk (`pageId.img`) on first load, restore from cache on restart. Same pattern as PdfViewer cache file. |
 
 
 ## Completed

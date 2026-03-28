@@ -38,6 +38,13 @@ const getDefaultImageViewerModelState = (): ImageViewerModelState => ({
 class ImageViewerModel extends PageModel<ImageViewerModelState, void> {
     noLanguage = true;
 
+    getRestoreData() {
+        const data = super.getRestoreData();
+        // Blob URLs don't survive across sessions — strip to avoid stale references
+        delete data.url;
+        return data;
+    }
+
     async dispose(): Promise<void> {
         const url = this.state.get().url;
         if (url && url.startsWith("blob:")) {
