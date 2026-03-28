@@ -4,6 +4,9 @@ All completed tasks, newest first.
 
 | ID | Title | Epic | Notes |
 |----|-------|------|-------|
+| US-292 | Implement ZipTreeProvider | EPIC-015 | `content/tree-providers/ZipTreeProvider.ts` — read-only ZIP archive ITreeProvider. Delegates to archiveService. Sorts folder→extension→name. |
+| US-291 | Implement FileTreeProvider | EPIC-015 | `content/tree-providers/FileTreeProvider.ts` — local filesystem ITreeProvider. Direct Node.js fs/path (bypasses archive transparency). list/stat/resolveLink/mkdir/rename/deleteItem. |
+| US-290 | Define ITreeProvider & ITreeProviderItem types | EPIC-015 | `io.tree.d.ts` with 6 interfaces (ITreeProvider, ITreeProviderItem, ITreeStat, ITreeSearchOptions, ITreeSearchHandle, ITreeSearchResult). Added `isCategory` to LinkItem and ILink with facade mapping. |
 | US-289 | Browser-webview images: persist across app restart | | HTTP images: HttpProvider pipe (re-fetches on restart) + .img cache fallback. Blob images: cached to disk immediately. applyRestoreData override for url field. |
 | US-288 | Review EPIC-012 Changes and Architecture | EPIC-012 | 9-phase review. Tasks 1-4 implemented: doc updates, pipeline hardening (ITransformer clone, #password, async fs, ILinkMetadata, OpenContentEvent), text editor pipe bugs (HTTP restore, rename transformers, save errors, spelling fixes), reference editors (ensurePipe, archive guard removal, openDiff pipes). Task 5 → EPIC-015. |
 | US-271 | Script API & docs | EPIC-012 | `io` global namespace: FileProvider, HttpProvider, ZipTransformer, DecryptTransformer, createPipe(), RawLinkEvent, OpenLinkEvent. Type definitions in `io.d.ts`. AppWrapper events proxy exposes send/sendAsync. |

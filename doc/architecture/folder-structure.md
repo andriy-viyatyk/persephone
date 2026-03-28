@@ -140,7 +140,8 @@ persephone/
 │       ├── io.provider.d.ts  # IProvider, IProviderStat, IProviderDescriptor
 │       ├── io.transformer.d.ts # ITransformer, ITransformerDescriptor
 │       ├── io.pipe.d.ts      # IContentPipe, IPipeDescriptor
-│       └── io.events.d.ts    # IRawLinkEvent, IOpenLinkEvent, IOpenContentEvent, ILinkMetadata
+│       ├── io.events.d.ts    # IRawLinkEvent, IOpenLinkEvent, IOpenContentEvent, ILinkMetadata
+│       └── io.tree.d.ts     # ITreeProvider, ITreeProviderItem, ITreeStat, ITreeSearch*
 │
 ├── content/                # Content delivery layer — providers, transformers, pipes (EPIC-012)
 │   ├── ContentPipe.ts      # IContentPipe implementation, createPipe() factory
@@ -153,9 +154,12 @@ persephone/
 │   │   ├── FileProvider.ts      # IProvider for local binary files (read/write/watch/stat)
 │   │   ├── CacheFileProvider.ts # IProvider for cache files by page ID (auto-save)
 │   │   └── HttpProvider.ts      # IProvider for HTTP/HTTPS URLs (read-only)
-│   └── transformers/
-│       ├── ZipTransformer.ts    # ITransformer for ZIP entry extraction/replacement
-│       └── DecryptTransformer.ts # ITransformer for AES-GCM decrypt/encrypt (non-persistent)
+│   ├── transformers/
+│   │   ├── ZipTransformer.ts    # ITransformer for ZIP entry extraction/replacement
+│   │   └── DecryptTransformer.ts # ITransformer for AES-GCM decrypt/encrypt (non-persistent)
+│   └── tree-providers/
+│       ├── FileTreeProvider.ts  # ITreeProvider for local filesystem directories (EPIC-015)
+│       └── ZipTreeProvider.ts   # ITreeProvider for ZIP archives, read-only (EPIC-015)
 │
 ├── ui/                     # Application Shell
 │   ├── app/                # Root layout

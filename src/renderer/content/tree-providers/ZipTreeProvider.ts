@@ -1,0 +1,94 @@
+import type {
+    ITreeProvider,
+    ITreeProviderItem,
+    ITreeStat,
+} from "../../api/types/io.tree";
+import { archiveService } from "../../api/archive-service";
+import { buildArchivePath } from "../../core/utils/file-path";
+
+// Direct Node.js path — used only for basename/extname on plain filenames,
+// not archive-aware path operations. Listed in coding-style.md exceptions.
+const path = require("path") as typeof import("path");
+
+/**
+ * ITreeProvider for ZIP archives (and ZIP-based formats like .docx, .xlsx, .epub).
+ *
+ * Delegates all I/O to archiveService which handles the sequential queue
+ * and ZIP reading/writing. Read-only initially; write operations can be
+ * added later by wiring to archiveService methods.
+ */
+export class ZipTreeProvider implements ITreeProvider {
+    readonly type = "zip";
+    readonly displayName: string;
+    readonly writable = false;
+    readonly pinnable = false;
+
+    constructor(public readonly sourceUrl: string) {
+        this.displayName = path.basename(sourceUrl);
+    }
+
+    async list(innerDir: string): Promise<ITreeProviderItem[]> {
+        let entries: { name: string; isDirectory: boolean }[];
+        try {
+            entries = await archiveService.listDir(this.sourceUrl, innerDir);
+        } catch {
+            return [];
+        }
+
+        const folders: ITreeProviderItem[] = [];
+        const files: ITreeProviderItem[] = [];
+
+        for (const entry of entries) {
+            const innerPath = innerDir ? innerDir + "/" + entry.name : entry.name;
+
+            if (entry.isDirectory) {
+                folders.push({
+                    name: entry.name,
+                    href: buildArchivePath(this.sourceUrl, innerPath),
+                    category: innerDir,
+                    tags: [],
+                    isDirectory: true,
+                });
+            } else {
+                const ext = path.extname(entry.name).toLowerCase();
+                files.push({
+                    name: entry.name,
+                    href: buildArchivePath(this.sourceUrl, innerPath),
+                    category: innerDir,
+                    tags: ext ? [ext] : [],
+                    isDirectory: false,
+                });
+            }
+        }
+
+        // Folders first (alphabetical), then files by extension then name
+        folders.sort((a, b) => a.name.localeCompare(b.name));
+        files.sort((a, b) => {
+            const extA = a.tags[0] ?? "";
+            const extB = b.tags[0] ?? "";
+            const extCmp = extA.localeCompare(extB);
+            if (extCmp !== 0) return extCmp;
+            return a.name.localeCompare(b.name);
+        });
+
+        return [...folders, ...files];
+    }
+
+    async stat(innerPath: string): Promise<ITreeStat> {
+        try {
+            const s = await archiveService.stat(this.sourceUrl, innerPath);
+            return {
+                exists: s.exists,
+                isDirectory: s.isDirectory,
+                size: s.size,
+                mtime: s.mtime ? new Date(s.mtime).toISOString() : undefined,
+            };
+        } catch {
+            return { exists: false, isDirectory: false };
+        }
+    }
+
+    resolveLink(innerPath: string): string {
+        return buildArchivePath(this.sourceUrl, innerPath);
+    }
+}

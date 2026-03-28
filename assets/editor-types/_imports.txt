@@ -14,6 +14,7 @@ io.events.d.ts
 io.pipe.d.ts
 io.provider.d.ts
 io.transformer.d.ts
+io.tree.d.ts
 link-editor.d.ts
 markdown-editor.d.ts
 mcp-inspector-editor.d.ts

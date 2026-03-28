@@ -6,7 +6,7 @@
 
 ## Goal
 
-Introduce `ITreeProvider` interface that returns **LinkItem-compatible entries**, unifying file browsing and link collection into a single paradigm. Migrate NavigationPanel / FileExplorer to a generic `TreeProviderView` component. Enhance the Link editor to support tree providers as data sources — enabling local file paths, cURL links, and multi-file drop alongside traditional bookmarks.
+Introduce `ITreeProvider` interface that returns **LinkItem-compatible entries**, unifying file browsing and link collection into a single paradigm. Build a new `TreeProviderView` component and `CategoryView` component that replace NavigationPanel's FileExplorer and the standalone Link editor. Enable local file paths, cURL links, and multi-file drop alongside traditional bookmarks.
 
 ## Motivation
 
@@ -51,7 +51,7 @@ interface ITreeProvider {
     /** Whether this tree supports write operations */
     readonly writable: boolean;
 
-    /** Optional directory operations */
+    /** Optional directory/path operations (rename works for both files and directories) */
     mkdir?(path: string): Promise<void>;
     rename?(oldPath: string, newPath: string): Promise<void>;
 
@@ -112,8 +112,8 @@ interface ITreeStat {
   | Provider | `addItem` | `updateItem` | `deleteItem` |
   |---|---|---|---|
   | `LinkTreeProvider` | Add entry to `.link.json` | Update title/category/tags | Remove entry |
-  | `FileTreeProvider` | Create empty file (or copy from href) | Rename file | Delete file |
-  | `ZipTreeProvider` | Not supported | Rename entry | Delete entry |
+  | `FileTreeProvider` | Create empty file (or copy from href) | Update metadata (use `rename()` for path changes) | Delete file |
+  | `ZipTreeProvider` | Not supported | Update metadata (use `rename()` for path changes) | Delete entry |
 
   `CategoryView` checks `provider.writable` and shows/hides add/edit/delete UI accordingly. The "Add Link" dialog in CategoryView calls `provider.addItem()` — for LinkTreeProvider this adds a bookmark, for FileTreeProvider this could create a new file.
 - **Bulk operations let providers optimize.** `moveToCategory()` and `deleteItems()` handle batches in one call. TreeProviderView/CategoryView calls bulk methods for drag-drop and multi-select actions instead of looping `updateItem()` N times. Each provider implements optimally:
@@ -157,7 +157,7 @@ function toTreeItem(link: LinkItem): ITreeProviderItem {
 
 ### TreeProviderView Component
 
-Refactor `FileExplorer` into a generic `TreeProviderView` that renders any `ITreeProvider`:
+A new component (built from scratch, not refactoring FileExplorer) that renders any `ITreeProvider`:
 
 - Uses `CategoryTree` for folder/category navigation (already hierarchical via "/" paths)
 - Shows items in the selected category as a list or tiles (reuses Link editor display components)
@@ -183,8 +183,9 @@ The toggle can be:
 
 This component can be used:
 1. **Inside NavigationPanel** — replacing current FileExplorer, backed by FileTreeProvider / ZipTreeProvider (links visible by default)
-2. **Inside Link editor** — as category navigation sidebar (links hidden by default, items shown in link list/tiles area)
-3. **Standalone** — for any tree browsing need
+2. **Inside page with CategoryView** — as category navigation sidebar for `.link.json` pages (links hidden by default, items shown in CategoryView)
+3. **Inside Browser editor** — replacing embedded LinkEditor for bookmarks
+4. **Standalone** — for any tree browsing need
 
 ### Provider Implementations
 
@@ -241,10 +242,21 @@ class LinkTreeProvider implements ITreeProvider {
     constructor(private data: LinkEditorData) {}
 
     async list(path: string): Promise<ITreeProviderItem[]> {
-        // Filter links by category prefix, map LinkItem → ITreeProviderItem
-        return this.data.links
-            .filter(link => link.category === path || link.category.startsWith(path + "/"))
+        // Return only DIRECT children of the given path:
+        // 1. Links whose category === path (leaf items in this folder)
+        // 2. Immediate subcategory names (as isDirectory items)
+        const directLinks = this.data.links
+            .filter(link => link.category === path)
             .map(link => toTreeItem(link));
+        const subCategories = this.getDirectSubcategories(path)
+            .map(name => ({
+                name,
+                href: "",
+                category: path,
+                tags: [],
+                isDirectory: true,
+            }));
+        return [...subCategories, ...directLinks];
     }
 
     resolveLink(path: string): string {
@@ -258,7 +270,7 @@ This means the Link editor's data can also be exposed as an ITreeProvider, makin
 
 ### CategoryView Component
 
-`CategoryView` is the **content area** that displays items from the selected category. It is extracted from the current Link editor's main panel. It receives an `ITreeProvider` reference to work with provider methods directly:
+`CategoryView` is the **content area** that displays items from the selected category. It is a new component (inspired by the current Link editor's main panel, but built from scratch). It receives an `ITreeProvider` reference to work with provider methods directly:
 
 - Displays `ITreeProviderItem[]` for the currently selected category (obtained via `provider.list()`)
 - Multiple view modes: list, tiles-landscape, tiles-landscape-big, tiles-portrait, tiles-portrait-big (same as current Link editor)
@@ -428,7 +440,7 @@ The interface is **async-first and lazy by design**. This is driven by `FileTree
 
 2. **Category tree grows progressively.** As the user expands directories, new category strings are added to the categories array. `CategoryTree` rebuilds from the full array on each render — it handles dynamic additions naturally.
 
-3. **Link list shows current directory only.** When used inside the Link editor, only items from the selected category (= expanded directory) are displayed. Not the entire tree flattened.
+3. **Link list shows current directory only.** CategoryView displays only items from the selected category (= expanded directory). Not the entire tree flattened.
 
 ### Provider behavior spectrum
 
@@ -446,53 +458,124 @@ When `list()` is pending (real async), the tree node shows a loading indicator. 
 
 The existing `TreeView` component already supports this via `getHasChildren` prop (shows expand arrow before children are loaded) and `onExpandChange` callback (triggers `list()` on expand).
 
+## File Locations
+
+New modules follow the same patterns as EPIC-012's providers/transformers:
+
+| Module | Location | Pattern follows |
+|---|---|---|
+| **Type definitions** | `src/renderer/api/types/io.tree.d.ts` | Same as `io.provider.d.ts`, `io.pipe.d.ts` |
+| **FileTreeProvider** | `src/renderer/content/tree-providers/FileTreeProvider.ts` | Same as `content/providers/FileProvider.ts` |
+| **ZipTreeProvider** | `src/renderer/content/tree-providers/ZipTreeProvider.ts` | Same as `content/providers/HttpProvider.ts` |
+| **LinkTreeProvider** | `src/renderer/content/tree-providers/LinkTreeProvider.ts` | Same as `content/providers/CacheFileProvider.ts` |
+| **TreeProviderView** | `src/renderer/components/tree-provider/TreeProviderView.tsx` | Same as `components/file-explorer/FileExplorer.tsx` |
+| **TreeProviderViewModel** | `src/renderer/components/tree-provider/TreeProviderViewModel.ts` | Same as `components/file-explorer/FileExplorerModel.tsx` |
+| **CategoryView** | `src/renderer/components/tree-provider/CategoryView.tsx` | New |
+| **CategoryViewModel** | `src/renderer/components/tree-provider/CategoryViewModel.ts` | New |
+
+```
+src/renderer/
+  api/types/
+    io.tree.d.ts              ← type definitions (auto-synced to assets/editor-types/)
+  content/
+    providers/                 ← existing (FileProvider, HttpProvider, CacheFileProvider)
+    transformers/              ← existing (ZipTransformer, DecryptTransformer)
+    tree-providers/            ← NEW (FileTreeProvider, ZipTreeProvider, LinkTreeProvider)
+  components/
+    TreeView/                  ← existing (base tree rendering — reused by TreeProviderView)
+    file-explorer/             ← existing (will be replaced by TreeProviderView, then deleted)
+    tree-provider/             ← NEW (TreeProviderView, CategoryView)
+```
+
 ## Phased Implementation Plan
 
-### Phase 1: Core Interface & Components
+Tasks within each phase are listed in implementation order (each task may depend on the previous ones).
 
-| Task | Description |
-|---|---|
-| Define ITreeProvider & ITreeProviderItem types | `io.tree.d.ts` — LinkItem-compatible, async-first |
-| Implement FileTreeProvider | Wraps `app.fs` calls, returns ITreeProviderItems |
-| Implement ZipTreeProvider | Wraps archive reading, returns ITreeProviderItems |
-| Create TreeProviderView component | Refactor FileExplorer into generic tree viewer with show/hide links toggle, sub-panels (categories, tags, optional hostnames) |
-| Create CategoryView component | Extract from Link editor — displays items for selected category with list/tiles view modes, tag filter, quick search (name filtering) |
+### Phase 1: Types & Providers
 
-### Phase 2: Page Integration & Search
+| # | Task | Description | Depends on |
+|---|---|---|---|
+| 1.1 | Define ITreeProvider & ITreeProviderItem types | `api/types/io.tree.d.ts` — all interfaces. Add `isCategory?: boolean` to `LinkItem` in `editors/link-editor/linkTypes.ts`. | — |
+| 1.2 | Implement FileTreeProvider | `content/tree-providers/FileTreeProvider.ts` — wraps `app.fs` calls, returns ITreeProviderItems. | 1.1 |
+| 1.3 | Implement ZipTreeProvider | `content/tree-providers/ZipTreeProvider.ts` — wraps archive reading. Read-only initially. | 1.1 |
 
-| Task | Description |
-|---|---|
-| Migrate NavigationPanel | Use TreeProviderView + FileTreeProvider/ZipTreeProvider |
-| Folder selection → CategoryView | When a folder is selected in NavigationPanel, show CategoryView in content area |
-| Implement LinkTreeProvider | Wraps .link.json data as ITreeProvider |
-| `.link.json` as regular page | Open .link.json with NavigationPanel + LinkTreeProvider + CategoryView |
-| Content search in CategoryView | Implement `ITreeProvider.search()`, progressive results, scoping by category + tags |
-| Decommission standalone Link editor | Replace with page + NavigationPanel + LinkTreeProvider (verify feature parity first) |
-| Decommission NavigationPanel search | Remove old search — CategoryView search covers both title filter and content search |
+### Phase 2: UI Components
 
-### Phase 3: Browser & Advanced Features
+| # | Task | Description | Depends on |
+|---|---|---|---|
+| 2.1 | Create TreeProviderView component | `components/tree-provider/TreeProviderView.tsx` + `TreeProviderViewModel.ts` — generic tree viewer with show/hide links toggle. Lazy loading, expand/collapse, loading indicators. | 1.1, 1.2 (for testing) |
+| 2.2 | Add sub-panels to TreeProviderView | Categories (always), Tags (always), Hostnames (optional). Panels aggregate data from loaded items. | 2.1 |
+| 2.3 | Create CategoryView component | `components/tree-provider/CategoryView.tsx` + `CategoryViewModel.ts` — displays items for selected category with list/tiles view modes, tag filter, quick search. Shows folders as tiles/rows. | 1.1 |
+| 2.4 | Add pinned items panel to CategoryView | Shown when `provider.pinnable` is true. Calls `getPinnedItems()`, `pin()`, `unpin()`. | 2.3 |
 
-| Task | Description |
-|---|---|
-| Browser editor integration | Replace embedded LinkEditor with TreeProviderView + CategoryView |
-| Support non-HTTP links | Local paths, cURL in "Add Link" dialog, type-based icons |
-| Multi-file drop → .link.json | Create temp link file, open as regular page |
-| `navigatePageTo` via openLink | Route through `app.events.openLink()` with `pageId` metadata |
-| `TextFileIOModel.renameFile` via ITreeProvider | Delegate rename to tree provider |
-| Expose tree providers in script `io` namespace | `io.FileTreeProvider`, `io.ZipTreeProvider` |
-| Derive ITreeProvider from pipe provider | Auto-create tree provider from content pipe when appropriate |
+### Phase 3: NavigationPanel Integration
 
-## Open Questions / Concerns
+| # | Task | Description | Depends on |
+|---|---|---|---|
+| 3.1 | Replace FileExplorer with TreeProviderView in NavigationPanel | Swap FileExplorer for TreeProviderView + FileTreeProvider. Links visible by default. Test file browsing, expand/collapse, file opening. | 2.1, 2.2 |
+| 3.2 | ZipTreeProvider in NavigationPanel | When opening archive files, NavigationPanel switches to ZipTreeProvider. | 3.1, 1.3 |
+| 3.3 | Folder selection → CategoryView | When a folder is selected in NavigationPanel, show CategoryView in content area instead of empty state. | 3.1, 2.3 |
+| 3.4 | `navigatePageTo` via openLink | Route file navigation through `app.events.openLink()` with `pageId` in metadata. Replace direct file opening. | 3.1 |
 
-1. **Large directory performance:** A directory with 10,000 files would create 10,000 items in CategoryView for a single folder. Virtualized rendering (`RenderGridModel`) should handle this, but needs testing.
+### Phase 4: Link Editor Replacement
 
-2. **ID generation for tree items:** `LinkItem.id` must be unique. Using `href` as ID works for files (paths are unique) but might collide if the same file appears in multiple link collections. Consider using `category + "/" + name` or a hash.
+| # | Task | Description | Depends on |
+|---|---|---|---|
+| 4.1 | Implement LinkTreeProvider | `content/tree-providers/LinkTreeProvider.ts` — wraps `.link.json` data as ITreeProvider. Implements `list()` (direct children only), `addItem()`, `updateItem()`, `deleteItem()`, `moveToCategory()`, `pin()`/`unpin()`. | 1.1 |
+| 4.2 | `.link.json` as regular page | Open `.link.json` files with NavigationPanel + LinkTreeProvider + CategoryView. TreeProviderView shows links hidden (categories only), content area shows CategoryView. | 4.1, 3.1, 2.3, 2.4 |
+| 4.3 | Support non-HTTP links in link collections | Local file paths and cURL commands as link items. Update "Add Link" dialog, type-based icons, skip favicon for non-HTTP. | 4.2 |
+| 4.4 | Verify Link editor feature parity | Test: pinned links, per-category view modes, drag-drop category reassignment, edit/delete dialogs, context menus. Fix gaps. | 4.2 |
+| 4.5 | Decommission standalone Link editor | Remove Link editor registration, delete old components. | 4.4 |
 
-3. **Link editor feature parity:** Before decommissioning the standalone Link editor, verify all features are preserved: pinned links (now via `ITreeProvider.pinnable`), per-category view modes, drag-drop category reassignment, edit/delete link dialogs, browser selection dropdown. These must work in the new page + NavigationPanel + CategoryView setup.
+### Phase 5: Search
 
-4. **Content area switching:** When the user clicks a folder → CategoryView, then clicks a file → editor, then clicks back to a folder → CategoryView again. The content area needs smooth transitions without losing scroll position, view mode, or filter state in CategoryView. May need a lightweight state cache per category.
+| # | Task | Description | Depends on |
+|---|---|---|---|
+| 5.1 | Content search in CategoryView | Implement `ITreeProvider.search()` for FileTreeProvider — progressive results, scoping by category + tags, cancel support. | 2.3, 1.2 |
+| 5.2 | Content search for LinkTreeProvider | Instant in-memory search by title/href/tags. | 5.1, 4.1 |
+| 5.3 | Content search for ZipTreeProvider | Progressive search through archive entries. | 5.1, 1.3 |
+| 5.4 | Decommission NavigationPanel search | Remove old search UI and SearchResultsPanel — CategoryView search covers both title filter and content search. | 5.1, 3.1 |
 
-5. **Browser editor bookmarks:** The Browser editor currently uses `LinkEditor` with custom hooks (`onInternalLinkOpen`, `onGetLinkMenuItems`). The new TreeProviderView + CategoryView must support these same extension points.
+### Phase 6: Browser & Advanced Features
+
+| # | Task | Description | Depends on |
+|---|---|---|---|
+| 6.1 | Browser editor integration | Replace embedded LinkEditor with TreeProviderView + CategoryView. Implement event channel pattern for link opening and context menus. | 2.1, 2.3, 4.1 |
+| 6.2 | Multi-file drop → .link.json | Create temp `.link.json` in cache folder, open as regular page with LinkTreeProvider. | 4.2 |
+| 6.3 | `TextFileIOModel.renameFile` via ITreeProvider | Delegate rename to tree provider instead of direct `app.fs` call. | 1.2, 3.1 |
+| 6.4 | Expose tree providers in script `io` namespace | `io.FileTreeProvider`, `io.ZipTreeProvider`, `io.LinkTreeProvider`. Script type definitions in `io.tree.d.ts`. | 1.2, 1.3, 4.1 |
+| 6.5 | Derive ITreeProvider from pipe provider | Auto-create tree provider from content pipe when appropriate (e.g., file pipe → FileTreeProvider for its directory). | 1.2, 1.3 |
+
+### Phase 7: Cleanup
+
+| # | Task | Description | Depends on |
+|---|---|---|---|
+| 7.1 | Remove old FileExplorer component | Delete FileExplorer and FileExplorerModel after all integration points verified. | 3.1, 3.2, 3.3 |
+| 7.2 | Remove old NavigationPanel search | Delete SearchResultsPanel and search model after content search verified. | 5.4 |
+| 7.3 | Final review | Architecture review, documentation update, user documentation. | All above |
+
+## Resolved Concerns
+
+1. **~~Large directory performance~~** — **Resolved.** `RenderGridModel` (virtualized rendering) only renders visible items. It already handles 10,000+ items in the current Link editor. Not a concern.
+
+2. **~~ID generation for tree items~~** — **Resolved.** Use the full file path as ID (`href`). Paths are unique within a provider. Rename operations will delete the old item and create a new one (new path = new ID), which is the natural behavior.
+
+3. **~~Link editor feature parity~~** — **Resolved.** Implementation strategy: **build new components alongside old ones, replace incrementally.** Keep the existing Link editor and FileExplorer unchanged. Build TreeProviderView and CategoryView as new components. Replace old components place by place with testing. Old components serve as reference during development. After full migration is verified, drop unused components.
+
+4. **~~Content area switching~~** — **Resolved: out of scope.** Currently page navigation replaces the page model, causing full re-renders (NavigationPanel already loses scroll position). No point in implementing special state caching for CategoryView until the underlying page navigation design is improved. Future epic can address page navigation state preservation, then revisit CategoryView state restoration.
+
+5. **~~Browser editor bookmarks~~** — **Resolved.** Implement an internal event channel pattern: Browser registers default event handlers on the channel. Anyone (TreeProviderView, CategoryView, scripts) can subscribe their own handler that catches events and sets `e.handled = true` to prevent the default. This is more flexible than direct callback hooks (`onInternalLinkOpen`, `onGetLinkMenuItems`) and also useful for scripting.
+
+## Implementation Strategy
+
+**Build new, replace incrementally, then clean up.**
+
+This epic introduces significant new components (TreeProviderView, CategoryView) that overlap with existing ones (FileExplorer, Link editor, NavigationPanel search). The strategy is:
+
+1. **Build new components from scratch** — do NOT refactor existing components in place. New TreeProviderView, new CategoryView, new providers.
+2. **Keep old components untouched** — they serve as working reference and fallback during development.
+3. **Replace incrementally** — swap in new components one integration point at a time (first NavigationPanel, then .link.json pages, then Browser editor). Test each replacement before moving to the next.
+4. **Clean up** — after all integration points are migrated and verified, delete the old unused components (FileExplorer, standalone Link editor, NavigationPanel search).
 
 ## References
 

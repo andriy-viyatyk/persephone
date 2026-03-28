@@ -208,6 +208,8 @@ const nodefs = require("fs");
 - `file-watcher.ts` — uses `fs.watch()` (callback-based watcher, not a simple read/write)
 - `content/providers/FileProvider.ts` — low-level binary I/O provider that intentionally bypasses `app.fs` archive transparency
 - `content/providers/CacheFileProvider.ts` — low-level cache I/O provider for content pipe cache files
+- `content/tree-providers/FileTreeProvider.ts` — filesystem tree provider that intentionally bypasses `app.fs` archive transparency (archive browsing is handled by ZipTreeProvider)
+- `content/tree-providers/ZipTreeProvider.ts` — archive tree provider, uses `path.basename`/`path.extname` on plain filenames (not archive-aware path operations)
 - `editors/pdf/PdfViewer.tsx` — writes PDF cache file for non-local sources (HTTP, archive)
 - `library-require.ts` — custom `require()` transpiler that uses `fs.readFileSync` for module compilation
 - `ScriptPanel.tsx` — uses `fs.readFileSync`/`writeFileSync` for script file operations (will be migrated in future tasks)

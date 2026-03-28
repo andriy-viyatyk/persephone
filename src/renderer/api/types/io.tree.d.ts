@@ -1,0 +1,121 @@
+/**
+ * ITreeProvider — browsable data source abstraction.
+ *
+ * Enumerates children and provides tree operations (list, rename, delete, move).
+ * Complements IProvider (reads/writes one resource) the same way a file explorer
+ * complements a text editor.
+ *
+ * All content-returning methods are async. Simpler providers (ZipTreeProvider,
+ * LinkTreeProvider) return immediately via Promise.resolve(); FileTreeProvider
+ * does real disk I/O.
+ */
+export interface ITreeProvider {
+    /** Provider type identifier (e.g., "file", "zip", "link"). */
+    readonly type: string;
+    /** Display name for UI. */
+    readonly displayName: string;
+    /** Root URL/path for this tree. */
+    readonly sourceUrl: string;
+
+    /** List direct children at a path. Returns LinkItem-compatible entries. */
+    list(path: string): Promise<ITreeProviderItem[]>;
+    /** Get metadata for a specific path. */
+    stat(path: string): Promise<ITreeStat>;
+    /** Resolve a child path to a raw link string for the open pipeline. */
+    resolveLink(path: string): string;
+
+    /** Whether this tree supports write operations. */
+    readonly writable: boolean;
+
+    /** Create a directory at the given path. */
+    mkdir?(path: string): Promise<void>;
+    /** Rename or move a file/directory. */
+    rename?(oldPath: string, newPath: string): Promise<void>;
+
+    /** Add a new item (link or file). */
+    addItem?(item: Partial<ITreeProviderItem> & { href: string }): Promise<ITreeProviderItem>;
+    /** Update item properties by href. */
+    updateItem?(href: string, changes: Partial<ITreeProviderItem>): Promise<ITreeProviderItem>;
+    /** Delete an item by href. */
+    deleteItem?(href: string): Promise<void>;
+
+    /** Move multiple items to a target category in one batch. */
+    moveToCategory?(hrefs: string[], targetCategory: string): Promise<void>;
+    /** Delete multiple items in one batch. */
+    deleteItems?(hrefs: string[]): Promise<void>;
+
+    /** Search items — async, yields results progressively. */
+    search?(query: string, options: ITreeSearchOptions): ITreeSearchHandle;
+
+    /** Whether this tree supports pinning items. */
+    readonly pinnable: boolean;
+    /** Pin an item by href. */
+    pin?(href: string): void;
+    /** Unpin an item by href. */
+    unpin?(href: string): void;
+    /** Get all pinned items. */
+    getPinnedItems?(): ITreeProviderItem[];
+
+    /** Release resources. */
+    dispose?(): void;
+}
+
+/** LinkItem-compatible tree entry. */
+export interface ITreeProviderItem {
+    /** Display name (= LinkItem.title). */
+    name: string;
+    /** Resolved link string (= LinkItem.href). */
+    href: string;
+    /** Folder path using "/" separators (= LinkItem.category). */
+    category: string;
+    /** Metadata tags — extension, type, etc. (= LinkItem.tags). */
+    tags: string[];
+    /** Whether this entry is a directory/container (= LinkItem.isCategory). */
+    isDirectory: boolean;
+    /** File size in bytes. */
+    size?: number;
+    /** Last modified time (ISO string). */
+    mtime?: string;
+}
+
+/** File/directory metadata. */
+export interface ITreeStat {
+    /** Whether the path exists. */
+    exists: boolean;
+    /** Whether the path is a directory. */
+    isDirectory: boolean;
+    /** File size in bytes. */
+    size?: number;
+    /** Last modified time (ISO string). */
+    mtime?: string;
+}
+
+/** Options for ITreeProvider.search(). */
+export interface ITreeSearchOptions {
+    /** Category to search within (empty string = root). */
+    category: string;
+    /** Filter by tags (e.g., only search in ["ts", "tsx"] files). */
+    tags?: string[];
+    /** Maximum number of results (default: 200). */
+    limit?: number;
+}
+
+/** Handle for a progressive search operation. */
+export interface ITreeSearchHandle {
+    /** Subscribe to progressive results — called with each new batch of matches. */
+    onResults(callback: (items: ITreeSearchResult[]) => void): void;
+    /** Subscribe to progress updates (files scanned count). */
+    onProgress?(callback: (filesSearched: number) => void): void;
+    /** Cancel the search. */
+    cancel(): void;
+    /** Resolves when the search is complete. */
+    done: Promise<void>;
+}
+
+/** A search result item with match context. */
+export interface ITreeSearchResult extends ITreeProviderItem {
+    /** Matched line numbers within the file (for content search). */
+    matchLines?: number[];
+    /** Preview snippet of the matched content. */
+    matchPreview?: string;
+}

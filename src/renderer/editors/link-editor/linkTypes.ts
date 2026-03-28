@@ -21,6 +21,8 @@ export interface LinkItem {
     tags: string[];
     /** Optional preview image URL for tile view */
     imgSrc?: string;
+    /** Whether this item represents a category/folder rather than a leaf link */
+    isCategory?: boolean;
 }
 
 // =============================================================================

@@ -12,7 +12,7 @@ import type { LinkItem } from "../../editors/link-editor/linkTypes";
 export class LinkEditorFacade {
     constructor(private readonly vm: LinkViewModel) {}
 
-    get links(): Array<{ readonly id: string; readonly url: string; readonly title: string; readonly category: string; readonly tags: readonly string[]; readonly pinned: boolean }> {
+    get links(): Array<{ readonly id: string; readonly url: string; readonly title: string; readonly category: string; readonly tags: readonly string[]; readonly pinned: boolean; readonly isCategory: boolean }> {
         return this.vm.state.get().data.links.map((link) => mapLink(link, this.vm));
     }
 
@@ -55,5 +55,6 @@ function mapLink(link: LinkItem, vm: LinkViewModel) {
         category: link.category,
         tags: link.tags,
         pinned: vm.isLinkPinned(link.id),
+        isCategory: link.isCategory ?? false,
     };
 }
