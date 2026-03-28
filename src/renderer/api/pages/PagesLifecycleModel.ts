@@ -720,8 +720,17 @@ export class PagesLifecycleModel {
                     s.url = imageUrl;
                 }
             );
+            // For HTTP(S) URLs, create a pipe so the image can be re-fetched on restart
+            if (/^https?:\/\//i.test(imageUrl)) {
+                imgModel.pipe = new ContentPipe(new HttpProvider(imageUrl));
+            }
             await imgModel.restore();
             this.addPage(imgModel);
+
+            // For blob URLs, cache binary to disk for restart recovery
+            if (imageUrl.startsWith("blob:") && imgModel instanceof imgModule.ImageViewerModel) {
+                imgModel.cacheBlobUrl(imageUrl);
+            }
         }
     };
 

@@ -37,12 +37,23 @@ const getDefaultImageViewerModelState = (): ImageViewerModelState => ({
 
 class ImageViewerModel extends PageModel<ImageViewerModelState, void> {
     noLanguage = true;
+    private cacheFileCreated = false;
 
     getRestoreData() {
         const data = super.getRestoreData();
-        // Blob URLs don't survive across sessions — strip to avoid stale references
-        delete data.url;
+        // Blob URLs don't survive across sessions — strip them.
+        // HTTP(S) URLs are kept as display metadata (the pipe handles re-fetch).
+        if (data.url && data.url.startsWith("blob:")) {
+            delete data.url;
+        }
         return data;
+    }
+
+    applyRestoreData(data: Partial<ImageViewerModelState>): void {
+        super.applyRestoreData(data);
+        if (data.url) {
+            this.state.update((s) => { s.url = data.url; });
+        }
     }
 
     async dispose(): Promise<void> {
@@ -52,6 +63,8 @@ class ImageViewerModel extends PageModel<ImageViewerModelState, void> {
         }
         await super.dispose();
     }
+
+    // ── Pipe helpers ─────────────────────────────────────────────────
 
     /** Reconstruct pipe from filePath if not already present (legacy compat / app restart). */
     private ensurePipe(): void {
@@ -72,9 +85,33 @@ class ImageViewerModel extends PageModel<ImageViewerModelState, void> {
         }
     }
 
+    /** Cache image binary to disk for restart recovery. */
+    private async cacheImageBuffer(buffer: Buffer): Promise<void> {
+        try {
+            const cachePath = fs.resolveCachePath(this.id + ".img");
+            await fs.writeBinary(cachePath, buffer);
+            this.cacheFileCreated = true;
+        } catch { /* ignore cache write failure */ }
+    }
+
+    /** Try to restore image from cache file (restart after blob URL scenario). */
+    private async tryRestoreFromCache(): Promise<void> {
+        const cachePath = fs.resolveCachePath(this.id + ".img");
+        if (await fs.exists(cachePath)) {
+            try {
+                const buffer = await fs.readBinary(cachePath);
+                const blob = new Blob([new Uint8Array(buffer)], { type: "image/png" });
+                const blobUrl = URL.createObjectURL(blob);
+                this.state.update((s) => { s.url = blobUrl; });
+            } catch { /* cache read failed */ }
+        }
+    }
+
+    // ── Lifecycle ────────────────────────────────────────────────────
+
     async restore() {
         await super.restore();
-        const filePath = this.state.get().filePath;
+        const { filePath, url } = this.state.get();
         if (filePath) {
             this.state.update((s) => {
                 s.title = fpBasename(filePath);
@@ -83,7 +120,7 @@ class ImageViewerModel extends PageModel<ImageViewerModelState, void> {
 
         // Load image via content pipe → blob URL
         this.ensurePipe();
-        if (this.pipe && !this.state.get().url) {
+        if (this.pipe && !url) {
             try {
                 const buffer = await this.pipe.readBinary();
                 const ext = fpExtname(filePath || this.pipe.provider.sourceUrl || ".png").toLowerCase();
@@ -91,10 +128,28 @@ class ImageViewerModel extends PageModel<ImageViewerModelState, void> {
                 const blob = new Blob([new Uint8Array(buffer)], { type: mimeType });
                 const blobUrl = URL.createObjectURL(blob);
                 this.state.update((s) => { s.url = blobUrl; });
+
+                // Cache to disk for restart recovery (non-local sources only)
+                if (this.pipe.provider.type !== "file" || this.pipe.transformers.length > 0) {
+                    await this.cacheImageBuffer(buffer);
+                }
             } catch {
-                // Pipe read failed — no image displayed
+                // Pipe read failed — try cache file fallback
+                await this.tryRestoreFromCache();
             }
+        } else if (!url && !this.pipe) {
+            // No pipe, no url — try cache file fallback (restart after blob URL scenario)
+            await this.tryRestoreFromCache();
         }
+    }
+
+    /** Cache blob URL content to disk (called by openImageInNewTab for blob URLs). */
+    async cacheBlobUrl(blobUrl: string): Promise<void> {
+        try {
+            const response = await fetch(blobUrl);
+            const buffer = Buffer.from(await response.arrayBuffer());
+            await this.cacheImageBuffer(buffer);
+        } catch { /* ignore cache failure */ }
     }
 
     getIcon = () => {
