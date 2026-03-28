@@ -475,34 +475,34 @@ Update architecture docs, EPIC-012, coding standards, and user docs to reflect a
 - [x] `docs/api/io.md` — Created `io` namespace API reference page (Phase 9, Missing #2)
 - [x] `io.d.ts` — Add top-level JSDoc to `IIoNamespace` explaining 3-layer pipeline usage (Phase 7, Idea)
 
-### Task 2: Content Pipeline Hardening (code fixes)
+### Task 2: Content Pipeline Hardening (code fixes) ✓ COMPLETE
 
 Small code fixes across the pipeline core, providers, transformers, and types.
 
 **Phase A — Provider/Transformer contracts:**
-- [ ] `ITransformer` — Make `write` required (remove `?`), add `clone(): ITransformer` method (Phase 1, Inc #2; Phase 2, Concern #1)
-- [ ] `ContentPipe.writable` — Simplify to only check `this.provider.writable` (Phase 1, Inc #2)
-- [ ] `ContentPipe.clone()`/`cloneWithProvider()` — Use `t.clone()` instead of descriptor round-trip (Phase 2, Concern #1)
-- [ ] `DecryptTransformer` — Use ES2022 `#password`, `config: {}`, `toDescriptor()` returns without password (Phase 2, Concern #1)
-- [ ] `ZipTransformer` — Add `clone()` method (Phase 2, Concern #1)
-- [ ] `SubscriptionObject` → `ISubscriptionObject` everywhere (Phase 2, Inc #1)
-- [ ] `IContentPipe` — Change `writeText`/`writeBinary` from conditional getters to methods that throw when not writable (Phase 3, Concern #3)
-- [ ] Update all callers of `writeText`/`writeBinary` — remove `!` assertions, add `writable` checks where needed
+- [x] `ITransformer` — Make `write` required (remove `?`), add `clone(): ITransformer` method
+- [x] `ContentPipe.writable` — Simplify to only check `this.provider.writable`
+- [x] `ContentPipe.clone()`/`cloneWithProvider()` — Use `t.clone()` instead of descriptor round-trip
+- [x] `DecryptTransformer` — Use ES2022 `#password`, `config: {}`, `toDescriptor()` returns without password
+- [x] `ZipTransformer` — Add `clone()` method
+- [x] `SubscriptionObject` → `ISubscriptionObject` everywhere
+- [x] `IContentPipe` — Change `writeText`/`writeBinary` from conditional getters to methods that throw when not writable
+- [x] Update all callers of `writeText`/`writeBinary` — remove `!` assertions, add `writable` checks where needed
 
 **Phase B — I/O and error handling:**
-- [ ] `FileProvider`/`CacheFileProvider` — Replace sync fs with `fs.promises` (Phase 1, Inc #5)
-- [ ] `HttpProvider` — Cache response buffer after first fetch (Phase 2, Concern #5)
-- [ ] `open-handler.ts` — Add try/finally for pipe disposal on error (Phase 1, Concern #4)
-- [ ] `parsers.ts` — Add `isPlausibleFilePath()` validation, show notification for invalid paths (Phase 1, Inc #3)
-- [ ] `TextFileIOModel.doSaveModifications` — Skip plaintext cache fallback when file is encrypted (Phase 3, Concern #5)
+- [x] `FileProvider`/`CacheFileProvider` — Replace sync fs with `fs.promises`
+- [x] `HttpProvider` — Cache response buffer after first fetch
+- [x] `open-handler.ts` — Add try/finally for pipe disposal on error
+- [x] `parsers.ts` — Add `isPlausibleFilePath()` validation, show notification for invalid paths
+- [x] `TextFileIOModel.doSaveModifications` — Skip plaintext cache fallback when file is encrypted
 
 **Phase C — Type consolidation:**
-- [ ] `OpenLinkEvent`/`OpenContentEvent` classes — Use `ILinkMetadata` instead of `Record<string, unknown>` (Phase 7, Inc #1-2)
-- [ ] `IOpenLinkEventConstructor` in `io.d.ts` — Use `ILinkMetadata` (Phase 7, Inc #1-2)
-- [ ] `IoNamespace.ts` — Expose `OpenContentEvent` (Phase 7, Concern #2)
-- [ ] `io.d.ts` — Add `IOpenContentEventConstructor` type (Phase 7, Concern #2)
-- [ ] `io.d.ts` — Re-export `ILinkMetadata` for script discoverability (Phase 7, Idea #1)
-- [ ] Copy updated `.d.ts` files to `assets/editor-types/`
+- [x] `OpenLinkEvent`/`OpenContentEvent` classes — Use `ILinkMetadata` instead of `Record<string, unknown>`
+- [x] `IOpenLinkEventConstructor` in `io.d.ts` — Use `ILinkMetadata`
+- [x] `IoNamespace.ts` — Expose `OpenContentEvent`
+- [x] `io.d.ts` — Add `IOpenContentEventConstructor` type
+- [x] `resolvers.ts` — Replace `forceBrowser` metadata flag with `event.target === "browser"`
+- [x] Copy updated `.d.ts` files to `assets/editor-types/`
 
 ### Task 3: Text Editor Pipe Bugs
 
