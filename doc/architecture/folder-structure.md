@@ -157,9 +157,9 @@ persephone/
 │   ├── transformers/
 │   │   ├── ZipTransformer.ts    # ITransformer for ZIP entry extraction/replacement
 │   │   └── DecryptTransformer.ts # ITransformer for AES-GCM decrypt/encrypt (non-persistent)
-│   └── tree-providers/
-│       ├── FileTreeProvider.ts  # ITreeProvider for local filesystem directories (EPIC-015)
-│       └── ZipTreeProvider.ts   # ITreeProvider for ZIP archives, read-only (EPIC-015)
+│   └── tree-providers/           # ITreeProvider implementations (EPIC-015)
+│       ├── FileTreeProvider.ts  # Local filesystem directories
+│       └── ZipTreeProvider.ts   # ZIP archives (read-only)
 │
 ├── ui/                     # Application Shell
 │   ├── app/                # Root layout
@@ -431,7 +431,8 @@ persephone/
 │   ├── TreeView/           # Virtualized tree component
 │   ├── data-grid/          # Advanced data grid (AVGrid)
 │   ├── virtualization/     # Base virtualization (RenderGrid)
-│   ├── file-explorer/      # File explorer component
+│   ├── file-explorer/      # File explorer component (legacy — being replaced by tree-provider)
+│   ├── tree-provider/      # TreeProviderView — generic tree viewer for any ITreeProvider (EPIC-015)
 │   ├── icons/              # FileIcon, LanguageIcon
 │   └── page-manager/       # Portal-based page/tab host (prevents iframe/webview reload on reorder)
 │

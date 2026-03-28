@@ -16,6 +16,8 @@ export interface ITreeProvider {
     readonly displayName: string;
     /** Root URL/path for this tree. */
     readonly sourceUrl: string;
+    /** Path to pass to list() for root-level listing. */
+    readonly rootPath: string;
 
     /** List direct children at a path. Returns LinkItem-compatible entries. */
     list(path: string): Promise<ITreeProviderItem[]>;
@@ -47,6 +49,20 @@ export interface ITreeProvider {
     /** Search items — async, yields results progressively. */
     search?(query: string, options: ITreeSearchOptions): ITreeSearchHandle;
 
+    /** Whether this tree supports tag-based navigation. */
+    readonly hasTags: boolean;
+    /** Get all tags with item counts. Only available when hasTags is true. */
+    getTags?(): ITreeTagInfo[];
+    /** Get items matching a specific tag. Only available when hasTags is true. */
+    getTagItems?(tag: string): ITreeProviderItem[];
+
+    /** Whether this tree supports hostname-based navigation. */
+    readonly hasHostnames: boolean;
+    /** Get all hostnames with item counts. Only available when hasHostnames is true. */
+    getHostnames?(): ITreeTagInfo[];
+    /** Get items matching a specific hostname. Only available when hasHostnames is true. */
+    getHostnameItems?(hostname: string): ITreeProviderItem[];
+
     /** Whether this tree supports pinning items. */
     readonly pinnable: boolean;
     /** Pin an item by href. */
@@ -76,6 +92,14 @@ export interface ITreeProviderItem {
     size?: number;
     /** Last modified time (ISO string). */
     mtime?: string;
+}
+
+/** Tag or hostname info with item count. */
+export interface ITreeTagInfo {
+    /** Tag or hostname value. */
+    name: string;
+    /** Number of items with this tag/hostname. */
+    count: number;
 }
 
 /** File/directory metadata. */

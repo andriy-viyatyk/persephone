@@ -21,9 +21,14 @@ export class FileTreeProvider implements ITreeProvider {
     readonly displayName: string;
     readonly writable = true;
     readonly pinnable = false;
+    readonly hasTags = false;
+    readonly hasHostnames = false;
+
+    readonly rootPath: string;
 
     constructor(public readonly sourceUrl: string) {
         this.displayName = path.basename(sourceUrl);
+        this.rootPath = sourceUrl;
     }
 
     async list(dirPath: string): Promise<ITreeProviderItem[]> {

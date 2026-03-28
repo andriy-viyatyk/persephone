@@ -4,6 +4,8 @@ All completed tasks, newest first.
 
 | ID | Title | Epic | Notes |
 |----|-------|------|-------|
+| US-295 | Create CategoryView component | EPIC-015 | `components/tree-provider/CategoryView.tsx` + `CategoryViewModel.tsx` — list mode with virtualized RenderGrid, search, context menus, folder navigation. Tiles mode deferred (needs TreeProviderItemTile). |
+| US-293 | Create TreeProviderView component | EPIC-015 | `components/tree-provider/` — TreeProviderView, TreeProviderViewModel, TreeProviderItemIcon. Generic tree viewer with lazy loading, search, context menus, drag-drop, show/hide links toggle. Added `rootPath` to ITreeProvider. |
 | US-292 | Implement ZipTreeProvider | EPIC-015 | `content/tree-providers/ZipTreeProvider.ts` — read-only ZIP archive ITreeProvider. Delegates to archiveService. Sorts folder→extension→name. |
 | US-291 | Implement FileTreeProvider | EPIC-015 | `content/tree-providers/FileTreeProvider.ts` — local filesystem ITreeProvider. Direct Node.js fs/path (bypasses archive transparency). list/stat/resolveLink/mkdir/rename/deleteItem. |
 | US-290 | Define ITreeProvider & ITreeProviderItem types | EPIC-015 | `io.tree.d.ts` with 6 interfaces (ITreeProvider, ITreeProviderItem, ITreeStat, ITreeSearchOptions, ITreeSearchHandle, ITreeSearchResult). Added `isCategory` to LinkItem and ILink with facade mapping. |

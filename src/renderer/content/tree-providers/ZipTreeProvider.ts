@@ -22,6 +22,10 @@ export class ZipTreeProvider implements ITreeProvider {
     readonly displayName: string;
     readonly writable = false;
     readonly pinnable = false;
+    readonly hasTags = false;
+    readonly hasHostnames = false;
+
+    readonly rootPath = "";
 
     constructor(public readonly sourceUrl: string) {
         this.displayName = path.basename(sourceUrl);

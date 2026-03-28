@@ -51,6 +51,8 @@ export type ContextMenuTargetKind =
     | "graph-area"
     | "link-item"
     | "link-pinned"
+    | "tree-provider-item"
+    | "tree-provider-background"
     | "generic";
 
 /**

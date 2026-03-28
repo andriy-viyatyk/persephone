@@ -1,0 +1,73 @@
+import { useMemo } from "react";
+import type { ITreeProviderItem } from "../../api/types/io.tree";
+import { FileTypeIcon } from "../icons/LanguageIcon";
+import { FolderIcon } from "../icons/FileIcon";
+import { getFaviconPathSync } from "../../editors/link-editor/favicon-cache";
+
+const path = require("path") as typeof import("path");
+
+/**
+ * Resolves the icon for any ITreeProviderItem based on its href and isDirectory.
+ *
+ * Resolution order:
+ * 1. isDirectory → FolderIcon
+ * 2. HTTP/HTTPS href with file extension in URL pathname → FileTypeIcon
+ * 3. HTTP/HTTPS href without extension → favicon
+ * 4. Everything else (local file, archive entry) → FileTypeIcon
+ */
+export function TreeProviderItemIcon({ item }: { item: ITreeProviderItem }) {
+    if (item.isDirectory) {
+        return <FolderIcon />;
+    }
+
+    const httpExt = useHttpPathExtension(item.href);
+
+    if (httpExt !== undefined) {
+        // HTTP/HTTPS link
+        if (httpExt) {
+            // URL has file extension (e.g., /data.json) → file type icon
+            return <FileTypeIcon fileName={item.name} width={16} height={16} />;
+        }
+        // No extension → favicon
+        return <FaviconIcon href={item.href} />;
+    }
+
+    // Local file or archive entry
+    return <FileTypeIcon fileName={item.name} width={16} height={16} />;
+}
+
+/**
+ * For HTTP/HTTPS URLs, returns the file extension from the pathname.
+ * Returns "" if no extension, undefined if not an HTTP URL.
+ */
+function useHttpPathExtension(href: string): string | undefined {
+    return useMemo(() => {
+        if (!href.startsWith("http://") && !href.startsWith("https://")) {
+            return undefined;
+        }
+        try {
+            return path.extname(new URL(href).pathname).toLowerCase();
+        } catch {
+            return undefined;
+        }
+    }, [href]);
+}
+
+/** Renders a cached favicon for an HTTP URL, with DefaultIcon fallback. */
+function FaviconIcon({ href }: { href: string }) {
+    const src = useMemo(() => {
+        try {
+            const hostname = new URL(href).hostname;
+            return getFaviconPathSync(hostname);
+        } catch {
+            return null;
+        }
+    }, [href]);
+
+    if (src) {
+        return <img src={src} style={{ width: 16, height: 16 }} />;
+    }
+
+    // Fallback for URLs without cached favicon
+    return <FileTypeIcon fileName="page.html" width={16} height={16} />;
+}
