@@ -5,10 +5,9 @@ Epics represent big ideas with high-level overviews. Each epic links to tasks in
 ## Active
 
 - **EPIC-012** — [Unified Link & Provider Architecture](EPIC-012.md)
+- **EPIC-015** — [ITreeProvider — Browsable Source Abstraction](EPIC-015.md)
 
 ## Future
-
-- **EPIC-015** — [ITreeProvider — Browsable Source Abstraction](EPIC-015.md)
 - **EPIC-014** — [Claude Integration via Terminal Editor](EPIC-014.md)
 - **EPIC-011** — [Chrome Extension Support for Built-in Browser](EPIC-011.md)
 
