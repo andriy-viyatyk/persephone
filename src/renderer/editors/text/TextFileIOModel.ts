@@ -311,9 +311,14 @@ export class TextFileIOModel {
             try {
                 await this.cachePipe.writeText(text);
             } catch {
-                // Cache write failed — fall back to direct cache save
-                const { id } = this.model.state.get();
-                await appFs.saveCacheFile(id, text);
+                // Cache write failed — fall back to direct cache save ONLY if not encrypted.
+                // If encrypted, the cachePipe has a DecryptTransformer that handles encryption.
+                // Falling back to appFs.saveCacheFile would write plaintext, leaking the content.
+                const isEncrypted = this.cachePipe.transformers.some(t => t.type === "decrypt");
+                if (!isEncrypted) {
+                    const { id } = this.model.state.get();
+                    await appFs.saveCacheFile(id, text);
+                }
             }
         } else {
             console.log("[doSaveModifications] no cachePipe — using appFs.saveCacheFile fallback");

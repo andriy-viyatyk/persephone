@@ -35,7 +35,7 @@ export class CacheFileProvider implements IProvider {
     async readBinary(): Promise<Buffer> {
         const path = await this.getCachePath();
         try {
-            return nodefs.readFileSync(path);
+            return await nodefs.promises.readFile(path);
         } catch {
             return Buffer.alloc(0);
         }
@@ -43,13 +43,13 @@ export class CacheFileProvider implements IProvider {
 
     async writeBinary(data: Buffer): Promise<void> {
         const path = await this.getCachePath();
-        nodefs.writeFileSync(path, data);
+        await nodefs.promises.writeFile(path, data);
     }
 
     async stat(): Promise<IProviderStat> {
         const path = await this.getCachePath();
         try {
-            const stats = nodefs.statSync(path);
+            const stats = await nodefs.promises.stat(path);
             return {
                 size: stats.size,
                 mtime: new Date(stats.mtime).toISOString(),

@@ -22,6 +22,16 @@ function isFileUrl(raw: string): boolean {
 }
 
 /**
+ * Check if a string looks like a valid Windows file path.
+ * Accepts drive-letter paths (C:\..., C:/...) and UNC paths (\\...).
+ */
+function isPlausibleFilePath(path: string): boolean {
+    if (/^[A-Za-z]:[/\\]/.test(path)) return true;
+    if (path.startsWith("\\\\")) return true;
+    return false;
+}
+
+/**
  * Register Layer 1 parsers on openRawLink.
  *
  * Registration order matters (LIFO execution):
@@ -36,6 +46,12 @@ export function registerRawLinkParsers(): void {
         let filePath = event.raw;
         if (isFileUrl(filePath)) {
             filePath = normalizeFileUrl(filePath);
+        }
+        if (!isPlausibleFilePath(filePath)) {
+            const { ui } = await import("../api/ui");
+            ui.notify(`Invalid file path: ${filePath}`, "warning");
+            event.handled = true;
+            return;
         }
         await app.events.openLink.sendAsync(new OpenLinkEvent(filePath));
         event.handled = true;

@@ -24,16 +24,16 @@ export class FileProvider implements IProvider {
     }
 
     async readBinary(): Promise<Buffer> {
-        return nodefs.readFileSync(this.filePath);
+        return nodefs.promises.readFile(this.filePath);
     }
 
     async writeBinary(data: Buffer): Promise<void> {
-        nodefs.writeFileSync(this.filePath, data);
+        await nodefs.promises.writeFile(this.filePath, data);
     }
 
     async stat(): Promise<IProviderStat> {
         try {
-            const stats = nodefs.statSync(this.filePath);
+            const stats = await nodefs.promises.stat(this.filePath);
             return {
                 size: stats.size,
                 mtime: new Date(stats.mtime).toISOString(),

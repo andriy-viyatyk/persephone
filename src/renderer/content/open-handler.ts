@@ -17,15 +17,24 @@ export function registerOpenHandler(): void {
 
         if (pageId) {
             // Navigate existing page to the new file
-            await pagesModel.lifecycle.navigatePageTo(pageId, filePath, {
-                revealLine: metadata?.revealLine as number | undefined,
-                highlightText: metadata?.highlightText as string | undefined,
-            });
-            // navigatePageTo creates its own page model — dispose this pipe
-            event.pipe.dispose();
+            // navigatePageTo creates its own page model — always dispose this pipe
+            try {
+                await pagesModel.lifecycle.navigatePageTo(pageId, filePath, {
+                    revealLine: metadata?.revealLine as number | undefined,
+                    highlightText: metadata?.highlightText as string | undefined,
+                });
+            } finally {
+                event.pipe.dispose();
+            }
         } else {
             // Open file in new or existing tab — pass pipe through
-            await pagesModel.lifecycle.openFile(filePath, event.pipe);
+            // On success the page owns the pipe; on error we must dispose it
+            try {
+                await pagesModel.lifecycle.openFile(filePath, event.pipe);
+            } catch (err) {
+                event.pipe.dispose();
+                throw err;
+            }
         }
 
         event.handled = true;

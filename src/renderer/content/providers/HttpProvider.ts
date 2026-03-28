@@ -4,8 +4,9 @@ import type { IProvider, IProviderDescriptor } from "../../api/types/io.provider
  * HttpProvider — reads content from HTTP/HTTPS URLs.
  *
  * Read-only provider. Uses nodeFetch (Node.js http/https) for full header control.
- * Supports method/headers/body for future cURL parser integration.
- * Re-fetches on each readBinary() call (no caching — page uses cache pipe for that).
+ * Supports method/headers/body for cURL parser integration.
+ * Caches the response buffer after first fetch — subsequent readBinary() calls return
+ * the cached buffer. Clone (via createProviderFromDescriptor) creates a fresh instance.
  */
 export class HttpProvider implements IProvider {
     readonly type = "http";
@@ -18,6 +19,7 @@ export class HttpProvider implements IProvider {
     private readonly method: string;
     private readonly headers: Record<string, string>;
     private readonly body: string | undefined;
+    private _cachedBuffer: Buffer | null = null;
 
     constructor(
         url: string,
@@ -38,6 +40,9 @@ export class HttpProvider implements IProvider {
     }
 
     async readBinary(): Promise<Buffer> {
+        if (this._cachedBuffer) {
+            return this._cachedBuffer;
+        }
         const { nodeFetch } = await import("../../api/node-fetch");
         const response = await nodeFetch(this.url, {
             method: this.method,
@@ -48,7 +53,8 @@ export class HttpProvider implements IProvider {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
         const arrayBuffer = await response.arrayBuffer();
-        return Buffer.from(arrayBuffer);
+        this._cachedBuffer = Buffer.from(arrayBuffer);
+        return this._cachedBuffer;
     }
 
     toDescriptor(): IProviderDescriptor {
