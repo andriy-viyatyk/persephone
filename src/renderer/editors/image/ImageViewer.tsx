@@ -118,26 +118,34 @@ class ImageViewerModel extends PageModel<ImageViewerModelState, void> {
             });
         }
 
-        // Load image via content pipe → blob URL
+        // Load image via content pipe → blob URL (or cache for restart)
         this.ensurePipe();
-        if (this.pipe && !url) {
-            try {
-                const buffer = await this.pipe.readBinary();
-                const ext = fpExtname(filePath || this.pipe.provider.sourceUrl || ".png").toLowerCase();
-                const mimeType = extToMime(ext);
-                const blob = new Blob([new Uint8Array(buffer)], { type: mimeType });
-                const blobUrl = URL.createObjectURL(blob);
-                this.state.update((s) => { s.url = blobUrl; });
+        if (this.pipe) {
+            if (!url) {
+                // No URL yet — read from pipe and create blob URL
+                try {
+                    const buffer = await this.pipe.readBinary();
+                    const ext = fpExtname(filePath || this.pipe.provider.sourceUrl || ".png").toLowerCase();
+                    const mimeType = extToMime(ext);
+                    const blob = new Blob([new Uint8Array(buffer)], { type: mimeType });
+                    const blobUrl = URL.createObjectURL(blob);
+                    this.state.update((s) => { s.url = blobUrl; });
 
-                // Cache to disk for restart recovery (non-local sources only)
-                if (this.pipe.provider.type !== "file" || this.pipe.transformers.length > 0) {
-                    await this.cacheImageBuffer(buffer);
+                    // Cache to disk for restart recovery (non-local sources only)
+                    if (this.pipe.provider.type !== "file" || this.pipe.transformers.length > 0) {
+                        await this.cacheImageBuffer(buffer);
+                    }
+                } catch {
+                    // Pipe read failed — try cache file fallback
+                    await this.tryRestoreFromCache();
                 }
-            } catch {
-                // Pipe read failed — try cache file fallback
-                await this.tryRestoreFromCache();
+            } else if (this.pipe.provider.type !== "file") {
+                // URL already set (HTTP image) — cache in background for offline restart
+                this.pipe.readBinary()
+                    .then((buffer) => this.cacheImageBuffer(buffer))
+                    .catch(() => { /* ignore */ });
             }
-        } else if (!url && !this.pipe) {
+        } else if (!url) {
             // No pipe, no url — try cache file fallback (restart after blob URL scenario)
             await this.tryRestoreFromCache();
         }

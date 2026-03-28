@@ -291,7 +291,27 @@ await app.events.openLink.sendAsync(event);
 |-----------|------|-------------|
 | `url` | `string` | Normalized URL or file path. |
 | `target` | `string?` | Target editor ID. Optional -- auto-resolved if omitted. |
-| `metadata` | `Record<string, unknown>?` | Open hints: `pageId`, `revealLine`, `highlightText`, HTTP `headers`/`method`/`body`, or custom data. |
+| `metadata` | `ILinkMetadata?` | Open hints: `pageId`, `revealLine`, `highlightText`, HTTP `headers`/`method`/`body`, or custom data. |
+
+### OpenContentEvent
+
+Layer 3 input. Open a pre-assembled content pipe directly in an editor, bypassing URL parsing and provider resolution. Use this when you've already built a pipe and know which editor to use.
+
+```javascript
+const pipe = io.createPipe(
+    new io.FileProvider("C:/data.zip"),
+    new io.ZipTransformer("report.csv"),
+);
+await app.events.openContent.sendAsync(
+    new io.OpenContentEvent(pipe, "grid-csv")
+);
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `pipe` | `IContentPipe` | Assembled content pipe (provider + transformers). |
+| `target` | `string` | Target editor ID (e.g., `"monaco"`, `"grid-csv"`, `"image-view"`). |
+| `metadata` | `ILinkMetadata?` | Pass-through metadata: `pageId`, `revealLine`, etc. |
 
 ---
 

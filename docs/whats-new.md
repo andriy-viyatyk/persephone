@@ -16,6 +16,23 @@ Release notes and changelog for Persephone (formerly js-notepad).
 - **PDF and Image from URLs and ZIP archives** — The PDF Viewer and Image Viewer can now display content loaded from HTTP URLs and entries inside ZIP archives, in addition to local files.
 - **Script API: `io` namespace** — New global available in scripts for building content pipes programmatically. See [Scripting — io namespace](./scripting.md#the-io-namespace).
 - **Script API: `app.events.send` / `app.events.sendAsync`** — Scripts can now fire events into the link pipeline (and any other event channel), not just subscribe to them. See [Events API](./api/events.md#ieventchannel).
+- **Script API: `io.OpenContentEvent`** — Scripts can now open a pre-assembled content pipe directly in an editor (Layer 3), bypassing URL parsing and resolver logic.
+
+### Improvements
+
+- **Content pipeline hardening** — `ITransformer.write()` is now required (not optional). `DecryptTransformer` password is truly private (ES2022 `#private` field). `writeText()`/`writeBinary()` throw a clear error when pipe is read-only instead of returning undefined. File I/O in providers is now fully async (`fs.promises`). HTTP responses are cached after first fetch.
+- **Image/PDF from archives** — Image Viewer and PDF Viewer can now open files from inside ZIP archives directly (previously fell back to text editor for archive entries).
+- **Browser images persist across restart** — Images opened from the built-in browser's context menu now survive app restart. HTTP images are re-fetched via their original URL; blob images are cached to disk.
+- **Save error notification** — When saving fails (read-only file, disk full, etc.), a notification is shown instead of silently failing.
+- **Save deleted file** — Saving a file that was deleted externally now shows a "Save As" dialog with the original path as default, instead of silently recreating the file.
+
+### Bug Fixes
+
+- **HTTP pages restore on restart** — Pages opened from HTTP URLs now correctly restore after app restart (pipe descriptor is serialized).
+- **Rename preserves encryption** — Renaming an encrypted or archive file no longer drops the encryption/ZIP transformers.
+- **Save As clears encryption state** — Using "Save As" to save an encrypted file to a new unencrypted path now correctly clears the encryption UI indicators.
+- **Invalid file path notification** — Attempting to open an invalid string (not a file path or URL) now shows a "Invalid file path" warning instead of silently failing.
+- **Spelling fixes** — Corrected `encripted`→`encrypted`, `decripted`→`decrypted` across the codebase.
 
 ---
 

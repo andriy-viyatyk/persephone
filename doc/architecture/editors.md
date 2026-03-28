@@ -51,9 +51,9 @@ Standalone editors with their own PageModel.
 | `pdf-view` | PDF Viewer | `pdfFile` | `.pdf` |
 | `image-view` | Image Viewer | `imageFile` | `.png`, `.jpg`, `.gif`, `.webp`, `.bmp`, `.ico` |
 
-> **Content pipe integration:** PDF Viewer and Image Viewer use content pipes for I/O. For non-local sources (HTTP URLs, archive entries), they read content through the pipe and cache it as a temp file (`CacheFileProvider` path with `.pdf`/`.png` extension) for the rendering engine (`safe-file://` protocol for PDF iframe, `<img src>` for images). Cache files are cleaned up on page dispose. This allows both editors to transparently handle file paths, HTTP URLs, and archive entries.
+> **Content pipe integration:** PDF Viewer and Image Viewer use content pipes for I/O. Both have `ensurePipe()` to reconstruct the pipe from `filePath` on app restart. For non-local sources (HTTP URLs, archive entries), they read content through the pipe and cache to disk for offline restart recovery. PDF caches as `{pageId}.pdf`, Image caches as `{pageId}.img`. Cache files are cleaned up on page dispose.
 >
-> **Image Viewer URL support:** ImageViewer can also display images from external URLs (e.g. opened from a browser webview context menu) via the `url` field in its state. URL-based images show a "Save Image to File" toolbar button that fetches the image, saves it locally via a save dialog, and switches the page from URL mode to file mode.
+> **Image Viewer URL support:** ImageViewer can display images from external URLs (e.g. browser context menu "Open Image in New Tab"). For HTTP URLs, an `HttpProvider` pipe is created (serializable, re-fetches on restart). The image binary is also cached to disk as a fallback. For blob URLs (REST client, drawing export), the binary is cached to disk immediately since blob URLs don't survive restart. URL-based images show a "Save Image to File" toolbar button.
 
 | `browser-view` | Browser | `browserPage` | (none — opened via UI) |
 | `mcp-view` | MCP Inspector | `mcpInspectorPage` | (none — opened via UI) |
