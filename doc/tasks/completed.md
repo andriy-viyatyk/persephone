@@ -4,6 +4,7 @@ All completed tasks, newest first.
 
 | ID | Title | Epic | Notes |
 |----|-------|------|-------|
+| US-289 | Browser-webview images: persist across app restart | | HTTP images: HttpProvider pipe (re-fetches on restart) + .img cache fallback. Blob images: cached to disk immediately. applyRestoreData override for url field. |
 | US-288 | Review EPIC-012 Changes and Architecture | EPIC-012 | 9-phase review. Tasks 1-4 implemented: doc updates, pipeline hardening (ITransformer clone, #password, async fs, ILinkMetadata, OpenContentEvent), text editor pipe bugs (HTTP restore, rename transformers, save errors, spelling fixes), reference editors (ensurePipe, archive guard removal, openDiff pipes). Task 5 → EPIC-015. |
 | US-271 | Script API & docs | EPIC-012 | `io` global namespace: FileProvider, HttpProvider, ZipTransformer, DecryptTransformer, createPipe(), RawLinkEvent, OpenLinkEvent. Type definitions in `io.d.ts`. AppWrapper events proxy exposes send/sendAsync. |
 | US-274 | Migrate reference editors | EPIC-012 | PDF Viewer and Image Viewer use content pipes. Non-local sources (HTTP, archives) cached as temp files via appFs. Cache cleaned on page dispose. Replaced direct `require("fs")` with `appFs`. |
