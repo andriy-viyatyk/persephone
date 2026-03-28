@@ -199,28 +199,27 @@ The architecture is **solid and well-designed**. The 3-layer pipeline is clean, 
 ### Inconsistencies
 
 1. **Different caching strategies.** PDF creates a temp file on disk via `appFs.resolveCachePath()` (needed for pdf.js `safe-file://` protocol). Image creates an in-memory blob URL via `URL.createObjectURL()`. Reasonable given constraints but means cleanup mechanisms differ (file deletion vs `URL.revokeObjectURL`).
+   > **Resolution:** No action needed. Not a design choice — dictated by rendering components. pdf.js requires a file path (`safe-file://`), `<img>` works with blob URLs directly. Both are correct for their use case.
 
 2. **Cleanup location differs.** PDF cleans up in its own `dispose()` + base class `deleteCacheFiles` (double delete, harmless). Image revokes blob URL in its own `dispose()` + base class pipe disposal.
+   > **Resolution:** No action needed. Same reasoning as #1 — different cleanup is a consequence of different display mechanisms. Double-delete for PDF is harmless.
 
-3. **Import alias inconsistency.** `PdfViewer.tsx:13` uses `fs as appFs`. `ImageViewer.tsx:12` uses `fs` directly.
+3. **Import alias inconsistency / archive images not shown.** `PdfViewer.tsx:13` uses `fs as appFs`. `ImageViewer.tsx:12` uses `fs` directly. Both import from `../../api/fs` so alias is cosmetic. However, **images from archives don't display** — the `safe-file://` fallback at `ImageViewer.tsx:132` doesn't handle archive `!` paths (403 error). Root cause: `PagesLifecycleModel.ts:33` guard blocks page-editors for archive paths (pre-EPIC-012 limitation). The image opens as TextFileModel with image-view editor, but without a pipe the blob URL is never created. Additionally, `navigatePageTo` (NavigationPanel path) doesn't pass a pipe. With EPIC-012 pipes, the guard should be removed and `navigatePageTo` should support pipes.
+   > **Resolution:** Bug confirmed — images (and PDFs) from archives don't display. Two fixes needed: (1) remove the page-editor archive guard at `PagesLifecycleModel.ts:33` — pipes handle archive extraction now **(SEPARATE TASK/BUG: enable page-editors for archive paths via pipes)**; (2) `navigatePageTo` should pass a pipe through — covered by ITreeProvider task (ZipTreeProvider should use pipes for page navigation).
 
 ### Concerns
 
 1. **ImageViewer "Open in Drawing Editor" bypasses pipe** (`ImageViewer.tsx:180-181`). Calls `fs.readBinary(fp)` directly instead of `pipe.readBinary()`. Works for local/archive files but skips any pipe transformers.
+   > **Resolution:** ImageViewer should only have two content sources: `model.pipe` or `state.url` (browser webview). Add `ensurePipe()` in ImageViewerModel.restore() to reconstruct pipe from filePath on app restart (same as TextFileIOModel pattern). Then "Open in Drawing Editor" uses `model.pipe.readBinary()` or `fetch(state.url)` — remove `fs.readBinary(fp)` fallback entirely. **(SEPARATE TASK: add ensurePipe to ImageViewer, remove fs fallbacks)**
 
 2. **`saveImage` also bypasses pipe** (`ImageViewer.tsx:77-117`). Fetches from blob/safe-file URL, not from pipe. Works but fragile if blob URL were revoked prematurely.
+   > **Resolution:** No action needed. Not actually a pipe bypass — `saveImage` fetches from the blob URL which was already produced by `pipe.readBinary()` during restore. Pipe transformers were already applied. Minor: `defaultName` parsing fails for blob URLs (falls back to "image.png") — could use `state.filePath` or `pipe.provider.displayName` instead, but cosmetic.
 
 3. **No error feedback when pipe read fails.** `PdfViewer.tsx:63-65` and `ImageViewer.tsx:64-66` have empty `catch {}` blocks. User sees blank/broken display with no notification.
+   > **Resolution:** No action needed now. Pipe status is a planned enhancement — will add loading progress and error/response status to pages, so users see HTTP loading progress and failure reasons. Will cover all editors uniformly.
 
 4. **PDF fallback for legacy pages (no pipe) is implicit but works.** Component falls back to `filePath` via `const servePath = localPdfPath || filePath`.
-
-### Improvement Ideas
-
-1. **Add user-visible error notification when pipe read fails.** Call `ui.notify()` instead of silently swallowing errors.
-
-2. **Image "Open in Drawing Editor" should prefer pipe.** Use `model.pipe?.readBinary()` when available, fall back to `fs.readBinary(fp)`.
-
-3. **Unify cache strategy documentation.** Brief comments in each editor explaining WHY different approaches are used.
+   > **Resolution:** Same as ImageViewer — add `ensurePipe()` on restore to reconstruct pipe from filePath. Remove `safe-file://` fallback. Covered by same task as Concern #1 above. **(SEPARATE TASK: add ensurePipe to PDF and Image viewers, remove fs fallbacks)**
 
 ---
 
@@ -266,24 +265,21 @@ The architecture is **solid and well-designed**. The 3-layer pipeline is clean, 
 ### Inconsistencies
 
 1. **`openDiff()` bypasses pipeline** (`PagesLifecycleModel.ts:304-310`). Calls `createPageFromFile()` directly without constructing a content pipe. Functionally OK for local files but inconsistent with pipeline architecture.
+   > **Resolution:** **(SEPARATE TASK: migrate openDiff to pipes)** — `openDiff` should route through the pipeline so diff works with any pipe source (HTTP URLs, archives, encrypted files). Use case: open two file versions from GitHub raw URLs, group them, enable diff view to compare.
 
 2. **`navigatePageTo()` bypasses pipeline** (`PagesLifecycleModel.ts:367`). Calls `createPageFromFile()` without a pipe. The open-handler disposes the pipe before navigation (open-handler.ts:24-25), so even the pipeline path results in no pipe for navigation.
+   > **Resolution:** **(SEPARATE TASK: migrate navigatePageTo to pipeline)** — requires additional analysis. High-level plan: (1) NavigationPanel rewritten to ITreeProvider (covered by ITreeProvider task) — ITreeProvider should use `app.events.openLink()` with `pageId` in metadata. (2) Keep `navigatePageTo()` as a script API helper, but internally it should also route through `app.events.openLink()` with `pageId` in metadata instead of calling `createPageFromFile()` directly.
 
 3. **Drag-drop only handles single file** (`GlobalEventService.ts:59-61`). Only `e.dataTransfer.files[0]` is processed.
+   > **Resolution:** Depends on ITreeProvider implementation. Multi-file drop can create a virtual `SelectedTreeView` and open a page with NavigationPanel showing all dropped files — user navigates and views each one. Not an EPIC-012 concern. **No action now — future ITreeProvider task.**
 
 ### Concerns
 
-1. **`navigatePageTo` in open-handler disposes pipe** (`open-handler.ts:24-25`). Pipe is constructed in Layer 2, passed to Layer 3, then disposed when metadata contains `pageId`. Navigated page has no pipe — always falls back to legacy file-reading.
+1. **`navigatePageTo` in open-handler disposes pipe** (`open-handler.ts:24-25`). Pipe is constructed in Layer 2, passed to Layer 3, then disposed when metadata contains `pageId`. Navigated page has no pipe — always falls back to legacy file-reading. Example: script opens HTTP URL with `pageId` metadata → Layer 2 builds `HttpProvider` pipe → Layer 3 disposes it → `navigatePageTo` tries to open URL as local file → fails.
+   > **Resolution:** Covered by Inconsistency #2 above — `navigatePageTo` should route through pipeline. **(same SEPARATE TASK)**
 
 2. **`openDiff` does not add files to recent list** (`PagesLifecycleModel.ts:291-327`). Pre-existing issue, not EPIC-012.
-
-### Improvement Ideas
-
-1. **Route `openDiff` through pipeline** (`PagesLifecycleModel.ts:304-310`). Complex due to needing both pages before grouping, but would ensure consistency.
-
-2. **Pass pipe through `navigatePageTo`** (`PagesLifecycleModel.ts:331`). Add optional `pipe?: IContentPipe` parameter so open-handler can forward instead of disposing.
-
-3. **Support multi-file drag-drop** (`GlobalEventService.ts:56-78`). Iterate all `e.dataTransfer.files`.
+   > **Resolution:** No action needed. Diff view shows diff of already-open pages (recent files added by page open logic). CLI diff (`persephone.exe diff path1 path2`) — adding to recent is redundant as user didn't intentionally open a specific file.
 
 ---
 
@@ -304,16 +300,16 @@ All content-based editors extend `ContentViewModel<TState>` which subscribes to 
 ### Inconsistencies
 
 1. **REST Client uses `require("fs")` directly** (line 684 in `RestClientViewModel.ts` and `multipartBuilder.ts`). For creating `ReadableStream` for HTTP uploads — legitimate streaming need, not content loading.
+   > **Resolution:** No action needed. REST Client content (`.rest.json`) loads through ContentViewModel → TextFileModel → pipe. The `require("fs")` is only for reading local files to upload as outgoing HTTP request bodies — unrelated to editor content loading.
 
 2. **Browser bookmarks use `require("fs")` directly** (`BrowserBookmarks.ts`, `BrowserBookmarksUIModel.ts`). For bookmark file I/O, unrelated to EPIC-012.
+   > **Resolution:** No action needed for EPIC-012. Bookmarks content actually loads through `TextFileModel` → `ensurePipe()` → pipe. The `require("fs")` is only for `createEmptyLinkFile()` (one-time new file write) and `existsSync()` (check if bookmarks file exists). Bookmarks are always local files — no archive/HTTP concern. Minor coding style issue at most.
 
 ### Improvement Ideas
 
 1. **Document ContentViewModel insulation benefit in EPIC-012 docs.** Strong design win that 12+ editors work with pipes without changes.
 
-2. **Wrap REST Client `require("fs")` in utility function.** Keep the violation contained and documented.
-
-3. **Future pipe-aware features:** Grid streaming for large files, Log View tailing, REST Client saving responses to pipe destinations.
+2. **Future pipe-aware features:** Grid streaming for large files, Log View tailing, REST Client saving responses to pipe destinations.
 
 ---
 
@@ -336,21 +332,22 @@ All content-based editors extend `ContentViewModel<TState>` which subscribes to 
 
 2. **`IOpenLinkEventConstructor` return type metadata diverges.** `io.d.ts:65-69` inline return type says `Record<string, unknown>`, but `IOpenLinkEvent` says `ILinkMetadata`.
 
+   > **Resolution (both #1 and #2):** Use `ILinkMetadata` everywhere: (1) `OpenLinkEvent` class in `events.ts:80`, (2) `OpenContentEvent` class in `events.ts:91`, (3) `IOpenLinkEventConstructor` parameter and return type in `io.d.ts:65,68`. `ILinkMetadata` has an index signature so it's compatible with `Record<string, unknown>` — gives scripts autocomplete for known fields while allowing custom fields. **(FIX: code)**
+
 ### Concerns
 
 1. **`DecryptTransformer.write()` ignores `original` parameter.** Not a bug — only ZipTransformer needs originals. But script authors reading the type definition might be confused.
+   > **Resolution:** No action needed. Duplicate of Phase 2, Inconsistency #3.
 
 2. **`OpenContentEvent` not exposed in IoNamespace.** Scripts cannot bypass Layer 1/2 to directly open a pre-assembled pipe. Appears intentional but not documented.
+   > **Resolution:** Expose `OpenContentEvent` in `io` namespace. Add import + export in `IoNamespace.ts`, add `IOpenContentEventConstructor` type in `io.d.ts`. Enables scripts to open pre-assembled pipes directly: `await app.events.openContent.sendAsync(new io.OpenContentEvent(pipe, "grid-csv"))`. **(FIX: code)**
 
 ### Improvement Ideas
 
-1. **Expose `OpenContentEvent` for advanced scripting.** Allow scripts to fire `openContent` directly with a pre-assembled pipe.
+1. **Add `ILinkMetadata` to `io.d.ts` re-exports.** Better discoverability.
 
-2. **Align `IOpenLinkEventConstructor` metadata type.** Change `Record<string, unknown>` to `ILinkMetadata` for better autocomplete.
-
-3. **Add `ILinkMetadata` to `io.d.ts` re-exports.** Better discoverability.
-
-4. **Document `io` namespace pipeline model at top of `io.d.ts`.** Brief summary explaining when to use `RawLinkEvent` vs `OpenLinkEvent` vs constructing a pipe directly.
+2. **Document `io` namespace pipeline model at top of `io.d.ts`.** Brief summary explaining when to use `RawLinkEvent` vs `OpenLinkEvent` vs constructing a pipe directly.
+   > **Resolution:** **(SEPARATE TASK: add JSDoc to IIoNamespace in io.d.ts)** — top-level comment explaining the 3-layer pipeline and when to use each event constructor. Shows in IntelliSense when user hovers over `io`.
 
 ---
 
@@ -373,35 +370,29 @@ All content-based editors extend `ContentViewModel<TState>` which subscribes to 
 
 ### Inconsistencies
 
-1. **TextFileModel.getRestoreData() does NOT serialize pipe** (`TextPageModel.ts:219-233`). Overrides base without calling `super`. Base `PageModel.getRestoreData()` adds `data.pipe = this.pipe.toDescriptor()`, but this is bypassed. HTTP pages lose their pipe on restart.
+1. **TextFileModel.getRestoreData() does NOT serialize pipe** — Duplicate of Phase 3, Inconsistency #1. **(SEPARATE TASK/BUG already noted)**
 
-2. **TextFileModel.applyRestoreData() does NOT reconstruct pipe** (`TextPageModel.ts:235-251`). Overrides base without calling `super`. Even if pipe descriptor were present, it would be ignored.
+2. **TextFileModel.applyRestoreData() does NOT reconstruct pipe** — Duplicate of Phase 3, Inconsistency #2. **(same SEPARATE TASK/BUG)**
 
 3. **Duplicate encoding storage** (`TextPageModel.ts:244` and pipe descriptor). `TextFilePageModelState.encoding` and `IPipeDescriptor.encoding` both store encoding. During restore, `pipe.readText()` re-detects encoding. Unclear source of truth.
+   > **Resolution:** No action needed. `state.encoding` is for UI display (status bar), `pipe.encoding` is for I/O. Both set on first read, don't change after. Not a real conflict.
 
 ### Concerns
 
-1. **DecryptTransformer.toDescriptor() includes password.** While `persistent: false` prevents inclusion in `ContentPipe.toDescriptor()`, calling `toDescriptor()` directly returns `{ password }` in plain text. Used by `clone()`/`cloneWithProvider()` paths.
+1. **DecryptTransformer.toDescriptor() includes password.** — Duplicate of Phase 2, Concern #1. **(FIX already noted: #password + clone())**
 
-2. **HTTP pages do not survive app restart.** On save, `filePath` = URL string, but pipe descriptor is not saved. On restore, `ensurePipe()` creates `FileProvider(url)` — fails when trying to read URL as local file path.
+2. **HTTP pages do not survive app restart.** — Duplicate of Phase 3, Inconsistency #1-2. **(SEPARATE TASK/BUG already noted)**
 
 3. **Unknown provider/transformer types cause hard throws** (`registry.ts:28-31, 35-38`). Base `PageModel.applyRestoreData` wraps in try/catch, but `TextFileModel` bypasses this entirely.
+   > **Resolution:** No action needed. Base `PageModel.applyRestoreData` (line 107-112) catches unknown types and falls back to `pipe = null`. `TextFileModel` never hits this code path (overrides without calling super, uses `ensurePipe()` instead). `restoreModel` in `PagesPersistenceModel` lacks try/catch but that's a pre-existing issue, not EPIC-012.
 
 4. **`createPipeFromDescriptor` does not validate descriptor structure** (`registry.ts:42-46`). If `descriptor.transformers` is `undefined` or `null`, `.map()` throws.
+   > **Resolution:** No action now. Common issue across the app — no data validation for settings, persisted states, editor files (notebook, todo), etc. Currently relies on error handling (page crash screen). Future improvement: consider a JSON schema validation library for persisted data. Not a bug, not EPIC-012 specific. **Backlog idea: data validation for persisted JSON.**
 
 5. **No version field in `IPipeDescriptor`** (`io.pipe.d.ts:6-13`). No migration path if descriptor format changes.
+   > **Resolution:** No action needed. Overdesign — new fields can be added as optional, no version needed to detect format. YAGNI.
 
-### Improvement Ideas
 
-1. **Serialize pipe in TextFileModel.getRestoreData().** Add `if (this.pipe) { pageData.pipe = this.pipe.toDescriptor(); }`.
-
-2. **Add defensive validation in `createPipeFromDescriptor`.** Use `(descriptor.transformers ?? []).map(...)`.
-
-3. **Don't include password in DecryptTransformer.config.** Store `config: {}` and use private `password` field internally.
-
-4. **Add `version` field to `IPipeDescriptor`.** Even if unused now, simplifies future migration.
-
-5. **`ensurePipe()` could detect URL-like filePaths.** Check if `filePath` starts with `http://` and create `HttpProvider` instead of `FileProvider` as safety net.
 
 ---
 
@@ -412,51 +403,143 @@ All content-based editors extend `ContentViewModel<TState>` which subscribes to 
 ### Inconsistencies
 
 1. **overview.md: Dependency rules missing `content/` layer.** Lines 121-129 list all renderer subdirectories but omit `content/`. Its position should be between `api/` and `editors/`.
+   > **Proposed resolution:** Add `content/` to dependency rules in overview.md. **(FIX: doc-only)**
 
 2. **EPIC-012 lists unimplemented items as current.** `io` namespace section (line 553-569) lists `BufferProvider`, `CacheFileProvider`, `GunzipTransformer`. Only `FileProvider`, `HttpProvider`, `ZipTransformer`, `DecryptTransformer` actually exist.
+   > **Proposed resolution:** Add "(not yet implemented)" markers to future items in EPIC-012. EPIC-012 is a design doc — keep future items but mark them clearly. **(FIX: doc-only)**
 
 3. **EPIC-012: `openFile()` removal vs actual.** Resolved question #4 (line 692) says "Remove `app.pages.openFile()`." In practice, it was kept as a backward-compat wrapper through `openRawLink`.
+   > **Proposed resolution:** Update EPIC-012 resolved question to reflect actual decision: "Kept as backward-compat wrapper that routes through `openRawLink`." **(FIX: doc-only)**
 
 4. **EPIC-012: `readText()`/`writeText()` mention `EncodingTransformer`.** Line 246-251 says these use `EncodingTransformer`. Actual implementation handles encoding via `decodeBuffer()`/`encodeString()` directly — no `EncodingTransformer` class.
+   > **Proposed resolution:** Update EPIC-012 to reflect actual implementation — encoding handled internally by ContentPipe, not via a transformer. Mark `EncodingTransformer` as "(future — not implemented, encoding handled by ContentPipe directly)". **(FIX: doc-only)**
 
 5. **EPIC-012: OpenLinkEvent metadata type mismatch.** Code uses `Record<string, unknown>`, interface uses `ILinkMetadata`.
+   > **Proposed resolution:** Covered by Phase 7, Inconsistency #1-2 resolution — consolidate to `ILinkMetadata` everywhere. **(FIX: code — already noted)**
 
 6. **EPIC-012: Folder structure lists nonexistent files.** Lines 516-538 list `BufferProvider.ts`, `GunzipTransformer.ts`, tree providers, `io.tree.d.ts`.
+   > **Proposed resolution:** Same as #2 — add "(not yet implemented)" markers. **(FIX: doc-only)**
 
 ### Stale References
 
 1. **EPIC-012: `subscribeDefault()` references** (lines 484-486). Presented as a needed change but has been completed. Should be marked as done/historical.
+   > **Proposed resolution:** Mark as "Done" or "Completed" in EPIC-012. **(FIX: doc-only)**
 
 2. **EPIC-012: `openFile()` listed as "to be removed."** Was kept as a wrapper.
+   > **Proposed resolution:** Same as Inconsistency #3 — update to reflect actual decision. **(FIX: doc-only)**
 
 ### Missing Documentation
 
 1. **`openContent` channel not in user docs.** `docs/api/events.md` documents `openRawLink` and `openLink` but not `openContent`. It's exposed in `events.d.ts` and usable by scripts.
+   > **Proposed resolution:** Add `openContent` to `docs/api/events.md` alongside the other two channels. Will be needed once `OpenContentEvent` is exposed in `io` namespace (Phase 7 resolution). Part of documentation update task when completing this review. **(FIX: doc-only)**
 
 2. **No dedicated `io` API reference page.** Other globals (`app`, `page`, `ui`) each have dedicated API pages.
+   > **Proposed resolution:** Create `docs/api/io.md`. Should be done as part of the standard `/project:userdoc` step when completing a task that modifies the `io` namespace. **(SEPARATE TASK: create io API reference page)**
 
 3. **`content/` not in dependency rules.** Developers have no guidance on what `content/` can import.
+   > **Proposed resolution:** Same as Inconsistency #1. **(FIX: doc-only)**
 
 4. **No standalone content pipeline architecture doc.** Info is spread across overview.md, CLAUDE.md, and EPIC-012. Complexity warrants dedicated `doc/architecture/content-pipeline.md`.
+   > **Proposed resolution:** Create `doc/architecture/content-pipeline.md` — extract and consolidate from overview.md section 5, CLAUDE.md section 5, and EPIC-012. Cover: 3-layer pipeline, dual-pipe pattern, encoding detection, pipe serialization, clone-and-try, provider/transformer contracts. **(SEPARATE TASK: create content pipeline architecture doc)**
 
 ### Concerns
 
 1. **EPIC-012 mixes implemented and future items.** Reader cannot distinguish shipped from planned.
+   > **Proposed resolution:** Covered by Inconsistency #2 and #6 — add status markers. EPIC-012 is a living design doc, future items are fine but need clear labels. **(FIX: doc-only)**
 
 2. **No `openFile()` deprecation notice.** `pages.d.ts` shows no `@deprecated` tag. Scripts work fine but miss pipeline extensibility.
+   > **Proposed resolution:** No action now. `openFile()` is a valid convenience method that internally routes through the pipeline. Deprecating it would push scripts toward a more verbose API without real benefit. If we want to guide users toward `openRawLink`, a JSDoc note like "For advanced pipe control, use `app.events.openRawLink.sendAsync()`" is better than `@deprecated`. **No action needed.**
 
 ### Improvement Ideas
 
-1. **Add `content/` to overview.md dependency rules.**
+All covered by resolutions above — removed.
 
-2. **Create `doc/architecture/content-pipeline.md`.** Dedicated doc for 3-layer pipeline, dual-pipe pattern, encoding, serialization, clone-and-try.
+---
 
-3. **Add implementation status markers to EPIC-012.** Mark future items with "(not yet implemented)".
+## Consolidated Tasks
 
-4. **Fix `OpenLinkEvent` constructor type.** Use `ILinkMetadata` instead of `Record<string, unknown>`.
+### Task 1: Documentation Updates (doc-only)
 
-5. **Add `@deprecated` to `openFile()`.** Point to `app.events.openRawLink.sendAsync()`.
+Update architecture docs, EPIC-012, coding standards, and user docs to reflect actual implementation.
 
-6. **Create `docs/api/io.md`.** User-facing API reference for `io` namespace.
+**Checklist:**
+- [x] `io.pipe.d.ts:58` — Fix JSDoc: "Dispose the provider" (Phase 1, Inc #1)
+- [x] `resolvers.ts:44` — Remove stale US-270 comment (Phase 1, Inc #4)
+- [x] `coding-style.md` — Already had FileProvider/CacheFileProvider listed as exceptions (Phase 2, Concern #6)
+- [x] `overview.md` — Add `content/` to dependency rules (Phase 9, Inc #1)
+- [x] `EPIC-012.md` — Add implementation status note at top + mark unimplemented items (Phase 9, Inc #2, #4, #6)
+- [x] `EPIC-012.md` — Update resolved question about `openFile()`: kept as backward-compat wrapper (Phase 9, Inc #3, Stale #2)
+- [x] `EPIC-012.md` — Mark `subscribeDefault()` removal as done (Phase 9, Stale #1)
+- [x] `docs/api/events.md` — Add `openContent` channel documentation (Phase 9, Missing #1)
+- [x] `doc/architecture/content-pipeline.md` — Created dedicated architecture doc (Phase 9, Missing #4)
+- [x] `docs/api/io.md` — Created `io` namespace API reference page (Phase 9, Missing #2)
+- [x] `io.d.ts` — Add top-level JSDoc to `IIoNamespace` explaining 3-layer pipeline usage (Phase 7, Idea)
 
-7. **Document `openContent` in user docs.** Add section in `docs/api/events.md`.
+### Task 2: Content Pipeline Hardening (code fixes)
+
+Small code fixes across the pipeline core, providers, transformers, and types.
+
+**Phase A — Provider/Transformer contracts:**
+- [ ] `ITransformer` — Make `write` required (remove `?`), add `clone(): ITransformer` method (Phase 1, Inc #2; Phase 2, Concern #1)
+- [ ] `ContentPipe.writable` — Simplify to only check `this.provider.writable` (Phase 1, Inc #2)
+- [ ] `ContentPipe.clone()`/`cloneWithProvider()` — Use `t.clone()` instead of descriptor round-trip (Phase 2, Concern #1)
+- [ ] `DecryptTransformer` — Use ES2022 `#password`, `config: {}`, `toDescriptor()` throws (Phase 2, Concern #1)
+- [ ] `ZipTransformer` — Add `clone()` method (Phase 2, Concern #1)
+- [ ] `SubscriptionObject` → `ISubscriptionObject` everywhere (Phase 2, Inc #1)
+- [ ] `IContentPipe` — Change `writeText`/`writeBinary` from conditional getters to methods that throw when not writable (Phase 3, Concern #3)
+- [ ] Update all callers of `writeText`/`writeBinary` — remove `!` assertions, add `writable` checks where needed
+
+**Phase B — I/O and error handling:**
+- [ ] `FileProvider`/`CacheFileProvider` — Replace sync fs with `fs.promises` (Phase 1, Inc #5)
+- [ ] `HttpProvider` — Cache response buffer after first fetch (Phase 2, Concern #5)
+- [ ] `open-handler.ts` — Add try/finally for pipe disposal on error (Phase 1, Concern #4)
+- [ ] `parsers.ts` — Add `isPlausibleFilePath()` validation, show notification for invalid paths (Phase 1, Inc #3)
+- [ ] `TextFileIOModel.doSaveModifications` — Skip plaintext cache fallback when file is encrypted (Phase 3, Concern #5)
+
+**Phase C — Type consolidation:**
+- [ ] `OpenLinkEvent`/`OpenContentEvent` classes — Use `ILinkMetadata` instead of `Record<string, unknown>` (Phase 7, Inc #1-2)
+- [ ] `IOpenLinkEventConstructor` in `io.d.ts` — Use `ILinkMetadata` (Phase 7, Inc #1-2)
+- [ ] `IoNamespace.ts` — Expose `OpenContentEvent` (Phase 7, Concern #2)
+- [ ] `io.d.ts` — Add `IOpenContentEventConstructor` type (Phase 7, Concern #2)
+- [ ] `io.d.ts` — Re-export `ILinkMetadata` for script discoverability (Phase 7, Idea #1)
+- [ ] Copy updated `.d.ts` files to `assets/editor-types/`
+
+### Task 3: Text Editor Pipe Bugs
+
+Bugs found in TextFileIOModel related to pipe lifecycle.
+
+- [ ] **HTTP page restore** — Serialize pipe descriptor in `TextFileModel.getRestoreData()`, reconstruct in `applyRestoreData()`. Test: open HTTP URL, restart app, verify page restores (Phase 3, Inc #1-2)
+- [ ] **Rename drops transformers** — Use `cloneWithProvider(new FileProvider(newPath))` in `applyRenamedPath()`. Test: rename encrypted file, verify encryption preserved (Phase 3, Concern #1)
+- [ ] **Save As stale password** — Clear `state.password` when saving to a new path without DecryptTransformer. Test: Save As from encrypted file, verify no lock icon on new file (Phase 3, Concern #2)
+- [ ] **Save error handling** — Add try/catch in `saveFile()`, show `ui.notify()` on write failure. Test: make file read-only, edit, Ctrl+S (Phase 3, Concern #8)
+- [ ] **Save deleted file** — Force Save As dialog when `state.deleted === true`, with original path as default. Test: open file, delete it externally, try to save (Phase 1, Concern #1)
+
+### Task 4: Reference Editors Pipe Completion
+
+Complete pipe migration for PDF and Image viewers.
+
+- [ ] **Remove page-editor archive guard** — Delete condition at `PagesLifecycleModel.ts:33` that blocks page-editors for archive paths. Pipes handle archive extraction now (Phase 4, Inc #3)
+- [ ] **ImageViewer `ensurePipe()`** — Reconstruct pipe from filePath on restore (same pattern as TextFileIOModel). Remove `fs.readBinary()` fallback in "Open in Drawing Editor". Only two content sources: `model.pipe` or `state.url` (Phase 4, Concern #1, #4)
+- [ ] **PdfViewer `ensurePipe()`** — Same as ImageViewer. Remove `safe-file://` fallback from component. Only use `localPdfPath` from pipe (Phase 4, Concern #4)
+- [ ] **openDiff migration** — Route through pipeline so diff works with HTTP/archive/encrypted sources. Test: open two HTTP URLs, group, enable diff (Phase 5, Inc #1)
+
+### Task 5: ITreeProvider (Investigation + Refactoring)
+
+Implement ITreeProvider interface designed in EPIC-012 but not yet built. Large task — needs deeper investigation before implementation.
+
+**Scope:**
+- [ ] Define `ITreeProvider` interface and types (`io.tree.d.ts`)
+- [ ] Implement `FileSystemTreeProvider` (replaces current file explorer fs logic)
+- [ ] Implement `ZipTreeProvider` (replaces current archive NavPanel logic)
+- [ ] Migrate NavigationPanel to use ITreeProvider
+- [ ] Migrate FileExplorer to use ITreeProvider
+- [ ] `navigatePageTo` — Route through `app.events.openLink()` with `pageId` in metadata (Phase 5, Inc #2)
+- [ ] `TextFileIOModel.renameFile` — Delegate to ITreeProvider (Phase 3, Concern #4)
+- [ ] Derive ITreeProvider from pipe provider when not explicitly linked
+- [ ] Multi-file drag-drop → virtual SelectedTreeView (Phase 5, Inc #3)
+- [ ] Expose tree providers in script `io` namespace
+
+### Backlog
+
+- **Data validation for persisted JSON** — Consider schema validation library for settings, page state, editor files. Not a bug, future robustness improvement (Phase 8, Concern #4)
+- **Pipe status on pages** — Loading progress and error/response status for HTTP sources. Will cover error feedback in all editors uniformly (Phase 4, Concern #3)

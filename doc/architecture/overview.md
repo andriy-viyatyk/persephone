@@ -123,10 +123,11 @@ Steps 1-3 run in parallel. Steps 4-7 are sequential (each depends on the previou
 1. **`core/`** is the foundation — no imports from other renderer layers
 2. **`components/`** is reusable — imports only `core/` and `theme/`
 3. **`api/`** implements the Object Model — imports `core/`, uses IPC
-4. **`editors/`** implement page types — import `core/`, `components/`, `api/`
-5. **`scripting/`** wraps `api/` and `editors/` for safe script access
-6. **`ui/`** orchestrates everything — imports all layers
-7. Lower layers must NOT import from higher layers
+4. **`content/`** implements the I/O pipeline — imports `core/`, `api/types/`
+5. **`editors/`** implement page types — import `core/`, `components/`, `api/`, `content/`
+6. **`scripting/`** wraps `api/`, `editors/`, and `content/` for safe script access
+7. **`ui/`** orchestrates everything — imports all layers
+8. Lower layers must NOT import from higher layers
 
 ## Key Subsystems
 

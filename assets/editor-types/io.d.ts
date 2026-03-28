@@ -74,6 +74,11 @@ export interface IOpenLinkEventConstructor {
  *
  * Available in scripts alongside `app`, `page`, and `ui`.
  *
+ * **Link pipeline (3 layers):**
+ * - Use `io.RawLinkEvent` to open any link (file path, URL, cURL command) through the full pipeline (Layer 1 → 2 → 3)
+ * - Use `io.OpenLinkEvent` to skip raw parsing and go directly to provider resolution (Layer 2 → 3)
+ * - Use `io.createPipe()` with providers and transformers to build custom content pipes
+ *
  * @example
  * // Read a file from inside a ZIP archive
  * const pipe = io.createPipe(

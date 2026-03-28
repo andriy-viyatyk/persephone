@@ -41,7 +41,7 @@ export function extractEffectivePath(url: string): string {
  *
  * Registration order matters (LIFO execution):
  * - fileResolver registered first → runs last (fallback)
- * - Future resolvers (HTTP in US-270) register after and run first
+ * - httpResolver registered after → runs first (matches http/https URLs)
  *
  * Call during app bootstrap, before scripts load.
  */

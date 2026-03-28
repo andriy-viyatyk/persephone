@@ -108,6 +108,32 @@ await app.events.openLink.sendAsync(event);
 
 ---
 
+### openContent
+
+`IEventChannel<IOpenContentEvent>`
+
+Layer 3 of the content open pipeline. Fired with an assembled content pipe and target editor. The app's open handler subscribes here and creates/navigates pages.
+
+Scripts can subscribe to observe or intercept page opens:
+
+```javascript
+// Log every page open
+app.events.openContent.subscribe((event) => {
+    console.log(`Opening: ${event.pipe.displayName} in ${event.target}`);
+});
+```
+
+#### IOpenContentEvent
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `pipe` | `IContentPipe` | Assembled content pipe (provider + transformers). Read-only. |
+| `target` | `string` | Resolved editor ID. Read-only. |
+| `metadata` | `ILinkMetadata \| undefined` | Pass-through metadata from Layer 1/2. Read-only. |
+| `handled` | `boolean` | Set to `true` to stop further processing. |
+
+---
+
 ### browser.onBookmark
 
 `IEventChannel<IBookmarkEvent>`

@@ -196,7 +196,7 @@ ui.log("Hello");
 
 ---
 
-- **[io](../scripting.md#the-io-namespace)** — Content pipe builder (providers, transformers, event constructors)
+- **[io](./io.md)** — Content pipe builder (providers, transformers, event constructors)
   - `new io.FileProvider(filePath)` — local file data source
   - `new io.HttpProvider(url, options?)` — HTTP/HTTPS data source
   - `new io.ZipTransformer(entryPath)` — extract a ZIP archive entry

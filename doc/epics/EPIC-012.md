@@ -4,6 +4,8 @@
 **Priority:** High
 **Created:** 2026-03-24
 
+> **Note:** This is a design document. The core pipeline (providers, transformers, pipes, 3-layer link pipeline) is implemented. Some items described below are **not yet implemented** and marked accordingly: `BufferProvider`, `GunzipTransformer`, `EncodingTransformer`, `ITreeProvider` (FileSystemTreeProvider, ZipTreeProvider), `io.tree.d.ts`. Encoding is handled directly by `ContentPipe` (not via a transformer).
+
 ## Goal
 
 Replace the scattered file/URL opening paths with a unified, event-driven link pipeline and introduce Provider + Transformer abstractions that decouple editors from data sources. Every link in the application — file paths, HTTP URLs, archive entries, cURL commands, magnet links, custom protocols — flows through one pipeline: **parse → resolve provider + transformers → assemble content pipe → open in editor**.
@@ -243,11 +245,11 @@ interface IContentPipe {
     toDescriptor(): IPipeDescriptor;
     /** Read content — provider.readBinary() piped through all transformers */
     readBinary(): Promise<Buffer>;
-    /** Read as text — readBinary() then decode (convenience, uses EncodingTransformer if present) */
+    /** Read as text — readBinary() then decode (encoding handled internally via BOM/jschardet detection) */
     readText(): Promise<string>;
     /** Write content — reverse-piped through transformers back to provider */
     writeBinary?(data: Buffer): Promise<void>;
-    /** Write text — encode then writeBinary() (convenience, uses EncodingTransformer if present) */
+    /** Write text — encode then writeBinary() (encoding handled internally) */
     writeText?(content: string): Promise<void>;
     /** Whether the full pipe supports writing (provider writable + all transformers reversible) */
     readonly writable: boolean;
@@ -451,7 +453,7 @@ interface IAppEvents {
 | File explorer double-click | `openRawLink.sendAsync(event)` | `openRawLink` |
 | Recent files click | `openRawLink.sendAsync(event)` | `openRawLink` |
 | Pipe server `OPEN path` → IPC | IPC → `openRawLink.sendAsync(event)` | `openRawLink` |
-| `app.pages.openFile(path)` (script API) | Removed — use `app.events.openRawLink.sendAsync(event)` | `openRawLink` |
+| `app.pages.openFile(path)` (script API) | Kept as backward-compat wrapper — routes through `openRawLink` internally | `openRawLink` |
 | Browser `window.open(url)` → IPC `eOpenUrl` | `openRawLink.sendAsync(event)` | `openRawLink` |
 | NavigationPanel double-click (file/archive) | `openLink.sendAsync(new OpenLinkEvent(url, { metadata: { pageId } }))` | `openLink` — skip raw parsing, navigate current page |
 | `navigatePageTo(pageId, path, opts)` (script API) | `openLink.sendAsync(new OpenLinkEvent(url, { metadata: { pageId, ... } }))` | `openLink` |
@@ -481,7 +483,7 @@ Editors currently read from `page.state.content` (text) or `page.state.filePath`
 
 ### EventChannel Enhancement
 
-Current `EventChannel` has `subscribe()` (FIFO) + one `subscribeDefault()` (last). One change needed:
+**Done.** `EventChannel` was updated: `subscribeDefault()` removed, `sendAsync()` now uses LIFO order. Original design:
 
 **LIFO execution order for `sendAsync()`** — newest subscriber runs first, oldest runs last. This eliminates `subscribeDefault()` entirely. The app registers its handlers first during bootstrap (most general first, most specific second). Scripts subscribe later and automatically run before app handlers.
 
@@ -651,7 +653,7 @@ Event channels, parsers, resolvers, and the open handler. Wires the three-layer 
 | 5 | US-264 Raw link parsers | File and archive parsers as handlers on `openRawLink` | US-263 | Done |
 | 6 | US-265 Pipe resolvers | File resolver on `openLink` — builds `FileProvider`, resolves target via `extractEffectivePath()` | US-262, US-263 | Done |
 | 7 | US-266 Open handler | Handler on `openContent` — creates/navigates page with content pipe | US-263 | Done |
-| 8 | US-267 Migrate entry points | Replace all `pagesModel.openFile()` call sites with `openRawLink`, remove `app.pages.openFile()` | US-264, US-265, US-266 | Done |
+| 8 | US-267 Migrate entry points | Replace all `pagesModel.openFile()` call sites with `openRawLink`. `app.pages.openFile()` kept as backward-compat wrapper routing through `openRawLink` | US-264, US-265, US-266 | Done |
 
 > **Review checkpoint B:** review + document after US-267. Full pipeline working for plain files. App opens files through the new link pipeline.
 
@@ -689,7 +691,7 @@ Additional providers, parsers, reference editor migration, and script API.
 
 3. **Content pipe lifecycle** — **Page model owns the pipe.** Currently page model owns `FileWatcher`; after this epic it owns the content pipe instead. When page is closed, pipe is disposed.
 
-4. **Backward compatibility** — **Remove `app.pages.openFile()` during/after epic.** Tool has very few users; no one is likely using the scripting API. No compatibility wrapper needed.
+4. **Backward compatibility** — **Kept `app.pages.openFile()` as backward-compat wrapper** that routes through `openRawLink` internally. Simple convenience for scripts.
 
 5. **Target resolution** — See [Target Resolution Design](#target-resolution-design) below for full design.
 

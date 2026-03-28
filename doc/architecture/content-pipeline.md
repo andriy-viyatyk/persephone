@@ -1,0 +1,205 @@
+# Content Delivery Pipeline
+
+## Overview
+
+The content delivery pipeline (`/src/renderer/content/`) is a unified I/O layer that decouples editors from data sources. Instead of editors reading files directly, all content flows through composable pipes that combine a data source (provider) with data effects (transformers). This makes it possible to open a file inside a ZIP archive, decrypt it on the fly, and save it back -- all transparent to the editor.
+
+The pipeline was introduced in EPIC-012 to replace scattered file I/O calls across the codebase. It handles encoding detection, file watching, caching, and serialization for session restore.
+
+## 3-Layer Pipeline
+
+Opening content flows through three event-driven layers. Each layer is registered as an `EventChannel` subscriber during bootstrap. Subscribers execute in LIFO order, so later registrations act as higher-priority interceptors.
+
+```
+  Raw string (file path, URL, cURL command)
+         │
+  ┌──────▼──────────────────────────────────────────────┐
+  │  Layer 1 — Parsers (parsers.ts)                     │
+  │  openRawLink → openLink                             │
+  │  Normalize raw input into a structured OpenLinkEvent │
+  └──────┬──────────────────────────────────────────────┘
+         │  OpenLinkEvent { url, target?, metadata? }
+  ┌──────▼──────────────────────────────────────────────┐
+  │  Layer 2 — Resolvers (resolvers.ts)                 │
+  │  openLink → openContent                             │
+  │  Build provider + transformers, resolve target editor│
+  └──────┬──────────────────────────────────────────────┘
+         │  OpenContentEvent { pipe, target, metadata? }
+  ┌──────▼──────────────────────────────────────────────┐
+  │  Layer 3 — Open Handler (open-handler.ts)           │
+  │  openContent → page creation                        │
+  │  Pass pipe to PagesModel.lifecycle.openFile()       │
+  └─────────────────────────────────────────────────────┘
+```
+
+### Layer 1 — Parsers
+
+Registered in `parsers.ts` via `registerRawLinkParsers()`. Each parser checks the raw string and fires an `OpenLinkEvent` on `app.events.openLink`. Registration order (LIFO):
+
+| Parser | Detects | Example input |
+|--------|---------|---------------|
+| cURL/fetch | `curl ` or `fetch(` prefix | `curl -H "Auth: x" https://api.com/data.json` |
+| HTTP | `http://` or `https://` prefix | `https://example.com/file.json` |
+| Archive | `!` separator (via `isArchivePath`) | `C:\docs.zip!data/report.json` |
+| File | Everything else (fallback) | `C:\Users\file.txt`, `file:///path` |
+
+### Layer 2 — Resolvers
+
+Registered in `resolvers.ts` via `registerResolvers()`. Each resolver builds a `ContentPipe` and fires an `OpenContentEvent` on `app.events.openContent`.
+
+- **File resolver** (fallback) -- creates `FileProvider`, adds `ZipTransformer` for archive paths. Resolves target editor via `editorRegistry.resolveId()`.
+- **HTTP resolver** -- creates `HttpProvider`, maps file extensions to editors via a built-in extension table. URLs without recognized extensions open in the browser tab. cURL/fetch requests with `Accept` headers use header-based editor resolution.
+
+### Layer 3 — Open Handler
+
+Registered in `open-handler.ts` via `registerOpenHandler()`. Receives the pipe and either:
+- Opens a new page via `pagesModel.lifecycle.openFile(filePath, pipe)` -- the page owns the pipe.
+- Navigates an existing page via `pagesModel.lifecycle.navigatePageTo()` (when `metadata.pageId` is set) -- disposes the pipe since navigation creates its own.
+
+## Content Pipe
+
+`IContentPipe` is the central abstraction. It composes one `IProvider` with zero or more `ITransformer` instances.
+
+### Read flow
+
+```
+provider.readBinary() → transformer[0].read() → transformer[1].read() → ... → result
+```
+
+`readText()` adds encoding detection after the binary chain: `readBinary() → decodeBuffer()`.
+
+### Write flow
+
+```
+result → ... → transformer[1].write(data, orig) → transformer[0].write(data, orig) → provider.writeBinary()
+```
+
+Transformers are walked in reverse order. Each receives the new data and the original data at that stage (needed by `ZipTransformer` to rebuild the archive around the modified entry). If the provider has no existing content, empty buffers are passed as originals.
+
+`writeText()` encodes the string first: `encodeString() → writeBinary()`.
+
+### Conditional capabilities
+
+- `writable` -- true only if the provider is writable AND all transformers implement `write`.
+- `watch` -- delegates to `provider.watch()` if supported. Returns a `SubscriptionObject`.
+
+## Built-in Providers
+
+| Provider | Type | Writable | Watch | Description |
+|----------|------|----------|-------|-------------|
+| `FileProvider` | `file` | Yes | Yes | Local file read/write via `fs`. Debounced watch (300ms). |
+| `HttpProvider` | `http` | No | No | HTTP/HTTPS fetch via `nodeFetch`. Supports method, headers, body. Re-fetches on each read (no internal caching). |
+| `CacheFileProvider` | `cache` | Yes | No | Cache directory file (`{userData}/cache/{pageId}.txt`). Used as provider for cache pipes. |
+
+All providers implement `toDescriptor()` for serialization and `sourceUrl` for display/identity.
+
+## Built-in Transformers
+
+| Transformer | Type | Persistent | Description |
+|-------------|------|------------|-------------|
+| `ZipTransformer` | `zip` | Yes | Extract/replace a single entry in a ZIP archive via jszip (dynamic import). Write rebuilds the archive with the modified entry. |
+| `DecryptTransformer` | `decrypt` | No | AES-GCM encrypt/decrypt via `shell.encryption`. Non-persistent -- password must never be serialized to disk. |
+
+The `persistent` flag controls whether the transformer appears in `toDescriptor()` output. Non-persistent transformers are excluded from serialization but still participate in `clone()` (in-memory only).
+
+## Dual-Pipe Model
+
+`TextFileIOModel` maintains two pipes for each text page:
+
+```
+Primary pipe:  FileProvider("report.json") → [ZipTransformer, DecryptTransformer]
+               ↕ read/write source file
+
+Cache pipe:    CacheFileProvider(pageId) → [ZipTransformer, DecryptTransformer]
+               ↕ auto-save unsaved changes
+```
+
+The cache pipe is created via `primaryPipe.cloneWithProvider(new CacheFileProvider(id))`. This ensures the cache pipe shares the same transformer chain -- encrypted files stay encrypted in cache, archive entries stay in ZIP format.
+
+When the primary pipe changes (e.g., after decryption adds a `DecryptTransformer`), `recreateCachePipe()` rebuilds the cache pipe to stay in sync.
+
+## Encoding Detection
+
+`decodeBuffer()` in `encoding.ts` detects text encoding with this priority:
+
+1. **BOM detection** (O(1)) -- UTF-8-BOM (`EF BB BF`), UTF-16LE (`FF FE`), UTF-16BE (`FE FF`)
+2. **Large file skip** -- files >20MB default to UTF-8 (skip detection)
+3. **Explicit override** -- if encoding was previously detected and passed in
+4. **jschardet** -- statistical detection with >70% confidence threshold
+5. **UTF-8 probe** -- decode as UTF-8 and check for replacement characters (`U+FFFD`)
+6. **Fallback** -- Windows-1251
+
+The detected encoding is stored on the pipe (`pipe.encoding`) and persisted in `IPipeDescriptor` so that write-back uses the same encoding. `encodeString()` handles the reverse, including BOM insertion for UTF-8-BOM and UTF-16 variants.
+
+## Clone-and-Try Pattern
+
+Pipes are immutable-by-convention. When a transformation needs to be tested before committing (e.g., decryption with a user-provided password), use the clone-and-try pattern:
+
+1. `clone()` the active pipe (deep copies provider and all transformers via descriptors)
+2. `addTransformer()` or `removeTransformer()` on the clone
+3. Attempt `readText()` on the clone
+4. **Success** -- dispose the original pipe, swap in the clone, recreate cache pipe
+5. **Failure** -- dispose the clone, keep the original pipe unchanged
+
+Example from `TextFileEncryptionModel.decript()`:
+
+```typescript
+const candidate = pipe.clone();
+candidate.addTransformer(new DecryptTransformer(password));
+try {
+    const plaintext = await candidate.readText();
+    pipe.dispose();
+    this.model.pipe = candidate;       // swap
+    this.model.io.recreateCachePipe(); // sync cache
+} catch {
+    candidate.dispose();               // discard on failure
+}
+```
+
+The same pattern is used for locking (removing `DecryptTransformer`) and removing encryption entirely.
+
+## Pipe Serialization
+
+Pipes serialize to `IPipeDescriptor` for session persistence (stored in `IPageState.pipe`):
+
+```typescript
+interface IPipeDescriptor {
+    provider: IProviderDescriptor;       // { type, config }
+    transformers: ITransformerDescriptor[]; // [{ type, config }, ...]
+    encoding?: string;                   // detected encoding
+}
+```
+
+Key rules:
+- Only transformers with `persistent === true` are included. `DecryptTransformer` (password) is excluded.
+- `createPipeFromDescriptor()` in `registry.ts` reconstructs a pipe from its descriptor using registered factories.
+- Provider and transformer types are registered at module load time in `registry.ts` (e.g., `registerProvider("file", ...)`, `registerTransformer("zip", ...)`).
+
+## Key Files
+
+| File | Purpose |
+|------|---------|
+| `/src/renderer/content/ContentPipe.ts` | `ContentPipe` class -- pipe implementation |
+| `/src/renderer/content/registry.ts` | Provider/transformer factory registry, `createPipeFromDescriptor()` |
+| `/src/renderer/content/parsers.ts` | Layer 1 -- raw link parsers |
+| `/src/renderer/content/resolvers.ts` | Layer 2 -- link resolvers, editor mapping |
+| `/src/renderer/content/open-handler.ts` | Layer 3 -- page creation from pipe |
+| `/src/renderer/content/encoding.ts` | Encoding detection (`decodeBuffer`) and encoding (`encodeString`) |
+| `/src/renderer/content/providers/FileProvider.ts` | Local file provider |
+| `/src/renderer/content/providers/HttpProvider.ts` | HTTP/HTTPS provider |
+| `/src/renderer/content/providers/CacheFileProvider.ts` | Cache file provider |
+| `/src/renderer/content/transformers/ZipTransformer.ts` | ZIP archive entry transformer |
+| `/src/renderer/content/transformers/DecryptTransformer.ts` | AES-GCM encryption transformer |
+| `/src/renderer/api/types/io.pipe.d.ts` | `IContentPipe`, `IPipeDescriptor` type definitions |
+| `/src/renderer/api/types/io.provider.d.ts` | `IProvider`, `IProviderDescriptor` type definitions |
+| `/src/renderer/api/types/io.transformer.d.ts` | `ITransformer`, `ITransformerDescriptor` type definitions |
+| `/src/renderer/editors/text/TextFileIOModel.ts` | Dual-pipe model (primary + cache) |
+| `/src/renderer/editors/text/TextFileEncryptionModel.ts` | Clone-and-try encryption operations |
+| `/src/renderer/scripting/api-wrapper/IoNamespace.ts` | Script `io` namespace exposing pipe APIs |
+
+## Related Documentation
+
+- [Architecture Overview](./overview.md) -- Section 5 covers the pipeline at a high level
+- [Editors](./editors.md) -- Editor system that consumes pipes
+- [Scripting](./scripting.md) -- Script `io` namespace for pipe access
+- [Pages Architecture](./pages-architecture.md) -- Page lifecycle and pipe ownership

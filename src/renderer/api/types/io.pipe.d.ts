@@ -55,6 +55,6 @@ export interface IContentPipe {
     cloneWithProvider(provider: IProvider): IContentPipe;
     /** Clone this pipe with same provider and transformers (deep copy). */
     clone(): IContentPipe;
-    /** Dispose provider and transformers. */
+    /** Dispose the provider. */
     dispose(): void;
 }
