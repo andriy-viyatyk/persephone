@@ -85,8 +85,7 @@ export function registerResolvers(): void {
     // Everything else → open in browser tab.
     //
     // Extension map is self-contained — does not rely on editor registry.
-    // Only text-based content is supported (Monaco editor). Page-editors
-    // (image, PDF) can't handle HTTP sources yet (US-274).
+    // Extension map determines which editor handles each URL.
 
     /** Maps file extensions to { editor, language? } for HTTP content opening. */
     const httpContentExtensions: Record<string, { editor: string }> = {

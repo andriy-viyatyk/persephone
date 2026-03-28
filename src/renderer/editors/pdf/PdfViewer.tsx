@@ -11,6 +11,9 @@ import { NavPanelIcon } from "../../theme/icons";
 import { NavPanelModel } from "../../ui/navigation/nav-panel-store";
 import { fpBasename, fpDirname } from "../../core/utils/file-path";
 import { fs as appFs } from "../../api/fs";
+import { ContentPipe } from "../../content/ContentPipe";
+import { FileProvider } from "../../content/providers/FileProvider";
+import { ZipTransformer } from "../../content/transformers/ZipTransformer";
 
 const PdfViewerRoot = styled.div({
     flex: "1 1 auto",
@@ -34,6 +37,25 @@ class PdfViewerModel extends PageModel<PdfViewerModelState, void> {
     noLanguage = true;
     private cacheFileCreated = false;
 
+    /** Reconstruct pipe from filePath if not already present (legacy compat / app restart). */
+    private ensurePipe(): void {
+        if (this.pipe) return;
+        const filePath = this.state.get().filePath;
+        if (!filePath) return;
+
+        const bangIndex = filePath.indexOf("!");
+        if (bangIndex >= 0) {
+            const archivePath = filePath.slice(0, bangIndex);
+            const entryPath = filePath.slice(bangIndex + 1);
+            this.pipe = new ContentPipe(
+                new FileProvider(archivePath),
+                [new ZipTransformer(entryPath)],
+            );
+        } else {
+            this.pipe = new ContentPipe(new FileProvider(filePath));
+        }
+    }
+
     async restore() {
         await super.restore();
         const filePath = this.state.get().filePath;
@@ -44,6 +66,7 @@ class PdfViewerModel extends PageModel<PdfViewerModelState, void> {
         }
 
         // Determine local path for safe-file:// protocol
+        this.ensurePipe();
         if (this.pipe) {
             if (this.pipe.provider.type === "file" && this.pipe.transformers.length === 0) {
                 // Plain FileProvider — use source path directly (efficient streaming)
@@ -93,9 +116,7 @@ function PdfViewer({ model }: PdfViewerProps) {
     const filePath = model.state.use((s) => s.filePath);
     const localPdfPath = model.state.use((s) => s.localPdfPath);
 
-    // Use localPdfPath (set by restore) or fall back to filePath for backward compat
-    const servePath = localPdfPath || filePath;
-    const fileUrl = servePath ? `safe-file://${servePath.replace(/\\/g, "/")}` : "";
+    const fileUrl = localPdfPath ? `safe-file://${localPdfPath.replace(/\\/g, "/")}` : "";
     const viewerUrl = fileUrl
         ? `app-asset://pdfjs/web/viewer.html?file=${encodeURIComponent(fileUrl)}`
         : "";

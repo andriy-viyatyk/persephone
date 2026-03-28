@@ -14,10 +14,14 @@ import { editorRegistry } from "../../editors/registry";
 import { getLanguageByExtension } from "../../core/utils/language-mapping";
 import { NavPanelModel } from "../../ui/navigation/nav-panel-store";
 
-import { fpBasename, fpExtname, isArchivePath } from "../../core/utils/file-path";
+import { fpBasename, fpExtname } from "../../core/utils/file-path";
 import { fs as appFs } from "../fs";
 import { getWellKnownPageDef } from "./well-known-pages";
 import type { IContentPipe } from "../../api/types/io.pipe";
+import { ContentPipe } from "../../content/ContentPipe";
+import { FileProvider } from "../../content/providers/FileProvider";
+import { HttpProvider } from "../../content/providers/HttpProvider";
+import { ZipTransformer } from "../../content/transformers/ZipTransformer";
 
 /**
  * PagesLifecycleModel — Page creation, opening, closing, and navigation.
@@ -25,12 +29,30 @@ import type { IContentPipe } from "../../api/types/io.pipe";
 export class PagesLifecycleModel {
     constructor(private model: PagesModel) {}
 
+    // ── Pipe helpers ──────────────────────────────────────────────────
+
+    /** Create a content pipe from a path string (file, archive, or HTTP). */
+    private createPipeFromPath(path: string): IContentPipe {
+        if (path.startsWith("http://") || path.startsWith("https://")) {
+            return new ContentPipe(new HttpProvider(path));
+        }
+        const bangIndex = path.indexOf("!");
+        if (bangIndex >= 0) {
+            const archivePath = path.slice(0, bangIndex);
+            const entryPath = path.slice(bangIndex + 1);
+            return new ContentPipe(
+                new FileProvider(archivePath),
+                [new ZipTransformer(entryPath)],
+            );
+        }
+        return new ContentPipe(new FileProvider(path));
+    }
+
     // ── Page factory helpers ─────────────────────────────────────────
 
     private newPageModel = async (filePath?: string): Promise<PageModel> => {
         const editorDef = editorRegistry.resolve(filePath);
-        // Archive inner paths can't use page-editors (image, pdf) — they need real file paths
-        if (editorDef && !(filePath && isArchivePath(filePath) && editorDef.category === "page-editor")) {
+        if (editorDef) {
             const module = await editorDef.loadModule();
             return module.newPageModel(filePath);
         }
@@ -302,11 +324,13 @@ export class PagesLifecycleModel {
             .pages.find((p) => p.state.get().filePath === secondPath);
 
         if (!existingFirst) {
-            existingFirst = await this.createPageFromFile(firstPath);
+            const pipe = this.createPipeFromPath(firstPath);
+            existingFirst = await this.createPageFromFile(firstPath, pipe);
             this.addPage(existingFirst);
         }
         if (!existingSecond) {
-            existingSecond = await this.createPageFromFile(secondPath);
+            const pipe = this.createPipeFromPath(secondPath);
+            existingSecond = await this.createPageFromFile(secondPath, pipe);
             this.addPage(existingSecond);
         }
 

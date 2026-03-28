@@ -17,6 +17,9 @@ import { BaseImageView } from "./BaseImageView";
 import type { BaseImageViewRef } from "./BaseImageView";
 import { fpBasename, fpDirname, fpExtname } from "../../core/utils/file-path";
 import { buildExcalidrawJsonWithImage, getImageDimensions, extToMime } from "../draw/drawExport";
+import { ContentPipe } from "../../content/ContentPipe";
+import { FileProvider } from "../../content/providers/FileProvider";
+import { ZipTransformer } from "../../content/transformers/ZipTransformer";
 
 // ============================================================================
 // ImageViewerModel (Page Model) - manages page state and lifecycle
@@ -43,6 +46,25 @@ class ImageViewerModel extends PageModel<ImageViewerModelState, void> {
         await super.dispose();
     }
 
+    /** Reconstruct pipe from filePath if not already present (legacy compat / app restart). */
+    private ensurePipe(): void {
+        if (this.pipe) return;
+        const filePath = this.state.get().filePath;
+        if (!filePath) return;
+
+        const bangIndex = filePath.indexOf("!");
+        if (bangIndex >= 0) {
+            const archivePath = filePath.slice(0, bangIndex);
+            const entryPath = filePath.slice(bangIndex + 1);
+            this.pipe = new ContentPipe(
+                new FileProvider(archivePath),
+                [new ZipTransformer(entryPath)],
+            );
+        } else {
+            this.pipe = new ContentPipe(new FileProvider(filePath));
+        }
+    }
+
     async restore() {
         await super.restore();
         const filePath = this.state.get().filePath;
@@ -53,6 +75,7 @@ class ImageViewerModel extends PageModel<ImageViewerModelState, void> {
         }
 
         // Load image via content pipe → blob URL
+        this.ensurePipe();
         if (this.pipe && !this.state.get().url) {
             try {
                 const buffer = await this.pipe.readBinary();
@@ -62,7 +85,7 @@ class ImageViewerModel extends PageModel<ImageViewerModelState, void> {
                 const blobUrl = URL.createObjectURL(blob);
                 this.state.update((s) => { s.url = blobUrl; });
             } catch {
-                // Pipe read failed — fall back to safe-file:// if filePath exists
+                // Pipe read failed — no image displayed
             }
         }
     }
@@ -129,7 +152,7 @@ function ImageViewer({ model }: ImageViewerProps) {
     const filePath = model.state.use((s) => s.filePath);
     const url = model.state.use((s) => s.url);
     const imageRef = useRef<BaseImageViewRef>(null);
-    const src = url || `safe-file://${filePath?.replace(/\\/g, "/") || ""}`;
+    const src = url || "";
     const alt = filePath ? fpBasename(filePath) : "Image";
 
     return (
@@ -177,9 +200,9 @@ function ImageViewer({ model }: ImageViewerProps) {
                         const { filePath: fp, url: u } = model.state.get();
                         let dataUrl: string;
                         let mimeType: string;
-                        if (fp) {
-                            const buffer = await fs.readBinary(fp);
-                            const ext = fpExtname(fp).toLowerCase();
+                        if (model.pipe) {
+                            const buffer = await model.pipe.readBinary();
+                            const ext = fpExtname(fp || model.pipe.provider.sourceUrl || ".png").toLowerCase();
                             mimeType = extToMime(ext);
                             dataUrl = `data:${mimeType};base64,${buffer.toString("base64")}`;
                         } else if (u) {
