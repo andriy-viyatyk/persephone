@@ -104,7 +104,7 @@ The architecture is **solid and well-designed**. The 3-layer pipeline is clean, 
 ### Concerns
 
 1. **`DecryptTransformer` exposes password in `config` property.** `DecryptTransformer.ts:19` stores password in `this.config = { password }`. While `persistent: false` prevents disk serialization, the `config` property is public. Any code with a reference to the transformer can read `transformer.config.password`. If `toDescriptor()` is called directly (bypassing pipe's filter), the password is included.
-   > **Resolution:** Make password write-only using ES2022 `#password` private field (truly hidden at runtime — invisible to `Object.keys`, `Reflect`, bracket notation, prototype access). (1) `DecryptTransformer.config` → `{}` (empty). (2) `toDescriptor()` → throw `"Cannot serialize DecryptTransformer"`. (3) Add `clone(): ITransformer` method to `ITransformer` interface — each transformer copies itself without exposing internals. (4) `ContentPipe.clone()`/`cloneWithProvider()` use `t.clone()` instead of descriptor round-trip. Password enters via constructor, never leaves `#password`. **(FIX: code)**
+   > **Resolution:** Make password write-only using ES2022 `#password` private field (truly hidden at runtime — invisible to `Object.keys`, `Reflect`, bracket notation, prototype access). (1) `DecryptTransformer.config` → `{}` (empty). (2) `toDescriptor()` returns `{ type: "decrypt", config: {} }` — no password, no throw. If reconstructed from this descriptor, empty password fails on decrypt with clear "wrong password" error. (3) Add `clone(): ITransformer` method to `ITransformer` interface — each transformer copies itself without exposing internals. (4) `ContentPipe.clone()`/`cloneWithProvider()` use `t.clone()` instead of descriptor round-trip. Password enters via constructor, never leaves `#password`. **(FIX: code)**
 
 2. **No `watch()` on `CacheFileProvider`.** Likely fine since cache files are only modified by the app itself.
    > **Resolution:** No action needed. Cache is write-only during page lifetime — only used for restoring after app restart. Watching makes no sense.
@@ -483,7 +483,7 @@ Small code fixes across the pipeline core, providers, transformers, and types.
 - [ ] `ITransformer` — Make `write` required (remove `?`), add `clone(): ITransformer` method (Phase 1, Inc #2; Phase 2, Concern #1)
 - [ ] `ContentPipe.writable` — Simplify to only check `this.provider.writable` (Phase 1, Inc #2)
 - [ ] `ContentPipe.clone()`/`cloneWithProvider()` — Use `t.clone()` instead of descriptor round-trip (Phase 2, Concern #1)
-- [ ] `DecryptTransformer` — Use ES2022 `#password`, `config: {}`, `toDescriptor()` throws (Phase 2, Concern #1)
+- [ ] `DecryptTransformer` — Use ES2022 `#password`, `config: {}`, `toDescriptor()` returns without password (Phase 2, Concern #1)
 - [ ] `ZipTransformer` — Add `clone()` method (Phase 2, Concern #1)
 - [ ] `SubscriptionObject` → `ISubscriptionObject` everywhere (Phase 2, Inc #1)
 - [ ] `IContentPipe` — Change `writeText`/`writeBinary` from conditional getters to methods that throw when not writable (Phase 3, Concern #3)

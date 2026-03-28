@@ -7,7 +7,7 @@ import { getLanguageByExtension } from "../../core/utils";
 import { shell } from "../../api/shell";
 import { debounce } from "../../../shared/utils";
 import type { TextFileModel } from "./TextPageModel";
-import type { SubscriptionObject } from "../../api/events/EventChannel";
+import type { ISubscriptionObject } from "../../api/types/events";
 import type { IContentPipe } from "../../api/types/io.pipe";
 import { ContentPipe } from "../../content/ContentPipe";
 import { FileProvider } from "../../content/providers/FileProvider";
@@ -17,7 +17,7 @@ import { ZipTransformer } from "../../content/transformers/ZipTransformer";
 export class TextFileIOModel {
     /** Cache pipe — same transformers as primary pipe, CacheFileProvider as source. */
     cachePipe: IContentPipe | null = null;
-    private watchSubscription: SubscriptionObject | null = null;
+    private watchSubscription: ISubscriptionObject | null = null;
     private modificationSaved = true;
     private isSavingModifications = false;
 
@@ -94,7 +94,7 @@ export class TextFileIOModel {
         // Content from state — pipe.writeText handles encryption via DecryptTransformer if present
         const text = this.model.state.get().content;
 
-        if (savePath === filePath && this.model.pipe?.writeText) {
+        if (savePath === filePath && this.model.pipe?.writable) {
             // Save to same file — write through existing pipe (preserves transformers)
             await this.model.pipe.writeText(text);
         } else {
@@ -104,7 +104,7 @@ export class TextFileIOModel {
                 [],
                 this.model.pipe?.encoding,
             );
-            await newPipe.writeText!(text);
+            await newPipe.writeText(text);
 
             // Swap to new pipe
             this.model.pipe?.dispose();
@@ -307,7 +307,7 @@ export class TextFileIOModel {
         // Content from state — cachePipe.writeText handles encryption via DecryptTransformer if present
         const text = this.model.state.get().content;
 
-        if (this.cachePipe?.writeText) {
+        if (this.cachePipe) {
             try {
                 await this.cachePipe.writeText(text);
             } catch {
@@ -316,7 +316,7 @@ export class TextFileIOModel {
                 await appFs.saveCacheFile(id, text);
             }
         } else {
-            console.log("[doSaveModifications] no cachePipe.writeText — using appFs.saveCacheFile fallback");
+            console.log("[doSaveModifications] no cachePipe — using appFs.saveCacheFile fallback");
             const { id } = this.model.state.get();
             await appFs.saveCacheFile(id, text);
         }

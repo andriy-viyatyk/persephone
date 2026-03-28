@@ -58,4 +58,6 @@ registerProvider("http", (config) => new HttpProvider(
     },
 ));
 registerTransformer("zip", (config) => new ZipTransformer(config.entryPath as string));
-registerTransformer("decrypt", (config) => new DecryptTransformer(config.password as string));
+registerTransformer("decrypt", () => {
+    throw new Error("DecryptTransformer cannot be created from descriptor — use clone() instead");
+});

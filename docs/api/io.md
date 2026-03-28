@@ -165,7 +165,7 @@ const buffer = await pipe.readBinary();
 
 ### Writing
 
-Writing is optional -- it is only available when `pipe.writable` is `true`. For example, `FileProvider` supports writing but `HttpProvider` does not.
+Writing is only available when `pipe.writable` is `true`. For example, `FileProvider` supports writing but `HttpProvider` does not. Calling `writeText()` or `writeBinary()` on a read-only pipe throws an error -- always check `writable` first.
 
 #### writeText(content) -> `Promise<void>`
 

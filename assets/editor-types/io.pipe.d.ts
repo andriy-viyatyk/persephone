@@ -39,10 +39,12 @@ export interface IContentPipe {
     readBinary(): Promise<Buffer>;
     /** Read as text — readBinary() then decode using detected encoding (auto-detected on first read, defaults to UTF-8). */
     readText(): Promise<string>;
-    /** Write binary content — reverse-piped through transformers back to provider. */
-    writeBinary?(data: Buffer): Promise<void>;
-    /** Write text — encode using detected encoding, then writeBinary(). */
-    writeText?(content: string): Promise<void>;
+    /** Write binary content — reverse-piped through transformers back to provider.
+     *  Throws if `!writable`. Check `writable` before calling. */
+    writeBinary(data: Buffer): Promise<void>;
+    /** Write text — encode using detected encoding, then writeBinary().
+     *  Throws if `!writable`. Check `writable` before calling. */
+    writeText(content: string): Promise<void>;
     /** Detected content encoding after first readText() (e.g., "utf-8", "utf-16le"). */
     readonly encoding: string | undefined;
     /** Whether the full pipe supports writing (provider writable + all transformers reversible). */

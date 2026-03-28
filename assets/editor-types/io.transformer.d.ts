@@ -24,9 +24,10 @@ export interface ITransformer {
     /** Transform bytes on read (source → editor). */
     read(data: Buffer): Promise<Buffer>;
     /** Reverse-transform bytes on write (editor → source).
-     *  Receives new content and original source bytes (needed by ZIP to rebuild archive).
-     *  Undefined means this transformer is read-only. */
-    write?(data: Buffer, original: Buffer): Promise<Buffer>;
+     *  Receives new content and original source bytes (needed by ZIP to rebuild archive). */
+    write(data: Buffer, original: Buffer): Promise<Buffer>;
+    /** Create a deep copy of this transformer (avoids descriptor round-trip). */
+    clone(): ITransformer;
     /** Serialize to descriptor for persistence. */
     toDescriptor(): ITransformerDescriptor;
 }

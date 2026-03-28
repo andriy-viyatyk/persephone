@@ -1,11 +1,8 @@
 import type { IContentPipe, IPipeDescriptor } from "../api/types/io.pipe";
 import type { IProvider } from "../api/types/io.provider";
 import type { ITransformer } from "../api/types/io.transformer";
-import type { SubscriptionObject } from "../api/events/EventChannel";
-import {
-    createProviderFromDescriptor,
-    createTransformerFromDescriptor,
-} from "./registry";
+import type { ISubscriptionObject } from "../api/types/events";
+import { createProviderFromDescriptor } from "./registry";
 import { decodeBuffer, encodeString } from "./encoding";
 
 /**
@@ -35,8 +32,7 @@ export class ContentPipe implements IContentPipe {
     }
 
     get writable(): boolean {
-        if (!this.provider.writable) return false;
-        return this._transformers.every((t) => t.write !== undefined);
+        return this.provider.writable;
     }
 
     get displayName(): string {
@@ -80,14 +76,19 @@ export class ContentPipe implements IContentPipe {
 
     // ── Write ───────────────────────────────────────────────────────
 
-    get writeBinary(): ((data: Buffer) => Promise<void>) | undefined {
-        if (!this.writable) return undefined;
-        return this._writeBinary;
+    async writeBinary(data: Buffer): Promise<void> {
+        if (!this.writable) {
+            throw new Error("Cannot write: pipe is read-only");
+        }
+        await this._writeBinary(data);
     }
 
-    get writeText(): ((content: string) => Promise<void>) | undefined {
-        if (!this.writable) return undefined;
-        return this._writeText;
+    async writeText(content: string): Promise<void> {
+        if (!this.writable) {
+            throw new Error("Cannot write: pipe is read-only");
+        }
+        const buffer = encodeString(content, this._encoding);
+        await this._writeBinary(buffer);
     }
 
     private _writeBinary = async (data: Buffer): Promise<void> => {
@@ -122,20 +123,15 @@ export class ContentPipe implements IContentPipe {
         for (let i = this._transformers.length - 1; i >= 0; i--) {
             const transformer = this._transformers[i];
             const original = originals ? originals[i] : Buffer.alloc(0);
-            result = await transformer.write!(result, original);
+            result = await transformer.write(result, original);
         }
 
         await this.provider.writeBinary(result);
     };
 
-    private _writeText = async (content: string): Promise<void> => {
-        const buffer = encodeString(content, this._encoding);
-        await this._writeBinary(buffer);
-    };
-
     // ── Watch ───────────────────────────────────────────────────────
 
-    get watch(): ((callback: (event: string) => void) => SubscriptionObject) | undefined {
+    get watch(): ((callback: (event: string) => void) => ISubscriptionObject) | undefined {
         if (!this.provider.watch) return undefined;
         return (callback) => this.provider.watch!(callback);
     }
@@ -143,17 +139,13 @@ export class ContentPipe implements IContentPipe {
     // ── Clone ───────────────────────────────────────────────────────
 
     cloneWithProvider(provider: IProvider): IContentPipe {
-        const transformers = this._transformers.map(
-            (t) => createTransformerFromDescriptor(t.toDescriptor())
-        );
+        const transformers = this._transformers.map((t) => t.clone());
         return new ContentPipe(provider, transformers, this._encoding);
     }
 
     clone(): IContentPipe {
         const provider = createProviderFromDescriptor(this.provider.toDescriptor());
-        const transformers = this._transformers.map(
-            (t) => createTransformerFromDescriptor(t.toDescriptor())
-        );
+        const transformers = this._transformers.map((t) => t.clone());
         return new ContentPipe(provider, transformers, this._encoding);
     }
 

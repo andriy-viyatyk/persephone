@@ -34,7 +34,7 @@ export class TextFileEncryptionModel {
             );
 
             // Write encrypted content through pipe (no DecryptTransformer — writes as-is)
-            if (this.model.pipe?.writeText) {
+            if (this.model.pipe?.writable) {
                 await this.model.pipe.writeText(encryptedContent);
             }
 
@@ -179,7 +179,7 @@ export class TextFileEncryptionModel {
             candidate.removeTransformer("decrypt");
 
             try {
-                if (candidate.writeText) {
+                if (candidate.writable) {
                     await candidate.writeText(content);
                 }
             } catch {

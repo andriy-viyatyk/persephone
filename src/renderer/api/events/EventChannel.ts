@@ -1,8 +1,5 @@
 import { BaseEvent } from "./BaseEvent";
-
-export interface SubscriptionObject {
-    unsubscribe: () => void;
-}
+import type { ISubscriptionObject } from "../types/events";
 
 export type EventHandler<TEvent> = (event: TEvent) => void | Promise<void>;
 
@@ -42,7 +39,7 @@ export class EventChannel<TEvent extends BaseEvent> {
      * Register a handler. Accepts sync or async functions.
      * Returns an object with `unsubscribe()` to remove the handler.
      */
-    subscribe = (handler: EventHandler<TEvent>): SubscriptionObject => {
+    subscribe = (handler: EventHandler<TEvent>): ISubscriptionObject => {
         this.handlers.push(handler);
         return {
             unsubscribe: () => {

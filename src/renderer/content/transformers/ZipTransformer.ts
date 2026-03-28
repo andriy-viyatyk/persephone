@@ -38,6 +38,10 @@ export class ZipTransformer implements ITransformer {
         });
     }
 
+    clone(): ITransformer {
+        return new ZipTransformer(this.entryPath);
+    }
+
     toDescriptor(): ITransformerDescriptor {
         return {
             type: "zip",
