@@ -6,16 +6,16 @@ import { DecryptTransformer } from "../../content/transformers/DecryptTransforme
 export class TextFileEncryptionModel {
     constructor(private model: TextFileModel) {}
 
-    get encripted(): boolean {
+    get encrypted(): boolean {
         return shell.encryption.isEncrypted(this.model.state.get().content);
     }
 
-    get decripted(): boolean {
+    get decrypted(): boolean {
         return this.model.state.get().password !== undefined;
     }
 
-    get withEncription(): boolean {
-        return this.decripted || this.encripted;
+    get withEncryption(): boolean {
+        return this.decrypted || this.encrypted;
     }
 
     /**
@@ -23,7 +23,7 @@ export class TextFileEncryptionModel {
      * After: pipe has NO DecryptTransformer, content on disk is encrypted, page shows encrypted text.
      */
     encript = async (password: string): Promise<void> => {
-        if (this.encripted) {
+        if (this.encrypted) {
             ui.notify("File is already encrypted", "warning");
             return;
         }
@@ -43,7 +43,7 @@ export class TextFileEncryptionModel {
                 this.model.state.get().password !== password;
             this.model.state.update((s) => {
                 s.content = encryptedContent;
-                s.encripted = true;
+                s.encrypted = true;
                 s.password = undefined;
                 s.modified = modified;
                 s.temp = s.temp && !modified;
@@ -88,7 +88,7 @@ export class TextFileEncryptionModel {
 
             this.model.state.update((s) => {
                 s.content = encryptedContent;
-                s.encripted = true;
+                s.encrypted = true;
                 s.password = undefined;
             });
             this.model.io.markModificationUnsaved();
@@ -101,8 +101,8 @@ export class TextFileEncryptionModel {
      * Decrypt — clone-and-try with DecryptTransformer.
      * After: pipe HAS DecryptTransformer, shows plaintext, 🔓.
      */
-    decript = async (password: string): Promise<boolean> => {
-        if (!this.encripted) {
+    decrypt = async (password: string): Promise<boolean> => {
+        if (!this.encrypted) {
             return false;
         }
 
@@ -116,7 +116,7 @@ export class TextFileEncryptionModel {
                 );
                 this.model.state.update((s) => {
                     s.content = decrypted;
-                    s.encripted = false;
+                    s.encrypted = false;
                     s.password = password;
                 });
                 return true;
@@ -140,7 +140,7 @@ export class TextFileEncryptionModel {
 
             this.model.state.update((s) => {
                 s.content = plaintext;
-                s.encripted = false;
+                s.encrypted = false;
                 s.password = password;
             });
             return true;
@@ -153,12 +153,12 @@ export class TextFileEncryptionModel {
     };
 
     showEncryptionDialog = async () => {
-        const mode = this.encripted && !this.decripted ? "decrypt" : "encrypt";
+        const mode = this.encrypted && !this.decrypted ? "decrypt" : "encrypt";
         const password = await ui.password({ mode });
         if (!password) return;
 
         if (mode === "decrypt") {
-            await this.decript(password);
+            await this.decrypt(password);
         } else {
             await this.encript(password);
         }

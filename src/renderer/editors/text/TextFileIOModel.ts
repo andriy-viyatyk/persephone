@@ -78,14 +78,15 @@ export class TextFileIOModel {
     };
 
     saveFile = async (saveAs?: boolean): Promise<boolean> => {
-        const { filePath, title, id } = this.model.state.get();
+        const { filePath, title, id, deleted } = this.model.state.get();
         const pipeWritable = this.model.pipe?.writable ?? false;
-        // Force "Save As" dialog if pipe is read-only (e.g., HttpProvider) or no file path
-        let savePath: string | undefined = (saveAs || !pipeWritable) ? undefined : filePath;
+        // Force "Save As" dialog if pipe is read-only, no file path, or file was deleted
+        const forceSaveAs = saveAs || !pipeWritable || deleted;
+        let savePath: string | undefined = forceSaveAs ? undefined : filePath;
         if (!savePath) {
             savePath = await api.showSaveFileDialog({
-                title: (saveAs || !pipeWritable) ? "Save File As" : "Save File",
-                defaultPath: title,
+                title: forceSaveAs ? "Save File As" : "Save File",
+                defaultPath: filePath || title,
             });
         }
 
@@ -96,7 +97,13 @@ export class TextFileIOModel {
 
         if (savePath === filePath && this.model.pipe?.writable) {
             // Save to same file — write through existing pipe (preserves transformers)
-            await this.model.pipe.writeText(text);
+            try {
+                await this.model.pipe.writeText(text);
+            } catch (err) {
+                const { ui } = await import("../../api/ui");
+                ui.notify((err as Error).message || "Failed to save file.", "warning");
+                return false;
+            }
         } else {
             // Save As — create fresh pipe (no transformers, just the file + encoding)
             const newPipe = new ContentPipe(
@@ -104,7 +111,14 @@ export class TextFileIOModel {
                 [],
                 this.model.pipe?.encoding,
             );
-            await newPipe.writeText(text);
+            try {
+                await newPipe.writeText(text);
+            } catch (err) {
+                newPipe.dispose();
+                const { ui } = await import("../../api/ui");
+                ui.notify((err as Error).message || "Failed to save file.", "warning");
+                return false;
+            }
 
             // Swap to new pipe
             this.model.pipe?.dispose();
@@ -125,6 +139,11 @@ export class TextFileIOModel {
             s.title = fpBasename(savePath);
             s.deleted = false;
             s.encoding = this.model.pipe?.encoding;
+            // Save As to a new path creates a fresh pipe without DecryptTransformer
+            if (savePath !== filePath) {
+                s.password = undefined;
+                s.encrypted = false;
+            }
         });
 
         return true;
@@ -161,12 +180,11 @@ export class TextFileIOModel {
     applyRenamedPath = async (newPath: string) => {
         const oldPath = this.model.state.get().filePath;
 
-        // Create new pipe for renamed path (same encoding, no transformers for plain files)
-        const newPipe = new ContentPipe(
-            new FileProvider(newPath),
-            [],
-            this.model.pipe?.encoding,
-        );
+        // Preserve transformers from existing pipe (e.g., ZipTransformer, DecryptTransformer)
+        const newProvider = new FileProvider(newPath);
+        const newPipe = this.model.pipe
+            ? this.model.pipe.cloneWithProvider(newProvider)
+            : new ContentPipe(newProvider);
         this.model.pipe?.dispose();
         this.model.pipe = newPipe;
         this.setupWatch();
@@ -200,7 +218,7 @@ export class TextFileIOModel {
                     if (cachedContent !== undefined) {
                         this.model.state.update((s) => {
                             s.content = cachedContent;
-                            s.encripted = shell.encryption.isEncrypted(cachedContent);
+                            s.encrypted = shell.encryption.isEncrypted(cachedContent);
                             s.encoding = this.cachePipe?.encoding;
                         });
                     }
@@ -227,7 +245,7 @@ export class TextFileIOModel {
                 const fileContent = await pipe.readText();
                 this.model.state.update((s) => {
                     s.content = fileContent || "";
-                    s.encripted = shell.encryption.isEncrypted(s.content);
+                    s.encrypted = shell.encryption.isEncrypted(s.content);
                     s.encoding = pipe.encoding;
                     s.title = fpBasename(filePath || "");
                     s.language =
@@ -285,7 +303,7 @@ export class TextFileIOModel {
                 const content = await pipe.readText();
                 this.model.state.update((s) => {
                     s.content = content;
-                    s.encripted = shell.encryption.isEncrypted(s.content);
+                    s.encrypted = shell.encryption.isEncrypted(s.content);
                     s.encoding = pipe.encoding;
                 });
             } catch {

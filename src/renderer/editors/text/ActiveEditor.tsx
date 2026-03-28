@@ -15,13 +15,13 @@ const getEditorModule = (editor: PageEditor) => async () => {
 };
 
 export function ActiveEditor({ model }: ActiveEditorProps) {
-    const { editor, encripted } = model.state.use((s) => ({
+    const { editor, encrypted } = model.state.use((s) => ({
         editor: s.editor,
-        encripted: s.encripted,
+        encrypted: s.encrypted,
     }));
 
     // Always show text editor for encrypted content
-    if (encripted) {
+    if (encrypted) {
         return <TextEditor model={model} />;
     }
 

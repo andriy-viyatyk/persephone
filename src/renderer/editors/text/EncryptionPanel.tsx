@@ -68,19 +68,19 @@ export function EncryptionPanel({ model, onSubmit, onCancel, className }: Encryp
             setError("Password cannot be empty");
             return;
         }
-        if ((!model.withEncription || model.decripted) && password !== confirm) {
+        if ((!model.withEncryption || model.decrypted) && password !== confirm) {
             setError("Passwords do not match");
             return;
         }
         onSubmit?.(password);
-    }, [password, confirm, onSubmit, model.withEncription, model.decripted]);
+    }, [password, confirm, onSubmit, model.withEncryption, model.decrypted]);
 
     const buttonText = useMemo(() => {
-        if (!model.withEncription || model.decripted) {
+        if (!model.withEncryption || model.decrypted) {
             return "Encrypt";
         }
         return "Decrypt";
-    }, [model.withEncription, model.decripted]);
+    }, [model.withEncryption, model.decrypted]);
 
     const handleEnterKey = useCallback((e: React.KeyboardEvent) => {
         if (e.key === "Enter") {
@@ -101,7 +101,7 @@ export function EncryptionPanel({ model, onSubmit, onCancel, className }: Encryp
                 autoFocus
                 onKeyDown={handleEnterKey}
             />
-            {(!model.withEncription || model.decripted) && (
+            {(!model.withEncryption || model.decrypted) && (
                 <TextField
                     label="Confirm Password"
                     type="password"

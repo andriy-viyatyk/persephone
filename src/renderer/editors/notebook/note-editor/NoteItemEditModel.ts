@@ -364,11 +364,11 @@ export class NoteItemEditModel implements IContentHost {
         return "Note";
     }
 
-    get encripted(): boolean {
+    get encrypted(): boolean {
         return false;
     }
 
-    get decripted(): boolean {
+    get decrypted(): boolean {
         return false;
     }
 }

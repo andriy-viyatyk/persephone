@@ -12,13 +12,14 @@ import type { IContentHost } from "../base/IContentHost";
 import type { EditorStateStorage } from "../base/EditorStateStorageContext";
 import { ContentViewModelHost } from "../base/ContentViewModelHost";
 import type { TextViewModel } from "./TextEditor";
+import { createPipeFromDescriptor } from "../../content/registry";
 
 export interface TextFilePageModelState extends IPageState {
     content: string;
     deleted: boolean;
     encoding?: string;
     password?: string;
-    encripted?: boolean;
+    encrypted?: boolean;
     restored: boolean;
     compareMode: boolean;
     temp: boolean;
@@ -37,7 +38,7 @@ export const getDefaultTextFilePageModelState = (): TextFilePageModelState => ({
     content: "",
     deleted: false,
     password: undefined,
-    encripted: false,
+    encrypted: false,
     restored: false,
 });
 
@@ -180,16 +181,16 @@ export class TextFileModel extends PageModel<TextFilePageModelState, void> imple
     // Encryption delegates (getters)
     // =========================================================================
 
-    get encripted(): boolean {
-        return this.encryption.encripted;
+    get encrypted(): boolean {
+        return this.encryption.encrypted;
     }
 
-    get decripted(): boolean {
-        return this.encryption.decripted;
+    get decrypted(): boolean {
+        return this.encryption.decrypted;
     }
 
-    get withEncription(): boolean {
-        return this.encryption.withEncription;
+    get withEncryption(): boolean {
+        return this.encryption.withEncryption;
     }
 
     // =========================================================================
@@ -200,7 +201,7 @@ export class TextFileModel extends PageModel<TextFilePageModelState, void> imple
         this.state.update((state) => {
             state.content = newContent;
             state.modified = true;
-            state.encripted = shell.encryption.isEncrypted(newContent);
+            state.encrypted = shell.encryption.isEncrypted(newContent);
             state.temp = state.temp && !byUser;
         });
         this.io.markModificationUnsaved();
@@ -221,7 +222,7 @@ export class TextFileModel extends PageModel<TextFilePageModelState, void> imple
             content,
             deleted,
             password,
-            encripted,
+            encrypted,
             restored,
             detectedContentEditor,
             ...pageData
@@ -229,11 +230,22 @@ export class TextFileModel extends PageModel<TextFilePageModelState, void> imple
         if (this.navPanel) {
             pageData.hasNavPanel = true;
         }
+        if (this.pipe) {
+            pageData.pipe = this.pipe.toDescriptor();
+        }
         return pageData;
     }
 
     applyRestoreData = (data: Partial<TextFilePageModelState>): void => {
         this.needsNavPanelRestore = !!data.hasNavPanel;
+        // Reconstruct pipe from descriptor if present
+        if (data.pipe) {
+            try {
+                this.pipe = createPipeFromDescriptor(data.pipe as any); // eslint-disable-line @typescript-eslint/no-explicit-any
+            } catch {
+                this.pipe = null;
+            }
+        }
         this.state.update((s) => {
             s.id = data.id || s.id;
             s.type = data.type || s.type;
@@ -289,7 +301,7 @@ export class TextFileModel extends PageModel<TextFilePageModelState, void> imple
     // Encryption delegates
     encript = (password: string) => this.encryption.encript(password);
     encryptWithCurrentPassword = () => this.encryption.encryptWithCurrentPassword();
-    decript = (password: string) => this.encryption.decript(password);
+    decrypt = (password: string) => this.encryption.decrypt(password);
     showEncryptionDialog = () => this.encryption.showEncryptionDialog();
     makeUnencrypted = () => this.encryption.makeUnencrypted();
     alertEncryptionError = (err: Error) => this.encryption.alertEncryptionError(err);

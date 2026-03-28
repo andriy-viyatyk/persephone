@@ -46,7 +46,7 @@ export class BrowserBookmarks {
             if (options?.silent) return false; // silent mode — don't prompt
             const password = await ui.password({ mode: "decrypt" });
             if (!password) return false; // user cancelled
-            const ok = await this.textModel.decript(password);
+            const ok = await this.textModel.decrypt(password);
             if (!ok) return false; // wrong password
         }
 

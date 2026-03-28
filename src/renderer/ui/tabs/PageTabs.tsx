@@ -210,7 +210,7 @@ export function PageTabs(props: object) {
                             if (p === page) break;
                             const ps = p.state.get();
                             if (ps.pinned) {
-                                const isEnc = isTextFileModel(p) && (p.encripted || p.decripted);
+                                const isEnc = isTextFileModel(p) && (p.encrypted || p.decrypted);
                                 pinnedLeft += (isEnc ? pinnedTabEncryptedWidth : pinnedTabWidth) + 2; // 2 = column gap
                             }
                         }

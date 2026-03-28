@@ -376,14 +376,14 @@ class PageTabModel extends TComponentModel<null, PageTabProps> {
                 },
                 disabled: !(
                     isTextFileModel(this.props.model) &&
-                    this.props.model.encripted
+                    this.props.model.encrypted
                 ),
                 startGroup: true,
             },
             {
                 label:
                     isTextFileModel(this.props.model) &&
-                    !this.props.model.withEncription
+                    !this.props.model.withEncryption
                         ? "Encrypt"
                         : "Change Password",
                 icon: <LockIcon />,
@@ -394,7 +394,7 @@ class PageTabModel extends TComponentModel<null, PageTabProps> {
                 },
                 disabled:
                     !isTextFileModel(this.props.model) ||
-                    this.props.model.encripted,
+                    this.props.model.encrypted,
             },
             {
                 label: "Make Unencrypted",
@@ -406,7 +406,7 @@ class PageTabModel extends TComponentModel<null, PageTabProps> {
                 },
                 disabled:
                     !isTextFileModel(this.props.model) ||
-                    !this.props.model.decripted,
+                    !this.props.model.decrypted,
             },
         );
         ctxEvent.items.push(...menuItems);
@@ -496,9 +496,9 @@ class PageTabModel extends TComponentModel<null, PageTabProps> {
 
     encryptionClick = () => {
         if (isTextFileModel(this.props.model)) {
-            if (this.props.model.encripted) {
+            if (this.props.model.encrypted) {
                 this.props.model.showEncryptionDialog();
-            } else if (this.props.model.decripted) {
+            } else if (this.props.model.decrypted) {
                 this.props.model.encryptWithCurrentPassword();
             }
         }
@@ -520,7 +520,7 @@ export function PageTab(props: PageTabProps) {
             filePath: s.filePath,
             deleted: (s as any).deleted ?? false,
             password: (s as any).password,
-            encripted: (s as any).encripted ?? false,
+            encrypted: (s as any).encrypted ?? false,
             temp: (s as any).temp ?? false,
             pinned: s.pinned ?? false,
             // Trigger re-render when favicon changes (for browser tabs with dynamic icons)
@@ -557,9 +557,9 @@ export function PageTab(props: PageTabProps) {
         [language, activeLanguages]
     );
 
-    const encripted = isTextFileModel(model) && model.encripted;
-    const decripted = isTextFileModel(model) && model.decripted;
-    const isPinnedEncrypted = pinned && (encripted || decripted);
+    const encrypted = isTextFileModel(model) && model.encrypted;
+    const decrypted = isTextFileModel(model) && model.decrypted;
+    const isPinnedEncrypted = pinned && (encrypted || decrypted);
 
     return (
         <PageTabRoot
@@ -623,13 +623,13 @@ export function PageTab(props: PageTabProps) {
                 </WithPopupMenu>
             )}
             <span className="title-label" data-tooltip-id={pinned ? undefined : id}>
-                {(encripted || decripted) && (
+                {(encrypted || decrypted) && (
                     <span
                         className="encryption-icon"
                         onClick={tabModel.encryptionClick}
-                        title={encripted ? "Decrypt File" : "Encrypt File"}
+                        title={encrypted ? "Decrypt File" : "Encrypt File"}
                     >
-                        {encripted ? "🔒" : "🔓"}
+                        {encrypted ? "🔒" : "🔓"}
                     </span>
                 )}
                 {!pinned && title}
