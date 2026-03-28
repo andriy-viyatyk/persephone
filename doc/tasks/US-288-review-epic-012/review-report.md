@@ -504,42 +504,29 @@ Small code fixes across the pipeline core, providers, transformers, and types.
 - [x] `resolvers.ts` — Replace `forceBrowser` metadata flag with `event.target === "browser"`
 - [x] Copy updated `.d.ts` files to `assets/editor-types/`
 
-### Task 3: Text Editor Pipe Bugs
+### Task 3: Text Editor Pipe Bugs ✓ COMPLETE
 
-Bugs found in TextFileIOModel related to pipe lifecycle.
+- [x] HTTP page restore — pipe serialization in getRestoreData/applyRestoreData
+- [x] Rename preserves transformers — cloneWithProvider
+- [x] Save As clears password/encrypted state
+- [x] Save error handling — try/catch + ui.notify
+- [x] Save deleted file — force Save As dialog
+- [x] Spelling fixes (encrypted, decrypted, decrypt, withEncryption)
 
-- [ ] **HTTP page restore** — Serialize pipe descriptor in `TextFileModel.getRestoreData()`, reconstruct in `applyRestoreData()`. Test: open HTTP URL, restart app, verify page restores (Phase 3, Inc #1-2)
-- [ ] **Rename drops transformers** — Use `cloneWithProvider(new FileProvider(newPath))` in `applyRenamedPath()`. Test: rename encrypted file, verify encryption preserved (Phase 3, Concern #1)
-- [ ] **Save As stale password** — Clear `state.password` when saving to a new path without DecryptTransformer. Test: Save As from encrypted file, verify no lock icon on new file (Phase 3, Concern #2)
-- [ ] **Save error handling** — Add try/catch in `saveFile()`, show `ui.notify()` on write failure. Test: make file read-only, edit, Ctrl+S (Phase 3, Concern #8)
-- [ ] **Save deleted file** — Force Save As dialog when `state.deleted === true`, with original path as default. Test: open file, delete it externally, try to save (Phase 1, Concern #1)
+### Task 4: Reference Editors Pipe Completion ✓ COMPLETE
 
-### Task 4: Reference Editors Pipe Completion
+- [x] Remove page-editor archive guard
+- [x] ImageViewer ensurePipe(), pipe-first Drawing Editor, no safe-file:// fallback
+- [x] PdfViewer ensurePipe(), no safe-file:// fallback
+- [x] openDiff with pipes via createPipeFromPath()
+- [x] Fix stale blob URL in ImageViewer restore (strip url from saved state)
 
-Complete pipe migration for PDF and Image viewers.
+### Task 5: ITreeProvider → moved to EPIC-015
 
-- [ ] **Remove page-editor archive guard** — Delete condition at `PagesLifecycleModel.ts:33` that blocks page-editors for archive paths. Pipes handle archive extraction now (Phase 4, Inc #3)
-- [ ] **ImageViewer `ensurePipe()`** — Reconstruct pipe from filePath on restore (same pattern as TextFileIOModel). Remove `fs.readBinary()` fallback in "Open in Drawing Editor". Only two content sources: `model.pipe` or `state.url` (Phase 4, Concern #1, #4)
-- [ ] **PdfViewer `ensurePipe()`** — Same as ImageViewer. Remove `safe-file://` fallback from component. Only use `localPdfPath` from pipe (Phase 4, Concern #4)
-- [ ] **openDiff migration** — Route through pipeline so diff works with HTTP/archive/encrypted sources. Test: open two HTTP URLs, group, enable diff (Phase 5, Inc #1)
-
-### Task 5: ITreeProvider (Investigation + Refactoring)
-
-Implement ITreeProvider interface designed in EPIC-012 but not yet built. Large task — needs deeper investigation before implementation.
-
-**Scope:**
-- [ ] Define `ITreeProvider` interface and types (`io.tree.d.ts`)
-- [ ] Implement `FileSystemTreeProvider` (replaces current file explorer fs logic)
-- [ ] Implement `ZipTreeProvider` (replaces current archive NavPanel logic)
-- [ ] Migrate NavigationPanel to use ITreeProvider
-- [ ] Migrate FileExplorer to use ITreeProvider
-- [ ] `navigatePageTo` — Route through `app.events.openLink()` with `pageId` in metadata (Phase 5, Inc #2)
-- [ ] `TextFileIOModel.renameFile` — Delegate to ITreeProvider (Phase 3, Concern #4)
-- [ ] Derive ITreeProvider from pipe provider when not explicitly linked
-- [ ] Multi-file drag-drop → virtual SelectedTreeView (Phase 5, Inc #3)
-- [ ] Expose tree providers in script `io` namespace
+Scope too large for a review task. Created [EPIC-015: ITreeProvider — Browsable Source Abstraction](../../epics/EPIC-015.md) with high-level design and checklist. Review findings preserved in this document for reference.
 
 ### Backlog
 
-- **Data validation for persisted JSON** — Consider schema validation library for settings, page state, editor files. Not a bug, future robustness improvement (Phase 8, Concern #4)
-- **Pipe status on pages** — Loading progress and error/response status for HTTP sources. Will cover error feedback in all editors uniformly (Phase 4, Concern #3)
+- **US-289** — Browser-webview images: persist across app restart (cache to disk)
+- **Data validation for persisted JSON** — Consider schema validation library for settings, page state, editor files
+- **Pipe status on pages** — Loading progress and error/response status for HTTP sources

@@ -4,6 +4,7 @@ All completed tasks, newest first.
 
 | ID | Title | Epic | Notes |
 |----|-------|------|-------|
+| US-288 | Review EPIC-012 Changes and Architecture | EPIC-012 | 9-phase review. Tasks 1-4 implemented: doc updates, pipeline hardening (ITransformer clone, #password, async fs, ILinkMetadata, OpenContentEvent), text editor pipe bugs (HTTP restore, rename transformers, save errors, spelling fixes), reference editors (ensurePipe, archive guard removal, openDiff pipes). Task 5 → EPIC-015. |
 | US-271 | Script API & docs | EPIC-012 | `io` global namespace: FileProvider, HttpProvider, ZipTransformer, DecryptTransformer, createPipe(), RawLinkEvent, OpenLinkEvent. Type definitions in `io.d.ts`. AppWrapper events proxy exposes send/sendAsync. |
 | US-274 | Migrate reference editors | EPIC-012 | PDF Viewer and Image Viewer use content pipes. Non-local sources (HTTP, archives) cached as temp files via appFs. Cache cleaned on page dispose. Replaced direct `require("fs")` with `appFs`. |
 | US-273 | cURL parser & Open URL dialog | EPIC-012 | Layer 1 parsers for HTTP URLs and cURL/fetch commands. Open URL dialog (Ctrl+O) with textarea input, "Open"/"Cancel"/"Open File" buttons. HTTP resolver with self-contained extension→editor mapping. TextAreaField paste fix for context menu. |
