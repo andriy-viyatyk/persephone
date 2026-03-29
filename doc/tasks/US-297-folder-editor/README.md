@@ -1,231 +1,275 @@
-# US-297: CategoryEditor + Tree Provider Registry + Category Link Resolution
+# US-297: CategoryEditor + tree-category:// Link Resolution
 
-**Status:** Planned — depends on US-298 (NavigationData)
+**Status:** Planned
 **Epic:** EPIC-015 (Phase 3, Task 3.3)
+**Depends on:** US-298 (NavigationData) — completed
 
 ## Goal
 
-Create a `CategoryEditor` that wraps `CategoryView` for displaying folder/category contents. Introduce a `TreeProviderRegistry` with reference-counted provider lifecycle. Define a `tree-category://` link format that the pipeline resolves to CategoryEditor. This makes folders, archive directories, and link categories all navigable through the same `openRawLink` pipeline.
+Create a `CategoryEditor` that wraps `CategoryView` for displaying folder/category contents. Define a `tree-category://` link format that the pipeline resolves to CategoryEditor. Folder clicks in PageNavigator go through the `openRawLink` pipeline — no special folder handling.
 
 ## Background
 
+### NavigationData (US-298 — completed)
+
+`NavigationData` survives page navigation and holds:
+- `treeProvider: ITreeProvider | null` — shared between PageNavigator and CategoryEditor
+- `pageNavigatorModel` — sidebar state
+- `renderId` — stable React key (keeps PageNavigator mounted)
+
+The `treeProvider` is the key: both PageNavigator (sidebar) and CategoryEditor (content area) read the same provider instance from `NavigationData`. No global registry needed.
+
 ### The problem
 
-When a user clicks a folder in PageNavigator, the page needs to display CategoryView with that folder's contents. But CategoryView needs an `ITreeProvider` — and the provider type depends on context:
-- FileTreeProvider for local directories
-- ZipTreeProvider for archive paths
-- LinkTreeProvider for `.link.json` categories (future)
+When a user clicks a folder in PageNavigator, the page needs to display CategoryView. But `navigatePageTo` creates a new page model via `editorRegistry.resolve(filePath)`. For directories:
+- FileTreeProvider folders are real OS directories — `statSync` can detect them
+- ZipTreeProvider categories are inner archive paths — not real paths
+- LinkTreeProvider categories are virtual — not paths at all
 
-The Layer 2 resolver can't reliably detect what a path is — `"bookmarks/dev"` looks like a file path but is actually a LinkTreeProvider category. We need an unambiguous link format.
+The resolver can't reliably detect what a category path is. We need an unambiguous link format.
 
-### The solution: `tree-category://` links
+### The solution
 
-A new link format that carries all metadata needed to find or create the right provider:
+Two-part approach:
+1. **`tree-category://` link format** — unambiguous, carries metadata for any provider type
+2. **CategoryEditor** gets the `treeProvider` from `NavigationData` on the page model — no need to create a new provider from the link
 
-```
-tree-category://<base64 encoded ITreeProviderLink JSON>
-```
-
-### Key design: reference-counted provider registry
-
-The `ITreeProvider` lives in a global registry with consumer counting. Multiple components can share the same provider instance:
-- PageNavigator is one consumer
-- CategoryEditor is another consumer
-- "Open in New Tab" creates a third consumer on the same provider
-
-When all consumers release, the provider is disposed.
-
-## Design
-
-### ITreeProviderLink
-
-```typescript
-interface ITreeProviderLink {
-    /** Existing provider ID from registry. Undefined = create new. */
-    id?: string;
-    /** Provider type: "file", "zip", "link", etc. */
-    type: string;
-    /** Category path to display in CategoryView. */
-    category: string;
-    /** Source URL to create provider if id is missing or stale.
-     *  File path for FileTreeProvider, archive path for ZipTreeProvider,
-     *  .link.json path for LinkTreeProvider. */
-    url: string;
-}
-```
-
-### TreeProviderRegistry
-
-```typescript
-class TreeProviderRegistry {
-    private providers = new Map<string, {
-        provider: ITreeProvider;
-        refCount: number;
-    }>();
-
-    /** Get existing or create new provider. Increments refCount. Returns { id, provider }. */
-    acquire(link: ITreeProviderLink): { id: string; provider: ITreeProvider };
-
-    /** Decrement refCount. Disposes provider when refCount reaches 0. */
-    release(id: string): void;
-
-    /** Get provider by id without incrementing refCount (for read-only access). */
-    get(id: string): ITreeProvider | undefined;
-}
-```
-
-Factory for creating providers from link metadata:
-```typescript
-function createProviderFromLink(link: ITreeProviderLink): ITreeProvider {
-    switch (link.type) {
-        case "file": return new FileTreeProvider(link.url);
-        case "zip": return new ZipTreeProvider(link.url);
-        // case "link": return new LinkTreeProvider(link.url);
-        default: throw new Error(`Unknown provider type: ${link.type}`);
-    }
-}
-```
-
-### Link flow
+### Flow
 
 ```
 User clicks folder in PageNavigator
     ↓
-PageNavigator constructs tree-category:// link:
-    { id: "42", type: "file", category: "src/utils", url: "C:\\projects" }
+PageNavigator calls: provider.getNavigationUrl(item) → "tree-category://<encoded>"
+    sends: openRawLink("tree-category://<encoded>", { pageId })
     ↓
-openRawLink("tree-category://eyJpZC...") with { pageId }
+Layer 1 parser: detects "tree-category://" prefix → openLink with target="category-view"
     ↓
-Layer 1 parser: detects "tree-category://" prefix → openLink
+Layer 2 resolver: passes through (target already set)
     ↓
-Layer 2 resolver: decodes link → target = "category-view"
+Layer 3 open handler: navigatePageTo → transfers NavigationData → creates CategoryPageModel
     ↓
-Layer 3 open handler: navigatePageTo → CategoryEditor
-    ↓
-CategoryEditor: registry.acquire(link) → gets provider → renders CategoryView
+CategoryEditor reads navigationData.treeProvider → renders CategoryView(provider, category)
 ```
 
-### Consumer scenarios
+The `tree-category://` link is only used for routing — the actual provider instance comes from `NavigationData`.
 
-**Scenario 1: Page with PageNavigator → click folder**
-1. PageNavigator creates FileTreeProvider → `registry.acquire()` → refCount=1, id="1"
-2. User clicks folder → `openRawLink("tree-category://...?id=1&category=src/utils")`
-3. CategoryEditor → `registry.acquire({ id: "1", ... })` → refCount=2, same provider
-4. Page closes → both release → refCount=0 → dispose
+## Design
 
-**Scenario 2: Open folder directly (no PageNavigator yet)**
-1. `openRawLink("tree-category://{ type: 'file', url: 'C:\\projects\\src', category: '...' }")`
-2. CategoryEditor → `registry.acquire({ type: "file", url: "..." })` → creates new, refCount=1, id="2"
-3. User opens PageNavigator → acquires same provider by id → refCount=2
-4. Both share same provider instance
+### ITreeProvider.getNavigationUrl(item)
 
-**Scenario 3: "Open in New Tab" from context menu**
-1. Page 1 has provider id="1", refCount=2 (PageNavigator + CategoryEditor)
-2. Context menu "Open in New Tab" → `openRawLink("tree-category://...?id=1&category=subfolder")`
-3. New page's CategoryEditor → `registry.acquire({ id: "1" })` → refCount=3
-4. Close page 1 → refCount=1 (page 2 still active)
+New method on `ITreeProvider` — returns a raw link string for navigating to any item:
+
+```typescript
+interface ITreeProvider {
+    // ... existing methods ...
+
+    /** Return a raw link for opening an item via openRawLink pipeline.
+     *  For files: returns item.href (file path, HTTP URL, etc.).
+     *  For directories: returns a tree-category:// link. */
+    getNavigationUrl(item: ITreeProviderItem): string;
+}
+```
+
+**Why on the provider?** The provider owns the link format. FileTreeProvider knows how to encode `{ type: "file", url, category }`. ZipTreeProvider encodes `{ type: "zip", url, category }`. The UI layer never constructs category links — it just calls `provider.getNavigationUrl(item)` and passes the result to `openRawLink`.
+
+FileTreeProvider implementation:
+```typescript
+getNavigationUrl(item: ITreeProviderItem): string {
+    if (!item.isDirectory) return item.href;
+    return encodeCategoryLink({
+        type: this.type,
+        url: this.sourceUrl,
+        category: item.href,  // for FileTreeProvider, href = absolute path
+    });
+}
+```
+
+### ITreeProviderLink
+
+Minimal metadata encoded in the link. Used for:
+- Routing (the parser detects the prefix and sets the editor target)
+- Fallback provider creation (if NavigationData doesn't have a provider — e.g., opening a folder link from outside)
+
+```typescript
+interface ITreeProviderLink {
+    /** Provider type: "file", "zip", "link". */
+    type: string;
+    /** Source URL (folder path, archive path, .link.json path). */
+    url: string;
+    /** Category path to display in CategoryView. */
+    category: string;
+}
+```
+
+Encoding: JSON stringified + base64 in the URL:
+```
+tree-category://<base64 JSON>
+```
 
 ### CategoryEditor
 
-A `"page-editor"` registered in the editor registry:
+A `"page-editor"` that reads the provider from `NavigationData`:
 
 ```typescript
 function CategoryEditor({ model }: { model: CategoryPageModel }) {
-    // model.categoryLink contains the decoded ITreeProviderLink
-    const { providerId, provider } = useTreeProvider(model.categoryLink);
-    // Release provider on unmount
-    useEffect(() => () => registry.release(providerId), [providerId]);
+    const navData = model.navigationData;
+    const provider = navData?.treeProvider;
+    const categoryPath = model.categoryPath;  // decoded from tree-category:// link
+
+    if (!provider) {
+        // Fallback: create provider from link metadata
+        // (happens when opening a folder link from outside, no NavigationData yet)
+    }
+
+    // Unified handler — getNavigationUrl returns the right link for both files and folders
+    const handleNavigate = useCallback((item: ITreeProviderItem) => {
+        const url = provider?.getNavigationUrl(item) ?? item.href;
+        app.events.openRawLink.sendAsync(new RawLinkEvent(url, undefined, { pageId }));
+    }, [provider, pageId]);
 
     return (
         <CategoryView
             provider={provider}
-            category={model.categoryLink.category}
-            onItemClick={handleItemClick}
-            onFolderClick={handleFolderClick}
+            category={categoryPath}
+            onItemClick={handleNavigate}
+            onFolderClick={handleNavigate}
         />
     );
 }
 ```
 
-When a file is clicked in CategoryView → `openRawLink(item.href, { pageId })` → navigates to file editor.
-When a folder is clicked in CategoryView → constructs `tree-category://` link → navigates to CategoryEditor for that subfolder.
+**Item/folder click** — unified via `provider.getNavigationUrl(item)`:
+- For files, returns `item.href` → opens file editor
+- For folders, returns `tree-category://` link → opens CategoryEditor for subfolder
+
+CategoryView has separate `onItemClick`/`onFolderClick` props, but CategoryEditor passes the same handler to both.
 
 ### PageNavigator changes
 
-PageNavigator distinguishes file vs folder clicks:
+PageNavigator uses `provider.getNavigationUrl(item)` for all navigation — no if/else:
 
 ```typescript
 const handleItemClick = useCallback((item: ITreeProviderItem) => {
-    if (item.isDirectory) {
-        const link: ITreeProviderLink = {
-            id: providerId,
-            type: provider.type,
-            category: /* category path for this folder */,
-            url: provider.sourceUrl,
-        };
-        app.events.openRawLink.sendAsync(new RawLinkEvent(
-            encodeCategoryLink(link),
-            undefined,
-            { pageId },
-        ));
-    } else {
-        app.events.openRawLink.sendAsync(new RawLinkEvent(
-            item.href,
-            undefined,
-            { pageId },
-        ));
+    const url = navigationData.treeProvider?.getNavigationUrl(item) ?? item.href;
+    app.events.openRawLink.sendAsync(new RawLinkEvent(
+        url,
+        undefined,
+        { pageId },
+    ));
+}, [pageId, navigationData]);
+```
+
+### CategoryPageModel
+
+Extends `PageModel`. Stores:
+- `categoryPath` — decoded from the `tree-category://` link
+- Uses `navigationData.treeProvider` from transferred NavigationData
+
+```typescript
+class CategoryPageModel extends PageModel {
+    categoryPath: string;
+
+    constructor(link: ITreeProviderLink) {
+        super();
+        this.categoryPath = link.category;
+        this.state.update((s) => {
+            s.type = "categoryPage";  // or reuse existing type
+            s.title = link.category.split("/").pop() || "Folder";
+            s.filePath = encodeCategoryLink(link);  // for restore
+        });
     }
-}, [pageId, providerId, provider]);
+}
+```
+
+### Editor registration
+
+```typescript
+editorRegistry.register({
+    id: "category-view",
+    name: "Folder View",
+    pageType: "categoryPage",
+    category: "page-editor",
+    acceptFile: (fileName) => {
+        if (fileName?.startsWith("tree-category://")) return 200;
+        return -1;
+    },
+    loadModule: async () => { /* ... */ },
+});
 ```
 
 ## Implementation Plan
 
-### Step 1: Create TreeProviderRegistry
-File: `src/renderer/content/tree-providers/tree-provider-registry.ts`
-
-### Step 2: Define ITreeProviderLink type and encode/decode helpers
+### Step 1: Define ITreeProviderLink and encode/decode helpers
 File: `src/renderer/content/tree-providers/tree-provider-link.ts`
 
+### Step 2: Add `getNavigationUrl(item)` to ITreeProvider
+File: `src/renderer/api/types/io.tree.d.ts` — add method to the interface.
+File: `src/renderer/content/tree-providers/FileTreeProvider.ts` — implement: files return `item.href`, directories return `encodeCategoryLink(...)`.
+File: `src/renderer/content/tree-providers/ZipTreeProvider.ts` — implement: files return `item.href`, directories return `encodeCategoryLink(...)`.
+
 ### Step 3: Register tree-category:// Layer 1 parser
-Add to `parsers.ts` or create separate `tree-category-parser.ts`
+File: `src/renderer/content/parsers.ts` — add parser that detects `tree-category://` prefix, decodes the link, fires `openLink` with `target="category-view"`.
 
-### Step 4: Register tree-category:// Layer 2 resolver
-Add folder/category resolver to `resolvers.ts`
+### Step 4: Create CategoryPageModel
+File: `src/renderer/editors/category/CategoryPageModel.ts`
 
-### Step 5: Create CategoryEditor + CategoryPageModel
-Files: `src/renderer/editors/category/CategoryEditor.tsx`, `CategoryPageModel.ts`
+### Step 5: Create CategoryEditor
+File: `src/renderer/editors/category/CategoryEditor.tsx` — reads provider from `navigationData.treeProvider`, renders CategoryView. Item/folder clicks use `provider.getNavigationUrl(item)` → `openRawLink`.
 
 ### Step 6: Register CategoryEditor in editor registry
 File: `src/renderer/editors/register-editors.ts`
 
-### Step 7: Update PageNavigator
-- Register provider in registry on create
-- Construct tree-category:// links for folder clicks
-- Release provider on dispose
+### Step 7: Update PageNavigator — use `provider.getNavigationUrl(item)` for all navigation
+File: `src/renderer/ui/navigation/PageNavigator.tsx` — replace file-only click handler with unified `getNavigationUrl` call.
 
-### Step 8: Update TreeProviderView
-- Single-click folder = open (not toggle expand) — sends event to parent
-- Remove `onFolderDoubleClick` prop (single click replaces it)
+### Step 8: Add "categoryPage" to PageType
+File: `src/shared/types.ts`
 
 ## Files Changed
 
 | File | Change |
 |---|---|
-| `src/renderer/content/tree-providers/tree-provider-registry.ts` | **NEW** — ref-counted provider registry |
 | `src/renderer/content/tree-providers/tree-provider-link.ts` | **NEW** — ITreeProviderLink type, encode/decode |
+| `src/renderer/api/types/io.tree.d.ts` | Add `getNavigationUrl(item)` method to ITreeProvider |
+| `src/renderer/content/tree-providers/FileTreeProvider.ts` | Implement `getNavigationUrl` |
+| `src/renderer/content/tree-providers/ZipTreeProvider.ts` | Implement `getNavigationUrl` |
 | `src/renderer/content/parsers.ts` | Add tree-category:// parser |
-| `src/renderer/content/resolvers.ts` | Add category resolver |
 | `src/renderer/editors/category/CategoryEditor.tsx` | **NEW** — page editor wrapping CategoryView |
 | `src/renderer/editors/category/CategoryPageModel.ts` | **NEW** — page model for category viewing |
 | `src/renderer/editors/register-editors.ts` | Register category-view editor |
-| `src/renderer/ui/navigation/PageNavigator.tsx` | Use registry, construct category links for folders |
+| `src/renderer/ui/navigation/PageNavigator.tsx` | Use `provider.getNavigationUrl(item)` for all navigation |
+| `src/shared/types.ts` | Add "categoryPage" to PageType |
 
-## Concerns
+## Files NOT Changed
 
-1. **Link encoding format:** Base64 JSON is simple but not human-readable in logs/debugging. URL-encoded query params are more readable but more complex to parse. **Decision needed.**
+- `src/renderer/components/tree-provider/CategoryView.tsx` — standalone, used as-is
+- `src/renderer/ui/navigation/NavigationData.ts` — no changes needed
+- `src/renderer/content/open-handler.ts` — existing handler works (navigatePageTo with pageId transfers NavigationData)
 
-2. **Provider ID stability:** If the app restores a page from cache with a `tree-category://` link containing an old provider ID, the registry won't have it. The link's `url` and `type` fields allow creating a new provider as fallback. **Not blocking — fallback handles it.**
+## Resolved Concerns
 
-3. **Single-click folder behavior change:** Currently clicking a folder in TreeProviderView toggles expand/collapse. New behavior: clicking opens in CategoryEditor. Expanding folders still works via the chevron arrow. **Need to verify TreeView supports click-on-label vs click-on-chevron distinction.**
+1. **~~TreeProviderRegistry~~** — **No longer needed.** NavigationData holds the treeProvider. Both PageNavigator and CategoryEditor access it from the same NavigationData instance (transferred during navigatePageTo). No ref-counting, no global state.
 
-4. **CategoryEditor page model lifecycle:** `navigatePageTo` calls `createPageFromFile(filePath)` which uses `editorRegistry.resolve(filePath)`. For `tree-category://` links, the "filePath" is the encoded link. The editor's `acceptFile()` needs to detect the `tree-category://` prefix. **Not blocking — same pattern as other editors.**
+2. **~~Provider sharing between tabs~~** — **Not needed.** Each page has its own NavigationData with its own treeProvider. "Open in New Tab" creates a new page → new NavigationData → new provider. Simple and correct.
+
+3. **~~Provider ID stability across restarts~~** — **Not an issue.** The `tree-category://` link carries `type` + `url` — enough to create a new provider on restore. No IDs in the link.
+
+4. **~~Link encoding format~~** — **Decision: base64 JSON.** Simple, handles any characters. Not human-readable in logs, but category links are not shown to users. Can add logging helper if needed.
+
+5. **~~Single-click folder behavior~~** — **Decision: keep expand/collapse on click in TreeProviderView.** Folder opening happens via double-click or context menu "Open". No change to TreeProviderView needed.
+
+6. **~~CategoryEditor page model lifecycle~~** — **Resolved.** `editorRegistry.resolve(filePath)` detects `tree-category://` prefix via `acceptFile()`. `navigatePageTo` → `createPageFromFile` → creates `CategoryPageModel`. NavigationData transfers automatically.
+
+## Acceptance Criteria
+
+- [ ] `tree-category://` link format defined with encode/decode helpers
+- [ ] `ITreeProvider.getNavigationUrl(item)` added — returns raw link for any item
+- [ ] FileTreeProvider and ZipTreeProvider implement `getNavigationUrl`
+- [ ] Layer 1 parser detects `tree-category://` prefix and routes to `category-view` editor
+- [ ] CategoryEditor renders CategoryView with provider from `navigationData.treeProvider`
+- [ ] CategoryPageModel stores category path, uses `tree-category://` as filePath for restore
+- [ ] Clicking any item in CategoryView → `openRawLink(provider.getNavigationUrl(item))`
+- [ ] Clicking any item in PageNavigator → `openRawLink(provider.getNavigationUrl(item))`
+- [ ] NavigationData.treeProvider shared between PageNavigator and CategoryEditor
+- [ ] `npm start` runs without type errors
+- [ ] `npm run lint` passes

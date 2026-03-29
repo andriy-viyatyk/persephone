@@ -426,6 +426,8 @@ export default class RenderGridModel extends TComponentModel<
 
     onScroll = (e?: React.UIEvent<HTMLDivElement>) => {
         if (!e || e.target === this.containerRef.current) {
+            // Ignore scroll events when hidden (display:none resets scrollTop to 0)
+            if (!this.containerRef.current.offsetHeight && !this.containerRef.current.offsetWidth) return;
             const { scrollLeft: x, scrollTop: y } = this.containerRef.current;
             const direction = {
                 x: x - this.offsetRef.x,

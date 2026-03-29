@@ -77,7 +77,7 @@ function PageContent({ pageId }: { pageId: string }) {
     return (
         <>
             <NavigationWrapper model={page} />
-            <PageEditorContainer>
+            <PageEditorContainer key={page.id}>
                 <RenderEditor model={page} />
             </PageEditorContainer>
         </>

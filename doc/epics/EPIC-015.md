@@ -49,6 +49,10 @@ interface ITreeProvider {
     /** Resolve a child entry to a raw link string for the open pipeline */
     resolveLink(path: string): string;
 
+    /** Return a raw link for opening an item via openRawLink pipeline.
+     *  For files: returns item.href. For directories: returns tree-category:// link. */
+    getNavigationUrl(item: ITreeProviderItem): string;
+
     /** Whether this tree supports root navigation (move up/down) */
     readonly navigable: boolean;
 
@@ -126,6 +130,7 @@ interface ITreeStat {
 - **Async-first interface.** `ITreeProvider` is designed for the hardest case (FileTreeProvider doing real disk I/O). ALL content-returning methods are `async`. Simpler providers (ZipTreeProvider with pre-loaded index, LinkTreeProvider with in-memory data) implement the same async signatures but return immediately via `Promise.resolve()`. This keeps the interface uniform — consumers never need to check whether a provider is sync or async.
 - `ITreeProviderItem` has the same shape as `LinkItem` (`name`→`title`, `href`, `category`, `tags`) plus tree-specific fields (`isDirectory`, `size`, `mtime`).
 - `resolveLink(path)` returns a raw link string, not an `IContentPipe`. The tree doesn't know about transformers — it just builds URLs that flow through the existing open pipeline.
+- **`getNavigationUrl(item)` returns the correct raw link for any item.** For files it returns `item.href`. For directories it returns a `tree-category://` encoded link. The provider owns link construction — UI components (PageNavigator, CategoryEditor) never build category links. They just call `provider.getNavigationUrl(item)` and pass the result to `openRawLink`.
 - `list(path)` loads ONE directory at a time (lazy). Items include `category = path` so they slot into the category tree.
 - `rootPath` is the path to pass to `list()` for root-level listing. `FileTreeProvider` returns `sourceUrl` (absolute OS path). `ZipTreeProvider` returns `""` (empty string for archive root). This lets the view call `provider.list(provider.rootPath)` without knowing the provider type.
 - `navigable` controls whether the view shows root navigation (move up to parent directory, double-click folder → make root). `FileTreeProvider` sets `navigable = true` (user can navigate up/down the directory tree). `ZipTreeProvider` and `LinkTreeProvider` set `navigable = false` (root is fixed — archive root or link collection root).
@@ -220,26 +225,28 @@ This component can be used:
 
 #### FileTreeProvider
 
+Uses direct Node.js `fs`/`path` — intentionally bypasses `app.fs` archive transparency. Listed in `coding-style.md` exceptions.
+
 ```typescript
 class FileTreeProvider implements ITreeProvider {
     type = "file";
+    navigable = true;
+    writable = true;
     constructor(public readonly sourceUrl: string) {}   // root directory
 
-    async list(path: string): Promise<ITreeProviderItem[]> {
-        const entries = await app.fs.readdir(path);
-        return entries.map(entry => ({
-            name: entry.name,
-            href: this.resolveLink(join(path, entry.name)),
-            category: path,              // folder path = category
-            tags: entry.isDirectory ? [] : [extension(entry.name)],
-            isDirectory: entry.isDirectory,
-            size: entry.size,
-            mtime: entry.mtime,
-        }));
+    async list(dirPath: string): Promise<ITreeProviderItem[]> {
+        const entries = nodefs.readdirSync(dirPath, { withFileTypes: true });
+        // Returns folders first (alphabetical), then files by extension+name
+        // href = absolute path for both files and directories
     }
 
     resolveLink(path: string): string {
         return path;    // local file path is already a valid raw link
+    }
+
+    getNavigationUrl(item: ITreeProviderItem): string {
+        if (!item.isDirectory) return item.href;
+        return encodeCategoryLink({ type: this.type, url: this.sourceUrl, category: item.href });
     }
 }
 ```
@@ -312,7 +319,7 @@ This means the Link editor's data can also be exposed as an ITreeProvider, makin
 
 `CategoryView` needs the `ITreeProvider` (not just raw items) because:
 - Pinning requires `provider.pin()`/`provider.unpin()`
-- Opening items uses `provider.resolveLink()` → `openRawLink` pipeline
+- Opening items uses `provider.getNavigationUrl(item)` → `openRawLink` pipeline (files return `item.href`, directories return `tree-category://` links)
 - Future write operations (delete, rename) delegate to the provider
 
 ### The Unification: Page = Link Browser
@@ -506,9 +513,9 @@ New modules follow the same patterns as EPIC-012's providers/transformers:
 | **ZipTreeProvider** | `src/renderer/content/tree-providers/ZipTreeProvider.ts` | Same as `content/providers/HttpProvider.ts` |
 | **LinkTreeProvider** | `src/renderer/content/tree-providers/LinkTreeProvider.ts` | Same as `content/providers/CacheFileProvider.ts` |
 | **TreeProviderView** | `src/renderer/components/tree-provider/TreeProviderView.tsx` | Same as `components/file-explorer/FileExplorer.tsx` |
-| **TreeProviderViewModel** | `src/renderer/components/tree-provider/TreeProviderViewModel.ts` | Same as `components/file-explorer/FileExplorerModel.tsx` |
+| **TreeProviderViewModel** | `src/renderer/components/tree-provider/TreeProviderViewModel.tsx` | Same as `components/file-explorer/FileExplorerModel.tsx` |
 | **CategoryView** | `src/renderer/components/tree-provider/CategoryView.tsx` | New |
-| **CategoryViewModel** | `src/renderer/components/tree-provider/CategoryViewModel.ts` | New |
+| **CategoryViewModel** | `src/renderer/components/tree-provider/CategoryViewModel.tsx` | New |
 
 ```
 src/renderer/
@@ -533,15 +540,15 @@ Tasks within each phase are listed in implementation order (each task may depend
 | # | Task | Description | Depends on | Status |
 |---|---|---|---|---|
 | 1.1 | Define ITreeProvider & ITreeProviderItem types | `api/types/io.tree.d.ts` — all interfaces. Add `isCategory?: boolean` to `LinkItem` in `editors/link-editor/linkTypes.ts`. | — | Completed |
-| 1.2 | Implement FileTreeProvider | `content/tree-providers/FileTreeProvider.ts` — wraps `app.fs` calls, returns ITreeProviderItems. | 1.1 | Completed |
+| 1.2 | Implement FileTreeProvider | `content/tree-providers/FileTreeProvider.ts` — uses direct Node.js fs (bypasses app.fs archive transparency), returns ITreeProviderItems. | 1.1 | Completed |
 | 1.3 | Implement ZipTreeProvider | `content/tree-providers/ZipTreeProvider.ts` — wraps archive reading. Read-only initially. | 1.1 | Completed |
 
 ### Phase 2: UI Components
 
 | # | Task | Description | Depends on | Status |
 |---|---|---|---|---|
-| 2.1 | Create TreeProviderView component | `components/tree-provider/TreeProviderView.tsx` + `TreeProviderViewModel.ts` — generic tree viewer with show/hide links toggle. Lazy loading, expand/collapse, loading indicators. | 1.1, 1.2 (for testing) | Completed |
-| 2.2 | Create CategoryView component | `components/tree-provider/CategoryView.tsx` + `CategoryViewModel.ts` — displays items for selected category with list/tiles view modes, quick search. Shows folders as tiles/rows. | 1.1 | Completed |
+| 2.1 | Create TreeProviderView component | `components/tree-provider/TreeProviderView.tsx` + `TreeProviderViewModel.tsx` — generic tree viewer with show/hide links toggle. Lazy loading, expand/collapse, loading indicators. | 1.1, 1.2 (for testing) | Completed |
+| 2.2 | Create CategoryView component | `components/tree-provider/CategoryView.tsx` + `CategoryViewModel.tsx` — displays items for selected category with list/tiles view modes, quick search. Shows folders as tiles/rows. | 1.1 | Completed |
 
 ### Phase 3: NavigationPanel Integration
 
@@ -549,7 +556,7 @@ Tasks within each phase are listed in implementation order (each task may depend
 |---|---|---|---|---|
 | 3.1 | Create PageNavigator component | New component replacing NavigationPanel — TreeProviderView + FileTreeProvider, toolbar (Move Up/Collapse/Refresh/Close), openRawLink pipeline for file opening, 3-layer context menu, state persistence. Old NavigationPanel kept as reference. | 2.1 | Completed |
 | 3.2 | Introduce NavigationData class | Wraps PageNavigatorModel + ITreeProvider + renderId. Survives page navigation. renderId as stable key in AppPageManager keeps PageNavigator mounted. treeProvider shared between sidebar and editor. | 3.1 | Completed |
-| 3.3 | CategoryEditor + tree-category:// link resolution | CategoryEditor wrapping CategoryView, tree-category:// link format, Layer 1/2 parsers/resolvers. Folder clicks → openRawLink → CategoryEditor. treeProvider from NavigationData. | 3.2, 2.2 | Planned |
+| 3.3 | CategoryEditor + tree-category:// link resolution | CategoryEditor wrapping CategoryView, tree-category:// link format, Layer 1 parser. Add `getNavigationUrl(item)` to ITreeProvider — providers own link construction. All navigation via `provider.getNavigationUrl(item)` → `openRawLink`. treeProvider from NavigationData. | 3.2, 2.2 | Planned |
 | 3.4 | ZipTreeProvider in PageNavigator | When opening archive files, PageNavigator switches to ZipTreeProvider. | 3.2, 1.3 | On Hold |
 | 3.5 | `navigatePageTo` via openLink | Route file navigation through `app.events.openLink()` with `pageId` in metadata. Replace direct file opening. | 3.1 | Planned |
 
