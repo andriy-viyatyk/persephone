@@ -12,7 +12,7 @@ import { ui } from "../ui";
 import { settings } from "../settings";
 import { editorRegistry } from "../../editors/registry";
 import { getLanguageByExtension } from "../../core/utils/language-mapping";
-import { NavPanelModel } from "../../ui/navigation/nav-panel-store";
+import { NavigationData } from "../../ui/navigation/NavigationData";
 
 import { fpBasename, fpExtname } from "../../core/utils/file-path";
 import { fs as appFs } from "../fs";
@@ -126,16 +126,17 @@ export class PagesLifecycleModel {
 
     addEmptyPageWithNavPanel = (folderPath: string): PageModel => {
         // Create page directly without calling restore(), which would
-        // asynchronously overwrite our NavPanel (it sees hasNavPanel=true
-        // and creates a new NavPanelModel with empty rootFilePath).
+        // asynchronously overwrite our NavigationData (it sees hasNavigator=true
+        // and creates a new NavigationData with empty rootPath).
         const emptyFile = newTextFileModel("");
         const page = this.addPage(emptyFile as unknown as PageModel);
-        const navPanel = new NavPanelModel(folderPath);
-        navPanel.id = page.state.get().id;
-        navPanel.flushSave();
-        page.navPanel = navPanel;
+        const navData = new NavigationData(folderPath);
+        const navModel = navData.ensurePageNavigatorModel();
+        navModel.id = page.state.get().id;
+        navModel.flushSave();
+        page.navigationData = navData;
         page.state.update((s) => {
-            s.hasNavPanel = true;
+            s.hasNavigator = true;
         });
         return page;
     };
@@ -265,7 +266,7 @@ export class PagesLifecycleModel {
         const archiveRoot = isAsar ? filePath : filePath + "!";
         // Check if already open as archive
         const existing = this.model.state.get().pages.find(
-            (p) => p.navPanel?.state.get().rootFilePath === archiveRoot
+            (p) => p.navigationData?.pageNavigatorModel?.state.get().rootFilePath === archiveRoot
         );
         if (existing) {
             this.model.navigation.showPage(existing.state.get().id);
@@ -369,8 +370,8 @@ export class PagesLifecycleModel {
 
         // Preserve pinned state and NavPanel across navigation
         const wasPinned = oldModel.state.get().pinned;
-        const navPanel = oldModel.navPanel;
-        oldModel.navPanel = null;
+        const navigationData = oldModel.navigationData;
+        oldModel.navigationData = null;
 
         await oldModel.dispose();
         this.model.detachPage(oldModel);
@@ -444,14 +445,14 @@ export class PagesLifecycleModel {
         this.model.onShow.send(newModel);
         this.model.onFocus.send(newModel);
 
-        // Transfer NavPanel from old page to new page
-        if (navPanel) {
-            newModel.navPanel = navPanel;
+        // Transfer NavigationData from old page to new page
+        if (navigationData) {
+            newModel.navigationData = navigationData;
             newModel.state.update((s) => {
-                s.hasNavPanel = true;
+                s.hasNavigator = true;
             });
-            navPanel.setCurrentFilePath(newFilePath);
-            navPanel.updateId(newModel.id);
+            navigationData.pageNavigatorModel?.setCurrentFilePath(newFilePath);
+            navigationData.updateId(newModel.id);
         }
 
         return true;
@@ -561,7 +562,7 @@ export class PagesLifecycleModel {
 
         const pageData: Partial<IPageState> = page.getRestoreData();
         pageData.id = crypto.randomUUID();
-        pageData.hasNavPanel = false;
+        pageData.hasNavigator = false;
         pageData.pinned = false;
         const newPage = await this.model.persistence.restoreModel(pageData);
         if (newPage) {

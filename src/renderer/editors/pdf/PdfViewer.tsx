@@ -8,7 +8,7 @@ import { FileIcon } from "../../components/icons/FileIcon";
 import { Button } from "../../components/basic/Button";
 import { FlexSpace } from "../../components/layout/Elements";
 import { NavPanelIcon } from "../../theme/icons";
-import { NavPanelModel } from "../../ui/navigation/nav-panel-store";
+import { NavigationData } from "../../ui/navigation/NavigationData";
 import { fpBasename, fpDirname } from "../../core/utils/file-path";
 import { fs as appFs } from "../../api/fs";
 import { ContentPipe } from "../../content/ContentPipe";
@@ -130,16 +130,17 @@ function PdfViewer({ model }: PdfViewerProps) {
                         size="small"
                         title="File Explorer"
                         onClick={() => {
-                            if (model.navPanel) {
-                                model.navPanel.reinitIfEmpty(fpDirname(filePath), filePath);
-                                model.navPanel.toggle();
+                            if (model.navigationData) {
+                                model.navigationData.pageNavigatorModel?.reinitIfEmpty(fpDirname(filePath), filePath);
+                                model.navigationData.ensurePageNavigatorModel().toggle();
                             } else {
-                                const navPanel = new NavPanelModel(fpDirname(filePath), filePath);
-                                navPanel.id = model.id;
-                                navPanel.flushSave();
-                                model.navPanel = navPanel;
+                                const navData = new NavigationData(fpDirname(filePath));
+                                const navModel = navData.ensurePageNavigatorModel();
+                                navModel.id = model.id;
+                                navModel.flushSave();
+                                model.navigationData = navData;
                                 model.state.update((s) => {
-                                    s.hasNavPanel = true;
+                                    s.hasNavigator = true;
                                 });
                             }
                         }}

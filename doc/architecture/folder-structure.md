@@ -202,8 +202,9 @@ persephone/
 │   │   │   └── types.ts
 │   │   └── index.ts
 │   └── navigation/         # Navigation panel (in-editor)
-│       ├── PageNavigator.tsx       # New — TreeProviderView + FileTreeProvider (EPIC-015)
-│       ├── PageNavigatorModel.ts   # New — state persistence for PageNavigator
+│       ├── NavigationData.ts       # NavigationData — stable browsing context (renderId, treeProvider, model)
+│       ├── PageNavigator.tsx       # PageNavigator — TreeProviderView + FileTreeProvider (EPIC-015)
+│       ├── PageNavigatorModel.ts   # State persistence for PageNavigator (unused — uses NavPanelModel via NavigationData)
 │       ├── NavigationPanel.tsx     # Legacy — kept as reference
 │       ├── SearchResultsPanel.tsx  # Legacy — kept as reference
 │       ├── NavigationSearchModel.ts # Legacy — kept as reference

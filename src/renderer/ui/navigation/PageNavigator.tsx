@@ -14,7 +14,7 @@ import { FileTreeProvider } from "../../content/tree-providers/FileTreeProvider"
 import { RawLinkEvent, ContextMenuEvent } from "../../api/events/events";
 import { app } from "../../api/app";
 import type { ITreeProviderItem } from "../../api/types/io.tree";
-import type { NavPanelModel } from "./nav-panel-store";
+import type { NavigationData } from "./NavigationData";
 
 const path = require("path") as typeof import("path");
 
@@ -55,34 +55,36 @@ const PageNavigatorRoot = styled.div({
 // Component
 // =============================================================================
 
-/**
- * PageNavigator — replacement for NavigationPanel.
- *
- * Uses NavPanelModel for backward compatibility with existing page model
- * infrastructure (PageModel.navPanel, TextToolbar creation, etc.).
- * Uses rootFilePath from NavPanelModel as the FileTreeProvider root.
- */
 interface PageNavigatorProps {
-    model: NavPanelModel;
+    navigationData: NavigationData;
     pageId: string;
 }
 
-export function PageNavigator({ model, pageId }: PageNavigatorProps) {
-    const { rootFilePath } = model.state.use();
+export function PageNavigator({ navigationData, pageId }: PageNavigatorProps) {
+    const navModel = navigationData.ensurePageNavigatorModel();
+    const { rootFilePath } = navModel.state.use();
     const treeProviderRef = useRef<TreeProviderViewRef>(null);
 
     const parentPath = path.dirname(rootFilePath);
     const canNavigateUp = parentPath !== rootFilePath && rootFilePath !== "";
 
-    // Create FileTreeProvider for the current rootPath
+    // Create/update FileTreeProvider via NavigationData
     const provider = useMemo(() => {
         if (!rootFilePath) return null;
-        return new FileTreeProvider(rootFilePath);
-    }, [rootFilePath]);
+        // Dispose old provider if rootPath changed
+        if (navigationData.treeProvider && (navigationData.treeProvider as FileTreeProvider).sourceUrl !== rootFilePath) {
+            navigationData.treeProvider.dispose?.();
+            navigationData.treeProvider = null;
+        }
+        if (!navigationData.treeProvider) {
+            navigationData.treeProvider = new FileTreeProvider(rootFilePath);
+        }
+        return navigationData.treeProvider;
+    }, [rootFilePath, navigationData]);
 
     // Convert NavPanelModel's fileExplorerState to TreeProviderViewSavedState
     const initialState = useMemo((): TreeProviderViewSavedState | undefined => {
-        const saved = model.fileExplorerState;
+        const saved = navModel.fileExplorerState;
         if (!saved?.expandedPaths?.length) return undefined;
         return {
             expandedPaths: saved.expandedPaths,
@@ -94,19 +96,19 @@ export function PageNavigator({ model, pageId }: PageNavigatorProps) {
 
     const handleNavigateUp = useCallback(() => {
         if (!canNavigateUp) return;
-        model.fileExplorerState = undefined;
-        model.state.update((s) => {
+        navModel.fileExplorerState = undefined;
+        navModel.state.update((s) => {
             s.rootFilePath = parentPath;
         });
-    }, [canNavigateUp, parentPath, model]);
+    }, [canNavigateUp, parentPath, navModel]);
 
     const handleMakeRoot = useCallback((newRoot: string) => {
         if (newRoot.toLowerCase() === rootFilePath.toLowerCase()) return;
-        model.fileExplorerState = undefined;
-        model.state.update((s) => {
+        navModel.fileExplorerState = undefined;
+        navModel.state.update((s) => {
             s.rootFilePath = newRoot;
         });
-    }, [rootFilePath, model]);
+    }, [rootFilePath, navModel]);
 
     const handleCollapseAll = useCallback(() => {
         treeProviderRef.current?.collapseAll();
@@ -149,11 +151,11 @@ export function PageNavigator({ model, pageId }: PageNavigatorProps) {
 
     // State persistence — convert TreeProviderViewSavedState back to FileExplorerSavedState
     const handleStateChange = useCallback((state: TreeProviderViewSavedState) => {
-        model.setFileExplorerState({
+        navModel.setFileExplorerState({
             expandedPaths: state.expandedPaths,
             selectedFilePath: state.selectedHref,
         });
-    }, [model]);
+    }, [navModel]);
 
     // ── Render ───────────────────────────────────────────────────────
 
@@ -196,7 +198,7 @@ export function PageNavigator({ model, pageId }: PageNavigatorProps) {
                     type="icon"
                     size="small"
                     title="Close Panel"
-                    onClick={model.close}
+                    onClick={navModel.close}
                 >
                     <CloseIcon width={14} height={14} />
                 </Button>

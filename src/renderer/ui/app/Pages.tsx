@@ -1,12 +1,12 @@
 import styled from "@emotion/styled";
-import { useEffect, useRef, useState } from "react";
+import { useCallback } from "react";
 import { Splitter } from "../../components/layout/Splitter";
 import { PageModel } from "../../editors/base";
 import { pagesModel } from "../../api/pages";
 import { RenderEditor } from "./RenderEditor";
 import { CompareEditor } from "../../editors/compare";
 import { isTextFileModel } from "../../editors/text";
-import { NavPanelModel } from "../navigation/nav-panel-store";
+import { NavigationData } from "../navigation/NavigationData";
 import { PageNavigator } from "../navigation/PageNavigator";
 import { AppPageManager } from "../../components/page-manager/AppPageManager";
 
@@ -21,33 +21,33 @@ const PageEditorContainer = styled.div(
     { label: "PageEditorContainer" },
 );
 
-function NavPanelWrapper({ model }: { model: PageModel }) {
-    // Subscribe to hasNavPanel state to re-render when NavPanel is created
-    const hasNavPanel = model.state.use((s) => s.hasNavPanel);
-    const panel = hasNavPanel ? model.navPanel : null;
-    if (!panel) return null;
-    return <NavPanelContent model={panel} pageId={model.id} />;
+function NavigationWrapper({ model }: { model: PageModel }) {
+    const hasNavigator = model.state.use((s) => s.hasNavigator || (s as any).hasNavPanel); // eslint-disable-line @typescript-eslint/no-explicit-any
+    const navData = hasNavigator ? model.navigationData : null;
+    if (!navData) return null;
+    return <NavigationContent navData={navData} pageId={model.id} />;
 }
 
-function NavPanelContent({ model, pageId }: { model: NavPanelModel; pageId: string }) {
-    const { open, width } = model.state.use();
+function NavigationContent({ navData, pageId }: { navData: NavigationData; pageId: string }) {
+    const navModel = navData.ensurePageNavigatorModel();
+    const { open, width } = navModel.state.use();
     if (!open) return null;
 
     return (
         <>
             <div className="nav-panel-container" style={{ width, flexShrink: 0, overflow: "hidden", height: "100%" }}>
-                <PageNavigator model={model} pageId={pageId} />
+                <PageNavigator navigationData={navData} pageId={pageId} />
             </div>
             <Splitter
                 type="vertical"
                 initialWidth={width}
-                onChangeWidth={model.setWidth}
+                onChangeWidth={navModel.setWidth}
             />
         </>
     );
 }
 
-/** Renders a single page's content (NavPanel + Editor), or CompareEditor if in compare mode */
+/** Renders a single page's content (Navigator + Editor), or CompareEditor if in compare mode */
 function PageContent({ pageId }: { pageId: string }) {
     const page = pagesModel.query.findPage(pageId);
     if (!page) return null;
@@ -76,7 +76,7 @@ function PageContent({ pageId }: { pageId: string }) {
 
     return (
         <>
-            <NavPanelWrapper model={page} />
+            <NavigationWrapper model={page} />
             <PageEditorContainer>
                 <RenderEditor model={page} />
             </PageEditorContainer>
@@ -89,23 +89,6 @@ export function Pages() {
     const activePage = pagesModel.activePage;
     const groupedPage = pagesModel.groupedPage;
 
-    // Subscribe to compareMode changes on the active page to update layout
-    const [, forceUpdate] = useState(0);
-    const prevCompareModeRef = useRef(false);
-    useEffect(() => {
-        if (!activePage || !isTextFileModel(activePage)) return;
-        const unsubscribe = activePage.state.subscribe(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const cm = (activePage.state.get() as any).compareMode as boolean;
-            if (cm !== prevCompareModeRef.current) {
-                prevCompareModeRef.current = cm;
-                forceUpdate((n) => n + 1);
-            }
-        });
-        return unsubscribe;
-    }, [activePage]);
-
-    // Build compareModeIds from current state
     const compareModeIds = new Set<string>();
     for (const [leftId] of leftRight) {
         const page = pages.find((p) => p.id === leftId);
@@ -115,6 +98,11 @@ export function Pages() {
         }
     }
 
+    const getStableKey = useCallback((pageId: string) => {
+        const page = pagesModel.query.findPage(pageId);
+        return page?.navigationData?.renderId;
+    }, [pages]);
+
     return (
         <AppPageManager
             pageIds={pages.map((p) => p.id)}
@@ -123,6 +111,7 @@ export function Pages() {
             grouping={leftRight}
             compareModeIds={compareModeIds}
             renderPage={(id) => <PageContent pageId={id} />}
+            getStableKey={getStableKey}
         />
     );
 }

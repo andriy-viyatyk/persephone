@@ -15,6 +15,13 @@ interface AppPageManagerProps {
     compareModeIds?: Set<string>;
     /** Render function for page content */
     renderPage: (id: string) => ReactNode;
+    /**
+     * Optional stable key for a page's placeholder and portal.
+     * When provided, the placeholder/portal survives page ID changes
+     * (e.g., during navigatePageTo where old page is replaced with new one).
+     * Returns a stable key for the page, or undefined to use the page ID.
+     */
+    getStableKey?: (pageId: string) => string | undefined;
     /** Optional CSS class for the container */
     className?: string;
 }
@@ -36,6 +43,7 @@ export function AppPageManager({
     grouping,
     compareModeIds,
     renderPage,
+    getStableKey,
     className,
 }: AppPageManagerProps) {
     const containerRef = useRef<HTMLDivElement>(null);
@@ -43,18 +51,22 @@ export function AppPageManager({
     const groupContainersRef = useRef(new Map<string, GroupContainer>());
     const hasBeenActiveRef = useRef(new Set<string>());
 
+    // Resolve stable key for a page ID (falls back to page ID itself)
+    const stableKey = (id: string) => getStableKey?.(id) ?? id;
+
     // Track which pages have been activated (for deferred rendering)
-    if (activeId) hasBeenActiveRef.current.add(activeId);
-    if (groupedActiveId) hasBeenActiveRef.current.add(groupedActiveId);
+    if (activeId) hasBeenActiveRef.current.add(stableKey(activeId));
+    if (groupedActiveId) hasBeenActiveRef.current.add(stableKey(groupedActiveId));
 
     // Create placeholders eagerly during render so createPortal finds them
     const placeholders = placeholdersRef.current;
     for (const id of pageIds) {
-        if (!placeholders.has(id)) {
+        const key = stableKey(id);
+        if (!placeholders.has(key)) {
             const el = document.createElement("div");
             applyStandaloneStyle(el);
             el.style.display = "none";
-            placeholders.set(id, el);
+            placeholders.set(key, el);
         }
     }
 
@@ -63,68 +75,70 @@ export function AppPageManager({
         if (!container) return;
         const groupContainers = groupContainersRef.current;
 
-        const currentIds = new Set(pageIds);
+        const currentKeys = new Set(pageIds.map(stableKey));
         const currentGroupKeys = new Set<string>();
 
         // 1. Remove placeholders for closed pages
-        for (const [id, el] of placeholders) {
-            if (!currentIds.has(id)) {
+        for (const [key, el] of placeholders) {
+            if (!currentKeys.has(key)) {
                 if (el.parentNode) el.parentNode.removeChild(el);
-                placeholders.delete(id);
-                hasBeenActiveRef.current.delete(id);
+                placeholders.delete(key);
+                hasBeenActiveRef.current.delete(key);
             }
         }
 
         // 2. Determine which groupings exist now
         for (const [leftId, rightId] of grouping) {
-            if (currentIds.has(leftId) && currentIds.has(rightId)) {
-                currentGroupKeys.add(leftId);
+            if (currentKeys.has(stableKey(leftId)) && currentKeys.has(stableKey(rightId))) {
+                currentGroupKeys.add(stableKey(leftId));
             }
         }
 
         // 3. Dispose group containers that no longer exist or whose right page changed
-        for (const [leftId, gc] of groupContainers) {
-            const expectedRightEl = currentGroupKeys.has(leftId)
-                ? placeholders.get(grouping.get(leftId)!)
+        for (const [leftKey, gc] of groupContainers) {
+            const rightId = [...grouping.entries()].find(([l]) => stableKey(l) === leftKey)?.[1];
+            const expectedRightEl = rightId && currentGroupKeys.has(leftKey)
+                ? placeholders.get(stableKey(rightId))
                 : undefined;
             if (!expectedRightEl || gc.rightPlaceholder !== expectedRightEl) {
                 gc.dispose();
-                groupContainers.delete(leftId);
+                groupContainers.delete(leftKey);
             }
         }
 
         // 4. Create new group containers (CSS-based, no reparenting)
-        for (const leftId of currentGroupKeys) {
-            if (!groupContainers.has(leftId)) {
-                const rightId = grouping.get(leftId)!;
-                const leftEl = placeholders.get(leftId)!;
-                const rightEl = placeholders.get(rightId)!;
+        for (const leftKey of currentGroupKeys) {
+            if (!groupContainers.has(leftKey)) {
+                const rightId = [...grouping.entries()].find(([l]) => stableKey(l) === leftKey)?.[1];
+                if (!rightId) continue;
+                const leftEl = placeholders.get(leftKey)!;
+                const rightEl = placeholders.get(stableKey(rightId))!;
                 const gc = new GroupContainer(container, leftEl, rightEl);
-                groupContainers.set(leftId, gc);
+                groupContainers.set(leftKey, gc);
             }
         }
 
         // 5. Append placeholders that aren't in the DOM yet
         for (const id of pageIds) {
-            const el = placeholders.get(id);
+            const el = placeholders.get(stableKey(id));
             if (el && !el.parentNode) {
                 container.appendChild(el);
             }
         }
 
         // 6. Update visibility
-        const activeGroupKey = findGroupKey(activeId, grouping);
+        const activeKey = stableKey(activeId);
+        const activeGroupKey = findGroupKeyStable(activeId, grouping, stableKey);
 
-        for (const [id, el] of placeholders) {
-            const groupKey = findGroupKey(id, grouping);
+        for (const [key, el] of placeholders) {
+            const groupKey = findGroupKeyByStableKey(key, grouping, stableKey);
             if (groupKey !== undefined) {
                 const isActiveGroup = groupKey === activeGroupKey;
-                const inCompareMode = compareModeIds?.has(groupKey);
+                const inCompareMode = compareModeIds ? [...compareModeIds].some(cid => stableKey(cid) === groupKey) : false;
                 if (!isActiveGroup) {
                     el.style.display = "none";
                 } else if (inCompareMode) {
-                    // Compare mode: left page takes full width, right page hidden
-                    const isLeft = grouping.has(id);
+                    const isLeft = [...grouping.keys()].some(l => stableKey(l) === key);
                     if (isLeft) {
                         applyStandaloneStyle(el);
                         el.style.display = "flex";
@@ -135,34 +149,33 @@ export function AppPageManager({
                     el.style.display = "flex";
                 }
             } else {
-                // Standalone page
-                el.style.display = id === activeId ? "flex" : "none";
+                el.style.display = key === activeKey ? "flex" : "none";
             }
         }
 
         // Update compare mode state and splitter visibility for each group
-        for (const [leftId, gc] of groupContainers) {
-            const isActive = leftId === activeGroupKey;
-            const inCompareMode = !!compareModeIds?.has(leftId);
+        for (const [leftKey, gc] of groupContainers) {
+            const isActive = leftKey === activeGroupKey;
+            const inCompareMode = compareModeIds ? [...compareModeIds].some(cid => stableKey(cid) === leftKey) : false;
 
-            // Notify GroupContainer of compare mode change (handles pause/restore)
             if (gc.compareMode !== inCompareMode) {
                 gc.setCompareMode(inCompareMode);
             }
 
             gc.splitter.element.style.display = isActive && !inCompareMode ? "" : "none";
         }
-    }, [pageIds, activeId, groupedActiveId, grouping, compareModeIds, placeholders]);
+    }, [pageIds, activeId, groupedActiveId, grouping, compareModeIds, placeholders, stableKey]);
 
     // Build the list of portals to render
     const hasBeenActive = hasBeenActiveRef.current;
     const portals: ReactNode[] = [];
 
     for (const id of pageIds) {
-        if (!hasBeenActive.has(id)) continue;
-        const placeholder = placeholders.get(id);
+        const key = stableKey(id);
+        if (!hasBeenActive.has(key)) continue;
+        const placeholder = placeholders.get(key);
         if (!placeholder) continue;
-        portals.push(createPortal(renderPage(id), placeholder, id));
+        portals.push(createPortal(renderPage(id), placeholder, key));
     }
 
     return (
@@ -196,11 +209,27 @@ function applyStandaloneStyle(el: HTMLDivElement) {
     });
 }
 
-/** Find the group key (left page ID) for a page, or undefined if not grouped */
-function findGroupKey(pageId: string, grouping: Map<string, string>): string | undefined {
-    if (grouping.has(pageId)) return pageId;
+/** Find the group stable key for a page using stable key mapping */
+function findGroupKeyStable(
+    pageId: string,
+    grouping: Map<string, string>,
+    sk: (id: string) => string,
+): string | undefined {
+    if (grouping.has(pageId)) return sk(pageId);
     for (const [leftId, rightId] of grouping) {
-        if (rightId === pageId) return leftId;
+        if (rightId === pageId) return sk(leftId);
+    }
+    return undefined;
+}
+
+/** Find the group stable key by a placeholder's stable key */
+function findGroupKeyByStableKey(
+    key: string,
+    grouping: Map<string, string>,
+    sk: (id: string) => string,
+): string | undefined {
+    for (const [leftId, rightId] of grouping) {
+        if (sk(leftId) === key || sk(rightId) === key) return sk(leftId);
     }
     return undefined;
 }

@@ -5,7 +5,7 @@ import { pagesModel } from "../../api/pages";
 import { scriptRunner } from "../../scripting/ScriptRunner";
 import { isScriptLanguage } from "../../scripting/transpile";
 import { PageModel } from "../base/PageModel";
-import { NavPanelModel } from "../../ui/navigation/nav-panel-store";
+import { NavigationData } from "../../ui/navigation/NavigationData";
 import type { TextFileModel } from "./TextPageModel";
 
 export class TextFileActionsModel {
@@ -38,19 +38,20 @@ export class TextFileActionsModel {
 
     openSearchInNavPanel = () => {
         const { filePath } = this.model.state.get();
-        if (!this.model.navPanel && !filePath) return;
+        if (!this.model.navigationData && !filePath) return;
 
-        if (!this.model.navPanel) {
-            const navPanel = new NavPanelModel(fpDirname(filePath), filePath);
-            navPanel.id = this.model.id;
-            navPanel.flushSave();
-            this.model.navPanel = navPanel;
+        if (!this.model.navigationData) {
+            const navData = new NavigationData(fpDirname(filePath));
+            const navModel = navData.ensurePageNavigatorModel();
+            navModel.id = this.model.id;
+            navModel.flushSave();
+            this.model.navigationData = navData;
             this.model.state.update((s) => {
-                s.hasNavPanel = true;
+                s.hasNavigator = true;
             });
         }
 
-        this.model.navPanel.openSearch();
+        this.model.navigationData.ensurePageNavigatorModel().openSearch();
     };
 
     runScript = async (all?: boolean) => {

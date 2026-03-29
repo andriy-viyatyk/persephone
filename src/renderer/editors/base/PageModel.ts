@@ -2,7 +2,7 @@ import { TDialogModel } from "../../core/state/model";
 
 import { IPageState } from "../../../shared/types";
 import { editorRegistry } from "../registry";
-import { NavPanelModel } from "../../ui/navigation/nav-panel-store";
+import { NavigationData } from "../../ui/navigation/NavigationData";
 import { fs } from "../../api/fs";
 import type { IContentPipe } from "../../api/types/io.pipe";
 import { createPipeFromDescriptor } from "../../content/registry";
@@ -24,11 +24,11 @@ export class PageModel<T extends IPageState = IPageState, R = any> extends TDial
     noLanguage = false;
     /** In-memory data storage for scripts. Available on all page types. Does not persist to disk. */
     scriptData: Record<string, any> = {};
-    navPanel: NavPanelModel | null = null;
+    navigationData: NavigationData | null = null;
     /** Content pipe (provider + transformers). Owned by the page, disposed on close. */
     pipe: IContentPipe | null = null;
-    /** Flag for restore(): NavPanel needs to be created from cache */
-    protected needsNavPanelRestore = false;
+    /** Flag for restore(): NavigationData needs to be created from cache */
+    protected needsNavigatorRestore = false;
 
     get id() {
         return this.state.get().id;
@@ -63,32 +63,34 @@ export class PageModel<T extends IPageState = IPageState, R = any> extends TDial
     }
 
     async dispose(): Promise<void> {
-        this.navPanel?.dispose();
+        this.navigationData?.dispose();
+        this.navigationData = null;
         this.pipe?.dispose();
         this.pipe = null;
         await fs.deleteCacheFiles(this.state.get().id);
     }
 
     async restore(): Promise<void> {
-        // Restore NavPanel from cache if page had one.
-        // needsNavPanelRestore: set by applyRestoreData (app startup path)
-        // hasNavPanel on state: set by newPageModelFromState (drag/drop path)
-        if (this.needsNavPanelRestore || this.state.get().hasNavPanel) {
-            this.needsNavPanelRestore = false;
-            const navPanel = new NavPanelModel("");
-            await navPanel.restore(this.id);
-            this.navPanel = navPanel;
-            // Set hasNavPanel AFTER navPanel object is ready, so React sees both together
+        // Restore NavigationData from cache if page had one.
+        // needsNavigatorRestore: set by applyRestoreData (app startup path)
+        // hasNavigator on state: set by newPageModelFromState (drag/drop path)
+        // Also check legacy hasNavPanel for backward compat
+        if (this.needsNavigatorRestore || this.state.get().hasNavigator || (this.state.get() as any).hasNavPanel) { // eslint-disable-line @typescript-eslint/no-explicit-any
+            this.needsNavigatorRestore = false;
+            const navData = new NavigationData("");
+            await navData.restore(this.id);
+            this.navigationData = navData;
+            // Set hasNavigator AFTER navigationData is ready, so React sees both together
             this.state.update((s) => {
-                s.hasNavPanel = true;
+                s.hasNavigator = true;
             });
         }
     }
 
     getRestoreData(): Partial<T> {
         const data = JSON.parse(JSON.stringify(this.state.get()));
-        if (this.navPanel) {
-            data.hasNavPanel = true;
+        if (this.navigationData) {
+            data.hasNavigator = true;
         }
         if (this.pipe) {
             data.pipe = this.pipe.toDescriptor();
@@ -97,11 +99,11 @@ export class PageModel<T extends IPageState = IPageState, R = any> extends TDial
     }
 
     async saveState(): Promise<void> {
-        await this.navPanel?.flushSave();
+        await this.navigationData?.flushSave();
     }
 
     applyRestoreData(data: Partial<T>): void {
-        this.needsNavPanelRestore = !!data.hasNavPanel;
+        this.needsNavigatorRestore = !!(data.hasNavigator || (data as any).hasNavPanel); // eslint-disable-line @typescript-eslint/no-explicit-any
         // Reconstruct pipe from descriptor if present
         if (data.pipe) {
             try {

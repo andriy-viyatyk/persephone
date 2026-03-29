@@ -12,7 +12,7 @@ import { DrawIcon } from "../../theme/language-icons";
 import { fs } from "../../api/fs";
 import { ui } from "../../api/ui";
 import { pagesModel } from "../../api/pages";
-import { NavPanelModel } from "../../ui/navigation/nav-panel-store";
+import { NavigationData } from "../../ui/navigation/NavigationData";
 import { BaseImageView } from "./BaseImageView";
 import type { BaseImageViewRef } from "./BaseImageView";
 import { fpBasename, fpDirname, fpExtname } from "../../core/utils/file-path";
@@ -234,16 +234,17 @@ function ImageViewer({ model }: ImageViewerProps) {
                         size="small"
                         title="File Explorer"
                         onClick={() => {
-                            if (model.navPanel) {
-                                model.navPanel.reinitIfEmpty(fpDirname(filePath), filePath);
-                                model.navPanel.toggle();
+                            if (model.navigationData) {
+                                model.navigationData.pageNavigatorModel?.reinitIfEmpty(fpDirname(filePath), filePath);
+                                model.navigationData.ensurePageNavigatorModel().toggle();
                             } else {
-                                const navPanel = new NavPanelModel(fpDirname(filePath), filePath);
-                                navPanel.id = model.id;
-                                navPanel.flushSave();
-                                model.navPanel = navPanel;
+                                const navData = new NavigationData(fpDirname(filePath));
+                                const navModel = navData.ensurePageNavigatorModel();
+                                navModel.id = model.id;
+                                navModel.flushSave();
+                                model.navigationData = navData;
                                 model.state.update((s) => {
-                                    s.hasNavPanel = true;
+                                    s.hasNavigator = true;
                                 });
                             }
                         }}

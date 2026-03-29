@@ -548,9 +548,10 @@ Tasks within each phase are listed in implementation order (each task may depend
 | # | Task | Description | Depends on | Status |
 |---|---|---|---|---|
 | 3.1 | Create PageNavigator component | New component replacing NavigationPanel — TreeProviderView + FileTreeProvider, toolbar (Move Up/Collapse/Refresh/Close), openRawLink pipeline for file opening, 3-layer context menu, state persistence. Old NavigationPanel kept as reference. | 2.1 | Completed |
-| 3.2 | ZipTreeProvider in NavigationPanel | When opening archive files, NavigationPanel switches to ZipTreeProvider. | 3.1, 1.3 | Planned |
-| 3.3 | Folder selection → CategoryView | When a folder is selected in NavigationPanel, show CategoryView in content area instead of empty state. | 3.1, 2.2 | Planned |
-| 3.4 | `navigatePageTo` via openLink | Route file navigation through `app.events.openLink()` with `pageId` in metadata. Replace direct file opening. | 3.1 | Planned |
+| 3.2 | Introduce NavigationData class | Wraps PageNavigatorModel + ITreeProvider + renderId. Survives page navigation. renderId as stable key in AppPageManager keeps PageNavigator mounted. treeProvider shared between sidebar and editor. | 3.1 | Completed |
+| 3.3 | CategoryEditor + tree-category:// link resolution | CategoryEditor wrapping CategoryView, tree-category:// link format, Layer 1/2 parsers/resolvers. Folder clicks → openRawLink → CategoryEditor. treeProvider from NavigationData. | 3.2, 2.2 | Planned |
+| 3.4 | ZipTreeProvider in PageNavigator | When opening archive files, PageNavigator switches to ZipTreeProvider. | 3.2, 1.3 | On Hold |
+| 3.5 | `navigatePageTo` via openLink | Route file navigation through `app.events.openLink()` with `pageId` in metadata. Replace direct file opening. | 3.1 | Planned |
 
 ### Phase 4: Link Editor Replacement
 

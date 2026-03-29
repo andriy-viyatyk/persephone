@@ -324,27 +324,28 @@ export class ScriptPanelModel extends TModel<ScriptPanelState> {
     /** Open selected script (or empty page) in a new tab with NavigationPanel rooted at script-panel/. */
     openInTab = async () => {
         const { pagesModel } = await import("../../api/pages");
-        const { NavPanelModel } = await import("../../ui/navigation/nav-panel-store");
+        const { NavigationData } = await import("../../ui/navigation/NavigationData");
 
         const libraryPath = settings.get("script-library.path");
         const scriptPanelDir = libraryPath ? fpJoin(libraryPath, "script-panel") : "";
         const { selectedScript } = this.state.get();
 
         if (selectedScript && nodefs.existsSync(selectedScript)) {
-            // Open the selected script file, then attach NavPanel
+            // Open the selected script file, then attach PageNavigator
             const page = await pagesModel.openFile(selectedScript);
             if (page && scriptPanelDir) {
-                const navPanel = new NavPanelModel(scriptPanelDir, selectedScript);
+                const navData = new NavigationData(scriptPanelDir);
+                const navModel = navData.ensurePageNavigatorModel();
                 // Pre-expand the folder containing the script so it's visible
                 const fileDir = fpDirname(selectedScript);
-                navPanel.fileExplorerState = {
+                navModel.fileExplorerState = {
                     expandedPaths: [scriptPanelDir, fileDir],
                     selectedFilePath: selectedScript,
                 };
-                navPanel.id = page.state.get().id;
-                navPanel.flushSave();
-                page.navPanel = navPanel;
-                page.state.update((s) => { s.hasNavPanel = true; });
+                navModel.id = page.state.get().id;
+                navModel.flushSave();
+                page.navigationData = navData;
+                page.state.update((s) => { s.hasNavigator = true; });
             }
         } else if (scriptPanelDir) {
             // No selected script — open empty page with NavPanel

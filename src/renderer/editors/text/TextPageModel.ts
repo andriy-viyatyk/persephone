@@ -227,8 +227,8 @@ export class TextFileModel extends PageModel<TextFilePageModelState, void> imple
             detectedContentEditor,
             ...pageData
         } = this.state.get();
-        if (this.navPanel) {
-            pageData.hasNavPanel = true;
+        if (this.navigationData) {
+            pageData.hasNavigator = true;
         }
         if (this.pipe) {
             pageData.pipe = this.pipe.toDescriptor();
@@ -237,7 +237,7 @@ export class TextFileModel extends PageModel<TextFilePageModelState, void> imple
     }
 
     applyRestoreData = (data: Partial<TextFilePageModelState>): void => {
-        this.needsNavPanelRestore = !!data.hasNavPanel;
+        this.needsNavigatorRestore = !!(data.hasNavigator || (data as any).hasNavPanel); // eslint-disable-line @typescript-eslint/no-explicit-any
         // Reconstruct pipe from descriptor if present
         if (data.pipe) {
             try {

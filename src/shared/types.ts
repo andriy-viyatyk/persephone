@@ -11,7 +11,7 @@ export interface IPageState {
     /** Serialized content pipe descriptor (provider + persistent transformers). */
     pipe?: { provider: { type: string; config: Record<string, unknown> }; transformers: { type: string; config: Record<string, unknown> }[]; encoding?: string },
     editor?: PageEditor,
-    hasNavPanel?: boolean,
+    hasNavigator?: boolean,
     pinned?: boolean,
 }
 

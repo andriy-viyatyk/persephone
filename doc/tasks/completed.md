@@ -4,6 +4,7 @@ All completed tasks, newest first.
 
 | ID | Title | Epic | Notes |
 |----|-------|------|-------|
+| US-298 | Introduce NavigationData class | EPIC-015 | NavigationData wraps PageNavigatorModel + ITreeProvider + renderId. Survives page navigation. renderId as stable key in AppPageManager keeps PageNavigator mounted. Replaced navPanel→navigationData on PageModel. All creation sites updated. |
 | US-296 | Create PageNavigator component | EPIC-015 | Replaces NavigationPanel — PageNavigator + TreeProviderView + FileTreeProvider. RawLinkEvent enhanced with target/metadata passthrough. 3-layer context menu (generic → event channel → parent). No search, no archive logic. |
 | US-295 | Create CategoryView component | EPIC-015 | `components/tree-provider/CategoryView.tsx` + `CategoryViewModel.tsx` — list mode with virtualized RenderGrid, search, context menus, folder navigation. Tiles mode deferred (needs TreeProviderItemTile). |
 | US-293 | Create TreeProviderView component | EPIC-015 | `components/tree-provider/` — TreeProviderView, TreeProviderViewModel, TreeProviderItemIcon. Generic tree viewer with lazy loading, search, context menus, drag-drop, show/hide links toggle. Added `rootPath` to ITreeProvider. |

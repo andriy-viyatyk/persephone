@@ -11,6 +11,7 @@ Current work in progress and planned tasks.
 
 | ID | Title | Epic | Notes |
 |----|-------|------|-------|
+| US-297 | CategoryEditor + tree-category:// link resolution | EPIC-015 | Depends on US-298. CategoryEditor wrapping CategoryView, folder clicks through openRawLink pipeline. |
 
 
 ## In Progress
