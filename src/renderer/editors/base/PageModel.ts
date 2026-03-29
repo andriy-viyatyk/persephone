@@ -124,6 +124,24 @@ export class PageModel<T extends IPageState = IPageState, R = any> extends TDial
         });
     }
 
+    /** Create NavigationData if not yet attached. Returns existing or new NavigationData.
+     *  Panel starts closed — caller should use toggleNavigator() to open it. */
+    ensureNavigationData(rootPath: string): NavigationData {
+        if (!this.navigationData) {
+            const navData = new NavigationData(rootPath);
+            const navModel = navData.ensurePageNavigatorModel();
+            navModel.id = this.id;
+            // Start closed — toggleNavigator() will open it
+            navModel.state.update((s) => { s.open = false; });
+            navModel.flushSave();
+            this.navigationData = navData;
+            this.state.update((s) => {
+                s.hasNavigator = true;
+            });
+        }
+        return this.navigationData;
+    }
+
     changeLanguage = (language: string | undefined) => {
         this.state.update((s) => {
             s.language = language;

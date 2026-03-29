@@ -38,6 +38,8 @@ export interface CategoryViewProps {
     viewMode?: CategoryViewMode;
     /** Called when view mode changes */
     onViewModeChange?: (mode: CategoryViewMode) => void;
+    /** Portal target for search controls. When set, search renders there instead of own toolbar. */
+    toolbarPortalRef?: HTMLElement | null;
 }
 
 export interface CategoryViewState {

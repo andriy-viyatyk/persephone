@@ -557,6 +557,7 @@ Tasks within each phase are listed in implementation order (each task may depend
 | 3.1 | Create PageNavigator component | New component replacing NavigationPanel — TreeProviderView + FileTreeProvider, toolbar (Move Up/Collapse/Refresh/Close), openRawLink pipeline for file opening, 3-layer context menu, state persistence. Old NavigationPanel kept as reference. | 2.1 | Completed |
 | 3.2 | Introduce NavigationData class | Wraps PageNavigatorModel + ITreeProvider + renderId. Survives page navigation. renderId as stable key in AppPageManager keeps PageNavigator mounted. treeProvider shared between sidebar and editor. | 3.1 | Completed |
 | 3.3 | CategoryEditor + tree-category:// link resolution | CategoryEditor wrapping CategoryView, tree-category:// link format, Layer 1 parser. Add `getNavigationUrl(item)` to ITreeProvider — providers own link construction. All navigation via `provider.getNavigationUrl(item)` → `openRawLink`. treeProvider from NavigationData. Shared selection via NavigationData.selectionState. | 3.2, 2.2 | Completed |
+| 3.3.1 | Unify PageNavigator toggle button (US-299) | PageModel.ensureNavigationData() replaces duplicated toggle logic. All editors use toggleNavigator/canOpenNavigator. | 3.3 | Completed |
 | 3.4 | ZipTreeProvider in PageNavigator | When opening archive files, PageNavigator switches to ZipTreeProvider. | 3.2, 1.3 | On Hold |
 | 3.5 | `navigatePageTo` via openLink | Route file navigation through `app.events.openLink()` with `pageId` in metadata. Replace direct file opening. | 3.1 | Planned |
 

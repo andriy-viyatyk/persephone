@@ -12,7 +12,7 @@ import { DrawIcon } from "../../theme/language-icons";
 import { fs } from "../../api/fs";
 import { ui } from "../../api/ui";
 import { pagesModel } from "../../api/pages";
-import { NavigationData } from "../../ui/navigation/NavigationData";
+
 import { BaseImageView } from "./BaseImageView";
 import type { BaseImageViewRef } from "./BaseImageView";
 import { fpBasename, fpDirname, fpExtname } from "../../core/utils/file-path";
@@ -228,25 +228,14 @@ function ImageViewer({ model }: ImageViewerProps) {
     return (
         <>
             <PageToolbar borderBottom>
-                {filePath && (
+                {(model.navigationData?.canOpenNavigator(model.pipe, filePath) || filePath) && (
                     <Button
                         type="icon"
                         size="small"
                         title="File Explorer"
                         onClick={() => {
-                            if (model.navigationData) {
-                                model.navigationData.pageNavigatorModel?.reinitIfEmpty(fpDirname(filePath), filePath);
-                                model.navigationData.ensurePageNavigatorModel().toggle();
-                            } else {
-                                const navData = new NavigationData(fpDirname(filePath));
-                                const navModel = navData.ensurePageNavigatorModel();
-                                navModel.id = model.id;
-                                navModel.flushSave();
-                                model.navigationData = navData;
-                                model.state.update((s) => {
-                                    s.hasNavigator = true;
-                                });
-                            }
+                            model.ensureNavigationData(fpDirname(filePath || ""));
+                            model.navigationData!.toggleNavigator(model.pipe, filePath);
                         }}
                     >
                         <NavPanelIcon />

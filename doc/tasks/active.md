@@ -11,7 +11,6 @@ Current work in progress and planned tasks.
 
 | ID | Title | Epic | Notes |
 |----|-------|------|-------|
-| US-299 | Unify PageNavigator toggle button across editors | EPIC-015 | Replace duplicated toggle logic with NavigationData.toggleNavigator/canOpenNavigator. |
 
 
 ## Completed

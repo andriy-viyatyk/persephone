@@ -1,6 +1,6 @@
 # US-299: Unify PageNavigator Toggle Button Across Editors
 
-**Status:** Planned
+**Status:** Complete
 **Epic:** EPIC-015 (Phase 3)
 **Depends on:** US-297 (CategoryEditor) — in progress
 

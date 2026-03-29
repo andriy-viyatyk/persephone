@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import styled from "@emotion/styled";
 import { useComponentModel } from "../../core/state/model";
 import RenderGrid from "../virtualization/RenderGrid/RenderGrid";
@@ -28,18 +29,6 @@ const CategoryViewRoot = styled.div({
     width: "100%",
     height: "100%",
     overflow: "hidden",
-
-    "& .cv-toolbar": {
-        padding: 4,
-        borderBottom: `1px solid ${color.border.light}`,
-        flexShrink: 0,
-        display: "flex",
-        alignItems: "center",
-        gap: 4,
-        "& .text-field": {
-            flex: 1,
-        },
-    },
 
     "& .cv-content": {
         flex: "1 1 auto",
@@ -206,29 +195,31 @@ export function CategoryView(props: CategoryViewProps) {
     const totalCount = state.items.length;
     const filteredCount = filteredItems.length;
 
+    const searchElement = (
+        <TextField
+            ref={searchInputRef}
+            value={state.searchText}
+            onChange={model.setSearchText}
+            placeholder="Search..."
+            onKeyDown={handleSearchKeyDown}
+            endButtons={[
+                <Button
+                    size="small"
+                    type="icon"
+                    key="close-search"
+                    title="Clear"
+                    onClick={handleSearchClose}
+                    invisible={!state.searchText}
+                >
+                    <CloseIcon />
+                </Button>,
+            ]}
+        />
+    );
+
     return (
         <CategoryViewRoot>
-            <div className="cv-toolbar">
-                <TextField
-                    ref={searchInputRef}
-                    value={state.searchText}
-                    onChange={model.setSearchText}
-                    placeholder="Search..."
-                    onKeyDown={handleSearchKeyDown}
-                    endButtons={[
-                        <Button
-                            size="small"
-                            type="icon"
-                            key="close-search"
-                            title="Clear"
-                            onClick={handleSearchClose}
-                            invisible={!state.searchText}
-                        >
-                            <CloseIcon />
-                        </Button>,
-                    ]}
-                />
-            </div>
+            {props.toolbarPortalRef && createPortal(searchElement, props.toolbarPortalRef)}
             <div className="cv-content">
                 {filteredItems.length === 0 ? (
                     <div className="cv-empty">

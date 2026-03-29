@@ -8,7 +8,7 @@ import { FlexSpace } from "../../components/layout/Elements";
 import styled from "@emotion/styled";
 import { editorRegistry } from "../registry";
 import { pagesModel } from "../../api/pages";
-import { NavigationData } from "../../ui/navigation/NavigationData";
+
 import { isScriptLanguage } from "../../scripting/transpile";
 import type { TOneState } from "../../core/state/state";
 
@@ -75,7 +75,7 @@ export function TextToolbar({ model, setEditorToolbarRefFirst, setEditorToolbarR
     }, [language, fileName, detectedContentEditor]);
 
 
-    if (filePath) {
+    if (model.navigationData?.canOpenNavigator(model.pipe, filePath) || filePath) {
         actions.push(
             <Button
                 key="nav-panel"
@@ -83,19 +83,8 @@ export function TextToolbar({ model, setEditorToolbarRefFirst, setEditorToolbarR
                 size="small"
                 title="File Explorer"
                 onClick={() => {
-                    if (model.navigationData) {
-                        model.navigationData.pageNavigatorModel?.reinitIfEmpty(fpDirname(filePath), filePath);
-                        model.navigationData.ensurePageNavigatorModel().toggle();
-                    } else {
-                        const navData = new NavigationData(fpDirname(filePath));
-                        const navModel = navData.ensurePageNavigatorModel();
-                        navModel.id = model.id;
-                        navModel.flushSave();
-                        model.navigationData = navData;
-                        model.state.update((s) => {
-                            s.hasNavigator = true;
-                        });
-                    }
+                    model.ensureNavigationData(fpDirname(filePath || ""));
+                    model.navigationData!.toggleNavigator(model.pipe, filePath);
                 }}
             >
                 <NavPanelIcon />

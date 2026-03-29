@@ -8,7 +8,7 @@ import { FileIcon } from "../../components/icons/FileIcon";
 import { Button } from "../../components/basic/Button";
 import { FlexSpace } from "../../components/layout/Elements";
 import { NavPanelIcon } from "../../theme/icons";
-import { NavigationData } from "../../ui/navigation/NavigationData";
+
 import { fpBasename, fpDirname } from "../../core/utils/file-path";
 import { fs as appFs } from "../../api/fs";
 import { ContentPipe } from "../../content/ContentPipe";
@@ -124,25 +124,14 @@ function PdfViewer({ model }: PdfViewerProps) {
     return (
         <>
             <PageToolbar borderBottom>
-                {filePath && (
+                {(model.navigationData?.canOpenNavigator(model.pipe, filePath) || filePath) && (
                     <Button
                         type="icon"
                         size="small"
                         title="File Explorer"
                         onClick={() => {
-                            if (model.navigationData) {
-                                model.navigationData.pageNavigatorModel?.reinitIfEmpty(fpDirname(filePath), filePath);
-                                model.navigationData.ensurePageNavigatorModel().toggle();
-                            } else {
-                                const navData = new NavigationData(fpDirname(filePath));
-                                const navModel = navData.ensurePageNavigatorModel();
-                                navModel.id = model.id;
-                                navModel.flushSave();
-                                model.navigationData = navData;
-                                model.state.update((s) => {
-                                    s.hasNavigator = true;
-                                });
-                            }
+                            model.ensureNavigationData(fpDirname(filePath || ""));
+                            model.navigationData!.toggleNavigator(model.pipe, filePath);
                         }}
                     >
                         <NavPanelIcon />

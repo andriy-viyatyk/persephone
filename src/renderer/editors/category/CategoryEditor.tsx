@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import styled from "@emotion/styled";
 import { CategoryView } from "../../components/tree-provider/CategoryView";
 import { PageToolbar } from "../base/EditorToolbar";
@@ -27,6 +27,7 @@ export function CategoryEditor({ model }: { model: CategoryPageModel }) {
     const provider = navData?.treeProvider ?? null;
     const categoryPath = model.categoryPath;
     const pageId = model.id;
+    const [searchPortal, setSearchPortal] = useState<HTMLDivElement | null>(null);
 
     const handleNavigate = useCallback((item: ITreeProviderItem) => {
         navData?.setSelectedHref(item.href);
@@ -71,12 +72,14 @@ export function CategoryEditor({ model }: { model: CategoryPageModel }) {
                     <NavPanelIcon />
                 </Button>
                 <FlexSpace />
+                <div ref={setSearchPortal} style={{ width: 200 }} />
             </PageToolbar>
             <CategoryView
                 provider={provider}
                 category={categoryPath}
                 onItemClick={handleNavigate}
                 onFolderClick={handleNavigate}
+                toolbarPortalRef={searchPortal}
             />
         </CategoryEditorRoot>
     );
@@ -102,7 +105,7 @@ const categoryEditorModule: EditorModule = {
     newPageModelFromState: async (state: Partial<IPageState>) => {
         const { CategoryPageModel } = await import("./CategoryPageModel");
         const model = new CategoryPageModel();
-        model.applyRestoreData(state);
+        model.applyRestoreData(state as any); // eslint-disable-line @typescript-eslint/no-explicit-any
         return model;
     },
 };
