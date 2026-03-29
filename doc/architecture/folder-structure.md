@@ -157,9 +157,10 @@ persephone/
 │   ├── transformers/
 │   │   ├── ZipTransformer.ts    # ITransformer for ZIP entry extraction/replacement
 │   │   └── DecryptTransformer.ts # ITransformer for AES-GCM decrypt/encrypt (non-persistent)
-│   └── tree-providers/           # ITreeProvider implementations (EPIC-015)
-│       ├── FileTreeProvider.ts  # Local filesystem directories
-│       └── ZipTreeProvider.ts   # ZIP archives (read-only)
+│   ├── tree-providers/           # ITreeProvider implementations (EPIC-015)
+│   │   ├── FileTreeProvider.ts  # Local filesystem directories
+│   │   └── ZipTreeProvider.ts   # ZIP archives (read-only)
+│   └── tree-context-menus.tsx   # Default context menu handlers for tree provider items (EPIC-015)
 │
 ├── ui/                     # Application Shell
 │   ├── app/                # Root layout
@@ -201,10 +202,12 @@ persephone/
 │   │   │   └── types.ts
 │   │   └── index.ts
 │   └── navigation/         # Navigation panel (in-editor)
-│       ├── NavigationPanel.tsx
-│       ├── SearchResultsPanel.tsx
-│       ├── NavigationSearchModel.ts
-│       └── nav-panel-store.ts
+│       ├── PageNavigator.tsx       # New — TreeProviderView + FileTreeProvider (EPIC-015)
+│       ├── PageNavigatorModel.ts   # New — state persistence for PageNavigator
+│       ├── NavigationPanel.tsx     # Legacy — kept as reference
+│       ├── SearchResultsPanel.tsx  # Legacy — kept as reference
+│       ├── NavigationSearchModel.ts # Legacy — kept as reference
+│       └── nav-panel-store.ts      # NavPanelModel — still used by PageNavigator for compat
 │
 ├── editors/                # Editor Implementations
 │   ├── base/               # Shared editor infrastructure

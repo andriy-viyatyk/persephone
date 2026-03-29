@@ -20,6 +20,7 @@ const path = require("path") as typeof import("path");
 export class ZipTreeProvider implements ITreeProvider {
     readonly type = "zip";
     readonly displayName: string;
+    readonly navigable = false;
     readonly writable = false;
     readonly pinnable = false;
     readonly hasTags = false;

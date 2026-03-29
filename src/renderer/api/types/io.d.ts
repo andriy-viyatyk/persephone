@@ -51,7 +51,11 @@ export interface IDecryptTransformerConstructor {
  * await app.events.openRawLink.sendAsync(new io.RawLinkEvent("https://api.com/data.json"));
  */
 export interface IRawLinkEventConstructor {
-    new(raw: string): IBaseEvent & { readonly raw: string };
+    new(raw: string, target?: string, metadata?: ILinkMetadata): IBaseEvent & {
+        readonly raw: string;
+        target?: string;
+        metadata?: ILinkMetadata;
+    };
 }
 
 /**

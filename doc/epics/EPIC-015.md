@@ -49,6 +49,9 @@ interface ITreeProvider {
     /** Resolve a child entry to a raw link string for the open pipeline */
     resolveLink(path: string): string;
 
+    /** Whether this tree supports root navigation (move up/down) */
+    readonly navigable: boolean;
+
     /** Whether this tree supports write operations */
     readonly writable: boolean;
 
@@ -125,6 +128,7 @@ interface ITreeStat {
 - `resolveLink(path)` returns a raw link string, not an `IContentPipe`. The tree doesn't know about transformers — it just builds URLs that flow through the existing open pipeline.
 - `list(path)` loads ONE directory at a time (lazy). Items include `category = path` so they slot into the category tree.
 - `rootPath` is the path to pass to `list()` for root-level listing. `FileTreeProvider` returns `sourceUrl` (absolute OS path). `ZipTreeProvider` returns `""` (empty string for archive root). This lets the view call `provider.list(provider.rootPath)` without knowing the provider type.
+- `navigable` controls whether the view shows root navigation (move up to parent directory, double-click folder → make root). `FileTreeProvider` sets `navigable = true` (user can navigate up/down the directory tree). `ZipTreeProvider` and `LinkTreeProvider` set `navigable = false` (root is fixed — archive root or link collection root).
 - **Item CRUD is an optional provider capability.** `addItem()`/`updateItem()`/`deleteItem()` are optional methods. Each provider implements what makes sense:
 
   | Provider | `addItem` | `updateItem` | `deleteItem` |
@@ -543,7 +547,7 @@ Tasks within each phase are listed in implementation order (each task may depend
 
 | # | Task | Description | Depends on | Status |
 |---|---|---|---|---|
-| 3.1 | Replace FileExplorer with TreeProviderView in NavigationPanel | Swap FileExplorer for TreeProviderView + FileTreeProvider. Links visible by default. Test file browsing, expand/collapse, file opening. | 2.1 | Planned |
+| 3.1 | Create PageNavigator component | New component replacing NavigationPanel — TreeProviderView + FileTreeProvider, toolbar (Move Up/Collapse/Refresh/Close), openRawLink pipeline for file opening, 3-layer context menu, state persistence. Old NavigationPanel kept as reference. | 2.1 | Completed |
 | 3.2 | ZipTreeProvider in NavigationPanel | When opening archive files, NavigationPanel switches to ZipTreeProvider. | 3.1, 1.3 | Planned |
 | 3.3 | Folder selection → CategoryView | When a folder is selected in NavigationPanel, show CategoryView in content area instead of empty state. | 3.1, 2.2 | Planned |
 | 3.4 | `navigatePageTo` via openLink | Route file navigation through `app.events.openLink()` with `pageId` in metadata. Replace direct file opening. | 3.1 | Planned |

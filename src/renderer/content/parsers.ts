@@ -54,7 +54,7 @@ export function registerRawLinkParsers(): void {
             event.handled = true;
             return;
         }
-        await app.events.openLink.sendAsync(new OpenLinkEvent(filePath));
+        await app.events.openLink.sendAsync(new OpenLinkEvent(filePath, event.target, event.metadata));
         event.handled = true;
     });
 
@@ -65,14 +65,14 @@ export function registerRawLinkParsers(): void {
         if (isFileUrl(archivePath)) {
             archivePath = normalizeFileUrl(archivePath);
         }
-        await app.events.openLink.sendAsync(new OpenLinkEvent(archivePath));
+        await app.events.openLink.sendAsync(new OpenLinkEvent(archivePath, event.target, event.metadata));
         event.handled = true;
     });
 
     // HTTP parser — detects http:// and https:// URLs
     app.events.openRawLink.subscribe(async (event) => {
         if (!event.raw.startsWith("http://") && !event.raw.startsWith("https://")) return;
-        await app.events.openLink.sendAsync(new OpenLinkEvent(event.raw));
+        await app.events.openLink.sendAsync(new OpenLinkEvent(event.raw, event.target, event.metadata));
         event.handled = true;
     });
 
@@ -89,7 +89,9 @@ export function registerRawLinkParsers(): void {
         if (Object.keys(parsed.headers).length > 0) metadata.headers = parsed.headers;
         if (parsed.body) metadata.body = parsed.body;
 
-        await app.events.openLink.sendAsync(new OpenLinkEvent(parsed.url, undefined, metadata));
+        // Merge cURL metadata with caller metadata (caller overrides)
+        const merged = event.metadata ? { ...metadata, ...event.metadata } : metadata;
+        await app.events.openLink.sendAsync(new OpenLinkEvent(parsed.url, event.target, merged));
         event.handled = true;
     });
 }

@@ -19,6 +19,7 @@ const path = require("path") as typeof import("path");
 export class FileTreeProvider implements ITreeProvider {
     readonly type = "file";
     readonly displayName: string;
+    readonly navigable = true;
     readonly writable = true;
     readonly pinnable = false;
     readonly hasTags = false;

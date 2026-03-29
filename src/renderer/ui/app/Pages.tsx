@@ -7,7 +7,7 @@ import { RenderEditor } from "./RenderEditor";
 import { CompareEditor } from "../../editors/compare";
 import { isTextFileModel } from "../../editors/text";
 import { NavPanelModel } from "../navigation/nav-panel-store";
-import { NavigationPanel } from "../navigation/NavigationPanel";
+import { PageNavigator } from "../navigation/PageNavigator";
 import { AppPageManager } from "../../components/page-manager/AppPageManager";
 
 const PageEditorContainer = styled.div(
@@ -36,7 +36,7 @@ function NavPanelContent({ model, pageId }: { model: NavPanelModel; pageId: stri
     return (
         <>
             <div className="nav-panel-container" style={{ width, flexShrink: 0, overflow: "hidden", height: "100%" }}>
-                <NavigationPanel model={model} pageId={pageId} />
+                <PageNavigator model={model} pageId={pageId} />
             </div>
             <Splitter
                 type="vertical"

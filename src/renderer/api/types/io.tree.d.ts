@@ -26,6 +26,9 @@ export interface ITreeProvider {
     /** Resolve a child path to a raw link string for the open pipeline. */
     resolveLink(path: string): string;
 
+    /** Whether this tree supports root navigation (move up to parent, make subfolder root). */
+    readonly navigable: boolean;
+
     /** Whether this tree supports write operations. */
     readonly writable: boolean;
 

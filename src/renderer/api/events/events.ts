@@ -70,6 +70,8 @@ export class ContextMenuEvent<T> extends BaseEvent {
 export class RawLinkEvent extends BaseEvent {
     constructor(
         public readonly raw: string,
+        public target?: string,
+        public metadata?: ILinkMetadata,
     ) {
         super();
     }

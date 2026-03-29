@@ -4,6 +4,7 @@ All completed tasks, newest first.
 
 | ID | Title | Epic | Notes |
 |----|-------|------|-------|
+| US-296 | Create PageNavigator component | EPIC-015 | Replaces NavigationPanel — PageNavigator + TreeProviderView + FileTreeProvider. RawLinkEvent enhanced with target/metadata passthrough. 3-layer context menu (generic → event channel → parent). No search, no archive logic. |
 | US-295 | Create CategoryView component | EPIC-015 | `components/tree-provider/CategoryView.tsx` + `CategoryViewModel.tsx` — list mode with virtualized RenderGrid, search, context menus, folder navigation. Tiles mode deferred (needs TreeProviderItemTile). |
 | US-293 | Create TreeProviderView component | EPIC-015 | `components/tree-provider/` — TreeProviderView, TreeProviderViewModel, TreeProviderItemIcon. Generic tree viewer with lazy loading, search, context menus, drag-drop, show/hide links toggle. Added `rootPath` to ITreeProvider. |
 | US-292 | Implement ZipTreeProvider | EPIC-015 | `content/tree-providers/ZipTreeProvider.ts` — read-only ZIP archive ITreeProvider. Delegates to archiveService. Sorts folder→extension→name. |

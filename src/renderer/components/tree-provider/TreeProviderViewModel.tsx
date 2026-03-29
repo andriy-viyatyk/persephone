@@ -3,6 +3,7 @@ import type { ITreeProvider, ITreeProviderItem } from "../../api/types/io.tree";
 import type { TreeItem, TreeViewRef } from "../TreeView";
 import type { MenuItem } from "../overlay/PopupMenu";
 import { ContextMenuEvent } from "../../api/events/events";
+import { app } from "../../api/app";
 import { ui } from "../../api/ui";
 import {
     CopyIcon,
@@ -35,6 +36,8 @@ export interface TreeProviderViewProps {
     onItemClick?: (item: ITreeProviderItem) => void;
     onItemDoubleClick?: (item: ITreeProviderItem) => void;
     onFolderDoubleClick?: (item: ITreeProviderItem) => void;
+    /** Called after generic + event channel menu items are added. Parent can add/modify items. */
+    onContextMenu?: (event: import("../../api/events/events").ContextMenuEvent<ITreeProviderItem>) => void;
     selectedHref?: string;
     initialState?: TreeProviderViewSavedState;
     onStateChange?: (state: TreeProviderViewSavedState) => void;
@@ -379,12 +382,23 @@ export class TreeProviderViewModel extends TComponentModel<
 
     // ── Context menus ────────────────────────────────────────────────────
 
-    onItemContextMenu = (node: TreeProviderNode, e: React.MouseEvent) => {
+    onItemContextMenu = async (node: TreeProviderNode, e: React.MouseEvent) => {
         const ctxEvent = ContextMenuEvent.fromNativeEvent(e, "tree-provider-item");
+        ctxEvent.target = node.data;
+
+        // Layer 1: Generic items (Copy Path, Rename, Delete)
         const items = node.data.isDirectory
             ? this.getFolderMenuItems(node)
             : this.getFileMenuItems(node);
         ctxEvent.items.push(...items);
+
+        // Layer 2: Event channel — type-specific items added by registered handlers
+        await app.events.treeProviderContextMenu.sendAsync(
+            ctxEvent as ContextMenuEvent<ITreeProviderItem>,
+        );
+
+        // Layer 3: Parent callback — final additions/modifications
+        this.props.onContextMenu?.(ctxEvent as ContextMenuEvent<ITreeProviderItem>);
     };
 
     onBackgroundContextMenu = (e: React.MouseEvent) => {

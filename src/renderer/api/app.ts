@@ -184,9 +184,11 @@ class App {
         const { registerOpenHandler } = await import("../content/open-handler");
         const { registerResolvers } = await import("../content/resolvers");
         const { registerRawLinkParsers } = await import("../content/parsers");
+        const { registerTreeContextMenuHandlers } = await import("../content/tree-context-menus");
         registerOpenHandler();
         registerResolvers();
         registerRawLinkParsers();
+        registerTreeContextMenuHandlers();
 
         // Import and initialize all event services
         const [

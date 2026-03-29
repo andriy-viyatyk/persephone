@@ -23,6 +23,10 @@ export interface ILinkMetadata {
 export interface IRawLinkEvent extends IBaseEvent {
     /** The raw link string (file path, URL, cURL, etc.). */
     readonly raw: string;
+    /** Target editor ID — passed through to Layer 2 if provided. */
+    target?: string;
+    /** Metadata — passed through to Layer 2 (e.g., pageId for navigation). */
+    metadata?: ILinkMetadata;
 }
 
 /** Layer 2: Structured link to be resolved into provider + transformers. */
