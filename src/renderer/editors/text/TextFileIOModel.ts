@@ -207,6 +207,9 @@ export class TextFileIOModel {
         if (pipe) {
             this.setupWatch();
             this.recreateCachePipe();
+        } else if (modified) {
+            // Untitled modified page — no primary pipe, but cache file may exist
+            this.cachePipe = new ContentPipe(new CacheFileProvider(id));
         }
 
         if (modified && this.cachePipe) {

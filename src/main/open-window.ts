@@ -19,7 +19,7 @@ export class OpenWindow {
     window: BrowserWindow;
     customSession = null as Electron.Session | null;
     canQuit = false;
-    private quitTimeout: ReturnType<typeof setTimeout> | null = null;
+    quitTimeout: ReturnType<typeof setTimeout> | null = null;
     onClose?: (window: OpenWindow) => void;
 
     constructor(position?: { x: number; y: number }) {
@@ -70,8 +70,7 @@ export class OpenWindow {
                 // If renderer is crashed or unresponsive, force-quit after timeout
                 if (!this.quitTimeout) {
                     this.quitTimeout = setTimeout(() => {
-                        this.canQuit = true;
-                        this.window?.close();
+                        this.close();
                     }, 2000);
                 }
                 return;
@@ -220,10 +219,12 @@ export class OpenWindow {
     };
 
     close = () => {
-        this.canQuit = true;
-        this.window?.close();
+        const win = this.window;
         this.window = null;
         this.onClose?.(this);
+        if (win) {
+            win.destroy();
+        }
     };
 
     saveWindowSize = debounce(() => {

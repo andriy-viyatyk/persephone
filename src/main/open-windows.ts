@@ -93,11 +93,14 @@ class OpenWindows {
         const openWindow = openWindowData?.window;
         const isLastWindow = !this.windows.some(w => w !== openWindowData && w.window);
         if (isLastWindow && !this.doQuit) {
+            if (openWindow.quitTimeout) {
+                clearTimeout(openWindow.quitTimeout);
+                openWindow.quitTimeout = null;
+            }
             openWindow.window.hide();
             return;
         }
         if (openWindow) {
-            openWindow.canQuit = canQuit;
             openWindow.close();
         }
     };

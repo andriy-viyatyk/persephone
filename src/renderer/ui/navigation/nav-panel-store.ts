@@ -19,6 +19,7 @@ interface NavPanelSavedState {
     rootFilePath: string;
     currentFilePath: string;
     fileExplorerState?: FileExplorerSavedState;
+    selectedHref?: string | null;
 }
 
 const DEFAULT_WIDTH = 240;
@@ -31,6 +32,8 @@ export class NavPanelModel {
     private skipSave = false;
     /** Stored FileExplorer state — used to pass initialState on restore */
     fileExplorerState: FileExplorerSavedState | undefined = undefined;
+    /** Selected item href — persisted, synced with NavigationData.selectionState */
+    selectedHref: string | null = null;
     /** Scroll position to restore after navigation (not persisted to disk) */
     scrollTop = 0;
     /** Search model — not persisted, survives navigation transfers */
@@ -57,6 +60,7 @@ export class NavPanelModel {
         if (saved) {
             this.skipSave = true;
             this.fileExplorerState = saved.fileExplorerState;
+            this.selectedHref = saved.selectedHref ?? null;
             this.state.set({
                 open: saved.open ?? true,
                 width: saved.width ?? DEFAULT_WIDTH,
@@ -80,6 +84,7 @@ export class NavPanelModel {
             rootFilePath,
             currentFilePath,
             fileExplorerState: this.fileExplorerState,
+            selectedHref: this.selectedHref,
         };
         await fs.saveCacheFile(this.id, JSON.stringify(saved), this.name);
     };
@@ -101,6 +106,11 @@ export class NavPanelModel {
     dispose = () => {
         this.unsubscribe?.();
         this.searchModel.dispose();
+    };
+
+    setSelectedHref = (href: string | null) => {
+        this.selectedHref = href;
+        this.saveStateDebounced();
     };
 
     setFileExplorerState = (explorerState: FileExplorerSavedState) => {

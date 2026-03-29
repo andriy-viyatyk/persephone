@@ -102,6 +102,7 @@ const categoryEditorModule: EditorModule = {
     newPageModelFromState: async (state: Partial<IPageState>) => {
         const { CategoryPageModel } = await import("./CategoryPageModel");
         const model = new CategoryPageModel();
+        model.applyRestoreData(state);
         return model;
     },
 };

@@ -42,6 +42,8 @@ export class NavigationData {
     /** Update the selected item href. Both PageNavigator and CategoryEditor call this. */
     setSelectedHref(href: string | null): void {
         this.selectionState.update((s) => { s.selectedHref = href; });
+        // Sync to NavPanelModel for persistence
+        this.pageNavigatorModel?.setSelectedHref(href);
     }
 
     /** Root path used for lazy PageNavigatorModel creation. */
@@ -103,6 +105,10 @@ export class NavigationData {
         await model.restore(pageId);
         // Sync rootPath from restored model
         this._rootPath = model.state.get().rootFilePath;
+        // Sync selectedHref from restored model
+        if (model.selectedHref) {
+            this.setSelectedHref(model.selectedHref);
+        }
     }
 
     /** Update page ID after navigation transfer. */
