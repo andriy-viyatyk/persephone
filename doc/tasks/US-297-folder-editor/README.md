@@ -1,6 +1,6 @@
 # US-297: CategoryEditor + tree-category:// Link Resolution
 
-**Status:** Planned
+**Status:** Complete
 **Epic:** EPIC-015 (Phase 3, Task 3.3)
 **Depends on:** US-298 (NavigationData) — completed
 

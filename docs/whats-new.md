@@ -17,6 +17,7 @@ Release notes and changelog for Persephone (formerly js-notepad).
 - **Script API: `io` namespace** — New global available in scripts for building content pipes programmatically. See [Scripting — io namespace](./scripting.md#the-io-namespace).
 - **Script API: `app.events.send` / `app.events.sendAsync`** — Scripts can now fire events into the link pipeline (and any other event channel), not just subscribe to them. See [Events API](./api/events.md#ieventchannel).
 - **Script API: `io.OpenContentEvent`** — Scripts can now open a pre-assembled content pipe directly in an editor (Layer 3), bypassing URL parsing and resolver logic.
+- **Folder View** — Double-click a folder in the sidebar's PageNavigator to open it as a dedicated tab showing the folder's contents as a list. Click files to open them, or click subfolders to navigate deeper. The sidebar tree stays synced with the folder view selection.
 
 ### Improvements
 

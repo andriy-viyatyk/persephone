@@ -54,6 +54,7 @@ const PageTabRoot = styled.div({
     border: `1px solid transparent`,
     borderBottom: "none",
     padding: "4px 2px 3px 2px",
+    minHeight: 22,
     WebkitAppRegion: "no-drag",
     userSelect: "none",
     width: 200,

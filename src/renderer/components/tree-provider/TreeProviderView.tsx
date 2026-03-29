@@ -71,6 +71,8 @@ export interface TreeProviderViewRef {
     getState(): TreeProviderViewSavedState;
     getScrollTop(): number;
     setScrollTop(value: number): void;
+    /** Expand ancestors, load children if needed, and scroll to show item. */
+    revealItem(href: string): void;
 }
 
 export function TreeProviderView(
@@ -111,6 +113,7 @@ export function TreeProviderView(
             getState: model.getState,
             getScrollTop: () => treeViewRef.current?.getScrollTop() ?? 0,
             setScrollTop: (value: number) => treeViewRef.current?.setScrollTop(value),
+            revealItem: model.revealItem,
         };
         if (typeof ref === "function") {
             ref(refValue);

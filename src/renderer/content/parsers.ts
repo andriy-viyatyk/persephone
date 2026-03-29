@@ -3,6 +3,7 @@ import { OpenLinkEvent } from "../api/events/events";
 import type { ILinkMetadata } from "../api/types/io.events";
 import { isArchivePath } from "../core/utils/file-path";
 import { parseHttpRequest } from "../core/utils/curl-parser";
+import { TREE_CATEGORY_PREFIX } from "./tree-providers/tree-provider-link";
 
 /**
  * Normalize a file:// URL to a plain file path.
@@ -73,6 +74,15 @@ export function registerRawLinkParsers(): void {
     app.events.openRawLink.subscribe(async (event) => {
         if (!event.raw.startsWith("http://") && !event.raw.startsWith("https://")) return;
         await app.events.openLink.sendAsync(new OpenLinkEvent(event.raw, event.target, event.metadata));
+        event.handled = true;
+    });
+
+    // tree-category:// parser — detects category links for folder/category navigation
+    app.events.openRawLink.subscribe(async (event) => {
+        if (!event.raw.startsWith(TREE_CATEGORY_PREFIX)) return;
+        await app.events.openLink.sendAsync(
+            new OpenLinkEvent(event.raw, event.target ?? "category-view", event.metadata),
+        );
         event.handled = true;
     });
 

@@ -5,6 +5,7 @@ import type {
 } from "../../api/types/io.tree";
 import { archiveService } from "../../api/archive-service";
 import { buildArchivePath } from "../../core/utils/file-path";
+import { encodeCategoryLink } from "./tree-provider-link";
 
 // Direct Node.js path — used only for basename/extname on plain filenames,
 // not archive-aware path operations. Listed in coding-style.md exceptions.
@@ -95,5 +96,10 @@ export class ZipTreeProvider implements ITreeProvider {
 
     resolveLink(innerPath: string): string {
         return buildArchivePath(this.sourceUrl, innerPath);
+    }
+
+    getNavigationUrl(item: ITreeProviderItem): string {
+        if (!item.isDirectory) return item.href;
+        return encodeCategoryLink({ type: this.type, url: this.sourceUrl, category: item.href });
     }
 }

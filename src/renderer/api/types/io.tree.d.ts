@@ -26,6 +26,10 @@ export interface ITreeProvider {
     /** Resolve a child path to a raw link string for the open pipeline. */
     resolveLink(path: string): string;
 
+    /** Return a raw link for opening an item via the openRawLink pipeline.
+     *  For files: returns item.href. For directories: returns a tree-category:// link. */
+    getNavigationUrl(item: ITreeProviderItem): string;
+
     /** Whether this tree supports root navigation (move up to parent, make subfolder root). */
     readonly navigable: boolean;
 

@@ -377,7 +377,9 @@ export class PagesLifecycleModel {
         this.model.detachPage(oldModel);
 
         let newModel: PageModel;
-        if (!(await appFs.exists(newFilePath))) {
+        // Virtual paths (tree-category://, etc.) skip file existence check
+        const isVirtualPath = newFilePath.includes("://");
+        if (!isVirtualPath && !(await appFs.exists(newFilePath))) {
             ui.notify(
                 `File not found: ${fpBasename(newFilePath)}`,
                 "error"

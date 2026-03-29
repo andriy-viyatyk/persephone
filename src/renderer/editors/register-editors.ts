@@ -561,6 +561,22 @@ editorRegistry.register({
     },
 });
 
+// Category view (standalone page editor — tree-category:// links)
+editorRegistry.register({
+    id: "category-view",
+    name: "Folder View",
+    pageType: "categoryPage",
+    category: "page-editor",
+    acceptFile: (fileName) => {
+        if (fileName?.startsWith("tree-category://")) return 200;
+        return -1;
+    },
+    loadModule: async () => {
+        const module = await import("./category/CategoryEditor");
+        return module.default;
+    },
+});
+
 // MCP Inspector (standalone page editor — no file association)
 editorRegistry.register({
     id: "mcp-view",

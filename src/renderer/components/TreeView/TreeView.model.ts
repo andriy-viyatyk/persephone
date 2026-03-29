@@ -45,6 +45,10 @@ export interface TreeViewRef {
     getScrollTop(): number;
     /** Set vertical scroll position */
     setScrollTop(value: number): void;
+    /** Expand a specific item by its ID (no-op if already expanded or not found) */
+    expandItem(id: string): void;
+    /** Scroll to make an item visible by its ID */
+    scrollToItem(id: string): void;
 }
 
 export interface TreeViewProps<T extends TreeItem = TreeItem> {
@@ -212,6 +216,26 @@ export class TreeViewModel<
 
         if (root.items) {
             root.items.forEach((i) => this.forEach(i, func));
+        }
+    };
+
+    /** Expand a specific item by its ID (no-op if already expanded or not found) */
+    expandItemById = (id: string) => {
+        const root = this.state.get().item;
+        if (!root) return;
+        let target: TreeViewItem<T> | undefined;
+        this.forEach(root, (i) => {
+            if (this.props.getId(i.item) === id) target = i;
+        });
+        if (target && !target.expanded) this.toggleExpanded(target);
+    };
+
+    /** Scroll to make an item visible by its ID */
+    scrollToItemById = (id: string) => {
+        const { rows } = this.state.get();
+        const rowIndex = rows.findIndex((r) => this.props.getId(r.item) === id);
+        if (rowIndex >= 0) {
+            this.gridRef?.scrollToRow(rowIndex, "nearest");
         }
     };
 

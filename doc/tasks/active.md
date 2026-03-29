@@ -11,25 +11,7 @@ Current work in progress and planned tasks.
 
 | ID | Title | Epic | Notes |
 |----|-------|------|-------|
-| US-297 | CategoryEditor + tree-category:// link resolution | EPIC-015 | Depends on US-298. CategoryEditor wrapping CategoryView, folder clicks through openRawLink pipeline. |
-
-
-## In Progress
-
-| ID | Title | Epic | Notes |
-|----|-------|------|-------|
-
-
-## In Progress
-
-| ID | Title | Epic | Notes |
-|----|-------|------|-------|
-
-
-## In Progress
-
-| ID | Title | Epic | Notes |
-|----|-------|------|-------|
+| US-299 | Unify PageNavigator toggle button across editors | EPIC-015 | Replace duplicated toggle logic with NavigationData.toggleNavigator/canOpenNavigator. |
 
 
 ## Completed

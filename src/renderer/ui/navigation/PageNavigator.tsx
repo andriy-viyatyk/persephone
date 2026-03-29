@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import styled from "@emotion/styled";
 import { Button } from "../../components/basic/Button";
 import {
@@ -92,6 +92,15 @@ export function PageNavigator({ navigationData, pageId }: PageNavigatorProps) {
         };
     }, []); // Only on mount
 
+    const { selectedHref } = navigationData.selectionState.use();
+
+    // Reveal selected item in tree when selection changes (e.g., from CategoryEditor)
+    useEffect(() => {
+        if (selectedHref) {
+            treeProviderRef.current?.revealItem(selectedHref);
+        }
+    }, [selectedHref]);
+
     // ── Handlers ─────────────────────────────────────────────────────
 
     const handleNavigateUp = useCallback(() => {
@@ -118,21 +127,18 @@ export function PageNavigator({ navigationData, pageId }: PageNavigatorProps) {
         treeProviderRef.current?.refresh();
     }, []);
 
-    // File click — open through raw link pipeline with pageId for navigation
+    // Item click — select + navigate (skip if already selected)
     const handleItemClick = useCallback((item: ITreeProviderItem) => {
+        const current = navigationData.selectionState.get().selectedHref;
+        if (current?.toLowerCase() === item.href.toLowerCase()) return;
+        navigationData.setSelectedHref(item.href);
+        const url = navigationData.treeProvider?.getNavigationUrl(item) ?? item.href;
         app.events.openRawLink.sendAsync(new RawLinkEvent(
-            item.href,
+            url,
             undefined,
             { pageId },
         ));
-    }, [pageId]);
-
-    // Folder double-click — make root (when navigable)
-    const handleFolderDoubleClick = useCallback((item: ITreeProviderItem) => {
-        if (provider?.navigable) {
-            handleMakeRoot(item.href);
-        }
-    }, [provider, handleMakeRoot]);
+    }, [pageId, navigationData]);
 
     // Context menu — parent adds "Make Root" for navigable providers
     const handleContextMenu = useCallback((event: ContextMenuEvent<ITreeProviderItem>) => {
@@ -208,9 +214,9 @@ export function PageNavigator({ navigationData, pageId }: PageNavigatorProps) {
                     ref={treeProviderRef}
                     key={rootFilePath}
                     provider={provider}
+                    selectedHref={selectedHref ?? undefined}
                     onItemClick={handleItemClick}
                     onItemDoubleClick={handleItemClick}
-                    onFolderDoubleClick={handleFolderDoubleClick}
                     onContextMenu={handleContextMenu}
                     initialState={initialState}
                     onStateChange={handleStateChange}

@@ -3,6 +3,7 @@ import type {
     ITreeProviderItem,
     ITreeStat,
 } from "../../api/types/io.tree";
+import { encodeCategoryLink } from "./tree-provider-link";
 
 // Direct Node.js imports — FileTreeProvider is a low-level filesystem provider
 // that intentionally bypasses app.fs archive transparency. Listed in
@@ -96,6 +97,11 @@ export class FileTreeProvider implements ITreeProvider {
 
     resolveLink(filePath: string): string {
         return filePath;
+    }
+
+    getNavigationUrl(item: ITreeProviderItem): string {
+        if (!item.isDirectory) return item.href;
+        return encodeCategoryLink({ type: this.type, url: this.sourceUrl, category: item.href });
     }
 
     async mkdir(dirPath: string): Promise<void> {

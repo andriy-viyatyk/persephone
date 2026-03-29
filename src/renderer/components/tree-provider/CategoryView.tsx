@@ -43,6 +43,8 @@ const CategoryViewRoot = styled.div({
 
     "& .cv-content": {
         flex: "1 1 auto",
+        display: "flex",
+        flexDirection: "column",
         overflow: "hidden",
     },
 

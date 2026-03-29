@@ -55,6 +55,7 @@ Standalone editors with their own PageModel.
 >
 > **Image Viewer URL support:** ImageViewer can display images from external URLs (e.g. browser context menu "Open Image in New Tab"). For HTTP URLs, an `HttpProvider` pipe is created (serializable, re-fetches on restart). The image binary is also cached to disk as a fallback. For blob URLs (REST client, drawing export), the binary is cached to disk immediately since blob URLs don't survive restart. URL-based images show a "Save Image to File" toolbar button.
 
+| `category-view` | Folder View | `categoryPage` | `tree-category://` links |
 | `browser-view` | Browser | `browserPage` | (none — opened via UI) |
 | `mcp-view` | MCP Inspector | `mcpInspectorPage` | (none — opened via UI) |
 | `about-view` | About | `aboutPage` | (none — opened via UI) |

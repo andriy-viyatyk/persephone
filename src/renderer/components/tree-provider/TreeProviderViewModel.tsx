@@ -5,6 +5,7 @@ import type { MenuItem } from "../overlay/PopupMenu";
 import { ContextMenuEvent } from "../../api/events/events";
 import { app } from "../../api/app";
 import { ui } from "../../api/ui";
+import { fpDirname } from "../../core/utils/file-path";
 import {
     CopyIcon,
     DeleteIcon,
@@ -97,9 +98,11 @@ export class TreeProviderViewModel extends TComponentModel<
             await this.loadChildrenForPaths(this.props.initialState.expandedPaths);
         }
 
-        // Build collapsed map to prevent TreeView's level < 2 auto-expand
+        // Build collapsed map to prevent TreeView's level < 2 auto-expand.
+        // Without this, TreeView auto-expands level 0-1 nodes even though
+        // children haven't been loaded yet (lazy loading).
         const tree = this.state.get().tree;
-        if (tree && this.initialExpandMap) {
+        if (tree) {
             const collapsedMap = this.buildAllCollapsedMap(tree);
             this.initialExpandMap = { ...collapsedMap, ...this.initialExpandMap };
         }
@@ -362,14 +365,59 @@ export class TreeProviderViewModel extends TComponentModel<
         );
     };
 
+    // ── Reveal item ───────────────────────────────────────────────────────
+
+    /**
+     * Expand ancestors, load children if needed, and scroll to make an item visible.
+     * Uses provider.rootPath and path-based ancestor computation (works for FileTreeProvider).
+     */
+    revealItem = async (href: string) => {
+        const { provider } = this.props;
+        const { tree } = this.state.get();
+        if (!tree) return;
+
+        // Already visible? Just scroll.
+        if (findNode(tree, href)) {
+            this.treeViewRef?.expandItem(href);
+            this.treeViewRef?.scrollToItem(href);
+            return;
+        }
+
+        // Compute ancestor directory paths from href to rootPath.
+        // Walk up using fpDirname (works for absolute file paths).
+        const rootLower = provider.rootPath.toLowerCase();
+        const ancestors: string[] = [];
+        let current = href;
+        while (true) {
+            const parent = fpDirname(current);
+            if (parent === current || parent.toLowerCase() === rootLower) break;
+            ancestors.unshift(parent);
+            current = parent;
+        }
+
+        // Load children and expand each ancestor
+        const allPaths = [provider.rootPath, ...ancestors];
+        await this.loadChildrenForPaths(allPaths);
+
+        // Expand all ancestors in TreeView
+        for (const p of allPaths) {
+            this.treeViewRef?.expandItem(p);
+        }
+
+        // Scroll to the target item after a microtask (let TreeView update rows)
+        await Promise.resolve();
+        this.treeViewRef?.scrollToItem(href);
+    };
+
     // ── Click handlers ───────────────────────────────────────────────────
 
     onItemClick = (node: TreeProviderNode) => {
         if (node.data.isDirectory) {
             this.treeViewRef?.toggleItem(node.data.href);
-        } else {
-            this.props.onItemClick?.(node.data);
         }
+        // Fire onItemClick for all items (files and folders).
+        // Parent decides whether to navigate based on selection state.
+        this.props.onItemClick?.(node.data);
     };
 
     onItemDoubleClick = (node: TreeProviderNode) => {

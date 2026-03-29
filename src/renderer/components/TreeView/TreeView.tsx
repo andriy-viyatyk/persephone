@@ -212,6 +212,8 @@ export function TreeView<T extends TreeItem = TreeItem>(
         expandAll: model.expandAll,
         collapseAll: model.collapseAll,
         toggleItem: model.toggleItemById,
+        expandItem: model.expandItemById,
+        scrollToItem: model.scrollToItemById,
         getScrollTop: () => model.gridRef?.containerRef.current?.scrollTop ?? 0,
         setScrollTop: (value: number) => {
             const container = model.gridRef?.containerRef.current;

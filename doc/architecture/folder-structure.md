@@ -159,7 +159,8 @@ persephone/
 │   │   └── DecryptTransformer.ts # ITransformer for AES-GCM decrypt/encrypt (non-persistent)
 │   ├── tree-providers/           # ITreeProvider implementations (EPIC-015)
 │   │   ├── FileTreeProvider.ts  # Local filesystem directories
-│   │   └── ZipTreeProvider.ts   # ZIP archives (read-only)
+│   │   ├── ZipTreeProvider.ts   # ZIP archives (read-only)
+│   │   └── tree-provider-link.ts # tree-category:// link format (encode/decode)
 │   └── tree-context-menus.tsx   # Default context menu handlers for tree provider items (EPIC-015)
 │
 ├── ui/                     # Application Shell
@@ -386,6 +387,9 @@ persephone/
 │   │   └── index.ts
 │   ├── settings/           # Settings page (page-editor)
 │   │   └── SettingsPage.tsx
+│   ├── category/           # Category/folder view (page-editor)
+│   │   ├── CategoryEditor.tsx     # Wraps CategoryView, toolbar with navigator toggle
+│   │   └── CategoryPageModel.ts   # Page model — decodes tree-category:// link
 │   ├── shared/             # Shared editor utilities
 │   │   └── link-open-menu.tsx
 │   │
