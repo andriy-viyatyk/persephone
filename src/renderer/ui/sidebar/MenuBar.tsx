@@ -28,7 +28,12 @@ import {
 import { OpenTabsList } from "./OpenTabsList";
 import { FlexSpace } from "../../components/layout/Elements";
 import { RecentFileList } from "./RecentFileList";
-import { FileExplorer, FileExplorerRef, FileExplorerSavedState } from "../../components/file-explorer";
+import {
+    TreeProviderView,
+    type TreeProviderViewRef,
+    type TreeProviderViewSavedState,
+} from "../../components/tree-provider/TreeProviderView";
+import { FileTreeProvider } from "../../content/tree-providers/FileTreeProvider";
 import { FileListRef } from "./FileList";
 import type { MenuItem } from "../../components/overlay/PopupMenu";
 import { ContextMenuEvent } from "../../api/events/events";
@@ -105,7 +110,11 @@ const MenuBarRoot = styled("div")({
                 },
             },
             "& .list-item.selected": {
-                backgroundColor: color.background.default,
+                backgroundColor: color.background.selection,
+                color: color.text.selection,
+                "& .selected-icon": {
+                    color: color.icon.selection,
+                },
             },
             "& .add-folder-button": {
                 fontSize: 13,
@@ -176,12 +185,22 @@ type MenuBarState = typeof defaultMenuBarState;
 class MenuBarModel extends TComponentModel<MenuBarState, MenuBarProps> {
     contentRef: HTMLDivElement | null = null;
     fileListRef: FileListRef | null = null;
-    fileExplorerRef: FileExplorerRef | null = null;
-    expandStateMap = new Map<string, FileExplorerSavedState>();
+    fileExplorerRef: TreeProviderViewRef | null = null;
+    expandStateMap = new Map<string, TreeProviderViewSavedState>();
+    providerMap = new Map<string, FileTreeProvider>();
 
     setContentRef = (ref: HTMLDivElement | null) => { this.contentRef = ref; };
     setFileListRef = (ref: FileListRef | null) => { this.fileListRef = ref; };
-    setFileExplorerRef = (ref: FileExplorerRef | null) => { this.fileExplorerRef = ref; };
+    setFileExplorerRef = (ref: TreeProviderViewRef | null) => { this.fileExplorerRef = ref; };
+
+    getProvider = (folderId: string, folderPath: string): FileTreeProvider => {
+        let provider = this.providerMap.get(folderId);
+        if (!provider || provider.sourceUrl !== folderPath) {
+            provider = new FileTreeProvider(folderPath);
+            this.providerMap.set(folderId, provider);
+        }
+        return provider;
+    };
 
     allFolders = this.memo(
         () => [...staticFolders, ...menuFolders.state.get().folders],
@@ -360,7 +379,7 @@ class MenuBarModel extends TComponentModel<MenuBarState, MenuBarProps> {
                 },
             },
             {
-                label: "Open Folder in Explorer",
+                label: "Show in File Explorer",
                 icon: <FolderOpenIcon />,
                 onClick: () => {
                     if (folder.path) {
@@ -474,18 +493,17 @@ export function MenuBar(props: MenuBarProps) {
                 const folder = menuFolders.find(state.leftItemId);
                 if (folder?.path) {
                     return (
-                        <FileExplorer
+                        <TreeProviderView
                             ref={model.setFileExplorerRef}
                             key={folder.id}
-                            id={`sidebar-${folder.id}`}
-                            rootPath={folder.path}
-                            enableFileOperations
-                            showOpenInNewTab={false}
+                            provider={model.getProvider(folder.id!, folder.path)}
                             initialState={model.expandStateMap.get(folder.id!)}
                             onStateChange={(s) => model.expandStateMap.set(folder.id!, s)}
-                            onFileClick={(filePath) => {
-                                app.events.openRawLink.sendAsync(new RawLinkEvent(filePath));
-                                props.onClose?.();
+                            onItemClick={(item) => {
+                                if (!item.isDirectory) {
+                                    app.events.openRawLink.sendAsync(new RawLinkEvent(item.href));
+                                    props.onClose?.();
+                                }
                             }}
                         />
                     );

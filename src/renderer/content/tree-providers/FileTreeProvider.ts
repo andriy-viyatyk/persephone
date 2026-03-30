@@ -104,6 +104,14 @@ export class FileTreeProvider implements ITreeProvider {
         return encodeCategoryLink({ type: this.type, url: this.sourceUrl, category: item.href });
     }
 
+    async getNavigationUrlByHref(href: string): Promise<string> {
+        const s = await this.stat(href);
+        if (s.isDirectory) {
+            return encodeCategoryLink({ type: this.type, url: this.sourceUrl, category: href });
+        }
+        return href;
+    }
+
     async mkdir(dirPath: string): Promise<void> {
         nodefs.mkdirSync(dirPath, { recursive: true });
     }

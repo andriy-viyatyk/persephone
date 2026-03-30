@@ -141,13 +141,10 @@ The right panel shows the contents of the selected folder:
 - Right-click for options: Open, Open in New Window, Show in File Explorer, Remove from Recent
 
 **Custom Folder view (File Explorer):**
-- Browse files and folders
+- Browse files and folders in a tree view
 - Click a file to open it
-- Double-click a ZIP-based archive (`.zip`, `.docx`, `.xlsx`, `.pptx`, `.jar`, `.war`, `.epub`, `.odt`, `.ods`, `.odp`) or an `.asar` archive to browse its contents — the panel switches to the archive root. Navigate up to return to the parent folder. `.asar` archives are read-only (no file create/rename/delete).
-- Archive files show a small badge icon next to the file name. Click the badge to open the archive in a new tab (same as **Open as Archive** in the context menu).
-- When browsing inside an archive, a banner appears at the top of the panel indicating you are viewing archive contents. For `.asar` archives the banner notes that the archive is read-only. The search button is hidden inside archives (search is not supported).
-- Right-click for options: Create File, Create Folder, Rename, Delete, Open as Archive
-- Search files with `Ctrl+F` when the file explorer is active
+- Right-click for options: Create File, Create Folder, Rename, Delete
+- Search files by name with `Ctrl+F` when the file explorer is active
 
 ### Sidebar Header Buttons
 
@@ -196,19 +193,16 @@ Any saved file can open a **File Explorer** panel alongside the editor. Click th
 - **Collapse all** — Click the collapse button in the panel header to collapse all expanded folders at once
 - **File operations** — Right-click files for: create files/folders, rename, delete, copy path, show in explorer, open in new tab
 - **Open folder in new panel** — Right-click any folder and choose **Open in New Panel** to open it in a new File Explorer tab alongside the current editor
-- **Search files by name** — Press Ctrl+F within the panel to search files by name
-- **Search in files** — Press Ctrl+Shift+F to search file contents across the entire folder tree
-  - Results appear in a split panel below the file tree, grouped by file with matched lines
+- **Search files by name** — Press `Ctrl+F` within the panel to search files by name (filters the tree to matching entries)
+- **Search in file contents** — Click the **Search** icon in the Explorer panel header to open a content-search panel scoped to the root folder. You can also right-click any folder in the tree and choose **Search in Folder** to search only within that folder.
+  - Results appear progressively in a collapsible "Search" panel below the Explorer tree, grouped by file with matched lines
   - Matched text is highlighted in results; clicking a result opens the file at that line in Monaco editor
-  - The file tree filters to show only files with matches while a search is active
-  - Include/exclude glob patterns for fine-grained control (toggle with the filter button)
   - Search text is highlighted in the Monaco editor when navigating results
-  - While the search panel is open, clicking files in the tree activates Monaco editor instead of preview mode
+  - Include/exclude glob patterns for fine-grained control (toggle with the filter button)
   - Configurable file extensions in Settings → File Search
-- **Browse ZIP archives** — Right-click a ZIP-based archive file (`.zip`, `.docx`, `.xlsx`, `.pptx`, `.jar`, `.war`, `.epub`, `.odt`, `.ods`, `.odp`) and choose **Open as Archive** to browse its contents as a folder tree. Navigate up from the archive root to return to the parent folder. Text-based files inside the archive (XML, JSON, etc.) open in Monaco editor. File operations (create, rename, delete) work inside archives just like in regular folders. Search is not available inside archives.
-- **Browse `.asar` archives** — Electron `.asar` archive files can also be browsed via **Open as Archive** or double-click, just like ZIP archives. Files inside `.asar` open in Monaco editor. `.asar` archives are read-only — file operations and search are disabled inside them.
-- **Archive badge** — Archive files (`.zip`, `.docx`, `.xlsx`, `.asar`, etc.) show a small clickable badge icon next to their name in the file tree. Clicking the badge opens the archive in a new tab (tooltip: "Open archive in new tab"). This is a shortcut to the **Open as Archive** context menu action.
-- **Archive content banner** — While browsing inside an archive, a banner is shown at the top of the panel. ZIP archives show "Archive content" (with a tooltip noting that large files may take longer to open). `.asar` archives show ".asar is read-only" (with a tooltip about save limitations). The search button is hidden while inside an archive.
+  - Search state persists across app restarts
+- **Archive browsing** — Click a ZIP-based archive file (`.zip`, `.docx`, `.xlsx`, `.pptx`, `.jar`, `.war`, `.epub`, `.odt`, `.ods`, `.odp`) in the tree, and an **Archive** panel appears below the Explorer panel. Click the Archive panel header to expand it and browse the archive contents as a folder tree. Text-based files inside the archive (XML, JSON, etc.) open in Monaco editor. You can also right-click an archive file and choose **Open as Archive** to browse it in a separate tab.
+- **Browse `.asar` archives** — Electron `.asar` archive files can also be browsed via the Archive panel or **Open as Archive**, just like ZIP archives. Files inside `.asar` open in Monaco editor. `.asar` archives are read-only — file operations are disabled inside them.
 - **Lazy loading** — Folders load their contents on expand, keeping large directories fast
 - **Resizable** — Drag the panel border to resize
 - **Persistent state** — Expanded folders, panel width, and scroll position survive app restarts and in-tab navigation

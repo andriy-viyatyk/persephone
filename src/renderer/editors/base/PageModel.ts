@@ -130,10 +130,10 @@ export class PageModel<T extends IPageState = IPageState, R = any> extends TDial
         if (!this.navigationData) {
             const navData = new NavigationData(rootPath);
             const navModel = navData.ensurePageNavigatorModel();
-            navModel.id = this.id;
             // Start closed — toggleNavigator() will open it
             navModel.state.update((s) => { s.open = false; });
-            navModel.flushSave();
+            navData.updateId(this.id);
+            navData.flushSave();
             this.navigationData = navData;
             this.state.update((s) => {
                 s.hasNavigator = true;

@@ -24,13 +24,13 @@ const CategoryEditorRoot = styled.div({
 
 export function CategoryEditor({ model }: { model: CategoryPageModel }) {
     const navData = model.navigationData;
-    const provider = navData?.treeProvider ?? null;
+    const provider = navData?.activeProvider ?? null;
     const categoryPath = model.categoryPath;
     const pageId = model.id;
     const [searchPortal, setSearchPortal] = useState<HTMLDivElement | null>(null);
 
     const handleNavigate = useCallback((item: ITreeProviderItem) => {
-        navData?.setSelectedHref(item.href);
+        navData?.activeSelectionState.update((s) => { s.selectedHref = item.href; });
         const url = provider?.getNavigationUrl(item) ?? item.href;
         app.events.openRawLink.sendAsync(new RawLinkEvent(url, undefined, { pageId }));
     }, [provider, pageId, navData]);

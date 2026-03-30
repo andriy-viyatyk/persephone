@@ -338,9 +338,9 @@ export class ScriptPanelModel extends TModel<ScriptPanelState> {
                 // Open panel and pre-expand the folder containing the script
                 navModel.state.update((s) => { s.open = true; });
                 const fileDir = fpDirname(selectedScript);
-                navModel.fileExplorerState = {
+                navData.treeState = {
                     expandedPaths: [scriptPanelDir, fileDir],
-                    selectedFilePath: selectedScript,
+                    selectedHref: selectedScript,
                 };
             }
         } else if (scriptPanelDir) {

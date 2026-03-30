@@ -113,7 +113,7 @@ onContextMenu = (e: React.MouseEvent) => {
 };
 ```
 
-**Used by:** PageTab, FileExplorer, FolderItem, MenuBar, MarkdownBlock, BrowserTabs, BrowserUrlBar, LinkEditor, List component.
+**Used by:** PageTab, FileExplorer, TreeProviderView, CategoryView, FolderItem, MenuBar, MarkdownBlock, BrowserTabs, BrowserUrlBar, LinkEditor, List component.
 
 ### Pattern 2: Non-bubbling handlers (direct display)
 

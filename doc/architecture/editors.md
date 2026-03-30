@@ -191,7 +191,7 @@ class PageModel<T extends IPageState, R = any> extends TDialogModel<T, R> {
     get filePath(): string | undefined;
 
     scriptData: Record<string, any>;   // In-memory data for scripts
-    navPanel: NavPanelModel | null;    // Navigation panel state
+    navigationData: NavigationData | null;  // Navigation context (providers, selection, persistence)
 
     confirmRelease(): Promise<boolean>;
     restore(): Promise<void>;

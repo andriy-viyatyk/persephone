@@ -18,6 +18,8 @@ Release notes and changelog for Persephone (formerly js-notepad).
 - **Script API: `app.events.send` / `app.events.sendAsync`** — Scripts can now fire events into the link pipeline (and any other event channel), not just subscribe to them. See [Events API](./api/events.md#ieventchannel).
 - **Script API: `io.OpenContentEvent`** — Scripts can now open a pre-assembled content pipe directly in an editor (Layer 3), bypassing URL parsing and resolver logic.
 - **Folder View** — Double-click a folder in the sidebar's PageNavigator to open it as a dedicated tab showing the folder's contents as a list. Click files to open them, or click subfolders to navigate deeper. The sidebar tree stays synced with the folder view selection.
+- **File content search in Explorer panel** — The File Explorer panel now has a dedicated Search panel for searching file contents. Click the search icon in the Explorer panel header to search the root folder, or right-click any folder and choose "Search in Folder" for scoped search. Results appear progressively with file and line match highlighting. Click a result to navigate to the file and scroll to the matched line. Search state persists across app restarts.
+- **Archive browsing panel** — Clicking a ZIP-based archive file (`.zip`, `.docx`, `.xlsx`, etc.) in the File Explorer panel now shows an "Archive" panel below the Explorer tree. Expand it to browse and open files inside the archive without leaving the current tab.
 
 ### Improvements
 

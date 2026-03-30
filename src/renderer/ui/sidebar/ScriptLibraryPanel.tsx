@@ -1,8 +1,14 @@
+import { useMemo } from "react";
 import styled from "@emotion/styled";
 import { settings } from "../../api/settings";
 import { app } from "../../api/app";
 import { RawLinkEvent } from "../../api/events/events";
-import { FileExplorer, FileExplorerRef, FileExplorerSavedState } from "../../components/file-explorer";
+import {
+    TreeProviderView,
+    type TreeProviderViewRef,
+    type TreeProviderViewSavedState,
+} from "../../components/tree-provider/TreeProviderView";
+import { FileTreeProvider } from "../../content/tree-providers/FileTreeProvider";
 import { FolderOpenIcon } from "../../theme/icons";
 import color from "../../theme/color";
 const ScriptLibraryPanelRoot = styled.div({
@@ -52,9 +58,9 @@ const ScriptLibraryPanelRoot = styled.div({
 
 interface ScriptLibraryPanelProps {
     onClose?: () => void;
-    explorerRef?: (ref: FileExplorerRef | null) => void;
-    expandState?: FileExplorerSavedState;
-    onExpandStateChange?: (state: FileExplorerSavedState) => void;
+    explorerRef?: (ref: TreeProviderViewRef | null) => void;
+    expandState?: TreeProviderViewSavedState;
+    onExpandStateChange?: (state: TreeProviderViewSavedState) => void;
 }
 
 export function ScriptLibraryPanel(props: ScriptLibraryPanelProps) {
@@ -81,20 +87,21 @@ export function ScriptLibraryPanel(props: ScriptLibraryPanelProps) {
         );
     }
 
+    const provider = useMemo(() => new FileTreeProvider(libraryPath), [libraryPath]);
+
     return (
         <ScriptLibraryPanelRoot>
-            <FileExplorer
+            <TreeProviderView
                 ref={props.explorerRef}
                 key={libraryPath}
-                id="sidebar-script-library"
-                rootPath={libraryPath}
-                enableFileOperations
-                showOpenInNewTab={false}
+                provider={provider}
                 initialState={props.expandState}
                 onStateChange={props.onExpandStateChange}
-                onFileClick={(filePath) => {
-                    app.events.openRawLink.sendAsync(new RawLinkEvent(filePath));
-                    props.onClose?.();
+                onItemClick={(item) => {
+                    if (!item.isDirectory) {
+                        app.events.openRawLink.sendAsync(new RawLinkEvent(item.href));
+                        props.onClose?.();
+                    }
                 }}
             />
         </ScriptLibraryPanelRoot>

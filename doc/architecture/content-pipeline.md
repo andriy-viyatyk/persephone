@@ -45,14 +45,16 @@ Registered in `parsers.ts` via `registerRawLinkParsers()`. Each parser checks th
 
 ### Layer 2 — Resolvers
 
-Registered in `resolvers.ts` via `registerResolvers()`. Each resolver builds a `ContentPipe` and fires an `OpenContentEvent` on `app.events.openContent`.
+Registered in `resolvers.ts` via `registerResolvers()`. Each resolver uses `resolveUrlToPipeDescriptor()` (from `link-utils.ts`) to create a pipe descriptor, then `createPipeFromDescriptor()` (from `registry.ts`) to instantiate the pipe. Fires an `OpenContentEvent` on `app.events.openContent`.
 
-- **File resolver** (fallback) -- creates `FileProvider`, adds `ZipTransformer` for archive paths. Resolves target editor via `editorRegistry.resolveId()`.
-- **HTTP resolver** -- creates `HttpProvider`, maps file extensions to editors via a built-in extension table. URLs without recognized extensions open in the browser tab. cURL/fetch requests with `Accept` headers use header-based editor resolution.
+- **File resolver** (fallback) -- resolves file paths and archive paths (with "!") to pipe descriptors. Resolves target editor via `editorRegistry.resolveId()`.
+- **HTTP resolver** -- resolves HTTP/HTTPS URLs to pipe descriptors. Maps file extensions to editors via a built-in extension table. URLs without recognized extensions open in the browser tab. cURL/fetch requests with `Accept` headers use header-based editor resolution.
+
+The `resolveUrlToPipeDescriptor()` utility is also used by tree providers to create pipes from URLs without going through the event channel system.
 
 ### Layer 3 — Open Handler
 
-Registered in `open-handler.ts` via `registerOpenHandler()`. Receives the pipe and either:
+Registered in `open-handler.ts` via `registerOpenHandler()`. Reconstructs the full file path from the pipe (combining provider `sourceUrl` + ZipTransformer `entryPath` for archive files). Then either:
 - Opens a new page via `pagesModel.lifecycle.openFile(filePath, pipe)` -- the page owns the pipe.
 - Navigates an existing page via `pagesModel.lifecycle.navigatePageTo()` (when `metadata.pageId` is set) -- disposes the pipe since navigation creates its own.
 
@@ -183,6 +185,7 @@ Key rules:
 | `/src/renderer/content/registry.ts` | Provider/transformer factory registry, `createPipeFromDescriptor()` |
 | `/src/renderer/content/parsers.ts` | Layer 1 -- raw link parsers |
 | `/src/renderer/content/resolvers.ts` | Layer 2 -- link resolvers, editor mapping |
+| `/src/renderer/content/link-utils.ts` | URL → pipe descriptor resolution (reusable by tree providers) |
 | `/src/renderer/content/open-handler.ts` | Layer 3 -- page creation from pipe |
 | `/src/renderer/content/encoding.ts` | Encoding detection (`decodeBuffer`) and encoding (`encodeString`) |
 | `/src/renderer/content/providers/FileProvider.ts` | Local file provider |

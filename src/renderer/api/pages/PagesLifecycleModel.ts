@@ -131,9 +131,9 @@ export class PagesLifecycleModel {
         const emptyFile = newTextFileModel("");
         const page = this.addPage(emptyFile as unknown as PageModel);
         const navData = new NavigationData(folderPath);
-        const navModel = navData.ensurePageNavigatorModel();
-        navModel.id = page.state.get().id;
-        navModel.flushSave();
+        navData.ensurePageNavigatorModel();
+        navData.updateId(page.state.get().id);
+        navData.flushSave();
         page.navigationData = navData;
         page.state.update((s) => {
             s.hasNavigator = true;
@@ -266,7 +266,7 @@ export class PagesLifecycleModel {
         const archiveRoot = isAsar ? filePath : filePath + "!";
         // Check if already open as archive
         const existing = this.model.state.get().pages.find(
-            (p) => p.navigationData?.pageNavigatorModel?.state.get().rootFilePath === archiveRoot
+            (p) => p.navigationData?.pageNavigatorModel?.state.get().rootPath === archiveRoot
         );
         if (existing) {
             this.model.navigation.showPage(existing.state.get().id);
@@ -453,7 +453,6 @@ export class PagesLifecycleModel {
             newModel.state.update((s) => {
                 s.hasNavigator = true;
             });
-            navigationData.pageNavigatorModel?.setCurrentFilePath(newFilePath);
             navigationData.updateId(newModel.id);
         }
 

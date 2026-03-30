@@ -4,34 +4,7 @@ import type { ILinkMetadata } from "../api/types/io.events";
 import { isArchivePath } from "../core/utils/file-path";
 import { parseHttpRequest } from "../core/utils/curl-parser";
 import { TREE_CATEGORY_PREFIX } from "./tree-providers/tree-provider-link";
-
-/**
- * Normalize a file:// URL to a plain file path.
- * Strips "file://" or "file:///" prefix and decodes URI-encoded characters.
- */
-function normalizeFileUrl(raw: string): string {
-    let path = raw;
-    if (path.startsWith("file:///")) {
-        path = path.slice(8); // "file:///C:/..." → "C:/..."
-    } else if (path.startsWith("file://")) {
-        path = path.slice(7); // "file://C:/..." → "C:/..."
-    }
-    return decodeURIComponent(path);
-}
-
-function isFileUrl(raw: string): boolean {
-    return raw.startsWith("file://");
-}
-
-/**
- * Check if a string looks like a valid Windows file path.
- * Accepts drive-letter paths (C:\..., C:/...) and UNC paths (\\...).
- */
-function isPlausibleFilePath(path: string): boolean {
-    if (/^[A-Za-z]:[/\\]/.test(path)) return true;
-    if (path.startsWith("\\\\")) return true;
-    return false;
-}
+import { normalizeFileUrl, isFileUrl, isPlausibleFilePath } from "./link-utils";
 
 /**
  * Register Layer 1 parsers on openRawLink.

@@ -87,7 +87,7 @@ persephone/
 │   │   └── RendererEventsService.ts # IPC event subscriptions (open file, quit, etc.)
 │   │
 │   ├── events/             # Event channel system (scriptable events)
-│   │   ├── AppEvents.ts             # app.events namespace (FileExplorerEvents, etc.)
+│   │   ├── AppEvents.ts             # app.events namespace (treeProviderContextMenu, fileExplorer, etc.)
 │   │   ├── BaseEvent.ts             # Base event class with `handled` flag
 │   │   ├── EventChannel.ts          # EventChannel<T> — subscribe, send, sendAsync
 │   │   ├── events.ts                # Event subclasses (ContextMenuEvent<T>, etc.)
@@ -149,6 +149,7 @@ persephone/
 │   ├── encoding.ts         # Text encoding detection (BOM, jschardet) and conversion (iconv-lite)
 │   ├── parsers.ts          # Layer 1: raw link parsers (file, HTTP/cURL, archive) on openRawLink
 │   ├── resolvers.ts        # Layer 2: pipe resolvers (file, HTTP, archive) on openLink
+│   ├── link-utils.ts       # URL → pipe descriptor resolution (used by resolvers + tree providers)
 │   ├── open-handler.ts     # Layer 3: open handler on openContent — creates/navigates pages
 │   ├── providers/
 │   │   ├── FileProvider.ts      # IProvider for local binary files (read/write/watch/stat)
@@ -203,13 +204,9 @@ persephone/
 │   │   │   └── types.ts
 │   │   └── index.ts
 │   └── navigation/         # Navigation panel (in-editor)
-│       ├── NavigationData.ts       # NavigationData — stable browsing context (renderId, treeProvider, model)
-│       ├── PageNavigator.tsx       # PageNavigator — TreeProviderView + FileTreeProvider (EPIC-015)
-│       ├── PageNavigatorModel.ts   # State persistence for PageNavigator (unused — uses NavPanelModel via NavigationData)
-│       ├── NavigationPanel.tsx     # Legacy — kept as reference
-│       ├── SearchResultsPanel.tsx  # Legacy — kept as reference
-│       ├── NavigationSearchModel.ts # Legacy — kept as reference
-│       └── nav-panel-store.ts      # NavPanelModel — still used by PageNavigator for compat
+│       ├── NavigationData.ts       # NavigationData — stable browsing context, owns persistence
+│       ├── PageNavigator.tsx       # PageNavigator — TreeProviderView + FileTreeProvider + FileSearch (EPIC-015)
+│       └── PageNavigatorModel.ts   # Reactive state for PageNavigator (open, width, rootPath)
 │
 ├── editors/                # Editor Implementations
 │   ├── base/               # Shared editor infrastructure
@@ -441,6 +438,7 @@ persephone/
 │   ├── virtualization/     # Base virtualization (RenderGrid)
 │   ├── file-explorer/      # File explorer component (legacy — being replaced by tree-provider)
 │   ├── tree-provider/      # TreeProviderView — generic tree viewer for any ITreeProvider (EPIC-015)
+│   ├── file-search/        # FileSearch — standalone file content search with virtualized results (EPIC-015)
 │   ├── icons/              # FileIcon, LanguageIcon
 │   └── page-manager/       # Portal-based page/tab host (prevents iframe/webview reload on reorder)
 │

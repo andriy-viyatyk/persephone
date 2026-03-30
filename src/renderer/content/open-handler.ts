@@ -1,5 +1,6 @@
 import { app } from "../api/app";
 import { pagesModel } from "../api/pages";
+import { buildArchivePath } from "../core/utils/file-path";
 
 /**
  * Register Layer 3 handler on openContent.
@@ -11,7 +12,17 @@ import { pagesModel } from "../api/pages";
  */
 export function registerOpenHandler(): void {
     app.events.openContent.subscribe(async (event) => {
-        const filePath = event.pipe.provider.sourceUrl;
+        // Reconstruct full file path from pipe (provider + transformers).
+        // For archive pipes: FileProvider("C:/data.zip") + ZipTransformer("readme.txt")
+        //   → "C:/data.zip!readme.txt"
+        let filePath = event.pipe.provider.sourceUrl;
+        const zipTransformer = event.pipe.transformers.find((t) => t.type === "zip");
+        if (zipTransformer) {
+            const entryPath = zipTransformer.config.entryPath as string | undefined;
+            if (entryPath) {
+                filePath = buildArchivePath(filePath, entryPath);
+            }
+        }
         const metadata = event.metadata;
         const pageId = metadata?.pageId;
 

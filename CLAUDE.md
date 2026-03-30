@@ -295,6 +295,7 @@ See [/doc/standards/coding-style.md](doc/standards/coding-style.md) for complete
 | Encoding detection       | `/src/renderer/content/encoding.ts`               |
 | Link parsers (Layer 1)   | `/src/renderer/content/parsers.ts`                |
 | Pipe resolvers (Layer 2) | `/src/renderer/content/resolvers.ts`              |
+| Link resolution utils    | `/src/renderer/content/link-utils.ts`             |
 | Open handler (Layer 3)   | `/src/renderer/content/open-handler.ts`           |
 | HTTP provider            | `/src/renderer/content/providers/HttpProvider.ts`  |
 | cURL/fetch parser        | `/src/renderer/core/utils/curl-parser.ts`         |

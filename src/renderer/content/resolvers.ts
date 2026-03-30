@@ -1,10 +1,9 @@
 import { app } from "../api/app";
 import { OpenContentEvent } from "../api/events/events";
 import { editorRegistry } from "../editors/registry";
-import { FileProvider } from "./providers/FileProvider";
-import { HttpProvider } from "./providers/HttpProvider";
-import { ZipTransformer } from "./transformers/ZipTransformer";
-import { ContentPipe } from "./ContentPipe";
+import { isArchivePath, parseArchivePath } from "../core/utils/file-path";
+import { createPipeFromDescriptor } from "./registry";
+import { resolveUrlToPipeDescriptor, isHttpUrl } from "./link-utils";
 
 /**
  * Extract the effective path from a URL for editor resolution.
@@ -17,13 +16,13 @@ import { ContentPipe } from "./ContentPipe";
  */
 export function extractEffectivePath(url: string): string {
     // Archive path: return inner path after "!"
-    const bangIndex = url.indexOf("!");
-    if (bangIndex >= 0) {
-        return url.slice(bangIndex + 1);
+    if (isArchivePath(url)) {
+        const { innerPath } = parseArchivePath(url);
+        return innerPath;
     }
 
     // HTTP/HTTPS URL: extract last pathname segment (before query string)
-    if (url.startsWith("http://") || url.startsWith("https://")) {
+    if (isHttpUrl(url)) {
         try {
             const parsed = new URL(url);
             return parsed.pathname.split("/").pop() || "";
@@ -45,33 +44,37 @@ export function extractEffectivePath(url: string): string {
  *
  * Call during app bootstrap, before scripts load.
  */
-function isHttpUrl(url: string): boolean {
-    return url.startsWith("http://") || url.startsWith("https://");
-}
-
 export function registerResolvers(): void {
-    // File resolver — fallback, handles plain file paths
+    // File resolver — fallback, handles plain file paths and virtual paths (tree-category://)
     app.events.openLink.subscribe(async (event) => {
         // Skip HTTP URLs — handled by HTTP resolver
         if (isHttpUrl(event.url)) return;
+
+        const pipeDescriptor = resolveUrlToPipeDescriptor(event.url);
+        if (!pipeDescriptor) {
+            // Virtual paths (tree-category://, etc.) don't resolve to a pipe
+            // but still need to flow through openContent for page creation.
+            // Create a placeholder file pipe — CategoryEditor uses navigationData.treeProvider, not the pipe.
+            if (event.url.includes("://")) {
+                const target = event.target || "monaco";
+                const placeholder = createPipeFromDescriptor({
+                    provider: { type: "file", config: { path: event.url } },
+                    transformers: [],
+                });
+                await app.events.openContent.sendAsync(
+                    new OpenContentEvent(placeholder, target, event.metadata),
+                );
+                event.handled = true;
+            }
+            return;
+        }
+
         // Resolve target editor if not already specified
         const target = event.target
             || editorRegistry.resolveId(extractEffectivePath(event.url))
             || "monaco";
 
-        // Build provider and pipe (detect archive paths with "!")
-        let pipe: ContentPipe;
-        const bangIndex = event.url.indexOf("!");
-        if (bangIndex >= 0) {
-            const archivePath = event.url.slice(0, bangIndex);
-            const entryPath = event.url.slice(bangIndex + 1);
-            pipe = new ContentPipe(
-                new FileProvider(archivePath),
-                [new ZipTransformer(entryPath)],
-            );
-        } else {
-            pipe = new ContentPipe(new FileProvider(event.url));
-        }
+        const pipe = createPipeFromDescriptor(pipeDescriptor);
 
         // Fire Layer 3
         await app.events.openContent.sendAsync(
@@ -182,26 +185,12 @@ export function registerResolvers(): void {
             return;
         }
 
-        // Recognized extension — open as content via HttpProvider
+        // Recognized extension — open as content via pipe
         const target = event.target || mapping.editor;
-        const httpOptions = {
-            method: metadata?.method,
-            headers: metadata?.headers,
-            body: metadata?.body,
-        };
 
-        let pipe: ContentPipe;
-        const bangIndex = event.url.indexOf("!");
-        if (bangIndex >= 0) {
-            const httpUrl = event.url.slice(0, bangIndex);
-            const entryPath = event.url.slice(bangIndex + 1);
-            pipe = new ContentPipe(
-                new HttpProvider(httpUrl, httpOptions),
-                [new ZipTransformer(entryPath)],
-            );
-        } else {
-            pipe = new ContentPipe(new HttpProvider(event.url, httpOptions));
-        }
+        const pipeDescriptor = resolveUrlToPipeDescriptor(event.url, event.metadata);
+        if (!pipeDescriptor) return;
+        const pipe = createPipeFromDescriptor(pipeDescriptor);
 
         await app.events.openContent.sendAsync(
             new OpenContentEvent(pipe, target, event.metadata)

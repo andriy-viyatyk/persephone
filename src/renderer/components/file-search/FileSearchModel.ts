@@ -1,0 +1,326 @@
+/**
+ * FileSearchModel — standalone search state and IPC communication.
+ *
+ * Manages search query, include/exclude patterns, IPC with the main process
+ * search service, and accumulated results as a flat array of SearchResultRow.
+ *
+ * Extracted from NavigationSearchModel for reuse outside NavigationPanel.
+ */
+import { TComponentState } from "../../core/state/state";
+import { debounce } from "../../../shared/utils";
+import {
+    SearchChannel,
+    SearchRequest,
+    SearchFileResult,
+    SearchProgress,
+    SearchComplete,
+    SearchError,
+} from "../../../ipc/search-ipc";
+import { settings } from "../../api/settings";
+import { fpBasename } from "../../core/utils/file-path";
+
+const { ipcRenderer } = require("electron");
+
+// =============================================================================
+// Types
+// =============================================================================
+
+export interface SearchResultFileRow {
+    type: "file";
+    filePath: string;
+    fileName: string;
+    matchedLinesCount: number;
+    expanded: boolean;
+}
+
+export interface SearchResultLineRow {
+    type: "line";
+    filePath: string;
+    lineNumber: number;
+    lineText: string;
+    matchStart: number;
+    matchLength: number;
+}
+
+export type SearchResultRow = SearchResultFileRow | SearchResultLineRow;
+
+export interface FileSearchState {
+    query: string;
+    includePattern: string;
+    excludePattern: string;
+    showFilters: boolean;
+    /** Subfolder scope (from "Search in folder"). Empty = search from root. */
+    searchFolder: string;
+    /** Full flat result array (file + line rows). */
+    results: SearchResultRow[];
+    totalMatches: number;
+    totalFiles: number;
+}
+
+export interface FileSearchInternalState extends FileSearchState {
+    isSearching: boolean;
+    filesSearched: number;
+}
+
+export const defaultFileSearchState: FileSearchInternalState = {
+    query: "",
+    includePattern: "",
+    excludePattern: "",
+    showFilters: false,
+    searchFolder: "",
+    isSearching: false,
+    results: [],
+    totalMatches: 0,
+    totalFiles: 0,
+    filesSearched: 0,
+};
+
+// =============================================================================
+// Model
+// =============================================================================
+
+let searchIdCounter = 0;
+
+export class FileSearchModel {
+    state: TComponentState<FileSearchInternalState>;
+
+    private currentSearchId: string | null = null;
+    private ipcListeners: Array<{ channel: string; handler: (...args: any[]) => void }> = []; // eslint-disable-line @typescript-eslint/no-explicit-any
+    private rootPath: string;
+    private onStateChange?: (state: FileSearchState) => void;
+
+    constructor(rootPath: string, savedState?: FileSearchState, onStateChange?: (state: FileSearchState) => void) {
+        this.rootPath = rootPath;
+        this.onStateChange = onStateChange;
+
+        // Restore from saved state or use defaults
+        const initial: FileSearchInternalState = savedState
+            ? { ...savedState, isSearching: false, filesSearched: 0 }
+            : { ...defaultFileSearchState };
+
+        this.state = new TComponentState<FileSearchInternalState>(initial);
+        this.subscribeToIpc();
+    }
+
+    // ── IPC ───────────────────────────────────────────────────────────
+
+    private onIpc<T>(channel: string, callback: (data: T) => void) {
+        const handler = (_event: unknown, data: T) => callback(data);
+        ipcRenderer.on(channel, handler);
+        this.ipcListeners.push({ channel, handler });
+    }
+
+    private subscribeToIpc = () => {
+        this.onIpc<SearchFileResult>(SearchChannel.result, (data) => {
+            if (data.searchId !== this.currentSearchId) return;
+            const fileRow: SearchResultFileRow = {
+                type: "file",
+                filePath: data.filePath,
+                fileName: fpBasename(data.filePath),
+                matchedLinesCount: data.matches.length,
+                expanded: true,
+            };
+            // Deduplicate lines by lineNumber (multiple matches on same line → show first)
+            const seenLines = new Set<number>();
+            const lineRows: SearchResultLineRow[] = [];
+            for (const m of data.matches) {
+                if (!seenLines.has(m.lineNumber)) {
+                    seenLines.add(m.lineNumber);
+                    lineRows.push({
+                        type: "line",
+                        filePath: data.filePath,
+                        lineNumber: m.lineNumber,
+                        lineText: m.lineText,
+                        matchStart: m.matchStart,
+                        matchLength: m.matchLength,
+                    });
+                }
+            }
+            this.state.update((s) => {
+                s.results.push(fileRow, ...lineRows);
+                s.totalMatches += data.matches.length;
+                s.totalFiles += 1;
+            });
+        });
+
+        this.onIpc<SearchProgress>(SearchChannel.progress, (data) => {
+            if (data.searchId !== this.currentSearchId) return;
+            this.state.update((s) => {
+                s.filesSearched = data.filesSearched;
+            });
+        });
+
+        this.onIpc<SearchComplete>(SearchChannel.complete, (data) => {
+            if (data.searchId !== this.currentSearchId) return;
+            this.state.update((s) => {
+                s.isSearching = false;
+                s.filesSearched = data.filesSearched;
+                s.totalMatches = data.totalMatches;
+                s.totalFiles = data.totalFiles;
+            });
+            this.emitStateChange();
+        });
+
+        this.onIpc<SearchError>(SearchChannel.error, (data) => {
+            if (data.searchId !== this.currentSearchId) return;
+            this.state.update((s) => {
+                s.isSearching = false;
+            });
+            console.error("Search error:", data.message);
+        });
+    };
+
+    // ── Search ────────────────────────────────────────────────────────
+
+    private sendSearch = () => {
+        const { query, includePattern, excludePattern, searchFolder } = this.state.get();
+        if (!query.trim()) {
+            this.cancelSearch();
+            return;
+        }
+
+        const searchId = `search-${++searchIdCounter}`;
+        this.currentSearchId = searchId;
+
+        this.state.update((s) => {
+            s.isSearching = true;
+            s.results = [];
+            s.totalMatches = 0;
+            s.totalFiles = 0;
+            s.filesSearched = 0;
+        });
+
+        const request: SearchRequest = {
+            searchId,
+            rootPath: searchFolder || this.rootPath,
+            query: query.trim(),
+            includePattern,
+            excludePattern,
+            caseSensitive: false,
+            maxFileSize: settings.get("search-max-file-size"),
+            extensions: settings.get("search-extensions"),
+        };
+
+        ipcRenderer.send(SearchChannel.start, request);
+    };
+
+    private sendSearchDebounced = debounce(this.sendSearch, 500);
+
+    private cancelSearch = () => {
+        if (this.currentSearchId) {
+            ipcRenderer.send(SearchChannel.cancel);
+            this.currentSearchId = null;
+            this.state.update((s) => {
+                s.isSearching = false;
+            });
+        }
+    };
+
+    private emitStateChange = () => {
+        if (!this.onStateChange) return;
+        const { query, includePattern, excludePattern, showFilters, searchFolder, results, totalMatches, totalFiles } = this.state.get();
+        this.onStateChange({ query, includePattern, excludePattern, showFilters, searchFolder, results, totalMatches, totalFiles });
+    };
+
+    // ── Public API ────────────────────────────────────────────────────
+
+    setQuery = (query: string) => {
+        this.state.update((s) => { s.query = query; });
+        if (query.trim()) {
+            this.sendSearchDebounced();
+        } else {
+            this.cancelSearch();
+            this.state.update((s) => {
+                s.results = [];
+                s.totalMatches = 0;
+                s.totalFiles = 0;
+                s.filesSearched = 0;
+            });
+            this.emitStateChange();
+        }
+    };
+
+    setIncludePattern = (pattern: string) => {
+        this.state.update((s) => { s.includePattern = pattern; });
+        if (this.state.get().query.trim()) {
+            this.sendSearchDebounced();
+        }
+    };
+
+    setExcludePattern = (pattern: string) => {
+        this.state.update((s) => { s.excludePattern = pattern; });
+        if (this.state.get().query.trim()) {
+            this.sendSearchDebounced();
+        }
+    };
+
+    setSearchFolder = (folder: string) => {
+        this.state.update((s) => { s.searchFolder = folder; });
+        if (this.state.get().query.trim()) {
+            this.sendSearchDebounced();
+        }
+    };
+
+    toggleFilters = () => {
+        this.state.update((s) => { s.showFilters = !s.showFilters; });
+    };
+
+    /** Trigger search immediately (Enter key or Refresh button). */
+    triggerSearch = () => {
+        if (this.state.get().query.trim()) {
+            this.sendSearch();
+        }
+    };
+
+    /** Toggle file row expand/collapse and rebuild filtered view. */
+    toggleFileExpanded = (filePath: string) => {
+        this.state.update((s) => {
+            const fileRow = s.results.find(
+                (r): r is SearchResultFileRow => r.type === "file" && r.filePath === filePath,
+            );
+            if (fileRow) {
+                fileRow.expanded = !fileRow.expanded;
+            }
+        });
+    };
+
+    /** Build filtered result array (collapsed files have their lines removed). */
+    getFilteredResults(): SearchResultRow[] {
+        const results = this.state.get().results;
+        const filtered: SearchResultRow[] = [];
+        let currentFileExpanded = true;
+
+        for (const row of results) {
+            if (row.type === "file") {
+                filtered.push(row);
+                currentFileExpanded = row.expanded;
+            } else if (currentFileExpanded) {
+                filtered.push(row);
+            }
+        }
+        return filtered;
+    }
+
+    clearSearch = () => {
+        this.cancelSearch();
+        this.state.update((s) => {
+            s.query = "";
+            s.includePattern = "";
+            s.excludePattern = "";
+            s.isSearching = false;
+            s.results = [];
+            s.totalMatches = 0;
+            s.totalFiles = 0;
+            s.filesSearched = 0;
+        });
+        this.emitStateChange();
+    };
+
+    dispose = () => {
+        this.cancelSearch();
+        this.ipcListeners.forEach(({ channel, handler }) => {
+            ipcRenderer.removeListener(channel, handler);
+        });
+        this.ipcListeners = [];
+    };
+}

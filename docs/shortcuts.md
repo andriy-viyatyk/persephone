@@ -163,8 +163,7 @@ All navigation keys (except Tab) support **Shift** to extend selection.
 | Shortcut | Action |
 |----------|--------|
 | `Ctrl+F` | Search files by name |
-| `Ctrl+Shift+F` | Search in file contents |
-| `Escape` | Close search panel |
+| `Escape` | Close search / name filter |
 
 ## Sidebar
 

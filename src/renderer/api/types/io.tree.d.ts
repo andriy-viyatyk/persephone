@@ -30,6 +30,11 @@ export interface ITreeProvider {
      *  For files: returns item.href. For directories: returns a tree-category:// link. */
     getNavigationUrl(item: ITreeProviderItem): string;
 
+    /** Resolve a stored href back to a navigation URL.
+     *  Uses stat() to determine isDirectory, then delegates to getNavigationUrl().
+     *  Useful for panel switch navigation where only the href is stored. */
+    getNavigationUrlByHref(href: string): Promise<string>;
+
     /** Whether this tree supports root navigation (move up to parent, make subfolder root). */
     readonly navigable: boolean;
 

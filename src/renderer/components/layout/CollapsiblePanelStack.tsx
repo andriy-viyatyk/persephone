@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { Children, CSSProperties, isValidElement, ReactElement, ReactNode } from "react";
+import { Children, CSSProperties, isValidElement, ReactElement, ReactNode, useEffect, useRef } from "react";
 import color from "../../theme/color";
 import { ChevronDownIcon, ChevronRightIcon } from "../../theme/icons";
 
@@ -10,10 +10,15 @@ import { ChevronDownIcon, ChevronRightIcon } from "../../theme/icons";
 export interface CollapsiblePanelProps {
     /** Unique panel identifier */
     id: string;
-    /** Panel header title */
-    title: string;
+    /** Panel header title (string or ReactNode for loading indicators etc.) */
+    title: ReactNode;
     /** Panel content */
     children: ReactNode;
+    /** Optional icon before the title */
+    icon?: ReactNode;
+    /** Optional action buttons rendered at the right of the header.
+     *  When provided, chevron icons are hidden (expanded state is self-evident from content). */
+    buttons?: ReactNode;
 }
 
 /**
@@ -69,20 +74,24 @@ const PanelStackRoot = styled.div({
         display: "flex",
         alignItems: "center",
         gap: 4,
-        padding: "6px 8px",
+        padding: "2px 4px",
         fontSize: 12,
         fontWeight: 500,
         color: color.text.light,
+        backgroundColor: color.background.dark,
         cursor: "pointer",
         userSelect: "none",
-        borderBottom: `1px solid ${color.background.light}`,
+        borderBottom: `1px solid ${color.border.light}`,
         "&:hover": {
             backgroundColor: color.background.light,
         },
-        "& svg": {
+        "& > svg": {
             width: 14,
             height: 14,
             flexShrink: 0,
+        },
+        "& .panel-spacer": {
+            flex: "1 1 auto",
         },
     },
 
@@ -90,7 +99,7 @@ const PanelStackRoot = styled.div({
         flex: 1,
         display: "flex",
         flexDirection: "column",
-        overflow: "auto",
+        overflow: "hidden",
         backgroundColor: color.background.default,
     },
 });
@@ -101,8 +110,8 @@ const PanelStackRoot = styled.div({
 
 /**
  * A stack of collapsible panels where exactly one panel is always expanded.
- * Clicking an expanded panel collapses it and expands the next one.
- * Clicking a collapsed panel expands it and collapses the current one.
+ * Clicking a collapsed panel expands it. Clicking the expanded panel returns
+ * to the previously expanded panel (history-based, not cycling).
  *
  * @example
  * ```tsx
@@ -127,21 +136,38 @@ export function CollapsiblePanelStack({
     style,
 }: CollapsiblePanelStackProps) {
     // Extract panel definitions from children
-    const panels: { id: string; title: string; content: ReactNode }[] = [];
+    const panels: { id: string; title: ReactNode; content: ReactNode; icon?: ReactNode; buttons?: ReactNode }[] = [];
 
     Children.forEach(children, (child) => {
         if (isValidElement(child) && child.type === CollapsiblePanel) {
-            const { id, title, children: content } = child.props as CollapsiblePanelProps;
-            panels.push({ id, title, content });
+            const { id, title, children: content, icon, buttons } = child.props as CollapsiblePanelProps;
+            panels.push({ id, title, content, icon, buttons });
         }
     });
 
+    // Track expand history for back-navigation
+    const previousPanelRef = useRef<string | null>(null);
+    const lastActivePanelRef = useRef(activePanel);
+
+    // Track external activePanel changes (e.g., async panel switch in PageNavigator)
+    useEffect(() => {
+        if (activePanel !== lastActivePanelRef.current) {
+            previousPanelRef.current = lastActivePanelRef.current;
+            lastActivePanelRef.current = activePanel;
+        }
+    }, [activePanel]);
+
     const handleToggle = (panelId: string) => {
         if (activePanel === panelId) {
-            // If clicking the active panel, switch to the next one
-            const currentIndex = panels.findIndex(p => p.id === panelId);
-            const nextIndex = (currentIndex + 1) % panels.length;
-            setActivePanel(panels[nextIndex].id);
+            // Clicking expanded panel — go back to previous
+            const prev = previousPanelRef.current;
+            if (prev && panels.some(p => p.id === prev)) {
+                setActivePanel(prev);
+            } else {
+                // No valid previous — fall back to first panel that isn't current
+                const fallback = panels.find(p => p.id !== panelId);
+                if (fallback) setActivePanel(fallback.id);
+            }
         } else {
             setActivePanel(panelId);
         }
@@ -160,8 +186,15 @@ export function CollapsiblePanelStack({
                             className="panel-header"
                             onClick={() => handleToggle(panel.id)}
                         >
-                            {isExpanded ? <ChevronDownIcon /> : <ChevronRightIcon />}
+                            {!panel.buttons && (isExpanded ? <ChevronDownIcon /> : <ChevronRightIcon />)}
+                            {panel.icon}
                             {panel.title}
+                            {panel.buttons && (
+                                <>
+                                    <span className="panel-spacer" />
+                                    {panel.buttons}
+                                </>
+                            )}
                         </div>
                         {isExpanded && (
                             <div className="panel-content">

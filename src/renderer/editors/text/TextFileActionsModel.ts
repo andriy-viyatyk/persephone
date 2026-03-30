@@ -41,7 +41,10 @@ export class TextFileActionsModel {
         if (!this.model.navigationData && !filePath) return;
 
         this.model.ensureNavigationData(fpDirname(filePath || ""));
-        this.model.navigationData!.ensurePageNavigatorModel().openSearch();
+        const navModel = this.model.navigationData!.ensurePageNavigatorModel();
+        if (!navModel.state.get().open) {
+            navModel.toggle();
+        }
     };
 
     runScript = async (all?: boolean) => {

@@ -122,13 +122,14 @@ export function FolderItem(props: FolderItemProps) {
 
     const handleContextMenu = useCallback(
         (e: React.MouseEvent) => {
+            onClick?.(folder, index, e);
             const menuItems = getContextMenu?.(folder, index);
             if (menuItems) {
                 const ctxEvent = ContextMenuEvent.fromNativeEvent(e, "sidebar-folder");
                 ctxEvent.items.push(...menuItems);
             }
         },
-        [getContextMenu, folder, index]
+        [getContextMenu, folder, index, onClick]
     );
 
     const handleDragOver = useCallback(

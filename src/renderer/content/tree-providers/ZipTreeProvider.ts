@@ -102,4 +102,16 @@ export class ZipTreeProvider implements ITreeProvider {
         if (!item.isDirectory) return item.href;
         return encodeCategoryLink({ type: this.type, url: this.sourceUrl, category: item.href });
     }
+
+    async getNavigationUrlByHref(href: string): Promise<string> {
+        // Root path is always a directory (stat on "" may fail)
+        if (href === this.rootPath) {
+            return encodeCategoryLink({ type: this.type, url: this.sourceUrl, category: href });
+        }
+        const s = await this.stat(href);
+        if (s.isDirectory) {
+            return encodeCategoryLink({ type: this.type, url: this.sourceUrl, category: href });
+        }
+        return href;
+    }
 }
