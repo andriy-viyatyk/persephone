@@ -436,7 +436,6 @@ persephone/
 │   ├── TreeView/           # Virtualized tree component
 │   ├── data-grid/          # Advanced data grid (AVGrid)
 │   ├── virtualization/     # Base virtualization (RenderGrid)
-│   ├── file-explorer/      # File explorer component (legacy — being replaced by tree-provider)
 │   ├── tree-provider/      # TreeProviderView — generic tree viewer for any ITreeProvider (EPIC-015)
 │   ├── file-search/        # FileSearch — standalone file content search with virtualized results (EPIC-015)
 │   ├── icons/              # FileIcon, LanguageIcon

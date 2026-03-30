@@ -113,7 +113,7 @@ onContextMenu = (e: React.MouseEvent) => {
 };
 ```
 
-**Used by:** PageTab, FileExplorer, TreeProviderView, CategoryView, FolderItem, MenuBar, MarkdownBlock, BrowserTabs, BrowserUrlBar, LinkEditor, List component.
+**Used by:** PageTab, TreeProviderView, CategoryView, FolderItem, MenuBar, MarkdownBlock, BrowserTabs, BrowserUrlBar, LinkEditor, List component.
 
 ### Pattern 2: Non-bubbling handlers (direct display)
 
@@ -139,23 +139,22 @@ The EventChannel system allows scripts to subscribe to context menu events and m
 4. `GlobalEventService` awaits the promise before showing the menu
 5. Scripts see all items and can push, remove, or replace them
 
-### Example: File Explorer
+### Example: TreeProviderView
 
 ```
 TreeView cell onContextMenu
-    -> onItemContextMenu: sets target (IFileTarget), pushes file/folder items
-    |
-    v  (bubbles)
-FileExplorerRoot onContextMenu
-    -> onBackgroundContextMenu: pushes "New File"/"New Folder"
-    -> Checks targetKind === "file-explorer-item"
-    -> Fires app.events.fileExplorer.itemContextMenu.sendAsync(event)
+    -> onItemContextMenu: sets target, pushes file/folder items (Layer 1)
+    -> Fires treeProviderContextMenu.sendAsync (Layer 2)
+       -> tree-context-menus handler adds "Open in New Tab", etc.
+       -> Re-fires on fileExplorer.itemContextMenu (compat bridge, same items array)
+          -> Scripts add/modify items
+    -> Calls onContextMenu prop (Layer 3, parent additions)
     -> Attaches promise to contextMenuPromise
     |
     v  (bubbles)
 GlobalEventService
     -> Awaits contextMenuPromise
-    -> showAppPopupMenu with final items
+    -> showAppPopupMenu with final items (copies array to avoid Immer freeze)
 ```
 
 ### Script subscription example

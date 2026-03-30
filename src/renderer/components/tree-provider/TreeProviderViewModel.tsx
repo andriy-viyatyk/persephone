@@ -430,7 +430,7 @@ export class TreeProviderViewModel extends TComponentModel<
 
     // ── Context menus ────────────────────────────────────────────────────
 
-    onItemContextMenu = async (node: TreeProviderNode, e: React.MouseEvent) => {
+    onItemContextMenu = (node: TreeProviderNode, e: React.MouseEvent) => {
         const ctxEvent = ContextMenuEvent.fromNativeEvent(e, "tree-provider-item");
         ctxEvent.target = node.data;
 
@@ -441,12 +441,17 @@ export class TreeProviderViewModel extends TComponentModel<
         ctxEvent.items.push(...items);
 
         // Layer 2: Event channel — type-specific items added by registered handlers
-        await app.events.treeProviderContextMenu.sendAsync(
-            ctxEvent as ContextMenuEvent<ITreeProviderItem>,
-        );
-
         // Layer 3: Parent callback — final additions/modifications
-        this.props.onContextMenu?.(ctxEvent as ContextMenuEvent<ITreeProviderItem>);
+        // Set contextMenuPromise so GlobalEventService waits for async handlers
+        // before showing the popup menu.
+        const promise = (async () => {
+            const result = await app.events.treeProviderContextMenu.sendAsync(
+                ctxEvent as ContextMenuEvent<ITreeProviderItem>,
+            );
+            this.props.onContextMenu?.(ctxEvent as ContextMenuEvent<ITreeProviderItem>);
+            return result;
+        })();
+        e.nativeEvent.contextMenuPromise = promise;
     };
 
     onBackgroundContextMenu = (e: React.MouseEvent) => {

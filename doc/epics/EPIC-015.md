@@ -670,12 +670,12 @@ Removed from this phase (no longer needed):
 - ~~`TextFileIOModel.renameFile` via ITreeProvider~~ — current approach works fine; can be revisited in a standalone task if needed.
 - ~~Derive ITreeProvider from pipe provider~~ — after EPIC-016, only FileTreeProvider remains in PageNavigator Explorer; special panels (Zip, Links) will be handled by PageModel secondary editors.
 
-### Phase 6: Cleanup
+### Phase 6: Cleanup (US-310)
 
 | # | Task | Description | Depends on | Status |
 |---|---|---|---|---|
-| 6.1 | Remove old FileExplorer component | Delete FileExplorer and FileExplorerModel after all integration points verified. | 3.1, 3.2, 3.3 | Planned |
-| 6.2 | Remove old NavigationPanel + search | Delete NavigationPanel, SearchResultsPanel, NavigationSearchModel, NavPanelModel after search reimplemented. | 4.4 | Planned |
+| 6.1 | Remove old FileExplorer component | Delete FileExplorer and FileExplorerModel after all integration points verified. | 3.1, 3.2, 3.3 | Done |
+| 6.2 | Remove old NavigationPanel + search | Delete NavigationPanel, SearchResultsPanel, NavigationSearchModel, NavPanelModel after search reimplemented. | 4.4 | Done |
 | 6.3 | Final review | Architecture review, documentation update, user documentation. | All above | Planned |
 
 **Note:** Link editor replacement (LinkTreeProvider, Tags/Hostnames, pinning, tiles, `.link.json` browsing, Browser integration) moved to EPIC-016 — requires "Page as ITreeProvider" architecture.

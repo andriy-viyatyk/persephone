@@ -185,13 +185,13 @@ type MenuBarState = typeof defaultMenuBarState;
 class MenuBarModel extends TComponentModel<MenuBarState, MenuBarProps> {
     contentRef: HTMLDivElement | null = null;
     fileListRef: FileListRef | null = null;
-    fileExplorerRef: TreeProviderViewRef | null = null;
+    treeViewRef: TreeProviderViewRef | null = null;
     expandStateMap = new Map<string, TreeProviderViewSavedState>();
     providerMap = new Map<string, FileTreeProvider>();
 
     setContentRef = (ref: HTMLDivElement | null) => { this.contentRef = ref; };
     setFileListRef = (ref: FileListRef | null) => { this.fileListRef = ref; };
-    setFileExplorerRef = (ref: TreeProviderViewRef | null) => { this.fileExplorerRef = ref; };
+    setTreeViewRef = (ref: TreeProviderViewRef | null) => { this.treeViewRef = ref; };
 
     getProvider = (folderId: string, folderPath: string): FileTreeProvider => {
         let provider = this.providerMap.get(folderId);
@@ -210,7 +210,7 @@ class MenuBarModel extends TComponentModel<MenuBarState, MenuBarProps> {
     init() {
         this.effect(() => {
             if (this.props.open) {
-                this.fileExplorerRef?.refresh();
+                this.treeViewRef?.refresh();
                 const timer = setTimeout(() => {
                     this.state.update((s) => { s.isAnimating = true; });
                 }, 10);
@@ -244,7 +244,7 @@ class MenuBarModel extends TComponentModel<MenuBarState, MenuBarProps> {
         } else if (e.ctrlKey && e.code === "KeyF") {
             if (this.state.get().leftItemId !== openTabsId) {
                 e.preventDefault();
-                this.fileExplorerRef?.showSearch();
+                this.treeViewRef?.showSearch();
                 this.fileListRef?.showSearch();
             }
         }
@@ -484,7 +484,7 @@ export function MenuBar(props: MenuBarProps) {
                 return (
                     <ScriptLibraryPanel
                         onClose={props.onClose}
-                        explorerRef={model.setFileExplorerRef}
+                        explorerRef={model.setTreeViewRef}
                         expandState={model.expandStateMap.get(scriptLibraryId)}
                         onExpandStateChange={(s) => model.expandStateMap.set(scriptLibraryId, s)}
                     />
@@ -494,7 +494,7 @@ export function MenuBar(props: MenuBarProps) {
                 if (folder?.path) {
                     return (
                         <TreeProviderView
-                            ref={model.setFileExplorerRef}
+                            ref={model.setTreeViewRef}
                             key={folder.id}
                             provider={model.getProvider(folder.id!, folder.path)}
                             initialState={model.expandStateMap.get(folder.id!)}

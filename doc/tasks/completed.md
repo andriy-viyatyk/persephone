@@ -4,6 +4,7 @@ All completed tasks, newest first.
 
 | ID | Title | Epic | Notes |
 |----|-------|------|-------|
+| US-310 | Remove old FileExplorer component | EPIC-015 | Deleted 4 files (FileExplorer.tsx, FileExplorerModel.tsx, file-tree-builder.ts, index.ts). Renamed fileExplorerRef → treeViewRef in MenuBar. Kept app.events.fileExplorer compat bridge and NavigationData migration code. |
 | US-309 | Expose ZipTreeProvider in script `io` namespace | EPIC-015 | Added `io.ZipTreeProvider` to IoNamespace.ts + `IZipTreeProviderConstructor` type in `io.d.ts`. Scripts can enumerate ZIP contents, stat entries, and open via navigation URL. |
 | US-308 | Decommission NavigationPanel search | EPIC-015 | Deleted 4 dead code files: NavigationPanel.tsx, nav-panel-store.ts, NavigationSearchModel.ts, SearchResultsPanel.tsx. Replaced by PageNavigator + FileSearch. |
 | US-307 | Search panel in PageNavigator | EPIC-015 | FileSearch integrated as collapsible panel. Search icon + "Search in folder" context menu. activePanel local state for reactivity. onResultClickRef for stable RenderGrid callbacks. revealLine/highlightText on result click. Explorer reveal-only from Search. State persisted + restored. |

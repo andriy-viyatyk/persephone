@@ -201,7 +201,7 @@ export const showAppPopupMenu = async (
     state.update((s) => {
         s.x = x;
         s.y = y;
-        s.items = items;
+        s.items = [...items];
         s.poperProps = opts.popperProps;
         s.skipInspect = opts.skipInspect || false;
     });

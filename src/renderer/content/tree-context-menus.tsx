@@ -67,19 +67,16 @@ export function registerTreeContextMenuHandlers(): void {
                 },
             );
 
-            // Re-fire on fileExplorer.itemContextMenu for script compatibility
+            // Re-fire on fileExplorer.itemContextMenu for script compatibility.
+            // Scripts work directly with event.items — same array instance.
             const { ContextMenuEvent: CtxMenuEvent } = await import("../api/events/events");
             const fileTarget = {
                 path: item.href,
                 name: item.name,
                 isDirectory: item.isDirectory,
             };
-            const compatEvent = new CtxMenuEvent("file-explorer-item", fileTarget, [...event.items]);
+            const compatEvent = new CtxMenuEvent("file-explorer-item", fileTarget, event.items);
             await app.events.fileExplorer.itemContextMenu.sendAsync(compatEvent);
-            // Merge any items added by script subscribers
-            if (compatEvent.items.length > event.items.length) {
-                event.items.push(...compatEvent.items.slice(event.items.length));
-            }
         }
     });
 }
