@@ -4,7 +4,7 @@ Epics represent big ideas with high-level overviews. Each epic links to tasks in
 
 ## Active
 
-- **EPIC-015** — [ITreeProvider — Browsable Source Abstraction](EPIC-015.md)
+_(none)_
 
 ## Future
 - **EPIC-016** — [Secondary Editors — Sidebar Extension System](EPIC-016.md)
@@ -13,6 +13,7 @@ Epics represent big ideas with high-level overviews. Each epic links to tasks in
 
 ## Completed
 
+- **EPIC-015** — [ITreeProvider — Browsable Source Abstraction](EPIC-015.md)
 - **EPIC-012** — [Unified Link & Provider Architecture](EPIC-012.md)
 - **EPIC-013** — [Rebrand to "Persephone"](EPIC-013.md)
 - **EPIC-010** — [Rest Client](EPIC-010.md)

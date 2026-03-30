@@ -1,6 +1,6 @@
 # EPIC-015: ITreeProvider — Browsable Source Abstraction
 
-**Status:** Active
+**Status:** Completed
 **Priority:** High
 **Created:** 2026-03-28
 
@@ -676,7 +676,7 @@ Removed from this phase (no longer needed):
 |---|---|---|---|---|
 | 6.1 | Remove old FileExplorer component | Delete FileExplorer and FileExplorerModel after all integration points verified. | 3.1, 3.2, 3.3 | Done |
 | 6.2 | Remove old NavigationPanel + search | Delete NavigationPanel, SearchResultsPanel, NavigationSearchModel, NavPanelModel after search reimplemented. | 4.4 | Done |
-| 6.3 | Final review | Architecture review, documentation update, user documentation. | All above | Planned |
+| 6.3 | Final review | Architecture review, documentation update, user documentation. | All above | Done |
 
 **Note:** Link editor replacement (LinkTreeProvider, Tags/Hostnames, pinning, tiles, `.link.json` browsing, Browser integration) moved to EPIC-016 — requires "Page as ITreeProvider" architecture.
 

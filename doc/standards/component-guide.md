@@ -7,7 +7,7 @@
 | Component Type | Location | Example |
 |---------------|----------|---------|
 | Reusable, no app state | `/components/[category]/` | Button, Tooltip |
-| App-specific feature | `/features/[feature]/` | PageTab, FileExplorer |
+| App-specific feature | `/features/[feature]/` | PageTab, TreeProviderView |
 | Editor-specific | `/editors/[editor]/components/` | CsvOptions |
 
 ## Component Categories
