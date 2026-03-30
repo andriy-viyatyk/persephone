@@ -183,6 +183,16 @@ Providers are data sources. Create one and pass it to `io.createPipe()`.
 
 `HttpProvider` options: `{ method?, headers?, body? }` — useful when you need custom headers or a POST body.
 
+### Tree Providers
+
+Tree providers enumerate entries inside a container (e.g., a ZIP archive) without reading full file contents.
+
+| Constructor | Description |
+|-------------|-------------|
+| `new io.ZipTreeProvider(zipPath)` | Browses directory structure of a ZIP archive |
+
+Call `list(dir)` to enumerate entries and `getNavigationUrl(item)` to build a link you can pass to `app.events.openRawLink`. See the [io API reference](./api/io.md#ziptreeprovider) for full details.
+
 ### Transformers
 
 Transformers process the raw bytes before they reach your code.

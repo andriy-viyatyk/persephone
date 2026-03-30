@@ -4,6 +4,7 @@ All completed tasks, newest first.
 
 | ID | Title | Epic | Notes |
 |----|-------|------|-------|
+| US-309 | Expose ZipTreeProvider in script `io` namespace | EPIC-015 | Added `io.ZipTreeProvider` to IoNamespace.ts + `IZipTreeProviderConstructor` type in `io.d.ts`. Scripts can enumerate ZIP contents, stat entries, and open via navigation URL. |
 | US-308 | Decommission NavigationPanel search | EPIC-015 | Deleted 4 dead code files: NavigationPanel.tsx, nav-panel-store.ts, NavigationSearchModel.ts, SearchResultsPanel.tsx. Replaced by PageNavigator + FileSearch. |
 | US-307 | Search panel in PageNavigator | EPIC-015 | FileSearch integrated as collapsible panel. Search icon + "Search in folder" context menu. activePanel local state for reactivity. onResultClickRef for stable RenderGrid callbacks. revealLine/highlightText on result click. Explorer reveal-only from Search. State persisted + restored. |
 | US-306 | FileSearch component | EPIC-015 | Standalone search: FileSearchModel (IPC, search ID, debounce) + FileSearch (RenderGrid virtualized, file/line rows, match highlighting, expand/collapse). Reuses main-process search-service. |

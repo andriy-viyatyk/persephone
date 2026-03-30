@@ -254,6 +254,7 @@ interface IIoNamespace {
     readonly HttpProvider: new (url: string, options?: { method?: string; headers?: Record<string, string>; body?: string }) => IProvider;
     readonly ZipTransformer: new (entryPath: string) => ITransformer;
     readonly DecryptTransformer: new (password: string) => ITransformer;
+    readonly ZipTreeProvider: new (sourceUrl: string) => ITreeProvider;
     readonly RawLinkEvent: new (raw: string) => IRawLinkEvent;
     readonly OpenLinkEvent: new (url: string, target?: string, metadata?: Record<string, unknown>) => IOpenLinkEvent;
     createPipe(provider: IProvider, ...transformers: ITransformer[]): IContentPipe;
@@ -268,6 +269,12 @@ const text = await pipe.readText();
 
 // Fetch HTTP content with authentication
 const pipe = io.createPipe(new io.HttpProvider(url, { headers: { "Authorization": "Bearer token" } }));
+
+// Browse and open files from a ZIP archive
+const zip = new io.ZipTreeProvider("C:\\docs.zip");
+const items = await zip.list("");
+const url = zip.getNavigationUrl(items[0]);
+await app.events.openRawLink.sendAsync(new io.RawLinkEvent(url));
 
 // Open a URL through the link pipeline
 await app.events.openRawLink.sendAsync(new io.RawLinkEvent("https://api.com/data.json"));

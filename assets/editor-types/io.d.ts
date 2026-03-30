@@ -1,6 +1,7 @@
 import type { IProvider, IProviderDescriptor } from "./io.provider";
 import type { ITransformer, ITransformerDescriptor } from "./io.transformer";
 import type { IContentPipe, IPipeDescriptor } from "./io.pipe";
+import type { ITreeProvider } from "./io.tree";
 import type { IBaseEvent } from "./events";
 import type { ILinkMetadata } from "./io.events";
 
@@ -42,6 +43,19 @@ export interface IZipTransformerConstructor {
  */
 export interface IDecryptTransformerConstructor {
     new(password: string): ITransformer;
+}
+
+/**
+ * Tree provider for ZIP archives (and ZIP-based formats like .docx, .xlsx, .epub).
+ * Read-only: enumerates archive entries and resolves navigation links.
+ * @example
+ * const zip = new io.ZipTreeProvider("C:\\docs.zip");
+ * const items = await zip.list("");  // root entries
+ * const url = zip.getNavigationUrl(items[0]);
+ * await app.events.openRawLink.sendAsync(new io.RawLinkEvent(url));
+ */
+export interface IZipTreeProviderConstructor {
+    new(sourceUrl: string): ITreeProvider;
 }
 
 /**
@@ -88,7 +102,7 @@ export interface IOpenContentEventConstructor {
 }
 
 /**
- * The `io` global namespace — content pipe building and link events.
+ * The `io` global namespace — content pipe building, tree providers, and link events.
  *
  * Available in scripts alongside `app`, `page`, and `ui`.
  *
@@ -98,6 +112,9 @@ export interface IOpenContentEventConstructor {
  * - Use `io.OpenContentEvent` to open a pre-assembled pipe directly in an editor (Layer 3)
  * - Use `io.createPipe()` with providers and transformers to build custom content pipes
  *
+ * **Tree providers:**
+ * - Use `io.ZipTreeProvider` to enumerate and navigate ZIP archive contents
+ *
  * @example
  * // Read a file from inside a ZIP archive
  * const pipe = io.createPipe(
@@ -105,6 +122,13 @@ export interface IOpenContentEventConstructor {
  *     new io.ZipTransformer("readme.md"),
  * );
  * const text = await pipe.readText();
+ *
+ * @example
+ * // Browse and open files from a ZIP archive
+ * const zip = new io.ZipTreeProvider("C:\\docs.zip");
+ * const items = await zip.list("");
+ * const url = zip.getNavigationUrl(items[0]);
+ * await app.events.openRawLink.sendAsync(new io.RawLinkEvent(url));
  *
  * @example
  * // Open a URL through the link pipeline
@@ -121,6 +145,8 @@ export interface IIoNamespace {
     readonly ZipTransformer: IZipTransformerConstructor;
     /** Transformer for AES-GCM decryption/encryption (non-persistent). */
     readonly DecryptTransformer: IDecryptTransformerConstructor;
+    /** Tree provider for ZIP archives — list entries, stat, navigate. */
+    readonly ZipTreeProvider: IZipTreeProviderConstructor;
     /** Raw link event constructor for Layer 1 (openRawLink). */
     readonly RawLinkEvent: IRawLinkEventConstructor;
     /** Open link event constructor for Layer 2 (openLink). */

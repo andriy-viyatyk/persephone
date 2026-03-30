@@ -663,10 +663,12 @@ A standalone collapsible "Search" panel in PageNavigator, inserted between Explo
 
 | # | Task | Description | Depends on | Status |
 |---|---|---|---|---|
-| 5.1 | "Open Archive in separate tab" context menu | Right-click archive file in tree → opens new tab with ZipTreeProvider in PageNavigator (no Explorer panel, only Archive). | 3.7 | Planned |
-| 5.2 | `TextFileIOModel.renameFile` via ITreeProvider | Delegate rename to tree provider instead of direct `app.fs` call. | 1.2, 3.1 | Planned |
-| 5.3 | Derive ITreeProvider from pipe provider | Auto-create tree provider from content pipe when appropriate (e.g., file pipe → FileTreeProvider for its directory). | 1.2, 1.3 | Planned |
-| 5.4 | Expose FileTreeProvider and ZipTreeProvider in script `io` namespace | `io.FileTreeProvider`, `io.ZipTreeProvider`. Script type definitions in `io.tree.d.ts`. | 1.2, 1.3 | Planned |
+| 5.1 | Expose ZipTreeProvider in script `io` namespace | `io.ZipTreeProvider`. Script type definitions in `io.tree.d.ts`. FileTreeProvider not exposed — `app.fs` already covers file operations. | 1.2, 1.3 | Done |
+
+Removed from this phase (no longer needed):
+- ~~"Open Archive in separate tab" context menu~~ — files can already be opened in new tab via context menu; EPIC-016 will introduce ZipEditor for dedicated archive browsing.
+- ~~`TextFileIOModel.renameFile` via ITreeProvider~~ — current approach works fine; can be revisited in a standalone task if needed.
+- ~~Derive ITreeProvider from pipe provider~~ — after EPIC-016, only FileTreeProvider remains in PageNavigator Explorer; special panels (Zip, Links) will be handled by PageModel secondary editors.
 
 ### Phase 6: Cleanup
 

@@ -136,7 +136,7 @@ persephone/
 │       ├── mermaid-editor.d.ts # IMermaidEditor
 │       ├── graph-editor.d.ts  # IGraphEditor, IGraphNode, IGraphComponent, IGraphSearchResult
 │       ├── events.d.ts       # IEventChannel, IBaseEvent, IContextMenuEvent, MenuItem, IFileTarget
-│       ├── io.d.ts            # IIoNamespace — script `io` global (providers, transformers, createPipe)
+│       ├── io.d.ts            # IIoNamespace — script `io` global (providers, transformers, tree providers, createPipe)
 │       ├── io.provider.d.ts  # IProvider, IProviderStat, IProviderDescriptor
 │       ├── io.transformer.d.ts # ITransformer, ITransformerDescriptor
 │       ├── io.pipe.d.ts      # IContentPipe, IPipeDescriptor

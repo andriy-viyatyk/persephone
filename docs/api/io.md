@@ -65,6 +65,77 @@ The resulting provider is **read-only** -- pipes built from it do not support wr
 
 ---
 
+## Tree Providers
+
+Tree providers enumerate directory-like structures -- they let you list and navigate entries inside a container (archive, folder, etc.) without reading the full content of each entry. Unlike `IProvider` (which reads/writes one resource), a tree provider acts like a mini file explorer for the container.
+
+### ZipTreeProvider
+
+Browse the directory structure of a ZIP archive (or any ZIP-based format: `.docx`, `.xlsx`, `.epub`, etc.).
+
+```javascript
+const zip = new io.ZipTreeProvider("C:/docs.zip");
+const items = await zip.list("");          // root entries (files + subdirectories)
+const subItems = await zip.list("data");   // entries inside the "data/" folder
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `sourceUrl` | `string` | Absolute path to a local ZIP archive. |
+
+#### Methods
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `list(dir)` | `Promise<ITreeProviderItem[]>` | List direct children at `dir`. Pass `""` for the root. Folders appear first (alphabetical), then files sorted by extension. |
+| `stat(innerPath)` | `Promise<ITreeStat>` | Get metadata (`exists`, `isDirectory`, `size`, `mtime`) for an entry. |
+| `getNavigationUrl(item)` | `string` | Build a raw link for `app.events.openRawLink`. For files, returns the archive entry path; for directories, returns a `tree-category://` link that opens the folder view. |
+| `getNavigationUrlByHref(href)` | `Promise<string>` | Like `getNavigationUrl`, but accepts a stored `href` and resolves the type via `stat()`. |
+
+#### ITreeProviderItem
+
+Each entry returned by `list()` has these fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `name` | `string` | Entry filename or folder name. |
+| `href` | `string` | Full inner path (e.g., `"data/report.csv"`). |
+| `category` | `string` | Parent directory path. |
+| `tags` | `string[]` | File extension (e.g., `[".csv"]`), or empty for folders. |
+| `isDirectory` | `boolean` | `true` for folders. |
+| `size` | `number?` | File size in bytes (files only). |
+| `mtime` | `string?` | Last modified time (ISO string). |
+
+#### Example: open every file in an archive
+
+```javascript
+const zip = new io.ZipTreeProvider("C:\\docs.zip");
+const items = await zip.list("");            // list root entries
+
+for (const item of items) {
+    if (!item.isDirectory) {
+        const url = zip.getNavigationUrl(item);
+        await app.events.openRawLink.sendAsync(new io.RawLinkEvent(url));
+    }
+}
+```
+
+#### Example: navigate into a subfolder
+
+```javascript
+const zip = new io.ZipTreeProvider("C:\\project.zip");
+const root = await zip.list("");
+const folder = root.find(i => i.isDirectory && i.name === "src");
+
+if (folder) {
+    // Open the folder as a tree view tab
+    const navUrl = zip.getNavigationUrl(folder);
+    await app.events.openRawLink.sendAsync(new io.RawLinkEvent(navUrl));
+}
+```
+
+---
+
 ## Transformers
 
 Transformers process bytes between the provider and your code. They sit in a chain: on read, data flows provider -> transformer 1 -> transformer 2 -> your code. On write, the chain reverses.
