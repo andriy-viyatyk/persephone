@@ -11,6 +11,7 @@ Current work in progress and planned tasks.
 
 | ID | Title | Epic | Notes |
 |----|-------|------|-------|
+| US-314 | Secondary editor registry + PageModel integration | EPIC-016 | Phase 1.2 — registry, `secondaryEditor` getter/setter, `beforeNavigateAway()`, restoreSecondaryModels(). Absorbs task 1.3. |
 
 ## Completed
 

@@ -25,74 +25,102 @@ A general-purpose "secondary editor" system solves all of these.
 
 ### Secondary Editor Concept
 
-A secondary editor is a sidebar panel associated with a page model. It renders its own UI in a collapsible panel within PageNavigator, alongside the Explorer panel.
+A secondary editor is a sidebar panel associated with a page model. It renders its own UI in a collapsible panel within PageNavigator, alongside the Explorer panel. The secondary editor is **not a separate model** — it's a React component that receives the current PageModel via props.
 
 ```typescript
-// Base PageModel gets secondary editor support
+// PageModel gets a secondaryEditor field (similar to editor)
 interface PageModel {
-    /** Whether this page can provide a secondary editor panel. */
-    readonly isSecondaryEditor: boolean;
+    /** Active secondary editor panel ID. Manages secondaryModels[] membership. */
+    secondaryEditor: string | undefined;
 }
 ```
 
-Secondary editors are registered in a **secondary-editor-registry** (similar to the existing editor registry but simplified). Each registration maps a model type to a secondary editor component.
+The active editor on a page decides when to set/clear `secondaryEditor`:
+- ZipPageModel sets `secondaryEditor = "zip-tree"` on creation
+- LinksPageModel in link-view mode sets `secondaryEditor = "link-category"`; switching to monaco clears it
+- TextPageModel with regex tool sets `secondaryEditor = "regex-tool"`; switching to grid-view clears it
+
+The getter/setter manages `NavigationData.secondaryModels[]` membership automatically:
+- **Set:** adds the model to `secondaryModels[]`
+- **Clear:** removes the model from `secondaryModels[]`
+
+Secondary editors are registered in a **secondary-editor-registry** that maps `secondaryEditor` string values to sidebar React components via dynamic imports.
 
 ### Multiple Secondary Panels
 
-NavigationData holds an **array** of secondary editor models (not just one):
+NavigationData holds an **array** of page models that have `secondaryEditor` set:
 
 ```
 NavigationData
   ├── treeProvider              // FileTreeProvider (Explorer panel)
-  ├── secondaryModels[]         // Array of secondary editor page models
-  └── activePanel               // "explorer" | secondary model id
+  ├── secondaryModels[]         // PageModel instances with secondaryEditor set
+  └── activePanel               // "explorer" | "search" | secondary model id
 ```
 
-Each secondary model gets its own collapsible panel in PageNavigator. The Explorer panel is always first. Secondary panels appear below.
+PageNavigator renders each secondary model using the registry:
+```
+{secondaryModels.map(m => {
+    const Component = resolveSecondaryEditor(m.secondaryEditor);
+    return <Component model={m} />;
+})}
+```
 
-### Page Lifecycle: "Page Removing" Stage
+### Page Lifecycle: `beforeNavigateAway(newModel)`
 
-A new lifecycle stage — **"page removing"** — gives page models a chance to survive navigation:
+A lifecycle hook gives page models a chance to survive navigation. The new model is passed so the old model can inspect `newModel.sourceLink` (from US-312) to decide whether to stay:
 
 ```typescript
-// In navigatePageTo:
-const shouldDispose = await oldModel.onRemoving();
-// ZipPageModel: return false (keep alive as secondary editor)
-// LinksPageModel: return false (keep alive)
-// Regular TextPageModel: return true (dispose normally)
+// In navigatePageTo (after newModel is created, before NavigationData transfer):
+oldModel.beforeNavigateAway(newModel);
+
+// Base PageModel: clears secondaryEditor → removed from secondaryModels[]
+// ZipPageModel override: checks newModel.sourceLink.metadata.sourceId === this.id
+//   → match (file opened from this archive): keeps secondaryEditor → stays
+//   → no match (unrelated file): clears secondaryEditor → removed and disposed
 ```
 
-If the page decides to keep itself alive, it stays in `navigationData.secondaryModels[]`. NavigationData owns its lifecycle from that point — disposing it when the user closes the secondary panel.
+The model survives in `secondaryModels[]` because NavigationData is transferred (not recreated) during navigation. Disposed when the user closes the secondary panel or when the tab closes.
 
 ### Secondary Editor Registry
 
 ```typescript
-// Simplified registry — maps model types to secondary editor components
-registerSecondaryEditor("zip-page", ZipSecondaryEditor);
-registerSecondaryEditor("links-page", LinksSecondaryEditor);
-registerSecondaryEditor("text-html", DomSecondaryEditor);
+// Maps secondaryEditor string values to sidebar React components
+secondaryEditorRegistry.register({
+    id: "zip-tree",
+    label: "Archive",
+    loadComponent: () => import("./archive/ZipSecondaryEditor"),
+});
+secondaryEditorRegistry.register({
+    id: "link-category",
+    label: "Links",
+    loadComponent: () => import("./link-editor/LinksCategoryEditor"),
+});
 ```
 
-Each secondary editor component receives the page model and renders its sidebar content:
-- **ZipSecondaryEditor** — renders TreeProviderView (archive tree)
-- **LinksSecondaryEditor** — renders decrypt button (if encrypted) + CollapsiblePanelStack with Categories/Tags/Hostnames
-- **DomSecondaryEditor** — renders DOM resource tree
-- **Future: RegexSecondaryEditor** — renders regex tool with match highlighting
+Each secondary editor component receives the PageModel and renders its sidebar content:
+- **ZipSecondaryEditor** — receives ZipPageModel, renders TreeProviderView (archive tree)
+- **LinksCategoryEditor** — receives TextPageModel (link-view), renders Categories/Tags/Hostnames
+- **DomSecondaryEditor** — receives TextPageModel (HTML), renders DOM resource tree
+- **Future: RegexSecondaryEditor** — receives TextPageModel (monaco), renders regex tool
 
 ### Panel Header as Page Tab
 
 Secondary panel headers function like page tabs:
-- Title from the page model (archive name, link collection name)
-- Close button disposes the secondary editor model
+- Title from the registry `label` or the page model title
+- Close button — **only shown for models that are NOT the active page** (survived navigation). Clicking disposes the model. The active page's own secondary panel has no close button — it's controlled by the `secondaryEditor` field.
 - Modified indicator (for link collections with unsaved changes)
 - Encrypt/decrypt icon (for encrypted `.link.json`)
 
 ### Navigation Identity
 
-Pages opened from a secondary editor carry a `secondaryEditorId` in their openRawLink metadata. When a new page is navigated to:
-1. Check if the new page `isSecondaryEditor` → add to `secondaryModels[]`
-2. Check if the page was opened from an existing secondary editor (via metadata) → keep that editor alive
-3. If unrelated to any secondary editor → dispose editors that don't have the page belonging to them
+Pages carry `sourceLink` (US-312) with the original URL and metadata that opened them. Secondary editors can use `sourceLink.metadata` to identify pages opened from their context (e.g., a file opened from the zip tree carries the archive path in its sourceLink metadata).
+
+During navigation (`navigatePageTo`):
+1. New model is created from the target file
+2. `oldModel.beforeNavigateAway(newModel)` — model inspects `newModel.sourceLink` to decide whether to keep or clear its `secondaryEditor`
+3. If old model kept `secondaryEditor`, it is NOT disposed (only detached from page collection)
+4. NavigationData transfers to the new page — surviving secondary models in `secondaryModels[]` carry over
+5. New page sets its own `secondaryEditor` (if any) — added to `secondaryModels[]`
 
 ## Phased Implementation Plan
 
@@ -100,27 +128,27 @@ Pages opened from a secondary editor carry a `secondaryEditorId` in their openRa
 
 | # | Task | Description | Depends on | Status |
 |---|---|---|---|---|
-| 0.1 | [Source link persistence in IPageState](../tasks/US-312-source-link-persistence/README.md) (US-312) | Add `ISourceLink` to `IPageState` storing resolved URL + accumulated metadata. Open handler builds sourceLink and passes to openFile/navigatePageTo. Persisted across restarts. Foundation for `secondaryEditorId`. | — | Done |
+| 0.1 | [Source link persistence in IPageState](../tasks/US-312-source-link-persistence/README.md) (US-312) | Add `ISourceLink` to `IPageState` storing resolved URL + accumulated metadata. Open handler builds sourceLink and passes to openFile/navigatePageTo. Persisted across restarts. Foundation for `beforeNavigateAway(newModel)` identity checks. | — | Done |
 
 ### Phase 1: Architecture Foundation
 
 | # | Task | Description | Depends on | Status |
 |---|---|---|---|---|
 | 1.1 | [Design secondary editor lifecycle](../tasks/US-313-secondary-editor-lifecycle/README.md) (US-313) | `secondaryModels[]` array in NavigationData. Management methods (add/remove/find). Dispose integration. Tab close save prompts via `confirmSecondaryRelease()`. Persistence of model descriptors. | 0.1 | Done |
-| 1.2 | Secondary editor registry | Simplified registry mapping model types to secondary editor components. Registration API. | 1.1 | Planned |
-| 1.3 | Add `isSecondaryEditor` to PageModel | Base infrastructure. Specific models override. | 1.1 | Planned |
-| 1.4 | ZipPageModel + ZipSecondaryEditor | New editor: shows archive info/metadata instead of raw binary. Secondary editor renders TreeProviderView (archive tree). Implements ITreeProvider. Replaces standalone ZipTreeProvider. | 1.2, 1.3 | Planned |
-| 1.5 | Refactor PageNavigator for secondary editor models | Render secondary panels from `secondaryModels[]` via registry. Replace current standalone ZipTreeProvider approach. Panel headers from page model metadata. | 1.4 | Planned |
+| 1.2 | [Secondary editor registry + PageModel integration](../tasks/US-314-secondary-editor-registry/README.md) (US-314) | SecondaryEditorRegistry mapping `secondaryEditor` strings to sidebar components. `secondaryEditor` getter/setter on PageModel (manages secondaryModels[] membership). `beforeNavigateAway()` lifecycle hook. `restoreSecondaryModels()` on NavigationData. Public `newPageModelFromState`. Absorbs original task 1.3. | 1.1 | Planned |
+| ~~1.3~~ | ~~Add `isSecondaryEditor` to PageModel~~ | Absorbed into 1.2 — replaced by `secondaryEditor` getter/setter and `beforeNavigateAway()` on PageModel. | — | — |
+| 1.4 | ZipPageModel + ZipSecondaryEditor | ZipPageModel sets `secondaryEditor = "zip-tree"` on creation. Secondary component renders TreeProviderView (archive tree). Overrides `beforeNavigateAway(newModel)` to survive when navigated page's `sourceLink.metadata.sourceId` matches. Registers "zip-tree" in secondary editor registry. Replaces standalone ZipTreeProvider. | 1.2 | Planned |
+| 1.5 | Refactor PageNavigator for secondary editor models | Render secondary panels from `NavigationData.secondaryModels[]` via secondary editor registry. Each model's `secondaryEditor` value resolves to a sidebar component. Panel headers show label from registry + close button. Replace current standalone ZipTreeProvider approach. | 1.4 | Planned |
 
 ### Phase 2: Link Editor Replacement
 
 | # | Task | Description | Depends on | Status |
 |---|---|---|---|---|
-| 2.1 | LinksPageModel + LinksSecondaryEditor | Refactor LinksPageModel to implement ITreeProvider. Secondary editor renders decrypt button (if encrypted) + collapsible Categories/Tags/Hostnames panels. Uses existing pipe for encrypted files. | 1.3 | Planned |
+| 2.1 | LinksPageModel + LinksSecondaryEditor | LinksPageModel (link-view editor) sets `secondaryEditor = "link-category"`. Secondary component renders decrypt button (if encrypted) + collapsible Categories/Tags/Hostnames panels. Implements ITreeProvider for category browsing. Uses existing pipe for encrypted files. Overrides `beforeNavigateAway()` to survive when navigated page was opened from this collection. | 1.5 | Planned |
 | 2.2 | Tags/Hostnames sub-panels in LinksSecondaryEditor | Inner panels: Tags panel (`provider.hasTags`), Hostnames panel (`provider.hasHostnames`). Uses `CollapsiblePanelStack`. | 2.1 | Planned |
 | 2.3 | Pinned items panel in CategoryView | Shown when `provider.pinnable`. Calls `getPinnedItems()`, `pin()`, `unpin()`. | 2.1 | Planned |
 | 2.4 | TreeProviderItemTile component | Tile renderer for CategoryView. Shows `imgSrc` for links, image preview for images. | — | Planned |
-| 2.5 | `.link.json` browsing via secondary editor | User opens `.link.json` → LinksPageModel registers as secondary editor. CategoryView shows link items. Encrypted files handled by existing decrypt flow. | 2.1, 2.2, 2.3, 2.4 | Planned |
+| 2.5 | `.link.json` browsing via secondary editor | User opens `.link.json` → link-view editor sets `secondaryEditor = "link-category"`. CategoryView shows link items. Encrypted files handled by existing decrypt flow. Switching to monaco clears `secondaryEditor`. | 2.1, 2.2, 2.3, 2.4 | Planned |
 | 2.6 | Non-HTTP links in link collections | Local file paths and cURL commands as link items. Type-based icons. | 2.5 | Planned |
 | 2.7 | Verify Link editor feature parity | Test: pinned links, view modes, drag-drop, edit/delete, context menus. | 2.5 | Planned |
 | 2.8 | Decommission standalone Link editor | Remove registration, delete old components. | 2.7 | Planned |
@@ -131,25 +159,20 @@ Pages opened from a secondary editor carry a `secondaryEditorId` in their openRa
 |---|---|---|---|---|
 | 3.1 | Browser editor integration | Replace embedded LinkEditor with secondary editor panels. Event channel pattern for link opening. | 2.1 | Planned |
 | 3.2 | Multi-file drop → .link.json | Create temp `.link.json` in cache, open as page with LinksPageModel. | 2.5 | Planned |
-| 3.3 | DOMSecondaryEditor (TextPageModel + HTML) | Secondary editor for HTML content. Scrapes DOM resources. Categories: images, scripts, styles, media. | 1.2, 1.3 | Planned |
+| 3.3 | DOMSecondaryEditor (TextPageModel + HTML) | Secondary editor for HTML content. Scrapes DOM resources. Categories: images, scripts, styles, media. | 1.5 | Planned |
 | 3.4 | Content search for LinksPageModel | Instant in-memory search by title/href/tags. | EPIC-015 4.1, 2.1 | Planned |
 | 3.5 | Expose LinkTreeProvider in script `io` namespace | `io.LinkTreeProvider`. Script type definitions. | 2.1 | Planned |
-| 3.6 | RegexSecondaryEditor (prototype) | Secondary editor for TextPageModel. Regex input + match highlighting in monaco. Example of non-tree secondary editor. | 1.2, 1.3 | Planned |
+| 3.6 | RegexSecondaryEditor (prototype) | Secondary editor for TextPageModel. Regex input + match highlighting in monaco. Example of non-tree secondary editor. | 1.5 | Planned |
 
 ## Key Design Decisions
 
-1. **How does a "headless" page model survive navigation?** — **Resolved.** `navigatePageTo` already transfers NavigationData from old to new page. Add a guard: if the old model is in `navigationData.secondaryModels[]`, skip dispose. The model stays alive because NavigationData holds a reference. Disposed when user closes the secondary panel.
+1. **How does a page model survive navigation?** — **Resolved.** `navigatePageTo` calls `oldModel.beforeNavigateAway(newModel)`. The old model decides to keep or clear its `secondaryEditor`. If kept, the model stays in `NavigationData.secondaryModels[]` and is NOT disposed (only detached from the page collection). NavigationData transfers to the new page, carrying the surviving model. Disposed when user closes the secondary panel or when the tab closes.
 
 2. **Tab title/icon** — **Resolved.** Tab title and icon always come from the **primary (center area) page model**. Secondary editors live in the sidebar only and do not affect the tab. `PageTab` renders `model.state.use().title` which is the current center-area page — this already works correctly and requires no changes.
 
 3. **Dispose ownership** — **Resolved.** NavigationData's lifetime equals the tab lifetime. It is created when a page first opens, copied to each navigated page via `navigatePageTo`, and disposed when the user closes the tab (click "X" or "Close other tabs"). On dispose, NavigationData iterates and disposes all secondary models in `secondaryModels[]`. Individual secondary models can also be disposed when the user closes their sidebar panel.
 
-4. **Navigation identity** — **Resolved.** Implemented as Phase 0 (prerequisite for secondary editors). The approach:
-   - `ILinkMetadata` already supports custom fields via `[key: string]: unknown` — metadata like `secondaryEditorId` can be passed through `openRawLink`.
-   - All metadata merges through the 3-layer pipeline (parsers → resolvers → open-handler) — already works.
-   - **New:** `IPageState` gains a `sourceLink` field that stores the full link descriptor (raw string + resolved metadata). Persisted and restored across app restarts.
-   - The source link serves as page identity — allows the system to know what a page is and how it was opened.
-   - Secondary editors use `secondaryEditorId` in the source link metadata to associate navigated pages with their owning secondary editor.
+4. **Navigation identity** — **Resolved.** Implemented as Phase 0 (US-312). `IPageState.sourceLink` stores the resolved URL + accumulated metadata. Secondary editors use `sourceLink.metadata` in `beforeNavigateAway(newModel)` to decide whether the new page was opened from their context. For example, ZipPageModel checks `newModel.sourceLink?.metadata?.sourceId === this.id` — if the file was opened from this archive's tree, the zip panel stays; otherwise it's removed.
 
 ### Tab close with secondary editors
 
@@ -163,6 +186,20 @@ When a page tab is closing and has secondary editor models, iterate through each
 6. **Cancel** → stop iteration, cancel tab close, keep panel expanded on the model that was cancelled
 
 This reuses the existing `confirmRelease()` pattern on PageModel. No new dialog infrastructure needed. The panel expand + highlight gives visual context so the user knows which secondary editor has unsaved changes.
+
+## Open Concerns
+
+### A. Close button on secondary panels — Resolved
+
+The active page's own secondary panel does **not** render a close button — the panel is controlled by the `secondaryEditor` field, which is set/cleared by the editor. Showing a close button would create inconsistency (panel closed but `secondaryEditor` still set on the active model).
+
+Only secondary panels belonging to **other** models (ones that survived navigation via `beforeNavigateAway`) render a close button. Clicking it calls `removeSecondaryModel(model)` which disposes the model (it has no other references — it's not the active page).
+
+### B. Multiple secondary editors from different models
+
+Multiple secondary models from different sources (e.g., `.link.json` inside `.zip` — both zip-tree and link-category panels) should work naturally with the array-based design. Each model has its own pipe (LinksPageModel would have `FileProvider → ZipTransformer`), so closing the zip panel doesn't break the links model.
+
+Dependent secondary models (where one model relies on another's state) are not currently planned. If such a scenario arises, it will be addressed at that time.
 
 ## References
 
