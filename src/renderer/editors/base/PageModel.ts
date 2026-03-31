@@ -58,7 +58,16 @@ export class PageModel<T extends IPageState = IPageState, R = any> extends TDial
         return this.state.get().language;
     }
 
-    async confirmRelease(): Promise<boolean> {
+    /**
+     * Prompt the user to save unsaved changes before releasing the page.
+     * @param closing — true when the tab is being closed (not just navigated).
+     *   When closing, secondary editor models in NavigationData are also checked.
+     */
+    async confirmRelease(closing?: boolean): Promise<boolean> {
+        if (closing && this.navigationData) {
+            const released = await this.navigationData.confirmSecondaryRelease();
+            if (!released) return false;
+        }
         return true;
     }
 

@@ -109,9 +109,20 @@ stateDiagram-v2
 - **Initialized ↔ Active:** Controlled by `show(pageId)`. Only one page is active at a time (or two when grouped side-by-side).
 - **Active/Inactive → Disposed:** `close()` prompts save if modified, then disposes all resources (content pipes, editor model, script context, navigation panel, cache files).
 
-**Portal-based rendering:** Pages are rendered through `AppPageManager` (`src/renderer/components/page-manager/AppPageManager.tsx`) using React portals with imperatively managed placeholder divs. Each page gets a stable placeholder that is never destroyed until the page closes. This prevents iframes, webviews, and canvas elements from reloading when pages are closed, reordered, grouped, or ungrouped. Placeholders are never reparented (moved between containers) — grouping is achieved purely via CSS absolute positioning within the same container. See `GroupContainer` and `ImperativeSplitter` in the same folder.
+### Close flow detail
 
-**Multi-window transfer:** A page can be serialized and transferred to another window via IPC. The source window calls `movePageOut()` (removes from collection without disposing), and the target window calls `movePageIn()` (reconstructs from serialized data). See [`PagesLifecycleModel`](../../src/renderer/api/pages/PagesLifecycleModel.ts).
+The full close chain for a page:
+
+1. `page.close(undefined)` — from `TDialogModel`
+2. → `canClose()` — if set (TextPageModel sets it). Calls `confirmRelease(closing: true)` which checks secondary editor models for unsaved changes, then checks the page's own unsaved changes. If the user cancels, returns false and the close is aborted.
+3. → `onClose()` — set by `attachPage()` in `PagesModel`
+4. → `detachPage(page)` — unsubscribes state listener, clears `onClose` callback
+5. → `removePage(page)` — removes from `pages[]` and `ordered[]`
+6. → `page.dispose()` — disposes NavigationData (including secondary editor models), content pipes, and deletes cache files
+
+For multi-window transfer, `movePageOut()` calls `detachPage()` (step 4) WITHOUT calling `dispose()` (step 6). This preserves cache files on disk so the target window can reconstruct the page.
+
+**Portal-based rendering:** Pages are rendered through `AppPageManager` (`src/renderer/components/page-manager/AppPageManager.tsx`) using React portals with imperatively managed placeholder divs. Each page gets a stable placeholder that is never destroyed until the page closes. This prevents iframes, webviews, and canvas elements from reloading when pages are closed, reordered, grouped, or ungrouped. Placeholders are never reparented (moved between containers) — grouping is achieved purely via CSS absolute positioning within the same container. See `GroupContainer` and `ImperativeSplitter` in the same folder.
 
 ---
 
@@ -228,7 +239,9 @@ import { pagesModel } from "../api/pages";
 ### Internal (not in .d.ts, private implementation)
 
 - `movePageIn()` / `movePageOut()` — multi-window drag-drop (IPC-driven)
-- `attachPage()` / `detachPage()` / `removePage()` — state management
+- `attachPage(page)` — subscribes to page state changes for auto-save, sets `onClose` callback that runs the dispose chain (`detachPage` → `removePage` → `dispose`)
+- `detachPage(page)` — unsubscribes and clears `onClose` WITHOUT disposing. Used by `movePageOut()` (multi-window transfer) and `navigatePageTo()` to preserve page resources
+- `removePage(page)` — removes from `pages[]` and `ordered[]` arrays
 - `fixGrouping()` / `fixCompareMode()` — invariant repair
 - `checkEmptyPage()` — auto-create empty page when last one closes
 - `addEmptyPageWithNavPanel(folderPath)` — creates an empty page with a pre-attached NavigationData (used by sidebar double-click and archive browsing). Intentionally skips `restore()` to avoid a race condition where the async restore would see `hasNavigator=true` and create a new NavigationData that overwrites the one we just attached.
@@ -254,13 +267,22 @@ During user actions:              throw, let caller handle
 
 When a tab is dragged to another window:
 
-1. **Source window:** `movePageOut(pageId)` serializes the page data and removes it from the collection (no dispose — resources are transferred, not destroyed).
-2. **Main process:** Routes the serialized data to the target window via IPC.
-3. **Target window:** `movePageIn(data)` reconstructs the page model from serialized data and adds it to the collection.
+1. **Tab drag** — `PageTab.handleDragEnd()` detects the drop landed outside the window bounds. Sends `PageDragData` to the main process via `api.addDragEvent()`.
+2. **Main process** — `DragModel` collects drag events (debounced 100ms) from source and target windows, then calls `movePageToWindow()` in [`open-windows.ts`](../../src/main/open-windows.ts).
+3. **Source window** — receives `eMovePageOut` IPC event:
+   - `movePageOut(pageId)` calls `page.saveState()` to flush NavigationData cache to disk
+   - Calls `detachPage()` — unsubscribes but does NOT dispose. **Cache files survive.**
+   - Calls `removePage()` — removes from arrays
+4. **Target window** — receives `eMovePageIn` IPC event (main process awaits `whenReady` first):
+   - `movePageIn(data)` creates a new PageModel from the serialized `Partial<IPageState>`
+   - Calls `applyRestoreData()` — reconstructs pipe from descriptor, restores `sourceLink`
+   - Calls `restore()` — reads content through pipe; if `hasNavigator` is set, creates new `NavigationData` and restores from the **same cache files** using the page ID
+
+**Why it works:** Cache files are keyed by page ID. The source window preserves them (no `dispose()`), and the target window reads them using the same ID. NavigationData (including tree expansion, search state, secondary descriptors, and secondary editor model descriptors) is fully reconstructed from cache.
 
 **Critical dependency:** The target window must have called `api.windowReady()` before the main process sends `eMovePageIn`. The main process holds a `whenReady` promise per window and awaits it before forwarding events.
 
-**Implementation:** [`/src/main/open-windows.ts`](../../src/main/open-windows.ts) (main process), [`PagesLifecycleModel.ts`](../../src/renderer/api/pages/PagesLifecycleModel.ts) (renderer)
+**Implementation:** [`/src/main/open-windows.ts`](../../src/main/open-windows.ts) (main process), [`/src/main/drag-model.ts`](../../src/main/drag-model.ts) (debouncing), [`PagesLifecycleModel.ts`](../../src/renderer/api/pages/PagesLifecycleModel.ts) (renderer), [`PageTab.tsx`](../../src/renderer/ui/tabs/PageTab.tsx) (drag handlers)
 
 ## 8. Well-Known Pages
 
@@ -320,3 +342,71 @@ Do NOT use for:
 3. No other changes needed — `addPage()` handles deduplication automatically
 
 **Note:** `requireWellKnownPage` is an internal API — not exposed to scripts or the MCP handler's `create_page` command.
+
+---
+
+## 9. NavigationData — Stable Browsing Context
+
+NavigationData is a long-lived object that **survives page navigation**. It holds the sidebar state: tree providers, panel selection, search state, and secondary editors.
+
+**Source:** [`/src/renderer/ui/navigation/NavigationData.ts`](../../src/renderer/ui/navigation/NavigationData.ts)
+
+### Lifecycle
+
+1. **Created** when a page first opens with a navigator (Folder View toggle, archive open, or restored from session)
+2. **Transferred** during `navigatePageTo()` — detached from the old model (before dispose), attached to the new model (after creation). NavigationData is NOT recreated; the same instance moves between page models.
+3. **Persisted** to cache files via `flushSave()` (debounced). Restored by page ID on app restart or multi-window transfer.
+4. **Disposed** when the tab closes: `PageModel.dispose()` → `NavigationData.dispose()` → disposes tree providers, secondary providers, and secondary editor models.
+
+### What it owns
+
+```
+NavigationData
+  ├── treeProvider              // Primary FileTreeProvider (Explorer panel)
+  ├── selectionState            // TOneState — reactive, shared between PageNavigator and CategoryEditor
+  ├── treeState                 // Tree expansion state (persisted)
+  ├── secondaryDescriptor       // Archive metadata (type, sourceUrl, label)
+  ├── secondaryProvider         // Lazily created ZipTreeProvider
+  ├── secondarySelectionState   // Separate reactive selection for secondary panel
+  ├── secondaryTreeState        // Secondary tree expansion state
+  ├── secondaryModels[]         // Secondary editor PageModel instances (EPIC-016)
+  ├── activePanel               // "explorer", "search", "secondary", or a secondary model ID
+  ├── searchState               // FileSearch state (query, results, filters)
+  └── pageNavigatorModel        // Sidebar open/close/width state
+```
+
+### Navigation transfer pattern
+
+In `navigatePageTo()` ([`PagesLifecycleModel.ts`](../../src/renderer/api/pages/PagesLifecycleModel.ts)):
+
+```
+1. navigationData = oldModel.navigationData    // extract reference
+2. oldModel.navigationData = null              // detach (prevents dispose)
+3. oldModel.dispose()                          // disposes page but NOT navigationData
+4. ... create newModel ...
+5. newModel.navigationData = navigationData    // transfer
+6. navigationData.updateId(newModel.id)        // update cache key
+```
+
+This is the same pattern that secondary editor models follow — they live inside NavigationData and survive navigation automatically.
+
+---
+
+## 10. Secondary Editor Models (EPIC-016)
+
+NavigationData holds a `secondaryModels[]` array of full PageModel instances that act as sidebar editors. These survive page navigation (same as NavigationData itself) and provide richer functionality than standalone tree providers.
+
+### Management API
+
+- `addSecondaryModel(model)` — adds a page model to the array
+- `removeSecondaryModel(model)` — removes, disposes, and falls back `activePanel` if needed
+- `findSecondaryModel(pageId)` — lookup by page ID
+- `confirmSecondaryRelease()` — iterates models with unsaved changes, prompts user via `confirmRelease()`
+
+### Persistence
+
+Secondary model state is saved as descriptors (`SecondaryModelDescriptor[]`) in the NavigationData cache. Each descriptor contains the model's serialized `IPageState` (from `getRestoreData()`). On restore, descriptors are stored as `pendingSecondaryDescriptors` — actual model recreation is handled by the secondary editor registry.
+
+### Dispose
+
+When a tab closes, `NavigationData.dispose()` disposes all secondary models. Before dispose, `confirmSecondaryRelease()` checks for unsaved changes — this is called via `PageModel.confirmRelease(closing: true)` in the tab close flow.

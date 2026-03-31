@@ -106,7 +106,7 @@ Pages opened from a secondary editor carry a `secondaryEditorId` in their openRa
 
 | # | Task | Description | Depends on | Status |
 |---|---|---|---|---|
-| 1.1 | Design secondary editor lifecycle | "Page removing" lifecycle stage. Page decides to survive or dispose. `secondaryModels[]` array in NavigationData. Ownership and dispose rules. | 0.1 | Planned |
+| 1.1 | [Design secondary editor lifecycle](../tasks/US-313-secondary-editor-lifecycle/README.md) (US-313) | `secondaryModels[]` array in NavigationData. Management methods (add/remove/find). Dispose integration. Tab close save prompts via `confirmSecondaryRelease()`. Persistence of model descriptors. | 0.1 | Done |
 | 1.2 | Secondary editor registry | Simplified registry mapping model types to secondary editor components. Registration API. | 1.1 | Planned |
 | 1.3 | Add `isSecondaryEditor` to PageModel | Base infrastructure. Specific models override. | 1.1 | Planned |
 | 1.4 | ZipPageModel + ZipSecondaryEditor | New editor: shows archive info/metadata instead of raw binary. Secondary editor renders TreeProviderView (archive tree). Implements ITreeProvider. Replaces standalone ZipTreeProvider. | 1.2, 1.3 | Planned |

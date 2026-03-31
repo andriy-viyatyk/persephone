@@ -240,9 +240,8 @@ export function PageNavigator({ navigationData, pageId }: PageNavigatorProps) {
             }
         }
 
-        const panel = panelId as "explorer" | "search" | "secondary";
-        navigationData.setActivePanel(panel);
-        setActivePanelLocal(panel);
+        navigationData.setActivePanel(panelId);
+        setActivePanelLocal(panelId);
 
         // Search panel — no navigation needed, just expand
         if (panelId === "search") return;

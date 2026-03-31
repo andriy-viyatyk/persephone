@@ -193,7 +193,7 @@ class PageModel<T extends IPageState, R = any> extends TDialogModel<T, R> {
     scriptData: Record<string, any>;   // In-memory data for scripts
     navigationData: NavigationData | null;  // Navigation context (providers, selection, persistence)
 
-    confirmRelease(): Promise<boolean>;
+    confirmRelease(closing?: boolean): Promise<boolean>;
     restore(): Promise<void>;
     saveState(): Promise<void>;
     getRestoreData(): Partial<T>;

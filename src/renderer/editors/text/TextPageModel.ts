@@ -312,7 +312,11 @@ export class TextFileModel extends PageModel<TextFilePageModelState, void> imple
     runScript = (all?: boolean) => this.actions.runScript(all);
     runRelatedScript = (all?: boolean) => this.actions.runRelatedScript(all);
     setCompareMode = (compareMode: boolean) => this.actions.setCompareMode(compareMode);
-    confirmRelease = () => this.actions.confirmRelease();
+    confirmRelease = async (closing?: boolean) => {
+        const baseOk = await super.confirmRelease(closing);
+        if (!baseOk) return false;
+        return this.actions.confirmRelease();
+    };
     canClose = () => this.actions.canClose();
 }
 

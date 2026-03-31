@@ -99,7 +99,7 @@ export class TextFileActionsModel {
     };
 
     canClose = async (): Promise<boolean> => {
-        const result = await this.confirmRelease();
+        const result = await this.model.confirmRelease(true);
         if (result) {
             if (!this.model.skipSave) {
                 await this.model.dispose();

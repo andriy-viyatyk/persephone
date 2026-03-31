@@ -2,6 +2,8 @@ import type { ITreeProvider } from "../../api/types/io.tree";
 import type { IContentPipe } from "../../api/types/io.pipe";
 import type { TreeProviderViewSavedState } from "../../components/tree-provider";
 import type { FileSearchState } from "../../components/file-search";
+import type { PageModel } from "../../editors/base";
+import type { IPageState } from "../../../shared/types";
 import { TOneState } from "../../core/state/state";
 import { fpDirname } from "../../core/utils/file-path";
 import { fs } from "../../api/fs";
@@ -24,6 +26,12 @@ export interface SecondaryDescriptor {
     label: string;
 }
 
+/** Serialized descriptor for a secondary editor model (for persistence). */
+export interface SecondaryModelDescriptor {
+    /** Serialized page state (from model.getRestoreData()). */
+    pageState: Partial<IPageState>;
+}
+
 /** Persisted state format — backward-compatible with old NavPanelModel. */
 interface NavigationSavedState {
     open: boolean;
@@ -32,10 +40,12 @@ interface NavigationSavedState {
     treeState?: TreeProviderViewSavedState;
     selectedHref?: string | null;
     // Secondary provider state
-    activePanel?: "explorer" | "search" | "secondary";
+    activePanel?: string; // "explorer", "search", "secondary", or a secondary model ID
     secondaryDescriptor?: SecondaryDescriptor | null;
     secondarySelectedHref?: string | null;
     secondaryTreeState?: TreeProviderViewSavedState;
+    // Secondary editor models (EPIC-016)
+    secondaryModelDescriptors?: SecondaryModelDescriptor[];
     // Search state
     searchState?: FileSearchState;
     // Backward compat: old NavPanelModel format
@@ -78,8 +88,50 @@ export class NavigationData {
     readonly secondarySelectionState = new TOneState<NavigationState>({ selectedHref: null });
     /** Secondary tree expansion state. */
     secondaryTreeState: TreeProviderViewSavedState | undefined = undefined;
-    /** Which panel is currently active/expanded. */
-    activePanel: "explorer" | "search" | "secondary" = "explorer";
+    /** Which panel is currently active/expanded.
+     *  Values: "explorer", "search", "secondary" (legacy zip), or a secondary model's page ID. */
+    activePanel: string = "explorer";
+
+    // ── Secondary editor models (EPIC-016) ────────────────────────────
+
+    /** Page models that act as secondary editors (survive page navigation). */
+    secondaryModels: PageModel[] = [];
+    /** Pending descriptors from restore — actual model creation deferred to registry (task 1.2). */
+    pendingSecondaryDescriptors: SecondaryModelDescriptor[] | undefined = undefined;
+
+    /** Add a page model as a secondary editor. */
+    addSecondaryModel(model: PageModel): void {
+        if (this.secondaryModels.includes(model)) return;
+        this.secondaryModels.push(model);
+        this._saveStateDebounced();
+    }
+
+    /** Remove and dispose a secondary editor model. */
+    removeSecondaryModel(model: PageModel): void {
+        const idx = this.secondaryModels.indexOf(model);
+        if (idx < 0) return;
+        this.secondaryModels.splice(idx, 1);
+        if (this.activePanel === model.id) {
+            this.activePanel = "explorer";
+        }
+        model.dispose();
+        this._saveStateDebounced();
+    }
+
+    /** Find a secondary model by its page ID. */
+    findSecondaryModel(pageId: string): PageModel | undefined {
+        return this.secondaryModels.find((m) => m.state.get().id === pageId);
+    }
+
+    /** Check secondary models for unsaved changes. Returns false if user cancels. */
+    async confirmSecondaryRelease(): Promise<boolean> {
+        for (const model of this.secondaryModels) {
+            if (!model.state.get().modified) continue;
+            const released = await model.confirmRelease();
+            if (!released) return false;
+        }
+        return true;
+    }
 
     // ── Search ────────────────────────────────────────────────────────
 
@@ -183,7 +235,7 @@ export class NavigationData {
     }
 
     /** Set the active panel. */
-    setActivePanel(panel: "explorer" | "search" | "secondary"): void {
+    setActivePanel(panel: string): void {
         this.activePanel = panel;
         this._saveStateDebounced();
     }
@@ -327,13 +379,21 @@ export class NavigationData {
             // Restore search state
             this.searchState = saved.searchState;
 
+            // Restore secondary editor model descriptors (actual creation deferred to registry)
+            if (saved.secondaryModelDescriptors?.length) {
+                this.pendingSecondaryDescriptors = saved.secondaryModelDescriptors;
+            }
+
             // Restore activePanel: explorer/search are safe to restore as-is.
-            // Secondary panels require async provider creation — fall back to explorer.
+            // Secondary panels require async provider/model creation — fall back to explorer.
             const restoredPanel = saved.activePanel ?? "explorer";
             if (restoredPanel === "secondary") {
                 this.activePanel = "explorer";
             } else if (restoredPanel === "search" && !this.searchState) {
                 this.activePanel = "explorer"; // search state lost — fall back
+            } else if (restoredPanel !== "explorer" && restoredPanel !== "search" && restoredPanel !== "secondary") {
+                // Secondary model panel ID — fall back until models are restored
+                this.activePanel = "explorer";
             } else {
                 this.activePanel = restoredPanel;
             }
@@ -353,6 +413,10 @@ export class NavigationData {
 
     private _saveState = async (): Promise<void> => {
         if (!this._id) return;
+        // Flush secondary model caches before saving their descriptors
+        for (const model of this.secondaryModels) {
+            await model.saveState?.();
+        }
         const navState = this.pageNavigatorModel?.state.get();
         const saved: NavigationSavedState = {
             open: navState?.open ?? true,
@@ -365,6 +429,10 @@ export class NavigationData {
             secondaryDescriptor: this.secondaryDescriptor,
             secondarySelectedHref: this.secondarySelectionState.get().selectedHref,
             secondaryTreeState: this.secondaryTreeState,
+            // Secondary editor models (EPIC-016)
+            secondaryModelDescriptors: this.secondaryModels.length > 0
+                ? this.secondaryModels.map((m) => ({ pageState: m.getRestoreData() }))
+                : undefined,
             // Search state
             searchState: this.searchState,
         };
@@ -382,6 +450,11 @@ export class NavigationData {
         this.treeProvider = null;
         this.secondaryProvider?.dispose?.();
         this.secondaryProvider = null;
+        // Dispose all secondary editor models
+        for (const model of this.secondaryModels) {
+            model.dispose();
+        }
+        this.secondaryModels = [];
         this.pageNavigatorModel?.dispose();
         this.pageNavigatorModel = null;
     }
