@@ -203,6 +203,7 @@ Any saved file can open a **File Explorer** panel alongside the editor. Click th
   - Search state persists across app restarts
 - **Archive browsing** — Click a ZIP-based archive file (`.zip`, `.docx`, `.xlsx`, `.pptx`, `.jar`, `.war`, `.epub`, `.odt`, `.ods`, `.odp`) in the tree, and an **Archive** panel appears below the Explorer panel. Click the Archive panel header to expand it and browse the archive contents as a folder tree. Text-based files inside the archive (XML, JSON, etc.) open in Monaco editor. You can also right-click an archive file and choose **Open as Archive** to browse it in a separate tab.
 - **Browse `.asar` archives** — Electron `.asar` archive files can also be browsed via the Archive panel or **Open as Archive**, just like ZIP archives. Files inside `.asar` open in Monaco editor. `.asar` archives are read-only — file operations are disabled inside them.
+- **Auto-refresh** — The Explorer tree automatically refreshes when files or folders are created, deleted, or renamed outside the app. No manual refresh is needed.
 - **Lazy loading** — Folders load their contents on expand, keeping large directories fast
 - **Resizable** — Drag the panel border to resize
 - **Persistent state** — Expanded folders, panel width, and scroll position survive app restarts and in-tab navigation

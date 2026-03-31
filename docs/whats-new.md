@@ -27,6 +27,7 @@ Release notes and changelog for Persephone (formerly js-notepad).
 - **Content pipeline hardening** — `ITransformer.write()` is now required (not optional). `DecryptTransformer` password is truly private (ES2022 `#private` field). `writeText()`/`writeBinary()` throw a clear error when pipe is read-only instead of returning undefined. File I/O in providers is now fully async (`fs.promises`). HTTP responses are cached after first fetch.
 - **Image/PDF from archives** — Image Viewer and PDF Viewer can now open files from inside ZIP archives directly (previously fell back to text editor for archive entries).
 - **Browser images persist across restart** — Images opened from the built-in browser's context menu now survive app restart. HTTP images are re-fetched via their original URL; blob images are cached to disk.
+- **Explorer auto-refresh** — The File Explorer tree (in the sidebar and Page Navigator) now automatically refreshes when files or folders are created, deleted, or renamed outside the app. Manual refresh is no longer needed.
 - **Save error notification** — When saving fails (read-only file, disk full, etc.), a notification is shown instead of silently failing.
 - **Save deleted file** — Saving a file that was deleted externally now shows a "Save As" dialog with the original path as default, instead of silently recreating the file.
 

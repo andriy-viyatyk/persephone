@@ -3,7 +3,9 @@ import type {
     ITreeProviderItem,
     ITreeStat,
 } from "../../api/types/io.tree";
+import type { ISubscriptionObject } from "../../api/types/events";
 import { encodeCategoryLink } from "./tree-provider-link";
+import { debounce } from "../../../shared/utils";
 
 // Direct Node.js imports — FileTreeProvider is a low-level filesystem provider
 // that intentionally bypasses app.fs archive transparency. Listed in
@@ -126,6 +128,23 @@ export class FileTreeProvider implements ITreeProvider {
             nodefs.rmSync(href, { recursive: true });
         } else {
             nodefs.unlinkSync(href);
+        }
+    }
+
+    /**
+     * Watch the root directory recursively for changes.
+     * Uses a single fs.watch({ recursive: true }) handle — efficient on Windows
+     * (ReadDirectoryChangesW). Debounces at 500ms to batch rapid changes.
+     * Returns a subscription object; call unsubscribe() to stop watching.
+     * Gracefully degrades on failure (network drives, unmounted volumes).
+     */
+    watch(callback: () => void): ISubscriptionObject {
+        try {
+            const debouncedCallback = debounce(callback, 500);
+            const watcher = nodefs.watch(this.sourceUrl, { recursive: true }, debouncedCallback);
+            return { unsubscribe: () => watcher.close() };
+        } catch {
+            return { unsubscribe: () => {} };
         }
     }
 }

@@ -74,6 +74,7 @@ export class TreeProviderViewModel extends TComponentModel<
     treeViewRef: TreeViewRef | null = null;
     savedExpandMap: Record<string, boolean> | null = null;
     initialExpandMap: Record<string, boolean> | undefined = undefined;
+    private watchSubscription?: { unsubscribe: () => void };
 
     setProps = () => {
         if (this.isFirstUse) {
@@ -85,9 +86,25 @@ export class TreeProviderViewModel extends TComponentModel<
                 this.initialExpandMap = map;
             }
             this.initializeTree();
+            this.subscribeWatch();
         } else if (this.oldProps?.provider !== this.props.provider) {
+            this.subscribeWatch();
             this.buildTree();
         }
+    };
+
+    private subscribeWatch = () => {
+        this.watchSubscription?.unsubscribe();
+        this.watchSubscription = undefined;
+        const provider = this.props.provider as any; // eslint-disable-line @typescript-eslint/no-explicit-any
+        if (typeof provider.watch === "function") {
+            this.watchSubscription = provider.watch(() => this.buildTree());
+        }
+    };
+
+    dispose = () => {
+        this.watchSubscription?.unsubscribe();
+        this.watchSubscription = undefined;
     };
 
     private initializeTree = async () => {
