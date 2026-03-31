@@ -26,7 +26,16 @@ When the user says **"let's publish new build"** (or similar), follow the steps 
    git merge upcoming-vX.Y.Z
    ```
 
-3. **Update `docs/whats-new.md`** on `main`:
+3. **Review and clean up `docs/whats-new.md`** on `main`:
+
+   During development, tasks add entries incrementally — this often produces redundant or misleading entries. Before releasing, review and consolidate:
+
+   - **New Features absorb their improvements.** If a feature was added in this release and later improved in the same release, merge everything into one "New Feature" entry with all capabilities listed. Do not list separate "Improvement" entries for features that are new in this release — users never saw the un-improved version.
+   - **Remove internal bug fixes.** If a bug was introduced and fixed within the same release cycle, remove it entirely. Users never experienced it — mentioning the fix is confusing noise.
+   - **Improvements = enhancements to previously released features only.** An entry belongs in "Improvements" only if it enhances something that existed in a prior release.
+   - **Bug Fixes = fixes for bugs that existed in a prior release.** Only list fixes for issues users could have encountered in a published version.
+
+   After consolidation:
    - Change the current version header from `(Upcoming)` to a release (remove the word "Upcoming").
    - Add a new section above it for the next version:
      ```markdown
