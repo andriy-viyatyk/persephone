@@ -121,6 +121,7 @@ export class PageModel<T extends IPageState = IPageState, R = any> extends TDial
             s.filePath = data.filePath || s.filePath;
             s.editor = data.editor || s.editor;
             s.pinned = data.pinned ?? false;
+            if ((data as any).sourceLink) s.sourceLink = (data as any).sourceLink; // eslint-disable-line @typescript-eslint/no-explicit-any
         });
     }
 

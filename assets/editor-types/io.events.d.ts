@@ -1,6 +1,16 @@
 import type { IBaseEvent } from "./events";
 import type { IContentPipe } from "./io.pipe";
 
+/** Describes the link that opened a page — origin identity + metadata. */
+export interface ISourceLink {
+    /** Resolved URL (file path, HTTP URL, archive path). */
+    readonly url: string;
+    /** Target editor that was requested (if any). */
+    readonly target?: string;
+    /** Accumulated metadata from the link pipeline (excluding ephemeral fields). */
+    readonly metadata?: Record<string, unknown>;
+}
+
 /** Metadata passed through the link pipeline. */
 export interface ILinkMetadata {
     /** Open in this specific page instead of a new tab. */

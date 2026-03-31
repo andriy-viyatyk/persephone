@@ -54,9 +54,11 @@ The `resolveUrlToPipeDescriptor()` utility is also used by tree providers to cre
 
 ### Layer 3 — Open Handler
 
-Registered in `open-handler.ts` via `registerOpenHandler()`. Reconstructs the full file path from the pipe (combining provider `sourceUrl` + ZipTransformer `entryPath` for archive files). Then either:
-- Opens a new page via `pagesModel.lifecycle.openFile(filePath, pipe)` -- the page owns the pipe.
+Registered in `open-handler.ts` via `registerOpenHandler()`. Reconstructs the full file path from the pipe (combining provider `sourceUrl` + ZipTransformer `entryPath` for archive files). Builds an `ISourceLink` descriptor from the event (resolved URL + cleaned metadata, excluding ephemeral fields like `pageId`/`revealLine`/`highlightText`). Then either:
+- Opens a new page via `pagesModel.lifecycle.openFile(filePath, pipe, { sourceLink })` -- the page owns the pipe.
 - Navigates an existing page via `pagesModel.lifecycle.navigatePageTo()` (when `metadata.pageId` is set) -- disposes the pipe since navigation creates its own.
+
+The `sourceLink` is stored in `IPageState.sourceLink` and persisted across app restarts. It records the page's origin (what link opened it and with what metadata) but is informational only — it does not affect page content or I/O.
 
 ## Content Pipe
 

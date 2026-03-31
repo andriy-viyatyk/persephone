@@ -4,6 +4,7 @@ All completed tasks, newest first.
 
 | ID | Title | Epic | Notes |
 |----|-------|------|-------|
+| US-312 | Source link persistence in IPageState | EPIC-016 | Added `ISourceLink` interface + `sourceLink` field to `IPageState`. Open handler builds sourceLink from OpenContentEvent metadata (strips ephemeral fields). Stored via openFile/navigatePageTo, persisted across restarts. Script API: `page.sourceLink`. |
 | US-311 | Explorer auto-refresh | EPIC-015 | FileTreeProvider.watch() with recursive fs.watch + 500ms debounce. TreeProviderViewModel subscribes on init, cleans up on dispose/provider change. Works in PageNavigator, Sidebar, Script Library. |
 | US-310 | Remove old FileExplorer component | EPIC-015 | Deleted 4 files (FileExplorer.tsx, FileExplorerModel.tsx, file-tree-builder.ts, index.ts). Renamed fileExplorerRef → treeViewRef in MenuBar. Kept app.events.fileExplorer compat bridge and NavigationData migration code. |
 | US-309 | Expose ZipTreeProvider in script `io` namespace | EPIC-015 | Added `io.ZipTreeProvider` to IoNamespace.ts + `IZipTreeProviderConstructor` type in `io.d.ts`. Scripts can enumerate ZIP contents, stat entries, and open via navigation URL. |

@@ -1,6 +1,6 @@
 import type { PagesModel } from "./PagesModel";
 import { PageModel } from "../../editors/base";
-import { IPageState, PageEditor, PageType } from "../../../shared/types";
+import { IPageState, ISourceLink, PageEditor, PageType } from "../../../shared/types";
 import {
     isTextFileModel,
     newTextFileModel,
@@ -241,7 +241,11 @@ export class PagesLifecycleModel {
 
     // ── File opening ─────────────────────────────────────────────────
 
-    openFile = async (filePath?: string, pipe?: IContentPipe): Promise<PageModel | undefined> => {
+    openFile = async (
+        filePath?: string,
+        pipe?: IContentPipe,
+        options?: { sourceLink?: ISourceLink },
+    ): Promise<PageModel | undefined> => {
         if (!filePath) return undefined;
         const existingPage = this.model.state
             .get()
@@ -253,6 +257,9 @@ export class PagesLifecycleModel {
         }
 
         const pageModel = await this.createPageFromFile(filePath, pipe);
+        if (options?.sourceLink) {
+            pageModel.state.update((s) => { s.sourceLink = options.sourceLink; });
+        }
         this.addPage(pageModel);
         recent.add(filePath);
 
@@ -360,6 +367,7 @@ export class PagesLifecycleModel {
             revealLine?: number;
             highlightText?: string;
             forceTextEditor?: boolean;
+            sourceLink?: ISourceLink;
         }
     ): Promise<boolean> => {
         const oldModel = this.model.query.findPage(pageId);
@@ -435,10 +443,11 @@ export class PagesLifecycleModel {
             }
         }
 
-        // Restore pinned state on the new model
-        if (wasPinned) {
+        // Restore pinned state and source link on the new model
+        if (wasPinned || options?.sourceLink) {
             newModel.state.update((s) => {
-                s.pinned = true;
+                if (wasPinned) s.pinned = true;
+                if (options?.sourceLink) s.sourceLink = options.sourceLink;
             });
         }
 

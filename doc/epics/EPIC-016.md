@@ -1,6 +1,6 @@
 # EPIC-016: Secondary Editors — Sidebar Extension System
 
-**Status:** Planned
+**Status:** In Progress
 **Priority:** Medium
 **Created:** 2026-03-30
 **Depends on:** EPIC-015 (ITreeProvider infrastructure)
@@ -96,11 +96,17 @@ Pages opened from a secondary editor carry a `secondaryEditorId` in their openRa
 
 ## Phased Implementation Plan
 
+### Phase 0: Navigation Identity
+
+| # | Task | Description | Depends on | Status |
+|---|---|---|---|---|
+| 0.1 | [Source link persistence in IPageState](../tasks/US-312-source-link-persistence/README.md) (US-312) | Add `ISourceLink` to `IPageState` storing resolved URL + accumulated metadata. Open handler builds sourceLink and passes to openFile/navigatePageTo. Persisted across restarts. Foundation for `secondaryEditorId`. | — | Done |
+
 ### Phase 1: Architecture Foundation
 
 | # | Task | Description | Depends on | Status |
 |---|---|---|---|---|
-| 1.1 | Design secondary editor lifecycle | "Page removing" lifecycle stage. Page decides to survive or dispose. `secondaryModels[]` array in NavigationData. Ownership and dispose rules. | — | Planned |
+| 1.1 | Design secondary editor lifecycle | "Page removing" lifecycle stage. Page decides to survive or dispose. `secondaryModels[]` array in NavigationData. Ownership and dispose rules. | 0.1 | Planned |
 | 1.2 | Secondary editor registry | Simplified registry mapping model types to secondary editor components. Registration API. | 1.1 | Planned |
 | 1.3 | Add `isSecondaryEditor` to PageModel | Base infrastructure. Specific models override. | 1.1 | Planned |
 | 1.4 | ZipPageModel + ZipSecondaryEditor | New editor: shows archive info/metadata instead of raw binary. Secondary editor renders TreeProviderView (archive tree). Implements ITreeProvider. Replaces standalone ZipTreeProvider. | 1.2, 1.3 | Planned |
@@ -133,9 +139,17 @@ Pages opened from a secondary editor carry a `secondaryEditorId` in their openRa
 ## Key Design Decisions
 
 1. **How does a "headless" page model survive navigation?** — **Resolved.** `navigatePageTo` already transfers NavigationData from old to new page. Add a guard: if the old model is in `navigationData.secondaryModels[]`, skip dispose. The model stays alive because NavigationData holds a reference. Disposed when user closes the secondary panel.
-2. **Tab title/icon** — which page drives them when two models exist on one tab? (to be resolved)
-3. **Dispose ownership** — NavigationData disposes secondary models when their panel is closed or when they become unrelated to the navigated page.
-4. **Navigation identity** — pages opened from a secondary editor carry `secondaryEditorId` in openRawLink metadata. New page checks membership to decide which secondary editors to keep alive. (to be resolved in detail during Phase 1.1)
+
+2. **Tab title/icon** — **Resolved.** Tab title and icon always come from the **primary (center area) page model**. Secondary editors live in the sidebar only and do not affect the tab. `PageTab` renders `model.state.use().title` which is the current center-area page — this already works correctly and requires no changes.
+
+3. **Dispose ownership** — **Resolved.** NavigationData's lifetime equals the tab lifetime. It is created when a page first opens, copied to each navigated page via `navigatePageTo`, and disposed when the user closes the tab (click "X" or "Close other tabs"). On dispose, NavigationData iterates and disposes all secondary models in `secondaryModels[]`. Individual secondary models can also be disposed when the user closes their sidebar panel.
+
+4. **Navigation identity** — **Resolved.** Implemented as Phase 0 (prerequisite for secondary editors). The approach:
+   - `ILinkMetadata` already supports custom fields via `[key: string]: unknown` — metadata like `secondaryEditorId` can be passed through `openRawLink`.
+   - All metadata merges through the 3-layer pipeline (parsers → resolvers → open-handler) — already works.
+   - **New:** `IPageState` gains a `sourceLink` field that stores the full link descriptor (raw string + resolved metadata). Persisted and restored across app restarts.
+   - The source link serves as page identity — allows the system to know what a page is and how it was opened.
+   - Secondary editors use `secondaryEditorId` in the source link metadata to associate navigated pages with their owning secondary editor.
 
 ### Tab close with secondary editors
 

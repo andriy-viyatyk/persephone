@@ -278,6 +278,7 @@ See [/doc/standards/coding-style.md](doc/standards/coding-style.md) for complete
 
 | Purpose                  | File                                              |
 |--------------------------|---------------------------------------------------|
+| Shared types (IPageState)| `/src/shared/types.ts`                            |
 | App object model         | `/src/renderer/api/app.ts`                        |
 | Page/tab management      | `/src/renderer/api/pages/PagesModel.ts`           |
 | Well-known pages         | `/src/renderer/api/pages/well-known-pages.ts`     |

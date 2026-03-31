@@ -8,7 +8,9 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ## Version 2.0.4 (Upcoming)
 
-*No changes yet.*
+### New Features
+
+- **`page.sourceLink` property** — Pages opened through the link pipeline (file path, URL, cURL command, archive entry) now expose a `sourceLink` descriptor with the resolved URL, target editor, and accumulated metadata. Available as a read-only property in scripts via `page.sourceLink`.
 
 ---
 

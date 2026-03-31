@@ -1,6 +1,32 @@
 import { app } from "../api/app";
 import { pagesModel } from "../api/pages";
 import { buildArchivePath } from "../core/utils/file-path";
+import type { ISourceLink } from "../../shared/types";
+import type { OpenContentEvent } from "../api/events/events";
+
+/** Build a sourceLink descriptor from the final OpenContentEvent. */
+function buildSourceLink(event: OpenContentEvent, filePath: string): ISourceLink {
+    const result: ISourceLink = { url: filePath };
+
+    // Keep non-default target
+    if (event.target && event.target !== "monaco") {
+        result.target = event.target;
+    }
+
+    // Clean metadata — remove ephemeral navigation-time fields
+    if (event.metadata) {
+        const cleaned: Record<string, unknown> = {};
+        for (const [key, value] of Object.entries(event.metadata)) {
+            if (key === "pageId" || key === "revealLine" || key === "highlightText") continue;
+            if (value !== undefined) cleaned[key] = value;
+        }
+        if (Object.keys(cleaned).length > 0) {
+            result.metadata = cleaned;
+        }
+    }
+
+    return result;
+}
 
 /**
  * Register Layer 3 handler on openContent.
@@ -25,6 +51,7 @@ export function registerOpenHandler(): void {
         }
         const metadata = event.metadata;
         const pageId = metadata?.pageId;
+        const sourceLink = buildSourceLink(event, filePath);
 
         if (pageId) {
             // Navigate existing page to the new file
@@ -33,6 +60,7 @@ export function registerOpenHandler(): void {
                 await pagesModel.lifecycle.navigatePageTo(pageId, filePath, {
                     revealLine: metadata?.revealLine,
                     highlightText: metadata?.highlightText,
+                    sourceLink,
                 });
             } finally {
                 event.pipe.dispose();
@@ -41,7 +69,7 @@ export function registerOpenHandler(): void {
             // Open file in new or existing tab — pass pipe through
             // On success the page owns the pipe; on error we must dispose it
             try {
-                await pagesModel.lifecycle.openFile(filePath, event.pipe);
+                await pagesModel.lifecycle.openFile(filePath, event.pipe, { sourceLink });
             } catch (err) {
                 event.pipe.dispose();
                 throw err;

@@ -4,10 +4,9 @@ Epics represent big ideas with high-level overviews. Each epic links to tasks in
 
 ## Active
 
-_(none)_
+- **EPIC-016** — [Secondary Editors — Sidebar Extension System](EPIC-016.md)
 
 ## Future
-- **EPIC-016** — [Secondary Editors — Sidebar Extension System](EPIC-016.md)
 - **EPIC-014** — [Claude Integration via Terminal Editor](EPIC-014.md)
 - **EPIC-011** — [Chrome Extension Support for Built-in Browser](EPIC-011.md)
 
