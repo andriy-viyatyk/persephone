@@ -10,34 +10,24 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### New Features
 
-- **Open URL dialog (Ctrl+O)** — The file-open shortcut now shows a text-area dialog instead of the native file picker. Paste a file path, an HTTP/HTTPS URL, or a cURL command and press **Open**. A separate **Open File** button in the dialog brings up the classic file picker. Supports `Ctrl+Enter` to confirm and `Escape` to cancel.
-- **HTTP URL support** — Paste an `https://` URL into the Open dialog and Persephone fetches and opens it directly in the right editor: Monaco for code and text files, Image Viewer for images, PDF Viewer for PDFs. No browser tab is opened for direct content links.
-- **cURL command support** — Copy a request from browser DevTools as cURL (bash, cmd, fetch, or Node.js fetch format) and paste it into the Open dialog. Persephone parses the command and fetches the URL with the original headers, method, and body.
-- **PDF and Image from URLs and ZIP archives** — The PDF Viewer and Image Viewer can now display content loaded from HTTP URLs and entries inside ZIP archives, in addition to local files.
-- **Script API: `io` namespace** — New global available in scripts for building content pipes programmatically. See [Scripting — io namespace](./scripting.md#the-io-namespace).
-- **Script API: `app.events.send` / `app.events.sendAsync`** — Scripts can now fire events into the link pipeline (and any other event channel), not just subscribe to them. See [Events API](./api/events.md#ieventchannel).
-- **Script API: `io.OpenContentEvent`** — Scripts can now open a pre-assembled content pipe directly in an editor (Layer 3), bypassing URL parsing and resolver logic.
-- **Script API: `io.ZipTreeProvider`** — Scripts can now browse the directory structure of a ZIP archive programmatically. `new io.ZipTreeProvider(path)` exposes `list(dir)` to enumerate entries and `getNavigationUrl(item)` to build a link that opens a file or navigates into a subfolder via `app.events.openRawLink`.
-- **Folder View** — Double-click a folder in the sidebar's PageNavigator to open it as a dedicated tab showing the folder's contents as a list. Click files to open them, or click subfolders to navigate deeper. The sidebar tree stays synced with the folder view selection.
-- **File content search in Explorer panel** — The File Explorer panel now has a dedicated Search panel for searching file contents. Click the search icon in the Explorer panel header to search the root folder, or right-click any folder and choose "Search in Folder" for scoped search. Results appear progressively with file and line match highlighting. Click a result to navigate to the file and scroll to the matched line. Search state persists across app restarts.
-- **Archive browsing panel** — Clicking a ZIP-based archive file (`.zip`, `.docx`, `.xlsx`, etc.) in the File Explorer panel now shows an "Archive" panel below the Explorer tree. Expand it to browse and open files inside the archive without leaving the current tab.
+- **Open URL dialog (Ctrl+O)** — The file-open shortcut now shows a text-area dialog instead of the native file picker. Paste a file path, an HTTP/HTTPS URL, or a cURL command (bash, cmd, fetch, or Node.js fetch format) and press **Open**. A separate **Open File** button in the dialog brings up the classic file picker.
+- **HTTP and archive content in all editors** — Paste an `https://` URL into the Open dialog and Persephone fetches and opens it directly in the right editor: Monaco for code and text files, Image Viewer for images, PDF Viewer for PDFs. ZIP archive entries also open natively in all editors.
+- **File Explorer panel** — The page sidebar now features a full File Explorer with collapsible panels, file content search (click the search icon or right-click a folder → "Search in Folder"), and archive browsing (click a `.zip`/`.docx`/`.xlsx` file to browse its contents inline). The tree auto-refreshes on external changes and search state persists across restarts.
+- **Folder View** — Click a folder in the File Explorer to show its contents as a list in the page area. Click files to open them, or click subfolders to navigate deeper. The sidebar tree stays synced with the folder view selection.
+- **Script API: `io` namespace** — New global available in scripts for building content pipes, firing link pipeline events, and browsing ZIP archives programmatically. Includes `io.FileProvider`, `io.HttpProvider`, `io.ZipTransformer`, `io.DecryptTransformer`, `io.ZipTreeProvider`, `io.createPipe()`, and event constructors (`io.RawLinkEvent`, `io.OpenLinkEvent`, `io.OpenContentEvent`). See [Scripting — io namespace](./scripting.md#the-io-namespace).
+- **Script API: `app.events.send` / `app.events.sendAsync`** — Scripts can now fire events into any event channel, not just subscribe to them. See [Events API](./api/events.md#ieventchannel).
 
 ### Improvements
 
-- **Content pipeline hardening** — `ITransformer.write()` is now required (not optional). `DecryptTransformer` password is truly private (ES2022 `#private` field). `writeText()`/`writeBinary()` throw a clear error when pipe is read-only instead of returning undefined. File I/O in providers is now fully async (`fs.promises`). HTTP responses are cached after first fetch.
 - **Image/PDF from archives** — Image Viewer and PDF Viewer can now open files from inside ZIP archives directly (previously fell back to text editor for archive entries).
 - **Browser images persist across restart** — Images opened from the built-in browser's context menu now survive app restart. HTTP images are re-fetched via their original URL; blob images are cached to disk.
-- **Explorer auto-refresh** — The File Explorer tree (in the sidebar and Page Navigator) now automatically refreshes when files or folders are created, deleted, or renamed outside the app. Manual refresh is no longer needed.
 - **Save error notification** — When saving fails (read-only file, disk full, etc.), a notification is shown instead of silently failing.
 - **Save deleted file** — Saving a file that was deleted externally now shows a "Save As" dialog with the original path as default, instead of silently recreating the file.
 
 ### Bug Fixes
 
-- **HTTP pages restore on restart** — Pages opened from HTTP URLs now correctly restore after app restart (pipe descriptor is serialized).
 - **Rename preserves encryption** — Renaming an encrypted or archive file no longer drops the encryption/ZIP transformers.
 - **Save As clears encryption state** — Using "Save As" to save an encrypted file to a new unencrypted path now correctly clears the encryption UI indicators.
-- **Invalid file path notification** — Attempting to open an invalid string (not a file path or URL) now shows a "Invalid file path" warning instead of silently failing.
-- **Spelling fixes** — Corrected `encripted`→`encrypted`, `decripted`→`decrypted` across the codebase.
 
 ---
 
