@@ -137,8 +137,8 @@ During navigation (`navigatePageTo`):
 | 1.1 | [Design secondary editor lifecycle](../tasks/US-313-secondary-editor-lifecycle/README.md) (US-313) | `secondaryModels[]` array in NavigationData. Management methods (add/remove/find). Dispose integration. Tab close save prompts via `confirmSecondaryRelease()`. Persistence of model descriptors. | 0.1 | Done |
 | 1.2 | [Secondary editor registry + PageModel integration](../tasks/US-314-secondary-editor-registry/README.md) (US-314) | SecondaryEditorRegistry mapping `secondaryEditor` strings to sidebar components. `secondaryEditor` getter/setter on PageModel (manages secondaryModels[] membership). `beforeNavigateAway()` lifecycle hook. `restoreSecondaryModels()` on NavigationData. Public `newPageModelFromState`. Absorbs original task 1.3. | 1.1 | Done |
 | ~~1.3~~ | ~~Add `isSecondaryEditor` to PageModel~~ | Absorbed into 1.2 — replaced by `secondaryEditor` getter/setter and `beforeNavigateAway()` on PageModel. | — | — |
-| 1.4 | ZipPageModel + ZipSecondaryEditor | ZipPageModel sets `secondaryEditor = "zip-tree"` on creation. Secondary component renders TreeProviderView (archive tree). Overrides `beforeNavigateAway(newModel)` to survive when navigated page's `sourceLink.metadata.sourceId` matches. Registers "zip-tree" in secondary editor registry. Replaces standalone ZipTreeProvider. | 1.2 | Planned |
-| 1.5 | Refactor PageNavigator for secondary editor models | Render secondary panels from `NavigationData.secondaryModels[]` via secondary editor registry. Each model's `secondaryEditor` value resolves to a sidebar component. Panel headers show label from registry + close button. Replace current standalone ZipTreeProvider approach. | 1.4 | Planned |
+| 1.4 | [Refactor PageNavigator for secondary editor models](../tasks/US-316-pagenavigator-secondary-editors/README.md) (US-316) | Render secondary panels from `NavigationData.secondaryModels[]` via secondary editor registry. Reactive version counter for `secondaryModels`. `LazySecondaryEditor` async loader. Panel headers with registry label + close button (non-active models only). Keep old secondaryProvider system until 1.5 replaces it. | 1.2 | Done |
+| 1.5 | [ZipPageModel + ZipSecondaryEditor](../tasks/US-315-zip-page-model/README.md) (US-315) | Dedicated `zip-view` page-editor. ZipPageModel owns ZipTreeProvider, renders TreeProviderView as main content. ZipSecondaryEditor sidebar component registered as "zip-tree". `beforeNavigateAway()` + `setOwnerPage()` for navigation survival. `NavigationData.ownerModel` + `PageModel.ownerPage`. `expandSecondaryPanel` event. Explorer `sourceId` metadata. Removed old secondaryProvider system. Simplified CategoryEditor. | 1.4 | Done |
 
 ### Phase 2: Link Editor Replacement
 
@@ -163,6 +163,12 @@ During navigation (`navigatePageTo`):
 | 3.4 | Content search for LinksPageModel | Instant in-memory search by title/href/tags. | EPIC-015 4.1, 2.1 | Planned |
 | 3.5 | Expose LinkTreeProvider in script `io` namespace | `io.LinkTreeProvider`. Script type definitions. | 2.1 | Planned |
 | 3.6 | RegexSecondaryEditor (prototype) | Secondary editor for TextPageModel. Regex input + match highlighting in monaco. Example of non-tree secondary editor. | 1.5 | Planned |
+
+### Phase 4: Archive Expansion
+
+| # | Task | Description | Depends on | Status |
+|---|---|---|---|---|
+| 4.1 | Adopt libarchive-wasm for multi-format archive support | Replace `jszip` with `libarchive-wasm` (WASM-based, MIT) in archive-service. Supports RAR v4/v5, 7z, TAR, gzip, bzip2, lzma/xz, cab, ISO — all via one pure-WASM dependency (no native binaries). Generalize `ZipTreeProvider` → `ArchiveTreeProvider`. Update `ARCHIVE_EXTENSIONS` and `isArchiveFile()` to include `.rar`, `.7z`, `.tar.gz`, `.tar.bz2`, `.cab`, `.iso`. Archive icon for all formats. | 1.4 | Planned |
 
 ## Key Design Decisions
 

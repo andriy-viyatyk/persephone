@@ -3,6 +3,8 @@
 All completed tasks, newest first.
 
 | ID | Title | Epic | Notes |
+| US-315 | ZipPageModel + ZipSecondaryEditor | EPIC-016 | Dedicated `zip-view` page-editor with ZipTreeProvider. `beforeNavigateAway` + `setOwnerPage` for navigation survival. `expandSecondaryPanel` event for auto-expand. `NavigationData.ownerModel` + `PageModel.ownerPage`. Explorer `sourceId` metadata. Removed old secondaryProvider system. Simplified CategoryEditor. |
+| US-316 | Refactor PageNavigator for secondary editor models | EPIC-016 | PageNavigator renders secondary panels from `secondaryModels[]` via registry. `secondaryModelsVersion` reactive counter. `LazySecondaryEditor` async loader. Close button for survived models only. `_pendingActivePanel` defers restore. Old secondaryProvider system preserved. |
 |----|-------|------|-------|
 | US-314 | Secondary editor registry + PageModel integration | EPIC-016 | `secondaryEditor` getter/setter on PageModel (manages secondaryModels[] membership). `beforeNavigateAway(newModel)` lifecycle hook. SecondaryEditorRegistry singleton. `restoreSecondaryModels(ownerModel)` with deduplication. `navigatePageTo()` restructured for secondary survival. `newPageModelFromState` made public. |
 | US-313 | Design secondary editor lifecycle | EPIC-016 | `secondaryModels[]` in NavigationData with add/remove/find/confirmRelease. Dispose integration. Tab close checks secondary models via `confirmRelease(closing: true)`. Persistence as descriptors in NavigationData cache. Updated pages-architecture.md with close flow, NavigationData lifecycle, multi-window transfer detail, and secondary models sections. |

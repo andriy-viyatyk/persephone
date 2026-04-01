@@ -135,6 +135,7 @@ export class PagesLifecycleModel {
         navData.updateId(page.state.get().id);
         navData.flushSave();
         page.navigationData = navData;
+        navData.setOwnerModel(page);
         page.state.update((s) => {
             s.hasNavigator = true;
         });
@@ -267,11 +268,17 @@ export class PagesLifecycleModel {
         return pageModel;
     };
 
-    openFileAsArchive = (filePath: string): PageModel => {
-        // .asar uses regular path (Electron native fs); ZIP archives use "!" convention
-        const isAsar = filePath.toLowerCase().endsWith(".asar");
-        const archiveRoot = isAsar ? filePath : filePath + "!";
-        // Check if already open as archive
+    openFileAsArchive = async (filePath: string): Promise<PageModel> => {
+        // .asar: Electron native fs — use simple nav panel (no ZipTreeProvider)
+        if (filePath.toLowerCase().endsWith(".asar")) {
+            return this._openAsarArchive(filePath);
+        }
+        // ZIP-based archives: use ZipPageModel
+        return this._openZipArchive(filePath);
+    };
+
+    private _openAsarArchive(filePath: string): PageModel {
+        const archiveRoot = filePath;
         const existing = this.model.state.get().pages.find(
             (p) => p.navigationData?.pageNavigatorModel?.state.get().rootPath === archiveRoot
         );
@@ -279,14 +286,47 @@ export class PagesLifecycleModel {
             this.model.navigation.showPage(existing.state.get().id);
             return existing;
         }
-
         const page = this.addEmptyPageWithNavPanel(archiveRoot);
-        page.state.update((s) => {
-            s.title = fpBasename(filePath);
-        });
+        page.state.update((s) => { s.title = fpBasename(filePath); });
         this.model.closeFirstPageIfEmpty();
         return page;
-    };
+    }
+
+    private async _openZipArchive(filePath: string): Promise<PageModel> {
+        // Check if already open as archive (by archiveUrl on ZipPageModel)
+        const existing = this.model.state.get().pages.find(
+            (p) => p.state.get().type === "zipFile"
+                && (p.state.get() as any).archiveUrl === filePath // eslint-disable-line @typescript-eslint/no-explicit-any
+        );
+        if (existing) {
+            this.model.navigation.showPage(existing.state.get().id);
+            return existing;
+        }
+
+        // Create ZipPageModel via editor registry (dynamic import)
+        const editorDef = editorRegistry.getById("zip-view");
+        if (!editorDef) throw new Error("zip-view editor not registered");
+        const module = await editorDef.loadModule();
+        const page = await module.newPageModel(filePath);
+
+        // Create NavigationData with archive root for explorer sidebar
+        const archiveRoot = filePath + "!";
+        const navData = new NavigationData(archiveRoot);
+        navData.ensurePageNavigatorModel();
+        navData.updateId(page.state.get().id);
+        navData.flushSave();
+        page.navigationData = navData;
+        navData.setOwnerModel(page);
+        page.state.update((s) => { s.hasNavigator = true; });
+
+        // Set secondaryEditor after NavigationData is attached
+        // (the setter calls navigationData.addSecondaryModel)
+        (page as any).secondaryEditor = "zip-tree"; // eslint-disable-line @typescript-eslint/no-explicit-any
+
+        this.addPage(page);
+        this.model.closeFirstPageIfEmpty();
+        return page;
+    }
 
     closePage = async (pageId: string): Promise<boolean> => {
         const page = this.model.query.findPage(pageId);
@@ -475,6 +515,14 @@ export class PagesLifecycleModel {
                 s.hasNavigator = true;
             });
             navigationData.updateId(newModel.id);
+            navigationData.setOwnerModel(newModel);
+
+            // If the new model declared itself as a secondary editor, register it now
+            // (model may have set secondaryEditor in state before NavigationData was attached)
+            const se = newModel.state.get().secondaryEditor;
+            if (se) {
+                navigationData.addSecondaryModel(newModel);
+            }
         }
 
         return true;

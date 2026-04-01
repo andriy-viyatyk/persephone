@@ -1,5 +1,7 @@
 import { editorRegistry } from "./registry";
 import { EditorModule } from "./types";
+import { secondaryEditorRegistry } from "../ui/navigation/secondary-editor-registry";
+import { isArchiveFile } from "../core/utils/file-path";
 
 // =============================================================================
 // Helper functions for common patterns
@@ -561,6 +563,22 @@ editorRegistry.register({
     },
 });
 
+// Archive viewer (standalone page editor — ZIP and ZIP-based formats)
+editorRegistry.register({
+    id: "zip-view",
+    name: "Archive",
+    pageType: "zipFile",
+    category: "page-editor",
+    acceptFile: (fileName) => {
+        if (!fileName) return -1;
+        return isArchiveFile(fileName) ? 100 : -1;
+    },
+    loadModule: async () => {
+        const module = await import("./zip/index");
+        return module.default;
+    },
+});
+
 // Category view (standalone page editor — tree-category:// links)
 editorRegistry.register({
     id: "category-view",
@@ -623,4 +641,14 @@ editorRegistry.register({
         const module = await import("./settings/SettingsPage");
         return module.default;
     },
+});
+
+// =============================================================================
+// Secondary Editor Registrations (EPIC-016)
+// =============================================================================
+
+secondaryEditorRegistry.register({
+    id: "zip-tree",
+    label: "Archive",
+    loadComponent: () => import("./zip/ZipSecondaryEditor"),
 });

@@ -9,21 +9,12 @@ import { fpDirname } from "../../core/utils/file-path";
 import { fs } from "../../api/fs";
 import { parseObject } from "../../core/utils/parse-utils";
 import { debounce } from "../../../shared/utils";
+import { expandSecondaryPanel } from "../../core/state/events";
 import { PageNavigatorModel } from "./PageNavigatorModel";
 
 export interface NavigationState {
     /** Currently selected item href (shared between PageNavigator and CategoryEditor). */
     selectedHref: string | null;
-}
-
-/** Descriptor for a secondary tree provider (archive, link collection). */
-export interface SecondaryDescriptor {
-    /** Provider type: "zip", "link" (future). */
-    type: string;
-    /** Source URL (path to archive or .link.json). */
-    sourceUrl: string;
-    /** Display label for the panel header (e.g., "Archive", "Links"). */
-    label: string;
 }
 
 /** Serialized descriptor for a secondary editor model (for persistence). */
@@ -39,11 +30,7 @@ interface NavigationSavedState {
     rootPath: string;
     treeState?: TreeProviderViewSavedState;
     selectedHref?: string | null;
-    // Secondary provider state
-    activePanel?: string; // "explorer", "search", "secondary", or a secondary model ID
-    secondaryDescriptor?: SecondaryDescriptor | null;
-    secondarySelectedHref?: string | null;
-    secondaryTreeState?: TreeProviderViewSavedState;
+    activePanel?: string; // "explorer", "search", or a secondary model ID
     // Secondary editor models (EPIC-016)
     secondaryModelDescriptors?: SecondaryModelDescriptor[];
     // Search state
@@ -78,31 +65,62 @@ export class NavigationData {
     /** Primary tree expansion state — set by PageNavigator, persisted here. */
     treeState: TreeProviderViewSavedState | undefined = undefined;
 
-    // ── Secondary provider ────────────────────────────────────────────
+    /** The active page model that owns this NavigationData. Updated on navigation. */
+    ownerModel: PageModel | null = null;
 
-    /** Descriptor for secondary panel (set when user selects archive/link file). */
-    secondaryDescriptor: SecondaryDescriptor | null = null;
-    /** Lazily created secondary tree provider. */
-    secondaryProvider: ITreeProvider | null = null;
-    /** Secondary selection state. */
-    readonly secondarySelectionState = new TOneState<NavigationState>({ selectedHref: null });
-    /** Secondary tree expansion state. */
-    secondaryTreeState: TreeProviderViewSavedState | undefined = undefined;
     /** Which panel is currently active/expanded.
-     *  Values: "explorer", "search", "secondary" (legacy zip), or a secondary model's page ID. */
+     *  Values: "explorer", "search", or a secondary model's page ID. */
     activePanel: string = "explorer";
 
     // ── Secondary editor models (EPIC-016) ────────────────────────────
 
     /** Page models that act as secondary editors (survive page navigation). */
     secondaryModels: PageModel[] = [];
+    /** Reactive version counter — PageNavigator subscribes via .use() for re-render on add/remove. */
+    readonly secondaryModelsVersion = new TOneState({ version: 0 });
     /** Pending descriptors from restore — actual model creation deferred to registry (task 1.2). */
     pendingSecondaryDescriptors: SecondaryModelDescriptor[] | undefined = undefined;
+    /** Deferred activePanel — set during restore, applied after restoreSecondaryModels(). */
+    private _pendingActivePanel: string | undefined = undefined;
+
+    /** Update the owner model reference and propagate to secondary models.
+     *  Called after NavigationData is transferred during navigation.
+     *  Secondary models may clear their secondaryEditor during setOwnerPage
+     *  (e.g., ZipPageModel checks sourceLink). Their setter is a no-op because
+     *  navigationData is null (only the active page holds the reference), so
+     *  NavigationData handles the cleanup after notification. */
+    setOwnerModel(model: PageModel): void {
+        this.ownerModel = model;
+        // Clear Explorer selection if the new page wasn't opened from Explorer
+        const sourceId = model.state.get().sourceLink?.metadata?.sourceId;
+        if (sourceId !== "explorer") {
+            this.selectionState.update((s) => { s.selectedHref = null; });
+        }
+        // Notify secondary models — they may clear their secondaryEditor
+        for (const m of [...this.secondaryModels]) {
+            m.setOwnerPage(model);
+        }
+        // Clean up models that cleared their secondaryEditor during setOwnerPage
+        const removed = this.secondaryModels.filter((m) => !m.secondaryEditor);
+        if (removed.length > 0) {
+            for (const m of removed) {
+                const idx = this.secondaryModels.indexOf(m);
+                if (idx >= 0) this.secondaryModels.splice(idx, 1);
+                if (this.activePanel === m.id) {
+                    this.activePanel = "explorer";
+                }
+                m.dispose();
+            }
+            this.secondaryModelsVersion.update((s) => { s.version++; });
+        }
+    }
 
     /** Add a page model as a secondary editor. */
     addSecondaryModel(model: PageModel): void {
         if (this.secondaryModels.includes(model)) return;
         this.secondaryModels.push(model);
+        model.setOwnerPage(this.ownerModel);
+        this.secondaryModelsVersion.update((s) => { s.version++; });
         this._saveStateDebounced();
     }
 
@@ -115,6 +133,7 @@ export class NavigationData {
             this.activePanel = "explorer";
         }
         model.dispose();
+        this.secondaryModelsVersion.update((s) => { s.version++; });
         this._saveStateDebounced();
     }
 
@@ -126,6 +145,7 @@ export class NavigationData {
         if (this.activePanel === model.id) {
             this.activePanel = "explorer";
         }
+        this.secondaryModelsVersion.update((s) => { s.version++; });
         this._saveStateDebounced();
     }
 
@@ -149,7 +169,11 @@ export class NavigationData {
      *    If a descriptor has the same ID as ownerModel, reuse it (no duplicate). */
     async restoreSecondaryModels(ownerModel: PageModel): Promise<void> {
         const descriptors = this.pendingSecondaryDescriptors;
-        if (!descriptors?.length) return;
+        if (!descriptors?.length) {
+            // Even with no descriptors, check _pendingActivePanel (edge case)
+            this._pendingActivePanel = undefined;
+            return;
+        }
         this.pendingSecondaryDescriptors = undefined;
 
         const { pagesModel } = await import("../../api/pages");
@@ -170,6 +194,17 @@ export class NavigationData {
                 console.warn("[NavigationData] Failed to restore secondary model:", err);
             }
         }
+
+        // Re-check the deferred activePanel now that models are restored
+        if (this._pendingActivePanel) {
+            const modelExists = this.secondaryModels.some((m) => m.id === this._pendingActivePanel);
+            if (modelExists) {
+                this.activePanel = this._pendingActivePanel;
+            }
+            this._pendingActivePanel = undefined;
+        }
+
+        this.secondaryModelsVersion.update((s) => { s.version++; });
     }
 
     // ── Search ────────────────────────────────────────────────────────
@@ -182,95 +217,35 @@ export class NavigationData {
     private _cacheName = "nav-panel"; // same file name for backward compat
     private _skipSave = false;
     private _unsubscribe: (() => void) | undefined = undefined;
+    private _expandSub: { unsubscribe: () => void } | undefined = undefined;
 
     constructor(rootPath: string) {
         this.renderId = crypto.randomUUID();
         this._rootPath = rootPath;
-    }
-
-    // ── Active provider/selection getters ──────────────────────────────
-
-    /** Returns the active provider based on activePanel. */
-    get activeProvider(): ITreeProvider | null {
-        return this.activePanel === "secondary"
-            ? this.secondaryProvider
-            : this.treeProvider;
-    }
-
-    /** Returns the active selection state based on activePanel. */
-    get activeSelectionState(): TOneState<NavigationState> {
-        return this.activePanel === "secondary"
-            ? this.secondarySelectionState
-            : this.selectionState;
+        // Subscribe to expand requests from secondary editor models
+        this._expandSub = expandSecondaryPanel.subscribe((modelId) => {
+            if (modelId && this.secondaryModels.some((m) => m.id === modelId)) {
+                this.setActivePanel(modelId);
+                // Bump version so PageNavigator re-renders and syncs activePanel
+                this.secondaryModelsVersion.update((s) => { s.version++; });
+            }
+        });
     }
 
     // ── Selection ─────────────────────────────────────────────────────
 
-    /** Update the selected item href (primary/explorer). */
+    /** Update the selected item href. */
     setSelectedHref(href: string | null): void {
         this.selectionState.update((s) => { s.selectedHref = href; });
         this._saveStateDebounced();
     }
 
-    /** Update the selected item href (secondary). */
-    setSecondarySelectedHref(href: string | null): void {
-        this.secondarySelectionState.update((s) => { s.selectedHref = href; });
-        this._saveStateDebounced();
-    }
-
     // ── Tree state ────────────────────────────────────────────────────
 
-    /** Update tree expansion state from PageNavigator (primary). */
+    /** Update tree expansion state from PageNavigator. */
     setTreeState(state: TreeProviderViewSavedState): void {
         this.treeState = state;
         this._saveStateDebounced();
-    }
-
-    /** Update tree expansion state from PageNavigator (secondary). */
-    setSecondaryTreeState(state: TreeProviderViewSavedState): void {
-        this.secondaryTreeState = state;
-        this._saveStateDebounced();
-    }
-
-    // ── Secondary provider management ─────────────────────────────────
-
-    /** Set or clear the secondary provider descriptor. */
-    setSecondaryDescriptor(desc: SecondaryDescriptor | null): void {
-        if (this.secondaryDescriptor?.sourceUrl === desc?.sourceUrl) return; // same file
-        this.secondaryProvider?.dispose?.();
-        this.secondaryProvider = null;
-        this.secondaryDescriptor = desc;
-        this.secondarySelectionState.set({ selectedHref: null });
-        this.secondaryTreeState = undefined;
-        if (!desc && this.activePanel === "secondary") {
-            this.activePanel = "explorer";
-        }
-        this._saveStateDebounced();
-    }
-
-    /** Clear the secondary provider. */
-    clearSecondary(): void {
-        this.setSecondaryDescriptor(null);
-    }
-
-    /** Lazily create the secondary provider from the descriptor. */
-    async createSecondaryProvider(): Promise<ITreeProvider | null> {
-        const desc = this.secondaryDescriptor;
-        if (!desc) return null;
-        if (this.secondaryProvider) return this.secondaryProvider;
-
-        switch (desc.type) {
-            case "zip": {
-                const { ZipTreeProvider } = await import("../../content/tree-providers/ZipTreeProvider");
-                this.secondaryProvider = new ZipTreeProvider(desc.sourceUrl);
-                return this.secondaryProvider;
-            }
-            case "link":
-                // Phase 4 — not implemented yet
-                return null;
-            default:
-                return null;
-        }
     }
 
     /** Set the active panel. */
@@ -407,14 +382,6 @@ export class NavigationData {
             this.selectionState.set({ selectedHref });
             this._rootPath = rootPath;
 
-            // Restore secondary state (descriptor only — provider created lazily)
-            if (saved.secondaryDescriptor) {
-                this.secondaryDescriptor = saved.secondaryDescriptor;
-                this.secondaryTreeState = saved.secondaryTreeState;
-                this.secondarySelectionState.set({
-                    selectedHref: saved.secondarySelectedHref ?? null,
-                });
-            }
             // Restore search state
             this.searchState = saved.searchState;
 
@@ -424,15 +391,14 @@ export class NavigationData {
             }
 
             // Restore activePanel: explorer/search are safe to restore as-is.
-            // Secondary panels require async provider/model creation — fall back to explorer.
+            // Secondary model panels defer until models are restored.
             const restoredPanel = saved.activePanel ?? "explorer";
-            if (restoredPanel === "secondary") {
-                this.activePanel = "explorer";
-            } else if (restoredPanel === "search" && !this.searchState) {
+            if (restoredPanel === "search" && !this.searchState) {
                 this.activePanel = "explorer"; // search state lost — fall back
-            } else if (restoredPanel !== "explorer" && restoredPanel !== "search" && restoredPanel !== "secondary") {
-                // Secondary model panel ID — fall back until models are restored
+            } else if (restoredPanel !== "explorer" && restoredPanel !== "search") {
+                // Secondary model panel ID (or legacy "secondary") — defer until models are restored
                 this.activePanel = "explorer";
+                this._pendingActivePanel = restoredPanel;
             } else {
                 this.activePanel = restoredPanel;
             }
@@ -452,8 +418,10 @@ export class NavigationData {
 
     private _saveState = async (): Promise<void> => {
         if (!this._id) return;
-        // Flush secondary model caches before saving their descriptors
+        // Flush secondary model caches before saving their descriptors.
+        // Skip models whose navigationData is this (owner page) — avoids infinite recursion.
         for (const model of this.secondaryModels) {
+            if (model.navigationData === this) continue;
             await model.saveState?.();
         }
         const navState = this.pageNavigatorModel?.state.get();
@@ -463,11 +431,7 @@ export class NavigationData {
             rootPath: navState?.rootPath ?? this._rootPath,
             treeState: this.treeState,
             selectedHref: this.selectionState.get().selectedHref,
-            // Secondary state
             activePanel: this.activePanel,
-            secondaryDescriptor: this.secondaryDescriptor,
-            secondarySelectedHref: this.secondarySelectionState.get().selectedHref,
-            secondaryTreeState: this.secondaryTreeState,
             // Secondary editor models (EPIC-016)
             secondaryModelDescriptors: this.secondaryModels.length > 0
                 ? this.secondaryModels.map((m) => ({ pageState: m.getRestoreData() }))
@@ -483,12 +447,12 @@ export class NavigationData {
     // ── Cleanup ───────────────────────────────────────────────────────
 
     dispose(): void {
+        this._expandSub?.unsubscribe();
+        this._expandSub = undefined;
         this._unsubscribe?.();
         this._unsubscribe = undefined;
         this.treeProvider?.dispose?.();
         this.treeProvider = null;
-        this.secondaryProvider?.dispose?.();
-        this.secondaryProvider = null;
         // Dispose all secondary editor models
         for (const model of this.secondaryModels) {
             model.dispose();

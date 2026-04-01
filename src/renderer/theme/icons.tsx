@@ -1278,3 +1278,13 @@ export const DownloadIcon = createIcon(24)(
 export const McpIcon = createIcon(24)(
     <circle cx="12" cy="12" r="7" fill="none" stroke="#4ec964" strokeWidth="2.5" />,
 );
+
+export const ArchiveIcon = createIcon(24)(
+    <>
+        <path d="M4 4h16v16H4z" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+        <rect x="10" y="4" width="4" height="2" fill="currentColor" />
+        <rect x="10" y="8" width="4" height="2" fill="currentColor" />
+        <rect x="10" y="12" width="4" height="2" fill="currentColor" />
+        <rect x="10" y="16" width="4" height="2" fill="currentColor" />
+    </>,
+);

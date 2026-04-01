@@ -362,15 +362,13 @@ NavigationData is a long-lived object that **survives page navigation**. It hold
 
 ```
 NavigationData
+  ├── ownerModel                // The active page model that owns this NavigationData
   ├── treeProvider              // Primary FileTreeProvider (Explorer panel)
   ├── selectionState            // TOneState — reactive, shared between PageNavigator and CategoryEditor
   ├── treeState                 // Tree expansion state (persisted)
-  ├── secondaryDescriptor       // Archive metadata (type, sourceUrl, label)
-  ├── secondaryProvider         // Lazily created ZipTreeProvider
-  ├── secondarySelectionState   // Separate reactive selection for secondary panel
-  ├── secondaryTreeState        // Secondary tree expansion state
   ├── secondaryModels[]         // Secondary editor PageModel instances (EPIC-016)
-  ├── activePanel               // "explorer", "search", "secondary", or a secondary model ID
+  ├── secondaryModelsVersion    // TOneState — reactive counter for PageNavigator re-render
+  ├── activePanel               // "explorer", "search", or a secondary model's page ID
   ├── searchState               // FileSearch state (query, results, filters)
   └── pageNavigatorModel        // Sidebar open/close/width state
 ```
@@ -380,18 +378,21 @@ NavigationData
 In `navigatePageTo()` ([`PagesLifecycleModel.ts`](../../src/renderer/api/pages/PagesLifecycleModel.ts)):
 
 ```
-1. navigationData = oldModel.navigationData    // extract reference
+1. navigationData = oldModel.navigationData     // extract reference
 2. ... create newModel (with sourceLink) ...
-3. oldModel.beforeNavigateAway(newModel)       // old model decides to keep/clear secondaryEditor
+3. oldModel.beforeNavigateAway(newModel)        // old model decides to keep/clear secondaryEditor
 4. survivesAsSecondary = navigationData.secondaryModels.includes(oldModel)
-5. oldModel.navigationData = null              // detach (prevents dispose)
-6. if (!survivesAsSecondary) oldModel.dispose()  // skip dispose if model survives in sidebar
+5. oldModel.navigationData = null               // detach (prevents dispose)
+6. if (!survivesAsSecondary) oldModel.dispose() // skip dispose if model survives in sidebar
 7. detachPage(oldModel)
-8. newModel.navigationData = navigationData    // transfer
-9. navigationData.updateId(newModel.id)        // update cache key
+8. newModel.navigationData = navigationData     // transfer
+9. navigationData.updateId(newModel.id)         // update cache key
+10. navigationData.setOwnerModel(newModel)       // propagate to secondary models
 ```
 
-The `beforeNavigateAway(newModel)` hook (step 3) lets the old model inspect `newModel.sourceLink` to decide whether to keep itself as a secondary editor. The base implementation clears `secondaryEditor` (model is removed and disposed). Subclasses like ZipPageModel override to check `newModel.sourceLink?.metadata?.sourceId === this.id` — if the new page was opened from this archive, the zip tree panel survives.
+**Step 3** — `beforeNavigateAway(newModel)` lets the old model inspect `newModel.sourceLink` to decide whether to keep itself as a secondary editor. The base implementation clears `secondaryEditor`. Subclasses like ZipPageModel override to check `newModel.sourceLink?.metadata?.sourceId === this.id`.
+
+**Step 10** — `setOwnerModel(newModel)` updates `ownerModel`, clears Explorer selection if the new page wasn't opened from Explorer, then calls `setOwnerPage(newModel)` on each secondary model. Secondary models may react: ZipPageModel checks if the new owner was opened from its archive — if not, it clears `secondaryEditor` and is cleaned up. Models that stay may fire `expandSecondaryPanel` to auto-expand their sidebar panel.
 
 ---
 
@@ -407,9 +408,18 @@ The `secondaryEditor` getter/setter on PageModel manages membership automaticall
 
 The `beforeNavigateAway(newModel)` lifecycle hook is called during `navigatePageTo()`. The base implementation clears `secondaryEditor`; subclasses override to conditionally keep their secondary editor based on `newModel.sourceLink`.
 
+### Owner model tracking
+
+`NavigationData.ownerModel` tracks the active page model. `PageModel.ownerPage` is the reverse reference — set on secondary models so they know which page they're attached to. Both are updated by `NavigationData.setOwnerModel(newModel)`, which calls `setOwnerPage(newModel)` on each secondary model.
+
+`setOwnerPage(model)` is a virtual method on PageModel. Subclasses override it to react to ownership changes:
+- **ZipPageModel**: checks if the new owner was opened from this archive (`sourceLink.metadata.sourceId`). If yes, fires `expandSecondaryPanel` event to auto-expand. If no, clears `secondaryEditor` (model removed on next cleanup).
+- **Base PageModel**: stores the reference only.
+
 ### Management API
 
-- `addSecondaryModel(model)` — adds a page model to the array
+- `setOwnerModel(model)` — updates owner reference, propagates to secondary models via `setOwnerPage()`, cleans up models that cleared their `secondaryEditor`
+- `addSecondaryModel(model)` — adds a page model to the array, sets `ownerPage`
 - `removeSecondaryModel(model)` — removes, disposes, and falls back `activePanel` if needed
 - `removeSecondaryModelWithoutDispose(model)` — removes without disposing (used by `secondaryEditor` setter when clearing)
 - `findSecondaryModel(pageId)` — lookup by page ID
@@ -421,6 +431,16 @@ The `beforeNavigateAway(newModel)` lifecycle hook is called during `navigatePage
 **Source:** [`/src/renderer/ui/navigation/secondary-editor-registry.ts`](../../src/renderer/ui/navigation/secondary-editor-registry.ts)
 
 Maps `secondaryEditor` string values to React sidebar components via dynamic imports. Each registration provides an `id`, `label`, and `loadComponent()` factory. PageNavigator uses this registry to resolve which sidebar component to render for each secondary model.
+
+### Rendering in PageNavigator
+
+PageNavigator renders a `CollapsiblePanel` for each model in `secondaryModels[]`, after the Explorer/Search/Secondary panels. Each panel uses `LazySecondaryEditor` ([`LazySecondaryEditor.tsx`](../../src/renderer/ui/navigation/LazySecondaryEditor.tsx)) to async-load the component from the registry.
+
+**Reactivity:** `secondaryModels` is a plain array (PageModel class instances don't belong in TOneState — Immer proxies would corrupt them). A `secondaryModelsVersion` counter (`TOneState<{ version }>`) is bumped on every add/remove. PageNavigator subscribes via `.use()` and re-renders when the counter changes.
+
+**Close button rule:** The active page's own secondary panel has no close button (controlled by `secondaryEditor` field). Only panels from survived models (via `beforeNavigateAway`) show a close button — clicking it calls `removeSecondaryModel()`.
+
+**Auto-expand:** Secondary models can request their panel be expanded by firing the `expandSecondaryPanel` event ([`events.ts`](../../src/renderer/core/state/events.ts)). NavigationData subscribes and sets `activePanel` if the model is in `secondaryModels[]`. This is used by ZipPageModel to auto-expand the Archive panel when navigating to a file inside the archive.
 
 ### Persistence
 

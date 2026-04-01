@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import styled from "@emotion/styled";
 import { Button } from "../../components/basic/Button";
 import { CollapsiblePanelStack, CollapsiblePanel } from "../../components/layout/CollapsiblePanelStack";
-import { CircularProgress } from "../../components/basic/CircularProgress";
 import { FileSearch } from "../../components/file-search";
 import {
     CloseIcon,
@@ -15,12 +14,13 @@ import color from "../../theme/color";
 import { TreeProviderView, TreeProviderViewRef } from "../../components/tree-provider";
 import type { TreeProviderViewSavedState } from "../../components/tree-provider";
 import { FileTreeProvider } from "../../content/tree-providers/FileTreeProvider";
-import { isArchiveFile } from "../../core/utils/file-path";
 import { RawLinkEvent, ContextMenuEvent } from "../../api/events/events";
 import { app } from "../../api/app";
 import type { ITreeProviderItem } from "../../api/types/io.tree";
 import type { ILinkMetadata } from "../../api/types/io.events";
 import type { NavigationData } from "./NavigationData";
+import { secondaryEditorRegistry } from "./secondary-editor-registry";
+import { LazySecondaryEditor } from "./LazySecondaryEditor";
 
 const path = require("path") as typeof import("path");
 
@@ -49,10 +49,19 @@ export function PageNavigator({ navigationData, pageId }: PageNavigatorProps) {
     const navModel = navigationData.ensurePageNavigatorModel();
     const { rootPath } = navModel.state.use();
     const treeProviderRef = useRef<TreeProviderViewRef>(null);
-    const secondaryTreeRef = useRef<TreeProviderViewRef>(null);
-    const [secondaryLoading, setSecondaryLoading] = useState(false);
     const [searchVisible, setSearchVisible] = useState(!!navigationData.searchState);
     const [activePanel, setActivePanelLocal] = useState(navigationData.activePanel);
+
+    // Subscribe to secondary models changes — triggers re-render on add/remove
+    const { version: _secondaryVersion } = navigationData.secondaryModelsVersion.use();
+    const secondaryModels = navigationData.secondaryModels;
+
+    // Sync local activePanel when NavigationData changes (e.g., after restoreSecondaryModels)
+    useEffect(() => {
+        if (navigationData.activePanel !== activePanel) {
+            setActivePanelLocal(navigationData.activePanel);
+        }
+    }, [navigationData.activePanel, _secondaryVersion]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const parentPath = path.dirname(rootPath);
     const canNavigateUp = parentPath !== rootPath && rootPath !== "";
@@ -76,14 +85,7 @@ export function PageNavigator({ navigationData, pageId }: PageNavigatorProps) {
         return navigationData.treeState;
     }, []); // Only on mount
 
-    const secondaryInitialState = useMemo((): TreeProviderViewSavedState | undefined => {
-        return navigationData.secondaryTreeState;
-    }, [navigationData.secondaryDescriptor?.sourceUrl]); // Reset when secondary changes
-
     const { selectedHref } = navigationData.selectionState.use();
-    const { selectedHref: secondarySelectedHref } = navigationData.secondarySelectionState.use();
-    const secondaryDescriptor = navigationData.secondaryDescriptor;
-    const secondaryProvider = navigationData.secondaryProvider;
 
     // Reveal selected item in tree when selection changes (e.g., from CategoryEditor)
     useEffect(() => {
@@ -91,12 +93,6 @@ export function PageNavigator({ navigationData, pageId }: PageNavigatorProps) {
             treeProviderRef.current?.revealItem(selectedHref);
         }
     }, [selectedHref, navigationData.activePanel]);
-
-    useEffect(() => {
-        if (secondarySelectedHref && navigationData.activePanel === "secondary") {
-            secondaryTreeRef.current?.revealItem(secondarySelectedHref);
-        }
-    }, [secondarySelectedHref, navigationData.activePanel]);
 
     // ── Handlers — Explorer ──────────────────────────────────────────
 
@@ -127,21 +123,8 @@ export function PageNavigator({ navigationData, pageId }: PageNavigatorProps) {
         app.events.openRawLink.sendAsync(new RawLinkEvent(
             url,
             undefined,
-            { pageId },
+            { pageId, sourceId: "explorer" },
         ));
-
-        // Detect archive files → show secondary panel
-        if (!item.isDirectory) {
-            if (isArchiveFile(item.href)) {
-                navigationData.setSecondaryDescriptor({
-                    type: "zip",
-                    sourceUrl: item.href,
-                    label: "Archive",
-                });
-            } else {
-                navigationData.clearSecondary();
-            }
-        }
     }, [pageId, navigationData]);
 
     // ── Handlers — Search ──────────────────────────────────────────
@@ -198,47 +181,11 @@ export function PageNavigator({ navigationData, pageId }: PageNavigatorProps) {
         navigationData.setTreeState(state);
     }, [navigationData]);
 
-    // ── Handlers — Secondary ─────────────────────────────────────────
-
-    const handleSecondaryItemClick = useCallback((item: ITreeProviderItem) => {
-        const current = navigationData.secondarySelectionState.get().selectedHref;
-        if (current?.toLowerCase() === item.href.toLowerCase()) return;
-        navigationData.setSecondarySelectedHref(item.href);
-        const url = navigationData.secondaryProvider?.getNavigationUrl(item) ?? item.href;
-        app.events.openRawLink.sendAsync(new RawLinkEvent(url, undefined, { pageId }));
-    }, [pageId, navigationData]);
-
-    const handleSecondaryCollapseAll = useCallback(() => {
-        secondaryTreeRef.current?.collapseAll();
-    }, []);
-
-    const handleSecondaryRefresh = useCallback(() => {
-        secondaryTreeRef.current?.refresh();
-    }, []);
-
-    const handleSecondaryStateChange = useCallback((state: TreeProviderViewSavedState) => {
-        navigationData.setSecondaryTreeState(state);
-    }, [navigationData]);
-
     // ── Panel switch ─────────────────────────────────────────────────
 
     const handleSetActivePanel = useCallback(async (panelId: string) => {
         const previousPanel = activePanel;
         if (panelId === previousPanel) return;
-
-        if (panelId === "secondary") {
-            // Lazy create provider with delayed loading indicator
-            if (!navigationData.secondaryProvider) {
-                const loadingTimer = setTimeout(() => setSecondaryLoading(true), 200);
-                try {
-                    const created = await navigationData.createSecondaryProvider();
-                    if (!created) return; // creation failed, stay on current panel
-                } finally {
-                    clearTimeout(loadingTimer);
-                    setSecondaryLoading(false);
-                }
-            }
-        }
 
         navigationData.setActivePanel(panelId);
         setActivePanelLocal(panelId);
@@ -246,27 +193,13 @@ export function PageNavigator({ navigationData, pageId }: PageNavigatorProps) {
         // Search panel — no navigation needed, just expand
         if (panelId === "search") return;
 
-        // Switching from Search to Explorer — just reveal the current file in tree, don't navigate
-        if (panelId === "explorer" && previousPanel === "search") {
+        // Explorer panel — reveal the current selection in tree, but don't auto-navigate
+        if (panelId === "explorer") {
             const sel = navigationData.selectionState.get().selectedHref;
             if (sel) {
                 treeProviderRef.current?.revealItem(sel);
             }
             return;
-        }
-
-        // Navigate to the active panel's selection
-        const activeProvider = navigationData.activeProvider;
-        if (!activeProvider) return;
-
-        const sel = navigationData.activeSelectionState.get().selectedHref;
-        if (sel) {
-            const url = await activeProvider.getNavigationUrlByHref(sel);
-            app.events.openRawLink.sendAsync(new RawLinkEvent(url, undefined, { pageId }));
-        } else if (panelId === "secondary") {
-            // First time opening secondary — navigate to root category
-            const url = await activeProvider.getNavigationUrlByHref(activeProvider.rootPath);
-            app.events.openRawLink.sendAsync(new RawLinkEvent(url, undefined, { pageId }));
         }
     }, [navigationData, pageId, activePanel]);
 
@@ -323,33 +256,6 @@ export function PageNavigator({ navigationData, pageId }: PageNavigatorProps) {
             </Button>
         </>
     );
-
-    const secondaryButtons = secondaryDescriptor ? (
-        <>
-            <Button
-                type="icon"
-                size="small"
-                title="Collapse All"
-                onClick={handleSecondaryCollapseAll}
-            >
-                <CollapseAllIcon width={14} height={14} />
-            </Button>
-            <Button
-                type="icon"
-                size="small"
-                title="Refresh"
-                onClick={handleSecondaryRefresh}
-            >
-                <RefreshIcon width={14} height={14} />
-            </Button>
-        </>
-    ) : null;
-
-    const secondaryTitle = secondaryDescriptor
-        ? (secondaryLoading
-            ? <>{secondaryDescriptor.label} <CircularProgress size={12} /></>
-            : secondaryDescriptor.label)
-        : "";
 
     const searchFolder = navigationData.searchState?.searchFolder || rootPath;
     const searchFolderName = path.basename(searchFolder);
@@ -410,26 +316,41 @@ export function PageNavigator({ navigationData, pageId }: PageNavigatorProps) {
                         />
                     </CollapsiblePanel>
                 )}
-                {secondaryDescriptor && (
-                    <CollapsiblePanel
-                        id="secondary"
-                        title={secondaryTitle}
-                        buttons={secondaryButtons}
-                    >
-                        {secondaryProvider ? (
-                            <TreeProviderView
-                                ref={secondaryTreeRef}
-                                key={secondaryDescriptor.sourceUrl}
-                                provider={secondaryProvider}
-                                selectedHref={secondarySelectedHref ?? undefined}
-                                onItemClick={handleSecondaryItemClick}
-                                onItemDoubleClick={handleSecondaryItemClick}
-                                initialState={secondaryInitialState}
-                                onStateChange={handleSecondaryStateChange}
-                            />
-                        ) : null}
-                    </CollapsiblePanel>
-                )}
+                {secondaryModels.map((model) => {
+                    const editorId = model.state.get().secondaryEditor;
+                    if (!editorId) return null;
+                    const def = secondaryEditorRegistry.get(editorId);
+                    if (!def) return null;
+
+                    // Active page's own secondary panel has no close button —
+                    // it's controlled by the secondaryEditor field.
+                    // Pass empty fragment to suppress chevron icons.
+                    const isActivePagePanel = model.id === pageId;
+                    const panelButtons = isActivePagePanel ? (<></>) : (
+                        <Button
+                            type="icon"
+                            size="small"
+                            title="Close"
+                            onClick={(e: React.MouseEvent) => {
+                                e.stopPropagation();
+                                navigationData.removeSecondaryModel(model);
+                            }}
+                        >
+                            <CloseIcon width={14} height={14} />
+                        </Button>
+                    );
+
+                    return (
+                        <CollapsiblePanel
+                            key={model.id}
+                            id={model.id}
+                            title={def.label}
+                            buttons={panelButtons}
+                        >
+                            <LazySecondaryEditor model={model} editorId={editorId} />
+                        </CollapsiblePanel>
+                    );
+                })}
             </CollapsiblePanelStack>
         </PageNavigatorRoot>
     );

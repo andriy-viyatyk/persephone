@@ -25,6 +25,18 @@ export class PageModel<T extends IPageState = IPageState, R = any> extends TDial
     /** In-memory data storage for scripts. Available on all page types. Does not persist to disk. */
     scriptData: Record<string, any> = {};
     navigationData: NavigationData | null = null;
+    /** For secondary editor models: the active page that owns the NavigationData containing this model. */
+    ownerPage: PageModel | null = null;
+
+    /**
+     * Called when the owner page changes (during navigation transfer).
+     * Base implementation stores the reference.
+     * Subclasses override to react — e.g., ZipPageModel checks if the new owner
+     * was opened from this archive and removes itself if not.
+     */
+    setOwnerPage(model: PageModel | null): void {
+        this.ownerPage = model;
+    }
     /** Content pipe (provider + transformers). Owned by the page, disposed on close. */
     pipe: IContentPipe | null = null;
     /** Flag for restore(): NavigationData needs to be created from cache */
@@ -120,6 +132,7 @@ export class PageModel<T extends IPageState = IPageState, R = any> extends TDial
             const navData = new NavigationData("");
             await navData.restore(this.id);
             this.navigationData = navData;
+            navData.setOwnerModel(this);
             // Restore secondary models — pass this as owner for deduplication
             await navData.restoreSecondaryModels(this);
             // Set hasNavigator AFTER navigationData is ready, so React sees both together
@@ -179,6 +192,7 @@ export class PageModel<T extends IPageState = IPageState, R = any> extends TDial
             navData.updateId(this.id);
             navData.flushSave();
             this.navigationData = navData;
+            navData.setOwnerModel(this);
             this.state.update((s) => {
                 s.hasNavigator = true;
             });
