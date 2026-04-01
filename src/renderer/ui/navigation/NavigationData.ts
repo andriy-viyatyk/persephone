@@ -106,7 +106,7 @@ export class NavigationData {
         this._saveStateDebounced();
     }
 
-    /** Remove and dispose a secondary editor model. */
+    /** Remove and dispose a secondary editor model (panel closed by user). */
     removeSecondaryModel(model: PageModel): void {
         const idx = this.secondaryModels.indexOf(model);
         if (idx < 0) return;
@@ -115,6 +115,17 @@ export class NavigationData {
             this.activePanel = "explorer";
         }
         model.dispose();
+        this._saveStateDebounced();
+    }
+
+    /** Remove a secondary editor model WITHOUT disposing (model cleared its secondaryEditor). */
+    removeSecondaryModelWithoutDispose(model: PageModel): void {
+        const idx = this.secondaryModels.indexOf(model);
+        if (idx < 0) return;
+        this.secondaryModels.splice(idx, 1);
+        if (this.activePanel === model.id) {
+            this.activePanel = "explorer";
+        }
         this._saveStateDebounced();
     }
 
@@ -131,6 +142,34 @@ export class NavigationData {
             if (!released) return false;
         }
         return true;
+    }
+
+    /** Restore secondary editor models from pending descriptors.
+     *  @param ownerModel — the primary page that owns this NavigationData.
+     *    If a descriptor has the same ID as ownerModel, reuse it (no duplicate). */
+    async restoreSecondaryModels(ownerModel: PageModel): Promise<void> {
+        const descriptors = this.pendingSecondaryDescriptors;
+        if (!descriptors?.length) return;
+        this.pendingSecondaryDescriptors = undefined;
+
+        const { pagesModel } = await import("../../api/pages");
+
+        for (const desc of descriptors) {
+            // Deduplicate: if this descriptor matches the owner page, reuse it
+            if (desc.pageState.id === ownerModel.id) {
+                this.secondaryModels.push(ownerModel);
+                continue;
+            }
+
+            try {
+                const model = await pagesModel.lifecycle.newPageModelFromState(desc.pageState);
+                model.applyRestoreData(desc.pageState as any); // eslint-disable-line @typescript-eslint/no-explicit-any
+                await model.restore();
+                this.secondaryModels.push(model);
+            } catch (err) {
+                console.warn("[NavigationData] Failed to restore secondary model:", err);
+            }
+        }
     }
 
     // ── Search ────────────────────────────────────────────────────────

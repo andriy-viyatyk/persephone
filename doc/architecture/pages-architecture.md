@@ -381,14 +381,17 @@ In `navigatePageTo()` ([`PagesLifecycleModel.ts`](../../src/renderer/api/pages/P
 
 ```
 1. navigationData = oldModel.navigationData    // extract reference
-2. oldModel.navigationData = null              // detach (prevents dispose)
-3. oldModel.dispose()                          // disposes page but NOT navigationData
-4. ... create newModel ...
-5. newModel.navigationData = navigationData    // transfer
-6. navigationData.updateId(newModel.id)        // update cache key
+2. ... create newModel (with sourceLink) ...
+3. oldModel.beforeNavigateAway(newModel)       // old model decides to keep/clear secondaryEditor
+4. survivesAsSecondary = navigationData.secondaryModels.includes(oldModel)
+5. oldModel.navigationData = null              // detach (prevents dispose)
+6. if (!survivesAsSecondary) oldModel.dispose()  // skip dispose if model survives in sidebar
+7. detachPage(oldModel)
+8. newModel.navigationData = navigationData    // transfer
+9. navigationData.updateId(newModel.id)        // update cache key
 ```
 
-This is the same pattern that secondary editor models follow — they live inside NavigationData and survive navigation automatically.
+The `beforeNavigateAway(newModel)` hook (step 3) lets the old model inspect `newModel.sourceLink` to decide whether to keep itself as a secondary editor. The base implementation clears `secondaryEditor` (model is removed and disposed). Subclasses like ZipPageModel override to check `newModel.sourceLink?.metadata?.sourceId === this.id` — if the new page was opened from this archive, the zip tree panel survives.
 
 ---
 
@@ -396,16 +399,32 @@ This is the same pattern that secondary editor models follow — they live insid
 
 NavigationData holds a `secondaryModels[]` array of full PageModel instances that act as sidebar editors. These survive page navigation (same as NavigationData itself) and provide richer functionality than standalone tree providers.
 
+### PageModel integration
+
+The `secondaryEditor` getter/setter on PageModel manages membership automatically:
+- **Set** `model.secondaryEditor = "zip-tree"` → adds the model to `secondaryModels[]`
+- **Clear** `model.secondaryEditor = undefined` → removes the model from `secondaryModels[]` (without dispose)
+
+The `beforeNavigateAway(newModel)` lifecycle hook is called during `navigatePageTo()`. The base implementation clears `secondaryEditor`; subclasses override to conditionally keep their secondary editor based on `newModel.sourceLink`.
+
 ### Management API
 
 - `addSecondaryModel(model)` — adds a page model to the array
 - `removeSecondaryModel(model)` — removes, disposes, and falls back `activePanel` if needed
+- `removeSecondaryModelWithoutDispose(model)` — removes without disposing (used by `secondaryEditor` setter when clearing)
 - `findSecondaryModel(pageId)` — lookup by page ID
 - `confirmSecondaryRelease()` — iterates models with unsaved changes, prompts user via `confirmRelease()`
+- `restoreSecondaryModels(ownerModel)` — restores from `pendingSecondaryDescriptors`, deduplicates against the owner model
+
+### Secondary Editor Registry
+
+**Source:** [`/src/renderer/ui/navigation/secondary-editor-registry.ts`](../../src/renderer/ui/navigation/secondary-editor-registry.ts)
+
+Maps `secondaryEditor` string values to React sidebar components via dynamic imports. Each registration provides an `id`, `label`, and `loadComponent()` factory. PageNavigator uses this registry to resolve which sidebar component to render for each secondary model.
 
 ### Persistence
 
-Secondary model state is saved as descriptors (`SecondaryModelDescriptor[]`) in the NavigationData cache. Each descriptor contains the model's serialized `IPageState` (from `getRestoreData()`). On restore, descriptors are stored as `pendingSecondaryDescriptors` — actual model recreation is handled by the secondary editor registry.
+Secondary model state is saved as descriptors (`SecondaryModelDescriptor[]`) in the NavigationData cache. Each descriptor contains the model's serialized `IPageState` (from `getRestoreData()`). On restore, descriptors are stored as `pendingSecondaryDescriptors`. `restoreSecondaryModels(ownerModel)` processes them — if a descriptor's ID matches the owner page, the existing instance is reused (no duplicate).
 
 ### Dispose
 

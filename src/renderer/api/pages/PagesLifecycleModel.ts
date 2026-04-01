@@ -67,7 +67,7 @@ export class PagesLifecycleModel {
         mcpBrowserPage: "mcpInspectorPage",
     };
 
-    private newPageModelFromState = async (
+    newPageModelFromState = async (
         state: Partial<IPageState>
     ): Promise<PageModel> => {
         if (state.type && PagesLifecycleModel.PAGE_TYPE_MIGRATIONS[state.type]) {
@@ -379,11 +379,8 @@ export class PagesLifecycleModel {
         // Preserve pinned state and NavPanel across navigation
         const wasPinned = oldModel.state.get().pinned;
         const navigationData = oldModel.navigationData;
-        oldModel.navigationData = null;
 
-        await oldModel.dispose();
-        this.model.detachPage(oldModel);
-
+        // Create new model BEFORE beforeNavigateAway so old model can inspect it
         let newModel: PageModel;
         // Virtual paths (tree-category://, etc.) skip file existence check
         const isVirtualPath = newFilePath.includes("://");
@@ -409,6 +406,24 @@ export class PagesLifecycleModel {
                 await newModel.restore();
             }
         }
+
+        // Set sourceLink on new model early — beforeNavigateAway inspects it
+        if (options?.sourceLink) {
+            newModel.state.update((s) => { s.sourceLink = options.sourceLink; });
+        }
+
+        // Give old model a chance to keep/clear its secondary editor status
+        oldModel.beforeNavigateAway(newModel);
+
+        // If oldModel kept itself in secondaryModels[], detach it from the page
+        // collection WITHOUT disposing (it lives on in NavigationData).
+        // If oldModel cleared its secondaryEditor, dispose normally.
+        const survivesAsSecondary = navigationData?.secondaryModels.includes(oldModel);
+        oldModel.navigationData = null;
+        if (!survivesAsSecondary) {
+            await oldModel.dispose();
+        }
+        this.model.detachPage(oldModel);
 
         // Auto-select preview editor for navigated files
         if (newModel.state.get().type === "textFile") {
@@ -443,12 +458,9 @@ export class PagesLifecycleModel {
             }
         }
 
-        // Restore pinned state and source link on the new model
-        if (wasPinned || options?.sourceLink) {
-            newModel.state.update((s) => {
-                if (wasPinned) s.pinned = true;
-                if (options?.sourceLink) s.sourceLink = options.sourceLink;
-            });
+        // Restore pinned state on the new model
+        if (wasPinned) {
+            newModel.state.update((s) => { s.pinned = true; });
         }
 
         this.model.attachPage(newModel);

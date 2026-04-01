@@ -25,6 +25,8 @@ export interface IPageState {
     pinned?: boolean,
     /** The link that opened this page — informational, not functional. Persisted across restarts. */
     sourceLink?: ISourceLink,
+    /** Active secondary editor panel ID (e.g., "zip-tree", "link-category"). */
+    secondaryEditor?: string,
 }
 
 export interface WindowState {

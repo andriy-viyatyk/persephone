@@ -58,6 +58,37 @@ export class PageModel<T extends IPageState = IPageState, R = any> extends TDial
         return this.state.get().language;
     }
 
+    /** Active secondary editor panel ID. Setting adds this model to
+     *  NavigationData.secondaryModels[]; clearing removes it. */
+    get secondaryEditor(): string | undefined {
+        return this.state.get().secondaryEditor;
+    }
+
+    set secondaryEditor(value: string | undefined) {
+        const prev = this.state.get().secondaryEditor;
+        if (prev === value) return;
+        this.state.update((s) => { s.secondaryEditor = value; });
+        if (value) {
+            this.navigationData?.addSecondaryModel(this);
+        } else {
+            this.navigationData?.removeSecondaryModelWithoutDispose(this);
+        }
+    }
+
+    /**
+     * Called before the page is replaced during navigation (navigatePageTo).
+     * @param newModel — the model that is replacing this page. Inspect
+     *   newModel.sourceLink to decide whether to keep secondaryEditor set.
+     *
+     * Base implementation clears secondaryEditor (model removed from sidebar).
+     * Subclasses override to conditionally keep:
+     *   - ZipPageModel: keeps if newModel.sourceLink?.metadata?.sourceId === this.id
+     *   - LinksPageModel: keeps if newModel was opened from this link collection
+     */
+    beforeNavigateAway(_newModel: PageModel): void {
+        this.secondaryEditor = undefined;
+    }
+
     /**
      * Prompt the user to save unsaved changes before releasing the page.
      * @param closing — true when the tab is being closed (not just navigated).
@@ -89,6 +120,8 @@ export class PageModel<T extends IPageState = IPageState, R = any> extends TDial
             const navData = new NavigationData("");
             await navData.restore(this.id);
             this.navigationData = navData;
+            // Restore secondary models — pass this as owner for deduplication
+            await navData.restoreSecondaryModels(this);
             // Set hasNavigator AFTER navigationData is ready, so React sees both together
             this.state.update((s) => {
                 s.hasNavigator = true;
@@ -131,6 +164,7 @@ export class PageModel<T extends IPageState = IPageState, R = any> extends TDial
             s.editor = data.editor || s.editor;
             s.pinned = data.pinned ?? false;
             if ((data as any).sourceLink) s.sourceLink = (data as any).sourceLink; // eslint-disable-line @typescript-eslint/no-explicit-any
+            if ((data as any).secondaryEditor) s.secondaryEditor = (data as any).secondaryEditor; // eslint-disable-line @typescript-eslint/no-explicit-any
         });
     }
 

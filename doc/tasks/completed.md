@@ -4,6 +4,7 @@ All completed tasks, newest first.
 
 | ID | Title | Epic | Notes |
 |----|-------|------|-------|
+| US-314 | Secondary editor registry + PageModel integration | EPIC-016 | `secondaryEditor` getter/setter on PageModel (manages secondaryModels[] membership). `beforeNavigateAway(newModel)` lifecycle hook. SecondaryEditorRegistry singleton. `restoreSecondaryModels(ownerModel)` with deduplication. `navigatePageTo()` restructured for secondary survival. `newPageModelFromState` made public. |
 | US-313 | Design secondary editor lifecycle | EPIC-016 | `secondaryModels[]` in NavigationData with add/remove/find/confirmRelease. Dispose integration. Tab close checks secondary models via `confirmRelease(closing: true)`. Persistence as descriptors in NavigationData cache. Updated pages-architecture.md with close flow, NavigationData lifecycle, multi-window transfer detail, and secondary models sections. |
 | US-312 | Source link persistence in IPageState | EPIC-016 | Added `ISourceLink` interface + `sourceLink` field to `IPageState`. Open handler builds sourceLink from OpenContentEvent metadata (strips ephemeral fields). Stored via openFile/navigatePageTo, persisted across restarts. Script API: `page.sourceLink`. |
 | US-311 | Explorer auto-refresh | EPIC-015 | FileTreeProvider.watch() with recursive fs.watch + 500ms debounce. TreeProviderViewModel subscribes on init, cleans up on dispose/provider change. Works in PageNavigator, Sidebar, Script Library. |

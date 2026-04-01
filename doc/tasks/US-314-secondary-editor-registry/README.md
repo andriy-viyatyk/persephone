@@ -1,6 +1,6 @@
 # US-314: Secondary Editor Registry
 
-**Status:** Planned
+**Status:** Done
 **Epic:** EPIC-016 (Phase 1.2)
 **Created:** 2026-04-01
 **Depends on:** US-313 (Secondary editor lifecycle)

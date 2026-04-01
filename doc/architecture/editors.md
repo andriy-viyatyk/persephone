@@ -189,10 +189,13 @@ class PageModel<T extends IPageState, R = any> extends TDialogModel<T, R> {
     get modified(): boolean;
     get pinned(): boolean;
     get filePath(): string | undefined;
+    get secondaryEditor(): string | undefined;  // Active secondary editor panel ID
+    set secondaryEditor(value: string | undefined);  // Manages secondaryModels[] membership
 
     scriptData: Record<string, any>;   // In-memory data for scripts
     navigationData: NavigationData | null;  // Navigation context (providers, selection, persistence)
 
+    beforeNavigateAway(newModel: PageModel): void;  // Navigation survival hook (base: clears secondaryEditor)
     confirmRelease(closing?: boolean): Promise<boolean>;
     restore(): Promise<void>;
     saveState(): Promise<void>;
