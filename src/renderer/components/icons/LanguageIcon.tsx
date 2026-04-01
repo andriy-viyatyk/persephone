@@ -7,6 +7,7 @@ import {
     getLanguageByExtension,
     getLanguageById,
 } from "../../core/utils";
+import { ArchiveIcon } from "../../theme/icons";
 import {
     CIcon,
     ClojureIcon,
@@ -130,6 +131,8 @@ const filePatternIcons: Array<{ pattern: RegExp; icon: SvgIconComponent }> = [
     { pattern: /\.fg\.json$/i, icon: GraphIcon },
     { pattern: /\.rest\.json$/i, icon: RestClientIcon },
     { pattern: /\.excalidraw$/i, icon: DrawIcon },
+    // Archive-specific extensions (not ZIP-based documents like .docx, .xlsx, .epub)
+    { pattern: /\.(zip|rar|7z|tar|gz|bz2|xz|tgz|jar|war)$/i, icon: ArchiveIcon },
 ];
 
 function getFilePatternIcon(fileName: string): SvgIconComponent | undefined {

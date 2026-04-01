@@ -1281,10 +1281,15 @@ export const McpIcon = createIcon(24)(
 
 export const ArchiveIcon = createIcon(24)(
     <>
-        <path d="M4 4h16v16H4z" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
-        <rect x="10" y="4" width="4" height="2" fill="currentColor" />
-        <rect x="10" y="8" width="4" height="2" fill="currentColor" />
-        <rect x="10" y="12" width="4" height="2" fill="currentColor" />
-        <rect x="10" y="16" width="4" height="2" fill="currentColor" />
+        {/* 3x3 colored blocks — WinRAR-style */}
+        <rect x="3" y="3" width="5.5" height="5.5" rx="1" fill="#e53935" />
+        <rect x="9.25" y="3" width="5.5" height="5.5" rx="1" fill="#43a047" />
+        <rect x="15.5" y="3" width="5.5" height="5.5" rx="1" fill="#1e88e5" />
+        <rect x="3" y="9.25" width="5.5" height="5.5" rx="1" fill="#fdd835" />
+        <rect x="9.25" y="9.25" width="5.5" height="5.5" rx="1" fill="#8e24aa" />
+        <rect x="15.5" y="9.25" width="5.5" height="5.5" rx="1" fill="#00acc1" />
+        <rect x="3" y="15.5" width="5.5" height="5.5" rx="1" fill="#fb8c00" />
+        <rect x="9.25" y="15.5" width="5.5" height="5.5" rx="1" fill="#3949ab" />
+        <rect x="15.5" y="15.5" width="5.5" height="5.5" rx="1" fill="#e53935" />
     </>,
 );

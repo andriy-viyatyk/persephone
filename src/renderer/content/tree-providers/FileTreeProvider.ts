@@ -114,6 +114,12 @@ export class FileTreeProvider implements ITreeProvider {
         return href;
     }
 
+    async addItem(item: Partial<ITreeProviderItem> & { href: string }): Promise<ITreeProviderItem> {
+        nodefs.writeFileSync(item.href, "");
+        const name = item.name || path.basename(item.href);
+        return { href: item.href, name, category: item.category ?? "", tags: [], isDirectory: false };
+    }
+
     async mkdir(dirPath: string): Promise<void> {
         nodefs.mkdirSync(dirPath, { recursive: true });
     }
