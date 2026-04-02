@@ -6,11 +6,24 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ---
 
-## Version 2.0.4 (Upcoming)
+## Version 2.0.5 (Upcoming)
+
+*No changes yet.*
+
+---
+
+## Version 2.0.4
 
 ### New Features
 
+- **Archive Editor** — ZIP, EPUB, DOCX, XLSX, and other ZIP-based archives now open in a dedicated Archive Editor showing a browsable file tree. Click any file to view it inline — the Archive panel persists in the sidebar while you navigate between files inside the archive. The Archive panel auto-expands when navigating within the archive and auto-closes when navigating to unrelated files.
 - **`page.sourceLink` property** — Pages opened through the link pipeline (file path, URL, cURL command, archive entry) now expose a `sourceLink` descriptor with the resolved URL, target editor, and accumulated metadata. Available as a read-only property in scripts via `page.sourceLink`.
+
+### Improvements
+
+- **Colored archive icon** — Archive files (`.zip`, `.rar`, `.7z`, `.tar`, `.gz`, etc.) now display a colorful WinRAR-style icon in the File Explorer. Document formats like `.docx`, `.xlsx`, `.epub` keep their system icons.
+- **Explorer New File** — The "New File..." context menu item in the File Explorer now works correctly.
+- **Explorer panel navigation** — Expanding the Explorer panel no longer auto-navigates to its last selection. The selection is cleared when navigating from a different source (e.g., Archive panel).
 
 ---
 
