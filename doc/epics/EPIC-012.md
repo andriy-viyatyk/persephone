@@ -629,7 +629,7 @@ app.events.openContent.subscribe((event) => {
 
 ## Tasks
 
-Tasks are ordered by dependency and grouped into phases. After each phase, run `/project:review`, `/project:document`, and `/project:userdoc` to validate and update documentation for the batch.
+Tasks are ordered by dependency and grouped into phases. After each phase, run `/review`, `/document`, and `/userdoc` to validate and update documentation for the batch.
 
 ### Phase A: Foundation
 

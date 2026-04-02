@@ -34,9 +34,9 @@ See [completed.md](completed.md) for all completed tasks.
 ### Completing a Task
 
 1. Verify all acceptance criteria are met
-2. Run `/project:review` — check code against architecture docs
-3. Run `/project:document` — update developer docs in `/doc/`
-4. Run `/project:userdoc` — update user docs in `/docs/`
+2. Run `/review` — check code against architecture docs
+3. Run `/document` — update developer docs in `/doc/`
+4. Run `/userdoc` — update user docs in `/docs/`
 5. Add task to the top of [completed.md](completed.md)
 6. **Task folder cleanup** (if one exists):
    - If the task is part of an active epic — **keep the folder** (task documents are useful for reference while the epic is in progress)

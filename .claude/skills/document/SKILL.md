@@ -1,10 +1,16 @@
+---
+name: document
+description: Update developer documentation in /doc/ after code changes
+allowed-tools: Read, Grep, Glob, Edit, Write, Bash
+---
+
 # Developer Documentation Update
 
 You are updating the developer documentation in `/doc/` to reflect recent code changes.
 
 ## Scope
 
-This command covers **developer docs only** (the `/doc/` folder). User-facing docs in `/docs/` are handled by the `/project:userdoc` agent separately.
+This command covers **developer docs only** (the `/doc/` folder). User-facing docs in `/docs/` are handled by the `/userdoc` skill separately.
 
 ## What to check and update
 

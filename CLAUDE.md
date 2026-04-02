@@ -33,7 +33,7 @@ When user says "let's work on tasks" or similar:
 
 If the user gives work without a defined task (e.g., "fix this bug", "add this feature"):
 - **Small work** (single fix, quick change): Proceed without creating a task document. Create an entry in `active.md` with a generated US-XXX ID and brief title.
-- **Large work** (multiple files, many changes): Create a task folder with README.md to track context. This helps when running `/project:review`, `/project:document`, and `/project:userdoc` at the end.
+- **Large work** (multiple files, many changes): Create a task folder with README.md to track context. This helps when running `/review`, `/document`, and `/userdoc` at the end.
 - **Epic linking**: If an active epic exists and the work relates to it, suggest linking: "This seems related to EPIC-XXX. Should I link this task to it?"
 - **Before committing**: If no task entry exists yet, create one in `active.md` so the work is tracked.
 
@@ -99,9 +99,9 @@ The goal: after `/compact`, the agent reads the task README.md and can implement
 **Do NOT run completion steps automatically after implementation.** After implementation, the user will test the changes manually. During testing, bugs or adjustments may appear that require additional code changes. Only when the user explicitly says **"let's complete the task"** (or similar) should you proceed with the completion steps below.
 
 1. Verify all acceptance criteria are met
-2. **Run `/project:review`** — validates code against architecture docs, reports concerns
-3. **Run `/project:document`** — updates developer docs in `/doc/` (architecture, standards, CLAUDE.md)
-4. **Run `/project:userdoc`** — updates user docs in `/docs/` (guides, API reference, what's new)
+2. **Run `/review`** — validates code against architecture docs, reports concerns
+3. **Run `/document`** — updates developer docs in `/doc/` (architecture, standards, CLAUDE.md)
+4. **Run `/userdoc`** — updates user docs in `/docs/` (guides, API reference, what's new)
 5. Add task to the top of [/doc/tasks/completed.md](doc/tasks/completed.md) (include Epic column if linked)
 6. Update the linked epic's task table (if applicable)
 7. **Task folder cleanup** (if one exists):
@@ -198,8 +198,7 @@ npm run lint        # Run ESLint
   /epics             # Epic tracking (big ideas with linked tasks)
 /docs                # User documentation
 /.claude
-  /commands          # Custom commands: /project:review, /project:document
-  /agents            # Custom agents: /project:userdoc (Sonnet, isolated context)
+  /skills            # Skills: /review (forked), /document, /userdoc (forked), /mcp-test-agent (forked)
 ```
 
 See [/doc/architecture/folder-structure.md](doc/architecture/folder-structure.md) for complete details.

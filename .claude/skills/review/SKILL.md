@@ -1,3 +1,11 @@
+---
+name: review
+description: Review recent code changes against architecture and coding standards
+context: fork
+agent: Explore
+allowed-tools: Read, Grep, Glob, Bash
+---
+
 # Architecture Review
 
 You are reviewing recent code changes against the project's architecture and coding standards.

@@ -1,7 +1,9 @@
 ---
+name: userdoc
 model: sonnet
-tools: Read, Glob, Grep, Edit, Write, Bash
+context: fork
 description: Reviews and updates user-facing documentation in /docs/ after code changes. Use after implementation tasks to keep user guides current.
+allowed-tools: Read, Glob, Grep, Edit, Write, Bash
 ---
 
 # User Documentation Update
@@ -10,7 +12,7 @@ You are updating the user-facing documentation in `/docs/` to reflect recent cod
 
 ## Scope
 
-This agent covers **user docs only** (the `/docs/` folder). Developer docs in `/doc/` are handled by the `/project:document` command separately.
+This agent covers **user docs only** (the `/docs/` folder). Developer docs in `/doc/` are handled by the `/document` skill separately.
 
 ## Documentation structure
 
