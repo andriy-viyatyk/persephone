@@ -1,5 +1,4 @@
 import type { PageEditor } from "./common";
-import type { ISourceLink } from "./io.events";
 import type { ITextEditor } from "./text-editor";
 import type { IGridEditor } from "./grid-editor";
 import type { INotebookEditor } from "./notebook-editor";
@@ -46,9 +45,6 @@ export interface IPage {
 
     /** Absolute file path, if the page is backed by a file. */
     readonly filePath?: string;
-
-    /** The link that opened this page — origin identity + metadata. */
-    readonly sourceLink?: ISourceLink;
 
     /** Text content. Get/set. Only meaningful for text-based pages. */
     content: string;
