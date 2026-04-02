@@ -2,7 +2,7 @@ import { ReactNode } from "react";
 import styled from "@emotion/styled";
 import clsx from "clsx";
 
-import { TextFileModel } from "./TextPageModel";
+import { TextFileModel } from "./TextEditorModel";
 import { Button } from "../../components/basic/Button";
 import color from "../../theme/color";
 import { FlexSpace } from "../../components/layout/Elements";

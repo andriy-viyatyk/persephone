@@ -4,7 +4,7 @@ import { IContentHost } from "../base/IContentHost";
 
 import { ui } from "../../api/ui";
 import { TodoItem, TodoTag, TodoData, ListCount } from "./todoTypes";
-import type { TextFileModel } from "../text/TextPageModel";
+import type { TextFileModel } from "../text/TextEditorModel";
 
 // =============================================================================
 // State

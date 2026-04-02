@@ -4,7 +4,7 @@ import { useDrag, useDrop } from "react-dnd";
 import { useFloating, offset as floatingOffset, autoUpdate } from "@floating-ui/react";
 import color from "../../theme/color";
 import { CloseIcon, GlobeIcon, PlusIcon, VolumeIcon, VolumeMutedIcon } from "../../theme/icons";
-import { BrowserPageModel, BrowserTabData } from "./BrowserPageModel";
+import { BrowserEditorModel, BrowserTabData } from "./BrowserEditorModel";
 import { Button } from "../../components/basic/Button";
 import type { MenuItem } from "../../components/overlay/PopupMenu";
 import { ContextMenuEvent } from "../../api/events/events";
@@ -147,7 +147,7 @@ const BrowserTabsPanelRoot = styled.div({
 
 interface TabItemProps {
     tab: BrowserTabData;
-    model: BrowserPageModel;
+    model: BrowserEditorModel;
     isActive: boolean;
     compact: boolean;
     showClose: boolean;
@@ -251,7 +251,7 @@ function TabItem({
 // =============================================================================
 
 interface BrowserTabsPanelProps {
-    model: BrowserPageModel;
+    model: BrowserEditorModel;
     tabs: BrowserTabData[];
     activeTabId: string;
     width: number;

@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { EditorPageModule } from "../../editors/types";
+import { EditorViewModule } from "../../editors/types";
 import { EditorModel } from "../../editors/base";
 import type { IContentHost } from "../../editors/base/IContentHost";
 import { useEffect, useState } from "react";
@@ -14,10 +14,10 @@ const ProgressRoot = styled.div({
 });
 
 // Module cache to avoid reloading and prevent height jumps during editor switches
-const moduleCache = new Map<string, EditorPageModule>();
+const moduleCache = new Map<string, EditorViewModule>();
 
 export interface AsyncEditorProps {
-    getEditorModule: () => Promise<EditorPageModule>;
+    getEditorModule: () => Promise<EditorViewModule>;
     model: EditorModel | IContentHost;
     /** Unique identifier for caching the loaded module (e.g., editor type) */
     cacheKey?: string;
@@ -26,7 +26,7 @@ export interface AsyncEditorProps {
 export function AsyncEditor({ getEditorModule, model, cacheKey }: AsyncEditorProps) {
     // Check cache first for instant render (only if cacheKey provided)
     const cachedModule = cacheKey ? moduleCache.get(cacheKey) : undefined;
-    const [EditorModule, setEditorModule] = useState<EditorPageModule | null>(
+    const [EditorModule, setEditorModule] = useState<EditorViewModule | null>(
         cachedModule ?? null
     );
 

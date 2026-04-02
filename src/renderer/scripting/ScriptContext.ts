@@ -5,7 +5,7 @@ import { PageWrapper } from "./api-wrapper/PageWrapper";
 import { UiFacade } from "./api-wrapper/UiFacade";
 import { styledText } from "./api-wrapper/StyledTextBuilder";
 import { resolveLibraryModule } from "./library-require";
-import { isTextFileModel } from "../editors/text/TextPageModel";
+import { isTextFileModel } from "../editors/text/TextEditorModel";
 import type { LogViewModel } from "../editors/log-view/LogViewModel";
 import React from "react";
 import { fpResolve } from "../core/utils/file-path";

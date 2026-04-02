@@ -86,7 +86,7 @@ export class NavigationData {
     /** Update the owner model reference and propagate to secondary models.
      *  Called after NavigationData is transferred during navigation.
      *  Secondary models may clear their secondaryEditor during setOwnerPage
-     *  (e.g., ZipPageModel checks sourceLink). Their setter is a no-op because
+     *  (e.g., ZipEditorModel checks sourceLink). Their setter is a no-op because
      *  navigationData is null (only the active page holds the reference), so
      *  NavigationData handles the cleanup after notification. */
     setOwnerModel(model: EditorModel): void {
@@ -186,7 +186,7 @@ export class NavigationData {
             }
 
             try {
-                const model = await pagesModel.lifecycle.newPageModelFromState(desc.pageState);
+                const model = await pagesModel.lifecycle.newEditorModelFromState(desc.pageState);
                 model.applyRestoreData(desc.pageState as any); // eslint-disable-line @typescript-eslint/no-explicit-any
                 await model.restore();
                 this.secondaryModels.push(model);

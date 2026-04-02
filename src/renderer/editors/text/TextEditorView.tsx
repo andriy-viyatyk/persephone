@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import { clsx } from "clsx";
 import { useEffect, useRef } from "react";
-import { TextFileModel } from "./TextPageModel";
+import { TextFileModel } from "./TextEditorModel";
 import { PageToolbar } from "../base/EditorToolbar";
 import { TextToolbar } from "./TextToolbar";
 import { ScriptPanel } from "./ScriptPanel";
@@ -12,7 +12,7 @@ import { FlexSpace } from "../../components/layout/Elements";
 import { pagesModel } from "../../api/pages";
 import { EditorModel } from "../base";
 
-const TextPageViewRoot = styled.div({
+const TextEditorViewRoot = styled.div({
     flex: "1 1 auto",
     display: "flex",
     flexDirection: "column",
@@ -50,11 +50,11 @@ const TextPageViewRoot = styled.div({
     },
 });
 
-interface TextPageViewProps {
+interface TextEditorViewProps {
     model: TextFileModel;
 }
 
-export function TextPageView({ model }: TextPageViewProps) {
+export function TextEditorView({ model }: TextEditorViewProps) {
     const { restored } = model.state.use((s) => ({
         restored: s.restored,
     }));
@@ -74,7 +74,7 @@ export function TextPageView({ model }: TextPageViewProps) {
     }, [model]);
 
     return (
-        <TextPageViewRoot
+        <TextEditorViewRoot
             ref={rootRef}
             className={clsx("file-page")}
             onKeyDown={model.handleKeyDown}
@@ -96,9 +96,9 @@ export function TextPageView({ model }: TextPageViewProps) {
                 ref={model.setEditorOverlayRef}
                 className="editor-overlay"
             />
-        </TextPageViewRoot>
+        </TextEditorViewRoot>
     );
 }
 
 // Re-export with old name for backward compatibility
-export { TextPageView as TextFilePage };
+export { TextEditorView as TextFilePage };

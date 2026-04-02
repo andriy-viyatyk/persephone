@@ -1,4 +1,4 @@
-import { TextFileModel } from "./TextPageModel";
+import { TextFileModel } from "./TextEditorModel";
 import { AsyncEditor } from "../../ui/app/AsyncEditor";
 import { TextEditor } from "./TextEditor";
 import { editorRegistry } from "../registry";

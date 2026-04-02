@@ -17,7 +17,7 @@ import type { UpdateCheckResult } from "../../../ipc/api-param-types";
 // Styled Component
 // ============================================================================
 
-const AboutPageRoot = styled.div({
+const AboutEditorRoot = styled.div({
     flex: "1 1 auto",
     display: "flex",
     flexDirection: "column",
@@ -151,21 +151,21 @@ const AboutPageRoot = styled.div({
 });
 
 // ============================================================================
-// AboutPageModel (Page Model)
+// AboutEditorModel (Page Model)
 // ============================================================================
 
 export const ABOUT_PAGE_ID = "about-page";
 
-interface AboutPageModelState extends IEditorState {}
+interface AboutEditorModelState extends IEditorState {}
 
-const getDefaultAboutPageModelState = (): AboutPageModelState => ({
+const getDefaultAboutPageModelState = (): AboutEditorModelState => ({
     ...getDefaultEditorModelState(),
     id: ABOUT_PAGE_ID,
     type: "aboutPage",
     title: "About",
 });
 
-class AboutPageModel extends EditorModel<AboutPageModelState, void> {
+class AboutEditorModel extends EditorModel<AboutEditorModelState, void> {
     noLanguage = true;
     skipSave = true;
 
@@ -184,8 +184,8 @@ class AboutPageModel extends EditorModel<AboutPageModelState, void> {
 // AboutPage Component
 // ============================================================================
 
-interface AboutPageProps {
-    model: AboutPageModel;
+interface AboutEditorProps {
+    model: AboutEditorModel;
 }
 
 function mapUpdateResult(result: UpdateCheckResult): IUpdateInfo {
@@ -202,7 +202,7 @@ function mapUpdateResult(result: UpdateCheckResult): IUpdateInfo {
     };
 }
 
-function AboutPage({ model }: AboutPageProps) {
+function AboutPage({ model }: AboutEditorProps) {
     const [runtimeVersions, setRuntimeVersions] = useState<IRuntimeVersions | null>(null);
     const [updateResult, setUpdateResult] = useState<IUpdateInfo | null>(null);
     const [checking, setChecking] = useState(false);
@@ -275,7 +275,7 @@ function AboutPage({ model }: AboutPageProps) {
     };
 
     return (
-        <AboutPageRoot>
+        <AboutEditorRoot>
             <div className="about-card">
                 <div className="app-icon">
                     <PersephoneIcon width={64} height={64} />
@@ -335,7 +335,7 @@ function AboutPage({ model }: AboutPageProps) {
                     </button>
                 </div>
             </div>
-        </AboutPageRoot>
+        </AboutEditorRoot>
     );
 }
 
@@ -345,26 +345,26 @@ function AboutPage({ model }: AboutPageProps) {
 
 const aboutEditorModule: EditorModule = {
     Editor: AboutPage,
-    newPageModel: async () => {
-        return new AboutPageModel(new TComponentState(getDefaultAboutPageModelState()));
+    newEditorModel: async () => {
+        return new AboutEditorModel(new TComponentState(getDefaultAboutPageModelState()));
     },
-    newEmptyPageModel: async (pageType: EditorType): Promise<EditorModel | null> => {
-        if (pageType === "aboutPage") {
-            return new AboutPageModel(new TComponentState(getDefaultAboutPageModelState()));
+    newEmptyEditorModel: async (editorType: EditorType): Promise<EditorModel | null> => {
+        if (editorType === "aboutPage") {
+            return new AboutEditorModel(new TComponentState(getDefaultAboutPageModelState()));
         }
         return null;
     },
-    newPageModelFromState: async (state: Partial<IEditorState>): Promise<EditorModel> => {
-        const initialState: AboutPageModelState = {
+    newEditorModelFromState: async (state: Partial<IEditorState>): Promise<EditorModel> => {
+        const initialState: AboutEditorModelState = {
             ...getDefaultAboutPageModelState(),
             ...state,
         };
-        return new AboutPageModel(new TComponentState(initialState));
+        return new AboutEditorModel(new TComponentState(initialState));
     },
 };
 
 export default aboutEditorModule;
 
 // Named exports
-export { AboutPage, AboutPageModel };
-export type { AboutPageProps, AboutPageModelState };
+export { AboutPage, AboutEditorModel };
+export type { AboutEditorProps, AboutEditorModelState };

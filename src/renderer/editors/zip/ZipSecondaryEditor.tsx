@@ -4,10 +4,10 @@ import { app } from "../../api/app";
 import { RawLinkEvent } from "../../api/events/events";
 import type { ITreeProviderItem } from "../../api/types/io.tree";
 import type { SecondaryEditorProps } from "../../ui/navigation/secondary-editor-registry";
-import type { ZipPageModel } from "./ZipPageModel";
+import type { ZipEditorModel } from "./ZipEditorModel";
 
 export default function ZipSecondaryEditor({ model }: SecondaryEditorProps) {
-    const zipModel = model as ZipPageModel;
+    const zipModel = model as ZipEditorModel;
     const provider = zipModel.treeProvider;
 
     const handleItemClick = useCallback((item: ITreeProviderItem) => {

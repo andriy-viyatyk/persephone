@@ -1,5 +1,5 @@
 import { ReactNode, useMemo, useSyncExternalStore } from "react";
-import { isTextFileModel, TextFileModel } from "./TextPageModel";
+import { isTextFileModel, TextFileModel } from "./TextEditorModel";
 import type { EditorView } from "../../../shared/types";
 import { Button } from "../../components/basic/Button";
 import { CompareIcon, NavPanelIcon, RunAllIcon, RunIcon } from "../../theme/icons";

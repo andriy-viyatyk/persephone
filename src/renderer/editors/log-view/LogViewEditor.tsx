@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
-import { TextFileModel } from "../text/TextPageModel";
+import { TextFileModel } from "../text/TextEditorModel";
 import { useContentViewModel } from "../base/useContentViewModel";
 import { LogViewModel, LogViewState, defaultLogViewState } from "./LogViewModel";
 import { LogViewProvider } from "./LogViewContext";

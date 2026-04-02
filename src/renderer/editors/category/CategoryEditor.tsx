@@ -8,7 +8,7 @@ import { NavPanelIcon } from "../../theme/icons";
 import { app } from "../../api/app";
 import { RawLinkEvent } from "../../api/events/events";
 import type { ITreeProviderItem } from "../../api/types/io.tree";
-import type { CategoryPageModel } from "./CategoryPageModel";
+import type { CategoryEditorModel } from "./CategoryEditorModel";
 import type { EditorModule } from "../types";
 import type { EditorType, IEditorState } from "../../../shared/types";
 import color from "../../theme/color";
@@ -22,7 +22,7 @@ const CategoryEditorRoot = styled.div({
     backgroundColor: color.background.default,
 });
 
-export function CategoryEditor({ model }: { model: CategoryPageModel }) {
+export function CategoryEditor({ model }: { model: CategoryEditorModel }) {
     const navData = model.navigationData;
     const provider = navData?.treeProvider ?? null;
     const categoryPath = model.categoryPath;
@@ -87,24 +87,24 @@ export function CategoryEditor({ model }: { model: CategoryPageModel }) {
 
 const categoryEditorModule: EditorModule = {
     Editor: CategoryEditor,
-    newPageModel: async (filePath?: string) => {
-        const { CategoryPageModel } = await import("./CategoryPageModel");
+    newEditorModel: async (filePath?: string) => {
+        const { CategoryEditorModel } = await import("./CategoryEditorModel");
         const { decodeCategoryLink } = await import("../../content/tree-providers/tree-provider-link");
-        const model = new CategoryPageModel();
+        const model = new CategoryEditorModel();
         if (filePath) {
             const link = decodeCategoryLink(filePath);
             if (link) model.initFromLink(link);
         }
         return model;
     },
-    newEmptyPageModel: async (pageType: EditorType) => {
-        if (pageType !== "categoryPage") return null;
-        const { CategoryPageModel } = await import("./CategoryPageModel");
-        return new CategoryPageModel();
+    newEmptyEditorModel: async (editorType: EditorType) => {
+        if (editorType !== "categoryPage") return null;
+        const { CategoryEditorModel } = await import("./CategoryEditorModel");
+        return new CategoryEditorModel();
     },
-    newPageModelFromState: async (state: Partial<IEditorState>) => {
-        const { CategoryPageModel } = await import("./CategoryPageModel");
-        const model = new CategoryPageModel();
+    newEditorModelFromState: async (state: Partial<IEditorState>) => {
+        const { CategoryEditorModel } = await import("./CategoryEditorModel");
+        const model = new CategoryEditorModel();
         model.applyRestoreData(state as any); // eslint-disable-line @typescript-eslint/no-explicit-any
         return model;
     },

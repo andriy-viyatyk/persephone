@@ -12,7 +12,7 @@ import { showEditLinkDialog } from "./EditLinkDialog";
 import { ui } from "../../api/ui";
 import { settings } from "../../api/settings";
 import { shell } from "../../api/shell";
-import type { TextFileModel } from "../text/TextPageModel";
+import type { TextFileModel } from "../text/TextEditorModel";
 
 // =============================================================================
 // State

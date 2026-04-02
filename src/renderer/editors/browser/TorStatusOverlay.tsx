@@ -10,10 +10,10 @@ import { TorIcon } from "../../theme/language-icons";
 import { TOR_BROWSER_COLOR } from "../../theme/palette-colors";
 import { CloseIcon } from "../../theme/icons";
 import { Button } from "../../components/basic/Button";
-import type { BrowserPageModel } from "./BrowserPageModel";
+import type { BrowserEditorModel } from "./BrowserEditorModel";
 
 interface TorStatusOverlayProps {
-    model: BrowserPageModel;
+    model: BrowserEditorModel;
     torStatus: "disconnected" | "connecting" | "connected" | "error";
     torLog: string;
 }

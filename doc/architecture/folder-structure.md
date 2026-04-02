@@ -222,8 +222,8 @@ persephone/
 │   │   └── index.ts
 │   │
 │   ├── text/               # Monaco text editor (content-view host)
-│   │   ├── TextPageModel.ts        # TextFileModel — hosts content-views
-│   │   ├── TextPageView.tsx        # Main view (toolbar + active editor)
+│   │   ├── TextEditorModel.ts        # TextFileModel — hosts content-views
+│   │   ├── TextEditorView.tsx        # Main view (toolbar + active editor)
 │   │   ├── TextEditor.tsx          # Monaco editor component + TextViewModel
 │   │   ├── ActiveEditor.tsx        # Content-view switcher
 │   │   ├── TextToolbar.tsx         # Text-specific toolbar
@@ -250,8 +250,8 @@ persephone/
 │   │   └── index.ts
 │   │
 │   ├── browser/            # Built-in browser (page-editor)
-│   │   ├── BrowserPageModel.ts     # Multi-tab browser state
-│   │   ├── BrowserPageView.tsx     # Browser UI
+│   │   ├── BrowserEditorModel.ts     # Multi-tab browser state
+│   │   ├── BrowserEditorView.tsx     # Browser UI
 │   │   ├── BrowserWebviewModel.ts  # Webview management
 │   │   ├── BrowserUrlBarModel.ts   # URL bar state
 │   │   ├── BrowserTabsPanel.tsx    # Browser tab bar
@@ -386,7 +386,7 @@ persephone/
 │   │   └── SettingsPage.tsx
 │   ├── category/           # Category/folder view (page-editor)
 │   │   ├── CategoryEditor.tsx     # Wraps CategoryView, toolbar with navigator toggle
-│   │   └── CategoryPageModel.ts   # Page model — decodes tree-category:// link
+│   │   └── CategoryEditorModel.ts   # Page model — decodes tree-category:// link
 │   ├── shared/             # Shared editor utilities
 │   │   └── link-open-menu.tsx
 │   │
@@ -548,7 +548,7 @@ import { app } from "../../api/app";
 import { Button } from "../../components/basic/Button";
 
 // Type-only imports for code splitting (erased at compile time)
-import type { BrowserPageModel } from "../../editors/browser/BrowserPageModel";
+import type { BrowserEditorModel } from "../../editors/browser/BrowserEditorModel";
 
 // Dynamic imports for editors (preserves code splitting)
 const { PdfViewer } = await import("../editors/pdf/PdfViewer");

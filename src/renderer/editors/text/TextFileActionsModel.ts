@@ -6,7 +6,7 @@ import { scriptRunner } from "../../scripting/ScriptRunner";
 import { isScriptLanguage } from "../../scripting/transpile";
 import { EditorModel } from "../base/EditorModel";
 
-import type { TextFileModel } from "./TextPageModel";
+import type { TextFileModel } from "./TextEditorModel";
 
 export class TextFileActionsModel {
     constructor(private model: TextFileModel) {}

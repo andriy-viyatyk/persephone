@@ -2,7 +2,7 @@
 const { ipcRenderer } = require("electron");
 import { scriptRunner } from "../scripting/ScriptRunner";
 import { pagesModel } from "./pages";
-import { isTextFileModel } from "../editors/text/TextPageModel";
+import { isTextFileModel } from "../editors/text/TextEditorModel";
 import { editorRegistry } from "../editors/registry";
 import { MCP_EXECUTE, MCP_RESULT } from "../../shared/constants";
 import { app } from "./app";

@@ -7,26 +7,26 @@ import { fpBasename } from "../../core/utils/file-path";
 import { ArchiveIcon } from "../../theme/icons";
 import { expandSecondaryPanel } from "../../core/state/events";
 
-export interface ZipPageModelState extends IEditorState {
+export interface ZipEditorModelState extends IEditorState {
     type: "zipFile";
     /** Archive source URL (path to the .zip file). */
     archiveUrl: string;
 }
 
-export function getDefaultZipPageModelState(): ZipPageModelState {
+export function getDefaultZipEditorModelState(): ZipEditorModelState {
     return {
         ...getDefaultEditorModelState(),
         type: "zipFile",
         archiveUrl: "",
-    } as ZipPageModelState;
+    } as ZipEditorModelState;
 }
 
-export class ZipPageModel extends EditorModel<ZipPageModelState> {
+export class ZipEditorModel extends EditorModel<ZipEditorModelState> {
     /** Tree provider for browsing archive contents. Owned by this model. */
     treeProvider: ZipTreeProvider | null = null;
 
-    constructor(state?: TComponentState<ZipPageModelState>) {
-        super(state ?? new TComponentState(getDefaultZipPageModelState()));
+    constructor(state?: TComponentState<ZipEditorModelState>) {
+        super(state ?? new TComponentState(getDefaultZipEditorModelState()));
         this.noLanguage = true;
         this.getIcon = () => React.createElement(ArchiveIcon, { width: 16, height: 16 });
     }
@@ -56,7 +56,7 @@ export class ZipPageModel extends EditorModel<ZipPageModelState> {
             );
             this.treeProvider = new ZipTreeProvider(archiveUrl);
         }
-        // Ensure NavigationData exists — ZipPageModel always needs a sidebar.
+        // Ensure NavigationData exists — ZipEditorModel always needs a sidebar.
         // On app restart: super.restore() already created it from cache.
         // On fresh open via openFile/createPageFromFile: create it here.
         // On _openZipArchive: restore() is not called (NavigationData created manually).
@@ -112,14 +112,14 @@ export class ZipPageModel extends EditorModel<ZipPageModelState> {
         await super.dispose();
     }
 
-    applyRestoreData(data: Partial<ZipPageModelState>): void {
+    applyRestoreData(data: Partial<ZipEditorModelState>): void {
         super.applyRestoreData(data as any); // eslint-disable-line @typescript-eslint/no-explicit-any
         if (data.archiveUrl) {
             this.state.update((s) => { s.archiveUrl = data.archiveUrl!; });
         }
     }
 
-    getRestoreData(): Partial<ZipPageModelState> {
+    getRestoreData(): Partial<ZipEditorModelState> {
         return {
             ...super.getRestoreData(),
             archiveUrl: this.state.get().archiveUrl,

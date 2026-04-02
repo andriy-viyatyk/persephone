@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import { useMemo, useSyncExternalStore } from "react";
-import { TextFileModel } from "../text/TextPageModel";
+import { TextFileModel } from "../text/TextEditorModel";
 import { useContentViewModel } from "../base/useContentViewModel";
 import { HtmlViewModel, defaultHtmlViewState } from "./HtmlViewModel";
 

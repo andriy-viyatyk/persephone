@@ -302,7 +302,7 @@ function ImageViewer({ model }: ImageViewerProps) {
 
 const imageEditorModule: EditorModule = {
     Editor: ImageViewer,
-    newPageModel: async (filePath?: string) => {
+    newEditorModel: async (filePath?: string) => {
         const state = {
             ...getDefaultImageViewerModelState(),
             ...(filePath ? { filePath } : {}),
@@ -310,17 +310,17 @@ const imageEditorModule: EditorModule = {
 
         return new ImageViewerModel(new TComponentState(state));
     },
-    newEmptyPageModel: async (
-        pageType: EditorType
+    newEmptyEditorModel: async (
+        editorType: EditorType
     ): Promise<EditorModel | null> => {
-        if (pageType === "imageFile") {
+        if (editorType === "imageFile") {
             return new ImageViewerModel(
                 new TComponentState(getDefaultImageViewerModelState())
             );
         }
         return null;
     },
-    newPageModelFromState: async (
+    newEditorModelFromState: async (
         state: Partial<IEditorState>
     ): Promise<EditorModel> => {
         const initialState: ImageViewerModelState = {

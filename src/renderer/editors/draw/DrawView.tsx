@@ -4,7 +4,7 @@ import { createPortal } from "react-dom";
 import { Excalidraw, FONT_FAMILY, THEME, useHandleLibrary } from "@excalidraw/excalidraw";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/dist/types/excalidraw/types";
 import "@excalidraw/excalidraw/index.css";
-import { TextFileModel } from "../text/TextPageModel";
+import { TextFileModel } from "../text/TextEditorModel";
 import { useContentViewModel } from "../base/useContentViewModel";
 import { CircularProgress } from "../../components/basic/CircularProgress";
 import { EditorError } from "../base/EditorError";

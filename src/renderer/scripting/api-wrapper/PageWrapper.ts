@@ -1,5 +1,5 @@
 import { EditorModel } from "../../editors/base";
-import { isTextFileModel } from "../../editors/text/TextPageModel";
+import { isTextFileModel } from "../../editors/text/TextEditorModel";
 import { pagesModel } from "../../api/pages";
 import { EditorView } from "../../../shared/types";
 import type { TextViewModel } from "../../editors/text/TextEditor";
@@ -13,7 +13,7 @@ import type { HtmlViewModel } from "../../editors/html/HtmlViewModel";
 import type { MermaidViewModel } from "../../editors/mermaid/MermaidViewModel";
 import type { GraphViewModel } from "../../editors/graph/GraphViewModel";
 import type { DrawViewModel } from "../../editors/draw/DrawViewModel";
-import type { BrowserPageModel } from "../../editors/browser/BrowserPageModel";
+import type { BrowserEditorModel } from "../../editors/browser/BrowserEditorModel";
 import type { McpInspectorModel } from "../../editors/mcp-inspector/McpInspectorModel";
 import { TextEditorFacade } from "./TextEditorFacade";
 import { GridEditorFacade } from "./GridEditorFacade";
@@ -260,7 +260,7 @@ export class PageWrapper {
             throw new Error("asBrowser() is only available for browser pages");
         }
 
-        return new BrowserEditorFacade(this.model as unknown as BrowserPageModel);
+        return new BrowserEditorFacade(this.model as unknown as BrowserEditorModel);
     }
 
     async asMcpInspector(): Promise<McpInspectorFacade> {

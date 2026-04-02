@@ -1,6 +1,6 @@
 import { ui } from "../../api/ui";
 import { shell } from "../../api/shell";
-import type { TextFileModel } from "./TextPageModel";
+import type { TextFileModel } from "./TextEditorModel";
 import { DecryptTransformer } from "../../content/transformers/DecryptTransformer";
 
 export class TextFileEncryptionModel {

@@ -4,7 +4,7 @@ import { showEditLinkDialog } from "../link-editor/EditLinkDialog";
 import { ui } from "../../api/ui";
 import { api } from "../../../ipc/renderer/api";
 import { settings, BrowserProfile } from "../../api/settings";
-import type { BrowserPageModel } from "./BrowserPageModel";
+import type { BrowserEditorModel } from "./BrowserEditorModel";
 import type { LinkItem } from "../link-editor/linkTypes";
 import { app } from "../../api/app";
 import { BookmarkEvent } from "../../api/events/events";
@@ -22,7 +22,7 @@ const BOOKMARKS_FILE_FILTER = { name: "Link Files", extensions: ["link.json"] };
  * and tracked images for the browser editor.
  */
 export class BrowserBookmarksUIModel {
-    readonly model: BrowserPageModel;
+    readonly model: BrowserEditorModel;
 
     /** Per-tab tracked images for bookmark image discovery. */
     trackedImagesRef = new Map<string, TrackedImageLevel[]>();
@@ -32,7 +32,7 @@ export class BrowserBookmarksUIModel {
     /** Cleanup function for model state subscription (urlInput tracking). */
     private urlTrackingSub: (() => void) | null = null;
 
-    constructor(model: BrowserPageModel) {
+    constructor(model: BrowserEditorModel) {
         this.model = model;
     }
 

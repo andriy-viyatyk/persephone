@@ -5,7 +5,7 @@ import type { ContentViewModel } from "./ContentViewModel";
 
 /**
  * Minimal state shape required by content view models.
- * Both TextFilePageModelState and NoteItemEditModel's state extend this.
+ * Both TextFileEditorModelState and NoteItemEditModel's state extend this.
  */
 export interface IContentHostState {
     content: string;

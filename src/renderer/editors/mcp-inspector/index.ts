@@ -1,6 +1,6 @@
 export { McpInspectorModel } from "./McpInspectorModel";
 export type {
-    McpInspectorPageState, McpPanelId,
+    McpInspectorEditorState, McpPanelId,
     McpToolInfo, McpToolResult, McpToolsPanelState,
     McpResourceInfo, McpResourceContent, McpResourcesPanelState,
     McpPromptInfo, McpPromptMessage, McpPromptsPanelState,

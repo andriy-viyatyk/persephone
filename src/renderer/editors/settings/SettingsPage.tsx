@@ -14,7 +14,7 @@ import { DEFAULT_BROWSER_COLOR, TAG_COLORS } from "../../theme/palette-colors";
 import { WithPopupMenu } from "../../components/overlay/WithPopupMenu";
 import { MenuItem } from "../../components/overlay/PopupMenu";
 import { ui } from "../../api/ui";
-import { getPartitionString } from "../browser/BrowserPageModel";
+import { getPartitionString } from "../browser/BrowserEditorModel";
 import { IncognitoIcon, TorIcon } from "../../theme/language-icons";
 import { api } from "../../../ipc/renderer/api";
 import rendererEvents from "../../../ipc/renderer/renderer-events";
@@ -26,7 +26,7 @@ import { BrowserChannel } from "../../../ipc/browser-ipc";
 // Styled Component
 // ============================================================================
 
-const SettingsPageRoot = styled.div({
+const SettingsEditorRoot = styled.div({
     flex: "1 1 auto",
     display: "flex",
     flexDirection: "column",
@@ -588,21 +588,21 @@ function ThemePreview({ bgDefault, bgDark, textDefault, accentColor }: ThemePrev
 }
 
 // ============================================================================
-// SettingsPageModel (Page Model)
+// SettingsEditorModel (Page Model)
 // ============================================================================
 
 export const SETTINGS_PAGE_ID = "settings-page";
 
-interface SettingsPageModelState extends IEditorState {}
+interface SettingsEditorModelState extends IEditorState {}
 
-const getDefaultSettingsPageModelState = (): SettingsPageModelState => ({
+const getDefaultSettingsPageModelState = (): SettingsEditorModelState => ({
     ...getDefaultEditorModelState(),
     id: SETTINGS_PAGE_ID,
     type: "settingsPage",
     title: "Settings",
 });
 
-class SettingsPageModel extends EditorModel<SettingsPageModelState, void> {
+class SettingsEditorModel extends EditorModel<SettingsEditorModelState, void> {
     noLanguage = true;
     skipSave = true;
 
@@ -1274,11 +1274,11 @@ function DrawingLibrarySection() {
 // SettingsPage Component
 // ============================================================================
 
-interface SettingsPageProps {
-    model: SettingsPageModel;
+interface SettingsEditorProps {
+    model: SettingsEditorModel;
 }
 
-function SettingsPage({ model }: SettingsPageProps) {
+function SettingsPage({ model }: SettingsEditorProps) {
     const currentThemeId = settings.use("theme");
     const searchExtensions = settings.use("search-extensions");
     const themes = getAvailableThemes();
@@ -1330,7 +1330,7 @@ function SettingsPage({ model }: SettingsPageProps) {
     );
 
     return (
-        <SettingsPageRoot>
+        <SettingsEditorRoot>
             <div className="settings-card">
                 <h1 className="settings-title">Settings</h1>
 
@@ -1391,7 +1391,7 @@ function SettingsPage({ model }: SettingsPageProps) {
                     View Settings File
                 </button>
             </div>
-        </SettingsPageRoot>
+        </SettingsEditorRoot>
     );
 }
 
@@ -1401,25 +1401,25 @@ function SettingsPage({ model }: SettingsPageProps) {
 
 const settingsEditorModule: EditorModule = {
     Editor: SettingsPage,
-    newPageModel: async () => {
-        return new SettingsPageModel(new TComponentState(getDefaultSettingsPageModelState()));
+    newEditorModel: async () => {
+        return new SettingsEditorModel(new TComponentState(getDefaultSettingsPageModelState()));
     },
-    newEmptyPageModel: async (pageType: EditorType): Promise<EditorModel | null> => {
-        if (pageType === "settingsPage") {
-            return new SettingsPageModel(new TComponentState(getDefaultSettingsPageModelState()));
+    newEmptyEditorModel: async (editorType: EditorType): Promise<EditorModel | null> => {
+        if (editorType === "settingsPage") {
+            return new SettingsEditorModel(new TComponentState(getDefaultSettingsPageModelState()));
         }
         return null;
     },
-    newPageModelFromState: async (state: Partial<IEditorState>): Promise<EditorModel> => {
-        const initialState: SettingsPageModelState = {
+    newEditorModelFromState: async (state: Partial<IEditorState>): Promise<EditorModel> => {
+        const initialState: SettingsEditorModelState = {
             ...getDefaultSettingsPageModelState(),
             ...state,
         };
-        return new SettingsPageModel(new TComponentState(initialState));
+        return new SettingsEditorModel(new TComponentState(initialState));
     },
 };
 
 export default settingsEditorModule;
 
-export { SettingsPage, SettingsPageModel };
-export type { SettingsPageProps, SettingsPageModelState };
+export { SettingsPage, SettingsEditorModel };
+export type { SettingsEditorProps, SettingsEditorModelState };

@@ -154,7 +154,7 @@ const getDefaultPromptsPanelState = (): McpPromptsPanelState => ({
 
 export type McpPanelId = "info" | "tools" | "resources" | "prompts" | "history";
 
-export interface McpInspectorPageState extends IEditorState {
+export interface McpInspectorEditorState extends IEditorState {
     // Connection config
     url: string;
     transportType: McpTransportType;
@@ -181,7 +181,7 @@ export interface McpInspectorPageState extends IEditorState {
     activePanel: McpPanelId;
 }
 
-export const getDefaultMcpInspectorPageState = (): McpInspectorPageState => ({
+export const getDefaultMcpInspectorPageState = (): McpInspectorEditorState => ({
     ...getDefaultEditorModelState(),
     type: "mcpInspectorPage",
     title: "MCP Inspector",
@@ -213,7 +213,7 @@ export const getDefaultMcpInspectorPageState = (): McpInspectorPageState => ({
 // Model
 // ============================================================================
 
-export class McpInspectorModel extends EditorModel<McpInspectorPageState, void> {
+export class McpInspectorModel extends EditorModel<McpInspectorEditorState, void> {
     noLanguage = true;
     skipSave = true;
 
@@ -224,7 +224,7 @@ export class McpInspectorModel extends EditorModel<McpInspectorPageState, void> 
 
     private _history: McpRequestEntry[] = [];
 
-    constructor(state: TComponentState<McpInspectorPageState>) {
+    constructor(state: TComponentState<McpInspectorEditorState>) {
         super(state);
         this.connection.onStatusChange = (status, error) => {
             const info = this.connection.serverInfo;
@@ -635,8 +635,8 @@ export class McpInspectorModel extends EditorModel<McpInspectorPageState, void> 
         await super.restore();
     }
 
-    getRestoreData(): Partial<McpInspectorPageState> {
-        const data = super.getRestoreData() as Partial<McpInspectorPageState>;
+    getRestoreData(): Partial<McpInspectorEditorState> {
+        const data = super.getRestoreData() as Partial<McpInspectorEditorState>;
         const s = this.state.get();
         data.url = s.url;
         data.transportType = s.transportType;
@@ -647,7 +647,7 @@ export class McpInspectorModel extends EditorModel<McpInspectorPageState, void> 
         return data;
     }
 
-    applyRestoreData(data: Partial<McpInspectorPageState>): void {
+    applyRestoreData(data: Partial<McpInspectorEditorState>): void {
         super.applyRestoreData(data);
         this.state.update((s) => {
             if (data.url !== undefined) s.url = data.url;

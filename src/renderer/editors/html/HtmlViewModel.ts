@@ -1,6 +1,6 @@
 import { ContentViewModel } from "../base/ContentViewModel";
 import { IContentHost } from "../base/IContentHost";
-import { TextFileModel } from "../text/TextPageModel";
+import { TextFileModel } from "../text/TextEditorModel";
 
 // =============================================================================
 // State

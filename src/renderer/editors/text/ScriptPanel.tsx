@@ -3,7 +3,7 @@ import * as monaco from "monaco-editor";
 import styled from "@emotion/styled";
 
 import { TModel } from "../../core/state/model";
-import { TextFileModel } from "./TextPageModel";
+import { TextFileModel } from "./TextEditorModel";
 import { Splitter } from "../../components/layout/Splitter";
 import color from "../../theme/color";
 import { PageToolbar } from "../base/EditorToolbar";

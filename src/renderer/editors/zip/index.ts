@@ -1,23 +1,23 @@
-import { ZipPageView } from "./ZipPageView";
+import { ZipEditorView } from "./ZipEditorView";
 import type { EditorModule } from "../types";
 import type { EditorType, IEditorState } from "../../../shared/types";
 
 const zipEditorModule: EditorModule = {
-    Editor: ZipPageView,
-    newPageModel: async (filePath?: string) => {
-        const { ZipPageModel } = await import("./ZipPageModel");
-        const model = new ZipPageModel();
+    Editor: ZipEditorView,
+    newEditorModel: async (filePath?: string) => {
+        const { ZipEditorModel } = await import("./ZipEditorModel");
+        const model = new ZipEditorModel();
         if (filePath) await model.initFromArchive(filePath);
         return model;
     },
-    newEmptyPageModel: async (pageType: EditorType) => {
-        if (pageType !== "zipFile") return null;
-        const { ZipPageModel } = await import("./ZipPageModel");
-        return new ZipPageModel();
+    newEmptyEditorModel: async (editorType: EditorType) => {
+        if (editorType !== "zipFile") return null;
+        const { ZipEditorModel } = await import("./ZipEditorModel");
+        return new ZipEditorModel();
     },
-    newPageModelFromState: async (state: Partial<IEditorState>) => {
-        const { ZipPageModel } = await import("./ZipPageModel");
-        const model = new ZipPageModel();
+    newEditorModelFromState: async (state: Partial<IEditorState>) => {
+        const { ZipEditorModel } = await import("./ZipEditorModel");
+        const model = new ZipEditorModel();
         model.applyRestoreData(state as any); // eslint-disable-line @typescript-eslint/no-explicit-any
         return model;
     },

@@ -154,7 +154,7 @@ function PdfViewer({ model }: PdfViewerProps) {
 
 const pdfEditorModule: EditorModule = {
     Editor: PdfViewer,
-    newPageModel: async (filePath?: string) => {
+    newEditorModel: async (filePath?: string) => {
         const state = {
             ...getDefaultPdfViewerModelState(),
             ...(filePath ? { filePath } : {}),
@@ -162,17 +162,17 @@ const pdfEditorModule: EditorModule = {
 
         return new PdfViewerModel(new TComponentState(state));
     },
-    newEmptyPageModel: async (
-        pageType: EditorType
+    newEmptyEditorModel: async (
+        editorType: EditorType
     ): Promise<EditorModel | null> => {
-        if (pageType === "pdfFile") {
+        if (editorType === "pdfFile") {
             return new PdfViewerModel(
                 new TComponentState(getDefaultPdfViewerModelState())
             );
         }
         return null;
     },
-    newPageModelFromState: async (
+    newEditorModelFromState: async (
         state: Partial<IEditorState>
     ): Promise<EditorModel> => {
         const initialState: PdfViewerModelState = {

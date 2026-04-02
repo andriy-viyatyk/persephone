@@ -2,23 +2,23 @@ import { KeyboardEvent } from "react";
 import {
     detectSearchEngine,
     SEARCH_ENGINES,
-} from "./BrowserPageModel";
+} from "./BrowserEditorModel";
 import { searchHistoryManager } from "./browser-search-history";
 import type { MenuItem } from "../../components/overlay/PopupMenu";
 import { ContextMenuEvent } from "../../api/events/events";
-import type { BrowserPageModel } from "./BrowserPageModel";
+import type { BrowserEditorModel } from "./BrowserEditorModel";
 
 /**
  * Manages URL bar input, suggestions dropdown, and search engine selection
  * for the browser editor.
  */
 export class BrowserUrlBarModel {
-    readonly model: BrowserPageModel;
+    readonly model: BrowserEditorModel;
 
     /** DOM reference for the URL input element. */
     urlInputRef: HTMLInputElement | null = null;
 
-    constructor(model: BrowserPageModel) {
+    constructor(model: BrowserEditorModel) {
         this.model = model;
     }
 

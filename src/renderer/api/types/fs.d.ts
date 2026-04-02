@@ -1,6 +1,6 @@
 /**
  * Result of reading a text file with encoding information.
- * Used by app code that needs to preserve encoding (e.g., TextPageModel).
+ * Used by app code that needs to preserve encoding (e.g., TextEditorModel).
  */
 export interface ITextFile {
     /** File content as string. */

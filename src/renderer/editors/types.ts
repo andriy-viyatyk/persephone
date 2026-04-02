@@ -3,24 +3,24 @@ import { EditorModel } from "./base";
 import type { IContentHost } from "./base/IContentHost";
 import type { ContentViewModel } from "./base/ContentViewModel";
 
-export type FileEditorPage<T extends EditorModel | IContentHost = EditorModel | IContentHost> = React.ComponentType<{
+export type FileEditorComponent<T extends EditorModel | IContentHost = EditorModel | IContentHost> = React.ComponentType<{
     model: T;
 }>;
 
 export interface EditorModelCreations {
-    newPageModel(filePath?: string): Promise<EditorModel>;
-    newEmptyPageModel(pageType: EditorType): Promise<EditorModel | null>;
-    newPageModelFromState(state: Partial<IEditorState>): Promise<EditorModel>;
+    newEditorModel(filePath?: string): Promise<EditorModel>;
+    newEmptyEditorModel(editorType: EditorType): Promise<EditorModel | null>;
+    newEditorModelFromState(state: Partial<IEditorState>): Promise<EditorModel>;
 }
 
-export interface EditorPageModule {
-    Editor: FileEditorPage;
+export interface EditorViewModule {
+    Editor: FileEditorComponent;
 }
 
 /** Factory function that creates a ContentViewModel for a given host. */
 export type ViewModelFactory = (host: IContentHost) => ContentViewModel<any>;
 
-export type EditorModule = EditorPageModule & EditorModelCreations & {
+export type EditorModule = EditorViewModule & EditorModelCreations & {
     /** Optional factory for creating a content view model. Content-view editors provide this. */
     createViewModel?: ViewModelFactory;
 };
@@ -29,10 +29,10 @@ export type EditorModule = EditorPageModule & EditorModelCreations & {
  * Editor category distinguishes between two types of editors:
  *
  * - "page-editor": Standalone editors with their own EditorModel (e.g., PDF viewer, Image viewer).
- *   These render instead of TextPageView and handle their own UI entirely.
+ *   These render instead of TextEditorView and handle their own UI entirely.
  *
  * - "content-view": Views of text-based content that share TextFileModel (e.g., Monaco, Grid, Markdown).
- *   These render inside TextPageView via ActiveEditor and share toolbar, script panel, footer.
+ *   These render inside TextEditorView via ActiveEditor and share toolbar, script panel, footer.
  *   Content views can switch between each other (e.g., JSON text → Grid view).
  */
 export type EditorCategory = "page-editor" | "content-view";
@@ -40,7 +40,7 @@ export type EditorCategory = "page-editor" | "content-view";
 export interface EditorDefinition {
     id: EditorView;
     name: string;
-    pageType: EditorType;
+    editorType: EditorType;
     /** Distinguishes standalone page editors from content views */
     category: EditorCategory;
 

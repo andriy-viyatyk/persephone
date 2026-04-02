@@ -38,12 +38,12 @@ export class PagesPersistenceModel {
 
     restoreModel = async (data: Partial<IEditorState>): Promise<EditorModel | null> => {
         const editors = editorRegistry.getAll();
-        const editorDef = editors.find((e) => e.pageType === data.type);
+        const editorDef = editors.find((e) => e.editorType === data.type);
         let model: EditorModel | null = null;
 
         if (editorDef) {
             const module = await editorDef.loadModule();
-            model = await module.newEmptyPageModel(data.type);
+            model = await module.newEmptyEditorModel(data.type);
         }
 
         if (model) {

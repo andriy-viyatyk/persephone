@@ -1,7 +1,7 @@
 const fs = require("fs");
 import { debounce } from "../../../shared/utils";
 import { TComponentState } from "../../core/state/state";
-import { TextFileModel, getDefaultTextFilePageModelState } from "../text/TextPageModel";
+import { TextFileModel, getDefaultTextFileEditorModelState } from "../text/TextEditorModel";
 import { LinkViewModel } from "../link-editor/LinkViewModel";
 import { LinkItem } from "../link-editor/linkTypes";
 import { EditorView } from "../../../shared/types";
@@ -10,7 +10,7 @@ import { ui } from "../../api/ui";
 
 /**
  * Wraps TextFileModel + LinkViewModel for browser bookmarks.
- * Stored on BrowserPageModel.bookmarks (null until lazily initialized).
+ * Stored on BrowserEditorModel.bookmarks (null until lazily initialized).
  *
  * The LinkViewModel is acquired through the host's ContentViewModelHost so that
  * BookmarksDrawer's LinkEditor (which also calls acquireViewModel) shares
@@ -23,7 +23,7 @@ export class BrowserBookmarks {
 
     constructor(filePath: string) {
         const state = {
-            ...getDefaultTextFilePageModelState(),
+            ...getDefaultTextFileEditorModelState(),
             filePath,
             language: "json",
             editor: "link-view" as EditorView,

@@ -159,7 +159,7 @@ export interface BrowserTabData {
     navHistory: string[];
 }
 
-export interface BrowserPageState extends IEditorState {
+export interface BrowserEditorState extends IEditorState {
     /** Active internal tab's URL (kept in sync for toolbar display). */
     url: string;
     pageTitle: string;
@@ -254,7 +254,7 @@ function createTab(url = DEFAULT_URL): BrowserTabData {
     };
 }
 
-export const getDefaultBrowserPageState = (): BrowserPageState => {
+export const getDefaultBrowserPageState = (): BrowserEditorState => {
     const tab = createTab();
     return {
         ...getDefaultEditorModelState(),
@@ -316,7 +316,7 @@ export function getPartitionString(
     return `persist:browser-${profileName || "default"}`;
 }
 
-export class BrowserPageModel extends EditorModel<BrowserPageState, void> {
+export class BrowserEditorModel extends EditorModel<BrowserEditorState, void> {
     noLanguage = true;
     skipSave = true;
 
@@ -330,7 +330,7 @@ export class BrowserPageModel extends EditorModel<BrowserPageState, void> {
     private keyDownSub: SubscriptionObject;
     private windowClosingSub: SubscriptionObject;
 
-    constructor(state: TComponentState<BrowserPageState>) {
+    constructor(state: TComponentState<BrowserEditorState>) {
         super(state);
         this.webview = new BrowserWebviewModel(this);
         this.urlBar = new BrowserUrlBarModel(this);
@@ -581,8 +581,8 @@ export class BrowserPageModel extends EditorModel<BrowserPageState, void> {
         }
     }
 
-    getRestoreData(): Partial<BrowserPageState> {
-        const data = super.getRestoreData() as Partial<BrowserPageState>;
+    getRestoreData(): Partial<BrowserEditorState> {
+        const data = super.getRestoreData() as Partial<BrowserEditorState>;
         const s = this.state.get();
         // Save all tabs with their actual current URLs
         data.tabs = s.tabs.map((t) => ({
@@ -605,7 +605,7 @@ export class BrowserPageModel extends EditorModel<BrowserPageState, void> {
         return data;
     }
 
-    applyRestoreData(data: Partial<BrowserPageState>): void {
+    applyRestoreData(data: Partial<BrowserEditorState>): void {
         super.applyRestoreData(data);
         this.state.update((s) => {
             if (data.tabs && data.tabs.length > 0) {
@@ -991,7 +991,7 @@ export class BrowserPageModel extends EditorModel<BrowserPageState, void> {
         });
     };
 
-    private syncTopLevelFromTab(s: BrowserPageState, tab: BrowserTabData) {
+    private syncTopLevelFromTab(s: BrowserEditorState, tab: BrowserTabData) {
         s.url = this.currentUrls.get(tab.id) || tab.url;
         s.pageTitle = tab.pageTitle;
         s.loading = tab.loading;
@@ -1002,8 +1002,8 @@ export class BrowserPageModel extends EditorModel<BrowserPageState, void> {
     }
 }
 
-export function newBrowserPageModel(): BrowserPageModel {
-    return new BrowserPageModel(
+export function newBrowserEditorModel(): BrowserEditorModel {
+    return new BrowserEditorModel(
         new TComponentState(getDefaultBrowserPageState()),
     );
 }

@@ -12,10 +12,10 @@ import {
 import { app } from "../../api/app";
 import { RawLinkEvent } from "../../api/events/events";
 import type { ITreeProviderItem } from "../../api/types/io.tree";
-import type { ZipPageModel } from "./ZipPageModel";
+import type { ZipEditorModel } from "./ZipEditorModel";
 import color from "../../theme/color";
 
-const ZipPageViewRoot = styled.div({
+const ZipEditorViewRoot = styled.div({
     display: "flex",
     flexDirection: "column",
     width: "100%",
@@ -24,7 +24,7 @@ const ZipPageViewRoot = styled.div({
     backgroundColor: color.background.default,
 });
 
-export function ZipPageView({ model }: { model: ZipPageModel }) {
+export function ZipEditorView({ model }: { model: ZipEditorModel }) {
     const provider = model.treeProvider;
     const pageId = model.id;
     const treeRef = useRef<TreeProviderViewRef>(null);
@@ -50,16 +50,16 @@ export function ZipPageView({ model }: { model: ZipPageModel }) {
 
     if (!provider) {
         return (
-            <ZipPageViewRoot>
+            <ZipEditorViewRoot>
                 <div style={{ padding: 16, color: color.text.light }}>
                     No archive loaded.
                 </div>
-            </ZipPageViewRoot>
+            </ZipEditorViewRoot>
         );
     }
 
     return (
-        <ZipPageViewRoot>
+        <ZipEditorViewRoot>
             <PageToolbar borderBottom>
                 <Button
                     type="icon"
@@ -93,6 +93,6 @@ export function ZipPageView({ model }: { model: ZipPageModel }) {
                 onItemClick={handleItemClick}
                 onItemDoubleClick={handleItemClick}
             />
-        </ZipPageViewRoot>
+        </ZipEditorViewRoot>
     );
 }

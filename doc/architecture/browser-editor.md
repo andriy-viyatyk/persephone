@@ -16,7 +16,7 @@ The browser editor uses three levels of tab nesting:
 
 ### Tab Reordering
 
-Internal browser tabs support drag-and-drop reordering via `react-dnd`. Each tab in `BrowserTabsPanel` uses `useDrag`/`useDrop` hooks (drag type: `BROWSER_TAB_DRAG`). On drop, `BrowserPageModel.moveTab(fromId, toId)` splices the tab from its source position and inserts it at the target position. Since webviews are rendered through `PageManager` with stable DOM placeholders, reordering the `state.tabs` array doesn't cause webview reloads.
+Internal browser tabs support drag-and-drop reordering via `react-dnd`. Each tab in `BrowserTabsPanel` uses `useDrag`/`useDrop` hooks (drag type: `BROWSER_TAB_DRAG`). On drop, `BrowserEditorModel.moveTab(fromId, toId)` splices the tab from its source position and inserts it at the target position. Since webviews are rendered through `PageManager` with stable DOM placeholders, reordering the `state.tabs` array doesn't cause webview reloads.
 
 ### New Window Handling
 
@@ -47,8 +47,8 @@ A notification bar appears below the loading indicator showing the blocked count
 │  Guest Page (webview)          │  Renderer Process    │  Main Process│
 │  (isolated Chromium context)   │  (React UI)          │  (Node.js)   │
 ├────────────────────────────────┼──────────────────────┼──────────────┤
-│  preload-webview.ts            │  BrowserPageView.tsx │  browser-    │
-│  - MutationObserver on <head>  │  BrowserPageModel.ts │  service.ts  │
+│  preload-webview.ts            │  BrowserEditorView.tsx │  browser-    │
+│  - MutationObserver on <head>  │  BrowserEditorModel.ts │  service.ts  │
 │  - Detects title/favicon       │  BrowserTabsPanel.tsx│  - Attaches  │
 │  - sendToHost() messages       │  - Toolbar, URL bar  │    to real   │
 │                                │  - Multi-webview     │    webContents│
@@ -90,7 +90,7 @@ Each webview registers with the main process using a composite key: `${tabId}/${
 ### 1. User navigates (types URL + Enter)
 
 ```
-BrowserPageView → model.navigate(url) → state.url + active tab.url updated
+BrowserEditorView → model.navigate(url) → state.url + active tab.url updated
     → Navigation effect detects URL change
     → Checks webviewReady before calling loadURL()
     → webview loads the page
@@ -150,7 +150,7 @@ The webview's right-click context menu is intercepted in the main process and re
 ```
 Main Process                          IPC                       Renderer
 ─────────────                    ──────────────          ────────────────────────
-webContents                      BrowserChannel          BrowserPageView
+webContents                      BrowserChannel          BrowserEditorView
   context-menu event         →     .event            →     onBrowserEvent handler
   event.preventDefault()           type: "context-menu"     → SVG probe (elementFromPoint)
   params: linkURL, srcURL,         data: x, y, linkURL,    → Build MenuItem[] based on context
@@ -183,8 +183,8 @@ The renderer builds the menu dynamically based on `params` fields from the `cont
 
 | File | Process | Purpose |
 |------|---------|---------|
-| `src/renderer/editors/browser/BrowserPageView.tsx` | Renderer | UI component: toolbar, URL bar, multi-webview management, URL suggestions, bookmarks |
-| `src/renderer/editors/browser/BrowserPageModel.ts` | Renderer | Multi-tab state management, navigation logic, favicon caching, search engines |
+| `src/renderer/editors/browser/BrowserEditorView.tsx` | Renderer | UI component: toolbar, URL bar, multi-webview management, URL suggestions, bookmarks |
+| `src/renderer/editors/browser/BrowserEditorModel.ts` | Renderer | Multi-tab state management, navigation logic, favicon caching, search engines |
 | `src/renderer/editors/browser/BrowserTabsPanel.tsx` | Renderer | Left-side internal tabs panel with compact extension popup, drag-to-reorder |
 | `src/renderer/editors/browser/BrowserBookmarks.ts` | Renderer | Wraps TextFileModel + LinkEditorModel for bookmark file I/O |
 | `src/renderer/editors/browser/BookmarksDrawer.tsx` | Renderer | Sliding overlay drawer rendering the Link Editor for bookmarks |
@@ -227,7 +227,7 @@ Favicons use a caching strategy to avoid showing the globe icon during same-orig
 2. On `did-navigate`, the cached favicon for the new URL's origin is applied immediately
 3. The preload script then fires with the actual favicon, updating if different
 
-The `getIcon()` method on `BrowserPageModel` reads `this.state.get().favicon` synchronously. `PageTab` subscribes to favicon changes via `_iconHint` in its state selector to trigger re-renders.
+The `getIcon()` method on `BrowserEditorModel` reads `this.state.get().favicon` synchronously. `PageTab` subscribes to favicon changes via `_iconHint` in its state selector to trigger re-renders.
 
 ## Build Configuration
 
@@ -270,7 +270,7 @@ Each browser page is bound to a **profile** that determines its Electron session
 | Incognito | `browser-incognito-<uuid>` | Cleared when page closes |
 | Tor | `browser-tor-<uuid>` | Cleared when page closes |
 
-`getPartitionString()` in `BrowserPageModel.ts` computes the partition. `BrowserPageModel.partition` is a **getter** (not a stored field) because the profile state may be set after model construction in `showBrowserPage()`. Each incognito/tor model has a stable `incognitoId`/`torId` (random UUID generated once per instance) to keep the partition consistent across getter calls.
+`getPartitionString()` in `BrowserEditorModel.ts` computes the partition. `BrowserEditorModel.partition` is a **getter** (not a stored field) because the profile state may be set after model construction in `showBrowserPage()`. Each incognito/tor model has a stable `incognitoId`/`torId` (random UUID generated once per instance) to keep the partition consistent across getter calls.
 
 ### Profile Settings
 
@@ -285,7 +285,7 @@ Profiles are stored in app settings as `BrowserProfile[]` (`{ name, color }`). A
 | Incognito | IncognitoIcon |
 | Tor | TorIcon (purple onion, branded colors) |
 
-The `resolvedColor` getter on `BrowserPageModel` resolves the color chain: explicit profile → default profile setting → `DEFAULT_BROWSER_COLOR`.
+The `resolvedColor` getter on `BrowserEditorModel` resolves the color chain: explicit profile → default profile setting → `DEFAULT_BROWSER_COLOR`.
 
 ### Incognito Indicator
 
@@ -305,7 +305,7 @@ Tor mode routes all webview traffic through the Tor network via a SOCKS5 proxy. 
 
 **Session restore:** Tor pages are restored with `torStatus: "disconnected"`, `torOverlayVisible: true`, and an empty tab. User must click "Reconnect" — no auto-connect on restore.
 
-**Window close cleanup:** `BrowserPageModel` subscribes to the `windowClosing` event (from `GlobalEventService.beforeunload`) to release Tor partitions when the window closes without explicit tab disposal.
+**Window close cleanup:** `BrowserEditorModel` subscribes to the `windowClosing` event (from `GlobalEventService.beforeunload`) to release Tor partitions when the window closes without explicit tab disposal.
 
 ### Clear Profile Data
 
@@ -380,7 +380,7 @@ Each browser profile can be associated with a `.link.json` bookmarks file. Bookm
 ### Architecture
 
 ```
-BrowserBookmarks (stored on BrowserPageModel.bookmarks)
+BrowserBookmarks (stored on BrowserEditorModel.bookmarks)
     ├─ TextFileModel     — file I/O, encryption, FileWatcher, auto-save
     └─ LinkEditorModel   — parsed link data, categories, tags, filters
 ```
@@ -393,9 +393,9 @@ Bookmarks load through two paths:
 
 **Eager preload (silent):** On browser page creation, `preloadBookmarks()` runs after a 300ms delay. It checks for a configured bookmarks file, calls `BrowserBookmarks.init({ silent: true })` which skips the password dialog for encrypted files. If successful, bookmarks appear immediately on blank tabs. If encrypted, bookmarks stay null until the user triggers manually.
 
-**Manual trigger (interactive):** User clicks ☆ (star) or "Open Links" → check `model.bookmarks !== null` → if null, read profile's bookmarks file path from settings → if no file path, show "Associate Bookmarks File" dialog → create `BrowserBookmarks(filePath)` → `init()` with password dialog if encrypted → store on `BrowserPageModel.bookmarks`.
+**Manual trigger (interactive):** User clicks ☆ (star) or "Open Links" → check `model.bookmarks !== null` → if null, read profile's bookmarks file path from settings → if no file path, show "Associate Bookmarks File" dialog → create `BrowserBookmarks(filePath)` → `init()` with password dialog if encrypted → store on `BrowserEditorModel.bookmarks`.
 
-After initialization, `BrowserPageModel` sets two callbacks on `linkModel`:
+After initialization, `BrowserEditorModel` sets two callbacks on `linkModel`:
 - `onInternalLinkOpen` — routes link clicks to the correct browser page (navigates current blank tab, or adds new tab if current tab has content). `Ctrl+Click` always opens in a new tab (detected via `window.event.ctrlKey` in the callback).
 - `onGetLinkMenuItems` — returns an "Open in New Tab" menu item that calls `model.addTab(url)`. These items are prepended to the link context menu (before "Edit"), providing mouse-only access to new-tab behavior without requiring `Ctrl+Click`.
 
@@ -443,7 +443,7 @@ When focus is inside a `<webview>`, keyboard events are consumed by the guest pa
 
 ### Layer 2: Global Key Event Bus (`globalKeyDown` Subscription)
 
-When focus is on any renderer element (toolbar, URL bar, tab panel, or no specific focus), the browser editor subscribes to a global keyboard event bus. `MainPage` broadcasts all `keydown` events via `globalKeyDown.send(e)` (defined in `events.ts`). `BrowserPageModel` subscribes in its constructor and handles browser hotkeys only when it's the active page. This keeps browser-specific logic out of MainPage.
+When focus is on any renderer element (toolbar, URL bar, tab panel, or no specific focus), the browser editor subscribes to a global keyboard event bus. `MainPage` broadcasts all `keydown` events via `globalKeyDown.send(e)` (defined in `events.ts`). `BrowserEditorModel` subscribes in its constructor and handles browser hotkeys only when it's the active page. This keeps browser-specific logic out of MainPage.
 
 ### Layer 3: Root div `onKeyDown` (`BrowserWebviewModel`)
 
@@ -465,7 +465,7 @@ The root browser `<div>` handles `Ctrl+L` (focus URL bar) and `Ctrl+F` (find in 
 
 ## Scripting Facade
 
-Scripts access browser pages via `page.asBrowser()`, which returns a `BrowserEditorFacade`. Unlike content-view facades (which acquire a ViewModel with ref-counting), this wraps `BrowserPageModel` directly — no ViewModel, no ref-counting — because the browser is a page-editor, not a content-view.
+Scripts access browser pages via `page.asBrowser()`, which returns a `BrowserEditorFacade`. Unlike content-view facades (which acquire a ViewModel with ref-counting), this wraps `BrowserEditorModel` directly — no ViewModel, no ref-counting — because the browser is a page-editor, not a content-view.
 
 ```javascript
 const browser = await page.asBrowser();

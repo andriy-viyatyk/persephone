@@ -4,12 +4,12 @@ graph TB
     RP -->|"page-editor"| AE["AsyncEditor<br/><i>Lazy-loads module</i>"]
     AE --> PDF["PdfViewer"]
     AE --> IMG["ImageViewer"]
-    AE --> BR["BrowserPageView"]
+    AE --> BR["BrowserEditorView"]
     AE --> AB["AboutPage"]
     AE --> SET["SettingsPage"]
     AE --> CMP["CompareEditor"]
 
-    RP -->|"content-view"| TPV["TextPageView<br/><i>Shared shell</i>"]
+    RP -->|"content-view"| TPV["TextEditorView<br/><i>Shared shell</i>"]
 
     TPV --> TB["TextToolbar"]
     TPV --> ACT["ActiveEditor<br/><i>Renders current view</i>"]

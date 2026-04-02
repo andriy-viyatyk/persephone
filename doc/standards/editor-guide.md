@@ -155,7 +155,7 @@ import {
 const myEditorModule: EditorModule = {
   Editor: MyEditor,
 
-  newPageModel: async (filePath?: string) => {
+  newEditorModel: async (filePath?: string) => {
     const state = {
       ...getDefaultMyEditorModelState(),
       ...(filePath ? { filePath } : {}),
@@ -165,8 +165,8 @@ const myEditorModule: EditorModule = {
     return model;
   },
 
-  newEmptyPageModel: async (pageType: EditorType) => {
-    if (pageType === 'myType') {
+  newEmptyEditorModel: async (editorType: EditorType) => {
+    if (editorType === 'myType') {
       return new MyEditorModel(
         new TComponentState(getDefaultMyEditorModelState())
       );
@@ -174,7 +174,7 @@ const myEditorModule: EditorModule = {
     return null;
   },
 
-  newPageModelFromState: async (state: Partial<IPage>) => {
+  newEditorModelFromState: async (state: Partial<IPage>) => {
     const initialState = {
       ...getDefaultMyEditorModelState(),
       ...state,
@@ -216,7 +216,7 @@ import { editorRegistry } from "./registry";
 editorRegistry.register({
     id: "my-editor",           // Must match EditorView type
     name: "My Editor",         // Display name in UI
-    pageType: "myType",        // EditorType this editor creates
+    editorType: "myType",        // EditorType this editor creates
     category: "page-editor",   // Standalone editor with own EditorModel
     acceptFile: (fileName) => {
         // Return priority >= 0 if this editor can open the file
@@ -234,8 +234,8 @@ editorRegistry.register({
 editorRegistry.register({
     id: "my-view",
     name: "My View",
-    pageType: "textFile",      // Uses TextFileModel
-    category: "content-view",  // Rendered inside TextPageView
+    editorType: "textFile",      // Uses TextFileModel
+    category: "content-view",  // Rendered inside TextEditorView
     validForLanguage: (languageId) => languageId === "mylang",
     switchOption: (languageId, fileName) => {
         // Return priority >= 0 to show in view switch dropdown
@@ -247,9 +247,9 @@ editorRegistry.register({
         const module = await import("./myview");
         return {
             Editor: module.MyView,
-            newPageModel: textEditorModule.newPageModel,  // Reuse text model
-            newEmptyPageModel: textEditorModule.newEmptyPageModel,
-            newPageModelFromState: textEditorModule.newPageModelFromState,
+            newEditorModel: textEditorModule.newEditorModel,  // Reuse text model
+            newEmptyEditorModel: textEditorModule.newEmptyEditorModel,
+            newEditorModelFromState: textEditorModule.newEditorModelFromState,
         };
     },
 });
@@ -261,7 +261,7 @@ editorRegistry.register({
 |----------|-------------|
 | `id` | Unique editor ID (must be in `EditorView` type) |
 | `name` | Display name shown in UI |
-| `pageType` | The `EditorType` this editor works with |
+| `editorType` | The `EditorType` this editor works with |
 | `category` | `"page-editor"` or `"content-view"` |
 | `acceptFile(fileName)` | Returns priority >= 0 if editor can open file, -1 otherwise |
 | `validForLanguage(languageId)` | Returns true if editor is valid for the language |

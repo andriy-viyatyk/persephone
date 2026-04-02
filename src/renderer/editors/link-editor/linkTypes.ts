@@ -1,4 +1,4 @@
-import { TextFileModel } from "../text/TextPageModel";
+import { TextFileModel } from "../text/TextEditorModel";
 
 // =============================================================================
 // Drag Types

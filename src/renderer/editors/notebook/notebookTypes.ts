@@ -1,10 +1,10 @@
-import { TextFileModel } from "../text/TextPageModel";
+import { TextFileModel } from "../text/TextEditorModel";
 
 // =============================================================================
 // Note Content
 // =============================================================================
 
-/** Note item content (mimics subset of TextPageModel state) */
+/** Note item content (mimics subset of TextEditorModel state) */
 export interface NoteContent {
     language: string;
     content: string;

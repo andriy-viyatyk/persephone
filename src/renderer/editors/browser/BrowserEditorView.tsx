@@ -24,11 +24,11 @@ import { IncognitoIcon, TorIcon } from "../../theme/language-icons";
 import { CircularProgress } from "../../components/basic/CircularProgress";
 import { TorStatusOverlay } from "./TorStatusOverlay";
 import {
-    BrowserPageModel,
-    BrowserPageState,
+    BrowserEditorModel,
+    BrowserEditorState,
     BrowserTabData,
     getDefaultBrowserPageState,
-} from "./BrowserPageModel";
+} from "./BrowserEditorModel";
 import {
     BrowserChannel,
     BrowserRegisterRequest,
@@ -52,7 +52,7 @@ const WEBVIEW_PRELOAD_URL = (window as any).webviewPreloadUrl as string;
 // Styled Component
 // ============================================================================
 
-const BrowserPageViewRoot = styled.div({
+const BrowserEditorViewRoot = styled.div({
     flex: "1 1 auto",
     display: "flex",
     flexDirection: "column",
@@ -233,7 +233,7 @@ const BrowserPageViewRoot = styled.div({
 // ============================================================================
 
 interface BrowserWebviewItemProps {
-    model: BrowserPageModel;
+    model: BrowserEditorModel;
     tab: BrowserTabData;
     isActive: boolean;
     /** Electron session partition string for this browser page. */
@@ -433,14 +433,14 @@ function BlankPageLinks({ bookmarks }: BlankPageLinksProps) {
 }
 
 // ============================================================================
-// BrowserPageView Component
+// BrowserEditorView Component
 // ============================================================================
 
-interface BrowserPageViewProps {
-    model: BrowserPageModel;
+interface BrowserEditorViewProps {
+    model: BrowserEditorModel;
 }
 
-function BrowserPageView({ model }: BrowserPageViewProps) {
+function BrowserEditorView({ model }: BrowserEditorViewProps) {
     const {
         url, loading, canGoBack, canGoForward,
         tabs, activeTabId, tabsPanelWidth,
@@ -531,7 +531,7 @@ function BrowserPageView({ model }: BrowserPageViewProps) {
     const suggestionsItems = urlBar.suggestionsItems;
 
     return (
-        <BrowserPageViewRoot onKeyDown={webview.handleKeyDown} tabIndex={-1}>
+        <BrowserEditorViewRoot onKeyDown={webview.handleKeyDown} tabIndex={-1}>
             <PageToolbar borderBottom>
                 <div className="browser-toolbar-content">
                     <Button
@@ -778,7 +778,7 @@ function BrowserPageView({ model }: BrowserPageViewProps) {
                 anchorEl={downloadsAnchor}
                 onClose={handleDownloadsClose}
             />
-        </BrowserPageViewRoot>
+        </BrowserEditorViewRoot>
     );
 }
 
@@ -787,31 +787,31 @@ function BrowserPageView({ model }: BrowserPageViewProps) {
 // ============================================================================
 
 const browserEditorModule: EditorModule = {
-    Editor: BrowserPageView as any,
-    newPageModel: async () => {
-        return new BrowserPageModel(
+    Editor: BrowserEditorView as any,
+    newEditorModel: async () => {
+        return new BrowserEditorModel(
             new TComponentState(getDefaultBrowserPageState()),
         );
     },
-    newEmptyPageModel: async (
-        pageType: EditorType,
+    newEmptyEditorModel: async (
+        editorType: EditorType,
     ): Promise<EditorModel | null> => {
-        if (pageType !== "browserPage") return null;
-        const model = new BrowserPageModel(
+        if (editorType !== "browserPage") return null;
+        const model = new BrowserEditorModel(
             new TComponentState(getDefaultBrowserPageState()),
         );
         return model;
     },
-    newPageModelFromState: async (
+    newEditorModelFromState: async (
         state: Partial<IEditorState>,
     ): Promise<EditorModel> => {
-        const initialState: BrowserPageState = {
+        const initialState: BrowserEditorState = {
             ...getDefaultBrowserPageState(),
-            ...(state as Partial<BrowserPageState>),
+            ...(state as Partial<BrowserEditorState>),
         };
-        return new BrowserPageModel(new TComponentState(initialState));
+        return new BrowserEditorModel(new TComponentState(initialState));
     },
 };
 
 export default browserEditorModule;
-export { BrowserPageView, BrowserPageModel };
+export { BrowserEditorView, BrowserEditorModel };

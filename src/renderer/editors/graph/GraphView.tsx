@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import { createPortal } from "react-dom";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { TextFileModel } from "../text/TextPageModel";
+import { TextFileModel } from "../text/TextEditorModel";
 import { CircularProgress } from "../../components/basic/CircularProgress";
 import { EditorError } from "../base/EditorError";
 import { useContentViewModel } from "../base/useContentViewModel";

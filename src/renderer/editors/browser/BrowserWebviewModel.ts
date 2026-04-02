@@ -7,19 +7,19 @@ import {
 import { showAppPopupMenu } from "../../ui/dialogs/poppers/showPopupMenu";
 import { MenuItem } from "../../components/overlay/PopupMenu";
 import { pagesModel } from "../../api/pages";
-import { newTextFileModel } from "../text/TextPageModel";
+import { newTextFileModel } from "../text/TextEditorModel";
 import { EditorModel } from "../base";
 
 import { globalPopupRateLimiter } from "../../../ipc/popup-rate-limiter";
 import { browserUrlChanged } from "../../core/state/events";
-import type { BrowserPageModel } from "./BrowserPageModel";
+import type { BrowserEditorModel } from "./BrowserEditorModel";
 
 /**
  * Manages webview references, IPC event handling, context menu,
  * and keyboard shortcuts for the browser editor.
  */
 export class BrowserWebviewModel {
-    readonly model: BrowserPageModel;
+    readonly model: BrowserEditorModel;
 
     /** Map from internalTabId → webview element. */
     webviewRefs = new Map<string, Electron.WebviewTag>();
@@ -32,7 +32,7 @@ export class BrowserWebviewModel {
     /** Tracks the previous active tab URL for navigation change detection. */
     private prevActiveUrl = "";
 
-    constructor(model: BrowserPageModel) {
+    constructor(model: BrowserEditorModel) {
         this.model = model;
     }
 

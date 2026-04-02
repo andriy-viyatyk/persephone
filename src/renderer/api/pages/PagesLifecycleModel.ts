@@ -50,16 +50,16 @@ export class PagesLifecycleModel {
 
     // ── Page factory helpers ─────────────────────────────────────────
 
-    private newPageModel = async (filePath?: string): Promise<EditorModel> => {
+    private newEditorModel = async (filePath?: string): Promise<EditorModel> => {
         const editorDef = editorRegistry.resolve(filePath);
         if (editorDef) {
             const module = await editorDef.loadModule();
-            return module.newPageModel(filePath);
+            return module.newEditorModel(filePath);
         }
         const def = editorRegistry.getById("monaco");
         if (!def) throw new Error("Monaco editor not registered");
         const module = await def.loadModule();
-        return module.newPageModel(filePath);
+        return module.newEditorModel(filePath);
     };
 
     /** Legacy page type migration: maps old renamed page types to current names. */
@@ -67,28 +67,28 @@ export class PagesLifecycleModel {
         mcpBrowserPage: "mcpInspectorPage",
     };
 
-    newPageModelFromState = async (
+    newEditorModelFromState = async (
         state: Partial<IEditorState>
     ): Promise<EditorModel> => {
         if (state.type && PagesLifecycleModel.PAGE_TYPE_MIGRATIONS[state.type]) {
             state = { ...state, type: PagesLifecycleModel.PAGE_TYPE_MIGRATIONS[state.type] };
         }
         const editors = editorRegistry.getAll();
-        const editorDef = editors.find((e) => e.pageType === state.type);
+        const editorDef = editors.find((e) => e.editorType === state.type);
         if (editorDef) {
             const module = await editorDef.loadModule();
-            return module.newPageModelFromState(state);
+            return module.newEditorModelFromState(state);
         }
         const def = editorRegistry.getById("monaco");
         if (!def) throw new Error("Monaco editor not registered");
         const module = await def.loadModule();
-        return module.newPageModelFromState(state);
+        return module.newEditorModelFromState(state);
     };
 
     // ── Core page operations ─────────────────────────────────────────
 
     createPageFromFile = async (filePath: string, pipe?: IContentPipe): Promise<EditorModel> => {
-        const pageModel = await this.newPageModel(filePath);
+        const pageModel = await this.newEditorModel(filePath);
         if (pipe) {
             pageModel.pipe = pipe;
         }
@@ -273,7 +273,7 @@ export class PagesLifecycleModel {
         if (filePath.toLowerCase().endsWith(".asar")) {
             return this._openAsarArchive(filePath);
         }
-        // ZIP-based archives: use ZipPageModel
+        // ZIP-based archives: use ZipEditorModel
         return this._openZipArchive(filePath);
     };
 
@@ -293,7 +293,7 @@ export class PagesLifecycleModel {
     }
 
     private async _openZipArchive(filePath: string): Promise<EditorModel> {
-        // Check if already open as archive (by archiveUrl on ZipPageModel)
+        // Check if already open as archive (by archiveUrl on ZipEditorModel)
         const existing = this.model.state.get().pages.find(
             (p) => p.state.get().type === "zipFile"
                 && (p.state.get() as any).archiveUrl === filePath // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -303,11 +303,11 @@ export class PagesLifecycleModel {
             return existing;
         }
 
-        // Create ZipPageModel via editor registry (dynamic import)
+        // Create ZipEditorModel via editor registry (dynamic import)
         const editorDef = editorRegistry.getById("zip-view");
         if (!editorDef) throw new Error("zip-view editor not registered");
         const module = await editorDef.loadModule();
-        const page = await module.newPageModel(filePath);
+        const page = await module.newEditorModel(filePath);
 
         // Create NavigationData with archive root for explorer sidebar
         const archiveRoot = filePath + "!";
@@ -577,7 +577,7 @@ export class PagesLifecycleModel {
         if (!data || !data.page) {
             return;
         }
-        const pageModel = await this.newPageModelFromState(data.page);
+        const pageModel = await this.newEditorModelFromState(data.page);
         await pageModel.restore();
         const targetIndex = data.targetPageId
             ? this.model.state
@@ -693,7 +693,7 @@ export class PagesLifecycleModel {
 
     showAboutPage = async (): Promise<void> => {
         const aboutModule = await import("../../editors/about/AboutPage");
-        const model = await aboutModule.default.newEmptyPageModel("aboutPage");
+        const model = await aboutModule.default.newEmptyEditorModel("aboutPage");
         if (model) {
             this.addPage(model);
         }
@@ -704,7 +704,7 @@ export class PagesLifecycleModel {
             "../../editors/settings/SettingsPage"
         );
         const model =
-            await settingsModule.default.newEmptyPageModel("settingsPage");
+            await settingsModule.default.newEmptyEditorModel("settingsPage");
         if (model) {
             this.addPage(model);
         }
@@ -733,10 +733,10 @@ export class PagesLifecycleModel {
         }
 
         const browserModule = await import(
-            "../../editors/browser/BrowserPageView"
+            "../../editors/browser/BrowserEditorView"
         );
         const model =
-            await browserModule.default.newEmptyPageModel("browserPage");
+            await browserModule.default.newEmptyEditorModel("browserPage");
         if (model) {
             if (options?.profileName || options?.incognito || options?.tor) {
                 model.state.update((s: any) => {
@@ -770,7 +770,7 @@ export class PagesLifecycleModel {
             "../../editors/mcp-inspector/McpInspectorView"
         );
         const model =
-            await mcpModule.default.newEmptyPageModel("mcpInspectorPage");
+            await mcpModule.default.newEmptyEditorModel("mcpInspectorPage");
         if (model) {
             if (options?.url) {
                 model.state.update((s: any) => { s.url = options.url; });
@@ -782,7 +782,7 @@ export class PagesLifecycleModel {
     openImageInNewTab = async (imageUrl: string): Promise<void> => {
         const imgModule = await import("../../editors/image/ImageViewer");
         const imgModel =
-            await imgModule.default.newEmptyPageModel("imageFile");
+            await imgModule.default.newEmptyEditorModel("imageFile");
         if (imgModel) {
             imgModel.state.update(
                 (s: { title: string; url?: string }) => {

@@ -14,7 +14,7 @@ import { ContentViewModelHost } from "../base/ContentViewModelHost";
 import type { TextViewModel } from "./TextEditor";
 import { createPipeFromDescriptor } from "../../content/registry";
 
-export interface TextFilePageModelState extends IEditorState {
+export interface TextFileEditorModelState extends IEditorState {
     content: string;
     deleted: boolean;
     encoding?: string;
@@ -27,7 +27,7 @@ export interface TextFilePageModelState extends IEditorState {
     detectedContentEditor?: EditorView;
 }
 
-export const getDefaultTextFilePageModelState = (): TextFilePageModelState => ({
+export const getDefaultTextFileEditorModelState = (): TextFileEditorModelState => ({
     ...getDefaultEditorModelState(),
     type: "textFile" as const,
     language: "plaintext",
@@ -42,7 +42,7 @@ export const getDefaultTextFilePageModelState = (): TextFilePageModelState => ({
     restored: false,
 });
 
-export class TextFileModel extends EditorModel<TextFilePageModelState, void> implements IContentHost {
+export class TextFileModel extends EditorModel<TextFileEditorModelState, void> implements IContentHost {
     // Content view model host
     private _vmHost = new ContentViewModelHost();
 
@@ -236,7 +236,7 @@ export class TextFileModel extends EditorModel<TextFilePageModelState, void> imp
         return pageData;
     }
 
-    applyRestoreData = (data: Partial<TextFilePageModelState>): void => {
+    applyRestoreData = (data: Partial<TextFileEditorModelState>): void => {
         this.needsNavigatorRestore = !!(data.hasNavigator || (data as any).hasNavPanel); // eslint-disable-line @typescript-eslint/no-explicit-any
         // Reconstruct pipe from descriptor if present
         if (data.pipe) {
@@ -323,7 +323,7 @@ export class TextFileModel extends EditorModel<TextFilePageModelState, void> imp
 export function newTextFileModel(filePath?: string): TextFileModel {
     const editor = editorRegistry.resolveId(filePath);
     const state = {
-        ...getDefaultTextFilePageModelState(),
+        ...getDefaultTextFileEditorModelState(),
         ...(filePath ? { filePath } : {}),
         editor,
     };
@@ -334,8 +334,8 @@ export function newTextFileModel(filePath?: string): TextFileModel {
 export function newTextFileModelFromState(
     state: Partial<IEditorState>,
 ): TextFileModel {
-    const initialState: TextFilePageModelState = {
-        ...getDefaultTextFilePageModelState(),
+    const initialState: TextFileEditorModelState = {
+        ...getDefaultTextFileEditorModelState(),
         ...state,
     };
     return new TextFileModel(new TComponentState(initialState));

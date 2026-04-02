@@ -39,19 +39,19 @@ const isSpecializedJson = (fileName?: string): boolean => {
 const textEditorModule: EditorModule = {
     get Editor() {
         // Lazy access to avoid circular dependency
-        return require("./text/TextPageView").TextPageView;
+        return require("./text/TextEditorView").TextEditorView;
     },
-    newPageModel: async (filePath?: string) => {
-        const { newTextFileModel } = await import("./text/TextPageModel");
+    newEditorModel: async (filePath?: string) => {
+        const { newTextFileModel } = await import("./text/TextEditorModel");
         return newTextFileModel(filePath);
     },
-    newEmptyPageModel: async (pageType) => {
-        if (pageType !== "textFile") return null;
-        const { newTextFileModel } = await import("./text/TextPageModel");
+    newEmptyEditorModel: async (editorType) => {
+        if (editorType !== "textFile") return null;
+        const { newTextFileModel } = await import("./text/TextEditorModel");
         return newTextFileModel();
     },
-    newPageModelFromState: async (state) => {
-        const { newTextFileModelFromState } = await import("./text/TextPageModel");
+    newEditorModelFromState: async (state) => {
+        const { newTextFileModelFromState } = await import("./text/TextEditorModel");
         return newTextFileModelFromState(state);
     },
 };
@@ -64,7 +64,7 @@ const textEditorModule: EditorModule = {
 editorRegistry.register({
     id: "monaco",
     name: "Text Editor",
-    pageType: "textFile",
+    editorType: "textFile",
     category: "content-view",
     acceptFile: () => 0, // Lowest priority - fallback for all files
     validForLanguage: () => true, // Valid for all languages
@@ -83,7 +83,7 @@ editorRegistry.register({
 editorRegistry.register({
     id: "grid-json",
     name: "Grid",
-    pageType: "textFile",
+    editorType: "textFile",
     category: "content-view",
     acceptFile: (fileName) => {
         // High priority for .grid.json files
@@ -105,9 +105,9 @@ editorRegistry.register({
         return {
             Editor: module.GridEditor,
             createViewModel: createGridViewModel,
-            newPageModel: textEditorModule.newPageModel,
-            newEmptyPageModel: textEditorModule.newEmptyPageModel,
-            newPageModelFromState: textEditorModule.newPageModelFromState,
+            newEditorModel: textEditorModule.newEditorModel,
+            newEmptyEditorModel: textEditorModule.newEmptyEditorModel,
+            newEditorModelFromState: textEditorModule.newEditorModelFromState,
         };
     },
 });
@@ -116,7 +116,7 @@ editorRegistry.register({
 editorRegistry.register({
     id: "grid-csv",
     name: "Grid",
-    pageType: "textFile",
+    editorType: "textFile",
     category: "content-view",
     acceptFile: (fileName) => {
         // High priority for .grid.csv files
@@ -136,9 +136,9 @@ editorRegistry.register({
         return {
             Editor: module.GridEditor,
             createViewModel: createGridViewModel,
-            newPageModel: textEditorModule.newPageModel,
-            newEmptyPageModel: textEditorModule.newEmptyPageModel,
-            newPageModelFromState: textEditorModule.newPageModelFromState,
+            newEditorModel: textEditorModule.newEditorModel,
+            newEmptyEditorModel: textEditorModule.newEmptyEditorModel,
+            newEditorModelFromState: textEditorModule.newEditorModelFromState,
         };
     },
 });
@@ -147,7 +147,7 @@ editorRegistry.register({
 editorRegistry.register({
     id: "grid-jsonl",
     name: "Grid",
-    pageType: "textFile",
+    editorType: "textFile",
     category: "content-view",
     acceptFile: (fileName) => {
         if (matchesPattern(fileName, /\.grid\.jsonl$/i)) return 20;
@@ -166,9 +166,9 @@ editorRegistry.register({
         return {
             Editor: module.GridEditor,
             createViewModel: createGridViewModel,
-            newPageModel: textEditorModule.newPageModel,
-            newEmptyPageModel: textEditorModule.newEmptyPageModel,
-            newPageModelFromState: textEditorModule.newPageModelFromState,
+            newEditorModel: textEditorModule.newEditorModel,
+            newEmptyEditorModel: textEditorModule.newEmptyEditorModel,
+            newEditorModelFromState: textEditorModule.newEditorModelFromState,
         };
     },
 });
@@ -177,7 +177,7 @@ editorRegistry.register({
 editorRegistry.register({
     id: "log-view",
     name: "Log View",
-    pageType: "textFile",
+    editorType: "textFile",
     category: "content-view",
     acceptFile: (fileName) => {
         if (matchesPattern(fileName, /\.log\.jsonl$/i)) return 20;
@@ -202,9 +202,9 @@ editorRegistry.register({
         return {
             Editor: module.LogViewEditor,
             createViewModel: createLogViewModel,
-            newPageModel: textEditorModule.newPageModel,
-            newEmptyPageModel: textEditorModule.newEmptyPageModel,
-            newPageModelFromState: textEditorModule.newPageModelFromState,
+            newEditorModel: textEditorModule.newEditorModel,
+            newEmptyEditorModel: textEditorModule.newEmptyEditorModel,
+            newEditorModelFromState: textEditorModule.newEditorModelFromState,
         };
     },
 });
@@ -213,7 +213,7 @@ editorRegistry.register({
 editorRegistry.register({
     id: "md-view",
     name: "Preview",
-    pageType: "textFile",
+    editorType: "textFile",
     category: "content-view",
     validForLanguage: (languageId) => languageId === "markdown",
     switchOption: (languageId) => {
@@ -228,9 +228,9 @@ editorRegistry.register({
         return {
             Editor: module.MarkdownView,
             createViewModel: createMarkdownViewModel,
-            newPageModel: textEditorModule.newPageModel,
-            newEmptyPageModel: textEditorModule.newEmptyPageModel,
-            newPageModelFromState: textEditorModule.newPageModelFromState,
+            newEditorModel: textEditorModule.newEditorModel,
+            newEmptyEditorModel: textEditorModule.newEmptyEditorModel,
+            newEditorModelFromState: textEditorModule.newEditorModelFromState,
         };
     },
 });
@@ -239,7 +239,7 @@ editorRegistry.register({
 editorRegistry.register({
     id: "pdf-view",
     name: "PDF Viewer",
-    pageType: "pdfFile",
+    editorType: "pdfFile",
     category: "page-editor",
     acceptFile: (fileName) => {
         if (matchesExtension(fileName, [".pdf"])) return 100;
@@ -255,7 +255,7 @@ editorRegistry.register({
 editorRegistry.register({
     id: "image-view",
     name: "Image Viewer",
-    pageType: "imageFile",
+    editorType: "imageFile",
     category: "page-editor",
     acceptFile: (fileName) => {
         const imageExtensions = [".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".ico"];
@@ -272,7 +272,7 @@ editorRegistry.register({
 editorRegistry.register({
     id: "notebook-view",
     name: "Notebook",
-    pageType: "textFile",
+    editorType: "textFile",
     category: "content-view",
     acceptFile: (fileName) => {
         // High priority for .note.json files - opens in notebook by default
@@ -299,9 +299,9 @@ editorRegistry.register({
         return {
             Editor: module.NotebookEditor,
             createViewModel: createNotebookViewModel,
-            newPageModel: textEditorModule.newPageModel,
-            newEmptyPageModel: textEditorModule.newEmptyPageModel,
-            newPageModelFromState: textEditorModule.newPageModelFromState,
+            newEditorModel: textEditorModule.newEditorModel,
+            newEmptyEditorModel: textEditorModule.newEmptyEditorModel,
+            newEditorModelFromState: textEditorModule.newEditorModelFromState,
         };
     },
 });
@@ -310,7 +310,7 @@ editorRegistry.register({
 editorRegistry.register({
     id: "svg-view",
     name: "Preview",
-    pageType: "textFile",
+    editorType: "textFile",
     category: "content-view",
     validForLanguage: (languageId) => languageId === "xml",
     switchOption: (_languageId, fileName) => {
@@ -326,9 +326,9 @@ editorRegistry.register({
         return {
             Editor: module.SvgView,
             createViewModel: createSvgViewModel,
-            newPageModel: textEditorModule.newPageModel,
-            newEmptyPageModel: textEditorModule.newEmptyPageModel,
-            newPageModelFromState: textEditorModule.newPageModelFromState,
+            newEditorModel: textEditorModule.newEditorModel,
+            newEmptyEditorModel: textEditorModule.newEmptyEditorModel,
+            newEditorModelFromState: textEditorModule.newEditorModelFromState,
         };
     },
 });
@@ -337,7 +337,7 @@ editorRegistry.register({
 editorRegistry.register({
     id: "html-view",
     name: "Preview",
-    pageType: "textFile",
+    editorType: "textFile",
     category: "content-view",
     validForLanguage: (languageId) => languageId === "html",
     switchOption: (languageId) => {
@@ -352,9 +352,9 @@ editorRegistry.register({
         return {
             Editor: module.HtmlView,
             createViewModel: createHtmlViewModel,
-            newPageModel: textEditorModule.newPageModel,
-            newEmptyPageModel: textEditorModule.newEmptyPageModel,
-            newPageModelFromState: textEditorModule.newPageModelFromState,
+            newEditorModel: textEditorModule.newEditorModel,
+            newEmptyEditorModel: textEditorModule.newEmptyEditorModel,
+            newEditorModelFromState: textEditorModule.newEditorModelFromState,
         };
     },
 });
@@ -363,7 +363,7 @@ editorRegistry.register({
 editorRegistry.register({
     id: "mermaid-view",
     name: "Mermaid",
-    pageType: "textFile",
+    editorType: "textFile",
     category: "content-view",
     validForLanguage: (languageId) => languageId === "mermaid",
     switchOption: (languageId) => {
@@ -378,9 +378,9 @@ editorRegistry.register({
         return {
             Editor: module.MermaidView,
             createViewModel: createMermaidViewModel,
-            newPageModel: textEditorModule.newPageModel,
-            newEmptyPageModel: textEditorModule.newEmptyPageModel,
-            newPageModelFromState: textEditorModule.newPageModelFromState,
+            newEditorModel: textEditorModule.newEditorModel,
+            newEmptyEditorModel: textEditorModule.newEmptyEditorModel,
+            newEditorModelFromState: textEditorModule.newEditorModelFromState,
         };
     },
 });
@@ -389,7 +389,7 @@ editorRegistry.register({
 editorRegistry.register({
     id: "todo-view",
     name: "ToDo",
-    pageType: "textFile",
+    editorType: "textFile",
     category: "content-view",
     acceptFile: (fileName) => {
         if (matchesPattern(fileName, /\.todo\.json$/i)) return 20;
@@ -414,9 +414,9 @@ editorRegistry.register({
         return {
             Editor: module.TodoEditor,
             createViewModel: createTodoViewModel,
-            newPageModel: textEditorModule.newPageModel,
-            newEmptyPageModel: textEditorModule.newEmptyPageModel,
-            newPageModelFromState: textEditorModule.newPageModelFromState,
+            newEditorModel: textEditorModule.newEditorModel,
+            newEmptyEditorModel: textEditorModule.newEmptyEditorModel,
+            newEditorModelFromState: textEditorModule.newEditorModelFromState,
         };
     },
 });
@@ -425,7 +425,7 @@ editorRegistry.register({
 editorRegistry.register({
     id: "rest-client",
     name: "Rest Client",
-    pageType: "textFile",
+    editorType: "textFile",
     category: "content-view",
     acceptFile: (fileName) => {
         if (matchesPattern(fileName, /\.rest\.json$/i)) return 20;
@@ -450,9 +450,9 @@ editorRegistry.register({
         return {
             Editor: module.RestClientEditor,
             createViewModel: createRestClientViewModel,
-            newPageModel: textEditorModule.newPageModel,
-            newEmptyPageModel: textEditorModule.newEmptyPageModel,
-            newPageModelFromState: textEditorModule.newPageModelFromState,
+            newEditorModel: textEditorModule.newEditorModel,
+            newEmptyEditorModel: textEditorModule.newEmptyEditorModel,
+            newEditorModelFromState: textEditorModule.newEditorModelFromState,
         };
     },
 });
@@ -461,7 +461,7 @@ editorRegistry.register({
 editorRegistry.register({
     id: "link-view",
     name: "Links",
-    pageType: "textFile",
+    editorType: "textFile",
     category: "content-view",
     acceptFile: (fileName) => {
         if (matchesPattern(fileName, /\.link\.json$/i)) return 20;
@@ -486,9 +486,9 @@ editorRegistry.register({
         return {
             Editor: module.LinkEditor,
             createViewModel: createLinkViewModel,
-            newPageModel: textEditorModule.newPageModel,
-            newEmptyPageModel: textEditorModule.newEmptyPageModel,
-            newPageModelFromState: textEditorModule.newPageModelFromState,
+            newEditorModel: textEditorModule.newEditorModel,
+            newEmptyEditorModel: textEditorModule.newEmptyEditorModel,
+            newEditorModelFromState: textEditorModule.newEditorModelFromState,
         };
     },
 });
@@ -497,7 +497,7 @@ editorRegistry.register({
 editorRegistry.register({
     id: "graph-view",
     name: "Graph",
-    pageType: "textFile",
+    editorType: "textFile",
     category: "content-view",
     acceptFile: (fileName) => {
         if (matchesPattern(fileName, /\.fg\.json$/i)) return 20;
@@ -523,9 +523,9 @@ editorRegistry.register({
         return {
             Editor: module.GraphView,
             createViewModel: createGraphViewModel,
-            newPageModel: textEditorModule.newPageModel,
-            newEmptyPageModel: textEditorModule.newEmptyPageModel,
-            newPageModelFromState: textEditorModule.newPageModelFromState,
+            newEditorModel: textEditorModule.newEditorModel,
+            newEmptyEditorModel: textEditorModule.newEmptyEditorModel,
+            newEditorModelFromState: textEditorModule.newEditorModelFromState,
         };
     },
 });
@@ -534,7 +534,7 @@ editorRegistry.register({
 editorRegistry.register({
     id: "draw-view",
     name: "Drawing",
-    pageType: "textFile",
+    editorType: "textFile",
     category: "content-view",
     acceptFile: (fileName) => {
         if (matchesExtension(fileName, [".excalidraw"])) return 50;
@@ -556,9 +556,9 @@ editorRegistry.register({
         return {
             Editor: module.DrawView,
             createViewModel: createDrawViewModel,
-            newPageModel: textEditorModule.newPageModel,
-            newEmptyPageModel: textEditorModule.newEmptyPageModel,
-            newPageModelFromState: textEditorModule.newPageModelFromState,
+            newEditorModel: textEditorModule.newEditorModel,
+            newEmptyEditorModel: textEditorModule.newEmptyEditorModel,
+            newEditorModelFromState: textEditorModule.newEditorModelFromState,
         };
     },
 });
@@ -567,7 +567,7 @@ editorRegistry.register({
 editorRegistry.register({
     id: "zip-view",
     name: "Archive",
-    pageType: "zipFile",
+    editorType: "zipFile",
     category: "page-editor",
     acceptFile: (fileName) => {
         if (!fileName) return -1;
@@ -583,7 +583,7 @@ editorRegistry.register({
 editorRegistry.register({
     id: "category-view",
     name: "Folder View",
-    pageType: "categoryPage",
+    editorType: "categoryPage",
     category: "page-editor",
     acceptFile: (fileName) => {
         if (fileName?.startsWith("tree-category://")) return 200;
@@ -599,7 +599,7 @@ editorRegistry.register({
 editorRegistry.register({
     id: "mcp-view",
     name: "MCP Inspector",
-    pageType: "mcpInspectorPage",
+    editorType: "mcpInspectorPage",
     category: "page-editor",
     loadModule: async () => {
         const module = await import("./mcp-inspector/McpInspectorView");
@@ -611,10 +611,10 @@ editorRegistry.register({
 editorRegistry.register({
     id: "browser-view",
     name: "Browser",
-    pageType: "browserPage",
+    editorType: "browserPage",
     category: "page-editor",
     loadModule: async () => {
-        const module = await import("./browser/BrowserPageView");
+        const module = await import("./browser/BrowserEditorView");
         return module.default;
     },
 });
@@ -623,7 +623,7 @@ editorRegistry.register({
 editorRegistry.register({
     id: "about-view",
     name: "About",
-    pageType: "aboutPage",
+    editorType: "aboutPage",
     category: "page-editor",
     loadModule: async () => {
         const module = await import("./about/AboutPage");
@@ -635,7 +635,7 @@ editorRegistry.register({
 editorRegistry.register({
     id: "settings-view",
     name: "Settings",
-    pageType: "settingsPage",
+    editorType: "settingsPage",
     category: "page-editor",
     loadModule: async () => {
         const module = await import("./settings/SettingsPage");

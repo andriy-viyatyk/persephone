@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { TextFileModel } from "./TextPageModel";
+import { TextFileModel } from "./TextEditorModel";
 import color from "../../theme/color";
 import { TextField } from "../../components/basic/TextField";
 import { useCallback, useMemo, useState } from "react";

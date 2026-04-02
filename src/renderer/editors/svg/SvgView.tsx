@@ -2,7 +2,7 @@ import { useRef, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { BaseImageView } from "../image";
 import type { BaseImageViewRef } from "../image";
-import { TextFileModel } from "../text/TextPageModel";
+import { TextFileModel } from "../text/TextEditorModel";
 import { Button } from "../../components/basic/Button";
 import { CopyIcon } from "../../theme/icons";
 import { DrawIcon } from "../../theme/language-icons";

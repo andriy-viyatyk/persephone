@@ -6,7 +6,7 @@ import { recent } from "../../api/recent";
 import { getLanguageByExtension } from "../../core/utils";
 import { shell } from "../../api/shell";
 import { debounce } from "../../../shared/utils";
-import type { TextFileModel } from "./TextPageModel";
+import type { TextFileModel } from "./TextEditorModel";
 import type { ISubscriptionObject } from "../../api/types/events";
 import type { IContentPipe } from "../../api/types/io.pipe";
 import { ContentPipe } from "../../content/ContentPipe";

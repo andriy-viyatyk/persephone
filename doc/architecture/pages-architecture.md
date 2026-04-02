@@ -63,7 +63,7 @@ graph TD
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Created: newPageModel(...)
+    [*] --> Created: newEditorModel(...)
 
     Created --> Initialized: restore() async
     Created --> [*]: error
@@ -114,7 +114,7 @@ stateDiagram-v2
 The full close chain for a page:
 
 1. `page.close(undefined)` — from `TDialogModel`
-2. → `canClose()` — if set (TextPageModel sets it). Calls `confirmRelease(closing: true)` which checks secondary editor models for unsaved changes, then checks the page's own unsaved changes. If the user cancels, returns false and the close is aborted.
+2. → `canClose()` — if set (TextEditorModel sets it). Calls `confirmRelease(closing: true)` which checks secondary editor models for unsaved changes, then checks the page's own unsaved changes. If the user cancels, returns false and the close is aborted.
 3. → `onClose()` — set by `attachPage()` in `PagesModel`
 4. → `detachPage(page)` — unsubscribes state listener, clears `onClose` callback
 5. → `removePage(page)` — removes from `pages[]` and `ordered[]`
@@ -322,7 +322,7 @@ About and Settings pages use a similar pattern with hardcoded IDs directly in th
 - `ABOUT_PAGE_ID = "about-page"` in `AboutPage.tsx`
 - `SETTINGS_PAGE_ID = "settings-page"` in `SettingsPage.tsx`
 
-These work as singletons through the same `addPage()` deduplication — `newEmptyPageModel()` always creates with the same ID.
+These work as singletons through the same `addPage()` deduplication — `newEmptyEditorModel()` always creates with the same ID.
 
 ### When to use well-known pages
 
@@ -390,9 +390,9 @@ In `navigatePageTo()` ([`PagesLifecycleModel.ts`](../../src/renderer/api/pages/P
 10. navigationData.setOwnerModel(newModel)       // propagate to secondary models
 ```
 
-**Step 3** — `beforeNavigateAway(newModel)` lets the old model inspect `newModel.sourceLink` to decide whether to keep itself as a secondary editor. The base implementation clears `secondaryEditor`. Subclasses like ZipPageModel override to check `newModel.sourceLink?.metadata?.sourceId === this.id`.
+**Step 3** — `beforeNavigateAway(newModel)` lets the old model inspect `newModel.sourceLink` to decide whether to keep itself as a secondary editor. The base implementation clears `secondaryEditor`. Subclasses like ZipEditorModel override to check `newModel.sourceLink?.metadata?.sourceId === this.id`.
 
-**Step 10** — `setOwnerModel(newModel)` updates `ownerModel`, clears Explorer selection if the new page wasn't opened from Explorer, then calls `setOwnerPage(newModel)` on each secondary model. Secondary models may react: ZipPageModel checks if the new owner was opened from its archive — if not, it clears `secondaryEditor` and is cleaned up. Models that stay may fire `expandSecondaryPanel` to auto-expand their sidebar panel.
+**Step 10** — `setOwnerModel(newModel)` updates `ownerModel`, clears Explorer selection if the new page wasn't opened from Explorer, then calls `setOwnerPage(newModel)` on each secondary model. Secondary models may react: ZipEditorModel checks if the new owner was opened from its archive — if not, it clears `secondaryEditor` and is cleaned up. Models that stay may fire `expandSecondaryPanel` to auto-expand their sidebar panel.
 
 ---
 
@@ -413,7 +413,7 @@ The `beforeNavigateAway(newModel)` lifecycle hook is called during `navigatePage
 `NavigationData.ownerModel` tracks the active page model. `EditorModel.ownerPage` is the reverse reference — set on secondary models so they know which page they're attached to. Both are updated by `NavigationData.setOwnerModel(newModel)`, which calls `setOwnerPage(newModel)` on each secondary model.
 
 `setOwnerPage(model)` is a virtual method on EditorModel. Subclasses override it to react to ownership changes:
-- **ZipPageModel**: checks if the new owner was opened from this archive (`sourceLink.metadata.sourceId`). If yes, fires `expandSecondaryPanel` event to auto-expand. If no, clears `secondaryEditor` (model removed on next cleanup).
+- **ZipEditorModel**: checks if the new owner was opened from this archive (`sourceLink.metadata.sourceId`). If yes, fires `expandSecondaryPanel` event to auto-expand. If no, clears `secondaryEditor` (model removed on next cleanup).
 - **Base EditorModel**: stores the reference only.
 
 ### Management API
@@ -440,7 +440,7 @@ PageNavigator renders a `CollapsiblePanel` for each model in `secondaryModels[]`
 
 **Close button rule:** The active page's own secondary panel has no close button (controlled by `secondaryEditor` field). Only panels from survived models (via `beforeNavigateAway`) show a close button — clicking it calls `removeSecondaryModel()`.
 
-**Auto-expand:** Secondary models can request their panel be expanded by firing the `expandSecondaryPanel` event ([`events.ts`](../../src/renderer/core/state/events.ts)). NavigationData subscribes and sets `activePanel` if the model is in `secondaryModels[]`. This is used by ZipPageModel to auto-expand the Archive panel when navigating to a file inside the archive.
+**Auto-expand:** Secondary models can request their panel be expanded by firing the `expandSecondaryPanel` event ([`events.ts`](../../src/renderer/core/state/events.ts)). NavigationData subscribes and sets `activePanel` if the model is in `secondaryModels[]`. This is used by ZipEditorModel to auto-expand the Archive panel when navigating to a file inside the archive.
 
 ### Persistence
 
