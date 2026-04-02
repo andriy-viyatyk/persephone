@@ -42,7 +42,7 @@ Views of text-based content that share `TextFileModel` for state management. The
 - Each has a `ContentViewModel` subclass for view-specific state
 - `switchOption()` function controls when editor appears in switch dropdown
 
-### Page Editors (`category: "page-editor"`)
+### Standalone Editors (`category: "standalone"`)
 
 Standalone editors with their own EditorModel.
 
@@ -73,7 +73,7 @@ Standalone editors with their own EditorModel.
 
 ```
 RenderEditor
-├── [page-editor] → AsyncEditor → EditorErrorBoundary → PdfViewer / ImageViewer / Browser / McpInspector / About / Settings
+├── [standalone] → AsyncEditor → EditorErrorBoundary → PdfViewer / ImageViewer / Browser / McpInspector / About / Settings
 └── [content-view] → TextEditorView
                          ├── TextToolbar
                          ├── ActiveEditor → AsyncEditor → EditorErrorBoundary → Monaco / Grid / Markdown / Notebook / Todo / Link / Log View / SVG / HTML / Mermaid / Graph
@@ -160,7 +160,7 @@ TDialogModel<T, R>   (from core/state/model.ts)
 └── EditorModel<T, R>   (from editors/base/EditorModel.ts)
     ├── TextFileModel         # Content-view host (Monaco, Grid, Markdown, etc.)
     ├── BrowserEditorModel      # Browser (multi-tab, webview, IPC)
-    ├── McpInspectorModel     # MCP Inspector (connection manager, server inspection)
+    ├── McpInspectorEditorModel     # MCP Inspector (connection manager, server inspection)
     ├── NotebookEditorModel   # Notebook (.note.json — page-level model)
     └── (PdfViewer, ImageViewer, About, Settings, Compare — inline models)
 
@@ -250,7 +250,7 @@ Every editor follows this pattern:
 ├── index.ts              # Public exports + EditorModule
 ├── [Name]Editor.tsx      # Main component (or [Name]View.tsx)
 ├── [Name]ViewModel.ts    # ContentViewModel subclass (content-views)
-├── [Name]EditorModel.ts    # EditorModel subclass (page-editors)
+├── [Name]EditorModel.ts    # EditorModel subclass (standalones)
 ├── components/           # Editor-specific components (optional)
 └── utils/                # Editor-specific utilities (optional)
 ```
@@ -290,7 +290,7 @@ interface EditorModule {
 1. Create folder `/editors/myeditor/`
 2. Extend `EditorModel` with custom state
 3. Implement editor component receiving your EditorModel
-4. Register with `category: "page-editor"` and unique `editorType`
+4. Register with `category: "standalone"` and unique `editorType`
 5. Add `EditorType` and `EditorView` types to `/shared/types.ts`
 6. (Optional) Add scripting facade
 

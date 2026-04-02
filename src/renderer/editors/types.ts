@@ -28,14 +28,14 @@ export type EditorModule = EditorViewModule & EditorModelCreations & {
 /**
  * Editor category distinguishes between two types of editors:
  *
- * - "page-editor": Standalone editors with their own EditorModel (e.g., PDF viewer, Image viewer).
+ * - "standalone": Standalone editors with their own EditorModel (e.g., PDF viewer, Image viewer).
  *   These render instead of TextEditorView and handle their own UI entirely.
  *
  * - "content-view": Views of text-based content that share TextFileModel (e.g., Monaco, Grid, Markdown).
  *   These render inside TextEditorView via ActiveEditor and share toolbar, script panel, footer.
  *   Content views can switch between each other (e.g., JSON text → Grid view).
  */
-export type EditorCategory = "page-editor" | "content-view";
+export type EditorCategory = "standalone" | "content-view";
 
 export interface EditorDefinition {
     id: EditorView;

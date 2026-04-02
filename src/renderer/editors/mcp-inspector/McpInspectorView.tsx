@@ -6,7 +6,7 @@ import { PageToolbar } from "../base";
 import { IEditorState, EditorType } from "../../../shared/types";
 import { TComponentState } from "../../core/state/state";
 import { EditorModule } from "../types";
-import { McpInspectorModel, McpInspectorEditorState, getDefaultMcpInspectorPageState } from "./McpInspectorModel";
+import { McpInspectorEditorModel, McpInspectorEditorState, getDefaultMcpInspectorEditorState } from "./McpInspectorEditorModel";
 import { mcpConnectionStore } from "./McpConnectionStore";
 import { ToolsPanel } from "./ToolsPanel";
 import { ResourcesPanel } from "./ResourcesPanel";
@@ -328,7 +328,7 @@ const McpInspectorViewRoot = styled.div({
 // ============================================================================
 
 interface McpInspectorViewProps {
-    model: McpInspectorModel;
+    model: McpInspectorEditorModel;
 }
 
 function McpInspectorView({ model }: McpInspectorViewProps) {
@@ -641,7 +641,7 @@ function ServerInfoPanel({ state }: { state: McpInspectorEditorState }) {
 // History Panel
 // ============================================================================
 
-function HistoryPanel({ model }: { model: McpInspectorModel }) {
+function HistoryPanel({ model }: { model: McpInspectorEditorModel }) {
     const count = model.historyCount;
 
     const handleShow = useCallback(() => { model.showHistory(); }, [model]);
@@ -680,22 +680,22 @@ const mcpInspectorEditorModule: EditorModule = {
     Editor: McpInspectorView,
 
     newEditorModel: async () => {
-        return new McpInspectorModel(new TComponentState(getDefaultMcpInspectorPageState()));
+        return new McpInspectorEditorModel(new TComponentState(getDefaultMcpInspectorEditorState()));
     },
 
     newEmptyEditorModel: async (editorType: EditorType) => {
         if (editorType !== "mcpInspectorPage") return null;
-        return new McpInspectorModel(
-            new TComponentState(getDefaultMcpInspectorPageState()),
+        return new McpInspectorEditorModel(
+            new TComponentState(getDefaultMcpInspectorEditorState()),
         );
     },
 
     newEditorModelFromState: async (state: Partial<IEditorState>) => {
         const s: McpInspectorEditorState = {
-            ...getDefaultMcpInspectorPageState(),
+            ...getDefaultMcpInspectorEditorState(),
             ...(state as Partial<McpInspectorEditorState>),
         };
-        return new McpInspectorModel(new TComponentState(s));
+        return new McpInspectorEditorModel(new TComponentState(s));
     },
 };
 

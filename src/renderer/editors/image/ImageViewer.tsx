@@ -22,20 +22,20 @@ import { FileProvider } from "../../content/providers/FileProvider";
 import { ZipTransformer } from "../../content/transformers/ZipTransformer";
 
 // ============================================================================
-// ImageViewerModel (Page Model) - manages page state and lifecycle
+// ImageEditorModel (Page Model) - manages page state and lifecycle
 // ============================================================================
 
-interface ImageViewerModelState extends IEditorState {
+interface ImageEditorModelState extends IEditorState {
     /** External image URL (e.g. from a browser webview). When set, used instead of filePath. */
     url?: string;
 }
 
-const getDefaultImageViewerModelState = (): ImageViewerModelState => ({
+const getDefaultImageViewerModelState = (): ImageEditorModelState => ({
     ...getDefaultEditorModelState(),
     type: "imageFile" as const,
 });
 
-class ImageViewerModel extends EditorModel<ImageViewerModelState, void> {
+class ImageEditorModel extends EditorModel<ImageEditorModelState, void> {
     noLanguage = true;
     private cacheFileCreated = false;
 
@@ -49,7 +49,7 @@ class ImageViewerModel extends EditorModel<ImageViewerModelState, void> {
         return data;
     }
 
-    applyRestoreData(data: Partial<ImageViewerModelState>): void {
+    applyRestoreData(data: Partial<ImageEditorModelState>): void {
         super.applyRestoreData(data);
         if (data.url) {
             this.state.update((s) => { s.url = data.url; });
@@ -215,7 +215,7 @@ class ImageViewerModel extends EditorModel<ImageViewerModelState, void> {
 // ============================================================================
 
 interface ImageViewerProps {
-    model: ImageViewerModel;
+    model: ImageEditorModel;
 }
 
 function ImageViewer({ model }: ImageViewerProps) {
@@ -308,13 +308,13 @@ const imageEditorModule: EditorModule = {
             ...(filePath ? { filePath } : {}),
         };
 
-        return new ImageViewerModel(new TComponentState(state));
+        return new ImageEditorModel(new TComponentState(state));
     },
     newEmptyEditorModel: async (
         editorType: EditorType
     ): Promise<EditorModel | null> => {
         if (editorType === "imageFile") {
-            return new ImageViewerModel(
+            return new ImageEditorModel(
                 new TComponentState(getDefaultImageViewerModelState())
             );
         }
@@ -323,19 +323,19 @@ const imageEditorModule: EditorModule = {
     newEditorModelFromState: async (
         state: Partial<IEditorState>
     ): Promise<EditorModel> => {
-        const initialState: ImageViewerModelState = {
+        const initialState: ImageEditorModelState = {
             ...getDefaultImageViewerModelState(),
             ...state,
         };
-        return new ImageViewerModel(new TComponentState(initialState));
+        return new ImageEditorModel(new TComponentState(initialState));
     },
 };
 
 export default imageEditorModule;
 
 // Named exports
-export { ImageViewer, ImageViewerModel };
-export type { ImageViewerProps, ImageViewerModelState };
+export { ImageViewer, ImageEditorModel };
+export type { ImageViewerProps, ImageEditorModelState };
 
 // Re-export base components for reuse
 export { BaseImageView, ImageViewModel, defaultImageViewState } from "./BaseImageView";

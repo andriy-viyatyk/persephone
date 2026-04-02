@@ -9,7 +9,7 @@ import { EditorType } from "../../../shared/types";
  */
 const getPageEditorModule = (editorType: EditorType) => async () => {
     const editors = editorRegistry.getAll();
-    const def = editors.find(e => e.editorType === editorType && e.category === "page-editor");
+    const def = editors.find(e => e.editorType === editorType && e.category === "standalone");
     if (!def) throw new Error(`No page editor registered for type: ${editorType}`);
     return def.loadModule();
 };
@@ -27,7 +27,7 @@ export function RenderEditor({ model }: { model: EditorModel }) {
 
     // Check if this page type has a standalone page editor
     const editors = editorRegistry.getAll();
-    const pageEditor = editors.find(e => e.editorType === type && e.category === "page-editor");
+    const pageEditor = editors.find(e => e.editorType === type && e.category === "standalone");
 
     if (pageEditor) {
         // Standalone page editor (PDF, Image, etc.)

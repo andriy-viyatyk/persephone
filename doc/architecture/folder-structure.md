@@ -249,7 +249,7 @@ persephone/
 │   │   ├── rehypeHighlight.ts      # Search text highlighting
 │   │   └── index.ts
 │   │
-│   ├── browser/            # Built-in browser (page-editor)
+│   ├── browser/            # Built-in browser (standalone)
 │   │   ├── BrowserEditorModel.ts     # Multi-tab browser state
 │   │   ├── BrowserEditorView.tsx     # Browser UI
 │   │   ├── BrowserWebviewModel.ts  # Webview management
@@ -264,7 +264,7 @@ persephone/
 │   │   ├── BrowserBookmarksUIModel.ts # Bookmarks UI state
 │   │   ├── browser-search-history.ts  # Search history
 │   │   └── index.ts
-│   ├── notebook/           # Notebook editor (page-editor)
+│   ├── notebook/           # Notebook editor (standalone)
 │   │   ├── NotebookEditor.tsx
 │   │   ├── NotebookEditorModel.ts  # Page model
 │   │   ├── NotebookViewModel.ts    # View model
@@ -274,14 +274,14 @@ persephone/
 │   │   ├── notebookTypes.ts
 │   │   ├── note-editor/            # Note item sub-editor
 │   │   └── index.ts
-│   ├── todo/               # Todo editor (page-editor)
+│   ├── todo/               # Todo editor (standalone)
 │   │   ├── TodoEditor.tsx
 │   │   ├── TodoViewModel.ts
 │   │   ├── todoTypes.ts
 │   │   ├── todoColors.ts
 │   │   ├── components/
 │   │   └── index.ts
-│   ├── link-editor/        # Link collection editor (page-editor)
+│   ├── link-editor/        # Link collection editor (standalone)
 │   │   ├── LinkEditor.tsx
 │   │   ├── LinkViewModel.ts
 │   │   ├── linkTypes.ts
@@ -357,15 +357,15 @@ persephone/
 │   │       ├── MarkdownOutputView.tsx  # output.markdown renderer (inline MarkdownBlock)
 │   │       ├── MermaidOutputView.tsx  # output.mermaid renderer (inline mermaid diagram)
 │   │       └── McpRequestView.tsx   # output.mcp-request renderer (direction, method, collapsible JSON)
-│   ├── pdf/                # PDF viewer (page-editor)
+│   ├── pdf/                # PDF viewer (standalone)
 │   │   ├── PdfViewer.tsx
 │   │   └── index.ts
-│   ├── image/              # Image viewer (page-editor)
+│   ├── image/              # Image viewer (standalone)
 │   │   ├── ImageViewer.tsx
 │   │   ├── BaseImageView.tsx
 │   │   └── index.ts
-│   ├── mcp-inspector/      # MCP Inspector (page-editor)
-│   │   ├── McpInspectorModel.ts      # EditorModel — connection, tools, resources, prompts state
+│   ├── mcp-inspector/      # MCP Inspector (standalone)
+│   │   ├── McpInspectorEditorModel.ts      # EditorModel — connection, tools, resources, prompts state
 │   │   ├── McpInspectorView.tsx      # Main view — connection bar, panel routing
 │   │   ├── McpConnectionManager.ts   # MCP SDK Client wrapper (connect/disconnect)
 │   │   ├── ToolsPanel.tsx            # Tools panel — sidebar list, detail, arg form, result
@@ -376,15 +376,15 @@ persephone/
 │   │   ├── PromptsPanel.tsx          # Prompts panel — sidebar, arg form, messages display
 │   │   ├── McpConnectionStore.ts    # Saved connections store (mcp-connections.json persistence)
 │   │   └── index.ts
-│   ├── compare/            # Diff editor (page-editor)
+│   ├── compare/            # Diff editor (standalone)
 │   │   ├── CompareEditor.tsx
 │   │   └── index.ts
-│   ├── about/              # About page (page-editor)
+│   ├── about/              # About page (standalone)
 │   │   ├── AboutPage.tsx
 │   │   └── index.ts
-│   ├── settings/           # Settings page (page-editor)
+│   ├── settings/           # Settings page (standalone)
 │   │   └── SettingsPage.tsx
-│   ├── category/           # Category/folder view (page-editor)
+│   ├── category/           # Category/folder view (standalone)
 │   │   ├── CategoryEditor.tsx     # Wraps CategoryView, toolbar with navigator toggle
 │   │   └── CategoryEditorModel.ts   # Page model — decodes tree-category:// link
 │   ├── shared/             # Shared editor utilities

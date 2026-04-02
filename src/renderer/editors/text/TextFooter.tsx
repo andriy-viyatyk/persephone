@@ -62,6 +62,3 @@ export function TextFooter({ model }: TextFooterProps) {
 
     return <>{actions}</>;
 }
-
-// Re-export with old name for backward compatibility
-export { TextFooter as TextFileFooterActions };

@@ -4,7 +4,7 @@ import color from "../../theme/color";
 import { Editor } from "@monaco-editor/react";
 import { TextField } from "../../components/basic/TextField";
 import { TextAreaField } from "../../components/basic/TextAreaField";
-import { McpToolInfo } from "./McpInspectorModel";
+import { McpToolInfo } from "./McpInspectorEditorModel";
 
 // ============================================================================
 // Styles

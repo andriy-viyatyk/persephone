@@ -61,9 +61,9 @@ opts.options.forEach(id =>
 |----------|------|-------------|
 | `id` | `string` | Editor ID (e.g., `"monaco"`, `"grid-json"`). |
 | `name` | `string` | Display name (e.g., `"Text Editor"`, `"JSON Grid"`). |
-| `category` | `EditorCategory` | `"page-editor"` or `"content-view"`. |
+| `category` | `EditorCategory` | `"standalone"` or `"content-view"`. |
 
 ### Editor Categories
 
 - **`content-view`** — Views of text content. Can switch between each other (e.g., JSON text ↔ Grid). Examples: Monaco, Grid, Markdown, Notebook, Todo, Link, SVG, HTML, Mermaid.
-- **`page-editor`** — Standalone editors with their own page model. Examples: PDF viewer, Image viewer, Browser, About, Settings, Compare.
+- **`standalone`** — Standalone editors with their own page model. Examples: PDF viewer, Image viewer, Browser, About, Settings, Compare.

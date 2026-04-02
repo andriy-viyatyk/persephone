@@ -453,9 +453,3 @@ export function ScriptPanel({ model }: ScriptPanelProps) {
         </ScriptPanelRoot>
     );
 }
-
-// Re-export with old names for backward compatibility
-export { ScriptPanel as ScriptEditor };
-export { ScriptPanelModel as ScriptEditorModel };
-export { defaultScriptPanelState as defaultScriptEditorState };
-export type { ScriptPanelState as ScriptEditorState };

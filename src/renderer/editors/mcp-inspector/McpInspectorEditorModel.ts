@@ -181,7 +181,7 @@ export interface McpInspectorEditorState extends IEditorState {
     activePanel: McpPanelId;
 }
 
-export const getDefaultMcpInspectorPageState = (): McpInspectorEditorState => ({
+export const getDefaultMcpInspectorEditorState = (): McpInspectorEditorState => ({
     ...getDefaultEditorModelState(),
     type: "mcpInspectorPage",
     title: "MCP Inspector",
@@ -213,7 +213,7 @@ export const getDefaultMcpInspectorPageState = (): McpInspectorEditorState => ({
 // Model
 // ============================================================================
 
-export class McpInspectorModel extends EditorModel<McpInspectorEditorState, void> {
+export class McpInspectorEditorModel extends EditorModel<McpInspectorEditorState, void> {
     noLanguage = true;
     skipSave = true;
 

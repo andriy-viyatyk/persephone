@@ -465,7 +465,7 @@ The root browser `<div>` handles `Ctrl+L` (focus URL bar) and `Ctrl+F` (find in 
 
 ## Scripting Facade
 
-Scripts access browser pages via `page.asBrowser()`, which returns a `BrowserEditorFacade`. Unlike content-view facades (which acquire a ViewModel with ref-counting), this wraps `BrowserEditorModel` directly — no ViewModel, no ref-counting — because the browser is a page-editor, not a content-view.
+Scripts access browser pages via `page.asBrowser()`, which returns a `BrowserEditorFacade`. Unlike content-view facades (which acquire a ViewModel with ref-counting), this wraps `BrowserEditorModel` directly — no ViewModel, no ref-counting — because the browser is a standalone, not a content-view.
 
 ```javascript
 const browser = await page.asBrowser();

@@ -4,7 +4,7 @@ flowchart LR
     REG --> |"Query all editors'<br/>acceptFile()"| BEST["Best Match<br/><i>highest priority wins</i>"]
 
     BEST --> |"category:<br/>content-view"| CV["Content View<br/><i>Shares TextFileModel</i>"]
-    BEST --> |"category:<br/>page-editor"| PE["Page Editor<br/><i>Own EditorModel</i>"]
+    BEST --> |"category:<br/>standalone"| PE["Standalone Editor<br/><i>Own EditorModel</i>"]
     BEST --> |"no match<br/>(priority 0)"| MONACO["Monaco Fallback<br/><i>default text editor</i>"]
 
     style FILE fill:#e3f2fd

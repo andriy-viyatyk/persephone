@@ -2,7 +2,7 @@ import styled from "@emotion/styled";
 import color from "../../theme/color";
 import { Editor } from "@monaco-editor/react";
 import { MarkdownBlock } from "../markdown/MarkdownBlock";
-import { McpResourceContent } from "./McpInspectorModel";
+import { McpResourceContent } from "./McpInspectorEditorModel";
 
 // ============================================================================
 // Styles

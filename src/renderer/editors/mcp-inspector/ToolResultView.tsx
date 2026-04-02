@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import styled from "@emotion/styled";
 import color from "../../theme/color";
 import { Editor } from "@monaco-editor/react";
-import { McpToolResult } from "./McpInspectorModel";
+import { McpToolResult } from "./McpInspectorEditorModel";
 
 // ============================================================================
 // Styles

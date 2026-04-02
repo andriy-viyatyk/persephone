@@ -159,9 +159,9 @@ export class PagesLifecycleModel {
                 `Editor '${editor}' is not registered. Available editors: ${editorRegistry.getAll().map((e) => e.id).join(", ")}`
             );
         }
-        if (editorDef?.category === "page-editor") {
+        if (editorDef?.category === "standalone") {
             throw new Error(
-                `Cannot create '${editor}' with addEditorPage() — it is a page-editor that requires a specialized model. Use the dedicated method instead (e.g., showBrowserPage(), showAboutPage(), openFile()).`
+                `Cannot create '${editor}' with addEditorPage() — it is a standalone editor that requires a specialized model. Use the dedicated method instead (e.g., showBrowserPage(), showAboutPage(), openFile()).`
             );
         }
         const page = newTextFileModel("");
@@ -799,7 +799,7 @@ export class PagesLifecycleModel {
             this.addPage(imgModel);
 
             // For blob URLs, cache binary to disk for restart recovery
-            if (imageUrl.startsWith("blob:") && imgModel instanceof imgModule.ImageViewerModel) {
+            if (imageUrl.startsWith("blob:") && imgModel instanceof imgModule.ImageEditorModel) {
                 imgModel.cacheBlobUrl(imageUrl);
             }
         }

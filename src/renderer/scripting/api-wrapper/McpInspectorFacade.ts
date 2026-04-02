@@ -1,14 +1,14 @@
-import type { McpInspectorModel } from "../../editors/mcp-inspector/McpInspectorModel";
+import type { McpInspectorEditorModel } from "../../editors/mcp-inspector/McpInspectorEditorModel";
 
 /**
- * Safe facade around McpInspectorModel for script access.
+ * Safe facade around McpInspectorEditorModel for script access.
  * Implements the IMcpInspectorEditor interface from api/types/mcp-inspector-editor.d.ts.
  *
  * - Direct model wrap (no ViewModel acquisition, no ref-counting)
  * - Exposes connection management and troubleshooting methods
  */
 export class McpInspectorFacade {
-    constructor(private readonly model: McpInspectorModel) {}
+    constructor(private readonly model: McpInspectorEditorModel) {}
 
     // -- Connection status (read-only) --
 

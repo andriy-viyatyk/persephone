@@ -3,7 +3,7 @@ import styled from "@emotion/styled";
 import color from "../../theme/color";
 import { Button } from "../../components/basic/Button";
 import { Splitter } from "../../components/layout/Splitter";
-import { McpInspectorModel } from "./McpInspectorModel";
+import { McpInspectorEditorModel } from "./McpInspectorEditorModel";
 import { ToolArgForm } from "./ToolArgForm";
 import { ToolResultView } from "./ToolResultView";
 
@@ -243,7 +243,7 @@ const ToolsPanelRoot = styled.div({
 // ============================================================================
 
 interface ToolsPanelProps {
-    model: McpInspectorModel;
+    model: McpInspectorEditorModel;
 }
 
 export function ToolsPanel({ model }: ToolsPanelProps) {

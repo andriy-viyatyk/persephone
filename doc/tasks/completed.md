@@ -3,6 +3,7 @@
 All completed tasks, newest first.
 
 | ID | Title | Epic | Notes |
+| US-320 | Rename remaining editor names for consistency | EPIC-017 | Phase 1.4 — `ImageViewerModel` → `ImageEditorModel`, `PdfViewerModel` → `PdfEditorModel`, `McpInspectorModel` → `McpInspectorEditorModel` (+ file rename). EditorCategory `"page-editor"` → `"standalone"`. Removed all backward compat aliases. ~38 files. |
 | US-319 | Rename editor subclasses + EditorModule interface | EPIC-017 | Phase 1.3 — renamed 5 subclasses (Zip/Category/Browser/About/Settings), 7 file renames (git mv), EditorModule methods (newEditorModel, etc.), EditorDefinition.editorType, FileEditorComponent, EditorViewModule, state interfaces, helper functions. Removed compat aliases. ~72 files. |
 | US-318 | Rename PageModel → EditorModel | EPIC-017 | Phase 1.2 — renamed base class, file (`PageModel.ts` → `EditorModel.ts`), `getDefaultPageModelState` → `getDefaultEditorModelState`, barrel export, ~46 files. Updated architecture docs, standards, diagrams. |
 | US-317 | Rename core types (IPageState → IEditorState, PageType → EditorType, PageEditor → EditorView) | EPIC-017 | Phase 1.1 — pure mechanical rename across ~48 files. `IPageState` → `IEditorState`, `PageType` → `EditorType`, `PageEditor` → `EditorView` in `shared/types.ts` and all consumers. Updated architecture docs, standards docs, CLAUDE.md, and script API `.d.ts` files. |

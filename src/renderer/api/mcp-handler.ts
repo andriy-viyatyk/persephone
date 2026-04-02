@@ -139,7 +139,7 @@ function createPage(params: any): McpResponse {
         return { error: { code: -32602, message: `Unknown editor '${editor}'. Valid editors: ${all.join(", ")}` } };
     }
 
-    if (editorDef.category === "page-editor") {
+    if (editorDef.category === "standalone") {
         const hints: Record<string, string> = {
             "browser-view": "Use the open_url tool to open a URL in the built-in browser.",
             "pdf-view": 'Use execute_script with: await app.pages.openFile("/path/to/file.pdf")',
@@ -154,8 +154,8 @@ function createPage(params: any): McpResponse {
         return {
             error: {
                 code: -32602,
-                message: `Editor '${editor}' is a page-editor and cannot be created with create_page. `
-                    + `Page-editors require specialized models. ${hint}`,
+                message: `Editor '${editor}' is a standalone editor and cannot be created with create_page. `
+                    + `Standalone editors require specialized models. ${hint}`,
             },
         };
     }

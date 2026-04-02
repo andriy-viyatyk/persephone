@@ -321,7 +321,7 @@ See [/doc/standards/coding-style.md](doc/standards/coding-style.md) for complete
 | Graph editor model       | `/src/renderer/editors/graph/GraphViewModel.ts`   |
 | Draw editor model        | `/src/renderer/editors/draw/DrawViewModel.ts`     |
 | Rest Client editor       | `/src/renderer/editors/rest-client/RestClientViewModel.ts` |
-| MCP Inspector model      | `/src/renderer/editors/mcp-inspector/McpInspectorModel.ts` |
+| MCP Inspector model      | `/src/renderer/editors/mcp-inspector/McpInspectorEditorModel.ts` |
 | Base virtualization      | `/src/renderer/components/virtualization/RenderGrid.tsx` |
 | Advanced grid            | `/src/renderer/components/data-grid/AVGrid.tsx`   |
 | Color tokens             | `/src/renderer/theme/color.ts`                    |

@@ -125,6 +125,3 @@ export function EncryptionPanel({ model, onSubmit, onCancel, className }: Encryp
         </EncryptionPanelRoot>
     );
 }
-
-// Re-export with old name for backward compatibility
-export { EncryptionPanel as EncriptionPanel };

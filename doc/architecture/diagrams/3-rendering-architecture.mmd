@@ -1,7 +1,7 @@
 graph TB
     RP["RenderEditor<br/><i>Switches on editor category</i>"]
 
-    RP -->|"page-editor"| AE["AsyncEditor<br/><i>Lazy-loads module</i>"]
+    RP -->|"standalone"| AE["AsyncEditor<br/><i>Lazy-loads module</i>"]
     AE --> PDF["PdfViewer"]
     AE --> IMG["ImageViewer"]
     AE --> BR["BrowserEditorView"]

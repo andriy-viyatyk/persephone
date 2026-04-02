@@ -99,6 +99,3 @@ export function TextEditorView({ model }: TextEditorViewProps) {
         </TextEditorViewRoot>
     );
 }
-
-// Re-export with old name for backward compatibility
-export { TextEditorView as TextFilePage };

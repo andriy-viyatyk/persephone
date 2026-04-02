@@ -4,7 +4,7 @@ import color from "../../theme/color";
 import { Button } from "../../components/basic/Button";
 import { Splitter } from "../../components/layout/Splitter";
 import { TextAreaField } from "../../components/basic/TextAreaField";
-import { McpInspectorModel, McpPromptMessage } from "./McpInspectorModel";
+import { McpInspectorEditorModel, McpPromptMessage } from "./McpInspectorEditorModel";
 
 // ============================================================================
 // Styles
@@ -235,7 +235,7 @@ const PromptsPanelRoot = styled.div({
 // ============================================================================
 
 interface PromptsPanelProps {
-    model: McpInspectorModel;
+    model: McpInspectorEditorModel;
 }
 
 export function PromptsPanel({ model }: PromptsPanelProps) {

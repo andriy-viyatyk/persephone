@@ -23,17 +23,17 @@ const PdfViewerRoot = styled.div({
     position: "relative",
 });
 
-interface PdfViewerModelState extends IEditorState {
+interface PdfEditorModelState extends IEditorState {
     /** Local file path to serve via safe-file:// (cache file for non-local sources). */
     localPdfPath?: string;
 }
 
-const getDefaultPdfViewerModelState = (): PdfViewerModelState => ({
+const getDefaultPdfViewerModelState = (): PdfEditorModelState => ({
     ...getDefaultEditorModelState(),
     type: "pdfFile" as const,
 });
 
-class PdfViewerModel extends EditorModel<PdfViewerModelState, void> {
+class PdfEditorModel extends EditorModel<PdfEditorModelState, void> {
     noLanguage = true;
     private cacheFileCreated = false;
 
@@ -109,7 +109,7 @@ class PdfViewerModel extends EditorModel<PdfViewerModelState, void> {
 }
 
 interface PdfViewerProps {
-    model: PdfViewerModel;
+    model: PdfEditorModel;
 }
 
 function PdfViewer({ model }: PdfViewerProps) {
@@ -160,13 +160,13 @@ const pdfEditorModule: EditorModule = {
             ...(filePath ? { filePath } : {}),
         };
 
-        return new PdfViewerModel(new TComponentState(state));
+        return new PdfEditorModel(new TComponentState(state));
     },
     newEmptyEditorModel: async (
         editorType: EditorType
     ): Promise<EditorModel | null> => {
         if (editorType === "pdfFile") {
-            return new PdfViewerModel(
+            return new PdfEditorModel(
                 new TComponentState(getDefaultPdfViewerModelState())
             );
         }
@@ -175,22 +175,17 @@ const pdfEditorModule: EditorModule = {
     newEditorModelFromState: async (
         state: Partial<IEditorState>
     ): Promise<EditorModel> => {
-        const initialState: PdfViewerModelState = {
+        const initialState: PdfEditorModelState = {
             ...getDefaultPdfViewerModelState(),
             ...state,
         };
-        return new PdfViewerModel(new TComponentState(initialState));
+        return new PdfEditorModel(new TComponentState(initialState));
     },
 };
 
 export default pdfEditorModule;
 
 // Named exports
-export { PdfViewer, PdfViewerModel };
-export type { PdfViewerProps, PdfViewerModelState };
+export { PdfViewer, PdfEditorModel };
+export type { PdfViewerProps, PdfEditorModelState };
 
-// Re-export with old names for backward compatibility
-export { PdfViewer as PdfPage };
-export { PdfViewerModel as PdfPageModel };
-export type { PdfViewerProps as PdfPageProps };
-export type { PdfViewerModelState as PdfPageModelState };

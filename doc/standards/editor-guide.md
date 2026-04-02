@@ -217,7 +217,7 @@ editorRegistry.register({
     id: "my-editor",           // Must match EditorView type
     name: "My Editor",         // Display name in UI
     editorType: "myType",        // EditorType this editor creates
-    category: "page-editor",   // Standalone editor with own EditorModel
+    category: "standalone",   // Standalone editor with own EditorModel
     acceptFile: (fileName) => {
         // Return priority >= 0 if this editor can open the file
         // Higher priority wins when multiple editors match
@@ -262,7 +262,7 @@ editorRegistry.register({
 | `id` | Unique editor ID (must be in `EditorView` type) |
 | `name` | Display name shown in UI |
 | `editorType` | The `EditorType` this editor works with |
-| `category` | `"page-editor"` or `"content-view"` |
+| `category` | `"standalone"` or `"content-view"` |
 | `acceptFile(fileName)` | Returns priority >= 0 if editor can open file, -1 otherwise |
 | `validForLanguage(languageId)` | Returns true if editor is valid for the language |
 | `switchOption(languageId, fileName)` | Returns priority >= 0 to show in switch dropdown, -1 to hide |

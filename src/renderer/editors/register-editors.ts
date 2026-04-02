@@ -240,7 +240,7 @@ editorRegistry.register({
     id: "pdf-view",
     name: "PDF Viewer",
     editorType: "pdfFile",
-    category: "page-editor",
+    category: "standalone",
     acceptFile: (fileName) => {
         if (matchesExtension(fileName, [".pdf"])) return 100;
         return -1;
@@ -256,7 +256,7 @@ editorRegistry.register({
     id: "image-view",
     name: "Image Viewer",
     editorType: "imageFile",
-    category: "page-editor",
+    category: "standalone",
     acceptFile: (fileName) => {
         const imageExtensions = [".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".ico"];
         if (matchesExtension(fileName, imageExtensions)) return 100;
@@ -568,7 +568,7 @@ editorRegistry.register({
     id: "zip-view",
     name: "Archive",
     editorType: "zipFile",
-    category: "page-editor",
+    category: "standalone",
     acceptFile: (fileName) => {
         if (!fileName) return -1;
         return isArchiveFile(fileName) ? 100 : -1;
@@ -584,7 +584,7 @@ editorRegistry.register({
     id: "category-view",
     name: "Folder View",
     editorType: "categoryPage",
-    category: "page-editor",
+    category: "standalone",
     acceptFile: (fileName) => {
         if (fileName?.startsWith("tree-category://")) return 200;
         return -1;
@@ -600,7 +600,7 @@ editorRegistry.register({
     id: "mcp-view",
     name: "MCP Inspector",
     editorType: "mcpInspectorPage",
-    category: "page-editor",
+    category: "standalone",
     loadModule: async () => {
         const module = await import("./mcp-inspector/McpInspectorView");
         return module.default;
@@ -612,7 +612,7 @@ editorRegistry.register({
     id: "browser-view",
     name: "Browser",
     editorType: "browserPage",
-    category: "page-editor",
+    category: "standalone",
     loadModule: async () => {
         const module = await import("./browser/BrowserEditorView");
         return module.default;
@@ -624,7 +624,7 @@ editorRegistry.register({
     id: "about-view",
     name: "About",
     editorType: "aboutPage",
-    category: "page-editor",
+    category: "standalone",
     loadModule: async () => {
         const module = await import("./about/AboutPage");
         return module.default;
@@ -636,7 +636,7 @@ editorRegistry.register({
     id: "settings-view",
     name: "Settings",
     editorType: "settingsPage",
-    category: "page-editor",
+    category: "standalone",
     loadModule: async () => {
         const module = await import("./settings/SettingsPage");
         return module.default;

@@ -198,7 +198,7 @@ Pure renaming — no behavior changes. Establishes correct vocabulary.
 | 1.1 | [US-317](../tasks/US-317-rename-core-types/README.md) | Rename core types | In `shared/types.ts`: `IPageState` → `IEditorState`, `PageType` → `EditorType`, `PageEditor` → `EditorView`. Update all ~48 importing files. | Done |
 | 1.2 | [US-318](../tasks/US-318-rename-pagemodel/README.md) | Rename PageModel → EditorModel | Rename class, file (`PageModel.ts` → `EditorModel.ts`), update `editors/base/index.ts` export, update all ~63 importing files. Also `getDefaultPageModelState` → `getDefaultEditorModelState`. | Done |
 | 1.3 | [US-319](../tasks/US-319-rename-editor-subclasses/README.md) | Rename editor subclasses | Subclass renames (Zip/Category/Browser/About/Settings), file renames, EditorModule methods (`newEditorModel`, etc.), `editorType` field, state interfaces, `FileEditorComponent`, `EditorViewModule`. Removed compat aliases. | Done |
-| 1.4 | — | Rename ViewModel files (optional) | Consider renaming `GridViewModel`, `LogViewModel`, `NotebookEditorModel`, etc. to consistent `*EditorModel` pattern. Only if it improves clarity — some already have good names. | Planned |
+| 1.4 | [US-320](../tasks/US-320-rename-remaining-editor-names/README.md) | Rename remaining editor names | `ImageViewerModel` → `ImageEditorModel`, `PdfViewerModel` → `PdfEditorModel`, `McpInspectorModel` → `McpInspectorEditorModel`. EditorCategory `"page-editor"` → `"standalone"`. Removed compat aliases. | Done |
 
 ### Phase 2: Introduce PageModel
 

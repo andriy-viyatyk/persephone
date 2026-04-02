@@ -1,6 +1,6 @@
 export { default } from "./ImageViewer";
-export { ImageViewer, ImageViewerModel } from "./ImageViewer";
-export type { ImageViewerProps, ImageViewerModelState } from "./ImageViewer";
+export { ImageViewer, ImageEditorModel } from "./ImageViewer";
+export type { ImageViewerProps, ImageEditorModelState } from "./ImageViewer";
 
 // Re-export base components for reuse by other viewers (e.g., SvgView)
 export { BaseImageView, ImageViewModel, defaultImageViewState } from "./BaseImageView";

@@ -182,6 +182,3 @@ export function TextToolbar({ model, setEditorToolbarRefFirst, setEditorToolbarR
 
     return <>{actions}</>;
 }
-
-// Re-export with old name for backward compatibility
-export { TextToolbar as TextFileActions };
