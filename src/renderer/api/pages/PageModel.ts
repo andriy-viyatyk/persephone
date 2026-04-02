@@ -127,9 +127,57 @@ export class PageModel {
         return this._mainEditor;
     }
 
+    /** Low-level setter — updates reference and bumps version for UI re-render.
+     *  Does NOT handle lifecycle (dispose, beforeNavigateAway, notifications).
+     *  Use setMainEditor() for navigation. */
     set mainEditor(editor: EditorModel | null) {
         this._mainEditor = editor;
         this.state.update((s) => { s.version++; });
+    }
+
+    /**
+     * Replace the main editor with full lifecycle handling.
+     * Used by navigatePageTo — consolidates the editor swap logic:
+     * - Calls beforeNavigateAway on old editor
+     * - Disposes old editor (unless it survived as secondary)
+     * - Sets new editor's page reference
+     * - Bumps version for UI re-render
+     * - Notifies secondary editors
+     * - Registers new editor's secondary panel if any
+     */
+    async setMainEditor(newEditor: EditorModel | null): Promise<void> {
+        const oldEditor = this._mainEditor;
+
+        if (oldEditor && newEditor) {
+            // Give old editor a chance to keep/clear its secondary editor status
+            oldEditor.beforeNavigateAway(newEditor);
+            // If old editor survived as secondary, detach from main role but don't dispose
+            const survivesAsSecondary = this.secondaryEditors.includes(oldEditor);
+            if (!survivesAsSecondary) {
+                oldEditor.setPage(null);
+                await oldEditor.dispose();
+            }
+        } else if (oldEditor) {
+            oldEditor.setPage(null);
+            await oldEditor.dispose();
+        }
+
+        this._mainEditor = newEditor;
+        if (newEditor) {
+            newEditor.setPage(this);
+        }
+        this.state.update((s) => { s.version++; });
+
+        // Notify secondary editors of the change
+        this.notifyMainEditorChanged();
+
+        // Register new editor's secondary panel if it has one
+        if (newEditor) {
+            const se = newEditor.state.get().secondaryEditor;
+            if (se) {
+                this.addSecondaryEditor(newEditor);
+            }
+        }
     }
 
     // ── Pinned (reactive) ────────────────────────────────────────────

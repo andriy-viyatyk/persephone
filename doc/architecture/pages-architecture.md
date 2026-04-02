@@ -94,10 +94,10 @@ EditorModel (the content inside a page — replaceable during navigation)
 
 ### Page lifecycle
 
-- **Created:** `new PageModel()` + `page.mainEditor = editor` + `editor.setPage(page)`
+- **Created:** `new PageModel()` + `page.mainEditor = editor` + `editor.setPage(page)` (or `mainEditor = null` for empty pages with sidebar only)
 - **Initialized:** `editor.restore()` loads content; `page.restoreSidebar()` loads sidebar from cache
 - **Active/Inactive:** `show(pageId)` moves page to end of `ordered[]`
-- **Navigation:** `page.mainEditor = newEditor` swaps content without changing page identity
+- **Navigation:** `await page.setMainEditor(newEditor)` — full lifecycle swap (beforeNavigateAway, dispose old, notify secondaries)
 - **Closed:** `page.close()` → checks unsaved → `onClose()` → `detachPage` → `removePage` → `page.dispose()`
 
 ### Close flow detail
@@ -234,7 +234,7 @@ import { pagesModel } from "../api/pages";
 - `removePage(page)` — removes from `pages[]` and `ordered[]` arrays
 - `fixGrouping()` / `fixCompareMode()` — invariant repair
 - `checkEmptyPage()` — auto-create empty page when last one closes
-- `addEmptyPageWithNavPanel(folderPath)` — creates a PageModel with an empty TextFileModel and an initialized sidebar. Used by sidebar double-click and archive browsing.
+- `addEmptyPageWithNavPanel(folderPath)` — creates a PageModel with `mainEditor = null` and an initialized sidebar (Explorer panel). Used by sidebar double-click and archive browsing. The page renders just the sidebar with an empty content area.
 - `openFileAsArchive(filePath)` — opens an archive for browsing. Creates a PageModel with sidebar root set to the archive root. Reuses existing tab if the archive is already open. ZIP archives use `!` separator (e.g., `doc.zip!word/document.xml`) via `archive-service.ts`; `.asar` archives use the regular path directly (e.g., `app.asar`) via Electron's native fs patching — see `file-path.ts`.
 - `save()` / `restore()` — persistence (called by bootstrap, not by scripts)
 - Submodel instances — private composition detail
@@ -263,12 +263,12 @@ When a tab is dragged to another window:
    - `movePageOut(pageId)` calls `page.saveState()` to flush sidebar cache to disk
    - Calls `detachPage()` — unsubscribes but does NOT dispose. **Cache files survive.**
    - Calls `removePage()` — removes from arrays
-4. **Target window** — receives `eMovePageIn` IPC event (main process awaits `whenReady` first):
-   - `movePageIn(data)` creates a new EditorModel from the serialized editor state
-   - Wraps in a new PageModel, calls `applyRestoreData()` and `restore()`
-   - If the source page had a sidebar, restores it from cache using the editor ID
+4. **Target window** — receives `eMovePageIn` IPC event with `PageDescriptor` (main process awaits `whenReady` first):
+   - `movePageIn(data)` creates a new PageModel with the **same page ID** from the descriptor
+   - Creates an EditorModel from `desc.editor`, calls `applyRestoreData()` and `restore()`
+   - If `desc.hasSidebar`, restores sidebar from cache (keyed by page ID) including secondary editors
 
-**Why it works:** Cache files are keyed by editor ID. The source window preserves them (no `dispose()`), and the target window reads them using the same ID. Sidebar state (tree expansion, search, secondary editor descriptors) is fully reconstructed from cache.
+**Why it works:** The `PageDragData` sent by `PageTab.getDragData()` includes a full `PageDescriptor` with `id`, `pinned`, `modified`, `hasSidebar`, and serialized editor state. Cache files are keyed by page ID. The source window preserves them (no `dispose()`), and the target window reads them using the same ID. Sidebar state (tree expansion, search, secondary editor descriptors) is fully reconstructed from cache. The page ID is preserved across the transfer.
 
 **Critical dependency:** The target window must have called `api.windowReady()` before the main process sends `eMovePageIn`. The main process holds a `whenReady` promise per window and awaits it before forwarding events.
 
@@ -347,20 +347,27 @@ In `navigatePageTo()` ([`PagesLifecycleModel.ts`](../../src/renderer/api/pages/P
 
 ```
 1. page = findPage(pageId)                    // PageModel stays in arrays
-2. oldEditor = page.mainEditor
+2. oldEditor.confirmRelease()                 // check for unsaved changes
 3. ... create newEditor (with sourceLink) ...
-4. oldEditor.beforeNavigateAway(newEditor)    // old editor decides to keep/clear secondaryEditor
-5. survivesAsSecondary = page.secondaryEditors.includes(oldEditor)
-6. if (!survivesAsSecondary) oldEditor.dispose()
-7. page.mainEditor = newEditor                // swap content — page.id stays the same
-8. newEditor.setPage(page)
-9. resubscribeEditor(page)                    // re-subscribe for persistence
-10. page.notifyMainEditorChanged()             // secondary editors react
+4. await page.setMainEditor(newEditor)        // full lifecycle swap (see below)
+5. resubscribeEditor(page)                    // re-subscribe for persistence
+6. auto-select preview editor (if textFile)
+7. onShow / onFocus / saveState
 ```
 
-**Step 4** — `beforeNavigateAway(newEditor)` lets the old editor inspect `newEditor.sourceLink` to decide whether to keep itself as a secondary editor. The base implementation clears `secondaryEditor`. Subclasses like ZipEditorModel override to check `newEditor.sourceLink?.metadata?.sourceId === this.id`.
+**Step 4** — `page.setMainEditor(newEditor)` is the high-level editor swap method on PageModel. It consolidates the lifecycle:
+- Calls `oldEditor.beforeNavigateAway(newEditor)` — old editor decides to keep/clear its `secondaryEditor`
+- Checks secondary survival: if old editor is in `secondaryEditors[]`, it's kept alive
+- Otherwise, disposes old editor (`await oldEditor.dispose()`)
+- Sets `newEditor.setPage(page)`, bumps version for UI re-render
+- Calls `notifyMainEditorChanged()` — secondary editors react, cleanup runs
+- Registers new editor's secondary panel if it has one
 
-**Step 10** — `notifyMainEditorChanged()` clears Explorer selection if the new editor wasn't opened from Explorer, then calls `onMainEditorChanged(newMainEditor)` on each secondary editor. Secondary editors may react: ZipEditorModel checks if the new main editor was opened from its archive — if not, it clears `secondaryEditor` and is cleaned up.
+**Note:** The raw `mainEditor` setter (without lifecycle) is still used for low-level operations: persistence restore, `addPage()`, and `dispose()`. `setMainEditor()` is the high-level method for navigation.
+
+**`beforeNavigateAway(newEditor)`** lets the old editor inspect `newEditor.sourceLink` to decide whether to keep itself as a secondary editor. The base implementation clears `secondaryEditor`. Subclasses like ZipEditorModel override to check `newEditor.sourceLink?.metadata?.sourceId === this.id`.
+
+**`notifyMainEditorChanged()`** clears Explorer selection if the new editor wasn't opened from Explorer, then calls `onMainEditorChanged(newMainEditor)` on each secondary editor. Secondary editors may react: ZipEditorModel checks if the new main editor was opened from its archive — if not, it clears `secondaryEditor` and is cleaned up.
 
 ---
 

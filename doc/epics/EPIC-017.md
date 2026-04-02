@@ -215,9 +215,7 @@ With page owning the context, navigation becomes an editor swap.
 
 | # | Task | Title | Description | Status |
 |---|------|-------|-------------|--------|
-| 3.1 | — | Simplify navigatePageTo | Replace 10-step transfer with `page.setMainEditor(newEditor)`. Page notifies secondary editors. No NavigationData transfer. | Planned |
-| 3.2 | — | Empty pages | Remove `addEmptyPageWithNavPanel()`. Page with `mainEditor = null` renders empty content + Explorer. | Planned |
-| 3.3 | — | Multi-window transfer | `movePageOut()`/`movePageIn()` serialize entire page. Page ID preserved. No `updateId()`. | Planned |
+| 3.1–3.3 | [US-323](../tasks/US-323-simplify-navigate-page-to/README.md) | Simplify navigatePageTo | Combined: `PageModel.setMainEditor()` helper, remove `getStableKey`, empty pages (`mainEditor = null`), `movePageIn`/`movePageOut` use PageDescriptor. | Done |
 
 ### Phase 4: Cleanup & API
 

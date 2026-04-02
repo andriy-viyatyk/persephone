@@ -84,20 +84,28 @@ export class PagesPersistenceModel {
 
         for (const desc of data.pages as PageDescriptor[]) {
             const editorData = desc.editor;
-            if (!editorData) continue;
-
-            const editor = await this.restoreModel(editorData);
-            if (!editor) continue;
 
             const page = new PageModel(desc.id);
             page.pinned = desc.pinned ?? false;
-            page.mainEditor = editor;
-            editor.setPage(page);
 
-            // Restore sidebar from cache if page had one
-            if (desc.hasSidebar) {
+            // Restore editor if present (empty pages have no editor)
+            if (editorData && Object.keys(editorData).length > 0) {
+                const editor = await this.restoreModel(editorData);
+                if (!editor) continue;
+                page.mainEditor = editor;
+                editor.setPage(page);
+
+                // Restore sidebar from cache if page had one
+                if (desc.hasSidebar) {
+                    await page.restoreSidebar();
+                    await page.restoreSecondaryEditors(editor);
+                }
+            } else if (desc.hasSidebar) {
+                // Empty page with sidebar only (folder explorer)
                 await page.restoreSidebar();
-                await page.restoreSecondaryEditors(editor);
+            } else {
+                // No editor and no sidebar — skip this descriptor
+                continue;
             }
 
             this.model.attachPage(page);

@@ -2,7 +2,7 @@ import { Subscription } from "../../core/state/events";
 import { TModel } from "../../core/state/model";
 import { TGlobalState } from "../../core/state/state";
 import { EditorModel } from "../../editors/base";
-import { IEditorState, EditorView } from "../../../shared/types";
+import { EditorView, PageDescriptor } from "../../../shared/types";
 import { RawLinkEvent } from "../events/events";
 import { PageModel } from "./PageModel";
 
@@ -217,7 +217,7 @@ export class PagesModel extends TModel<OpenFilesState> {
     closeOtherPages = (pageId: string) =>
         this.lifecycle.closeOtherPages(pageId);
     movePageIn = (data?: {
-        page: Partial<IEditorState>;
+        page: PageDescriptor;
         targetPageId: string | undefined;
     }) => this.lifecycle.movePageIn(data);
     movePageOut = (pageId?: string) => this.lifecycle.movePageOut(pageId);

@@ -1,6 +1,6 @@
 import type { PagesModel } from "./PagesModel";
 import { EditorModel } from "../../editors/base";
-import { IEditorState, ISourceLink, EditorView, EditorType } from "../../../shared/types";
+import { IEditorState, ISourceLink, EditorView, EditorType, PageDescriptor } from "../../../shared/types";
 import {
     isTextFileModel,
     newTextFileModel,
@@ -106,13 +106,13 @@ export class PagesLifecycleModel {
 
     /**
      * Add an editor to the page collection, wrapping it in a PageModel.
-     * @param editor — the EditorModel to add
+     * @param editor — the EditorModel to add (null for empty pages with sidebar only)
      * @param existingPage — optional pre-created PageModel (for sidebar pages, archives, etc.)
      * @returns The PageModel wrapping the editor
      */
-    addPage = (editor: EditorModel, existingPage?: PageModel): PageModel => {
+    addPage = (editor: EditorModel | null, existingPage?: PageModel): PageModel => {
         const page = existingPage ?? new PageModel();
-        if (!page.mainEditor) {
+        if (editor && !page.mainEditor) {
             page.mainEditor = editor;
             editor.setPage(page);
         }
@@ -142,12 +142,9 @@ export class PagesLifecycleModel {
     };
 
     addEmptyPageWithNavPanel = (folderPath: string): PageModel => {
-        const emptyFile = newTextFileModel("");
         const page = new PageModel(undefined, folderPath);
-        page.mainEditor = emptyFile as unknown as EditorModel;
-        (emptyFile as unknown as EditorModel).setPage(page);
         page.ensurePageNavigatorModel();
-        return this.addPage(emptyFile as unknown as EditorModel, page);
+        return this.addPage(null, page);
     };
 
     addEditorPage = (
@@ -421,18 +418,8 @@ export class PagesLifecycleModel {
             newEditor.state.update((s) => { s.sourceLink = options.sourceLink; });
         }
 
-        // Give old editor a chance to keep/clear its secondary editor status
-        oldEditor.beforeNavigateAway(newEditor);
-
-        // If old editor survived as secondary, detach it from main role but don't dispose
-        const survivesAsSecondary = page.secondaryEditors.includes(oldEditor);
-        if (!survivesAsSecondary) {
-            await oldEditor.dispose();
-        }
-
-        // Swap main editor — page stays in arrays, only content changes
-        page.mainEditor = newEditor;
-        newEditor.setPage(page);
+        // Swap main editor — handles beforeNavigateAway, dispose, notifications
+        await page.setMainEditor(newEditor);
 
         // Re-subscribe to new editor's state changes
         this.model.resubscribeEditor(page);
@@ -468,15 +455,6 @@ export class PagesLifecycleModel {
                     });
                 }
             }
-        }
-
-        // Notify secondary editors of new main editor
-        page.notifyMainEditorChanged();
-
-        // Register new editor's secondary panel if it has one
-        const se = newEditor.state.get().secondaryEditor;
-        if (se) {
-            page.addSecondaryEditor(newEditor);
         }
 
         this.model.onShow.send(page);
@@ -525,45 +503,38 @@ export class PagesLifecycleModel {
     // ── Multi-window operations ──────────────────────────────────────
 
     movePageIn = async (data?: {
-        page: Partial<IEditorState>;
+        page: PageDescriptor;
         targetPageId: string | undefined;
     }) => {
-        if (!data || !data.page) {
-            return;
+        if (!data?.page) return;
+
+        const desc = data.page;
+        const page = new PageModel(desc.id);
+        page.pinned = desc.pinned ?? false;
+
+        // Restore editor if present
+        if (desc.editor && Object.keys(desc.editor).length > 0) {
+            const editor = await this.newEditorModelFromState(desc.editor);
+            editor.applyRestoreData(desc.editor);
+            await editor.restore();
+            page.mainEditor = editor;
+            editor.setPage(page);
         }
-        const editor = await this.newEditorModelFromState(data.page);
-        editor.applyRestoreData(data.page);
-        await editor.restore();
 
-        const targetIndex = data.targetPageId
-            ? this.model.state
-                  .get()
-                  .pages.findIndex(
-                      (p) => p.id === data.targetPageId
-                  )
-            : -1;
-
-        const page = new PageModel();
-        page.mainEditor = editor;
-        editor.setPage(page);
-
-        // Restore sidebar from cache if the old page had one
-        // (cache files are keyed by editor ID, and we keep the same editor ID)
-        const hasSidebar = !!(data.page as any).hasNavigator || !!(data.page as any).hasNavPanel; // eslint-disable-line @typescript-eslint/no-explicit-any
-        if (hasSidebar) {
-            // Use editor ID as the cache key (old format keyed by editor ID)
-            const oldPageModel = new PageModel(editor.id);
-            await oldPageModel.restoreSidebar();
-            // Transfer sidebar state to the real page
-            if (oldPageModel.pageNavigatorModel) {
-                page.ensurePageNavigatorModel();
-                const navState = oldPageModel.pageNavigatorModel.state.get();
-                page.pageNavigatorModel!.setStateQuiet(navState);
+        // Restore sidebar from cache (keyed by page ID — saved before movePageOut)
+        if (desc.hasSidebar) {
+            await page.restoreSidebar();
+            if (page.mainEditor) {
+                await page.restoreSecondaryEditors(page.mainEditor);
             }
         }
 
+        const targetIndex = data.targetPageId
+            ? this.model.state.get().pages.findIndex((p) => p.id === data.targetPageId)
+            : -1;
+
         if (targetIndex === -1) {
-            this.addPage(editor, page);
+            this.addPage(page.mainEditor, page);
             this.model.closeFirstPageIfEmpty();
         } else {
             this.model.attachPage(page);

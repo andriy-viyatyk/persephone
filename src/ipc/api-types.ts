@@ -1,4 +1,4 @@
-import { IEditorState, PageDragData, WindowPages } from "../shared/types";
+import { PageDragData, PageDescriptor, WindowPages } from "../shared/types";
 import {
     CommonFolder,
     DownloadEntry,
@@ -144,7 +144,7 @@ export type EventApi = {
     [EventEndpoint.eOpenFile]: EventObject<string>;
     [EventEndpoint.eOpenDiff]: EventObject<{ firstPath: string; secondPath: string }>;
     [EventEndpoint.eShowPage]: EventObject<string>;
-    [EventEndpoint.eMovePageIn]: EventObject<{ page: Partial<IEditorState>; targetPageId: string | undefined }>;
+    [EventEndpoint.eMovePageIn]: EventObject<{ page: PageDescriptor; targetPageId: string | undefined }>;
     [EventEndpoint.eMovePageOut]: EventObject<string>;
     [EventEndpoint.eZoomChanged]: EventObject<number>;
     [EventEndpoint.eUpdateAvailable]: EventObject<UpdateCheckResult>;
