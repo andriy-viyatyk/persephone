@@ -40,7 +40,12 @@ export type EditorView =
     | "todo-view"
     | "link-view"
     | "log-view"
-    | "browser-view";
+    | "browser-view"
+    | "graph-view"
+    | "draw-view"
+    | "mcp-view"
+    | "zip-view"
+    | "category-view";
 
 /** Monaco language identifier. */
 export type Language =

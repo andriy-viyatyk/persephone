@@ -206,7 +206,7 @@ Create the new PageModel and wire it into the system. NavigationData logic moves
 
 | # | Task | Title | Description | Status |
 |---|------|-------|-------------|--------|
-| 2.1 | — | Create PageModel class | New class: stable ID, `mainEditor: EditorModel \| null`, owns sidebar state (from NavigationData). Lifecycle: create, dispose, save/restore. Extract `pinned` from IEditorState into PageModel. | Planned |
+| 2.1 | [US-321](../tasks/US-321-create-pagemodel/README.md) | Create PageModel class | New class: stable ID, `mainEditor: EditorModel \| null`, owns sidebar state (from NavigationData). Lifecycle: create, dispose, save/restore. Extract `pinned` from IEditorState into PageModel. | Done |
 | 2.2 | — | Wire PagesModel to PageModel | `pages[]` stores `PageModel[]`. Submodel queries use page IDs. `attachPage()`/`detachPage()` work with pages. `findPage()` returns PageModel. Grouping maps use page IDs. | Planned |
 | 2.3 | — | Page rendering | `Pages.tsx`: `<Page />` component receives PageModel. Renders PageNavigator + main editor. `getStableKey` removed — page.id is the key. `AppPageManager` uses page IDs directly. | Planned |
 | 2.4 | — | Tab rendering | `PageTab` reads from PageModel. Title/icon/modified delegate to `page.mainEditor`. Pinned state from page directly. | Planned |

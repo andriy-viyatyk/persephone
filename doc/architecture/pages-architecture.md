@@ -449,3 +449,7 @@ Secondary model state is saved as descriptors (`SecondaryModelDescriptor[]`) in 
 ### Dispose
 
 When a tab closes, `NavigationData.dispose()` disposes all secondary models. Before dispose, `confirmSecondaryRelease()` checks for unsaved changes — this is called via `EditorModel.confirmRelease(closing: true)` in the tab close flow.
+
+### Future: PageModel (EPIC-017 Phase 2)
+
+`PageModel` ([`/src/renderer/api/pages/PageModel.ts`](../../src/renderer/api/pages/PageModel.ts)) is the planned replacement for NavigationData. It absorbs all of NavigationData's responsibilities (sidebar, tree, search, secondary editors) and adds a `mainEditor` reference — making the page a proper container. Currently standalone (not wired into the runtime). See [EPIC-017](../../doc/epics/EPIC-017.md) for the migration plan.

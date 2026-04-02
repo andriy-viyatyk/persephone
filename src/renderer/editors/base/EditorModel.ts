@@ -6,6 +6,7 @@ import { NavigationData } from "../../ui/navigation/NavigationData";
 import { fs } from "../../api/fs";
 import type { IContentPipe } from "../../api/types/io.pipe";
 import { createPipeFromDescriptor } from "../../content/registry";
+import type { PageModel } from "../../api/pages/PageModel";
 
 export const getDefaultEditorModelState = (): IEditorState => ({
     id: crypto.randomUUID(),
@@ -25,7 +26,8 @@ export class EditorModel<T extends IEditorState = IEditorState, R = any> extends
     /** In-memory data storage for scripts. Available on all page types. Does not persist to disk. */
     scriptData: Record<string, any> = {};
     navigationData: NavigationData | null = null;
-    /** For secondary editor models: the active page that owns the NavigationData containing this model. */
+    /** For secondary editor models: the active page that owns the NavigationData containing this model.
+     *  @deprecated Use `page` instead (EPIC-017 Phase 2 migration). */
     ownerPage: EditorModel | null = null;
 
     /**
@@ -33,9 +35,27 @@ export class EditorModel<T extends IEditorState = IEditorState, R = any> extends
      * Base implementation stores the reference.
      * Subclasses override to react — e.g., ZipEditorModel checks if the new owner
      * was opened from this archive and removes itself if not.
+     * @deprecated Use `setPage()` and `onMainEditorChanged()` instead (EPIC-017 Phase 2 migration).
      */
     setOwnerPage(model: EditorModel | null): void {
         this.ownerPage = model;
+    }
+
+    /** Reference to the containing PageModel (for both main and secondary editors).
+     *  Set via setPage(). Available after EPIC-017 Phase 2 wiring. */
+    page: PageModel | null = null;
+
+    /** Called when this editor is placed into or removed from a PageModel.
+     *  Base implementation stores the reference. Subclasses can override to react. */
+    setPage(page: PageModel | null): void {
+        this.page = page;
+    }
+
+    /** Called on secondary editors when the page's main editor changes (navigation).
+     *  Base implementation is a no-op. Override in subclasses to react
+     *  (e.g., ZipEditorModel checks if new main editor was opened from this archive). */
+    onMainEditorChanged(_newMainEditor: EditorModel | null): void {
+        // Override in subclasses
     }
     /** Content pipe (provider + transformers). Owned by the page, disposed on close. */
     pipe: IContentPipe | null = null;

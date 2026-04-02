@@ -3,6 +3,7 @@
 All completed tasks, newest first.
 
 | ID | Title | Epic | Notes |
+| US-321 | Create PageModel class | EPIC-017 | Phase 2.1 — new `PageModel` class (stable tab container with mainEditor, sidebar, secondary editors). Added `page`/`setPage()`/`onMainEditorChanged()` stubs to EditorModel. Standalone — not wired into runtime yet. |
 | US-320 | Rename remaining editor names for consistency | EPIC-017 | Phase 1.4 — `ImageViewerModel` → `ImageEditorModel`, `PdfViewerModel` → `PdfEditorModel`, `McpInspectorModel` → `McpInspectorEditorModel` (+ file rename). EditorCategory `"page-editor"` → `"standalone"`. Removed all backward compat aliases. ~38 files. |
 | US-319 | Rename editor subclasses + EditorModule interface | EPIC-017 | Phase 1.3 — renamed 5 subclasses (Zip/Category/Browser/About/Settings), 7 file renames (git mv), EditorModule methods (newEditorModel, etc.), EditorDefinition.editorType, FileEditorComponent, EditorViewModule, state interfaces, helper functions. Removed compat aliases. ~72 files. |
 | US-318 | Rename PageModel → EditorModel | EPIC-017 | Phase 1.2 — renamed base class, file (`PageModel.ts` → `EditorModel.ts`), `getDefaultPageModelState` → `getDefaultEditorModelState`, barrel export, ~46 files. Updated architecture docs, standards, diagrams. |
