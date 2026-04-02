@@ -43,7 +43,7 @@ Run this page's content as a script, equivalent to pressing `F5`. Only works for
 
 ```javascript
 // Find a script page and run it
-const scriptPage = app.pages.find(p => p.title === "my-script.js");
+const scriptPage = app.pages.all.find(p => p.title === "my-script.js");
 const result = await scriptPage.runScript();
 console.log(result); // script output
 ```

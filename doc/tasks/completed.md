@@ -3,6 +3,7 @@
 All completed tasks, newest first.
 
 | ID | Title | Epic | Notes |
+| US-324 | Clean up EditorModel | EPIC-017 | Phase 4 cleanup. Removed deprecated `createPageFromFile`, stale NavigationData comments, backward-compat cache format fields. Phases 4.1–4.4 were already done in US-322/US-323. |
 | US-323 | Simplify navigatePageTo | EPIC-017 | Phase 3.1–3.3 combined. Added `PageModel.setMainEditor()` (async, full lifecycle). Simplified `navigatePageTo` from 13 steps to 7. Removed `getStableKey` from `AppPageManager`. Empty pages natural (`mainEditor=null`). `movePageIn`/`movePageOut` use `PageDescriptor` format (page ID preserved across windows). 9 files changed. |
 | US-322 | Wire PagesModel to PageModel | EPIC-017 | Phase 2.2–2.6 combined. PagesModel stores `PageModel[]`. NavigationData deleted — absorbed into PageModel. `navigatePageTo()` simplified to mainEditor swap. New `PageDescriptor` persistence format with old-format detection. ~30 files changed, 1 deleted. |
 | US-321 | Create PageModel class | EPIC-017 | Phase 2.1 — new `PageModel` class (stable tab container with mainEditor, sidebar, secondary editors). Added `page`/`setPage()`/`onMainEditorChanged()` stubs to EditorModel. Standalone — not wired into runtime yet. |

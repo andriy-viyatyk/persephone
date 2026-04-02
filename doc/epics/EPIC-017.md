@@ -221,11 +221,7 @@ With page owning the context, navigation becomes an editor swap.
 
 | # | Task | Title | Description | Status |
 |---|------|-------|-------------|--------|
-| 4.1 | — | Clean up EditorModel | Remove `navigationData`, `ownerPage`, `setOwnerPage()`, `needsNavigatorRestore`, `hasNavigator`, `ensureNavigationData()`. Simplify `restore()`, `dispose()`, `getRestoreData()`. | Planned |
-| 4.2 | — | Update script API wrappers | `PageWrapper` proxies `page.content` → `mainEditor`. `page.id` returns page ID. `PageCollectionWrapper` adapted. | Planned |
-| 4.3 | — | Update MCP handler | `pageId` = page ID. Lookup adapts. | Planned |
-| 4.4 | — | Remove workarounds | Delete `renderId`, `getStableKey`, `updateId()`. Remove `NavigationData` class (absorbed into PageModel). | Planned |
-| 4.5 | — | Update documentation | pages-architecture.md, architecture diagrams, CLAUDE.md key files table, editor-guide.md. | Planned |
+| 4.1–4.5 | [US-324](../tasks/US-324-clean-up-editor-model/README.md) | Phase 4 cleanup | Items 4.1–4.4 were completed during US-322/US-323. US-324 covers remaining: stale comments, deprecated `createPageFromFile`, backward-compat code removal, documentation. | Done |
 
 ## Linked Tasks
 

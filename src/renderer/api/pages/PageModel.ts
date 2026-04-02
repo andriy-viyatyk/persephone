@@ -33,10 +33,6 @@ interface PageSidebarSavedState {
     activePanel?: string;
     secondaryModelDescriptors?: SecondaryModelDescriptor[];
     searchState?: FileSearchState;
-    // Backward compat: old NavigationData format
-    rootFilePath?: string;
-    currentFilePath?: string;
-    fileExplorerState?: { expandedPaths?: string[]; selectedFilePath?: string };
 }
 
 /** Reactive page-level state — UI subscribes to this for re-render on page changes. */
@@ -104,7 +100,7 @@ export class PageModel {
     // ── Internal ─────────────────────────────────────────────────────
 
     private _rootPath: string;
-    private _cacheName = "nav-panel"; // same file name for backward compat with NavigationData
+    private _cacheName = "nav-panel";
     private _skipSave = false;
     private _unsubscribe: (() => void) | undefined = undefined;
     private _expandSub: { unsubscribe: () => void } | undefined = undefined;
@@ -477,14 +473,7 @@ export class PageModel {
         const data = await fs.getCacheFile(this.id, this._cacheName);
         const saved = parseObject(data) as PageSidebarSavedState | undefined;
         if (saved) {
-            // Backward compat: migrate old NavigationData/NavPanelModel format
-            const rootPath = saved.rootPath || saved.rootFilePath || "";
-            const treeState = saved.treeState || (saved.fileExplorerState?.expandedPaths
-                ? {
-                    expandedPaths: saved.fileExplorerState.expandedPaths,
-                    selectedHref: saved.fileExplorerState.selectedFilePath,
-                }
-                : undefined);
+            const rootPath = saved.rootPath || "";
 
             // Restore model state (skip save for this batch)
             this._skipSave = true;
@@ -497,7 +486,7 @@ export class PageModel {
             this._skipSave = false;
 
             // Restore PageModel state
-            this.treeState = treeState;
+            this.treeState = saved.treeState;
             this.selectionState.set({ selectedHref: saved.selectedHref ?? null });
             this._rootPath = rootPath;
 

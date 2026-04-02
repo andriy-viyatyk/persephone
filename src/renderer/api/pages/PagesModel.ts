@@ -186,8 +186,6 @@ export class PagesModel extends TModel<OpenFilesState> {
         this.lifecycle.addEditorPage(editor, language, title, content);
     addDrawPage = (dataUrl: string, title?: string) =>
         this.lifecycle.addDrawPage(dataUrl, title);
-    createPageFromFile = (filePath: string) =>
-        this.lifecycle.createPageFromFile(filePath);
     openFile = async (filePath?: string) => {
         if (!filePath) return undefined;
         // Route through the link pipeline (Layer 1 → 2 → 3)

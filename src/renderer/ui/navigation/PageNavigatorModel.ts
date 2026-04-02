@@ -22,7 +22,7 @@ const DEFAULT_WIDTH = 240;
  * PageNavigatorModel — reactive state for the PageNavigator sidebar.
  *
  * Pure state container: open/close, width, rootPath, navigation.
- * Persistence is owned by NavigationData (not this model).
+ * Persistence is owned by PageModel (not this model).
  */
 export class PageNavigatorModel {
     state: TComponentState<PageNavigatorState>;
@@ -35,7 +35,7 @@ export class PageNavigatorModel {
         });
     }
 
-    /** Set state without triggering subscriptions. Used by NavigationData.restore(). */
+    /** Set state without triggering subscriptions. Used by PageModel.restoreSidebar(). */
     setStateQuiet(s: Partial<PageNavigatorState>): void {
         const current = this.state.get();
         this.state.set({

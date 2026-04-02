@@ -19,6 +19,7 @@ app.pages.addEmptyPage();
 
 | Member | Type | Description |
 |--------|------|-------------|
+| `all` | `IPage[]` | All open pages (tabs) in the current window. |
 | `activePage` | `IPage \| undefined` | Currently active (visible) page. |
 | `groupedPage` | `IPage \| undefined` | Grouped partner of the active page. |
 | `findPage(pageId)` | `IPage \| undefined` | Find a page by ID. |
@@ -28,12 +29,13 @@ app.pages.addEmptyPage();
 
 ## Lifecycle
 
-### openFile(filePath) → `Promise<void>`
+### openFile(filePath) → `Promise<IPage | undefined>`
 
-Open a file in a new or existing tab.
+Open a file in a new or existing tab. Returns the page, or `undefined` if the file could not be opened.
 
 ```javascript
-await app.pages.openFile("C:/projects/data.json");
+const p = await app.pages.openFile("C:/projects/data.json");
+console.log(p?.title);
 ```
 
 ### openFileWithDialog() → `Promise<void>`
@@ -60,16 +62,31 @@ await app.pages.navigatePageTo(page.id, "C:/other-file.json", {
 });
 ```
 
+### closePage(pageId) → `Promise<boolean>`
+
+Close a page by ID. Returns `true` if closed, or `false` if the close was cancelled (e.g. the user declined to save unsaved changes).
+
+```javascript
+const closed = await app.pages.closePage(page.id);
+if (!closed) {
+    console.log("Close was cancelled");
+}
+```
+
 ### addEmptyPage() → `IPage`
 
 Add an empty text page. Returns the new page.
 
-### addEditorPage(editor, language, title) → `IPage`
+### addEditorPage(editor, language, title, content?) → `IPage`
 
-Add a page with a specific editor, language, and title.
+Add a page with a specific editor, language, and title. Optionally provide initial content.
 
 ```javascript
+// Add an empty grid page
 app.pages.addEditorPage("grid-json", "json", "My Data");
+
+// Add a page with pre-filled content
+app.pages.addEditorPage("monaco", "markdown", "Notes", "# Hello\n");
 ```
 
 ### addDrawPage(dataUrl, title?) → `Promise<IPage>`
@@ -102,6 +119,17 @@ Open the About page.
 ### showSettingsPage() → `Promise<void>`
 
 Open the Settings page.
+
+### showMcpInspectorPage(options?) → `Promise<void>`
+
+Open an MCP Inspector page for connecting to and testing MCP servers.
+
+Options:
+- `url?: string` — pre-fill the server URL
+
+```javascript
+await app.pages.showMcpInspectorPage({ url: "http://localhost:7865/mcp" });
+```
 
 ### showBrowserPage(options?) → `Promise<void>`
 

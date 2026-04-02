@@ -99,11 +99,6 @@ export class PagesLifecycleModel {
         return editor;
     };
 
-    /** @deprecated Use createEditorFromFile. Kept for backward compat of public delegate. */
-    createPageFromFile = async (filePath: string, pipe?: IContentPipe): Promise<EditorModel> => {
-        return this.createEditorFromFile(filePath, pipe);
-    };
-
     /**
      * Add an editor to the page collection, wrapping it in a PageModel.
      * @param editor — the EditorModel to add (null for empty pages with sidebar only)
