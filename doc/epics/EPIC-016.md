@@ -1,8 +1,9 @@
 # EPIC-016: Secondary Editors — Sidebar Extension System
 
-**Status:** In Progress
+**Status:** Completed
 **Priority:** Medium
 **Created:** 2026-03-30
+**Completed:** 2026-04-02
 **Depends on:** EPIC-015 (ITreeProvider infrastructure)
 
 ## Goal
@@ -207,9 +208,17 @@ Multiple secondary models from different sources (e.g., `.link.json` inside `.zi
 
 Dependent secondary models (where one model relies on another's state) are not currently planned. If such a scenario arises, it will be addressed at that time.
 
+## Completion Notes
+
+Phase 0 (Navigation Identity) and Phase 1 (Architecture Foundation) are complete. The secondary editor infrastructure — registry, lifecycle, PageNavigator rendering, and the first concrete implementation (ZipPageModel) — is fully functional.
+
+Phases 2 (Link Editor Replacement), 3 (Browser & Advanced Features), and 4 (Archive Expansion) have been moved to **[EPIC-018](EPIC-018.md)** — Secondary Editors: Content Applications. These will be implemented after EPIC-017 (PageContainer Architecture), which may simplify some of the remaining work.
+
 ## References
 
 - **EPIC-015:** ITreeProvider infrastructure, TreeProviderView, CategoryView, PageNavigator
+- **EPIC-018:** Continuation — Link Editor, Browser integration, archive expansion
+- **EPIC-017:** PageContainer Architecture — refactors the page/navigation ownership model
 - **Current Link editor:** `src/renderer/editors/link-editor/` — feature reference for parity
 - **Archive service:** `src/renderer/api/archive-service.ts` — used by ZipPageModel
 - **Editor registry:** `src/renderer/editors/registry.ts` — pattern for secondary-editor-registry

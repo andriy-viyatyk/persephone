@@ -4,14 +4,16 @@ Epics represent big ideas with high-level overviews. Each epic links to tasks in
 
 ## Active
 
-- **EPIC-016** — [Secondary Editors — Sidebar Extension System](EPIC-016.md)
+- **EPIC-017** — [PageContainer Architecture](EPIC-017.md)
 
 ## Future
+- **EPIC-018** — [Secondary Editors — Content Applications](EPIC-018.md)
 - **EPIC-014** — [Claude Integration via Terminal Editor](EPIC-014.md)
 - **EPIC-011** — [Chrome Extension Support for Built-in Browser](EPIC-011.md)
 
 ## Completed
 
+- **EPIC-016** — [Secondary Editors — Sidebar Extension System](EPIC-016.md)
 - **EPIC-015** — [ITreeProvider — Browsable Source Abstraction](EPIC-015.md)
 - **EPIC-012** — [Unified Link & Provider Architecture](EPIC-012.md)
 - **EPIC-013** — [Rebrand to "Persephone"](EPIC-013.md)
@@ -36,4 +38,4 @@ Epics represent big ideas with high-level overviews. Each epic links to tasks in
 
 ---
 
-*Last updated: 2026-03*
+*Last updated: 2026-04*
