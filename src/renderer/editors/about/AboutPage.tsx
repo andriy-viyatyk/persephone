@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import { useEffect, useState } from "react";
 import { IEditorState, EditorType } from "../../../shared/types";
-import { getDefaultPageModelState, PageModel } from "../base";
+import { getDefaultEditorModelState, EditorModel } from "../base";
 import { TComponentState } from "../../core/state/state";
 import { EditorModule } from "../types";
 import color from "../../theme/color";
@@ -159,13 +159,13 @@ export const ABOUT_PAGE_ID = "about-page";
 interface AboutPageModelState extends IEditorState {}
 
 const getDefaultAboutPageModelState = (): AboutPageModelState => ({
-    ...getDefaultPageModelState(),
+    ...getDefaultEditorModelState(),
     id: ABOUT_PAGE_ID,
     type: "aboutPage",
     title: "About",
 });
 
-class AboutPageModel extends PageModel<AboutPageModelState, void> {
+class AboutPageModel extends EditorModel<AboutPageModelState, void> {
     noLanguage = true;
     skipSave = true;
 
@@ -348,13 +348,13 @@ const aboutEditorModule: EditorModule = {
     newPageModel: async () => {
         return new AboutPageModel(new TComponentState(getDefaultAboutPageModelState()));
     },
-    newEmptyPageModel: async (pageType: EditorType): Promise<PageModel | null> => {
+    newEmptyPageModel: async (pageType: EditorType): Promise<EditorModel | null> => {
         if (pageType === "aboutPage") {
             return new AboutPageModel(new TComponentState(getDefaultAboutPageModelState()));
         }
         return null;
     },
-    newPageModelFromState: async (state: Partial<IEditorState>): Promise<PageModel> => {
+    newPageModelFromState: async (state: Partial<IEditorState>): Promise<EditorModel> => {
         const initialState: AboutPageModelState = {
             ...getDefaultAboutPageModelState(),
             ...state,

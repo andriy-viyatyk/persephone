@@ -1,7 +1,7 @@
 import { createElement, ReactNode } from "react";
 const { ipcRenderer } = require("electron");
 import { IEditorState } from "../../../shared/types";
-import { getDefaultPageModelState, PageModel } from "../base";
+import { getDefaultEditorModelState, EditorModel } from "../base";
 import { TComponentState } from "../../core/state/state";
 import { globalKeyDown, windowClosing, SubscriptionObject } from "../../core/state/events";
 import { pagesModel } from "../../api/pages";
@@ -257,7 +257,7 @@ function createTab(url = DEFAULT_URL): BrowserTabData {
 export const getDefaultBrowserPageState = (): BrowserPageState => {
     const tab = createTab();
     return {
-        ...getDefaultPageModelState(),
+        ...getDefaultEditorModelState(),
         type: "browserPage",
         title: "Browser",
         editor: "browser-view",
@@ -316,7 +316,7 @@ export function getPartitionString(
     return `persist:browser-${profileName || "default"}`;
 }
 
-export class BrowserPageModel extends PageModel<BrowserPageState, void> {
+export class BrowserPageModel extends EditorModel<BrowserPageState, void> {
     noLanguage = true;
     skipSave = true;
 

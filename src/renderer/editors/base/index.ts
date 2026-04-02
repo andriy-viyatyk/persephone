@@ -1,4 +1,4 @@
-export { PageModel, getDefaultPageModelState } from './PageModel';
+export { EditorModel, getDefaultEditorModelState } from './EditorModel';
 export { EditorToolbar, PageToolbar } from './EditorToolbar';
 export type { EditorToolbarProps, PageToolbarProps } from './EditorToolbar';
 export { LanguageIcon } from '../../components/icons/LanguageIcon';

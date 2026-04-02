@@ -3,6 +3,7 @@
 All completed tasks, newest first.
 
 | ID | Title | Epic | Notes |
+| US-318 | Rename PageModel → EditorModel | EPIC-017 | Phase 1.2 — renamed base class, file (`PageModel.ts` → `EditorModel.ts`), `getDefaultPageModelState` → `getDefaultEditorModelState`, barrel export, ~46 files. Updated architecture docs, standards, diagrams. |
 | US-317 | Rename core types (IPageState → IEditorState, PageType → EditorType, PageEditor → EditorView) | EPIC-017 | Phase 1.1 — pure mechanical rename across ~48 files. `IPageState` → `IEditorState`, `PageType` → `EditorType`, `PageEditor` → `EditorView` in `shared/types.ts` and all consumers. Updated architecture docs, standards docs, CLAUDE.md, and script API `.d.ts` files. |
 | US-315 | ZipPageModel + ZipSecondaryEditor | EPIC-016 | Dedicated `zip-view` page-editor with ZipTreeProvider. `beforeNavigateAway` + `setOwnerPage` for navigation survival. `expandSecondaryPanel` event for auto-expand. `NavigationData.ownerModel` + `PageModel.ownerPage`. Explorer `sourceId` metadata. Removed old secondaryProvider system. Simplified CategoryEditor. |
 | US-316 | Refactor PageNavigator for secondary editor models | EPIC-016 | PageNavigator renders secondary panels from `secondaryModels[]` via registry. `secondaryModelsVersion` reactive counter. `LazySecondaryEditor` async loader. Close button for survived models only. `_pendingActivePanel` defers restore. Old secondaryProvider system preserved. |

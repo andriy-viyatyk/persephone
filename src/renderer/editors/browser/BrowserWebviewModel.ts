@@ -8,7 +8,7 @@ import { showAppPopupMenu } from "../../ui/dialogs/poppers/showPopupMenu";
 import { MenuItem } from "../../components/overlay/PopupMenu";
 import { pagesModel } from "../../api/pages";
 import { newTextFileModel } from "../text/TextPageModel";
-import { PageModel } from "../base";
+import { EditorModel } from "../base";
 
 import { globalPopupRateLimiter } from "../../../ipc/popup-rate-limiter";
 import { browserUrlChanged } from "../../core/state/events";
@@ -460,7 +460,7 @@ export class BrowserWebviewModel {
                     s.content = resp;
                 });
                 page.restore();
-                pagesModel.addPage(page as unknown as PageModel);
+                pagesModel.addPage(page as unknown as EditorModel);
             },
         });
 
@@ -478,7 +478,7 @@ export class BrowserWebviewModel {
                     s.content = html;
                 });
                 page.restore();
-                pagesModel.addPage(page as unknown as PageModel);
+                pagesModel.addPage(page as unknown as EditorModel);
             },
         });
 
@@ -494,7 +494,7 @@ export class BrowserWebviewModel {
                         s.content = svgSource;
                     });
                     page.restore();
-                    pagesModel.addPage(page as unknown as PageModel);
+                    pagesModel.addPage(page as unknown as EditorModel);
                 },
             });
         }

@@ -6,7 +6,7 @@ import { EditorView } from "../../../shared/types";
  * Safe wrapper around PagesModel for script access.
  * Implements the IPageCollection interface from api/types/pages.d.ts.
  *
- * All query methods return PageWrapper instances (not raw PageModel).
+ * All query methods return PageWrapper instances (not raw EditorModel).
  */
 export class PageCollectionWrapper {
     constructor(

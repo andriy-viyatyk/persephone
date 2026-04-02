@@ -7,7 +7,7 @@ import { fs } from "../../api/fs";
 import type { IContentPipe } from "../../api/types/io.pipe";
 import { createPipeFromDescriptor } from "../../content/registry";
 
-export const getDefaultPageModelState = (): IEditorState => ({
+export const getDefaultEditorModelState = (): IEditorState => ({
     id: crypto.randomUUID(),
     type: "textFile",
     title: "untitled",
@@ -18,7 +18,7 @@ export const getDefaultPageModelState = (): IEditorState => ({
     pinned: false,
 });
 
-export class PageModel<T extends IEditorState = IEditorState, R = any> extends TDialogModel<T, R> {
+export class EditorModel<T extends IEditorState = IEditorState, R = any> extends TDialogModel<T, R> {
     skipSave = false;
     getIcon?: () => React.ReactNode;
     noLanguage = false;
@@ -26,15 +26,15 @@ export class PageModel<T extends IEditorState = IEditorState, R = any> extends T
     scriptData: Record<string, any> = {};
     navigationData: NavigationData | null = null;
     /** For secondary editor models: the active page that owns the NavigationData containing this model. */
-    ownerPage: PageModel | null = null;
+    ownerPage: EditorModel | null = null;
 
     /**
      * Called when the owner page changes (during navigation transfer).
      * Base implementation stores the reference.
-     * Subclasses override to react — e.g., ZipPageModel checks if the new owner
+     * Subclasses override to react — e.g., ZipEditorModel checks if the new owner
      * was opened from this archive and removes itself if not.
      */
-    setOwnerPage(model: PageModel | null): void {
+    setOwnerPage(model: EditorModel | null): void {
         this.ownerPage = model;
     }
     /** Content pipe (provider + transformers). Owned by the page, disposed on close. */
@@ -94,10 +94,10 @@ export class PageModel<T extends IEditorState = IEditorState, R = any> extends T
      *
      * Base implementation clears secondaryEditor (model removed from sidebar).
      * Subclasses override to conditionally keep:
-     *   - ZipPageModel: keeps if newModel.sourceLink?.metadata?.sourceId === this.id
-     *   - LinksPageModel: keeps if newModel was opened from this link collection
+     *   - ZipEditorModel: keeps if newModel.sourceLink?.metadata?.sourceId === this.id
+     *   - LinksEditorModel: keeps if newModel was opened from this link collection
      */
-    beforeNavigateAway(_newModel: PageModel): void {
+    beforeNavigateAway(_newModel: EditorModel): void {
         this.secondaryEditor = undefined;
     }
 
@@ -125,7 +125,7 @@ export class PageModel<T extends IEditorState = IEditorState, R = any> extends T
     async restore(): Promise<void> {
         // Restore NavigationData from cache if page had one.
         // needsNavigatorRestore: set by applyRestoreData (app startup path)
-        // hasNavigator on state: set by newPageModelFromState (drag/drop path)
+        // hasNavigator on state: set by newEditorModelFromState (drag/drop path)
         // Also check legacy hasNavPanel for backward compat
         if (this.needsNavigatorRestore || this.state.get().hasNavigator || (this.state.get() as any).hasNavPanel) { // eslint-disable-line @typescript-eslint/no-explicit-any
             this.needsNavigatorRestore = false;

@@ -1,5 +1,5 @@
 import type { PagesModel } from "./PagesModel";
-import { PageModel } from "../../editors/base";
+import { EditorModel } from "../../editors/base";
 
 /**
  * PagesNavigationModel — Manage which page is visible/focused.
@@ -43,7 +43,7 @@ export class PagesNavigationModel {
         this.showPage(pages[prevIndex].state.get().id);
     };
 
-    focusPage = (page: PageModel) => {
+    focusPage = (page: EditorModel) => {
         this.model.onFocus.send(page);
     };
 }

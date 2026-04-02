@@ -24,37 +24,37 @@ Answer these questions:
 /src/renderer/editors/myeditor/
 ├── index.ts              # EditorModule + exports
 ├── MyEditor.tsx          # Main component
-├── MyPageModel.ts        # State management
+├── MyEditorModel.ts        # State management
 ├── MyToolbar.tsx         # (optional) Custom toolbar
 └── components/           # (optional) Editor-specific components
     └── MyComponent.tsx
 ```
 
-### Step 3: Implement PageModel
+### Step 3: Implement EditorModel
 
 ```typescript
-// MyPageModel.ts
+// MyEditorModel.ts
 import { TComponentState } from '../../core/state/state';
-import { PageModel, getDefaultPageModelState } from '../base';
+import { EditorModel, getDefaultPageModelState } from '../base';
 import { IPage, EditorType } from '../../../shared/types';
 
 // 1. Define state interface
-export interface MyPageModelState extends IPage {
+export interface MyEditorModelState extends IPage {
   // Add editor-specific state
   customData: string;
   isLoading: boolean;
 }
 
 // 2. Default state factory
-export const getDefaultMyPageModelState = (): MyPageModelState => ({
+export const getDefaultMyEditorModelState = (): MyEditorModelState => ({
   ...getDefaultPageModelState(),
   type: 'myType' as EditorType,  // Add to shared/types.ts
   customData: '',
   isLoading: false,
 });
 
-// 3. PageModel class
-export class MyPageModel extends PageModel<MyPageModelState> {
+// 3. EditorModel class
+export class MyEditorModel extends EditorModel<MyEditorModelState> {
   // For read-only viewers, set this
   // noLanguage = true;
 
@@ -75,7 +75,7 @@ export class MyPageModel extends PageModel<MyPageModelState> {
   }
 
   // Data to persist for session restore
-  getRestoreData(): Partial<MyPageModelState> {
+  getRestoreData(): Partial<MyEditorModelState> {
     const { customData, isLoading, ...pageData } = this.state.get();
     return pageData;
   }
@@ -89,12 +89,12 @@ export class MyPageModel extends PageModel<MyPageModelState> {
 }
 
 // 4. Factory functions
-export function newMyPageModel(filePath?: string): MyPageModel {
+export function newMyEditorModel(filePath?: string): MyEditorModel {
   const state = {
-    ...getDefaultMyPageModelState(),
+    ...getDefaultMyEditorModelState(),
     ...(filePath ? { filePath } : {}),
   };
-  return new MyPageModel(new TComponentState(state));
+  return new MyEditorModel(new TComponentState(state));
 }
 ```
 
@@ -103,7 +103,7 @@ export function newMyPageModel(filePath?: string): MyPageModel {
 ```typescript
 // MyEditor.tsx
 import styled from '@emotion/styled';
-import { MyPageModel } from './MyPageModel';
+import { MyEditorModel } from './MyEditorModel';
 import { CircularProgress } from '../../components/basic/CircularProgress';
 
 const EditorRoot = styled.div({
@@ -114,7 +114,7 @@ const EditorRoot = styled.div({
 });
 
 interface MyEditorProps {
-  model: MyPageModel;
+  model: MyEditorModel;
 }
 
 export function MyEditor({ model }: MyEditorProps) {
@@ -148,27 +148,27 @@ import { EditorModule } from '../types';
 import { IPage, EditorType } from '../../../shared/types';
 import { MyEditor } from './MyEditor';
 import {
-  MyPageModel,
-  getDefaultMyPageModelState,
-} from './MyPageModel';
+  MyEditorModel,
+  getDefaultMyEditorModelState,
+} from './MyEditorModel';
 
 const myEditorModule: EditorModule = {
   Editor: MyEditor,
 
   newPageModel: async (filePath?: string) => {
     const state = {
-      ...getDefaultMyPageModelState(),
+      ...getDefaultMyEditorModelState(),
       ...(filePath ? { filePath } : {}),
     };
-    const model = new MyPageModel(new TComponentState(state));
+    const model = new MyEditorModel(new TComponentState(state));
     await model.restore();
     return model;
   },
 
   newEmptyPageModel: async (pageType: EditorType) => {
     if (pageType === 'myType') {
-      return new MyPageModel(
-        new TComponentState(getDefaultMyPageModelState())
+      return new MyEditorModel(
+        new TComponentState(getDefaultMyEditorModelState())
       );
     }
     return null;
@@ -176,10 +176,10 @@ const myEditorModule: EditorModule = {
 
   newPageModelFromState: async (state: Partial<IPage>) => {
     const initialState = {
-      ...getDefaultMyPageModelState(),
+      ...getDefaultMyEditorModelState(),
       ...state,
     };
-    const model = new MyPageModel(new TComponentState(initialState));
+    const model = new MyEditorModel(new TComponentState(initialState));
     await model.restore();
     return model;
   },
@@ -188,8 +188,8 @@ const myEditorModule: EditorModule = {
 export default myEditorModule;
 
 // Named exports
-export { MyEditor, MyPageModel };
-export type { MyPageModelState } from './MyPageModel';
+export { MyEditor, MyEditorModel };
+export type { MyEditorModelState } from './MyEditorModel';
 ```
 
 ### Step 6: Register Your Editor
@@ -217,7 +217,7 @@ editorRegistry.register({
     id: "my-editor",           // Must match EditorView type
     name: "My Editor",         // Display name in UI
     pageType: "myType",        // EditorType this editor creates
-    category: "page-editor",   // Standalone editor with own PageModel
+    category: "page-editor",   // Standalone editor with own EditorModel
     acceptFile: (fileName) => {
         // Return priority >= 0 if this editor can open the file
         // Higher priority wins when multiple editors match
@@ -282,10 +282,10 @@ editorRegistry.register({
 ```typescript
 // MyToolbar.tsx
 import { Button } from '../../components/basic/Button';
-import { MyPageModel } from './MyPageModel';
+import { MyEditorModel } from './MyEditorModel';
 
 interface MyToolbarProps {
-  model: MyPageModel;
+  model: MyEditorModel;
 }
 
 export function MyToolbar({ model }: MyToolbarProps) {
@@ -310,8 +310,8 @@ Then use in your editor or integrate with EditorToolbar.
 
 ## Checklist
 
-- [ ] PageModel implements `restore()`
-- [ ] PageModel implements `getRestoreData()`
+- [ ] EditorModel implements `restore()`
+- [ ] EditorModel implements `getRestoreData()`
 - [ ] EditorModule exports all required functions
 - [ ] Registered in `register-editors.ts`
 - [ ] EditorType added to `shared/types.ts` (if new page type)

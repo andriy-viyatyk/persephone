@@ -1,4 +1,4 @@
-import { PageModel } from "../editors/base";
+import { EditorModel } from "../editors/base";
 import { pagesModel } from "../api/pages";
 import { AppWrapper } from "./api-wrapper/AppWrapper";
 import { PageWrapper } from "./api-wrapper/PageWrapper";
@@ -69,7 +69,7 @@ export class ScriptContext {
     // Stack-based ui getter
     private previousUiDescriptor: PropertyDescriptor | undefined;
 
-    constructor(page?: PageModel, consoleLogs?: ConsoleLogEntry[], libraryPath?: string) {
+    constructor(page?: EditorModel, consoleLogs?: ConsoleLogEntry[], libraryPath?: string) {
         this.app = new AppWrapper(this.releaseList);
         this.page = page ? new PageWrapper(page, this.releaseList, this.outputFlags) : undefined;
         this.preventOutput = () => { this.outputFlags.outputPrevented = true; };
@@ -202,12 +202,12 @@ function formatLogTitle(): string {
 }
 
 function initializeUiFacade(
-    page: PageModel | undefined,
+    page: EditorModel | undefined,
     releaseList: Array<() => void>,
     outputFlags: ScriptOutputFlags,
     isMcp = false,
 ): { facade: UiFacade; pageId: string } {
-    let logPage: PageModel;
+    let logPage: EditorModel;
     let isExisting = false;
 
     if (isMcp) {

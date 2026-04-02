@@ -1,6 +1,6 @@
 import React from "react";
 import { TComponentState } from "../../core/state/state";
-import { PageModel, getDefaultPageModelState } from "../base";
+import { EditorModel, getDefaultEditorModelState } from "../base";
 import type { IEditorState } from "../../../shared/types";
 import type { ZipTreeProvider } from "../../content/tree-providers/ZipTreeProvider";
 import { fpBasename } from "../../core/utils/file-path";
@@ -15,13 +15,13 @@ export interface ZipPageModelState extends IEditorState {
 
 export function getDefaultZipPageModelState(): ZipPageModelState {
     return {
-        ...getDefaultPageModelState(),
+        ...getDefaultEditorModelState(),
         type: "zipFile",
         archiveUrl: "",
     } as ZipPageModelState;
 }
 
-export class ZipPageModel extends PageModel<ZipPageModelState> {
+export class ZipPageModel extends EditorModel<ZipPageModelState> {
     /** Tree provider for browsing archive contents. Owned by this model. */
     treeProvider: ZipTreeProvider | null = null;
 
@@ -83,7 +83,7 @@ export class ZipPageModel extends PageModel<ZipPageModelState> {
      * Navigation survival: keep this model as secondary editor if the new page
      * was opened from this archive (sourceLink.metadata.sourceId matches).
      */
-    beforeNavigateAway(newModel: PageModel): void {
+    beforeNavigateAway(newModel: EditorModel): void {
         if (this._isOpenedFromThisArchive(newModel)) return;
         this.secondaryEditor = undefined;
     }
@@ -92,7 +92,7 @@ export class ZipPageModel extends PageModel<ZipPageModelState> {
      * Called when the owner page changes during navigation.
      * If the new owner was NOT opened from this archive, remove self from sidebar.
      */
-    setOwnerPage(model: PageModel | null): void {
+    setOwnerPage(model: EditorModel | null): void {
         super.setOwnerPage(model);
         if (!model || model === this) return;
         if (this._isOpenedFromThisArchive(model)) {
@@ -103,7 +103,7 @@ export class ZipPageModel extends PageModel<ZipPageModelState> {
     }
 
     /** Check if a model was opened from this archive via sourceLink metadata. */
-    private _isOpenedFromThisArchive(model: PageModel): boolean {
+    private _isOpenedFromThisArchive(model: EditorModel): boolean {
         return model.state.get().sourceLink?.metadata?.sourceId === this.id;
     }
 

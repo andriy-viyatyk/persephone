@@ -5,7 +5,7 @@ import color from "../../theme/color";
 import { pagesModel } from "../../api/pages";
 import { appWindow } from "../../api/window";
 import { settings } from "../../api/settings";
-import { PageModel } from "../../editors/base";
+import { EditorModel } from "../../editors/base";
 import { Button } from "../../components/basic/Button";
 import {
     CircleIcon,
@@ -192,7 +192,7 @@ const PageTabRoot = styled.div({
 });
 
 interface PageTabProps {
-    model: PageModel;
+    model: EditorModel;
     pinnedLeft?: number;
 }
 

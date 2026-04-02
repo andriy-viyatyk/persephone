@@ -210,7 +210,7 @@ persephone/
 │
 ├── editors/                # Editor Implementations
 │   ├── base/               # Shared editor infrastructure
-│   │   ├── PageModel.ts            # Base page model (state, icon, nav panel, script data)
+│   │   ├── EditorModel.ts            # Base editor model (state, icon, nav panel, script data)
 │   │   ├── ContentViewModel.ts     # Base class for content-view models
 │   │   ├── ContentViewModelHost.ts # Ref-counting host for ViewModels
 │   │   ├── useContentViewModel.ts  # React hook for ViewModel lifecycle
@@ -365,7 +365,7 @@ persephone/
 │   │   ├── BaseImageView.tsx
 │   │   └── index.ts
 │   ├── mcp-inspector/      # MCP Inspector (page-editor)
-│   │   ├── McpInspectorModel.ts      # PageModel — connection, tools, resources, prompts state
+│   │   ├── McpInspectorModel.ts      # EditorModel — connection, tools, resources, prompts state
 │   │   ├── McpInspectorView.tsx      # Main view — connection bar, panel routing
 │   │   ├── McpConnectionManager.ts   # MCP SDK Client wrapper (connect/disconnect)
 │   │   ├── ToolsPanel.tsx            # Tools panel — sidebar list, detail, arg form, result

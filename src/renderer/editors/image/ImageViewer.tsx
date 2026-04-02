@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import { IEditorState, EditorType } from "../../../shared/types";
-import { getDefaultPageModelState, PageModel } from "../base";
+import { getDefaultEditorModelState, EditorModel } from "../base";
 import { PageToolbar } from "../base/EditorToolbar";
 import { TComponentState } from "../../core/state/state";
 import { EditorModule } from "../types";
@@ -31,11 +31,11 @@ interface ImageViewerModelState extends IEditorState {
 }
 
 const getDefaultImageViewerModelState = (): ImageViewerModelState => ({
-    ...getDefaultPageModelState(),
+    ...getDefaultEditorModelState(),
     type: "imageFile" as const,
 });
 
-class ImageViewerModel extends PageModel<ImageViewerModelState, void> {
+class ImageViewerModel extends EditorModel<ImageViewerModelState, void> {
     noLanguage = true;
     private cacheFileCreated = false;
 
@@ -312,7 +312,7 @@ const imageEditorModule: EditorModule = {
     },
     newEmptyPageModel: async (
         pageType: EditorType
-    ): Promise<PageModel | null> => {
+    ): Promise<EditorModel | null> => {
         if (pageType === "imageFile") {
             return new ImageViewerModel(
                 new TComponentState(getDefaultImageViewerModelState())
@@ -322,7 +322,7 @@ const imageEditorModule: EditorModule = {
     },
     newPageModelFromState: async (
         state: Partial<IEditorState>
-    ): Promise<PageModel> => {
+    ): Promise<EditorModel> => {
         const initialState: ImageViewerModelState = {
             ...getDefaultImageViewerModelState(),
             ...state,

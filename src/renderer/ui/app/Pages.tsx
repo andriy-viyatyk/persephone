@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import { useCallback } from "react";
 import { Splitter } from "../../components/layout/Splitter";
-import { PageModel } from "../../editors/base";
+import { EditorModel } from "../../editors/base";
 import { pagesModel } from "../../api/pages";
 import { RenderEditor } from "./RenderEditor";
 import { CompareEditor } from "../../editors/compare";
@@ -21,7 +21,7 @@ const PageEditorContainer = styled.div(
     { label: "PageEditorContainer" },
 );
 
-function NavigationWrapper({ model }: { model: PageModel }) {
+function NavigationWrapper({ model }: { model: EditorModel }) {
     const hasNavigator = model.state.use((s) => s.hasNavigator || (s as any).hasNavPanel); // eslint-disable-line @typescript-eslint/no-explicit-any
     const navData = hasNavigator ? model.navigationData : null;
     if (!navData) return null;

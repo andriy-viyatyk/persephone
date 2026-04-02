@@ -1,9 +1,9 @@
 import type React from "react";
-import type { PageModel } from "../../editors/base";
+import type { EditorModel } from "../../editors/base";
 
 /** Props passed to secondary editor sidebar components. */
 export interface SecondaryEditorProps {
-    model: PageModel;
+    model: EditorModel;
 }
 
 /** Registration for a secondary editor type. */

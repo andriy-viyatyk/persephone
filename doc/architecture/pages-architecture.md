@@ -274,7 +274,7 @@ When a tab is dragged to another window:
    - Calls `detachPage()` — unsubscribes but does NOT dispose. **Cache files survive.**
    - Calls `removePage()` — removes from arrays
 4. **Target window** — receives `eMovePageIn` IPC event (main process awaits `whenReady` first):
-   - `movePageIn(data)` creates a new PageModel from the serialized `Partial<IEditorState>`
+   - `movePageIn(data)` creates a new EditorModel from the serialized `Partial<IEditorState>`
    - Calls `applyRestoreData()` — reconstructs pipe from descriptor, restores `sourceLink`
    - Calls `restore()` — reads content through pipe; if `hasNavigator` is set, creates new `NavigationData` and restores from the **same cache files** using the page ID
 
@@ -356,7 +356,7 @@ NavigationData is a long-lived object that **survives page navigation**. It hold
 1. **Created** when a page first opens with a navigator (Folder View toggle, archive open, or restored from session)
 2. **Transferred** during `navigatePageTo()` — detached from the old model (before dispose), attached to the new model (after creation). NavigationData is NOT recreated; the same instance moves between page models.
 3. **Persisted** to cache files via `flushSave()` (debounced). Restored by page ID on app restart or multi-window transfer.
-4. **Disposed** when the tab closes: `PageModel.dispose()` → `NavigationData.dispose()` → disposes tree providers, secondary providers, and secondary editor models.
+4. **Disposed** when the tab closes: `EditorModel.dispose()` → `NavigationData.dispose()` → disposes tree providers, secondary providers, and secondary editor models.
 
 ### What it owns
 
@@ -366,7 +366,7 @@ NavigationData
   ├── treeProvider              // Primary FileTreeProvider (Explorer panel)
   ├── selectionState            // TOneState — reactive, shared between PageNavigator and CategoryEditor
   ├── treeState                 // Tree expansion state (persisted)
-  ├── secondaryModels[]         // Secondary editor PageModel instances (EPIC-016)
+  ├── secondaryModels[]         // Secondary editor EditorModel instances (EPIC-016)
   ├── secondaryModelsVersion    // TOneState — reactive counter for PageNavigator re-render
   ├── activePanel               // "explorer", "search", or a secondary model's page ID
   ├── searchState               // FileSearch state (query, results, filters)
@@ -398,11 +398,11 @@ In `navigatePageTo()` ([`PagesLifecycleModel.ts`](../../src/renderer/api/pages/P
 
 ## 10. Secondary Editor Models (EPIC-016)
 
-NavigationData holds a `secondaryModels[]` array of full PageModel instances that act as sidebar editors. These survive page navigation (same as NavigationData itself) and provide richer functionality than standalone tree providers.
+NavigationData holds a `secondaryModels[]` array of full EditorModel instances that act as sidebar editors. These survive page navigation (same as NavigationData itself) and provide richer functionality than standalone tree providers.
 
-### PageModel integration
+### EditorModel integration
 
-The `secondaryEditor` getter/setter on PageModel manages membership automatically:
+The `secondaryEditor` getter/setter on EditorModel manages membership automatically:
 - **Set** `model.secondaryEditor = "zip-tree"` → adds the model to `secondaryModels[]`
 - **Clear** `model.secondaryEditor = undefined` → removes the model from `secondaryModels[]` (without dispose)
 
@@ -410,11 +410,11 @@ The `beforeNavigateAway(newModel)` lifecycle hook is called during `navigatePage
 
 ### Owner model tracking
 
-`NavigationData.ownerModel` tracks the active page model. `PageModel.ownerPage` is the reverse reference — set on secondary models so they know which page they're attached to. Both are updated by `NavigationData.setOwnerModel(newModel)`, which calls `setOwnerPage(newModel)` on each secondary model.
+`NavigationData.ownerModel` tracks the active page model. `EditorModel.ownerPage` is the reverse reference — set on secondary models so they know which page they're attached to. Both are updated by `NavigationData.setOwnerModel(newModel)`, which calls `setOwnerPage(newModel)` on each secondary model.
 
-`setOwnerPage(model)` is a virtual method on PageModel. Subclasses override it to react to ownership changes:
+`setOwnerPage(model)` is a virtual method on EditorModel. Subclasses override it to react to ownership changes:
 - **ZipPageModel**: checks if the new owner was opened from this archive (`sourceLink.metadata.sourceId`). If yes, fires `expandSecondaryPanel` event to auto-expand. If no, clears `secondaryEditor` (model removed on next cleanup).
-- **Base PageModel**: stores the reference only.
+- **Base EditorModel**: stores the reference only.
 
 ### Management API
 
@@ -436,7 +436,7 @@ Maps `secondaryEditor` string values to React sidebar components via dynamic imp
 
 PageNavigator renders a `CollapsiblePanel` for each model in `secondaryModels[]`, after the Explorer/Search/Secondary panels. Each panel uses `LazySecondaryEditor` ([`LazySecondaryEditor.tsx`](../../src/renderer/ui/navigation/LazySecondaryEditor.tsx)) to async-load the component from the registry.
 
-**Reactivity:** `secondaryModels` is a plain array (PageModel class instances don't belong in TOneState — Immer proxies would corrupt them). A `secondaryModelsVersion` counter (`TOneState<{ version }>`) is bumped on every add/remove. PageNavigator subscribes via `.use()` and re-renders when the counter changes.
+**Reactivity:** `secondaryModels` is a plain array (EditorModel class instances don't belong in TOneState — Immer proxies would corrupt them). A `secondaryModelsVersion` counter (`TOneState<{ version }>`) is bumped on every add/remove. PageNavigator subscribes via `.use()` and re-renders when the counter changes.
 
 **Close button rule:** The active page's own secondary panel has no close button (controlled by `secondaryEditor` field). Only panels from survived models (via `beforeNavigateAway`) show a close button — clicking it calls `removeSecondaryModel()`.
 
@@ -448,4 +448,4 @@ Secondary model state is saved as descriptors (`SecondaryModelDescriptor[]`) in 
 
 ### Dispose
 
-When a tab closes, `NavigationData.dispose()` disposes all secondary models. Before dispose, `confirmSecondaryRelease()` checks for unsaved changes — this is called via `PageModel.confirmRelease(closing: true)` in the tab close flow.
+When a tab closes, `NavigationData.dispose()` disposes all secondary models. Before dispose, `confirmSecondaryRelease()` checks for unsaved changes — this is called via `EditorModel.confirmRelease(closing: true)` in the tab close flow.

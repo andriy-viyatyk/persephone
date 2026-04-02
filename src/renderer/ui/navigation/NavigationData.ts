@@ -2,7 +2,7 @@ import type { ITreeProvider } from "../../api/types/io.tree";
 import type { IContentPipe } from "../../api/types/io.pipe";
 import type { TreeProviderViewSavedState } from "../../components/tree-provider";
 import type { FileSearchState } from "../../components/file-search";
-import type { PageModel } from "../../editors/base";
+import type { EditorModel } from "../../editors/base";
 import type { IEditorState } from "../../../shared/types";
 import { TOneState } from "../../core/state/state";
 import { fpDirname } from "../../core/utils/file-path";
@@ -66,7 +66,7 @@ export class NavigationData {
     treeState: TreeProviderViewSavedState | undefined = undefined;
 
     /** The active page model that owns this NavigationData. Updated on navigation. */
-    ownerModel: PageModel | null = null;
+    ownerModel: EditorModel | null = null;
 
     /** Which panel is currently active/expanded.
      *  Values: "explorer", "search", or a secondary model's page ID. */
@@ -75,7 +75,7 @@ export class NavigationData {
     // ── Secondary editor models (EPIC-016) ────────────────────────────
 
     /** Page models that act as secondary editors (survive page navigation). */
-    secondaryModels: PageModel[] = [];
+    secondaryModels: EditorModel[] = [];
     /** Reactive version counter — PageNavigator subscribes via .use() for re-render on add/remove. */
     readonly secondaryModelsVersion = new TOneState({ version: 0 });
     /** Pending descriptors from restore — actual model creation deferred to registry (task 1.2). */
@@ -89,7 +89,7 @@ export class NavigationData {
      *  (e.g., ZipPageModel checks sourceLink). Their setter is a no-op because
      *  navigationData is null (only the active page holds the reference), so
      *  NavigationData handles the cleanup after notification. */
-    setOwnerModel(model: PageModel): void {
+    setOwnerModel(model: EditorModel): void {
         this.ownerModel = model;
         // Clear Explorer selection if the new page wasn't opened from Explorer
         const sourceId = model.state.get().sourceLink?.metadata?.sourceId;
@@ -116,7 +116,7 @@ export class NavigationData {
     }
 
     /** Add a page model as a secondary editor. */
-    addSecondaryModel(model: PageModel): void {
+    addSecondaryModel(model: EditorModel): void {
         if (this.secondaryModels.includes(model)) return;
         this.secondaryModels.push(model);
         model.setOwnerPage(this.ownerModel);
@@ -125,7 +125,7 @@ export class NavigationData {
     }
 
     /** Remove and dispose a secondary editor model (panel closed by user). */
-    removeSecondaryModel(model: PageModel): void {
+    removeSecondaryModel(model: EditorModel): void {
         const idx = this.secondaryModels.indexOf(model);
         if (idx < 0) return;
         this.secondaryModels.splice(idx, 1);
@@ -138,7 +138,7 @@ export class NavigationData {
     }
 
     /** Remove a secondary editor model WITHOUT disposing (model cleared its secondaryEditor). */
-    removeSecondaryModelWithoutDispose(model: PageModel): void {
+    removeSecondaryModelWithoutDispose(model: EditorModel): void {
         const idx = this.secondaryModels.indexOf(model);
         if (idx < 0) return;
         this.secondaryModels.splice(idx, 1);
@@ -150,7 +150,7 @@ export class NavigationData {
     }
 
     /** Find a secondary model by its page ID. */
-    findSecondaryModel(pageId: string): PageModel | undefined {
+    findSecondaryModel(pageId: string): EditorModel | undefined {
         return this.secondaryModels.find((m) => m.state.get().id === pageId);
     }
 
@@ -167,7 +167,7 @@ export class NavigationData {
     /** Restore secondary editor models from pending descriptors.
      *  @param ownerModel — the primary page that owns this NavigationData.
      *    If a descriptor has the same ID as ownerModel, reuse it (no duplicate). */
-    async restoreSecondaryModels(ownerModel: PageModel): Promise<void> {
+    async restoreSecondaryModels(ownerModel: EditorModel): Promise<void> {
         const descriptors = this.pendingSecondaryDescriptors;
         if (!descriptors?.length) {
             // Even with no descriptors, check _pendingActivePanel (edge case)

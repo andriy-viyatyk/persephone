@@ -1,6 +1,6 @@
 import { createElement, ReactNode } from "react";
 import { IEditorState } from "../../../shared/types";
-import { getDefaultPageModelState, PageModel } from "../base";
+import { getDefaultEditorModelState, EditorModel } from "../base";
 import { TComponentState, TOneState } from "../../core/state/state";
 import { McpIcon } from "../../theme/icons";
 import {
@@ -182,7 +182,7 @@ export interface McpInspectorPageState extends IEditorState {
 }
 
 export const getDefaultMcpInspectorPageState = (): McpInspectorPageState => ({
-    ...getDefaultPageModelState(),
+    ...getDefaultEditorModelState(),
     type: "mcpInspectorPage",
     title: "MCP Inspector",
     editor: "mcp-view",
@@ -213,7 +213,7 @@ export const getDefaultMcpInspectorPageState = (): McpInspectorPageState => ({
 // Model
 // ============================================================================
 
-export class McpInspectorModel extends PageModel<McpInspectorPageState, void> {
+export class McpInspectorModel extends EditorModel<McpInspectorPageState, void> {
     noLanguage = true;
     skipSave = true;
 

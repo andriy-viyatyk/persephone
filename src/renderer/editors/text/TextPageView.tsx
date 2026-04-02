@@ -10,7 +10,7 @@ import color from "../../theme/color";
 import { ActiveEditor } from "./ActiveEditor";
 import { FlexSpace } from "../../components/layout/Elements";
 import { pagesModel } from "../../api/pages";
-import { PageModel } from "../base";
+import { EditorModel } from "../base";
 
 const TextPageViewRoot = styled.div({
     flex: "1 1 auto",
@@ -62,7 +62,7 @@ export function TextPageView({ model }: TextPageViewProps) {
 
     useEffect(() => {
         const subscription = pagesModel.onFocus.subscribe((pageModel) => {
-            if (pageModel !== (model as PageModel)) return;
+            if (pageModel !== (model as EditorModel)) return;
             setTimeout(() => {
                 const root = rootRef.current;
                 if (root && !root.contains(document.activeElement)) {

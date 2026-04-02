@@ -1,16 +1,16 @@
 import { IEditorState, EditorView, EditorType } from "../../shared/types";
-import { PageModel } from "./base";
+import { EditorModel } from "./base";
 import type { IContentHost } from "./base/IContentHost";
 import type { ContentViewModel } from "./base/ContentViewModel";
 
-export type FileEditorPage<T extends PageModel | IContentHost = PageModel | IContentHost> = React.ComponentType<{
+export type FileEditorPage<T extends EditorModel | IContentHost = EditorModel | IContentHost> = React.ComponentType<{
     model: T;
 }>;
 
 export interface EditorModelCreations {
-    newPageModel(filePath?: string): Promise<PageModel>;
-    newEmptyPageModel(pageType: EditorType): Promise<PageModel | null>;
-    newPageModelFromState(state: Partial<IEditorState>): Promise<PageModel>;
+    newPageModel(filePath?: string): Promise<EditorModel>;
+    newEmptyPageModel(pageType: EditorType): Promise<EditorModel | null>;
+    newPageModelFromState(state: Partial<IEditorState>): Promise<EditorModel>;
 }
 
 export interface EditorPageModule {
@@ -28,7 +28,7 @@ export type EditorModule = EditorPageModule & EditorModelCreations & {
 /**
  * Editor category distinguishes between two types of editors:
  *
- * - "page-editor": Standalone editors with their own PageModel (e.g., PDF viewer, Image viewer).
+ * - "page-editor": Standalone editors with their own EditorModel (e.g., PDF viewer, Image viewer).
  *   These render instead of TextPageView and handle their own UI entirely.
  *
  * - "content-view": Views of text-based content that share TextFileModel (e.g., Monaco, Grid, Markdown).

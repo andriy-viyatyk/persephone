@@ -1,5 +1,5 @@
 import type { PagesModel } from "./PagesModel";
-import { PageModel } from "../../editors/base";
+import { EditorModel } from "../../editors/base";
 
 /**
  * PagesQueryModel — Read-only queries on the page collection.
@@ -7,24 +7,24 @@ import { PageModel } from "../../editors/base";
 export class PagesQueryModel {
     constructor(private model: PagesModel) {}
 
-    findPage = (pageId?: string): PageModel | undefined => {
+    findPage = (pageId?: string): EditorModel | undefined => {
         return pageId
             ? this.model.state.get().pages.find((p) => p.state.get().id === pageId)
             : undefined;
     };
 
-    get activePage(): PageModel | undefined {
+    get activePage(): EditorModel | undefined {
         const { ordered } = this.model.state.get();
         return ordered.length ? ordered[ordered.length - 1] : undefined;
     }
 
-    get groupedPage(): PageModel | undefined {
+    get groupedPage(): EditorModel | undefined {
         const activePage = this.activePage;
         if (!activePage) return undefined;
         return this.getGroupedPage(activePage.state.get().id);
     }
 
-    getGroupedPage = (withPageId: string): PageModel | undefined => {
+    getGroupedPage = (withPageId: string): EditorModel | undefined => {
         const state = this.model.state.get();
         const groupedWithId =
             state.leftRight.get(withPageId) || state.rightLeft.get(withPageId);
@@ -34,7 +34,7 @@ export class PagesQueryModel {
         return undefined;
     };
 
-    getLeftGroupedPage = (withPageId: string): PageModel | undefined => {
+    getLeftGroupedPage = (withPageId: string): EditorModel | undefined => {
         const state = this.model.state.get();
         const groupedWithId = state.rightLeft.get(withPageId);
         if (groupedWithId) {
@@ -55,7 +55,7 @@ export class PagesQueryModel {
         return state.leftRight.has(pageId) || state.rightLeft.has(pageId);
     };
 
-    get pages(): PageModel[] {
+    get pages(): EditorModel[] {
         return this.model.state.get().pages;
     }
 }

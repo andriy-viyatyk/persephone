@@ -2,7 +2,7 @@ import styled from "@emotion/styled";
 import { useCallback, useEffect, useRef, useState } from "react";
 const { ipcRenderer } = require("electron");
 import { IEditorState, EditorType } from "../../../shared/types";
-import { PageModel, PageToolbar } from "../base";
+import { EditorModel, PageToolbar } from "../base";
 import { TComponentState } from "../../core/state/state";
 import { EditorModule } from "../types";
 import color from "../../theme/color";
@@ -795,7 +795,7 @@ const browserEditorModule: EditorModule = {
     },
     newEmptyPageModel: async (
         pageType: EditorType,
-    ): Promise<PageModel | null> => {
+    ): Promise<EditorModel | null> => {
         if (pageType !== "browserPage") return null;
         const model = new BrowserPageModel(
             new TComponentState(getDefaultBrowserPageState()),
@@ -804,7 +804,7 @@ const browserEditorModule: EditorModule = {
     },
     newPageModelFromState: async (
         state: Partial<IEditorState>,
-    ): Promise<PageModel> => {
+    ): Promise<EditorModel> => {
         const initialState: BrowserPageState = {
             ...getDefaultBrowserPageState(),
             ...(state as Partial<BrowserPageState>),

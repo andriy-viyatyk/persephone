@@ -22,7 +22,7 @@ sequenceDiagram
         SC->>AW: new AppWrapper(releaseList)
         AW->>AW: Wrap app singleton
         SC->>PW: new PageWrapper(model, releaseList)
-        PW->>PW: Wrap PageModel → IPage
+        PW->>PW: Wrap EditorModel → IPage
 
         SC->>SC: Build Proxy chain
         Note right of SC: 1. Check customContext<br/>   (app, page, React)<br/>2. Fall back to globalThis<br/>3. Auto-bind functions

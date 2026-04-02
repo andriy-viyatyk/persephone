@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import styled from "@emotion/styled";
 import { IEditorState, EditorType } from "../../../shared/types";
-import { getDefaultPageModelState, PageModel } from "../base";
+import { getDefaultEditorModelState, EditorModel } from "../base";
 import { TComponentState } from "../../core/state/state";
 import { EditorModule } from "../types";
 import color from "../../theme/color";
@@ -596,13 +596,13 @@ export const SETTINGS_PAGE_ID = "settings-page";
 interface SettingsPageModelState extends IEditorState {}
 
 const getDefaultSettingsPageModelState = (): SettingsPageModelState => ({
-    ...getDefaultPageModelState(),
+    ...getDefaultEditorModelState(),
     id: SETTINGS_PAGE_ID,
     type: "settingsPage",
     title: "Settings",
 });
 
-class SettingsPageModel extends PageModel<SettingsPageModelState, void> {
+class SettingsPageModel extends EditorModel<SettingsPageModelState, void> {
     noLanguage = true;
     skipSave = true;
 
@@ -1404,13 +1404,13 @@ const settingsEditorModule: EditorModule = {
     newPageModel: async () => {
         return new SettingsPageModel(new TComponentState(getDefaultSettingsPageModelState()));
     },
-    newEmptyPageModel: async (pageType: EditorType): Promise<PageModel | null> => {
+    newEmptyPageModel: async (pageType: EditorType): Promise<EditorModel | null> => {
         if (pageType === "settingsPage") {
             return new SettingsPageModel(new TComponentState(getDefaultSettingsPageModelState()));
         }
         return null;
     },
-    newPageModelFromState: async (state: Partial<IEditorState>): Promise<PageModel> => {
+    newPageModelFromState: async (state: Partial<IEditorState>): Promise<EditorModel> => {
         const initialState: SettingsPageModelState = {
             ...getDefaultSettingsPageModelState(),
             ...state,

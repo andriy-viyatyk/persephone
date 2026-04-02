@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import { IEditorState, EditorType } from "../../../shared/types";
-import { getDefaultPageModelState, PageModel } from "../base";
+import { getDefaultEditorModelState, EditorModel } from "../base";
 import { PageToolbar } from "../base/EditorToolbar";
 import { TComponentState } from "../../core/state/state";
 import { EditorModule } from "../types";
@@ -29,11 +29,11 @@ interface PdfViewerModelState extends IEditorState {
 }
 
 const getDefaultPdfViewerModelState = (): PdfViewerModelState => ({
-    ...getDefaultPageModelState(),
+    ...getDefaultEditorModelState(),
     type: "pdfFile" as const,
 });
 
-class PdfViewerModel extends PageModel<PdfViewerModelState, void> {
+class PdfViewerModel extends EditorModel<PdfViewerModelState, void> {
     noLanguage = true;
     private cacheFileCreated = false;
 
@@ -164,7 +164,7 @@ const pdfEditorModule: EditorModule = {
     },
     newEmptyPageModel: async (
         pageType: EditorType
-    ): Promise<PageModel | null> => {
+    ): Promise<EditorModel | null> => {
         if (pageType === "pdfFile") {
             return new PdfViewerModel(
                 new TComponentState(getDefaultPdfViewerModelState())
@@ -174,7 +174,7 @@ const pdfEditorModule: EditorModule = {
     },
     newPageModelFromState: async (
         state: Partial<IEditorState>
-    ): Promise<PageModel> => {
+    ): Promise<EditorModel> => {
         const initialState: PdfViewerModelState = {
             ...getDefaultPdfViewerModelState(),
             ...state,

@@ -1,4 +1,4 @@
-import { PageModel } from "../../editors/base";
+import { EditorModel } from "../../editors/base";
 import { TextPageView, TextFileModel } from "../../editors/text";
 import { editorRegistry } from "../../editors/registry";
 import { AsyncEditor } from "./AsyncEditor";
@@ -20,7 +20,7 @@ const getPageEditorModule = (pageType: EditorType) => async () => {
  * - Content views (monaco, grid, markdown) are rendered inside TextPageView
  * - Page editors (pdf, image) are rendered as standalone components
  */
-export function RenderEditor({ model }: { model: PageModel }) {
+export function RenderEditor({ model }: { model: EditorModel }) {
     const { type } = model.state.use((s) => ({
         type: s.type,
     }));

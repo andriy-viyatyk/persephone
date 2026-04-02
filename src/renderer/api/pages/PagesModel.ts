@@ -1,7 +1,7 @@
 import { Subscription } from "../../core/state/events";
 import { TModel } from "../../core/state/model";
 import { TGlobalState } from "../../core/state/state";
-import { PageModel } from "../../editors/base";
+import { EditorModel } from "../../editors/base";
 import { IEditorState, EditorView } from "../../../shared/types";
 import { RawLinkEvent } from "../events/events";
 
@@ -14,8 +14,8 @@ import { PagesLifecycleModel } from "./PagesLifecycleModel";
 // ── State ────────────────────────────────────────────────────────────
 
 const defaultOpenFilesState = {
-    pages: [] as PageModel[],
-    ordered: [] as PageModel[],
+    pages: [] as EditorModel[],
+    ordered: [] as EditorModel[],
     leftRight: new Map<string, string>(),
     rightLeft: new Map<string, string>(),
 };
@@ -33,8 +33,8 @@ export type OpenFilesState = typeof defaultOpenFilesState;
  * Public methods delegate to submodels for organized, testable code.
  */
 export class PagesModel extends TModel<OpenFilesState> {
-    onShow = new Subscription<PageModel>();
-    onFocus = new Subscription<PageModel>();
+    onShow = new Subscription<EditorModel>();
+    onFocus = new Subscription<EditorModel>();
     pageSubscriptions = new Map<string, () => void>();
 
     // ── Submodels (internal implementation) ──────────────────────────
@@ -56,7 +56,7 @@ export class PagesModel extends TModel<OpenFilesState> {
 
     // ── Internal methods (shared across submodels) ───────────────────
 
-    attachPage = (page: PageModel) => {
+    attachPage = (page: EditorModel) => {
         const pageId = page.id;
         const unsubscribe = page.state.subscribe(() => {
             this.persistence.saveStateDebounced();
@@ -69,7 +69,7 @@ export class PagesModel extends TModel<OpenFilesState> {
         };
     };
 
-    detachPage = (page: PageModel) => {
+    detachPage = (page: EditorModel) => {
         const pageId = page.id;
         const unsubscribe = this.pageSubscriptions.get(pageId);
         if (unsubscribe) {
@@ -79,7 +79,7 @@ export class PagesModel extends TModel<OpenFilesState> {
         page.onClose = undefined;
     };
 
-    removePage = (page: PageModel) => {
+    removePage = (page: EditorModel) => {
         const isActivePage = this.query.activePage === page;
         this.state.update((s) => {
             s.pages = s.pages.filter((p) => p !== page);
@@ -148,10 +148,10 @@ export class PagesModel extends TModel<OpenFilesState> {
     showPage = (pageId?: string) => this.navigation.showPage(pageId);
     showNext = () => this.navigation.showNext();
     showPrevious = () => this.navigation.showPrevious();
-    focusPage = (page: PageModel) => this.navigation.focusPage(page);
+    focusPage = (page: EditorModel) => this.navigation.focusPage(page);
 
     // Lifecycle delegates
-    addPage = (page: PageModel) => this.lifecycle.addPage(page);
+    addPage = (page: EditorModel) => this.lifecycle.addPage(page);
     addEmptyPage = () => this.lifecycle.addEmptyPage();
     addEmptyPageWithNavPanel = (folderPath: string) =>
         this.lifecycle.addEmptyPageWithNavPanel(folderPath);

@@ -282,7 +282,7 @@ import type { MyType } from './types';
 | Hook | camelCase with `use` | `useHighlightedText` |
 | Function | camelCase | `formatDate`, `handleClick` |
 | Constant | UPPER_SNAKE_CASE | `MAX_TABS`, `DEFAULT_ENCODING` |
-| Interface/Type | PascalCase | `PageModel`, `EditorProps` |
+| Interface/Type | PascalCase | `EditorModel`, `EditorProps` |
 | File (component) | PascalCase.tsx | `TextEditor.tsx` |
 | File (utility) | kebab-case.ts | `csv-utils.ts` |
 | Folder | kebab-case | `data-grid`, `text-editor` |

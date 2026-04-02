@@ -1,4 +1,4 @@
-import { PageModel } from "../editors/base";
+import { EditorModel } from "../editors/base";
 import { pagesModel } from "../api/pages";
 import { editorRegistry } from "../editors/registry";
 import type { ConsoleLogEntry, ScriptOutputFlags } from "./ScriptContext";
@@ -24,14 +24,14 @@ class ScriptRunner extends ScriptRunnerBase {
     /**
      * Simple run — creates context, executes, cleans up, returns raw result.
      */
-    run = async (script: string, page?: PageModel, language?: string): Promise<any> => {
+    run = async (script: string, page?: EditorModel, language?: string): Promise<any> => {
         return this.executeWithContext(script, page, undefined, language);
     };
 
     /**
      * MCP mode — creates context, captures console, cleans up, returns structured result.
      */
-    runWithCapture = async (script: string, page?: PageModel, language?: string): Promise<McpScriptResult> => {
+    runWithCapture = async (script: string, page?: EditorModel, language?: string): Promise<McpScriptResult> => {
         const consoleLogs: ConsoleLogEntry[] = [];
         const result = await this.executeWithContext(script, page, consoleLogs, language);
         const isError = result instanceof Error;
@@ -50,7 +50,7 @@ class ScriptRunner extends ScriptRunnerBase {
     runWithResult = async (
         pageId: string,
         script: string,
-        page?: PageModel,
+        page?: EditorModel,
         language?: string,
     ): Promise<string> => {
         const { result, outputFlags } = await this.executeWithContextAndFlags(script, page, undefined, language);
@@ -83,7 +83,7 @@ class ScriptRunner extends ScriptRunnerBase {
      */
     private async executeWithContext(
         script: string,
-        page?: PageModel,
+        page?: EditorModel,
         consoleLogs?: ConsoleLogEntry[],
         language?: string,
     ): Promise<any> {
@@ -97,7 +97,7 @@ class ScriptRunner extends ScriptRunnerBase {
      */
     private async executeWithContextAndFlags(
         script: string,
-        page?: PageModel,
+        page?: EditorModel,
         consoleLogs?: ConsoleLogEntry[],
         language?: string,
     ): Promise<{ result: any; outputFlags: ScriptOutputFlags }> {

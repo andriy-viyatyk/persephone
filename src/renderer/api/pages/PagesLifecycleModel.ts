@@ -1,5 +1,5 @@
 import type { PagesModel } from "./PagesModel";
-import { PageModel } from "../../editors/base";
+import { EditorModel } from "../../editors/base";
 import { IEditorState, ISourceLink, EditorView, EditorType } from "../../../shared/types";
 import {
     isTextFileModel,
@@ -50,7 +50,7 @@ export class PagesLifecycleModel {
 
     // ── Page factory helpers ─────────────────────────────────────────
 
-    private newPageModel = async (filePath?: string): Promise<PageModel> => {
+    private newPageModel = async (filePath?: string): Promise<EditorModel> => {
         const editorDef = editorRegistry.resolve(filePath);
         if (editorDef) {
             const module = await editorDef.loadModule();
@@ -69,7 +69,7 @@ export class PagesLifecycleModel {
 
     newPageModelFromState = async (
         state: Partial<IEditorState>
-    ): Promise<PageModel> => {
+    ): Promise<EditorModel> => {
         if (state.type && PagesLifecycleModel.PAGE_TYPE_MIGRATIONS[state.type]) {
             state = { ...state, type: PagesLifecycleModel.PAGE_TYPE_MIGRATIONS[state.type] };
         }
@@ -87,7 +87,7 @@ export class PagesLifecycleModel {
 
     // ── Core page operations ─────────────────────────────────────────
 
-    createPageFromFile = async (filePath: string, pipe?: IContentPipe): Promise<PageModel> => {
+    createPageFromFile = async (filePath: string, pipe?: IContentPipe): Promise<EditorModel> => {
         const pageModel = await this.newPageModel(filePath);
         if (pipe) {
             pageModel.pipe = pipe;
@@ -99,7 +99,7 @@ export class PagesLifecycleModel {
         return pageModel;
     };
 
-    addPage = (page: PageModel): PageModel => {
+    addPage = (page: EditorModel): EditorModel => {
         const pageId = page.state.get().id;
         const existingPage = this.model.query.findPage(pageId);
         if (existingPage) {
@@ -118,18 +118,18 @@ export class PagesLifecycleModel {
         return page;
     };
 
-    addEmptyPage = (): PageModel => {
+    addEmptyPage = (): EditorModel => {
         const emptyFile = newTextFileModel("");
         emptyFile.restore();
-        return this.addPage(emptyFile as unknown as PageModel);
+        return this.addPage(emptyFile as unknown as EditorModel);
     };
 
-    addEmptyPageWithNavPanel = (folderPath: string): PageModel => {
+    addEmptyPageWithNavPanel = (folderPath: string): EditorModel => {
         // Create page directly without calling restore(), which would
         // asynchronously overwrite our NavigationData (it sees hasNavigator=true
         // and creates a new NavigationData with empty rootPath).
         const emptyFile = newTextFileModel("");
-        const page = this.addPage(emptyFile as unknown as PageModel);
+        const page = this.addPage(emptyFile as unknown as EditorModel);
         const navData = new NavigationData(folderPath);
         navData.ensurePageNavigatorModel();
         navData.updateId(page.state.get().id);
@@ -147,7 +147,7 @@ export class PagesLifecycleModel {
         language: string,
         title: string,
         content?: string,
-    ): PageModel => {
+    ): EditorModel => {
         if (typeof editor !== "string") {
             throw new Error(
                 `addEditorPage() expects positional arguments: (editor, language, title, content?). Got ${typeof editor} for editor. Example: addEditorPage("monaco", "plaintext", "My Page", "content")`
@@ -175,7 +175,7 @@ export class PagesLifecycleModel {
             page.changeContent(content);
         }
         page.restore();
-        return this.addPage(page as unknown as PageModel);
+        return this.addPage(page as unknown as EditorModel);
     };
 
     /**
@@ -183,7 +183,7 @@ export class PagesLifecycleModel {
      * If a page with this ID exists, focuses and returns it.
      * If not, creates a new page with the predefined editor/language/title.
      */
-    requireWellKnownPage = async (id: string): Promise<PageModel> => {
+    requireWellKnownPage = async (id: string): Promise<EditorModel> => {
         const existing = this.model.query.findPage(id);
         if (existing) {
             this.model.navigation.showPage(id);
@@ -205,11 +205,11 @@ export class PagesLifecycleModel {
             );
         });
         page.restore();
-        return this.addPage(page as unknown as PageModel);
+        return this.addPage(page as unknown as EditorModel);
     };
 
     /** Create a new drawing page with an embedded image. */
-    addDrawPage = async (dataUrl: string, title?: string): Promise<PageModel> => {
+    addDrawPage = async (dataUrl: string, title?: string): Promise<EditorModel> => {
         const { getImageDimensions, buildExcalidrawJsonWithImage } =
             await import("../../editors/draw/drawExport");
         const dims = await getImageDimensions(dataUrl);
@@ -217,7 +217,7 @@ export class PagesLifecycleModel {
         return this.addEditorPage("draw-view", "json", title ?? "untitled.excalidraw", json);
     };
 
-    replacePage = (oldModel: PageModel, newModel: PageModel) => {
+    replacePage = (oldModel: EditorModel, newModel: EditorModel) => {
         const state = this.model.state.get();
         const rightId = state.leftRight.get(oldModel.id);
         const leftId = state.rightLeft.get(oldModel.id);
@@ -246,7 +246,7 @@ export class PagesLifecycleModel {
         filePath?: string,
         pipe?: IContentPipe,
         options?: { sourceLink?: ISourceLink },
-    ): Promise<PageModel | undefined> => {
+    ): Promise<EditorModel | undefined> => {
         if (!filePath) return undefined;
         const existingPage = this.model.state
             .get()
@@ -268,7 +268,7 @@ export class PagesLifecycleModel {
         return pageModel;
     };
 
-    openFileAsArchive = async (filePath: string): Promise<PageModel> => {
+    openFileAsArchive = async (filePath: string): Promise<EditorModel> => {
         // .asar: Electron native fs — use simple nav panel (no ZipTreeProvider)
         if (filePath.toLowerCase().endsWith(".asar")) {
             return this._openAsarArchive(filePath);
@@ -277,7 +277,7 @@ export class PagesLifecycleModel {
         return this._openZipArchive(filePath);
     };
 
-    private _openAsarArchive(filePath: string): PageModel {
+    private _openAsarArchive(filePath: string): EditorModel {
         const archiveRoot = filePath;
         const existing = this.model.state.get().pages.find(
             (p) => p.navigationData?.pageNavigatorModel?.state.get().rootPath === archiveRoot
@@ -292,7 +292,7 @@ export class PagesLifecycleModel {
         return page;
     }
 
-    private async _openZipArchive(filePath: string): Promise<PageModel> {
+    private async _openZipArchive(filePath: string): Promise<EditorModel> {
         // Check if already open as archive (by archiveUrl on ZipPageModel)
         const existing = this.model.state.get().pages.find(
             (p) => p.state.get().type === "zipFile"
@@ -421,7 +421,7 @@ export class PagesLifecycleModel {
         const navigationData = oldModel.navigationData;
 
         // Create new model BEFORE beforeNavigateAway so old model can inspect it
-        let newModel: PageModel;
+        let newModel: EditorModel;
         // Virtual paths (tree-category://, etc.) skip file existence check
         const isVirtualPath = newFilePath.includes("://");
         if (!isVirtualPath && !(await appFs.exists(newFilePath))) {
@@ -677,7 +677,7 @@ export class PagesLifecycleModel {
         }
 
         if (!groupedPage) {
-            groupedPage = this.addEmptyPage() as unknown as PageModel;
+            groupedPage = this.addEmptyPage() as unknown as EditorModel;
             this.model.layout.groupTabs(
                 pageId,
                 groupedPage.state.get().id,

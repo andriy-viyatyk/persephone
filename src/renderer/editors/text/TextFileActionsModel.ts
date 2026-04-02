@@ -4,7 +4,7 @@ import { ui } from "../../api/ui";
 import { pagesModel } from "../../api/pages";
 import { scriptRunner } from "../../scripting/ScriptRunner";
 import { isScriptLanguage } from "../../scripting/transpile";
-import { PageModel } from "../base/PageModel";
+import { EditorModel } from "../base/EditorModel";
 
 import type { TextFileModel } from "./TextPageModel";
 
@@ -105,7 +105,7 @@ export class TextFileActionsModel {
                 await this.model.dispose();
             }
         } else {
-            pagesModel.focusPage(this.model as unknown as PageModel);
+            pagesModel.focusPage(this.model as unknown as EditorModel);
         }
         return result;
     };

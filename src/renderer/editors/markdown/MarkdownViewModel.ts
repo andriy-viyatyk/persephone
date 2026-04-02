@@ -1,7 +1,7 @@
 import React from "react";
 import { ContentViewModel } from "../base/ContentViewModel";
 import { IContentHost } from "../base/IContentHost";
-import { PageModel } from "../base";
+import { EditorModel } from "../base";
 import { pagesModel } from "../../api/pages";
 
 // =============================================================================
@@ -39,7 +39,7 @@ export class MarkdownViewModel extends ContentViewModel<MarkdownViewState> {
     }
 
     get pageModel() {
-        return this.host as unknown as PageModel;
+        return this.host as unknown as EditorModel;
     }
 
     // =========================================================================
@@ -66,7 +66,7 @@ export class MarkdownViewModel extends ContentViewModel<MarkdownViewState> {
         });
     };
 
-    pageFocused = (page?: PageModel) => {
+    pageFocused = (page?: EditorModel) => {
         if (
             page === this.pageModel ||
             pagesModel.activePage === this.pageModel

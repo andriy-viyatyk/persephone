@@ -405,7 +405,7 @@ Facades provide safe, typed access to editor-specific features. Each facade wrap
 | `page.asBrowser()` | `BrowserEditorFacade` | `BrowserPageModel` | `url`, `title`, `navigate()`, `back()`, `forward()`, `reload()` |
 | `page.asMcpInspector()` | `McpInspectorFacade` | `McpInspectorModel` | `connect()`, `disconnect()`, connection params, server info (title, description, websiteUrl, instructions), `history`, `clearHistory()`, `showHistory()` |
 
-**Exception:** `BrowserEditorFacade` and `McpInspectorFacade` wrap their PageModel directly (no ViewModel, no ref-counting) because they are page-editors, not content-views.
+**Exception:** `BrowserEditorFacade` and `McpInspectorFacade` wrap their EditorModel directly (no ViewModel, no ref-counting) because they are page-editors, not content-views.
 
 Facade source: `/src/renderer/scripting/api-wrapper/`
 Interface definitions: `/src/renderer/api/types/*.d.ts`
@@ -442,11 +442,11 @@ Three wrapper classes provide safe script access to the application:
 
 ### PageWrapper
 
-Wraps `PageModel`, implements `IPage`. Created per-page:
+Wraps `EditorModel`, implements `IPage`. Created per-page:
 
 ```typescript
 class PageWrapper {
-    constructor(model: PageModel, releaseList: Array<() => void>, outputFlags?: ScriptOutputFlags);
+    constructor(model: EditorModel, releaseList: Array<() => void>, outputFlags?: ScriptOutputFlags);
 
     // IPage properties delegate to model
     get content(): string { return model.state.get().content; }
@@ -481,7 +481,7 @@ Wraps the `app` singleton, implements `IApp`. Delegates most properties directly
 
 ### PageCollectionWrapper
 
-Wraps `PagesModel`, implements `IPageCollection`. Returns `PageWrapper` instances instead of raw `PageModel` for all query methods.
+Wraps `PagesModel`, implements `IPageCollection`. Returns `PageWrapper` instances instead of raw `EditorModel` for all query methods.
 
 ## Script Execution
 
@@ -697,7 +697,7 @@ These files serve dual purpose: TypeScript type checking **and** IDE IntelliSens
 │   └── WorkerRunner.ts          # Renderer-side: IPC to main, proxy dispatch
 └── api-wrapper/                 # Facade layer
     ├── AppWrapper.ts            # Wraps app singleton
-    ├── PageWrapper.ts           # Wraps PageModel → IPage
+    ├── PageWrapper.ts           # Wraps EditorModel → IPage
     ├── PageCollectionWrapper.ts # Wraps PagesModel → IPageCollection
     ├── TextEditorFacade.ts      # Monaco operations
     ├── GridEditorFacade.ts      # Grid data operations

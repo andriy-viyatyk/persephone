@@ -3,7 +3,7 @@
 ## Overview
 
 The editor system handles different file types with specialized viewers/editors. Each editor:
-- Has its own state management (PageModel or ContentViewModel)
+- Has its own state management (EditorModel or ContentViewModel)
 - Renders a specific UI for the file type
 - Is loaded asynchronously for code splitting
 - Can expose a scripting facade via `page.asX()` methods
@@ -38,13 +38,13 @@ Views of text-based content that share `TextFileModel` for state management. The
 - Rendered inside `TextPageView` via `ActiveEditor` component
 - Share toolbar, script panel, footer, and encryption panel
 - Can switch between each other (e.g., JSON text <-> Grid view)
-- Use `TextFileModel` (no separate PageModel)
+- Use `TextFileModel` (no separate EditorModel)
 - Each has a `ContentViewModel` subclass for view-specific state
 - `switchOption()` function controls when editor appears in switch dropdown
 
 ### Page Editors (`category: "page-editor"`)
 
-Standalone editors with their own PageModel.
+Standalone editors with their own EditorModel.
 
 | Editor ID | Name | Page type | File types |
 |-----------|------|-----------|------------|
@@ -65,7 +65,7 @@ Standalone editors with their own PageModel.
 
 **Characteristics:**
 - Rendered instead of `TextPageView` by `RenderEditor`
-- Have their own PageModel subclass
+- Have their own EditorModel subclass
 - Handle their own UI entirely (no shared toolbar/script panel)
 - Each has a unique `pageType`
 
@@ -153,11 +153,11 @@ editorRegistry.register({
 });
 ```
 
-## PageModel Hierarchy
+## EditorModel Hierarchy
 
 ```
 TDialogModel<T, R>   (from core/state/model.ts)
-└── PageModel<T, R>   (from editors/base/PageModel.ts)
+└── EditorModel<T, R>   (from editors/base/EditorModel.ts)
     ├── TextFileModel         # Content-view host (Monaco, Grid, Markdown, etc.)
     ├── BrowserPageModel      # Browser (multi-tab, webview, IPC)
     ├── McpInspectorModel     # MCP Inspector (connection manager, server inspection)
@@ -178,12 +178,12 @@ ContentViewModel<TState>   (from editors/base/ContentViewModel.ts)
 └── GraphViewModel          # Force graph editing (composes GraphDataModel, GraphGroupModel, GraphConnectivityModel, GraphSearchModel, GraphHighlightModel, ForceGraphRenderer, GraphVisibilityModel)
 ```
 
-**Note:** PageModel extends `TDialogModel` (not `TModel`) because pages need `close()` with confirmation and `canClose` guards.
+**Note:** EditorModel extends `TDialogModel` (not `TModel`) because pages need `close()` with confirmation and `canClose` guards.
 
-### PageModel Base
+### EditorModel Base
 
 ```typescript
-class PageModel<T extends IEditorState, R = any> extends TDialogModel<T, R> {
+class EditorModel<T extends IEditorState, R = any> extends TDialogModel<T, R> {
     get id(): string;
     get type(): EditorType;
     get title(): string;
@@ -196,7 +196,7 @@ class PageModel<T extends IEditorState, R = any> extends TDialogModel<T, R> {
     scriptData: Record<string, any>;   // In-memory data for scripts
     navigationData: NavigationData | null;  // Navigation context (providers, selection, persistence)
 
-    beforeNavigateAway(newModel: PageModel): void;  // Navigation survival hook (base: clears secondaryEditor)
+    beforeNavigateAway(newModel: EditorModel): void;  // Navigation survival hook (base: clears secondaryEditor)
     confirmRelease(closing?: boolean): Promise<boolean>;
     restore(): Promise<void>;
     saveState(): Promise<void>;
@@ -207,7 +207,7 @@ class PageModel<T extends IEditorState, R = any> extends TDialogModel<T, R> {
 
 ## Scripting Facades
 
-Editor facades provide safe, typed script access to editors via `page.asX()` methods. Each facade wraps a ContentViewModel or PageModel.
+Editor facades provide safe, typed script access to editors via `page.asX()` methods. Each facade wraps a ContentViewModel or EditorModel.
 
 | Method | Facade | Source |
 |--------|--------|--------|
@@ -224,7 +224,7 @@ Editor facades provide safe, typed script access to editors via `page.asX()` met
 
 Facades live in `/src/renderer/scripting/api-wrapper/`. Interfaces in `/src/renderer/api/types/*.d.ts`.
 
-Content-view facades acquire a ViewModel via `host.acquireViewModel()` and auto-release it when the script completes (via `releaseList` in `PageWrapper`). `BrowserEditorFacade` wraps the PageModel directly (no ViewModel, no ref-counting).
+Content-view facades acquire a ViewModel via `host.acquireViewModel()` and auto-release it when the script completes (via `releaseList` in `PageWrapper`). `BrowserEditorFacade` wraps the EditorModel directly (no ViewModel, no ref-counting).
 
 ## Editor Resolution
 
@@ -250,7 +250,7 @@ Every editor follows this pattern:
 ├── index.ts              # Public exports + EditorModule
 ├── [Name]Editor.tsx      # Main component (or [Name]View.tsx)
 ├── [Name]ViewModel.ts    # ContentViewModel subclass (content-views)
-├── [Name]PageModel.ts    # PageModel subclass (page-editors)
+├── [Name]EditorModel.ts    # EditorModel subclass (page-editors)
 ├── components/           # Editor-specific components (optional)
 └── utils/                # Editor-specific utilities (optional)
 ```
@@ -259,10 +259,10 @@ Every editor follows this pattern:
 
 ```typescript
 interface EditorModule {
-    Editor: React.ComponentType<{ model: PageModel | IContentHost }>;
-    newPageModel(filePath?: string): Promise<PageModel>;
-    newEmptyPageModel(pageType: EditorType): Promise<PageModel | null>;
-    newPageModelFromState(state: Partial<IEditorState>): Promise<PageModel>;
+    Editor: React.ComponentType<{ model: EditorModel | IContentHost }>;
+    newPageModel(filePath?: string): Promise<EditorModel>;
+    newEmptyPageModel(pageType: EditorType): Promise<EditorModel | null>;
+    newPageModelFromState(state: Partial<IEditorState>): Promise<EditorModel>;
     createViewModel?: ViewModelFactory;  // Content-views provide this
 }
 ```
@@ -288,8 +288,8 @@ interface EditorModule {
 ### Adding a Page-Editor
 
 1. Create folder `/editors/myeditor/`
-2. Extend `PageModel` with custom state
-3. Implement editor component receiving your PageModel
+2. Extend `EditorModel` with custom state
+3. Implement editor component receiving your EditorModel
 4. Register with `category: "page-editor"` and unique `pageType`
 5. Add `EditorType` and `EditorView` types to `/shared/types.ts`
 6. (Optional) Add scripting facade

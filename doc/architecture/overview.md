@@ -145,7 +145,7 @@ See [editors.md](./editors.md).
 
 - All editors in `/editors/` — 16 editor folders
 - Two categories: **content-views** (share TextFileModel) and **page-editors** (standalone)
-- `PageModel` base class for state, `ContentViewModel` for view state
+- `EditorModel` base class for state, `ContentViewModel` for view state
 - Dynamic loading via `import()` for code splitting
 - Scripting facades expose editor APIs via `page.asX()` methods
 
@@ -227,7 +227,7 @@ Every editor follows the same pattern:
 /editors/[name]/
 ├── index.ts              # Exports
 ├── [Name]Editor.tsx      # View component (or [Name]View.tsx / [Name]PageView.tsx)
-├── [Name]PageModel.ts    # State & logic (page-editors)
+├── [Name]EditorModel.ts    # State & logic (page-editors)
 ├── [Name]ViewModel.ts    # View state (content-views with their own view model)
 └── components/           # Editor-specific (optional)
 ```

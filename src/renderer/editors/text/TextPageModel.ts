@@ -1,7 +1,7 @@
 import { TComponentState } from "../../core/state/state";
 import { shell } from "../../api/shell";
 import { fs as appFs } from "../../api/fs";
-import { getDefaultPageModelState, PageModel } from "../base/PageModel";
+import { getDefaultEditorModelState, EditorModel } from "../base/EditorModel";
 import { IEditorState, EditorView } from "../../../shared/types";
 import { ScriptPanelModel } from "./ScriptPanel";
 import { editorRegistry } from "../registry";
@@ -28,7 +28,7 @@ export interface TextFilePageModelState extends IEditorState {
 }
 
 export const getDefaultTextFilePageModelState = (): TextFilePageModelState => ({
-    ...getDefaultPageModelState(),
+    ...getDefaultEditorModelState(),
     type: "textFile" as const,
     language: "plaintext",
     encoding: undefined,
@@ -42,7 +42,7 @@ export const getDefaultTextFilePageModelState = (): TextFilePageModelState => ({
     restored: false,
 });
 
-export class TextFileModel extends PageModel<TextFilePageModelState, void> implements IContentHost {
+export class TextFileModel extends EditorModel<TextFilePageModelState, void> implements IContentHost {
     // Content view model host
     private _vmHost = new ContentViewModelHost();
 
@@ -342,7 +342,7 @@ export function newTextFileModelFromState(
 }
 
 export function isTextFileModel(
-    model: PageModel<any, any>,
+    model: EditorModel<any, any>,
 ): model is TextFileModel {
     return model.type === "textFile";
 }

@@ -1,6 +1,6 @@
 import React from "react";
 import { TComponentState } from "../../core/state/state";
-import { PageModel, getDefaultPageModelState } from "../base";
+import { EditorModel, getDefaultEditorModelState } from "../base";
 import type { IEditorState } from "../../../shared/types";
 import { FolderIcon } from "../../components/icons/FileIcon";
 import { fpBasename } from "../../core/utils/file-path";
@@ -16,12 +16,12 @@ export interface CategoryPageModelState extends IEditorState {
 
 export function getDefaultCategoryPageModelState(): CategoryPageModelState {
     return {
-        ...getDefaultPageModelState(),
+        ...getDefaultEditorModelState(),
         type: "categoryPage",
     } as CategoryPageModelState;
 }
 
-export class CategoryPageModel extends PageModel<CategoryPageModelState> {
+export class CategoryPageModel extends EditorModel<CategoryPageModelState> {
     constructor(state?: TComponentState<CategoryPageModelState>) {
         super(state ?? new TComponentState(getDefaultCategoryPageModelState()));
         this.noLanguage = true;

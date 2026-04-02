@@ -3,7 +3,7 @@ import { IEditorState, WindowState } from "../../../shared/types";
 import { openFilesNameTemplate } from "../../../shared/constants";
 import { parseObject } from "../../core/utils/parse-utils";
 import { debounce } from "../../../shared/utils";
-import { PageModel } from "../../editors/base";
+import { EditorModel } from "../../editors/base";
 import { api } from "../../../ipc/renderer/api";
 import { fs as appFs } from "../fs";
 import { editorRegistry } from "../../editors/registry";
@@ -36,10 +36,10 @@ export class PagesPersistenceModel {
 
     saveStateDebounced = debounce(this.saveState, 500);
 
-    restoreModel = async (data: Partial<IEditorState>): Promise<PageModel | null> => {
+    restoreModel = async (data: Partial<IEditorState>): Promise<EditorModel | null> => {
         const editors = editorRegistry.getAll();
         const editorDef = editors.find((e) => e.pageType === data.type);
-        let model: PageModel | null = null;
+        let model: EditorModel | null = null;
 
         if (editorDef) {
             const module = await editorDef.loadModule();
@@ -66,7 +66,7 @@ export class PagesPersistenceModel {
         );
         const models = (await Promise.all(modelsPromise)).filter(
             (model) => model
-        ) as PageModel[];
+        ) as EditorModel[];
 
         models.forEach((model) => this.model.attachPage(model));
         const activeModel = models.find(

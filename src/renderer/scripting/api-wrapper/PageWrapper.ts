@@ -1,4 +1,4 @@
-import { PageModel } from "../../editors/base";
+import { EditorModel } from "../../editors/base";
 import { isTextFileModel } from "../../editors/text/TextPageModel";
 import { pagesModel } from "../../api/pages";
 import { EditorView } from "../../../shared/types";
@@ -31,7 +31,7 @@ import { McpInspectorFacade } from "./McpInspectorFacade";
 import type { ScriptOutputFlags } from "../ScriptContext";
 
 /**
- * Safe wrapper around PageModel for script access.
+ * Safe wrapper around EditorModel for script access.
  * Implements the IPage interface from api/types/page.d.ts.
  *
  * - Exposes only script-safe properties and methods
@@ -39,7 +39,7 @@ import type { ScriptOutputFlags } from "../ScriptContext";
  */
 export class PageWrapper {
     constructor(
-        private readonly model: PageModel,
+        private readonly model: EditorModel,
         private readonly releaseList: Array<() => void>,
         private readonly outputFlags?: ScriptOutputFlags,
     ) {}
@@ -284,7 +284,7 @@ export class PageWrapper {
 
 class GroupedPageWrapper extends PageWrapper {
     constructor(
-        model: PageModel,
+        model: EditorModel,
         releaseList: Array<() => void>,
         private readonly flags?: ScriptOutputFlags,
     ) {
