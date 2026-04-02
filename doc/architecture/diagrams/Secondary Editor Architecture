@@ -1,0 +1,49 @@
+graph TD
+    subgraph "Tab (Page)"
+        PM["PageModel\n(active page)"]
+    end
+
+    subgraph "NavigationData (survives navigation)"
+        ND["NavigationData"]
+        TP["treeProvider\n(FileTreeProvider)"]
+        SM["secondaryModels[]"]
+        AP["activePanel\n('explorer' | 'search' | modelId)"]
+        OW["ownerModel"]
+    end
+
+    subgraph "Secondary Models"
+        ZM["ZipPageModel\n(secondaryEditor: 'zip-tree')"]
+        OP["ownerPage"]
+    end
+
+    subgraph "PageNavigator (React)"
+        EP["Explorer Panel"]
+        SP["Search Panel"]
+        SEC["Archive Panel\n(LazySecondaryEditor)"]
+    end
+
+    subgraph "Registry"
+        SER["SecondaryEditorRegistry\n'zip-tree' → ZipSecondaryEditor"]
+    end
+
+    PM -->|".navigationData"| ND
+    ND -->|".ownerModel"| PM
+    ND --> TP
+    ND --> SM
+    ND --> AP
+    SM -->|"contains"| ZM
+    ZM -->|".ownerPage"| PM
+    OW -->|"= ownerModel ref"| PM
+
+    ND -.->|"renders"| EP
+    ND -.->|"renders"| SP
+    SM -.->|"renders via registry"| SEC
+    SEC -.->|"loadComponent()"| SER
+
+    style PM fill:#4a9eff,color:#fff
+    style ND fill:#ff9800,color:#fff
+    style ZM fill:#8e24aa,color:#fff
+    style SER fill:#43a047,color:#fff
+    style EP fill:#333,color:#fff
+    style SP fill:#333,color:#fff
+    style SEC fill:#333,color:#fff
