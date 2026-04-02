@@ -255,7 +255,7 @@ const pipe = createPipe(new FileProvider(filePath), new ZipTransformer(entry));
 const text = await pipe.readText();  // FileProvider → ZipTransformer → decode
 ```
 
-TextFileIOModel uses dual pipes: primary (source file) + cache (auto-save). Pipe state is serialized in `IPageState.pipe` (`IPipeDescriptor`) for restore across app restarts.
+TextFileIOModel uses dual pipes: primary (source file) + cache (auto-save). Pipe state is serialized in `IEditorState.pipe` (`IPipeDescriptor`) for restore across app restarts.
 
 ### 6. Event Channels (LIFO)
 `EventChannel.sendAsync()` calls subscribers in LIFO order (newest first). This allows late subscribers (like the open handler) to intercept and handle events before earlier subscribers.
@@ -277,7 +277,7 @@ See [/doc/standards/coding-style.md](doc/standards/coding-style.md) for complete
 
 | Purpose                  | File                                              |
 |--------------------------|---------------------------------------------------|
-| Shared types (IPageState)| `/src/shared/types.ts`                            |
+| Shared types (IEditorState)| `/src/shared/types.ts`                            |
 | App object model         | `/src/renderer/api/app.ts`                        |
 | Page/tab management      | `/src/renderer/api/pages/PagesModel.ts`           |
 | Well-known pages         | `/src/renderer/api/pages/well-known-pages.ts`     |

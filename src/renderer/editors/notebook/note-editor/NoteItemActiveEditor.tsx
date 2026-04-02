@@ -2,7 +2,7 @@ import { NoteItemEditModel } from "./NoteItemEditModel";
 import { MiniTextEditor } from "./MiniTextEditor";
 import { AsyncEditor } from "../../../ui/app/AsyncEditor";
 import { editorRegistry } from "../../registry";
-import { PageEditor } from "../../../../shared/types";
+import { EditorView } from "../../../../shared/types";
 
 // =============================================================================
 // Component
@@ -12,7 +12,7 @@ interface NoteItemActiveEditorProps {
     model: NoteItemEditModel;
 }
 
-const getEditorModule = (editor: PageEditor) => async () => {
+const getEditorModule = (editor: EditorView) => async () => {
     const def = editorRegistry.getById(editor);
     if (!def) throw new Error(`Editor "${editor}" not registered`);
     return def.loadModule();

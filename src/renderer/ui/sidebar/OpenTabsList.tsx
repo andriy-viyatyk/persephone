@@ -4,7 +4,7 @@ import { List } from "../../components/form/List";
 import { api } from "../../../ipc/renderer/api";
 import { pagesModel } from "../../api/pages";
 import { appWindow } from "../../api/window";
-import { IPageState, WindowPages } from "../../../shared/types";
+import { IEditorState, WindowPages } from "../../../shared/types";
 import color from "../../theme/color";
 import { EmptyIcon } from "../../theme/icons";
 import { LanguageIcon } from "../../components/icons/LanguageIcon";
@@ -33,7 +33,7 @@ const OpenTabsListRoot = styled(List)({
 
 interface ListItem {
     windowIndex: number;
-    page?: Partial<IPageState>;
+    page?: Partial<IEditorState>;
 }
 
 const getPageLabel = (item: ListItem) =>

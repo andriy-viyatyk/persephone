@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { PageEditor } from "../../../shared/types";
+import { EditorView } from "../../../shared/types";
 import { ContentViewModel } from "./ContentViewModel";
 import { IContentHost } from "./IContentHost";
 
@@ -19,7 +19,7 @@ import { IContentHost } from "./IContentHost";
  */
 export function useContentViewModel<T extends ContentViewModel<any>>(
     host: IContentHost,
-    editorId: PageEditor,
+    editorId: EditorView,
 ): T | null {
     const [viewModel, setViewModel] = useState<T | null>(null);
 

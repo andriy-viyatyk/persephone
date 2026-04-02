@@ -1,6 +1,6 @@
 import { ReactNode, useMemo, useSyncExternalStore } from "react";
 import { isTextFileModel, TextFileModel } from "./TextPageModel";
-import type { PageEditor } from "../../../shared/types";
+import type { EditorView } from "../../../shared/types";
 import { Button } from "../../components/basic/Button";
 import { CompareIcon, NavPanelIcon, RunAllIcon, RunIcon } from "../../theme/icons";
 import { SwitchButtons } from "../../components/form/SwitchButtons";
@@ -60,10 +60,10 @@ export function TextToolbar({ model, setEditorToolbarRefFirst, setEditorToolbarR
         if (detectedContentEditor && !base.options.includes(detectedContentEditor)) {
             const options = base.options.length > 0
                 ? [...base.options, detectedContentEditor]
-                : ["monaco" as PageEditor, detectedContentEditor];
+                : ["monaco" as EditorView, detectedContentEditor];
             return {
                 options,
-                getOptionLabel: (option: PageEditor) => {
+                getOptionLabel: (option: EditorView) => {
                     if (option === detectedContentEditor) {
                         return editorRegistry.getById(detectedContentEditor)?.name ?? option;
                     }

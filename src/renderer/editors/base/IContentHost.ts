@@ -1,5 +1,5 @@
 import { IState } from "../../core/state/state";
-import { PageEditor } from "../../../shared/types";
+import { EditorView } from "../../../shared/types";
 import { EditorStateStorage } from "./EditorStateStorageContext";
 import type { ContentViewModel } from "./ContentViewModel";
 
@@ -10,7 +10,7 @@ import type { ContentViewModel } from "./ContentViewModel";
 export interface IContentHostState {
     content: string;
     language?: string;
-    editor?: PageEditor;
+    editor?: EditorView;
 }
 
 /**
@@ -33,7 +33,7 @@ export interface IContentHost {
     changeContent(content: string, byUser?: boolean): void;
 
     /** Change the active editor type. */
-    changeEditor(editor: PageEditor): void;
+    changeEditor(editor: EditorView): void;
 
     /** Change the language. */
     changeLanguage(language: string | undefined): void;
@@ -46,20 +46,20 @@ export interface IContentHost {
      * Creates on first call, increments reference count on subsequent calls.
      * Async because editor modules are lazy-loaded.
      */
-    acquireViewModel(editorId: PageEditor): Promise<ContentViewModel<any>>;
+    acquireViewModel(editorId: EditorView): Promise<ContentViewModel<any>>;
 
     /**
      * Acquire a view model synchronously.
      * Returns undefined if the editor module hasn't been loaded yet.
      * Call prepareViewModel() first to ensure the module is cached.
      */
-    acquireViewModelSync(editorId: PageEditor): ContentViewModel<any> | undefined;
+    acquireViewModelSync(editorId: EditorView): ContentViewModel<any> | undefined;
 
     /**
      * Pre-load and cache the editor module so that acquireViewModelSync() can work.
      */
-    prepareViewModel(editorId: PageEditor): Promise<void>;
+    prepareViewModel(editorId: EditorView): Promise<void>;
 
     /** Release a reference. When refs reach 0, the model is disposed. */
-    releaseViewModel(editorId: PageEditor): void;
+    releaseViewModel(editorId: EditorView): void;
 }

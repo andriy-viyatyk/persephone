@@ -1,4 +1,4 @@
-import type { PageEditor } from "./common";
+import type { EditorView } from "./common";
 import type { IPage } from "./page";
 
 /**
@@ -62,7 +62,7 @@ export interface IPageCollection {
     addEmptyPage(): IPage;
 
     /** Add a page with a specific editor, language, and title. Optionally set initial content. */
-    addEditorPage(editor: PageEditor, language: string, title: string, content?: string): IPage;
+    addEditorPage(editor: EditorView, language: string, title: string, content?: string): IPage;
 
     /** Create a new drawing page with an embedded image.
      * @param dataUrl Image as data URL (e.g., `"data:image/png;base64,..."`)

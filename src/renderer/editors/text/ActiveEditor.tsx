@@ -2,13 +2,13 @@ import { TextFileModel } from "./TextPageModel";
 import { AsyncEditor } from "../../ui/app/AsyncEditor";
 import { TextEditor } from "./TextEditor";
 import { editorRegistry } from "../registry";
-import { PageEditor } from "../../../shared/types";
+import { EditorView } from "../../../shared/types";
 
 interface ActiveEditorProps {
     model: TextFileModel;
 }
 
-const getEditorModule = (editor: PageEditor) => async () => {
+const getEditorModule = (editor: EditorView) => async () => {
     const def = editorRegistry.getById(editor);
     if (!def) throw new Error(`Editor "${editor}" not registered`);
     return def.loadModule();

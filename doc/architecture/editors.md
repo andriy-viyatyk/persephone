@@ -111,13 +111,13 @@ interface IContentHost {
     readonly id: string;
     readonly state: IState<IContentHostState>;  // { content, language, editor }
     changeContent(content: string, byUser?: boolean): void;
-    changeEditor(editor: PageEditor): void;
+    changeEditor(editor: EditorView): void;
     changeLanguage(language: string | undefined): void;
     readonly stateStorage: EditorStateStorage;
-    acquireViewModel(editorId: PageEditor): Promise<ContentViewModel<any>>;
-    acquireViewModelSync(editorId: PageEditor): ContentViewModel<any> | undefined;
-    prepareViewModel(editorId: PageEditor): Promise<void>;
-    releaseViewModel(editorId: PageEditor): void;
+    acquireViewModel(editorId: EditorView): Promise<ContentViewModel<any>>;
+    acquireViewModelSync(editorId: EditorView): ContentViewModel<any> | undefined;
+    prepareViewModel(editorId: EditorView): Promise<void>;
+    releaseViewModel(editorId: EditorView): void;
 }
 ```
 
@@ -183,9 +183,9 @@ ContentViewModel<TState>   (from editors/base/ContentViewModel.ts)
 ### PageModel Base
 
 ```typescript
-class PageModel<T extends IPageState, R = any> extends TDialogModel<T, R> {
+class PageModel<T extends IEditorState, R = any> extends TDialogModel<T, R> {
     get id(): string;
-    get type(): PageType;
+    get type(): EditorType;
     get title(): string;
     get modified(): boolean;
     get pinned(): boolean;
@@ -261,8 +261,8 @@ Every editor follows this pattern:
 interface EditorModule {
     Editor: React.ComponentType<{ model: PageModel | IContentHost }>;
     newPageModel(filePath?: string): Promise<PageModel>;
-    newEmptyPageModel(pageType: PageType): Promise<PageModel | null>;
-    newPageModelFromState(state: Partial<IPageState>): Promise<PageModel>;
+    newEmptyPageModel(pageType: EditorType): Promise<PageModel | null>;
+    newPageModelFromState(state: Partial<IEditorState>): Promise<PageModel>;
     createViewModel?: ViewModelFactory;  // Content-views provide this
 }
 ```
@@ -282,7 +282,7 @@ interface EditorModule {
    ```
 3. Implement editor component receiving `IContentHost` as model
 4. Register with `category: "content-view"` and `createViewModel` factory
-5. Add `PageEditor` type to `/shared/types.ts`
+5. Add `EditorView` type to `/shared/types.ts`
 6. (Optional) Add scripting facade in `/scripting/api-wrapper/` + `.d.ts` in `/api/types/`
 
 ### Adding a Page-Editor
@@ -291,7 +291,7 @@ interface EditorModule {
 2. Extend `PageModel` with custom state
 3. Implement editor component receiving your PageModel
 4. Register with `category: "page-editor"` and unique `pageType`
-5. Add `PageType` and `PageEditor` types to `/shared/types.ts`
+5. Add `EditorType` and `EditorView` types to `/shared/types.ts`
 6. (Optional) Add scripting facade
 
 ## Editor Switching

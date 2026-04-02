@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import { useCallback, useEffect, useRef, useState } from "react";
 const { ipcRenderer } = require("electron");
-import { IPageState, PageType } from "../../../shared/types";
+import { IEditorState, EditorType } from "../../../shared/types";
 import { PageModel, PageToolbar } from "../base";
 import { TComponentState } from "../../core/state/state";
 import { EditorModule } from "../types";
@@ -794,7 +794,7 @@ const browserEditorModule: EditorModule = {
         );
     },
     newEmptyPageModel: async (
-        pageType: PageType,
+        pageType: EditorType,
     ): Promise<PageModel | null> => {
         if (pageType !== "browserPage") return null;
         const model = new BrowserPageModel(
@@ -803,7 +803,7 @@ const browserEditorModule: EditorModule = {
         return model;
     },
     newPageModelFromState: async (
-        state: Partial<IPageState>,
+        state: Partial<IEditorState>,
     ): Promise<PageModel> => {
         const initialState: BrowserPageState = {
             ...getDefaultBrowserPageState(),

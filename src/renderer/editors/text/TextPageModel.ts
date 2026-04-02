@@ -2,7 +2,7 @@ import { TComponentState } from "../../core/state/state";
 import { shell } from "../../api/shell";
 import { fs as appFs } from "../../api/fs";
 import { getDefaultPageModelState, PageModel } from "../base/PageModel";
-import { IPageState, PageEditor } from "../../../shared/types";
+import { IEditorState, EditorView } from "../../../shared/types";
 import { ScriptPanelModel } from "./ScriptPanel";
 import { editorRegistry } from "../registry";
 import { TextFileEncryptionModel } from "./TextFileEncryptionModel";
@@ -14,7 +14,7 @@ import { ContentViewModelHost } from "../base/ContentViewModelHost";
 import type { TextViewModel } from "./TextEditor";
 import { createPipeFromDescriptor } from "../../content/registry";
 
-export interface TextFilePageModelState extends IPageState {
+export interface TextFilePageModelState extends IEditorState {
     content: string;
     deleted: boolean;
     encoding?: string;
@@ -24,7 +24,7 @@ export interface TextFilePageModelState extends IPageState {
     compareMode: boolean;
     temp: boolean;
     /** Editor detected from content (e.g., "notebook-view" when JSON has "type": "note-editor") */
-    detectedContentEditor?: PageEditor;
+    detectedContentEditor?: EditorView;
 }
 
 export const getDefaultTextFilePageModelState = (): TextFilePageModelState => ({
@@ -51,7 +51,7 @@ export class TextFileModel extends PageModel<TextFilePageModelState, void> imple
         setState: async (id, name, state) => { await appFs.saveCacheFile(id, state, name); },
     };
 
-    async acquireViewModel(editorId: PageEditor) {
+    async acquireViewModel(editorId: EditorView) {
         const vm = await this._vmHost.acquire(editorId, this);
         if (editorId === "monaco") {
             const textVm = vm as TextViewModel;
@@ -67,15 +67,15 @@ export class TextFileModel extends PageModel<TextFilePageModelState, void> imple
         return vm;
     }
 
-    releaseViewModel(editorId: PageEditor) {
+    releaseViewModel(editorId: EditorView) {
         this._vmHost.release(editorId);
     }
 
-    acquireViewModelSync(editorId: PageEditor) {
+    acquireViewModelSync(editorId: EditorView) {
         return this._vmHost.acquireSync(editorId, this);
     }
 
-    async prepareViewModel(editorId: PageEditor) {
+    async prepareViewModel(editorId: EditorView) {
         await this._vmHost.prepare(editorId);
     }
 
@@ -208,7 +208,7 @@ export class TextFileModel extends PageModel<TextFilePageModelState, void> imple
         this.scheduleDetection();
     };
 
-    changeEditor = (editor: PageEditor) => {
+    changeEditor = (editor: EditorView) => {
         const language = this.state.get().language ?? "";
         const validated = editorRegistry.validateForLanguage(editor, language);
         this.state.update((s) => {
@@ -332,7 +332,7 @@ export function newTextFileModel(filePath?: string): TextFileModel {
 }
 
 export function newTextFileModelFromState(
-    state: Partial<IPageState>,
+    state: Partial<IEditorState>,
 ): TextFileModel {
     const initialState: TextFilePageModelState = {
         ...getDefaultTextFilePageModelState(),

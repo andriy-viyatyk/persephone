@@ -29,7 +29,6 @@ page.data.counter = (page.data.counter || 0) + 1;
 | `language` | `string` | Language ID (e.g., `"json"`, `"typescript"`). **Read/write.** |
 | `editor` | `PageEditor` | Active editor ID (e.g., `"monaco"`, `"grid-json"`). **Read/write.** |
 | `data` | `Record<string, any>` | In-memory data storage. Persists across script runs but not app restarts. |
-| `sourceLink` | `ISourceLink?` | Source link descriptor if the page was opened via the link pipeline (file, URL, cURL, archive). Contains `url` (resolved URL), optional `target` (editor), and optional `metadata`. Read-only. |
 | `grouped` | `IPage` | Grouped (side-by-side) partner page. Auto-creates if none exists. |
 
 ### PageEditor values

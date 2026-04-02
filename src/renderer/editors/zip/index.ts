@@ -1,6 +1,6 @@
 import { ZipPageView } from "./ZipPageView";
 import type { EditorModule } from "../types";
-import type { PageType, IPageState } from "../../../shared/types";
+import type { EditorType, IEditorState } from "../../../shared/types";
 
 const zipEditorModule: EditorModule = {
     Editor: ZipPageView,
@@ -10,12 +10,12 @@ const zipEditorModule: EditorModule = {
         if (filePath) await model.initFromArchive(filePath);
         return model;
     },
-    newEmptyPageModel: async (pageType: PageType) => {
+    newEmptyPageModel: async (pageType: EditorType) => {
         if (pageType !== "zipFile") return null;
         const { ZipPageModel } = await import("./ZipPageModel");
         return new ZipPageModel();
     },
-    newPageModelFromState: async (state: Partial<IPageState>) => {
+    newPageModelFromState: async (state: Partial<IEditorState>) => {
         const { ZipPageModel } = await import("./ZipPageModel");
         const model = new ZipPageModel();
         model.applyRestoreData(state as any); // eslint-disable-line @typescript-eslint/no-explicit-any

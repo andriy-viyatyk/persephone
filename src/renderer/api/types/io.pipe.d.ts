@@ -2,7 +2,7 @@ import type { ISubscriptionObject } from "./events";
 import type { IProvider, IProviderDescriptor } from "./io.provider";
 import type { ITransformer, ITransformerDescriptor } from "./io.transformer";
 
-/** Serializable pipe descriptor for persistence (stored in IPageState). */
+/** Serializable pipe descriptor for persistence (stored in IEditorState). */
 export interface IPipeDescriptor {
     /** Provider descriptor. */
     provider: IProviderDescriptor;

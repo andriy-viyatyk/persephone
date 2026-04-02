@@ -23,7 +23,7 @@ export interface IEvent<T> {
 }
 
 /** Editor type identifier. */
-export type PageEditor =
+export type EditorView =
     | "monaco"
     | "grid-json"
     | "grid-csv"

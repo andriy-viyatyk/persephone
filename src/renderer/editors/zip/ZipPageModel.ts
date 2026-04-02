@@ -1,13 +1,13 @@
 import React from "react";
 import { TComponentState } from "../../core/state/state";
 import { PageModel, getDefaultPageModelState } from "../base";
-import type { IPageState } from "../../../shared/types";
+import type { IEditorState } from "../../../shared/types";
 import type { ZipTreeProvider } from "../../content/tree-providers/ZipTreeProvider";
 import { fpBasename } from "../../core/utils/file-path";
 import { ArchiveIcon } from "../../theme/icons";
 import { expandSecondaryPanel } from "../../core/state/events";
 
-export interface ZipPageModelState extends IPageState {
+export interface ZipPageModelState extends IEditorState {
     type: "zipFile";
     /** Archive source URL (path to the .zip file). */
     archiveUrl: string;

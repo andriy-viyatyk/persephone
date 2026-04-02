@@ -1,6 +1,6 @@
 import type { PagesModel } from "../../api/pages/PagesModel";
 import { PageWrapper } from "./PageWrapper";
-import { PageEditor } from "../../../shared/types";
+import { EditorView } from "../../../shared/types";
 
 /**
  * Safe wrapper around PagesModel for script access.
@@ -81,7 +81,7 @@ export class PageCollectionWrapper {
     }
 
     addEditorPage(
-        editor: PageEditor,
+        editor: EditorView,
         language: string,
         title: string,
     ): PageWrapper {

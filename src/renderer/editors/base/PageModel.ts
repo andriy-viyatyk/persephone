@@ -1,13 +1,13 @@
 import { TDialogModel } from "../../core/state/model";
 
-import { IPageState } from "../../../shared/types";
+import { IEditorState } from "../../../shared/types";
 import { editorRegistry } from "../registry";
 import { NavigationData } from "../../ui/navigation/NavigationData";
 import { fs } from "../../api/fs";
 import type { IContentPipe } from "../../api/types/io.pipe";
 import { createPipeFromDescriptor } from "../../content/registry";
 
-export const getDefaultPageModelState = (): IPageState => ({
+export const getDefaultPageModelState = (): IEditorState => ({
     id: crypto.randomUUID(),
     type: "textFile",
     title: "untitled",
@@ -18,7 +18,7 @@ export const getDefaultPageModelState = (): IPageState => ({
     pinned: false,
 });
 
-export class PageModel<T extends IPageState = IPageState, R = any> extends TDialogModel<T, R> {
+export class PageModel<T extends IEditorState = IEditorState, R = any> extends TDialogModel<T, R> {
     skipSave = false;
     getIcon?: () => React.ReactNode;
     noLanguage = false;

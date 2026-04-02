@@ -5,7 +5,7 @@ import { EventEndpoint } from "../ipc/api-types";
 import { OpenWindow } from "./open-window";
 import { windowStates } from "./window-states";
 import { getDataFolder, preparePath } from "./utils";
-import { IPageState, WindowPages } from "../shared/types";
+import { IEditorState, WindowPages } from "../shared/types";
 
 interface OpenWindowData {
     window?: OpenWindow;
@@ -207,7 +207,7 @@ class OpenWindows {
     movePageToWindow = async (
         sourceWindowIndex: number,
         targetWindowIndex: number | undefined,
-        page: Partial<IPageState>,
+        page: Partial<IEditorState>,
         targetPageId?: string,
         dropPosition?: { x: number; y: number },
     ): Promise<void> => {

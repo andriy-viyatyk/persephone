@@ -274,7 +274,7 @@ When a tab is dragged to another window:
    - Calls `detachPage()` — unsubscribes but does NOT dispose. **Cache files survive.**
    - Calls `removePage()` — removes from arrays
 4. **Target window** — receives `eMovePageIn` IPC event (main process awaits `whenReady` first):
-   - `movePageIn(data)` creates a new PageModel from the serialized `Partial<IPageState>`
+   - `movePageIn(data)` creates a new PageModel from the serialized `Partial<IEditorState>`
    - Calls `applyRestoreData()` — reconstructs pipe from descriptor, restores `sourceLink`
    - Calls `restore()` — reads content through pipe; if `hasNavigator` is set, creates new `NavigationData` and restores from the **same cache files** using the page ID
 
@@ -444,7 +444,7 @@ PageNavigator renders a `CollapsiblePanel` for each model in `secondaryModels[]`
 
 ### Persistence
 
-Secondary model state is saved as descriptors (`SecondaryModelDescriptor[]`) in the NavigationData cache. Each descriptor contains the model's serialized `IPageState` (from `getRestoreData()`). On restore, descriptors are stored as `pendingSecondaryDescriptors`. `restoreSecondaryModels(ownerModel)` processes them — if a descriptor's ID matches the owner page, the existing instance is reused (no duplicate).
+Secondary model state is saved as descriptors (`SecondaryModelDescriptor[]`) in the NavigationData cache. Each descriptor contains the model's serialized `IEditorState` (from `getRestoreData()`). On restore, descriptors are stored as `pendingSecondaryDescriptors`. `restoreSecondaryModels(ownerModel)` processes them — if a descriptor's ID matches the owner page, the existing instance is reused (no duplicate).
 
 ### Dispose
 

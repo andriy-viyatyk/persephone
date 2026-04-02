@@ -10,7 +10,7 @@ import { RawLinkEvent } from "../../api/events/events";
 import type { ITreeProviderItem } from "../../api/types/io.tree";
 import type { CategoryPageModel } from "./CategoryPageModel";
 import type { EditorModule } from "../types";
-import type { PageType, IPageState } from "../../../shared/types";
+import type { EditorType, IEditorState } from "../../../shared/types";
 import color from "../../theme/color";
 
 const CategoryEditorRoot = styled.div({
@@ -97,12 +97,12 @@ const categoryEditorModule: EditorModule = {
         }
         return model;
     },
-    newEmptyPageModel: async (pageType: PageType) => {
+    newEmptyPageModel: async (pageType: EditorType) => {
         if (pageType !== "categoryPage") return null;
         const { CategoryPageModel } = await import("./CategoryPageModel");
         return new CategoryPageModel();
     },
-    newPageModelFromState: async (state: Partial<IPageState>) => {
+    newPageModelFromState: async (state: Partial<IEditorState>) => {
         const { CategoryPageModel } = await import("./CategoryPageModel");
         const model = new CategoryPageModel();
         model.applyRestoreData(state as any); // eslint-disable-line @typescript-eslint/no-explicit-any

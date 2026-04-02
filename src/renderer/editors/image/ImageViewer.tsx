@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { IPageState, PageType } from "../../../shared/types";
+import { IEditorState, EditorType } from "../../../shared/types";
 import { getDefaultPageModelState, PageModel } from "../base";
 import { PageToolbar } from "../base/EditorToolbar";
 import { TComponentState } from "../../core/state/state";
@@ -25,7 +25,7 @@ import { ZipTransformer } from "../../content/transformers/ZipTransformer";
 // ImageViewerModel (Page Model) - manages page state and lifecycle
 // ============================================================================
 
-interface ImageViewerModelState extends IPageState {
+interface ImageViewerModelState extends IEditorState {
     /** External image URL (e.g. from a browser webview). When set, used instead of filePath. */
     url?: string;
 }
@@ -311,7 +311,7 @@ const imageEditorModule: EditorModule = {
         return new ImageViewerModel(new TComponentState(state));
     },
     newEmptyPageModel: async (
-        pageType: PageType
+        pageType: EditorType
     ): Promise<PageModel | null> => {
         if (pageType === "imageFile") {
             return new ImageViewerModel(
@@ -321,7 +321,7 @@ const imageEditorModule: EditorModule = {
         return null;
     },
     newPageModelFromState: async (
-        state: Partial<IPageState>
+        state: Partial<IEditorState>
     ): Promise<PageModel> => {
         const initialState: ImageViewerModelState = {
             ...getDefaultImageViewerModelState(),

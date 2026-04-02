@@ -16,7 +16,7 @@ import { useEditorConfig } from "../base";
 import { EditorError } from "../base/EditorError";
 import { useContentViewModel } from "../base/useContentViewModel";
 import { TextFileModel } from "../text";
-import type { PageEditor } from "../../../shared/types";
+import type { EditorView } from "../../../shared/types";
 
 const noopUnsubscribe = () => () => {};
 const getDefaultState = () => defaultGridViewState;
@@ -41,7 +41,7 @@ interface GridEditorProps {
 }
 
 export function GridEditor({ model }: GridEditorProps) {
-    const editorId = model.state.get().editor as PageEditor;
+    const editorId = model.state.get().editor as EditorView;
     const vm = useContentViewModel<GridViewModel>(model, editorId);
     const editorConfig = useEditorConfig();
     const [, setRefresh] = useState(0);

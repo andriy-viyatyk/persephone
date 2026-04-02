@@ -4,7 +4,7 @@ import { TComponentState } from "../../core/state/state";
 import { TextFileModel, getDefaultTextFilePageModelState } from "../text/TextPageModel";
 import { LinkViewModel } from "../link-editor/LinkViewModel";
 import { LinkItem } from "../link-editor/linkTypes";
-import { PageEditor } from "../../../shared/types";
+import { EditorView } from "../../../shared/types";
 import { shell } from "../../api/shell";
 import { ui } from "../../api/ui";
 
@@ -26,7 +26,7 @@ export class BrowserBookmarks {
             ...getDefaultTextFilePageModelState(),
             filePath,
             language: "json",
-            editor: "link-view" as PageEditor,
+            editor: "link-view" as EditorView,
         };
         this.textModel = new TextFileModel(new TComponentState(state));
         // TextFileModel creates sub-models (script, editor) we don't need,

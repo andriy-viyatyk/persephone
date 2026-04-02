@@ -75,7 +75,7 @@ Scripts execute with access to these globals:
 interface IPage {
     // Identity (read-only)
     readonly id: string;
-    readonly type: PageType;
+    readonly type: EditorType;
     readonly title: string;
     readonly modified: boolean;
     readonly pinned: boolean;
@@ -84,7 +84,7 @@ interface IPage {
     // Mutable properties
     content: string;
     language: string;
-    editor: PageEditor;
+    editor: EditorView;
 
     // Script-local data storage (persists across runs within same session)
     data: Record<string, any>;
@@ -665,7 +665,7 @@ Script API types are defined in `/src/renderer/api/types/`:
 | `app.d.ts` | `IApp` — root application interface |
 | `page.d.ts` | `IPage`, `IPageInfo` — page/tab interface |
 | `pages.d.ts` | `IPageCollection` — pages management |
-| `common.d.ts` | `IDisposable`, `IEvent`, `PageEditor`, `Language` |
+| `common.d.ts` | `IDisposable`, `IEvent`, `EditorView`, `Language` |
 | `text-editor.d.ts` | `ITextEditor` — Monaco editor operations |
 | `grid-editor.d.ts` | `IGridEditor` — grid editor operations |
 | `notebook-editor.d.ts` | `INotebookEditor` — notebook operations |
@@ -726,7 +726,7 @@ These files serve dual purpose: TypeScript type checking **and** IDE IntelliSens
 ├── pages.d.ts                   # IPageCollection
 ├── ui.d.ts                      # IUserInterface, ITextDialogOptions, ITextDialogResult
 ├── ui-log.d.ts                  # IUiLog, IUiDialog, IDialogResult
-├── common.d.ts                  # IDisposable, IEvent, PageEditor, Language
+├── common.d.ts                  # IDisposable, IEvent, EditorView, Language
 ├── text-editor.d.ts             # ITextEditor
 ├── grid-editor.d.ts             # IGridEditor
 ├── notebook-editor.d.ts         # INotebookEditor

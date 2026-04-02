@@ -3,7 +3,7 @@ import styled from "@emotion/styled";
 import color from "../../theme/color";
 import { Button } from "../../components/basic/Button";
 import { PageToolbar } from "../base";
-import { IPageState, PageType } from "../../../shared/types";
+import { IEditorState, EditorType } from "../../../shared/types";
 import { TComponentState } from "../../core/state/state";
 import { EditorModule } from "../types";
 import { McpInspectorModel, McpInspectorPageState, getDefaultMcpInspectorPageState } from "./McpInspectorModel";
@@ -683,14 +683,14 @@ const mcpInspectorEditorModule: EditorModule = {
         return new McpInspectorModel(new TComponentState(getDefaultMcpInspectorPageState()));
     },
 
-    newEmptyPageModel: async (pageType: PageType) => {
+    newEmptyPageModel: async (pageType: EditorType) => {
         if (pageType !== "mcpInspectorPage") return null;
         return new McpInspectorModel(
             new TComponentState(getDefaultMcpInspectorPageState()),
         );
     },
 
-    newPageModelFromState: async (state: Partial<IPageState>) => {
+    newPageModelFromState: async (state: Partial<IEditorState>) => {
         const s: McpInspectorPageState = {
             ...getDefaultMcpInspectorPageState(),
             ...(state as Partial<McpInspectorPageState>),

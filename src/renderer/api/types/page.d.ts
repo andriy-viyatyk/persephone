@@ -1,4 +1,4 @@
-import type { PageEditor } from "./common";
+import type { EditorView } from "./common";
 import type { ITextEditor } from "./text-editor";
 import type { IGridEditor } from "./grid-editor";
 import type { INotebookEditor } from "./notebook-editor";
@@ -53,7 +53,7 @@ export interface IPage {
     language: string;
 
     /** Active editor ID (e.g., "monaco", "grid-json"). Get/set. */
-    editor: PageEditor;
+    editor: EditorView;
 
     /**
      * In-memory data storage for scripts.

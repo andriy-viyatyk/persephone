@@ -3,7 +3,7 @@ import type { IContentPipe } from "../../api/types/io.pipe";
 import type { TreeProviderViewSavedState } from "../../components/tree-provider";
 import type { FileSearchState } from "../../components/file-search";
 import type { PageModel } from "../../editors/base";
-import type { IPageState } from "../../../shared/types";
+import type { IEditorState } from "../../../shared/types";
 import { TOneState } from "../../core/state/state";
 import { fpDirname } from "../../core/utils/file-path";
 import { fs } from "../../api/fs";
@@ -20,7 +20,7 @@ export interface NavigationState {
 /** Serialized descriptor for a secondary editor model (for persistence). */
 export interface SecondaryModelDescriptor {
     /** Serialized page state (from model.getRestoreData()). */
-    pageState: Partial<IPageState>;
+    pageState: Partial<IEditorState>;
 }
 
 /** Persisted state format — backward-compatible with old NavPanelModel. */

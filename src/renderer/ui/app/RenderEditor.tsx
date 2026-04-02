@@ -2,12 +2,12 @@ import { PageModel } from "../../editors/base";
 import { TextPageView, TextFileModel } from "../../editors/text";
 import { editorRegistry } from "../../editors/registry";
 import { AsyncEditor } from "./AsyncEditor";
-import { PageType } from "../../../shared/types";
+import { EditorType } from "../../../shared/types";
 
 /**
  * Get the async module loader for a standalone page editor.
  */
-const getPageEditorModule = (pageType: PageType) => async () => {
+const getPageEditorModule = (pageType: EditorType) => async () => {
     const editors = editorRegistry.getAll();
     const def = editors.find(e => e.pageType === pageType && e.category === "page-editor");
     if (!def) throw new Error(`No page editor registered for type: ${pageType}`);

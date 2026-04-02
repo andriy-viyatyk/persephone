@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import styled from "@emotion/styled";
-import { IPageState, PageType } from "../../../shared/types";
+import { IEditorState, EditorType } from "../../../shared/types";
 import { getDefaultPageModelState, PageModel } from "../base";
 import { TComponentState } from "../../core/state/state";
 import { EditorModule } from "../types";
@@ -593,7 +593,7 @@ function ThemePreview({ bgDefault, bgDark, textDefault, accentColor }: ThemePrev
 
 export const SETTINGS_PAGE_ID = "settings-page";
 
-interface SettingsPageModelState extends IPageState {}
+interface SettingsPageModelState extends IEditorState {}
 
 const getDefaultSettingsPageModelState = (): SettingsPageModelState => ({
     ...getDefaultPageModelState(),
@@ -1404,13 +1404,13 @@ const settingsEditorModule: EditorModule = {
     newPageModel: async () => {
         return new SettingsPageModel(new TComponentState(getDefaultSettingsPageModelState()));
     },
-    newEmptyPageModel: async (pageType: PageType): Promise<PageModel | null> => {
+    newEmptyPageModel: async (pageType: EditorType): Promise<PageModel | null> => {
         if (pageType === "settingsPage") {
             return new SettingsPageModel(new TComponentState(getDefaultSettingsPageModelState()));
         }
         return null;
     },
-    newPageModelFromState: async (state: Partial<IPageState>): Promise<PageModel> => {
+    newPageModelFromState: async (state: Partial<IEditorState>): Promise<PageModel> => {
         const initialState: SettingsPageModelState = {
             ...getDefaultSettingsPageModelState(),
             ...state,

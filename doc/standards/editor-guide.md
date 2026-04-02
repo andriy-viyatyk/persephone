@@ -36,7 +36,7 @@ Answer these questions:
 // MyPageModel.ts
 import { TComponentState } from '../../core/state/state';
 import { PageModel, getDefaultPageModelState } from '../base';
-import { IPage, PageType } from '../../../shared/types';
+import { IPage, EditorType } from '../../../shared/types';
 
 // 1. Define state interface
 export interface MyPageModelState extends IPage {
@@ -48,7 +48,7 @@ export interface MyPageModelState extends IPage {
 // 2. Default state factory
 export const getDefaultMyPageModelState = (): MyPageModelState => ({
   ...getDefaultPageModelState(),
-  type: 'myType' as PageType,  // Add to shared/types.ts
+  type: 'myType' as EditorType,  // Add to shared/types.ts
   customData: '',
   isLoading: false,
 });
@@ -145,7 +145,7 @@ export function MyEditor({ model }: MyEditorProps) {
 // index.ts
 import { TComponentState } from '../../core/state/state';
 import { EditorModule } from '../types';
-import { IPage, PageType } from '../../../shared/types';
+import { IPage, EditorType } from '../../../shared/types';
 import { MyEditor } from './MyEditor';
 import {
   MyPageModel,
@@ -165,7 +165,7 @@ const myEditorModule: EditorModule = {
     return model;
   },
 
-  newEmptyPageModel: async (pageType: PageType) => {
+  newEmptyPageModel: async (pageType: EditorType) => {
     if (pageType === 'myType') {
       return new MyPageModel(
         new TComponentState(getDefaultMyPageModelState())
@@ -196,12 +196,12 @@ export type { MyPageModelState } from './MyPageModel';
 
 All editor registration happens in `/editors/register-editors.ts`. This is the only file you need to modify to add a new editor.
 
-#### 6a. Add PageType and PageEditor (if new)
+#### 6a. Add EditorType and EditorView (if new)
 
 ```typescript
 // /shared/types.ts
-export type PageType = 'textFile' | 'pdfFile' | 'myType';
-export type PageEditor = 'monaco' | 'grid-json' | 'grid-csv' | 'md-view' | 'pdf-view' | 'my-editor';
+export type EditorType = 'textFile' | 'pdfFile' | 'myType';
+export type EditorView = 'monaco' | 'grid-json' | 'grid-csv' | 'md-view' | 'pdf-view' | 'my-editor';
 ```
 
 #### 6b. Register in EditorRegistry
@@ -214,9 +214,9 @@ import { editorRegistry } from "./registry";
 
 // For a standalone page editor (like PDF, Image viewer):
 editorRegistry.register({
-    id: "my-editor",           // Must match PageEditor type
+    id: "my-editor",           // Must match EditorView type
     name: "My Editor",         // Display name in UI
-    pageType: "myType",        // PageType this editor creates
+    pageType: "myType",        // EditorType this editor creates
     category: "page-editor",   // Standalone editor with own PageModel
     acceptFile: (fileName) => {
         // Return priority >= 0 if this editor can open the file
@@ -259,9 +259,9 @@ editorRegistry.register({
 
 | Property | Description |
 |----------|-------------|
-| `id` | Unique editor ID (must be in `PageEditor` type) |
+| `id` | Unique editor ID (must be in `EditorView` type) |
 | `name` | Display name shown in UI |
-| `pageType` | The `PageType` this editor works with |
+| `pageType` | The `EditorType` this editor works with |
 | `category` | `"page-editor"` or `"content-view"` |
 | `acceptFile(fileName)` | Returns priority >= 0 if editor can open file, -1 otherwise |
 | `validForLanguage(languageId)` | Returns true if editor is valid for the language |
@@ -314,8 +314,8 @@ Then use in your editor or integrate with EditorToolbar.
 - [ ] PageModel implements `getRestoreData()`
 - [ ] EditorModule exports all required functions
 - [ ] Registered in `register-editors.ts`
-- [ ] PageType added to `shared/types.ts` (if new page type)
-- [ ] PageEditor added to `shared/types.ts` (if new editor)
+- [ ] EditorType added to `shared/types.ts` (if new page type)
+- [ ] EditorView added to `shared/types.ts` (if new editor)
 - [ ] Async import used in `loadModule` (code splitting)
 - [ ] Error states handled
 - [ ] Loading states handled

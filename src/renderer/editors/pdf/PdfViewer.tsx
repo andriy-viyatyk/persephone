@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { IPageState, PageType } from "../../../shared/types";
+import { IEditorState, EditorType } from "../../../shared/types";
 import { getDefaultPageModelState, PageModel } from "../base";
 import { PageToolbar } from "../base/EditorToolbar";
 import { TComponentState } from "../../core/state/state";
@@ -23,7 +23,7 @@ const PdfViewerRoot = styled.div({
     position: "relative",
 });
 
-interface PdfViewerModelState extends IPageState {
+interface PdfViewerModelState extends IEditorState {
     /** Local file path to serve via safe-file:// (cache file for non-local sources). */
     localPdfPath?: string;
 }
@@ -163,7 +163,7 @@ const pdfEditorModule: EditorModule = {
         return new PdfViewerModel(new TComponentState(state));
     },
     newEmptyPageModel: async (
-        pageType: PageType
+        pageType: EditorType
     ): Promise<PageModel | null> => {
         if (pageType === "pdfFile") {
             return new PdfViewerModel(
@@ -173,7 +173,7 @@ const pdfEditorModule: EditorModule = {
         return null;
     },
     newPageModelFromState: async (
-        state: Partial<IPageState>
+        state: Partial<IEditorState>
     ): Promise<PageModel> => {
         const initialState: PdfViewerModelState = {
             ...getDefaultPdfViewerModelState(),

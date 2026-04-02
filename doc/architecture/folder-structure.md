@@ -112,7 +112,7 @@ persephone/
 │   └── types/              # TypeScript interfaces (.d.ts)
 │       ├── index.d.ts      # Global `app` and `page` declarations
 │       ├── app.d.ts        # IApp interface
-│       ├── common.d.ts     # IDisposable, IEvent, PageEditor enum
+│       ├── common.d.ts     # IDisposable, IEvent, EditorView enum
 │       ├── pages.d.ts      # IPageCollection interface
 │       ├── page.d.ts       # IPage interface (with asX() methods)
 │       ├── settings.d.ts   # ISettings

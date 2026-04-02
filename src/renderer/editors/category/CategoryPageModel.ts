@@ -1,7 +1,7 @@
 import React from "react";
 import { TComponentState } from "../../core/state/state";
 import { PageModel, getDefaultPageModelState } from "../base";
-import type { IPageState } from "../../../shared/types";
+import type { IEditorState } from "../../../shared/types";
 import { FolderIcon } from "../../components/icons/FileIcon";
 import { fpBasename } from "../../core/utils/file-path";
 import {
@@ -10,7 +10,7 @@ import {
     type ITreeProviderLink,
 } from "../../content/tree-providers/tree-provider-link";
 
-export interface CategoryPageModelState extends IPageState {
+export interface CategoryPageModelState extends IEditorState {
     type: "categoryPage";
 }
 

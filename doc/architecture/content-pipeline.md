@@ -58,7 +58,7 @@ Registered in `open-handler.ts` via `registerOpenHandler()`. Reconstructs the fu
 - Opens a new page via `pagesModel.lifecycle.openFile(filePath, pipe, { sourceLink })` -- the page owns the pipe.
 - Navigates an existing page via `pagesModel.lifecycle.navigatePageTo()` (when `metadata.pageId` is set) -- disposes the pipe since navigation creates its own.
 
-The `sourceLink` is stored in `IPageState.sourceLink` and persisted across app restarts. It records the page's origin (what link opened it and with what metadata) but is informational only — it does not affect page content or I/O.
+The `sourceLink` is stored in `IEditorState.sourceLink` and persisted across app restarts. It records the page's origin (what link opened it and with what metadata) but is informational only — it does not affect page content or I/O.
 
 ## Content Pipe
 
@@ -164,7 +164,7 @@ The same pattern is used for locking (removing `DecryptTransformer`) and removin
 
 ## Pipe Serialization
 
-Pipes serialize to `IPipeDescriptor` for session persistence (stored in `IPageState.pipe`):
+Pipes serialize to `IPipeDescriptor` for session persistence (stored in `IEditorState.pipe`):
 
 ```typescript
 interface IPipeDescriptor {

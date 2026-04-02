@@ -1,4 +1,4 @@
-import { PageEditor } from "../../shared/types";
+import { EditorView } from "../../shared/types";
 import { EditorDefinition, EditorModule, ViewModelFactory } from "./types";
 import type { IContentHost } from "./base/IContentHost";
 
@@ -6,8 +6,8 @@ import type { IContentHost } from "./base/IContentHost";
  * Options for the editor switch UI component.
  */
 export interface SwitchOptions {
-    options: PageEditor[];
-    getOptionLabel: (option: PageEditor) => string;
+    options: EditorView[];
+    getOptionLabel: (option: EditorView) => string;
 }
 
 /**
@@ -15,8 +15,8 @@ export interface SwitchOptions {
  * Provides methods for registering, resolving, and querying editors.
  */
 class EditorRegistry {
-    private editors = new Map<PageEditor, EditorDefinition>();
-    private modules = new Map<PageEditor, EditorModule>();
+    private editors = new Map<EditorView, EditorDefinition>();
+    private modules = new Map<EditorView, EditorModule>();
 
     /**
      * Register an editor definition.
@@ -31,7 +31,7 @@ class EditorRegistry {
     /**
      * Get an editor definition by ID.
      */
-    getById(id: PageEditor): EditorDefinition | undefined {
+    getById(id: EditorView): EditorDefinition | undefined {
         return this.editors.get(id);
     }
 
@@ -69,7 +69,7 @@ class EditorRegistry {
      * Resolve the editor ID for a file path.
      * Convenience method that returns just the ID instead of the full definition.
      */
-    resolveId(filePath?: string): PageEditor | undefined {
+    resolveId(filePath?: string): EditorView | undefined {
         return this.resolve(filePath)?.id;
     }
 
@@ -77,7 +77,7 @@ class EditorRegistry {
      * Validate that an editor is compatible with a language.
      * Returns "monaco" if the editor doesn't support the language.
      */
-    validateForLanguage(editor: PageEditor | undefined, languageId: string): PageEditor {
+    validateForLanguage(editor: EditorView | undefined, languageId: string): EditorView {
         if (!editor || editor === "monaco") {
             return editor;
         }
@@ -96,8 +96,8 @@ class EditorRegistry {
      * (e.g., grid-json for non-.grid.json files).
      * Returns undefined if no preview editor should be auto-selected.
      */
-    getPreviewEditor(languageId: string, filePath: string): PageEditor | undefined {
-        const results: { id: PageEditor; priority: number }[] = [];
+    getPreviewEditor(languageId: string, filePath: string): EditorView | undefined {
+        const results: { id: EditorView; priority: number }[] = [];
 
         for (const editor of this.editors.values()) {
             if (editor.id === "monaco") continue;
@@ -119,7 +119,7 @@ class EditorRegistry {
      * Returns an empty options array if only one editor is available.
      */
     getSwitchOptions(languageId: string, filePath?: string): SwitchOptions {
-        const results: { id: PageEditor; priority: number }[] = [];
+        const results: { id: EditorView; priority: number }[] = [];
 
         for (const editor of this.editors.values()) {
             const priority = editor.switchOption?.(languageId, filePath) ?? -1;
@@ -133,7 +133,7 @@ class EditorRegistry {
 
         const options = results.map((r) => r.id);
 
-        const getOptionLabel = (option: PageEditor) => {
+        const getOptionLabel = (option: EditorView) => {
             if (!option || option === "monaco") {
                 return languageId.toUpperCase();
             }
@@ -152,7 +152,7 @@ class EditorRegistry {
      * Returns the first matching editor ID, or undefined if no match.
      * Uses fast regex checks — no JSON parsing.
      */
-    detectContentEditor(languageId: string, content: string): PageEditor | undefined {
+    detectContentEditor(languageId: string, content: string): EditorView | undefined {
         if (!content) return undefined;
         for (const editor of this.editors.values()) {
             if (editor.isEditorContent?.(languageId, content)) {
@@ -170,14 +170,14 @@ class EditorRegistry {
      * Cache a loaded editor module.
      * Called by loadViewModelFactory and can be called by AsyncEditor.
      */
-    cacheModule(editorId: PageEditor, module: EditorModule): void {
+    cacheModule(editorId: EditorView, module: EditorModule): void {
         this.modules.set(editorId, module);
     }
 
     /**
      * Get the cached module for an editor (if already loaded).
      */
-    getCachedModule(editorId: PageEditor): EditorModule | undefined {
+    getCachedModule(editorId: EditorView): EditorModule | undefined {
         return this.modules.get(editorId);
     }
 
@@ -185,7 +185,7 @@ class EditorRegistry {
      * Get the view model factory for an editor (sync).
      * Returns undefined if the module hasn't been loaded yet.
      */
-    getViewModelFactory(editorId: PageEditor): ViewModelFactory | undefined {
+    getViewModelFactory(editorId: EditorView): ViewModelFactory | undefined {
         return this.modules.get(editorId)?.createViewModel;
     }
 
@@ -194,7 +194,7 @@ class EditorRegistry {
      * Caches the module for future sync access.
      * Throws if the editor has no definition or no createViewModel factory.
      */
-    async loadViewModelFactory(editorId: PageEditor): Promise<ViewModelFactory> {
+    async loadViewModelFactory(editorId: EditorView): Promise<ViewModelFactory> {
         // Check cache first
         const cached = this.modules.get(editorId);
         if (cached) {
@@ -222,7 +222,7 @@ class EditorRegistry {
      * Validate that an editor is applicable for a content host.
      * Throws a descriptive error if the editor cannot be used with the host's language.
      */
-    validateForHost(editorId: PageEditor, host: IContentHost): void {
+    validateForHost(editorId: EditorView, host: IContentHost): void {
         if (editorId === "monaco") return;
 
         const def = this.editors.get(editorId);

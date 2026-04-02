@@ -1,5 +1,5 @@
 import { createElement, ReactNode } from "react";
-import { IPageState } from "../../../shared/types";
+import { IEditorState } from "../../../shared/types";
 import { getDefaultPageModelState, PageModel } from "../base";
 import { TComponentState, TOneState } from "../../core/state/state";
 import { McpIcon } from "../../theme/icons";
@@ -154,7 +154,7 @@ const getDefaultPromptsPanelState = (): McpPromptsPanelState => ({
 
 export type McpPanelId = "info" | "tools" | "resources" | "prompts" | "history";
 
-export interface McpInspectorPageState extends IPageState {
+export interface McpInspectorPageState extends IEditorState {
     // Connection config
     url: string;
     transportType: McpTransportType;

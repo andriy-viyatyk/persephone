@@ -2,7 +2,7 @@ import { Subscription } from "../../core/state/events";
 import { TModel } from "../../core/state/model";
 import { TGlobalState } from "../../core/state/state";
 import { PageModel } from "../../editors/base";
-import { IPageState, PageEditor } from "../../../shared/types";
+import { IEditorState, EditorView } from "../../../shared/types";
 import { RawLinkEvent } from "../events/events";
 
 import { PagesQueryModel } from "./PagesQueryModel";
@@ -155,7 +155,7 @@ export class PagesModel extends TModel<OpenFilesState> {
     addEmptyPage = () => this.lifecycle.addEmptyPage();
     addEmptyPageWithNavPanel = (folderPath: string) =>
         this.lifecycle.addEmptyPageWithNavPanel(folderPath);
-    addEditorPage = (editor: PageEditor, language: string, title: string, content?: string) =>
+    addEditorPage = (editor: EditorView, language: string, title: string, content?: string) =>
         this.lifecycle.addEditorPage(editor, language, title, content);
     addDrawPage = (dataUrl: string, title?: string) =>
         this.lifecycle.addDrawPage(dataUrl, title);
@@ -190,7 +190,7 @@ export class PagesModel extends TModel<OpenFilesState> {
     closeOtherPages = (pageId: string) =>
         this.lifecycle.closeOtherPages(pageId);
     movePageIn = (data?: {
-        page: Partial<IPageState>;
+        page: Partial<IEditorState>;
         targetPageId: string | undefined;
     }) => this.lifecycle.movePageIn(data);
     movePageOut = (pageId?: string) => this.lifecycle.movePageOut(pageId);

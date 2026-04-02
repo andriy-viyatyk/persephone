@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 import { TComponentState } from "../../../core/state/state";
 import { TModel } from "../../../core/state/model";
-import { PageEditor } from "../../../../shared/types";
+import { EditorView } from "../../../../shared/types";
 import { NoteItem } from "../notebookTypes";
 import { NotebookViewModel } from "../NotebookViewModel";
 import { scriptRunner } from "../../../scripting/ScriptRunner";
@@ -161,7 +161,7 @@ export class NoteEditorModel extends TModel<NoteEditorState> {
 export interface NoteItemEditState {
     content: string;
     language: string;
-    editor: PageEditor;
+    editor: EditorView;
 }
 
 // =============================================================================
@@ -203,7 +203,7 @@ export class NoteItemEditModel implements IContentHost {
         this.state = new TComponentState<NoteItemEditState>({
             content: note.content.content,
             language: note.content.language,
-            editor: (note.content.editor as PageEditor) || "monaco",
+            editor: (note.content.editor as EditorView) || "monaco",
         });
 
         // State storage backed by notebook's per-note state
@@ -257,7 +257,7 @@ export class NoteItemEditModel implements IContentHost {
         this.notebookModel.updateNoteContent(this.noteId, newContent);
     };
 
-    changeEditor = (editor: PageEditor) => {
+    changeEditor = (editor: EditorView) => {
         this.state.update((s) => {
             s.editor = editor;
         });
@@ -311,7 +311,7 @@ export class NoteItemEditModel implements IContentHost {
             this.state.update((s) => {
                 s.content = noteContent.content;
                 s.language = noteContent.language;
-                s.editor = (noteContent.editor as PageEditor) || "monaco";
+                s.editor = (noteContent.editor as EditorView) || "monaco";
             });
         }
     };
@@ -320,19 +320,19 @@ export class NoteItemEditModel implements IContentHost {
     // IContentHost — view model management
     // =========================================================================
 
-    acquireViewModel(editorId: PageEditor): Promise<ContentViewModel<any>> {
+    acquireViewModel(editorId: EditorView): Promise<ContentViewModel<any>> {
         return this._vmHost.acquire(editorId, this);
     }
 
-    releaseViewModel(editorId: PageEditor): void {
+    releaseViewModel(editorId: EditorView): void {
         this._vmHost.release(editorId);
     }
 
-    acquireViewModelSync(editorId: PageEditor): ContentViewModel<any> | undefined {
+    acquireViewModelSync(editorId: EditorView): ContentViewModel<any> | undefined {
         return this._vmHost.acquireSync(editorId, this);
     }
 
-    async prepareViewModel(editorId: PageEditor): Promise<void> {
+    async prepareViewModel(editorId: EditorView): Promise<void> {
         await this._vmHost.prepare(editorId);
     }
 

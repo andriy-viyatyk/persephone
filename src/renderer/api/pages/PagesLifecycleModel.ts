@@ -1,6 +1,6 @@
 import type { PagesModel } from "./PagesModel";
 import { PageModel } from "../../editors/base";
-import { IPageState, ISourceLink, PageEditor, PageType } from "../../../shared/types";
+import { IEditorState, ISourceLink, EditorView, EditorType } from "../../../shared/types";
 import {
     isTextFileModel,
     newTextFileModel,
@@ -63,12 +63,12 @@ export class PagesLifecycleModel {
     };
 
     /** Legacy page type migration: maps old renamed page types to current names. */
-    private static PAGE_TYPE_MIGRATIONS: Record<string, PageType> = {
+    private static PAGE_TYPE_MIGRATIONS: Record<string, EditorType> = {
         mcpBrowserPage: "mcpInspectorPage",
     };
 
     newPageModelFromState = async (
-        state: Partial<IPageState>
+        state: Partial<IEditorState>
     ): Promise<PageModel> => {
         if (state.type && PagesLifecycleModel.PAGE_TYPE_MIGRATIONS[state.type]) {
             state = { ...state, type: PagesLifecycleModel.PAGE_TYPE_MIGRATIONS[state.type] };
@@ -143,7 +143,7 @@ export class PagesLifecycleModel {
     };
 
     addEditorPage = (
-        editor: PageEditor,
+        editor: EditorView,
         language: string,
         title: string,
         content?: string,
@@ -193,14 +193,14 @@ export class PagesLifecycleModel {
         const def = getWellKnownPageDef(id);
         if (!def) throw new Error(`Unknown well-known page ID: "${id}"`);
 
-        await editorRegistry.loadViewModelFactory(def.editor as PageEditor);
+        await editorRegistry.loadViewModelFactory(def.editor as EditorView);
         const page = newTextFileModel("");
         page.state.update((s) => {
             s.id = id;
             s.title = def.title;
             s.language = def.language;
             s.editor = editorRegistry.validateForLanguage(
-                def.editor as PageEditor,
+                def.editor as EditorView,
                 def.language,
             );
         });
@@ -571,7 +571,7 @@ export class PagesLifecycleModel {
     // ── Multi-window operations ──────────────────────────────────────
 
     movePageIn = async (data?: {
-        page: Partial<IPageState>;
+        page: Partial<IEditorState>;
         targetPageId: string | undefined;
     }) => {
         if (!data || !data.page) {
@@ -630,7 +630,7 @@ export class PagesLifecycleModel {
             return;
         }
 
-        const pageData: Partial<IPageState> = page.getRestoreData();
+        const pageData: Partial<IEditorState> = page.getRestoreData();
         pageData.id = crypto.randomUUID();
         pageData.hasNavigator = false;
         pageData.pinned = false;

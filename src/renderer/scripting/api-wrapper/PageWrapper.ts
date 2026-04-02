@@ -1,7 +1,7 @@
 import { PageModel } from "../../editors/base";
 import { isTextFileModel } from "../../editors/text/TextPageModel";
 import { pagesModel } from "../../api/pages";
-import { PageEditor } from "../../../shared/types";
+import { EditorView } from "../../../shared/types";
 import type { TextViewModel } from "../../editors/text/TextEditor";
 import type { GridViewModel } from "../../editors/grid/GridViewModel";
 import type { NotebookViewModel } from "../../editors/notebook/NotebookViewModel";
@@ -95,11 +95,11 @@ export class PageWrapper {
         }
     }
 
-    get editor(): PageEditor {
+    get editor(): EditorView {
         return this.model.state.get().editor ?? "monaco";
     }
 
-    set editor(value: PageEditor) {
+    set editor(value: EditorView) {
         if (isTextFileModel(this.model)) {
             this.model.changeEditor(value);
         }
@@ -142,7 +142,7 @@ export class PageWrapper {
         return new GridEditorFacade(vm);
     }
 
-    private resolveGridEditorId(): PageEditor {
+    private resolveGridEditorId(): EditorView {
         const currentEditor = this.model.state.get().editor;
         if (currentEditor === "grid-json" || currentEditor === "grid-csv" || currentEditor === "grid-jsonl") {
             return currentEditor;

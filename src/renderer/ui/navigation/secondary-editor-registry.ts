@@ -8,7 +8,7 @@ export interface SecondaryEditorProps {
 
 /** Registration for a secondary editor type. */
 interface SecondaryEditorDefinition {
-    /** Unique ID matching IPageState.secondaryEditor values. */
+    /** Unique ID matching IEditorState.secondaryEditor values. */
     id: string;
     /** Display label for the panel header. */
     label: string;

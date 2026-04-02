@@ -1,4 +1,4 @@
-import { PageEditor } from "../../../shared/types";
+import { EditorView } from "../../../shared/types";
 import { editorRegistry } from "../registry";
 import { ContentViewModel } from "./ContentViewModel";
 import { IContentHost } from "./IContentHost";
@@ -25,14 +25,14 @@ interface ViewModelEntry {
  * ```
  */
 export class ContentViewModelHost {
-    private _viewModels = new Map<PageEditor, ViewModelEntry>();
+    private _viewModels = new Map<EditorView, ViewModelEntry>();
 
     /**
      * Acquire a view model for the given editor.
      * - First call: validates, loads factory, creates model, calls init(), caches it
      * - Subsequent calls: increments reference count, returns cached model
      */
-    async acquire(editorId: PageEditor, host: IContentHost): Promise<ContentViewModel<any>> {
+    async acquire(editorId: EditorView, host: IContentHost): Promise<ContentViewModel<any>> {
         let entry = this._viewModels.get(editorId);
         if (entry) {
             entry.refs++;
@@ -59,7 +59,7 @@ export class ContentViewModelHost {
      * Ensure the editor module is loaded and cached for future sync access.
      * Call this ahead of time so that acquireSync() can work without awaiting.
      */
-    async prepare(editorId: PageEditor): Promise<void> {
+    async prepare(editorId: EditorView): Promise<void> {
         await editorRegistry.loadViewModelFactory(editorId);
     }
 
@@ -69,7 +69,7 @@ export class ContentViewModelHost {
      * - If not cached but factory is available (module pre-loaded): creates, caches, returns
      * - If module not loaded: returns undefined
      */
-    acquireSync(editorId: PageEditor, host: IContentHost): ContentViewModel<any> | undefined {
+    acquireSync(editorId: EditorView, host: IContentHost): ContentViewModel<any> | undefined {
         let entry = this._viewModels.get(editorId);
         if (entry) {
             entry.refs++;
@@ -93,7 +93,7 @@ export class ContentViewModelHost {
      * Get a cached view model without changing the reference count.
      * Returns undefined if the view model hasn't been created yet.
      */
-    tryGet(editorId: PageEditor): ContentViewModel<any> | undefined {
+    tryGet(editorId: EditorView): ContentViewModel<any> | undefined {
         return this._viewModels.get(editorId)?.vm;
     }
 
@@ -101,7 +101,7 @@ export class ContentViewModelHost {
      * Release a reference to a view model.
      * When refs reach 0, the model is disposed and removed from cache.
      */
-    release(editorId: PageEditor): void {
+    release(editorId: EditorView): void {
         const entry = this._viewModels.get(editorId);
         if (!entry) return;
 
