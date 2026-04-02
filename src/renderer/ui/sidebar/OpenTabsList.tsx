@@ -68,14 +68,14 @@ export function OpenTabsList(props: OpenTabsListProps) {
     }, [props.open]);
 
     const activePageId = useMemo(
-        () => pagesModel.activePage?.state.get().id,
+        () => pagesModel.activePage?.id,
         [state]
     );
 
     const items = useMemo<ListItem[]>(() => {
         const currentPages = state.pages.map((page) => ({
             windowIndex: currentWindowIndex,
-            page: page.state.get(),
+            page: page.mainEditor?.state.get() ?? { id: page.id, title: page.title },
         }));
 
         const resItems: any[] = [

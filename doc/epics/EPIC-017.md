@@ -207,11 +207,7 @@ Create the new PageModel and wire it into the system. NavigationData logic moves
 | # | Task | Title | Description | Status |
 |---|------|-------|-------------|--------|
 | 2.1 | [US-321](../tasks/US-321-create-pagemodel/README.md) | Create PageModel class | New class: stable ID, `mainEditor: EditorModel \| null`, owns sidebar state (from NavigationData). Lifecycle: create, dispose, save/restore. Extract `pinned` from IEditorState into PageModel. | Done |
-| 2.2 | — | Wire PagesModel to PageModel | `pages[]` stores `PageModel[]`. Submodel queries use page IDs. `attachPage()`/`detachPage()` work with pages. `findPage()` returns PageModel. Grouping maps use page IDs. | Planned |
-| 2.3 | — | Page rendering | `Pages.tsx`: `<Page />` component receives PageModel. Renders PageNavigator + main editor. `getStableKey` removed — page.id is the key. `AppPageManager` uses page IDs directly. | Planned |
-| 2.4 | — | Tab rendering | `PageTab` reads from PageModel. Title/icon/modified delegate to `page.mainEditor`. Pinned state from page directly. | Planned |
-| 2.5 | — | Secondary editors owned by page | `secondaryEditors[]` on PageModel. `ownerPage`/`setOwnerPage()` removed from EditorModel. Secondary editors reference page. | Planned |
-| 2.6 | — | Page persistence | Page saves itself (sidebar state + main editor + secondary descriptors) to cache keyed by page.id. `WindowState` stores page descriptors. No `updateId()`, no `hasNavigator` flag. No backward compat. | Planned |
+| 2.2–2.6 | [US-322](../tasks/US-322-wire-pagesmodel-to-pagemodel/README.md) | Wire PagesModel to PageModel | Combined: PagesModel stores `PageModel[]`, all submodels updated, rendering (Pages.tsx, PageTab, PageNavigator), persistence (new PageDescriptor format), secondary editors owned by page, NavigationData deleted, EditorModel cleaned. | Done |
 
 ### Phase 3: Simplify Navigation
 

@@ -56,25 +56,9 @@ export class ZipEditorModel extends EditorModel<ZipEditorModelState> {
             );
             this.treeProvider = new ZipTreeProvider(archiveUrl);
         }
-        // Ensure NavigationData exists — ZipEditorModel always needs a sidebar.
-        // On app restart: super.restore() already created it from cache.
-        // On fresh open via openFile/createPageFromFile: create it here.
-        // On _openZipArchive: restore() is not called (NavigationData created manually).
-        if (!this.navigationData && archiveUrl) {
-            const { NavigationData } = await import(
-                "../../ui/navigation/NavigationData"
-            );
-            const { fpDirname } = await import("../../core/utils/file-path");
-            const navData = new NavigationData(fpDirname(archiveUrl));
-            navData.ensurePageNavigatorModel();
-            navData.updateId(this.id);
-            navData.flushSave();
-            this.navigationData = navData;
-            navData.setOwnerModel(this);
-            this.state.update((s) => { s.hasNavigator = true; });
-        }
         // Set secondaryEditor via setter to register in secondaryModels[]
-        if (this.treeProvider && this.navigationData) {
+        // PageModel handles sidebar creation/restore.
+        if (this.treeProvider && this.page?.hasSidebar) {
             this.secondaryEditor = "zip-tree";
         }
     }
@@ -89,13 +73,12 @@ export class ZipEditorModel extends EditorModel<ZipEditorModelState> {
     }
 
     /**
-     * Called when the owner page changes during navigation.
-     * If the new owner was NOT opened from this archive, remove self from sidebar.
+     * Called when the page's main editor changes during navigation.
+     * If the new main editor was NOT opened from this archive, remove self from sidebar.
      */
-    setOwnerPage(model: EditorModel | null): void {
-        super.setOwnerPage(model);
-        if (!model || model === this) return;
-        if (this._isOpenedFromThisArchive(model)) {
+    onMainEditorChanged(newMainEditor: EditorModel | null): void {
+        if (!newMainEditor || newMainEditor === this) return;
+        if (this._isOpenedFromThisArchive(newMainEditor)) {
             setTimeout(() => expandSecondaryPanel.send(this.id), 0);
         } else {
             this.secondaryEditor = undefined;

@@ -333,12 +333,11 @@ export class ScriptPanelModel extends TModel<ScriptPanelState> {
             // Open the selected script file, then attach PageNavigator
             const page = await pagesModel.openFile(selectedScript);
             if (page && scriptPanelDir) {
-                const navData = page.ensureNavigationData(scriptPanelDir);
-                const navModel = navData.ensurePageNavigatorModel();
-                // Open panel and pre-expand the folder containing the script
-                navModel.state.update((s) => { s.open = true; });
+                const navModel = page.ensurePageNavigatorModel();
+                // Override rootPath to script-panel dir and open panel
+                navModel.state.update((s) => { s.rootPath = scriptPanelDir; s.open = true; });
                 const fileDir = fpDirname(selectedScript);
-                navData.treeState = {
+                page.treeState = {
                     expandedPaths: [scriptPanelDir, fileDir],
                     selectedHref: selectedScript,
                 };

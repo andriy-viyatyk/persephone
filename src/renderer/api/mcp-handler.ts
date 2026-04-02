@@ -54,9 +54,9 @@ async function executeScript(params: any): Promise<McpResponse> {
 
     const pageId = params?.pageId;
     const language = params?.language;
-    const page = pageId ? pagesModel.findPage(pageId) : pagesModel.activePage;
+    const pageModel = pageId ? pagesModel.findPage(pageId) : pagesModel.activePage;
 
-    const result = await scriptRunner.runWithCapture(script, page, language);
+    const result = await scriptRunner.runWithCapture(script, pageModel?.mainEditor ?? undefined, language);
 
     return {
         result: {
@@ -71,16 +71,16 @@ async function executeScript(params: any): Promise<McpResponse> {
 function getPages(): any[] {
     const pages = pagesModel.state.get().pages;
     return pages.map((p) => {
-        const s = p.state.get();
+        const s = p.mainEditor?.state.get();
         return {
-            id: s.id,
-            title: s.title,
-            type: s.type,
-            editor: s.editor,
-            language: s.language,
-            filePath: s.filePath,
-            modified: s.modified,
-            pinned: s.pinned,
+            id: p.id,
+            title: p.title,
+            type: s?.type,
+            editor: s?.editor,
+            language: s?.language,
+            filePath: s?.filePath,
+            modified: p.modified,
+            pinned: p.pinned,
             active: p === pagesModel.activePage,
         };
     });
@@ -97,7 +97,8 @@ function getPageContent(params: any): McpResponse {
         return { error: { code: -32602, message: `Page not found: ${pageId}` } };
     }
 
-    const content = isTextFileModel(page) ? page.state.get().content : "";
+    const editor = page.mainEditor;
+    const content = editor && isTextFileModel(editor) ? editor.state.get().content : "";
 
     return {
         result: {
@@ -112,17 +113,18 @@ function getActivePage(): any {
     const page = pagesModel.activePage;
     if (!page) return null;
 
-    const s = page.state.get();
-    const content = isTextFileModel(page) ? page.state.get().content : "";
+    const editor = page.mainEditor;
+    const s = editor?.state.get();
+    const content = editor && isTextFileModel(editor) ? editor.state.get().content : "";
 
     return {
-        id: s.id,
-        title: s.title,
-        type: s.type,
-        editor: s.editor,
-        language: s.language,
-        filePath: s.filePath,
-        modified: s.modified,
+        id: page.id,
+        title: page.title,
+        type: s?.type,
+        editor: s?.editor,
+        language: s?.language,
+        filePath: s?.filePath,
+        modified: page.modified,
         content,
     };
 }
@@ -162,13 +164,13 @@ function createPage(params: any): McpResponse {
 
     const page = pagesModel.addEditorPage(editor, language, title, content || undefined);
 
-    const s = page.state.get();
+    const s = page.mainEditor?.state.get();
     return {
         result: {
-            id: s.id,
-            title: s.title,
-            editor: s.editor,
-            language: s.language,
+            id: page.id,
+            title: page.title,
+            editor: s?.editor,
+            language: s?.language,
         },
     };
 }
@@ -189,7 +191,8 @@ function setPageContent(params: any): McpResponse {
         return { error: { code: -32602, message: `Page not found: ${pageId}` } };
     }
 
-    if (!isTextFileModel(page)) {
+    const editor = page.mainEditor;
+    if (!editor || !isTextFileModel(editor)) {
         return {
             error: {
                 code: -32602,
@@ -198,7 +201,7 @@ function setPageContent(params: any): McpResponse {
         };
     }
 
-    page.changeContent(content);
+    editor.changeContent(content);
     return { result: { id: page.id, title: page.title, contentLength: content.length } };
 }
 
@@ -208,8 +211,9 @@ const MCP_UI_LOG_ID = "mcp-ui-log";
 
 async function getOrCreateMcpLogViewModel(): Promise<LogViewModel> {
     const page = await pagesModel.requireWellKnownPage(MCP_UI_LOG_ID);
-    if (!isTextFileModel(page)) throw new Error("MCP log page is not a TextFileModel");
-    const vm = page.acquireViewModelSync("log-view") as LogViewModel | undefined;
+    const editor = page.mainEditor;
+    if (!editor || !isTextFileModel(editor)) throw new Error("MCP log page is not a TextFileModel");
+    const vm = editor.acquireViewModelSync("log-view") as LogViewModel | undefined;
     if (!vm) throw new Error("Log view module not loaded");
     return vm;
 }
@@ -242,8 +246,9 @@ function logIncomingRequest(
 
     // If the live request log page is open, push the entry to it
     const logPage = pagesModel.findPage("mcp-server-log");
-    if (logPage && isTextFileModel(logPage)) {
-        const vm = logPage.acquireViewModelSync("log-view") as LogViewModel | undefined;
+    const logEditor = logPage?.mainEditor;
+    if (logEditor && isTextFileModel(logEditor)) {
+        const vm = logEditor.acquireViewModelSync("log-view") as LogViewModel | undefined;
         if (vm) vm.addEntry("output.mcp-request", requestHistory[requestHistory.length - 1]);
     }
 }
@@ -251,9 +256,10 @@ function logIncomingRequest(
 /** Show the MCP server request log page (creates if needed, backfills history). */
 export async function showMcpRequestLog(): Promise<void> {
     const page = await pagesModel.requireWellKnownPage("mcp-server-log");
-    if (!isTextFileModel(page)) return;
+    const editor = page.mainEditor;
+    if (!editor || !isTextFileModel(editor)) return;
 
-    const vm = page.acquireViewModelSync("log-view") as LogViewModel | undefined;
+    const vm = editor.acquireViewModelSync("log-view") as LogViewModel | undefined;
     if (!vm) return;
 
     // Backfill history if the page was just created (empty)

@@ -3,6 +3,7 @@ import { ContentViewModel } from "../base/ContentViewModel";
 import { IContentHost } from "../base/IContentHost";
 import { EditorModel } from "../base";
 import { pagesModel } from "../../api/pages";
+import type { PageModel } from "../../api/pages/PageModel";
 
 // =============================================================================
 // State
@@ -66,10 +67,10 @@ export class MarkdownViewModel extends ContentViewModel<MarkdownViewState> {
         });
     };
 
-    pageFocused = (page?: EditorModel) => {
+    pageFocused = (page?: PageModel) => {
         if (
-            page === this.pageModel ||
-            pagesModel.activePage === this.pageModel
+            page === this.pageModel.page ||
+            pagesModel.activePage === this.pageModel.page
         ) {
             Promise.resolve().then(() => {
                 const container = this.state.get().container;

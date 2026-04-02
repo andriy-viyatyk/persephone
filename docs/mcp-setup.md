@@ -56,7 +56,7 @@ gemini --mcp-server http://localhost:7865/mcp
 | **list_pages** | List all open pages (tabs) with IDs, titles, editors, metadata. |
 | **get_page_content** | Get text content of a page by ID. |
 | **get_active_page** | Get the active page with content and metadata. |
-| **create_page** | Create a new page with optional content, language, and editor. Returns a clear error with specific hints for page-editor types (browser, PDF, image, MCP Inspector, etc.) — use `open_url` or `execute_script` instead. |
+| **create_page** | Create a new page with optional content, language, and editor. Returns a clear error with specific hints for standalone editor types (browser, PDF, image, MCP Inspector, etc.) — use `open_url` or `execute_script` instead. |
 | **set_page_content** | Update text content of a page by ID. |
 | **open_url** | Open a URL in the [built-in browser](./browser.md). Accepts optional `profileName` (browser profile), `incognito` (boolean), and `tor` (boolean) parameters. Reuses an existing browser page if one is open, otherwise creates a new one. |
 | **ui_push** | Push log entries, interactive dialogs, and output widgets to a Log View page — the recommended output channel for AI agents. Strings are shorthand for `log.info`. Dialog entries (`input.confirm`, `input.text`, `input.buttons`, `input.checkboxes`, `input.radioboxes`, `input.select`) block until the user responds. Output entries (`output.progress`, `output.grid`) support rich display — progress bars with upsert-by-id for real-time updates, and inline data grids from JSON or CSV strings. The Log View page is created automatically on first call and reused on subsequent calls. |

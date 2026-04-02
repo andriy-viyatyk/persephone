@@ -10,7 +10,6 @@ import color from "../../theme/color";
 import { ActiveEditor } from "./ActiveEditor";
 import { FlexSpace } from "../../components/layout/Elements";
 import { pagesModel } from "../../api/pages";
-import { EditorModel } from "../base";
 
 const TextEditorViewRoot = styled.div({
     flex: "1 1 auto",
@@ -62,7 +61,7 @@ export function TextEditorView({ model }: TextEditorViewProps) {
 
     useEffect(() => {
         const subscription = pagesModel.onFocus.subscribe((pageModel) => {
-            if (pageModel !== (model as EditorModel)) return;
+            if (pageModel !== model.page) return;
             setTimeout(() => {
                 const root = rootRef.current;
                 if (root && !root.contains(document.activeElement)) {

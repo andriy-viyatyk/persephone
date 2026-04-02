@@ -59,68 +59,58 @@ graph TD
 
 ---
 
-## 2. Page Lifecycle State Machine
+## 2. Page/Editor Architecture
 
-```mermaid
-stateDiagram-v2
-    [*] --> Created: newEditorModel(...)
+Every tab is a `PageModel` — a stable container that owns the browsing context (sidebar, secondary editors) and contains an `EditorModel` as its main content.
 
-    Created --> Initialized: restore() async
-    Created --> [*]: error
+```
+PageModel (one per tab — stable identity, never changes during navigation)
+├── id: string                          // stable UUID — tab key, React key, cache key
+├── state: TOneState<IPageState>        // reactive: { pinned, hasSidebar, version }
+├── mainEditor: EditorModel | null      // the content (swapped during navigation)
+├── secondaryEditors: EditorModel[]     // sidebar editor panels (ZipEditorModel, etc.)
+├── treeProvider: ITreeProvider | null   // Explorer panel
+├── selectionState                      // shared Explorer selection
+├── searchState                         // search panel
+├── pageNavigatorModel                  // sidebar open/close/width
+├── activePanel: string                 // which panel is expanded
+├── close()                             // checks unsaved changes, calls onClose
+├── dispose()                           // disposes all owned resources
+└── saveState() / restoreSidebar()      // persistence
 
-    Initialized --> Active: show(pageId)
-    Initialized --> Active: user activates tab
-
-    Active --> Inactive: show(other)
-    Inactive --> Active: show(pageId)
-
-    Active --> Disposed: close()
-    Inactive --> Disposed: close()
-
-    Disposed --> [*]: cleanup complete
-
-    note right of Created
-        - Page object created
-        - No data loaded yet
-        - Model not initialized
-    end note
-
-    note right of Initialized
-        - Data loaded from file/storage
-        - Monaco editor ready
-        - Page model ready to use
-    end note
-
-    note right of Active
-        - Page visible in UI
-        - User can interact
-        - Subscriptions active
-    end note
-
-    note right of Disposed
-        - Cleanup in progress
-        - Resources freed
-        - Subscriptions removed
-    end note
+EditorModel (the content inside a page — replaceable during navigation)
+├── id: string                          // editor instance identity
+├── state: TOneState<IEditorState>      // editor state (content, language, filePath, pipe, etc.)
+├── page: PageModel | null              // back-reference to containing page
+├── pipe: IContentPipe                  // content source
+├── modified: boolean                   // has unsaved changes
+├── setPage(page) / onMainEditorChanged() // lifecycle hooks
+├── beforeNavigateAway(newEditor)       // secondary survival check
+├── restore() / dispose()               // editor lifecycle
+└── getRestoreData() / applyRestoreData() // serialization
 ```
 
-**Key transitions:**
-- **Created → Initialized:** `restore()` loads content from file or persistent storage. For text files this reads content through the content pipe (primary pipe for source, cache pipe for unsaved modifications). Pipe state (`IPipeDescriptor`) is restored from persisted page state. If no pipe exists (legacy state), one is created from `filePath`.
-- **Initialized ↔ Active:** Controlled by `show(pageId)`. Only one page is active at a time (or two when grouped side-by-side).
-- **Active/Inactive → Disposed:** `close()` prompts save if modified, then disposes all resources (content pipes, editor model, script context, navigation panel, cache files).
+**Source:** [`PageModel.ts`](../../src/renderer/api/pages/PageModel.ts), [`EditorModel.ts`](../../src/renderer/editors/base/EditorModel.ts)
+
+### Page lifecycle
+
+- **Created:** `new PageModel()` + `page.mainEditor = editor` + `editor.setPage(page)`
+- **Initialized:** `editor.restore()` loads content; `page.restoreSidebar()` loads sidebar from cache
+- **Active/Inactive:** `show(pageId)` moves page to end of `ordered[]`
+- **Navigation:** `page.mainEditor = newEditor` swaps content without changing page identity
+- **Closed:** `page.close()` → checks unsaved → `onClose()` → `detachPage` → `removePage` → `page.dispose()`
 
 ### Close flow detail
 
-The full close chain for a page:
+1. `page.close()` — on PageModel
+2. → `confirmSecondaryRelease()` — checks secondary editors for unsaved changes
+3. → `mainEditor.confirmRelease()` — checks main editor (TextFileModel prompts save dialog)
+4. → `onClose()` — set by `attachPage()` in PagesModel
+5. → `detachPage(page)` — unsubscribes state listeners, clears `onClose`
+6. → `removePage(page)` — removes from `pages[]` and `ordered[]`
+7. → `page.dispose()` — disposes secondary editors, tree providers, navigator model, then main editor (content pipes, cache files)
 
-1. `page.close(undefined)` — from `TDialogModel`
-2. → `canClose()` — if set (TextEditorModel sets it). Calls `confirmRelease(closing: true)` which checks secondary editor models for unsaved changes, then checks the page's own unsaved changes. If the user cancels, returns false and the close is aborted.
-3. → `onClose()` — set by `attachPage()` in `PagesModel`
-4. → `detachPage(page)` — unsubscribes state listener, clears `onClose` callback
-5. → `removePage(page)` — removes from `pages[]` and `ordered[]`
-6. → `page.dispose()` — disposes NavigationData (including secondary editor models), content pipes, and deletes cache files
-
-For multi-window transfer, `movePageOut()` calls `detachPage()` (step 4) WITHOUT calling `dispose()` (step 6). This preserves cache files on disk so the target window can reconstruct the page.
+For multi-window transfer, `movePageOut()` calls `detachPage()` WITHOUT calling `dispose()`. Cache files survive for the target window.
 
 **Portal-based rendering:** Pages are rendered through `AppPageManager` (`src/renderer/components/page-manager/AppPageManager.tsx`) using React portals with imperatively managed placeholder divs. Each page gets a stable placeholder that is never destroyed until the page closes. This prevents iframes, webviews, and canvas elements from reloading when pages are closed, reordered, grouped, or ungrouped. Placeholders are never reparented (moved between containers) — grouping is achieved purely via CSS absolute positioning within the same container. See `GroupContainer` and `ImperativeSplitter` in the same folder.
 
@@ -244,8 +234,8 @@ import { pagesModel } from "../api/pages";
 - `removePage(page)` — removes from `pages[]` and `ordered[]` arrays
 - `fixGrouping()` / `fixCompareMode()` — invariant repair
 - `checkEmptyPage()` — auto-create empty page when last one closes
-- `addEmptyPageWithNavPanel(folderPath)` — creates an empty page with a pre-attached NavigationData (used by sidebar double-click and archive browsing). Intentionally skips `restore()` to avoid a race condition where the async restore would see `hasNavigator=true` and create a new NavigationData that overwrites the one we just attached.
-- `openFileAsArchive(filePath)` — opens an archive for browsing. Creates an empty page with NavigationData root set to the archive root. Reuses existing tab if the archive is already open. ZIP archives use `!` separator (e.g., `doc.zip!word/document.xml`) via `archive-service.ts`; `.asar` archives use the regular path directly (e.g., `app.asar`) via Electron's native fs patching — see `file-path.ts`.
+- `addEmptyPageWithNavPanel(folderPath)` — creates a PageModel with an empty TextFileModel and an initialized sidebar. Used by sidebar double-click and archive browsing.
+- `openFileAsArchive(filePath)` — opens an archive for browsing. Creates a PageModel with sidebar root set to the archive root. Reuses existing tab if the archive is already open. ZIP archives use `!` separator (e.g., `doc.zip!word/document.xml`) via `archive-service.ts`; `.asar` archives use the regular path directly (e.g., `app.asar`) via Electron's native fs patching — see `file-path.ts`.
 - `save()` / `restore()` — persistence (called by bootstrap, not by scripts)
 - Submodel instances — private composition detail
 
@@ -270,15 +260,15 @@ When a tab is dragged to another window:
 1. **Tab drag** — `PageTab.handleDragEnd()` detects the drop landed outside the window bounds. Sends `PageDragData` to the main process via `api.addDragEvent()`.
 2. **Main process** — `DragModel` collects drag events (debounced 100ms) from source and target windows, then calls `movePageToWindow()` in [`open-windows.ts`](../../src/main/open-windows.ts).
 3. **Source window** — receives `eMovePageOut` IPC event:
-   - `movePageOut(pageId)` calls `page.saveState()` to flush NavigationData cache to disk
+   - `movePageOut(pageId)` calls `page.saveState()` to flush sidebar cache to disk
    - Calls `detachPage()` — unsubscribes but does NOT dispose. **Cache files survive.**
    - Calls `removePage()` — removes from arrays
 4. **Target window** — receives `eMovePageIn` IPC event (main process awaits `whenReady` first):
-   - `movePageIn(data)` creates a new EditorModel from the serialized `Partial<IEditorState>`
-   - Calls `applyRestoreData()` — reconstructs pipe from descriptor, restores `sourceLink`
-   - Calls `restore()` — reads content through pipe; if `hasNavigator` is set, creates new `NavigationData` and restores from the **same cache files** using the page ID
+   - `movePageIn(data)` creates a new EditorModel from the serialized editor state
+   - Wraps in a new PageModel, calls `applyRestoreData()` and `restore()`
+   - If the source page had a sidebar, restores it from cache using the editor ID
 
-**Why it works:** Cache files are keyed by page ID. The source window preserves them (no `dispose()`), and the target window reads them using the same ID. NavigationData (including tree expansion, search state, secondary descriptors, and secondary editor model descriptors) is fully reconstructed from cache.
+**Why it works:** Cache files are keyed by editor ID. The source window preserves them (no `dispose()`), and the target window reads them using the same ID. Sidebar state (tree expansion, search, secondary editor descriptors) is fully reconstructed from cache.
 
 **Critical dependency:** The target window must have called `api.windowReady()` before the main process sends `eMovePageIn`. The main process holds a `whenReady` promise per window and awaits it before forwarding events.
 
@@ -345,86 +335,62 @@ Do NOT use for:
 
 ---
 
-## 9. NavigationData — Stable Browsing Context
+## 9. PageModel — Sidebar and Navigation Context
 
-NavigationData is a long-lived object that **survives page navigation**. It holds the sidebar state: tree providers, panel selection, search state, and secondary editors.
+PageModel is the tab container that owns the sidebar state: tree providers, panel selection, search state, and secondary editors. It survives navigation — when the user navigates to a new file, only `page.mainEditor` changes while the PageModel (and its sidebar) stays intact.
 
-**Source:** [`/src/renderer/ui/navigation/NavigationData.ts`](../../src/renderer/ui/navigation/NavigationData.ts)
+**Source:** [`/src/renderer/api/pages/PageModel.ts`](../../src/renderer/api/pages/PageModel.ts)
 
-### Lifecycle
-
-1. **Created** when a page first opens with a navigator (Folder View toggle, archive open, or restored from session)
-2. **Transferred** during `navigatePageTo()` — detached from the old model (before dispose), attached to the new model (after creation). NavigationData is NOT recreated; the same instance moves between page models.
-3. **Persisted** to cache files via `flushSave()` (debounced). Restored by page ID on app restart or multi-window transfer.
-4. **Disposed** when the tab closes: `EditorModel.dispose()` → `NavigationData.dispose()` → disposes tree providers, secondary providers, and secondary editor models.
-
-### What it owns
-
-```
-NavigationData
-  ├── ownerModel                // The active page model that owns this NavigationData
-  ├── treeProvider              // Primary FileTreeProvider (Explorer panel)
-  ├── selectionState            // TOneState — reactive, shared between PageNavigator and CategoryEditor
-  ├── treeState                 // Tree expansion state (persisted)
-  ├── secondaryModels[]         // Secondary editor EditorModel instances (EPIC-016)
-  ├── secondaryModelsVersion    // TOneState — reactive counter for PageNavigator re-render
-  ├── activePanel               // "explorer", "search", or a secondary model's page ID
-  ├── searchState               // FileSearch state (query, results, filters)
-  └── pageNavigatorModel        // Sidebar open/close/width state
-```
-
-### Navigation transfer pattern
+### Navigation pattern
 
 In `navigatePageTo()` ([`PagesLifecycleModel.ts`](../../src/renderer/api/pages/PagesLifecycleModel.ts)):
 
 ```
-1. navigationData = oldModel.navigationData     // extract reference
-2. ... create newModel (with sourceLink) ...
-3. oldModel.beforeNavigateAway(newModel)        // old model decides to keep/clear secondaryEditor
-4. survivesAsSecondary = navigationData.secondaryModels.includes(oldModel)
-5. oldModel.navigationData = null               // detach (prevents dispose)
-6. if (!survivesAsSecondary) oldModel.dispose() // skip dispose if model survives in sidebar
-7. detachPage(oldModel)
-8. newModel.navigationData = navigationData     // transfer
-9. navigationData.updateId(newModel.id)         // update cache key
-10. navigationData.setOwnerModel(newModel)       // propagate to secondary models
+1. page = findPage(pageId)                    // PageModel stays in arrays
+2. oldEditor = page.mainEditor
+3. ... create newEditor (with sourceLink) ...
+4. oldEditor.beforeNavigateAway(newEditor)    // old editor decides to keep/clear secondaryEditor
+5. survivesAsSecondary = page.secondaryEditors.includes(oldEditor)
+6. if (!survivesAsSecondary) oldEditor.dispose()
+7. page.mainEditor = newEditor                // swap content — page.id stays the same
+8. newEditor.setPage(page)
+9. resubscribeEditor(page)                    // re-subscribe for persistence
+10. page.notifyMainEditorChanged()             // secondary editors react
 ```
 
-**Step 3** — `beforeNavigateAway(newModel)` lets the old model inspect `newModel.sourceLink` to decide whether to keep itself as a secondary editor. The base implementation clears `secondaryEditor`. Subclasses like ZipEditorModel override to check `newModel.sourceLink?.metadata?.sourceId === this.id`.
+**Step 4** — `beforeNavigateAway(newEditor)` lets the old editor inspect `newEditor.sourceLink` to decide whether to keep itself as a secondary editor. The base implementation clears `secondaryEditor`. Subclasses like ZipEditorModel override to check `newEditor.sourceLink?.metadata?.sourceId === this.id`.
 
-**Step 10** — `setOwnerModel(newModel)` updates `ownerModel`, clears Explorer selection if the new page wasn't opened from Explorer, then calls `setOwnerPage(newModel)` on each secondary model. Secondary models may react: ZipEditorModel checks if the new owner was opened from its archive — if not, it clears `secondaryEditor` and is cleaned up. Models that stay may fire `expandSecondaryPanel` to auto-expand their sidebar panel.
+**Step 10** — `notifyMainEditorChanged()` clears Explorer selection if the new editor wasn't opened from Explorer, then calls `onMainEditorChanged(newMainEditor)` on each secondary editor. Secondary editors may react: ZipEditorModel checks if the new main editor was opened from its archive — if not, it clears `secondaryEditor` and is cleaned up.
 
 ---
 
-## 10. Secondary Editor Models (EPIC-016)
+## 10. Secondary Editor Models
 
-NavigationData holds a `secondaryModels[]` array of full EditorModel instances that act as sidebar editors. These survive page navigation (same as NavigationData itself) and provide richer functionality than standalone tree providers.
+PageModel holds a `secondaryEditors[]` array of full EditorModel instances that act as sidebar editors. These survive page navigation (same as PageModel itself) and provide richer functionality than standalone tree providers.
 
 ### EditorModel integration
 
 The `secondaryEditor` getter/setter on EditorModel manages membership automatically:
-- **Set** `model.secondaryEditor = "zip-tree"` → adds the model to `secondaryModels[]`
-- **Clear** `model.secondaryEditor = undefined` → removes the model from `secondaryModels[]` (without dispose)
+- **Set** `model.secondaryEditor = "zip-tree"` → adds the model to `page.secondaryEditors[]`
+- **Clear** `model.secondaryEditor = undefined` → removes the model from `page.secondaryEditors[]` (without dispose)
 
-The `beforeNavigateAway(newModel)` lifecycle hook is called during `navigatePageTo()`. The base implementation clears `secondaryEditor`; subclasses override to conditionally keep their secondary editor based on `newModel.sourceLink`.
+The `beforeNavigateAway(newEditor)` lifecycle hook is called during `navigatePageTo()`. The base implementation clears `secondaryEditor`; subclasses override to conditionally keep their secondary editor based on `newEditor.sourceLink`.
 
-### Owner model tracking
+### Editor ↔ Page references
 
-`NavigationData.ownerModel` tracks the active page model. `EditorModel.ownerPage` is the reverse reference — set on secondary models so they know which page they're attached to. Both are updated by `NavigationData.setOwnerModel(newModel)`, which calls `setOwnerPage(newModel)` on each secondary model.
+Every editor (main or secondary) holds a `page: PageModel | null` reference to its containing page. Two hooks on EditorModel:
+- **`setPage(page)`** — called when the editor is placed into or removed from a page
+- **`onMainEditorChanged(newMainEditor)`** — called on secondary editors when the page's main editor changes (navigation). Subclasses override to react.
 
-`setOwnerPage(model)` is a virtual method on EditorModel. Subclasses override it to react to ownership changes:
-- **ZipEditorModel**: checks if the new owner was opened from this archive (`sourceLink.metadata.sourceId`). If yes, fires `expandSecondaryPanel` event to auto-expand. If no, clears `secondaryEditor` (model removed on next cleanup).
-- **Base EditorModel**: stores the reference only.
+### Management API (on PageModel)
 
-### Management API
-
-- `setOwnerModel(model)` — updates owner reference, propagates to secondary models via `setOwnerPage()`, cleans up models that cleared their `secondaryEditor`
-- `addSecondaryModel(model)` — adds a page model to the array, sets `ownerPage`
-- `removeSecondaryModel(model)` — removes, disposes, and falls back `activePanel` if needed
-- `removeSecondaryModelWithoutDispose(model)` — removes without disposing (used by `secondaryEditor` setter when clearing)
-- `findSecondaryModel(pageId)` — lookup by page ID
+- `notifyMainEditorChanged()` — propagates main editor change to secondary editors, cleans up models that cleared their `secondaryEditor`
+- `addSecondaryEditor(model)` — adds an editor model to the array, sets `page` reference
+- `removeSecondaryEditor(model)` — removes, disposes, and falls back `activePanel` if needed
+- `removeSecondaryEditorWithoutDispose(model)` — removes without disposing (used by `secondaryEditor` setter when clearing)
+- `findSecondaryEditor(editorId)` — lookup by editor ID
 - `confirmSecondaryRelease()` — iterates models with unsaved changes, prompts user via `confirmRelease()`
-- `restoreSecondaryModels(ownerModel)` — restores from `pendingSecondaryDescriptors`, deduplicates against the owner model
+- `restoreSecondaryEditors(ownerEditor)` — restores from `pendingSecondaryDescriptors`, deduplicates against the owner editor
 
 ### Secondary Editor Registry
 
@@ -434,22 +400,18 @@ Maps `secondaryEditor` string values to React sidebar components via dynamic imp
 
 ### Rendering in PageNavigator
 
-PageNavigator renders a `CollapsiblePanel` for each model in `secondaryModels[]`, after the Explorer/Search/Secondary panels. Each panel uses `LazySecondaryEditor` ([`LazySecondaryEditor.tsx`](../../src/renderer/ui/navigation/LazySecondaryEditor.tsx)) to async-load the component from the registry.
+PageNavigator receives a `PageModel` and renders a `CollapsiblePanel` for each model in `secondaryEditors[]`, after the Explorer and Search panels. Each panel uses `LazySecondaryEditor` ([`LazySecondaryEditor.tsx`](../../src/renderer/ui/navigation/LazySecondaryEditor.tsx)) to async-load the component from the registry.
 
-**Reactivity:** `secondaryModels` is a plain array (EditorModel class instances don't belong in TOneState — Immer proxies would corrupt them). A `secondaryModelsVersion` counter (`TOneState<{ version }>`) is bumped on every add/remove. PageNavigator subscribes via `.use()` and re-renders when the counter changes.
+**Reactivity:** `secondaryEditors` is a plain array (EditorModel class instances don't belong in TOneState — Immer proxies would corrupt them). A `secondaryEditorsVersion` counter (`TOneState<{ version }>`) is bumped on every add/remove. PageNavigator subscribes via `.use()` and re-renders when the counter changes.
 
-**Close button rule:** The active page's own secondary panel has no close button (controlled by `secondaryEditor` field). Only panels from survived models (via `beforeNavigateAway`) show a close button — clicking it calls `removeSecondaryModel()`.
+**Close button rule:** The active page's own secondary panel has no close button (controlled by `secondaryEditor` field). Only panels from survived models (via `beforeNavigateAway`) show a close button — clicking it calls `removeSecondaryEditor()`.
 
-**Auto-expand:** Secondary models can request their panel be expanded by firing the `expandSecondaryPanel` event ([`events.ts`](../../src/renderer/core/state/events.ts)). NavigationData subscribes and sets `activePanel` if the model is in `secondaryModels[]`. This is used by ZipEditorModel to auto-expand the Archive panel when navigating to a file inside the archive.
+**Auto-expand:** Secondary editors can request their panel be expanded by firing the `expandSecondaryPanel` event ([`events.ts`](../../src/renderer/core/state/events.ts)). PageModel subscribes and sets `activePanel` if the model is in `secondaryEditors[]`. This is used by ZipEditorModel to auto-expand the Archive panel when navigating to a file inside the archive.
 
 ### Persistence
 
-Secondary model state is saved as descriptors (`SecondaryModelDescriptor[]`) in the NavigationData cache. Each descriptor contains the model's serialized `IEditorState` (from `getRestoreData()`). On restore, descriptors are stored as `pendingSecondaryDescriptors`. `restoreSecondaryModels(ownerModel)` processes them — if a descriptor's ID matches the owner page, the existing instance is reused (no duplicate).
+Secondary editor state is saved as descriptors (`SecondaryModelDescriptor[]`) in the PageModel sidebar cache. Each descriptor contains the model's serialized `IEditorState` (from `getRestoreData()`). On restore, descriptors are stored as `pendingSecondaryDescriptors`. `restoreSecondaryEditors(ownerEditor)` processes them — if a descriptor's ID matches the owner editor, the existing instance is reused (no duplicate).
 
 ### Dispose
 
-When a tab closes, `NavigationData.dispose()` disposes all secondary models. Before dispose, `confirmSecondaryRelease()` checks for unsaved changes — this is called via `EditorModel.confirmRelease(closing: true)` in the tab close flow.
-
-### Future: PageModel (EPIC-017 Phase 2)
-
-`PageModel` ([`/src/renderer/api/pages/PageModel.ts`](../../src/renderer/api/pages/PageModel.ts)) is the planned replacement for NavigationData. It absorbs all of NavigationData's responsibilities (sidebar, tree, search, secondary editors) and adds a `mainEditor` reference — making the page a proper container. Currently standalone (not wired into the runtime). See [EPIC-017](../../doc/epics/EPIC-017.md) for the migration plan.
+When a tab closes, `PageModel.dispose()` disposes all secondary editors. Before dispose, `confirmSecondaryRelease()` checks for unsaved changes — this is called by `PageModel.close()` before proceeding.

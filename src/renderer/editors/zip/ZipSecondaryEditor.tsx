@@ -12,9 +12,9 @@ export default function ZipSecondaryEditor({ model }: SecondaryEditorProps) {
 
     const handleItemClick = useCallback((item: ITreeProviderItem) => {
         const url = provider?.getNavigationUrl(item) ?? item.href;
-        const ownerPageId = zipModel.ownerPage?.id;
+        const pageId = zipModel.page?.id;
         app.events.openRawLink.sendAsync(new RawLinkEvent(
-            url, undefined, { pageId: ownerPageId, sourceId: zipModel.id },
+            url, undefined, { pageId, sourceId: zipModel.id },
         ));
     }, [provider, zipModel]);
 

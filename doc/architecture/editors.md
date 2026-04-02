@@ -188,15 +188,15 @@ class EditorModel<T extends IEditorState, R = any> extends TDialogModel<T, R> {
     get type(): EditorType;
     get title(): string;
     get modified(): boolean;
-    get pinned(): boolean;
     get filePath(): string | undefined;
     get secondaryEditor(): string | undefined;  // Active secondary editor panel ID
-    set secondaryEditor(value: string | undefined);  // Manages secondaryModels[] membership
+    set secondaryEditor(value: string | undefined);  // Manages page.secondaryEditors[] membership
 
     scriptData: Record<string, any>;   // In-memory data for scripts
-    navigationData: NavigationData | null;  // Navigation context (providers, selection, persistence)
+    page: PageModel | null;            // Reference to containing PageModel (set via setPage)
 
     beforeNavigateAway(newModel: EditorModel): void;  // Navigation survival hook (base: clears secondaryEditor)
+    onMainEditorChanged(newMainEditor: EditorModel | null): void;  // Secondary editor notification
     confirmRelease(closing?: boolean): Promise<boolean>;
     restore(): Promise<void>;
     saveState(): Promise<void>;

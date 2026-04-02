@@ -280,7 +280,7 @@ See [/doc/standards/coding-style.md](doc/standards/coding-style.md) for complete
 | Shared types (IEditorState)| `/src/shared/types.ts`                            |
 | App object model         | `/src/renderer/api/app.ts`                        |
 | Page/tab management      | `/src/renderer/api/pages/PagesModel.ts`           |
-| Page container (EPIC-017)| `/src/renderer/api/pages/PageModel.ts`            |
+| Page container (tab)     | `/src/renderer/api/pages/PageModel.ts`            |
 | Well-known pages         | `/src/renderer/api/pages/well-known-pages.ts`     |
 | File operations          | `/src/renderer/api/fs.ts`                         |
 | Archive I/O (ZIP)        | `/src/renderer/api/archive-service.ts`             |

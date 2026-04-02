@@ -45,7 +45,7 @@ export function ZipEditorView({ model }: { model: ZipEditorModel }) {
     }, []);
 
     const handleToggleNavigator = useCallback(() => {
-        model.navigationData?.toggleNavigator();
+        model.page?.toggleNavigator();
     }, [model]);
 
     if (!provider) {

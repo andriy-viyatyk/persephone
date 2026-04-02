@@ -1,5 +1,5 @@
 import type { PagesModel } from "./PagesModel";
-import { IEditorState, WindowState } from "../../../shared/types";
+import { IEditorState, PageDescriptor, WindowState } from "../../../shared/types";
 import { openFilesNameTemplate } from "../../../shared/constants";
 import { parseObject } from "../../core/utils/parse-utils";
 import { debounce } from "../../../shared/utils";
@@ -9,6 +9,7 @@ import { fs as appFs } from "../fs";
 import { editorRegistry } from "../../editors/registry";
 import { app } from "../app";
 import { RawLinkEvent } from "../events/events";
+import { PageModel } from "./PageModel";
 
 /**
  * PagesPersistenceModel — Load/save window state to storage.
@@ -18,12 +19,18 @@ export class PagesPersistenceModel {
 
     saveState = async (): Promise<void> => {
         const { pages, leftRight } = this.model.state.get();
-        const activePagesData = pages.map((model) => model.getRestoreData());
+        const pageDescriptors: PageDescriptor[] = pages.map((page) => ({
+            id: page.id,
+            pinned: page.pinned,
+            modified: page.modified,
+            hasSidebar: page.hasSidebar,
+            editor: page.mainEditor?.getRestoreData() ?? {},
+        }));
         const groupings = Array.from(leftRight.entries());
 
-        const activePageId = this.model.query.activePage?.state.get().id;
+        const activePageId = this.model.query.activePage?.id;
         const storedState: WindowState = {
-            pages: activePagesData,
+            pages: pageDescriptors,
             groupings: groupings,
             activePageId,
         };
@@ -61,16 +68,44 @@ export class PagesPersistenceModel {
             return;
         }
 
-        const modelsPromise = (data.pages as Partial<IEditorState>[]).map((pageData) =>
-            this.restoreModel(pageData)
-        );
-        const models = (await Promise.all(modelsPromise)).filter(
-            (model) => model
-        ) as EditorModel[];
+        // Detect old format: old pages have "type" at top level (flat IEditorState)
+        // New format has PageDescriptor with "editor" object containing the editor state
+        const isOldFormat = data.pages.length > 0
+            && data.pages[0]?.type && typeof data.pages[0]?.type === "string"
+            && !data.pages[0]?.editor?.type;
 
-        models.forEach((model) => this.model.attachPage(model));
+        if (isOldFormat) {
+            // Old format — skip. App starts with empty window.
+            // User's first interaction saves new format.
+            return;
+        }
+
+        const models: PageModel[] = [];
+
+        for (const desc of data.pages as PageDescriptor[]) {
+            const editorData = desc.editor;
+            if (!editorData) continue;
+
+            const editor = await this.restoreModel(editorData);
+            if (!editor) continue;
+
+            const page = new PageModel(desc.id);
+            page.pinned = desc.pinned ?? false;
+            page.mainEditor = editor;
+            editor.setPage(page);
+
+            // Restore sidebar from cache if page had one
+            if (desc.hasSidebar) {
+                await page.restoreSidebar();
+                await page.restoreSecondaryEditors(editor);
+            }
+
+            this.model.attachPage(page);
+            models.push(page);
+        }
+
         const activeModel = models.find(
-            (m) => m.state.get().id === data.activePageId
+            (m) => m.id === data.activePageId
         );
         const orderedModels = activeModel
             ? [...models.filter((m) => m !== activeModel), activeModel]
@@ -82,7 +117,7 @@ export class PagesPersistenceModel {
         });
 
         if (data.groupings && Array.isArray(data.groupings)) {
-            data.groupings.forEach((el: any) => {
+            data.groupings.forEach((el: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
                 if (Array.isArray(el) && el.length === 2) {
                     this.model.layout.group(el[0], el[1]);
                 }
@@ -113,7 +148,7 @@ export class PagesPersistenceModel {
 
     onAppQuit = async () => {
         await Promise.all(
-            this.model.state.get().pages.map((model) => model.saveState())
+            this.model.state.get().pages.map((page) => page.saveState())
         );
         await this.saveState();
         api.setCanQuit(true);

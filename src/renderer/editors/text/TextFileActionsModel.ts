@@ -1,10 +1,7 @@
-import { fpDirname } from "../../core/utils/file-path";
-
 import { ui } from "../../api/ui";
 import { pagesModel } from "../../api/pages";
 import { scriptRunner } from "../../scripting/ScriptRunner";
 import { isScriptLanguage } from "../../scripting/transpile";
-import { EditorModel } from "../base/EditorModel";
 
 import type { TextFileModel } from "./TextEditorModel";
 
@@ -38,11 +35,11 @@ export class TextFileActionsModel {
 
     openSearchInNavPanel = () => {
         const { filePath } = this.model.state.get();
-        if (!this.model.navigationData && !filePath) return;
+        const page = this.model.page;
+        if (!page?.hasSidebar && !filePath) return;
 
-        this.model.ensureNavigationData(fpDirname(filePath || ""));
-        const navModel = this.model.navigationData!.ensurePageNavigatorModel();
-        if (!navModel.state.get().open) {
+        const navModel = page?.ensurePageNavigatorModel();
+        if (navModel && !navModel.state.get().open) {
             navModel.toggle();
         }
     };
@@ -105,7 +102,7 @@ export class TextFileActionsModel {
                 await this.model.dispose();
             }
         } else {
-            pagesModel.focusPage(this.model as unknown as EditorModel);
+            if (this.model.page) pagesModel.focusPage(this.model.page);
         }
         return result;
     };

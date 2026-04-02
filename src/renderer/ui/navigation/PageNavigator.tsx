@@ -18,7 +18,7 @@ import { RawLinkEvent, ContextMenuEvent } from "../../api/events/events";
 import { app } from "../../api/app";
 import type { ITreeProviderItem } from "../../api/types/io.tree";
 import type { ILinkMetadata } from "../../api/types/io.events";
-import type { NavigationData } from "./NavigationData";
+import type { PageModel } from "../../api/pages/PageModel";
 import { secondaryEditorRegistry } from "./secondary-editor-registry";
 import { LazySecondaryEditor } from "./LazySecondaryEditor";
 
@@ -41,70 +41,69 @@ const PageNavigatorRoot = styled.div({
 // =============================================================================
 
 interface PageNavigatorProps {
-    navigationData: NavigationData;
-    pageId: string;
+    page: PageModel;
 }
 
-export function PageNavigator({ navigationData, pageId }: PageNavigatorProps) {
-    const navModel = navigationData.ensurePageNavigatorModel();
+export function PageNavigator({ page }: PageNavigatorProps) {
+    const navModel = page.ensurePageNavigatorModel();
     const { rootPath } = navModel.state.use();
     const treeProviderRef = useRef<TreeProviderViewRef>(null);
-    const [searchVisible, setSearchVisible] = useState(!!navigationData.searchState);
-    const [activePanel, setActivePanelLocal] = useState(navigationData.activePanel);
+    const [searchVisible, setSearchVisible] = useState(!!page.searchState);
+    const [activePanel, setActivePanelLocal] = useState(page.activePanel);
 
-    // Subscribe to secondary models changes — triggers re-render on add/remove
-    const { version: _secondaryVersion } = navigationData.secondaryModelsVersion.use();
-    const secondaryModels = navigationData.secondaryModels;
+    // Subscribe to secondary editors changes — triggers re-render on add/remove
+    const { version: _secondaryVersion } = page.secondaryEditorsVersion.use();
+    const secondaryEditors = page.secondaryEditors;
 
-    // Sync local activePanel when NavigationData changes (e.g., after restoreSecondaryModels)
+    // Sync local activePanel when PageModel changes (e.g., after restoreSecondaryEditors)
     useEffect(() => {
-        if (navigationData.activePanel !== activePanel) {
-            setActivePanelLocal(navigationData.activePanel);
+        if (page.activePanel !== activePanel) {
+            setActivePanelLocal(page.activePanel);
         }
-    }, [navigationData.activePanel, _secondaryVersion]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [page.activePanel, _secondaryVersion]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const parentPath = path.dirname(rootPath);
     const canNavigateUp = parentPath !== rootPath && rootPath !== "";
 
-    // Create/update FileTreeProvider via NavigationData
+    // Create/update FileTreeProvider via PageModel
     const provider = useMemo(() => {
         if (!rootPath) return null;
         // Dispose old provider if rootPath changed
-        if (navigationData.treeProvider && (navigationData.treeProvider as FileTreeProvider).sourceUrl !== rootPath) {
-            navigationData.treeProvider.dispose?.();
-            navigationData.treeProvider = null;
+        if (page.treeProvider && (page.treeProvider as FileTreeProvider).sourceUrl !== rootPath) {
+            page.treeProvider.dispose?.();
+            page.treeProvider = null;
         }
-        if (!navigationData.treeProvider) {
-            navigationData.treeProvider = new FileTreeProvider(rootPath);
+        if (!page.treeProvider) {
+            page.treeProvider = new FileTreeProvider(rootPath);
         }
-        return navigationData.treeProvider;
-    }, [rootPath, navigationData]);
+        return page.treeProvider;
+    }, [rootPath, page]);
 
-    // Initial tree state from NavigationData (restored from cache)
+    // Initial tree state from PageModel (restored from cache)
     const initialState = useMemo((): TreeProviderViewSavedState | undefined => {
-        return navigationData.treeState;
+        return page.treeState;
     }, []); // Only on mount
 
-    const { selectedHref } = navigationData.selectionState.use();
+    const { selectedHref } = page.selectionState.use();
 
     // Reveal selected item in tree when selection changes (e.g., from CategoryEditor)
     useEffect(() => {
-        if (selectedHref && navigationData.activePanel === "explorer") {
+        if (selectedHref && page.activePanel === "explorer") {
             treeProviderRef.current?.revealItem(selectedHref);
         }
-    }, [selectedHref, navigationData.activePanel]);
+    }, [selectedHref, page.activePanel]);
 
     // ── Handlers — Explorer ──────────────────────────────────────────
 
     const handleNavigateUp = useCallback(() => {
-        navigationData.treeState = undefined;
+        page.treeState = undefined;
         navModel.navigateUp();
-    }, [navModel, navigationData]);
+    }, [navModel, page]);
 
     const handleMakeRoot = useCallback((newRoot: string) => {
-        navigationData.treeState = undefined;
+        page.treeState = undefined;
         navModel.makeRoot(newRoot);
-    }, [navModel, navigationData]);
+    }, [navModel, page]);
 
     const handleCollapseAll = useCallback(() => {
         treeProviderRef.current?.collapseAll();
@@ -114,47 +113,49 @@ export function PageNavigator({ navigationData, pageId }: PageNavigatorProps) {
         treeProviderRef.current?.refresh();
     }, []);
 
+    const pageId = page.mainEditor?.id ?? page.id;
+
     // Item click — select + navigate (skip if already selected)
     const handleItemClick = useCallback((item: ITreeProviderItem) => {
-        const current = navigationData.selectionState.get().selectedHref;
+        const current = page.selectionState.get().selectedHref;
         if (current?.toLowerCase() === item.href.toLowerCase()) return;
-        navigationData.setSelectedHref(item.href);
-        const url = navigationData.treeProvider?.getNavigationUrl(item) ?? item.href;
+        page.setSelectedHref(item.href);
+        const url = page.treeProvider?.getNavigationUrl(item) ?? item.href;
         app.events.openRawLink.sendAsync(new RawLinkEvent(
             url,
             undefined,
             { pageId, sourceId: "explorer" },
         ));
-    }, [pageId, navigationData]);
+    }, [pageId, page]);
 
     // ── Handlers — Search ──────────────────────────────────────────
 
     const openSearch = useCallback((folder?: string) => {
-        navigationData.openSearch(folder || rootPath);
+        page.openSearch(folder || rootPath);
         setSearchVisible(true);
         setActivePanelLocal("search");
-    }, [navigationData, rootPath]);
+    }, [page, rootPath]);
 
     const handleOpenSearch = useCallback(() => {
         openSearch();
     }, [openSearch]);
 
     const handleCloseSearch = useCallback(() => {
-        navigationData.closeSearch();
+        page.closeSearch();
         setSearchVisible(false);
         setActivePanelLocal("explorer");
-    }, [navigationData]);
+    }, [page]);
 
     const handleSearchResultClick = useCallback((filePath: string, lineNumber?: number) => {
         // Update explorer selection so revealItem works when switching to Explorer
-        navigationData.setSelectedHref(filePath);
+        page.setSelectedHref(filePath);
         const metadata: ILinkMetadata = { pageId };
         if (lineNumber) {
             metadata.revealLine = lineNumber;
-            metadata.highlightText = navigationData.searchState?.query;
+            metadata.highlightText = page.searchState?.query;
         }
         app.events.openRawLink.sendAsync(new RawLinkEvent(filePath, undefined, metadata));
-    }, [pageId, navigationData]);
+    }, [pageId, page]);
 
     // Context menu — parent adds "Make Root" and "Search in Folder" for navigable providers
     const handleContextMenu = useCallback((event: ContextMenuEvent<ITreeProviderItem>) => {
@@ -176,10 +177,10 @@ export function PageNavigator({ navigationData, pageId }: PageNavigatorProps) {
         }
     }, [provider, handleMakeRoot, rootPath, openSearch]);
 
-    // State persistence — tree expansion state saved to NavigationData
+    // State persistence — tree expansion state saved to PageModel
     const handleStateChange = useCallback((state: TreeProviderViewSavedState) => {
-        navigationData.setTreeState(state);
-    }, [navigationData]);
+        page.setTreeState(state);
+    }, [page]);
 
     // ── Panel switch ─────────────────────────────────────────────────
 
@@ -187,7 +188,7 @@ export function PageNavigator({ navigationData, pageId }: PageNavigatorProps) {
         const previousPanel = activePanel;
         if (panelId === previousPanel) return;
 
-        navigationData.setActivePanel(panelId);
+        page.setActivePanel(panelId);
         setActivePanelLocal(panelId);
 
         // Search panel — no navigation needed, just expand
@@ -195,13 +196,13 @@ export function PageNavigator({ navigationData, pageId }: PageNavigatorProps) {
 
         // Explorer panel — reveal the current selection in tree, but don't auto-navigate
         if (panelId === "explorer") {
-            const sel = navigationData.selectionState.get().selectedHref;
+            const sel = page.selectionState.get().selectedHref;
             if (sel) {
                 treeProviderRef.current?.revealItem(sel);
             }
             return;
         }
-    }, [navigationData, pageId, activePanel]);
+    }, [page, pageId, activePanel]);
 
     // ── Render ───────────────────────────────────────────────────────
 
@@ -257,7 +258,7 @@ export function PageNavigator({ navigationData, pageId }: PageNavigatorProps) {
         </>
     );
 
-    const searchFolder = navigationData.searchState?.searchFolder || rootPath;
+    const searchFolder = page.searchState?.searchFolder || rootPath;
     const searchFolderName = path.basename(searchFolder);
     const searchTitle = (
         <span title={searchFolder} style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -310,13 +311,13 @@ export function PageNavigator({ navigationData, pageId }: PageNavigatorProps) {
                     >
                         <FileSearch
                             folder={rootPath}
-                            state={navigationData.searchState}
-                            onStateChange={navigationData.setSearchState}
+                            state={page.searchState}
+                            onStateChange={page.setSearchState}
                             onResultClick={handleSearchResultClick}
                         />
                     </CollapsiblePanel>
                 )}
-                {secondaryModels.map((model) => {
+                {secondaryEditors.map((model) => {
                     const editorId = model.state.get().secondaryEditor;
                     if (!editorId) return null;
                     const def = secondaryEditorRegistry.get(editorId);
@@ -333,7 +334,7 @@ export function PageNavigator({ navigationData, pageId }: PageNavigatorProps) {
                             title="Close"
                             onClick={(e: React.MouseEvent) => {
                                 e.stopPropagation();
-                                navigationData.removeSecondaryModel(model);
+                                page.removeSecondaryEditor(model);
                             }}
                         >
                             <CloseIcon width={14} height={14} />

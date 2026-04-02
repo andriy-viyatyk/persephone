@@ -33,7 +33,7 @@ export class KeyboardService {
                     e.preventDefault();
                     const activePage = pagesModel.activePage;
                     if (activePage) {
-                        activePage.close(undefined);
+                        activePage.close();
                     }
                 }
                 break;

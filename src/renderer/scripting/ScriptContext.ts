@@ -207,38 +207,48 @@ function initializeUiFacade(
     outputFlags: ScriptOutputFlags,
     isMcp = false,
 ): { facade: UiFacade; pageId: string } {
-    let logPage: EditorModel;
+    let logEditor: EditorModel;
+    let logPageId: string;
     let isExisting = false;
 
     if (isMcp) {
         const existing = pagesModel.findPage("mcp-ui-log");
-        if (existing) {
-            logPage = existing;
+        if (existing?.mainEditor) {
+            logEditor = existing.mainEditor;
+            logPageId = existing.id;
             isExisting = true;
         } else {
-            logPage = pagesModel.addEditorPage("log-view", "jsonl", "MCP Log");
+            const newPage = pagesModel.addEditorPage("log-view", "jsonl", "MCP Log");
+            logEditor = newPage.mainEditor!;
+            logPageId = newPage.id;
         }
     } else if (page) {
-        const grouped = pagesModel.getGroupedPage(page.id);
-        if (grouped && grouped.state.get().editor === "log-view") {
-            logPage = grouped;
+        const pageId = page.page?.id ?? page.id;
+        const grouped = pagesModel.getGroupedPage(pageId);
+        if (grouped?.mainEditor && grouped.mainEditor.state.get().editor === "log-view") {
+            logEditor = grouped.mainEditor;
+            logPageId = grouped.id;
             isExisting = true;
         } else {
-            logPage = pagesModel.addEditorPage("log-view", "jsonl", formatLogTitle());
-            pagesModel.groupTabs(page.id, logPage.id, false);
+            const newPage = pagesModel.addEditorPage("log-view", "jsonl", formatLogTitle());
+            logEditor = newPage.mainEditor!;
+            logPageId = newPage.id;
+            pagesModel.groupTabs(pageId, logPageId, false);
         }
     } else {
-        logPage = pagesModel.addEditorPage("log-view", "jsonl", formatLogTitle());
+        const newPage = pagesModel.addEditorPage("log-view", "jsonl", formatLogTitle());
+        logEditor = newPage.mainEditor!;
+        logPageId = newPage.id;
     }
 
-    if (!isTextFileModel(logPage)) {
+    if (!isTextFileModel(logEditor)) {
         throw new Error("Log view page is not a text file model. This is an internal error.");
     }
-    const vm = logPage.acquireViewModelSync("log-view") as LogViewModel;
+    const vm = logEditor.acquireViewModelSync("log-view") as LogViewModel;
     if (!vm) {
         throw new Error("Log view module not pre-loaded. This is an internal error.");
     }
-    releaseList.push(() => logPage.releaseViewModel("log-view"));
+    releaseList.push(() => logEditor.releaseViewModel("log-view"));
 
     outputFlags.groupedContentWritten = true;
 
@@ -253,7 +263,7 @@ function initializeUiFacade(
         vm.addEntry("log.info", `Script ${title} started`);
     }
 
-    return { facade: new UiFacade(vm), pageId: logPage.id };
+    return { facade: new UiFacade(vm), pageId: logPageId };
 }
 
 // =============================================================================

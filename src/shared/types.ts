@@ -21,29 +21,41 @@ export interface IEditorState {
     /** Serialized content pipe descriptor (provider + persistent transformers). */
     pipe?: { provider: { type: string; config: Record<string, unknown> }; transformers: { type: string; config: Record<string, unknown> }[]; encoding?: string },
     editor?: EditorView,
-    hasNavigator?: boolean,
-    pinned?: boolean,
     /** The link that opened this page — informational, not functional. Persisted across restarts. */
     sourceLink?: ISourceLink,
     /** Active secondary editor panel ID (e.g., "zip-tree", "link-category"). */
     secondaryEditor?: string,
 }
 
+/** Serialized page descriptor for persistence (new format since v3.0.1). */
+export interface PageDescriptor {
+    /** Stable page UUID. */
+    id: string;
+    /** Page-level pinned flag. */
+    pinned: boolean;
+    /** Aggregate modified (mainEditor OR secondaryEditors). */
+    modified: boolean;
+    /** Whether sidebar exists (for restore). */
+    hasSidebar: boolean;
+    /** Main editor state. */
+    editor: Partial<IEditorState>;
+}
+
 export interface WindowState {
-    pages: Partial<IEditorState>[];
+    pages: PageDescriptor[];
     groupings?: [string, string][];
     activePageId?: string;
 }
 
 export interface WindowPages {
-    pages: Partial<IEditorState>[];
+    pages: PageDescriptor[];
     windowIndex: number;
 }
 
 export interface PageDragData {
     sourceWindowIndex?: number;
     targetWindowIndex?: number;
-    page?: Partial<IEditorState>;
+    page?: PageDescriptor;
     dropPosition?: { x: number; y: number };
 }
 

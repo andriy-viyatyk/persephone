@@ -14,14 +14,17 @@ export class PageCollectionWrapper {
         private readonly releaseList: Array<() => void>,
     ) {}
 
-    private wrap(model: any): PageWrapper | undefined {
-        return model ? new PageWrapper(model, this.releaseList) : undefined;
+    private wrap(page: any): PageWrapper | undefined {
+        const editor = page?.mainEditor;
+        return editor ? new PageWrapper(editor, this.releaseList) : undefined;
     }
 
     // ── Queries ───────────────────────────────────────────────────────
 
     get all(): PageWrapper[] {
-        return this.pages.pages.map((p) => new PageWrapper(p, this.releaseList));
+        return this.pages.pages
+            .filter((p) => p.mainEditor)
+            .map((p) => new PageWrapper(p.mainEditor!, this.releaseList));
     }
 
     get activePage(): PageWrapper | undefined {
@@ -51,8 +54,8 @@ export class PageCollectionWrapper {
     // ── Lifecycle ─────────────────────────────────────────────────────
 
     async openFile(filePath: string): Promise<PageWrapper | undefined> {
-        const model = await this.pages.openFile(filePath);
-        return this.wrap(model);
+        const page = await this.pages.openFile(filePath);
+        return this.wrap(page);
     }
 
     closePage(pageId: string): Promise<boolean> {
@@ -76,8 +79,8 @@ export class PageCollectionWrapper {
     }
 
     addEmptyPage(): PageWrapper {
-        const model = this.pages.addEmptyPage();
-        return new PageWrapper(model, this.releaseList);
+        const page = this.pages.addEmptyPage();
+        return this.wrap(page)!;
     }
 
     addEditorPage(
@@ -85,13 +88,13 @@ export class PageCollectionWrapper {
         language: string,
         title: string,
     ): PageWrapper {
-        const model = this.pages.addEditorPage(editor, language, title);
-        return new PageWrapper(model, this.releaseList);
+        const page = this.pages.addEditorPage(editor, language, title);
+        return this.wrap(page)!;
     }
 
     async addDrawPage(dataUrl: string, title?: string): Promise<PageWrapper> {
-        const model = await this.pages.addDrawPage(dataUrl, title);
-        return new PageWrapper(model, this.releaseList);
+        const page = await this.pages.addDrawPage(dataUrl, title);
+        return this.wrap(page)!;
     }
 
     openDiff(params: {

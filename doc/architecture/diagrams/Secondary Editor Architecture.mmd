@@ -1,19 +1,18 @@
 graph TD
-    subgraph "Tab (Page)"
-        PM["EditorModel\n(active page)"]
+    subgraph "Tab"
+        PM["PageModel\n(stable container)"]
+        ME["mainEditor\n(EditorModel)"]
     end
 
-    subgraph "NavigationData (survives navigation)"
-        ND["NavigationData"]
+    subgraph "PageModel (owns sidebar)"
         TP["treeProvider\n(FileTreeProvider)"]
-        SM["secondaryModels[]"]
-        AP["activePanel\n('explorer' | 'search' | modelId)"]
-        OW["ownerModel"]
+        SM["secondaryEditors[]"]
+        AP["activePanel\n('explorer' | 'search' | editorId)"]
     end
 
-    subgraph "Secondary Models"
+    subgraph "Secondary Editors"
         ZM["ZipEditorModel\n(secondaryEditor: 'zip-tree')"]
-        OP["ownerPage"]
+        PG["page: PageModel"]
     end
 
     subgraph "PageNavigator (React)"
@@ -26,22 +25,22 @@ graph TD
         SER["SecondaryEditorRegistry\n'zip-tree' → ZipSecondaryEditor"]
     end
 
-    PM -->|".navigationData"| ND
-    ND -->|".ownerModel"| PM
-    ND --> TP
-    ND --> SM
-    ND --> AP
+    PM -->|".mainEditor"| ME
+    ME -->|".page"| PM
+    PM --> TP
+    PM --> SM
+    PM --> AP
     SM -->|"contains"| ZM
-    ZM -->|".ownerPage"| PM
-    OW -->|"= ownerModel ref"| PM
+    ZM -->|".page"| PM
+    PG -->|"= page ref"| PM
 
-    ND -.->|"renders"| EP
-    ND -.->|"renders"| SP
+    PM -.->|"renders"| EP
+    PM -.->|"renders"| SP
     SM -.->|"renders via registry"| SEC
     SEC -.->|"loadComponent()"| SER
 
     style PM fill:#4a9eff,color:#fff
-    style ND fill:#ff9800,color:#fff
+    style ME fill:#ff9800,color:#fff
     style ZM fill:#8e24aa,color:#fff
     style SER fill:#43a047,color:#fff
     style EP fill:#333,color:#fff

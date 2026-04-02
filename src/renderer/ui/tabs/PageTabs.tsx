@@ -202,20 +202,19 @@ export function PageTabs(props: object) {
                 ref={model.setScrollingDiv}
             >
                 {state.pages?.map((page) => {
-                    const pageState = page.state.get();
                     let pinnedLeft: number | undefined;
-                    if (pageState.pinned) {
+                    if (page.pinned) {
                         pinnedLeft = 0;
                         for (const p of state.pages) {
                             if (p === page) break;
-                            const ps = p.state.get();
-                            if (ps.pinned) {
-                                const isEnc = isTextFileModel(p) && (p.encrypted || p.decrypted);
+                            if (p.pinned) {
+                                const editor = p.mainEditor;
+                                const isEnc = editor && isTextFileModel(editor) && (editor.encrypted || editor.decrypted);
                                 pinnedLeft += (isEnc ? pinnedTabEncryptedWidth : pinnedTabWidth) + 2; // 2 = column gap
                             }
                         }
                     }
-                    return <PageTab key={pageState.id} model={page} pinnedLeft={pinnedLeft} />;
+                    return <PageTab key={page.id} model={page} pinnedLeft={pinnedLeft} />;
                 })}
             </div>
             {tabsState.showScrollButtons && (

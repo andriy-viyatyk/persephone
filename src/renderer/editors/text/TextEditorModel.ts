@@ -227,9 +227,6 @@ export class TextFileModel extends EditorModel<TextFileEditorModelState, void> i
             detectedContentEditor,
             ...pageData
         } = this.state.get();
-        if (this.navigationData) {
-            pageData.hasNavigator = true;
-        }
         if (this.pipe) {
             pageData.pipe = this.pipe.toDescriptor();
         }
@@ -237,7 +234,6 @@ export class TextFileModel extends EditorModel<TextFileEditorModelState, void> i
     }
 
     applyRestoreData = (data: Partial<TextFileEditorModelState>): void => {
-        this.needsNavigatorRestore = !!(data.hasNavigator || (data as any).hasNavPanel); // eslint-disable-line @typescript-eslint/no-explicit-any
         // Reconstruct pipe from descriptor if present
         if (data.pipe) {
             try {
@@ -258,7 +254,6 @@ export class TextFileModel extends EditorModel<TextFileEditorModelState, void> i
             s.compareMode = data.compareMode || s.compareMode;
             s.temp =
                 !s.filePath && (data.temp !== undefined ? data.temp : s.temp);
-            s.pinned = data.pinned ?? s.pinned;
         });
     };
 

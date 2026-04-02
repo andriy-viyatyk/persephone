@@ -47,7 +47,7 @@ export class PageWrapper {
     // ── IPageInfo readonly properties ─────────────────────────────────
 
     get id() {
-        return this.model.id;
+        return this.model.page?.id ?? this.model.id;
     }
 
     get type() {
@@ -63,7 +63,7 @@ export class PageWrapper {
     }
 
     get pinned() {
-        return this.model.pinned ?? false;
+        return this.model.page?.pinned ?? false;
     }
 
     get filePath() {
@@ -110,11 +110,11 @@ export class PageWrapper {
     }
 
     get grouped(): PageWrapper {
-        let grouped = pagesModel.getGroupedPage(this.model.id);
-        if (!grouped) {
-            grouped = pagesModel.requireGroupedText(this.model.id);
-        }
-        return new GroupedPageWrapper(grouped, this.releaseList, this.outputFlags);
+        const pageId = this.model.page?.id ?? this.model.id;
+        const groupedPage = pagesModel.getGroupedPage(pageId);
+        const editor = groupedPage?.mainEditor
+            ?? pagesModel.requireGroupedText(pageId);
+        return new GroupedPageWrapper(editor, this.releaseList, this.outputFlags);
     }
 
     // ── Editor facades ────────────────────────────────────────────────

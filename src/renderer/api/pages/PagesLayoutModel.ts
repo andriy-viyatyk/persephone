@@ -9,8 +9,8 @@ export class PagesLayoutModel {
 
     moveTab = (fromId: string, toId: string) => {
         const { pages } = this.model.state.get();
-        const fromIndex = pages.findIndex((p) => p.state.get().id === fromId);
-        const toIndex = pages.findIndex((p) => p.state.get().id === toId);
+        const fromIndex = pages.findIndex((p) => p.id === fromId);
+        const toIndex = pages.findIndex((p) => p.id === toId);
         this.moveTabByIndex(fromIndex, toIndex);
     };
 
@@ -18,8 +18,8 @@ export class PagesLayoutModel {
         if (fromIndex === -1 || toIndex === -1) return;
         const { pages } = this.model.state.get();
         // Enforce pinned/unpinned boundary — cannot drag across sections
-        const fromPinned = pages[fromIndex].state.get().pinned;
-        const toPinned = pages[toIndex].state.get().pinned;
+        const fromPinned = pages[fromIndex].pinned;
+        const toPinned = pages[toIndex].pinned;
         if (fromPinned !== toPinned) return;
         const newPages = [...pages];
         const [movedPage] = newPages.splice(fromIndex, 1);
@@ -37,14 +37,12 @@ export class PagesLayoutModel {
         const pageIndex = pages.findIndex((p) => p.id === pageId);
         if (pageIndex === -1) return;
         const page = pages[pageIndex];
-        if (page.state.get().pinned) return;
+        if (page.pinned) return;
 
         // Calculate target BEFORE changing state (insert after existing pinned tabs)
-        const pinnedCount = pages.filter((p) => p.state.get().pinned).length;
+        const pinnedCount = pages.filter((p) => p.pinned).length;
 
-        page.state.update((s) => {
-            s.pinned = true;
-        });
+        page.pinned = true;
 
         if (pageIndex !== pinnedCount) {
             const newPages = [...pages];
@@ -55,7 +53,6 @@ export class PagesLayoutModel {
             });
         }
 
-        // Note: No need to call fixGrouping() - grouping is position-independent
         this.model.persistence.saveStateDebounced();
     };
 
@@ -64,16 +61,14 @@ export class PagesLayoutModel {
         const pageIndex = pages.findIndex((p) => p.id === pageId);
         if (pageIndex === -1) return;
         const page = pages[pageIndex];
-        if (!page.state.get().pinned) return;
+        if (!page.pinned) return;
 
         // Calculate target BEFORE changing state (insert after remaining pinned tabs)
         const remainingPinned = pages.filter(
-            (p) => p.state.get().pinned && p !== page
+            (p) => p.pinned && p !== page
         ).length;
 
-        page.state.update((s) => {
-            s.pinned = false;
-        });
+        page.pinned = false;
 
         if (pageIndex !== remainingPinned) {
             const newPages = [...pages];
@@ -137,8 +132,8 @@ export class PagesLayoutModel {
             return;
         }
 
-        const isPinned1 = state.pages[idx1].state.get().pinned;
-        const isPinned2 = state.pages[idx2].state.get().pinned;
+        const isPinned1 = state.pages[idx1].pinned;
+        const isPinned2 = state.pages[idx2].pinned;
 
         // Only enforce adjacency for unpinned-unpinned if explicitly requested
         if (enforceAdjacency && !isPinned1 && !isPinned2) {
@@ -201,16 +196,19 @@ export class PagesLayoutModel {
     };
 
     fixCompareMode = () => {
-        const textPages = this.model.state
-            .get()
-            .pages.filter((p) => isTextFileModel(p)) as unknown as TextFileModel[];
-        textPages.forEach((page) => {
-            if (
-                page.state.get().compareMode &&
-                !this.model.query.isGrouped(page.id)
-            ) {
-                page.setCompareMode(false);
+        // Access mainEditor for TextFileModel-specific compareMode
+        const pages = this.model.state.get().pages;
+        for (const page of pages) {
+            const editor = page.mainEditor;
+            if (editor && isTextFileModel(editor)) {
+                const textEditor = editor as unknown as TextFileModel;
+                if (
+                    textEditor.state.get().compareMode &&
+                    !this.model.query.isGrouped(page.id)
+                ) {
+                    textEditor.setCompareMode(false);
+                }
             }
-        });
+        }
     };
 }

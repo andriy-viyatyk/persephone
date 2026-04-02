@@ -4,6 +4,7 @@ import { TGlobalState } from "../../core/state/state";
 import { EditorModel } from "../../editors/base";
 import { IEditorState, EditorView } from "../../../shared/types";
 import { RawLinkEvent } from "../events/events";
+import { PageModel } from "./PageModel";
 
 import { PagesQueryModel } from "./PagesQueryModel";
 import { PagesNavigationModel } from "./PagesNavigationModel";
@@ -14,8 +15,8 @@ import { PagesLifecycleModel } from "./PagesLifecycleModel";
 // ── State ────────────────────────────────────────────────────────────
 
 const defaultOpenFilesState = {
-    pages: [] as EditorModel[],
-    ordered: [] as EditorModel[],
+    pages: [] as PageModel[],
+    ordered: [] as PageModel[],
     leftRight: new Map<string, string>(),
     rightLeft: new Map<string, string>(),
 };
@@ -33,8 +34,8 @@ export type OpenFilesState = typeof defaultOpenFilesState;
  * Public methods delegate to submodels for organized, testable code.
  */
 export class PagesModel extends TModel<OpenFilesState> {
-    onShow = new Subscription<EditorModel>();
-    onFocus = new Subscription<EditorModel>();
+    onShow = new Subscription<PageModel>();
+    onFocus = new Subscription<PageModel>();
     pageSubscriptions = new Map<string, () => void>();
 
     // ── Submodels (internal implementation) ──────────────────────────
@@ -56,12 +57,20 @@ export class PagesModel extends TModel<OpenFilesState> {
 
     // ── Internal methods (shared across submodels) ───────────────────
 
-    attachPage = (page: EditorModel) => {
+    attachPage = (page: PageModel) => {
         const pageId = page.id;
-        const unsubscribe = page.state.subscribe(() => {
+        // Subscribe to mainEditor state changes for persistence debounce
+        const editorUnsub = page.mainEditor?.state.subscribe(() => {
             this.persistence.saveStateDebounced();
         });
-        this.pageSubscriptions.set(pageId, unsubscribe);
+        // Subscribe to page-level state changes (pinned, version)
+        const pageUnsub = page.state.subscribe(() => {
+            this.persistence.saveStateDebounced();
+        });
+        this.pageSubscriptions.set(pageId, () => {
+            editorUnsub?.();
+            pageUnsub();
+        });
         page.onClose = () => {
             this.detachPage(page);
             this.removePage(page);
@@ -69,7 +78,23 @@ export class PagesModel extends TModel<OpenFilesState> {
         };
     };
 
-    detachPage = (page: EditorModel) => {
+    /** Re-subscribe to a page's mainEditor after navigation swap. */
+    resubscribeEditor = (page: PageModel) => {
+        const old = this.pageSubscriptions.get(page.id);
+        old?.();
+        const editorUnsub = page.mainEditor?.state.subscribe(() => {
+            this.persistence.saveStateDebounced();
+        });
+        const pageUnsub = page.state.subscribe(() => {
+            this.persistence.saveStateDebounced();
+        });
+        this.pageSubscriptions.set(page.id, () => {
+            editorUnsub?.();
+            pageUnsub();
+        });
+    };
+
+    detachPage = (page: PageModel) => {
         const pageId = page.id;
         const unsubscribe = this.pageSubscriptions.get(pageId);
         if (unsubscribe) {
@@ -79,7 +104,7 @@ export class PagesModel extends TModel<OpenFilesState> {
         page.onClose = undefined;
     };
 
-    removePage = (page: EditorModel) => {
+    removePage = (page: PageModel) => {
         const isActivePage = this.query.activePage === page;
         this.state.update((s) => {
             s.pages = s.pages.filter((p) => p !== page);
@@ -109,15 +134,17 @@ export class PagesModel extends TModel<OpenFilesState> {
         const pages = this.state.get().pages;
         if (pages.length === 2) {
             const firstPage = pages[0];
-            const firstPageState = firstPage.state.get();
+            const editor = firstPage.mainEditor;
+            if (!editor) return;
+            const editorState = editor.state.get();
             if (
-                !firstPageState.pinned &&
-                !firstPageState.modified &&
-                !(firstPageState as any).content &&
-                !firstPageState.filePath &&
-                firstPageState.type === "textFile"
+                !firstPage.pinned &&
+                !editorState.modified &&
+                !(editorState as any).content && // eslint-disable-line @typescript-eslint/no-explicit-any
+                !editorState.filePath &&
+                editorState.type === "textFile"
             ) {
-                firstPage.close(undefined);
+                firstPage.close();
             }
         }
     };
@@ -148,10 +175,10 @@ export class PagesModel extends TModel<OpenFilesState> {
     showPage = (pageId?: string) => this.navigation.showPage(pageId);
     showNext = () => this.navigation.showNext();
     showPrevious = () => this.navigation.showPrevious();
-    focusPage = (page: EditorModel) => this.navigation.focusPage(page);
+    focusPage = (page: PageModel) => this.navigation.focusPage(page);
 
     // Lifecycle delegates
-    addPage = (page: EditorModel) => this.lifecycle.addPage(page);
+    addPage = (editor: EditorModel, existingPage?: PageModel) => this.lifecycle.addPage(editor, existingPage);
     addEmptyPage = () => this.lifecycle.addEmptyPage();
     addEmptyPageWithNavPanel = (folderPath: string) =>
         this.lifecycle.addEmptyPageWithNavPanel(folderPath);
@@ -167,7 +194,7 @@ export class PagesModel extends TModel<OpenFilesState> {
         const { app } = await import("../app");
         await app.events.openRawLink.sendAsync(new RawLinkEvent(filePath));
         // Return the page if it was opened (for backward compatibility)
-        return this.state.get().pages.find((p) => p.state.get().filePath === filePath);
+        return this.state.get().pages.find((p) => p.mainEditor?.filePath === filePath);
     };
     openFileAsArchive = (filePath: string) =>
         this.lifecycle.openFileAsArchive(filePath);
@@ -248,4 +275,3 @@ export class PagesModel extends TModel<OpenFilesState> {
     onAppQuit = () => this.persistence.onAppQuit();
     init = () => this.persistence.init();
 }
-

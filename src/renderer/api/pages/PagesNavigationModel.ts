@@ -1,5 +1,5 @@
 import type { PagesModel } from "./PagesModel";
-import { EditorModel } from "../../editors/base";
+import type { PageModel } from "./PageModel";
 
 /**
  * PagesNavigationModel — Manage which page is visible/focused.
@@ -10,7 +10,7 @@ export class PagesNavigationModel {
     showPage = (pageId?: string) => {
         if (!pageId) return;
         const { ordered } = this.model.state.get();
-        const page = ordered.find((p) => p.state.get().id === pageId);
+        const page = ordered.find((p) => p.id === pageId);
         if (page && page !== ordered[ordered.length - 1]) {
             this.model.state.update((s) => {
                 s.ordered = [...s.ordered.filter((p) => p !== page), page];
@@ -29,7 +29,7 @@ export class PagesNavigationModel {
         if (nextIndex >= pages.length) {
             nextIndex = 0;
         }
-        this.showPage(pages[nextIndex].state.get().id);
+        this.showPage(pages[nextIndex].id);
     };
 
     showPrevious = () => {
@@ -40,10 +40,10 @@ export class PagesNavigationModel {
         if (prevIndex < 0) {
             prevIndex = pages.length - 1;
         }
-        this.showPage(pages[prevIndex].state.get().id);
+        this.showPage(pages[prevIndex].id);
     };
 
-    focusPage = (page: EditorModel) => {
+    focusPage = (page: PageModel) => {
         this.model.onFocus.send(page);
     };
 }

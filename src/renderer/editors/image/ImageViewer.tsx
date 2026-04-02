@@ -15,7 +15,7 @@ import { pagesModel } from "../../api/pages";
 
 import { BaseImageView } from "./BaseImageView";
 import type { BaseImageViewRef } from "./BaseImageView";
-import { fpBasename, fpDirname, fpExtname } from "../../core/utils/file-path";
+import { fpBasename, fpExtname } from "../../core/utils/file-path";
 import { buildExcalidrawJsonWithImage, getImageDimensions, extToMime } from "../draw/drawExport";
 import { ContentPipe } from "../../content/ContentPipe";
 import { FileProvider } from "../../content/providers/FileProvider";
@@ -228,14 +228,13 @@ function ImageViewer({ model }: ImageViewerProps) {
     return (
         <>
             <PageToolbar borderBottom>
-                {(model.navigationData?.canOpenNavigator(model.pipe, filePath) || filePath) && (
+                {(model.page?.canOpenNavigator(model.pipe, filePath) || filePath) && (
                     <Button
                         type="icon"
                         size="small"
                         title="File Explorer"
                         onClick={() => {
-                            model.ensureNavigationData(fpDirname(filePath || ""));
-                            model.navigationData!.toggleNavigator(model.pipe, filePath);
+                            model.page?.toggleNavigator(model.pipe, filePath);
                         }}
                     >
                         <NavPanelIcon />

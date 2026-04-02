@@ -12,7 +12,6 @@ import { pagesModel } from "../../api/pages";
 import { isScriptLanguage } from "../../scripting/transpile";
 import type { TOneState } from "../../core/state/state";
 
-import { fpDirname } from "../../core/utils/file-path";
 
 /** Always calls useSyncExternalStore — handles null state gracefully. */
 function useOptionalModelState<T, R>(
@@ -75,7 +74,7 @@ export function TextToolbar({ model, setEditorToolbarRefFirst, setEditorToolbarR
     }, [language, fileName, detectedContentEditor]);
 
 
-    if (model.navigationData?.canOpenNavigator(model.pipe, filePath) || filePath) {
+    if (model.page?.canOpenNavigator(model.pipe, filePath) || filePath) {
         actions.push(
             <Button
                 key="nav-panel"
@@ -83,8 +82,7 @@ export function TextToolbar({ model, setEditorToolbarRefFirst, setEditorToolbarR
                 size="small"
                 title="File Explorer"
                 onClick={() => {
-                    model.ensureNavigationData(fpDirname(filePath || ""));
-                    model.navigationData!.toggleNavigator(model.pipe, filePath);
+                    model.page?.toggleNavigator(model.pipe, filePath);
                 }}
             >
                 <NavPanelIcon />
@@ -93,8 +91,9 @@ export function TextToolbar({ model, setEditorToolbarRefFirst, setEditorToolbarR
     }
 
     if (isTextFileModel(model)) {
-        const leftGrouped = pagesModel.getLeftGroupedPage(model.id);
-        if (leftGrouped && isTextFileModel(leftGrouped)) {
+        const leftGroupedPage = pagesModel.getLeftGroupedPage(model.id);
+        const leftGroupedEditor = leftGroupedPage?.mainEditor;
+        if (leftGroupedEditor && isTextFileModel(leftGroupedEditor)) {
             actions.push(
                 <Button
                     key="compare-with-left"
@@ -103,7 +102,7 @@ export function TextToolbar({ model, setEditorToolbarRefFirst, setEditorToolbarR
                     title="Compare with Left Page"
                     onClick={() => {
                         model.setCompareMode(true);
-                        leftGrouped.setCompareMode(true);
+                        leftGroupedEditor.setCompareMode(true);
                     }}
                 >
                     <CompareIcon />

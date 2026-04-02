@@ -9,7 +9,7 @@ import { Button } from "../../components/basic/Button";
 import { FlexSpace } from "../../components/layout/Elements";
 import { NavPanelIcon } from "../../theme/icons";
 
-import { fpBasename, fpDirname } from "../../core/utils/file-path";
+import { fpBasename } from "../../core/utils/file-path";
 import { fs as appFs } from "../../api/fs";
 import { ContentPipe } from "../../content/ContentPipe";
 import { FileProvider } from "../../content/providers/FileProvider";
@@ -124,14 +124,13 @@ function PdfViewer({ model }: PdfViewerProps) {
     return (
         <>
             <PageToolbar borderBottom>
-                {(model.navigationData?.canOpenNavigator(model.pipe, filePath) || filePath) && (
+                {(model.page?.canOpenNavigator(model.pipe, filePath) || filePath) && (
                     <Button
                         type="icon"
                         size="small"
                         title="File Explorer"
                         onClick={() => {
-                            model.ensureNavigationData(fpDirname(filePath || ""));
-                            model.navigationData!.toggleNavigator(model.pipe, filePath);
+                            model.page?.toggleNavigator(model.pipe, filePath);
                         }}
                     >
                         <NavPanelIcon />

@@ -39,24 +39,40 @@ interface PageSidebarSavedState {
     fileExplorerState?: { expandedPaths?: string[]; selectedFilePath?: string };
 }
 
+/** Reactive page-level state — UI subscribes to this for re-render on page changes. */
+export interface IPageState {
+    /** Page-level pinned flag. */
+    pinned: boolean;
+    /** Whether the sidebar (PageNavigatorModel) exists. */
+    hasSidebar: boolean;
+    /** Version counter — bumped on mainEditor swap to trigger UI re-render. */
+    version: number;
+}
+
+const defaultPageState: IPageState = {
+    pinned: false,
+    hasSidebar: false,
+    version: 0,
+};
+
 /**
  * PageModel — one per tab. Stable identity that survives navigation.
  *
  * Owns the browsing context (sidebar, tree, search, secondary editors)
  * and contains a mainEditor (EditorModel) as its content.
- *
- * Created as part of EPIC-017 Phase 2. Currently standalone — not yet
- * wired into PagesModel or the rendering pipeline.
  */
 export class PageModel {
     /** Stable page UUID — tab identity, React key, cache key. Never changes. */
     readonly id: string;
 
-    /** Tab pinned state. */
-    pinned = false;
+    /** Reactive page-level state. UI uses `page.state.use()` for re-render. */
+    readonly state = new TOneState<IPageState>({ ...defaultPageState });
 
     /** The primary editor (content). Null = empty page with Explorer only. */
-    mainEditor: EditorModel | null = null;
+    private _mainEditor: EditorModel | null = null;
+
+    /** Close callback — set by PagesModel.attachPage(). */
+    onClose?: () => void;
 
     // ── Sidebar state (absorbed from NavigationData) ─────────────────
 
@@ -105,22 +121,59 @@ export class PageModel {
         });
     }
 
+    // ── Main editor ────────────────────────────────────────────────
+
+    get mainEditor(): EditorModel | null {
+        return this._mainEditor;
+    }
+
+    set mainEditor(editor: EditorModel | null) {
+        this._mainEditor = editor;
+        this.state.update((s) => { s.version++; });
+    }
+
+    // ── Pinned (reactive) ────────────────────────────────────────────
+
+    get pinned(): boolean {
+        return this.state.get().pinned;
+    }
+
+    set pinned(value: boolean) {
+        this.state.update((s) => { s.pinned = value; });
+    }
+
     // ── Derived properties ───────────────────────────────────────────
 
     /** Display title — delegates to mainEditor, or "Empty" for empty pages. */
     get title(): string {
-        return this.mainEditor?.title ?? "Empty";
+        return this._mainEditor?.title ?? "Empty";
     }
 
     /** Aggregate modified flag: true if mainEditor OR any secondary editor is modified. */
     get modified(): boolean {
-        if (this.mainEditor?.modified) return true;
+        if (this._mainEditor?.modified) return true;
         return this.secondaryEditors.some((m) => m.modified);
     }
 
     /** Whether this page has an active sidebar (navigator panel created). */
     get hasSidebar(): boolean {
         return this.pageNavigatorModel !== null;
+    }
+
+    // ── Close ────────────────────────────────────────────────────────
+
+    /** Close this page (tab). Checks for unsaved changes in main + secondary editors. */
+    async close(): Promise<boolean> {
+        if (this._mainEditor) {
+            // Check secondary editors first
+            const secondaryReleased = await this.confirmSecondaryRelease();
+            if (!secondaryReleased) return false;
+            // Then check main editor (may prompt save dialog)
+            const released = await this._mainEditor.confirmRelease();
+            if (!released) return false;
+        }
+        this.onClose?.();
+        return true;
     }
 
     // ── Selection ────────────────────────────────────────────────────
@@ -199,6 +252,8 @@ export class PageModel {
                     this._saveStateDebounced();
                 }
             });
+            // Update reactive state so UI knows sidebar exists
+            this.state.update((s) => { s.hasSidebar = true; });
         }
         return this.pageNavigatorModel;
     }

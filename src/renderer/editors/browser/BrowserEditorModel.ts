@@ -517,7 +517,7 @@ export class BrowserEditorModel extends EditorModel<BrowserEditorState, void> {
     /** Handle global keyboard shortcuts when this browser page is active. */
     private handleGlobalKeyDown = (e: KeyboardEvent) => {
         if (e.defaultPrevented) return;
-        if (pagesModel.activePage !== this) return;
+        if (pagesModel.activePage !== this.page) return;
 
         const keyLower = e.key.toLowerCase();
 

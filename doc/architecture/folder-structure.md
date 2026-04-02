@@ -204,8 +204,7 @@ persephone/
 │   │   │   └── types.ts
 │   │   └── index.ts
 │   └── navigation/         # Navigation panel (in-editor)
-│       ├── NavigationData.ts       # NavigationData — stable browsing context, owns persistence
-│       ├── PageNavigator.tsx       # PageNavigator — TreeProviderView + FileTreeProvider + FileSearch (EPIC-015)
+│       ├── PageNavigator.tsx       # PageNavigator — TreeProviderView + FileTreeProvider + FileSearch
 │       └── PageNavigatorModel.ts   # Reactive state for PageNavigator (open, width, rootPath)
 │
 ├── editors/                # Editor Implementations

@@ -1,14 +1,12 @@
 import styled from "@emotion/styled";
-import { useCallback } from "react";
 import { Splitter } from "../../components/layout/Splitter";
-import { EditorModel } from "../../editors/base";
 import { pagesModel } from "../../api/pages";
 import { RenderEditor } from "./RenderEditor";
 import { CompareEditor } from "../../editors/compare";
 import { isTextFileModel } from "../../editors/text";
-import { NavigationData } from "../navigation/NavigationData";
 import { PageNavigator } from "../navigation/PageNavigator";
 import { AppPageManager } from "../../components/page-manager/AppPageManager";
+import type { PageModel } from "../../api/pages/PageModel";
 
 const PageEditorContainer = styled.div(
     {
@@ -21,22 +19,21 @@ const PageEditorContainer = styled.div(
     { label: "PageEditorContainer" },
 );
 
-function NavigationWrapper({ model }: { model: EditorModel }) {
-    const hasNavigator = model.state.use((s) => s.hasNavigator || (s as any).hasNavPanel); // eslint-disable-line @typescript-eslint/no-explicit-any
-    const navData = hasNavigator ? model.navigationData : null;
-    if (!navData) return null;
-    return <NavigationContent navData={navData} pageId={model.id} />;
+function NavigationWrapper({ page }: { page: PageModel }) {
+    const hasSidebar = page.state.use((s) => s.hasSidebar);
+    if (!hasSidebar) return null;
+    return <NavigationContent page={page} />;
 }
 
-function NavigationContent({ navData, pageId }: { navData: NavigationData; pageId: string }) {
-    const navModel = navData.ensurePageNavigatorModel();
+function NavigationContent({ page }: { page: PageModel }) {
+    const navModel = page.ensurePageNavigatorModel();
     const { open, width } = navModel.state.use();
     if (!open) return null;
 
     return (
         <>
             <div className="nav-panel-container" style={{ width, flexShrink: 0, overflow: "hidden", height: "100%" }}>
-                <PageNavigator navigationData={navData} pageId={pageId} />
+                <PageNavigator page={page} />
             </div>
             <Splitter
                 type="vertical"
@@ -52,10 +49,12 @@ function PageContent({ pageId }: { pageId: string }) {
     const page = pagesModel.query.findPage(pageId);
     if (!page) return null;
 
+    const editor = page.mainEditor;
+
     // Subscribe to compareMode if this is a text page
-    const compareMode = isTextFileModel(page)
+    const compareMode = editor && isTextFileModel(editor)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        ? page.state.use((s: any) => s.compareMode)
+        ? editor.state.use((s: any) => s.compareMode)
         : false;
 
     if (compareMode) {
@@ -64,8 +63,9 @@ function PageContent({ pageId }: { pageId: string }) {
         const rightId = leftRight.get(pageId);
         if (rightId) {
             const rightPage = pagesModel.query.findPage(rightId);
-            if (rightPage && isTextFileModel(page) && isTextFileModel(rightPage)) {
-                return <CompareEditor model={page} groupedModel={rightPage} />;
+            const rightEditor = rightPage?.mainEditor;
+            if (editor && rightEditor && isTextFileModel(editor) && isTextFileModel(rightEditor)) {
+                return <CompareEditor model={editor} groupedModel={rightEditor} />;
             }
         }
 
@@ -76,9 +76,9 @@ function PageContent({ pageId }: { pageId: string }) {
 
     return (
         <>
-            <NavigationWrapper model={page} />
+            <NavigationWrapper page={page} />
             <PageEditorContainer key={page.id}>
-                <RenderEditor model={page} />
+                {editor && <RenderEditor model={editor} />}
             </PageEditorContainer>
         </>
     );
@@ -92,16 +92,12 @@ export function Pages() {
     const compareModeIds = new Set<string>();
     for (const [leftId] of leftRight) {
         const page = pages.find((p) => p.id === leftId);
+        const editor = page?.mainEditor;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        if (page && isTextFileModel(page) && (page.state.get() as any).compareMode) {
+        if (editor && isTextFileModel(editor) && (editor.state.get() as any).compareMode) {
             compareModeIds.add(leftId);
         }
     }
-
-    const getStableKey = useCallback((pageId: string) => {
-        const page = pagesModel.query.findPage(pageId);
-        return page?.navigationData?.renderId;
-    }, [pages]);
 
     return (
         <AppPageManager
@@ -111,7 +107,6 @@ export function Pages() {
             grouping={leftRight}
             compareModeIds={compareModeIds}
             renderPage={(id) => <PageContent pageId={id} />}
-            getStableKey={getStableKey}
         />
     );
 }
