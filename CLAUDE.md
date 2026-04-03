@@ -134,6 +134,7 @@ When user says **"let's publish new build"** (or similar), follow [/doc/standard
 | Build complex components      | [/doc/standards/model-view-pattern.md](doc/standards/model-view-pattern.md) |
 | Understand state management   | [/doc/architecture/state-management.md](doc/architecture/state-management.md) |
 | Work with pages/tabs          | [/doc/architecture/pages-architecture.md](doc/architecture/pages-architecture.md) |
+| Add sidebar panels            | [/doc/architecture/secondary-editors.md](doc/architecture/secondary-editors.md) |
 | Work with scripting system    | [/doc/architecture/scripting.md](doc/architecture/scripting.md) |
 | Check coding style            | [/doc/standards/coding-style.md](doc/standards/coding-style.md) |
 | See current tasks             | [/doc/tasks/active.md](doc/tasks/active.md) |

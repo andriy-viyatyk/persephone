@@ -376,54 +376,16 @@ In `navigatePageTo()` ([`PagesLifecycleModel.ts`](../../src/renderer/api/pages/P
 
 ---
 
-## 10. Secondary Editor Models
+## 10. Secondary Editor System
 
-PageModel holds a `secondaryEditors[]` array of full EditorModel instances that act as sidebar editors. These survive page navigation (same as PageModel itself) and provide richer functionality than standalone tree providers.
+PageModel holds a `secondaryEditors[]` array of EditorModel instances that appear as sidebar panels in PageNavigator. This is a major subsystem with its own lifecycle — see the dedicated document for full details.
 
-### EditorModel integration
+**Full documentation:** [Secondary Editor System](secondary-editors.md)
 
-The `secondaryEditor` getter/setter on EditorModel manages membership automatically. It is `string[] | undefined` — one model can register multiple sidebar panels:
-- **Set** `model.secondaryEditor = ["zip-tree"]` → adds the model to `page.secondaryEditors[]`
-- **Clear** `model.secondaryEditor = undefined` → removes the model from `page.secondaryEditors[]` (without dispose)
-
-The `beforeNavigateAway(newEditor)` lifecycle hook is called during `navigatePageTo()`. The base implementation clears `secondaryEditor`; subclasses override to conditionally keep their secondary editor based on `newEditor.sourceLink`.
-
-### Editor ↔ Page references
-
-Every editor (main or secondary) holds a `page: PageModel | null` reference to its containing page. Two hooks on EditorModel:
-- **`setPage(page)`** — called when the editor is placed into or removed from a page
-- **`onMainEditorChanged(newMainEditor)`** — called on secondary editors when the page's main editor changes (navigation). Subclasses override to react.
-
-### Management API (on PageModel)
-
-- `notifyMainEditorChanged()` — propagates main editor change to secondary editors, cleans up models that cleared their `secondaryEditor`
-- `addSecondaryEditor(model)` — adds an editor model to the array, sets `page` reference
-- `removeSecondaryEditor(model)` — removes, disposes, and falls back `activePanel` if needed
-- `removeSecondaryEditorWithoutDispose(model)` — removes without disposing (used by `secondaryEditor` setter when clearing)
-- `findSecondaryEditor(editorId)` — lookup by editor ID
-- `confirmSecondaryRelease()` — iterates models with unsaved changes, prompts user via `confirmRelease()`
-- `restoreSecondaryEditors(ownerEditor)` — restores from `pendingSecondaryDescriptors`, deduplicates against the owner editor
-
-### Secondary Editor Registry
-
-**Source:** [`/src/renderer/ui/navigation/secondary-editor-registry.ts`](../../src/renderer/ui/navigation/secondary-editor-registry.ts)
-
-Maps panel ID strings to React sidebar components via dynamic imports. Each registration provides an `id`, `label`, and `loadComponent()` factory. PageNavigator uses this registry to resolve which sidebar component to render for each panel ID.
-
-### Rendering in PageNavigator
-
-PageNavigator receives a `PageModel` and renders all sidebar panels from `secondaryEditors[]` via the secondary editor registry. The Explorer ("explorer") and Search ("search") panels are implemented as ExplorerEditorModel's secondary panels — not hard-coded UI. The rendering loop nests: outer loop over models (`flatMap`), inner loop over each model's `secondaryEditor[]` panel IDs. Each panel uses `LazySecondaryEditor` ([`LazySecondaryEditor.tsx`](../../src/renderer/ui/navigation/LazySecondaryEditor.tsx)) to async-load the component from the registry. Panel keys are composite (`${model.id}-${panelId}`), and `CollapsiblePanel id` is the panel ID (matching `activePanel`).
-
-**Portal-based headers:** Secondary editor panels use a portal mechanism for their headers. `CollapsiblePanel` accepts an optional `headerRef` callback that exposes the header `<div>` element. PageNavigator passes this ref through `LazySecondaryEditor` to the loaded component via `SecondaryEditorProps.headerRef`. The component uses `createPortal()` to render its title, buttons, and icons into the header. This lets each secondary editor fully control its header content (e.g., ZipSecondaryEditor renders "Archive" + close button; ExplorerSecondaryEditor renders "Explorer" + navigation/search/collapse/refresh/close buttons).
-
-**Reactivity:** `secondaryEditors` is a plain array (EditorModel class instances don't belong in TOneState — Immer proxies would corrupt them). A `secondaryEditorsVersion` counter (`TOneState<{ version }>`) is bumped on every add/remove. PageNavigator subscribes via `.use()` and re-renders when the counter changes.
-
-**Auto-expand:** Secondary editors can request their panel be expanded by calling `this.page?.expandPanel(panelId)` on the containing PageModel. `expandPanel()` sets `activePanel` if the panel ID exists in any secondary editor's `secondaryEditor[]` array, and bumps `secondaryEditorsVersion` for UI re-render. This is used by ZipEditorModel to auto-expand the Archive panel when navigating to a file inside the archive, and by ExplorerEditorModel to expand the Search panel when search is opened.
-
-### Persistence
-
-Secondary editor state is saved as descriptors (`SecondaryModelDescriptor[]`) in the PageModel sidebar cache. Each descriptor contains the model's serialized `IEditorState` (from `getRestoreData()`). On restore, descriptors are stored as `pendingSecondaryDescriptors`. `restoreSecondaryEditors(ownerEditor)` processes them — if a descriptor's ID matches the owner editor, the existing instance is reused (no duplicate).
-
-### Dispose
-
-When a tab closes, `PageModel.dispose()` disposes all secondary editors. Before dispose, `confirmSecondaryRelease()` checks for unsaved changes — this is called by `PageModel.close()` before proceeding.
+**Quick summary:**
+- Secondary editors register by setting `model.secondaryEditor = ["panel-id"]` — the setter automatically manages `PageModel.secondaryEditors[]`
+- **Pattern A** (separate model): A dedicated EditorModel subclass, e.g., ExplorerEditorModel
+- **Pattern B** (mainEditor as secondary): The mainEditor registers itself in `secondaryEditors[]` simultaneously, e.g., ZipEditorModel when browsing an archive
+- Lifecycle hooks: `beforeNavigateAway()`, `onMainEditorChanged()`, `onPanelExpanded()`
+- Portal-based headers: panel components use `createPortal()` to render into CollapsiblePanel headers
+- Persistence: saved as `SecondaryModelDescriptor[]` in sidebar cache, with deduplication for Pattern B
