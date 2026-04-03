@@ -61,19 +61,20 @@ graph TD
 
 ## 2. Page/Editor Architecture
 
+**Diagram:** [`diagrams/6-page-architecture.mmd`](diagrams/6-page-architecture.mmd)
+
 Every tab is a `PageModel` — a stable container that owns the browsing context (sidebar, secondary editors) and contains an `EditorModel` as its main content.
 
 ```
 PageModel (one per tab — stable identity, never changes during navigation)
 ├── id: string                          // stable UUID — tab key, React key, cache key
-├── state: TOneState<IPageState>        // reactive: { pinned, hasSidebar, version }
+├── state: TOneState<IPageState>        // reactive: { pinned, hasSidebar, mainEditorId }
 ├── mainEditor: EditorModel | null      // the content (swapped during navigation)
-├── secondaryEditors: EditorModel[]     // sidebar editor panels (ZipEditorModel, etc.)
-├── treeProvider: ITreeProvider | null   // Explorer panel
-├── selectionState                      // shared Explorer selection
-├── searchState                         // search panel
+├── secondaryEditors: EditorModel[]     // sidebar panels (ExplorerEditorModel, ZipEditorModel, etc.)
 ├── pageNavigatorModel                  // sidebar open/close/width
 ├── activePanel: string                 // which panel is expanded
+├── findExplorer() / createExplorer()   // ExplorerEditorModel helpers
+├── toggleNavigator() / canOpenNavigator() // sidebar toggle (creates Explorer if needed)
 ├── close()                             // checks unsaved changes, calls onClose
 ├── dispose()                           // disposes all owned resources
 └── saveState() / restoreSidebar()      // persistence
@@ -207,7 +208,7 @@ graph TD
 | Navigation | [`PagesNavigationModel.ts`](../../src/renderer/api/pages/PagesNavigationModel.ts) | show, showNext, showPrev |
 | Layout | [`PagesLayoutModel.ts`](../../src/renderer/api/pages/PagesLayoutModel.ts) | moveTab, pin/unpin, group/ungroup |
 | Persistence | [`PagesPersistenceModel.ts`](../../src/renderer/api/pages/PagesPersistenceModel.ts) | save/restore window state to disk |
-| Query | [`PagesQueryModel.ts`](../../src/renderer/api/pages/PagesQueryModel.ts) | find, activePage, getGrouped, isLastPage |
+| Query | [`PagesQueryModel.ts`](../../src/renderer/api/pages/PagesQueryModel.ts) | find (by any ID: page, mainEditor, or secondary), activePage, getGrouped, isLastPage |
 
 `PagesModel` delegates all submodel methods as its own (46 public methods). Exported as a singleton:
 
@@ -250,6 +251,10 @@ During user actions:              throw, let caller handle
 
 - **Initialization errors** (restore, handleArgs): caught in `app.initPages()`, user gets a notification, an empty page is created as fallback.
 - **User action errors** (open file, navigate): the method throws, and the caller (keyboard service, renderer events service, or UI component) catches and shows a notification.
+
+### ID resolution
+
+`PagesQueryModel.findPage(id)` accepts any associated ID — page ID, mainEditor ID, or secondary editor ID. All IDs are unique UUIDs, so this is unambiguous. Methods like `getGroupedPage()`, `groupTabs()`, and `isGrouped()` resolve their inputs through `findPage()` first, so callers don't need to worry about which ID type they're passing. This eliminates a class of bugs where code passes editor IDs to methods that internally use page IDs for grouping map lookups.
 
 ---
 
@@ -337,7 +342,7 @@ Do NOT use for:
 
 ## 9. PageModel — Sidebar and Navigation Context
 
-PageModel is the tab container that owns the sidebar state: tree providers, panel selection, search state, and secondary editors. It survives navigation — when the user navigates to a new file, only `page.mainEditor` changes while the PageModel (and its sidebar) stays intact.
+PageModel is the tab container that owns the sidebar layout (open/close/width via `pageNavigatorModel`), panel selection (`activePanel`), and secondary editors. Explorer state (tree provider, selection, search) is owned by `ExplorerEditorModel` in `secondaryEditors[]`. PageModel survives navigation — when the user navigates to a new file, only `page.mainEditor` changes while the PageModel (and its sidebar) stays intact.
 
 **Source:** [`/src/renderer/api/pages/PageModel.ts`](../../src/renderer/api/pages/PageModel.ts)
 
@@ -358,8 +363,8 @@ In `navigatePageTo()` ([`PagesLifecycleModel.ts`](../../src/renderer/api/pages/P
 **Step 4** — `page.setMainEditor(newEditor)` is the high-level editor swap method on PageModel. It consolidates the lifecycle:
 - Calls `oldEditor.beforeNavigateAway(newEditor)` — old editor decides to keep/clear its `secondaryEditor`
 - Checks secondary survival: if old editor is in `secondaryEditors[]`, it's kept alive
-- Otherwise, disposes old editor (`await oldEditor.dispose()`)
-- Sets `newEditor.setPage(page)`, bumps version for UI re-render
+- Otherwise, defers old editor disposal (`setTimeout` to let React unmount the view first)
+- Sets `newEditor.setPage(page)`, updates `mainEditorId` for UI re-render
 - Calls `notifyMainEditorChanged()` — secondary editors react, cleanup runs
 - Registers new editor's secondary panel if it has one
 
@@ -367,7 +372,7 @@ In `navigatePageTo()` ([`PagesLifecycleModel.ts`](../../src/renderer/api/pages/P
 
 **`beforeNavigateAway(newEditor)`** lets the old editor inspect `newEditor.sourceLink` to decide whether to keep itself as a secondary editor. The base implementation clears `secondaryEditor`. Subclasses like ZipEditorModel override to check `newEditor.sourceLink?.metadata?.sourceId === this.id`.
 
-**`notifyMainEditorChanged()`** clears Explorer selection if the new editor wasn't opened from Explorer, then calls `onMainEditorChanged(newMainEditor)` on each secondary editor. Secondary editors may react: ZipEditorModel checks if the new main editor was opened from its archive — if not, it clears `secondaryEditor` and is cleaned up.
+**`notifyMainEditorChanged()`** calls `onMainEditorChanged(newMainEditor)` on each secondary editor. Each editor reacts independently: ExplorerEditorModel clears selection if the new editor wasn't opened from Explorer, ZipEditorModel checks if the new main editor was opened from its archive — if not, it clears `secondaryEditor` and is cleaned up.
 
 ---
 
@@ -377,8 +382,8 @@ PageModel holds a `secondaryEditors[]` array of full EditorModel instances that 
 
 ### EditorModel integration
 
-The `secondaryEditor` getter/setter on EditorModel manages membership automatically:
-- **Set** `model.secondaryEditor = "zip-tree"` → adds the model to `page.secondaryEditors[]`
+The `secondaryEditor` getter/setter on EditorModel manages membership automatically. It is `string[] | undefined` — one model can register multiple sidebar panels:
+- **Set** `model.secondaryEditor = ["zip-tree"]` → adds the model to `page.secondaryEditors[]`
 - **Clear** `model.secondaryEditor = undefined` → removes the model from `page.secondaryEditors[]` (without dispose)
 
 The `beforeNavigateAway(newEditor)` lifecycle hook is called during `navigatePageTo()`. The base implementation clears `secondaryEditor`; subclasses override to conditionally keep their secondary editor based on `newEditor.sourceLink`.
@@ -403,17 +408,17 @@ Every editor (main or secondary) holds a `page: PageModel | null` reference to i
 
 **Source:** [`/src/renderer/ui/navigation/secondary-editor-registry.ts`](../../src/renderer/ui/navigation/secondary-editor-registry.ts)
 
-Maps `secondaryEditor` string values to React sidebar components via dynamic imports. Each registration provides an `id`, `label`, and `loadComponent()` factory. PageNavigator uses this registry to resolve which sidebar component to render for each secondary model.
+Maps panel ID strings to React sidebar components via dynamic imports. Each registration provides an `id`, `label`, and `loadComponent()` factory. PageNavigator uses this registry to resolve which sidebar component to render for each panel ID.
 
 ### Rendering in PageNavigator
 
-PageNavigator receives a `PageModel` and renders a `CollapsiblePanel` for each model in `secondaryEditors[]`, after the Explorer and Search panels. Each panel uses `LazySecondaryEditor` ([`LazySecondaryEditor.tsx`](../../src/renderer/ui/navigation/LazySecondaryEditor.tsx)) to async-load the component from the registry.
+PageNavigator receives a `PageModel` and renders all sidebar panels from `secondaryEditors[]` via the secondary editor registry. The Explorer ("explorer") and Search ("search") panels are implemented as ExplorerEditorModel's secondary panels — not hard-coded UI. The rendering loop nests: outer loop over models (`flatMap`), inner loop over each model's `secondaryEditor[]` panel IDs. Each panel uses `LazySecondaryEditor` ([`LazySecondaryEditor.tsx`](../../src/renderer/ui/navigation/LazySecondaryEditor.tsx)) to async-load the component from the registry. Panel keys are composite (`${model.id}-${panelId}`), and `CollapsiblePanel id` is the panel ID (matching `activePanel`).
+
+**Portal-based headers:** Secondary editor panels use a portal mechanism for their headers. `CollapsiblePanel` accepts an optional `headerRef` callback that exposes the header `<div>` element. PageNavigator passes this ref through `LazySecondaryEditor` to the loaded component via `SecondaryEditorProps.headerRef`. The component uses `createPortal()` to render its title, buttons, and icons into the header. This lets each secondary editor fully control its header content (e.g., ZipSecondaryEditor renders "Archive" + close button; ExplorerSecondaryEditor renders "Explorer" + navigation/search/collapse/refresh/close buttons).
 
 **Reactivity:** `secondaryEditors` is a plain array (EditorModel class instances don't belong in TOneState — Immer proxies would corrupt them). A `secondaryEditorsVersion` counter (`TOneState<{ version }>`) is bumped on every add/remove. PageNavigator subscribes via `.use()` and re-renders when the counter changes.
 
-**Close button rule:** The active page's own secondary panel has no close button (controlled by `secondaryEditor` field). Only panels from survived models (via `beforeNavigateAway`) show a close button — clicking it calls `removeSecondaryEditor()`.
-
-**Auto-expand:** Secondary editors can request their panel be expanded by firing the `expandSecondaryPanel` event ([`events.ts`](../../src/renderer/core/state/events.ts)). PageModel subscribes and sets `activePanel` if the model is in `secondaryEditors[]`. This is used by ZipEditorModel to auto-expand the Archive panel when navigating to a file inside the archive.
+**Auto-expand:** Secondary editors can request their panel be expanded by calling `this.page?.expandPanel(panelId)` on the containing PageModel. `expandPanel()` sets `activePanel` if the panel ID exists in any secondary editor's `secondaryEditor[]` array, and bumps `secondaryEditorsVersion` for UI re-render. This is used by ZipEditorModel to auto-expand the Archive panel when navigating to a file inside the archive, and by ExplorerEditorModel to expand the Search panel when search is opened.
 
 ### Persistence
 

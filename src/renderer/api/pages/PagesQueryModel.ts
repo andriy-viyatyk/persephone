@@ -7,10 +7,17 @@ import type { PageModel } from "./PageModel";
 export class PagesQueryModel {
     constructor(private model: PagesModel) {}
 
-    findPage = (pageId?: string): PageModel | undefined => {
-        return pageId
-            ? this.model.state.get().pages.find((p) => p.id === pageId)
-            : undefined;
+    /**
+     * Find a page by any associated ID: page ID, mainEditor ID, or secondaryEditor ID.
+     * All IDs are unique, so this is safe and prevents page/editor ID confusion bugs.
+     */
+    findPage = (id?: string): PageModel | undefined => {
+        if (!id) return undefined;
+        return this.model.state.get().pages.find((p) =>
+            p.id === id
+            || p.mainEditor?.id === id
+            || p.secondaryEditors.some((se) => se.id === id)
+        );
     };
 
     get activePage(): PageModel | undefined {
@@ -24,32 +31,39 @@ export class PagesQueryModel {
         return this.getGroupedPage(activePage.id);
     }
 
-    getGroupedPage = (withPageId: string): PageModel | undefined => {
+    getGroupedPage = (withId: string): PageModel | undefined => {
         const state = this.model.state.get();
+        // Resolve to page ID if an editor ID was passed
+        const pageId = this.findPage(withId)?.id ?? withId;
         const groupedWithId =
-            state.leftRight.get(withPageId) || state.rightLeft.get(withPageId);
+            state.leftRight.get(pageId) || state.rightLeft.get(pageId);
         if (groupedWithId) {
             return this.findPage(groupedWithId);
         }
         return undefined;
     };
 
-    getLeftGroupedPage = (withPageId: string): PageModel | undefined => {
+    getLeftGroupedPage = (withId: string): PageModel | undefined => {
         const state = this.model.state.get();
-        const groupedWithId = state.rightLeft.get(withPageId);
+        // Resolve to page ID if an editor ID was passed
+        const pageId = this.findPage(withId)?.id ?? withId;
+        const groupedWithId = state.rightLeft.get(pageId);
         if (groupedWithId) {
             return this.findPage(groupedWithId);
         }
         return undefined;
     };
 
-    isLastPage = (pageId?: string): boolean => {
+    isLastPage = (id?: string): boolean => {
+        if (!id) return false;
         const { pages } = this.model.state.get();
+        const pageId = this.findPage(id)?.id ?? id;
         return !!(pages.length && pages[pages.length - 1].id === pageId);
     };
 
-    isGrouped = (pageId: string): boolean => {
+    isGrouped = (id: string): boolean => {
         const state = this.model.state.get();
+        const pageId = this.findPage(id)?.id ?? id;
         return state.leftRight.has(pageId) || state.rightLeft.has(pageId);
     };
 

@@ -10,8 +10,8 @@ import { ChevronDownIcon, ChevronRightIcon } from "../../theme/icons";
 export interface CollapsiblePanelProps {
     /** Unique panel identifier */
     id: string;
-    /** Panel header title (string or ReactNode for loading indicators etc.) */
-    title: ReactNode;
+    /** Panel header title. Omit when the child component portals its own header via headerRef. */
+    title?: ReactNode;
     /** Panel content */
     children: ReactNode;
     /** Optional icon before the title */
@@ -19,6 +19,11 @@ export interface CollapsiblePanelProps {
     /** Optional action buttons rendered at the right of the header.
      *  When provided, chevron icons are hidden (expanded state is self-evident from content). */
     buttons?: ReactNode;
+    /** Ref callback for the header container — child components can portal content here. */
+    headerRef?: (el: HTMLDivElement | null) => void;
+    /** Always render content even when collapsed (hidden via display:none).
+     *  Useful when children portal into the header and must stay mounted. */
+    alwaysRenderContent?: boolean;
 }
 
 /**
@@ -75,6 +80,7 @@ const PanelStackRoot = styled.div({
         alignItems: "center",
         gap: 4,
         padding: "2px 4px",
+        minHeight: 27,
         fontSize: 12,
         fontWeight: 500,
         color: color.text.light,
@@ -136,12 +142,12 @@ export function CollapsiblePanelStack({
     style,
 }: CollapsiblePanelStackProps) {
     // Extract panel definitions from children
-    const panels: { id: string; title: ReactNode; content: ReactNode; icon?: ReactNode; buttons?: ReactNode }[] = [];
+    const panels: { id: string; title?: ReactNode; content: ReactNode; icon?: ReactNode; buttons?: ReactNode; headerRef?: (el: HTMLDivElement | null) => void; alwaysRenderContent?: boolean }[] = [];
 
     Children.forEach(children, (child) => {
         if (isValidElement(child) && child.type === CollapsiblePanel) {
-            const { id, title, children: content, icon, buttons } = child.props as CollapsiblePanelProps;
-            panels.push({ id, title, content, icon, buttons });
+            const { id, title, children: content, icon, buttons, headerRef, alwaysRenderContent } = child.props as CollapsiblePanelProps;
+            panels.push({ id, title, content, icon, buttons, headerRef, alwaysRenderContent });
         }
     });
 
@@ -184,9 +190,10 @@ export function CollapsiblePanelStack({
                     >
                         <div
                             className="panel-header"
+                            ref={panel.headerRef}
                             onClick={() => handleToggle(panel.id)}
                         >
-                            {!panel.buttons && (isExpanded ? <ChevronDownIcon /> : <ChevronRightIcon />)}
+                            {!panel.headerRef && !panel.buttons && (isExpanded ? <ChevronDownIcon /> : <ChevronRightIcon />)}
                             {panel.icon}
                             {panel.title}
                             {panel.buttons && (
@@ -196,7 +203,11 @@ export function CollapsiblePanelStack({
                                 </>
                             )}
                         </div>
-                        {isExpanded && (
+                        {panel.alwaysRenderContent ? (
+                            <div className="panel-content" style={isExpanded ? undefined : { display: "none" }}>
+                                {panel.content}
+                            </div>
+                        ) : isExpanded && (
                             <div className="panel-content">
                                 {panel.content}
                             </div>

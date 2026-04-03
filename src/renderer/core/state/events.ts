@@ -54,7 +54,3 @@ export const browserUrlChanged = new Subscription<BrowserUrlEvent>();
 
 /** Fired when the renderer window is about to close. Subscribers should release resources. */
 export const windowClosing = new Subscription<void>();
-
-/** Fired by a secondary editor model to request its panel be expanded.
- *  NavigationData subscribes and sets activePanel if the model is in secondaryModels[]. */
-export const expandSecondaryPanel = new Subscription<string>();

@@ -1,6 +1,6 @@
 # EPIC-017: Page/Editor Architecture Refactor
 
-**Status:** Active
+**Status:** Completed
 **Created:** 2026-04-02
 **Depends on:** EPIC-016 Phase 1 (completed)
 
@@ -227,7 +227,7 @@ With page owning the context, navigation becomes an editor swap.
 
 | Task | Title | Status |
 |------|-------|--------|
-| — | (Tasks will be assigned US-IDs when work begins) | Planned |
+| [US-326](../tasks/US-326-epic017-post-refactor-fixes/README.md) | Post-refactor bug fixes | Done |
 
 ## Notes
 

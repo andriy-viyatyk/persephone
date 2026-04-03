@@ -87,6 +87,13 @@ export class GlobalEventService {
     };
 
     private handleUnhandledRejection = (e: PromiseRejectionEvent) => {
+        // Suppress Monaco Editor's internal Delayer "Canceled" rejections
+        // (fired during editor disposal — harmless, but noisy in console)
+        const reason = e.reason;
+        if (reason && (reason.message === "Canceled" || reason === "Canceled")) {
+            e.preventDefault();
+            return;
+        }
         if (scriptRunner.handlePromiseException) {
             ui.notify(`Unhandled promise rejection: ${e.reason}`, "error");
         }

@@ -1,15 +1,20 @@
 graph TB
-    RP["RenderEditor<br/><i>Switches on editor category</i>"]
+    PC["PageContent<br/><i>Subscribes to mainEditorId</i>"]
 
-    RP -->|"standalone"| AE["AsyncEditor<br/><i>Lazy-loads module</i>"]
+    PC -->|"compareMode"| CMP["CompareEditor"]
+    PC -->|"normal"| RE["RenderEditor<br/><i>Switches on editor category</i>"]
+
+    RE -->|"standalone"| AE["AsyncEditor<br/><i>Lazy-loads module</i>"]
     AE --> PDF["PdfViewer"]
     AE --> IMG["ImageViewer"]
     AE --> BR["BrowserEditorView"]
+    AE --> ZIP["ZipEditorView"]
+    AE --> CAT["CategoryEditor"]
+    AE --> MCP["McpInspectorEditor"]
     AE --> AB["AboutPage"]
     AE --> SET["SettingsPage"]
-    AE --> CMP["CompareEditor"]
 
-    RP -->|"content-view"| TPV["TextEditorView<br/><i>Shared shell</i>"]
+    RE -->|"content-view"| TPV["TextEditorView<br/><i>Shared shell</i>"]
 
     TPV --> TB["TextToolbar"]
     TPV --> ACT["ActiveEditor<br/><i>Renders current view</i>"]
@@ -26,8 +31,14 @@ graph TB
     ACT -->|"editor state"| SVG["SVG Preview"]
     ACT -->|"editor state"| HTML["HTML Preview"]
     ACT -->|"editor state"| MMD["Mermaid"]
+    ACT -->|"editor state"| GR["Graph"]
+    ACT -->|"editor state"| DR["Draw"]
+    ACT -->|"editor state"| RC["Rest Client"]
+    ACT -->|"editor state"| LV["Log View"]
 
-    style RP fill:#fff3e0
+    style PC fill:#e1f5fe
+    style CMP fill:#f3e5f5
+    style RE fill:#fff3e0
     style AE fill:#f3e5f5
     style TPV fill:#e8f5e9
     style TB fill:#c8e6c9
@@ -44,3 +55,7 @@ graph TB
     style SVG fill:#e8eaf6
     style HTML fill:#e8eaf6
     style MMD fill:#e8eaf6
+    style GR fill:#e8eaf6
+    style DR fill:#e8eaf6
+    style RC fill:#e8eaf6
+    style LV fill:#e8eaf6

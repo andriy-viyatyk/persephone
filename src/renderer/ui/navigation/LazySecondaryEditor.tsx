@@ -6,10 +6,11 @@ import color from "../../theme/color";
 interface LazySecondaryEditorProps {
     model: EditorModel;
     editorId: string;
+    headerRef: HTMLDivElement | null;
 }
 
 /** Loads a secondary editor component from the registry and renders it. */
-export function LazySecondaryEditor({ model, editorId }: LazySecondaryEditorProps) {
+export function LazySecondaryEditor({ model, editorId, headerRef }: LazySecondaryEditorProps) {
     const [Component, setComponent] = useState<ComponentType<SecondaryEditorProps> | null>(null);
     const [error, setError] = useState<string | null>(null);
 
@@ -30,5 +31,5 @@ export function LazySecondaryEditor({ model, editorId }: LazySecondaryEditorProp
 
     if (error) return <div style={{ padding: 8, color: color.text.light }}>{error}</div>;
     if (!Component) return null;
-    return <Component model={model} />;
+    return <Component model={model} headerRef={headerRef} />;
 }

@@ -335,6 +335,38 @@ For `.rest.json` files — an HTTP request collection editor:
 
 Create a new Rest Client page via the **+** menu → **Rest Client**.
 
+## Archive Editor
+
+For ZIP-based archives (`.zip`, `.docx`, `.xlsx`, `.pptx`, `.jar`, `.war`, `.epub`, `.odt`, `.ods`, `.odp`) — opens automatically when you open an archive file. Also supports Electron `.asar` archives.
+
+**How it works:**
+
+- **Archive panel** — Opens in the page sidebar showing the archive's file tree. Click the Archive panel header to expand it and browse entries as a folder tree.
+- **Inline entry viewing** — Click any file inside the archive to view it in the main editor area. Text-based files (XML, JSON, CSS, etc.) open in Monaco; images open in the Image Viewer; PDFs open in the PDF Viewer.
+- **Auto-expand/collapse** — The Archive panel expands automatically when navigating to files inside the archive and collapses when you navigate away to unrelated files.
+- **Read-only** — Archive contents cannot be edited directly. To read individual entries in scripts, use `io.ZipTransformer` with `io.FileProvider`.
+- **Open as Archive** — Right-click an archive file in the File Explorer and choose **Open as Archive** to browse it in a dedicated Archive tab.
+- **ASAR archives** — Electron `.asar` files open the same way. File operations are disabled inside `.asar` archives.
+
+## MCP Inspector
+
+A tool for connecting to and testing MCP (Model Context Protocol) servers. Open it from the **+** dropdown → **MCP Inspector** (if pinned), or from the **Tools & Editors** panel.
+
+**Features:**
+
+- **Connection panel** — Enter a server URL (HTTP transport) or a command with arguments (stdio transport). Give the connection a display name for easy identification.
+- **Connect / Disconnect** — Connect to any MCP server and see its capabilities instantly.
+- **Tools tab** — Lists all tools exposed by the server. Select a tool to see its input schema and run it with custom arguments. Results are shown as formatted JSON.
+- **Resources tab** — Lists resources provided by the server. Click to read and display resource content.
+- **Prompts tab** — Lists prompt templates. Select a prompt, fill in any arguments, and preview the resulting messages.
+- **Request history** — A collapsible history panel records all requests and responses with timing information, useful for debugging.
+- **Scripting API** — Scripts can interact with MCP Inspector pages via `const mcp = await page.asMcpInspector()`. See the [asMcpInspector() API reference](./api/page.md#asmcpinspectorpromiseimcpinspectoreditor) for details.
+
+Open an MCP Inspector page programmatically:
+```javascript
+await app.pages.showMcpInspectorPage({ url: "http://localhost:7865/mcp" });
+```
+
 ## Switching Editors
 
 Some files support multiple editors:
@@ -354,6 +386,8 @@ Some files support multiple editors:
 | `.excalidraw` | Text, Drawing |
 | `.fg.json` | Text, Graph |
 | `.rest.json` | Text, Rest Client |
+| `.zip`, `.docx`, `.xlsx`, etc. | Archive Editor |
+| `.asar` | Archive Editor (read-only) |
 | `.pdf` | PDF only |
 | Images | Image Viewer only |
 | Other | Text only |

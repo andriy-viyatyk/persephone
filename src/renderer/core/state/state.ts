@@ -1,4 +1,4 @@
-import React, { SetStateAction, useRef } from 'react';
+import React, { SetStateAction, useEffect, useRef, useState } from 'react';
 import { create } from 'zustand';
 import { useStoreWithEqualityFn } from "zustand/traditional";
 import { produce } from 'immer';
@@ -108,6 +108,36 @@ export class TGlobalState<T> extends TOneState<T> {
 }
 
 export class TComponentState<T> extends TOneState<T> {}
+
+/**
+ * Unconditional hook for subscribing to an optional state.
+ * Always calls useState + useEffect (stable hook count), returns defaultValue when state is null.
+ * Use this instead of `state?.use()` which is a conditional hook and violates React rules.
+ */
+export function useOptionalState<T, R>(
+    state: TOneState<T> | null | undefined,
+    selector: (s: T) => R,
+    defaultValue: R,
+): R {
+    const selectorRef = useRef(selector);
+    selectorRef.current = selector;
+    const [value, setValue] = useState<R>(() =>
+        state ? selector(state.get()) : defaultValue
+    );
+
+    useEffect(() => {
+        if (!state) {
+            setValue(defaultValue);
+            return;
+        }
+        setValue(selectorRef.current(state.get()));
+        return state.subscribe(() => {
+            setValue(selectorRef.current(state.get()));
+        });
+    }, [state]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    return state ? value : defaultValue;
+}
 
 export function useComponentState<T>(defaultState: T): IState<T> {
     const stateRef = useRef<IState<T>>(undefined);

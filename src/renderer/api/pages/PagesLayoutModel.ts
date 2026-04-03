@@ -121,11 +121,14 @@ export class PagesLayoutModel {
     };
 
     groupTabs = (
-        pageId1: string,
-        pageId2: string,
+        id1: string,
+        id2: string,
         enforceAdjacency = false
     ) => {
         const state = this.model.state.get();
+        // Resolve to page IDs if editor IDs were passed
+        const pageId1 = this.model.query.findPage(id1)?.id ?? id1;
+        const pageId2 = this.model.query.findPage(id2)?.id ?? id2;
         const idx1 = state.pages.findIndex((p) => p.id === pageId1);
         const idx2 = state.pages.findIndex((p) => p.id === pageId2);
         if (idx1 === -1 || idx2 === -1 || idx1 === idx2) {

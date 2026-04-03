@@ -8,6 +8,16 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ## Version 2.0.5 (Upcoming)
 
+### New Features
+
+- **Script API: new editor view values** — `page.editor` and `app.pages.addEditorPage()` now accept `"graph-view"`, `"draw-view"`, `"mcp-view"`, `"zip-view"`, and `"category-view"` as valid editor identifiers.
+- **Script API: `app.pages.showMcpInspectorPage()`** — Open an MCP Inspector page programmatically, optionally pre-filling the server URL. See [`app.pages` reference](./api/pages.md#showmcpinspectorpageoptions--promisevoid).
+- **Script API: `app.pages.all`** — New property that returns all open pages in the current window as an array. Useful for iterating over all tabs.
+- **Script API: `app.pages.closePage(pageId)`** — Close a page by ID from a script. Returns `true` if closed, or `false` if the user cancelled (e.g. declined to save unsaved changes). See [`app.pages` reference](./api/pages.md#closepagepageid--promiseboolean).
+- **Script API: `app.pages.addEditorPage()` content parameter** — The `addEditorPage(editor, language, title)` method now accepts an optional fourth argument `content` to set the initial page content.
+- **Script API: `app.pages.openFile()` return value** — Now returns `Promise<IPage | undefined>` instead of `Promise<void>`. The returned page can be used immediately after opening.
+- **Browser: Tor mode** — `app.pages.showBrowserPage()` now accepts a `tor: boolean` option to open in Tor mode (requires Tor to be configured in Settings).
+
 ### Breaking Changes
 
 - **`page.sourceLink` removed** — The `sourceLink` property added in v2.0.4 has been removed from the scripting API. It was part of an experimental pipeline feature that was retracted during architectural refactoring.

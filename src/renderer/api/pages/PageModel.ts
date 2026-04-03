@@ -1,15 +1,11 @@
 import { TOneState } from "../../core/state/state";
 import type { EditorModel } from "../../editors/base";
 import type { IEditorState } from "../../../shared/types";
-import type { ITreeProvider } from "../types/io.tree";
-import type { TreeProviderViewSavedState } from "../../components/tree-provider";
-import type { FileSearchState } from "../../components/file-search";
 import { PageNavigatorModel } from "../../ui/navigation/PageNavigatorModel";
 import type { IContentPipe } from "../types/io.pipe";
 import { fs } from "../fs";
 import { parseObject } from "../../core/utils/parse-utils";
 import { debounce } from "../../../shared/utils";
-import { expandSecondaryPanel } from "../../core/state/events";
 import { fpDirname } from "../../core/utils/file-path";
 
 export interface NavigationState {
@@ -27,12 +23,8 @@ export interface SecondaryModelDescriptor {
 interface PageSidebarSavedState {
     open: boolean;
     width: number;
-    rootPath: string;
-    treeState?: TreeProviderViewSavedState;
-    selectedHref?: string | null;
     activePanel?: string;
     secondaryModelDescriptors?: SecondaryModelDescriptor[];
-    searchState?: FileSearchState;
 }
 
 /** Reactive page-level state — UI subscribes to this for re-render on page changes. */
@@ -41,14 +33,14 @@ export interface IPageState {
     pinned: boolean;
     /** Whether the sidebar (PageNavigatorModel) exists. */
     hasSidebar: boolean;
-    /** Version counter — bumped on mainEditor swap to trigger UI re-render. */
-    version: number;
+    /** Current main editor ID — changes on navigation. UI subscribes to detect editor swaps. */
+    mainEditorId: string | null;
 }
 
 const defaultPageState: IPageState = {
     pinned: false,
     hasSidebar: false,
-    version: 0,
+    mainEditorId: null,
 };
 
 /**
@@ -70,21 +62,13 @@ export class PageModel {
     /** Close callback — set by PagesModel.attachPage(). */
     onClose?: () => void;
 
-    // ── Sidebar state (absorbed from NavigationData) ─────────────────
+    // ── Sidebar state ─────────────────────────────────────────────────
 
-    /** Shared tree provider (primary — FileTreeProvider). */
-    treeProvider: ITreeProvider | null = null;
     /** Sidebar model — pure reactive state (open/close/width). */
     pageNavigatorModel: PageNavigatorModel | null = null;
-    /** Primary selection state — reactive, subscribed by PageNavigator and secondary editors. */
-    readonly selectionState = new TOneState<NavigationState>({ selectedHref: null });
-    /** Primary tree expansion state — set by PageNavigator, persisted here. */
-    treeState: TreeProviderViewSavedState | undefined = undefined;
     /** Which panel is currently active/expanded.
-     *  Values: "explorer", "search", or a secondary editor's ID. */
+     *  Values: "explorer", "search", or a secondary panel ID. */
     activePanel: string = "explorer";
-    /** Persisted search state. When defined, the search panel is visible. */
-    searchState: FileSearchState | undefined = undefined;
 
     // ── Secondary editors ────────────────────────────────────────────
 
@@ -99,22 +83,12 @@ export class PageModel {
 
     // ── Internal ─────────────────────────────────────────────────────
 
-    private _rootPath: string;
     private _cacheName = "nav-panel";
     private _skipSave = false;
     private _unsubscribe: (() => void) | undefined = undefined;
-    private _expandSub: { unsubscribe: () => void } | undefined = undefined;
 
-    constructor(id?: string, rootPath?: string) {
+    constructor(id?: string) {
         this.id = id ?? crypto.randomUUID();
-        this._rootPath = rootPath ?? "";
-        // Subscribe to expand requests from secondary editor models
-        this._expandSub = expandSecondaryPanel.subscribe((modelId) => {
-            if (modelId && this.secondaryEditors.some((m) => m.id === modelId)) {
-                this.setActivePanel(modelId);
-                this.secondaryEditorsVersion.update((s) => { s.version++; });
-            }
-        });
     }
 
     // ── Main editor ────────────────────────────────────────────────
@@ -128,7 +102,7 @@ export class PageModel {
      *  Use setMainEditor() for navigation. */
     set mainEditor(editor: EditorModel | null) {
         this._mainEditor = editor;
-        this.state.update((s) => { s.version++; });
+        this.state.update((s) => { s.mainEditorId = editor?.id ?? null; });
     }
 
     /**
@@ -143,6 +117,7 @@ export class PageModel {
      */
     async setMainEditor(newEditor: EditorModel | null): Promise<void> {
         const oldEditor = this._mainEditor;
+        let editorToDispose: EditorModel | null = null;
 
         if (oldEditor && newEditor) {
             // Give old editor a chance to keep/clear its secondary editor status
@@ -151,18 +126,18 @@ export class PageModel {
             const survivesAsSecondary = this.secondaryEditors.includes(oldEditor);
             if (!survivesAsSecondary) {
                 oldEditor.setPage(null);
-                await oldEditor.dispose();
+                editorToDispose = oldEditor;
             }
         } else if (oldEditor) {
             oldEditor.setPage(null);
-            await oldEditor.dispose();
+            editorToDispose = oldEditor;
         }
 
         this._mainEditor = newEditor;
         if (newEditor) {
             newEditor.setPage(this);
         }
-        this.state.update((s) => { s.version++; });
+        this.state.update((s) => { s.mainEditorId = newEditor?.id ?? null; });
 
         // Notify secondary editors of the change
         this.notifyMainEditorChanged();
@@ -170,9 +145,16 @@ export class PageModel {
         // Register new editor's secondary panel if it has one
         if (newEditor) {
             const se = newEditor.state.get().secondaryEditor;
-            if (se) {
+            if (se?.length) {
                 this.addSecondaryEditor(newEditor);
             }
+        }
+
+        // Defer old editor disposal — let React unmount the old editor view first
+        // (avoids Monaco's internal Delayer "Canceled" rejection)
+        if (editorToDispose) {
+            const editor = editorToDispose;
+            setTimeout(() => { editor.dispose(); }, 0);
         }
     }
 
@@ -199,9 +181,9 @@ export class PageModel {
         return this.secondaryEditors.some((m) => m.modified);
     }
 
-    /** Whether this page has an active sidebar (navigator panel created). */
+    /** Whether this page has an active sidebar. */
     get hasSidebar(): boolean {
-        return this.pageNavigatorModel !== null;
+        return this.secondaryEditors.length > 0 || this.pageNavigatorModel !== null;
     }
 
     // ── Close ────────────────────────────────────────────────────────
@@ -220,68 +202,40 @@ export class PageModel {
         return true;
     }
 
-    // ── Selection ────────────────────────────────────────────────────
-
-    /** Update the selected item href. */
-    setSelectedHref(href: string | null): void {
-        this.selectionState.update((s) => { s.selectedHref = href; });
-        this._saveStateDebounced();
-    }
-
-    // ── Tree state ───────────────────────────────────────────────────
-
-    /** Update tree expansion state from PageNavigator. */
-    setTreeState(state: TreeProviderViewSavedState): void {
-        this.treeState = state;
-        this._saveStateDebounced();
-    }
-
-    /** Set the active panel. */
+    /** Set the active panel. Notifies the owning secondary editor via onPanelExpanded(). */
     setActivePanel(panel: string): void {
         this.activePanel = panel;
+        this.secondaryEditorsVersion.update((s) => { s.version++; });
         this._saveStateDebounced();
-    }
-
-    // ── Search ───────────────────────────────────────────────────────
-
-    /** Open the search panel, optionally scoped to a folder. */
-    openSearch(folder?: string): void {
-        this.activePanel = "search";
-        if (!this.searchState || (folder && this.searchState.searchFolder !== folder)) {
-            this.searchState = {
-                query: this.searchState?.query ?? "",
-                includePattern: this.searchState?.includePattern ?? "",
-                excludePattern: this.searchState?.excludePattern ?? "",
-                showFilters: this.searchState?.showFilters ?? false,
-                searchFolder: folder ?? "",
-                results: [],
-                totalMatches: 0,
-                totalFiles: 0,
-            };
+        // Notify the secondary editor that owns this panel
+        const owner = this.secondaryEditors.find((m) => m.secondaryEditor?.includes(panel));
+        if (owner) {
+            owner.onPanelExpanded(panel);
         }
-        this._saveStateDebounced();
     }
 
-    /** Close the search panel and clear state. */
-    closeSearch(): void {
-        this.searchState = undefined;
-        if (this.activePanel === "search") {
-            this.activePanel = "explorer";
-        }
-        this._saveStateDebounced();
+    /** Expand a secondary panel by its panel ID. Called by secondary editors directly. */
+    expandPanel(panelId: string): void {
+        if (!panelId) return;
+        if (!this.secondaryEditors.some((m) => m.secondaryEditor?.includes(panelId))) return;
+        this.setActivePanel(panelId);
     }
 
-    /** Update search state from FileSearch component. */
-    setSearchState = (state: FileSearchState): void => {
-        this.searchState = state;
-        this._saveStateDebounced();
-    };
+    // ── Explorer helpers ─────────────────────────────────────────────
 
-    // ── Root path ────────────────────────────────────────────────────
+    /** Find the ExplorerEditorModel in secondaryEditors, if any. */
+    findExplorer(): EditorModel | undefined {
+        return this.secondaryEditors.find(
+            (m) => m.state.get().type === "fileExplorer"
+        );
+    }
 
-    /** Root path (from PageNavigatorModel state or constructor). */
-    get rootPath(): string {
-        return this.pageNavigatorModel?.state.get().rootPath || this._rootPath;
+    /** Create and add an ExplorerEditorModel with the given rootPath. */
+    async createExplorer(rootPath: string): Promise<EditorModel> {
+        const { ExplorerEditorModel } = await import("../../editors/explorer");
+        const explorer = new ExplorerEditorModel(rootPath);
+        this.addSecondaryEditor(explorer);
+        return explorer;
     }
 
     // ── PageNavigatorModel ───────────────────────────────────────────
@@ -289,7 +243,7 @@ export class PageModel {
     /** Lazy-create PageNavigatorModel on first access. */
     ensurePageNavigatorModel(): PageNavigatorModel {
         if (!this.pageNavigatorModel) {
-            this.pageNavigatorModel = new PageNavigatorModel(this._rootPath);
+            this.pageNavigatorModel = new PageNavigatorModel();
             // Subscribe to model state changes for auto-save
             this._unsubscribe = this.pageNavigatorModel.state.subscribe(() => {
                 if (!this._skipSave) {
@@ -305,34 +259,33 @@ export class PageModel {
     // ── Navigator toggle ─────────────────────────────────────────────
 
     /**
-     * Toggle the PageNavigator panel. If no treeProvider exists yet,
-     * attempts to create a FileTreeProvider from the pipe's file provider.
+     * Toggle the PageNavigator panel. Creates ExplorerEditorModel if needed.
      */
-    toggleNavigator(pipe?: IContentPipe | null, filePath?: string): void {
-        if (this.treeProvider || this.pageNavigatorModel) {
-            if (filePath) {
-                this.pageNavigatorModel?.reinitIfEmpty(fpDirname(filePath));
-            }
+    async toggleNavigator(pipe?: IContentPipe | null, filePath?: string): Promise<void> {
+        const existing = this.findExplorer();
+        if (existing || this.pageNavigatorModel) {
+            // Explorer or sidebar exists — just toggle visibility
             this.ensurePageNavigatorModel().toggle();
             return;
         }
 
-        let rootPath = this._rootPath;
+        // Derive root path
+        let rootPath = "";
         if (pipe?.provider.type === "file" && pipe.provider.sourceUrl) {
             rootPath = fpDirname(pipe.provider.sourceUrl);
         } else if (filePath) {
             rootPath = fpDirname(filePath);
         }
-
         if (!rootPath) return;
 
-        this._rootPath = rootPath;
-        this.ensurePageNavigatorModel().toggle();
+        // Create Explorer + ensure sidebar is visible
+        await this.createExplorer(rootPath);
+        this.ensurePageNavigatorModel();
     }
 
     /** Whether the navigator can be opened. */
     canOpenNavigator(pipe?: IContentPipe | null, filePath?: string): boolean {
-        if (this.treeProvider) return true;
+        if (this.findExplorer()) return true;
         if (this.pageNavigatorModel) return true;
         if (pipe?.provider.type === "file") return true;
         if (filePath) return true;
@@ -355,7 +308,7 @@ export class PageModel {
         const idx = this.secondaryEditors.indexOf(model);
         if (idx < 0) return;
         this.secondaryEditors.splice(idx, 1);
-        if (this.activePanel === model.id) {
+        if (model.secondaryEditor?.includes(this.activePanel) || this.activePanel === model.id) {
             this.activePanel = "explorer";
         }
         model.setPage(null);
@@ -369,7 +322,7 @@ export class PageModel {
         const idx = this.secondaryEditors.indexOf(model);
         if (idx < 0) return;
         this.secondaryEditors.splice(idx, 1);
-        if (this.activePanel === model.id) {
+        if (model.secondaryEditor?.includes(this.activePanel) || this.activePanel === model.id) {
             this.activePanel = "explorer";
         }
         model.setPage(null);
@@ -398,22 +351,17 @@ export class PageModel {
      * Secondary editors may clear their secondaryEditor to opt out of survival.
      */
     notifyMainEditorChanged(): void {
-        // Clear Explorer selection if the new editor wasn't opened from Explorer
-        const sourceId = this.mainEditor?.state.get().sourceLink?.metadata?.sourceId;
-        if (sourceId !== "explorer") {
-            this.selectionState.update((s) => { s.selectedHref = null; });
-        }
         // Notify secondary editors — they may clear their secondaryEditor
         for (const m of [...this.secondaryEditors]) {
             m.onMainEditorChanged(this.mainEditor);
         }
         // Clean up models that cleared their secondaryEditor during notification
-        const removed = this.secondaryEditors.filter((m) => !m.secondaryEditor);
+        const removed = this.secondaryEditors.filter((m) => !m.secondaryEditor?.length);
         if (removed.length > 0) {
             for (const m of removed) {
                 const idx = this.secondaryEditors.indexOf(m);
                 if (idx >= 0) this.secondaryEditors.splice(idx, 1);
-                if (this.activePanel === m.id) {
+                if (m.secondaryEditor?.includes(this.activePanel) || this.activePanel === m.id) {
                     this.activePanel = "explorer";
                 }
                 m.dispose();
@@ -441,6 +389,7 @@ export class PageModel {
             // Deduplicate: if this descriptor matches the owner editor, reuse it
             if (desc.pageState.id === ownerEditor.id) {
                 this.secondaryEditors.push(ownerEditor);
+                ownerEditor.setPage(this);
                 continue;
             }
 
@@ -449,6 +398,7 @@ export class PageModel {
                 model.applyRestoreData(desc.pageState as any); // eslint-disable-line @typescript-eslint/no-explicit-any
                 await model.restore();
                 this.secondaryEditors.push(model);
+                model.setPage(this);
             } catch (err) {
                 console.warn("[PageModel] Failed to restore secondary editor:", err);
             }
@@ -456,8 +406,10 @@ export class PageModel {
 
         // Re-check the deferred activePanel now that models are restored
         if (this._pendingActivePanel) {
-            const modelExists = this.secondaryEditors.some((m) => m.id === this._pendingActivePanel);
-            if (modelExists) {
+            const panelExists = this.secondaryEditors.some(
+                (m) => m.secondaryEditor?.includes(this._pendingActivePanel!)
+            );
+            if (panelExists) {
                 this.activePanel = this._pendingActivePanel;
             }
             this._pendingActivePanel = undefined;
@@ -472,50 +424,54 @@ export class PageModel {
     async restoreSidebar(): Promise<void> {
         const data = await fs.getCacheFile(this.id, this._cacheName);
         const saved = parseObject(data) as PageSidebarSavedState | undefined;
-        if (saved) {
-            const rootPath = saved.rootPath || "";
+        if (!saved) return;
 
-            // Restore model state (skip save for this batch)
-            this._skipSave = true;
-            const navModel = this.ensurePageNavigatorModel();
-            navModel.setStateQuiet({
-                open: saved.open ?? true,
-                width: saved.width ?? 240,
-                rootPath,
-            });
-            this._skipSave = false;
+        // Restore sidebar layout
+        this._skipSave = true;
+        const navModel = this.ensurePageNavigatorModel();
+        navModel.setStateQuiet({
+            open: saved.open ?? true,
+            width: saved.width ?? 240,
+        });
+        this._skipSave = false;
 
-            // Restore PageModel state
-            this.treeState = saved.treeState;
-            this.selectionState.set({ selectedHref: saved.selectedHref ?? null });
-            this._rootPath = rootPath;
+        // Migrate old format: rootPath at top level → create ExplorerEditorModel descriptor
+        const oldRootPath = (saved as any).rootPath as string | undefined; // eslint-disable-line @typescript-eslint/no-explicit-any
+        if (oldRootPath && !saved.secondaryModelDescriptors?.some(
+            (d) => d.pageState.type === "fileExplorer"
+        )) {
+            const explorerDesc: SecondaryModelDescriptor = {
+                pageState: {
+                    id: crypto.randomUUID(),
+                    type: "fileExplorer",
+                    title: "Explorer",
+                    modified: false,
+                    rootPath: oldRootPath,
+                } as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+            };
+            saved.secondaryModelDescriptors = [
+                explorerDesc,
+                ...(saved.secondaryModelDescriptors ?? []),
+            ];
+        }
 
-            // Restore search state
-            this.searchState = saved.searchState;
+        // Restore secondary editor model descriptors (actual creation deferred)
+        if (saved.secondaryModelDescriptors?.length) {
+            this.pendingSecondaryDescriptors = saved.secondaryModelDescriptors;
+        }
 
-            // Restore secondary editor model descriptors (actual creation deferred)
-            if (saved.secondaryModelDescriptors?.length) {
-                this.pendingSecondaryDescriptors = saved.secondaryModelDescriptors;
-            }
-
-            // Restore activePanel: explorer/search are safe as-is.
-            // Secondary model panels defer until models are restored.
-            const restoredPanel = saved.activePanel ?? "explorer";
-            if (restoredPanel === "search" && !this.searchState) {
-                this.activePanel = "explorer"; // search state lost — fall back
-            } else if (restoredPanel !== "explorer" && restoredPanel !== "search") {
-                // Secondary model panel ID — defer until models are restored
-                this.activePanel = "explorer";
-                this._pendingActivePanel = restoredPanel;
-            } else {
-                this.activePanel = restoredPanel;
-            }
+        // Restore activePanel — defer non-builtin panels until models are restored
+        const restoredPanel = saved.activePanel ?? "explorer";
+        if (restoredPanel === "explorer" || restoredPanel === "search") {
+            this.activePanel = restoredPanel;
+        } else {
+            this.activePanel = "explorer";
+            this._pendingActivePanel = restoredPanel;
         }
     }
 
     /** Save sidebar state to cache. */
     private _saveState = async (): Promise<void> => {
-        // Flush secondary editor caches before saving their descriptors
         for (const model of this.secondaryEditors) {
             await model.saveState?.();
         }
@@ -523,14 +479,10 @@ export class PageModel {
         const saved: PageSidebarSavedState = {
             open: navState?.open ?? true,
             width: navState?.width ?? 240,
-            rootPath: navState?.rootPath ?? this._rootPath,
-            treeState: this.treeState,
-            selectedHref: this.selectionState.get().selectedHref,
             activePanel: this.activePanel,
             secondaryModelDescriptors: this.secondaryEditors.length > 0
                 ? this.secondaryEditors.map((m) => ({ pageState: m.getRestoreData() }))
                 : undefined,
-            searchState: this.searchState,
         };
         await fs.saveCacheFile(this.id, JSON.stringify(saved), this._cacheName);
     };
@@ -551,13 +503,9 @@ export class PageModel {
     // ── Cleanup ──────────────────────────────────────────────────────
 
     async dispose(): Promise<void> {
-        this._expandSub?.unsubscribe();
-        this._expandSub = undefined;
         this._unsubscribe?.();
         this._unsubscribe = undefined;
-        this.treeProvider?.dispose?.();
-        this.treeProvider = null;
-        // Dispose all secondary editors
+        // Dispose all secondary editors (includes ExplorerEditorModel)
         for (const model of this.secondaryEditors) {
             model.setPage(null);
             model.dispose();

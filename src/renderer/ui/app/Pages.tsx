@@ -7,6 +7,7 @@ import { isTextFileModel } from "../../editors/text";
 import { PageNavigator } from "../navigation/PageNavigator";
 import { AppPageManager } from "../../components/page-manager/AppPageManager";
 import type { PageModel } from "../../api/pages/PageModel";
+import { useOptionalState } from "../../core/state/state";
 
 const PageEditorContainer = styled.div(
     {
@@ -49,13 +50,14 @@ function PageContent({ pageId }: { pageId: string }) {
     const page = pagesModel.query.findPage(pageId);
     if (!page) return null;
 
+    // Subscribe to mainEditorId — changes on navigation, triggers re-render for editor swap
+    page.state.use((s) => s.mainEditorId);
     const editor = page.mainEditor;
 
-    // Subscribe to compareMode if this is a text page
-    const compareMode = editor && isTextFileModel(editor)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        ? editor.state.use((s: any) => s.compareMode)
-        : false;
+    // Subscribe to compareMode — unconditional hook, safe across editor type changes
+    const textEditor = editor && isTextFileModel(editor) ? editor : null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const compareMode = useOptionalState(textEditor?.state as any, (s: any) => s.compareMode, false);
 
     if (compareMode) {
         // Check if this page is the LEFT side of a group — render CompareEditor

@@ -39,6 +39,7 @@ import { Tooltip } from "../../components/basic/Tooltip";
 import { PageDragData } from "../../../shared/types";
 import { parseObject } from "../../core/utils/parse-utils";
 import { ui } from "../../api/ui";
+import { useOptionalState } from "../../core/state/state";
 
 export const minTabWidth = 80;
 const ICON_SLOT = 20; // padding(2) + icon(16) + padding(2)
@@ -521,24 +522,24 @@ export function PageTab(props: PageTabProps) {
     tabModel.isActive =
         pagesModel.activePage === page || pagesModel.groupedPage === page;
 
-    const pinned = page.state.use((s) => s.pinned);
+    const { pinned, mainEditorId: _mainEditorId } = page.state.use((s) => ({ pinned: s.pinned, mainEditorId: s.mainEditorId }));
 
+    const editorState = editor?.state ?? null;
     const { title, modified, language, filePath, deleted, temp, _anyTabAudible, _pageMuted } =
-        editor?.state.use((s) => ({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        useOptionalState(editorState as any, (s: any) => ({
             title: s.title,
             modified: s.modified,
             language: s.language,
             filePath: s.filePath,
-            deleted: (s as any).deleted ?? false,
-            password: (s as any).password,
-            encrypted: (s as any).encrypted ?? false,
-            temp: (s as any).temp ?? false,
-            // Trigger re-render when favicon changes (for browser tabs with dynamic icons)
-            _iconHint: (s as any).favicon ?? "",
-            // Browser audio state (for page-level mute toggle)
-            _anyTabAudible: (s as any)._anyTabAudible ?? false,
-            _pageMuted: (s as any).pageMuted ?? false,
-        })) ?? { title: "Empty", modified: false, language: "", filePath: "", deleted: false, temp: false, _anyTabAudible: false, _pageMuted: false };
+            deleted: s.deleted ?? false,
+            password: s.password,
+            encrypted: s.encrypted ?? false,
+            temp: s.temp ?? false,
+            _iconHint: s.favicon ?? "",
+            _anyTabAudible: s._anyTabAudible ?? false,
+            _pageMuted: s.pageMuted ?? false,
+        }), { title: "Empty", modified: false, language: "", filePath: "", deleted: false, temp: false, _anyTabAudible: false, _pageMuted: false });
 
     const id = page.id;
 

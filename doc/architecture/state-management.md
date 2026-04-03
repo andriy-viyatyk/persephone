@@ -61,6 +61,20 @@ state.update(s => {
 
 **Design Note:** Both `TGlobalState` and `TComponentState` extend `TOneState` with the same API. The distinction is organizational — `TGlobalState` clears on logout, `TComponentState` is scoped to a React component's lifetime via `useComponentModel`.
 
+### useOptionalState Hook
+
+`useOptionalState(state, selector, defaultValue)` — subscribes to a `TOneState` that may be null. Always calls `useState` + `useEffect` (stable hook count), returns `defaultValue` when state is null. Use this instead of `state?.use()` which is a conditional hook and violates React Rules of Hooks.
+
+```typescript
+// Bad — conditional hook, crashes when editor type changes:
+const compareMode = editor?.state.use((s) => s.compareMode);
+
+// Good — unconditional hook, safe for optional state:
+const compareMode = useOptionalState(editor?.state, (s) => s.compareMode, false);
+```
+
+This is especially important for components like `PageContent` and `PageTab` where `page.mainEditor` can change type or become null during navigation.
+
 ## Model Classes
 
 ### TModel\<T\>

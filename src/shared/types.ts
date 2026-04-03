@@ -1,4 +1,4 @@
-export type EditorType = "textFile" | "pdfFile" | "imageFile" | "aboutPage" | "settingsPage" | "browserPage" | "mcpInspectorPage" | "categoryPage" | "zipFile";
+export type EditorType = "textFile" | "pdfFile" | "imageFile" | "aboutPage" | "settingsPage" | "browserPage" | "mcpInspectorPage" | "categoryPage" | "zipFile" | "fileExplorer";
 export type EditorView = "monaco" | "grid-json" | "grid-csv" | "grid-jsonl" | "md-view" | "pdf-view" | "image-view" | "svg-view" | "about-view" | "notebook-view" | "mermaid-view" | "html-view" | "settings-view" | "todo-view" | "link-view" | "log-view" | "browser-view" | "graph-view" | "draw-view" | "mcp-view" | "rest-client" | "category-view" | "zip-view";
 
 /** Describes the link that opened a page — origin identity + metadata. */
@@ -23,8 +23,8 @@ export interface IEditorState {
     editor?: EditorView,
     /** The link that opened this page — informational, not functional. Persisted across restarts. */
     sourceLink?: ISourceLink,
-    /** Active secondary editor panel ID (e.g., "zip-tree", "link-category"). */
-    secondaryEditor?: string,
+    /** Active secondary editor panel IDs (e.g., ["zip-tree"]). Array supports multi-panel models. */
+    secondaryEditor?: string[],
 }
 
 /** Serialized page descriptor for persistence (new format since v3.0.1). */

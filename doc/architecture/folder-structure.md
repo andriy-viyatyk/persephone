@@ -205,7 +205,7 @@ persephone/
 │   │   └── index.ts
 │   └── navigation/         # Navigation panel (in-editor)
 │       ├── PageNavigator.tsx       # PageNavigator — TreeProviderView + FileTreeProvider + FileSearch
-│       └── PageNavigatorModel.ts   # Reactive state for PageNavigator (open, width, rootPath)
+│       └── PageNavigatorModel.ts   # Reactive state for PageNavigator (open, width)
 │
 ├── editors/                # Editor Implementations
 │   ├── base/               # Shared editor infrastructure
@@ -386,6 +386,16 @@ persephone/
 │   ├── category/           # Category/folder view (standalone)
 │   │   ├── CategoryEditor.tsx     # Wraps CategoryView, toolbar with navigator toggle
 │   │   └── CategoryEditorModel.ts   # Page model — decodes tree-category:// link
+│   ├── zip/                # Archive editor (secondary — sidebar panel)
+│   │   ├── ZipEditorModel.ts          # EditorModel — archive state, tree provider, navigation survival
+│   │   ├── ZipEditorView.tsx          # Main content view (zip-view)
+│   │   ├── ZipSecondaryEditor.tsx     # Secondary panel — tree view with portaled header
+│   │   └── index.ts
+│   ├── explorer/            # File explorer (secondary — sidebar panels)
+│   │   ├── ExplorerEditorModel.ts     # EditorModel — tree provider, selection, search, root navigation
+│   │   ├── ExplorerSecondaryEditor.tsx # "explorer" panel — tree view with portaled header
+│   │   ├── SearchSecondaryEditor.tsx  # "search" panel — file search with portaled header
+│   │   └── index.ts
 │   ├── shared/             # Shared editor utilities
 │   │   └── link-open-menu.tsx
 │   │

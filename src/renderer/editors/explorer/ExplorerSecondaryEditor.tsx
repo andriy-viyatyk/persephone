@@ -1,0 +1,147 @@
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import { createPortal } from "react-dom";
+import { TreeProviderView, TreeProviderViewRef } from "../../components/tree-provider";
+import type { TreeProviderViewSavedState } from "../../components/tree-provider";
+import { FileTreeProvider } from "../../content/tree-providers/FileTreeProvider";
+import { RawLinkEvent, ContextMenuEvent } from "../../api/events/events";
+import { app } from "../../api/app";
+import type { ITreeProviderItem } from "../../api/types/io.tree";
+import type { SecondaryEditorProps } from "../../ui/navigation/secondary-editor-registry";
+import type { ExplorerEditorModel } from "./ExplorerEditorModel";
+import { Button } from "../../components/basic/Button";
+import {
+    CollapseAllIcon,
+    FolderUpIcon,
+    RefreshIcon,
+    SearchIcon,
+    CloseIcon,
+} from "../../theme/icons";
+import { fpBasename, fpDirname } from "../../core/utils/file-path";
+
+export default function ExplorerSecondaryEditor({ model: rawModel, headerRef }: SecondaryEditorProps) {
+    const model = rawModel as ExplorerEditorModel;
+    const rootPath = model.rootPath;
+    const treeProviderRef = useRef<TreeProviderViewRef>(null);
+
+    // Create/update FileTreeProvider
+    const provider = useMemo(() => {
+        if (!rootPath) return null;
+        if (model.treeProvider && (model.treeProvider as FileTreeProvider).sourceUrl !== rootPath) {
+            model.treeProvider.dispose?.();
+            model.treeProvider = null;
+        }
+        if (!model.treeProvider) {
+            model.treeProvider = new FileTreeProvider(rootPath);
+        }
+        return model.treeProvider;
+    }, [rootPath, model]);
+
+    const initialState = useMemo((): TreeProviderViewSavedState | undefined => {
+        return model.treeState;
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const { selectedHref } = model.selectionState.use();
+    const { version: revealVersion } = model.revealVersion.use();
+
+    useEffect(() => {
+        if (revealVersion > 0 && selectedHref) {
+            treeProviderRef.current?.revealItem(selectedHref);
+        }
+    }, [revealVersion]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const pageId = model.page?.id ?? "";
+
+    const handleItemClick = useCallback((item: ITreeProviderItem) => {
+        const current = model.selectionState.get().selectedHref;
+        if (current?.toLowerCase() === item.href.toLowerCase()) return;
+        model.setSelectedHref(item.href);
+        const url = model.treeProvider?.getNavigationUrl(item) ?? item.href;
+        app.events.openRawLink.sendAsync(new RawLinkEvent(
+            url,
+            undefined,
+            { pageId, sourceId: "explorer" },
+        ));
+    }, [pageId, model]);
+
+    const handleStateChange = useCallback((state: TreeProviderViewSavedState) => {
+        model.setTreeState(state);
+    }, [model]);
+
+    const handleContextMenu = useCallback((event: ContextMenuEvent<ITreeProviderItem>) => {
+        const item = event.target;
+        if (item?.isDirectory && provider?.navigable) {
+            const rootLower = rootPath.toLowerCase();
+            if (item.href.toLowerCase() !== rootLower) {
+                event.items.push({
+                    startGroup: true,
+                    label: "Make Root",
+                    onClick: () => model.makeRoot(item.href),
+                });
+            }
+            event.items.push({
+                label: "Search in Folder",
+                icon: <SearchIcon width={14} height={14} />,
+                onClick: () => model.openSearch(item.href),
+            });
+        }
+    }, [provider, rootPath, model]);
+
+    // ── Header content (portaled into CollapsiblePanel header) ───────
+
+    const parentPath = fpDirname(rootPath);
+    const canNavigateUp = parentPath !== rootPath && rootPath !== "";
+
+    const headerContent = (
+        <>
+            Explorer
+            <span className="panel-spacer" />
+            {provider?.navigable && (
+                <Button type="icon" size="small"
+                    title={canNavigateUp ? `Up to ${fpBasename(parentPath)}` : "Already at root"}
+                    onClick={(e: React.MouseEvent) => { e.stopPropagation(); model.navigateUp(); }}
+                    disabled={!canNavigateUp}
+                >
+                    <FolderUpIcon width={14} height={14} />
+                </Button>
+            )}
+            <Button type="icon" size="small" title="Search"
+                onClick={(e: React.MouseEvent) => { e.stopPropagation(); model.openSearch(); }}>
+                <SearchIcon width={14} height={14} />
+            </Button>
+            <Button type="icon" size="small" title="Collapse All"
+                onClick={(e: React.MouseEvent) => { e.stopPropagation(); treeProviderRef.current?.collapseAll(); }}>
+                <CollapseAllIcon width={14} height={14} />
+            </Button>
+            <Button type="icon" size="small" title="Refresh"
+                onClick={(e: React.MouseEvent) => { e.stopPropagation(); treeProviderRef.current?.refresh(); }}>
+                <RefreshIcon width={14} height={14} />
+            </Button>
+            <Button type="icon" size="small" title="Close Panel"
+                onClick={(e: React.MouseEvent) => {
+                    e.stopPropagation();
+                    model.page?.pageNavigatorModel?.close();
+                }}>
+                <CloseIcon width={14} height={14} />
+            </Button>
+        </>
+    );
+
+    if (!provider) return null;
+
+    return (
+        <>
+            {headerRef && createPortal(headerContent, headerRef)}
+            <TreeProviderView
+                ref={treeProviderRef}
+                key={rootPath}
+                provider={provider}
+                selectedHref={selectedHref ?? undefined}
+                onItemClick={handleItemClick}
+                onItemDoubleClick={handleItemClick}
+                onContextMenu={handleContextMenu}
+                initialState={initialState}
+                onStateChange={handleStateChange}
+            />
+        </>
+    );
+}

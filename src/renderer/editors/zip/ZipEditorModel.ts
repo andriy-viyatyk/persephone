@@ -1,11 +1,12 @@
 import React from "react";
-import { TComponentState } from "../../core/state/state";
+import { TComponentState, TOneState } from "../../core/state/state";
 import { EditorModel, getDefaultEditorModelState } from "../base";
 import type { IEditorState } from "../../../shared/types";
 import type { ZipTreeProvider } from "../../content/tree-providers/ZipTreeProvider";
 import { fpBasename } from "../../core/utils/file-path";
 import { ArchiveIcon } from "../../theme/icons";
-import { expandSecondaryPanel } from "../../core/state/events";
+import type { PageModel } from "../../api/pages/PageModel";
+import type { NavigationState } from "../../api/pages/PageModel";
 
 export interface ZipEditorModelState extends IEditorState {
     type: "zipFile";
@@ -24,6 +25,12 @@ export function getDefaultZipEditorModelState(): ZipEditorModelState {
 export class ZipEditorModel extends EditorModel<ZipEditorModelState> {
     /** Tree provider for browsing archive contents. Owned by this model. */
     treeProvider: ZipTreeProvider | null = null;
+
+    /** Selection state — highlights current entry in the archive tree. */
+    readonly selectionState = new TOneState<NavigationState>({ selectedHref: null });
+
+    /** Reveal request — reactive counter. When bumped, the component should call revealItem(selectedHref). */
+    readonly revealVersion = new TOneState({ version: 0 });
 
     constructor(state?: TComponentState<ZipEditorModelState>) {
         super(state ?? new TComponentState(getDefaultZipEditorModelState()));
@@ -56,10 +63,18 @@ export class ZipEditorModel extends EditorModel<ZipEditorModelState> {
             );
             this.treeProvider = new ZipTreeProvider(archiveUrl);
         }
-        // Set secondaryEditor via setter to register in secondaryModels[]
-        // PageModel handles sidebar creation/restore.
-        if (this.treeProvider && this.page?.hasSidebar) {
-            this.secondaryEditor = "zip-tree";
+        // Register secondary editor if page is already available (direct open path).
+        // For navigation path, page isn't set yet — setPage() handles registration.
+        if (this.treeProvider && this.page) {
+            this.secondaryEditor = ["zip-tree"];
+        }
+    }
+
+    /** Register "zip-tree" secondary panel when the page context becomes available. */
+    setPage(page: PageModel | null): void {
+        super.setPage(page);
+        if (page && this.treeProvider && !this.secondaryEditor?.length) {
+            this.secondaryEditor = ["zip-tree"];
         }
     }
 
@@ -79,9 +94,24 @@ export class ZipEditorModel extends EditorModel<ZipEditorModelState> {
     onMainEditorChanged(newMainEditor: EditorModel | null): void {
         if (!newMainEditor || newMainEditor === this) return;
         if (this._isOpenedFromThisArchive(newMainEditor)) {
-            setTimeout(() => expandSecondaryPanel.send(this.id), 0);
+            const url = newMainEditor.state.get().sourceLink?.url ?? null;
+            this.selectionState.update((s) => { s.selectedHref = url; });
+            if (url && this.page?.activePanel === "zip-tree") {
+                this.revealVersion.update((s) => { s.version++; });
+            }
+            setTimeout(() => this.page?.expandPanel("zip-tree"), 0);
         } else {
             this.secondaryEditor = undefined;
+        }
+    }
+
+    /** React to panel expansion — reveal current entry when "zip-tree" panel becomes active. */
+    onPanelExpanded(panelId: string): void {
+        if (panelId === "zip-tree") {
+            const href = this.selectionState.get().selectedHref;
+            if (href) {
+                setTimeout(() => this.revealVersion.update((s) => { s.version++; }), 0);
+            }
         }
     }
 

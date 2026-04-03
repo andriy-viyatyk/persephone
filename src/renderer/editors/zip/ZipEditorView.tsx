@@ -26,7 +26,7 @@ const ZipEditorViewRoot = styled.div({
 
 export function ZipEditorView({ model }: { model: ZipEditorModel }) {
     const provider = model.treeProvider;
-    const pageId = model.id;
+    const pageId = model.page?.id ?? model.id;
     const treeRef = useRef<TreeProviderViewRef>(null);
 
     const handleItemClick = useCallback((item: ITreeProviderItem) => {

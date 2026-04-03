@@ -1,7 +1,5 @@
 import { TComponentState } from "../../core/state/state";
 
-const path = require("path") as typeof import("path");
-
 // =============================================================================
 // Types
 // =============================================================================
@@ -9,7 +7,6 @@ const path = require("path") as typeof import("path");
 export interface PageNavigatorState {
     open: boolean;
     width: number;
-    rootPath: string;
 }
 
 const DEFAULT_WIDTH = 240;
@@ -21,17 +18,16 @@ const DEFAULT_WIDTH = 240;
 /**
  * PageNavigatorModel — reactive state for the PageNavigator sidebar.
  *
- * Pure state container: open/close, width, rootPath, navigation.
+ * Pure layout container: open/close, width.
  * Persistence is owned by PageModel (not this model).
  */
 export class PageNavigatorModel {
     state: TComponentState<PageNavigatorState>;
 
-    constructor(rootPath: string) {
+    constructor() {
         this.state = new TComponentState<PageNavigatorState>({
             open: true,
             width: DEFAULT_WIDTH,
-            rootPath,
         });
     }
 
@@ -41,7 +37,6 @@ export class PageNavigatorModel {
         this.state.set({
             open: s.open ?? current.open,
             width: s.width ?? current.width,
-            rootPath: s.rootPath ?? current.rootPath,
         });
     }
 
@@ -65,33 +60,5 @@ export class PageNavigatorModel {
         this.state.update((s) => {
             s.open = false;
         });
-    };
-
-    // ── Root navigation ──────────────────────────────────────────────────
-
-    navigateUp = () => {
-        const { rootPath } = this.state.get();
-        const parent = path.dirname(rootPath);
-        if (parent === rootPath) return; // already at root
-        this.state.update((s) => {
-            s.rootPath = parent;
-        });
-    };
-
-    makeRoot = (newRoot: string) => {
-        const { rootPath } = this.state.get();
-        if (newRoot.toLowerCase() === rootPath.toLowerCase()) return;
-        this.state.update((s) => {
-            s.rootPath = newRoot;
-        });
-    };
-
-    /** Reinitialize rootPath if empty (e.g. after cache was cleared). */
-    reinitIfEmpty = (rootPath: string) => {
-        if (!this.state.get().rootPath) {
-            this.state.update((s) => {
-                s.rootPath = rootPath;
-            });
-        }
     };
 }

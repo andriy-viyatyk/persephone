@@ -24,16 +24,17 @@ const CategoryEditorRoot = styled.div({
 
 export function CategoryEditor({ model }: { model: CategoryEditorModel }) {
     const page = model.page;
-    const provider = page?.treeProvider ?? null;
+    const explorer = page?.findExplorer() as import("../explorer/ExplorerEditorModel").ExplorerEditorModel | undefined;
+    const provider = explorer?.treeProvider ?? null;
     const categoryPath = model.categoryPath;
     const pageId = model.id;
     const [searchPortal, setSearchPortal] = useState<HTMLDivElement | null>(null);
 
     const handleNavigate = useCallback((item: ITreeProviderItem) => {
-        page?.selectionState.update((s) => { s.selectedHref = item.href; });
+        explorer?.selectionState.update((s: any) => { s.selectedHref = item.href; }); // eslint-disable-line @typescript-eslint/no-explicit-any
         const url = provider?.getNavigationUrl(item) ?? item.href;
-        app.events.openRawLink.sendAsync(new RawLinkEvent(url, undefined, { pageId }));
-    }, [provider, pageId, page]);
+        app.events.openRawLink.sendAsync(new RawLinkEvent(url, undefined, { pageId, sourceId: "explorer" }));
+    }, [provider, pageId, explorer]);
 
     const handleToggleNavigator = useCallback(() => {
         page?.toggleNavigator();

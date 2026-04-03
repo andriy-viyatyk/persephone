@@ -393,15 +393,7 @@ export class TreeProviderViewModel extends TComponentModel<
         const { tree } = this.state.get();
         if (!tree) return;
 
-        // Already visible? Just scroll.
-        if (findNode(tree, href)) {
-            this.treeViewRef?.expandItem(href);
-            this.treeViewRef?.scrollToItem(href);
-            return;
-        }
-
         // Compute ancestor directory paths from href to rootPath.
-        // Walk up using fpDirname (works for absolute file paths).
         const rootLower = provider.rootPath.toLowerCase();
         const ancestors: string[] = [];
         let current = href;
@@ -412,17 +404,20 @@ export class TreeProviderViewModel extends TComponentModel<
             current = parent;
         }
 
-        // Load children and expand each ancestor
+        // Load children for all ancestor paths (no-op for already loaded)
         const allPaths = [provider.rootPath, ...ancestors];
         await this.loadChildrenForPaths(allPaths);
+
+        // Wait for React to re-render TreeView with the new children data
+        await new Promise((r) => setTimeout(r, 0));
 
         // Expand all ancestors in TreeView
         for (const p of allPaths) {
             this.treeViewRef?.expandItem(p);
         }
 
-        // Scroll to the target item after a microtask (let TreeView update rows)
-        await Promise.resolve();
+        // Wait for TreeView to re-render expanded rows, then scroll
+        await new Promise((r) => setTimeout(r, 0));
         this.treeViewRef?.scrollToItem(href);
     };
 

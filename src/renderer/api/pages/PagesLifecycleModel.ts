@@ -73,6 +73,11 @@ export class PagesLifecycleModel {
         if (state.type && PagesLifecycleModel.PAGE_TYPE_MIGRATIONS[state.type]) {
             state = { ...state, type: PagesLifecycleModel.PAGE_TYPE_MIGRATIONS[state.type] };
         }
+        // ExplorerEditorModel — not in editor registry (secondary-only)
+        if (state.type === "fileExplorer") {
+            const { ExplorerEditorModel } = await import("../../editors/explorer");
+            return new ExplorerEditorModel();
+        }
         const editors = editorRegistry.getAll();
         const editorDef = editors.find((e) => e.editorType === state.type);
         if (editorDef) {
@@ -136,8 +141,9 @@ export class PagesLifecycleModel {
         return this.addPage(emptyFile as unknown as EditorModel);
     };
 
-    addEmptyPageWithNavPanel = (folderPath: string): PageModel => {
-        const page = new PageModel(undefined, folderPath);
+    addEmptyPageWithNavPanel = async (folderPath: string): Promise<PageModel> => {
+        const page = new PageModel();
+        await page.createExplorer(folderPath);
         page.ensurePageNavigatorModel();
         return this.addPage(null, page);
     };
@@ -247,17 +253,17 @@ export class PagesLifecycleModel {
         return this._openZipArchive(filePath);
     };
 
-    private _openAsarArchive(filePath: string): PageModel {
+    private async _openAsarArchive(filePath: string): Promise<PageModel> {
         const archiveRoot = filePath;
         const existing = this.model.state.get().pages.find(
-            (p) => p.pageNavigatorModel?.state.get().rootPath === archiveRoot
+            (p) => p.findExplorer()?.state.get().type === "fileExplorer"
+                && (p.findExplorer()?.state.get() as any)?.rootPath === archiveRoot // eslint-disable-line @typescript-eslint/no-explicit-any
         );
         if (existing) {
             this.model.navigation.showPage(existing.id);
             return existing;
         }
-        const page = this.addEmptyPageWithNavPanel(archiveRoot);
-        page.mainEditor?.state.update((s) => { s.title = fpBasename(filePath); });
+        const page = await this.addEmptyPageWithNavPanel(archiveRoot);
         this.model.closeFirstPageIfEmpty();
         return page;
     }
@@ -278,15 +284,14 @@ export class PagesLifecycleModel {
         const editor = await module.newEditorModel(filePath);
 
         // Create PageModel with sidebar for archive browsing
-        const archiveRoot = filePath + "!";
-        const page = new PageModel(undefined, archiveRoot);
+        const page = new PageModel();
         page.mainEditor = editor;
         editor.setPage(page);
         page.ensurePageNavigatorModel();
 
         // Set secondaryEditor after page is set up
         // (the setter calls page.addSecondaryEditor)
-        (editor as any).secondaryEditor = "zip-tree"; // eslint-disable-line @typescript-eslint/no-explicit-any
+        (editor as any).secondaryEditor = ["zip-tree"]; // eslint-disable-line @typescript-eslint/no-explicit-any
 
         this.addPage(editor, page);
         this.model.closeFirstPageIfEmpty();
@@ -376,11 +381,13 @@ export class PagesLifecycleModel {
         }
     ): Promise<boolean> => {
         const page = this.model.query.findPage(pageId);
-        if (!page || !page.mainEditor) return false;
+        if (!page) return false;
 
         const oldEditor = page.mainEditor;
-        const released = await oldEditor.confirmRelease();
-        if (!released) return false;
+        if (oldEditor) {
+            const released = await oldEditor.confirmRelease();
+            if (!released) return false;
+        }
 
         // Create new editor
         let newEditor: EditorModel;

@@ -4,7 +4,7 @@ Epics represent big ideas with high-level overviews. Each epic links to tasks in
 
 ## Active
 
-- **EPIC-017** — [PageContainer Architecture](EPIC-017.md)
+(none)
 
 ## Future
 - **EPIC-018** — [Secondary Editors — Content Applications](EPIC-018.md)
@@ -13,6 +13,8 @@ Epics represent big ideas with high-level overviews. Each epic links to tasks in
 
 ## Completed
 
+- **EPIC-019** — [Explorer as Secondary Editor + Multi-Panel Support](EPIC-019.md)
+- **EPIC-017** — [Page/Editor Architecture Refactor](EPIC-017.md)
 - **EPIC-016** — [Secondary Editors — Sidebar Extension System](EPIC-016.md)
 - **EPIC-015** — [ITreeProvider — Browsable Source Abstraction](EPIC-015.md)
 - **EPIC-012** — [Unified Link & Provider Architecture](EPIC-012.md)

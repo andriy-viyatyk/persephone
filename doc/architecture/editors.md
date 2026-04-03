@@ -189,8 +189,8 @@ class EditorModel<T extends IEditorState, R = any> extends TDialogModel<T, R> {
     get title(): string;
     get modified(): boolean;
     get filePath(): string | undefined;
-    get secondaryEditor(): string | undefined;  // Active secondary editor panel ID
-    set secondaryEditor(value: string | undefined);  // Manages page.secondaryEditors[] membership
+    get secondaryEditor(): string[] | undefined;  // Active secondary editor panel IDs (multi-panel)
+    set secondaryEditor(value: string[] | undefined);  // Manages page.secondaryEditors[] membership
 
     scriptData: Record<string, any>;   // In-memory data for scripts
     page: PageModel | null;            // Reference to containing PageModel (set via setPage)

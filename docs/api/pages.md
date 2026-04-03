@@ -138,6 +138,7 @@ Open a browser page.
 Options:
 - `profileName?: string` — browser profile to use
 - `incognito?: boolean` — open in incognito mode
+- `tor?: boolean` — open using the Tor network (requires Tor to be configured in Settings)
 - `url?: string` — initial URL
 
 ```javascript

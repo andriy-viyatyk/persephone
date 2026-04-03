@@ -652,3 +652,15 @@ secondaryEditorRegistry.register({
     label: "Archive",
     loadComponent: () => import("./zip/ZipSecondaryEditor"),
 });
+
+secondaryEditorRegistry.register({
+    id: "explorer",
+    label: "Explorer",
+    loadComponent: () => import("./explorer/ExplorerSecondaryEditor"),
+});
+
+secondaryEditorRegistry.register({
+    id: "search",
+    label: "Search",
+    loadComponent: () => import("./explorer/SearchSecondaryEditor"),
+});

@@ -4,6 +4,8 @@ import type { EditorModel } from "../../editors/base";
 /** Props passed to secondary editor sidebar components. */
 export interface SecondaryEditorProps {
     model: EditorModel;
+    /** Portal target for the panel header. Render title, buttons, etc. into this element via createPortal. */
+    headerRef: HTMLDivElement | null;
 }
 
 /** Registration for a secondary editor type. */

@@ -1,0 +1,102 @@
+graph TD
+    subgraph PageModel["PageModel (stable tab container — one per tab)"]
+        PM_ID["id: string — stable UUID"]
+        PM_STATE["state: IPageState<br/>{pinned, hasSidebar, mainEditorId}"]
+        PM_ME["mainEditor: EditorModel | null"]
+        PM_SE["secondaryEditors: EditorModel[]"]
+    end
+
+    subgraph Sidebar["Sidebar State (owned by PageModel)"]
+        NAV["pageNavigatorModel<br/>(open/close/width)"]
+        APANEL["activePanel<br/>('explorer' | 'search' | panelId)"]
+    end
+
+    subgraph Editor["EditorModel (replaceable content)"]
+        EM_ID["id: string"]
+        EM_STATE["state: IEditorState<br/>{type, content, language,<br/>filePath, pipe, editor, ...}"]
+        EM_PAGE["page: PageModel | null"]
+        EM_SE_PROP["secondaryEditor: string[] | undefined"]
+    end
+
+    subgraph ExplEditor["ExplorerEditorModel (secondary)"]
+        XM["ExplorerEditorModel"]
+        XM_TREE["treeProvider: FileTreeProvider"]
+        XM_SEL["selectionState"]
+        XM_SEARCH["searchState"]
+        XM_SE["secondaryEditor: ['explorer'] or ['explorer','search']"]
+    end
+
+    subgraph SecEditor["ZipEditorModel (secondary)"]
+        ZM["ZipEditorModel"]
+        ZM_TREE["treeProvider: ZipTreeProvider"]
+        ZM_SEL["selectionState"]
+        ZM_SE["secondaryEditor: ['zip-tree']"]
+    end
+
+    subgraph Navigator["PageNavigator (sidebar UI)"]
+        SEC_PANELS["All panels via<br/>LazySecondaryEditor<br/>(portaled headers)"]
+    end
+
+    subgraph Rendering["PageContent (main area rendering)"]
+        NAV_WRAP["NavigationWrapper<br/>(subscribes to hasSidebar)"]
+        RENDER["RenderEditor<br/>(subscribes to mainEditorId)"]
+    end
+
+    subgraph Registry["SecondaryEditorRegistry"]
+        REG_EXP["'explorer' → ExplorerSecondaryEditor"]
+        REG_SEARCH["'search' → SearchSecondaryEditor"]
+        REG_ZIP["'zip-tree' → ZipSecondaryEditor"]
+    end
+
+    %% PageModel → EditorModel ownership
+    PM_ME -->|"owns"| EM_ID
+    EM_PAGE -->|"back-ref"| PM_ID
+
+    %% PageModel → Sidebar
+    PageModel --> Sidebar
+
+    %% Secondary editors
+    PM_SE -->|"contains"| XM
+    PM_SE -->|"contains"| ZM
+    XM_SE -->|"registered in"| REG_EXP
+    XM_SE -->|"registered in"| REG_SEARCH
+    ZM_SE -->|"registered in"| REG_ZIP
+
+    %% Sidebar → Navigator UI
+    NAV -->|"controls open/close"| Navigator
+    PM_SE -->|"renders via registry"| SEC_PANELS
+    APANEL -->|"selects active"| Navigator
+
+    %% Rendering subscriptions
+    PM_STATE -->|"hasSidebar"| NAV_WRAP
+    PM_STATE -->|"mainEditorId"| RENDER
+
+    %% Navigation flow (dashed = async lifecycle)
+    PM_ME -.->|"setMainEditor(new)<br/>swaps editor"| EM_ID
+    PM_ME -.->|"beforeNavigateAway()<br/>secondary survival"| PM_SE
+
+    style PM_ID fill:#4a9eff,color:#fff
+    style PM_STATE fill:#4a9eff,color:#fff
+    style PM_ME fill:#4a9eff,color:#fff
+    style PM_SE fill:#4a9eff,color:#fff
+    style EM_ID fill:#ff9800,color:#fff
+    style EM_STATE fill:#ff9800,color:#fff
+    style EM_PAGE fill:#ff9800,color:#fff
+    style EM_SE_PROP fill:#ff9800,color:#fff
+    style XM fill:#2e7d32,color:#fff
+    style XM_TREE fill:#2e7d32,color:#fff
+    style XM_SEL fill:#2e7d32,color:#fff
+    style XM_SEARCH fill:#2e7d32,color:#fff
+    style XM_SE fill:#2e7d32,color:#fff
+    style ZM fill:#8e24aa,color:#fff
+    style ZM_TREE fill:#8e24aa,color:#fff
+    style ZM_SEL fill:#8e24aa,color:#fff
+    style ZM_SE fill:#8e24aa,color:#fff
+    style NAV fill:#78909c,color:#fff
+    style APANEL fill:#78909c,color:#fff
+    style SEC_PANELS fill:#333,color:#fff
+    style NAV_WRAP fill:#2e7d32,color:#fff
+    style RENDER fill:#2e7d32,color:#fff
+    style REG_EXP fill:#43a047,color:#fff
+    style REG_SEARCH fill:#43a047,color:#fff
+    style REG_ZIP fill:#43a047,color:#fff

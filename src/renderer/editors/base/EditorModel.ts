@@ -41,6 +41,13 @@ export class EditorModel<T extends IEditorState = IEditorState, R = any> extends
         // Override in subclasses
     }
 
+    /** Called on secondary editors when a panel is expanded (activePanel changes).
+     *  Base implementation is a no-op. Override in subclasses to react
+     *  (e.g., ExplorerEditorModel reveals the current file when "explorer" panel expands). */
+    onPanelExpanded(_panelId: string): void {
+        // Override in subclasses
+    }
+
     /** Content pipe (provider + transformers). Owned by the page, disposed on close. */
     pipe: IContentPipe | null = null;
 
@@ -68,17 +75,15 @@ export class EditorModel<T extends IEditorState = IEditorState, R = any> extends
         return this.state.get().language;
     }
 
-    /** Active secondary editor panel ID. Setting adds/removes this model
+    /** Active secondary editor panel IDs. Setting adds/removes this model
      *  from the containing PageModel's secondaryEditors[]. */
-    get secondaryEditor(): string | undefined {
+    get secondaryEditor(): string[] | undefined {
         return this.state.get().secondaryEditor;
     }
 
-    set secondaryEditor(value: string | undefined) {
-        const prev = this.state.get().secondaryEditor;
-        if (prev === value) return;
+    set secondaryEditor(value: string[] | undefined) {
         this.state.update((s) => { s.secondaryEditor = value; });
-        if (value) {
+        if (value?.length) {
             this.page?.addSecondaryEditor(this);
         } else {
             this.page?.removeSecondaryEditorWithoutDispose(this);
@@ -147,7 +152,10 @@ export class EditorModel<T extends IEditorState = IEditorState, R = any> extends
             s.filePath = data.filePath || s.filePath;
             s.editor = data.editor || s.editor;
             if ((data as any).sourceLink) s.sourceLink = (data as any).sourceLink; // eslint-disable-line @typescript-eslint/no-explicit-any
-            if ((data as any).secondaryEditor) s.secondaryEditor = (data as any).secondaryEditor; // eslint-disable-line @typescript-eslint/no-explicit-any
+            if ((data as any).secondaryEditor) { // eslint-disable-line @typescript-eslint/no-explicit-any
+                const se = (data as any).secondaryEditor; // eslint-disable-line @typescript-eslint/no-explicit-any
+                s.secondaryEditor = typeof se === "string" ? [se] : se;
+            }
         });
     }
 
