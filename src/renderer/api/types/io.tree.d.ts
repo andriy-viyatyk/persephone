@@ -113,6 +113,18 @@ export interface ILink {
     mtime?: string;
     /** Optional preview image URL or file path. Used for tile view thumbnails. */
     imgSrc?: string;
+    /**
+     * Whether this directory has sub-directories.
+     * - `undefined` — unknown, assume expandable (default for FileTreeProvider/ZipTreeProvider)
+     * - `true` / `false` — explicitly set by provider (LinkTreeProvider)
+     */
+    hasSubDirectories?: boolean;
+    /**
+     * Whether this directory has leaf items (non-directory children).
+     * - `undefined` — unknown, assume expandable
+     * - `true` / `false` — explicitly set by provider (LinkTreeProvider)
+     */
+    hasItems?: boolean;
 }
 
 /** @deprecated Use ILink instead. */

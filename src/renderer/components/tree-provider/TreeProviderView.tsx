@@ -130,14 +130,19 @@ export function TreeProviderView(
 
     const isDeepSearch = state.searchText.length >= 3;
 
-    const getLabel = useCallback((node: TreeProviderNode) => (
-        <span className="tpv-item-label" title={node.data.href}>
-            {state.searchText
-                ? highlightText(state.searchText, node.data.title)
-                : node.data.title
-            }
-        </span>
-    ), [state.searchText]);
+    const getLabel = useCallback((node: TreeProviderNode) => {
+        if (props.getLabel) {
+            return props.getLabel(node.data, state.searchText);
+        }
+        return (
+            <span className="tpv-item-label" title={node.data.href}>
+                {state.searchText
+                    ? highlightText(state.searchText, node.data.title)
+                    : node.data.title
+                }
+            </span>
+        );
+    }, [state.searchText, props.getLabel]);
 
     const getIcon = useCallback((node: TreeProviderNode) => (
         <TreeProviderItemIcon item={node.data} />
@@ -145,9 +150,18 @@ export function TreeProviderView(
 
     const getId = useCallback((node: TreeProviderNode) => node.data.href, []);
 
+    const showLinks = props.showLinks !== false;
     const getHasChildren = useCallback(
-        (node: TreeProviderNode) => node.data.isDirectory,
-        [],
+        (node: TreeProviderNode) => {
+            if (!node.data.isDirectory) return false;
+            const { hasSubDirectories, hasItems } = node.data;
+            // When flags are undefined (FileTreeProvider, ZipTreeProvider), assume expandable
+            if (hasSubDirectories === undefined && hasItems === undefined) return true;
+            // When flags are set, decide based on showLinks mode
+            if (showLinks) return !!(hasSubDirectories || hasItems);
+            return !!hasSubDirectories;
+        },
+        [showLinks],
     );
 
     const getSelected = useCallback((node: TreeProviderNode) => {

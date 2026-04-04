@@ -47,6 +47,8 @@ export class LinkTreeProvider implements ITreeProvider {
         const links = this.vm.state.get().data.links;
         const prefix = categoryPath ? categoryPath + "/" : "";
         const subCategories = new Map<string, number>();
+        // Track which sub-categories have deeper sub-categories
+        const hasSubCategories = new Set<string>();
         const items: ILink[] = [];
 
         for (const link of links) {
@@ -59,6 +61,10 @@ export class LinkTreeProvider implements ITreeProvider {
                 const rest = cat.slice(prefix.length);
                 const childName = rest.split("/")[0];
                 subCategories.set(childName, (subCategories.get(childName) || 0) + 1);
+                // Check if there are deeper levels (grandchild categories)
+                if (rest.includes("/")) {
+                    hasSubCategories.add(childName);
+                }
             }
         }
 
@@ -66,6 +72,7 @@ export class LinkTreeProvider implements ITreeProvider {
         const dirItems: ILink[] = [];
         for (const [name, count] of [...subCategories.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
             const fullCategory = prefix + name;
+            const hasDirectItems = links.some(l => l.category === fullCategory);
             dirItems.push({
                 title: name,
                 href: fullCategory,
@@ -73,6 +80,8 @@ export class LinkTreeProvider implements ITreeProvider {
                 tags: [],
                 isDirectory: true,
                 size: count,
+                hasSubDirectories: hasSubCategories.has(name),
+                hasItems: hasDirectItems,
             });
         }
 

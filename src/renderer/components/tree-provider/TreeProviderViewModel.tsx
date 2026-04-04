@@ -1,3 +1,4 @@
+import type React from "react";
 import { TComponentModel } from "../../core/state/model";
 import type { ITreeProvider, ITreeProviderItem, ILink } from "../../api/types/io.tree";
 import type { TreeItem, TreeViewRef } from "../TreeView";
@@ -43,6 +44,10 @@ export interface TreeProviderViewProps {
     initialState?: TreeProviderViewSavedState;
     onStateChange?: (state: TreeProviderViewSavedState) => void;
     refreshKey?: string | number;
+    /** Override label rendering. When omitted, default title + search highlight is used. */
+    getLabel?: (item: ILink, searchText: string) => React.ReactNode;
+    /** Override root node label. When omitted, uses provider.displayName. */
+    rootLabel?: string;
 }
 
 export interface TreeProviderViewState {
@@ -162,7 +167,7 @@ export class TreeProviderViewModel extends TComponentModel<
             const items = filterTreeItems(await provider.list(provider.rootPath));
             const rootNode: TreeProviderNode = {
                 data: {
-                    title: provider.displayName,
+                    title: this.props.rootLabel ?? provider.displayName,
                     href: provider.rootPath,
                     category: "",
                     tags: [],

@@ -12,7 +12,6 @@ Current work in progress and planned tasks.
 
 | ID | Title | Epic | Notes |
 |----|-------|------|-------|
-| US-353 | Replace CategoryTree with TreeProviderView in LinkCategoryPanel | EPIC-018 | Use TreeProviderView + LinkTreeProvider instead of CategoryTree. Two modes: categories-only and categories-with-links. |
 | US-347 | CategoryView / CategoryEditor Breadcrumb | EPIC-018 | Add breadcrumb to CategoryEditor for all providers. |
 | US-325 | Fix webview preload script error in HTML view | — | `node:path` not available in sandboxed webview. Repro: open `D:\js-notepad-notes\temp\lewis-lion-the-witch-and-the-wardrobe.epub`, select any `.xhtml` file — errors logged to console on each navigation. |
 

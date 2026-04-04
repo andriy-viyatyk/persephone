@@ -1,7 +1,6 @@
 import { debounce } from "../../../shared/utils";
 import { ContentViewModel } from "../base/ContentViewModel";
 import { IContentHost } from "../base/IContentHost";
-import { CategoryTreeItem } from "../../components/TreeView";
 import { MenuItem } from "../../components/overlay/PopupMenu";
 import RenderGridModel from "../../components/virtualization/RenderGrid/RenderGridModel";
 
@@ -317,13 +316,6 @@ export class LinkViewModel extends ContentViewModel<LinkEditorState> {
         return this.state.get().categoriesSize[category] ?? 0;
     };
 
-    categoryItemClick = (item: CategoryTreeItem) => {
-        this.setSelectedCategory(item.category);
-    };
-
-    getCategoryItemSelected = (item: CategoryTreeItem): boolean => {
-        return item.category === this.state.get().selectedCategory;
-    };
 
     // =========================================================================
     // Tags

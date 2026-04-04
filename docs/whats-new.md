@@ -26,6 +26,7 @@ Release notes and changelog for Persephone (formerly js-notepad).
 - **Explorer panel — auto-reveal** — The File Explorer panel now auto-reveals the current file in the tree (expanding parent folders and scrolling to it) when the Explorer panel is the active (expanded) panel.
 - **Explorer panel — remote archives** — When opening an archive from a remote URL (e.g., `https://example.com/data.zip`), the File Explorer panel is no longer shown alongside the Archive panel, since there is no local folder to browse.
 - **Link Editor — sidebar panels** — The Link Editor's Categories, Tags, and Hostnames panels now adapt to the sidebar. When the page sidebar is open, these panels appear there as separate collapsible panels (the same sidebar used by the File Explorer). When the sidebar is closed, they remain as a left panel inside the editor as before.
+- **Link Editor — double-click to open** — Double-clicking a link in list view, tile view, or the pinned links panel now opens the link (navigates to the URL) instead of opening the edit dialog. Use the right-click context menu → **Edit** to edit a link.
 
 ### Breaking Changes
 

@@ -312,10 +312,10 @@ For `.link.json` files — a structured link manager:
 - **Context menu** — Edit, Open in Default Browser, Open in Internal Browser, browser profiles, Open in Incognito, Copy URL, Pin/Unpin, Delete
   - For links with images: Copy Image URL, Open Image in New Tab (opens in Image Viewer)
 - **Delete confirmation** — with Ctrl+click bypass for quick delete
-- **Double-click** to edit in both list and tile views
+- **Double-click** to open a link in list and tile views. Use the right-click context menu → **Edit** to open the edit dialog.
 - **Favicons** — cached favicons from the internal browser are displayed next to links in list view and as fallback in tile view
 - **Drag-and-drop** — drag links onto categories to reassign them; drag categories onto other categories to reparent (with confirmation)
-- **Pinned links panel** — pin important links for quick access; pinned panel appears on the right edge, auto-hides when empty, resizable, with drag-to-reorder support. Right-click a pinned link for a context menu: Edit, Open in Default Browser, browser profiles, Open in Incognito, Copy URL, Unpin, Delete. Hover a pinned link to see a rich tooltip with title, URL, and thumbnail image.
+- **Pinned links panel** — pin important links for quick access; pinned panel appears on the right edge, auto-hides when empty, resizable, with drag-to-reorder support. Double-click a pinned link to open it. Right-click for a context menu: Edit, Open in Default Browser, browser profiles, Open in Incognito, Copy URL, Unpin, Delete. Hover a pinned link to see a rich tooltip with title, URL, and thumbnail image.
 - **Session state persistence** — selected category, tag, hostname, and expanded panel are remembered across app restarts
 - Can switch to Monaco for raw JSON editing
 

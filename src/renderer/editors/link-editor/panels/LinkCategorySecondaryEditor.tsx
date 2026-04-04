@@ -14,7 +14,7 @@ export default function LinkCategorySecondaryEditor({ model, headerRef }: Second
     return (
         <>
             {headerRef && createPortal(<>Categories</>, headerRef)}
-            <LinkCategoryPanel vm={vm} useOpenRawLink={!isMainEditor} />
+            <LinkCategoryPanel vm={vm} useOpenRawLink={!isMainEditor} categoriesOnly={isMainEditor} />
         </>
     );
 }

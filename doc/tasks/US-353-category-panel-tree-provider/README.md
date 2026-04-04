@@ -14,7 +14,7 @@ Replace the custom `CategoryTree` component in `LinkCategoryPanel` with `TreePro
 `LinkCategoryPanel` ([src/renderer/editors/link-editor/panels/LinkCategoryPanel.tsx](../../../src/renderer/editors/link-editor/panels/LinkCategoryPanel.tsx)) uses `CategoryTree` — a component that builds a tree from a flat array of category strings. It provides:
 
 - Custom label rendering with category name + link count
-- Drag-drop for links (`LINK_DRAG`) and categories (`LINK_CATEGORY_DRAG`)
+- Drag-drop via unified `LINK_DRAG_TYPE` / `LinkDragEvent` (consolidated in US-354)
 - Selection highlighting via `getSelected` callback
 - `useOpenRawLink` flag for Context A (filter) vs Context B (navigate) behavior
 
@@ -35,17 +35,17 @@ Replace the custom `CategoryTree` component in `LinkCategoryPanel` with `TreePro
 
 ### What's missing in TreeProviderView
 
-1. **Count label on directory nodes** — TreeProviderView shows only `node.data.title`. For the link categories panel, we need to also show the link count (from `node.data.size`). This should be a generic capability — a `getLabel` prop override or a built-in option to show `size` next to directory names.
+1. **Count label on directory nodes** — TreeProviderView shows only `node.data.title`. For the link categories panel, we need to also show the link count (from `node.data.size`). Need a `getLabel` prop override.
 
-2. **Drag-drop type mismatch** — TreeProviderView uses its own `"tree-provider-item"` drag type internally. LinkCategoryPanel currently accepts `LINK_DRAG` and `LINK_CATEGORY_DRAG` drops. The TreeProviderView drag-drop needs to be extensible to accept external drag types (links dragged from the center area onto a category).
+2. **Selection sync** — TreeProviderView uses `selectedHref` for highlight. LinkCategoryPanel highlights the "selected category" which maps to the current filter path. Should work via `selectedHref` prop.
 
-3. **Selection sync** — TreeProviderView uses `selectedHref` for highlight. LinkCategoryPanel highlights the "selected category" which maps to the current filter path. This should work via `selectedHref` prop.
+3. **Click behavior** — TreeProviderView's `onItemClick` fires for all items. In "categories only" mode, clicking a category should filter the center area (or navigate via `openRawLink`). The existing `onItemClick` / `onFolderDoubleClick` callbacks should suffice.
 
-4. **Click behavior** — TreeProviderView's `onItemClick` fires for all items. In "categories only" mode, clicking a category should filter the center area (or navigate via `openRawLink`). The existing `onItemClick` / `onFolderDoubleClick` callbacks should suffice.
+4. **Root label** — CategoryTree shows "All" as root. TreeProviderView's root node title comes from `provider.displayName` (file basename). Need a `rootLabel` prop override.
 
-5. **Root label** — CategoryTree shows "All" as root. TreeProviderView shows whatever `list("")` returns as the root node (using `provider.rootPath`). LinkTreeProvider has `rootPath = ""`, and `list("")` returns sub-categories. The root node's title comes from `displayName`. We may need a way to override the root label or set `displayName` to "All" for this use case.
+5. **"Categories only" mode** — The existing `showLinks` prop (when `false`) already hides leaf items via `filterDirectoriesOnly()`. This is exactly what we need. For "categories with links" mode, `showLinks={true}` shows both.
 
-6. **"Categories only" mode** — The existing `showLinks` prop (when `false`) already hides leaf items via `filterDirectoriesOnly()`. This is exactly what we need for the current LinkEditor use case where the center area shows links. For the future "categories with links" mode, `showLinks={true}` will show both.
+6. **Drag-drop** — Already unified via US-354. TreeProviderView uses `LINK_DRAG_TYPE` / `LinkDragEvent` natively. No work needed.
 
 ## Investigation: Drag-drop
 
@@ -53,32 +53,7 @@ Replace the custom `CategoryTree` component in `LinkCategoryPanel` with `TreePro
 
 ## Investigation: Count label
 
-`TreeProviderView` currently renders labels inline:
-
-```tsx
-const getLabel = useCallback((node: TreeProviderNode) => (
-    <span className="tpv-item-label" title={node.data.href}>
-        {state.searchText
-            ? highlightText(state.searchText, node.data.title)
-            : node.data.title
-        }
-    </span>
-), [state.searchText]);
-```
-
-### Option A: Add a `getLabel` prop to TreeProviderViewProps
-
-Allow parent to fully override the label renderer. This is the most flexible but loses the built-in search highlighting.
-
-### Option B: Add a `showItemCount` prop
-
-When `true`, render `node.data.size` next to the title for directory nodes. Simple, but specific to this use case.
-
-### Option C: Add an `itemExtra` render prop  
-
-Allow parent to inject extra content after the title. E.g., `renderExtra?: (item: ILink) => React.ReactNode`. Parent provides the count badge.
-
-**Recommended: Option A (`getLabel` prop)**. It's the standard pattern — `TreeView` already supports `getLabel`. `TreeProviderView` just needs to expose it as an optional override. When not provided, the built-in label (with search highlighting) is used. When provided, the parent has full control.
+**Resolved:** Add a `getLabel` prop to `TreeProviderViewProps`. When provided, it overrides the default label renderer. When omitted, the built-in label with search highlighting is used. The parent (`LinkCategoryPanel`) provides a custom label that shows category name + link count from `item.size`.
 
 ## Implementation Plan
 
@@ -108,7 +83,7 @@ rootLabel?: string;
 
 **File:** `src/renderer/editors/link-editor/panels/LinkCategoryPanel.tsx`
 
-Before:
+Before (current state after US-354):
 ```tsx
 <CategoryTree
     categories={pageState.categories}
@@ -119,10 +94,10 @@ Before:
     getSelected={vm.getCategoryItemSelected}
     getLabel={getTreeItemLabel}
     refreshKey={pageState.selectedCategory}
-    dropTypes={[LINK_DRAG, LINK_CATEGORY_DRAG]}
-    onDrop={vm.categoryDrop}
-    dragType={LINK_CATEGORY_DRAG}
-    getDragItem={vm.getCategoryDragItem}
+    dropTypes={[LINK_DRAG_TYPE]}
+    onDrop={handleDrop}
+    dragType={LINK_DRAG_TYPE}
+    getDragItem={handleGetDragItem}
 />
 ```
 
@@ -138,7 +113,9 @@ After:
 />
 ```
 
-Drag-drop works natively — after US-354 consolidation, TreeProviderView uses `LinkDragEvent` for all drags/drops. Links dragged from center area and categories dragged within the tree all use `LINK_DRAG_TYPE`. The drop handler in `TreeProviderViewModel.moveItems()` dispatches to `provider.moveToCategory()` (LinkTreeProvider) automatically.
+Drag-drop works natively — TreeProviderView uses `LinkDragEvent` (consolidated in US-354) for all drags/drops. Links dragged from center area and categories dragged within the tree all use `LINK_DRAG_TYPE`. The drop handler in `TreeProviderViewModel.moveItems()` dispatches to `provider.moveToCategory()` (LinkTreeProvider) automatically.
+
+Remove the `handleDrop`, `handleGetDragItem` callbacks and the `DragItem` import — TreeProviderView handles drag-drop internally. Also remove `CategoryTree`, `CategoryTreeItem` imports.
 
 The `categoriesOnly` prop replaces the current implicit always-categories-only behavior. When `true` (default for main editor), `showLinks={false}` hides leaf items. When `false` (future secondary-only mode), `showLinks={true}` shows links inside categories.
 
@@ -151,6 +128,20 @@ interface LinkCategoryPanelProps {
     categoriesOnly?: boolean;
 }
 ```
+
+Adapt `handleItemClick` — TreeProviderView's `onItemClick` receives `ILink` (not `CategoryTreeItem`). The category path is `item.href`:
+```tsx
+const handleItemClick = useCallback((item: ILink) => {
+    if (useOpenRawLink) {
+        const navUrl = vm.treeProvider.getNavigationUrl(item);
+        app.events.openRawLink.sendAsync(new RawLinkEvent(navUrl));
+    } else {
+        vm.setSelectedCategory(item.href);
+    }
+}, [vm, useOpenRawLink]);
+```
+
+Note: `vm.categoryItemClick(item)` just calls `setSelectedCategory(item.category)`. Since `ILink` directory items from `LinkTreeProvider` have `href = categoryPath`, we use `item.href` directly. The `categoryItemClick` method and `getCategoryItemSelected` on LinkViewModel (which use `CategoryTreeItem`) become unused and can be removed.
 
 Custom label with count:
 ```tsx
@@ -188,14 +179,9 @@ The inline `<LinkCategoryPanel>` already passes `useOpenRawLink={false}`. Add `c
 
 ### Step 5: Handle root label
 
-`LinkTreeProvider.displayName` is currently the file basename. For the category panel, the root should show "All" (matching current behavior).
+Add `rootLabel?: string` to `TreeProviderViewProps`. When provided, the root node's title is overridden to this value instead of `provider.displayName`. Applied in `buildTree()` when creating the root `TreeProviderNode`.
 
-Options:
-- Add a `rootLabel` prop to `TreeProviderView` that overrides `displayName` for the root node
-- OR set `LinkTreeProvider.displayName = "All"` (but this breaks other uses like Archive panel title)
-- OR add a `rootLabel` prop on `TreeProviderViewProps` — when provided, the root node's label shows this instead of `displayName`
-
-**Recommended:** Add `rootLabel?: string` to `TreeProviderViewProps`. When provided, the root node's title is overridden to this value. This is clean and doesn't affect other uses.
+`LinkCategoryPanel` passes `rootLabel="All"` to match current CategoryTree behavior.
 
 ### Step 6: Verify NotebookEditor is unaffected
 
@@ -233,6 +219,7 @@ After this task, `CategoryTree` will only be used by `NotebookEditor`. No deleti
 |------|--------|
 | `src/renderer/components/tree-provider/TreeProviderViewModel.tsx` | Add `getLabel`, `rootLabel` to `TreeProviderViewProps`. Apply `rootLabel` in `buildTree()`. |
 | `src/renderer/components/tree-provider/TreeProviderView.tsx` | Wire `getLabel` prop override |
-| `src/renderer/editors/link-editor/panels/LinkCategoryPanel.tsx` | Replace `CategoryTree` with `TreeProviderView`, add `categoriesOnly` prop |
+| `src/renderer/editors/link-editor/panels/LinkCategoryPanel.tsx` | Replace `CategoryTree` with `TreeProviderView`, add `categoriesOnly` prop. Remove `handleDrop`/`handleGetDragItem`/`DragItem` import. Adapt `handleItemClick` to `ILink`. |
 | `src/renderer/editors/link-editor/panels/LinkCategorySecondaryEditor.tsx` | Pass `categoriesOnly` based on `isMainEditor` |
 | `src/renderer/editors/link-editor/LinkEditor.tsx` | Minor: pass `categoriesOnly` to inline panel (or rely on default) |
+| `src/renderer/editors/link-editor/LinkViewModel.ts` | Remove `categoryItemClick`, `getCategoryItemSelected` (no longer used after CategoryTree removal) |
