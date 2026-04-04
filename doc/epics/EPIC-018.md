@@ -224,11 +224,13 @@ Since `openRawLink` handles any link type, `.link.json` collections can contain:
 ### K. Standalone link collections (without LinkEditor)
 
 For temporary link collections (multi-file drop, AI agent results, script output):
-- A temp `.link.json` file is created in the app cache folder
-- A `TextFileModel` is created with the content, and its `secondaryEditor` is set to `["link-category"]`
-- A new page opens with Categories panel auto-expanded in PageNavigator
-- The main content area is free — shows whatever the user clicks from the collection
-- No LinkEditor component renders — the secondary editor panels provide all the navigation
+- Create a `TextFileModel` with `language: "json"`, `title: "something.link.json"`, and the `.link.json` content
+- Set `modified: true` — the existing cache mechanism automatically persists unsaved content, no temp file creation needed
+- Set `secondaryEditor = ["link-category"]` — this adds the model to `PageModel.secondaryEditors[]`
+- Open as a new page with Categories panel auto-expanded
+- The main content area shows whatever the user clicks from the collection (LinkEditor renders with Categories panel in PageNavigator)
+
+No special temp-file logic required — TextFileModel's existing unsaved-content cache handles persistence.
 
 This is the key infrastructure capability: scripts, AI agents, and drop handlers can all create link collections and present them as navigable pages.
 
@@ -296,7 +298,7 @@ Make link collections a general-purpose building block. Enable creating temporar
 | # | Task | Title | Description | Status |
 |---|------|-------|-------------|--------|
 | 2.1 | — | Browser editor integration review | Verify Browser's `BlankPageLinks` and `BookmarksDrawer` work with refactored LinkEditor. The Browser context (no `model.page`) should render the self-contained layout with inline panels. Adjust if needed. | Planned |
-| 2.2 | — | Standalone link collection page | Create helper to programmatically open a link collection: create temp `.link.json` in app cache folder, open as page with `TextFileModel` in `link-view` mode, `secondaryEditor` set to `["link-category"]`, Categories panel auto-expanded. Main content area shows whatever the user clicks from the collection. | Planned |
+| 2.2 | — | Standalone link collection page | Create helper to programmatically open a link collection: create `TextFileModel` with `.link.json` content (`language: "json"`, `title: "name.link.json"`, `modified: true`), set `secondaryEditor = ["link-category"]`, open as new page with Categories panel auto-expanded. No temp file needed — cache handles unsaved content. | Planned |
 | 2.3 | — | Multi-file drop handler | When multiple files are dropped onto the app (or a page), create a temp `.link.json` with links to those files (preserving folder structure as categories). Open via standalone link collection helper (2.2). User clicks through files one by one in the main content area. | Planned |
 | 2.4 | — | Expose LinkTreeProvider in script `io` namespace | `io.LinkTreeProvider` + helper to create and open a link collection page from a script. Script type definitions. Enables: `const links = [...]; io.openLinkCollection(links);` | Planned |
 | 2.5 | — | Content search for link collections | Instant in-memory search by title/href/tags. Uses existing `ITreeProvider.search()` interface. | Planned |
@@ -340,20 +342,20 @@ PageModel
   └── ...
 ```
 
-### Case 3: Temp link collection (multi-file drop, script, AI agent)
+### Case 3: Standalone link collection (multi-file drop, script, AI agent)
 
 ```
 PageModel
-  ├── mainEditor: TextFileModel         // temp .link.json, secondaryEditor: ["link-category"]
+  ├── mainEditor: TextFileModel         // unsaved .link.json content (modified: true)
   │   └── LinkViewModel → LinkTreeProvider
+  │   └── secondaryEditor: ["link-category"]
   ├── secondaryEditors: EditorModel[]
-  │   ├── ExplorerEditorModel           // ["explorer"] (if local files)
   │   └── TextFileModel (same instance) // ["link-category"]
   ├── pageNavigatorModel                // open, "link-category" expanded
   └── ...
 ```
 
-Main content area shows whatever the user clicks from the collection.
+No temp file needed — TextFileModel's unsaved-content cache handles persistence. LinkEditor renders with Categories panel in PageNavigator. Main content area shows whatever the user clicks from the collection.
 
 ### Case 4: Browser context (no page, self-contained)
 
