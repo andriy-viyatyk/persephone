@@ -3,7 +3,7 @@ import { create } from 'zustand';
 import { useStoreWithEqualityFn } from "zustand/traditional";
 import { produce } from 'immer';
 
-import { logoutSubscription } from './events';
+
 import { resolveState } from '../utils/utils';
 
 interface IUse<T> {
@@ -98,14 +98,7 @@ export class TOneState<T> implements IState<T> {
     };
 }
 
-export class TGlobalState<T> extends TOneState<T> {
-    constructor(defaultState: T) {
-        super(defaultState);
-        logoutSubscription.subscribe(() => {
-            this.clear();
-        });
-    }
-}
+export class TGlobalState<T> extends TOneState<T> {}
 
 export class TComponentState<T> extends TOneState<T> {}
 
