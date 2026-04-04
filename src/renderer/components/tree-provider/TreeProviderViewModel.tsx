@@ -159,7 +159,7 @@ export class TreeProviderViewModel extends TComponentModel<
             .map(([id]) => id);
 
         try {
-            const items = await provider.list(provider.rootPath);
+            const items = filterTreeItems(await provider.list(provider.rootPath));
             const rootNode: TreeProviderNode = {
                 data: {
                     name: provider.displayName,
@@ -207,7 +207,7 @@ export class TreeProviderViewModel extends TComponentModel<
         const listPath = this.getListPath(node);
 
         try {
-            const items = await this.props.provider.list(listPath);
+            const items = filterTreeItems(await this.props.provider.list(listPath));
             const newTree = updateNodeChildren(tree, href, items.map(toNode));
             const { searchText } = this.state.get();
             const displayTree = this.computeDisplayTree(newTree, searchText);
@@ -238,7 +238,7 @@ export class TreeProviderViewModel extends TComponentModel<
             if (node && node.data.isDirectory && node.items === undefined) {
                 const listPath = this.getListPath(node);
                 try {
-                    const items = await this.props.provider.list(listPath);
+                    const items = filterTreeItems(await this.props.provider.list(listPath));
                     tree = updateNodeChildren(tree, href, items.map(toNode));
                     changed = true;
                 } catch {
@@ -697,6 +697,11 @@ export class TreeProviderViewModel extends TComponentModel<
 // =============================================================================
 // Pure utility functions
 // =============================================================================
+
+/** Filter out ".." parent navigation entries (used by FileTreeProvider for flat views, not trees). */
+function filterTreeItems(items: ITreeProviderItem[]): ITreeProviderItem[] {
+    return items.filter((item) => item.name !== "..");
+}
 
 function toNode(item: ITreeProviderItem): TreeProviderNode {
     return {
