@@ -136,18 +136,19 @@ PageNavigator          │  Main Content Area
 ```
 Secondary editors are removed from PageNavigator when switching to JSON mode.
 
-### F. TextFileModel registers its own secondary panels — no bridge model
+### F. Secondary panels managed externally — no logic in TextFileModel
 
-**Key simplification:** TextFileModel (the mainEditor) sets `this.secondaryEditor = ["link-category", ...]` directly, which adds itself to `PageModel.secondaryEditors[]`. No separate `LinksNavigatorModel` needed.
+**Key principle:** TextFileModel has NO knowledge of link panels. The `secondaryEditor` property on TextFileModel is set by **external code** — either the LinkEditor React component or programmatic callers (scripts, drop handlers).
 
 **How it works:**
-- `LinkEditorProps.model` is already typed as `TextFileModel` — the component has direct access
-- `TextFileModel` extends `EditorModel` which has the `secondaryEditor` setter
-- The setter calls `page.addSecondaryEditor(this)`, making TextFileModel both mainEditor and a secondary editor
+- `TextFileModel` extends `EditorModel` which has the `secondaryEditor` setter — this is generic infrastructure, not link-specific
+- When external code sets `model.secondaryEditor = ["link-category", ...]`, the setter calls `page.addSecondaryEditor(this)`, making TextFileModel both mainEditor and a secondary editor (Pattern B from [secondary-editors.md](doc/architecture/secondary-editors.md))
 - PageNavigator renders panels for each `secondaryEditor` entry — the panel components receive `TextFileModel` as model
-- Panel wrapper components call `useContentViewModel(model, "link-view")` to acquire the shared `LinkViewModel` instance (ref-counted, same instance as LinkEditor uses)
+- Panel wrapper components call `useContentViewModel(model, "link-view")` to acquire the shared `LinkViewModel` instance (ref-counted)
 
-**Lifecycle** — managed by LinkEditor React component:
+**Who sets secondaryEditor:**
+
+1. **LinkEditor React component** (normal `.link.json` browsing):
 ```
 LinkEditor mounts (page context):
   → model.secondaryEditor = ["link-category", "link-tags"?, "link-hostnames"?]
@@ -160,6 +161,15 @@ LinkEditor unmounts (or user switches to JSON mode):
 Data changes (tags appear/disappear):
   → LinkEditor updates model.secondaryEditor array
 ```
+
+2. **Programmatic callers** (multi-file drop, scripts, AI agent):
+```
+Create temp .link.json → create TextFileModel → set content
+  → model.secondaryEditor = ["link-category"]
+  → open page with Categories panel expanded
+```
+
+In both cases, TextFileModel is unaware — it's just an EditorModel whose `secondaryEditor` property happens to be set.
 
 **Panel wrapper pattern:**
 ```tsx
