@@ -9,6 +9,7 @@ import { CloseIcon } from "../../theme/icons";
 import { highlightText } from "../basic/useHighlightedText";
 import color from "../../theme/color";
 import { TreeProviderItemIcon } from "./TreeProviderItemIcon";
+import { LINK_DRAG_TYPE, LinkDragEvent } from "../../editors/link-editor/linkTypes";
 import {
     TreeProviderViewModel,
     TreeProviderViewProps,
@@ -18,8 +19,6 @@ import {
 } from "./TreeProviderViewModel";
 
 export type { TreeProviderViewProps, TreeProviderViewSavedState };
-
-const TREE_PROVIDER_DRAG = "tree-provider-item";
 
 const TreeProviderViewRoot = styled.div({
     display: "flex",
@@ -163,18 +162,24 @@ export function TreeProviderView(
         if (!writable) return null;
         // Don't drag root
         if (node.data.href === props.provider.rootPath) return null;
-        return { type: TREE_PROVIDER_DRAG, node };
-    }, [writable, props.provider.rootPath]);
+        return {
+            type: LINK_DRAG_TYPE,
+            items: [node.data],
+            sourceId: props.provider.sourceUrl,
+        } as LinkDragEvent;
+    }, [writable, props.provider.rootPath, props.provider.sourceUrl]);
 
     const canDrop = useCallback((dropNode: TreeProviderNode, dragItem: DragItem) => {
         if (!writable) return false;
-        if (dragItem.node?.data.href === dropNode.data.href) return false;
+        const linkDrag = dragItem as unknown as LinkDragEvent;
+        if (linkDrag.items?.length === 1 && linkDrag.items[0].href === dropNode.data.href) return false;
         return true;
     }, [writable]);
 
     const onDrop = useCallback((dropNode: TreeProviderNode, dragItem: DragItem) => {
-        if (dragItem.node) {
-            model.moveItem(dragItem.node, dropNode);
+        const linkDrag = dragItem as unknown as LinkDragEvent;
+        if (linkDrag.items?.length) {
+            model.moveItems(linkDrag.items, dropNode);
         }
     }, [model]);
 
@@ -252,9 +257,9 @@ export function TreeProviderView(
                     onItemDoubleClick={model.onItemDoubleClick}
                     onItemContextMenu={model.onItemContextMenu}
                     onExpandChange={model.onExpandChange}
-                    dragType={writable ? TREE_PROVIDER_DRAG : undefined}
+                    dragType={writable ? LINK_DRAG_TYPE : undefined}
                     getDragItem={writable ? getDragItem : undefined}
-                    dropTypes={writable ? [TREE_PROVIDER_DRAG] : undefined}
+                    dropTypes={writable ? [LINK_DRAG_TYPE] : undefined}
                     canDrop={writable ? canDrop : undefined}
                     onDrop={writable ? onDrop : undefined}
                     rootCollapsible={false}

@@ -1,13 +1,13 @@
 import { debounce } from "../../../shared/utils";
 import { ContentViewModel } from "../base/ContentViewModel";
 import { IContentHost } from "../base/IContentHost";
-import { CategoryTreeItem, DragItem } from "../../components/TreeView";
+import { CategoryTreeItem } from "../../components/TreeView";
 import { MenuItem } from "../../components/overlay/PopupMenu";
 import RenderGridModel from "../../components/virtualization/RenderGrid/RenderGridModel";
 
 import { splitWithSeparators } from "../../core/utils/utils";
 import { getHostname } from "../../components/tree-provider/favicon-cache";
-import { LinkItem, LinkEditorData, LinkViewMode, LINK_DRAG, LINK_CATEGORY_DRAG } from "./linkTypes";
+import { LinkItem, LinkEditorData, LinkViewMode } from "./linkTypes";
 import { showEditLinkDialog } from "./EditLinkDialog";
 import { ui } from "../../api/ui";
 import { settings } from "../../api/settings";
@@ -587,19 +587,6 @@ export class LinkViewModel extends ContentViewModel<LinkEditorState> {
     // =========================================================================
     // Drag-and-drop
     // =========================================================================
-
-    categoryDrop = (dropItem: CategoryTreeItem, dragItem: DragItem) => {
-        if (dragItem.type === LINK_DRAG) {
-            this.moveLinkToCategory(dragItem.linkId, dropItem.category);
-        } else if (dragItem.type === LINK_CATEGORY_DRAG) {
-            this.moveCategory(dragItem.category, dropItem.category);
-        }
-    };
-
-    getCategoryDragItem = (item: CategoryTreeItem): DragItem | null => {
-        if (!item.category) return null;
-        return { type: LINK_CATEGORY_DRAG, category: item.category };
-    };
 
     moveLinkToCategory = (linkId: string, category: string) => {
         const link = this.getLinkById(linkId);

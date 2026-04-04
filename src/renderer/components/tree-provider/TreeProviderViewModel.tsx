@@ -1,5 +1,5 @@
 import { TComponentModel } from "../../core/state/model";
-import type { ITreeProvider, ITreeProviderItem } from "../../api/types/io.tree";
+import type { ITreeProvider, ITreeProviderItem, ILink } from "../../api/types/io.tree";
 import type { TreeItem, TreeViewRef } from "../TreeView";
 import type { MenuItem } from "../overlay/PopupMenu";
 import { ContextMenuEvent } from "../../api/events/events";
@@ -664,9 +664,8 @@ export class TreeProviderViewModel extends TComponentModel<
 
     // ── Drag-drop ────────────────────────────────────────────────────────
 
-    moveItem = async (sourceNode: TreeProviderNode, targetNode: TreeProviderNode) => {
+    moveItems = async (sourceItems: ILink[], targetNode: TreeProviderNode) => {
         const { provider } = this.props;
-        if (!provider.rename) return;
 
         const targetDir = targetNode.data.isDirectory
             ? targetNode
@@ -674,22 +673,33 @@ export class TreeProviderViewModel extends TComponentModel<
         if (!targetDir) return;
 
         const targetPath = this.getListPath(targetDir);
-        const newPath = targetPath
-            ? targetPath + "/" + sourceNode.data.title
-            : sourceNode.data.title;
 
-        const bt = await ui.confirm(
-            `Move "${sourceNode.data.title}" to "${targetDir.data.title}/"?`,
-            { title: "Move", buttons: ["Move", "Cancel"] },
-        );
-        if (bt !== "Move") return;
+        if (provider.moveToCategory) {
+            // Link provider path: moveToCategory (no confirmation needed)
+            await provider.moveToCategory(sourceItems.map(i => i.href), targetPath);
+        } else if (provider.rename && sourceItems.length === 1) {
+            // File provider path: rename (with confirmation)
+            const source = sourceItems[0];
+            const newPath = targetPath
+                ? targetPath + "/" + source.title
+                : source.title;
 
-        try {
-            await provider.rename(this.getListPath(sourceNode), newPath);
-        } catch (err: any) {
-            ui.notify(err.message || "Failed to move.", "warning");
+            const bt = await ui.confirm(
+                `Move "${source.title}" to "${targetDir.data.title}/"?`,
+                { title: "Move", buttons: ["Move", "Cancel"] },
+            );
+            if (bt !== "Move") return;
+
+            try {
+                await provider.rename(source.href, newPath);
+            } catch (err: any) {
+                ui.notify(err.message || "Failed to move.", "warning");
+                return;
+            }
+        } else {
             return;
         }
+
         await this.buildTree();
     };
 }

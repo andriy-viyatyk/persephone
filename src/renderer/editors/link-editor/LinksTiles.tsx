@@ -7,7 +7,7 @@ import { RenderCellParams, RenderSizeOptional } from "../../components/virtualiz
 import color from "../../theme/color";
 import { DeleteIcon, GlobeIcon, RenameIcon } from "../../theme/icons";
 import type { ILink } from "../../api/types/io.tree";
-import { LinkViewMode } from "./linkTypes";
+import { LINK_DRAG_TYPE, LinkDragEvent, LinkViewMode } from "./linkTypes";
 import { getHostname, getFaviconPathSync, useFavicons } from "../../components/tree-provider/favicon-cache";
 
 // =============================================================================
@@ -161,8 +161,8 @@ interface LinksTileCellProps {
     isSelected: boolean;
     imageHeight: number;
     additionalIcon?: React.ReactNode;
-    dragType?: string;
-    getDragItem?: (link: ILink) => unknown;
+    /** When set, tile is draggable. Value is used as sourceId in LinkDragEvent. */
+    dragSourceId?: string;
     onSelect?: (link: ILink) => void;
     onEdit?: (link: ILink) => void;
     onDelete?: (link: ILink, skipConfirm: boolean) => void;
@@ -172,12 +172,12 @@ interface LinksTileCellProps {
 
 function LinksTileCell({
     link, isSelected, imageHeight, additionalIcon,
-    dragType, getDragItem, onSelect, onEdit, onDelete, onDoubleClick, onContextMenu,
+    dragSourceId, onSelect, onEdit, onDelete, onDoubleClick, onContextMenu,
 }: LinksTileCellProps) {
     const [{ isDragging }, drag] = useDrag({
-        type: dragType || "NONE",
-        item: getDragItem ? () => getDragItem(link) : { type: dragType || "NONE" },
-        canDrag: !!dragType,
+        type: LINK_DRAG_TYPE,
+        item: { type: LINK_DRAG_TYPE, items: [link], sourceId: dragSourceId } as LinkDragEvent,
+        canDrag: !!dragSourceId,
         collect: (monitor) => ({
             isDragging: monitor.isDragging(),
         }),
@@ -268,10 +268,8 @@ export interface LinksTilesProps {
     onContextMenu?: (e: React.MouseEvent, link: ILink) => void;
     /** Callback to get additional icon for a tile (e.g., pin indicator). */
     getAdditionalIcon?: (link: ILink) => React.ReactNode;
-    /** Drag type for react-dnd. Tiles are draggable only when set. */
-    dragType?: string;
-    /** Build drag item data for a link. Required when dragType is set. */
-    getDragItem?: (link: ILink) => unknown;
+    /** Enable drag. When set, items are draggable with this sourceId in LinkDragEvent. */
+    dragSourceId?: string;
     /** Called with the RenderGridModel on mount, null on unmount. */
     onGridModel?: (model: RenderGridModel | null) => void;
 }
@@ -279,7 +277,7 @@ export interface LinksTilesProps {
 export function LinksTiles({
     links, viewMode, selectedId, getId = defaultGetId,
     onSelect, onEdit, onDelete, onDoubleClick, onContextMenu,
-    getAdditionalIcon, dragType, getDragItem, onGridModel,
+    getAdditionalIcon, dragSourceId, onGridModel,
 }: LinksTilesProps) {
     const gridRef = useRef<RenderGridModel>(null);
     const [gridSize, setGridSize] = useState<RenderSizeOptional>({
@@ -334,8 +332,7 @@ export function LinksTiles({
                         isSelected={getId(link) === selectedId}
                         imageHeight={dims.imageHeight}
                         additionalIcon={getAdditionalIcon?.(link)}
-                        dragType={dragType}
-                        getDragItem={getDragItem}
+                        dragSourceId={dragSourceId}
                         onSelect={onSelect}
                         onEdit={onEdit}
                         onDelete={onDelete}
@@ -346,7 +343,7 @@ export function LinksTiles({
             );
         },
         [links, counts.colCount, dims, selectedId, getId, getAdditionalIcon,
-         dragType, getDragItem, onSelect, onEdit, onDelete, onDoubleClick, onContextMenu, faviconVersion],
+         dragSourceId, onSelect, onEdit, onDelete, onDoubleClick, onContextMenu, faviconVersion],
     );
 
     return (

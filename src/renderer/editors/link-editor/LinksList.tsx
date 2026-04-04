@@ -12,6 +12,7 @@ import type { ILink } from "../../api/types/io.tree";
 import { TreeProviderItemIcon } from "../../components/tree-provider/TreeProviderItemIcon";
 import { LinkTooltip } from "./LinkTooltip";
 import { useFavicons } from "../../components/tree-provider/favicon-cache";
+import { LINK_DRAG_TYPE, LinkDragEvent } from "./linkTypes";
 
 const ROW_HEIGHT = 28;
 
@@ -107,8 +108,8 @@ interface LinksListRowProps {
     isSelected: boolean;
     searchText: string;
     additionalIcon?: React.ReactNode;
-    dragType?: string;
-    getDragItem?: (link: ILink) => unknown;
+    /** When set, row is draggable. Value is used as sourceId in LinkDragEvent. */
+    dragSourceId?: string;
     onSelect?: (link: ILink) => void;
     onEdit?: (link: ILink) => void;
     onDelete?: (link: ILink, skipConfirm: boolean) => void;
@@ -118,14 +119,14 @@ interface LinksListRowProps {
 
 function LinksListRow({
     link, isSelected, searchText, additionalIcon,
-    dragType, getDragItem, onSelect, onEdit, onDelete, onDoubleClick, onContextMenu,
+    dragSourceId, onSelect, onEdit, onDelete, onDoubleClick, onContextMenu,
 }: LinksListRowProps) {
     const tooltipId = useMemo(() => crypto.randomUUID(), []);
 
     const [{ isDragging }, drag] = useDrag({
-        type: dragType || "NONE",
-        item: getDragItem ? () => getDragItem(link) : { type: dragType || "NONE" },
-        canDrag: !!dragType,
+        type: LINK_DRAG_TYPE,
+        item: { type: LINK_DRAG_TYPE, items: [link], sourceId: dragSourceId } as LinkDragEvent,
+        canDrag: !!dragSourceId,
         collect: (monitor) => ({
             isDragging: monitor.isDragging(),
         }),
@@ -213,10 +214,8 @@ export interface LinksListProps {
     onContextMenu?: (e: React.MouseEvent, link: ILink) => void;
     /** Callback to get additional icon for a link row (e.g., pin indicator). */
     getAdditionalIcon?: (link: ILink) => React.ReactNode;
-    /** Drag type for react-dnd. Rows are draggable only when set. */
-    dragType?: string;
-    /** Build drag item data for a link. Required when dragType is set. */
-    getDragItem?: (link: ILink) => unknown;
+    /** Enable drag. When set, items are draggable with this sourceId in LinkDragEvent. */
+    dragSourceId?: string;
     /** Called with the RenderGridModel on mount, null on unmount. */
     onGridModel?: (model: RenderGridModel | null) => void;
 }
@@ -224,7 +223,7 @@ export interface LinksListProps {
 export function LinksList({
     links, selectedId, getId = defaultGetId, searchText = "",
     onSelect, onEdit, onDelete, onDoubleClick, onContextMenu,
-    getAdditionalIcon, dragType, getDragItem, onGridModel,
+    getAdditionalIcon, dragSourceId, onGridModel,
 }: LinksListProps) {
     const gridRef = useRef<RenderGridModel>(null);
     const [gridWidth, setGridWidth] = useState<number | undefined>(undefined);
@@ -254,8 +253,7 @@ export function LinksList({
                         isSelected={getId(link) === selectedId}
                         searchText={searchText}
                         additionalIcon={getAdditionalIcon?.(link)}
-                        dragType={dragType}
-                        getDragItem={getDragItem}
+                        dragSourceId={dragSourceId}
                         onSelect={onSelect}
                         onEdit={onEdit}
                         onDelete={onDelete}
@@ -265,7 +263,7 @@ export function LinksList({
                 </div>
             );
         },
-        [links, selectedId, getId, searchText, getAdditionalIcon, dragType, getDragItem,
+        [links, selectedId, getId, searchText, getAdditionalIcon, dragSourceId,
          onSelect, onEdit, onDelete, onDoubleClick, onContextMenu, faviconVersion],
     );
 

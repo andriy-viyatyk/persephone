@@ -4,7 +4,7 @@ import { CopyIcon, DeleteIcon, OpenFileIcon, PinFilledIcon, PinIcon, RenameIcon 
 import { ContextMenuEvent } from "../../api/events/events";
 import { app } from "../../api/app";
 import type { ILink } from "../../api/types/io.tree";
-import { LinkItem, LinkViewMode, LINK_DRAG } from "./linkTypes";
+import { LinkItem, LinkViewMode } from "./linkTypes";
 import { LinkViewModel } from "./LinkViewModel";
 import { LinksTiles } from "./LinksTiles";
 import { getHostname, requestFaviconSave } from "../../components/tree-provider/favicon-cache";
@@ -139,8 +139,7 @@ export function LinkItemTiles({ links, model, viewMode, selectedLinkId, pinnedLi
             onDelete={handleDelete}
             onContextMenu={handleContextMenu}
             getAdditionalIcon={getAdditionalIcon}
-            dragType={LINK_DRAG}
-            getDragItem={(link) => ({ type: LINK_DRAG, linkId: link.id })}
+            dragSourceId={model.treeProvider.sourceUrl}
             onGridModel={handleGridModel}
         />
     );

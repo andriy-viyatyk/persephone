@@ -5,8 +5,17 @@ import { TextFileModel } from "../text/TextEditorModel";
 // Drag Types
 // =============================================================================
 
-export const LINK_DRAG = "LINK_DRAG";
-export const LINK_CATEGORY_DRAG = "LINK_CATEGORY_DRAG";
+/** Unified drag type for all ILink items (links, categories, files, archive entries). */
+export const LINK_DRAG_TYPE = "link-drag";
+
+/** Drag payload for ILink items. Carries an array of links + optional source identifier. */
+export interface LinkDragEvent {
+    type: typeof LINK_DRAG_TYPE;
+    items: ILink[];
+    /** Source identifier — provider sourceUrl or model id. Used to distinguish internal vs external drops. */
+    sourceId?: string;
+}
+
 export const LINK_PIN_DRAG = "LINK_PIN_DRAG";
 
 // =============================================================================

@@ -1,12 +1,12 @@
 import styled from "@emotion/styled";
 import { useCallback, useSyncExternalStore } from "react";
-import { CategoryTree, CategoryTreeItem } from "../../../components/TreeView";
+import { CategoryTree, CategoryTreeItem, DragItem } from "../../../components/TreeView";
 import { splitWithSeparators } from "../../../core/utils/utils";
 import { app } from "../../../api/app";
 import { RawLinkEvent } from "../../../api/events/events";
 import color from "../../../theme/color";
 import type { LinkViewModel } from "../LinkViewModel";
-import { LINK_DRAG, LINK_CATEGORY_DRAG } from "../linkTypes";
+import { LINK_DRAG_TYPE, LinkDragEvent } from "../linkTypes";
 
 // =============================================================================
 // Styles
@@ -81,6 +81,33 @@ export function LinkCategoryPanel({ vm, useOpenRawLink }: LinkCategoryPanelProps
         [vm, pageState.categoriesSize], // eslint-disable-line react-hooks/exhaustive-deps
     );
 
+    const handleDrop = useCallback((dropItem: CategoryTreeItem, dragItem: DragItem) => {
+        const linkDrag = dragItem as unknown as LinkDragEvent;
+        if (!linkDrag.items?.length) return;
+        const item = linkDrag.items[0];
+        if (item.isDirectory) {
+            vm.moveCategory(item.href, dropItem.category);
+        } else {
+            const link = vm.state.get().data.links.find(l => l.href === item.href);
+            if (link) vm.moveLinkToCategory(link.id, dropItem.category);
+        }
+    }, [vm]);
+
+    const handleGetDragItem = useCallback((item: CategoryTreeItem): DragItem | null => {
+        if (!item.category) return null;
+        return {
+            type: LINK_DRAG_TYPE,
+            items: [{
+                title: item.category.split("/").pop() || "",
+                href: item.category,
+                category: "",
+                tags: [],
+                isDirectory: true,
+            }],
+            sourceId: vm.treeProvider.sourceUrl,
+        } as unknown as DragItem;
+    }, [vm]);
+
     return (
         <LinkCategoryPanelRoot>
             <CategoryTree
@@ -92,10 +119,10 @@ export function LinkCategoryPanel({ vm, useOpenRawLink }: LinkCategoryPanelProps
                 getSelected={vm.getCategoryItemSelected}
                 getLabel={getTreeItemLabel}
                 refreshKey={pageState.selectedCategory}
-                dropTypes={[LINK_DRAG, LINK_CATEGORY_DRAG]}
-                onDrop={vm.categoryDrop}
-                dragType={LINK_CATEGORY_DRAG}
-                getDragItem={vm.getCategoryDragItem}
+                dropTypes={[LINK_DRAG_TYPE]}
+                onDrop={handleDrop}
+                dragType={LINK_DRAG_TYPE}
+                getDragItem={handleGetDragItem}
             />
         </LinkCategoryPanelRoot>
     );

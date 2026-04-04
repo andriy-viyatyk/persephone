@@ -5,7 +5,7 @@ import { CopyIcon, DeleteIcon, OpenFileIcon, PinFilledIcon, PinIcon, RenameIcon 
 import { ContextMenuEvent } from "../../api/events/events";
 import { app } from "../../api/app";
 import type { ILink } from "../../api/types/io.tree";
-import { LinkItem, LINK_DRAG } from "./linkTypes";
+import { LinkItem } from "./linkTypes";
 import { LinkViewModel } from "./LinkViewModel";
 import { LinksList } from "./LinksList";
 import { getHostname, requestFaviconSave } from "../../components/tree-provider/favicon-cache";
@@ -140,8 +140,7 @@ export function LinkItemList({ links, model, selectedLinkId, pinnedLinkIds }: Li
             onDelete={handleDelete}
             onContextMenu={handleContextMenu}
             getAdditionalIcon={getAdditionalIcon}
-            dragType={LINK_DRAG}
-            getDragItem={(link) => ({ type: LINK_DRAG, linkId: link.id })}
+            dragSourceId={model.treeProvider.sourceUrl}
             onGridModel={handleGridModel}
         />
     );
