@@ -10,20 +10,20 @@ import {
     type ITreeProviderLink,
 } from "../../content/tree-providers/tree-provider-link";
 
-export interface CategoryEditorModelState extends IEditorState {
-    type: "categoryPage";
+export interface ExplorerFolderEditorModelState extends IEditorState {
+    type: "explorerFolder";
 }
 
-export function getDefaultCategoryEditorModelState(): CategoryEditorModelState {
+export function getDefaultExplorerFolderEditorModelState(): ExplorerFolderEditorModelState {
     return {
         ...getDefaultEditorModelState(),
-        type: "categoryPage",
-    } as CategoryEditorModelState;
+        type: "explorerFolder",
+    } as ExplorerFolderEditorModelState;
 }
 
-export class CategoryEditorModel extends EditorModel<CategoryEditorModelState> {
-    constructor(state?: TComponentState<CategoryEditorModelState>) {
-        super(state ?? new TComponentState(getDefaultCategoryEditorModelState()));
+export class ExplorerFolderEditorModel extends EditorModel<ExplorerFolderEditorModelState> {
+    constructor(state?: TComponentState<ExplorerFolderEditorModelState>) {
+        super(state ?? new TComponentState(getDefaultExplorerFolderEditorModelState()));
         this.noLanguage = true;
         this.getIcon = () => React.createElement(
             "span",

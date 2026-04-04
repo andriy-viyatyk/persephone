@@ -1,20 +1,28 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import styled from "@emotion/styled";
 import { useComponentModel } from "../../core/state/model";
 import RenderGrid from "../virtualization/RenderGrid/RenderGrid";
 import RenderGridModel from "../virtualization/RenderGrid/RenderGridModel";
-import type { RenderCellParams } from "../virtualization/RenderGrid/types";
+import type { RenderCellParams, RenderSizeOptional } from "../virtualization/RenderGrid/types";
 import { TextField } from "../basic/TextField";
 import { Button } from "../basic/Button";
-import { CloseIcon } from "../../theme/icons";
+import {
+    CloseIcon,
+    ViewListIcon, ViewLandscapeIcon, ViewLandscapeBigIcon,
+    ViewPortraitIcon, ViewPortraitBigIcon,
+} from "../../theme/icons";
+import { showAppPopupMenu } from "../../ui/dialogs";
 import { highlightText } from "../basic/useHighlightedText";
 import color from "../../theme/color";
 import { TreeProviderItemIcon } from "./TreeProviderItemIcon";
+import { ItemTile, TILE_DIMENSIONS } from "./ItemTile";
+import { useFavicons } from "./favicon-cache";
 import type { ITreeProviderItem } from "../../api/types/io.tree";
 import {
     CategoryViewModel,
     CategoryViewProps,
+    CategoryViewMode,
     defaultCategoryViewState,
 } from "./CategoryViewModel";
 
@@ -22,6 +30,32 @@ export type { CategoryViewProps } from "./CategoryViewModel";
 export type { CategoryViewMode } from "./CategoryViewModel";
 
 const ROW_HEIGHT = 28;
+const EMPTY_ARRAY: ITreeProviderItem[] = [];
+
+// =============================================================================
+// View mode constants
+// =============================================================================
+
+const VIEW_MODE_LABELS: Record<CategoryViewMode, string> = {
+    "list": "List",
+    "tiles-landscape": "Landscape",
+    "tiles-landscape-big": "Landscape (Large)",
+    "tiles-portrait": "Portrait",
+    "tiles-portrait-big": "Portrait (Large)",
+};
+
+const VIEW_MODE_ICONS: Record<CategoryViewMode, React.ReactNode> = {
+    "list": <ViewListIcon />,
+    "tiles-landscape": <ViewLandscapeIcon />,
+    "tiles-landscape-big": <ViewLandscapeBigIcon />,
+    "tiles-portrait": <ViewPortraitIcon />,
+    "tiles-portrait-big": <ViewPortraitBigIcon />,
+};
+
+const VIEW_MODE_ORDER: CategoryViewMode[] = [
+    "list", "tiles-landscape", "tiles-landscape-big",
+    "tiles-portrait", "tiles-portrait-big",
+];
 
 const CategoryViewRoot = styled.div({
     display: "flex",
@@ -68,6 +102,11 @@ const CategoryViewRoot = styled.div({
         padding: "0 4px",
         display: "flex",
         alignItems: "stretch",
+    },
+
+    "& .cv-tile-cell": {
+        boxSizing: "border-box",
+        padding: 4,
     },
 
     "& .cv-row": {
@@ -135,11 +174,37 @@ export function CategoryView(props: CategoryViewProps) {
     const gridRef = useRef<RenderGridModel>(null);
     const searchInputRef = useRef<HTMLInputElement>(null);
 
+    const viewMode = props.viewMode ?? "list";
+    const isTileMode = viewMode !== "list";
+    const { filteredItems } = state;
+
+    // Track grid size for tile column calculation
+    const [gridSize, setGridSize] = useState<RenderSizeOptional>({ width: undefined, height: undefined });
+
+    // Favicon preloading for tile mode
+    const faviconVersion = useFavicons(isTileMode ? filteredItems : EMPTY_ARRAY);
+
+    // Tile grid layout
+    const tileLayout = useMemo(() => {
+        if (!isTileMode) return null;
+        const dims = TILE_DIMENSIONS[viewMode as Exclude<CategoryViewMode, "list">];
+        const colCount = gridSize.width
+            ? Math.max(1, Math.floor(gridSize.width / dims.cellWidth))
+            : 1;
+        const rowCount = filteredItems.length > 0
+            ? Math.ceil(filteredItems.length / colCount)
+            : 0;
+        return { dims, colCount, rowCount };
+    }, [isTileMode, viewMode, gridSize.width, filteredItems.length]);
+
     useEffect(() => {
         gridRef.current?.update({ all: true });
-    }, [state.filteredItems, props.selectedHref]);
+    }, [state.filteredItems, props.selectedHref, faviconVersion]);
 
-    const { filteredItems } = state;
+    useEffect(() => {
+        gridRef.current?.scrollToRow(0);
+        gridRef.current?.update({ all: true });
+    }, [viewMode]);
 
     const renderCell = useCallback(
         (p: RenderCellParams) => {
@@ -161,6 +226,42 @@ export function CategoryView(props: CategoryViewProps) {
         },
         [filteredItems, props.selectedHref, state.searchText, model],
     );
+
+    const renderTileCell = useCallback(
+        (p: RenderCellParams) => {
+            if (!tileLayout) return null;
+            const index = p.row * tileLayout.colCount + p.col;
+            const item = filteredItems[index];
+            if (!item) return <div key={p.key} style={p.style} />;
+
+            const isSelected = item.href === props.selectedHref;
+            return (
+                <div key={p.key} style={p.style} className="cv-tile-cell">
+                    <ItemTile
+                        item={item}
+                        imageHeight={tileLayout.dims.imageHeight}
+                        isSelected={isSelected}
+                        searchText={state.searchText}
+                        onClick={() => model.onItemClick(item)}
+                        onDoubleClick={() => model.onItemDoubleClick(item)}
+                        onContextMenu={(e) => model.onItemContextMenu(item, e)}
+                    />
+                </div>
+            );
+        },
+        [filteredItems, tileLayout, props.selectedHref, state.searchText, model, faviconVersion],
+    );
+
+    const handleViewModeMenu = useCallback((e: React.MouseEvent) => {
+        if (!props.onViewModeChange) return;
+        const rect = e.currentTarget.getBoundingClientRect();
+        showAppPopupMenu(rect.left, rect.bottom + 2, VIEW_MODE_ORDER.map((mode) => ({
+            label: VIEW_MODE_LABELS[mode],
+            icon: VIEW_MODE_ICONS[mode],
+            selected: mode === viewMode,
+            onClick: () => props.onViewModeChange!(mode),
+        })));
+    }, [viewMode, props.onViewModeChange]);
 
     const handleSearchKeyDown = useCallback((e: React.KeyboardEvent) => {
         if (e.key === "Escape") {
@@ -195,36 +296,53 @@ export function CategoryView(props: CategoryViewProps) {
     const totalCount = state.items.length;
     const filteredCount = filteredItems.length;
 
-    const searchElement = (
-        <TextField
-            ref={searchInputRef}
-            value={state.searchText}
-            onChange={model.setSearchText}
-            placeholder="Search..."
-            onKeyDown={handleSearchKeyDown}
-            endButtons={[
-                <Button
-                    size="small"
-                    type="icon"
-                    key="close-search"
-                    title="Clear"
-                    onClick={handleSearchClose}
-                    invisible={!state.searchText}
-                >
-                    <CloseIcon />
-                </Button>,
-            ]}
-        />
+    const toolbarElement = (
+        <>
+            <TextField
+                ref={searchInputRef}
+                value={state.searchText}
+                onChange={model.setSearchText}
+                placeholder="Search..."
+                onKeyDown={handleSearchKeyDown}
+                endButtons={[
+                    <Button
+                        size="small"
+                        type="icon"
+                        key="close-search"
+                        title="Clear"
+                        onClick={handleSearchClose}
+                        invisible={!state.searchText}
+                    >
+                        <CloseIcon />
+                    </Button>,
+                ]}
+            />
+            {props.onViewModeChange && (
+                <Button type="icon" size="small" title="View Mode" onClick={handleViewModeMenu}>
+                    {VIEW_MODE_ICONS[viewMode]}
+                </Button>
+            )}
+        </>
     );
 
     return (
         <CategoryViewRoot>
-            {props.toolbarPortalRef && createPortal(searchElement, props.toolbarPortalRef)}
+            {props.toolbarPortalRef && createPortal(toolbarElement, props.toolbarPortalRef)}
             <div className="cv-content">
                 {filteredItems.length === 0 ? (
                     <div className="cv-empty">
                         {state.searchText ? "No matching items" : "Empty folder"}
                     </div>
+                ) : isTileMode && tileLayout ? (
+                    <RenderGrid
+                        ref={gridRef}
+                        rowCount={tileLayout.rowCount}
+                        columnCount={tileLayout.colCount}
+                        rowHeight={tileLayout.dims.cellHeight}
+                        columnWidth={tileLayout.dims.cellWidth}
+                        renderCell={renderTileCell}
+                        onResize={setGridSize}
+                    />
                 ) : (
                     <RenderGrid
                         ref={gridRef}
@@ -234,6 +352,7 @@ export function CategoryView(props: CategoryViewProps) {
                         columnWidth={FULL_WIDTH}
                         renderCell={renderCell}
                         fitToWidth
+                        onResize={setGridSize}
                     />
                 )}
             </div>

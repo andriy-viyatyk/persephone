@@ -270,12 +270,12 @@ Enhance CategoryView with tile rendering and externalized state. Test with Explo
 
 | # | Task | Title | Description | Status |
 |---|------|-------|-------------|--------|
-| 0.1 | — | Add `imgSrc` to `ITreeProviderItem` | Add `imgSrc?: string` field to `ITreeProviderItem` in `io.tree.d.ts`. Update `FileTreeProvider.list()` to set `imgSrc = item.href` for image files (detect by extension: `.png`, `.jpg`, `.jpeg`, `.gif`, `.svg`, `.webp`, `.bmp`, `.ico`). Update script type definitions in `assets/editor-types/io.d.ts`. | Planned |
-| 0.2 | — | Move favicon-cache to shared location | Move `favicon-cache.ts` from `editors/link-editor/` to `components/tree-provider/` (or `core/utils/`). Update imports in LinkEditor. This utility is needed by `ItemTile` for HTTP link favicons. | Planned |
-| 0.3 | — | `ItemTile` component | New component in `components/tree-provider/ItemTile.tsx`. Renders a single tile card: image area (top) + name area (bottom). Image sources: `imgSrc` → favicon for HTTP → file-type icon fallback. Tile dimension constants (cell width/height, image height) per view mode. Responsive column calculation. | Planned |
-| 0.4 | — | CategoryView tile modes | Implement tile rendering in CategoryView for all `CategoryViewMode` variants. When `viewMode !== "list"`, render items using `ItemTile` in a responsive grid (`RenderGrid` with calculated column count). Add view mode toggle buttons to toolbar area (via `toolbarPortalRef`). | Planned |
-| 0.5 | — | CategoryEditor view mode integration | CategoryEditor passes `viewMode` and `onViewModeChange` to CategoryView. Persist per-folder view mode in user data file (`<persephone-user-folder>/data/folderViewMode.json`). CategoryEditor reads/writes this file to remember which folders should show tiles. | Planned |
-| 0.6 | — | Test in Explorer | Test: navigate to image folder → switch to tile mode → see image previews. Switch between view modes. Verify persistence across navigation and restart. Verify list mode is unchanged. | Planned |
+| 0.1 | [US-337](../tasks/US-337-add-imgsrc-to-tree-provider-item/README.md) | Add `imgSrc` to `ITreeProviderItem` | Add `imgSrc?: string` field to `ITreeProviderItem` in `io.tree.d.ts`. Update `FileTreeProvider.list()` to set `imgSrc = item.href` for image files (detect by extension: `.png`, `.jpg`, `.jpeg`, `.gif`, `.svg`, `.webp`, `.bmp`, `.ico`). Update script type definitions in `assets/editor-types/io.d.ts`. | Done |
+| 0.2 | [US-338](../tasks/US-338-move-favicon-cache/README.md) | Move favicon-cache to shared location | Move `favicon-cache.ts` from `editors/link-editor/` to `components/tree-provider/` (or `core/utils/`). Update imports in LinkEditor. This utility is needed by `ItemTile` for HTTP link favicons. | Done |
+| 0.3 | [US-339](../tasks/US-339-item-tile-component/README.md) | `ItemTile` component | New component in `components/tree-provider/ItemTile.tsx`. Renders a single tile card: image area (top) + name area (bottom). Image sources: `imgSrc` → favicon for HTTP → file-type icon fallback. Tile dimension constants (cell width/height, image height) per view mode. Responsive column calculation. | Done |
+| 0.4 | [US-340](../tasks/US-340-categoryview-tile-modes/README.md) | CategoryView tile modes | Implement tile rendering in CategoryView for all `CategoryViewMode` variants. When `viewMode !== "list"`, render items using `ItemTile` in a responsive grid (`RenderGrid` with calculated column count). Add view mode toggle buttons to toolbar area (via `toolbarPortalRef`). | Done |
+| 0.5 | [US-341](../tasks/US-341-explorer-folder-editor-view-mode/README.md) | Rename CategoryEditor → ExplorerFolderEditor + view mode | Full rename (classes, files, editorType, registry ID). `FolderViewModeService` with hierarchical inheritance. Per-folder view mode persistence in `folderViewMode.json`. | Done |
+| 0.6 | [US-342](../tasks/US-342-test-in-explorer/README.md) | Test in Explorer — fixes and adjustments | Toolbar layout, root collapse guard, click behavior (select vs navigate), ".." parent navigation, first tile switch fix. | Done | Test: navigate to image folder → switch to tile mode → see image previews. Switch between view modes. Verify persistence across navigation and restart. Verify list mode is unchanged. | Planned |
 
 ### Phase 1: Link Editor Refactoring
 
@@ -308,7 +308,8 @@ Make link collections a general-purpose building block. Enable programmatic crea
 
 | # | Task | Title | Description | Status |
 |---|------|-------|-------------|--------|
-| 3.1 | — | Adopt libarchive-wasm | Replace `jszip` with `libarchive-wasm` (WASM-based, MIT). Supports RAR v4/v5, 7z, TAR, gzip, bzip2, lzma/xz, cab, ISO. Generalize `ZipTreeProvider` to `ArchiveTreeProvider`. Update `ARCHIVE_EXTENSIONS` and `isArchiveFile()`. | Planned |
+| 3.1 | — | Make folder editor provider-agnostic | `ExplorerFolderEditor` currently hardcodes `page.findExplorer()` → FileTreeProvider. It should work with any provider: Explorer (FileTreeProvider), Archive (ZipTreeProvider), and future Categories (LinkTreeProvider). The `tree-category://` link already carries `type` ("file", "zip", etc.) — use it to find the correct secondary editor and its treeProvider. Rename back to `CategoryEditor` or a neutral name. This makes one editor serve all "browse a folder/category" use cases. | Planned |
+| 3.2 | — | Adopt libarchive-wasm | Replace `jszip` with `libarchive-wasm` (WASM-based, MIT). Supports RAR v4/v5, 7z, TAR, gzip, bzip2, lzma/xz, cab, ISO. Generalize `ZipTreeProvider` to `ArchiveTreeProvider`. Update `ARCHIVE_EXTENSIONS` and `isArchiveFile()`. | Planned |
 
 ## Architecture Reference
 

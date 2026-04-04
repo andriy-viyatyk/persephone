@@ -6,7 +6,7 @@ import { MenuItem } from "../../components/overlay/PopupMenu";
 import RenderGridModel from "../../components/virtualization/RenderGrid/RenderGridModel";
 
 import { splitWithSeparators } from "../../core/utils/utils";
-import { getHostname } from "./favicon-cache";
+import { getHostname } from "../../components/tree-provider/favicon-cache";
 import { LinkItem, LinkEditorData, LinkViewMode, LINK_DRAG, LINK_CATEGORY_DRAG } from "./linkTypes";
 import { showEditLinkDialog } from "./EditLinkDialog";
 import { ui } from "../../api/ui";

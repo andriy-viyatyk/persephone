@@ -284,7 +284,6 @@ persephone/
 │   │   ├── LinkEditor.tsx
 │   │   ├── LinkViewModel.ts
 │   │   ├── linkTypes.ts
-│   │   ├── favicon-cache.ts
 │   │   ├── PinnedLinksPanel.tsx
 │   │   ├── LinkItemTiles.tsx
 │   │   ├── LinkItemList.tsx
@@ -383,9 +382,10 @@ persephone/
 │   │   └── index.ts
 │   ├── settings/           # Settings page (standalone)
 │   │   └── SettingsPage.tsx
-│   ├── category/           # Category/folder view (standalone)
-│   │   ├── CategoryEditor.tsx     # Wraps CategoryView, toolbar with navigator toggle
-│   │   └── CategoryEditorModel.ts   # Page model — decodes tree-category:// link
+│   ├── category/           # Explorer folder view (standalone)
+│   │   ├── ExplorerFolderEditor.tsx       # Wraps CategoryView, toolbar with navigator toggle + view mode
+│   │   ├── ExplorerFolderEditorModel.ts   # Page model — decodes tree-category:// link
+│   │   └── FolderViewModeService.ts       # Per-folder view mode persistence with hierarchical inheritance
 │   ├── zip/                # Archive editor (secondary — sidebar panel)
 │   │   ├── ZipEditorModel.ts          # EditorModel — archive state, tree provider, navigation survival
 │   │   ├── ZipEditorView.tsx          # Main content view (zip-view)
@@ -446,6 +446,7 @@ persephone/
 │   ├── data-grid/          # Advanced data grid (AVGrid)
 │   ├── virtualization/     # Base virtualization (RenderGrid)
 │   ├── tree-provider/      # TreeProviderView — generic tree viewer for any ITreeProvider (EPIC-015)
+│   │   ├── favicon-cache.ts # Favicon download/cache for HTTP links (shared by link-editor, browser, tree icons)
 │   ├── file-search/        # FileSearch — standalone file content search with virtualized results (EPIC-015)
 │   ├── icons/              # FileIcon, LanguageIcon
 │   └── page-manager/       # Portal-based page/tab host (prevents iframe/webview reload on reorder)

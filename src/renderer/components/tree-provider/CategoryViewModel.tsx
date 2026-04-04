@@ -116,11 +116,7 @@ export class CategoryViewModel extends TComponentModel<
     // ── Click handlers ───────────────────────────────────────────────────
 
     onItemClick = (item: ITreeProviderItem) => {
-        if (item.isDirectory) {
-            this.props.onFolderClick?.(item);
-        } else {
-            this.props.onItemClick?.(item);
-        }
+        this.props.onItemClick?.(item);
     };
 
     onItemDoubleClick = (item: ITreeProviderItem) => {

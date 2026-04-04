@@ -33,7 +33,7 @@ page.data.counter = (page.data.counter || 0) + 1;
 
 ### EditorView values
 
-`"monaco"` · `"grid-json"` · `"grid-csv"` · `"grid-jsonl"` · `"md-view"` · `"notebook-view"` · `"todo-view"` · `"link-view"` · `"svg-view"` · `"html-view"` · `"mermaid-view"` · `"pdf-view"` · `"image-view"` · `"browser-view"` · `"graph-view"` · `"draw-view"` · `"log-view"` · `"mcp-view"` · `"zip-view"` · `"category-view"` · `"about-view"` · `"settings-view"`
+`"monaco"` · `"grid-json"` · `"grid-csv"` · `"grid-jsonl"` · `"md-view"` · `"notebook-view"` · `"todo-view"` · `"link-view"` · `"svg-view"` · `"html-view"` · `"mermaid-view"` · `"pdf-view"` · `"image-view"` · `"browser-view"` · `"graph-view"` · `"draw-view"` · `"log-view"` · `"mcp-view"` · `"zip-view"` · `"folder-view"` · `"about-view"` · `"settings-view"`
 
 ## Methods
 

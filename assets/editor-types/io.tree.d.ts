@@ -104,6 +104,8 @@ export interface ITreeProviderItem {
     size?: number;
     /** Last modified time (ISO string). */
     mtime?: string;
+    /** Optional preview image URL or file path. Used for tile view thumbnails. */
+    imgSrc?: string;
 }
 
 /** Tag or hostname info with item count. */

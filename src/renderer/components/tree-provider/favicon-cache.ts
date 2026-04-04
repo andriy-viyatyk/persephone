@@ -3,7 +3,6 @@ const http = require("http");
 
 import { useEffect, useRef, useState } from "react";
 import { fs } from "../../api/fs";
-import { LinkItem } from "./linkTypes";
 
 // =============================================================================
 // In-memory cache: hostname → file path (or "" for known misses)
@@ -157,12 +156,12 @@ export function onFaviconReady(hostname: string, callback: () => void): () => vo
 }
 
 /**
- * React hook: preload favicons for a list of links.
+ * React hook: preload favicons for a list of items with href.
  * Returns a version number that increments when new favicons become available,
  * causing the consuming component to re-render.
  * Uses getFaviconPathSync for rendering (fast, from memory cache).
  */
-export function useFavicons(links: LinkItem[]): number {
+export function useFavicons(links: Array<{ href: string }>): number {
     const [version, setVersion] = useState(0);
     const unsubs = useRef<Array<() => void>>([]);
 

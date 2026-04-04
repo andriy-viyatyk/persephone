@@ -11,6 +11,10 @@ import { encodeCategoryLink } from "./tree-provider-link";
 // not archive-aware path operations. Listed in coding-style.md exceptions.
 const path = require("path") as typeof import("path");
 
+const IMAGE_EXTENSIONS = new Set([
+    ".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".ico", ".svg",
+]);
+
 /**
  * ITreeProvider for ZIP archives (and ZIP-based formats like .docx, .xlsx, .epub).
  *
@@ -57,12 +61,14 @@ export class ZipTreeProvider implements ITreeProvider {
                 });
             } else {
                 const ext = path.extname(entry.name).toLowerCase();
+                const href = buildArchivePath(this.sourceUrl, innerPath);
                 files.push({
                     name: entry.name,
-                    href: buildArchivePath(this.sourceUrl, innerPath),
+                    href,
                     category: innerDir,
                     tags: ext ? [ext] : [],
                     isDirectory: false,
+                    imgSrc: IMAGE_EXTENSIONS.has(ext) ? href : undefined,
                 });
             }
         }

@@ -323,7 +323,7 @@ function BrowserWebviewItem({
                     model.updateTab(internalTabId, { favicon: faviconUrl });
                     // Save favicon to disk cache when not incognito/tor
                     if (!model.state.get().isIncognito && !model.state.get().isTor) {
-                        import("../link-editor/favicon-cache").then(({ getHostname, saveFavicon, consumeFaviconSaveRequest }) => {
+                        import("../../components/tree-provider/favicon-cache").then(({ getHostname, saveFavicon, consumeFaviconSaveRequest }) => {
                             const hostname = getHostname(currentUrl);
                             if (!hostname) return;
                             // Save if explicitly requested (e.g. "Open in Internal Browser" from Link Editor)

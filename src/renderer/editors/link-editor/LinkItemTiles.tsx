@@ -10,7 +10,7 @@ import { appendLinkOpenMenuItems } from "../shared/link-open-menu";
 import { ContextMenuEvent } from "../../api/events/events";
 import { LinkItem, LinkViewMode, LINK_DRAG } from "./linkTypes";
 import { LinkViewModel } from "./LinkViewModel";
-import { getHostname, getFaviconPathSync, useFavicons, requestFaviconSave } from "./favicon-cache";
+import { getHostname, getFaviconPathSync, useFavicons, requestFaviconSave } from "../../components/tree-provider/favicon-cache";
 
 const { clipboard } = require("electron");
 

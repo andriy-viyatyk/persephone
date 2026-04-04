@@ -1,6 +1,7 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import styled from "@emotion/styled";
 import { CategoryView } from "../../components/tree-provider/CategoryView";
+import type { CategoryViewMode } from "../../components/tree-provider/CategoryViewModel";
 import { PageToolbar } from "../base/EditorToolbar";
 import { Button } from "../../components/basic/Button";
 import { FlexSpace } from "../../components/layout/Elements";
@@ -8,12 +9,13 @@ import { NavPanelIcon } from "../../theme/icons";
 import { app } from "../../api/app";
 import { RawLinkEvent } from "../../api/events/events";
 import type { ITreeProviderItem } from "../../api/types/io.tree";
-import type { CategoryEditorModel } from "./CategoryEditorModel";
+import type { ExplorerFolderEditorModel } from "./ExplorerFolderEditorModel";
 import type { EditorModule } from "../types";
 import type { EditorType, IEditorState } from "../../../shared/types";
 import color from "../../theme/color";
+import { folderViewModeService } from "./FolderViewModeService";
 
-const CategoryEditorRoot = styled.div({
+const ExplorerFolderEditorRoot = styled.div({
     display: "flex",
     flexDirection: "column",
     width: "100%",
@@ -22,13 +24,30 @@ const CategoryEditorRoot = styled.div({
     backgroundColor: color.background.default,
 });
 
-export function CategoryEditor({ model }: { model: CategoryEditorModel }) {
+export function ExplorerFolderEditor({ model }: { model: ExplorerFolderEditorModel }) {
     const page = model.page;
     const explorer = page?.findExplorer() as import("../explorer/ExplorerEditorModel").ExplorerEditorModel | undefined;
     const provider = explorer?.treeProvider ?? null;
     const categoryPath = model.categoryPath;
     const pageId = model.id;
     const [searchPortal, setSearchPortal] = useState<HTMLDivElement | null>(null);
+    const [viewMode, setViewMode] = useState<CategoryViewMode>("list");
+
+    // Load persisted view mode for this folder (with inheritance)
+    useEffect(() => {
+        folderViewModeService.getViewMode(categoryPath).then(setViewMode);
+    }, [categoryPath]);
+
+    const handleViewModeChange = useCallback((mode: CategoryViewMode) => {
+        setViewMode(mode);
+        folderViewModeService.setViewMode(categoryPath, mode);
+    }, [categoryPath]);
+
+    const selectedHref = explorer?.selectionState.use()?.selectedHref ?? null;
+
+    const handleSelect = useCallback((item: ITreeProviderItem) => {
+        explorer?.selectionState.update((s: any) => { s.selectedHref = item.href; }); // eslint-disable-line @typescript-eslint/no-explicit-any
+    }, [explorer]);
 
     const handleNavigate = useCallback((item: ITreeProviderItem) => {
         explorer?.selectionState.update((s: any) => { s.selectedHref = item.href; }); // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -42,7 +61,7 @@ export function CategoryEditor({ model }: { model: CategoryEditorModel }) {
 
     if (!provider) {
         return (
-            <CategoryEditorRoot>
+            <ExplorerFolderEditorRoot>
                 <PageToolbar borderBottom>
                     <Button
                         type="icon"
@@ -57,12 +76,12 @@ export function CategoryEditor({ model }: { model: CategoryEditorModel }) {
                 <div style={{ padding: 16, color: color.text.light }}>
                     Please select a category in the Navigation Panel.
                 </div>
-            </CategoryEditorRoot>
+            </ExplorerFolderEditorRoot>
         );
     }
 
     return (
-        <CategoryEditorRoot>
+        <ExplorerFolderEditorRoot>
             <PageToolbar borderBottom>
                 <Button
                     type="icon"
@@ -73,25 +92,29 @@ export function CategoryEditor({ model }: { model: CategoryEditorModel }) {
                     <NavPanelIcon />
                 </Button>
                 <FlexSpace />
-                <div ref={setSearchPortal} style={{ width: 200 }} />
+                <div ref={setSearchPortal} style={{ display: "flex", alignItems: "center", gap: 4 }} />
             </PageToolbar>
             <CategoryView
                 provider={provider}
                 category={categoryPath}
-                onItemClick={handleNavigate}
+                viewMode={viewMode}
+                onViewModeChange={handleViewModeChange}
+                selectedHref={selectedHref}
+                onItemClick={handleSelect}
+                onItemDoubleClick={handleNavigate}
                 onFolderClick={handleNavigate}
                 toolbarPortalRef={searchPortal}
             />
-        </CategoryEditorRoot>
+        </ExplorerFolderEditorRoot>
     );
 }
 
-const categoryEditorModule: EditorModule = {
-    Editor: CategoryEditor,
+const explorerFolderEditorModule: EditorModule = {
+    Editor: ExplorerFolderEditor,
     newEditorModel: async (filePath?: string) => {
-        const { CategoryEditorModel } = await import("./CategoryEditorModel");
+        const { ExplorerFolderEditorModel } = await import("./ExplorerFolderEditorModel");
         const { decodeCategoryLink } = await import("../../content/tree-providers/tree-provider-link");
-        const model = new CategoryEditorModel();
+        const model = new ExplorerFolderEditorModel();
         if (filePath) {
             const link = decodeCategoryLink(filePath);
             if (link) model.initFromLink(link);
@@ -99,16 +122,16 @@ const categoryEditorModule: EditorModule = {
         return model;
     },
     newEmptyEditorModel: async (editorType: EditorType) => {
-        if (editorType !== "categoryPage") return null;
-        const { CategoryEditorModel } = await import("./CategoryEditorModel");
-        return new CategoryEditorModel();
+        if (editorType !== "explorerFolder") return null;
+        const { ExplorerFolderEditorModel } = await import("./ExplorerFolderEditorModel");
+        return new ExplorerFolderEditorModel();
     },
     newEditorModelFromState: async (state: Partial<IEditorState>) => {
-        const { CategoryEditorModel } = await import("./CategoryEditorModel");
-        const model = new CategoryEditorModel();
+        const { ExplorerFolderEditorModel } = await import("./ExplorerFolderEditorModel");
+        const model = new ExplorerFolderEditorModel();
         model.applyRestoreData(state as any); // eslint-disable-line @typescript-eslint/no-explicit-any
         return model;
     },
 };
 
-export default categoryEditorModule;
+export default explorerFolderEditorModule;

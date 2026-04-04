@@ -99,15 +99,17 @@ ui.log("Hello");
   - `.version` — Application version string
   - [`.fetch(url, options?)`](./app.md#fetchurl-options) — Node.js HTTP client (no browser headers)
   - **[.pages](./pages.md)** — Open pages (tabs)
+    - `.all` — All open pages in the current window → `IPage[]`
     - `.activePage` — Currently active page → `IPage`
     - `.groupedPage` — Grouped partner of active page → `IPage`
     - `.findPage(pageId)` / `.getGroupedPage(withPageId)` / `.isLastPage(pageId?)` / `.isGrouped(pageId)`
-    - `.openFile(filePath)` — Open a file
+    - `.openFile(filePath)` — Open a file → `Promise<IPage | undefined>`
     - `.openFileWithDialog()` — Open file via native dialog
     - `.navigatePageTo(pageId, filePath, options?)` — Navigate page to different file
-    - `.addEmptyPage()` / `.addEditorPage(editor, language, title)` / `.addDrawPage(dataUrl, title?)`
+    - `.closePage(pageId)` — Close a page by ID → `Promise<boolean>`
+    - `.addEmptyPage()` / `.addEditorPage(editor, language, title, content?)` / `.addDrawPage(dataUrl, title?)`
     - `.openDiff(params)` — Diff view for two files
-    - `.showAboutPage()` / `.showSettingsPage()` / `.showBrowserPage(options?)` / `.showMcpInspectorPage()`
+    - `.showAboutPage()` / `.showSettingsPage()` / `.showBrowserPage(options?)` / `.showMcpInspectorPage(options?)`
     - `.openUrlInBrowserTab(url, options?)`
     - `.showPage(pageId)` / `.showNext()` / `.showPrevious()`
     - `.moveTab(fromId, toId)` / `.pinTab(pageId)` / `.unpinTab(pageId)`

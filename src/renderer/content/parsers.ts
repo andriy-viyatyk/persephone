@@ -54,7 +54,7 @@ export function registerRawLinkParsers(): void {
     app.events.openRawLink.subscribe(async (event) => {
         if (!event.raw.startsWith(TREE_CATEGORY_PREFIX)) return;
         await app.events.openLink.sendAsync(
-            new OpenLinkEvent(event.raw, event.target ?? "category-view", event.metadata),
+            new OpenLinkEvent(event.raw, event.target ?? "folder-view", event.metadata),
         );
         event.handled = true;
     });

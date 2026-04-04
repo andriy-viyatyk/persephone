@@ -2,9 +2,8 @@ import { useMemo } from "react";
 import type { ITreeProviderItem } from "../../api/types/io.tree";
 import { FileTypeIcon } from "../icons/LanguageIcon";
 import { FolderIcon } from "../icons/FileIcon";
-import { getFaviconPathSync } from "../../editors/link-editor/favicon-cache";
-
-const path = require("path") as typeof import("path");
+import { getFaviconPathSync } from "./favicon-cache";
+import { fpExtname } from "../../core/utils/file-path";
 
 /**
  * Resolves the icon for any ITreeProviderItem based on its href and isDirectory.
@@ -46,7 +45,7 @@ function useHttpPathExtension(href: string): string | undefined {
             return undefined;
         }
         try {
-            return path.extname(new URL(href).pathname).toLowerCase();
+            return fpExtname(new URL(href).pathname).toLowerCase();
         } catch {
             return undefined;
         }

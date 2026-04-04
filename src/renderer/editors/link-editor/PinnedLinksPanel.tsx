@@ -8,7 +8,7 @@ import { ContextMenuEvent } from "../../api/events/events";
 import { LinkItem, LINK_PIN_DRAG } from "./linkTypes";
 import { LinkViewModel } from "./LinkViewModel";
 import { LinkTooltip } from "./LinkTooltip";
-import { getHostname, getFaviconPathSync, requestFaviconSave, useFavicons } from "./favicon-cache";
+import { getHostname, getFaviconPathSync, requestFaviconSave, useFavicons } from "../../components/tree-provider/favicon-cache";
 
 const { clipboard } = require("electron");
 

@@ -343,6 +343,8 @@ For ZIP-based archives (`.zip`, `.docx`, `.xlsx`, `.pptx`, `.jar`, `.war`, `.epu
 
 - **Archive panel** — Opens in the page sidebar showing the archive's file tree. Click the Archive panel header to expand it and browse entries as a folder tree.
 - **Inline entry viewing** — Click any file inside the archive to view it in the main editor area. Text-based files (XML, JSON, CSS, etc.) open in Monaco; images open in the Image Viewer; PDFs open in the PDF Viewer.
+- **Entry highlighting** — The Archive panel highlights the currently viewed entry in the tree as you navigate between files.
+- **Auto-reveal** — When the Archive panel is expanded, navigating to a file automatically expands its parent folders and scrolls the tree to reveal the entry.
 - **Auto-expand/collapse** — The Archive panel expands automatically when navigating to files inside the archive and collapses when you navigate away to unrelated files.
 - **Read-only** — Archive contents cannot be edited directly. To read individual entries in scripts, use `io.ZipTransformer` with `io.FileProvider`.
 - **Open as Archive** — Right-click an archive file in the File Explorer and choose **Open as Archive** to browse it in a dedicated Archive tab.

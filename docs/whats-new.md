@@ -10,13 +10,20 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### New Features
 
-- **Script API: new editor view values** — `page.editor` and `app.pages.addEditorPage()` now accept `"graph-view"`, `"draw-view"`, `"mcp-view"`, `"zip-view"`, and `"category-view"` as valid editor identifiers.
+- **Script API: new editor view values** — `page.editor` and `app.pages.addEditorPage()` now accept `"graph-view"`, `"draw-view"`, `"mcp-view"`, `"zip-view"`, and `"folder-view"` as valid editor identifiers.
 - **Script API: `app.pages.showMcpInspectorPage()`** — Open an MCP Inspector page programmatically, optionally pre-filling the server URL. See [`app.pages` reference](./api/pages.md#showmcpinspectorpageoptions--promisevoid).
 - **Script API: `app.pages.all`** — New property that returns all open pages in the current window as an array. Useful for iterating over all tabs.
 - **Script API: `app.pages.closePage(pageId)`** — Close a page by ID from a script. Returns `true` if closed, or `false` if the user cancelled (e.g. declined to save unsaved changes). See [`app.pages` reference](./api/pages.md#closepagepageid--promiseboolean).
 - **Script API: `app.pages.addEditorPage()` content parameter** — The `addEditorPage(editor, language, title)` method now accepts an optional fourth argument `content` to set the initial page content.
 - **Script API: `app.pages.openFile()` return value** — Now returns `Promise<IPage | undefined>` instead of `Promise<void>`. The returned page can be used immediately after opening.
 - **Browser: Tor mode** — `app.pages.showBrowserPage()` now accepts a `tor: boolean` option to open in Tor mode (requires Tor to be configured in Settings).
+
+### Improvements
+
+- **Archive panel — entry highlighting** — The Archive panel now highlights the currently viewed entry in the file tree as you navigate between files inside an archive.
+- **Archive panel — auto-reveal** — When the Archive panel is expanded and visible, navigating to a file inside the archive automatically expands its parent folders and scrolls to reveal the entry in the tree.
+- **Explorer panel — auto-reveal** — The File Explorer panel now auto-reveals the current file in the tree (expanding parent folders and scrolling to it) when the Explorer panel is the active (expanded) panel.
+- **Explorer panel — remote archives** — When opening an archive from a remote URL (e.g., `https://example.com/data.zip`), the File Explorer panel is no longer shown alongside the Archive panel, since there is no local folder to browse.
 
 ### Breaking Changes
 

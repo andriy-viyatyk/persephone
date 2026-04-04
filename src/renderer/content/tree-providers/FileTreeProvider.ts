@@ -13,6 +13,10 @@ import { debounce } from "../../../shared/utils";
 const nodefs = require("fs") as typeof import("fs");
 const path = require("path") as typeof import("path");
 
+const IMAGE_EXTENSIONS = new Set([
+    ".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".ico", ".svg",
+]);
+
 /**
  * ITreeProvider for local filesystem directories.
  *
@@ -66,6 +70,7 @@ export class FileTreeProvider implements ITreeProvider {
                     category: dirPath,
                     tags: ext ? [ext] : [],
                     isDirectory: false,
+                    imgSrc: IMAGE_EXTENSIONS.has(ext) ? fullPath : undefined,
                 });
             }
         }
@@ -80,7 +85,21 @@ export class FileTreeProvider implements ITreeProvider {
             return a.name.localeCompare(b.name);
         });
 
-        return [...folders, ...files];
+        // Add ".." entry to navigate to parent (unless at root)
+        const result: ITreeProviderItem[] = [];
+        const normalized = dirPath.replace(/\\/g, "/");
+        const rootNormalized = this.sourceUrl.replace(/\\/g, "/");
+        if (normalized !== rootNormalized) {
+            result.push({
+                name: "..",
+                href: path.dirname(dirPath),
+                category: dirPath,
+                tags: [],
+                isDirectory: true,
+            });
+        }
+
+        return [...result, ...folders, ...files];
     }
 
     async stat(filePath: string): Promise<ITreeStat> {

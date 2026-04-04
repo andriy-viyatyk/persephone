@@ -251,6 +251,7 @@ export class TreeViewModel<
     };
 
     toggleExpanded = (item: TreeViewItem<T>) => {
+        if (item.level === 0 && !this.props.rootCollapsible) return;
         const root = this.state.get().item;
         if (root) {
             const newExpanded = !item.expanded;
