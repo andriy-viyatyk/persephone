@@ -2,13 +2,14 @@ import styled from "@emotion/styled";
 import { useCallback } from "react";
 import { useDrag, useDrop } from "react-dnd";
 import color from "../../theme/color";
-import { CopyIcon, DeleteIcon, GlobeIcon, OpenFileIcon, OpenLinkIcon, PinFilledIcon, RenameIcon } from "../../theme/icons";
+import { CopyIcon, DeleteIcon, OpenFileIcon, PinFilledIcon, RenameIcon } from "../../theme/icons";
 import { appendLinkOpenMenuItems } from "../shared/link-open-menu";
 import { ContextMenuEvent } from "../../api/events/events";
 import { LinkItem, LINK_PIN_DRAG } from "./linkTypes";
 import { LinkViewModel } from "./LinkViewModel";
 import { LinkTooltip } from "./LinkTooltip";
-import { getHostname, getFaviconPathSync, requestFaviconSave, useFavicons } from "../../components/tree-provider/favicon-cache";
+import { TreeProviderItemIcon } from "../../components/tree-provider/TreeProviderItemIcon";
+import { getHostname, requestFaviconSave, useFavicons } from "../../components/tree-provider/favicon-cache";
 
 const { clipboard } = require("electron");
 
@@ -43,14 +44,28 @@ const PinnedLinksPanelRoot = styled.div({
         display: "flex",
         alignItems: "center",
         gap: 6,
-        padding: "4px 8px",
+        padding: "0 8px",
+        height: 28,
         fontSize: 13,
         cursor: "default",
-        borderRadius: 4,
+        boxSizing: "border-box",
+        borderRadius: 6,
         margin: "0 4px",
         position: "relative",
         "&:hover": {
             backgroundColor: color.background.dark,
+        },
+        "&.selected::after": {
+            content: "''",
+            position: "absolute",
+            top: 0,
+            left: 0,
+            bottom: 0,
+            right: 0,
+            backgroundColor: color.background.selection,
+            opacity: 0.3,
+            pointerEvents: "none",
+            borderRadius: "inherit",
         },
         "&.drop-above::before": {
             content: "''",
@@ -75,55 +90,17 @@ const PinnedLinksPanelRoot = styled.div({
         "&.dragging": {
             opacity: 0.4,
         },
-        "& .pinned-open-btn": {
+        "& .pinned-icon": {
             flexShrink: 0,
-            position: "relative",
-            width: 16,
-            height: 16,
             display: "flex",
             alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-            "& img": {
-                width: 16,
-                height: 16,
-                objectFit: "contain",
-            },
-            "& .pinned-globe": { width: 16, height: 16, opacity: 0.5 },
-            "& .pinned-icon-open": {
-                display: "none",
-                position: "absolute",
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                alignItems: "center",
-                justifyContent: "center",
-                "& .pinned-icon-open-bg": {
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    backgroundColor: color.background.default,
-                    opacity: 0.7,
-                    borderRadius: 4,
-                },
-                "& svg": {
-                    position: "relative",
-                    color: color.misc.blue,
-                },
-            },
-        },
-        "&:hover .pinned-open-btn .pinned-icon-open": {
-            display: "flex",
         },
         "& .pinned-title": {
             flex: 1,
             overflow: "hidden",
             textOverflow: "ellipsis",
             whiteSpace: "nowrap",
-            color: color.text.default,
+            color: color.text.strong,
             minWidth: 0,
         },
     },
@@ -136,15 +113,13 @@ const PinnedLinksPanelRoot = styled.div({
 interface PinnedItemProps {
     link: LinkItem;
     index: number;
+    isSelected: boolean;
     model: LinkViewModel;
     onOpenLink: (link: LinkItem) => void;
     onContextMenu: (e: React.MouseEvent, link: LinkItem) => void;
 }
 
-function PinnedItem({ link, index, model, onOpenLink, onContextMenu }: PinnedItemProps) {
-    const hostname = getHostname(link.href);
-    const faviconPath = getFaviconPathSync(hostname);
-
+function PinnedItem({ link, index, isSelected, model, onOpenLink, onContextMenu }: PinnedItemProps) {
     const [{ isDragging }, drag] = useDrag({
         type: LINK_PIN_DRAG,
         item: { type: LINK_PIN_DRAG, index },
@@ -181,6 +156,7 @@ function PinnedItem({ link, index, model, onOpenLink, onContextMenu }: PinnedIte
     );
 
     let className = "pinned-item";
+    if (isSelected) className += " selected";
     if (isDragging) className += " dragging";
     if (isOver && dropPosition === "above") className += " drop-above";
     if (isOver && dropPosition === "below") className += " drop-below";
@@ -192,21 +168,11 @@ function PinnedItem({ link, index, model, onOpenLink, onContextMenu }: PinnedIte
             ref={setRef}
             className={className}
             onClick={() => model.selectLink(link.id)}
-            onDoubleClick={() => model.showLinkDialog(link.id)}
+            onDoubleClick={() => { if (link.href) onOpenLink(link); }}
             onContextMenu={(e) => onContextMenu(e, link)}
         >
-            <span
-                className="pinned-open-btn"
-                onClick={(e) => {
-                    e.stopPropagation();
-                    model.selectLink(link.id);
-                    onOpenLink(link);
-                }}
-            >
-                {faviconPath
-                    ? <img src={`file://${faviconPath}`} alt="" />
-                    : <GlobeIcon className="pinned-globe" />}
-                <span className="pinned-icon-open"><div className="pinned-icon-open-bg" /><OpenLinkIcon /></span>
+            <span className="pinned-icon">
+                <TreeProviderItemIcon item={link} />
             </span>
             <span className="pinned-title" data-tooltip-id={tooltipId}>
                 {link.title || "Untitled"}
@@ -223,10 +189,11 @@ function PinnedItem({ link, index, model, onOpenLink, onContextMenu }: PinnedIte
 interface PinnedLinksPanelProps {
     pinnedLinks: LinkItem[];
     model: LinkViewModel;
+    selectedLinkId?: string;
     style?: React.CSSProperties;
 }
 
-export function PinnedLinksPanel({ pinnedLinks, model, style }: PinnedLinksPanelProps) {
+export function PinnedLinksPanel({ pinnedLinks, model, selectedLinkId, style }: PinnedLinksPanelProps) {
     useFavicons(pinnedLinks);
 
     const handleOpenLink = useCallback((link: LinkItem) => {
@@ -307,6 +274,7 @@ export function PinnedLinksPanel({ pinnedLinks, model, style }: PinnedLinksPanel
                         key={link.id}
                         link={link}
                         index={i}
+                        isSelected={link.id === selectedLinkId}
                         model={model}
                         onOpenLink={handleOpenLink}
                         onContextMenu={handleContextMenu}

@@ -135,7 +135,7 @@ export function LinkItemList({ links, model, selectedLinkId, pinnedLinkIds }: Li
             selectedId={selectedLinkId}
             searchText={searchText}
             onSelect={handleSelect}
-            onOpen={handleOpen}
+            onDoubleClick={handleOpen}
             onEdit={handleEdit}
             onDelete={handleDelete}
             onContextMenu={handleContextMenu}

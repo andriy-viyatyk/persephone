@@ -7,7 +7,7 @@ import { RenderCellParams, RenderSizeOptional } from "../../components/virtualiz
 import { highlightText } from "../../components/basic/useHighlightedText";
 import { Button } from "../../components/basic/Button";
 import color from "../../theme/color";
-import { DeleteIcon, OpenLinkIcon, RenameIcon } from "../../theme/icons";
+import { DeleteIcon, RenameIcon } from "../../theme/icons";
 import type { ILink } from "../../api/types/io.tree";
 import { TreeProviderItemIcon } from "../../components/tree-provider/TreeProviderItemIcon";
 import { LinkTooltip } from "./LinkTooltip";
@@ -56,37 +56,10 @@ const LinksListRoot = styled(RenderGrid)({
             pointerEvents: "none",
             borderRadius: "inherit",
         },
-        "& .link-open-btn": {
+        "& .link-icon": {
             flexShrink: 0,
-            position: "relative",
-            "& .icon-open": {
-                display: "none",
-                position: "absolute",
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                alignItems: "center",
-                justifyContent: "center",
-                borderRadius: 4,
-                "& .icon-open-bg": {
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    backgroundColor: color.background.default,
-                    opacity: 0.7,
-                    borderRadius: 4,
-                },
-                "& svg": {
-                    position: "relative",
-                    color: color.misc.blue,
-                },
-            },
-        },
-        "&:hover .link-open-btn .icon-open": {
             display: "flex",
+            alignItems: "center",
         },
         "& .link-title": {
             flex: "1 1 auto",
@@ -137,7 +110,6 @@ interface LinksListRowProps {
     dragType?: string;
     getDragItem?: (link: ILink) => unknown;
     onSelect?: (link: ILink) => void;
-    onOpen?: (link: ILink) => void;
     onEdit?: (link: ILink) => void;
     onDelete?: (link: ILink, skipConfirm: boolean) => void;
     onDoubleClick?: (link: ILink) => void;
@@ -146,7 +118,7 @@ interface LinksListRowProps {
 
 function LinksListRow({
     link, isSelected, searchText, additionalIcon,
-    dragType, getDragItem, onSelect, onOpen, onEdit, onDelete, onDoubleClick, onContextMenu,
+    dragType, getDragItem, onSelect, onEdit, onDelete, onDoubleClick, onContextMenu,
 }: LinksListRowProps) {
     const tooltipId = useMemo(() => crypto.randomUUID(), []);
 
@@ -172,19 +144,9 @@ function LinksListRow({
             onDoubleClick={handleDoubleClick}
             onContextMenu={(e) => onContextMenu?.(e, link)}
         >
-            <Button
-                className="link-open-btn"
-                size="small"
-                type="flat"
-                onClick={(e) => {
-                    e.stopPropagation();
-                    onSelect?.(link);
-                    onOpen?.(link);
-                }}
-            >
+            <span className="link-icon">
                 <TreeProviderItemIcon item={link} />
-                <span className="icon-open"><div className="icon-open-bg" /><OpenLinkIcon /></span>
-            </Button>
+            </span>
             <span
                 className={link.isDirectory ? "link-title-folder" : "link-title"}
                 data-tooltip-id={tooltipId}
@@ -244,7 +206,6 @@ export interface LinksListProps {
     getId?: (link: ILink) => string;
     searchText?: string;
     onSelect?: (link: ILink) => void;
-    onOpen?: (link: ILink) => void;
     onEdit?: (link: ILink) => void;
     onDelete?: (link: ILink, skipConfirm: boolean) => void;
     /** Override double-click behavior. When not set, double-click calls onEdit. */
@@ -262,7 +223,7 @@ export interface LinksListProps {
 
 export function LinksList({
     links, selectedId, getId = defaultGetId, searchText = "",
-    onSelect, onOpen, onEdit, onDelete, onDoubleClick, onContextMenu,
+    onSelect, onEdit, onDelete, onDoubleClick, onContextMenu,
     getAdditionalIcon, dragType, getDragItem, onGridModel,
 }: LinksListProps) {
     const gridRef = useRef<RenderGridModel>(null);
@@ -296,7 +257,6 @@ export function LinksList({
                         dragType={dragType}
                         getDragItem={getDragItem}
                         onSelect={onSelect}
-                        onOpen={onOpen}
                         onEdit={onEdit}
                         onDelete={onDelete}
                         onDoubleClick={onDoubleClick}
@@ -306,7 +266,7 @@ export function LinksList({
             );
         },
         [links, selectedId, getId, searchText, getAdditionalIcon, dragType, getDragItem,
-         onSelect, onOpen, onEdit, onDelete, onDoubleClick, onContextMenu, faviconVersion],
+         onSelect, onEdit, onDelete, onDoubleClick, onContextMenu, faviconVersion],
     );
 
     return (

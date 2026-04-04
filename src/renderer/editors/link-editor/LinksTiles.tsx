@@ -5,7 +5,7 @@ import RenderGrid from "../../components/virtualization/RenderGrid/RenderGrid";
 import RenderGridModel from "../../components/virtualization/RenderGrid/RenderGridModel";
 import { RenderCellParams, RenderSizeOptional } from "../../components/virtualization/RenderGrid/types";
 import color from "../../theme/color";
-import { DeleteIcon, GlobeIcon, OpenLinkIcon, RenameIcon } from "../../theme/icons";
+import { DeleteIcon, GlobeIcon, RenameIcon } from "../../theme/icons";
 import type { ILink } from "../../api/types/io.tree";
 import { LinkViewMode } from "./linkTypes";
 import { getHostname, getFaviconPathSync, useFavicons } from "../../components/tree-provider/favicon-cache";
@@ -111,26 +111,6 @@ const LinksTilesRoot = styled(RenderGrid)({
             minWidth: 0,
             wordBreak: "break-word",
         },
-        "& .tile-open-link": {
-            flex: "0 0 auto",
-            width: 24,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 2,
-            cursor: "pointer",
-            color: color.icon.default,
-            opacity: 0.5,
-            borderRadius: 4,
-            "&:hover": {
-                opacity: 1,
-                color: color.misc.blue,
-            },
-            "& svg": {
-                width: 24,
-                height: 24,
-            },
-        },
     },
     "& .tile-additional-icon": {
         position: "absolute",
@@ -184,7 +164,6 @@ interface LinksTileCellProps {
     dragType?: string;
     getDragItem?: (link: ILink) => unknown;
     onSelect?: (link: ILink) => void;
-    onOpen?: (link: ILink) => void;
     onEdit?: (link: ILink) => void;
     onDelete?: (link: ILink, skipConfirm: boolean) => void;
     onDoubleClick?: (link: ILink) => void;
@@ -193,7 +172,7 @@ interface LinksTileCellProps {
 
 function LinksTileCell({
     link, isSelected, imageHeight, additionalIcon,
-    dragType, getDragItem, onSelect, onOpen, onEdit, onDelete, onDoubleClick, onContextMenu,
+    dragType, getDragItem, onSelect, onEdit, onDelete, onDoubleClick, onContextMenu,
 }: LinksTileCellProps) {
     const [{ isDragging }, drag] = useDrag({
         type: dragType || "NONE",
@@ -233,19 +212,6 @@ function LinksTileCell({
             </div>
             <div className="tile-title">
                 <span>{link.title || "Untitled"}</span>
-                {link.href && (
-                    <span
-                        className="tile-open-link"
-                        title="Open link"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onSelect?.(link);
-                            onOpen?.(link);
-                        }}
-                    >
-                        <OpenLinkIcon />
-                    </span>
-                )}
             </div>
             {additionalIcon && (
                 <span className="tile-additional-icon">
@@ -295,7 +261,6 @@ export interface LinksTilesProps {
     /** Extract ID from a link for selection matching. Defaults to link.id ?? link.href. */
     getId?: (link: ILink) => string;
     onSelect?: (link: ILink) => void;
-    onOpen?: (link: ILink) => void;
     onEdit?: (link: ILink) => void;
     onDelete?: (link: ILink, skipConfirm: boolean) => void;
     /** Override double-click behavior. When not set, double-click calls onEdit. */
@@ -313,7 +278,7 @@ export interface LinksTilesProps {
 
 export function LinksTiles({
     links, viewMode, selectedId, getId = defaultGetId,
-    onSelect, onOpen, onEdit, onDelete, onDoubleClick, onContextMenu,
+    onSelect, onEdit, onDelete, onDoubleClick, onContextMenu,
     getAdditionalIcon, dragType, getDragItem, onGridModel,
 }: LinksTilesProps) {
     const gridRef = useRef<RenderGridModel>(null);
@@ -372,7 +337,6 @@ export function LinksTiles({
                         dragType={dragType}
                         getDragItem={getDragItem}
                         onSelect={onSelect}
-                        onOpen={onOpen}
                         onEdit={onEdit}
                         onDelete={onDelete}
                         onDoubleClick={onDoubleClick}
@@ -382,7 +346,7 @@ export function LinksTiles({
             );
         },
         [links, counts.colCount, dims, selectedId, getId, getAdditionalIcon,
-         dragType, getDragItem, onSelect, onOpen, onEdit, onDelete, onDoubleClick, onContextMenu, faviconVersion],
+         dragType, getDragItem, onSelect, onEdit, onDelete, onDoubleClick, onContextMenu, faviconVersion],
     );
 
     return (

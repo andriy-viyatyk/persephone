@@ -386,6 +386,7 @@ export function LinkEditor(props: LinkEditorProps) {
                         <PinnedLinksPanel
                             pinnedLinks={pinnedLinks}
                             model={vm}
+                            selectedLinkId={pageState.selectedLinkId}
                             style={{ width: pinnedPanelWidth }}
                         />
                     </>

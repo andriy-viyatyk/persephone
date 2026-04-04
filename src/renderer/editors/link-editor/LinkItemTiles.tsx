@@ -134,7 +134,7 @@ export function LinkItemTiles({ links, model, viewMode, selectedLinkId, pinnedLi
             viewMode={viewMode}
             selectedId={selectedLinkId}
             onSelect={handleSelect}
-            onOpen={handleOpen}
+            onDoubleClick={handleOpen}
             onEdit={handleEdit}
             onDelete={handleDelete}
             onContextMenu={handleContextMenu}

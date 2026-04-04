@@ -180,6 +180,16 @@ The **Script Library** entry appears below Recent Files and provides quick acces
 
 Click anywhere outside the sidebar, or press **Escape** to close it.
 
+## Page Sidebar Panels
+
+The page sidebar is shared across editors. Different editors contribute their own collapsible panels:
+
+- **File Explorer** — Available for any saved file. Shows files and folders alongside the editor.
+- **Archive** — Appears when a file inside a ZIP-based archive is open. Shows the archive's file tree.
+- **Link Editor panels** — When a `.link.json` file is open, the sidebar shows **Categories**, **Tags**, and **Hostnames** panels for filtering links. Click a panel header to expand it; click an item to filter the link list. The breadcrumb in the Link Editor toolbar shows the current filter path.
+
+When the sidebar is not open, the Link Editor shows its filters (Categories, Tags, Hostnames) as tabs in a collapsible left panel inside the editor itself.
+
 ## File Explorer Panel
 
 Any saved file can open a **File Explorer** panel alongside the editor. Click the File Explorer button in the toolbar to toggle it.
