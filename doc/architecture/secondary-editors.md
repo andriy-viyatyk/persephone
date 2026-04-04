@@ -323,3 +323,57 @@ page.addSecondaryEditor(myModel);
 this.secondaryEditor = ["my-panel"];
 // This automatically adds this model to page.secondaryEditors[]
 ```
+
+---
+
+## 12. CategoryEditor — Provider-Agnostic Folder Viewer
+
+**Source code:** [`CategoryEditor.tsx`](../../src/renderer/editors/category/CategoryEditor.tsx), [`CategoryEditorModel.ts`](../../src/renderer/editors/category/CategoryEditorModel.ts)
+
+CategoryEditor is the main content area editor for `tree-category://` links. It renders CategoryView for any ITreeProvider — file system folders, archive subfolders, or future link categories.
+
+### Provider Resolution
+
+CategoryEditor resolves its ITreeProvider by scanning `page.secondaryEditors[]`. It matches the `tree-category://` link's `type` and `url` against each secondary editor's `treeProvider.type` and `treeProvider.sourceUrl`:
+
+```
+tree-category:// link: { type: "zip", url: "D:\archive.epub", category: "OEBPS" }
+                                ↓ scan secondaryEditors[]
+    ExplorerEditorModel → treeProvider.type="file", sourceUrl="D:\temp"     → no match
+    ZipEditorModel      → treeProvider.type="zip",  sourceUrl="D:\archive.epub" → MATCH
+```
+
+This uses a duck-type interface — no EditorModel base class changes:
+
+```typescript
+interface ITreeProviderHost {
+    treeProvider: ITreeProvider | null;
+    selectionState: TOneState<NavigationState>;
+}
+```
+
+Both `ExplorerEditorModel` and `ZipEditorModel` expose `treeProvider` and `selectionState` with identical signatures.
+
+### Navigation Survival
+
+When CategoryEditor navigates (user double-clicks a subfolder), it passes the host's model ID as `sourceId` in the RawLinkEvent metadata. This ensures the secondary editor's `_isOpenedFromThisArchive()` check recognizes the navigation and keeps the panel alive.
+
+### PageModel Notification
+
+PageModel notifies the main editor when secondary editors change. In `addSecondaryEditor()`, `removeSecondaryEditor()`, and `removeSecondaryEditorWithoutDispose()`, PageModel checks if the main editor implements `onSecondaryEditorsChanged()` and calls it. CategoryEditorModel implements this method to trigger a provider re-scan.
+
+### Restore Timing
+
+Secondary editors are restored asynchronously after the main editor. On mount, if no provider is found, CategoryEditor retries after 50ms via `setTimeout`. This handles the case where the page is restored and the secondary editor isn't ready yet.
+
+### Diagram
+
+```
+PageModel
+  ├── mainEditor: CategoryEditor
+  │   ├── decodedLink: { type, url, category }
+  │   └── scans secondaryEditors[] for matching treeProvider
+  └── secondaryEditors:
+      ├── ExplorerEditorModel (treeProvider: FileTreeProvider)
+      └── ZipEditorModel (treeProvider: ZipTreeProvider)
+```

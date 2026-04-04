@@ -8,18 +8,20 @@ class FolderViewModeService {
 
     /** Get the effective view mode for a folder (walks up ancestors). */
     async getViewMode(folderPath: string): Promise<CategoryViewMode> {
+        if (!folderPath) return "list";
         const modes = await this.load();
         return this.resolveViewMode(modes, folderPath);
     }
 
     /** Get the effective view mode synchronously (from cache). Returns "list" if not loaded. */
     getViewModeSync(folderPath: string): CategoryViewMode {
-        if (!this.modes) return "list";
+        if (!this.modes || !folderPath) return "list";
         return this.resolveViewMode(this.modes, folderPath);
     }
 
     /** Set view mode for a folder. Removes entry if same as inherited from parent. */
     async setViewMode(folderPath: string, mode: CategoryViewMode): Promise<void> {
+        if (!folderPath) return;
         const modes = await this.load();
         const inheritedMode = this.resolveViewMode(modes, getParentPath(normalizePath(folderPath)));
         if (mode === inheritedMode) {

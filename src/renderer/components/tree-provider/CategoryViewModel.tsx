@@ -72,7 +72,8 @@ export class CategoryViewModel extends TComponentModel<
             || this.oldProps?.category !== this.props.category
             || this.oldProps?.provider !== this.props.provider
         ) {
-            this.loadItems();
+            // Defer to avoid setState during render
+            Promise.resolve().then(() => this.loadItems());
         }
     };
 

@@ -382,9 +382,9 @@ persephone/
 │   │   └── index.ts
 │   ├── settings/           # Settings page (standalone)
 │   │   └── SettingsPage.tsx
-│   ├── category/           # Explorer folder view (standalone)
-│   │   ├── ExplorerFolderEditor.tsx       # Wraps CategoryView, toolbar with navigator toggle + view mode
-│   │   ├── ExplorerFolderEditorModel.ts   # Page model — decodes tree-category:// link
+│   ├── category/           # Category/folder view (standalone, provider-agnostic)
+│   │   ├── CategoryEditor.tsx             # Wraps CategoryView, resolves provider from secondary editors
+│   │   ├── CategoryEditorModel.ts         # Page model — decodes tree-category:// link
 │   │   └── FolderViewModeService.ts       # Per-folder view mode persistence with hierarchical inheritance
 │   ├── zip/                # Archive editor (secondary — sidebar panel)
 │   │   ├── ZipEditorModel.ts          # EditorModel — archive state, tree provider, navigation survival

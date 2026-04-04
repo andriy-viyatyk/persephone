@@ -308,7 +308,7 @@ Make link collections a general-purpose building block. Enable programmatic crea
 
 | # | Task | Title | Description | Status |
 |---|------|-------|-------------|--------|
-| 3.1 | — | Make folder editor provider-agnostic | `ExplorerFolderEditor` currently hardcodes `page.findExplorer()` → FileTreeProvider. It should work with any provider: Explorer (FileTreeProvider), Archive (ZipTreeProvider), and future Categories (LinkTreeProvider). The `tree-category://` link already carries `type` ("file", "zip", etc.) — use it to find the correct secondary editor and its treeProvider. Rename back to `CategoryEditor` or a neutral name. This makes one editor serve all "browse a folder/category" use cases. | Planned |
+| 3.1 | [US-343](../tasks/US-343-provider-agnostic-folder-editor/README.md) | Make folder editor provider-agnostic | CategoryEditor scans `page.secondaryEditors[]` for matching `treeProvider.type` + `sourceUrl`. Renamed back to CategoryEditor. PageModel notifies mainEditor on secondary changes. Works with Explorer and Archive panels. | Done |
 | 3.2 | — | Adopt libarchive-wasm | Replace `jszip` with `libarchive-wasm` (WASM-based, MIT). Supports RAR v4/v5, 7z, TAR, gzip, bzip2, lzma/xz, cab, ISO. Generalize `ZipTreeProvider` to `ArchiveTreeProvider`. Update `ARCHIVE_EXTENSIONS` and `isArchiveFile()`. | Planned |
 
 ## Architecture Reference

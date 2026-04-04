@@ -581,16 +581,16 @@ editorRegistry.register({
 
 // Category view (standalone page editor — tree-category:// links)
 editorRegistry.register({
-    id: "folder-view",
+    id: "category-view",
     name: "Folder View",
-    editorType: "explorerFolder",
+    editorType: "categoryPage",
     category: "standalone",
     acceptFile: (fileName) => {
         if (fileName?.startsWith("tree-category://")) return 200;
         return -1;
     },
     loadModule: async () => {
-        const module = await import("./category/ExplorerFolderEditor");
+        const module = await import("./category/CategoryEditor");
         return module.default;
     },
 });

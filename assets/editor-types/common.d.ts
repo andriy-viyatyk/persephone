@@ -45,7 +45,7 @@ export type EditorView =
     | "draw-view"
     | "mcp-view"
     | "zip-view"
-    | "folder-view";
+    | "category-view";
 
 /** Monaco language identifier. */
 export type Language =

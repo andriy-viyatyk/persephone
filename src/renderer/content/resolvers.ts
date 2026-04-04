@@ -54,7 +54,7 @@ export function registerResolvers(): void {
         if (!pipeDescriptor) {
             // Virtual paths (tree-category://, etc.) don't resolve to a pipe
             // but still need to flow through openContent for page creation.
-            // Create a placeholder file pipe — ExplorerFolderEditor uses the explorer's treeProvider, not the pipe.
+            // Create a placeholder file pipe — CategoryEditor resolves its treeProvider from secondary editors, not the pipe.
             if (event.url.includes("://")) {
                 const target = event.target || "monaco";
                 const placeholder = createPipeFromDescriptor({

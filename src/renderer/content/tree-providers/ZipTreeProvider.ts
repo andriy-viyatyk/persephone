@@ -106,7 +106,12 @@ export class ZipTreeProvider implements ITreeProvider {
 
     getNavigationUrl(item: ITreeProviderItem): string {
         if (!item.isDirectory) return item.href;
-        return encodeCategoryLink({ type: this.type, url: this.sourceUrl, category: item.href });
+        // Store the inner path (what list() expects), not the full archive href.
+        // Root node has href === rootPath ("") — use rootPath directly.
+        const innerPath = item.href === this.rootPath
+            ? this.rootPath
+            : (item.category ? item.category + "/" + item.name : item.name);
+        return encodeCategoryLink({ type: this.type, url: this.sourceUrl, category: innerPath });
     }
 
     async getNavigationUrlByHref(href: string): Promise<string> {

@@ -3,6 +3,7 @@
 All completed tasks, newest first.
 
 | ID | Title | Epic | Notes |
+| US-343 | Make folder editor provider-agnostic | EPIC-018 | CategoryEditor scans secondaryEditors[] for matching treeProvider by type+sourceUrl. Renamed back from ExplorerFolderEditor. PageModel notifies mainEditor on secondary changes. Duck-type ITreeProviderHost. Fixed ZipTreeProvider nav URL, selectionState hook, FolderViewModeService guard, CategoryViewModel setState-in-render. 10 files changed. |
 | US-342 | Test in Explorer — fixes and adjustments | EPIC-018 | Toolbar layout fix (search + view mode inline). Root node collapse disabled in TreeView. Single click selects, double click navigates. `".."` parent navigation in FileTreeProvider. First tile mode switch column count fix. 5 files changed. |
 | US-341 | Rename CategoryEditor → ExplorerFolderEditor + view mode | EPIC-018 | Full rename: `"categoryPage"` → `"explorerFolder"`, `"category-view"` → `"folder-view"`, classes/files renamed. New `FolderViewModeService` with hierarchical inheritance. Per-folder view mode persistence. 14 files changed (3 new, 2 deleted, 9 modified). |
 | US-340 | CategoryView tile modes | EPIC-018 | Tile rendering in CategoryView for all view modes. Responsive multi-column grid, view mode toggle button in toolbar portal, favicon preloading, tile cell styling. 1 file changed. |

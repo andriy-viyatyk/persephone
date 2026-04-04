@@ -10,20 +10,23 @@ import {
     type ITreeProviderLink,
 } from "../../content/tree-providers/tree-provider-link";
 
-export interface ExplorerFolderEditorModelState extends IEditorState {
-    type: "explorerFolder";
+export interface CategoryEditorModelState extends IEditorState {
+    type: "categoryPage";
 }
 
-export function getDefaultExplorerFolderEditorModelState(): ExplorerFolderEditorModelState {
+export function getDefaultCategoryEditorModelState(): CategoryEditorModelState {
     return {
         ...getDefaultEditorModelState(),
-        type: "explorerFolder",
-    } as ExplorerFolderEditorModelState;
+        type: "categoryPage",
+    } as CategoryEditorModelState;
 }
 
-export class ExplorerFolderEditorModel extends EditorModel<ExplorerFolderEditorModelState> {
-    constructor(state?: TComponentState<ExplorerFolderEditorModelState>) {
-        super(state ?? new TComponentState(getDefaultExplorerFolderEditorModelState()));
+export class CategoryEditorModel extends EditorModel<CategoryEditorModelState> {
+    /** Incremented when secondary editors change — triggers provider re-scan in the view. */
+    private _providerVersion = 0;
+
+    constructor(state?: TComponentState<CategoryEditorModelState>) {
+        super(state ?? new TComponentState(getDefaultCategoryEditorModelState()));
         this.noLanguage = true;
         this.getIcon = () => React.createElement(
             "span",
@@ -52,5 +55,17 @@ export class ExplorerFolderEditorModel extends EditorModel<ExplorerFolderEditorM
             s.title = title;
             s.filePath = encodeCategoryLink(link);
         });
+    }
+
+    /** Called by PageModel when secondary editors are added or removed. */
+    onSecondaryEditorsChanged(): void {
+        this._providerVersion++;
+        // Trigger re-render by touching state
+        this.state.update((s) => s);
+    }
+
+    /** Current provider version — used by the view to detect secondary editor changes. */
+    get providerVersion(): number {
+        return this._providerVersion;
     }
 }

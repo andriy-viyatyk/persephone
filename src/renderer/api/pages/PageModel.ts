@@ -300,6 +300,7 @@ export class PageModel {
         this.secondaryEditors.push(model);
         model.setPage(this);
         this.secondaryEditorsVersion.update((s) => { s.version++; });
+        this._notifyMainEditorOfSecondaryChange();
         this._saveStateDebounced();
     }
 
@@ -314,6 +315,7 @@ export class PageModel {
         model.setPage(null);
         model.dispose();
         this.secondaryEditorsVersion.update((s) => { s.version++; });
+        this._notifyMainEditorOfSecondaryChange();
         this._saveStateDebounced();
     }
 
@@ -327,7 +329,16 @@ export class PageModel {
         }
         model.setPage(null);
         this.secondaryEditorsVersion.update((s) => { s.version++; });
+        this._notifyMainEditorOfSecondaryChange();
         this._saveStateDebounced();
+    }
+
+    /** Notify mainEditor if it implements onSecondaryEditorsChanged (e.g., CategoryEditor). */
+    private _notifyMainEditorOfSecondaryChange(): void {
+        const me = this._mainEditor;
+        if (me && "onSecondaryEditorsChanged" in me) {
+            (me as any).onSecondaryEditorsChanged(); // eslint-disable-line @typescript-eslint/no-explicit-any
+        }
     }
 
     /** Find a secondary editor by its editor ID. */
