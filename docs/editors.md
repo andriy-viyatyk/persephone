@@ -300,7 +300,9 @@ For `.excalidraw` files — an Excalidraw-based drawing canvas. Click **Drawing*
 For `.link.json` files — a structured link manager:
 
 - **Categories**, **tags**, and **hostnames** for organizing and filtering links
-- **Hostnames panel** — collapsible sidebar panel showing hostnames extracted from all links, with link counts; click to filter
+- **Filter panels** — Categories, Tags, and Hostnames panels let you filter links by navigation. These panels adapt based on whether the page sidebar is open:
+  - **With sidebar open** — Categories, Tags, and Hostnames appear as separate panels in the page sidebar (the same sidebar used by the File Explorer). Click a panel header to expand it. The breadcrumb in the toolbar shows the current filter path.
+  - **Without sidebar** — A collapsible left panel inside the editor shows the three filters (Categories, Tags, Hostnames) as tabs. Resize it by dragging the splitter.
 - **Multiple view modes** — List, Landscape tiles, Portrait tiles (normal and large variants)
 - **View mode per category, per tag, and per hostname** — each filter remembers its preferred layout
 - **Image tiles** — tile views display preview images with "no image" placeholder for links without images

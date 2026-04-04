@@ -1,4 +1,5 @@
 import { TComponentState } from "../../core/state/state";
+import { pageNavigatorToggled } from "../../core/state/events";
 
 // =============================================================================
 // Types
@@ -24,7 +25,7 @@ const DEFAULT_WIDTH = 240;
 export class PageNavigatorModel {
     state: TComponentState<PageNavigatorState>;
 
-    constructor() {
+    constructor(private readonly pageId: string) {
         this.state = new TComponentState<PageNavigatorState>({
             open: true,
             width: DEFAULT_WIDTH,
@@ -54,11 +55,13 @@ export class PageNavigatorModel {
         this.state.update((s) => {
             s.open = !s.open;
         });
+        pageNavigatorToggled.send({ pageId: this.pageId, isOpen: this.state.get().open });
     };
 
     close = () => {
         this.state.update((s) => {
             s.open = false;
         });
+        pageNavigatorToggled.send({ pageId: this.pageId, isOpen: false });
     };
 }

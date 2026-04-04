@@ -184,7 +184,7 @@ For Pattern B (mainEditor in secondaryEditors[]), the model may be disposed twic
 |--------|-------------|
 | `addSecondaryEditor(model)` | Adds model to array, calls `model.setPage(this)`, bumps version |
 | `removeSecondaryEditor(model)` | Removes, disposes, falls back `activePanel` if needed |
-| `removeSecondaryEditorWithoutDispose(model)` | Removes without disposing (used by `secondaryEditor` setter) |
+| `removeSecondaryEditorWithoutDispose(model)` | Removes without disposing (used by `secondaryEditor` setter). Skips `setPage(null)` if model is the mainEditor (Pattern B guard). |
 | `findSecondaryEditor(editorId)` | Lookup by editor model ID |
 | `confirmSecondaryRelease()` | Iterates modified secondaries, prompts user via `confirmRelease()` |
 | `restoreSecondaryEditors(ownerEditor)` | Restores from `pendingSecondaryDescriptors`, deduplicates against owner |
@@ -202,7 +202,7 @@ For Pattern B (mainEditor in secondaryEditors[]), the model may be disposed twic
 |-------|-----------|---------|----------|-----------|
 | `ExplorerEditorModel` | `["explorer"]` or `["explorer", "search"]` | A (separate) | Always survives navigation | `PageModel.createExplorer()` or restore |
 | `ZipEditorModel` | `["zip-tree"]` | B (mainEditor) | Survives if new editor was opened from this archive | `_openZipArchive()` in PagesLifecycleModel |
-| `TextFileModel` (links) | `["link-category", "link-tags"?, "link-hostnames"?]` | B (mainEditor) | Removed on navigation (default `beforeNavigateAway`) | LinkEditor component (Phase 1.4, future) |
+| `TextFileModel` (links) | `["link-category", "link-tags"?, "link-hostnames"?]` | B (mainEditor) | Removed on navigation (default `beforeNavigateAway`). Removed when PageNavigator closes, re-registered when it opens. | LinkEditor component `useEffect` (subscribes to `pageNavigatorToggled` event) |
 
 ---
 

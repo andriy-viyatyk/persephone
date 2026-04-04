@@ -6,6 +6,7 @@ import type { IContentPipe } from "../types/io.pipe";
 import { fs } from "../fs";
 import { parseObject } from "../../core/utils/parse-utils";
 import { debounce } from "../../../shared/utils";
+import { panelExpanded } from "../../core/state/events";
 import { fpDirname } from "../../core/utils/file-path";
 
 export interface NavigationState {
@@ -212,6 +213,8 @@ export class PageModel {
         if (owner) {
             owner.onPanelExpanded(panel);
         }
+        // Broadcast global event for components that subscribe (e.g., LinkEditor)
+        panelExpanded.send({ pageId: this.id, panelId: panel });
     }
 
     /** Expand a secondary panel by its panel ID. Called by secondary editors directly. */
@@ -243,7 +246,7 @@ export class PageModel {
     /** Lazy-create PageNavigatorModel on first access. */
     ensurePageNavigatorModel(): PageNavigatorModel {
         if (!this.pageNavigatorModel) {
-            this.pageNavigatorModel = new PageNavigatorModel();
+            this.pageNavigatorModel = new PageNavigatorModel(this.id);
             // Subscribe to model state changes for auto-save
             this._unsubscribe = this.pageNavigatorModel.state.subscribe(() => {
                 if (!this._skipSave) {
@@ -327,7 +330,10 @@ export class PageModel {
         if (model.secondaryEditor?.includes(this.activePanel) || this.activePanel === model.id) {
             this.activePanel = "explorer";
         }
-        model.setPage(null);
+        // Don't clear page if this model is also the mainEditor (Pattern B)
+        if (this._mainEditor !== model) {
+            model.setPage(null);
+        }
         this.secondaryEditorsVersion.update((s) => { s.version++; });
         this._notifyMainEditorOfSecondaryChange();
         this._saveStateDebounced();

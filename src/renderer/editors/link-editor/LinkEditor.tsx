@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import clsx from "clsx";
-import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { Breadcrumb } from "../../components/basic/Breadcrumb";
 import { Button } from "../../components/basic/Button";
@@ -9,6 +9,7 @@ import { HighlightedTextProvider } from "../../components/basic/useHighlightedTe
 import { CollapsiblePanel, CollapsiblePanelStack } from "../../components/layout/CollapsiblePanelStack";
 import { Splitter } from "../../components/layout/Splitter";
 import { showAppPopupMenu } from "../../ui/dialogs";
+import { pageNavigatorToggled, panelExpanded } from "../../core/state/events";
 import color from "../../theme/color";
 import {
     CloseIcon, PlusIcon,
@@ -107,11 +108,18 @@ const VIEW_MODE_ORDER: LinkViewMode[] = [
 ];
 
 // =============================================================================
-// useSyncExternalStore helpers
+// Helpers
 // =============================================================================
 
 const noopUnsubscribe = () => () => {};
 const getDefaultState = () => defaultLinkEditorState;
+
+function buildPanelList(hasTags: boolean, hasHostnames: boolean): string[] {
+    const panels = ["link-category"];
+    if (hasTags) panels.push("link-tags");
+    if (hasHostnames) panels.push("link-hostnames");
+    return panels;
+}
 
 // =============================================================================
 // Component
@@ -125,6 +133,77 @@ export function LinkEditor(props: LinkEditorProps) {
         vm ? (cb) => vm.state.subscribe(cb) : noopUnsubscribe,
         vm ? () => vm.state.get() : getDefaultState,
     );
+
+    // ── PageNavigator state via global event ────────────────────────────
+
+    const hasPage = !!model.page;
+    const pageId = model.page?.id;
+
+    const [isNavigatorOpen, setIsNavigatorOpen] = useState(() =>
+        model.page?.pageNavigatorModel?.state.get().open ?? false
+    );
+
+    useEffect(() => {
+        if (!pageId) return;
+        const subs = [
+            pageNavigatorToggled.subscribe((event) => {
+                if (event?.pageId === pageId) {
+                    setIsNavigatorOpen(event.isOpen);
+                }
+            }),
+            panelExpanded.subscribe((event) => {
+                if (!vm || event?.pageId !== pageId) return;
+                // Map sidebar panel IDs to LinkViewModel's expandedPanel values
+                const map: Record<string, string> = {
+                    "link-category": "categories",
+                    "link-tags": "tags",
+                    "link-hostnames": "hostnames",
+                };
+                const expandedPanel = map[event.panelId];
+                if (expandedPanel) {
+                    vm.setExpandedPanel(expandedPanel);
+                }
+            }),
+        ];
+        return () => subs.forEach((s) => s.unsubscribe());
+    }, [pageId, vm]);
+
+    // ── Secondary editor registration ───────────────────────────────────
+
+    const hasTags = pageState.tags.length > 0;
+    const hasHostnames = pageState.hostnames.length > 0;
+    const showPanelsInSidebar = hasPage && isNavigatorOpen;
+
+    useEffect(() => {
+        if (!vm) return;
+
+        if (!showPanelsInSidebar) {
+            if (model.secondaryEditor?.length) {
+                model.secondaryEditor = undefined;
+            }
+            return;
+        }
+
+        const panels = buildPanelList(hasTags, hasHostnames);
+        model.secondaryEditor = panels;
+
+        // Expand the sidebar panel matching LinkViewModel's current expandedPanel
+        const reverseMap: Record<string, string> = {
+            "categories": "link-category",
+            "tags": "link-tags",
+            "hostnames": "link-hostnames",
+        };
+        const panelToExpand = reverseMap[pageState.expandedPanel] ?? "link-category";
+        if (panels.includes(panelToExpand)) {
+            model.page?.expandPanel(panelToExpand);
+        }
+
+        return () => {
+            model.secondaryEditor = undefined;
+        };
+    }, [vm, showPanelsInSidebar, hasTags, hasHostnames]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // ── Grid and view mode ──────────────────────────────────────────────
 
     // Update grid when filtered links change (React rendering concern)
     useEffect(() => {
@@ -238,28 +317,32 @@ export function LinkEditor(props: LinkEditorProps) {
                     toolbarLast!,
                 )}
             <LinkEditorRoot ref={(el) => { vm.containerElement = el; }} tabIndex={-1} className={clsx({ "swap-layout": swapLayout })}>
-                <CollapsiblePanelStack
-                    className="left-panel"
-                    style={{ width: pageState.leftPanelWidth }}
-                    activePanel={pageState.expandedPanel}
-                    setActivePanel={vm.setExpandedPanel}
-                >
-                    <CollapsiblePanel id="tags" title="Tags">
-                        <LinkTagsPanel vm={vm} />
-                    </CollapsiblePanel>
-                    <CollapsiblePanel id="hostnames" title="Hostnames">
-                        <LinkHostnamesPanel vm={vm} />
-                    </CollapsiblePanel>
-                    <CollapsiblePanel id="categories" title="Categories">
-                        <LinkCategoryPanel vm={vm} useOpenRawLink={false} />
-                    </CollapsiblePanel>
-                </CollapsiblePanelStack>
-                <Splitter
-                    type="vertical"
-                    initialWidth={pageState.leftPanelWidth}
-                    onChangeWidth={vm.setLeftPanelWidth}
-                    borderSized={swapLayout ? "left" : "right"}
-                />
+                {!showPanelsInSidebar && (
+                    <>
+                        <CollapsiblePanelStack
+                            className="left-panel"
+                            style={{ width: pageState.leftPanelWidth }}
+                            activePanel={pageState.expandedPanel}
+                            setActivePanel={vm.setExpandedPanel}
+                        >
+                            <CollapsiblePanel id="categories" title="Categories">
+                                <LinkCategoryPanel vm={vm} useOpenRawLink={false} />
+                            </CollapsiblePanel>
+                            <CollapsiblePanel id="tags" title="Tags">
+                                <LinkTagsPanel vm={vm} />
+                            </CollapsiblePanel>
+                            <CollapsiblePanel id="hostnames" title="Hostnames">
+                                <LinkHostnamesPanel vm={vm} />
+                            </CollapsiblePanel>
+                        </CollapsiblePanelStack>
+                        <Splitter
+                            type="vertical"
+                            initialWidth={pageState.leftPanelWidth}
+                            onChangeWidth={vm.setLeftPanelWidth}
+                            borderSized={swapLayout ? "left" : "right"}
+                        />
+                    </>
+                )}
                 <HighlightedTextProvider value={pageState.searchText}>
                     <div className="center-panel">
                         {allLinks.length === 0 ? (
