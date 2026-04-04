@@ -28,13 +28,13 @@ All items are `ITreeProviderItem`. All navigation goes through `openRawLink`. Ca
 
 ### Link collections as general-purpose infrastructure
 
-The key motivation for putting Link panels into PageNavigator is that **link collections become reusable infrastructure**, not just a standalone editor feature. A `.link.json` file can be created temporarily (in the app cache folder) and opened as a new page showing only the Categories panel in the sidebar — no LinkEditor main content needed. This enables:
+The key motivation for putting Link panels into PageNavigator is that **link collections become reusable infrastructure**, not just a standalone editor feature. A `TextFileModel` can be created programmatically with `.link.json` content and opened as a new page showing the Categories panel in the sidebar. This enables:
 
-- **Multi-file drop** — user drops files onto the app → temp `.link.json` created with links to those files → new page opens with Categories panel → user clicks through files one by one
+- **Multi-file drop** — user drops files onto the app → TextFileModel created with link collection content → new page opens with Categories panel → user clicks through files one by one
 - **AI agent results** — user asks the AI agent "show me files where ..." → agent searches/analyzes/prepares file list → shows a new Persephone page with Categories panel containing all matching files
-- **Script output** — a script collects files/links → creates temp `.link.json` → opens page with Categories panel showing results
+- **Script output** — a script collects files/links → creates a link collection page → Categories panel shows results
 
-In all these cases, the main content area shows whatever the user clicks on (text file, image, etc.), while the Categories panel in the sidebar provides navigation through the collection. `LinksNavigatorModel` is the reusable building block that makes this possible — it can be created by LinkEditor for `.link.json` browsing, or independently by scripts/agents/drop handlers.
+In all these cases, the main content area shows whatever the user clicks on (text file, image, etc.), while the Categories panel in the sidebar provides navigation through the collection. No temp file needed — TextFileModel's unsaved-content cache handles persistence (see Decision K).
 
 ## Design Decisions
 
@@ -164,9 +164,9 @@ Data changes (tags appear/disappear):
 
 2. **Programmatic callers** (multi-file drop, scripts, AI agent):
 ```
-Create temp .link.json → create TextFileModel → set content
+Create TextFileModel with .link.json content (modified: true)
   → model.secondaryEditor = ["link-category"]
-  → open page with Categories panel expanded
+  → open as new page with Categories panel expanded
 ```
 
 In both cases, TextFileModel is unaware — it's just an EditorModel whose `secondaryEditor` property happens to be set.
@@ -221,18 +221,18 @@ Since `openRawLink` handles any link type, `.link.json` collections can contain:
 - cURL commands
 - `tree-category://` links (folder navigation)
 
-### K. Standalone link collections (without LinkEditor)
+### K. Standalone link collections (programmatic creation)
 
-For temporary link collections (multi-file drop, AI agent results, script output):
+For programmatic link collections (multi-file drop, AI agent results, script output):
 - Create a `TextFileModel` with `language: "json"`, `title: "something.link.json"`, and the `.link.json` content
 - Set `modified: true` — the existing cache mechanism automatically persists unsaved content, no temp file creation needed
 - Set `secondaryEditor = ["link-category"]` — this adds the model to `PageModel.secondaryEditors[]`
 - Open as a new page with Categories panel auto-expanded
-- The main content area shows whatever the user clicks from the collection (LinkEditor renders with Categories panel in PageNavigator)
+- The content detection system auto-detects `link-view` mode → LinkEditor renders as main content with Categories panel in PageNavigator
 
 No special temp-file logic required — TextFileModel's existing unsaved-content cache handles persistence.
 
-This is the key infrastructure capability: scripts, AI agents, and drop handlers can all create link collections and present them as navigable pages.
+**Open question for Phase 2:** When user clicks a link in the Categories panel, the page navigates to the clicked file. The original TextFileModel's `beforeNavigateAway()` clears `secondaryEditor` → panels disappear. But for standalone collections, the Categories panel should **survive navigation** (like ZipEditorModel's Archive panel survives when browsing archive entries). This likely requires TextFileModel to override `beforeNavigateAway()` — checking whether the new editor was opened from this collection via `sourceLink.metadata.sourceId`. Exact design to be resolved during Phase 2 task 2.2.
 
 ## Resolved Concerns
 
@@ -286,20 +286,20 @@ Refactor LinkEditor to use CategoryView for center area and register secondary e
 | 1.1 | — | `LinkTreeProvider` | `ITreeProvider` implementation as thin adapter over `LinkViewModel` internal state. `list()` returns items filtered by category. `addItem()` → `vm.addLink()`. `deleteItem()` → `vm.deleteLink()`. `hasTags = true`, `hasHostnames = true`, `pinnable = true`. `writable = true`, `navigable = false`. Created by `LinkViewModel` on init, exposed as `vm.treeProvider`. | Planned |
 | 1.2 | — | Shared panel components | Extract `LinkCategoryPanel`, `LinkTagsPanel`, `LinkHostnamesPanel` from current LinkEditor left panel code. These components accept `LinkViewModel` as prop and render identically in both inline and PageNavigator contexts. Category panel uses `TreeProviderView` (links hidden) or `CategoryTree`. Tags/Hostnames panels use `TagsList`. Register wrapper components in `secondary-editor-registry` for `"link-category"`, `"link-tags"`, `"link-hostnames"`. Each wrapper calls `useContentViewModel(model, "link-view")` to get shared LinkViewModel. | Planned |
 | 1.3 | — | LinkEditor center area → CategoryView | Replace `LinkItemList` and `LinkItemTiles` in LinkEditor center area with `CategoryView`. Pass `provider={vm.treeProvider}`, `category={state.selectedCategory}`, `viewMode={vm.getViewMode()}`, `onViewModeChange={vm.setViewMode}`. Keep breadcrumb, search, view mode toggle in toolbar. | Planned |
-| 1.4 | — | Secondary editor registration | LinkEditor component manages `model.secondaryEditor` directly: sets `["link-category", ...]` on mount (page context), clears on unmount (useEffect cleanup) or JSON mode switch. Auto-expands `"link-category"` via `page.expandPanel()`. Inline left panel hidden when PageNavigator is open. Inline left panel visible when PageNavigator is closed or no page (Browser). Same pattern as ZipEditorModel — mainEditor registers itself in secondaryEditors[]. | Planned |
+| 1.4 | — | Secondary editor registration | LinkEditor component manages `model.secondaryEditor` directly: sets `["link-category", ...]` on mount (page context), clears on unmount (useEffect cleanup) or JSON mode switch. Auto-expands `"link-category"` via `page.expandPanel()`. Inline left panel hidden when PageNavigator is open. Inline left panel visible when PageNavigator is closed or no page (Browser). Uses Pattern B from secondary-editors architecture — mainEditor appears in secondaryEditors[], but registration is driven by the React component, not by TextFileModel itself. | Planned |
 | 1.5 | — | Pinned links panel | Keep `PinnedLinksPanel` as inline component in LinkEditor (right side, same as today). No change to pinning behavior. | Planned |
 | 1.6 | — | Verify feature parity | Test both contexts: **Browser** (blank page + bookmarks drawer) — must work identically to current. **Page** — JSON↔Links switching, PageNavigator open/closed, secondary panels visible/hidden, conditional Tags/Hostnames, auto-expand. Test: all view modes, pinned links, drag-drop, search, edit/delete, context menus, encrypted files, browser selection. | Planned |
 | 1.7 | — | Clean up old components | Remove `LinkItemList.tsx`, `LinkItemTiles.tsx` (replaced by CategoryView + ItemTile). Remove any dead code from LinkEditor refactoring. Keep `PinnedLinksPanel`, `EditLinkDialog`, `favicon-cache` (moved). | Planned |
 
 ### Phase 2: Link Collections as Infrastructure
 
-Make link collections a general-purpose building block. Enable creating temporary `.link.json` files and opening them as pages with Categories panel — no LinkEditor main content required.
+Make link collections a general-purpose building block. Enable programmatic creation of link collection pages with Categories panel in the sidebar.
 
 | # | Task | Title | Description | Status |
 |---|------|-------|-------------|--------|
 | 2.1 | — | Browser editor integration review | Verify Browser's `BlankPageLinks` and `BookmarksDrawer` work with refactored LinkEditor. The Browser context (no `model.page`) should render the self-contained layout with inline panels. Adjust if needed. | Planned |
 | 2.2 | — | Standalone link collection page | Create helper to programmatically open a link collection: create `TextFileModel` with `.link.json` content (`language: "json"`, `title: "name.link.json"`, `modified: true`), set `secondaryEditor = ["link-category"]`, open as new page with Categories panel auto-expanded. No temp file needed — cache handles unsaved content. | Planned |
-| 2.3 | — | Multi-file drop handler | When multiple files are dropped onto the app (or a page), create a temp `.link.json` with links to those files (preserving folder structure as categories). Open via standalone link collection helper (2.2). User clicks through files one by one in the main content area. | Planned |
+| 2.3 | — | Multi-file drop handler | When multiple files are dropped onto the app (or a page), create a link collection with links to those files (preserving folder structure as categories). Open via standalone link collection helper (2.2). User clicks through files one by one in the main content area. | Planned |
 | 2.4 | — | Expose LinkTreeProvider in script `io` namespace | `io.LinkTreeProvider` + helper to create and open a link collection page from a script. Script type definitions. Enables: `const links = [...]; io.openLinkCollection(links);` | Planned |
 | 2.5 | — | Content search for link collections | Instant in-memory search by title/href/tags. Uses existing `ITreeProvider.search()` interface. | Planned |
 | 2.6 | — | DOMSecondaryEditor | Secondary editor for HTML content (TextPageModel). Scrapes DOM resources (images, scripts, styles, media). Each resource type as a category. | Planned |
@@ -364,7 +364,7 @@ TextFileModel has no `page` — LinkEditor renders all panels inline. No seconda
 ## Notes
 
 ### 2026-04-04 (v2)
-- **Eliminated LinksNavigatorModel** — TextFileModel registers itself in secondaryEditors[] directly
+- **Eliminated LinksNavigatorModel** — external code (LinkEditor component / programmatic callers) sets `secondaryEditor` on TextFileModel directly
 - Confirmed this is an existing pattern (ZipEditorModel already does it) — **no PageModel guards needed**
 - Removed task 1.0 (PageModel guards) — unnecessary
 - Simplified Resolved Concerns section — all concerns already handled by existing design
