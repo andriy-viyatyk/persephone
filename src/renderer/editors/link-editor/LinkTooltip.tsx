@@ -2,7 +2,7 @@ import styled from "@emotion/styled";
 
 import { Tooltip } from "../../components/basic/Tooltip";
 import color from "../../theme/color";
-import { LinkItem } from "./linkTypes";
+import type { ILink } from "../../api/types/io.tree";
 
 const LinkTooltipContent = styled.div({
     display: "flex",
@@ -34,7 +34,7 @@ const LinkTooltipContent = styled.div({
 
 interface LinkTooltipProps {
     id: string;
-    link: LinkItem;
+    link: ILink;
 }
 
 export function LinkTooltip({ id, link }: Readonly<LinkTooltipProps>) {

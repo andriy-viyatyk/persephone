@@ -7,7 +7,7 @@ import {
 } from "../theme/icons";
 
 /**
- * Register default context menu handlers for tree provider items.
+ * Register default context menu handlers for ILink items.
  *
  * Handlers add type-specific menu items based on the item's href.
  * Call during app bootstrap (same pattern as registerRawLinkParsers).
@@ -15,8 +15,18 @@ import {
  * Registration order matters (LIFO): last registered runs first.
  */
 export function registerTreeContextMenuHandlers(): void {
+    // HTTP link handler — adds "Open in Browser" items for URLs
+    app.events.linkContextMenu.subscribe(async (event) => {
+        const item = event.target;
+        if (!item) return;
+        if (!item.href.startsWith("http://") && !item.href.startsWith("https://")) return;
+
+        const { appendLinkOpenMenuItems } = await import("../editors/shared/link-open-menu");
+        appendLinkOpenMenuItems(event.items, item.href, { startGroup: true });
+    });
+
     // File handler — for local file paths (not HTTP)
-    app.events.treeProviderContextMenu.subscribe(async (event) => {
+    app.events.linkContextMenu.subscribe(async (event) => {
         const item = event.target;
         if (!item) return;
         if (item.href.startsWith("http://") || item.href.startsWith("https://")) return;
@@ -72,7 +82,7 @@ export function registerTreeContextMenuHandlers(): void {
             const { ContextMenuEvent: CtxMenuEvent } = await import("../api/events/events");
             const fileTarget = {
                 path: item.href,
-                name: item.name,
+                name: item.title,
                 isDirectory: item.isDirectory,
             };
             const compatEvent = new CtxMenuEvent("file-explorer-item", fileTarget, event.items);

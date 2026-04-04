@@ -232,6 +232,7 @@ class EditLinkDialogModel extends TDialogModel<EditLinkDialogState, EditLinkResu
             href: state.href.trim(),
             category: state.category.trim(),
             tags: state.tags,
+            isDirectory: false,
             imgSrc: state.imgSrc.trim() || undefined,
         });
     };

@@ -664,3 +664,21 @@ secondaryEditorRegistry.register({
     label: "Search",
     loadComponent: () => import("./explorer/SearchSecondaryEditor"),
 });
+
+secondaryEditorRegistry.register({
+    id: "link-category",
+    label: "Categories",
+    loadComponent: () => import("./link-editor/panels/LinkCategorySecondaryEditor"),
+});
+
+secondaryEditorRegistry.register({
+    id: "link-tags",
+    label: "Tags",
+    loadComponent: () => import("./link-editor/panels/LinkTagsSecondaryEditor"),
+});
+
+secondaryEditorRegistry.register({
+    id: "link-hostnames",
+    label: "Hostnames",
+    loadComponent: () => import("./link-editor/panels/LinkHostnamesSecondaryEditor"),
+});

@@ -1,3 +1,4 @@
+import type { ILink } from "../../api/types/io.tree";
 import { TextFileModel } from "../text/TextEditorModel";
 
 // =============================================================================
@@ -12,17 +13,9 @@ export const LINK_PIN_DRAG = "LINK_PIN_DRAG";
 // Link Item
 // =============================================================================
 
-/** Single link item */
-export interface LinkItem {
+/** Link item with required id — used in .link.json collections. */
+export interface LinkItem extends ILink {
     id: string;
-    title: string;
-    href: string;
-    category: string;
-    tags: string[];
-    /** Optional preview image URL for tile view */
-    imgSrc?: string;
-    /** Whether this item represents a category/folder rather than a leaf link */
-    isCategory?: boolean;
 }
 
 // =============================================================================

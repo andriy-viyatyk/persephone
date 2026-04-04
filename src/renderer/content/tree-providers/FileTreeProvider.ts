@@ -56,7 +56,7 @@ export class FileTreeProvider implements ITreeProvider {
 
             if (isDir) {
                 folders.push({
-                    name: entry.name,
+                    title: entry.name,
                     href: fullPath,
                     category: dirPath,
                     tags: [],
@@ -65,7 +65,7 @@ export class FileTreeProvider implements ITreeProvider {
             } else {
                 const ext = path.extname(entry.name).toLowerCase();
                 files.push({
-                    name: entry.name,
+                    title: entry.name,
                     href: fullPath,
                     category: dirPath,
                     tags: ext ? [ext] : [],
@@ -76,13 +76,13 @@ export class FileTreeProvider implements ITreeProvider {
         }
 
         // Folders first (alphabetical), then files by extension then name
-        folders.sort((a, b) => a.name.localeCompare(b.name));
+        folders.sort((a, b) => a.title.localeCompare(b.title));
         files.sort((a, b) => {
             const extA = a.tags[0] ?? "";
             const extB = b.tags[0] ?? "";
             const extCmp = extA.localeCompare(extB);
             if (extCmp !== 0) return extCmp;
-            return a.name.localeCompare(b.name);
+            return a.title.localeCompare(b.title);
         });
 
         // Add ".." entry to navigate to parent (unless at root)
@@ -91,7 +91,7 @@ export class FileTreeProvider implements ITreeProvider {
         const rootNormalized = this.sourceUrl.replace(/\\/g, "/");
         if (normalized !== rootNormalized) {
             result.push({
-                name: "..",
+                title: "..",
                 href: path.dirname(dirPath),
                 category: dirPath,
                 tags: [],
@@ -135,8 +135,8 @@ export class FileTreeProvider implements ITreeProvider {
 
     async addItem(item: Partial<ITreeProviderItem> & { href: string }): Promise<ITreeProviderItem> {
         nodefs.writeFileSync(item.href, "");
-        const name = item.name || path.basename(item.href);
-        return { href: item.href, name, category: item.category ?? "", tags: [], isDirectory: false };
+        const title = item.title || path.basename(item.href);
+        return { href: item.href, title, category: item.category ?? "", tags: [], isDirectory: false };
     }
 
     async mkdir(dirPath: string): Promise<void> {

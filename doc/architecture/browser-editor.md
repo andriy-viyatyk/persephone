@@ -401,7 +401,7 @@ After initialization, `BrowserEditorModel` sets two callbacks on `linkModel`:
 
 ### Three Entry Points
 
-- **Blank page overlay** — when a tab shows `about:blank` and bookmarks are loaded (not encrypted), the `BlankPageLinks` component renders the Link Editor over the empty webview. Has its own toolbar (with breadcrumb, view mode, search) but hides "Add Link" and browser selector buttons via CSS. Disappears when user navigates to a URL.
+- **Blank page overlay** — when a tab shows `about:blank` and bookmarks are loaded (not encrypted), the `BlankPageLinks` component renders the Link Editor over the empty webview. Has its own toolbar (with breadcrumb, view mode, search). Disappears when user navigates to a URL.
 - **Star button (☆)** in the URL bar — quick bookmark add/edit. Empty star when URL not bookmarked, filled star when bookmarked. Opens Edit Link Dialog with URL/title prefilled and discovered images.
 - **"Open Links" button** on the toolbar — opens the `BookmarksDrawer`, a right-anchored overlay with the full Link Editor. Link clicks navigate to the URL (in current tab if `about:blank`, otherwise new internal tab) and close the drawer.
 

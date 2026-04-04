@@ -19,8 +19,8 @@ export interface ITreeProvider {
     /** Path to pass to list() for root-level listing. */
     readonly rootPath: string;
 
-    /** List direct children at a path. Returns LinkItem-compatible entries. */
-    list(path: string): Promise<ITreeProviderItem[]>;
+    /** List direct children at a path. Returns ILink entries. */
+    list(path: string): Promise<ILink[]>;
     /** Get metadata for a specific path. */
     stat(path: string): Promise<ITreeStat>;
     /** Resolve a child path to a raw link string for the open pipeline. */
@@ -28,7 +28,7 @@ export interface ITreeProvider {
 
     /** Return a raw link for opening an item via the openRawLink pipeline.
      *  For files: returns item.href. For directories: returns a tree-category:// link. */
-    getNavigationUrl(item: ITreeProviderItem): string;
+    getNavigationUrl(item: ILink): string;
 
     /** Resolve a stored href back to a navigation URL.
      *  Uses stat() to determine isDirectory, then delegates to getNavigationUrl().
@@ -47,9 +47,9 @@ export interface ITreeProvider {
     rename?(oldPath: string, newPath: string): Promise<void>;
 
     /** Add a new item (link or file). */
-    addItem?(item: Partial<ITreeProviderItem> & { href: string }): Promise<ITreeProviderItem>;
+    addItem?(item: Partial<ILink> & { href: string }): Promise<ILink>;
     /** Update item properties by href. */
-    updateItem?(href: string, changes: Partial<ITreeProviderItem>): Promise<ITreeProviderItem>;
+    updateItem?(href: string, changes: Partial<ILink>): Promise<ILink>;
     /** Delete an item by href. */
     deleteItem?(href: string): Promise<void>;
 
@@ -66,14 +66,14 @@ export interface ITreeProvider {
     /** Get all tags with item counts. Only available when hasTags is true. */
     getTags?(): ITreeTagInfo[];
     /** Get items matching a specific tag. Only available when hasTags is true. */
-    getTagItems?(tag: string): ITreeProviderItem[];
+    getTagItems?(tag: string): ILink[];
 
     /** Whether this tree supports hostname-based navigation. */
     readonly hasHostnames: boolean;
     /** Get all hostnames with item counts. Only available when hasHostnames is true. */
     getHostnames?(): ITreeTagInfo[];
     /** Get items matching a specific hostname. Only available when hasHostnames is true. */
-    getHostnameItems?(hostname: string): ITreeProviderItem[];
+    getHostnameItems?(hostname: string): ILink[];
 
     /** Whether this tree supports pinning items. */
     readonly pinnable: boolean;
@@ -82,23 +82,30 @@ export interface ITreeProvider {
     /** Unpin an item by href. */
     unpin?(href: string): void;
     /** Get all pinned items. */
-    getPinnedItems?(): ITreeProviderItem[];
+    getPinnedItems?(): ILink[];
 
     /** Release resources. */
     dispose?(): void;
 }
 
-/** LinkItem-compatible tree entry. */
-export interface ITreeProviderItem {
-    /** Display name (= LinkItem.title). */
-    name: string;
-    /** Resolved link string (= LinkItem.href). */
+/**
+ * Universal link item — used by tree providers, link collections, and scripts.
+ *
+ * This is the "Everything is a Link" type: one item type used everywhere —
+ * Explorer, Archive, Link collections, scripts.
+ */
+export interface ILink {
+    /** Unique identifier. Optional for tree provider items (href is unique within a category). */
+    id?: string;
+    /** Display title. */
+    title: string;
+    /** Resolved link string — URL, file path, or archive path. */
     href: string;
-    /** Folder path using "/" separators (= LinkItem.category). */
+    /** Folder path using "/" separators. */
     category: string;
-    /** Metadata tags — extension, type, etc. (= LinkItem.tags). */
+    /** Metadata tags — extension, type, etc. */
     tags: string[];
-    /** Whether this entry is a directory/container (= LinkItem.isCategory). */
+    /** Whether this entry is a directory/container. */
     isDirectory: boolean;
     /** File size in bytes. */
     size?: number;
@@ -107,6 +114,9 @@ export interface ITreeProviderItem {
     /** Optional preview image URL or file path. Used for tile view thumbnails. */
     imgSrc?: string;
 }
+
+/** @deprecated Use ILink instead. */
+export type ITreeProviderItem = ILink;
 
 /** Tag or hostname info with item count. */
 export interface ITreeTagInfo {
@@ -151,7 +161,7 @@ export interface ITreeSearchHandle {
 }
 
 /** A search result item with match context. */
-export interface ITreeSearchResult extends ITreeProviderItem {
+export interface ITreeSearchResult extends ILink {
     /** Matched line numbers within the file (for content search). */
     matchLines?: number[];
     /** Preview snippet of the matched content. */

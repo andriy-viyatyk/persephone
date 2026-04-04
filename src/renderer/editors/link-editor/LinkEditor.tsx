@@ -4,24 +4,21 @@ import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { Breadcrumb } from "../../components/basic/Breadcrumb";
 import { Button } from "../../components/basic/Button";
-import { TagsList } from "../../components/basic/TagsList";
 import { TextField } from "../../components/basic/TextField";
 import { HighlightedTextProvider } from "../../components/basic/useHighlightedText";
 import { CollapsiblePanel, CollapsiblePanelStack } from "../../components/layout/CollapsiblePanelStack";
 import { Splitter } from "../../components/layout/Splitter";
-import { CategoryTree, CategoryTreeItem } from "../../components/TreeView";
-import { splitWithSeparators } from "../../core/utils/utils";
 import { showAppPopupMenu } from "../../ui/dialogs";
 import color from "../../theme/color";
 import {
-    CloseIcon, GlobeIcon, OpenFileIcon, PlusIcon,
+    CloseIcon, PlusIcon,
     ViewLandscapeBigIcon, ViewLandscapeIcon, ViewListIcon, ViewPortraitBigIcon, ViewPortraitIcon,
 } from "../../theme/icons";
-import { IncognitoIcon } from "../../theme/language-icons";
-import { DEFAULT_BROWSER_COLOR } from "../../theme/palette-colors";
-import { settings, BrowserProfile } from "../../api/settings";
 import { defaultLinkEditorState, LinkViewModel, LinkEditorState } from "./LinkViewModel";
-import { LinkEditorProps, LinkViewMode, LINK_DRAG, LINK_CATEGORY_DRAG } from "./linkTypes";
+import { LinkEditorProps, LinkViewMode } from "./linkTypes";
+import { LinkCategoryPanel } from "./panels/LinkCategoryPanel";
+import { LinkTagsPanel } from "./panels/LinkTagsPanel";
+import { LinkHostnamesPanel } from "./panels/LinkHostnamesPanel";
 import { LinkItemList } from "./LinkItemList";
 import { LinkItemTiles } from "./LinkItemTiles";
 import { PinnedLinksPanel } from "./PinnedLinksPanel";
@@ -47,32 +44,6 @@ const LinkEditorRoot = styled.div({
         backgroundColor: color.background.dark,
         minWidth: 100,
         maxWidth: "80%",
-    },
-    "& .category-tree-container": {
-        flex: 1,
-        display: "flex",
-        overflow: "hidden",
-        fontSize: 13,
-        paddingLeft: 4,
-    },
-    "& .tags-list-container": {
-        flex: 1,
-        display: "flex",
-        overflow: "hidden",
-        width: "100%",
-    },
-    "& .category-label-name": {
-        flex: "1 1 auto",
-    },
-    "& .category-label-size": {
-        margin: "0 4px",
-        fontSize: 12,
-    },
-    "& .tree-cell": {
-        color: color.text.light,
-        "&.selected": {
-            color: color.misc.blue,
-        },
     },
     "& .center-panel": {
         flex: 1,
@@ -136,28 +107,6 @@ const VIEW_MODE_ORDER: LinkViewMode[] = [
 ];
 
 // =============================================================================
-// Browser selector helpers
-// =============================================================================
-
-function getBrowserSelectorIcon(selectedBrowser: string, profiles: BrowserProfile[]): React.ReactNode {
-    if (selectedBrowser === "os-default") return <OpenFileIcon />;
-    if (selectedBrowser === "incognito") return <IncognitoIcon />;
-    if (selectedBrowser.startsWith("profile:")) {
-        const name = selectedBrowser.slice("profile:".length);
-        const profile = profiles.find((p) => p.name === name);
-        return <GlobeIcon color={profile?.color || DEFAULT_BROWSER_COLOR} />;
-    }
-    return <GlobeIcon color={DEFAULT_BROWSER_COLOR} />;
-}
-
-function getBrowserSelectorLabel(selectedBrowser: string): string {
-    if (selectedBrowser === "os-default") return "OS Browser";
-    if (selectedBrowser === "incognito") return "Incognito";
-    if (selectedBrowser.startsWith("profile:")) return selectedBrowser.slice("profile:".length);
-    return "Browser";
-}
-
-// =============================================================================
 // useSyncExternalStore helpers
 // =============================================================================
 
@@ -177,13 +126,6 @@ export function LinkEditor(props: LinkEditorProps) {
         vm ? () => vm.state.get() : getDefaultState,
     );
 
-    // Initialize browser selection for standalone mode (BookmarksDrawer skips this)
-    useEffect(() => {
-        if (vm && !swapLayout) {
-            vm.initBrowserSelection();
-        }
-    }, [vm, swapLayout]);
-
     // Update grid when filtered links change (React rendering concern)
     useEffect(() => {
         vm?.gridModel?.update({ all: true });
@@ -199,42 +141,6 @@ export function LinkEditor(props: LinkEditorProps) {
     );
     const pinnedPanelWidth = pageState.data.state.pinnedPanelWidth ?? 100;
 
-    const browserProfiles = settings.use("browser-profiles");
-
-    const showBrowserSelectorMenu = useCallback((e: React.MouseEvent) => {
-        if (!vm) return;
-        const rect = e.currentTarget.getBoundingClientRect();
-        const items = [
-            {
-                label: "OS Default Browser",
-                icon: <OpenFileIcon />,
-                selected: pageState.selectedBrowser === "os-default",
-                onClick: () => vm.setSelectedBrowser("os-default"),
-            },
-            {
-                label: "Internal Browser",
-                icon: <GlobeIcon color={DEFAULT_BROWSER_COLOR} />,
-                selected: pageState.selectedBrowser === "internal-default",
-                onClick: () => vm.setSelectedBrowser("internal-default"),
-                startGroup: true,
-            },
-            ...browserProfiles.map((profile) => ({
-                label: profile.name,
-                icon: <GlobeIcon color={profile.color} />,
-                selected: pageState.selectedBrowser === `profile:${profile.name}`,
-                onClick: () => vm.setSelectedBrowser(`profile:${profile.name}`),
-            })),
-            {
-                label: "Incognito",
-                icon: <IncognitoIcon />,
-                selected: pageState.selectedBrowser === "incognito",
-                onClick: () => vm.setSelectedBrowser("incognito"),
-                startGroup: true,
-            },
-        ];
-        showAppPopupMenu(rect.left, rect.bottom + 2, items);
-    }, [vm, pageState.selectedBrowser, browserProfiles]);
-
     const showViewModeMenu = useCallback((e: React.MouseEvent) => {
         if (!vm) return;
         const rect = e.currentTarget.getBoundingClientRect();
@@ -245,24 +151,6 @@ export function LinkEditor(props: LinkEditorProps) {
             onClick: () => vm.setViewMode(mode),
         })));
     }, [vm, viewMode]);
-
-    // Category tree label with link count
-    const getTreeItemLabel = useCallback(
-        (item: CategoryTreeItem) => {
-            if (!vm) return null;
-            const name = splitWithSeparators(item.category, "/\\").pop() || "";
-            const size = vm.getCategoryCount(item.category);
-            return (
-                <>
-                    <span className="category-label-name">{name || "All"}</span>
-                    {size !== undefined && (
-                        <span className="category-label-size">{size}</span>
-                    )}
-                </>
-            );
-        },
-        [vm, pageState.categoriesSize],
-    );
 
     if (!vm) return null;
 
@@ -309,19 +197,6 @@ export function LinkEditor(props: LinkEditorProps) {
             {Boolean(toolbarLast) &&
                 createPortal(
                     <>
-                        {!swapLayout && (
-                            <Button
-                                className="link-btn-browser-selector"
-                                size="small"
-                                type="flat"
-                                title="Open links in..."
-                                onClick={showBrowserSelectorMenu}
-                            >
-                                {getBrowserSelectorIcon(pageState.selectedBrowser, browserProfiles)}
-                                {" "}
-                                {getBrowserSelectorLabel(pageState.selectedBrowser)}
-                            </Button>
-                        )}
                         <Button
                             className="link-btn-add"
                             size="small"
@@ -370,44 +245,13 @@ export function LinkEditor(props: LinkEditorProps) {
                     setActivePanel={vm.setExpandedPanel}
                 >
                     <CollapsiblePanel id="tags" title="Tags">
-                        <div className="tags-list-container">
-                            <TagsList
-                                tags={pageState.tags}
-                                value={pageState.selectedTag}
-                                onChange={vm.setSelectedTag}
-                                getCount={vm.getTagCount}
-                            />
-                        </div>
+                        <LinkTagsPanel vm={vm} />
                     </CollapsiblePanel>
                     <CollapsiblePanel id="hostnames" title="Hostnames">
-                        <div className="tags-list-container">
-                            <TagsList
-                                tags={pageState.hostnames}
-                                value={pageState.selectedHostname}
-                                onChange={vm.setSelectedHostname}
-                                getCount={vm.getHostnameCount}
-                                separator={"\0"}
-                                rootLabel="All"
-                            />
-                        </div>
+                        <LinkHostnamesPanel vm={vm} />
                     </CollapsiblePanel>
                     <CollapsiblePanel id="categories" title="Categories">
-                        <div className="category-tree-container">
-                            <CategoryTree
-                                categories={pageState.categories}
-                                separators="/\"
-                                rootLabel="All"
-                                rootCollapsible={false}
-                                onItemClick={vm.categoryItemClick}
-                                getSelected={vm.getCategoryItemSelected}
-                                getLabel={getTreeItemLabel}
-                                refreshKey={pageState.selectedCategory}
-                                dropTypes={[LINK_DRAG, LINK_CATEGORY_DRAG]}
-                                onDrop={vm.categoryDrop}
-                                dragType={LINK_CATEGORY_DRAG}
-                                getDragItem={vm.getCategoryDragItem}
-                            />
-                        </div>
+                        <LinkCategoryPanel vm={vm} useOpenRawLink={false} />
                     </CollapsiblePanel>
                 </CollapsiblePanelStack>
                 <Splitter

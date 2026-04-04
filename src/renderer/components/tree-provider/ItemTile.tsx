@@ -168,7 +168,7 @@ export function ItemTile({
                 style={{ height: imageHeight }}
             >
                 {imgSrc && !imgError ? (
-                    <img src={imgSrc} alt={item.name} loading="lazy" onError={handleImgError} />
+                    <img src={imgSrc} alt={item.title} loading="lazy" onError={handleImgError} />
                 ) : faviconSrc ? (
                     <img src={faviconSrc} alt="" />
                 ) : (
@@ -181,8 +181,8 @@ export function ItemTile({
                 </span>
                 <span className="tile-title-text">
                     {searchText
-                        ? highlightText(searchText, item.name)
-                        : item.name}
+                        ? highlightText(searchText, item.title)
+                        : item.title}
                 </span>
             </div>
         </TileRoot>

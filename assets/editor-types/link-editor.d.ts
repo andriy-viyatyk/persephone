@@ -38,6 +38,6 @@ export interface ILink {
     readonly category: string;
     readonly tags: readonly string[];
     readonly pinned: boolean;
-    /** Whether this item represents a category/folder rather than a leaf link. */
-    readonly isCategory: boolean;
+    /** Whether this item represents a directory/folder rather than a leaf link. */
+    readonly isDirectory: boolean;
 }

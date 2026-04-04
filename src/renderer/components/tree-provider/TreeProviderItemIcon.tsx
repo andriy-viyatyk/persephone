@@ -25,14 +25,14 @@ export function TreeProviderItemIcon({ item }: { item: ITreeProviderItem }) {
         // HTTP/HTTPS link
         if (httpExt) {
             // URL has file extension (e.g., /data.json) → file type icon
-            return <FileTypeIcon fileName={item.name} width={16} height={16} />;
+            return <FileTypeIcon fileName={item.title} width={16} height={16} />;
         }
         // No extension → favicon
         return <FaviconIcon href={item.href} />;
     }
 
     // Local file or archive entry
-    return <FileTypeIcon fileName={item.name} width={16} height={16} />;
+    return <FileTypeIcon fileName={item.title} width={16} height={16} />;
 }
 
 /**

@@ -144,7 +144,7 @@ The EventChannel system allows scripts to subscribe to context menu events and m
 ```
 TreeView cell onContextMenu
     -> onItemContextMenu: sets target, pushes file/folder items (Layer 1)
-    -> Fires treeProviderContextMenu.sendAsync (Layer 2)
+    -> Fires linkContextMenu.sendAsync (Layer 2)
        -> tree-context-menus handler adds "Open in New Tab", etc.
        -> Re-fires on fileExplorer.itemContextMenu (compat bridge, same items array)
           -> Scripts add/modify items

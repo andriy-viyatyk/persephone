@@ -87,7 +87,7 @@ persephone/
 │   │   └── RendererEventsService.ts # IPC event subscriptions (open file, quit, etc.)
 │   │
 │   ├── events/             # Event channel system (scriptable events)
-│   │   ├── AppEvents.ts             # app.events namespace (treeProviderContextMenu, fileExplorer, etc.)
+│   │   ├── AppEvents.ts             # app.events namespace (linkContextMenu, fileExplorer, etc.)
 │   │   ├── BaseEvent.ts             # Base event class with `handled` flag
 │   │   ├── EventChannel.ts          # EventChannel<T> — subscribe, send, sendAsync
 │   │   ├── events.ts                # Event subclasses (ContextMenuEvent<T>, etc.)
@@ -141,7 +141,7 @@ persephone/
 │       ├── io.transformer.d.ts # ITransformer, ITransformerDescriptor
 │       ├── io.pipe.d.ts      # IContentPipe, IPipeDescriptor
 │       ├── io.events.d.ts    # IRawLinkEvent, IOpenLinkEvent, IOpenContentEvent, ILinkMetadata
-│       └── io.tree.d.ts     # ITreeProvider, ITreeProviderItem, ITreeStat, ITreeSearch*
+│       └── io.tree.d.ts     # ITreeProvider, ILink (was ITreeProviderItem), ITreeStat, ITreeSearch*
 │
 ├── content/                # Content delivery layer — providers, transformers, pipes (EPIC-012)
 │   ├── ContentPipe.ts      # IContentPipe implementation, createPipe() factory
@@ -283,10 +283,20 @@ persephone/
 │   ├── link-editor/        # Link collection editor (standalone)
 │   │   ├── LinkEditor.tsx
 │   │   ├── LinkViewModel.ts
+│   │   ├── LinkTreeProvider.ts  # ITreeProvider adapter over LinkViewModel
 │   │   ├── linkTypes.ts
+│   │   ├── panels/             # Shared panel components (inline + secondary editor)
+│   │   │   ├── LinkCategoryPanel.tsx       # Categories tree panel
+│   │   │   ├── LinkTagsPanel.tsx           # Tags list panel
+│   │   │   ├── LinkHostnamesPanel.tsx      # Hostnames list panel
+│   │   │   ├── LinkCategorySecondaryEditor.tsx  # Secondary editor wrapper
+│   │   │   ├── LinkTagsSecondaryEditor.tsx      # Secondary editor wrapper
+│   │   │   └── LinkHostnamesSecondaryEditor.tsx # Secondary editor wrapper
+│   │   ├── LinksList.tsx        # View-only list rendering (no ViewModel deps)
+│   │   ├── LinksTiles.tsx       # View-only tiles rendering (no ViewModel deps)
+│   │   ├── LinkItemList.tsx     # Wrapper: wires LinksList to LinkViewModel
+│   │   ├── LinkItemTiles.tsx    # Wrapper: wires LinksTiles to LinkViewModel
 │   │   ├── PinnedLinksPanel.tsx
-│   │   ├── LinkItemTiles.tsx
-│   │   ├── LinkItemList.tsx
 │   │   ├── EditLinkDialog.tsx
 │   │   └── index.ts
 │   ├── svg/                # SVG preview (content-view)

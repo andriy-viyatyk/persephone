@@ -31,6 +31,8 @@ Release notes and changelog for Persephone (formerly js-notepad).
 - **`page.sourceLink` removed** — The `sourceLink` property added in v2.0.4 has been removed from the scripting API. It was part of an experimental pipeline feature that was retracted during architectural refactoring.
 - **`io.ZipTreeProvider` removed** — The `ZipTreeProvider` class has been removed from the `io` scripting namespace. Archive browsing is handled internally by the Archive Editor. Use `io.ZipTransformer` with `io.FileProvider` to read individual entries programmatically.
 - **`EditorCategory` value changed** — The editor category value `"page-editor"` has been renamed to `"standalone"` in the `app.editors` API. Update any scripts that check `editorInfo.category === "page-editor"` to use `"standalone"` instead.
+- **`ITreeProviderItem.name` renamed to `title`** — The `name` property on tree provider items has been renamed to `title` for consistency with `LinkItem`. The type has also been consolidated as `ILink` (with `ITreeProviderItem` kept as a deprecated alias). Update scripts that access `item.name` to use `item.title`.
+- **`LinkItem.isCategory` renamed to `isDirectory`** — The `isCategory` property on link items returned by `page.asLink().links` has been renamed to `isDirectory` for consistency with `ILink`.
 
 ---
 

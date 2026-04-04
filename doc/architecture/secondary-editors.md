@@ -202,6 +202,7 @@ For Pattern B (mainEditor in secondaryEditors[]), the model may be disposed twic
 |-------|-----------|---------|----------|-----------|
 | `ExplorerEditorModel` | `["explorer"]` or `["explorer", "search"]` | A (separate) | Always survives navigation | `PageModel.createExplorer()` or restore |
 | `ZipEditorModel` | `["zip-tree"]` | B (mainEditor) | Survives if new editor was opened from this archive | `_openZipArchive()` in PagesLifecycleModel |
+| `TextFileModel` (links) | `["link-category", "link-tags"?, "link-hostnames"?]` | B (mainEditor) | Removed on navigation (default `beforeNavigateAway`) | LinkEditor component (Phase 1.4, future) |
 
 ---
 

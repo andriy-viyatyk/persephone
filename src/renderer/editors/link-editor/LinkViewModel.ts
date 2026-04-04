@@ -13,6 +13,7 @@ import { ui } from "../../api/ui";
 import { settings } from "../../api/settings";
 import { shell } from "../../api/shell";
 import type { TextFileModel } from "../text/TextEditorModel";
+import { LinkTreeProvider } from "./LinkTreeProvider";
 
 // =============================================================================
 // State
@@ -64,6 +65,8 @@ export class LinkViewModel extends ContentViewModel<LinkEditorState> {
     private lastFilterState = { searchText: "", selectedCategory: "", selectedTag: "", selectedHostname: "", expandedPanel: "" };
     private static cacheName = "link-editor";
 
+    private _treeProvider: LinkTreeProvider | null = null;
+
     gridModel: RenderGridModel | null = null;
     containerElement: HTMLElement | null = null;
 
@@ -91,6 +94,14 @@ export class LinkViewModel extends ContentViewModel<LinkEditorState> {
         return this.host as unknown as TextFileModel;
     }
 
+    /** ITreeProvider adapter over this view model's link data. */
+    get treeProvider(): LinkTreeProvider {
+        if (!this._treeProvider) {
+            this._treeProvider = new LinkTreeProvider(this, this.pageModel.filePath || "");
+        }
+        return this._treeProvider;
+    }
+
     // =========================================================================
     // Lifecycle
     // =========================================================================
@@ -116,6 +127,7 @@ export class LinkViewModel extends ContentViewModel<LinkEditorState> {
         // Flush pending debounced save
         this.onDataChanged();
         this.containerElement = null;
+        this._treeProvider = null;
     }
 
     // =========================================================================
@@ -514,6 +526,7 @@ export class LinkViewModel extends ContentViewModel<LinkEditorState> {
             href: link?.href ?? "",
             category,
             tags,
+            isDirectory: false,
             imgSrc: link?.imgSrc,
         };
 
@@ -736,6 +749,7 @@ export class LinkViewModel extends ContentViewModel<LinkEditorState> {
                     href: result.href,
                     category: result.category,
                     tags: result.tags,
+                    isDirectory: false,
                     imgSrc: result.imgSrc,
                 };
                 this.state.update((s) => {

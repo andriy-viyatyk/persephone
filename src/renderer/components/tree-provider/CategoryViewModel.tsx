@@ -208,13 +208,13 @@ export class CategoryViewModel extends TComponentModel<
 
     // ── File operations ──────────────────────────────────────────────────
 
-    private renameItem = async (item: ITreeProviderItem) => {
+    renameItem = async (item: ITreeProviderItem) => {
         const { provider } = this.props;
         if (!provider.rename) return;
 
         const inputResult = await ui.input("Enter new name:", {
             title: `Rename ${item.isDirectory ? "Folder" : "File"}`,
-            value: item.name,
+            value: item.title,
             buttons: ["Rename", "Cancel"],
             selectAll: true,
         });
@@ -222,7 +222,7 @@ export class CategoryViewModel extends TComponentModel<
 
         const newName = inputResult.value.trim();
         const category = item.category;
-        const oldPath = category ? category + "/" + item.name : item.name;
+        const oldPath = category ? category + "/" + item.title : item.title;
         const newPath = category ? category + "/" + newName : newName;
 
         try {
@@ -234,12 +234,12 @@ export class CategoryViewModel extends TComponentModel<
         await this.loadItems();
     };
 
-    private deleteItemAction = async (item: ITreeProviderItem) => {
+    deleteItemAction = async (item: ITreeProviderItem) => {
         const { provider } = this.props;
         if (!provider.deleteItem) return;
 
         const bt = await ui.confirm(
-            `Are you sure you want to delete "${item.name}"?`,
+            `Are you sure you want to delete "${item.title}"?`,
             { title: "Delete Confirmation", buttons: ["Delete", "Cancel"] },
         );
         if (bt !== "Delete") return;
@@ -263,7 +263,7 @@ function filterItems(items: ITreeProviderItem[], searchText: string): ITreeProvi
     const words = searchText.toLowerCase().split(" ").filter(Boolean);
     if (words.length === 0) return items;
     return items.filter((item) => {
-        const nameLower = item.name.toLowerCase();
+        const nameLower = item.title.toLowerCase();
         return words.every((w) => nameLower.includes(w));
     });
 }

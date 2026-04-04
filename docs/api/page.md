@@ -191,7 +191,7 @@ Link collection editor. Only for `.link.json` pages.
 
 | Member | Type | Description |
 |--------|------|-------------|
-| `links` | `ILink[]` | All links. Each has `id`, `url`, `title`, `category`, `tags`, `pinned`. |
+| `links` | `ILink[]` | All links. Each has `id`, `url`, `title`, `category`, `tags`, `pinned`, `isDirectory`. |
 | `categories` | `string[]` | All category names. |
 | `tags` | `string[]` | All tag names. |
 | `linksCount` | `number` | Total number of links. |

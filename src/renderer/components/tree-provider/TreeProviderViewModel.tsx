@@ -162,7 +162,7 @@ export class TreeProviderViewModel extends TComponentModel<
             const items = filterTreeItems(await provider.list(provider.rootPath));
             const rootNode: TreeProviderNode = {
                 data: {
-                    name: provider.displayName,
+                    title: provider.displayName,
                     href: provider.rootPath,
                     category: "",
                     tags: [],
@@ -271,8 +271,8 @@ export class TreeProviderViewModel extends TComponentModel<
         // For child directories, build the inner path from category + name
         const category = node.data.category;
         return category
-            ? category + "/" + node.data.name
-            : node.data.name;
+            ? category + "/" + node.data.title
+            : node.data.title;
     };
 
     // ── State persistence ────────────────────────────────────────────────
@@ -457,7 +457,7 @@ export class TreeProviderViewModel extends TComponentModel<
         // Set contextMenuPromise so GlobalEventService waits for async handlers
         // before showing the popup menu.
         const promise = (async () => {
-            const result = await app.events.treeProviderContextMenu.sendAsync(
+            const result = await app.events.linkContextMenu.sendAsync(
                 ctxEvent as ContextMenuEvent<ITreeProviderItem>,
             );
             this.props.onContextMenu?.(ctxEvent as ContextMenuEvent<ITreeProviderItem>);
@@ -585,7 +585,7 @@ export class TreeProviderViewModel extends TComponentModel<
         );
 
         try {
-            await provider.addItem({ href, name, category: dirPath, tags: [], isDirectory: false });
+            await provider.addItem({ href, title: name, category: dirPath, tags: [], isDirectory: false });
         } catch (err: any) {
             ui.notify(err.message || "Failed to create file.", "warning");
             return;
@@ -621,7 +621,7 @@ export class TreeProviderViewModel extends TComponentModel<
 
         const inputResult = await ui.input("Enter new name:", {
             title: `Rename ${node.data.isDirectory ? "Folder" : "File"}`,
-            value: node.data.name,
+            value: node.data.title,
             buttons: ["Rename", "Cancel"],
             selectAll: true,
         });
@@ -648,7 +648,7 @@ export class TreeProviderViewModel extends TComponentModel<
         if (!provider.deleteItem) return;
 
         const bt = await ui.confirm(
-            `Are you sure you want to delete "${node.data.name}"?`,
+            `Are you sure you want to delete "${node.data.title}"?`,
             { title: "Delete Confirmation", buttons: ["Delete", "Cancel"] },
         );
         if (bt !== "Delete") return;
@@ -675,11 +675,11 @@ export class TreeProviderViewModel extends TComponentModel<
 
         const targetPath = this.getListPath(targetDir);
         const newPath = targetPath
-            ? targetPath + "/" + sourceNode.data.name
-            : sourceNode.data.name;
+            ? targetPath + "/" + sourceNode.data.title
+            : sourceNode.data.title;
 
         const bt = await ui.confirm(
-            `Move "${sourceNode.data.name}" to "${targetDir.data.name}/"?`,
+            `Move "${sourceNode.data.title}" to "${targetDir.data.title}/"?`,
             { title: "Move", buttons: ["Move", "Cancel"] },
         );
         if (bt !== "Move") return;
@@ -700,7 +700,7 @@ export class TreeProviderViewModel extends TComponentModel<
 
 /** Filter out ".." parent navigation entries (used by FileTreeProvider for flat views, not trees). */
 function filterTreeItems(items: ITreeProviderItem[]): ITreeProviderItem[] {
-    return items.filter((item) => item.name !== "..");
+    return items.filter((item) => item.title !== "..");
 }
 
 function toNode(item: ITreeProviderItem): TreeProviderNode {
@@ -783,7 +783,7 @@ function filterChildrenDeep(
                 result.push({ ...item, items: filteredChildren });
             }
         } else {
-            const nameLower = item.data.name.toLowerCase();
+            const nameLower = item.data.title.toLowerCase();
             if (words.every(w => nameLower.includes(w))) {
                 result.push(item);
             }
@@ -821,7 +821,7 @@ function filterChildrenShallow(
                 result.push(item);
             }
         } else {
-            const nameLower = item.data.name.toLowerCase();
+            const nameLower = item.data.title.toLowerCase();
             if (words.every(w => nameLower.includes(w))) {
                 result.push(item);
             }

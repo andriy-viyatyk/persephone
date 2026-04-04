@@ -1,10 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import styled from "@emotion/styled";
 import { useComponentModel } from "../../core/state/model";
-import RenderGrid from "../virtualization/RenderGrid/RenderGrid";
 import RenderGridModel from "../virtualization/RenderGrid/RenderGridModel";
-import type { RenderCellParams, RenderSizeOptional } from "../virtualization/RenderGrid/types";
 import { TextField } from "../basic/TextField";
 import { Button } from "../basic/Button";
 import {
@@ -13,12 +11,10 @@ import {
     ViewPortraitIcon, ViewPortraitBigIcon,
 } from "../../theme/icons";
 import { showAppPopupMenu } from "../../ui/dialogs";
-import { highlightText } from "../basic/useHighlightedText";
 import color from "../../theme/color";
-import { TreeProviderItemIcon } from "./TreeProviderItemIcon";
-import { ItemTile, TILE_DIMENSIONS } from "./ItemTile";
-import { useFavicons } from "./favicon-cache";
-import type { ITreeProviderItem } from "../../api/types/io.tree";
+import { LinksList } from "../../editors/link-editor/LinksList";
+import { LinksTiles } from "../../editors/link-editor/LinksTiles";
+import type { ILink } from "../../api/types/io.tree";
 import {
     CategoryViewModel,
     CategoryViewProps,
@@ -28,9 +24,6 @@ import {
 
 export type { CategoryViewProps } from "./CategoryViewModel";
 export type { CategoryViewMode } from "./CategoryViewModel";
-
-const ROW_HEIGHT = 28;
-const EMPTY_ARRAY: ITreeProviderItem[] = [];
 
 // =============================================================================
 // View mode constants
@@ -96,73 +89,9 @@ const CategoryViewRoot = styled.div({
         fontSize: 12,
         color: color.text.light,
     },
-
-    "& .cv-row-cell": {
-        boxSizing: "border-box",
-        padding: "0 4px",
-        display: "flex",
-        alignItems: "stretch",
-    },
-
-    "& .cv-tile-cell": {
-        boxSizing: "border-box",
-        padding: 4,
-    },
-
-    "& .cv-row": {
-        display: "flex",
-        alignItems: "center",
-        gap: 6,
-        padding: "0 8px",
-        borderRadius: 6,
-        fontSize: 13,
-        cursor: "default",
-        boxSizing: "border-box",
-        flex: 1,
-        minWidth: 0,
-        position: "relative",
-        "&:hover": {
-            backgroundColor: color.background.dark,
-        },
-        "&.selected::after": {
-            content: "''",
-            position: "absolute",
-            top: 0,
-            left: 0,
-            bottom: 0,
-            right: 0,
-            backgroundColor: color.background.selection,
-            opacity: 0.3,
-            pointerEvents: "none",
-            borderRadius: "inherit",
-        },
-        "& .cv-row-icon": {
-            flexShrink: 0,
-            display: "flex",
-            alignItems: "center",
-        },
-        "& .cv-row-name": {
-            flex: "1 1 auto",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-            color: color.text.strong,
-            minWidth: 0,
-        },
-        "& .cv-row-name-folder": {
-            flex: "1 1 auto",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-            color: color.text.strong,
-            fontWeight: 500,
-            minWidth: 0,
-        },
-    },
 });
 
-type Percent = `${number}%`;
-const FULL_WIDTH = () => "100%" as Percent;
+const getIdByHref = (link: ILink) => link.href;
 
 export function CategoryView(props: CategoryViewProps) {
     const model = useComponentModel(
@@ -171,86 +100,46 @@ export function CategoryView(props: CategoryViewProps) {
         defaultCategoryViewState,
     );
     const state = model.state.use();
-    const gridRef = useRef<RenderGridModel>(null);
     const searchInputRef = useRef<HTMLInputElement>(null);
+    const gridModelRef = useRef<RenderGridModel | null>(null);
 
     const viewMode = props.viewMode ?? "list";
     const isTileMode = viewMode !== "list";
     const { filteredItems } = state;
-
-    // Track grid size for tile column calculation
-    const [gridSize, setGridSize] = useState<RenderSizeOptional>({ width: undefined, height: undefined });
-
-    // Favicon preloading for tile mode
-    const faviconVersion = useFavicons(isTileMode ? filteredItems : EMPTY_ARRAY);
-
-    // Tile grid layout
-    const tileLayout = useMemo(() => {
-        if (!isTileMode) return null;
-        const dims = TILE_DIMENSIONS[viewMode as Exclude<CategoryViewMode, "list">];
-        const colCount = gridSize.width
-            ? Math.max(1, Math.floor(gridSize.width / dims.cellWidth))
-            : 1;
-        const rowCount = filteredItems.length > 0
-            ? Math.ceil(filteredItems.length / colCount)
-            : 0;
-        return { dims, colCount, rowCount };
-    }, [isTileMode, viewMode, gridSize.width, filteredItems.length]);
+    const { provider } = props;
 
     useEffect(() => {
-        gridRef.current?.update({ all: true });
-    }, [state.filteredItems, props.selectedHref, faviconVersion]);
+        gridModelRef.current?.update({ all: true });
+    }, [filteredItems, props.selectedHref]);
 
     useEffect(() => {
-        gridRef.current?.scrollToRow(0);
-        gridRef.current?.update({ all: true });
+        gridModelRef.current?.scrollToRow(0);
+        gridModelRef.current?.update({ all: true });
     }, [viewMode]);
 
-    const renderCell = useCallback(
-        (p: RenderCellParams) => {
-            const item = filteredItems[p.row];
-            if (!item) return null;
-            const isSelected = item.href === props.selectedHref;
-            return (
-                <div key={p.key} style={p.style} className="cv-row-cell">
-                    <CategoryViewRow
-                        item={item}
-                        isSelected={isSelected}
-                        searchText={state.searchText}
-                        onClick={model.onItemClick}
-                        onDoubleClick={model.onItemDoubleClick}
-                        onContextMenu={model.onItemContextMenu}
-                    />
-                </div>
-            );
-        },
-        [filteredItems, props.selectedHref, state.searchText, model],
-    );
+    const handleGridModel = useCallback((gm: RenderGridModel | null) => {
+        gridModelRef.current = gm;
+    }, []);
 
-    const renderTileCell = useCallback(
-        (p: RenderCellParams) => {
-            if (!tileLayout) return null;
-            const index = p.row * tileLayout.colCount + p.col;
-            const item = filteredItems[index];
-            if (!item) return <div key={p.key} style={p.style} />;
+    const handleSelect = useCallback((link: ILink) => {
+        model.onItemClick(link);
+    }, [model]);
 
-            const isSelected = item.href === props.selectedHref;
-            return (
-                <div key={p.key} style={p.style} className="cv-tile-cell">
-                    <ItemTile
-                        item={item}
-                        imageHeight={tileLayout.dims.imageHeight}
-                        isSelected={isSelected}
-                        searchText={state.searchText}
-                        onClick={() => model.onItemClick(item)}
-                        onDoubleClick={() => model.onItemDoubleClick(item)}
-                        onContextMenu={(e) => model.onItemContextMenu(item, e)}
-                    />
-                </div>
-            );
-        },
-        [filteredItems, tileLayout, props.selectedHref, state.searchText, model, faviconVersion],
-    );
+    const handleDoubleClick = useCallback((link: ILink) => {
+        model.onItemDoubleClick(link);
+    }, [model]);
+
+    const handleContextMenu = useCallback((e: React.MouseEvent, link: ILink) => {
+        model.onItemContextMenu(link, e);
+    }, [model]);
+
+    const handleEdit = provider.writable && provider.rename
+        ? useCallback((link: ILink) => { model.renameItem(link); }, [model])
+        : undefined;
+
+    const handleDelete = provider.writable && provider.deleteItem
+        ? useCallback((link: ILink) => { model.deleteItemAction(link); }, [model])
+        : undefined;
 
     const handleViewModeMenu = useCallback((e: React.MouseEvent) => {
         if (!props.onViewModeChange) return;
@@ -333,26 +222,31 @@ export function CategoryView(props: CategoryViewProps) {
                     <div className="cv-empty">
                         {state.searchText ? "No matching items" : "Empty folder"}
                     </div>
-                ) : isTileMode && tileLayout ? (
-                    <RenderGrid
-                        ref={gridRef}
-                        rowCount={tileLayout.rowCount}
-                        columnCount={tileLayout.colCount}
-                        rowHeight={tileLayout.dims.cellHeight}
-                        columnWidth={tileLayout.dims.cellWidth}
-                        renderCell={renderTileCell}
-                        onResize={setGridSize}
+                ) : isTileMode ? (
+                    <LinksTiles
+                        links={filteredItems}
+                        viewMode={viewMode as Exclude<CategoryViewMode, "list">}
+                        selectedId={props.selectedHref ?? undefined}
+                        getId={getIdByHref}
+                        onSelect={handleSelect}
+                        onDoubleClick={handleDoubleClick}
+                        onEdit={handleEdit}
+                        onDelete={handleDelete ? (link) => handleDelete(link) : undefined}
+                        onContextMenu={handleContextMenu}
+                        onGridModel={handleGridModel}
                     />
                 ) : (
-                    <RenderGrid
-                        ref={gridRef}
-                        rowCount={filteredItems.length}
-                        columnCount={1}
-                        rowHeight={ROW_HEIGHT}
-                        columnWidth={FULL_WIDTH}
-                        renderCell={renderCell}
-                        fitToWidth
-                        onResize={setGridSize}
+                    <LinksList
+                        links={filteredItems}
+                        selectedId={props.selectedHref ?? undefined}
+                        getId={getIdByHref}
+                        searchText={state.searchText}
+                        onSelect={handleSelect}
+                        onDoubleClick={handleDoubleClick}
+                        onEdit={handleEdit}
+                        onDelete={handleDelete ? (link) => handleDelete(link) : undefined}
+                        onContextMenu={handleContextMenu}
+                        onGridModel={handleGridModel}
                     />
                 )}
             </div>
@@ -363,61 +257,4 @@ export function CategoryView(props: CategoryViewProps) {
             </div>
         </CategoryViewRoot>
     );
-}
-
-// =============================================================================
-// Row component
-// =============================================================================
-
-interface CategoryViewRowProps {
-    item: ITreeProviderItem;
-    isSelected: boolean;
-    searchText: string;
-    onClick: (item: ITreeProviderItem) => void;
-    onDoubleClick: (item: ITreeProviderItem) => void;
-    onContextMenu: (item: ITreeProviderItem, e: React.MouseEvent) => void;
-}
-
-function CategoryViewRow({
-    item,
-    isSelected,
-    searchText,
-    onClick,
-    onDoubleClick,
-    onContextMenu,
-}: CategoryViewRowProps) {
-    const [handleClick, handleDblClick, handleCtxMenu] = useItemHandlers(item, onClick, onDoubleClick, onContextMenu);
-
-    return (
-        <div
-            className={isSelected ? "cv-row selected" : "cv-row"}
-            onClick={handleClick}
-            onDoubleClick={handleDblClick}
-            onContextMenu={handleCtxMenu}
-        >
-            <span className="cv-row-icon">
-                <TreeProviderItemIcon item={item} />
-            </span>
-            <span
-                className={item.isDirectory ? "cv-row-name-folder" : "cv-row-name"}
-                title={item.href}
-            >
-                {searchText
-                    ? highlightText(searchText, item.name)
-                    : item.name}
-            </span>
-        </div>
-    );
-}
-
-function useItemHandlers(
-    item: ITreeProviderItem,
-    onClick: (item: ITreeProviderItem) => void,
-    onDoubleClick: (item: ITreeProviderItem) => void,
-    onContextMenu: (item: ITreeProviderItem, e: React.MouseEvent) => void,
-) {
-    const handleClick = useCallback(() => onClick(item), [item, onClick]);
-    const handleDblClick = useCallback(() => onDoubleClick(item), [item, onDoubleClick]);
-    const handleCtxMenu = useCallback((e: React.MouseEvent) => onContextMenu(item, e), [item, onContextMenu]);
-    return [handleClick, handleDblClick, handleCtxMenu] as const;
 }

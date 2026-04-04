@@ -134,8 +134,8 @@ export function TreeProviderView(
     const getLabel = useCallback((node: TreeProviderNode) => (
         <span className="tpv-item-label" title={node.data.href}>
             {state.searchText
-                ? highlightText(state.searchText, node.data.name)
-                : node.data.name
+                ? highlightText(state.searchText, node.data.title)
+                : node.data.title
             }
         </span>
     ), [state.searchText]);

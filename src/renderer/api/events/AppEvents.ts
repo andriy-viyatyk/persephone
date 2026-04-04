@@ -1,7 +1,7 @@
 import { EventChannel } from "./EventChannel";
 import type { ContextMenuEvent, BookmarkEvent, RawLinkEvent, OpenLinkEvent, OpenContentEvent } from "./events";
 import type { IFileTarget } from "../types/events";
-import type { ITreeProviderItem } from "../types/io.tree";
+import type { ILink } from "../types/io.tree";
 
 export class FileExplorerEvents {
     readonly itemContextMenu = new EventChannel<ContextMenuEvent<IFileTarget>>({ name: "fileExplorer.itemContextMenu" });
@@ -20,6 +20,6 @@ export class AppEvents {
     readonly openLink = new EventChannel<OpenLinkEvent>({ name: "openLink" });
     readonly openContent = new EventChannel<OpenContentEvent>({ name: "openContent" });
 
-    // Tree provider context menu (EPIC-015)
-    readonly treeProviderContextMenu = new EventChannel<ContextMenuEvent<ITreeProviderItem>>({ name: "treeProviderContextMenu" });
+    // Link context menu — type-aware menu items for any ILink (EPIC-015, EPIC-018)
+    readonly linkContextMenu = new EventChannel<ContextMenuEvent<ILink>>({ name: "linkContextMenu" });
 }

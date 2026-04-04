@@ -53,7 +53,7 @@ export class ZipTreeProvider implements ITreeProvider {
 
             if (entry.isDirectory) {
                 folders.push({
-                    name: entry.name,
+                    title: entry.name,
                     href: buildArchivePath(this.sourceUrl, innerPath),
                     category: innerDir,
                     tags: [],
@@ -63,7 +63,7 @@ export class ZipTreeProvider implements ITreeProvider {
                 const ext = path.extname(entry.name).toLowerCase();
                 const href = buildArchivePath(this.sourceUrl, innerPath);
                 files.push({
-                    name: entry.name,
+                    title: entry.name,
                     href,
                     category: innerDir,
                     tags: ext ? [ext] : [],
@@ -74,13 +74,13 @@ export class ZipTreeProvider implements ITreeProvider {
         }
 
         // Folders first (alphabetical), then files by extension then name
-        folders.sort((a, b) => a.name.localeCompare(b.name));
+        folders.sort((a, b) => a.title.localeCompare(b.title));
         files.sort((a, b) => {
             const extA = a.tags[0] ?? "";
             const extB = b.tags[0] ?? "";
             const extCmp = extA.localeCompare(extB);
             if (extCmp !== 0) return extCmp;
-            return a.name.localeCompare(b.name);
+            return a.title.localeCompare(b.title);
         });
 
         return [...folders, ...files];
@@ -110,7 +110,7 @@ export class ZipTreeProvider implements ITreeProvider {
         // Root node has href === rootPath ("") — use rootPath directly.
         const innerPath = item.href === this.rootPath
             ? this.rootPath
-            : (item.category ? item.category + "/" + item.name : item.name);
+            : (item.category ? item.category + "/" + item.title : item.title);
         return encodeCategoryLink({ type: this.type, url: this.sourceUrl, category: innerPath });
     }
 

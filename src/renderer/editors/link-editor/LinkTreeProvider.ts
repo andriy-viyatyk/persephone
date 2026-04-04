@@ -1,0 +1,240 @@
+import type {
+    ITreeProvider,
+    ILink,
+    ITreeStat,
+    ITreeTagInfo,
+} from "../../api/types/io.tree";
+import type { ISubscriptionObject } from "../../api/types/events";
+import { encodeCategoryLink } from "../../content/tree-providers/tree-provider-link";
+import { getHostname } from "../../components/tree-provider/favicon-cache";
+import { fpBasename } from "../../core/utils/file-path";
+import type { LinkViewModel } from "./LinkViewModel";
+import type { LinkItem } from "./linkTypes";
+
+/**
+ * ITreeProvider implementation that wraps LinkViewModel state.
+ *
+ * Exposes link collection data (categories, tags, hostnames, pinning)
+ * through the standard tree provider interface so that CategoryView
+ * can render link collections the same way it renders filesystem
+ * folders and archive entries.
+ */
+export class LinkTreeProvider implements ITreeProvider {
+    readonly type = "link";
+    readonly displayName: string;
+    readonly sourceUrl: string;
+    readonly rootPath = "";
+
+    readonly navigable = false;
+    readonly writable = true;
+    readonly hasTags = true;
+    readonly hasHostnames = true;
+    readonly pinnable = true;
+
+    constructor(
+        private readonly vm: LinkViewModel,
+        sourceUrl: string,
+    ) {
+        this.sourceUrl = sourceUrl;
+        this.displayName = sourceUrl ? fpBasename(sourceUrl) : "Links";
+    }
+
+    // =========================================================================
+    // List
+    // =========================================================================
+
+    async list(categoryPath: string): Promise<ILink[]> {
+        const links = this.vm.state.get().data.links;
+        const prefix = categoryPath ? categoryPath + "/" : "";
+        const subCategories = new Map<string, number>();
+        const items: ILink[] = [];
+
+        for (const link of links) {
+            const cat = link.category || "";
+            if (cat === categoryPath) {
+                // Direct child — leaf link item
+                items.push(this.linkToItem(link));
+            } else if (cat.startsWith(prefix)) {
+                // Sub-category — extract direct child name
+                const rest = cat.slice(prefix.length);
+                const childName = rest.split("/")[0];
+                subCategories.set(childName, (subCategories.get(childName) || 0) + 1);
+            }
+        }
+
+        // Build directory items for sub-categories (sorted alphabetically)
+        const dirItems: ILink[] = [];
+        for (const [name, count] of [...subCategories.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
+            const fullCategory = prefix + name;
+            dirItems.push({
+                title: name,
+                href: fullCategory,
+                category: categoryPath,
+                tags: [],
+                isDirectory: true,
+                size: count,
+            });
+        }
+
+        return [...dirItems, ...items];
+    }
+
+    // =========================================================================
+    // Stat / Resolve
+    // =========================================================================
+
+    async stat(path: string): Promise<ITreeStat> {
+        const { categoriesSize, data } = this.vm.state.get();
+        if (path in categoriesSize) {
+            return { exists: true, isDirectory: true };
+        }
+        const link = data.links.find(l => l.href === path);
+        if (link) {
+            return { exists: true, isDirectory: !!link.isDirectory };
+        }
+        return { exists: false, isDirectory: false };
+    }
+
+    resolveLink(path: string): string {
+        return path;
+    }
+
+    getNavigationUrl(item: ILink): string {
+        if (item.isDirectory) {
+            return encodeCategoryLink({ type: this.type, url: this.sourceUrl, category: item.href });
+        }
+        return item.href;
+    }
+
+    async getNavigationUrlByHref(href: string): Promise<string> {
+        const s = await this.stat(href);
+        if (s.isDirectory) {
+            return encodeCategoryLink({ type: this.type, url: this.sourceUrl, category: href });
+        }
+        return href;
+    }
+
+    // =========================================================================
+    // Write operations
+    // =========================================================================
+
+    async addItem(item: Partial<ILink> & { href: string }): Promise<ILink> {
+        const newLink = this.vm.addLink({
+            title: item.title,
+            href: item.href,
+            category: item.category,
+            tags: item.tags,
+            imgSrc: item.imgSrc,
+        });
+        return this.linkToItem(newLink);
+    }
+
+    async updateItem(href: string, changes: Partial<ILink>): Promise<ILink> {
+        const link = this.vm.state.get().data.links.find(l => l.href === href);
+        if (!link) throw new Error(`Link not found: ${href}`);
+        this.vm.updateLink(link.id, {
+            title: changes.title,
+            href: changes.href,
+            category: changes.category,
+            tags: changes.tags,
+            imgSrc: changes.imgSrc,
+        });
+        const updated = this.vm.getLinkById(link.id)!;
+        return this.linkToItem(updated);
+    }
+
+    async deleteItem(href: string): Promise<void> {
+        const link = this.vm.state.get().data.links.find(l => l.href === href);
+        if (link) {
+            await this.vm.deleteLink(link.id, true);
+        }
+    }
+
+    async moveToCategory(hrefs: string[], targetCategory: string): Promise<void> {
+        for (const href of hrefs) {
+            const link = this.vm.state.get().data.links.find(l => l.href === href);
+            if (link) {
+                this.vm.moveLinkToCategory(link.id, targetCategory);
+            }
+        }
+    }
+
+    // =========================================================================
+    // Tags
+    // =========================================================================
+
+    getTags(): ITreeTagInfo[] {
+        const { tags, tagsSize } = this.vm.state.get();
+        return tags.map(t => ({ name: t, count: tagsSize[t] || 0 }));
+    }
+
+    getTagItems(tag: string): ILink[] {
+        const links = this.vm.state.get().data.links;
+        const separator = ":";
+        let filtered: LinkItem[];
+
+        if (tag.endsWith(separator)) {
+            filtered = links.filter(l => l.tags?.some(t => t.startsWith(tag) || t === tag));
+        } else {
+            filtered = links.filter(l => l.tags?.includes(tag));
+        }
+        return filtered.map(l => this.linkToItem(l));
+    }
+
+    // =========================================================================
+    // Hostnames
+    // =========================================================================
+
+    getHostnames(): ITreeTagInfo[] {
+        const { hostnames, hostnamesSize } = this.vm.state.get();
+        return hostnames.map(h => ({ name: h, count: hostnamesSize[h] || 0 }));
+    }
+
+    getHostnameItems(hostname: string): ILink[] {
+        const links = this.vm.state.get().data.links;
+        return links
+            .filter(l => getHostname(l.href) === hostname)
+            .map(l => this.linkToItem(l));
+    }
+
+    // =========================================================================
+    // Pinning
+    // =========================================================================
+
+    pin(href: string): void {
+        const link = this.vm.state.get().data.links.find(l => l.href === href);
+        if (link) this.vm.pinLink(link.id);
+    }
+
+    unpin(href: string): void {
+        const link = this.vm.state.get().data.links.find(l => l.href === href);
+        if (link) this.vm.unpinLink(link.id);
+    }
+
+    getPinnedItems(): ILink[] {
+        return this.vm.getPinnedLinks().map(l => this.linkToItem(l));
+    }
+
+    // =========================================================================
+    // Watch
+    // =========================================================================
+
+    watch(callback: () => void): ISubscriptionObject {
+        const unsub = this.vm.state.subscribe(callback);
+        return { unsubscribe: unsub };
+    }
+
+    // =========================================================================
+    // Helpers
+    // =========================================================================
+
+    private linkToItem(link: LinkItem): ILink {
+        return {
+            ...link,
+            title: link.title || link.href,
+            category: link.category || "",
+            tags: link.tags || [],
+            isDirectory: !!link.isDirectory,
+        };
+    }
+}
