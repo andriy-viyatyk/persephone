@@ -105,6 +105,7 @@ For `.html` files — click **Preview** in the toolbar:
 - **Live preview** of unsaved changes
 - **JavaScript execution** — scripts in the HTML run in the preview
 - **Sandboxed rendering** — preview is isolated from the application
+- **Show Resources** — click the web-scraper toolbar button (or use the right-click context menu in the Browser) to extract all resource URLs from the page (images, scripts, stylesheets, media, fonts, iframes, favicons, and links). Results open as a categorized link collection.
 - Switch between text editor and preview anytime
 
 ## Browser

@@ -25,6 +25,13 @@ export interface ILinkMetadata {
     method?: string;
     /** HTTP body (from cURL parser). */
     body?: string;
+    /** Page title override. When set, the opened page uses this title
+     *  instead of deriving it from the file path. */
+    title?: string;
+    /** Fallback editor target when the URL has no recognized extension.
+     *  Without this, unrecognized HTTP URLs open in the browser.
+     *  Set to "monaco" to force text editor fallback. */
+    fallbackTarget?: string;
     /** Additional custom data (for script/extension use). */
     [key: string]: unknown;
 }

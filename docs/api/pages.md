@@ -121,6 +121,7 @@ When a plain string is passed, the filename part of the path is used as the disp
 | `isDirectory` | `boolean` | Yes | `true` if the item is a folder/container, `false` for leaf links. |
 | `id` | `string` | No | Unique ID (auto-generated if omitted). |
 | `imgSrc` | `string` | No | Preview image URL or path (shown in tile view). |
+| `target` | `string` | No | Preferred editor for opening this link (e.g., `"image-view"`, `"monaco"`). When set, the link opens in that editor instead of the auto-detected one. |
 
 ```javascript
 // From file paths — titles are derived from filenames

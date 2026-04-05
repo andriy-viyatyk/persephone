@@ -54,16 +54,20 @@ export function registerOpenHandler(): void {
         const sourceLink = buildSourceLink(event, filePath);
 
         if (pageId) {
-            // Navigate existing page to the new file
-            // navigatePageTo creates its own page model — always dispose this pipe
+            // Navigate existing page to the new file — pass pipe through
+            // On success the page owns the pipe; on error we must dispose it
             try {
                 await pagesModel.lifecycle.navigatePageTo(pageId, filePath, {
                     revealLine: metadata?.revealLine,
                     highlightText: metadata?.highlightText,
+                    title: metadata?.title,
                     sourceLink,
+                    pipe: event.pipe,
+                    target: event.target,
                 });
-            } finally {
+            } catch (err) {
                 event.pipe.dispose();
+                throw err;
             }
         } else {
             // Open file in new or existing tab — pass pipe through

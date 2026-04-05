@@ -207,10 +207,11 @@ Right-click in the web page for contextual actions:
 | On selected text | "Copy" |
 | On an editable field | "Cut", "Copy", "Paste" |
 | On an SVG element | "Open SVG in Editor" (opens in text editor with XML syntax) |
-| Always available | "Back", "Forward", "Reload", "View Source", "View Actual DOM", "Inspect Element" |
+| Always available | "Back", "Forward", "Reload", "View Source", "View Actual DOM", "Show Resources", "Inspect Element" |
 
 - **View Source** — view the raw HTML as fetched from the server (opens in a text tab)
 - **View Actual DOM** — view the live rendered DOM after JavaScript execution (opens in a text tab)
+- **Show Resources** — extract all resource URLs from the current page (images, scripts, stylesheets, media, fonts, iframes, favicons, and links) and open them as a categorized link collection. Equivalent to the web-scraper toolbar button on HTML text pages.
 - **Inspect Element** — opens DevTools focused on the clicked element
 
 ---

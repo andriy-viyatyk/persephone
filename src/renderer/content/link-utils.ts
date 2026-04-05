@@ -62,6 +62,11 @@ export function resolveUrlToPipeDescriptor(
     // tree-category:// → no pipe
     if (url.startsWith(TREE_CATEGORY_PREFIX)) return null;
 
+    // data: URL → DataUrlProvider
+    if (url.startsWith("data:")) {
+        return { provider: { type: "data", config: { url } }, transformers: [] };
+    }
+
     // HTTP/HTTPS
     if (isHttpUrl(url)) {
         return resolveHttpPipeDescriptor(url, metadata);

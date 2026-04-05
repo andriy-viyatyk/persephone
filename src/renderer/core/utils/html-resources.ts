@@ -18,8 +18,11 @@ export function extractHtmlResources(html: string, options?: ExtractOptions): IL
     const links: ILink[] = [];
     const seen = new Set<string>();
 
-    const add = (category: string, href: string, title?: string) => {
-        if (!href || href.startsWith("data:")) return;
+    const add = (category: string, href: string, title?: string, imgSrc?: string, target?: string) => {
+        if (!href) return;
+        // Skip data: URLs from HTML attributes (inline images etc.) — they are huge.
+        // Our own generated data: URLs (inline scripts/styles) bypass this via addInline.
+        if (href.startsWith("data:")) return;
         const resolved = resolveUrl(href.trim(), options?.baseUrl);
         if (!resolved || seen.has(resolved)) return;
         seen.add(resolved);
@@ -29,22 +32,71 @@ export function extractHtmlResources(html: string, options?: ExtractOptions): IL
             category,
             tags: [] as string[],
             isDirectory: false,
+            imgSrc,
+            target,
         });
     };
 
-    // Images
-    $("img[src]").each((_: number, el: any) => add("Images", $(el).attr("src")!, $(el).attr("alt"))); // eslint-disable-line @typescript-eslint/no-explicit-any
+    /** Add an inline content item (data: URL). Deduplicated by data URL. */
+    const addInline = (category: string, dataUrl: string, title: string) => {
+        if (seen.has(dataUrl)) return;
+        seen.add(dataUrl);
+        links.push({
+            title,
+            href: dataUrl,
+            category,
+            tags: [] as string[],
+            isDirectory: false,
+        });
+    };
+
+    // Images — set imgSrc + fallbackTarget for image viewer
+    $("img[src]").each((_: number, el: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+        const src = $(el).attr("src")!;
+        const resolved = resolveUrl(src.trim(), options?.baseUrl);
+        add("Images", src, $(el).attr("alt"), resolved, "image-view");
+    });
     $("picture source[srcset]").each((_: number, el: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
         const first = $(el).attr("srcset")!.split(",")[0].trim().split(/\s+/)[0];
-        add("Images", first);
+        const resolved = resolveUrl(first.trim(), options?.baseUrl);
+        add("Images", first, undefined, resolved, "image-view");
     });
-    $("input[type=image][src]").each((_: number, el: any) => add("Images", $(el).attr("src")!)); // eslint-disable-line @typescript-eslint/no-explicit-any
+    $("input[type=image][src]").each((_: number, el: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+        const src = $(el).attr("src")!;
+        const resolved = resolveUrl(src.trim(), options?.baseUrl);
+        add("Images", src, undefined, resolved, "image-view");
+    });
 
-    // Scripts
+    // Scripts (external)
     $("script[src]").each((_: number, el: any) => add("Scripts", $(el).attr("src")!)); // eslint-disable-line @typescript-eslint/no-explicit-any
 
-    // Stylesheets
+    // Scripts (inline) — encode as data: URLs
+    const MAX_INLINE_SIZE = 1024 * 1024; // 1MB limit
+    let inlineScriptIndex = 0;
+    $("script:not([src])").each((_: number, el: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+        const content = $(el).html();
+        if (!content?.trim() || content.length > MAX_INLINE_SIZE) return;
+        inlineScriptIndex++;
+        const encoded = Buffer.from(content).toString("base64");
+        const dataUrl = `data:text/javascript;base64,${encoded}`;
+        const size = formatSize(content.length);
+        addInline("Inline Scripts", dataUrl, `script-block-${inlineScriptIndex} (${size}).js`);
+    });
+
+    // Stylesheets (external)
     $("link[rel=stylesheet][href]").each((_: number, el: any) => add("Stylesheets", $(el).attr("href")!)); // eslint-disable-line @typescript-eslint/no-explicit-any
+
+    // Styles (inline) — encode as data: URLs
+    let inlineStyleIndex = 0;
+    $("style").each((_: number, el: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+        const content = $(el).html();
+        if (!content?.trim() || content.length > MAX_INLINE_SIZE) return;
+        inlineStyleIndex++;
+        const encoded = Buffer.from(content).toString("base64");
+        const dataUrl = `data:text/css;base64,${encoded}`;
+        const size = formatSize(content.length);
+        addInline("Inline Styles", dataUrl, `style-block-${inlineStyleIndex} (${size}).css`);
+    });
 
     // Media
     $("video[src]").each((_: number, el: any) => add("Media", $(el).attr("src")!)); // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -77,6 +129,12 @@ function resolveUrl(href: string, baseUrl?: string): string {
     } catch {
         return href;
     }
+}
+
+function formatSize(bytes: number): string {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function urlBaseName(url: string): string {

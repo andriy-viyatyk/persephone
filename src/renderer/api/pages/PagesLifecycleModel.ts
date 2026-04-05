@@ -100,16 +100,29 @@ export class PagesLifecycleModel {
 
     // ── Core page operations ─────────────────────────────────────────
 
-    createEditorFromFile = async (filePath: string, pipe?: IContentPipe): Promise<EditorModel> => {
-        const editor = await this.newEditorModel(filePath);
+    createEditorFromFile = async (filePath: string, pipe?: IContentPipe, target?: string, title?: string): Promise<EditorModel> => {
+        const editor = target
+            ? await this.newEditorModelByTarget(filePath, target)
+            : await this.newEditorModel(filePath);
         if (pipe) {
             editor.pipe = pipe;
         }
         editor.state.update((s) => {
             s.language = "";
+            if (title) s.title = title;
         });
         await editor.restore();
         return editor;
+    };
+
+    /** Create an editor by target ID (e.g., "image-view"), falling back to path-based resolution. */
+    private newEditorModelByTarget = async (filePath: string, target: string): Promise<EditorModel> => {
+        const editorDef = editorRegistry.getById(target as EditorView);
+        if (editorDef) {
+            const module = await editorDef.loadModule();
+            return module.newEditorModel(filePath);
+        }
+        return this.newEditorModel(filePath);
     };
 
     /**
@@ -439,6 +452,11 @@ export class PagesLifecycleModel {
             highlightText?: string;
             forceTextEditor?: boolean;
             sourceLink?: ISourceLink;
+            pipe?: IContentPipe;
+            /** Editor target from the link pipeline (e.g., "image-view", "monaco"). */
+            target?: string;
+            /** Page title override (from link metadata). */
+            title?: string;
         }
     ): Promise<boolean> => {
         const page = this.model.query.findPage(pageId);
@@ -452,7 +470,7 @@ export class PagesLifecycleModel {
 
         // Create new editor
         let newEditor: EditorModel;
-        const isVirtualPath = newFilePath.includes("://");
+        const isVirtualPath = newFilePath.includes("://") || newFilePath.startsWith("data:");
         if (!isVirtualPath && !(await appFs.exists(newFilePath))) {
             ui.notify(
                 `File not found: ${fpBasename(newFilePath)}`,
@@ -465,7 +483,7 @@ export class PagesLifecycleModel {
             await newEditor.restore();
         } else {
             try {
-                newEditor = await this.createEditorFromFile(newFilePath);
+                newEditor = await this.createEditorFromFile(newFilePath, options?.pipe, options?.target, options?.title);
             } catch (err) {
                 ui.notify(
                     `Failed to open ${fpBasename(newFilePath)}: ${(err as Error).message}`,
@@ -476,9 +494,12 @@ export class PagesLifecycleModel {
             }
         }
 
-        // Set sourceLink on new editor early — beforeNavigateAway inspects it
-        if (options?.sourceLink) {
-            newEditor.state.update((s) => { s.sourceLink = options.sourceLink; });
+        // Set sourceLink and title on new editor early — beforeNavigateAway inspects sourceLink
+        if (options?.sourceLink || options?.title) {
+            newEditor.state.update((s) => {
+                if (options.sourceLink) s.sourceLink = options.sourceLink;
+                if (options.title) s.title = options.title;
+            });
         }
 
         // Swap main editor — handles beforeNavigateAway, dispose, notifications

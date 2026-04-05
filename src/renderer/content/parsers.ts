@@ -50,6 +50,13 @@ export function registerRawLinkParsers(): void {
         event.handled = true;
     });
 
+    // data: URL parser — inline content (scripts, styles)
+    app.events.openRawLink.subscribe(async (event) => {
+        if (!event.raw.startsWith("data:")) return;
+        await app.events.openLink.sendAsync(new OpenLinkEvent(event.raw, event.target, event.metadata));
+        event.handled = true;
+    });
+
     // tree-category:// parser — detects category links for folder/category navigation
     app.events.openRawLink.subscribe(async (event) => {
         if (!event.raw.startsWith(TREE_CATEGORY_PREFIX)) return;

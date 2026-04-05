@@ -291,7 +291,20 @@ await app.events.openLink.sendAsync(event);
 |-----------|------|-------------|
 | `url` | `string` | Normalized URL or file path. |
 | `target` | `string?` | Target editor ID. Optional -- auto-resolved if omitted. |
-| `metadata` | `ILinkMetadata?` | Open hints: `pageId`, `revealLine`, `highlightText`, HTTP `headers`/`method`/`body`, or custom data. |
+| `metadata` | `ILinkMetadata?` | Open hints: `pageId`, `revealLine`, `highlightText`, HTTP `headers`/`method`/`body`, `title`, `fallbackTarget`, or custom data. |
+
+**`ILinkMetadata` fields:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `pageId` | `string?` | Open in this specific existing page instead of a new tab. |
+| `revealLine` | `number?` | Scroll to this line after opening. |
+| `highlightText` | `string?` | Highlight occurrences of this text after opening. |
+| `headers` | `Record<string, string>?` | HTTP request headers (from cURL parser, etc.). |
+| `method` | `string?` | HTTP method (from cURL parser). |
+| `body` | `string?` | HTTP request body. |
+| `title` | `string?` | Page title override. When set, the opened page uses this title instead of deriving it from the file path. |
+| `fallbackTarget` | `string?` | Fallback editor when the URL has no recognized extension. Without this, unrecognized HTTP URLs open in the browser. Set to `"monaco"` to force text editor fallback. |
 
 ### OpenContentEvent
 

@@ -39,6 +39,8 @@ Registered in `parsers.ts` via `registerRawLinkParsers()`. Each parser checks th
 | Parser | Detects | Example input |
 |--------|---------|---------------|
 | cURL/fetch | `curl ` or `fetch(` prefix | `curl -H "Auth: x" https://api.com/data.json` |
+| tree-category | `tree-category://` prefix | `tree-category://base64...` (folder navigation) |
+| data: URL | `data:` prefix | `data:text/javascript;base64,Y29uc3Q...` (inline content) |
 | HTTP | `http://` or `https://` prefix | `https://example.com/file.json` |
 | Archive | `!` separator (via `isArchivePath`) | `C:\docs.zip!data/report.json` |
 | File | Everything else (fallback) | `C:\Users\file.txt`, `file:///path` |
@@ -48,7 +50,7 @@ Registered in `parsers.ts` via `registerRawLinkParsers()`. Each parser checks th
 Registered in `resolvers.ts` via `registerResolvers()`. Each resolver uses `resolveUrlToPipeDescriptor()` (from `link-utils.ts`) to create a pipe descriptor, then `createPipeFromDescriptor()` (from `registry.ts`) to instantiate the pipe. Fires an `OpenContentEvent` on `app.events.openContent`.
 
 - **File resolver** (fallback) -- resolves file paths and archive paths (with "!") to pipe descriptors. Resolves target editor via `editorRegistry.resolveId()`.
-- **HTTP resolver** -- resolves HTTP/HTTPS URLs to pipe descriptors. Maps file extensions to editors via a built-in extension table. URLs without recognized extensions open in the browser tab. cURL/fetch requests with `Accept` headers use header-based editor resolution.
+- **HTTP resolver** -- resolves HTTP/HTTPS URLs to pipe descriptors. Maps file extensions to editors via a built-in extension table. URLs without recognized extensions open in the browser tab (unless `metadata.fallbackTarget` overrides). cURL/fetch requests with `Accept` headers use header-based editor resolution.
 
 The `resolveUrlToPipeDescriptor()` utility is also used by tree providers to create pipes from URLs without going through the event channel system.
 

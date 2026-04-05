@@ -250,10 +250,12 @@ export class TextFileIOModel {
                     s.content = fileContent || "";
                     s.encrypted = shell.encryption.isEncrypted(s.content);
                     s.encoding = pipe.encoding;
-                    s.title = fpBasename(filePath || "");
+                    s.title = s.title || fpBasename(filePath || "");
+                    const titleExt = fpExtname(s.title || "").toLowerCase();
                     s.language =
                         s.language ||
                         getLanguageByExtension(ext)?.id ||
+                        getLanguageByExtension(titleExt)?.id ||
                         "plaintext";
                     s.deleted = false;
                     s.temp = false;

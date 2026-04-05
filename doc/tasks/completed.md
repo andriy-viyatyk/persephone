@@ -3,6 +3,7 @@
 All completed tasks, newest first.
 
 | ID | Title | Epic | Notes |
+| US-359 | Links panel improvements | EPIC-018 | Rich tooltips with copy-as-JSON, "Edit Link" context menu, navigation fixes (pipe passthrough, target resolution), ILink.target + ILinkMetadata.fallbackTarget/title, DataUrlProvider for data: URLs, inline script/style extraction, language detection from title, deduplication. 14 files changed (1 new). |
 | US-358 | HTML resource extraction | EPIC-018 | `extractHtmlResources()` utility using cheerio via `require()`. "Show Resources" toolbar button on HTML pages + Browser context menu. WebScraperIcon. 4 files (1 new utility + 3 modified). |
 | US-357 | LinkEditor as secondary editor — fixes | EPIC-018 | 5 fixes: cache write order in openLinks(), secondary editor restore for pages without mainEditor, page-level cache cleanup on close, link highlight in Links panel, CategoryEditor discovery via treeProvider duck-typing. 5 files changed. |
 | US-356 | Multi-file drop handler | EPIC-018 | Single file drop: unchanged. Single folder or multiple items: `expandDroppedPaths()` recursively enumerates folders into ILink items with categories, then `pagesModel.openLinks()` creates a link collection page. 1 file changed (`GlobalEventService.ts`). |

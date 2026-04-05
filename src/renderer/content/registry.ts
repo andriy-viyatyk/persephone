@@ -6,6 +6,7 @@ import { ContentPipe } from "./ContentPipe";
 import { FileProvider } from "./providers/FileProvider";
 import { CacheFileProvider } from "./providers/CacheFileProvider";
 import { HttpProvider } from "./providers/HttpProvider";
+import { DataUrlProvider } from "./providers/DataUrlProvider";
 import { ZipTransformer } from "./transformers/ZipTransformer";
 import { DecryptTransformer } from "./transformers/DecryptTransformer";
 
@@ -57,6 +58,7 @@ registerProvider("http", (config) => new HttpProvider(
         body: config.body as string | undefined,
     },
 ));
+registerProvider("data", (config) => new DataUrlProvider(config.url as string));
 registerTransformer("zip", (config) => new ZipTransformer(config.entryPath as string));
 registerTransformer("decrypt", () => {
     throw new Error("DecryptTransformer cannot be created from descriptor — use clone() instead");

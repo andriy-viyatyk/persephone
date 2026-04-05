@@ -147,14 +147,15 @@ persephone/
 │   ├── ContentPipe.ts      # IContentPipe implementation, createPipe() factory
 │   ├── registry.ts         # Provider/transformer registries, createPipeFromDescriptor()
 │   ├── encoding.ts         # Text encoding detection (BOM, jschardet) and conversion (iconv-lite)
-│   ├── parsers.ts          # Layer 1: raw link parsers (file, HTTP/cURL, archive) on openRawLink
+│   ├── parsers.ts          # Layer 1: raw link parsers (file, HTTP/cURL, archive, data:) on openRawLink
 │   ├── resolvers.ts        # Layer 2: pipe resolvers (file, HTTP, archive) on openLink
 │   ├── link-utils.ts       # URL → pipe descriptor resolution (used by resolvers + tree providers)
 │   ├── open-handler.ts     # Layer 3: open handler on openContent — creates/navigates pages
 │   ├── providers/
 │   │   ├── FileProvider.ts      # IProvider for local binary files (read/write/watch/stat)
 │   │   ├── CacheFileProvider.ts # IProvider for cache files by page ID (auto-save)
-│   │   └── HttpProvider.ts      # IProvider for HTTP/HTTPS URLs (read-only)
+│   │   ├── HttpProvider.ts      # IProvider for HTTP/HTTPS URLs (read-only)
+│   │   └── DataUrlProvider.ts  # IProvider for data: URLs (inline content, read-only)
 │   ├── transformers/
 │   │   ├── ZipTransformer.ts    # ITransformer for ZIP entry extraction/replacement
 │   │   └── DecryptTransformer.ts # ITransformer for AES-GCM decrypt/encrypt (non-persistent)

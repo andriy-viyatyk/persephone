@@ -168,6 +168,11 @@ export function registerResolvers(): void {
             mapping = { editor: "monaco" };
         }
 
+        // Fallback target from metadata (e.g., "Links" panel sets "monaco" to avoid browser)
+        if (!mapping && metadata?.fallbackTarget) {
+            mapping = { editor: metadata.fallbackTarget };
+        }
+
         if (openInBrowser || !mapping) {
             // No recognized extension or explicit browser target — open in browser tab
             const { settings } = await import("../api/settings");

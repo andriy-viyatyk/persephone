@@ -309,6 +309,7 @@ Make link collections a general-purpose building block. Enable programmatic crea
 | 2.4 | — | Expose LinkTreeProvider in script `io` namespace | Covered by `app.pages.openLinks()` (US-355). Scripts already have full access to create link collection pages. | Done |
 | 2.5 | — | Content search for link collections | Already working — TreeProviderView's built-in search filters by title/href. No additional work needed. | Done |
 | 2.6 | [US-358](../tasks/US-358-html-resource-extraction/README.md) | HTML resource extraction | `extractHtmlResources()` using cheerio via `require()`. "Show Resources" toolbar button on HTML pages + Browser context menu. WebScraperIcon. Uses `openLinks()`. 4 files. | Done |
+| 2.6a | [US-359](../tasks/US-359-links-panel-improvements/README.md) | Links panel improvements | Tooltips, context menus, DataUrlProvider, inline script/style extraction, fallbackTarget/title metadata, navigation fixes, language detection from title. 14 files. | Done |
 
 ### Phase 3: Archive Expansion
 

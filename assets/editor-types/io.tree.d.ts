@@ -125,6 +125,8 @@ export interface ILink {
      * - `true` / `false` — explicitly set by provider (LinkTreeProvider)
      */
     hasItems?: boolean;
+    /** Preferred editor target for opening this link (e.g., "image-view", "monaco"). */
+    target?: string;
 }
 
 /** @deprecated Use ILink instead. */
