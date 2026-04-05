@@ -6,7 +6,7 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ---
 
-## Version 2.0.5 (Upcoming)
+## Version 3.0.1 (Upcoming)
 
 ### New Features
 
@@ -56,7 +56,7 @@ Release notes and changelog for Persephone (formerly js-notepad).
 ### New Features
 
 - **Archive Editor** — ZIP, EPUB, DOCX, XLSX, and other ZIP-based archives now open in a dedicated Archive Editor showing a browsable file tree. Click any file to view it inline — The Archive panel persists in the sidebar while you navigate between files inside the archive. The Archive panel auto-expands when navigating within the archive and auto-closes when navigating to unrelated files.
-- **`page.sourceLink` property** — Pages opened through the link pipeline (file path, URL, cURL command, archive entry) now expose a `sourceLink` descriptor with the resolved URL, target editor, and accumulated metadata. Available as a read-only property in scripts via `page.sourceLink`. *(Removed in v2.0.5.)*
+- **`page.sourceLink` property** — Pages opened through the link pipeline (file path, URL, cURL command, archive entry) now expose a `sourceLink` descriptor with the resolved URL, target editor, and accumulated metadata. Available as a read-only property in scripts via `page.sourceLink`. *(Removed in v3.0.1.)*
 
 ### Improvements
 
@@ -74,7 +74,7 @@ Release notes and changelog for Persephone (formerly js-notepad).
 - **HTTP and archive content in all editors** — Paste an `https://` URL into the Open dialog and Persephone fetches and opens it directly in the right editor: Monaco for code and text files, Image Viewer for images, PDF Viewer for PDFs. ZIP archive entries also open natively in all editors.
 - **File Explorer panel** — The page sidebar now features a full File Explorer with collapsible panels, file content search (click the search icon or right-click a folder → "Search in Folder"), and archive browsing (click a `.zip`/`.docx`/`.xlsx` file to browse its contents inline). The tree auto-refreshes on external changes and search state persists across restarts.
 - **Folder View** — Click a folder in the File Explorer to show its contents as a list in the page area. Click files to open them, or click subfolders to navigate deeper. The sidebar tree stays synced with the folder view selection.
-- **Script API: `io` namespace** — New global available in scripts for building content pipes, firing link pipeline events, and browsing ZIP archives programmatically. Includes `io.FileProvider`, `io.HttpProvider`, `io.ZipTransformer`, `io.DecryptTransformer`, `io.ZipTreeProvider`, `io.createPipe()`, and event constructors (`io.RawLinkEvent`, `io.OpenLinkEvent`, `io.OpenContentEvent`). See [Scripting — io namespace](./scripting.md#the-io-namespace). *(`io.ZipTreeProvider` removed in v2.0.5. `io.ZipTransformer` renamed to `io.ArchiveTransformer` with an updated constructor in v2.0.5.)*
+- **Script API: `io` namespace** — New global available in scripts for building content pipes, firing link pipeline events, and browsing ZIP archives programmatically. Includes `io.FileProvider`, `io.HttpProvider`, `io.ZipTransformer`, `io.DecryptTransformer`, `io.ZipTreeProvider`, `io.createPipe()`, and event constructors (`io.RawLinkEvent`, `io.OpenLinkEvent`, `io.OpenContentEvent`). See [Scripting — io namespace](./scripting.md#the-io-namespace). *(`io.ZipTreeProvider` removed in v3.0.1. `io.ZipTransformer` renamed to `io.ArchiveTransformer` with an updated constructor in v3.0.1.)*
 - **Script API: `app.events.send` / `app.events.sendAsync`** — Scripts can now fire events into any event channel, not just subscribe to them. See [Events API](./api/events.md#ieventchannel).
 
 ### Improvements
