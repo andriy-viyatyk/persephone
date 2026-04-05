@@ -54,14 +54,16 @@ function useHttpPathExtension(href: string): string | undefined {
 
 /** Renders a cached favicon for an HTTP URL, with DefaultIcon fallback. */
 function FaviconIcon({ href }: { href: string }) {
-    const src = useMemo(() => {
-        try {
-            const hostname = new URL(href).hostname;
-            return getFaviconPathSync(hostname);
-        } catch {
-            return null;
-        }
-    }, [href]);
+    // No useMemo — getFaviconPathSync is a fast Map lookup, and the result
+    // must be re-evaluated on every render so that parent re-renders triggered
+    // by useFavicons() version bumps pick up newly cached favicons.
+    let src: string | null = null;
+    try {
+        const hostname = new URL(href).hostname;
+        src = getFaviconPathSync(hostname);
+    } catch {
+        // invalid URL
+    }
 
     if (src) {
         return <img src={src} style={{ width: 16, height: 16 }} />;
