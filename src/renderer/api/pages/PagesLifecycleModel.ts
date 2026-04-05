@@ -265,8 +265,8 @@ export class PagesLifecycleModel {
             s.editor = editorRegistry.validateForLanguage("link-view", "json");
             s.secondaryEditor = ["link-category"];
         });
-        editorModel.changeContent(content);
         editorModel.restore();
+        editorModel.changeContent(content);
 
         // Create page with the model as secondary editor (not mainEditor)
         const page = new PageModel();
@@ -587,9 +587,7 @@ export class PagesLifecycleModel {
         // Restore sidebar from cache (keyed by page ID — saved before movePageOut)
         if (desc.hasSidebar) {
             await page.restoreSidebar();
-            if (page.mainEditor) {
-                await page.restoreSecondaryEditors(page.mainEditor);
-            }
+            await page.restoreSecondaryEditors(page.mainEditor ?? null);
         }
 
         const targetIndex = data.targetPageId

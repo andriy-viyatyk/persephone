@@ -162,8 +162,8 @@ Secondary editor state is saved as `SecondaryModelDescriptor[]` in the PageModel
 
 On restore:
 1. `restoreSidebar()` reads cache, stores descriptors as `pendingSecondaryDescriptors`
-2. `restoreSecondaryEditors(ownerEditor)` processes them after the mainEditor is created
-3. **Deduplication:** If a descriptor's ID matches `ownerEditor.id`, the existing ownerEditor instance is reused (added to `secondaryEditors[]` directly, no new model created). This handles Pattern B — when mainEditor was also a secondary editor before restart.
+2. `restoreSecondaryEditors(ownerEditor)` processes them after the mainEditor is created. The `ownerEditor` parameter is nullable — pass `null` for pages without mainEditor (Pattern A standalone secondary editors).
+3. **Deduplication:** If `ownerEditor` is non-null and a descriptor's ID matches `ownerEditor.id`, the existing ownerEditor instance is reused (added to `secondaryEditors[]` directly, no new model created). This handles Pattern B — when mainEditor was also a secondary editor before restart.
 
 ---
 
@@ -173,6 +173,7 @@ When a tab closes:
 1. `page.close()` → `confirmSecondaryRelease()` checks secondary editors for unsaved changes
 2. `page.close()` → `mainEditor.confirmRelease()` checks main editor
 3. `page.dispose()` → iterates `secondaryEditors[]`, calls `dispose()` on each, then disposes mainEditor
+4. `page.dispose()` → `fs.deleteCacheFiles(this.id)` deletes page-level cache files (e.g., `{pageId}_nav-panel.txt`). Editor-level cache files are deleted by each `EditorModel.dispose()` call.
 
 For Pattern B (mainEditor in secondaryEditors[]), the model may be disposed twice by `dispose()`. This is safe — `EditorModel.dispose()` is idempotent (`pipe` is nulled on first call, cache file deletion is a no-op on second call).
 
@@ -203,7 +204,7 @@ For Pattern B (mainEditor in secondaryEditors[]), the model may be disposed twic
 | `ExplorerEditorModel` | `["explorer"]` or `["explorer", "search"]` | A (separate) | Always survives navigation | `PageModel.createExplorer()` or restore |
 | `ZipEditorModel` | `["zip-tree"]` | B (mainEditor) | Survives if new editor was opened from this archive | `_openZipArchive()` in PagesLifecycleModel |
 | `TextFileModel` (links, main) | `["link-category", "link-tags"?, "link-hostnames"?]` | B (mainEditor) | Removed on navigation (default `beforeNavigateAway`). Removed when PageNavigator closes, re-registered when it opens. | LinkEditor component `useEffect` (subscribes to `pageNavigatorToggled` event) |
-| `TextFileModel` (links, standalone) | `["link-category"]` | A (separate) | Always survives (base `onMainEditorChanged` is no-op) | `openLinks()` in PagesLifecycleModel |
+| `TextFileModel` (links, standalone) | `["link-category"]` | A (separate) | Always survives (base `onMainEditorChanged` is no-op). Exposes `treeProvider`/`selectionState` via duck-typing for CategoryEditor discovery. | `openLinks()` in PagesLifecycleModel |
 
 ---
 

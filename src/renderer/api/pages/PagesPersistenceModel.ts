@@ -101,8 +101,9 @@ export class PagesPersistenceModel {
                     await page.restoreSecondaryEditors(editor);
                 }
             } else if (desc.hasSidebar) {
-                // Empty page with sidebar only (folder explorer)
+                // Empty page with sidebar only (folder explorer, link collection)
                 await page.restoreSidebar();
+                await page.restoreSecondaryEditors(null);
             } else {
                 // No editor and no sidebar — skip this descriptor
                 continue;

@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { useCallback, useSyncExternalStore } from "react";
+import { useCallback, useState, useSyncExternalStore } from "react";
 import { TreeProviderView } from "../../../components/tree-provider/TreeProviderView";
 import { highlightText } from "../../../components/basic/useHighlightedText";
 import { app } from "../../../api/app";
@@ -56,9 +56,12 @@ export function LinkCategoryPanel({ vm, useOpenRawLink, categoriesOnly = true, p
         (cb) => vm.state.subscribe(cb),
         () => vm.state.get().selectedCategory,
     );
+    // When showing links (not categories-only), track the clicked item for highlight
+    const [selectedItemHref, setSelectedItemHref] = useState<string | undefined>(undefined);
 
     const handleItemClick = useCallback((item: ILink) => {
         if (useOpenRawLink) {
+            setSelectedItemHref(item.href);
             const navUrl = vm.treeProvider.getNavigationUrl(item);
             app.events.openRawLink.sendAsync(
                 new RawLinkEvent(navUrl, undefined, pageId ? { pageId } : undefined),
@@ -88,7 +91,7 @@ export function LinkCategoryPanel({ vm, useOpenRawLink, categoriesOnly = true, p
             <TreeProviderView
                 provider={vm.treeProvider}
                 showLinks={!categoriesOnly}
-                selectedHref={selectedCategory}
+                selectedHref={categoriesOnly ? selectedCategory : selectedItemHref}
                 onItemClick={handleItemClick}
                 getLabel={getTreeItemLabel}
                 rootLabel="All"

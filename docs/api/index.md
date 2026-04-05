@@ -108,6 +108,7 @@ ui.log("Hello");
     - `.navigatePageTo(pageId, filePath, options?)` — Navigate page to different file
     - `.closePage(pageId)` — Close a page by ID → `Promise<boolean>`
     - `.addEmptyPage()` / `.addEditorPage(editor, language, title, content?)` / `.addDrawPage(dataUrl, title?)`
+    - `.openLinks(links, title?)` — Create a standalone link collection page → `IPage`
     - `.openDiff(params)` — Diff view for two files
     - `.showAboutPage()` / `.showSettingsPage()` / `.showBrowserPage(options?)` / `.showMcpInspectorPage(options?)`
     - `.openUrlInBrowserTab(url, options?)`

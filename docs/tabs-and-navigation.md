@@ -12,7 +12,8 @@ Each open file appears as a tab in the tab bar. Tabs show the file name, a langu
 |--------|-----|
 | New empty tab | `Ctrl+N` or click the **+** button |
 | New with specific editor | Click the dropdown arrow (&#9662;) next to **+** — shows your pinned editors plus "Show All..." to open the Tools & Editors panel |
-| Open a file | `Ctrl+O`, or drag a file onto the window |
+| Open a file | `Ctrl+O`, or drag a single file onto the window |
+| Open multiple files or a folder | Drag multiple files or a folder onto the window — opens a link collection page listing all files. Click any file to view it in the main area. Subfolders become link categories. |
 
 ### Closing Tabs
 

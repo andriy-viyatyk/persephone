@@ -389,10 +389,11 @@ export class PageModel {
 
     /**
      * Restore secondary editor models from pending descriptors.
-     * @param ownerEditor — the main editor. If a descriptor has the same ID,
-     *   reuse it (deduplication for self-referencing archives).
+     * @param ownerEditor — the main editor, if any. If a descriptor has the same ID,
+     *   reuse it (deduplication for self-referencing archives). Pass null for pages
+     *   with no mainEditor (Pattern A standalone secondary editors).
      */
-    async restoreSecondaryEditors(ownerEditor: EditorModel): Promise<void> {
+    async restoreSecondaryEditors(ownerEditor: EditorModel | null): Promise<void> {
         const descriptors = this.pendingSecondaryDescriptors;
         if (!descriptors?.length) {
             this._pendingActivePanel = undefined;
@@ -404,7 +405,7 @@ export class PageModel {
 
         for (const desc of descriptors) {
             // Deduplicate: if this descriptor matches the owner editor, reuse it
-            if (desc.pageState.id === ownerEditor.id) {
+            if (ownerEditor && desc.pageState.id === ownerEditor.id) {
                 this.secondaryEditors.push(ownerEditor);
                 ownerEditor.setPage(this);
                 continue;
@@ -536,5 +537,7 @@ export class PageModel {
             await this.mainEditor.dispose();
             this.mainEditor = null;
         }
+        // Delete page-level cache files (nav-panel, etc.)
+        await fs.deleteCacheFiles(this.id);
     }
 }
