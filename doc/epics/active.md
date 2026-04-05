@@ -1,43 +1,31 @@
-# Active Epics
+# Epics Index
 
-Epics represent big ideas with high-level overviews. Each epic links to tasks in `/doc/tasks/`.
+Epic documents live in this folder. Active/planned work is tracked on the [Active Work Dashboard](../active-work.md).
 
-## Active
+## All Epics
 
-(none)
-
-## Future
-- **EPIC-014** — [Claude Integration via Terminal Editor](EPIC-014.md)
-- **EPIC-011** — [Chrome Extension Support for Built-in Browser](EPIC-011.md)
-
-## Completed
-
-- **EPIC-018** — [Secondary Editors — Content Applications](EPIC-018.md)
-- **EPIC-019** — [Explorer as Secondary Editor + Multi-Panel Support](EPIC-019.md)
-- **EPIC-017** — [Page/Editor Architecture Refactor](EPIC-017.md)
-- **EPIC-016** — [Secondary Editors — Sidebar Extension System](EPIC-016.md)
-- **EPIC-015** — [ITreeProvider — Browsable Source Abstraction](EPIC-015.md)
-- **EPIC-012** — [Unified Link & Provider Architecture](EPIC-012.md)
-- **EPIC-013** — [Rebrand to "Persephone"](EPIC-013.md)
-- **EPIC-010** — [Rest Client](EPIC-010.md)
-- **EPIC-009** — [Scriptable Application Events](EPIC-009.md)
-- **EPIC-008** — [MCP Inspector Editor](EPIC-008.md)
-- **EPIC-007** — [Drawing Editor (Excalidraw)](EPIC-007.md)
-- **EPIC-006** — [Graph Editor (Force Graph)](EPIC-006.md)
-- **EPIC-005** — [Archive File Support (ZIP/DOCX/XLSX)](EPIC-005.md)
-- **EPIC-004** — [Log View Editor](EPIC-004.md)
-- **EPIC-003** — [Script Library](EPIC-003.md)
-- **EPIC-002** — [App API Polishing](EPIC-002.md)
-- **EPIC-001** — [AI Claude Integration](EPIC-001.md)
-
-## How Epics Work
-
-- **User creates epics** — Agent does not create epics on its own
-- **Agent links tasks** — If a task relates to an active epic, agent suggests linking it
-- **Epic format:** `EPIC-XXX` where XXX is a sequential number
-- **One doc per epic** in this folder (copy `_template.md`)
-- **Tasks reference epics** via `Epic: EPIC-XXX` in their entry
+| ID | Title | Status |
+|----|-------|--------|
+| EPIC-019 | [Explorer as Secondary Editor + Multi-Panel Support](EPIC-019.md) | Completed |
+| EPIC-018 | [Secondary Editors — Content Applications](EPIC-018.md) | Completed |
+| EPIC-017 | [Page/Editor Architecture Refactor](EPIC-017.md) | Completed |
+| EPIC-016 | [Secondary Editors — Sidebar Extension System](EPIC-016.md) | Completed |
+| EPIC-015 | [ITreeProvider — Browsable Source Abstraction](EPIC-015.md) | Completed |
+| EPIC-014 | [Claude Integration via Terminal Editor](EPIC-014.md) | Planned |
+| EPIC-013 | [Rebrand to "Persephone"](EPIC-013.md) | Completed |
+| EPIC-012 | [Unified Link & Provider Architecture](EPIC-012.md) | Completed |
+| EPIC-011 | [Chrome Extension Support for Built-in Browser](EPIC-011.md) | Planned |
+| EPIC-010 | [Rest Client](EPIC-010.md) | Completed |
+| EPIC-009 | [Scriptable Application Events](EPIC-009.md) | Completed |
+| EPIC-008 | [MCP Inspector Editor](EPIC-008.md) | Completed |
+| EPIC-007 | [Drawing Editor (Excalidraw)](EPIC-007.md) | Completed |
+| EPIC-006 | [Graph Editor (Force Graph)](EPIC-006.md) | Completed |
+| EPIC-005 | [Archive File Support (ZIP/DOCX/XLSX)](EPIC-005.md) | Completed |
+| EPIC-004 | [Log View Editor](EPIC-004.md) | Completed |
+| EPIC-003 | [Script Library](EPIC-003.md) | Completed |
+| EPIC-002 | [App API Polishing](EPIC-002.md) | Completed |
+| EPIC-001 | [AI Claude Integration](EPIC-001.md) | Completed |
 
 ---
 
-*Last updated: 2026-04*
+*See [completed.md](completed.md) for completed epics with their task lists.*

@@ -14,7 +14,7 @@ The user is learning English. For EVERY user message, BEFORE responding to the t
 
 1. **Read this file completely** - essential context for all tasks
 2. **For new features:** Read [/doc/architecture/overview.md](doc/architecture/overview.md)
-3. **Check active tasks:** Review [/doc/tasks/active.md](doc/tasks/active.md)
+3. **Check active work:** Review [/doc/active-work.md](doc/active-work.md)
 4. **Follow standards:** Use [/doc/standards/coding-style.md](doc/standards/coding-style.md) when writing code
 
 ## Task Workflow (IMPORTANT)
@@ -23,19 +23,18 @@ The user is learning English. For EVERY user message, BEFORE responding to the t
 
 When user says "let's work on tasks" or similar:
 
-1. **Check active tasks:** Read [/doc/tasks/active.md](doc/tasks/active.md) for "In Progress" or "Planned" tasks
-2. **If no active task:** Check [/doc/epics/active.md](doc/epics/active.md) for active epics that need next tasks
-3. **If nothing found:** Ask the user what to work on
+1. **Check the dashboard:** Read [/doc/active-work.md](doc/active-work.md) for "Active" or "Planned" work
+2. **If nothing found:** Ask the user what to work on
 4. **Ask before starting**: Say "The next task is '[Task Title]'. Do you want to proceed with this task, or would you like to reprioritize and pick a different one?"
 5. Wait for user confirmation
 
 ### Auto-task creation
 
 If the user gives work without a defined task (e.g., "fix this bug", "add this feature"):
-- **Small work** (single fix, quick change): Proceed without creating a task document. Create an entry in `active.md` with a generated US-XXX ID and brief title.
+- **Small work** (single fix, quick change): Proceed without creating a task document. Add an entry to [/doc/active-work.md](doc/active-work.md) with a generated US-XXX ID.
 - **Large work** (multiple files, many changes): Create a task folder with README.md to track context. This helps when running `/review`, `/document`, and `/userdoc` at the end.
-- **Epic linking**: If an active epic exists and the work relates to it, suggest linking: "This seems related to EPIC-XXX. Should I link this task to it?"
-- **Before committing**: If no task entry exists yet, create one in `active.md` so the work is tracked.
+- **Epic linking**: If an active epic exists and the work relates to it, add the task under that epic in the dashboard.
+- **Before committing**: If no task entry exists yet, add one to the dashboard so the work is tracked.
 
 ### Creating a new task ("Let's create a task for ...")
 
@@ -53,8 +52,8 @@ When the user says **"let's create a task for [description]"** (or similar), fol
    - **Implementation plan** — Step-by-step checklist of what to create/modify, with file paths and key details. Each step should have enough detail that the agent can implement it without re-reading the entire codebase.
    - **Concerns / Open questions** — Anything ambiguous, risky, or needing user input. Flag design decisions that could go either way.
    - **Acceptance criteria** — How to verify the task is complete
-4. **Add entry to `active.md`** with status "Planned"
-5. **Link to epic** if applicable (update epic's task table)
+4. **Add to dashboard** — Add entry to [/doc/active-work.md](doc/active-work.md) under the relevant epic (or "no epic")
+5. **Link to epic** if applicable (update epic's task table in its doc)
 6. **Present the document to the user** — Summarize key points and highlight concerns
 7. **Wait for user review** — Do NOT start implementation. The user will review, ask questions, request changes, and eventually say "let's implement"
 
@@ -102,11 +101,12 @@ The goal: after `/compact`, the agent reads the task README.md and can implement
 2. **Run `/review`** — validates code against architecture docs, reports concerns
 3. **Run `/document`** — updates developer docs in `/doc/` (architecture, standards, CLAUDE.md)
 4. **Run `/userdoc`** — updates user docs in `/docs/` (guides, API reference, what's new)
-5. Add task to the top of [/doc/tasks/completed.md](doc/tasks/completed.md) (include Epic column if linked)
-6. Update the linked epic's task table (if applicable)
-7. **Task folder cleanup** (if one exists):
-   - If the task is part of an active epic — **keep the folder** (do not ask, do not delete). Task documents are useful for reference while the epic is in progress.
-   - If the task is standalone (no epic) or the epic is completed — **ask user for confirmation** before deleting.
+5. **Update the dashboard** [/doc/active-work.md](doc/active-work.md):
+   - Mark task `[x]` in the Active section
+   - If standalone task (no epic): move to [/doc/tasks/completed.md](doc/tasks/completed.md) and remove from dashboard
+   - If epic task: leave `[x]` in dashboard until epic completes
+6. **When epic completes**: move entire epic block (with tasks) to [/doc/epics/completed.md](doc/epics/completed.md) and remove from dashboard
+7. **Task folder cleanup** (if one exists): **ask user for confirmation** before deleting.
 
 **Steps 2-4 are mandatory.** Only skip if the user explicitly says to skip them.
 
@@ -137,8 +137,8 @@ When user says **"let's publish new build"** (or similar), follow [/doc/standard
 | Add sidebar panels            | [/doc/architecture/secondary-editors.md](doc/architecture/secondary-editors.md) |
 | Work with scripting system    | [/doc/architecture/scripting.md](doc/architecture/scripting.md) |
 | Check coding style            | [/doc/standards/coding-style.md](doc/standards/coding-style.md) |
-| See current tasks             | [/doc/tasks/active.md](doc/tasks/active.md) |
-| See active epics              | [/doc/epics/active.md](doc/epics/active.md) |
+| See active/planned work       | [/doc/active-work.md](doc/active-work.md) |
+| See all epics                 | [/doc/epics/active.md](doc/epics/active.md) |
 | See future ideas              | [/doc/tasks/backlog.md](doc/tasks/backlog.md) |
 | Publish a new build           | [/doc/standards/release-process.md](doc/standards/release-process.md) |
 | Test MCP documentation        | [/qa/README.md](qa/README.md) |

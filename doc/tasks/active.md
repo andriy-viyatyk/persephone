@@ -1,73 +1,11 @@
-# Active Tasks
+# Tasks
 
-Current work in progress and planned tasks.
+Task tracking has moved to the [Active Work Dashboard](../active-work.md).
 
-## In Progress
-
-| ID | Title | Epic | Notes |
-|----|-------|------|-------|
-| — | — | — | — |
-
-## Planned (Next)
-
-
-
-| ID | Title | Epic | Notes |
-|----|-------|------|-------|
-| US-360 | View Actual DOM — include iframe content | — | Use Electron webFrameMain API to extract DOM from all iframes (including cross-origin). |
-| US-347 | CategoryView / CategoryEditor Breadcrumb | EPIC-018 | Add breadcrumb to CategoryEditor for all providers. |
-| US-325 | Fix webview preload script error in HTML view | — | `node:path` not available in sandboxed webview. Repro: open `D:\js-notepad-notes\temp\lewis-lion-the-witch-and-the-wardrobe.epub`, select any `.xhtml` file — errors logged to console on each navigation. |
-
-
-## Completed
-
-See [completed.md](completed.md) for all completed tasks.
-
-## How to Work on Tasks
-
-### Starting a Task
-
-1. Check this file for available tasks
-2. Read the task's `README.md` in its folder (if it exists)
-3. Update task status to "In Progress"
-4. Update this file to move task to "In Progress" section
-
-### During Work
-
-1. Update the task's progress checklist as you complete items
-2. Add notes for any decisions or discoveries
-3. Commit regularly with task ID in message: `US-001: Fix import in ScriptContext`
-
-### Completing a Task
-
-1. Verify all acceptance criteria are met
-2. Run `/review` — check code against architecture docs
-3. Run `/document` — update developer docs in `/doc/`
-4. Run `/userdoc` — update user docs in `/docs/`
-5. Add task to the top of [completed.md](completed.md)
-6. **Task folder cleanup** (if one exists):
-   - If the task is part of an active epic — **keep the folder** (task documents are useful for reference while the epic is in progress)
-   - If the task is standalone or the epic is completed — ask user for confirmation before deleting
-
-### Creating New Tasks
-
-1. Copy `_template/` folder to `US-XXX-short-name/` (optional for small tasks)
-2. Fill in the README.md
-3. Add to "Planned" section in this file
-4. Use next available US number
-
-### Epic Links
-
-Tasks can optionally be linked to an epic: `(EPIC-XXX)` after the task title.
-See [/doc/epics/active.md](../epics/active.md) for active epics.
+- **Active/planned work:** [`/doc/active-work.md`](../active-work.md)
+- **Completed tasks:** [`completed.md`](completed.md)
+- **Ideas/backlog:** [`backlog.md`](backlog.md)
 
 ## Task ID Format
 
 `US-XXX` where XXX is a sequential number.
-
-- US-001 through US-099: Infrastructure/refactoring
-- US-100+: Features and enhancements
-
----
-
-*Last updated: 2026-04*
