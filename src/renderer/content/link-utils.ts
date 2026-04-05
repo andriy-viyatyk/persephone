@@ -39,6 +39,11 @@ export function isHttpUrl(url: string): boolean {
     return url.startsWith("http://") || url.startsWith("https://");
 }
 
+export function isUrlOrCurl(href: string): boolean {
+    const h = href.trimStart();
+    return h.startsWith("http://") || h.startsWith("https://") || /^curl\s/i.test(h);
+}
+
 // =============================================================================
 // Pipe descriptor resolution
 // =============================================================================

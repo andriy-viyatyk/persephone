@@ -143,6 +143,14 @@ export function registerResolvers(): void {
     app.events.openLink.subscribe(async (event) => {
         if (!isHttpUrl(event.url)) return;
 
+        // Route to RestClient when target is "rest-client"
+        if (event.target === "rest-client") {
+            const { openInRestClient } = await import("../editors/rest-client/open-in-rest-client");
+            await openInRestClient(event.url, event.metadata);
+            event.handled = true;
+            return;
+        }
+
         const metadata = event.metadata;
         const openInBrowser = event.target === "browser";
         const effectivePath = extractEffectivePath(event.url);

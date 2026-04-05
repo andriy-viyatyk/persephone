@@ -7,6 +7,7 @@ import { ContextMenuEvent } from "../../api/events/events";
 import { app } from "../../api/app";
 import { ui } from "../../api/ui";
 import { fpDirname } from "../../core/utils/file-path";
+import { isUrlOrCurl } from "../../content/link-utils";
 import {
     CopyIcon,
     DeleteIcon,
@@ -498,7 +499,7 @@ export class TreeProviderViewModel extends TComponentModel<
         const items: MenuItem[] = [];
 
         items.push({
-            label: "Copy Path",
+            label: isUrlOrCurl(node.data.href) ? "Copy Href" : "Copy Path",
             icon: <CopyIcon />,
             onClick: () => navigator.clipboard.writeText(node.data.href),
         });
@@ -546,7 +547,7 @@ export class TreeProviderViewModel extends TComponentModel<
 
         items.push({
             startGroup: items.length > 0,
-            label: "Copy Path",
+            label: isUrlOrCurl(node.data.href) ? "Copy Href" : "Copy Path",
             icon: <CopyIcon />,
             onClick: () => navigator.clipboard.writeText(node.data.href),
         });

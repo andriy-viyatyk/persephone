@@ -25,6 +25,26 @@ export function registerTreeContextMenuHandlers(): void {
         appendLinkOpenMenuItems(event.items, item.href, { startGroup: true });
     });
 
+    // "Open in RestClient" — for HTTP URLs and cURL links
+    app.events.linkContextMenu.subscribe(async (event) => {
+        const item = event.target;
+        if (!item) return;
+        const href = item.href.trim();
+        if (
+            !href.startsWith("http://") &&
+            !href.startsWith("https://") &&
+            !/^curl\s/i.test(href)
+        ) return;
+
+        event.items.push({
+            label: "Open in Rest Client",
+            onClick: () =>
+                app.events.openRawLink.sendAsync(
+                    new RawLinkEvent(href, "rest-client"),
+                ),
+        });
+    });
+
     // File handler — for local file paths (not HTTP)
     app.events.linkContextMenu.subscribe(async (event) => {
         const item = event.target;

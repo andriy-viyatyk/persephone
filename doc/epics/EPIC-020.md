@@ -2,7 +2,8 @@
 
 ## Status
 
-**Status:** Active
+**Status:** Completed
+**Completed:** 2026-04-05
 **Created:** 2026-04-05
 
 ## Overview
@@ -59,7 +60,7 @@ Persephone already handles cURL links end-to-end:
 |------|-------|--------|
 | US-362 | Network request logging in main process | Done |
 | US-363 | Merge network logs into Show Resources | Done |
-| US-364 | Open non-GET network requests in RestClient | Planned |
+| US-364 | Open non-GET network requests in RestClient | Done |
 
 ## Notes
 

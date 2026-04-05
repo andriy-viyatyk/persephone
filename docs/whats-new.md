@@ -22,6 +22,7 @@ Release notes and changelog for Persephone (formerly js-notepad).
 - **HTML resource extraction** — Extract images, scripts, stylesheets, media, fonts, iframes, favicons, and links from HTML pages. Click the web-scraper icon in the toolbar on any HTML page, or right-click in the built-in Browser and choose "Show Resources". Results open as a categorized link collection.
 - **Archive Editor — multi-format support** — The Archive Editor now supports RAR, 7z, TAR (`.tar.gz`, `.tar.bz2`, `.tar.xz`), CAB, and ISO in addition to ZIP-based formats. Browse and view entries in all supported formats. Writing back is still ZIP-only; non-ZIP formats are read-only.
 - **Browser — "..." page menu** — A new page menu button (vertical ellipsis) in the browser toolbar provides **View Source**, **View Actual DOM**, and **Show Resources** actions. These are always accessible even on sites that disable or override the right-click context menu.
+- **Browser — Network request capture in "Show Resources"** — "Show Resources" now also includes all HTTP requests captured since the page started loading (fetch, XHR, and other requests), grouped under **Network/GET**, **Network/POST**, etc. GET requests open directly; non-GET requests open in the Rest Client with the full method, headers, and request body pre-filled as a cURL command.
 
 ### Improvements
 

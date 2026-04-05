@@ -202,7 +202,7 @@ The **"..." button** (vertical ellipsis) in the browser toolbar provides page-le
 
 - **View Source** — view the raw HTML as fetched from the server (opens in a text tab)
 - **View Actual DOM** — view the live rendered DOM after JavaScript execution, including content from all iframes (opens in a text tab)
-- **Show Resources** — extract all resource URLs from the current page (images, scripts, stylesheets, media, fonts, iframes, favicons, and links) and open them as a categorized link collection
+- **Show Resources** — extract all resource URLs from the current page (images, scripts, stylesheets, media, fonts, iframes, favicons, and links) and open them as a categorized link collection. Also includes all HTTP network requests captured since the page started loading, grouped under **Network/GET**, **Network/POST**, etc. GET requests open directly; non-GET requests open in the Rest Client with the full cURL equivalent (method, headers, body) pre-filled.
 
 ---
 
@@ -221,7 +221,7 @@ Right-click in the web page for contextual actions:
 
 - **View Source** — view the raw HTML as fetched from the server (opens in a text tab)
 - **View Actual DOM** — view the live rendered DOM after JavaScript execution, including content from all iframes (opens in a text tab)
-- **Show Resources** — extract all resource URLs from the current page (images, scripts, stylesheets, media, fonts, iframes, favicons, and links) and open them as a categorized link collection. Equivalent to the web-scraper toolbar button on HTML text pages.
+- **Show Resources** — extract all resource URLs from the current page (images, scripts, stylesheets, media, fonts, iframes, favicons, and links) and open them as a categorized link collection. Also includes all HTTP network requests captured since the page started loading (grouped under **Network/GET**, **Network/POST**, etc.). Non-GET requests open in the Rest Client with the full cURL equivalent pre-filled. Equivalent to the web-scraper toolbar button on HTML text pages.
 - **Inspect Element** — opens DevTools focused on the clicked element
 
 ---

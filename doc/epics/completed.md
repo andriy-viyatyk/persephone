@@ -4,6 +4,14 @@ Last 10 completed epics, newest first. Older epics are pruned.
 
 ---
 
+## EPIC-020 — [Browser Network Request Logging & Resource Discovery](EPIC-020.md)
+
+- [x] US-362: Network request logging in main process
+- [x] US-363: Merge network logs into Show Resources
+- [x] US-364: Open non-GET network requests in RestClient
+
+---
+
 ## EPIC-018 — [Secondary Editors — Content Applications](EPIC-018.md)
 
 - [x] US-337: Add `imgSrc` to ITreeProviderItem

@@ -9,6 +9,7 @@ import {
     FolderOpenIcon,
     RenameIcon,
 } from "../../theme/icons";
+import { isUrlOrCurl } from "../../content/link-utils";
 
 // =============================================================================
 // Types
@@ -143,7 +144,7 @@ export class CategoryViewModel extends TComponentModel<
         const items: MenuItem[] = [];
 
         items.push({
-            label: "Copy Path",
+            label: isUrlOrCurl(item.href) ? "Copy Href" : "Copy Path",
             icon: <CopyIcon />,
             onClick: () => navigator.clipboard.writeText(item.href),
         });
@@ -180,7 +181,7 @@ export class CategoryViewModel extends TComponentModel<
         });
 
         items.push({
-            label: "Copy Path",
+            label: isUrlOrCurl(item.href) ? "Copy Href" : "Copy Path",
             icon: <CopyIcon />,
             onClick: () => navigator.clipboard.writeText(item.href),
         });
