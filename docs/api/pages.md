@@ -110,6 +110,18 @@ Create a standalone link collection page from an array of links or URL/path stri
 
 When a plain string is passed, the filename part of the path is used as the display title. Full `ILink` objects let you specify categories, tags, and other metadata.
 
+**`ILink` fields:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `title` | `string` | Yes | Display name for the link. |
+| `href` | `string` | Yes | URL or file path. |
+| `category` | `string` | Yes | Folder path (use `""` for root, `"Folder/Subfolder"` for nesting). |
+| `tags` | `string[]` | Yes | Metadata tags (can be empty `[]`). |
+| `isDirectory` | `boolean` | Yes | `true` if the item is a folder/container, `false` for leaf links. |
+| `id` | `string` | No | Unique ID (auto-generated if omitted). |
+| `imgSrc` | `string` | No | Preview image URL or path (shown in tile view). |
+
 ```javascript
 // From file paths — titles are derived from filenames
 app.pages.openLinks(["C:/data/report.csv", "C:/data/summary.txt"], "Reports");

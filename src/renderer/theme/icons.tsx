@@ -1293,3 +1293,28 @@ export const ArchiveIcon = createIcon(24)(
         <rect x="15.5" y="15.5" width="5.5" height="5.5" rx="1" fill="#e53935" />
     </>,
 );
+
+/** Web scraper / resource extraction icon — spider with radiating web lines. */
+export const WebScraperIcon = createIcon(24)(
+    <>
+        {/* Web lines radiating from center */}
+        <line x1="12" y1="12" x2="4" y2="4" stroke="currentColor" strokeWidth="1" opacity="0.5" />
+        <line x1="12" y1="12" x2="20" y2="4" stroke="currentColor" strokeWidth="1" opacity="0.5" />
+        <line x1="12" y1="12" x2="4" y2="20" stroke="currentColor" strokeWidth="1" opacity="0.5" />
+        <line x1="12" y1="12" x2="20" y2="20" stroke="currentColor" strokeWidth="1" opacity="0.5" />
+        <line x1="12" y1="12" x2="12" y2="3" stroke="currentColor" strokeWidth="1" opacity="0.5" />
+        <line x1="12" y1="12" x2="12" y2="21" stroke="currentColor" strokeWidth="1" opacity="0.5" />
+        {/* Concentric arcs */}
+        <path d="M7 7 A7 7 0 0 1 17 7" fill="none" stroke="currentColor" strokeWidth="1" opacity="0.4" />
+        <path d="M7 17 A7 7 0 0 0 17 17" fill="none" stroke="currentColor" strokeWidth="1" opacity="0.4" />
+        {/* Resource nodes at endpoints */}
+        <circle cx="4" cy="4" r="1.5" fill="currentColor" />
+        <circle cx="20" cy="4" r="1.5" fill="currentColor" />
+        <circle cx="4" cy="20" r="1.5" fill="currentColor" />
+        <circle cx="20" cy="20" r="1.5" fill="currentColor" />
+        <circle cx="12" cy="3" r="1.5" fill="currentColor" />
+        <circle cx="12" cy="21" r="1.5" fill="currentColor" />
+        {/* Center spider body */}
+        <circle cx="12" cy="12" r="2.5" fill="currentColor" />
+    </>,
+);

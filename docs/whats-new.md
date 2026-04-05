@@ -19,6 +19,7 @@ Release notes and changelog for Persephone (formerly js-notepad).
 - **Browser: Tor mode** — `app.pages.showBrowserPage()` now accepts a `tor: boolean` option to open in Tor mode (requires Tor to be configured in Settings).
 - **Script API: `app.pages.openLinks()`** — Create a standalone link collection page from an array of links or URL/path strings. The Categories panel appears in the sidebar; clicking a link navigates the page's main area to that file or URL. Accepts plain strings (title derived from filename) or full `ILink` objects with categories and tags. See [`app.pages` reference](./api/pages.md#openlinkslinks-title--ipage).
 - **Multi-file drop** — Dropping multiple files (or a folder) onto Persephone now opens a link collection page with all files listed in the "Links" sidebar panel. Click any file to view it in the main area. Dropped folders are recursively expanded, with subdirectories becoming link categories.
+- **HTML resource extraction** — Extract images, scripts, stylesheets, media, fonts, iframes, favicons, and links from HTML pages. Click the web-scraper icon in the toolbar on any HTML page, or right-click in the built-in Browser and choose "Show Resources". Results open as a categorized link collection.
 
 ### Improvements
 

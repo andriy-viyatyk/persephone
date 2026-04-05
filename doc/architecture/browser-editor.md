@@ -169,7 +169,7 @@ The renderer builds the menu dynamically based on `params` fields from the `cont
 | `selectionText` present | Copy (uses `navigator.clipboard.writeText`) |
 | `isEditable` | Cut, Copy, Paste (uses `webview.cut/copy/paste()` with `webview.focus()`) |
 | SVG probe finds `<svg>` ancestor | Open SVG in Editor |
-| Always | Back, Forward, Reload, View Source, View Actual DOM, Inspect Element |
+| Always | Back, Forward, Reload, View Source, View Actual DOM, Show Resources, Inspect Element |
 
 ### Key Implementation Details
 

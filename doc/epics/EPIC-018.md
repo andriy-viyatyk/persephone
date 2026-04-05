@@ -306,9 +306,9 @@ Make link collections a general-purpose building block. Enable programmatic crea
 | 2.2 | [US-355](../tasks/US-355-standalone-link-collection/README.md) | Standalone link collection page | `app.pages.openLinks((ILink | string)[], title?)` — creates TextFileModel as Pattern A secondary editor with `.link.json` content. Categories panel in sidebar; clicking navigates the page. Passes `pageId` in `RawLinkEvent` metadata. | Done |
 | 2.3 | [US-356](../tasks/US-356-multi-file-drop/README.md) | Multi-file drop handler | Single file: open as before. Single folder or multiple items: `expandDroppedPaths()` enumerates folders recursively into ILink items with categories, then `openLinks()`. 1 file changed (`GlobalEventService.ts`). | Done |
 | 2.3a | [US-357](../tasks/US-357-link-secondary-editor-fixes/README.md) | Link secondary editor fixes | Cache write order, secondary restore for no-mainEditor pages, page cache cleanup, link highlight, CategoryEditor discovery via treeProvider duck-typing. 5 files changed. | Done |
-| 2.4 | — | Expose LinkTreeProvider in script `io` namespace | `io.LinkTreeProvider` + helper to create and open a link collection page from a script. Script type definitions. Enables: `const links = [...]; io.openLinkCollection(links);` | Planned |
-| 2.5 | — | Content search for link collections | Instant in-memory search by title/href/tags. Uses existing `ITreeProvider.search()` interface. | Planned |
-| 2.6 | — | DOMSecondaryEditor | Secondary editor for HTML content (TextPageModel). Scrapes DOM resources (images, scripts, styles, media). Each resource type as a category. | Planned |
+| 2.4 | — | Expose LinkTreeProvider in script `io` namespace | Covered by `app.pages.openLinks()` (US-355). Scripts already have full access to create link collection pages. | Done |
+| 2.5 | — | Content search for link collections | Already working — TreeProviderView's built-in search filters by title/href. No additional work needed. | Done |
+| 2.6 | [US-358](../tasks/US-358-html-resource-extraction/README.md) | HTML resource extraction | `extractHtmlResources()` using cheerio via `require()`. "Show Resources" toolbar button on HTML pages + Browser context menu. WebScraperIcon. Uses `openLinks()`. 4 files. | Done |
 
 ### Phase 3: Archive Expansion
 

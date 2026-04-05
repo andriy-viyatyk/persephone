@@ -2,12 +2,13 @@ import { ReactNode, useMemo, useSyncExternalStore } from "react";
 import { isTextFileModel, TextFileModel } from "./TextEditorModel";
 import type { EditorView } from "../../../shared/types";
 import { Button } from "../../components/basic/Button";
-import { CompareIcon, NavPanelIcon, RunAllIcon, RunIcon } from "../../theme/icons";
+import { CompareIcon, NavPanelIcon, RunAllIcon, RunIcon, WebScraperIcon } from "../../theme/icons";
 import { SwitchButtons } from "../../components/form/SwitchButtons";
 import { FlexSpace } from "../../components/layout/Elements";
 import styled from "@emotion/styled";
 import { editorRegistry } from "../registry";
 import { pagesModel } from "../../api/pages";
+import { ui } from "../../api/ui";
 
 import { isScriptLanguage } from "../../scripting/transpile";
 import type { TOneState } from "../../core/state/state";
@@ -144,6 +145,20 @@ export function TextToolbar({ model, setEditorToolbarRefFirst, setEditorToolbarR
 
     actions.push(<FlexSpace key="flex-space" />);
 
+    if (language === "html") {
+        actions.push(
+            <Button
+                key="show-resources"
+                type="icon"
+                size="small"
+                title="Show Resources"
+                onClick={() => showHtmlResources(model)}
+            >
+                <WebScraperIcon />
+            </Button>
+        );
+    }
+
     if (editor && editor !== "monaco") {
         // NavPanel button (index 0) should appear before the editor toolbar portal,
         // so extract it, unshift the portal, then unshift NavPanel back to front.
@@ -180,4 +195,16 @@ export function TextToolbar({ model, setEditorToolbarRefFirst, setEditorToolbarR
     }
 
     return <>{actions}</>;
+}
+
+async function showHtmlResources(model: TextFileModel) {
+    const { extractHtmlResources } = await import("../../core/utils/html-resources");
+    const { content, filePath, title } = model.state.get();
+    const baseUrl = filePath ? "file:///" + filePath.replace(/\\/g, "/").replace(/\/[^/]*$/, "/") : undefined;
+    const links = extractHtmlResources(content, { baseUrl });
+    if (links.length === 0) {
+        ui.notify("No resources found in this HTML.", "info");
+        return;
+    }
+    pagesModel.openLinks(links, (title || "HTML") + " — Resources");
 }

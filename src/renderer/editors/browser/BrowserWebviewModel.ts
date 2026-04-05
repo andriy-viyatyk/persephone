@@ -9,6 +9,7 @@ import { MenuItem } from "../../components/overlay/PopupMenu";
 import { pagesModel } from "../../api/pages";
 import { newTextFileModel } from "../text/TextEditorModel";
 import { EditorModel } from "../base";
+import { ui } from "../../api/ui";
 
 import { globalPopupRateLimiter } from "../../../ipc/popup-rate-limiter";
 import { browserUrlChanged } from "../../core/state/events";
@@ -479,6 +480,23 @@ export class BrowserWebviewModel {
                 });
                 page.restore();
                 pagesModel.addPage(page as unknown as EditorModel);
+            },
+        });
+
+        // Show resources extracted from the page DOM
+        items.push({
+            label: "Show Resources",
+            onClick: async () => {
+                const html = await webview.executeJavaScript(
+                    "document.documentElement.outerHTML",
+                );
+                const { extractHtmlResources } = await import("../../core/utils/html-resources");
+                const links = extractHtmlResources(html, { baseUrl: pageUrl });
+                if (links.length === 0) {
+                    ui.notify("No resources found on this page.", "info");
+                    return;
+                }
+                pagesModel.openLinks(links, (tab?.pageTitle || pageUrl) + " — Resources");
             },
         });
 

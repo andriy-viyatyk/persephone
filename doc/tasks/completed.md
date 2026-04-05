@@ -3,6 +3,7 @@
 All completed tasks, newest first.
 
 | ID | Title | Epic | Notes |
+| US-358 | HTML resource extraction | EPIC-018 | `extractHtmlResources()` utility using cheerio via `require()`. "Show Resources" toolbar button on HTML pages + Browser context menu. WebScraperIcon. 4 files (1 new utility + 3 modified). |
 | US-357 | LinkEditor as secondary editor — fixes | EPIC-018 | 5 fixes: cache write order in openLinks(), secondary editor restore for pages without mainEditor, page-level cache cleanup on close, link highlight in Links panel, CategoryEditor discovery via treeProvider duck-typing. 5 files changed. |
 | US-356 | Multi-file drop handler | EPIC-018 | Single file drop: unchanged. Single folder or multiple items: `expandDroppedPaths()` recursively enumerates folders into ILink items with categories, then `pagesModel.openLinks()` creates a link collection page. 1 file changed (`GlobalEventService.ts`). |
 | US-355 | Standalone link collection page | EPIC-018 | Added `app.pages.openLinks((ILink \| string)[], title?)` API. Creates TextFileModel with .link.json content as Pattern A secondary editor (never mainEditor). Categories panel in sidebar; clicking a link navigates the page. Passes pageId in RawLinkEvent metadata for in-page navigation. 7 files changed. |

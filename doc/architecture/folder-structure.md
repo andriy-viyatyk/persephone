@@ -472,6 +472,7 @@ persephone/
 │   │   ├── utils.ts        # General helpers
 │   │   ├── parse-utils.ts  # JSON5, JS parsing
 │   │   ├── csv-utils.ts    # CSV parsing/generation
+│   │   ├── html-resources.ts  # HTML resource extraction (cheerio)
 │   │   ├── file-path.ts    # Archive-aware path utility (wraps ALL path.* usage)
 │   │   ├── path-utils.ts   # Markdown link resolution
 │   │   ├── obj-path.ts     # Deep object access by path
