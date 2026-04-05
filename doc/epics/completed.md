@@ -1,6 +1,6 @@
 # Completed Epics
 
-All completed epics, newest first. Each epic lists its tasks.
+Last 10 completed epics, newest first. Older epics are pruned.
 
 ---
 
@@ -111,20 +111,3 @@ All completed epics, newest first. Each epic lists its tasks.
 
 ## EPIC-010 — [Rest Client](EPIC-010.md)
 
-## EPIC-009 — [Scriptable Application Events](EPIC-009.md)
-
-## EPIC-008 — [MCP Inspector Editor](EPIC-008.md)
-
-## EPIC-007 — [Drawing Editor (Excalidraw)](EPIC-007.md)
-
-## EPIC-006 — [Graph Editor (Force Graph)](EPIC-006.md)
-
-## EPIC-005 — [Archive File Support (ZIP/DOCX/XLSX)](EPIC-005.md)
-
-## EPIC-004 — [Log View Editor](EPIC-004.md)
-
-## EPIC-003 — [Script Library](EPIC-003.md)
-
-## EPIC-002 — [App API Polishing](EPIC-002.md)
-
-## EPIC-001 — [AI Claude Integration](EPIC-001.md)
