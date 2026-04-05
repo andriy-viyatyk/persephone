@@ -13,7 +13,7 @@ import { fpBasename } from "../../core/utils/file-path";
 import { fs as appFs } from "../../api/fs";
 import { ContentPipe } from "../../content/ContentPipe";
 import { FileProvider } from "../../content/providers/FileProvider";
-import { ZipTransformer } from "../../content/transformers/ZipTransformer";
+import { ArchiveTransformer } from "../../content/transformers/ArchiveTransformer";
 
 const PdfViewerRoot = styled.div({
     flex: "1 1 auto",
@@ -49,7 +49,7 @@ class PdfEditorModel extends EditorModel<PdfEditorModelState, void> {
             const entryPath = filePath.slice(bangIndex + 1);
             this.pipe = new ContentPipe(
                 new FileProvider(archivePath),
-                [new ZipTransformer(entryPath)],
+                [new ArchiveTransformer(archivePath, entryPath)],
             );
         } else {
             this.pipe = new ContentPipe(new FileProvider(filePath));

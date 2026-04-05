@@ -16,14 +16,13 @@ const IMAGE_EXTENSIONS = new Set([
 ]);
 
 /**
- * ITreeProvider for ZIP archives (and ZIP-based formats like .docx, .xlsx, .epub).
+ * ITreeProvider for archives (ZIP, RAR, 7z, TAR, and related formats).
  *
  * Delegates all I/O to archiveService which handles the sequential queue
- * and ZIP reading/writing. Read-only initially; write operations can be
- * added later by wiring to archiveService methods.
+ * and archive reading via libarchive-wasm.
  */
-export class ZipTreeProvider implements ITreeProvider {
-    readonly type = "zip";
+export class ArchiveTreeProvider implements ITreeProvider {
+    readonly type = "archive";
     readonly displayName: string;
     readonly navigable = false;
     readonly writable = false;

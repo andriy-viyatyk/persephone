@@ -267,7 +267,7 @@ export class TreeProviderViewModel extends TComponentModel<
     private getListPath = (node: TreeProviderNode): string => {
         const { provider } = this.props;
         // For FileTreeProvider: href is the absolute path, use it directly
-        // For ZipTreeProvider: href is "archive.zip!inner/path", we need inner path
+        // For ArchiveTreeProvider: href is "archive.zip!inner/path", we need inner path
         // The category of children = the directory path the provider understands
         // For root node, category is "" and we use provider.rootPath
         if (node.data.href === provider.rootPath) {

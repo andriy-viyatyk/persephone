@@ -316,7 +316,7 @@ Make link collections a general-purpose building block. Enable programmatic crea
 | # | Task | Title | Description | Status |
 |---|------|-------|-------------|--------|
 | 3.1 | [US-343](../tasks/US-343-provider-agnostic-folder-editor/README.md) | Make folder editor provider-agnostic | CategoryEditor scans `page.secondaryEditors[]` for matching `treeProvider.type` + `sourceUrl`. Renamed back to CategoryEditor. PageModel notifies mainEditor on secondary changes. Works with Explorer and Archive panels. | Done |
-| 3.2 | — | Adopt libarchive-wasm | Replace `jszip` with `libarchive-wasm` (WASM-based, MIT). Supports RAR v4/v5, 7z, TAR, gzip, bzip2, lzma/xz, cab, ISO. Generalize `ZipTreeProvider` to `ArchiveTreeProvider`. Update `ARCHIVE_EXTENSIONS` and `isArchiveFile()`. | Planned |
+| 3.2 | [US-361](../tasks/US-361-adopt-libarchive-wasm/README.md) | Adopt libarchive-wasm | Replace `jszip` read path with `libarchive-wasm` (WASM-based, MIT). Keep `jszip` for ZIP writes. Supports RAR v4/v5, 7z, TAR, gzip, bzip2, lzma/xz, cab, ISO. Rename Zip* → Archive*. Expand `ARCHIVE_EXTENSIONS`. | Done |
 
 ## Architecture Reference
 

@@ -7,7 +7,7 @@ export const TREE_CATEGORY_PREFIX = "tree-category://";
  * and fallback provider creation (if NavigationData has no provider).
  */
 export interface ITreeProviderLink {
-    /** Provider type: "file", "zip", "link". */
+    /** Provider type: "file", "archive", "link". */
     type: string;
     /** Source URL (folder path, archive path, .link.json path). */
     url: string;

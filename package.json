@@ -64,6 +64,7 @@
     "jschardet": "^3.1.4",
     "json5": "^2.2.3",
     "jszip": "^3.10.1",
+    "libarchive-wasm": "^1.2.0",
     "mermaid": "^11.12.2",
     "monaco-editor": "^0.52.2",
     "picomatch": "^2.3.1",

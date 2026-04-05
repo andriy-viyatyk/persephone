@@ -9,7 +9,7 @@ const nodefs = require("fs");
  * FileProvider — reads/writes binary content from local files.
  *
  * Does NOT handle archive paths (no `!` detection). Archive support
- * comes from FileProvider + ZipTransformer in the pipe chain.
+ * comes from FileProvider + ArchiveTransformer in the pipe chain.
  */
 export class FileProvider implements IProvider {
     readonly type = "file";

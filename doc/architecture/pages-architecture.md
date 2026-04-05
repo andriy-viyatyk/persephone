@@ -70,7 +70,7 @@ PageModel (one per tab — stable identity, never changes during navigation)
 ├── id: string                          // stable UUID — tab key, React key, cache key
 ├── state: TOneState<IPageState>        // reactive: { pinned, hasSidebar, mainEditorId }
 ├── mainEditor: EditorModel | null      // the content (swapped during navigation)
-├── secondaryEditors: EditorModel[]     // sidebar panels (ExplorerEditorModel, ZipEditorModel, etc.)
+├── secondaryEditors: EditorModel[]     // sidebar panels (ExplorerEditorModel, ArchiveEditorModel, etc.)
 ├── pageNavigatorModel                  // sidebar open/close/width
 ├── activePanel: string                 // which panel is expanded
 ├── findExplorer() / createExplorer()   // ExplorerEditorModel helpers
@@ -371,9 +371,9 @@ In `navigatePageTo()` ([`PagesLifecycleModel.ts`](../../src/renderer/api/pages/P
 
 **Note:** The raw `mainEditor` setter (without lifecycle) is still used for low-level operations: persistence restore, `addPage()`, and `dispose()`. `setMainEditor()` is the high-level method for navigation.
 
-**`beforeNavigateAway(newEditor)`** lets the old editor inspect `newEditor.sourceLink` to decide whether to keep itself as a secondary editor. The base implementation clears `secondaryEditor`. Subclasses like ZipEditorModel override to check `newEditor.sourceLink?.metadata?.sourceId === this.id`.
+**`beforeNavigateAway(newEditor)`** lets the old editor inspect `newEditor.sourceLink` to decide whether to keep itself as a secondary editor. The base implementation clears `secondaryEditor`. Subclasses like ArchiveEditorModel override to check `newEditor.sourceLink?.metadata?.sourceId === this.id`.
 
-**`notifyMainEditorChanged()`** calls `onMainEditorChanged(newMainEditor)` on each secondary editor. Each editor reacts independently: ExplorerEditorModel clears selection if the new editor wasn't opened from Explorer, ZipEditorModel checks if the new main editor was opened from its archive — if not, it clears `secondaryEditor` and is cleaned up.
+**`notifyMainEditorChanged()`** calls `onMainEditorChanged(newMainEditor)` on each secondary editor. Each editor reacts independently: ExplorerEditorModel clears selection if the new editor wasn't opened from Explorer, ArchiveEditorModel checks if the new main editor was opened from its archive — if not, it clears `secondaryEditor` and is cleaned up.
 
 ---
 
@@ -386,7 +386,7 @@ PageModel holds a `secondaryEditors[]` array of EditorModel instances that appea
 **Quick summary:**
 - Secondary editors register by setting `model.secondaryEditor = ["panel-id"]` — the setter automatically manages `PageModel.secondaryEditors[]`
 - **Pattern A** (separate model): A dedicated EditorModel subclass, e.g., ExplorerEditorModel
-- **Pattern B** (mainEditor as secondary): The mainEditor registers itself in `secondaryEditors[]` simultaneously, e.g., ZipEditorModel when browsing an archive
+- **Pattern B** (mainEditor as secondary): The mainEditor registers itself in `secondaryEditors[]` simultaneously, e.g., ArchiveEditorModel when browsing an archive
 - Lifecycle hooks: `beforeNavigateAway()`, `onMainEditorChanged()`, `onPanelExpanded()`
 - Portal-based headers: panel components use `createPortal()` to render into CollapsiblePanel headers
 - Persistence: saved as `SecondaryModelDescriptor[]` in sidebar cache, with deduplication for Pattern B

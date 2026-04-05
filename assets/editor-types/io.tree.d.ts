@@ -5,12 +5,12 @@
  * Complements IProvider (reads/writes one resource) the same way a file explorer
  * complements a text editor.
  *
- * All content-returning methods are async. Simpler providers (ZipTreeProvider,
+ * All content-returning methods are async. Simpler providers (ArchiveTreeProvider,
  * LinkTreeProvider) return immediately via Promise.resolve(); FileTreeProvider
  * does real disk I/O.
  */
 export interface ITreeProvider {
-    /** Provider type identifier (e.g., "file", "zip", "link"). */
+    /** Provider type identifier (e.g., "file", "archive", "link"). */
     readonly type: string;
     /** Display name for UI. */
     readonly displayName: string;
@@ -115,7 +115,7 @@ export interface ILink {
     imgSrc?: string;
     /**
      * Whether this directory has sub-directories.
-     * - `undefined` — unknown, assume expandable (default for FileTreeProvider/ZipTreeProvider)
+     * - `undefined` — unknown, assume expandable (default for FileTreeProvider/ArchiveTreeProvider)
      * - `true` / `false` — explicitly set by provider (LinkTreeProvider)
      */
     hasSubDirectories?: boolean;

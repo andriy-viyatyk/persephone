@@ -563,18 +563,18 @@ editorRegistry.register({
     },
 });
 
-// Archive viewer (standalone page editor — ZIP and ZIP-based formats)
+// Archive viewer (standalone page editor — ZIP, RAR, 7z, TAR, and related formats)
 editorRegistry.register({
-    id: "zip-view",
+    id: "archive-view",
     name: "Archive",
-    editorType: "zipFile",
+    editorType: "archiveFile",
     category: "standalone",
     acceptFile: (fileName) => {
         if (!fileName) return -1;
         return isArchiveFile(fileName) ? 100 : -1;
     },
     loadModule: async () => {
-        const module = await import("./zip/index");
+        const module = await import("./archive/index");
         return module.default;
     },
 });
@@ -648,9 +648,9 @@ editorRegistry.register({
 // =============================================================================
 
 secondaryEditorRegistry.register({
-    id: "zip-tree",
+    id: "archive-tree",
     label: "Archive",
-    loadComponent: () => import("./zip/ZipSecondaryEditor"),
+    loadComponent: () => import("./archive/ArchiveSecondaryEditor"),
 });
 
 secondaryEditorRegistry.register({

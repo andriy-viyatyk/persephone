@@ -36,7 +36,7 @@ export class EditorModel<T extends IEditorState = IEditorState, R = any> extends
 
     /** Called on secondary editors when the page's main editor changes (navigation).
      *  Base implementation is a no-op. Override in subclasses to react
-     *  (e.g., ZipEditorModel checks if new main editor was opened from this archive). */
+     *  (e.g., ArchiveEditorModel checks if new main editor was opened from this archive). */
     onMainEditorChanged(_newMainEditor: EditorModel | null): void {
         // Override in subclasses
     }
@@ -97,7 +97,7 @@ export class EditorModel<T extends IEditorState = IEditorState, R = any> extends
      *
      * Base implementation clears secondaryEditor (model removed from sidebar).
      * Subclasses override to conditionally keep:
-     *   - ZipEditorModel: keeps if newModel.sourceLink?.metadata?.sourceId === this.id
+     *   - ArchiveEditorModel: keeps if newModel.sourceLink?.metadata?.sourceId === this.id
      */
     beforeNavigateAway(_newModel: EditorModel): void {
         this.secondaryEditor = undefined;

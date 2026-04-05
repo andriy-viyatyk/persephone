@@ -27,12 +27,14 @@ export interface IHttpProviderConstructor {
 }
 
 /**
- * Transformer constructor for ZIP archive entry extraction.
+ * Transformer constructor for archive entry extraction.
+ * Supports ZIP, RAR, 7z, TAR, and other formats via libarchive-wasm (read).
+ * Write operations (save back) are supported only for ZIP-based archives.
  * @example
- * const transformer = new io.ZipTransformer("data/report.csv");
+ * const transformer = new io.ArchiveTransformer("C:\\data.zip", "data/report.csv");
  */
-export interface IZipTransformerConstructor {
-    new(entryPath: string): ITransformer;
+export interface IArchiveTransformerConstructor {
+    new(archivePath: string, entryPath: string): ITransformer;
 }
 
 /**
@@ -76,7 +78,7 @@ export interface IOpenLinkEventConstructor {
 /**
  * Open content event constructor — Layer 3 input.
  * @example
- * const pipe = io.createPipe(new io.FileProvider("C:\\data.zip"), new io.ZipTransformer("report.csv"));
+ * const pipe = io.createPipe(new io.FileProvider("C:\\data.zip"), new io.ArchiveTransformer("C:\\data.zip", "report.csv"));
  * await app.events.openContent.sendAsync(new io.OpenContentEvent(pipe, "grid-csv"));
  */
 export interface IOpenContentEventConstructor {
@@ -102,7 +104,7 @@ export interface IOpenContentEventConstructor {
  * // Read a file from inside a ZIP archive
  * const pipe = io.createPipe(
  *     new io.FileProvider("C:\\docs.zip"),
- *     new io.ZipTransformer("readme.md"),
+ *     new io.ArchiveTransformer("C:\\docs.zip", "readme.md"),
  * );
  * const text = await pipe.readText();
  *
@@ -117,8 +119,8 @@ export interface IIoNamespace {
     readonly FileProvider: IFileProviderConstructor;
     /** Provider for HTTP/HTTPS URLs (read-only). */
     readonly HttpProvider: IHttpProviderConstructor;
-    /** Transformer for ZIP archive entry extraction/replacement. */
-    readonly ZipTransformer: IZipTransformerConstructor;
+    /** Transformer for archive entry extraction/replacement (ZIP write, multi-format read). */
+    readonly ArchiveTransformer: IArchiveTransformerConstructor;
     /** Transformer for AES-GCM decryption/encryption (non-persistent). */
     readonly DecryptTransformer: IDecryptTransformerConstructor;
     /** Raw link event constructor for Layer 1 (openRawLink). */

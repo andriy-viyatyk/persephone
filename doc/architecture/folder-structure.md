@@ -60,7 +60,7 @@ persephone/
 │   ├── editors.ts          # IEditorRegistry implementation
 │   ├── recent.ts           # IRecentFiles implementation
 │   ├── fs.ts               # IFileSystem implementation
-│   ├── archive-service.ts  # ArchiveService — ZIP archive I/O (jszip), used by fs.ts for archive paths
+│   ├── archive-service.ts  # ArchiveService — archive I/O (libarchive-wasm for reads, jszip for writes), used by fs.ts for archive paths
 │   ├── window.ts           # IWindow implementation
 │   ├── ui.ts               # IUserInterface implementation
 │   ├── downloads.ts        # IDownloads implementation
@@ -157,11 +157,11 @@ persephone/
 │   │   ├── HttpProvider.ts      # IProvider for HTTP/HTTPS URLs (read-only)
 │   │   └── DataUrlProvider.ts  # IProvider for data: URLs (inline content, read-only)
 │   ├── transformers/
-│   │   ├── ZipTransformer.ts    # ITransformer for ZIP entry extraction/replacement
+│   │   ├── ArchiveTransformer.ts # ITransformer for archive entry extraction/replacement
 │   │   └── DecryptTransformer.ts # ITransformer for AES-GCM decrypt/encrypt (non-persistent)
 │   ├── tree-providers/           # ITreeProvider implementations (EPIC-015)
 │   │   ├── FileTreeProvider.ts  # Local filesystem directories
-│   │   ├── ZipTreeProvider.ts   # ZIP archives (read-only)
+│   │   ├── ArchiveTreeProvider.ts # Archives (ZIP, RAR, 7z, TAR, cab, ISO — read-only)
 │   │   └── tree-provider-link.ts # tree-category:// link format (encode/decode)
 │   └── tree-context-menus.tsx   # Default context menu handlers for tree provider items (EPIC-015)
 │
@@ -397,10 +397,10 @@ persephone/
 │   │   ├── CategoryEditor.tsx             # Wraps CategoryView, resolves provider from secondary editors
 │   │   ├── CategoryEditorModel.ts         # Page model — decodes tree-category:// link
 │   │   └── FolderViewModeService.ts       # Per-folder view mode persistence with hierarchical inheritance
-│   ├── zip/                # Archive editor (secondary — sidebar panel)
-│   │   ├── ZipEditorModel.ts          # EditorModel — archive state, tree provider, navigation survival
-│   │   ├── ZipEditorView.tsx          # Main content view (zip-view)
-│   │   ├── ZipSecondaryEditor.tsx     # Secondary panel — tree view with portaled header
+│   ├── archive/            # Archive editor (secondary — sidebar panel)
+│   │   ├── ArchiveEditorModel.ts      # EditorModel — archive state, tree provider, navigation survival
+│   │   ├── ArchiveEditorView.tsx      # Main content view (archive-view)
+│   │   ├── ArchiveSecondaryEditor.tsx # Secondary panel — tree view with portaled header
 │   │   └── index.ts
 │   ├── explorer/            # File explorer (secondary — sidebar panels)
 │   │   ├── ExplorerEditorModel.ts     # EditorModel — tree provider, selection, search, root navigation

@@ -23,7 +23,7 @@ import type { IContentPipe } from "../../api/types/io.pipe";
 import { ContentPipe } from "../../content/ContentPipe";
 import { FileProvider } from "../../content/providers/FileProvider";
 import { HttpProvider } from "../../content/providers/HttpProvider";
-import { ZipTransformer } from "../../content/transformers/ZipTransformer";
+import { ArchiveTransformer } from "../../content/transformers/ArchiveTransformer";
 
 function normalizeLinksTitle(title?: string): string {
     if (!title) return "untitled.link.json";
@@ -50,7 +50,7 @@ export class PagesLifecycleModel {
             const entryPath = path.slice(bangIndex + 1);
             return new ContentPipe(
                 new FileProvider(archivePath),
-                [new ZipTransformer(entryPath)],
+                [new ArchiveTransformer(archivePath, entryPath)],
             );
         }
         return new ContentPipe(new FileProvider(path));
@@ -344,7 +344,7 @@ export class PagesLifecycleModel {
 
     private async _openZipArchive(filePath: string): Promise<PageModel> {
         const existing = this.model.state.get().pages.find(
-            (p) => p.mainEditor?.state.get().type === "zipFile"
+            (p) => p.mainEditor?.state.get().type === "archiveFile"
                 && (p.mainEditor?.state.get() as any).archiveUrl === filePath // eslint-disable-line @typescript-eslint/no-explicit-any
         );
         if (existing) {
@@ -352,8 +352,8 @@ export class PagesLifecycleModel {
             return existing;
         }
 
-        const editorDef = editorRegistry.getById("zip-view");
-        if (!editorDef) throw new Error("zip-view editor not registered");
+        const editorDef = editorRegistry.getById("archive-view");
+        if (!editorDef) throw new Error("archive-view editor not registered");
         const module = await editorDef.loadModule();
         const editor = await module.newEditorModel(filePath);
 
@@ -365,7 +365,7 @@ export class PagesLifecycleModel {
 
         // Set secondaryEditor after page is set up
         // (the setter calls page.addSecondaryEditor)
-        (editor as any).secondaryEditor = ["zip-tree"]; // eslint-disable-line @typescript-eslint/no-explicit-any
+        (editor as any).secondaryEditor = ["archive-tree"]; // eslint-disable-line @typescript-eslint/no-explicit-any
 
         this.addPage(editor, page);
         this.model.closeFirstPageIfEmpty();

@@ -32,7 +32,8 @@ export class ContentPipe implements IContentPipe {
     }
 
     get writable(): boolean {
-        return this.provider.writable;
+        return this.provider.writable
+            && this._transformers.every(t => t.writable !== false);
     }
 
     get displayName(): string {
@@ -99,7 +100,7 @@ export class ContentPipe implements IContentPipe {
             return;
         }
 
-        // Read original bytes at each transformer stage (needed by ZipTransformer.write
+        // Read original bytes at each transformer stage (needed by ArchiveTransformer.write
         // to rebuild the archive). If provider has no content yet (e.g., new cache file),
         // pass empty buffers — transformers that don't need originals (like DecryptTransformer)
         // will ignore them.

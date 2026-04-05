@@ -19,7 +19,7 @@ import { fpBasename, fpExtname } from "../../core/utils/file-path";
 import { buildExcalidrawJsonWithImage, getImageDimensions, extToMime } from "../draw/drawExport";
 import { ContentPipe } from "../../content/ContentPipe";
 import { FileProvider } from "../../content/providers/FileProvider";
-import { ZipTransformer } from "../../content/transformers/ZipTransformer";
+import { ArchiveTransformer } from "../../content/transformers/ArchiveTransformer";
 
 // ============================================================================
 // ImageEditorModel (Page Model) - manages page state and lifecycle
@@ -78,7 +78,7 @@ class ImageEditorModel extends EditorModel<ImageEditorModelState, void> {
             const entryPath = filePath.slice(bangIndex + 1);
             this.pipe = new ContentPipe(
                 new FileProvider(archivePath),
-                [new ZipTransformer(entryPath)],
+                [new ArchiveTransformer(archivePath, entryPath)],
             );
         } else {
             this.pipe = new ContentPipe(new FileProvider(filePath));

@@ -42,11 +42,44 @@ export function buildArchivePath(archivePath: string, innerPath: string): string
 
 // ── Archive file detection ──────────────────────────────────────────
 
-const ARCHIVE_EXTENSIONS = new Set([
+const ZIP_BASED_EXTENSIONS = new Set([
     ".zip", ".docx", ".xlsx", ".pptx",
     ".jar", ".war", ".epub",
     ".odt", ".ods", ".odp",
 ]);
+
+const ARCHIVE_EXTENSIONS = new Set([
+    // ZIP-based
+    ...ZIP_BASED_EXTENSIONS,
+    // RAR
+    ".rar",
+    // 7-Zip
+    ".7z",
+    // TAR and compressed TAR
+    ".tar", ".tar.gz", ".tgz", ".tar.bz2", ".tbz2", ".tar.xz", ".txz", ".tar.lz",
+    // Other
+    ".cab", ".iso",
+]);
+
+const COMPOUND_EXTENSIONS = [".tar.gz", ".tar.bz2", ".tar.xz", ".tar.lz"];
+
+/**
+ * Get the archive-aware extension for a file path.
+ * Handles compound extensions like `.tar.gz` that `path.extname()` cannot.
+ */
+export function getArchiveExtension(filePath: string): string {
+    const lower = filePath.toLowerCase();
+    for (const compound of COMPOUND_EXTENSIONS) {
+        if (lower.endsWith(compound)) return compound;
+    }
+    return path.extname(lower);
+}
+
+/** Check if a file is a ZIP-based archive that supports write operations. */
+export function isZipBasedArchive(filePath: string): boolean {
+    const ext = getArchiveExtension(filePath);
+    return ZIP_BASED_EXTENSIONS.has(ext);
+}
 
 /**
  * Check if a file path points to an archive that can be browsed.
@@ -55,7 +88,7 @@ const ARCHIVE_EXTENSIONS = new Set([
  */
 export function isArchiveFile(filePath: string): boolean {
     if (isArchivePath(filePath)) return false;
-    const ext = path.extname(filePath).toLowerCase();
+    const ext = getArchiveExtension(filePath);
     return ARCHIVE_EXTENSIONS.has(ext) || ext === ".asar";
 }
 

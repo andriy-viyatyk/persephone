@@ -39,10 +39,10 @@ function buildSourceLink(event: OpenContentEvent, filePath: string): ISourceLink
 export function registerOpenHandler(): void {
     app.events.openContent.subscribe(async (event) => {
         // Reconstruct full file path from pipe (provider + transformers).
-        // For archive pipes: FileProvider("C:/data.zip") + ZipTransformer("readme.txt")
+        // For archive pipes: FileProvider("C:/data.zip") + ArchiveTransformer("readme.txt")
         //   → "C:/data.zip!readme.txt"
         let filePath = event.pipe.provider.sourceUrl;
-        const zipTransformer = event.pipe.transformers.find((t) => t.type === "zip");
+        const zipTransformer = event.pipe.transformers.find((t) => t.type === "archive");
         if (zipTransformer) {
             const entryPath = zipTransformer.config.entryPath as string | undefined;
             if (entryPath) {

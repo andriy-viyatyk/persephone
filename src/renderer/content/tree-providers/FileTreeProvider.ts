@@ -21,7 +21,7 @@ const IMAGE_EXTENSIONS = new Set([
  * ITreeProvider for local filesystem directories.
  *
  * Uses Node.js fs/path directly — no archive-aware wrappers.
- * Archive browsing is handled by the separate ZipTreeProvider.
+ * Archive browsing is handled by the separate ArchiveTreeProvider.
  */
 export class FileTreeProvider implements ITreeProvider {
     readonly type = "file";

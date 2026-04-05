@@ -155,7 +155,7 @@ export function TreeProviderView(
         (node: TreeProviderNode) => {
             if (!node.data.isDirectory) return false;
             const { hasSubDirectories, hasItems } = node.data;
-            // When flags are undefined (FileTreeProvider, ZipTreeProvider), assume expandable
+            // When flags are undefined (FileTreeProvider, ArchiveTreeProvider), assume expandable
             if (hasSubDirectories === undefined && hasItems === undefined) return true;
             // When flags are set, decide based on showLinks mode
             if (showLinks) return !!(hasSubDirectories || hasItems);

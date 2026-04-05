@@ -1,5 +1,5 @@
-export type EditorType = "textFile" | "pdfFile" | "imageFile" | "aboutPage" | "settingsPage" | "browserPage" | "mcpInspectorPage" | "categoryPage" | "zipFile" | "fileExplorer";
-export type EditorView = "monaco" | "grid-json" | "grid-csv" | "grid-jsonl" | "md-view" | "pdf-view" | "image-view" | "svg-view" | "about-view" | "notebook-view" | "mermaid-view" | "html-view" | "settings-view" | "todo-view" | "link-view" | "log-view" | "browser-view" | "graph-view" | "draw-view" | "mcp-view" | "rest-client" | "category-view" | "zip-view";
+export type EditorType = "textFile" | "pdfFile" | "imageFile" | "aboutPage" | "settingsPage" | "browserPage" | "mcpInspectorPage" | "categoryPage" | "archiveFile" | "fileExplorer";
+export type EditorView = "monaco" | "grid-json" | "grid-csv" | "grid-jsonl" | "md-view" | "pdf-view" | "image-view" | "svg-view" | "about-view" | "notebook-view" | "mermaid-view" | "html-view" | "settings-view" | "todo-view" | "link-view" | "log-view" | "browser-view" | "graph-view" | "draw-view" | "mcp-view" | "rest-client" | "category-view" | "archive-view";
 
 /** Describes the link that opened a page — origin identity + metadata. */
 export interface ISourceLink {
@@ -23,7 +23,7 @@ export interface IEditorState {
     editor?: EditorView,
     /** The link that opened this page — informational, not functional. Persisted across restarts. */
     sourceLink?: ISourceLink,
-    /** Active secondary editor panel IDs (e.g., ["zip-tree"]). Array supports multi-panel models. */
+    /** Active secondary editor panel IDs (e.g., ["archive-tree"]). Array supports multi-panel models. */
     secondaryEditor?: string[],
 }
 

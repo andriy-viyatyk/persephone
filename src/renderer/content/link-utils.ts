@@ -87,7 +87,7 @@ function resolveFilePipeDescriptor(url: string): IPipeDescriptor | null {
         const { archivePath, innerPath } = parseArchivePath(filePath);
         return {
             provider: { type: "file", config: { path: archivePath } },
-            transformers: [{ type: "zip", config: { entryPath: innerPath } }],
+            transformers: [{ type: "archive", config: { archivePath, entryPath: innerPath } }],
         };
     }
 

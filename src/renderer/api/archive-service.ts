@@ -1,7 +1,9 @@
 /**
- * Archive Service — read/write files inside ZIP archives.
+ * Archive Service — read/write files inside archives.
  *
- * Uses jszip (loaded via dynamic import) to manipulate ZIP archives.
+ * Reading uses libarchive-wasm (supports ZIP, RAR, 7z, TAR, etc.).
+ * Writing uses jszip (ZIP-based formats only).
+ *
  * All operations go through a per-archive sequential queue to prevent
  * concurrent read/write on the same archive file.
  *
@@ -13,6 +15,8 @@
 const nodefs = require("fs") as typeof import("fs");
 
 import type { IFileStat, IDirEntry } from "./types/fs";
+import { isZipBasedArchive } from "../core/utils/file-path";
+import type { LibarchiveWasm } from "libarchive-wasm";
 
 // =============================================================================
 // Types
@@ -36,43 +40,123 @@ export interface ArchiveEntry {
 class ArchiveService {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private queues = new Map<string, Promise<any>>();
+    private wasmModule: LibarchiveWasm | null = null;
+
+    // ── WASM Module ──────────────────────────────────────────────────────
+
+    private async getWasmModule(): Promise<LibarchiveWasm> {
+        if (!this.wasmModule) {
+            const { libarchiveWasm } = await import("libarchive-wasm");
+            // Load WASM binary from assets folder via app-asset:// scheme.
+            // Vite dev server can't serve .wasm with correct MIME type via import(),
+            // so we fetch the binary and pass it directly.
+            const response = await fetch("app-asset://libarchive/libarchive.wasm");
+            const wasmBinary = await response.arrayBuffer();
+            this.wasmModule = await libarchiveWasm({ wasmBinary });
+        }
+        return this.wasmModule;
+    }
+
+    // ── Reading (libarchive-wasm) ────────────────────────────────────────
+
+    /** Read all entries from an archive (single-pass sequential scan). */
+    private async readAllEntries(archivePath: string): Promise<ArchiveEntry[]> {
+        const { ArchiveReader } = await import("libarchive-wasm");
+        const mod = await this.getWasmModule();
+        const data = nodefs.readFileSync(archivePath);
+        const reader = new ArchiveReader(mod, new Int8Array(data.buffer, data.byteOffset, data.byteLength));
+        try {
+            const entries: ArchiveEntry[] = [];
+            for (const entry of reader.entries()) {
+                let entryPath = entry.getPathname();
+                const isDir = entry.getFiletype() === "Directory";
+                // Normalize: strip trailing slash from directory paths
+                if (isDir && entryPath.endsWith("/")) {
+                    entryPath = entryPath.slice(0, -1);
+                }
+                entries.push({
+                    path: entryPath,
+                    isDirectory: isDir,
+                    size: entry.getSize() ?? 0,
+                    mtime: entry.getModificationTime() ?? 0,
+                });
+            }
+            return entries;
+        } finally {
+            reader.free();
+        }
+    }
+
+    /** Read a single file's contents from an archive. */
+    private async readEntryData(archivePath: string, innerPath: string): Promise<Buffer> {
+        const { ArchiveReader } = await import("libarchive-wasm");
+        const mod = await this.getWasmModule();
+        const data = nodefs.readFileSync(archivePath);
+        const reader = new ArchiveReader(mod, new Int8Array(data.buffer, data.byteOffset, data.byteLength));
+        try {
+            for (const entry of reader.entries()) {
+                if (entry.getPathname() === innerPath || entry.getPathname() === innerPath + "/") {
+                    const content = entry.readData();
+                    if (!content) return Buffer.alloc(0);
+                    return Buffer.from(content.buffer, content.byteOffset, content.byteLength);
+                }
+            }
+            throw new Error(`File not found in archive: ${innerPath}`);
+        } finally {
+            reader.free();
+        }
+    }
+
+    // ── Writing (jszip, ZIP-only) ────────────────────────────────────────
+
+    /** Load a ZIP archive for write operations using jszip. */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    private async loadZipArchive(archivePath: string): Promise<any> {
+        this.assertZipFormat(archivePath);
+        const JSZip = (await import("jszip")).default;
+        const data = nodefs.readFileSync(archivePath);
+        return JSZip.loadAsync(data);
+    }
+
+    /** Throw if the archive is not a ZIP-based format. */
+    private assertZipFormat(archivePath: string): void {
+        if (!isZipBasedArchive(archivePath)) {
+            throw new Error(`Write operations are only supported for ZIP-based archives: ${archivePath}`);
+        }
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    private async generateZip(zip: any): Promise<Buffer> {
+        return zip.generateAsync({
+            type: "nodebuffer",
+            compression: "DEFLATE",
+            compressionOptions: { level: 6 },
+        });
+    }
 
     // ── Public API ───────────────────────────────────────────────────────
 
     /** List all entries in an archive. */
     async listEntries(archivePath: string): Promise<ArchiveEntry[]> {
-        return this.enqueue(archivePath, async () => {
-            const zip = await this.loadArchive(archivePath);
-            const entries: ArchiveEntry[] = [];
-            zip.forEach((relativePath: string, file: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
-                entries.push({
-                    path: relativePath,
-                    isDirectory: file.dir,
-                    size: file._data?.uncompressedSize ?? 0,
-                    mtime: file.date?.getTime() ?? 0,
-                });
-            });
-            return entries;
-        });
+        return this.enqueue(archivePath, () => this.readAllEntries(archivePath));
     }
 
     /** List immediate children of a directory inside an archive. */
     async listDir(archivePath: string, innerDir: string): Promise<IDirEntry[]> {
         return this.enqueue(archivePath, async () => {
-            const zip = await this.loadArchive(archivePath);
-            // Normalize: ensure trailing slash for non-root, empty string for root
+            const allEntries = await this.readAllEntries(archivePath);
             const prefix = innerDir ? innerDir.replace(/\/$/, "") + "/" : "";
             const seen = new Map<string, boolean>(); // name → isDirectory
 
-            zip.forEach((relativePath: string) => {
-                if (!relativePath.startsWith(prefix)) return;
-                const remainder = relativePath.slice(prefix.length);
-                if (!remainder) return; // the directory entry itself
+            for (const entry of allEntries) {
+                if (!entry.path.startsWith(prefix)) continue;
+                const remainder = entry.path.slice(prefix.length);
+                if (!remainder) continue; // the directory entry itself
 
                 const slashIdx = remainder.indexOf("/");
                 if (slashIdx === -1) {
-                    // Direct child file
-                    seen.set(remainder, false);
+                    // Direct child file or leaf directory
+                    seen.set(remainder, entry.isDirectory);
                 } else {
                     // Direct child folder (take first segment)
                     const folderName = remainder.slice(0, slashIdx);
@@ -80,13 +164,12 @@ class ArchiveService {
                         seen.set(folderName, true);
                     }
                 }
-            });
+            }
 
             const entries: IDirEntry[] = [];
             for (const [name, isDirectory] of seen) {
                 entries.push({ name, isDirectory });
             }
-            // Folders first, then files, alphabetical within each group
             entries.sort((a, b) => {
                 if (a.isDirectory !== b.isDirectory) return a.isDirectory ? -1 : 1;
                 return a.name.localeCompare(b.name);
@@ -97,26 +180,15 @@ class ArchiveService {
 
     /** Read a file from inside an archive. Returns raw Buffer. */
     async readFile(archivePath: string, innerPath: string): Promise<Buffer> {
-        return this.enqueue(archivePath, async () => {
-            const zip = await this.loadArchive(archivePath);
-            const file = zip.file(innerPath);
-            if (!file) {
-                throw new Error(`File not found in archive: ${innerPath}`);
-            }
-            return file.async("nodebuffer");
-        });
+        return this.enqueue(archivePath, () => this.readEntryData(archivePath, innerPath));
     }
 
-    /** Write a file into an archive (read → replace → write back). */
+    /** Write a file into a ZIP archive (read → replace → write back). */
     async writeFile(archivePath: string, innerPath: string, content: Buffer): Promise<void> {
         return this.enqueue(archivePath, async () => {
-            const zip = await this.loadArchive(archivePath);
+            const zip = await this.loadZipArchive(archivePath);
             zip.file(innerPath, content);
-            const output = await zip.generateAsync({
-                type: "nodebuffer",
-                compression: "DEFLATE",
-                compressionOptions: { level: 6 },
-            });
+            const output = await this.generateZip(zip);
             nodefs.writeFileSync(archivePath, output);
         });
     }
@@ -125,40 +197,35 @@ class ArchiveService {
     async exists(archivePath: string, innerPath: string): Promise<boolean> {
         return this.enqueue(archivePath, async () => {
             if (!nodefs.existsSync(archivePath)) return false;
-            const zip = await this.loadArchive(archivePath);
-            // Check exact path and directory variant (with trailing slash)
-            return zip.file(innerPath) !== null
-                || zip.file(innerPath + "/") !== null
-                || this.hasChildren(zip, innerPath);
+            const allEntries = await this.readAllEntries(archivePath);
+            return allEntries.some(e =>
+                e.path === innerPath
+                || e.path === innerPath + "/"
+                || e.path.startsWith(innerPath + "/"),
+            );
         });
     }
 
-    /** Delete a file from inside an archive. */
+    /** Delete a file from inside a ZIP archive. */
     async deleteFile(archivePath: string, innerPath: string): Promise<void> {
         return this.enqueue(archivePath, async () => {
-            const zip = await this.loadArchive(archivePath);
+            const zip = await this.loadZipArchive(archivePath);
             zip.remove(innerPath);
-            const output = await zip.generateAsync({
-                type: "nodebuffer",
-                compression: "DEFLATE",
-                compressionOptions: { level: 6 },
-            });
+            const output = await this.generateZip(zip);
             nodefs.writeFileSync(archivePath, output);
         });
     }
 
-    /** Rename a file or folder inside an archive. */
+    /** Rename a file or folder inside a ZIP archive. */
     async renameFile(archivePath: string, oldInnerPath: string, newInnerPath: string): Promise<void> {
         return this.enqueue(archivePath, async () => {
-            const zip = await this.loadArchive(archivePath);
+            const zip = await this.loadZipArchive(archivePath);
             const file = zip.file(oldInnerPath);
             if (file) {
-                // File rename: read content, add with new name, remove old
                 const content = await file.async("nodebuffer");
                 zip.file(newInnerPath, content, { date: file.date });
                 zip.remove(oldInnerPath);
             } else {
-                // Folder rename: move all entries under the old prefix to the new prefix
                 const oldPrefix = oldInnerPath.endsWith("/") ? oldInnerPath : oldInnerPath + "/";
                 const newPrefix = newInnerPath.endsWith("/") ? newInnerPath : newInnerPath + "/";
                 const entriesToMove: { path: string; file: any }[] = []; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -179,34 +246,26 @@ class ArchiveService {
                     zip.remove(entry.path);
                 }
             }
-            const output = await zip.generateAsync({
-                type: "nodebuffer",
-                compression: "DEFLATE",
-                compressionOptions: { level: 6 },
-            });
+            const output = await this.generateZip(zip);
             nodefs.writeFileSync(archivePath, output);
         });
     }
 
-    /** Create an empty directory entry inside an archive. */
+    /** Create an empty directory entry inside a ZIP archive. */
     async mkdir(archivePath: string, innerPath: string): Promise<void> {
         return this.enqueue(archivePath, async () => {
-            const zip = await this.loadArchive(archivePath);
+            const zip = await this.loadZipArchive(archivePath);
             const dirPath = innerPath.endsWith("/") ? innerPath : innerPath + "/";
             zip.file(dirPath, "", { dir: true });
-            const output = await zip.generateAsync({
-                type: "nodebuffer",
-                compression: "DEFLATE",
-                compressionOptions: { level: 6 },
-            });
+            const output = await this.generateZip(zip);
             nodefs.writeFileSync(archivePath, output);
         });
     }
 
-    /** Remove a directory and all its contents from an archive. */
+    /** Remove a directory and all its contents from a ZIP archive. */
     async removeDir(archivePath: string, innerPath: string): Promise<void> {
         return this.enqueue(archivePath, async () => {
-            const zip = await this.loadArchive(archivePath);
+            const zip = await this.loadZipArchive(archivePath);
             const prefix = innerPath.endsWith("/") ? innerPath : innerPath + "/";
             const toRemove: string[] = [];
             zip.forEach((relativePath: string) => {
@@ -214,18 +273,13 @@ class ArchiveService {
                     toRemove.push(relativePath);
                 }
             });
-            // Also remove the directory entry itself (without trailing slash)
             if (zip.file(innerPath)) {
                 toRemove.push(innerPath);
             }
             for (const p of toRemove) {
                 zip.remove(p);
             }
-            const output = await zip.generateAsync({
-                type: "nodebuffer",
-                compression: "DEFLATE",
-                compressionOptions: { level: 6 },
-            });
+            const output = await this.generateZip(zip);
             nodefs.writeFileSync(archivePath, output);
         });
     }
@@ -236,48 +290,31 @@ class ArchiveService {
             if (!nodefs.existsSync(archivePath)) {
                 return { size: 0, mtime: 0, exists: false, isDirectory: false };
             }
-            const zip = await this.loadArchive(archivePath);
-            const file = zip.file(innerPath);
-            if (file) {
+            const allEntries = await this.readAllEntries(archivePath);
+
+            // Exact match
+            const exact = allEntries.find(e => e.path === innerPath);
+            if (exact) {
                 return {
-                    size: file._data?.uncompressedSize ?? 0,
-                    mtime: file.date?.getTime() ?? 0,
+                    size: exact.size,
+                    mtime: exact.mtime,
                     exists: true,
-                    isDirectory: false,
+                    isDirectory: exact.isDirectory,
                 };
             }
-            // Check if it's a directory
-            const dirPath = innerPath.endsWith("/") ? innerPath : innerPath + "/";
-            const dirEntry = zip.file(dirPath);
-            if (dirEntry || this.hasChildren(zip, innerPath)) {
-                return { size: 0, mtime: dirEntry?.date?.getTime() ?? 0, exists: true, isDirectory: true };
+
+            // Implicit directory (has children under this prefix)
+            const dirPrefix = innerPath.endsWith("/") ? innerPath : innerPath + "/";
+            const hasChildren = allEntries.some(e => e.path.startsWith(dirPrefix));
+            if (hasChildren) {
+                return { size: 0, mtime: 0, exists: true, isDirectory: true };
             }
+
             return { size: 0, mtime: 0, exists: false, isDirectory: false };
         });
     }
 
     // ── Private ──────────────────────────────────────────────────────────
-
-    /** Load a ZIP archive from disk using jszip (dynamic import). */
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    private async loadArchive(archivePath: string): Promise<any> {
-        const JSZip = (await import("jszip")).default;
-        const data = nodefs.readFileSync(archivePath);
-        return JSZip.loadAsync(data);
-    }
-
-    /** Check if any entries exist under a given prefix (implicit directory). */
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    private hasChildren(zip: any, prefix: string): boolean {
-        const dirPrefix = prefix.endsWith("/") ? prefix : prefix + "/";
-        let found = false;
-        zip.forEach((relativePath: string) => {
-            if (relativePath.startsWith(dirPrefix)) {
-                found = true;
-            }
-        });
-        return found;
-    }
 
     /**
      * Sequential promise queue per archive file.

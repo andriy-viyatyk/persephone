@@ -30,6 +30,10 @@ Release notes and changelog for Persephone (formerly js-notepad).
 - **Explorer panel — remote archives** — When opening an archive from a remote URL (e.g., `https://example.com/data.zip`), the File Explorer panel is no longer shown alongside the Archive panel, since there is no local folder to browse.
 - **Link Editor — sidebar panels** — The Link Editor's Categories, Tags, and Hostnames panels now adapt to the sidebar. When the page sidebar is open, these panels appear there as separate collapsible panels (the same sidebar used by the File Explorer). When the sidebar is closed, they remain as a left panel inside the editor as before.
 - **Link Editor — double-click to open** — Double-clicking a link in list view, tile view, or the pinned links panel now opens the link (navigates to the URL) instead of opening the edit dialog. Use the right-click context menu → **Edit** to edit a link.
+- **Links panel — rich tooltips** — Hovering a non-directory link in the Links/Categories sidebar panel now shows a rich tooltip with the link's title, URL, and image preview (if available).
+- **Links panel — Edit Link context menu** — Right-clicking a non-directory link in the Links/Categories sidebar panel now shows an **Edit Link** option to open the link's edit dialog.
+- **Script API: `ILink.target`** — Links now support a `target` field to specify a preferred editor (e.g., `"image-view"`, `"monaco"`). When set, clicking the link opens it in that editor instead of the auto-detected one.
+- **Script API: `ILinkMetadata.title` and `ILinkMetadata.fallbackTarget`** — The `OpenLinkEvent` metadata now supports a `title` field (page title override) and a `fallbackTarget` field (fallback editor for URLs with unrecognized extensions, e.g. `"monaco"` to avoid opening unknown URLs in the browser).
 
 ### Breaking Changes
 

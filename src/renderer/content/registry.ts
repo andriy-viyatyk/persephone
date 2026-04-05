@@ -7,7 +7,7 @@ import { FileProvider } from "./providers/FileProvider";
 import { CacheFileProvider } from "./providers/CacheFileProvider";
 import { HttpProvider } from "./providers/HttpProvider";
 import { DataUrlProvider } from "./providers/DataUrlProvider";
-import { ZipTransformer } from "./transformers/ZipTransformer";
+import { ArchiveTransformer } from "./transformers/ArchiveTransformer";
 import { DecryptTransformer } from "./transformers/DecryptTransformer";
 
 type ProviderFactory = (config: Record<string, unknown>) => IProvider;
@@ -59,7 +59,7 @@ registerProvider("http", (config) => new HttpProvider(
     },
 ));
 registerProvider("data", (config) => new DataUrlProvider(config.url as string));
-registerTransformer("zip", (config) => new ZipTransformer(config.entryPath as string));
+registerTransformer("archive", (config) => new ArchiveTransformer(config.archivePath as string, config.entryPath as string));
 registerTransformer("decrypt", () => {
     throw new Error("DecryptTransformer cannot be created from descriptor — use clone() instead");
 });

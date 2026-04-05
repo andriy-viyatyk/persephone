@@ -182,7 +182,7 @@ Unified content I/O layer in `/src/renderer/content/` that decouples editors fro
 
 **Architecture:**
 - **IProvider** — data backend (FileProvider, CacheFileProvider, HttpProvider). Reads/writes raw bytes.
-- **ITransformer** — data effect applied in chain (ZipTransformer, DecryptTransformer). Bidirectional read/write.
+- **ITransformer** — data effect applied in chain (ArchiveTransformer, DecryptTransformer). Bidirectional read/write.
 - **IContentPipe** — composes a provider with transformers. Handles encoding detection (`readText()`/`writeText()`).
 - **IPipeDescriptor** — serializable pipe state for persistence across app restarts.
 

@@ -8,14 +8,14 @@ How sidebar panels work in Persephone. Covers registration, lifecycle hooks, nav
 
 ## Overview
 
-PageModel holds a `secondaryEditors[]` array of EditorModel instances that appear as sidebar panels in PageNavigator. Secondary editors can be separate models (like ExplorerEditorModel) or the mainEditor itself (like ZipEditorModel when browsing an archive).
+PageModel holds a `secondaryEditors[]` array of EditorModel instances that appear as sidebar panels in PageNavigator. Secondary editors can be separate models (like ExplorerEditorModel) or the mainEditor itself (like ArchiveEditorModel when browsing an archive).
 
 ```
 PageModel (one per tab)
   ├── mainEditor: EditorModel              // primary content area
   ├── secondaryEditors: EditorModel[]      // sidebar panels
   │   ├── ExplorerEditorModel              // Pattern A: separate model
-  │   └── ZipEditorModel ←── same as mainEditor  // Pattern B: mainEditor as secondary
+  │   └── ArchiveEditorModel ←── same as mainEditor  // Pattern B: mainEditor as secondary
   ├── pageNavigatorModel                   // sidebar layout: open/close/width
   ├── activePanel: string                  // which panel is expanded
   └── expandPanel(panelId)                 // expand a specific panel
@@ -29,7 +29,7 @@ The `secondaryEditor` getter/setter on EditorModel manages `PageModel.secondaryE
 
 ```typescript
 // Setting adds the model to page.secondaryEditors[]
-model.secondaryEditor = ["zip-tree"];          // one panel
+model.secondaryEditor = ["archive-tree"];       // one panel
 model.secondaryEditor = ["explorer", "search"]; // multiple panels
 
 // Clearing removes the model (without disposing it)
@@ -56,18 +56,18 @@ PageModel
 - Survives navigation — `beforeNavigateAway()` never clears (Explorer is always present)
 - Disposed when user closes the panel or the page closes
 
-### Pattern B: mainEditor as secondary (ZipEditorModel)
+### Pattern B: mainEditor as secondary (ArchiveEditorModel)
 
 The mainEditor registers itself in `secondaryEditors[]` simultaneously. The same model instance is both `page.mainEditor` and in `page.secondaryEditors[]`.
 
 ```
 PageModel
-  ├── mainEditor: ZipEditorModel ←─── same instance
-  └── secondaryEditors: [ExplorerEditorModel, ZipEditorModel ←─── same instance]
+  ├── mainEditor: ArchiveEditorModel ←─── same instance
+  └── secondaryEditors: [ExplorerEditorModel, ArchiveEditorModel ←─── same instance]
 ```
 
-- ZipEditorModel sets `this.secondaryEditor = ["zip-tree"]` in `restore()` or `setPage()`
-- When user navigates to a file inside the archive, ZipEditorModel becomes a secondary editor:
+- ArchiveEditorModel sets `this.secondaryEditor = ["archive-tree"]` in `restore()` or `setPage()`
+- When user navigates to a file inside the archive, ArchiveEditorModel becomes a secondary editor:
   - `beforeNavigateAway(newEditor)` checks `newEditor.sourceLink.metadata.sourceId === this.id`
   - If the new file was opened from this archive → keeps `secondaryEditor` → **survives as secondary**
   - `setMainEditor()` checks `survivesAsSecondary = secondaryEditors.includes(oldEditor)` — if true, old editor is NOT disposed
@@ -83,7 +83,7 @@ EditorModel provides lifecycle hooks that PageModel calls at specific moments:
 
 | Hook | Called by | When | Base behavior | Override for |
 |------|-----------|------|---------------|-------------|
-| `setPage(page)` | `addSecondaryEditor()`, `setMainEditor()` | Model attached to / detached from a page | Stores reference | Registration (e.g., ZipEditorModel sets `secondaryEditor` here) |
+| `setPage(page)` | `addSecondaryEditor()`, `setMainEditor()` | Model attached to / detached from a page | Stores reference | Registration (e.g., ArchiveEditorModel sets `secondaryEditor` here) |
 | `beforeNavigateAway(newEditor)` | `setMainEditor()` | Old mainEditor is about to be replaced | Clears `secondaryEditor` (remove self) | Conditional survival (check `newEditor.sourceLink`) |
 | `onMainEditorChanged(newMainEditor)` | `notifyMainEditorChanged()` | After mainEditor was replaced | No-op | React to new content: highlight file in tree, clear selection, or remove self |
 | `onPanelExpanded(panelId)` | `setActivePanel()` | A panel belonging to this model was expanded | No-op | Deferred reveal (scroll to highlighted item) |
@@ -98,7 +98,7 @@ When user navigates to a new file (`navigatePageTo()`):
 1. page.setMainEditor(newEditor)
    ├── oldEditor.beforeNavigateAway(newEditor)
    │   ├── Base: this.secondaryEditor = undefined  → removed from sidebar
-   │   └── Override (ZipEditorModel): keep if newEditor is from this archive
+   │   └── Override (ArchiveEditorModel): keep if newEditor is from this archive
    │
    ├── survivesAsSecondary = secondaryEditors.includes(oldEditor)
    │   ├── true  → oldEditor stays alive (no dispose, no setPage(null))
@@ -109,7 +109,7 @@ When user navigates to a new file (`navigatePageTo()`):
    │
    ├── notifyMainEditorChanged()
    │   ├── For each secondary editor: m.onMainEditorChanged(newMainEditor)
-   │   │   └── ZipEditorModel: checks sourceId, clears if unrelated → dispose
+   │   │   └── ArchiveEditorModel: checks sourceId, clears if unrelated → dispose
    │   │   └── ExplorerEditorModel: updates highlight, never clears
    │   └── Cleanup: remove & dispose models that cleared their secondaryEditor
    │
@@ -120,9 +120,9 @@ When user navigates to a new file (`navigatePageTo()`):
 
 ## 5. Panel Management
 
-**Active panel:** `PageModel.activePanel` tracks which panel is expanded (e.g., `"explorer"`, `"zip-tree"`). Only one panel is expanded at a time.
+**Active panel:** `PageModel.activePanel` tracks which panel is expanded (e.g., `"explorer"`, `"archive-tree"`). Only one panel is expanded at a time.
 
-**Expand:** `page.expandPanel(panelId)` — sets activePanel if the panelId exists in any secondary editor's array. Calls `onPanelExpanded(panelId)` on the owning model. Used by models to auto-expand their panel (e.g., ZipEditorModel expands "zip-tree" when navigating to an archive entry).
+**Expand:** `page.expandPanel(panelId)` — sets activePanel if the panelId exists in any secondary editor's array. Calls `onPanelExpanded(panelId)` on the owning model. Used by models to auto-expand their panel (e.g., ArchiveEditorModel expands "archive-tree" when navigating to an archive entry).
 
 **Close:** The secondary editor's React component renders a close button in its portal header. The close handler clears `model.secondaryEditor = undefined`, which removes the model from the sidebar. For user-closeable panels, this is the standard pattern.
 
@@ -202,7 +202,7 @@ For Pattern B (mainEditor in secondaryEditors[]), the model may be disposed twic
 | Model | Panel IDs | Pattern | Survival | Created by |
 |-------|-----------|---------|----------|-----------|
 | `ExplorerEditorModel` | `["explorer"]` or `["explorer", "search"]` | A (separate) | Always survives navigation | `PageModel.createExplorer()` or restore |
-| `ZipEditorModel` | `["zip-tree"]` | B (mainEditor) | Survives if new editor was opened from this archive | `_openZipArchive()` in PagesLifecycleModel |
+| `ArchiveEditorModel` | `["archive-tree"]` | B (mainEditor) | Survives if new editor was opened from this archive | `_openArchive()` in PagesLifecycleModel |
 | `TextFileModel` (links, main) | `["link-category", "link-tags"?, "link-hostnames"?]` | B (mainEditor) | Removed on navigation (default `beforeNavigateAway`). Removed when PageNavigator closes, re-registered when it opens. | LinkEditor component `useEffect` (subscribes to `pageNavigatorToggled` event) |
 | `TextFileModel` (links, standalone) | `["link-category"]` | A (separate) | Always survives (base `onMainEditorChanged` is no-op). Exposes `treeProvider`/`selectionState` via duck-typing for CategoryEditor discovery. | `openLinks()` in PagesLifecycleModel |
 
@@ -340,10 +340,10 @@ CategoryEditor is the main content area editor for `tree-category://` links. It 
 CategoryEditor resolves its ITreeProvider by scanning `page.secondaryEditors[]`. It matches the `tree-category://` link's `type` and `url` against each secondary editor's `treeProvider.type` and `treeProvider.sourceUrl`:
 
 ```
-tree-category:// link: { type: "zip", url: "D:\archive.epub", category: "OEBPS" }
+tree-category:// link: { type: "archive", url: "D:\archive.epub", category: "OEBPS" }
                                 ↓ scan secondaryEditors[]
     ExplorerEditorModel → treeProvider.type="file", sourceUrl="D:\temp"     → no match
-    ZipEditorModel      → treeProvider.type="zip",  sourceUrl="D:\archive.epub" → MATCH
+    ArchiveEditorModel  → treeProvider.type="archive", sourceUrl="D:\archive.epub" → MATCH
 ```
 
 This uses a duck-type interface — no EditorModel base class changes:
@@ -355,7 +355,7 @@ interface ITreeProviderHost {
 }
 ```
 
-Both `ExplorerEditorModel` and `ZipEditorModel` expose `treeProvider` and `selectionState` with identical signatures.
+Both `ExplorerEditorModel` and `ArchiveEditorModel` expose `treeProvider` and `selectionState` with identical signatures.
 
 ### Navigation Survival
 
@@ -378,5 +378,5 @@ PageModel
   │   └── scans secondaryEditors[] for matching treeProvider
   └── secondaryEditors:
       ├── ExplorerEditorModel (treeProvider: FileTreeProvider)
-      └── ZipEditorModel (treeProvider: ZipTreeProvider)
+      └── ArchiveEditorModel (treeProvider: ArchiveTreeProvider)
 ```

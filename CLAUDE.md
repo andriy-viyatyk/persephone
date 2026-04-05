@@ -252,8 +252,8 @@ Content I/O flows through a 3-layer pipeline (`/src/renderer/content/`):
 Content pipes (`IContentPipe`) compose a provider (data source) with transformers (data effects):
 ```typescript
 // Provider reads/writes raw bytes; transformers process in chain
-const pipe = createPipe(new FileProvider(filePath), new ZipTransformer(entry));
-const text = await pipe.readText();  // FileProvider → ZipTransformer → decode
+const pipe = createPipe(new FileProvider(filePath), new ArchiveTransformer(entry));
+const text = await pipe.readText();  // FileProvider → ArchiveTransformer → decode
 ```
 
 TextFileIOModel uses dual pipes: primary (source file) + cache (auto-save). Pipe state is serialized in `IEditorState.pipe` (`IPipeDescriptor`) for restore across app restarts.
@@ -284,7 +284,7 @@ See [/doc/standards/coding-style.md](doc/standards/coding-style.md) for complete
 | Page container (tab)     | `/src/renderer/api/pages/PageModel.ts`            |
 | Well-known pages         | `/src/renderer/api/pages/well-known-pages.ts`     |
 | File operations          | `/src/renderer/api/fs.ts`                         |
-| Archive I/O (ZIP)        | `/src/renderer/api/archive-service.ts`             |
+| Archive I/O (ZIP/RAR/7z/TAR) | `/src/renderer/api/archive-service.ts`          |
 | Node.js HTTP client      | `/src/renderer/api/node-fetch.ts`                 |
 | Path utilities           | `/src/renderer/core/utils/file-path.ts`           |
 | App settings             | `/src/renderer/api/settings.ts`                   |

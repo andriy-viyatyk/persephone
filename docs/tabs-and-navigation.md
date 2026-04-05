@@ -188,6 +188,7 @@ The page sidebar is shared across editors. Different editors contribute their ow
 - **File Explorer** — Available for any saved file. Shows files and folders alongside the editor.
 - **Archive** — Appears when a file inside a ZIP-based archive is open. Shows the archive's file tree.
 - **Link Editor panels** — When a `.link.json` file is open, the sidebar shows **Categories**, **Tags**, and **Hostnames** panels for filtering links. Click a panel header to expand it; click an item to filter the link list. The breadcrumb in the Link Editor toolbar shows the current filter path.
+- **Links panel** — When a standalone link collection page is open (created by multi-file drop, `app.pages.openLinks()`, or "Show Resources"), a **Links** or **Categories** panel appears in the sidebar. Click a link to navigate the page's main area to that file or URL. Hover a non-directory link to see a rich tooltip with title, URL, and image preview. Right-click a non-directory link for an **Edit Link** context menu.
 
 When the sidebar is not open, the Link Editor shows its filters (Categories, Tags, Hostnames) as tabs in a collapsible left panel inside the editor itself.
 

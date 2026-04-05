@@ -1,8 +1,8 @@
 import { FileProvider } from "../../content/providers/FileProvider";
 import { HttpProvider } from "../../content/providers/HttpProvider";
-import { ZipTransformer } from "../../content/transformers/ZipTransformer";
+import { ArchiveTransformer } from "../../content/transformers/ArchiveTransformer";
 import { DecryptTransformer } from "../../content/transformers/DecryptTransformer";
-import { ZipTreeProvider } from "../../content/tree-providers/ZipTreeProvider";
+import { ArchiveTreeProvider } from "../../content/tree-providers/ArchiveTreeProvider";
 import { createPipe } from "../../content/ContentPipe";
 import { RawLinkEvent, OpenLinkEvent, OpenContentEvent } from "../../api/events/events";
 
@@ -19,11 +19,11 @@ export function createIoNamespace() {
         HttpProvider,
 
         // Transformers
-        ZipTransformer,
+        ArchiveTransformer,
         DecryptTransformer,
 
         // Tree providers
-        ZipTreeProvider,
+        ArchiveTreeProvider,
 
         // Pipe assembly
         createPipe,

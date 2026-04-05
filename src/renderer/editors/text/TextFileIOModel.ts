@@ -12,7 +12,7 @@ import type { IContentPipe } from "../../api/types/io.pipe";
 import { ContentPipe } from "../../content/ContentPipe";
 import { FileProvider } from "../../content/providers/FileProvider";
 import { CacheFileProvider } from "../../content/providers/CacheFileProvider";
-import { ZipTransformer } from "../../content/transformers/ZipTransformer";
+import { ArchiveTransformer } from "../../content/transformers/ArchiveTransformer";
 
 export class TextFileIOModel {
     /** Cache pipe — same transformers as primary pipe, CacheFileProvider as source. */
@@ -39,7 +39,7 @@ export class TextFileIOModel {
             const entryPath = filePath.slice(bangIndex + 1);
             this.model.pipe = new ContentPipe(
                 new FileProvider(archivePath),
-                [new ZipTransformer(entryPath)],
+                [new ArchiveTransformer(archivePath, entryPath)],
             );
         } else {
             this.model.pipe = new ContentPipe(new FileProvider(filePath));
@@ -180,7 +180,7 @@ export class TextFileIOModel {
     applyRenamedPath = async (newPath: string) => {
         const oldPath = this.model.state.get().filePath;
 
-        // Preserve transformers from existing pipe (e.g., ZipTransformer, DecryptTransformer)
+        // Preserve transformers from existing pipe (e.g., ArchiveTransformer, DecryptTransformer)
         const newProvider = new FileProvider(newPath);
         const newPipe = this.model.pipe
             ? this.model.pipe.cloneWithProvider(newProvider)

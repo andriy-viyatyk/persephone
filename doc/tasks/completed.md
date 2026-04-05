@@ -3,6 +3,7 @@
 All completed tasks, newest first.
 
 | ID | Title | Epic | Notes |
+| US-361 | Adopt libarchive-wasm for multi-format archive support | EPIC-018 | Replaced jszip (read) with libarchive-wasm. Supports RAR, 7z, TAR (+gz/bz2/xz), cab, ISO. jszip kept for ZIP writes. Added `ITransformer.writable`; `ContentPipe.writable` checks transformers. Renamed Zip* → Archive* (classes, files, IDs). New helpers: `getArchiveExtension()`, `isZipBasedArchive()`. WASM loaded from `assets/libarchive/`. ~20 files changed. |
 | US-359 | Links panel improvements | EPIC-018 | Rich tooltips with copy-as-JSON, "Edit Link" context menu, navigation fixes (pipe passthrough, target resolution), ILink.target + ILinkMetadata.fallbackTarget/title, DataUrlProvider for data: URLs, inline script/style extraction, language detection from title, deduplication. 14 files changed (1 new). |
 | US-358 | HTML resource extraction | EPIC-018 | `extractHtmlResources()` utility using cheerio via `require()`. "Show Resources" toolbar button on HTML pages + Browser context menu. WebScraperIcon. 4 files (1 new utility + 3 modified). |
 | US-357 | LinkEditor as secondary editor — fixes | EPIC-018 | 5 fixes: cache write order in openLinks(), secondary editor restore for pages without mainEditor, page-level cache cleanup on close, link highlight in Links panel, CategoryEditor discovery via treeProvider duck-typing. 5 files changed. |
