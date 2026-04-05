@@ -1,6 +1,6 @@
 # EPIC-018: Secondary Editors — Content Applications
 
-**Status:** Future
+**Status:** Completed
 **Created:** 2026-04-02
 **Updated:** 2026-04-04
 **Depends on:** EPIC-016 (completed), EPIC-017 (completed), EPIC-019 (completed)
