@@ -80,7 +80,7 @@ This project is developed with **Claude AI** assistance. Before contributing, pl
 
 * **[CONTRIBUTING.md](CONTRIBUTING.md)** - Setup guide and coding standards
 * **[Developer Docs](doc/README.md)** - Architecture and standards
-* **[Active Tasks](doc/tasks/active.md)** - Current work in progress
+* **[Active Work](doc/active-work.md)** - Current epics and tasks
 * **[CLAUDE.md](CLAUDE.md)** - Project context for AI-assisted development
 
 ---

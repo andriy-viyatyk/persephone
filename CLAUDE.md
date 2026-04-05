@@ -138,7 +138,6 @@ When user says **"let's publish new build"** (or similar), follow [/doc/standard
 | Work with scripting system    | [/doc/architecture/scripting.md](doc/architecture/scripting.md) |
 | Check coding style            | [/doc/standards/coding-style.md](doc/standards/coding-style.md) |
 | See active/planned work       | [/doc/active-work.md](doc/active-work.md) |
-| See all epics                 | [/doc/epics/active.md](doc/epics/active.md) |
 | See future ideas              | [/doc/tasks/backlog.md](doc/tasks/backlog.md) |
 | Publish a new build           | [/doc/standards/release-process.md](doc/standards/release-process.md) |
 | Test MCP documentation        | [/qa/README.md](qa/README.md) |

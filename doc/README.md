@@ -17,7 +17,7 @@ User documentation is in [/docs](../docs/) (separate from dev docs).
 ## Quick Links
 
 - [Architecture Overview](./architecture/overview.md)
-- [Active Tasks](./tasks/active.md)
+- [Active Work Dashboard](./active-work.md)
 - [Coding Style Guide](./standards/coding-style.md)
 
 ## Future Work
