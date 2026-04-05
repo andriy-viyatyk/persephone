@@ -14,6 +14,8 @@ import { editorRegistry } from "../../editors/registry";
 import { getLanguageByExtension } from "../../core/utils/language-mapping";
 import { PageModel } from "./PageModel";
 
+import type { ILink } from "../../api/types/io.tree";
+import type { LinkItem, LinkEditorData } from "../../editors/link-editor/linkTypes";
 import { fpBasename, fpExtname } from "../../core/utils/file-path";
 import { fs as appFs } from "../fs";
 import { getWellKnownPageDef } from "./well-known-pages";
@@ -22,6 +24,12 @@ import { ContentPipe } from "../../content/ContentPipe";
 import { FileProvider } from "../../content/providers/FileProvider";
 import { HttpProvider } from "../../content/providers/HttpProvider";
 import { ZipTransformer } from "../../content/transformers/ZipTransformer";
+
+function normalizeLinksTitle(title?: string): string {
+    if (!title) return "untitled.link.json";
+    if (/\.link\.json$/i.test(title)) return title;
+    return title + ".link.json";
+}
 
 /**
  * PagesLifecycleModel — Page creation, opening, closing, and navigation.
@@ -216,6 +224,59 @@ export class PagesLifecycleModel {
         const dims = await getImageDimensions(dataUrl);
         const json = buildExcalidrawJsonWithImage(dataUrl, "image/png", dims.width, dims.height);
         return this.addEditorPage("draw-view", "json", title ?? "untitled.excalidraw", json);
+    };
+
+    openLinks = (
+        links: (ILink | string)[],
+        title?: string,
+    ): PageModel => {
+        const normalizedTitle = normalizeLinksTitle(title);
+
+        // Convert input to LinkItem[]
+        const linkItems: LinkItem[] = links.map((item) => {
+            if (typeof item === "string") {
+                return {
+                    id: crypto.randomUUID(),
+                    title: fpBasename(item) || item,
+                    href: item,
+                    category: "",
+                    tags: [],
+                    isDirectory: false,
+                };
+            }
+            return {
+                ...item,
+                id: item.id || crypto.randomUUID(),
+                category: item.category ?? "",
+                tags: item.tags ?? [],
+                isDirectory: item.isDirectory ?? false,
+            };
+        });
+
+        // Build content JSON
+        const data: LinkEditorData = { links: linkItems, state: {} };
+        const content = JSON.stringify({ type: "link-editor", ...data }, null, 4);
+
+        // Create TextFileModel with link-view content
+        const editorModel = newTextFileModel("");
+        editorModel.state.update((s) => {
+            s.title = normalizedTitle;
+            s.language = "json";
+            s.editor = editorRegistry.validateForLanguage("link-view", "json");
+            s.secondaryEditor = ["link-category"];
+        });
+        editorModel.changeContent(content);
+        editorModel.restore();
+
+        // Create page with the model as secondary editor (not mainEditor)
+        const page = new PageModel();
+        page.addSecondaryEditor(editorModel as unknown as EditorModel);
+        page.ensurePageNavigatorModel();
+        page.expandPanel("link-category");
+
+        this.addPage(null, page);
+        this.model.closeFirstPageIfEmpty();
+        return page;
     };
 
     // ── File opening ─────────────────────────────────────────────────

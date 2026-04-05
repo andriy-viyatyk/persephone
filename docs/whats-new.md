@@ -17,6 +17,7 @@ Release notes and changelog for Persephone (formerly js-notepad).
 - **Script API: `app.pages.addEditorPage()` content parameter** — The `addEditorPage(editor, language, title)` method now accepts an optional fourth argument `content` to set the initial page content.
 - **Script API: `app.pages.openFile()` return value** — Now returns `Promise<IPage | undefined>` instead of `Promise<void>`. The returned page can be used immediately after opening.
 - **Browser: Tor mode** — `app.pages.showBrowserPage()` now accepts a `tor: boolean` option to open in Tor mode (requires Tor to be configured in Settings).
+- **Script API: `app.pages.openLinks()`** — Create a standalone link collection page from an array of links or URL/path strings. The Categories panel appears in the sidebar; clicking a link navigates the page's main area to that file or URL. Accepts plain strings (title derived from filename) or full `ILink` objects with categories and tags. See [`app.pages` reference](./api/pages.md#openlinkslinks-title--ipage).
 
 ### Improvements
 

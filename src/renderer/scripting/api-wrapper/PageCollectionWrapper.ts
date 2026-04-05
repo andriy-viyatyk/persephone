@@ -1,6 +1,7 @@
 import type { PagesModel } from "../../api/pages/PagesModel";
 import { PageWrapper } from "./PageWrapper";
 import { EditorView } from "../../../shared/types";
+import type { ILink } from "../../api/types/io.tree";
 
 /**
  * Safe wrapper around PagesModel for script access.
@@ -94,6 +95,14 @@ export class PageCollectionWrapper {
 
     async addDrawPage(dataUrl: string, title?: string): Promise<PageWrapper> {
         const page = await this.pages.addDrawPage(dataUrl, title);
+        return this.wrap(page)!;
+    }
+
+    openLinks(
+        links: (ILink | string)[],
+        title?: string,
+    ): PageWrapper {
+        const page = this.pages.openLinks(links, title);
         return this.wrap(page)!;
     }
 

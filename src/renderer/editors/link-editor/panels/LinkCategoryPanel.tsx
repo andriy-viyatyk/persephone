@@ -47,9 +47,11 @@ interface LinkCategoryPanelProps {
     useOpenRawLink: boolean;
     /** When true, shows only category folders. When false, shows categories + links. Default: true. */
     categoriesOnly?: boolean;
+    /** Page ID to include in openRawLink metadata (navigates within this page). */
+    pageId?: string;
 }
 
-export function LinkCategoryPanel({ vm, useOpenRawLink, categoriesOnly = true }: LinkCategoryPanelProps) {
+export function LinkCategoryPanel({ vm, useOpenRawLink, categoriesOnly = true, pageId }: LinkCategoryPanelProps) {
     const selectedCategory = useSyncExternalStore(
         (cb) => vm.state.subscribe(cb),
         () => vm.state.get().selectedCategory,
@@ -58,11 +60,13 @@ export function LinkCategoryPanel({ vm, useOpenRawLink, categoriesOnly = true }:
     const handleItemClick = useCallback((item: ILink) => {
         if (useOpenRawLink) {
             const navUrl = vm.treeProvider.getNavigationUrl(item);
-            app.events.openRawLink.sendAsync(new RawLinkEvent(navUrl));
+            app.events.openRawLink.sendAsync(
+                new RawLinkEvent(navUrl, undefined, pageId ? { pageId } : undefined),
+            );
         } else {
             vm.setSelectedCategory(item.href);
         }
-    }, [vm, useOpenRawLink]);
+    }, [vm, useOpenRawLink, pageId]);
 
     const getTreeItemLabel = useCallback(
         (item: ILink, searchText: string) => {

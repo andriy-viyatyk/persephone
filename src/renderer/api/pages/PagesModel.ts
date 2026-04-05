@@ -4,6 +4,7 @@ import { TGlobalState } from "../../core/state/state";
 import { EditorModel } from "../../editors/base";
 import { EditorView, PageDescriptor } from "../../../shared/types";
 import { RawLinkEvent } from "../events/events";
+import type { ILink } from "../types/io.tree";
 import { PageModel } from "./PageModel";
 
 import { PagesQueryModel } from "./PagesQueryModel";
@@ -186,6 +187,8 @@ export class PagesModel extends TModel<OpenFilesState> {
         this.lifecycle.addEditorPage(editor, language, title, content);
     addDrawPage = (dataUrl: string, title?: string) =>
         this.lifecycle.addDrawPage(dataUrl, title);
+    openLinks = (links: (ILink | string)[], title?: string) =>
+        this.lifecycle.openLinks(links, title);
     openFile = async (filePath?: string) => {
         if (!filePath) return undefined;
         // Route through the link pipeline (Layer 1 → 2 → 3)

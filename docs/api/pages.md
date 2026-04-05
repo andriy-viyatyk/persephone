@@ -101,6 +101,32 @@ Create a new drawing page with an embedded image. The image is converted to an E
 const drawPage = await app.pages.addDrawPage(dataUrl, "annotated-screenshot.excalidraw");
 ```
 
+### openLinks(links, title?) → `IPage`
+
+Create a standalone link collection page from an array of links or URL/path strings. The Categories panel appears in the sidebar; clicking a link navigates the page's main area to that file or URL.
+
+- `links` — array of `ILink` objects or plain URL/path strings
+- `title` — optional page title; `.link.json` is appended automatically if not already present (default: `"untitled.link.json"`)
+
+When a plain string is passed, the filename part of the path is used as the display title. Full `ILink` objects let you specify categories, tags, and other metadata.
+
+```javascript
+// From file paths — titles are derived from filenames
+app.pages.openLinks(["C:/data/report.csv", "C:/data/summary.txt"], "Reports");
+
+// From ILink objects with categories and tags
+app.pages.openLinks([
+    { title: "API Docs", href: "https://docs.example.com", category: "Reference", tags: ["api"], isDirectory: false },
+    { title: "Tutorial", href: "https://tutorial.example.com", category: "Learning", tags: ["tutorial"], isDirectory: false },
+], "Bookmarks");
+
+// Mixed — strings and ILink objects together
+app.pages.openLinks([
+    "C:/notes/todo.md",
+    { title: "Project Repo", href: "https://github.com/org/repo", category: "Code", tags: [], isDirectory: false },
+], "My Links");
+```
+
 ### openDiff(params) → `Promise<void>`
 
 Open a diff view for two files side by side.
