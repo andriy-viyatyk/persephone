@@ -250,7 +250,12 @@ export class TextFileIOModel {
                     s.content = fileContent || "";
                     s.encrypted = shell.encryption.isEncrypted(s.content);
                     s.encoding = pipe.encoding;
-                    s.title = s.title || fpBasename(filePath || "");
+                    // Set title from file path if still default "untitled".
+                    // Preserve titles set explicitly by the content pipeline (e.g. cURL links).
+                    const basename = fpBasename(filePath || "");
+                    if (basename && (!s.title || s.title === "untitled")) {
+                        s.title = basename;
+                    }
                     const titleExt = fpExtname(s.title || "").toLowerCase();
                     s.language =
                         s.language ||
