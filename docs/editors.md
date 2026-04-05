@@ -358,7 +358,10 @@ app.pages.addEditorPage("category-view", "", "My Folder");
 
 ## Archive Editor
 
-For ZIP-based archives (`.zip`, `.docx`, `.xlsx`, `.pptx`, `.jar`, `.war`, `.epub`, `.odt`, `.ods`, `.odp`) — opens automatically when you open an archive file. Also supports Electron `.asar` archives.
+Opens automatically when you open an archive file. Supports:
+- **ZIP-based:** `.zip`, `.docx`, `.xlsx`, `.pptx`, `.jar`, `.war`, `.epub`, `.odt`, `.ods`, `.odp`
+- **Multi-format (read-only):** `.rar`, `.7z`, `.tar`, `.tar.gz`, `.tar.bz2`, `.tar.xz`, `.cab`, `.iso`
+- **Electron:** `.asar`
 
 **How it works:**
 
@@ -367,7 +370,7 @@ For ZIP-based archives (`.zip`, `.docx`, `.xlsx`, `.pptx`, `.jar`, `.war`, `.epu
 - **Entry highlighting** — The Archive panel highlights the currently viewed entry in the tree as you navigate between files.
 - **Auto-reveal** — When the Archive panel is expanded, navigating to a file automatically expands its parent folders and scrolls the tree to reveal the entry.
 - **Auto-expand/collapse** — The Archive panel expands automatically when navigating to files inside the archive and collapses when you navigate away to unrelated files.
-- **Read-only** — Archive contents cannot be edited directly. To read individual entries in scripts, use `io.ZipTransformer` with `io.FileProvider`.
+- **Read-only (non-ZIP)** — RAR, 7z, TAR, and other non-ZIP formats are read-only. ZIP-based archives support writing entries back. To read individual entries in scripts, use `io.ArchiveTransformer` with `io.FileProvider`.
 - **Open as Archive** — Right-click an archive file in the File Explorer and choose **Open as Archive** to browse it in a dedicated Archive tab.
 - **ASAR archives** — Electron `.asar` files open the same way. File operations are disabled inside `.asar` archives.
 

@@ -175,6 +175,7 @@ The renderer builds the menu dynamically based on `params` fields from the `cont
 
 - **Coordinates:** `params.x/y` are in host window coordinate space (used for popup position). For `webview.inspectElement()` and `elementFromPoint()`, subtract the webview's bounding rect to get webview-relative coordinates.
 - **SVG extraction:** Uses `webview.executeJavaScript()` to probe the click target with `elementFromPoint()` + `closest('svg')`. The SVG is cloned and auto-fixed (xmlns, viewBox from `getBBox()`, width/height, HTML comment stripping).
+- **View Actual DOM / Show Resources:** Uses `ipcRenderer.invoke(BrowserChannel.collectDom, key)` to collect the full DOM from the main process. The main process iterates `webContents.mainFrame.framesInSubtree` to collect DOM from all frames (including cross-origin iframes), then uses cheerio to inject each iframe's DOM inside the corresponding `<iframe>` element in the parent HTML.
 - **Copy for selections:** Uses `navigator.clipboard.writeText(selectionText)` instead of `webview.copy()` because the webview loses focus when the popup menu opens.
 - **Popup dismissal:** Webview clicks don't bubble to the renderer DOM. A transparent overlay (`webview-click-overlay`) is rendered over the webview area while a popup menu is open, allowing clicks to reach the renderer's `document` and trigger the popup's dismiss handler.
 - **skipInspect:** The browser context menu provides its own "Inspect Element" item, so `showAppPopupMenu` is called with `{ skipInspect: true }` to suppress the app's default "Inspect" item.
@@ -191,7 +192,7 @@ The renderer builds the menu dynamically based on `params` fields from the `cont
 | `src/renderer/editors/browser/UrlSuggestionsDropdown.tsx` | Renderer | URL bar dropdown with search history and navigation history |
 | `src/renderer/editors/browser/browser-search-history.ts` | Renderer | Per-profile persistent search history storage (file-based) |
 | `src/renderer/editors/browser/TorStatusOverlay.tsx` | Renderer | Tor connection overlay with spinner, log, reconnect button |
-| `src/main/browser-service.ts` | Main | Attaches to webContents, relays events via IPC, audio state, hotkeys, cache cleanup |
+| `src/main/browser-service.ts` | Main | Attaches to webContents, relays events via IPC, audio state, hotkeys, cache cleanup, DOM collection (incl. iframes) |
 | `src/main/tor-service.ts` | Main | Tor process lifecycle: spawn/kill tor.exe, per-partition SOCKS5 proxy, torrc generation |
 | `src/preload-webview.ts` | Guest | MutationObserver for title/favicon, image tracking on link clicks |
 | `src/ipc/browser-ipc.ts` | Shared | IPC channel names and type definitions |

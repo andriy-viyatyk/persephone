@@ -10,7 +10,7 @@ Use `io` to read and write binary content from files, HTTP URLs, and archives. I
 // Read a CSV from inside a ZIP archive
 const pipe = io.createPipe(
     new io.FileProvider("C:/reports/archive.zip"),
-    new io.ZipTransformer("data/summary.csv"),
+    new io.ArchiveTransformer("C:/reports/archive.zip", "data/summary.csv"),
 );
 const text = await pipe.readText();
 return text;
@@ -69,19 +69,20 @@ The resulting provider is **read-only** -- pipes built from it do not support wr
 
 Transformers process bytes between the provider and your code. They sit in a chain: on read, data flows provider -> transformer 1 -> transformer 2 -> your code. On write, the chain reverses.
 
-### ZipTransformer
+### ArchiveTransformer
 
-Extract (or replace) a single entry inside a ZIP archive.
+Extract (or replace) a single entry inside an archive file. Supports ZIP, RAR, 7z, TAR (including `.tar.gz`, `.tar.bz2`, `.tar.xz`), CAB, ISO, and other formats for reading. Write back (replacing an entry) is supported only for ZIP-based archives.
 
 ```javascript
-const transformer = new io.ZipTransformer("reports/summary.csv");
+const transformer = new io.ArchiveTransformer("C:/reports/archive.zip", "reports/summary.csv");
 ```
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `entryPath` | `string` | Path of the entry inside the ZIP archive. |
+| `archivePath` | `string` | Absolute path to the archive file on disk. |
+| `entryPath` | `string` | Path of the entry inside the archive. |
 
-This transformer supports both read and write. On write, the original archive is rebuilt with the updated entry.
+On write, the entry is replaced and the archive is rebuilt. Write is only supported for ZIP-based formats (`.zip`, `.docx`, `.xlsx`, etc.). Calling `writeText()` or `writeBinary()` on a non-ZIP archive throws an error — check `pipe.writable` first.
 
 ### DecryptTransformer
 
@@ -116,14 +117,14 @@ const pipe = io.createPipe(new io.FileProvider("C:/data/file.txt"));
 // Provider + one transformer
 const pipe = io.createPipe(
     new io.FileProvider("C:/data/archive.zip"),
-    new io.ZipTransformer("readme.md"),
+    new io.ArchiveTransformer("C:/data/archive.zip", "readme.md"),
 );
 
 // Provider + multiple transformers (chained in order)
 const pipe = io.createPipe(
     new io.FileProvider("C:/data/encrypted-archive.zip"),
     new io.DecryptTransformer("password"),
-    new io.ZipTransformer("secret/data.json"),
+    new io.ArchiveTransformer("C:/data/encrypted-archive.zip", "secret/data.json"),
 );
 ```
 
@@ -211,7 +212,7 @@ Create a deep copy of the pipe (same provider and transformers).
 
 ```javascript
 const clone = pipe.clone();
-clone.addTransformer(new io.ZipTransformer("other-entry.txt"));
+clone.addTransformer(new io.ArchiveTransformer("C:/data/archive.zip", "other-entry.txt"));
 ```
 
 #### cloneWithProvider(provider) -> `IContentPipe`
@@ -313,7 +314,7 @@ Layer 3 input. Open a pre-assembled content pipe directly in an editor, bypassin
 ```javascript
 const pipe = io.createPipe(
     new io.FileProvider("C:/data.zip"),
-    new io.ZipTransformer("report.csv"),
+    new io.ArchiveTransformer("C:/data.zip", "report.csv"),
 );
 await app.events.openContent.sendAsync(
     new io.OpenContentEvent(pipe, "grid-csv")
@@ -341,12 +342,12 @@ console.log(data.length + " users");
 return data;
 ```
 
-### Read a file inside a ZIP archive
+### Read a file inside an archive
 
 ```javascript
 const pipe = io.createPipe(
     new io.FileProvider("C:/reports/archive.zip"),
-    new io.ZipTransformer("reports/summary.csv"),
+    new io.ArchiveTransformer("C:/reports/archive.zip", "reports/summary.csv"),
 );
 return await pipe.readText();
 ```

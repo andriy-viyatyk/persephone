@@ -18,6 +18,8 @@ export const BrowserChannel = {
     clearProfileData: "browser:clear-profile-data",
     /** Clear only HTTP cache (not cookies/storage) for a given partition. Returns when done. */
     clearCache: "browser:clear-cache",
+    /** Renderer → Main (invoke): collect full DOM including iframe content. Args: (key: string) */
+    collectDom: "browser:collect-dom",
     /** Renderer → Main: mute/unmute a webview's audio. Args: (key: string, muted: boolean) */
     setAudioMuted: "browser:set-audio-muted",
     /** Renderer → Main: allow popups for a given tabId (disable rate limiting). Args: (tabId: string) */

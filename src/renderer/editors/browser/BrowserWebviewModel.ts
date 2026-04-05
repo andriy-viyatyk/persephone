@@ -465,12 +465,14 @@ export class BrowserWebviewModel {
             },
         });
 
-        // View actual DOM
+        // View actual DOM (includes iframe content via main process)
+        const regKey = `${this.model.id}/${internalTabId}`;
         items.push({
             label: "View Actual DOM",
             onClick: async () => {
-                const html = await webview.executeJavaScript(
-                    "document.documentElement.outerHTML",
+                const html = await ipcRenderer.invoke(
+                    BrowserChannel.collectDom,
+                    regKey,
                 );
                 const page = newTextFileModel();
                 page.state.update((s) => {
@@ -483,12 +485,13 @@ export class BrowserWebviewModel {
             },
         });
 
-        // Show resources extracted from the page DOM
+        // Show resources extracted from the page DOM (includes iframe content)
         items.push({
             label: "Show Resources",
             onClick: async () => {
-                const html = await webview.executeJavaScript(
-                    "document.documentElement.outerHTML",
+                const html = await ipcRenderer.invoke(
+                    BrowserChannel.collectDom,
+                    regKey,
                 );
                 const { extractHtmlResources } = await import("../../core/utils/html-resources");
                 const links = extractHtmlResources(html, { baseUrl: pageUrl });
@@ -530,4 +533,79 @@ export class BrowserWebviewModel {
             this.model.state.update((s) => { s.popupOpen = false; });
         });
     };
+
+    // =====================================================================
+    // Page Menu (toolbar "..." button)
+    // =====================================================================
+
+    /**
+     * Build menu items for the toolbar page menu ("..." button).
+     * Provides View Source, View Actual DOM, and Show Resources
+     * without needing a right-click context menu on the webview.
+     */
+    getPageMenuItems(): MenuItem[] {
+        const state = this.model.state.get();
+        const activeTabId = state.activeTabId;
+        const tab = state.tabs.find((t) => t.id === activeTabId);
+        const webview = this.getActiveWebview();
+        const pageUrl = tab?.url || "";
+        const hasPage = !!webview && !!pageUrl && pageUrl !== "about:blank";
+        const regKey = `${this.model.id}/${activeTabId}`;
+
+        return [
+            {
+                label: "View Source",
+                disabled: !hasPage,
+                onClick: async () => {
+                    if (!webview) return;
+                    const resp = await webview.executeJavaScript(
+                        `fetch(location.href).then(r => r.text())`,
+                    );
+                    const page = newTextFileModel();
+                    page.state.update((s) => {
+                        s.title = "Source: " + (tab?.pageTitle || pageUrl);
+                        s.language = "html";
+                        s.content = resp;
+                    });
+                    page.restore();
+                    pagesModel.addPage(page as unknown as EditorModel);
+                },
+            },
+            {
+                label: "View Actual DOM",
+                disabled: !hasPage,
+                onClick: async () => {
+                    const html = await ipcRenderer.invoke(
+                        BrowserChannel.collectDom,
+                        regKey,
+                    );
+                    const page = newTextFileModel();
+                    page.state.update((s) => {
+                        s.title = "DOM: " + (tab?.pageTitle || pageUrl);
+                        s.language = "html";
+                        s.content = html;
+                    });
+                    page.restore();
+                    pagesModel.addPage(page as unknown as EditorModel);
+                },
+            },
+            {
+                label: "Show Resources",
+                disabled: !hasPage,
+                onClick: async () => {
+                    const html = await ipcRenderer.invoke(
+                        BrowserChannel.collectDom,
+                        regKey,
+                    );
+                    const { extractHtmlResources } = await import("../../core/utils/html-resources");
+                    const links = extractHtmlResources(html, { baseUrl: pageUrl });
+                    if (links.length === 0) {
+                        ui.notify("No resources found on this page.", "info");
+                        return;
+                    }
+                    pagesModel.openLinks(links, (tab?.pageTitle || pageUrl) + " — Resources");
+                },
+            },
+        ];
+    }
 }

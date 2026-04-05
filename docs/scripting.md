@@ -189,7 +189,7 @@ Transformers process the raw bytes before they reach your code.
 
 | Constructor | Description |
 |-------------|-------------|
-| `new io.ZipTransformer(entryPath)` | Extracts a single entry from a ZIP archive |
+| `new io.ArchiveTransformer(archivePath, entryPath)` | Extracts a single entry from an archive (ZIP, RAR, 7z, TAR, etc.) |
 | `new io.DecryptTransformer(password)` | Decrypts AES-GCM encrypted content |
 
 ### Creating a pipe
@@ -210,12 +210,12 @@ const text = await pipe.readText();
 return JSON.parse(text);
 ```
 
-**Read a file inside a ZIP archive:**
+**Read a file inside an archive:**
 
 ```javascript
 const provider = new io.FileProvider("C:/reports/archive.zip");
-const zip = new io.ZipTransformer("reports/summary.csv");
-const pipe = io.createPipe(provider, zip);
+const entry = new io.ArchiveTransformer("C:/reports/archive.zip", "reports/summary.csv");
+const pipe = io.createPipe(provider, entry);
 return await pipe.readText();
 ```
 

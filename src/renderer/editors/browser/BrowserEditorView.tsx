@@ -14,6 +14,7 @@ import {
     BookmarkIcon,
     CloseIcon,
     HomeIcon,
+    MoreVertIcon,
     RefreshIcon,
     SettingsIcon,
     StarFilledIcon,
@@ -652,6 +653,18 @@ function BrowserEditorView({ model }: BrowserEditorViewProps) {
                         <BookmarkIcon />
                     </Button>
                     <DownloadButton onClick={handleDownloadClick} />
+                    <WithPopupMenu items={webview.getPageMenuItems()}>
+                        {(openMenu) => (
+                            <Button
+                                type="icon"
+                                size="small"
+                                title="Page Menu"
+                                onClick={(e) => openMenu(e.currentTarget)}
+                            >
+                                <MoreVertIcon />
+                            </Button>
+                        )}
+                    </WithPopupMenu>
                     <Button
                         type="icon"
                         size="small"

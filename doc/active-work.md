@@ -15,7 +15,6 @@ Overview of all active and planned epics and tasks.
 - **EPIC-014** — [Claude Integration via Terminal Editor](epics/EPIC-014.md)
 - **EPIC-011** — [Chrome Extension Support for Built-in Browser](epics/EPIC-011.md)
 - *(no epic)*
-  - [ ] US-360: View Actual DOM — include iframe content
   - [ ] US-347: CategoryView / CategoryEditor Breadcrumb
   - [ ] US-325: Fix webview preload script error in HTML view
 

@@ -31,10 +31,18 @@ When user says "let's work on tasks" or similar:
 ### Auto-task creation
 
 If the user gives work without a defined task (e.g., "fix this bug", "add this feature"):
-- **Small work** (single fix, quick change): Proceed without creating a task document. Add an entry to [/doc/active-work.md](doc/active-work.md) with a generated US-XXX ID.
-- **Large work** (multiple files, many changes): Create a task folder with README.md to track context. This helps when running `/review`, `/document`, and `/userdoc` at the end.
+- **Small work** (single fix, quick change): Proceed without creating a task document. Add an entry to the **Active** section of [/doc/active-work.md](doc/active-work.md) with a generated US-XXX ID.
+- **Large work** (multiple files, many changes): Create a task folder with README.md to track context. Add a linked entry to the **Active** section: `- [ ] [US-XXX: Title](tasks/US-XXX-short-name/README.md)`. This helps when running `/review`, `/document`, and `/userdoc` at the end.
 - **Epic linking**: If an active epic exists and the work relates to it, add the task under that epic in the dashboard.
 - **Before committing**: If no task entry exists yet, add one to the dashboard so the work is tracked.
+
+### Dashboard rules (STRICT)
+
+The dashboard [/doc/active-work.md](doc/active-work.md) MUST be kept up to date at every stage:
+- **When a task document is created:** Move the task to **Active** and add a link to the document. Format: `- [ ] [US-XXX: Title](tasks/US-XXX-short-name/README.md)`
+- **When work begins on a Planned task (even without a task doc):** Move it from Planned to Active.
+- **When a task is completed:** Mark `[x]` and follow the completion rules (standalone → completed.md, epic task → stays until epic completes).
+- **Never leave a task with a document in Planned** — if a document exists, the task is actively being worked on.
 
 ### Creating a new task ("Let's create a task for ...")
 
@@ -52,7 +60,7 @@ When the user says **"let's create a task for [description]"** (or similar), fol
    - **Implementation plan** — Step-by-step checklist of what to create/modify, with file paths and key details. Each step should have enough detail that the agent can implement it without re-reading the entire codebase.
    - **Concerns / Open questions** — Anything ambiguous, risky, or needing user input. Flag design decisions that could go either way.
    - **Acceptance criteria** — How to verify the task is complete
-4. **Add to dashboard** — Add entry to [/doc/active-work.md](doc/active-work.md) under the relevant epic (or "no epic")
+4. **Add to dashboard** — Move (or add) the task entry to the **Active** section of [/doc/active-work.md](doc/active-work.md) under the relevant epic (or "no epic"). The entry MUST be a link to the task document: `- [ ] [US-XXX: Title](tasks/US-XXX-short-name/README.md)`. If the task was previously in the **Planned** section, remove it from there.
 5. **Link to epic** if applicable (update epic's task table in its doc)
 6. **Present the document to the user** — Summarize key points and highlight concerns
 7. **Wait for user review** — Do NOT start implementation. The user will review, ask questions, request changes, and eventually say "let's implement"
