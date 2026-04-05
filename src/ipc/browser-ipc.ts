@@ -20,6 +20,8 @@ export const BrowserChannel = {
     clearCache: "browser:clear-cache",
     /** Renderer → Main (invoke): collect full DOM including iframe content. Args: (key: string) */
     collectDom: "browser:collect-dom",
+    /** Renderer → Main (invoke): get network request log for a browser tab. Args: (key: string) */
+    getNetworkLog: "browser:get-network-log",
     /** Renderer → Main: mute/unmute a webview's audio. Args: (key: string, muted: boolean) */
     setAudioMuted: "browser:set-audio-muted",
     /** Renderer → Main: allow popups for a given tabId (disable rate limiting). Args: (tabId: string) */
@@ -79,4 +81,21 @@ export interface BrowserEventData {
     y?: number;
     /** Whether the webview is currently emitting audio. */
     audible?: boolean;
+}
+
+/** A logged network request/response pair. */
+export interface NetworkLogEntry {
+    id: number;
+    url: string;
+    method: string;
+    resourceType: string;
+    referrer: string;
+    timestamp: number;
+    requestHeaders: Record<string, string>;
+    requestBody?: string;
+    statusCode?: number;
+    statusLine?: string;
+    responseHeaders?: Record<string, string[]>;
+    fromCache?: boolean;
+    error?: string;
 }

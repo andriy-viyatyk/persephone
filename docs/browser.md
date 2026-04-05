@@ -196,6 +196,16 @@ A download button in the toolbar tracks download progress and provides a downloa
 
 ---
 
+## Page Menu (Toolbar)
+
+The **"..." button** (vertical ellipsis) in the browser toolbar provides page-level actions that are always accessible, even on sites that disable or override the right-click context menu:
+
+- **View Source** — view the raw HTML as fetched from the server (opens in a text tab)
+- **View Actual DOM** — view the live rendered DOM after JavaScript execution, including content from all iframes (opens in a text tab)
+- **Show Resources** — extract all resource URLs from the current page (images, scripts, stylesheets, media, fonts, iframes, favicons, and links) and open them as a categorized link collection
+
+---
+
 ## Context Menu
 
 Right-click in the web page for contextual actions:
@@ -210,7 +220,7 @@ Right-click in the web page for contextual actions:
 | Always available | "Back", "Forward", "Reload", "View Source", "View Actual DOM", "Show Resources", "Inspect Element" |
 
 - **View Source** — view the raw HTML as fetched from the server (opens in a text tab)
-- **View Actual DOM** — view the live rendered DOM after JavaScript execution (opens in a text tab)
+- **View Actual DOM** — view the live rendered DOM after JavaScript execution, including content from all iframes (opens in a text tab)
 - **Show Resources** — extract all resource URLs from the current page (images, scripts, stylesheets, media, fonts, iframes, favicons, and links) and open them as a categorized link collection. Equivalent to the web-scraper toolbar button on HTML text pages.
 - **Inspect Element** — opens DevTools focused on the clicked element
 

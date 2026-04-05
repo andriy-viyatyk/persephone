@@ -18,6 +18,7 @@ import {
     BrowserEvent,
 } from "../ipc/browser-ipc";
 import { globalPopupRateLimiter } from "../ipc/popup-rate-limiter";
+import { initNetworkLogger, setWebContentsResolver, clearNetworkLog } from "./network-logger";
 
 const BLOCKED_PROTOCOLS = ["file:", "app-asset:", "safe-file:"];
 
@@ -370,6 +371,7 @@ function unregisterWebview(key: string) {
     }
 
     registrations.delete(key);
+    clearNetworkLog(key);
 }
 
 // =====================================================================
@@ -560,5 +562,16 @@ export function initBrowserHandlers(): void {
 
     ipcMain.handle(BrowserChannel.collectDom, async (_event, key: string) => {
         return collectDom(key);
+    });
+
+    // Network request logging
+    initNetworkLogger();
+    setWebContentsResolver((wcId: number) => {
+        for (const [key, reg] of registrations) {
+            if (!reg.webContents.isDestroyed() && reg.webContents.id === wcId) {
+                return key;
+            }
+        }
+        return undefined;
     });
 }

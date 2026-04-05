@@ -21,6 +21,7 @@ Release notes and changelog for Persephone (formerly js-notepad).
 - **Multi-file drop** — Dropping multiple files (or a folder) onto Persephone now opens a link collection page with all files listed in the "Links" sidebar panel. Click any file to view it in the main area. Dropped folders are recursively expanded, with subdirectories becoming link categories.
 - **HTML resource extraction** — Extract images, scripts, stylesheets, media, fonts, iframes, favicons, and links from HTML pages. Click the web-scraper icon in the toolbar on any HTML page, or right-click in the built-in Browser and choose "Show Resources". Results open as a categorized link collection.
 - **Archive Editor — multi-format support** — The Archive Editor now supports RAR, 7z, TAR (`.tar.gz`, `.tar.bz2`, `.tar.xz`), CAB, and ISO in addition to ZIP-based formats. Browse and view entries in all supported formats. Writing back is still ZIP-only; non-ZIP formats are read-only.
+- **Browser — "..." page menu** — A new page menu button (vertical ellipsis) in the browser toolbar provides **View Source**, **View Actual DOM**, and **Show Resources** actions. These are always accessible even on sites that disable or override the right-click context menu.
 
 ### Improvements
 
@@ -35,6 +36,7 @@ Release notes and changelog for Persephone (formerly js-notepad).
 - **Links panel — Edit Link context menu** — Right-clicking a non-directory link in the Links/Categories sidebar panel now shows an **Edit Link** option to open the link's edit dialog.
 - **Script API: `ILink.target`** — Links now support a `target` field to specify a preferred editor (e.g., `"image-view"`, `"monaco"`). When set, clicking the link opens it in that editor instead of the auto-detected one.
 - **Script API: `ILinkMetadata.title` and `ILinkMetadata.fallbackTarget`** — The `OpenLinkEvent` metadata now supports a `title` field (page title override) and a `fallbackTarget` field (fallback editor for URLs with unrecognized extensions, e.g. `"monaco"` to avoid opening unknown URLs in the browser).
+- **Browser — View Actual DOM includes iframes** — "View Actual DOM" now captures the live DOM from all iframes on the page (including cross-origin frames), stitching their content inline into the `<iframe>` elements in the output.
 
 ### Breaking Changes
 
