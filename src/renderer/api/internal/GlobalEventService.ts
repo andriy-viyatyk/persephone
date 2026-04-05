@@ -6,7 +6,59 @@ import { scriptRunner } from "../../scripting/ScriptRunner";
 import { fs } from "../fs";
 import { appWindow } from "../window";
 import { RendererEvent } from "../../../ipc/api-types";
+import { pagesModel } from "../pages";
 import { windowClosing } from "../../core/state/events";
+import type { ILink } from "../types/io.tree";
+import { fpBasename, fpJoin } from "../../core/utils/file-path";
+
+/**
+ * Expand a list of dropped file/folder paths into ILink items.
+ * Files become links with empty category. Folders are recursively enumerated —
+ * each file inside gets a category matching the relative directory path.
+ */
+async function expandDroppedPaths(paths: string[]): Promise<ILink[]> {
+    const links: ILink[] = [];
+
+    for (const droppedPath of paths) {
+        const stat = await fs.stat(droppedPath);
+        if (stat.isDirectory) {
+            const folderName = fpBasename(droppedPath);
+            await collectFolderFiles(droppedPath, folderName, links);
+        } else {
+            links.push({
+                title: fpBasename(droppedPath) || droppedPath,
+                href: droppedPath,
+                category: "",
+                tags: [] as string[],
+                isDirectory: false,
+            });
+        }
+    }
+    return links;
+}
+
+/** Recursively collect files from a folder, building category from relative path. */
+async function collectFolderFiles(
+    dirPath: string,
+    category: string,
+    links: ILink[],
+): Promise<void> {
+    const entries = await fs.listDirWithTypes(dirPath);
+    for (const entry of entries) {
+        const fullPath = fpJoin(dirPath, entry.name);
+        if (entry.isDirectory) {
+            await collectFolderFiles(fullPath, category + "/" + entry.name, links);
+        } else {
+            links.push({
+                title: entry.name,
+                href: fullPath,
+                category,
+                tags: [] as string[],
+                isDirectory: false,
+            });
+        }
+    }
+}
 
 /**
  * Global event service for document/window listeners.
@@ -54,27 +106,52 @@ export class GlobalEventService {
     };
 
     private captureDrop = (e: DragEvent) => {
-        let filePath: string | undefined = undefined;
+        const filePaths: string[] = [];
 
         if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-            const file = e.dataTransfer.files[0];
-
-            try {
-                filePath = window.electron.getPathForFile(file);
-            } catch (error) {
-                console.error("Error getting file path:", error);
+            for (let i = 0; i < e.dataTransfer.files.length; i++) {
+                try {
+                    const path = window.electron.getPathForFile(e.dataTransfer.files[i]);
+                    if (path && fs.fileExistsSync(path)) {
+                        filePaths.push(path);
+                    }
+                } catch (error) {
+                    console.error("Error getting file path:", error);
+                }
             }
         }
 
-        if (!filePath) {
+        if (filePaths.length === 0) {
             const textData = e.dataTransfer.getData("text/plain");
-            filePath = textData?.split("\n")[0]?.trim();
+            const path = textData?.split("\n")[0]?.trim();
+            if (path && fs.fileExistsSync(path)) {
+                filePaths.push(path);
+            }
         }
 
-        if (filePath && fs.fileExistsSync(filePath)) {
-            e.preventDefault();
-            e.stopPropagation();
-            window.electron.ipcRenderer.sendMessage(RendererEvent.fileDropped, filePath);
+        if (filePaths.length === 0) return;
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        this.openDroppedPaths(filePaths);
+    };
+
+    private openDroppedPaths = async (filePaths: string[]) => {
+        try {
+            if (filePaths.length === 1) {
+                const stat = await fs.stat(filePaths[0]);
+                if (!stat.isDirectory) {
+                    window.electron.ipcRenderer.sendMessage(RendererEvent.fileDropped, filePaths[0]);
+                    return;
+                }
+            }
+            const links = await expandDroppedPaths(filePaths);
+            if (links.length > 0) {
+                pagesModel.openLinks(links);
+            }
+        } catch (err: unknown) {
+            ui.notify(`Failed to open dropped files: ${err instanceof Error ? err.message : String(err)}`, "error");
         }
     };
 
