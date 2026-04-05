@@ -485,22 +485,10 @@ export class BrowserWebviewModel {
             },
         });
 
-        // Show resources extracted from the page DOM (includes iframe content)
+        // Show resources extracted from the page DOM + network log
         items.push({
             label: "Show Resources",
-            onClick: async () => {
-                const html = await ipcRenderer.invoke(
-                    BrowserChannel.collectDom,
-                    regKey,
-                );
-                const { extractHtmlResources } = await import("../../core/utils/html-resources");
-                const links = extractHtmlResources(html, { baseUrl: pageUrl });
-                if (links.length === 0) {
-                    ui.notify("No resources found on this page.", "info");
-                    return;
-                }
-                pagesModel.openLinks(links, (tab?.pageTitle || pageUrl) + " — Resources");
-            },
+            onClick: () => this.showResources(regKey, pageUrl, tab?.pageTitle || pageUrl),
         });
 
         // SVG item
@@ -592,20 +580,34 @@ export class BrowserWebviewModel {
             {
                 label: "Show Resources",
                 disabled: !hasPage,
-                onClick: async () => {
-                    const html = await ipcRenderer.invoke(
-                        BrowserChannel.collectDom,
-                        regKey,
-                    );
-                    const { extractHtmlResources } = await import("../../core/utils/html-resources");
-                    const links = extractHtmlResources(html, { baseUrl: pageUrl });
-                    if (links.length === 0) {
-                        ui.notify("No resources found on this page.", "info");
-                        return;
-                    }
-                    pagesModel.openLinks(links, (tab?.pageTitle || pageUrl) + " — Resources");
-                },
+                onClick: () => this.showResources(regKey, pageUrl, tab?.pageTitle || pageUrl),
             },
         ];
     }
+
+    // =====================================================================
+    // Show Resources (shared by context menu and toolbar menu)
+    // =====================================================================
+
+    /** Collect DOM resources + network log and open as a link collection. */
+    private showResources = async (regKey: string, pageUrl: string, title: string) => {
+        const [html, networkLog] = await Promise.all([
+            ipcRenderer.invoke(BrowserChannel.collectDom, regKey),
+            ipcRenderer.invoke(BrowserChannel.getNetworkLog, regKey),
+        ]);
+
+        const { extractHtmlResources } = await import("../../core/utils/html-resources");
+        const { networkLogToLinks } = await import("./network-log-links");
+
+        const domLinks = extractHtmlResources(html, { baseUrl: pageUrl });
+        const networkLinks = networkLogToLinks(networkLog);
+        const links = [...domLinks, ...networkLinks];
+
+        if (links.length === 0) {
+            ui.notify("No resources found on this page.", "info");
+            return;
+        }
+
+        pagesModel.openLinks(links, title + " — Resources");
+    };
 }

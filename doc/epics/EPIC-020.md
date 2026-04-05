@@ -58,7 +58,7 @@ Persephone already handles cURL links end-to-end:
 | Task | Title | Status |
 |------|-------|--------|
 | US-362 | Network request logging in main process | Done |
-| US-363 | Merge network logs into Show Resources | Planned |
+| US-363 | Merge network logs into Show Resources | Done |
 | US-364 | Open non-GET network requests in RestClient | Planned |
 
 ## Notes

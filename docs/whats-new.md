@@ -10,7 +10,7 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### New Features
 
-- **Script API: new editor view values** — `page.editor` and `app.pages.addEditorPage()` now accept `"graph-view"`, `"draw-view"`, `"mcp-view"`, `"zip-view"`, and `"category-view"` as valid editor identifiers.
+- **Script API: new editor view values** — `page.editor` and `app.pages.addEditorPage()` now accept `"graph-view"`, `"draw-view"`, `"mcp-view"`, `"archive-view"`, and `"category-view"` as valid editor identifiers.
 - **Script API: `app.pages.showMcpInspectorPage()`** — Open an MCP Inspector page programmatically, optionally pre-filling the server URL. See [`app.pages` reference](./api/pages.md#showmcpinspectorpageoptions--promisevoid).
 - **Script API: `app.pages.all`** — New property that returns all open pages in the current window as an array. Useful for iterating over all tabs.
 - **Script API: `app.pages.closePage(pageId)`** — Close a page by ID from a script. Returns `true` if closed, or `false` if the user cancelled (e.g. declined to save unsaved changes). See [`app.pages` reference](./api/pages.md#closepagepageid--promiseboolean).
@@ -46,6 +46,7 @@ Release notes and changelog for Persephone (formerly js-notepad).
 - **`EditorCategory` value changed** — The editor category value `"page-editor"` has been renamed to `"standalone"` in the `app.editors` API. Update any scripts that check `editorInfo.category === "page-editor"` to use `"standalone"` instead.
 - **`ITreeProviderItem.name` renamed to `title`** — The `name` property on tree provider items has been renamed to `title` for consistency with `LinkItem`. The type has also been consolidated as `ILink` (with `ITreeProviderItem` kept as a deprecated alias). Update scripts that access `item.name` to use `item.title`.
 - **`LinkItem.isCategory` renamed to `isDirectory`** — The `isCategory` property on link items returned by `page.asLink().links` has been renamed to `isDirectory` for consistency with `ILink`.
+- **`EditorView` value `"zip-view"` renamed to `"archive-view"`** — The editor view identifier for the Archive Editor has been renamed from `"zip-view"` to `"archive-view"`. Update any scripts that check or set `page.editor === "zip-view"` to use `"archive-view"` instead.
 
 ---
 

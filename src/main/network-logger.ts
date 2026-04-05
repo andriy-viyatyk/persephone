@@ -59,6 +59,12 @@ function hookSession(ses: Session): void {
     const filter = { urls: ["http://*/*", "https://*/*"] };
 
     ses.webRequest.onBeforeSendHeaders(filter, (details, callback) => {
+        // Skip OPTIONS preflight requests — not useful as resources
+        if (details.method === "OPTIONS") {
+            callback({ requestHeaders: details.requestHeaders });
+            return;
+        }
+
         const key = details.webContentsId != null
             ? resolveWebContentsId(details.webContentsId)
             : undefined;

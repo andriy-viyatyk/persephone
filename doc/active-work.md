@@ -10,7 +10,7 @@ Overview of all active and planned epics and tasks.
 
 - **EPIC-020** — [Browser Network Request Logging & Resource Discovery](epics/EPIC-020.md)
   - [x] [US-362: Network request logging in main process](tasks/US-362-network-request-logging/README.md)
-  - [ ] US-363: Merge network logs into Show Resources
+  - [x] [US-363: Merge network logs into Show Resources](tasks/US-363-merge-network-logs-into-show-resources/README.md)
   - [ ] US-364: Open non-GET network requests in RestClient
 
 ## Planned
