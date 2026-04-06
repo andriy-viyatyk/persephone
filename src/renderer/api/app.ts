@@ -232,6 +232,8 @@ class App {
                 const port = this._settings.get("mcp.port") as number | undefined;
                 api.setMcpEnabled(true, port || undefined);
             }
+            const browserToolsEnabled = this._settings.get("mcp.browser-tools.enabled");
+            api.setBrowserToolsEnabled(!!browserToolsEnabled);
 
             // Load autoload scripts from Script Library
             try {
@@ -247,6 +249,9 @@ class App {
             if (key === "mcp.enabled") {
                 const port = this._settings.get("mcp.port") as number | undefined;
                 api.setMcpEnabled(!!value, port || undefined);
+            }
+            if (key === "mcp.browser-tools.enabled") {
+                api.setBrowserToolsEnabled(value !== false);
             }
         });
     }

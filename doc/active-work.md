@@ -31,6 +31,7 @@ Overview of all active and planned epics and tasks.
   - [x] [US-382: Fix browser_tabs — action-based interface (Playwright compat)](tasks/US-382-browser-tabs-action/README.md)
   - [x] [US-378: Known issues & edge cases (review before epic completion)](tasks/US-378-browser-automation-fixes/README.md)
   - [x] [US-383: Block browser automation on incognito/Tor pages](tasks/US-383-browser-automation-privacy-guard/README.md)
+  - [x] [US-384: MCP browser tools toggle (optional Playwright tools)](tasks/US-384-mcp-browser-tools-toggle/README.md)
 
 ## Planned
 

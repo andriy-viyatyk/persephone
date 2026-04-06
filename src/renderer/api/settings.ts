@@ -31,6 +31,7 @@ export type AppSettingsKey =
     | "link-open-behavior"
     | "mcp.enabled"
     | "mcp.port"
+    | "mcp.browser-tools.enabled"
     | "script-library.path"
     | "drawing.library-path"
     | "pinned-editors"
@@ -57,6 +58,7 @@ const settingsComments: Partial<Record<AppSettingsKey, string>> = {
     "link-open-behavior": "How external links open from editors.\n\"default-browser\" opens in the OS default browser, \"internal-browser\" opens in the nearest Browser tab.",
     "mcp.enabled": "Enable MCP (Model Context Protocol) HTTP server.\nAllows AI agents like Claude Desktop and Claude Code to control persephone.",
     "mcp.port": "Port number for the MCP HTTP server.\nDefault: 7865. Change requires toggling MCP off and on.",
+    "mcp.browser-tools.enabled": "Allow AI agents to control the built-in browser.\nWhen enabled, browser_* MCP tools are available (reconnect agent to apply changes).",
     "script-library.path": "Path to the script library folder.\nA folder on disk where saved scripts and reusable modules are stored.",
     "drawing.library-path": "Path to Excalidraw library folder.\nStores reusable shapes and components for the drawing editor.",
     "pinned-editors": "Pinned editors shown in the '+' new-page menu.\nArray of creatable item IDs. Reorder to change menu order.",
@@ -78,6 +80,7 @@ const defaultAppSettingsState = {
         "link-open-behavior": "default-browser" as "default-browser" | "internal-browser",
         "mcp.enabled": false,
         "mcp.port": 7865,
+        "mcp.browser-tools.enabled": false,
         "script-library.path": "",
         "drawing.library-path": "",
         "pinned-editors": ["script-js", "script-ts", "draw-view", "grid-json", "grid-csv", "browser"] as string[],

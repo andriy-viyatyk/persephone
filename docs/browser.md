@@ -358,6 +358,8 @@ See the [`page.asBrowser()` API reference](./api/page.md#asbrowserpromiseibrowse
 
 AI agents connected via the [MCP server](./mcp-setup.md) can control the browser directly using dedicated browser tools — no script needed. Tools include `browser_navigate`, `browser_snapshot`, `browser_click`, `browser_type`, `browser_wait_for`, `browser_evaluate`, and more. See [MCP Server Setup → Browser Automation Tools](./mcp-setup.md#browser-automation-tools) for the full list.
 
+> **Privacy note:** MCP browser automation tools are blocked on incognito and Tor browser pages. If the active browser page is in incognito or Tor mode, any `browser_*` tool call returns an error. Use `open_url` (without `incognito` or `tor`) to open a normal browser session before using automation tools. Similarly, `open_url` will not reuse an existing incognito or Tor page for a normal URL — it always opens normal URLs in a separate normal session.
+
 ---
 
 ## Keyboard Shortcuts

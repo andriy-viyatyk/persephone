@@ -198,6 +198,11 @@ class Controller implements MainApi {
         }
     }
 
+    setBrowserToolsEnabled = async (event: IpcMainEvent, enabled: boolean): Promise<void> => {
+        const { setBrowserToolsEnabled } = await import("../../main/mcp-http-server");
+        setBrowserToolsEnabled(enabled);
+    }
+
     getMcpStatus = async (event: IpcMainEvent): Promise<McpStatus> => {
         return {
             running: isMcpHttpServerRunning(),
@@ -268,6 +273,7 @@ const init = () => {
     bindEndpoint(Endpoint.clearCompletedDownloads, controllerInstance.clearCompletedDownloads);
     bindEndpoint(Endpoint.setMcpEnabled, controllerInstance.setMcpEnabled);
     bindEndpoint(Endpoint.getMcpStatus, controllerInstance.getMcpStatus);
+    bindEndpoint(Endpoint.setBrowserToolsEnabled, controllerInstance.setBrowserToolsEnabled);
     bindEndpoint(Endpoint.startScreenSnip, controllerInstance.startScreenSnip);
 
     initRendererEvents();

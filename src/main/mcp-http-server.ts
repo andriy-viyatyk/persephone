@@ -37,6 +37,7 @@ let httpServer: http.Server | undefined;
 let ipcInitialized = false;
 let requestIdGen = 0;
 let currentPort = DEFAULT_PORT;
+let browserToolsEnabled = false;
 const pendingRequests = new Map<string, (response: { result?: any; error?: any }) => void>();
 const sessions = new Map<string, { server: InstanceType<typeof McpServer>; transport: InstanceType<typeof StreamableHTTPServerTransport> }>();
 
@@ -167,6 +168,13 @@ function createMcpServer(): InstanceType<typeof McpServer> {
                 "",
                 "**Run scripts with full Node.js access:**",
                 "Use `execute_script`. IMPORTANT: use read_guide(\"scripting\") BEFORE using this tool.",
+                "",
+                "## Browser automation (browser_* tools)",
+                "",
+                "If `browser_*` tools are listed, they follow the Playwright MCP convention.",
+                "Apply your Playwright knowledge — selectors, accessibility refs (ref=eN), navigation, evaluation, and snapshots all work as in Playwright MCP.",
+                "Use `browser_snapshot` to inspect the page structure before interacting.",
+                "Note: browser_* tools only work on normal browser pages — incognito and Tor pages are blocked for privacy.",
             ].join("\n"),
         },
     );
@@ -400,6 +408,8 @@ function createMcpServer(): InstanceType<typeof McpServer> {
 
     // ── Browser automation tools (Playwright-compatible) ─────────────
 
+    if (browserToolsEnabled) {
+
     server.tool(
         "browser_navigate",
         "Navigate the browser to a URL. Returns the page accessibility snapshot after loading.",
@@ -563,6 +573,8 @@ function createMcpServer(): InstanceType<typeof McpServer> {
         async ({ windowIndex }) =>
             toToolResult(await sendToRenderer("browser_close", {}, windowIndex)),
     );
+
+    } // end browserToolsEnabled
 
     // ── Guide reader tool ─────────────────────────────────────────────
     server.tool(
@@ -735,6 +747,10 @@ async function handleHttpRequest(req: http.IncomingMessage, res: http.ServerResp
 }
 
 // ── Server Lifecycle ───────────────────────────────────────────────
+
+export function setBrowserToolsEnabled(enabled: boolean): void {
+    browserToolsEnabled = enabled;
+}
 
 export async function startMcpHttpServer(port?: number): Promise<void> {
     if (httpServer) return;

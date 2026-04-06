@@ -302,6 +302,7 @@ await pw.locator("text=Submit").click();
 | US-381 | Fix browser_wait_for — add `time` and `textGone` params (Playwright compat) | Done |
 | US-382 | Fix browser_tabs — action-based interface (Playwright compat) | Done |
 | US-383 | Block browser automation on incognito/Tor pages | Done |
+| US-384 | MCP browser tools toggle (optional Playwright tools) | Done |
 
 ## Task Breakdown
 

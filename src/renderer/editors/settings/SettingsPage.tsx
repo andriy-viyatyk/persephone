@@ -1066,6 +1066,7 @@ function DefaultBrowserSection() {
 function McpSection() {
     const mcpEnabled = settings.use("mcp.enabled");
     const mcpPort = settings.use("mcp.port");
+    const browserToolsEnabled = settings.use("mcp.browser-tools.enabled");
     const [status, setStatus] = useState<{ running: boolean; url: string; clientCount: number } | null>(null);
     const [portValue, setPortValue] = useState(String(mcpPort));
     const [copied, setCopied] = useState<string | null>(null);
@@ -1086,6 +1087,10 @@ function McpSection() {
 
     const handleToggle = () => {
         settings.set("mcp.enabled", !mcpEnabled);
+    };
+
+    const handleBrowserToolsToggle = () => {
+        settings.set("mcp.browser-tools.enabled", !browserToolsEnabled);
     };
 
     const handlePortBlur = () => {
@@ -1130,6 +1135,19 @@ function McpSection() {
                 <input type="checkbox" checked={mcpEnabled} onChange={handleToggle} id="mcp-enabled" />
                 <label htmlFor="mcp-enabled" className="mcp-toggle-label">
                     Enable MCP server
+                </label>
+            </div>
+
+            <div className="mcp-toggle-row">
+                <input
+                    type="checkbox"
+                    checked={!!browserToolsEnabled}
+                    onChange={handleBrowserToolsToggle}
+                    id="mcp-browser-tools-enabled"
+                    disabled={!!mcpEnabled}
+                />
+                <label htmlFor="mcp-browser-tools-enabled" className="mcp-toggle-label">
+                    Enable browser interaction
                 </label>
             </div>
 

@@ -29,6 +29,8 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 - **MCP: browser automation privacy guard** — `browser_*` MCP tools are now blocked on incognito and Tor browser pages. Attempting to use any browser automation tool while an incognito or Tor page is active returns a descriptive error explaining the restriction and suggesting `open_url` to open a normal browser page. Additionally, `open_url` no longer reuses incognito or Tor browser pages — it always opens normal URLs in a normal browser session.
 
+- **MCP: browser tools opt-in** — Browser automation tools are now disabled by default and must be explicitly enabled via **Settings → MCP Server → Enable browser interaction**. While disabled, the tools are completely hidden from AI agents — they do not appear in the MCP tool list at all. This is an intentional safety gate so that browser control is only granted when you choose to enable it. After enabling or disabling, reconnect the agent for the change to take effect.
+
 ### Bug Fixes
 
 - **Scripting: implicit return with block-body callbacks** — Scripts that used callbacks with block bodies (e.g., `.map(item => { return item.name; })`) were incorrectly treated as having a top-level `return` statement, which suppressed implicit return of the final expression. The fix uses scope-aware parsing to detect only genuine top-level `return` statements. Also fixed: scripts where a function declaration is followed by a call expression on the same line (e.g., `function foo() { ... } foo();`) now correctly return the call result.

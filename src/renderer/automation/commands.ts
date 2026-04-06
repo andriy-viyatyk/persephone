@@ -7,6 +7,7 @@
  */
 const { ipcRenderer } = require("electron"); // eslint-disable-line @typescript-eslint/no-var-requires
 import { pagesModel } from "../api/pages";
+import { settings } from "../api/settings";
 import { BrowserChannel } from "../../ipc/browser-ipc";
 import { pressKey, typeText } from "./input";
 import { callOnRef } from "./ref";
@@ -372,6 +373,9 @@ export async function handleBrowserCommand(
     command: string,
     params: any, // eslint-disable-line @typescript-eslint/no-explicit-any
 ): Promise<McpResponse> {
+    if (!settings.get("mcp.browser-tools.enabled")) {
+        return { error: { code: -32602, message: "Browser interaction is disabled. Enable it in Settings → MCP Server → 'Enable browser interaction'." } };
+    }
     const target = await getTarget();
     if ("error" in target) return target;
 

@@ -67,6 +67,8 @@ gemini --mcp-server http://localhost:7865/mcp
 
 These tools control the built-in browser directly — no script needed. They operate on the active browser tab in the target window. Use `open_url` first to open a browser page if one is not already open.
 
+> **Note:** Browser automation tools are disabled by default. Enable them in **Settings → MCP Server → Enable browser interaction**. While disabled, the tools are hidden from the agent entirely (not listed in the MCP tool set). This is an opt-in safety gate — enable only when you want AI agents to be able to control the browser.
+
 | Tool | Description |
 |------|-------------|
 | **browser_navigate** | Navigate to a URL. Returns an accessibility snapshot of the loaded page. |
@@ -84,6 +86,8 @@ These tools control the built-in browser directly — no script needed. They ope
 | **browser_close** | Close the active browser tab. |
 
 > **Tip:** `browser_snapshot` is the recommended way to inspect page state — it is faster and more deterministic than screenshots. After any click or type action, the tool automatically returns an updated snapshot so you can verify the result without a separate call.
+
+> **Privacy guard:** Browser automation tools are blocked when the active browser page is in incognito or Tor mode. Any `browser_*` call on an incognito or Tor page returns an error with a clear message. Use `open_url` without `incognito` or `tor` to open a normal browser session first. `open_url` also never reuses an incognito or Tor page for a normal URL — it always creates a fresh normal session.
 
 ### Multi-Window Support
 
@@ -120,6 +124,7 @@ AI agents also receive **server instructions** on connection — a concise overv
 |---------|---------|-------------|
 | `mcp.enabled` | `false` | Enable/disable the MCP HTTP server |
 | `mcp.port` | `7865` | Port number for the MCP server |
+| `mcp.browser-tools.enabled` | `false` | Expose browser automation tools to connected AI agents. When disabled, all `browser_*` tools are hidden from agents entirely. Reconnect the agent after changing this setting. |
 
 ## Examples
 

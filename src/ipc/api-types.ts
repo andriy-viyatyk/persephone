@@ -50,6 +50,7 @@ export enum Endpoint {
     clearCompletedDownloads = "clearCompletedDownloads",
     setMcpEnabled = "setMcpEnabled",
     getMcpStatus = "getMcpStatus",
+    setBrowserToolsEnabled = "setBrowserToolsEnabled",
     startScreenSnip = "startScreenSnip",
 }
 
@@ -106,6 +107,7 @@ export type Api = {
     [Endpoint.clearCompletedDownloads]: () => Promise<void>;
     [Endpoint.setMcpEnabled]: (enabled: boolean, port?: number) => Promise<void>;
     [Endpoint.getMcpStatus]: () => Promise<McpStatus>;
+    [Endpoint.setBrowserToolsEnabled]: (enabled: boolean) => Promise<void>;
     [Endpoint.startScreenSnip]: () => Promise<string | null>;
 };
 
