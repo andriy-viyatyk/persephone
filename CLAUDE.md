@@ -118,17 +118,6 @@ The goal: after `/compact`, the agent reads the task README.md and can implement
 
 **Steps 2-4 are mandatory.** Only skip if the user explicitly says to skip them.
 
-## Release Workflow
-
-When user says **"let's publish new build"** (or similar), follow [/doc/standards/release-process.md](doc/standards/release-process.md):
-
-1. Commit any uncommitted changes to the working branch
-2. Merge working branch into `main`
-3. Update `docs/whats-new.md` — mark current version as released, add next upcoming section
-4. Commit, tag, and push `main` with the version tag
-5. **Wait** for user to confirm the GitHub build is published
-6. Bump `package.json` version, create new `upcoming-vN` branch, commit and push
-
 ## Documentation Map
 
 | Need to...                    | Read...                                                |
