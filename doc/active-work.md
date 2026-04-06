@@ -8,7 +8,13 @@ Overview of all active and planned epics and tasks.
 
 ## Active
 
-*Nothing in progress.*
+- **EPIC-021** — [Browser Automation API (Lightweight RPA)](epics/EPIC-021.md)
+  - [x] [US-365: Playwright-core CDP integration](tasks/US-365-playwright-cdp-integration/README.md)
+  - [x] [US-366: Browser query and interaction API](tasks/US-366-browser-query-interaction-api/README.md)
+  - [ ] US-367: Browser wait methods (waitForSelector, waitForNavigation)
+  - [ ] US-368: Tab management and background automation
+  - [ ] US-369: MCP browser automation commands
+  - [ ] US-370: Data protection hooks (PHI sanitization layer)
 
 ## Planned
 

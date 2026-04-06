@@ -8,7 +8,9 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ## Version 3.0.2 (Upcoming)
 
-*No changes yet.*
+### New Features
+
+- **Script API: browser query and interaction methods** — `page.asBrowser()` now exposes a full set of DOM query and interaction methods powered by the Chrome DevTools Protocol (CDP). Query methods: `getText(selector)`, `getValue(selector)`, `getAttribute(selector, attr)`, `getHtml(selector)`, `exists(selector)`. Interaction methods: `click(selector)`, `type(selector, text)`, `select(selector, value)`, `check(selector)`, `uncheck(selector)`, `clear(selector)`. All methods use CSS selectors and throw if the element is not found (query methods return `null`/`false` instead). Also includes `evaluate(expression)` for running arbitrary JavaScript in the page. See [`page.asBrowser()`](./api/page.md#asbrowser--promiseibrowsereditor).
 
 ---
 

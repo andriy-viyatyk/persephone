@@ -211,6 +211,8 @@ le.addLink("https://stackoverflow.com", "Stack Overflow", "Development");
 
 Browser control. Only for browser pages.
 
+**Navigation:**
+
 | Member | Type | Description |
 |--------|------|-------------|
 | `url` | `string` | Current URL. Read-only. |
@@ -220,11 +222,53 @@ Browser control. Only for browser pages.
 | `forward()` | `void` | Go forward in history. |
 | `reload()` | `void` | Reload (or stop loading). |
 
+**Evaluate:**
+
+| Member | Type | Description |
+|--------|------|-------------|
+| `evaluate(expression)` | `Promise<unknown>` | Run JavaScript in the page and return the result. Async expressions are awaited automatically. |
+
+**Query methods** (use CSS selectors):
+
+| Member | Type | Description |
+|--------|------|-------------|
+| `getText(selector)` | `Promise<string \| null>` | Get `textContent` of an element. Returns `null` if not found. |
+| `getValue(selector)` | `Promise<string \| null>` | Get the value of an input, textarea, or select. Returns `null` if not found. |
+| `getAttribute(selector, attribute)` | `Promise<string \| null>` | Get an attribute value. Returns `null` if element or attribute not found. |
+| `getHtml(selector)` | `Promise<string \| null>` | Get `innerHTML` of an element. Returns `null` if not found. |
+| `exists(selector)` | `Promise<boolean>` | Check if an element exists on the page. |
+
+**Interaction methods** (use CSS selectors; throw if element not found):
+
+| Member | Type | Description |
+|--------|------|-------------|
+| `click(selector)` | `Promise<void>` | Click an element. |
+| `type(selector, text)` | `Promise<void>` | Type text into an input or textarea. Clears existing value first. Dispatches `input` and `change` events for framework compatibility. |
+| `select(selector, value)` | `Promise<void>` | Select an option in a `<select>` element by value. |
+| `check(selector)` | `Promise<void>` | Check a checkbox or radio button. |
+| `uncheck(selector)` | `Promise<void>` | Uncheck a checkbox. |
+| `clear(selector)` | `Promise<void>` | Clear the value of an input or textarea. |
+
 ```javascript
 const browser = await page.asBrowser();
 browser.navigate("https://example.com");
 console.log(browser.url);    // "https://example.com"
 console.log(browser.title);  // "Example Domain"
+
+// Evaluate JavaScript inside the page
+const heading = await browser.evaluate("document.querySelector('h1').textContent");
+console.log(heading); // "Example Domain"
+
+// Query elements
+const h1Text = await browser.getText("h1");
+const loginExists = await browser.exists("#login-form");
+const href = await browser.getAttribute("a", "href");
+
+// Interact with forms
+await browser.type("#search", "persephone");
+await browser.click("#submit-btn");
+await browser.select("#country", "US");
+await browser.check("#agree-terms");
 ```
 
 ---

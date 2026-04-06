@@ -19,6 +19,7 @@ import {
 } from "../ipc/browser-ipc";
 import { globalPopupRateLimiter } from "../ipc/popup-rate-limiter";
 import { initNetworkLogger, setWebContentsResolver, clearNetworkLog } from "./network-logger";
+import { initCdpHandlers } from "./cdp-service";
 
 const BLOCKED_PROTOCOLS = ["file:", "app-asset:", "safe-file:"];
 
@@ -562,6 +563,12 @@ export function initBrowserHandlers(): void {
 
     ipcMain.handle(BrowserChannel.collectDom, async (_event, key: string) => {
         return collectDom(key);
+    });
+
+    // CDP session management for browser automation
+    initCdpHandlers((key: string) => {
+        const reg = registrations.get(key);
+        return reg && !reg.webContents.isDestroyed() ? reg.webContents : undefined;
     });
 
     // Network request logging

@@ -22,6 +22,12 @@ export const BrowserChannel = {
     collectDom: "browser:collect-dom",
     /** Renderer → Main (invoke): get network request log for a browser tab. Args: (key: string) */
     getNetworkLog: "browser:get-network-log",
+    /** Renderer → Main (invoke): attach CDP debugger to a webview. Args: (key: string) */
+    cdpAttach: "browser:cdp-attach",
+    /** Renderer → Main (invoke): detach CDP debugger. Args: (key: string) */
+    cdpDetach: "browser:cdp-detach",
+    /** Renderer → Main (invoke): send CDP command. Args: (key: string, method: string, params?: object) */
+    cdpSend: "browser:cdp-send",
     /** Renderer → Main: mute/unmute a webview's audio. Args: (key: string, muted: boolean) */
     setAudioMuted: "browser:set-audio-muted",
     /** Renderer → Main: allow popups for a given tabId (disable rate limiting). Args: (tabId: string) */
