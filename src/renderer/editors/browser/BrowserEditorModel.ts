@@ -17,6 +17,7 @@ import { BrowserBookmarks } from "./BrowserBookmarks";
 import { BrowserWebviewModel } from "./BrowserWebviewModel";
 import { BrowserUrlBarModel } from "./BrowserUrlBarModel";
 import { BrowserBookmarksUIModel } from "./BrowserBookmarksUIModel";
+import { BrowserTargetModel } from "./BrowserTargetModel";
 
 // ============================================================================
 // Search Engines
@@ -326,6 +327,8 @@ export class BrowserEditorModel extends EditorModel<BrowserEditorState, void> {
     readonly urlBar: BrowserUrlBarModel;
     /** Sub-model: bookmarks drawer, star button, image discovery. */
     readonly bookmarksUI: BrowserBookmarksUIModel;
+    /** Sub-model: automation adapter for Playwright-compatible MCP tools. */
+    readonly target: BrowserTargetModel;
 
     private keyDownSub: SubscriptionObject;
     private windowClosingSub: SubscriptionObject;
@@ -335,6 +338,7 @@ export class BrowserEditorModel extends EditorModel<BrowserEditorState, void> {
         this.webview = new BrowserWebviewModel(this);
         this.urlBar = new BrowserUrlBarModel(this);
         this.bookmarksUI = new BrowserBookmarksUIModel(this);
+        this.target = new BrowserTargetModel(this);
         this.keyDownSub = globalKeyDown.subscribe((e) => this.handleGlobalKeyDown(e!));
         this.windowClosingSub = windowClosing.subscribe(() => this.handleWindowClosing());
         // Preload bookmarks silently after a short delay (don't block browser page opening)

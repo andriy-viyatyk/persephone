@@ -294,6 +294,72 @@ The browser saves and restores the following across app restarts:
 
 ---
 
+## Scripting & Automation
+
+Browser pages can be controlled from scripts using the `page.asBrowser()` facade. This gives you programmatic control over navigation and lets you query and interact with the loaded page via CSS selectors.
+
+```javascript
+const browser = await page.asBrowser();
+
+// Navigate and wait for the page to finish loading
+browser.navigate("https://example.com");
+await browser.waitForNavigation();
+console.log(browser.title);
+
+// Wait for dynamic content to appear before querying
+await browser.waitForSelector("#results");
+const heading = await browser.getText("h1");
+const href = await browser.getAttribute("a.logo", "href");
+
+// Interact with forms (throw if element not found)
+await browser.type("#search", "persephone");
+await browser.click("#submit-btn");
+await browser.select("#country", "US");
+await browser.check("#agree-terms");
+await browser.clear("#comment");
+
+// Press a key (e.g. submit a form with Enter)
+await browser.pressKey("Enter");
+
+// Run arbitrary JavaScript inside the page
+const count = await browser.evaluate("document.querySelectorAll('a').length");
+
+// Get an accessibility snapshot (Playwright MCP format)
+const snapshot = await browser.snapshot();
+// Returns a YAML-like tree, e.g.:
+// - heading "Page Title" [level=1] [ref=e40]
+// - textbox "Search" [ref=e52]
+// - button "Submit" [ref=e65]
+```
+
+### Multi-tab automation
+
+All automation methods accept an optional `{ tabId }` option so you can automate tabs in the background without switching to them:
+
+```javascript
+// Open a second tab, wait for it to load, then query it
+const tabId = browser.addTab("https://other.com");
+await browser.waitForNavigation({ tabId });
+const otherHeading = await browser.getText("h1", { tabId });
+
+// List all tabs
+for (const tab of browser.tabs) {
+    console.log(tab.id, tab.url, tab.title);
+}
+
+// Switch to a tab or close it
+browser.switchTab(tabId);
+browser.closeTab(tabId);
+```
+
+See the [`page.asBrowser()` API reference](./api/page.md#asbrowserpromiseibrowsereditor) for the full method list.
+
+### MCP browser automation
+
+AI agents connected via the [MCP server](./mcp-setup.md) can control the browser directly using dedicated browser tools — no script needed. Tools include `browser_navigate`, `browser_snapshot`, `browser_click`, `browser_type`, `browser_wait_for`, `browser_evaluate`, and more. See [MCP Server Setup → Browser Automation Tools](./mcp-setup.md#browser-automation-tools) for the full list.
+
+---
+
 ## Keyboard Shortcuts
 
 | Shortcut | Action |

@@ -40,6 +40,11 @@ async function handleCommand(method: string, params: any): Promise<McpResponse> 
         case "ui_push":
             return handleUiPush(params);
         default:
+            // Browser automation (Playwright-compatible) — delegated to automation layer
+            if (method.startsWith("browser_")) {
+                const { handleBrowserCommand } = await import("../automation/commands");
+                return handleBrowserCommand(method, params);
+            }
             return { error: { code: -32601, message: `Method not found: ${method}` } };
     }
 }

@@ -211,64 +211,93 @@ le.addLink("https://stackoverflow.com", "Stack Overflow", "Development");
 
 Browser control. Only for browser pages.
 
+All automation methods accept an optional `{ tabId }` option to target a specific tab. When omitted, the active tab is used.
+
 **Navigation:**
 
 | Member | Type | Description |
 |--------|------|-------------|
-| `url` | `string` | Current URL. Read-only. |
-| `title` | `string` | Current page title. Read-only. |
+| `url` | `string` | Current URL of the active tab. Read-only. |
+| `title` | `string` | Current page title of the active tab. Read-only. |
 | `navigate(url)` | `void` | Navigate to a URL or search query. |
 | `back()` | `void` | Go back in history. |
 | `forward()` | `void` | Go forward in history. |
 | `reload()` | `void` | Reload (or stop loading). |
 
-**Evaluate:**
+**Tab management:**
 
 | Member | Type | Description |
 |--------|------|-------------|
-| `evaluate(expression)` | `Promise<unknown>` | Run JavaScript in the page and return the result. Async expressions are awaited automatically. |
+| `tabs` | `IBrowserTab[]` | All open internal tabs. |
+| `activeTab` | `IBrowserTab` | The currently active (visible) tab. |
+| `addTab(url?)` | `string` | Open a new tab. Returns the new tab's ID. |
+| `closeTab(tabId?)` | `void` | Close a tab. Defaults to the active tab. |
+| `switchTab(tabId)` | `void` | Switch to a tab (make it active). |
 
-**Query methods** (use CSS selectors):
+Each `IBrowserTab` has: `id`, `url`, `title`, `loading`, `active`.
+
+**Evaluate & Snapshot:**
 
 | Member | Type | Description |
 |--------|------|-------------|
-| `getText(selector)` | `Promise<string \| null>` | Get `textContent` of an element. Returns `null` if not found. |
-| `getValue(selector)` | `Promise<string \| null>` | Get the value of an input, textarea, or select. Returns `null` if not found. |
-| `getAttribute(selector, attribute)` | `Promise<string \| null>` | Get an attribute value. Returns `null` if element or attribute not found. |
-| `getHtml(selector)` | `Promise<string \| null>` | Get `innerHTML` of an element. Returns `null` if not found. |
-| `exists(selector)` | `Promise<boolean>` | Check if an element exists on the page. |
+| `evaluate(expression, options?)` | `Promise<unknown>` | Run JavaScript in the page and return the result. Async expressions are awaited automatically. Pass `{ tabId }` to target a specific tab. |
+| `snapshot(options?)` | `Promise<string>` | Get an accessibility snapshot of the page as a YAML-like tree. Format matches Playwright MCP's `browser_snapshot` output. Each interactive element has a `[ref=eN]` annotation usable for future targeting. Pass `{ tabId }` to snapshot a background tab. |
+
+**Query methods** (use CSS selectors; return `null` / `false` if not found):
+
+| Member | Type | Description |
+|--------|------|-------------|
+| `getText(selector, options?)` | `Promise<string \| null>` | Get `textContent` of an element. |
+| `getValue(selector, options?)` | `Promise<string \| null>` | Get the value of an input, textarea, or select. |
+| `getAttribute(selector, attribute, options?)` | `Promise<string \| null>` | Get an attribute value. |
+| `getHtml(selector, options?)` | `Promise<string \| null>` | Get `innerHTML` of an element. |
+| `exists(selector, options?)` | `Promise<boolean>` | Check if an element exists on the page. |
 
 **Interaction methods** (use CSS selectors; throw if element not found):
 
 | Member | Type | Description |
 |--------|------|-------------|
-| `click(selector)` | `Promise<void>` | Click an element. |
-| `type(selector, text)` | `Promise<void>` | Type text into an input or textarea. Clears existing value first. Dispatches `input` and `change` events for framework compatibility. |
-| `select(selector, value)` | `Promise<void>` | Select an option in a `<select>` element by value. |
-| `check(selector)` | `Promise<void>` | Check a checkbox or radio button. |
-| `uncheck(selector)` | `Promise<void>` | Uncheck a checkbox. |
-| `clear(selector)` | `Promise<void>` | Clear the value of an input or textarea. |
+| `click(selector, options?)` | `Promise<void>` | Click an element. |
+| `type(selector, text, options?)` | `Promise<void>` | Type text into an input or textarea. Clears existing value first. Dispatches `input` and `change` events for framework compatibility. |
+| `select(selector, value, options?)` | `Promise<void>` | Select an option in a `<select>` element by value. |
+| `check(selector, options?)` | `Promise<void>` | Check a checkbox or radio button. |
+| `uncheck(selector, options?)` | `Promise<void>` | Uncheck a checkbox. |
+| `clear(selector, options?)` | `Promise<void>` | Clear the value of an input or textarea. |
+| `pressKey(key, options?)` | `Promise<void>` | Press a key or key combination via CDP (e.g. `"Enter"`, `"Tab"`, `"Escape"`, `"ArrowDown"`). Supports compound keys: `"Control+a"`, `"Shift+Enter"`. |
+
+**Wait methods:**
+
+| Member | Type | Description |
+|--------|------|-------------|
+| `waitForSelector(selector, options?)` | `Promise<void>` | Wait for an element to appear in the DOM. Resolves immediately if already present. Rejects on timeout. Options: `{ timeout?, tabId? }` (default timeout: 30 seconds). |
+| `waitForNavigation(options?)` | `Promise<void>` | Wait for the page to finish loading (`document.readyState === "complete"`). For SPA navigations, use `waitForSelector` instead. Options: `{ timeout?, tabId? }`. |
+| `wait(ms)` | `Promise<void>` | Wait for the specified number of milliseconds. |
 
 ```javascript
 const browser = await page.asBrowser();
+
+// Navigate and wait for load
 browser.navigate("https://example.com");
-console.log(browser.url);    // "https://example.com"
-console.log(browser.title);  // "Example Domain"
+await browser.waitForNavigation();
+console.log(browser.title);
 
-// Evaluate JavaScript inside the page
-const heading = await browser.evaluate("document.querySelector('h1').textContent");
-console.log(heading); // "Example Domain"
-
-// Query elements
-const h1Text = await browser.getText("h1");
-const loginExists = await browser.exists("#login-form");
-const href = await browser.getAttribute("a", "href");
-
-// Interact with forms
+// Wait for dynamic content, then interact
+await browser.waitForSelector("#results");
+const heading = await browser.getText("h1");
 await browser.type("#search", "persephone");
 await browser.click("#submit-btn");
-await browser.select("#country", "US");
-await browser.check("#agree-terms");
+
+// Work with multiple tabs
+const tabId = browser.addTab("https://other.com");
+await browser.waitForNavigation({ tabId });
+const otherTitle = await browser.getText("h1", { tabId });
+
+// Tab listing
+for (const tab of browser.tabs) {
+    console.log(tab.id, tab.url, tab.title);
+}
+browser.switchTab(tabId);
+browser.closeTab(tabId);
 ```
 
 ---

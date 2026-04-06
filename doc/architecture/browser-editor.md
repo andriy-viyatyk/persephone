@@ -186,13 +186,20 @@ The renderer builds the menu dynamically based on `params` fields from the `cont
 |------|---------|---------|
 | `src/renderer/editors/browser/BrowserEditorView.tsx` | Renderer | UI component: toolbar, URL bar, multi-webview management, URL suggestions, bookmarks |
 | `src/renderer/editors/browser/BrowserEditorModel.ts` | Renderer | Multi-tab state management, navigation logic, favicon caching, search engines |
+| `src/renderer/editors/browser/BrowserTargetModel.ts` | Renderer | Automation adapter sub-model — implements `IBrowserTarget` for MCP tools |
 | `src/renderer/editors/browser/BrowserTabsPanel.tsx` | Renderer | Left-side internal tabs panel with compact extension popup, drag-to-reorder |
 | `src/renderer/editors/browser/BrowserBookmarks.ts` | Renderer | Wraps TextFileModel + LinkEditorModel for bookmark file I/O |
 | `src/renderer/editors/browser/BookmarksDrawer.tsx` | Renderer | Sliding overlay drawer rendering the Link Editor for bookmarks |
 | `src/renderer/editors/browser/UrlSuggestionsDropdown.tsx` | Renderer | URL bar dropdown with search history and navigation history |
 | `src/renderer/editors/browser/browser-search-history.ts` | Renderer | Per-profile persistent search history storage (file-based) |
 | `src/renderer/editors/browser/TorStatusOverlay.tsx` | Renderer | Tor connection overlay with spinner, log, reconnect button |
+| `src/renderer/editors/browser/network-log-links.ts` | Renderer | Network log → ILink[] conversion for Show Resources |
+| `src/renderer/automation/commands.ts` | Renderer | Playwright-compatible browser_* MCP command handlers |
+| `src/renderer/automation/snapshot.ts` | Renderer | Accessibility tree → YAML formatter for browser_snapshot |
+| `src/renderer/automation/CdpSession.ts` | Renderer | CDP session wrapper (IPC to main process debugger) |
+| `src/renderer/automation/types.ts` | Renderer | `IBrowserTarget` interface — what automation needs from browser editor |
 | `src/main/browser-service.ts` | Main | Attaches to webContents, relays events via IPC, audio state, hotkeys, cache cleanup, DOM collection (incl. iframes) |
+| `src/main/cdp-service.ts` | Main | CDP session management — debugger attach/detach/send via IPC |
 | `src/main/network-logger.ts` | Main | Per-page HTTP request/response logging via `session.webRequest`, circular buffer, IPC access |
 | `src/main/tor-service.ts` | Main | Tor process lifecycle: spawn/kill tor.exe, per-partition SOCKS5 proxy, torrc generation |
 | `src/preload-webview.ts` | Guest | MutationObserver for title/favicon, image tracking on link clicks |
@@ -472,15 +479,63 @@ Scripts access browser pages via `page.asBrowser()`, which returns a `BrowserEdi
 ```javascript
 const browser = await page.asBrowser();
 browser.navigate("https://example.com");
-console.log(browser.url);    // "https://example.com"
-console.log(browser.title);  // "Example Domain"
-browser.back();
-browser.forward();
-browser.reload();
+await browser.waitForNavigation();
+const snapshot = await browser.snapshot();  // accessibility tree (YAML)
+await browser.click("#submit-btn");
+await browser.type("#input", "text");
+const tabs = browser.tabs;                  // list of internal tabs
 ```
 
-**Interface:** [`IBrowserEditor`](../../src/renderer/api/types/browser-editor.d.ts) — `url`, `title`, `navigate()`, `back()`, `forward()`, `reload()`
+**Interface:** [`IBrowserEditor`](../../src/renderer/api/types/browser-editor.d.ts) — navigation, query (getText, getValue, exists), interaction (click, type, select, check), wait methods, tab management, CDP access, accessibility snapshot
 **Implementation:** [`BrowserEditorFacade`](../../src/renderer/scripting/api-wrapper/BrowserEditorFacade.ts)
+
+## Browser Automation (MCP)
+
+Browser automation for AI agents lives in `src/renderer/automation/`. This layer is separate from the browser editor — the editor exposes a lightweight `BrowserTargetModel` adapter, and the automation layer builds Playwright-compatible MCP tools on top.
+
+```
+MCP tool call (browser_click) → mcp-handler.ts → automation/commands.ts
+    → getTarget() → active BrowserEditorModel.target (IBrowserTarget)
+    → perform action via CDP → return accessibility snapshot
+```
+
+**Key design:** The automation layer uses the active browser page (not the first one). Agents switch pages using other Persephone MCP tools, then interact with browser_* tools on whichever page is active.
+
+**13 Playwright-compatible tools:** `browser_navigate`, `browser_snapshot`, `browser_click`, `browser_type`, `browser_select_option`, `browser_press_key`, `browser_evaluate`, `browser_tabs`, `browser_navigate_back`, `browser_wait_for`, `browser_take_screenshot`, `browser_network_requests`, `browser_close`
+
+Tools support both CSS selectors (`selector` param) and accessibility snapshot refs (`ref` param, e.g. `ref=e52`). Ref resolution (`automation/ref.ts`) uses CDP `DOM.resolveNode` + `Runtime.callFunctionOn`. Stale refs produce helpful "re-take the snapshot" error messages.
+
+### Text Input Strategy (Electron Webview Limitation)
+
+CDP `Input.dispatchKeyEvent` and `Input.insertText` do **not** work in Electron `<webview>` elements — the events don't cross the guest process isolation boundary. This is a known limitation confirmed by Electron, Playwright, and Puppeteer issue trackers.
+
+The `browser_type` tool (`automation/input.ts`) auto-detects element type and uses the appropriate strategy:
+
+| Element | Default (`slowly: false`) | `slowly: true` |
+|---------|--------------------------|-----------------|
+| `<input>` | Native prototype `.value` setter + InputEvent (atomic, single evaluate) | `webview.insertText()` char by char |
+| `<textarea>` | Native prototype `.value` setter + InputEvent (atomic, single evaluate) | `webview.insertText()` char by char |
+| contentEditable | `selectAll` + `webview.insertText(text)` (Electron native API) | `webview.insertText()` char by char |
+
+Key implementation details:
+- **Visible element preference:** When multiple elements match a selector (e.g., Gmail has a hidden textarea + visible contentEditable div with the same `aria-label`), the first **visible** match is used
+- **Atomic focus+fill:** For `<input>`/`<textarea>`, focus and value assignment happen in a single `Runtime.evaluate` call to prevent sites from intercepting focus between calls
+- **`webview.insertText()`:** Electron's native API that types at the Chromium level, bypassing Trusted Types CSP. Accessed via `IBrowserTarget.insertText()` → `BrowserTargetModel` → `webview.insertText()`
+- **`pressKey()`:** Uses JS `KeyboardEvent` dispatch via `Runtime.evaluate` (CDP `Input.dispatchKeyEvent` doesn't work in webviews)
+
+### Iframe Snapshots
+
+`browser_snapshot` includes content from iframes (including JS-created and cross-origin ones). The approach:
+
+1. **Main frame:** `Accessibility.getFullAXTree()` — same as before
+2. **Discover iframes:** `Target.getTargets()` — finds all iframe targets (including dynamically created ones that `Page.getFrameTree` misses)
+3. **Attach per-iframe:** `Target.attachToTarget({ targetId, flatten: true })` → `sessionId`
+4. **Get iframe AX tree:** `Accessibility.getFullAXTree({}, sessionId)` — executed in the iframe's session
+5. **Merge:** Iframe content is indented under the `Iframe` placeholder node in the main snapshot
+
+**Frame-scoped refs:** Main frame refs are `e123`, iframe refs are `f1-e456` (frame index prefix). `ref.ts` parses the prefix and uses the corresponding `sessionId` for `DOM.resolveNode` and `Runtime.callFunctionOn`, so `browser_click(ref="f1-e456")` works in the correct iframe context.
+
+**Overlay detection:** `detectOverlay()` checks for `dialog[open]`, `[role="dialog"][aria-modal="true"]`, and viewport-covering fixed/absolute elements. If detected, a hint line is prepended to the snapshot.
 
 ## Link Open Menu Helper
 

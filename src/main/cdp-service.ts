@@ -47,7 +47,7 @@ export function initCdpHandlers(
 
     ipcMain.handle(
         BrowserChannel.cdpSend,
-        async (_event, key: string, method: string, params?: object) => {
+        async (_event, key: string, method: string, params?: object, sessionId?: string) => {
             const wc = getWebContents(key);
             if (!wc || wc.isDestroyed()) {
                 throw new Error("WebContents not found or destroyed");
@@ -64,7 +64,7 @@ export function initCdpHandlers(
                     throw new Error("Failed to attach CDP debugger");
                 }
             }
-            return wc.debugger.sendCommand(method, params);
+            return wc.debugger.sendCommand(method, params, sessionId);
         },
     );
 }

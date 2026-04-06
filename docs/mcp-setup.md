@@ -63,6 +63,28 @@ gemini --mcp-server http://localhost:7865/mcp
 | **read_guide** | Read a documentation guide by name (`ui-push`, `pages`, `scripting`, `graph`, `notebook`, `todo`, `links`). Returns the guide content as text. An alternative to fetching `notepad://guides/*` resources — works with AI clients that don't support MCP resources. |
 | **get_app_info** | Get app version, page count, and active page ID. |
 
+### Browser Automation Tools
+
+These tools control the built-in browser directly — no script needed. They operate on the active browser tab in the target window. Use `open_url` first to open a browser page if one is not already open.
+
+| Tool | Description |
+|------|-------------|
+| **browser_navigate** | Navigate to a URL. Returns an accessibility snapshot of the loaded page. |
+| **browser_snapshot** | Get the accessibility snapshot of the current page — a YAML-like tree of elements with roles, names, and `[ref=eN]` IDs. Preferred over screenshots for structured, deterministic inspection. |
+| **browser_click** | Click an element. Accepts a CSS `selector`, an accessibility `ref` from a snapshot (e.g. `"e52"`), or a human-readable `element` description used as a CSS selector. Returns an updated snapshot. |
+| **browser_type** | Type text into an input element. Clears existing value first. Returns an updated snapshot. Accepts `selector` or `ref`. Optional `slowly: true` to type character by character (triggers key handlers); optional `submit: true` to press Enter after typing. |
+| **browser_select_option** | Select an option in a `<select>` element by value. Returns an updated snapshot. Accepts `selector` or `ref`. |
+| **browser_press_key** | Press a keyboard key (e.g. `"Enter"`, `"Tab"`, `"Escape"`, `"ArrowDown"`). Returns an updated snapshot. |
+| **browser_evaluate** | Run JavaScript in the page and return the result. Supports async expressions. |
+| **browser_tabs** | List all open browser tabs. Returns an array of `{ id, url, title, loading, active }`. |
+| **browser_navigate_back** | Navigate back in browser history. Returns an updated snapshot. |
+| **browser_wait_for** | Wait for an element (`selector`) or text (`text`) to appear on the page. Returns a snapshot when found. Accepts optional `timeout` in ms (default 30000). |
+| **browser_take_screenshot** | Take a screenshot of the current page. Returns a base64-encoded PNG image. |
+| **browser_network_requests** | Get the network request log for the current tab. Returns an array of `{ url, method, statusCode, resourceType, requestHeaders, responseHeaders }`. |
+| **browser_close** | Close the active browser tab. |
+
+> **Tip:** `browser_snapshot` is the recommended way to inspect page state — it is faster and more deterministic than screenshots. After any click or type action, the tool automatically returns an updated snapshot so you can verify the result without a separate call.
+
 ### Multi-Window Support
 
 All tools (except `list_windows`) accept an optional `windowIndex` parameter to target a specific window. If omitted, the first open window is used.
@@ -118,6 +140,19 @@ The agent will use `create_page` with `language: "javascript"` and the content.
 Ask: *"Open the GitHub API docs in persephone"*
 
 The agent will use `open_url` with the URL. You can also ask for a specific profile, incognito mode, or Tor mode: *"Open google.com in incognito"*, *"Open this page through Tor"*.
+
+### Automate the browser
+
+Ask: *"Search for 'persephone editor' on Google and show me the first result title"*
+
+The agent will use the browser automation tools:
+
+1. `open_url` — opens a browser page navigated to `https://google.com`
+2. `browser_wait_for` — waits for the search box to appear
+3. `browser_type` — types the query into the search box
+4. `browser_press_key` — presses `Enter`
+5. `browser_wait_for` — waits for results to load
+6. `browser_snapshot` — reads the page structure to find the first result title
 
 ### Transform data
 

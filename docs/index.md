@@ -25,7 +25,7 @@ persephone is a Windows Notepad replacement designed for developers. It combines
 - [Grid Editor](./grid-editor.md) - Spreadsheet-like data editor for JSON/CSV
 - [Notebook Editor](./notebook.md) - Structured notes with categories and tags
 - [Todo Editor](./editors.md#todo-editor) - Task lists for `.todo.json` files
-- [Browser](./browser.md) - Built-in web browser with profiles, bookmarks, and downloads
+- [Browser](./browser.md) - Built-in web browser with profiles, bookmarks, downloads, and scripting/MCP automation
 - [Scripting](./scripting.md) - JavaScript/TypeScript execution and content transformation
 - [Scripting API Reference](./api/index.md) - Complete API for `page` and `app` objects
 - [MCP Server Setup](./mcp-setup.md) - Connect AI agents (Claude, ChatGPT, Gemini) to control persephone
@@ -49,7 +49,7 @@ persephone is a Windows Notepad replacement designed for developers. It combines
 - JSON/CSV grid view with sorting, filtering, and full keyboard navigation
 - Notebook editor for structured notes
 - Todo editor for file-based task tracking
-- Built-in web browser with profiles, Incognito, Tor mode, and DRM video support
+- Built-in web browser with profiles, Incognito, Tor mode, DRM video support, and full scripting/MCP automation
 - Markdown preview with syntax highlighting and Mermaid diagrams
 - File comparison (diff view)
 - File encryption

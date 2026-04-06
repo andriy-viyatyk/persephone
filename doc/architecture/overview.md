@@ -99,6 +99,7 @@ Steps 1-3 run in parallel. Steps 4-7 are sequential (each depends on the previou
 ├── editors/          # ALL editor implementations (lazy-loaded)
 ├── content/          # Content delivery — providers, transformers, pipes
 ├── scripting/        # Script execution engine and API wrappers
+├── automation/       # Browser automation — Playwright-compatible MCP tools
 ├── components/       # Reusable UI components
 ├── core/             # State primitives and utilities
 ├── theme/            # Colors, icons, theme definitions
@@ -114,6 +115,7 @@ Steps 1-3 run in parallel. Steps 4-7 are sequential (each depends on the previou
 | **editors/** | File type handling, content editing | `registry.ts`, `text/`, `grid/`, `browser/`, etc. |
 | **content/** | Content I/O pipeline — providers, transformers, pipes | `ContentPipe.ts`, `parsers.ts`, `resolvers.ts`, `providers/`, `transformers/` |
 | **scripting/** | Script sandbox, API wrappers, facades | `ScriptRunner.ts`, `ScriptContext.ts`, `api-wrapper/` |
+| **automation/** | Playwright-compatible browser MCP tools, CDP, input, refs | `commands.ts`, `input.ts`, `ref.ts`, `snapshot.ts` |
 | **components/** | Reusable UI building blocks | `basic/`, `data-grid/`, `overlay/`, `virtualization/` |
 | **core/** | State primitives, utilities | `state/` (TOneState, TModel), `utils/` |
 | **theme/** | Design tokens, themes | `color.ts`, `themes/` |
@@ -126,7 +128,8 @@ Steps 1-3 run in parallel. Steps 4-7 are sequential (each depends on the previou
 4. **`content/`** implements the I/O pipeline — imports `core/`, `api/types/`
 5. **`editors/`** implement page types — import `core/`, `components/`, `api/`, `content/`
 6. **`scripting/`** wraps `api/`, `editors/`, and `content/` for safe script access
-7. **`ui/`** orchestrates everything — imports all layers
+7. **`automation/`** implements browser MCP tools — imports `api/`, `editors/`, `ipc/`; loaded via dynamic import from `mcp-handler.ts`
+8. **`ui/`** orchestrates everything — imports all layers
 8. Lower layers must NOT import from higher layers
 
 ## Key Subsystems

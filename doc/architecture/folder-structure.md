@@ -254,15 +254,18 @@ persephone/
 │   │   ├── BrowserEditorView.tsx     # Browser UI
 │   │   ├── BrowserWebviewModel.ts  # Webview management
 │   │   ├── BrowserUrlBarModel.ts   # URL bar state
+│   │   ├── BrowserTargetModel.ts   # Automation adapter (implements IBrowserTarget)
 │   │   ├── BrowserTabsPanel.tsx    # Browser tab bar
 │   │   ├── BrowserFindBar.tsx      # Find in page
 │   │   ├── BookmarksDrawer.tsx     # Bookmarks panel
 │   │   ├── DownloadButton.tsx      # Download indicator
 │   │   ├── BrowserDownloadsPopup.tsx # Download list popup
 │   │   ├── UrlSuggestionsDropdown.tsx # URL autocomplete
+│   │   ├── TorStatusOverlay.tsx    # Tor connection status
 │   │   ├── BrowserBookmarks.ts     # Bookmarks data management
 │   │   ├── BrowserBookmarksUIModel.ts # Bookmarks UI state
 │   │   ├── browser-search-history.ts  # Search history
+│   │   ├── network-log-links.ts    # Network log → ILink[] conversion
 │   │   └── index.ts
 │   ├── notebook/           # Notebook editor (standalone)
 │   │   ├── NotebookEditor.tsx
@@ -447,6 +450,14 @@ persephone/
 │       ├── Markdown.ts            # Markdown helper class (returned by ui.show.markdown)
 │       ├── Mermaid.ts             # Mermaid helper class (returned by ui.show.mermaid)
 │       └── StyledTextBuilder.ts    # Fluent styled text builder + styledText() factory
+│
+├── automation/             # Browser Automation (Playwright-compatible MCP tools)
+│   ├── types.ts            # IBrowserTarget interface
+│   ├── CdpSession.ts       # CDP session wrapper (IPC to main process debugger)
+│   ├── snapshot.ts         # Accessibility snapshot (main frame + iframes, overlay detection)
+│   ├── input.ts            # Keyboard/text input (typeText, pressKey, fill strategies)
+│   ├── ref.ts              # Ref resolution (parseRef, resolveRef, callOnRef)
+│   └── commands.ts         # browser_* MCP command handlers
 │
 ├── components/             # Reusable UI Components
 │   ├── basic/              # Atomic: Button, Input, TextField, Chip, Tooltip, etc.

@@ -398,6 +398,162 @@ function createMcpServer(): InstanceType<typeof McpServer> {
             toToolResult(await sendToRenderer("open_url", { url, profileName, incognito }, windowIndex)),
     );
 
+    // ── Browser automation tools (Playwright-compatible) ─────────────
+
+    server.tool(
+        "browser_navigate",
+        "Navigate the browser to a URL. Returns the page accessibility snapshot after loading.",
+        {
+            url: z.string().describe("URL to navigate to."),
+            windowIndex: windowIndexParam,
+        },
+        async ({ url, windowIndex }) =>
+            toToolResult(await sendToRenderer("browser_navigate", { url }, windowIndex)),
+    );
+
+    server.tool(
+        "browser_snapshot",
+        "Get the accessibility snapshot of the current page. Returns a YAML-like tree of elements with roles, names, and ref IDs for interaction. Preferred over screenshots — structured, fast, deterministic.",
+        {
+            windowIndex: windowIndexParam,
+        },
+        async ({ windowIndex }) =>
+            toToolResult(await sendToRenderer("browser_snapshot", {}, windowIndex)),
+    );
+
+    server.tool(
+        "browser_click",
+        "Click an element on the page. Accepts a CSS selector or a ref from the accessibility snapshot. Returns updated accessibility snapshot.",
+        {
+            selector: z.string().optional().describe("CSS selector for the target element."),
+            ref: z.string().optional().describe("Element ref from accessibility snapshot (e.g., 'e52')."),
+            element: z.string().optional().describe("Human-readable element description (used as CSS selector)."),
+            windowIndex: windowIndexParam,
+        },
+        async ({ selector, ref, element, windowIndex }) =>
+            toToolResult(await sendToRenderer("browser_click", { selector, ref, element }, windowIndex)),
+    );
+
+    server.tool(
+        "browser_type",
+        "Type text into editable element. Clears existing content first. Works on inputs, textareas, and contentEditable elements. By default fills text at once; use slowly for character-by-character typing. Returns updated accessibility snapshot.",
+        {
+            selector: z.string().optional().describe("CSS selector for the target element."),
+            ref: z.string().optional().describe("Element ref from accessibility snapshot (e.g., 'e52')."),
+            text: z.string().describe("Text to type into the element."),
+            submit: z.boolean().optional().describe("Whether to press Enter after typing (e.g. to submit a form)."),
+            slowly: z.boolean().optional().describe("Whether to type one character at a time. Useful for triggering key handlers in the page. By default entire text is filled in at once."),
+            windowIndex: windowIndexParam,
+        },
+        async ({ selector, ref, text, submit, slowly, windowIndex }) =>
+            toToolResult(await sendToRenderer("browser_type", { selector, ref, text, submit, slowly }, windowIndex)),
+    );
+
+    server.tool(
+        "browser_select_option",
+        "Select an option in a <select> element by value. Returns updated accessibility snapshot.",
+        {
+            selector: z.string().optional().describe("CSS selector for the <select> element."),
+            ref: z.string().optional().describe("Element ref from accessibility snapshot."),
+            value: z.string().describe("Option value to select."),
+            windowIndex: windowIndexParam,
+        },
+        async ({ selector, ref, value, windowIndex }) =>
+            toToolResult(await sendToRenderer("browser_select_option", { selector, ref, value }, windowIndex)),
+    );
+
+    server.tool(
+        "browser_press_key",
+        "Press a keyboard key. Returns updated accessibility snapshot.",
+        {
+            key: z.string().describe("Key to press (e.g., 'Enter', 'Tab', 'Escape', 'ArrowDown')."),
+            windowIndex: windowIndexParam,
+        },
+        async ({ key, windowIndex }) =>
+            toToolResult(await sendToRenderer("browser_press_key", { key }, windowIndex)),
+    );
+
+    server.tool(
+        "browser_evaluate",
+        "Run JavaScript in the browser page and return the result. Supports async expressions.",
+        {
+            expression: z.string().describe("JavaScript expression to evaluate in the page."),
+            windowIndex: windowIndexParam,
+        },
+        async ({ expression, windowIndex }) =>
+            toToolResult(await sendToRenderer("browser_evaluate", { expression }, windowIndex)),
+    );
+
+    server.tool(
+        "browser_tabs",
+        "List all open browser tabs. Returns array of { id, url, title, loading, active }.",
+        {
+            windowIndex: windowIndexParam,
+        },
+        async ({ windowIndex }) =>
+            toToolResult(await sendToRenderer("browser_tabs", {}, windowIndex)),
+    );
+
+    server.tool(
+        "browser_navigate_back",
+        "Navigate back in browser history. Returns updated accessibility snapshot.",
+        {
+            windowIndex: windowIndexParam,
+        },
+        async ({ windowIndex }) =>
+            toToolResult(await sendToRenderer("browser_navigate_back", {}, windowIndex)),
+    );
+
+    server.tool(
+        "browser_wait_for",
+        "Wait for an element to appear on the page. Returns accessibility snapshot when found.",
+        {
+            selector: z.string().optional().describe("CSS selector to wait for."),
+            text: z.string().optional().describe("Text content to wait for on the page."),
+            timeout: z.number().optional().describe("Max wait time in ms (default 30000)."),
+            windowIndex: windowIndexParam,
+        },
+        async ({ selector, text, timeout, windowIndex }) =>
+            toToolResult(await sendToRenderer("browser_wait_for", { selector, text, timeout }, windowIndex)),
+    );
+
+    server.tool(
+        "browser_take_screenshot",
+        "Take a screenshot of the current page. Returns a base64-encoded PNG image.",
+        {
+            windowIndex: windowIndexParam,
+        },
+        async ({ windowIndex }) => {
+            const resp = await sendToRenderer("browser_take_screenshot", {}, windowIndex);
+            if (resp.error) return toToolResult(resp);
+            const r = resp.result as any; // eslint-disable-line @typescript-eslint/no-explicit-any
+            if (r?.type === "image") {
+                return { content: [{ type: "image" as const, data: r.data, mimeType: r.mimeType }] };
+            }
+            return toToolResult(resp);
+        },
+    );
+
+    server.tool(
+        "browser_network_requests",
+        "Get the network request log for the current browser tab. Returns array of { url, method, statusCode, resourceType, requestHeaders, responseHeaders }.",
+        {
+            windowIndex: windowIndexParam,
+        },
+        async ({ windowIndex }) =>
+            toToolResult(await sendToRenderer("browser_network_requests", {}, windowIndex)),
+    );
+
+    server.tool(
+        "browser_close",
+        "Close the active browser tab.",
+        {
+            windowIndex: windowIndexParam,
+        },
+        async ({ windowIndex }) =>
+            toToolResult(await sendToRenderer("browser_close", {}, windowIndex)),
+    );
+
     // ── Guide reader tool ─────────────────────────────────────────────
     server.tool(
         "read_guide",

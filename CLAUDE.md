@@ -198,6 +198,7 @@ npm run lint        # Run ESLint
     /editors         # ALL editors (text, grid, markdown, pdf, compare, notebook)
     /content         # Content delivery — providers, transformers, pipes (EPIC-012)
     /scripting       # Script execution, wrappers, editor facades, worker
+    /automation      # Browser automation — Playwright-compatible MCP tools, CDP, snapshots
     /components      # Reusable UI components
     /core            # State primitives, utilities
     /theme           # Styling
@@ -340,6 +341,12 @@ See [/doc/standards/coding-style.md](doc/standards/coding-style.md) for complete
 | MCP HTTP server          | `/src/main/mcp-http-server.ts`                    |
 | MCP resource guides      | `/assets/mcp-res-*.md`                            |
 | MCP command handler      | `/src/renderer/api/mcp-handler.ts`                |
+| Browser automation cmds  | `/src/renderer/automation/commands.ts`             |
+| Browser input dispatch   | `/src/renderer/automation/input.ts`                |
+| Browser ref resolution   | `/src/renderer/automation/ref.ts`                  |
+| CDP session wrapper      | `/src/renderer/automation/CdpSession.ts`           |
+| Accessibility snapshot   | `/src/renderer/automation/snapshot.ts`              |
+| CDP service (main)       | `/src/main/cdp-service.ts`                         |
 | Rust launcher            | `/launcher/src/main.rs`                           |
 | Rust screen snip tool    | `/snip-tool/src/main.rs`                          |
 | VMP signing (build hook) | `/scripts/vmp-sign.mjs`                           |

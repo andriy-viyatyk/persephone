@@ -66,8 +66,16 @@ ui.log("Hello");
     - `.linksCount` — Total count
     - `.addLink(url, title?, category?)` / `.deleteLink(id)` / `.updateLink(id, props)`
   - **[.asBrowser()](./page.md#asbrowserpromiseibrowsereditor)** — Browser facade
-    - `.url` / `.title` — Current URL and page title
+    - `.url` / `.title` — Current URL and page title (active tab)
     - `.navigate(url)` / `.back()` / `.forward()` / `.reload()`
+    - `.tabs` / `.activeTab` — Internal tab list and active tab info
+    - `.addTab(url?)` / `.closeTab(tabId?)` / `.switchTab(tabId)` — Tab management
+    - `.evaluate(expression, options?)` — Run JavaScript in the page → `Promise<unknown>`
+    - `.snapshot(options?)` — Accessibility snapshot (Playwright MCP format) → `Promise<string>`
+    - `.getText(selector, options?)` / `.getValue(selector, options?)` / `.getAttribute(selector, attr, options?)` / `.getHtml(selector, options?)` / `.exists(selector, options?)` — DOM queries
+    - `.click(selector, options?)` / `.type(selector, text, options?)` / `.select(selector, value, options?)` / `.check(selector, options?)` / `.uncheck(selector, options?)` / `.clear(selector, options?)` — DOM interactions
+    - `.pressKey(key, options?)` — Press a key or key combination (e.g. `"Enter"`, `"Control+a"`)
+    - `.waitForSelector(selector, options?)` / `.waitForNavigation(options?)` / `.wait(ms)` — Wait helpers
   - **[.asMarkdown()](./page.md#asmarkdownpromiseimarkdowneditor)** — Markdown preview facade
     - `.viewMounted` — True if preview is mounted
     - `.html` — Rendered HTML content

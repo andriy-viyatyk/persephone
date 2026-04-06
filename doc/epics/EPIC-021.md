@@ -23,13 +23,25 @@ Add a Playwright/Puppeteer-like scripting API for Persephone's built-in browser,
 
 Browser tabs with `display: none` (non-active) still have a running Chromium process — their DOM, JS engine, and layout are fully active. `executeJavaScript()` and `sendInputEvent()` work on hidden webviews. This allows automation to run in background tabs while the user works in the active tab.
 
-### API approach: Playwright-core via CDP (Approach 3)
+### API approach: Own CDP implementation with Playwright-compatible patterns
 
-Use `playwright-core` (the library without bundled browsers) connected to webview webContents via Chrome DevTools Protocol. This gives us the full battle-tested Playwright API (selectors, auto-wait, input simulation, network interception) without reinventing browser automation.
+After investigating the Playwright source code (both `playwright-core` and `@playwright/mcp`), we decided to **keep our own CDP implementation** rather than integrating `playwright-core` as a dependency.
 
-Electron's `webContents.debugger` API speaks CDP natively. Playwright's `connectOverCDP()` attaches to existing Chromium instances — our `<webview>` is exactly that.
+**Why not playwright-core:**
+- Integrating with Electron's `webContents.debugger` requires a WebSocket bridge or custom transport — non-trivial bridging work
+- Adds ~3MB dependency and version coupling
+- We already have a working CDP layer via `webContents.debugger.attach()`
+- Owning the code lets us fix edge cases (healthcare portals, contentEditable, Trusted Types) without waiting for upstream
 
-Expose a thin wrapper via `page.asBrowser()` facade that wraps the Playwright `Page` object with an optional sanitization layer.
+**What we replicate from Playwright's patterns:**
+- Same MCP tool names and parameters (trained agents work without learning a new API)
+- Accessibility snapshot format (YAML with `[ref=eN]` for each element)
+- CDP `Input.dispatchKeyEvent`/`Input.insertText` for typing (bypasses Trusted Types)
+- Frame traversal for iframe content in snapshots
+
+**Architecture:** Electron's `webContents.debugger.attach("1.3")` enables CDP on any webview — no network port, works per-webview. A dedicated `src/renderer/automation/` layer isolates all Playwright-compatible logic from the browser editor.
+
+Expose a thin wrapper via `page.asBrowser()` facade that wraps the browser model with an optional sanitization layer.
 
 ### Data protection layer (PHI sanitization hooks)
 
@@ -81,20 +93,20 @@ Claude (Anthropic) ←→ MCP Handler ←→ Sanitization Hooks ←→ Playwrigh
 
 **Implementation:** The sanitization layer is a user-configurable JavaScript file that exports `sanitize()` and `resolve()` functions. This keeps it general-purpose — different customers define their own PHI patterns. Azure Copilot integration (using an isolated Azure LLM to identify and replace PHI) is one possible sanitizer implementation.
 
-**Wrapped Playwright page:**
+**Wrapped automation target:**
 
 ```javascript
-class SanitizedPage {
-    constructor(private page: PlaywrightPage, private sanitizer: Sanitizer) {}
+class SanitizedTarget {
+    constructor(private target: IBrowserTarget, private sanitizer: Sanitizer) {}
     
-    async textContent(selector: string): Promise<string> {
-        const raw = await this.page.textContent(selector);
+    async snapshot(): Promise<string> {
+        const raw = await captureSnapshot(this.target);
         return this.sanitizer.sanitize(raw);  // PHI → tokens
     }
     
-    async fill(selector: string, value: string): Promise<void> {
-        const resolved = this.sanitizer.resolve(value);  // tokens → real values
-        await this.page.fill(selector, resolved);
+    async type(ref: string, text: string): Promise<void> {
+        const resolved = this.sanitizer.resolve(text);  // tokens → real values
+        await typeByRef(this.target.cdp(), ref, resolved);
     }
 }
 ```
@@ -165,32 +177,54 @@ This means US-369 (MCP commands) should use these exact tool names instead of `m
 
 Operations target the active tab by default. An optional `tabId` parameter can target a specific internal tab (for background automation). Access non-active tabs via `browser.tabs` collection.
 
+### Automation layer architecture
+
+All Playwright-compatible code lives in `src/renderer/automation/`, isolated from the browser editor:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  MCP tool call (browser_click, browser_snapshot, etc.)   │
+│  mcp-http-server.ts → IPC → mcp-handler.ts              │
+└────────────────────────┬────────────────────────────────┘
+                         │ delegates browser_* commands
+┌────────────────────────▼────────────────────────────────┐
+│  src/renderer/automation/                                │
+│                                                          │
+│  commands.ts         — browser_* MCP command handlers    │
+│  snapshot.ts         — accessibility tree → YAML format  │
+│  CdpSession.ts       — CDP wrapper via IPC               │
+│  BrowserTargetModel  — IBrowserTarget adapter            │
+│  input.ts            — CDP Input.dispatchKeyEvent        │
+│  ref-resolver.ts     — ref="e52" → DOM element           │
+│  types.ts            — IBrowserTarget interface           │
+└────────────────────────┬────────────────────────────────┘
+                         │ IBrowserTarget interface
+┌────────────────────────▼────────────────────────────────┐
+│  BrowserEditorModel.target (BrowserTargetModel)          │
+│  Exposes: navigate, tabs, cdp — nothing more             │
+└─────────────────────────────────────────────────────────┘
+```
+
+The browser editor knows nothing about Playwright patterns, snapshots, or refs. It only exposes navigation, tab management, and CDP access through `BrowserTargetModel`.
+
 ## Technical Context
 
-### Current browser scripting surface
+### Electron CDP access
 
-**`IBrowserEditor`** (6 methods): `url`, `title`, `navigate()`, `back()`, `forward()`, `reload()`
-
-**`BrowserEditorFacade`** wraps `BrowserEditorModel` → `BrowserWebviewModel` → `webviewRefs` Map (internalTabId → `Electron.WebviewTag`).
-
-### Electron APIs available
-
-| API | Source | Purpose |
-|-----|--------|---------|
-| `webview.executeJavaScript(code)` | WebviewTag | Run JS in guest page, return result |
-| `webContents.sendInputEvent(event)` | Main process | Low-level mouse/keyboard events |
-| `webview.capturePage()` | WebviewTag | Screenshot (for debugging) |
-| `webContents.mainFrame.framesInSubtree` | Main process | Access iframes |
+Electron's `webContents.debugger.attach("1.3")` enables CDP on any webview — no network port needed, works per-webview. Managed by `src/main/cdp-service.ts` via IPC. Auto-attaches on first command.
 
 ### Key files
 
 | File | Purpose |
 |------|---------|
+| `src/renderer/automation/` | **Playwright-compatible automation layer** (US-375+) |
 | `src/renderer/api/types/browser-editor.d.ts` | Script API type definitions |
-| `src/renderer/scripting/api-wrapper/BrowserEditorFacade.ts` | Script facade (6 methods) |
-| `src/renderer/editors/browser/BrowserEditorModel.ts` | Browser state management |
-| `src/renderer/editors/browser/BrowserWebviewModel.ts` | Webview references, `getActiveWebview()` |
-| `src/main/browser-service.ts` | Main process webContents management |
+| `src/renderer/scripting/api-wrapper/BrowserEditorFacade.ts` | Script facade for `page.asBrowser()` |
+| `src/renderer/editors/browser/BrowserEditorModel.ts` | Browser state management, sub-models |
+| `src/renderer/editors/browser/BrowserWebviewModel.ts` | Webview references, IPC events |
+| `src/main/cdp-service.ts` | Main process CDP session management |
+| `src/main/mcp-http-server.ts` | MCP tool registration (IPC forwarding) |
+| `src/renderer/api/mcp-handler.ts` | MCP command dispatch |
 
 ## Proposed Script API
 
@@ -250,111 +284,163 @@ await pw.locator("text=Submit").click();
 
 | Task | Title | Status |
 |------|-------|--------|
-| US-365 | Playwright-core CDP integration | Done |
+| US-365 | CDP integration (Electron debugger API) | Done |
 | US-366 | Browser query and interaction API | Done |
-| US-367 | Browser wait methods (waitForSelector, waitForNavigation) | Planned |
-| US-368 | Tab management and background automation | Planned |
-| US-369 | MCP browser automation commands | Planned |
+| US-367 | Browser wait methods (waitForSelector, waitForNavigation) | Done |
+| US-368 | Tab management and background automation | Done |
+| US-369 | MCP browser automation commands (Playwright-compatible) | Done |
+| US-371 | Browser accessibility snapshot | Done |
+| US-375 | Automation layer architecture (refactoring) | Planned |
+| US-376 | Input dispatch via CDP (Trusted Types fix) | Planned |
+| US-377 | Ref resolution improvements | Planned |
+| US-374 | Accessibility snapshot: include iframes, detect overlays/popups | Planned |
 | US-370 | Data protection hooks (PHI sanitization layer) | Planned |
+| US-372 | Fix script implicit return with block-body callbacks | Planned |
+| US-373 | Deferred MCP browser tools (hover, drag, dialog, upload, resize) | Planned |
 
 ## Task Breakdown
 
-### US-365: Playwright-core CDP integration
+### Phase 1: Foundation (Done)
 
-Foundation task — connect `playwright-core` to webview webContents via CDP:
-- Add `playwright-core` as dependency (library only, no bundled browsers)
-- Use Electron's `webContents.debugger.attach()` to enable CDP on a webview
-- New IPC channel for main process to manage CDP sessions per webview
-- Expose `playwright()` on `BrowserEditorFacade` returning a Playwright `Page` object
-- Verify it works on hidden (`display: none`) tabs
-- Basic smoke test: `page.textContent()`, `page.click()`, `page.fill()`
+#### US-365: CDP integration (Electron debugger API)
+Foundation task — direct CDP access via Electron's `webContents.debugger.attach("1.3")`:
+- `src/main/cdp-service.ts` — main process CDP session management via IPC
+- `src/renderer/editors/browser/CdpSession.ts` — renderer-side CDP wrapper with `send()` and `evaluate()`
+- `src/ipc/browser-ipc.ts` — IPC channels: `cdpAttach`, `cdpDetach`, `cdpSend`
+- Auto-attaches on first command, no explicit attach needed
 
-### US-366: Browser query and interaction API
+#### US-366: Browser query and interaction API
+High-level wrapper in `BrowserEditorFacade` using CDP `Runtime.evaluate`:
+- Query: `evaluate()`, `getText()`, `getValue()`, `getAttribute()`, `getHtml()`, `exists()`
+- Interaction: `click()`, `type()`, `select()`, `check()`, `uncheck()`, `clear()`
+- All methods accept optional `{ tabId }` for targeting specific tabs
 
-High-level wrapper around Playwright `Page` with Persephone-specific conveniences:
-- `evaluate(code)`, `getText(selector)`, `getValue(selector)`, `getAttribute(selector, attr)`, `getHtml(selector)`, `exists(selector)`
-- `click(selector)`, `type(selector, text)`, `select(selector, value)`, `check(selector)`, `uncheck(selector)`, `clear(selector)`
-- Update `IBrowserEditor` types and `BrowserEditorFacade`
-- All methods delegate to the Playwright `Page` internally
+#### US-367: Browser wait methods
+- `waitForSelector()` — in-page polling via `requestAnimationFrame`
+- `waitForNavigation()` — polls `document.readyState === 'complete'`
+- `wait(ms)` — simple delay
+- All use single IPC call with in-page Promise (efficient)
 
-### US-367: Browser wait methods
+#### US-368: Tab management and background automation
+- `tabs`, `activeTab`, `addTab()`, `closeTab()`, `switchTab()`
+- All automation methods work on hidden (`display: none`) webviews via CDP
 
-- `waitForSelector(selector, options?): Promise<void>` — poll for element existence (MutationObserver or interval)
-- `waitForNavigation(options?): Promise<void>` — wait for `did-stop-loading` event
-- `wait(ms): Promise<void>` — simple delay
-- Configurable timeout (default 30s) with clear error on timeout
+#### US-371: Browser accessibility snapshot
+- CDP `Accessibility.getFullAXTree` → formatted YAML with roles, names, refs
+- `[ref=eN]` uses `backendDOMNodeId` from CDP
+- Filters noise (none, generic, InlineTextBox), deduplicates StaticText
 
-### US-368: Tab management and background automation
+#### US-369: MCP browser automation commands
+13 Playwright-compatible MCP tools registered in `mcp-http-server.ts`, dispatched via `mcp-handler.ts`:
+- `browser_navigate`, `browser_snapshot`, `browser_click`, `browser_type`, `browser_select_option`, `browser_press_key`, `browser_evaluate`, `browser_tabs`, `browser_navigate_back`, `browser_wait_for`, `browser_take_screenshot`, `browser_network_requests`, `browser_close`
+- Ref resolution via CDP `DOM.resolveNode` + `Runtime.callFunctionOn`
 
-- `browser.tabs: IBrowserTab[]` — list internal tabs
-- `browser.activeTab: IBrowserTab` — current tab
-- `browser.switchTab(tabId): Promise<void>` — switch active tab
-- Allow targeting specific tabs in all methods: `browser.click(selector, { tabId })`
-- Verify all methods work on `display: none` tabs
+### Phase 2: Architecture & Quality (Planned)
 
-### US-369: MCP browser automation commands (Playwright-compatible)
+#### US-375: Automation layer architecture (refactoring)
+Extract all Playwright-compatible code into `src/renderer/automation/`:
+- Move `CdpSession.ts` and `accessibility-snapshot.ts` from `editors/browser/`
+- Create `BrowserTargetModel` sub-model implementing `IBrowserTarget` interface
+- Extract all `browser_*` MCP handlers from `mcp-handler.ts` into `automation/commands.ts`
+- Fix active-page targeting (use active browser page, not first)
+- Pure refactoring — no behavior changes except page targeting fix
 
-Expose browser automation via MCP using **Playwright MCP-compatible tool names** so any AI agent already trained on Playwright MCP works with Persephone out of the box:
+#### US-376: Input dispatch via CDP (Trusted Types fix)
+New `automation/input.ts` — proper keyboard input using CDP:
+- `Input.dispatchKeyEvent` per character (like Playwright)
+- `Input.insertText` for bulk text
+- Bypasses Trusted Types CSP (CDP inputs execute at browser process level)
+- Fixes Gmail and other sites that block `innerHTML`/`textContent` assignment
+- Replaces current `Runtime.evaluate` approach in `browser_type` and `browser_press_key`
 
-Core tools (80% of usage):
-- `browser_navigate(url)` — navigate to URL
-- `browser_snapshot()` — return accessibility tree YAML
-- `browser_click(ref?, selector?, element?)` — click element
-- `browser_type(ref?, selector?, text)` — type into element
-- `browser_select_option(ref?, selector?, value)` — select dropdown
-- `browser_press_key(key)` — keyboard key press
-- `browser_wait_for(selector?, text?, timeout?)` — wait for condition
-- `browser_handle_dialog(action)` — handle alert/confirm
+#### US-377: Ref resolution improvements
+New `automation/ref-resolver.ts` — improve ref-to-element resolution:
+- Current approach: CDP `DOM.resolveNode` + `Runtime.callFunctionOn` (works but different from Playwright)
+- Playwright's approach: injected JavaScript with `Map<ref, Element>` — O(1) lookup
+- Evaluate whether to switch to injected-script approach or keep CDP approach
+- Ensure refs work reliably for click, type, select_option
 
-Extended tools:
-- `browser_take_screenshot()` — capture page screenshot
-- `browser_evaluate(code)` — run JS in page
-- `browser_tabs()` — list open tabs
-- `browser_navigate_back()` — go back
-- `browser_console_messages()` — get console log
-- `browser_network_requests()` — get network log (reuse US-362)
-- `browser_hover()`, `browser_drag()`, `browser_file_upload()`, `browser_close()`, `browser_resize()`
+#### US-374: Accessibility snapshot: include iframes, detect overlays/popups
+Extend `automation/snapshot.ts` for iframe content:
+- Detect `<iframe>` elements during snapshot
+- Execute snapshot logic in each iframe context via CDP `Runtime.evaluate` with `contextId`
+- Merge iframe snapshots into parent with proper indentation
+- Detect modal overlays/popups that may intercept interaction
 
-Each tool returns the updated accessibility snapshot by default (same as Playwright MCP). Parameter format matches Playwright's `ref`/`selector`/`element` pattern.
+### Phase 3: Advanced Features (Planned)
 
-### US-370: Data protection hooks (PHI sanitization layer)
-
-Configurable hook system between browser automation and MCP:
-- User-provided JS script that exports `sanitize(text): string` and `resolve(text): string`
-- `SanitizedPage` wrapper around Playwright `Page` that intercepts all data extraction and input methods
+#### US-370: Data protection hooks (PHI sanitization layer)
+Configurable hook system wrapping `IBrowserTarget`:
+- User-provided JS script exporting `sanitize(text)` and `resolve(text)`
+- `SanitizedTarget` wrapper that intercepts snapshot output and input values
 - Token ↔ value bidirectional mapping (maintained per session)
-- Screenshot sanitization option (`sanitizeImage(buffer)`: blur/redact or block)
-- Settings UI to configure sanitization script path per browser profile
-- Integration point for Azure Copilot or other external sanitization services
+- Screenshot sanitization option
+- Integration point for Azure Copilot
+
+#### US-372: Fix script implicit return with block-body callbacks
+Fix `/\breturn\b/.test(script)` matching `return` inside `.map()` callbacks.
+
+#### US-373: Deferred MCP browser tools (hover, drag, dialog, upload, resize)
+Additional Playwright-compatible MCP tools requiring more complex CDP interactions.
 
 ## Implementation Order
 
-**US-365 → US-366 → US-367 → US-368 → US-369 → US-370**
+### Phase 1 (Done)
+**US-365 → US-366 → US-367 → US-371 → US-368 → US-369**
 
-Start with Playwright-core CDP integration (foundation), then query/interaction API, then wait methods, then tabs, then MCP, then sanitization layer. Each task is independently testable. US-370 wraps the existing API — can be added last without affecting earlier tasks.
+### Phase 2 (Next)
+**US-375 → US-376 → US-377 → US-374**
+
+US-375 (architecture) first — creates the folder structure. Then US-376 (input) and US-377 (refs) improve quality within that structure. US-374 (iframes) extends the snapshot module.
+
+### Phase 3 (Later)
+**US-370 → US-373**
+
+US-370 (PHI sanitization) wraps the automation layer — clean insertion point after architecture is stable. US-373 (deferred tools) adds remaining Playwright-compatible tools.
 
 ## Concerns / Open Questions
 
-1. **`playwright-core` package size:** Need to verify the size of `playwright-core` (without bundled browsers). It should be significantly smaller than full `playwright` since we provide our own Chromium via Electron.
+### Resolved
 
-2. **CDP connection to `<webview>`:** Electron's `webContents.debugger.attach()` enables CDP. Need to verify Playwright's `connectOverCDP()` works with this — Playwright docs note CDP connection is "lower fidelity" than native. Test which features work and which don't.
+1. ~~**`playwright-core` package size**~~ — **Resolved:** Decided not to use `playwright-core`. Own CDP implementation via Electron's debugger API is simpler and gives full control.
 
-3. **Cross-origin iframes:** Playwright handles iframes natively via `frame()` and `frameLocator()`. This should work through CDP, but needs verification with Electron webviews.
+2. ~~**CDP connection to `<webview>`**~~ — **Resolved:** `webContents.debugger.attach("1.3")` works perfectly. Auto-attach on first command, no WebSocket bridge needed.
 
-4. **Security:** Scripts have full access already (Node.js context). But MCP automation commands from external agents should be gated — require user confirmation or a setting to enable/disable.
+3. ~~**Cross-origin iframes**~~ — **Partially resolved:** CDP `Accessibility.getFullAXTree` only captures main frame. Playwright uses injected JavaScript per frame context. Our solution (US-374): execute snapshot in each iframe via CDP `Runtime.evaluate` with per-frame `contextId`.
 
-5. **Script async context:** Long-running automation scripts need to survive without blocking the UI. Current script execution model may need adjustments for scripts that take minutes to complete.
+4. ~~**Page targeting**~~ — **Resolved:** Playwright MCP has no page parameter — uses "current tab" concept. We use active browser page with fallback to first. Agent switches tabs via `browser_tabs` before interacting.
 
-6. **Sanitization completeness:** PHI can appear in unexpected places (URLs, cookies, localStorage, network requests). The sanitization layer needs to be thorough. Consider whether to intercept at the Playwright API level (wrapping methods) or at the MCP serialization level (sanitizing all outgoing JSON).
+### Open
 
-7. **Token mapping persistence:** The token ↔ value map must survive across multiple MCP calls in the same session. Need a session concept for automation runs.
+5. **Security:** MCP automation commands from external agents should be gated — require user confirmation or a setting to enable/disable.
+
+6. **Script async context:** Long-running automation scripts need to survive without blocking the UI. Current execution model may need adjustments.
+
+7. **Sanitization completeness:** PHI can appear in unexpected places (URLs, cookies, localStorage, network requests). The sanitization layer needs to intercept at the `IBrowserTarget` wrapper level.
+
+8. **Token mapping persistence:** The token ↔ value map must survive across multiple MCP calls in the same session. Need a session concept for automation runs.
 
 ## Notes
 
-### 2026-04-06
+### 2026-04-06 — Epic created, Phase 1 implemented
 - Epic created based on customer RPA requirement (healthcare portal automation)
 - Key advantage: entirely local execution — no PHI exposure to cloud APIs
 - AI agents via MCP can orchestrate without seeing page content
-- Hidden tabs support automation in background (confirmed: `executeJavaScript` and `sendInputEvent` work on `display: none` webviews)
-- Decided on Approach 3: `playwright-core` via CDP — gives full battle-tested Playwright API without reinventing browser automation. `playwright-core` is the library-only package (no bundled browsers), Apache 2.0 licensed
-- Added data protection layer (US-370): sanitization hooks between browser and MCP for PHI protection. User-configurable JS script exports `sanitize()`/`resolve()` functions. Enables Azure Copilot integration for automated PHI detection and replacement with tokens
+- Hidden tabs support automation in background (confirmed: CDP works on `display: none` webviews)
+- Initially considered `playwright-core` via CDP (Approach 3), then decided on own implementation
+- Implemented US-365 through US-369, US-371 in one session
+- Live tested: Gmail compose+send, Outlook read — confirmed MCP tools work end-to-end
+
+### 2026-04-06 — Playwright source investigation, architecture pivot
+- Cloned and investigated `microsoft/playwright` and `microsoft/playwright-mcp` source
+- Key findings from Playwright source:
+  - **No page parameter** on any MCP tool — uses "current tab" concept
+  - **Ref resolution** uses injected JavaScript with `Map<ref, Element>`, not CDP `DOM.resolveNode`
+  - **Input dispatch** uses CDP `Input.dispatchKeyEvent`/`Input.insertText` — bypasses Trusted Types
+  - **Iframe snapshots** use injected JS per frame context, not CDP `Accessibility.getFullAXTree`
+- **Decision:** Keep own implementation, replicate Playwright patterns where beneficial
+  - Own code allows specific fixes for healthcare portal edge cases
+  - No dependency coupling with playwright-core versions
+  - Simpler architecture (no WebSocket bridge needed)
+- Created `src/renderer/automation/` layer to isolate Playwright-compatible code from browser editor
+- Split remaining work into Phase 2 (US-375, US-376, US-377, US-374) and Phase 3 (US-370, US-373)
