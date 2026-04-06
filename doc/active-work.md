@@ -25,7 +25,7 @@ Overview of all active and planned epics and tasks.
   - [ ] US-370: Data protection hooks (PHI sanitization layer)
   - [x] [US-372: Fix script implicit return with block-body callbacks](tasks/US-372-fix-script-implicit-return/README.md)
   - [ ] US-373: Deferred MCP browser tools (hover, drag, dialog, upload, resize)
-  - [ ] [US-378: Known issues & edge cases (review before epic completion)](tasks/US-378-browser-automation-fixes/README.md)
+  - [x] [US-378: Known issues & edge cases (review before epic completion)](tasks/US-378-browser-automation-fixes/README.md)
 
 ## Planned
 
