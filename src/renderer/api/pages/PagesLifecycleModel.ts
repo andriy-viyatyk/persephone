@@ -714,7 +714,8 @@ export class PagesLifecycleModel {
         const aboutModule = await import("../../editors/about/AboutPage");
         const model = await aboutModule.default.newEmptyEditorModel("aboutPage");
         if (model) {
-            this.addPage(model);
+            const page = new PageModel(aboutModule.ABOUT_PAGE_ID);
+            this.addPage(model, page);
         }
     };
 
@@ -725,7 +726,8 @@ export class PagesLifecycleModel {
         const model =
             await settingsModule.default.newEmptyEditorModel("settingsPage");
         if (model) {
-            this.addPage(model);
+            const page = new PageModel(settingsModule.SETTINGS_PAGE_ID);
+            this.addPage(model, page);
         }
     };
 
