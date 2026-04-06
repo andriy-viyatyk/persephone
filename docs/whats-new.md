@@ -6,7 +6,13 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ---
 
-## Version 3.0.2 (Upcoming)
+## Version 3.0.3 (Upcoming)
+
+*No changes yet.*
+
+---
+
+## Version 3.0.2
 
 ### New Features
 
@@ -18,18 +24,7 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 - **Script API: browser accessibility snapshot** — `browser.snapshot(options?)` returns a YAML-like accessibility tree for the current page, using the same format as Playwright MCP's `browser_snapshot` tool. Each interactive element is annotated with a `[ref=eN]` reference derived from the Chrome DevTools Protocol accessibility tree. Useful for understanding page structure and for AI-assisted automation workflows. Pass `{ tabId }` to snapshot a background tab.
 
-- **MCP: browser automation tools** — AI agents can now control the built-in browser directly via dedicated MCP tools — no script required. New tools: `browser_navigate`, `browser_snapshot`, `browser_click`, `browser_type`, `browser_select_option`, `browser_press_key`, `browser_evaluate`, `browser_tabs`, `browser_navigate_back`, `browser_wait_for`, `browser_take_screenshot`, `browser_network_requests`, and `browser_close`. The `browser_snapshot` tool returns a structured accessibility tree for reliable element inspection; interaction tools automatically return an updated snapshot. See [MCP Server Setup](./mcp-setup.md#browser-automation-tools).
-
-- **MCP: browser tools — Playwright compatibility** — Several browser automation tools now accept Playwright MCP-compatible parameters, so agents trained on Playwright can use them without adaptation:
-  - `browser_evaluate` accepts `function` (e.g. `"() => document.title"`) as an alias for `expression`; function strings are automatically invoked.
-  - `browser_select_option` accepts `values` (array) in addition to `value` (string).
-  - `browser_wait_for` accepts `textGone` to wait until text disappears, and `time` (in seconds) for a fixed delay.
-  - `browser_tabs` now supports tab management actions: `"list"`, `"new"`, `"close"`, and `"select"`.
-  - `browser_navigate` and `browser_navigate_back` include a race-condition fix to reliably detect when navigation starts before waiting for page load.
-
-- **MCP: browser automation privacy guard** — `browser_*` MCP tools are now blocked on incognito and Tor browser pages. Attempting to use any browser automation tool while an incognito or Tor page is active returns a descriptive error explaining the restriction and suggesting `open_url` to open a normal browser page. Additionally, `open_url` no longer reuses incognito or Tor browser pages — it always opens normal URLs in a normal browser session.
-
-- **MCP: browser tools opt-in** — Browser automation tools are now disabled by default and must be explicitly enabled via **Settings → MCP Server → Enable browser interaction**. While disabled, the tools are completely hidden from AI agents — they do not appear in the MCP tool list at all. This is an intentional safety gate so that browser control is only granted when you choose to enable it. After enabling or disabling, reconnect the agent for the change to take effect.
+- **MCP: browser automation tools** — AI agents can now control the built-in browser directly via dedicated MCP tools — no script required. New tools: `browser_navigate`, `browser_snapshot`, `browser_click`, `browser_type`, `browser_select_option`, `browser_press_key`, `browser_evaluate`, `browser_tabs`, `browser_navigate_back`, `browser_wait_for`, `browser_take_screenshot`, `browser_network_requests`, and `browser_close`. The `browser_snapshot` tool returns a structured accessibility tree for reliable element inspection; interaction tools automatically return an updated snapshot. Tools accept Playwright MCP-compatible parameters so agents trained on Playwright work without adaptation. Tools are disabled by default and must be explicitly enabled via **Settings → MCP Server → Enable browser interaction** — while disabled they are hidden from agents entirely. Browser automation is blocked on incognito and Tor pages for privacy. See [MCP Server Setup](./mcp-setup.md#browser-automation-tools).
 
 ### Bug Fixes
 
