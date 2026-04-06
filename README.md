@@ -26,6 +26,9 @@ A built-in [MCP](https://modelcontextprotocol.io/) HTTP server lets AI agents (C
 ### Built-in Web Browser
 Browse the web in a dedicated tab with profiles, incognito mode, Tor routing, bookmarks, and DRM video support. Links from Markdown and Monaco open in the nearest browser tab automatically.
 
+### Browser Automation
+Automate the built-in browser from scripts using `page.asBrowser()` — click elements, fill forms, extract text, run JavaScript, manage tabs, and wait for dynamic content via a CDP-powered API. AI agents can drive the browser directly through MCP browser tools (`browser_navigate`, `browser_click`, `browser_type`, and more) without writing a script.
+
 ## Download (Windows)
 
 | Format | Link |
