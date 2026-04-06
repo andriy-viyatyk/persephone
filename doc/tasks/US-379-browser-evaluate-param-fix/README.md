@@ -54,8 +54,9 @@ async function browserEvaluate(target: IBrowserTarget, params: any): Promise<Mcp
 async function browserEvaluate(target: IBrowserTarget, params: any): Promise<McpResponse> {
     let expression = params?.expression ?? params?.function;
     if (!expression) return { error: { code: -32602, message: "Missing 'expression' or 'function' parameter" } };
-    // If the value looks like a function expression (Playwright style), auto-invoke it
-    if (/^\s*(async\s+)?\(/.test(expression) || /^\s*(async\s+)?function/.test(expression)) {
+    // Only auto-invoke when using the Playwright-style `function` param.
+    // If the caller used `expression`, respect it as-is — they may intentionally want a function reference.
+    if (params?.function && (/^\s*(async\s+)?\(/.test(expression) || /^\s*(async\s+)?function/.test(expression))) {
         expression = `(${expression})()`;
     }
     const value = await target.cdp().evaluate(expression);

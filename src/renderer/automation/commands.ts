@@ -159,8 +159,9 @@ async function browserType(target: IBrowserTarget, params: any): Promise<McpResp
 }
 
 async function browserSelectOption(target: IBrowserTarget, params: any): Promise<McpResponse> { // eslint-disable-line @typescript-eslint/no-explicit-any
-    const value = params?.value;
-    if (value == null) return { error: { code: -32602, message: "Missing 'value' parameter" } };
+    // Accept Playwright-style `values` array or our own `value` string
+    const value = params?.value ?? (Array.isArray(params?.values) ? params.values[0] : params?.values);
+    if (value == null) return { error: { code: -32602, message: "Missing 'value' or 'values' parameter" } };
     const selector = refOrSelector(params);
     if (selector) {
         const s = JSON.stringify(selector);
@@ -188,14 +189,55 @@ async function browserPressKey(target: IBrowserTarget, params: any): Promise<Mcp
 }
 
 async function browserEvaluate(target: IBrowserTarget, params: any): Promise<McpResponse> { // eslint-disable-line @typescript-eslint/no-explicit-any
-    const expression = params?.expression;
-    if (!expression) return { error: { code: -32602, message: "Missing 'expression' parameter" } };
+    let expression = params?.expression ?? params?.function;
+    if (!expression) return { error: { code: -32602, message: "Missing 'expression' or 'function' parameter" } };
+    // Only auto-invoke when using the Playwright-style `function` param.
+    // If the caller used `expression`, respect it as-is — they may intentionally want a function reference.
+    if (params?.function && (/^\s*(async\s+)?\(/.test(expression) || /^\s*(async\s+)?function/.test(expression))) {
+        expression = `(${expression})()`;
+    }
     const value = await target.cdp().evaluate(expression);
     return { result: value };
 }
 
-async function browserGetTabs(target: IBrowserTarget): Promise<McpResponse> {
-    return { result: target.tabs };
+async function browserGetTabs(target: IBrowserTarget, params: any): Promise<McpResponse> {
+    const action = params?.action ?? "list";
+
+    switch (action) {
+        case "list":
+            return { result: target.tabs };
+
+        case "new": {
+            target.addTab(params?.url);
+            await new Promise(resolve => setTimeout(resolve, 200));
+            return { result: target.tabs };
+        }
+
+        case "close": {
+            const tabs = target.tabs;
+            if (params?.index != null) {
+                const tab = tabs[params.index];
+                if (!tab) return { error: { code: -32602, message: `No tab at index ${params.index}` } };
+                target.closeTab(tab.id);
+            } else {
+                target.closeTab();
+            }
+            await new Promise(resolve => setTimeout(resolve, 100));
+            return { result: target.tabs };
+        }
+
+        case "select": {
+            const tabs = target.tabs;
+            if (params?.index == null) return { error: { code: -32602, message: "Missing 'index' for action 'select'" } };
+            const tab = tabs[params.index];
+            if (!tab) return { error: { code: -32602, message: `No tab at index ${params.index}` } };
+            target.switchTab(tab.id);
+            return { result: target.tabs };
+        }
+
+        default:
+            return { error: { code: -32602, message: `Unknown action '${action}'. Use: list, new, close, select` } };
+    }
 }
 
 async function browserNavigateBack(target: IBrowserTarget): Promise<McpResponse> {
@@ -234,8 +276,14 @@ async function browserNavigateBack(target: IBrowserTarget): Promise<McpResponse>
 async function browserWaitFor(target: IBrowserTarget, params: any): Promise<McpResponse> { // eslint-disable-line @typescript-eslint/no-explicit-any
     const selector = params?.selector;
     const text = params?.text;
+    const textGone = params?.textGone;
+    const time = params?.time;           // seconds (Playwright style)
     const timeout = params?.timeout ?? 30000;
-    if (selector) {
+
+    if (time != null) {
+        // Wait a fixed number of seconds (Playwright-style)
+        await new Promise(resolve => setTimeout(resolve, Math.round(time * 1000)));
+    } else if (selector) {
         const s = JSON.stringify(selector);
         await target.cdp().evaluate(`new Promise((resolve, reject) => {
             if (document.querySelector(${s})) { resolve(true); return; }
@@ -265,8 +313,23 @@ async function browserWaitFor(target: IBrowserTarget, params: any): Promise<McpR
             const start = Date.now();
             check();
         })`);
+    } else if (textGone != null) {
+        // Wait until textGone is no longer visible on the page (Playwright-style)
+        const escaped = textGone.replace(/"/g, '\\"');
+        await target.cdp().evaluate(`new Promise((resolve, reject) => {
+            const check = () => {
+                if (!document.body?.innerText?.includes(${JSON.stringify(textGone)})) { resolve(true); return; }
+                if (Date.now() - start > ${timeout}) {
+                    reject(new Error('Timeout waiting for text to disappear: "${escaped}"'));
+                    return;
+                }
+                requestAnimationFrame(check);
+            };
+            const start = Date.now();
+            check();
+        })`);
     } else {
-        return { error: { code: -32602, message: "Missing 'selector' or 'text' parameter" } };
+        return { error: { code: -32602, message: "Missing 'selector', 'text', 'textGone', or 'time' parameter" } };
     }
     return { result: await snapshot(target) };
 }
@@ -311,7 +374,7 @@ export async function handleBrowserCommand(
         case "browser_select_option":   return browserSelectOption(target, params);
         case "browser_press_key":       return browserPressKey(target, params);
         case "browser_evaluate":        return browserEvaluate(target, params);
-        case "browser_tabs":            return browserGetTabs(target);
+        case "browser_tabs":            return browserGetTabs(target, params);
         case "browser_navigate_back":   return browserNavigateBack(target);
         case "browser_wait_for":        return browserWaitFor(target, params);
         case "browser_take_screenshot": return browserTakeScreenshot(target);

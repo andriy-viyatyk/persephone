@@ -73,12 +73,12 @@ These tools control the built-in browser directly — no script needed. They ope
 | **browser_snapshot** | Get the accessibility snapshot of the current page — a YAML-like tree of elements with roles, names, and `[ref=eN]` IDs. Preferred over screenshots for structured, deterministic inspection. |
 | **browser_click** | Click an element. Accepts a CSS `selector`, an accessibility `ref` from a snapshot (e.g. `"e52"`), or a human-readable `element` description used as a CSS selector. Returns an updated snapshot. |
 | **browser_type** | Type text into an input element. Clears existing value first. Returns an updated snapshot. Accepts `selector` or `ref`. Optional `slowly: true` to type character by character (triggers key handlers); optional `submit: true` to press Enter after typing. |
-| **browser_select_option** | Select an option in a `<select>` element by value. Returns an updated snapshot. Accepts `selector` or `ref`. |
+| **browser_select_option** | Select an option in a `<select>` element. Returns an updated snapshot. Accepts `selector` or `ref`. Pass `value` (string) or `values` (array, Playwright-compatible — first value is used). |
 | **browser_press_key** | Press a keyboard key (e.g. `"Enter"`, `"Tab"`, `"Escape"`, `"ArrowDown"`). Returns an updated snapshot. |
-| **browser_evaluate** | Run JavaScript in the page and return the result. Supports async expressions. |
-| **browser_tabs** | List all open browser tabs. Returns an array of `{ id, url, title, loading, active }`. |
+| **browser_evaluate** | Run JavaScript in the page and return the result. Supports async expressions. Accepts `expression` (JS expression string) or `function` (Playwright-compatible — a function string like `"() => document.title"` that is automatically invoked). |
+| **browser_tabs** | Manage browser tabs. Accepts `action`: `"list"` (default) — return all tabs; `"new"` — open a new tab (optional `url`); `"close"` — close a tab by `index` (or the active tab if omitted); `"select"` — switch to a tab by `index`. Returns updated tab list. |
 | **browser_navigate_back** | Navigate back in browser history. Returns an updated snapshot. |
-| **browser_wait_for** | Wait for an element (`selector`) or text (`text`) to appear on the page. Returns a snapshot when found. Accepts optional `timeout` in ms (default 30000). |
+| **browser_wait_for** | Wait for a condition on the page. Returns a snapshot when done. Options: `selector` — wait for a CSS element to appear; `text` — wait for text to appear; `textGone` — wait until text disappears (Playwright-compatible); `time` — wait a fixed number of seconds, e.g. `2` (Playwright-compatible). Optional `timeout` in ms (default 30000) applies to selector/text/textGone modes. |
 | **browser_take_screenshot** | Take a screenshot of the current page. Returns a base64-encoded PNG image. |
 | **browser_network_requests** | Get the network request log for the current tab. Returns an array of `{ url, method, statusCode, resourceType, requestHeaders, responseHeaders }`. |
 | **browser_close** | Close the active browser tab. |

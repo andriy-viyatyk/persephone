@@ -455,11 +455,12 @@ function createMcpServer(): InstanceType<typeof McpServer> {
         {
             selector: z.string().optional().describe("CSS selector for the <select> element."),
             ref: z.string().optional().describe("Element ref from accessibility snapshot."),
-            value: z.string().describe("Option value to select."),
+            value: z.string().optional().describe("Option value to select."),
+            values: z.array(z.string()).optional().describe("Array of option values to select (Playwright-compatible). First value is used for single-select."),
             windowIndex: windowIndexParam,
         },
-        async ({ selector, ref, value, windowIndex }) =>
-            toToolResult(await sendToRenderer("browser_select_option", { selector, ref, value }, windowIndex)),
+        async ({ selector, ref, value, values, windowIndex }) =>
+            toToolResult(await sendToRenderer("browser_select_option", { selector, ref, value, values }, windowIndex)),
     );
 
     server.tool(
@@ -477,21 +478,28 @@ function createMcpServer(): InstanceType<typeof McpServer> {
         "browser_evaluate",
         "Run JavaScript in the browser page and return the result. Supports async expressions.",
         {
-            expression: z.string().describe("JavaScript expression to evaluate in the page."),
+            expression: z.string().optional().describe("JavaScript expression to evaluate in the page."),
+            function: z.string().optional().describe("JavaScript function to call, e.g. '() => document.title'. Playwright-compatible alias for 'expression'."),
             windowIndex: windowIndexParam,
         },
-        async ({ expression, windowIndex }) =>
-            toToolResult(await sendToRenderer("browser_evaluate", { expression }, windowIndex)),
+        async ({ expression, function: fn, windowIndex }) =>
+            toToolResult(await sendToRenderer("browser_evaluate", { expression, function: fn }, windowIndex)),
     );
 
     server.tool(
         "browser_tabs",
-        "List all open browser tabs. Returns array of { id, url, title, loading, active }.",
+        "Manage browser tabs: list all tabs, open a new tab, close a tab, or switch to a tab.",
         {
+            action: z.enum(["list", "new", "close", "select"]).optional()
+                .describe("Operation to perform: 'list' (default), 'new', 'close', 'select'."),
+            index: z.number().optional()
+                .describe("Tab index (0-based) for 'close' or 'select'. If omitted for 'close', closes the active tab."),
+            url: z.string().optional()
+                .describe("URL to open in the new tab (for 'new' action)."),
             windowIndex: windowIndexParam,
         },
-        async ({ windowIndex }) =>
-            toToolResult(await sendToRenderer("browser_tabs", {}, windowIndex)),
+        async ({ action, index, url, windowIndex }) =>
+            toToolResult(await sendToRenderer("browser_tabs", { action, index, url }, windowIndex)),
     );
 
     server.tool(
@@ -506,15 +514,17 @@ function createMcpServer(): InstanceType<typeof McpServer> {
 
     server.tool(
         "browser_wait_for",
-        "Wait for an element to appear on the page. Returns accessibility snapshot when found.",
+        "Wait for an element or text to appear/disappear, or wait a fixed time. Returns accessibility snapshot.",
         {
             selector: z.string().optional().describe("CSS selector to wait for."),
             text: z.string().optional().describe("Text content to wait for on the page."),
-            timeout: z.number().optional().describe("Max wait time in ms (default 30000)."),
+            textGone: z.string().optional().describe("Wait until this text is no longer visible on the page (Playwright-compatible)."),
+            time: z.number().optional().describe("Time to wait in seconds (Playwright-compatible). E.g. 2 = 2 seconds."),
+            timeout: z.number().optional().describe("Max wait time in ms (default 30000). Applies to selector/text/textGone modes."),
             windowIndex: windowIndexParam,
         },
-        async ({ selector, text, timeout, windowIndex }) =>
-            toToolResult(await sendToRenderer("browser_wait_for", { selector, text, timeout }, windowIndex)),
+        async ({ selector, text, textGone, time, timeout, windowIndex }) =>
+            toToolResult(await sendToRenderer("browser_wait_for", { selector, text, textGone, time, timeout }, windowIndex)),
     );
 
     server.tool(

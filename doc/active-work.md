@@ -25,10 +25,10 @@ Overview of all active and planned epics and tasks.
   - [ ] US-370: Data protection hooks (PHI sanitization layer)
   - [x] [US-372: Fix script implicit return with block-body callbacks](tasks/US-372-fix-script-implicit-return/README.md)
   - [ ] [US-373: Missing Playwright MCP browser tools (hover, drag, dialog, console, upload, resize, etc.)](tasks/US-373-deferred-mcp-browser-tools/README.md)
-  - [ ] [US-379: Fix browser_evaluate — accept `function` param (Playwright compat)](tasks/US-379-browser-evaluate-param-fix/README.md)
-  - [ ] [US-380: Fix browser_select_option — accept `values` array (Playwright compat)](tasks/US-380-browser-select-option-values/README.md)
-  - [ ] [US-381: Fix browser_wait_for — add `time` and `textGone` params (Playwright compat)](tasks/US-381-browser-wait-for-playwright/README.md)
-  - [ ] [US-382: Fix browser_tabs — action-based interface (Playwright compat)](tasks/US-382-browser-tabs-action/README.md)
+  - [x] [US-379: Fix browser_evaluate — accept `function` param (Playwright compat)](tasks/US-379-browser-evaluate-param-fix/README.md)
+  - [x] [US-380: Fix browser_select_option — accept `values` array (Playwright compat)](tasks/US-380-browser-select-option-values/README.md)
+  - [x] [US-381: Fix browser_wait_for — add `time` and `textGone` params (Playwright compat)](tasks/US-381-browser-wait-for-playwright/README.md)
+  - [x] [US-382: Fix browser_tabs — action-based interface (Playwright compat)](tasks/US-382-browser-tabs-action/README.md)
   - [x] [US-378: Known issues & edge cases (review before epic completion)](tasks/US-378-browser-automation-fixes/README.md)
 
 ## Planned

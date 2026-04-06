@@ -505,6 +505,17 @@ MCP tool call (browser_click) → mcp-handler.ts → automation/commands.ts
 
 Tools support both CSS selectors (`selector` param) and accessibility snapshot refs (`ref` param, e.g. `ref=e52`). Ref resolution (`automation/ref.ts`) uses CDP `DOM.resolveNode` + `Runtime.callFunctionOn`. Stale refs produce helpful "re-take the snapshot" error messages.
 
+### Playwright Parameter Compatibility
+
+Several tools accept Playwright MCP parameter aliases so AI agents trained on Playwright work without translation:
+
+| Tool | Persephone param | Playwright alias | Notes |
+|------|-----------------|------------------|-------|
+| `browser_evaluate` | `expression` | `function` | Auto-invokes function expressions: `() => ...` → `(() => ...)()`|
+| `browser_select_option` | `value` (string) | `values` (string[]) | Array = multi-select; first element used for single `<select>` |
+| `browser_wait_for` | `text`, `selector` | `time`, `textGone` | `time` = seconds sleep; `textGone` = wait until text absent |
+| `browser_tabs` | *(always listed)* | `action` enum | `list` (default), `new` (+ `url`), `close` (+ `index`), `select` (+ `index`) |
+
 ### Text Input Strategy (Electron Webview Limitation)
 
 CDP `Input.dispatchKeyEvent` and `Input.insertText` do **not** work in Electron `<webview>` elements — the events don't cross the guest process isolation boundary. This is a known limitation confirmed by Electron, Playwright, and Puppeteer issue trackers.

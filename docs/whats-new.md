@@ -20,6 +20,13 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 - **MCP: browser automation tools** — AI agents can now control the built-in browser directly via dedicated MCP tools — no script required. New tools: `browser_navigate`, `browser_snapshot`, `browser_click`, `browser_type`, `browser_select_option`, `browser_press_key`, `browser_evaluate`, `browser_tabs`, `browser_navigate_back`, `browser_wait_for`, `browser_take_screenshot`, `browser_network_requests`, and `browser_close`. The `browser_snapshot` tool returns a structured accessibility tree for reliable element inspection; interaction tools automatically return an updated snapshot. See [MCP Server Setup](./mcp-setup.md#browser-automation-tools).
 
+- **MCP: browser tools — Playwright compatibility** — Several browser automation tools now accept Playwright MCP-compatible parameters, so agents trained on Playwright can use them without adaptation:
+  - `browser_evaluate` accepts `function` (e.g. `"() => document.title"`) as an alias for `expression`; function strings are automatically invoked.
+  - `browser_select_option` accepts `values` (array) in addition to `value` (string).
+  - `browser_wait_for` accepts `textGone` to wait until text disappears, and `time` (in seconds) for a fixed delay.
+  - `browser_tabs` now supports tab management actions: `"list"`, `"new"`, `"close"`, and `"select"`.
+  - `browser_navigate` and `browser_navigate_back` include a race-condition fix to reliably detect when navigation starts before waiting for page load.
+
 ### Bug Fixes
 
 - **Scripting: implicit return with block-body callbacks** — Scripts that used callbacks with block bodies (e.g., `.map(item => { return item.name; })`) were incorrectly treated as having a top-level `return` statement, which suppressed implicit return of the final expression. The fix uses scope-aware parsing to detect only genuine top-level `return` statements. Also fixed: scripts where a function declaration is followed by a call expression on the same line (e.g., `function foo() { ... } foo();`) now correctly return the call result.
