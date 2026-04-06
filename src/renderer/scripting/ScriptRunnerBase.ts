@@ -103,8 +103,8 @@ export class ScriptRunnerBase {
     private wrapScriptWithImplicitReturn(script: string): string {
         const lines = script.trim().split("\n");
 
-        // If there's already a return statement, use as-is
-        if (/\breturn\b/.test(script)) {
+        // If there's a top-level return statement, use as-is
+        if (this.hasTopLevelReturn(script)) {
             return `return (async function() {\n${SCRIPT_PREFIX}${script}\n}).call(this);`;
         }
 
@@ -135,6 +135,23 @@ export class ScriptRunnerBase {
             return `return (async function() {\n${SCRIPT_PREFIX}${beforeLast}\nreturn (${expressionPart});\n}).call(this);`;
         }
 
+        // If last line is a statement/block but has a trailing expression after the
+        // last '}', extract it as the return value.
+        // e.g., "function foo() { return 1; } foo();" → return foo()
+        if ((isStatement || isBlockCloser) && /\}\s*\S/.test(lastLine)) {
+            const lastBraceIdx = lastLine.lastIndexOf("}");
+            const trailing = lastLine.substring(lastBraceIdx + 1).trim().replace(/;$/, "").trim();
+            if (trailing &&
+                !/^[}\]]/.test(trailing) &&
+                !/^(const|let|var|if|for|while|do|switch|function|class|try|throw|return)\s/.test(trailing)
+            ) {
+                const declPart = lines.slice(0, -1).join("\n") +
+                    (lines.length > 1 ? "\n" : "") +
+                    lastLine.substring(0, lastBraceIdx + 1);
+                return `return (async function() {\n${SCRIPT_PREFIX}${declPart}\nreturn (${trailing});\n}).call(this);`;
+            }
+        }
+
         // Default: execute as-is (will return undefined)
         return `return (async function() {\n${SCRIPT_PREFIX}${script}\n}).call(this);`;
     }
@@ -146,5 +163,37 @@ export class ScriptRunnerBase {
     private isPromiseLike(value: any): boolean {
         return value instanceof Promise
             || (value && typeof value.then === "function" && typeof value.catch === "function");
+    }
+
+    /** Check if script has a top-level `return` (not inside a function/arrow body). */
+    private hasTopLevelReturn(script: string): boolean {
+        if (!/\breturn\b/.test(script)) return false;
+
+        let funcDepth = 0;
+        const tokens = script.match(
+            /\/\/[^\n]*|\/\*[\s\S]*?\*\/|'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"|`(?:[^`\\]|\\.)*`|\b(?:return|function)\b|=>|\{|\}/g
+        ) || [];
+
+        let expectFuncBody = false;
+        for (const token of tokens) {
+            if (token.startsWith("//") || token.startsWith("/*") ||
+                token.startsWith("'") || token.startsWith('"') || token.startsWith("`")) {
+                continue;
+            }
+            if (token === "function") { expectFuncBody = true; continue; }
+            if (token === "=>") { expectFuncBody = true; continue; }
+            if (token === "{") {
+                if (expectFuncBody) funcDepth++;
+                expectFuncBody = false;
+            } else if (token === "}") {
+                if (funcDepth > 0) funcDepth--;
+                expectFuncBody = false;
+            } else if (token === "return" && funcDepth === 0) {
+                return true;
+            } else {
+                expectFuncBody = false;
+            }
+        }
+        return false;
     }
 }

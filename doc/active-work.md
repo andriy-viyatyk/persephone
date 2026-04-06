@@ -9,12 +9,23 @@ Overview of all active and planned epics and tasks.
 ## Active
 
 - **EPIC-021** — [Browser Automation API (Lightweight RPA)](epics/EPIC-021.md)
-  - [x] [US-365: Playwright-core CDP integration](tasks/US-365-playwright-cdp-integration/README.md)
+  - *Phase 1 (Done):*
+  - [x] [US-365: CDP integration (Electron debugger API)](tasks/US-365-playwright-cdp-integration/README.md)
   - [x] [US-366: Browser query and interaction API](tasks/US-366-browser-query-interaction-api/README.md)
-  - [ ] US-367: Browser wait methods (waitForSelector, waitForNavigation)
-  - [ ] US-368: Tab management and background automation
-  - [ ] US-369: MCP browser automation commands
+  - [x] [US-367: Browser wait methods (waitForSelector, waitForNavigation)](tasks/US-367-browser-wait-methods/README.md)
+  - [x] [US-368: Tab management and background automation](tasks/US-368-tab-management-automation/README.md)
+  - [x] [US-371: Browser accessibility snapshot](tasks/US-371-browser-accessibility-snapshot/README.md)
+  - [x] [US-369: MCP browser automation commands](tasks/US-369-mcp-browser-commands/README.md)
+  - *Phase 2 (Architecture & Quality):*
+  - [x] [US-375: Automation layer architecture (refactoring)](tasks/US-375-automation-layer-architecture/README.md)
+  - [x] [US-376: Input dispatch via CDP (Trusted Types fix)](tasks/US-376-input-dispatch-cdp/README.md)
+  - [x] [US-377: Ref resolution improvements](tasks/US-377-ref-resolution/README.md)
+  - [x] [US-374: Accessibility snapshot: include iframes, detect overlays/popups](tasks/US-374-iframe-snapshot/README.md)
+  - *Phase 3 (Advanced):*
   - [ ] US-370: Data protection hooks (PHI sanitization layer)
+  - [x] [US-372: Fix script implicit return with block-body callbacks](tasks/US-372-fix-script-implicit-return/README.md)
+  - [ ] US-373: Deferred MCP browser tools (hover, drag, dialog, upload, resize)
+  - [ ] [US-378: Known issues & edge cases (review before epic completion)](tasks/US-378-browser-automation-fixes/README.md)
 
 ## Planned
 
