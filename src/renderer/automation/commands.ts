@@ -26,7 +26,7 @@ interface McpResponse {
  * Get the automation target for the ACTIVE browser page.
  * Falls back to the first browser page if the active page is not a browser.
  */
-async function getTarget(): Promise<IBrowserTarget | null> {
+async function getTarget(): Promise<IBrowserTarget | McpResponse> {
     const pages = pagesModel.state.get().pages;
     const activePage = pagesModel.activePage;
 
@@ -37,7 +37,9 @@ async function getTarget(): Promise<IBrowserTarget | null> {
     if (!browserPage) {
         browserPage = pages.find(p => p.mainEditor?.type === "browserPage") ?? null;
     }
-    if (!browserPage?.mainEditor) return null;
+    if (!browserPage?.mainEditor) {
+        return { error: { code: -32602, message: "No browser page open. Use the 'open_url' tool to open a browser page." } };
+    }
 
     // Ensure the browser page is active (webview needs display != none for focus/input)
     if (browserPage !== activePage) {
@@ -46,9 +48,16 @@ async function getTarget(): Promise<IBrowserTarget | null> {
 
     const { BrowserEditorModel } = await import("../editors/browser/BrowserEditorModel");
     if (browserPage.mainEditor instanceof BrowserEditorModel) {
+        const state = browserPage.mainEditor.state.get();
+        if (state.isIncognito) {
+            return { error: { code: -32602, message: "Active browser page is in incognito mode. Browser automation is disabled for privacy protection. Use the 'open_url' tool to open a normal browser page." } };
+        }
+        if (state.isTor) {
+            return { error: { code: -32602, message: "Active browser page is in Tor mode. Browser automation is disabled for privacy protection. Use the 'open_url' tool to open a normal browser page." } };
+        }
         return browserPage.mainEditor.target;
     }
-    return null;
+    return { error: { code: -32602, message: "No browser page open. Use the 'open_url' tool to open a browser page." } };
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────
@@ -364,7 +373,7 @@ export async function handleBrowserCommand(
     params: any, // eslint-disable-line @typescript-eslint/no-explicit-any
 ): Promise<McpResponse> {
     const target = await getTarget();
-    if (!target) return { error: { code: -32602, message: "No browser page open" } };
+    if ("error" in target) return target;
 
     switch (command) {
         case "browser_navigate":        return browserNavigate(target, params);

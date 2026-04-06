@@ -846,6 +846,7 @@ export class PagesLifecycleModel {
                       : undefined;
             return (
                 !pageState.isIncognito &&
+                !pageState.isTor &&
                 (targetProfile === undefined ||
                     (pageState.profileName ?? "") === targetProfile)
             );

@@ -368,6 +368,8 @@ Located in `src/renderer/api/pages/PagesLifecycleModel.ts`. Two search strategie
 
 For existing browser tabs: if the tab has only one empty (`about:blank`) internal tab, `navigate(url)` reuses it; otherwise `addTab(url)` creates a new internal tab.
 
+**Matching criteria:** A browser page matches only if it is **not** incognito and **not** Tor. Incognito and Tor pages are always skipped — a normal URL is never opened in a private session automatically. When `options.incognito` is explicitly `true`, only incognito pages match (Tor pages are still excluded).
+
 ### Markdown Link Context Menu
 
 Right-clicking a link in Markdown Preview (or Notebook embedded Markdown) shows additional items for external URLs (http/https) via the shared `appendLinkOpenMenuItems()` helper:
@@ -500,6 +502,8 @@ MCP tool call (browser_click) → mcp-handler.ts → automation/commands.ts
 ```
 
 **Key design:** The automation layer uses the active browser page (not the first one). Agents switch pages using other Persephone MCP tools, then interact with browser_* tools on whichever page is active.
+
+**Privacy guard:** `getTarget()` in `commands.ts` checks `isIncognito` and `isTor` on the active browser page before returning the target. If the active browser is incognito or Tor, all `browser_*` commands return a descriptive error and suggest using `open_url` to open a normal browser page. This prevents AI agents from silently reading or interacting with private sessions.
 
 **13 Playwright-compatible tools:** `browser_navigate`, `browser_snapshot`, `browser_click`, `browser_type`, `browser_select_option`, `browser_press_key`, `browser_evaluate`, `browser_tabs`, `browser_navigate_back`, `browser_wait_for`, `browser_take_screenshot`, `browser_network_requests`, `browser_close`
 

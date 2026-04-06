@@ -297,10 +297,11 @@ await pw.locator("text=Submit").click();
 | US-370 | Data protection hooks (PHI sanitization layer) | Planned |
 | US-372 | Fix script implicit return with block-body callbacks | Planned |
 | US-373 | Missing Playwright MCP browser tools (hover, drag, dialog, console, upload, resize, etc.) | Planned |
-| US-379 | Fix browser_evaluate — accept `function` param (Playwright compat) | Planned |
-| US-380 | Fix browser_select_option — accept `values` array (Playwright compat) | Planned |
-| US-381 | Fix browser_wait_for — add `time` and `textGone` params (Playwright compat) | Planned |
-| US-382 | Fix browser_tabs — action-based interface (Playwright compat) | Planned |
+| US-379 | Fix browser_evaluate — accept `function` param (Playwright compat) | Done |
+| US-380 | Fix browser_select_option — accept `values` array (Playwright compat) | Done |
+| US-381 | Fix browser_wait_for — add `time` and `textGone` params (Playwright compat) | Done |
+| US-382 | Fix browser_tabs — action-based interface (Playwright compat) | Done |
+| US-383 | Block browser automation on incognito/Tor pages | Done |
 
 ## Task Breakdown
 

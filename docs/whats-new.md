@@ -27,6 +27,8 @@ Release notes and changelog for Persephone (formerly js-notepad).
   - `browser_tabs` now supports tab management actions: `"list"`, `"new"`, `"close"`, and `"select"`.
   - `browser_navigate` and `browser_navigate_back` include a race-condition fix to reliably detect when navigation starts before waiting for page load.
 
+- **MCP: browser automation privacy guard** — `browser_*` MCP tools are now blocked on incognito and Tor browser pages. Attempting to use any browser automation tool while an incognito or Tor page is active returns a descriptive error explaining the restriction and suggesting `open_url` to open a normal browser page. Additionally, `open_url` no longer reuses incognito or Tor browser pages — it always opens normal URLs in a normal browser session.
+
 ### Bug Fixes
 
 - **Scripting: implicit return with block-body callbacks** — Scripts that used callbacks with block bodies (e.g., `.map(item => { return item.name; })`) were incorrectly treated as having a top-level `return` statement, which suppressed implicit return of the final expression. The fix uses scope-aware parsing to detect only genuine top-level `return` statements. Also fixed: scripts where a function declaration is followed by a call expression on the same line (e.g., `function foo() { ... } foo();`) now correctly return the call result.
