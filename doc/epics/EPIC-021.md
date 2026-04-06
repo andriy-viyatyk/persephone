@@ -296,7 +296,11 @@ await pw.locator("text=Submit").click();
 | US-374 | Accessibility snapshot: include iframes, detect overlays/popups | Planned |
 | US-370 | Data protection hooks (PHI sanitization layer) | Planned |
 | US-372 | Fix script implicit return with block-body callbacks | Planned |
-| US-373 | Deferred MCP browser tools (hover, drag, dialog, upload, resize) | Planned |
+| US-373 | Missing Playwright MCP browser tools (hover, drag, dialog, console, upload, resize, etc.) | Planned |
+| US-379 | Fix browser_evaluate — accept `function` param (Playwright compat) | Planned |
+| US-380 | Fix browser_select_option — accept `values` array (Playwright compat) | Planned |
+| US-381 | Fix browser_wait_for — add `time` and `textGone` params (Playwright compat) | Planned |
+| US-382 | Fix browser_tabs — action-based interface (Playwright compat) | Planned |
 
 ## Task Breakdown
 
@@ -380,8 +384,11 @@ Configurable hook system wrapping `IBrowserTarget`:
 #### US-372: Fix script implicit return with block-body callbacks
 Fix `/\breturn\b/.test(script)` matching `return` inside `.map()` callbacks.
 
-#### US-373: Deferred MCP browser tools (hover, drag, dialog, upload, resize)
-Additional Playwright-compatible MCP tools requiring more complex CDP interactions.
+#### US-373: Missing Playwright MCP browser tools
+Collection document for all missing Playwright-compatible MCP tools: hover, drag, dialog, console messages, file upload, fill form, resize, run code. Will be split into sub-tasks during implementation.
+
+#### US-379–382: Playwright parameter compatibility fixes
+Four targeted fixes for tools that have parameter name/type mismatches with the Playwright MCP spec: `browser_evaluate` (`function` alias), `browser_select_option` (`values` array), `browser_wait_for` (`time`/`textGone`), `browser_tabs` (action-based interface).
 
 ## Implementation Order
 
