@@ -118,12 +118,12 @@ Gmail compose has a hidden `<textarea>` and a visible contentEditable `<div>`, b
 
 ## Review Checklist
 
-- [ ] Issue 1: Navigate snapshot race condition
+- [x] Issue 1: Navigate snapshot race condition (fixed in US-378 — two-phase wait)
 - [x] Issue 2: Trusted Types / contentEditable (fixed in US-376)
-- [ ] Issue 3: Tab key focus behavior
-- [ ] Issue 4: Iframe content in snapshot (→ US-374)
-- [ ] Issue 5: Wait-for-text implementation
+- [ ] Issue 3: Tab key focus behavior (low severity — workaround: click element before typing)
+- [x] Issue 4: Iframe content in snapshot (fixed in US-374 — buildSnapshot with Target.attachToTarget; verified with W3Schools)
+- [x] Issue 5: Wait-for-text implementation (verified OK — uses document.body.innerText.includes())
 - [x] Issue 6: Network requests model access (fixed in US-375)
-- [ ] Issue 7: slowly: true on Gmail To field
+- [ ] Issue 7: slowly: true on Gmail To field (low severity — default mode works; slowly:true only broken on To field)
 - [x] Issue 8: CDP Input.* limitation (documented, workarounds in US-376)
 - [x] Issue 9: Duplicate aria-label elements (fixed in US-376)

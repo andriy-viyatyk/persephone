@@ -537,6 +537,19 @@ Key implementation details:
 
 **Overlay detection:** `detectOverlay()` checks for `dialog[open]`, `[role="dialog"][aria-modal="true"]`, and viewport-covering fixed/absolute elements. If detected, a hint line is prepended to the snapshot.
 
+### Navigation Race Condition (Two-Phase Wait)
+
+`browser_navigate` and `browser_navigate_back` use a **two-phase wait** to avoid a race condition caused by React's async rendering model:
+
+- `target.navigate(url)` / `target.back()` update React state, which schedules a new `<webview src>` value via a React effect (async).
+- If the automation code immediately polls `document.readyState`, the old page is still loaded and `readyState === 'complete'` is already true — the poll exits immediately, returning a snapshot of the previous page.
+
+**Phase 1 (bridge the React async gap):** Poll every 50 ms (up to 2 s) for either the URL to change OR `readyState` to go non-`complete`. This detects that navigation has started. The `catch(() => {})` silently ignores errors from the old page context being destroyed mid-poll.
+
+**Phase 2 (wait for load):** Poll every 100 ms (up to 10 s) for `readyState === 'complete'`. Again ignores errors — the new page context may not be ready immediately.
+
+This pattern is **required** for all commands that trigger a full page navigation. Do not simplify it to a single `readyState` check.
+
 ## Link Open Menu Helper
 
 `appendLinkOpenMenuItems()` in `src/renderer/editors/shared/link-open-menu.tsx` is a reusable function that appends "Open in..." browser menu items to a `MenuItem[]` array. It generates items for: OS default browser, internal browser, all configured user profiles, and incognito. Used by Link Editor (list, tiles, pinned links) and Markdown Preview link context menus.
@@ -564,3 +577,5 @@ Additionally, `LinkViewModel.onGetLinkMenuItems` is an optional callback that al
 9. **Emotion `&` selector in nested rules.** In Emotion's object syntax, `&` always resolves to the root styled component's class. Inside nested selectors like `"& .tab-close"`, a child rule `".tab-item:hover &"` would generate `.tab-item:hover .ROOT` — not `.tab-item:hover .tab-close`. Always define hover-reveal rules at the parent level: `"& .tab-item": { "&:hover .tab-close": { opacity: 1 } }`.
 
 10. **DRM / Widevine CDM.** The app uses [Castlabs Electron (ECS)](https://github.com/castlabs/electron-releases) — a fork with Widevine DRM support. At startup, `components.whenReady()` in `main-setup.ts` ensures the CDM is downloaded. Production builds require VMP signing via Castlabs EVS (`scripts/vmp-sign.mjs`). Without VMP signing, DRM works on test pages but not on Netflix/Disney+.
+
+11. **MCP navigation must use a two-phase wait.** After calling `target.navigate()` / `target.back()`, React schedules the webview URL update asynchronously. A single `readyState === 'complete'` check will see the *old* page still loaded and return immediately. Always use Phase 1 (wait for URL change or `readyState` non-complete) followed by Phase 2 (wait for `readyState === 'complete'`). See the "Navigation Race Condition" note in the Browser Automation section above.

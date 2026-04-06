@@ -1,6 +1,7 @@
 ---
 name: document
 description: Update developer documentation in /doc/ after code changes
+model: sonnet
 allowed-tools: Read, Grep, Glob, Edit, Write, Bash
 ---
 

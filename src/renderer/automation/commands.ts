@@ -78,9 +78,30 @@ function refOrSelector(params: any): string | null { // eslint-disable-line @typ
 async function browserNavigate(target: IBrowserTarget, params: any): Promise<McpResponse> { // eslint-disable-line @typescript-eslint/no-explicit-any
     const url = params?.url;
     if (!url) return { error: { code: -32602, message: "Missing 'url' parameter" } };
+
+    // Capture current URL so we can detect when navigation starts.
+    // navigate() triggers a React state update — the webview picks up the new src
+    // via a React effect (async), so we must wait for that gap before polling readyState.
+    const oldUrl = await target.cdp().evaluate('document.location.href').catch(() => '');
     target.navigate(url);
-    // Wait for page load with timeout
-    await target.cdp().evaluate(`new Promise((resolve, reject) => {
+
+    // Phase 1: wait for URL to change OR readyState to go non-complete (navigation started).
+    // Max 2s — if nothing changes we fall through and let phase 2 time out gracefully.
+    await target.cdp().evaluate(`new Promise((resolve) => {
+        const oldHref = ${JSON.stringify(oldUrl)};
+        const start = Date.now();
+        const check = () => {
+            if (document.location.href !== oldHref || document.readyState !== 'complete') {
+                resolve(true); return;
+            }
+            if (Date.now() - start > 2000) { resolve(true); return; }
+            setTimeout(check, 50);
+        };
+        setTimeout(check, 50);
+    })`).catch(() => {}); // old page context is destroyed on navigation — that's fine
+
+    // Phase 2: wait for the new page to finish loading.
+    await target.cdp().evaluate(`new Promise((resolve) => {
         if (document.readyState === 'complete') { resolve(true); return; }
         const start = Date.now();
         const check = () => {
@@ -90,6 +111,7 @@ async function browserNavigate(target: IBrowserTarget, params: any): Promise<Mcp
         };
         setTimeout(check, 100);
     })`).catch(() => {});
+
     return { result: await snapshot(target) };
 }
 
@@ -177,8 +199,25 @@ async function browserGetTabs(target: IBrowserTarget): Promise<McpResponse> {
 }
 
 async function browserNavigateBack(target: IBrowserTarget): Promise<McpResponse> {
+    const oldUrl = await target.cdp().evaluate('document.location.href').catch(() => '');
     target.back();
-    await target.cdp().evaluate(`new Promise((resolve, reject) => {
+
+    // Phase 1: wait for navigation to start (same race-condition fix as browserNavigate).
+    await target.cdp().evaluate(`new Promise((resolve) => {
+        const oldHref = ${JSON.stringify(oldUrl)};
+        const start = Date.now();
+        const check = () => {
+            if (document.location.href !== oldHref || document.readyState !== 'complete') {
+                resolve(true); return;
+            }
+            if (Date.now() - start > 2000) { resolve(true); return; }
+            setTimeout(check, 50);
+        };
+        setTimeout(check, 50);
+    })`).catch(() => {});
+
+    // Phase 2: wait for the new page to finish loading.
+    await target.cdp().evaluate(`new Promise((resolve) => {
         if (document.readyState === 'complete') { resolve(true); return; }
         const start = Date.now();
         const check = () => {
@@ -188,6 +227,7 @@ async function browserNavigateBack(target: IBrowserTarget): Promise<McpResponse>
         };
         setTimeout(check, 100);
     })`).catch(() => {});
+
     return { result: await snapshot(target) };
 }
 

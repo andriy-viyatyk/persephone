@@ -600,5 +600,5 @@ See the [app.runAsync() API reference](./api/app.md#runasyncfn-data-proxy) for f
 2. **Return values** to set output content, or write to `page.grouped.content` directly for full control
 3. **Use `ui`** for structured logging and inline dialogs instead of grouped page output
 4. **Use `preventOutput()`** when displaying results via dialogs instead of the grouped page
-4. **Set language** on grouped page for syntax highlighting: `page.grouped.language = 'json'`
-5. **Use grid view** for tabular data: `page.grouped.editor = 'grid-json'`
+5. **Set language** on grouped page for syntax highlighting: `page.grouped.language = 'json'`
+6. **Use grid view** for tabular data: `page.grouped.editor = 'grid-json'`

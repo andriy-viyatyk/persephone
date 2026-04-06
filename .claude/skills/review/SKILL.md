@@ -1,6 +1,7 @@
 ---
 name: review
 description: Review recent code changes against architecture and coding standards
+model: sonnet
 context: fork
 agent: Explore
 allowed-tools: Read, Grep, Glob, Bash
