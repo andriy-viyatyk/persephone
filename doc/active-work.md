@@ -35,11 +35,19 @@ Overview of all active and planned epics and tasks.
 
 ## Planned
 
-- **EPIC-014** — [Claude Integration via Terminal Editor](epics/EPIC-014.md)
+- **EPIC-014** — [Claude AI Chat Panel](epics/EPIC-014.md)
+  - [ ] US-385: Right panel slot in Pages.tsx layout
+  - [ ] US-386: ClaudeChatModel + SDK integration (query, streaming, abort)
+  - [ ] US-387: Chat UI — message list, input, markdown rendering
+  - [ ] US-388: MCP auto-registration + page context injection
+  - [ ] US-389: Conversation persistence + session resume
+  - [ ] US-390: Settings: API key, model, system prompt
+  - [ ] US-391: PowerShell shortcut (Ctrl+\`) — open shell at cwd
 - **EPIC-011** — [Chrome Extension Support for Built-in Browser](epics/EPIC-011.md)
 - *(no epic)*
   - [ ] US-347: CategoryView / CategoryEditor Breadcrumb
   - [ ] US-325: Fix webview preload script error in HTML view
+  - [ ] [US-392: Paste Rich Text as Markdown in Monaco Editor](tasks/US-392-paste-rich-text-as-markdown/README.md)
 
 ---
 

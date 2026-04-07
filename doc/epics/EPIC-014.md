@@ -1,131 +1,202 @@
-# EPIC-014: Claude Integration via Terminal Editor
+# EPIC-014: Claude AI Chat Panel
 
 ## Status
 
-**Status:** Active
+**Status:** Planned
 **Created:** 2026-03-26
+**Revised:** 2026-04-07
 
 ## Overview
 
-Integrate Claude AI into Persephone by adding a terminal editor that can run the Claude CLI (`claude`). Users with a Claude Team/Pro subscription can start an interactive Claude Code session inside a Persephone tab — no separate API key needed. Claude auto-discovers Persephone's MCP server, enabling bidirectional integration: Claude reads/edits pages, runs scripts, and pushes output to the Log View, all within Persephone.
+Add a dedicated Claude AI chat panel to Persephone — a right-side panel (mirroring the PageNavigator on the left) that provides a persistent chat interface powered by the `@anthropic-ai/claude-agent-sdk`. The panel integrates deeply with Persephone: it auto-registers the Persephone MCP server, injects context about the active page, renders rich markdown responses with syntax-highlighted code blocks, and streams responses in real time.
+
+The panel is global (app-level, not page-specific), so conversations persist as the user switches between tabs. Claude has full access to Persephone's MCP tools via automatic server registration.
 
 ## Motivation
 
-- Users with Team/Enterprise subscriptions have Claude Code CLI access but no API key — the Agent SDK approach (`@anthropic-ai/agent-sdk`) requires a separate "pay as you go" subscription
-- Running `claude` CLI inside Persephone reuses the existing subscription
-- A terminal editor is useful beyond Claude — `npm`, `git`, `python`, `ssh`, any CLI tool
-- Claude Code auto-discovers `.mcp.json`, so it automatically connects to Persephone's MCP server when launched from the project directory
+- Users with Claude Pro/Team subscriptions can use Claude Code CLI — the Agent SDK reuses that auth (no separate API key required if Claude CLI is installed)
+- A dedicated chat UI is dramatically better than a raw terminal: markdown rendering, code blocks, tool call display, conversation history, context injection
+- Tight integration is only possible with a custom editor — MCP auto-registration, page context injection, insert-to-page actions
+- Terminal editor is a separate, complex undertaking with diminishing returns (VS Code already does it well). A simple keyboard shortcut (`Ctrl+\``) to open the system PowerShell at the current directory covers the basic shell access need
 
 ## Goals
 
-- New **terminal editor** (`terminal-view`) that hosts a fully interactive pseudo-terminal
-- Support running any CLI process (shell, Claude CLI, Node REPL, etc.)
-- ANSI escape code rendering (colors, cursor movement, clear screen)
-- Bidirectional I/O: user types in the terminal, output streams to the page
-- Resizable terminal (cols/rows adapt to page dimensions)
-- Optional: quick-launch command for Claude (`claude` with appropriate flags)
+- **Right-side Claude chat panel** — toggleable, resizable, persistent across tab switches
+- **Rich chat UI** — markdown rendering, syntax-highlighted code, tool call visualization, streaming
+- **Deep Persephone integration** — auto-register Persephone MCP, inject active page context on demand
+- **Conversation management** — persist history, clear/new conversation, abort in-flight requests
+- **Configurable** — API key setting, model selection, system prompt customization
 
 ## Architecture
 
 ```
-Terminal Editor (renderer)
-├── xterm.js          ← Terminal renderer (ANSI, colors, cursor)
-├── xterm-addon-fit   ← Auto-resize to container
-└── IPC to main process
-        │
-Main Process
-└── node-pty          ← Pseudo-terminal (spawns shell/claude/any CLI)
-        │
-Claude CLI (child process)
-├── Interactive chat session
-├── Auto-discovers .mcp.json
-└── Calls Persephone MCP tools
-        │
-Persephone MCP Server
-├── execute_script, create_page, ui_push
-├── get_page_content, set_page_content
-└── list_pages, open_url, ...
+Right Panel (renderer)
+└── ClaudeChatPanel.tsx         ← Chat UI: message list, input, toolbar
+    └── ClaudeChatModel.ts      ← State: messages, streaming, abort, settings
+            │
+            │  @anthropic-ai/claude-agent-sdk
+            │  query({ prompt, options: { mcpServers, systemPrompt, cwd, ... } })
+            │
+            ▼
+    Claude Agent SDK (Node.js, runs in renderer process)
+            │
+            ▼
+    Claude AI (API or Claude CLI auth)
+            │
+            ▼  MCP (via mcpServers option)
+    Persephone MCP Server (localhost HTTP)
+    ├── execute_script, create_page, ui_push
+    ├── get_page_content, set_page_content
+    └── list_pages, open_url, ...
 ```
 
-### Key Dependencies
+### SDK Integration
 
-| Package | Purpose | Notes |
-|---------|---------|-------|
-| `node-pty` | PTY spawning in main process | Native module, needs electron-rebuild. Same lib VS Code uses |
-| `xterm` | Terminal rendering in browser | ~200KB, mature, used by VS Code, Hyper, etc. |
-| `xterm-addon-fit` | Auto-resize terminal to container | Official xterm addon |
-| `xterm-addon-webgl` | GPU-accelerated rendering (optional) | Better performance for high-throughput output |
+Package: `@anthropic-ai/claude-agent-sdk`
 
-### Process Architecture
+The `query()` function returns an async iterator of typed messages. Key options used:
 
-`node-pty` must run in the **main process** (native module, PTY requires OS-level process spawning). The renderer communicates via IPC:
+| Option | Usage |
+|--------|-------|
+| `prompt` | User message text |
+| `options.mcpServers` | Auto-register Persephone MCP at chat start |
+| `options.systemPrompt` | Inject Persephone context (active page, page list) |
+| `options.cwd` | Set to Persephone project dir so CLAUDE.md is discovered |
+| `options.model` | Configurable — default `claude-sonnet-4-6` |
+| `options.abortController` | Cancel in-flight request |
+| `options.resume` | Resume previous conversation session |
+| `options.maxTurns` | Configurable safety limit |
+
+Message types from the iterator that the UI handles:
+- `assistant` — render as Claude message (markdown)
+- `tool_use` — render as collapsible tool call card (tool name + input)
+- `tool_result` — show result inline under the tool call card
+- `result` — final message, marks streaming complete
+- `system` (type: `init`) — capture session ID for resume
+
+### Authentication
+
+The SDK supports:
+1. `ANTHROPIC_API_KEY` environment variable (or entered in settings)
+2. Existing Claude CLI session (if `claude` CLI is installed and logged in — no API key needed)
+3. AWS Bedrock / Google Vertex (via env vars)
+
+Authentication status is shown in the panel header. If no auth is configured, the panel shows a setup prompt with a link to settings.
+
+### Panel Layout
+
+The right panel mirrors the PageNavigator on the left. Layout change in `Pages.tsx`:
 
 ```
-Renderer (terminal-view)              Main Process (pty-host)
-═══════════════════════              ══════════════════════════
+Before:
+[left nav panel] [splitter] [page editor container]
 
-1. IPC: pty:spawn { id, cmd, args, cwd, cols, rows }
-                                     pty = require("node-pty").spawn(...)
-
-2.                                   pty.onData(data) →
-   ← IPC: pty:data { id, data }       forward to renderer
-   xterm.write(data)
-
-3. xterm.onData(input) →
-   IPC: pty:input { id, data } →     pty.write(data)
-
-4. xterm.onResize(cols, rows) →
-   IPC: pty:resize { id, cols, rows } → pty.resize(cols, rows)
-
-5. IPC: pty:kill { id } →            pty.kill()
-   ← IPC: pty:exit { id, code }
+After:
+[left nav panel] [splitter] [page editor container] [splitter] [right claude panel]
 ```
 
-### Editor Registration
+The right panel is:
+- **App-level** (not per-tab) — conversation survives tab switches
+- **Collapsible** — hidden by default, toggled via toolbar button or keyboard shortcut
+- **Resizable** — drag the splitter, default width 320px, min 240px
+- **Width persisted** in app settings
 
-- **Editor ID:** `terminal-view`
-- **Category:** `page-editor` (like browser-view — not tied to file content)
-- **No file association** — terminals are opened programmatically, not by opening files
-- **Dynamic import** — loaded on demand like all editors
+### MCP Auto-Registration
 
-## Claude Integration Flow
+When the user sends the first message (or on panel open), `ClaudeChatModel` reads the Persephone MCP server address from `app.settings` (the same HTTP server used by external MCP clients) and passes it as `options.mcpServers`:
 
-When the user opens a terminal page and runs `claude`:
+```typescript
+options.mcpServers = [{
+    type: "http",
+    url: `http://localhost:${mcpPort}`,
+    name: "persephone",
+}];
+```
 
-1. Terminal editor spawns a shell (bash/PowerShell) via PTY
-2. User types `claude` (or uses a quick-launch button)
-3. Claude Code starts, discovers `.mcp.json` in cwd
-4. Claude connects to Persephone's MCP server
-5. User chats with Claude in the terminal
-6. Claude can: read pages (`get_page_content`), create pages (`create_page`), run scripts (`execute_script`), push to Log View (`ui_push`), etc.
-7. All Claude output renders in the terminal with full ANSI formatting
+This means Claude automatically has access to all Persephone MCP tools without any user setup.
+
+### Page Context Injection
+
+The panel toolbar has a **"@ Insert Page"** button. When clicked, it appends a context block to the current input:
+
+```
+[Page: "filename.ts"]
+```language
+<current page content>
+```
+```
+
+This is opt-in per message — the user decides when to share page content. The system prompt (always injected) contains only lightweight context: active page name, list of open page titles, and Persephone version.
+
+## UI Components
+
+### Chat Panel
+
+```
+┌─────────────────────────────────┐
+│ Claude  [model: sonnet] [•] [×] │  ← header: model badge, status, close
+├─────────────────────────────────┤
+│                                 │
+│  ┌─────────────────────────┐   │
+│  │ User                    │   │  ← user message bubble
+│  │ How do I add a new tab? │   │
+│  └─────────────────────────┘   │
+│                                 │
+│  ┌─ Claude ───────────────────┐ │
+│  │ You can use `app.pages`... │ │  ← assistant message (markdown)
+│  │ ```typescript              │ │
+│  │ app.pages.addPage(...)     │ │  ← code block (Monaco/shiki)
+│  │ ```                        │ │
+│  │ ▶ Tool: get_page_content   │ │  ← collapsible tool call card
+│  └────────────────────────────┘ │
+│                                 │
+├─────────────────────────────────┤
+│ [@] [↑page] .............. [▶] │  ← toolbar: @ context, insert, input, send
+└─────────────────────────────────┘
+```
+
+### Message Types Rendered
+
+| SDK Message | Rendered As |
+|-------------|-------------|
+| `user` | Right-aligned bubble |
+| `assistant` (text) | Left-aligned with markdown |
+| `tool_use` | Collapsible card: `▶ Tool: {name}` with JSON input |
+| `tool_result` | Indented result under tool card (truncated if long) |
+| `result` (error) | Error banner |
+| Streaming | Cursor blink on last assistant message |
 
 ## Linked Tasks
 
 | Task | Title | Status |
 |------|-------|--------|
-| US-XXX | PTY host in main process (node-pty + IPC) | Planned |
-| US-XXX | Terminal editor — xterm.js integration | Planned |
-| US-XXX | Terminal page creation via script API + menu | Planned |
-| US-XXX | Terminal editor polish — themes, copy/paste, scrollback | Planned |
-| US-XXX | Claude quick-launch integration | Planned |
-
-*Tasks will be created and assigned IDs as work begins.*
+| US-385 | Right panel slot in Pages.tsx layout | Planned |
+| US-386 | ClaudeChatModel + SDK integration (query, streaming, abort) | Planned |
+| US-387 | Chat UI — message list, input, markdown rendering | Planned |
+| US-388 | MCP auto-registration + page context injection | Planned |
+| US-389 | Conversation persistence + session resume | Planned |
+| US-390 | Settings: API key, model, system prompt | Planned |
+| US-391 | PowerShell shortcut (Ctrl+\`) — open shell at cwd | Planned |
 
 ## Open Questions
 
-1. **Shell default:** Use user's default shell (PowerShell on Windows) or always bash? Probably configurable via `app.settings`.
-2. **Multiple terminals:** Support multiple terminal pages simultaneously? Each with its own PTY. Likely yes — same as VS Code.
-3. **Terminal persistence:** Should terminal sessions survive page close? Probably not for v1 — close page = kill PTY.
-4. **Script API:** `app.terminal.spawn("claude", [...args])` or just `app.pages.addEditorPage("terminal-view")` with configuration? Need to design the facade.
-5. **`node-pty` native rebuild:** Needs `electron-rebuild` for the correct Electron ABI. May need build script changes. Test with both dev and production builds.
-6. **Claude CLAUDE.md context:** When `claude` runs from Persephone's terminal, it should pick up the project's `CLAUDE.md` if cwd is set correctly. Verify this works.
+1. **Session persistence scope:** Save conversation per working directory (cwd) or globally? Per-cwd feels more natural (like Claude Code's `.claude/` directory approach).
+2. **System prompt customization:** Allow user to edit the system prompt in settings? Or keep it Persephone-managed only?
+3. **Multiple conversations:** Support named conversation history (like Claude.ai) or just one active + clear? v1: one active conversation.
+4. **Insert-to-page action:** Should Claude responses have an "Insert into active page" button? Useful but adds complexity — defer to v2.
+5. **Panel placement:** Right side is the plan. But should it be a floating panel option too? Defer to v2.
+6. **SDK in renderer vs worker:** The `query()` async iterator runs Node.js code. Persephone uses `nodeIntegration: true` so renderer can use Node.js directly — no worker needed for v1.
+7. **`@anthropic-ai/claude-agent-sdk` vs `@anthropic-ai/claude-code`:** The former is the current package name. Verify which is available on npm and whether it bundles Claude or requires the CLI installed.
 
 ## Notes
 
 ### 2026-03-26 (initial)
-- Epic created after discussion about integrating Claude into Persephone
-- Rejected Agent SDK approach: requires separate API key, Team subscriptions don't provide one
-- Chosen approach: terminal editor + Claude CLI — reuses existing subscription, no API key needed
-- Terminal editor is a general-purpose feature (any CLI), Claude integration is a natural bonus
-- Key insight: Claude Code auto-discovers Persephone's MCP server via `.mcp.json`, enabling full bidirectional integration without any custom bridge code
+- Epic originally focused on terminal editor + Claude CLI. Rejected: terminal is complex, diminishing returns vs VS Code.
+- Agent SDK (`@anthropic-ai/claude-agent-sdk`) approach rejected at the time because Team subscriptions lack API keys.
+
+### 2026-04-07 (revised)
+- Completely rewritten after discovering SDK can use existing Claude CLI auth — no API key required.
+- Terminal editor dropped in favor of dedicated chat panel with rich UI.
+- Terminal access addressed via simple PowerShell shortcut (US-391).
+- Right-side panel (app-global) chosen over per-tab secondary editor — chat context should survive tab navigation.
+- MCP auto-registration via `options.mcpServers` is the key integration point — no `.mcp.json` required.
