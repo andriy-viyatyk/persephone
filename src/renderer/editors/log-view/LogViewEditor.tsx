@@ -12,6 +12,7 @@ import { Percent } from "../../components/virtualization/RenderGrid/types";
 import { Button } from "../../components/basic/Button";
 import { EditorError } from "../base/EditorError";
 import color from "../../theme/color";
+import { showConfirmationDialog } from "../../ui/dialogs/ConfirmationDialog";
 
 // =============================================================================
 // Styled Components
@@ -193,7 +194,12 @@ export function LogViewEditor({ model }: { model: TextFileModel }) {
                             size="small"
                             type="icon"
                             title="Clear log"
-                            onClick={vm.clear}
+                            onClick={async () => {
+                                const result = await showConfirmationDialog({
+                                    message: "Clear all log entries?",
+                                });
+                                if (result === "Yes") vm.clear();
+                            }}
                         >
                             <ClearIcon />
                         </Button>

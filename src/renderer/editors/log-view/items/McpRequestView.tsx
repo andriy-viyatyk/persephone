@@ -46,6 +46,10 @@ const McpRequestRoot = styled.div({
         minWidth: 0,
     },
 
+    "& .mcp-req-spacer": {
+        flex: "1 1 auto",
+    },
+
     "& .mcp-req-duration": {
         fontSize: 11,
         color: color.text.light,
@@ -147,7 +151,7 @@ export function McpRequestView({ entry }: McpRequestViewProps) {
             <div className="mcp-req-header" onClick={() => setExpanded((v) => !v)}>
                 <span className="mcp-req-chevron">{expanded ? "\u25BC" : "\u25B6"}</span>
                 <span className="mcp-req-method">{entry.method}</span>
-                {detail && <span className="mcp-req-detail">{detail}</span>}
+                {detail ? <span className="mcp-req-detail">{detail}</span> : <span className="mcp-req-spacer" />}
                 {hasError && <span className="mcp-req-error-badge">ERROR</span>}
                 <span className="mcp-req-duration">{entry.durationMs}ms</span>
             </div>
