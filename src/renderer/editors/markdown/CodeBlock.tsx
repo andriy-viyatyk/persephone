@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import * as monaco from "monaco-editor";
 import { monacoLanguages } from "../../core/utils/monaco-languages";
 import { pagesModel } from "../../api/pages";
 import { CopyIcon, OpenLinkIcon } from "../../theme/icons";
 import { renderMermaidSvg, svgToDataUrl } from "../mermaid/render-mermaid";
+import { ColorizedCode } from "../shared/ColorizedCode";
 
 interface CodeBlockProps {
     className?: string;
@@ -45,26 +45,13 @@ function isMermaidLanguage(className?: string): boolean {
 export function CodeBlock({ className, children, node, ...props }: CodeBlockProps) {
     const language = resolveLanguage(className);
     const code = String(children).replace(/\n$/, "");
-    const [colorizedHtml, setColorizedHtml] = useState<string | null>(null);
 
-    useEffect(() => {
-        if (!language) return;
-
-        let cancelled = false;
-        monaco.editor.colorize(code, language, { tabSize: 4 }).then((html) => {
-            if (!cancelled) {
-                setColorizedHtml(html);
-            }
-        });
-
-        return () => { cancelled = true; };
-    }, [code, language]);
-
-    if (language && colorizedHtml) {
+    if (language) {
         return (
-            <code
+            <ColorizedCode
+                code={code}
+                language={language}
                 className={className}
-                dangerouslySetInnerHTML={{ __html: colorizedHtml }}
                 {...props}
             />
         );

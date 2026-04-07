@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import styled from "@emotion/styled";
-import * as monaco from "monaco-editor";
 import color from "../../../theme/color";
 import { McpRequestEntry } from "../logTypes";
+import { ColorizedCode } from "../../shared/ColorizedCode";
 
 // =============================================================================
 // Styles
@@ -17,7 +17,7 @@ const McpRequestRoot = styled.div({
         display: "flex",
         alignItems: "center",
         gap: 8,
-        padding: "4px 8px",
+        padding: "3px 8px",
         cursor: "pointer",
         userSelect: "none",
         "&:hover": {
@@ -25,18 +25,11 @@ const McpRequestRoot = styled.div({
         },
     },
 
-    "& .mcp-req-direction": {
-        fontSize: 12,
-        fontWeight: 600,
+    "& .mcp-req-chevron": {
+        fontSize: 10,
+        color: color.text.light,
         flexShrink: 0,
-    },
-
-    "& .mcp-req-direction.outgoing": {
-        color: color.misc.blue,
-    },
-
-    "& .mcp-req-direction.incoming": {
-        color: color.misc.green,
+        width: 10,
     },
 
     "& .mcp-req-method": {
@@ -66,73 +59,55 @@ const McpRequestRoot = styled.div({
         flexShrink: 0,
     },
 
-    "& .mcp-req-section": {
-        padding: "0 8px",
+    "& .mcp-req-card": {
+        margin: "4px 8px 6px 24px",
+        border: `1px solid ${color.border.default}`,
+        borderRadius: 6,
+        overflow: "hidden",
     },
 
-    "& .mcp-req-section-header": {
-        display: "flex",
-        alignItems: "center",
-        gap: 4,
-        padding: "2px 0",
-        cursor: "pointer",
-        userSelect: "none",
-        fontSize: 12,
+    "& .mcp-req-card-header": {
+        padding: "3px 10px",
+        fontSize: 11,
+        fontWeight: 600,
         color: color.text.light,
-        "&:hover": {
-            color: color.text.default,
-        },
+        background: color.background.dark,
+        userSelect: "none",
+        letterSpacing: "0.05em",
+        textTransform: "uppercase",
+    },
+
+    "& .mcp-req-card-content": {
+        maxHeight: 180,
+        overflow: "auto",
+    },
+
+    "& .mcp-req-card-divider": {
+        height: 1,
+        background: color.border.default,
     },
 
     "& .mcp-req-json": {
-        maxHeight: 200,
-        overflow: "auto",
-        padding: "4px 8px",
+        padding: "6px 10px",
         fontSize: 12,
         lineHeight: "18px",
-        background: color.background.dark,
-        borderRadius: 3,
-        marginBottom: 4,
-        "& .mtk1": {
-            color: color.text.default,
-        },
+        margin: 0,
+    },
+
+    "& .mcp-req-empty": {
+        display: "block",
+        padding: "6px 10px",
+        color: color.text.light,
+        fontSize: 12,
     },
 
     "& .mcp-req-error-text": {
+        display: "block",
+        padding: "6px 10px",
         color: color.error.text,
-        padding: "4px 8px",
         fontSize: 12,
-        marginBottom: 4,
     },
 });
-
-// =============================================================================
-// Colorized JSON Block
-// =============================================================================
-
-function ColorizedJson({ data }: { data: any }) {
-    const [html, setHtml] = useState<string | null>(null);
-    const text = JSON.stringify(data, null, 2);
-
-    useEffect(() => {
-        let cancelled = false;
-        monaco.editor.colorize(text, "json", { tabSize: 2 }).then((result) => {
-            if (!cancelled) setHtml(result);
-        });
-        return () => { cancelled = true; };
-    }, [text]);
-
-    if (!html) {
-        return <pre className="mcp-req-json">{text}</pre>;
-    }
-
-    return (
-        <pre
-            className="mcp-req-json"
-            dangerouslySetInnerHTML={{ __html: html }}
-        />
-    );
-}
 
 // =============================================================================
 // Component
@@ -142,68 +117,80 @@ interface McpRequestViewProps {
     entry: McpRequestEntry;
 }
 
-/** Extract a short detail string from a request method + params. */
+/** Extract a short informative detail string from request method + params. */
 function getDetail(method: string, params: any): string {
     if (!params) return "";
     if (method === "tools/call") return params.name || "";
     if (method === "resources/read") return params.uri || "";
     if (method === "prompts/get") return params.name || "";
+    if (method === "create_page") return params.title || "";
+    if (method === "set_page_content") return params.title || params.id || "";
+    if (method === "get_page_content") return params.title || params.id || "";
+    if (method === "open_url") return params.url || "";
+    // Generic fallback: first informative string field
+    for (const key of ["title", "name", "url", "uri", "id", "path"]) {
+        if (typeof params[key] === "string" && params[key].length > 0) {
+            return params[key];
+        }
+    }
     return "";
 }
 
 export function McpRequestView({ entry }: McpRequestViewProps) {
-    const [requestOpen, setRequestOpen] = useState(false);
-    const [responseOpen, setResponseOpen] = useState(false);
-
-    const toggleRequest = useCallback(() => setRequestOpen((v) => !v), []);
-    const toggleResponse = useCallback(() => setResponseOpen((v) => !v), []);
+    const [expanded, setExpanded] = useState(false);
 
     const detail = getDetail(entry.method, entry.params);
-    const arrow = entry.direction === "outgoing" ? "\u2192" : "\u2190";
     const hasError = !!entry.error;
 
     return (
         <McpRequestRoot>
-            <div className="mcp-req-header" onClick={toggleRequest}>
-                <span className={`mcp-req-direction ${entry.direction}`}>
-                    {arrow} {entry.direction}
-                </span>
+            <div className="mcp-req-header" onClick={() => setExpanded((v) => !v)}>
+                <span className="mcp-req-chevron">{expanded ? "\u25BC" : "\u25B6"}</span>
                 <span className="mcp-req-method">{entry.method}</span>
                 {detail && <span className="mcp-req-detail">{detail}</span>}
                 {hasError && <span className="mcp-req-error-badge">ERROR</span>}
                 <span className="mcp-req-duration">{entry.durationMs}ms</span>
             </div>
 
-            <div className="mcp-req-section">
-                <div className="mcp-req-section-header" onClick={toggleRequest}>
-                    {requestOpen ? "\u25BC" : "\u25B6"} Request
-                </div>
-                {requestOpen && entry.params != null && (
-                    <ColorizedJson data={entry.params} />
-                )}
-                {requestOpen && entry.params == null && (
-                    <div className="mcp-req-json" style={{ color: color.text.light }}>
-                        (no params)
+            {expanded && (
+                <div className="mcp-req-card">
+                    <div>
+                        <div className="mcp-req-card-header">Request</div>
+                        <div className="mcp-req-card-content">
+                            {entry.params != null ? (
+                                <pre className="mcp-req-json">
+                                    <ColorizedCode
+                                        code={JSON.stringify(entry.params, null, 2)}
+                                        language="json"
+                                        tabSize={2}
+                                    />
+                                </pre>
+                            ) : (
+                                <span className="mcp-req-empty">(no params)</span>
+                            )}
+                        </div>
                     </div>
-                )}
-            </div>
-
-            <div className="mcp-req-section">
-                <div className="mcp-req-section-header" onClick={toggleResponse}>
-                    {responseOpen ? "\u25BC" : "\u25B6"} Response
-                </div>
-                {responseOpen && hasError && (
-                    <div className="mcp-req-error-text">{entry.error}</div>
-                )}
-                {responseOpen && entry.result != null && (
-                    <ColorizedJson data={entry.result} />
-                )}
-                {responseOpen && !hasError && entry.result == null && (
-                    <div className="mcp-req-json" style={{ color: color.text.light }}>
-                        (no result)
+                    <div className="mcp-req-card-divider" />
+                    <div>
+                        <div className="mcp-req-card-header">Response</div>
+                        <div className="mcp-req-card-content">
+                            {hasError ? (
+                                <span className="mcp-req-error-text">{entry.error}</span>
+                            ) : entry.result != null ? (
+                                <pre className="mcp-req-json">
+                                    <ColorizedCode
+                                        code={JSON.stringify(entry.result, null, 2)}
+                                        language="json"
+                                        tabSize={2}
+                                    />
+                                </pre>
+                            ) : (
+                                <span className="mcp-req-empty">(no result)</span>
+                            )}
+                        </div>
                     </div>
-                )}
-            </div>
+                </div>
+            )}
         </McpRequestRoot>
     );
 }

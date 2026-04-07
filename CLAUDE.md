@@ -315,6 +315,7 @@ See [/doc/standards/coding-style.md](doc/standards/coding-style.md) for complete
 | Text editor model        | `/src/renderer/editors/text/TextEditorModel.ts`   |
 | Grid editor              | `/src/renderer/editors/grid/GridViewModel.ts`     |
 | Log view editor          | `/src/renderer/editors/log-view/LogViewModel.ts`  |
+| Syntax-highlighted code  | `/src/renderer/editors/shared/ColorizedCode.tsx`  |
 | Notebook editor model    | `/src/renderer/editors/notebook/NotebookEditorModel.ts` |
 | Notebook types           | `/src/renderer/editors/notebook/notebookTypes.ts` |
 | Graph editor model       | `/src/renderer/editors/graph/GraphViewModel.ts`   |

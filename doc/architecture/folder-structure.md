@@ -411,7 +411,8 @@ persephone/
 │   │   ├── SearchSecondaryEditor.tsx  # "search" panel — file search with portaled header
 │   │   └── index.ts
 │   ├── shared/             # Shared editor utilities
-│   │   └── link-open-menu.tsx
+│   │   ├── link-open-menu.tsx
+│   │   └── ColorizedCode.tsx   # Syntax-highlighted code via Monaco colorize()
 │   │
 │   ├── registry.ts         # EditorRegistry — resolution, validation
 │   ├── register-editors.ts # Editor registration (all editors)

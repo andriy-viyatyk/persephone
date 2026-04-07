@@ -30,6 +30,10 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 - **Scripting: implicit return with block-body callbacks** — Scripts that used callbacks with block bodies (e.g., `.map(item => { return item.name; })`) were incorrectly treated as having a top-level `return` statement, which suppressed implicit return of the final expression. The fix uses scope-aware parsing to detect only genuine top-level `return` statements. Also fixed: scripts where a function declaration is followed by a call expression on the same line (e.g., `function foo() { ... } foo();`) now correctly return the call result.
 
+- **MCP: browser_navigate empty snapshot** — `browser_navigate` and `browser_navigate_back` could return an empty accessibility snapshot when navigation completed before the page's React state had updated the `webview` element. Fixed by using a two-phase wait: first polling for URL change or non-complete `readyState`, then waiting for `readyState === "complete"`.
+
+- **Duplicate About/Settings pages** — Clicking the About or Settings sidebar button repeatedly would open a new tab each time instead of focusing the already-open tab. Both pages now use a fixed well-known page ID so the existing tab is found and focused on subsequent clicks.
+
 ---
 
 ## Version 3.0.1
