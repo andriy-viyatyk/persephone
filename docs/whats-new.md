@@ -8,7 +8,15 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ## Version 3.0.3 (Upcoming)
 
-*No changes yet.*
+### Improvements
+
+- **Browser: tab groups** — Internal browser tabs are now automatically organized into visual groups. Tabs opened from a link inherit the parent tab's group; manually created tabs start a new group. Groups are shown as a vertical left border with alternating brightness for easy visual distinction. Drag a tab out of its group to create a new group. Groups are persisted across app restarts.
+
+- **Browser: tab activation history** — Closing a tab now returns focus to the previously active tab instead of the adjacent one. This makes the "open link in new tab → read → close → back to where you were" workflow seamless.
+
+- **Browser: dark favicon visibility** — Dark favicons are now visible on the dark theme thanks to a subtle light glow effect (`drop-shadow`) applied to favicon images in the tabs panel.
+
+- **Browser: new tab position** — The **+** button now always adds new tabs at the end of the list. Tabs opened from links are still inserted after the active tab.
 
 ---
 

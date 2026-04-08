@@ -158,6 +158,8 @@ export interface BrowserTabData {
     homeUrl: string;
     /** Navigation history for this tab — most recent URL first. */
     navHistory: string[];
+    /** Tab group ID — tabs opened from the same parent share a group. */
+    groupId: string;
 }
 
 export interface BrowserEditorState extends IEditorState {
@@ -234,12 +236,17 @@ export interface BrowserEditorState extends IEditorState {
 const DEFAULT_URL = "about:blank";
 
 let nextInternalTabId = 1;
+let nextGroupId = 1;
 
 export function createInternalTabId(): string {
     return `bt-${nextInternalTabId++}`;
 }
 
-function createTab(url = DEFAULT_URL): BrowserTabData {
+export function createTabGroupId(): string {
+    return `bg-${nextGroupId++}`;
+}
+
+function createTab(url = DEFAULT_URL, groupId?: string): BrowserTabData {
     return {
         id: createInternalTabId(),
         url,
@@ -252,6 +259,7 @@ function createTab(url = DEFAULT_URL): BrowserTabData {
         muted: false,
         homeUrl: url !== DEFAULT_URL ? url : "",
         navHistory: [],
+        groupId: groupId || createTabGroupId(),
     };
 }
 
@@ -359,6 +367,8 @@ export class BrowserEditorModel extends EditorModel<BrowserEditorState, void> {
     /** Per-tab actual current URL (may differ from state after redirects). Keyed by internalTabId. */
     currentUrls = new Map<string, string>();
     private faviconCache = new Map<string, string>();
+    /** Stack of previously active tab IDs (most recent last). Used to restore active tab on close. */
+    private activeTabHistory: string[] = [];
 
     /** Lazily initialized bookmarks model (null until user opens bookmarks). */
     bookmarks: BrowserBookmarks | null = null;
@@ -617,6 +627,7 @@ export class BrowserEditorModel extends EditorModel<BrowserEditorState, void> {
                 s.tabs = data.tabs.map((t) => ({
                     ...t,
                     id: createInternalTabId(),
+                    groupId: t.groupId || createTabGroupId(),
                 }));
                 // Map activeTabId: if the original activeTabId matches a tab by index, use the new ID
                 const origIndex = data.tabs.findIndex(
@@ -841,12 +852,19 @@ export class BrowserEditorModel extends EditorModel<BrowserEditorState, void> {
         }
     };
 
-    /** Add a new internal tab after the active tab and switch to it. Returns the new tab's ID. */
-    addTab = (url = DEFAULT_URL): string => {
-        const tab = createTab(url);
+    /** Add a new internal tab and switch to it.
+     *  If parentGroupId is provided, the new tab inherits that group and is inserted after the active tab.
+     *  Otherwise the tab is appended at the end. Returns the new tab's ID. */
+    addTab = (url = DEFAULT_URL, parentGroupId?: string): string => {
+        const tab = createTab(url, parentGroupId);
         this.state.update((s) => {
-            const activeIdx = s.tabs.findIndex((t) => t.id === s.activeTabId);
-            s.tabs.splice(activeIdx + 1, 0, tab);
+            if (parentGroupId) {
+                const activeIdx = s.tabs.findIndex((t) => t.id === s.activeTabId);
+                s.tabs.splice(activeIdx + 1, 0, tab);
+            } else {
+                s.tabs.push(tab);
+            }
+            this.activeTabHistory.push(s.activeTabId);
             s.activeTabId = tab.id;
             // Sync top-level state
             s.url = tab.url;
@@ -860,12 +878,16 @@ export class BrowserEditorModel extends EditorModel<BrowserEditorState, void> {
         return tab.id;
     };
 
-    /** Close an internal tab. If it's the active one, switch to adjacent tab.
+    /** Close an internal tab. If it's the active one, activate the previously
+     *  active tab from history, or fall back to an adjacent tab.
      *  Closing the last tab replaces it with a fresh about:blank tab. */
     closeTab = (internalTabId: string) => {
         this.state.update((s) => {
             const idx = s.tabs.findIndex((t) => t.id === internalTabId);
             if (idx < 0) return;
+
+            // Remove closed tab from activation history
+            this.activeTabHistory = this.activeTabHistory.filter((id) => id !== internalTabId);
 
             if (s.tabs.length <= 1) {
                 // Replace the last tab with a fresh one
@@ -873,6 +895,7 @@ export class BrowserEditorModel extends EditorModel<BrowserEditorState, void> {
                 s.tabs = [fresh];
                 s.activeTabId = fresh.id;
                 this.currentUrls.delete(internalTabId);
+                this.activeTabHistory = [];
                 this.syncTopLevelFromTab(s, fresh);
                 return;
             }
@@ -881,9 +904,21 @@ export class BrowserEditorModel extends EditorModel<BrowserEditorState, void> {
             this.currentUrls.delete(internalTabId);
 
             if (s.activeTabId === internalTabId) {
-                // Switch to the tab at same index, or the last one
-                const newIdx = Math.min(idx, s.tabs.length - 1);
-                const newActive = s.tabs[newIdx];
+                // Try to activate the previously active tab from history
+                const tabIds = new Set(s.tabs.map((t) => t.id));
+                let newActive: BrowserTabData | undefined;
+                while (this.activeTabHistory.length > 0) {
+                    const prevId = this.activeTabHistory.pop()!;
+                    if (tabIds.has(prevId)) {
+                        newActive = s.tabs.find((t) => t.id === prevId);
+                        break;
+                    }
+                }
+                // Fall back to adjacent tab if no history
+                if (!newActive) {
+                    const newIdx = Math.min(idx, s.tabs.length - 1);
+                    newActive = s.tabs[newIdx];
+                }
                 s.activeTabId = newActive.id;
                 this.syncTopLevelFromTab(s, newActive);
             }
@@ -902,6 +937,7 @@ export class BrowserEditorModel extends EditorModel<BrowserEditorState, void> {
             }
             s.tabs = [tab];
             s.activeTabId = tab.id;
+            this.activeTabHistory = [];
             this.syncTopLevelFromTab(s, tab);
         });
     };
@@ -912,9 +948,11 @@ export class BrowserEditorModel extends EditorModel<BrowserEditorState, void> {
             const idx = s.tabs.findIndex((t) => t.id === internalTabId);
             if (idx < 0 || idx >= s.tabs.length - 1) return;
             const removed = s.tabs.splice(idx + 1);
+            const removedIds = new Set(removed.map((t) => t.id));
             for (const t of removed) {
                 this.currentUrls.delete(t.id);
             }
+            this.activeTabHistory = this.activeTabHistory.filter((id) => !removedIds.has(id));
             // If active tab was removed, switch to the specified tab
             if (!s.tabs.find((t) => t.id === s.activeTabId)) {
                 const tab = s.tabs[idx];
@@ -924,13 +962,18 @@ export class BrowserEditorModel extends EditorModel<BrowserEditorState, void> {
         });
     };
 
-    /** Switch to a different internal tab. */
+    /** Move a tab to a new position. If dropped into a different group, assign a new group. */
     moveTab = (fromId: string, toId: string) => {
         if (fromId === toId) return;
         this.state.update((s) => {
             const fromIndex = s.tabs.findIndex((t) => t.id === fromId);
             const toIndex = s.tabs.findIndex((t) => t.id === toId);
             if (fromIndex === -1 || toIndex === -1) return;
+            const fromTab = s.tabs[fromIndex];
+            const toTab = s.tabs[toIndex];
+            if (fromTab.groupId !== toTab.groupId) {
+                fromTab.groupId = createTabGroupId();
+            }
             const [moved] = s.tabs.splice(fromIndex, 1);
             s.tabs.splice(toIndex, 0, moved);
         });
@@ -941,6 +984,7 @@ export class BrowserEditorModel extends EditorModel<BrowserEditorState, void> {
             if (s.activeTabId === internalTabId) return;
             const tab = s.tabs.find((t) => t.id === internalTabId);
             if (!tab) return;
+            this.activeTabHistory.push(s.activeTabId);
             s.activeTabId = internalTabId;
             this.syncTopLevelFromTab(s, tab);
             // Close find bar — search context changes with the tab

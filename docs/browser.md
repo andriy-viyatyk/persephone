@@ -50,13 +50,23 @@ Multiple browser tabs live within a single persephone tab, shown on a left-side 
 
 - Clicking `target="_blank"` links opens a **new internal tab**
 - `window.open()` from JavaScript opens a **real popup window** (for OAuth/auth flows)
-- **Close Tab** button in the toolbar; **New Tab** button at the bottom of the tabs panel
+- **Close Tab** button in the toolbar; **New Tab** (+) button at the bottom of the tabs panel — always adds a new tab at the end of the list
 - Right-click a tab for context menu: **Close Tab**, **Close Other Tabs**, **Close Tabs Below**
 - **Reorder tabs** — drag and drop internal tabs within the tabs panel to rearrange them
 - Resizable tabs panel with splitter; **starts collapsed to icon-only mode**
 - Active tab styled with dark background and blue border
 - **Compact mode** — when the panel is narrow, hovering a tab shows a floating popup with title and close button
 - Closing the last tab opens a fresh blank page
+- **Tab activation history** — closing a tab returns focus to the previously active tab (not just the adjacent one)
+
+### Tab Groups
+
+Tabs are automatically organized into visual groups:
+
+- **New group** — created when you click the **+** button, open a bookmark, or navigate to a typed URL
+- **Inherited group** — when a link opens in a new tab (via `target="_blank"` or "Open Link in New Tab" from context menu), the new tab belongs to the same group as its parent
+- **Visual indicator** — a vertical left border on each tab, with alternating brightness to distinguish adjacent groups
+- **Drag behavior** — dragging a tab within its group preserves the group; dragging it into a different group assigns a new group
 
 ### Audio Controls
 
@@ -284,6 +294,7 @@ Sites that try to open excessive popups or tabs are automatically rate-limited:
 The browser saves and restores the following across app restarts:
 
 - All internal tabs and their URLs
+- Tab groups
 - Navigation history per tab
 - Profile selection
 - Search engine selection and last search query

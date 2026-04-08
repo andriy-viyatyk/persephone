@@ -236,7 +236,8 @@ export class BrowserWebviewModel {
                         this.model.state.update((s) => { s.blockedPopupCount++; });
                         break;
                     }
-                    this.model.addTab(data.url);
+                    const parentTab = this.model.state.get().tabs.find((t) => t.id === internalTabId);
+                    this.model.addTab(data.url, parentTab?.groupId);
                     browserUrlChanged.send({ url: data.url });
                 }
                 break;
@@ -324,7 +325,10 @@ export class BrowserWebviewModel {
             const linkURL = data.linkURL;
             items.push({
                 label: "Open Link in New Tab",
-                onClick: () => this.model.addTab(linkURL),
+                onClick: () => {
+                    const parentTab = this.model.state.get().tabs.find((t) => t.id === internalTabId);
+                    this.model.addTab(linkURL, parentTab?.groupId);
+                },
             });
             items.push({
                 label: "Copy Link Address",

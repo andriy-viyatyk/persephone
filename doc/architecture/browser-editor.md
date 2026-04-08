@@ -16,7 +16,22 @@ The browser editor uses three levels of tab nesting:
 
 ### Tab Reordering
 
-Internal browser tabs support drag-and-drop reordering via `react-dnd`. Each tab in `BrowserTabsPanel` uses `useDrag`/`useDrop` hooks (drag type: `BROWSER_TAB_DRAG`). On drop, `BrowserEditorModel.moveTab(fromId, toId)` splices the tab from its source position and inserts it at the target position. Since webviews are rendered through `PageManager` with stable DOM placeholders, reordering the `state.tabs` array doesn't cause webview reloads.
+Internal browser tabs support drag-and-drop reordering via `react-dnd`. Each tab in `BrowserTabsPanel` uses `useDrag`/`useDrop` hooks (drag type: `BROWSER_TAB_DRAG`). On drop, `BrowserEditorModel.moveTab(fromId, toId)` splices the tab from its source position and inserts it at the target position. Since webviews are rendered through `PageManager` with stable DOM placeholders, reordering the `state.tabs` array doesn't cause webview reloads. If a tab is dragged into a different group (see Tab Grouping below), it receives a new group ID.
+
+### Tab Grouping
+
+Each `BrowserTabData` has a `groupId` field (e.g. `bg-1`, `bg-2`). Tabs opened from the same parent share a group:
+
+- **Manual actions** (plus button, bookmark click, typed URL) create a new group.
+- **Link-opened tabs** (`target="_blank"`, "Open Link in New Tab" context menu) inherit the parent tab's `groupId` and are inserted after the active tab.
+
+`BrowserTabsPanel` visualizes groups with a 2px left border (via `::before` pseudo-element, separated from the tab's own selection border). Groups alternate between two brightness levels based on the sequential order of first appearance in the tab list (`groupColorMap` computed via `useMemo`). The group color is passed to each `TabItem` via a CSS custom property (`--group-color`).
+
+Group IDs are persisted in `getRestoreData()`. `applyRestoreData()` assigns fresh group IDs to restored tabs that lack one (backward compatibility).
+
+### Tab Activation History
+
+`BrowserEditorModel` maintains a private `activeTabHistory` stack (array of tab IDs, most recent last). When `switchTab()` or `addTab()` changes the active tab, the previous active tab ID is pushed onto the stack. When `closeTab()` closes the active tab, it pops from the stack to find the most recent still-existing tab to activate, falling back to an adjacent tab if history is empty. The stack is cleaned up when tabs are closed (`closeTab`, `closeOtherTabs`, `closeTabsBelow`).
 
 ### New Window Handling
 
@@ -25,7 +40,7 @@ Internal browser tabs support drag-and-drop reordering via `react-dnd`. Each tab
 | `target="_blank"` link click | `foreground-tab` / `background-tab` | Opens as new internal tab in same browser page |
 | `window.open()` from JavaScript | `default` / `new-window` | Opens as real popup BrowserWindow |
 
-The main process intercepts these via `setWindowOpenHandler()` on the webContents. **Link clicks** (`target="_blank"`) are denied and relayed to the renderer as a `"new-window"` event, which calls `model.addTab(url)`. **JavaScript `window.open()` calls** (OAuth popups, login dialogs, etc.) are allowed as real Electron BrowserWindows — this preserves the `window.opener` reference that auth flows need to communicate back to the parent page. The popup inherits the webview's session partition, so cookies and auth state are shared.
+The main process intercepts these via `setWindowOpenHandler()` on the webContents. **Link clicks** (`target="_blank"`) are denied and relayed to the renderer as a `"new-window"` event, which calls `model.addTab(url, parentGroupId)` (inheriting the parent tab's group). **JavaScript `window.open()` calls** (OAuth popups, login dialogs, etc.) are allowed as real Electron BrowserWindows — this preserves the `window.opener` reference that auth flows need to communicate back to the parent page. The popup inherits the webview's session partition, so cookies and auth state are shared.
 
 **Important:** The `<webview>` element requires `allowpopups="true"` for `setWindowOpenHandler` to fire on `target="_blank"` link clicks.
 
@@ -260,7 +275,7 @@ The main preload (`src/preload.ts`) exposes the path to the webview preload:
 
 ## Session Restore
 
-`getRestoreData()` saves all internal tabs with their actual current URLs (from `currentUrls` map, which tracks post-redirect URLs). `applyRestoreData()` restores them with fresh internal tab IDs (since IDs are ephemeral). The active tab is identified by index position during restore. Profile name, incognito flag, and Tor flag are also saved/restored.
+`getRestoreData()` saves all internal tabs with their actual current URLs (from `currentUrls` map, which tracks post-redirect URLs). `applyRestoreData()` restores them with fresh internal tab IDs and ensures each tab has a `groupId` (assigning a new one if missing for backward compatibility). The active tab is identified by index position during restore. Profile name, incognito flag, and Tor flag are also saved/restored.
 
 Navigation history (`navHistory` on each `BrowserTabData`) is persisted as part of the tab state via `getRestoreData()`. Search history is stored separately per profile in the app data folder using `SearchHistoryStorage` (file-based, max 2000 entries). Incognito and Tor profiles skip search history persistence.
 

@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useDrag, useDrop } from "react-dnd";
 import { useFloating, offset as floatingOffset, autoUpdate } from "@floating-ui/react";
 import color from "../../theme/color";
@@ -35,12 +35,23 @@ const BrowserTabsPanelRoot = styled.div({
         alignItems: "center",
         height: 28,
         boxSizing: "border-box",
-        padding: "0 4px 0 8px",
-        margin: "0 4px",
+        padding: "0 4px 0 6px",
+        margin: "0 4px 0 8px",
         gap: 6,
         cursor: "pointer",
         borderRadius: 4,
         border: "1px solid transparent",
+        position: "relative",
+        "&::before": {
+            content: '""',
+            position: "absolute",
+            left: -5,
+            top: 2,
+            bottom: 2,
+            width: 2,
+            borderRadius: 1,
+            backgroundColor: "var(--group-color)",
+        },
         "&:hover": {
             backgroundColor: color.background.light,
         },
@@ -84,6 +95,7 @@ const BrowserTabsPanelRoot = styled.div({
             height: 14,
             display: "block",
             objectFit: "contain",
+            filter: "drop-shadow(0 0 1.5px rgba(255,255,255,0.9))",
         },
     },
 
@@ -152,6 +164,7 @@ interface TabItemProps {
     compact: boolean;
     showClose: boolean;
     isHovered: boolean;
+    groupColorIndex: number;
     onSwitch: (tabId: string) => void;
     onClose: (e: React.MouseEvent, tabId: string) => void;
     onToggleMute: (e: React.MouseEvent, tabId: string) => void;
@@ -160,8 +173,13 @@ interface TabItemProps {
     onMouseLeave?: () => void;
 }
 
+const GROUP_COLORS = [
+    "rgba(255,255,255,0.25)",
+    "rgba(255,255,255,0.55)",
+];
+
 function TabItem({
-    tab, model, isActive, compact, showClose, isHovered,
+    tab, model, isActive, compact, showClose, isHovered, groupColorIndex,
     onSwitch, onClose, onToggleMute, onContextMenu, onMouseEnter, onMouseLeave,
 }: TabItemProps) {
     const [{ isDragging }, drag] = useDrag({
@@ -191,10 +209,13 @@ function TabItem({
         isOver && "drop-target",
     ].filter(Boolean).join(" ");
 
+    const groupBorderColor = GROUP_COLORS[groupColorIndex % GROUP_COLORS.length];
+
     return (
         <div
             ref={(node) => { drag(drop(node)); }}
             className={cls}
+            style={{ "--group-color": groupBorderColor } as React.CSSProperties}
             onClick={() => onSwitch(tab.id)}
             onContextMenu={(e) => onContextMenu(e, tab.id)}
             onMouseEnter={onMouseEnter ? (e) => onMouseEnter(e, tab.id) : undefined}
@@ -265,6 +286,19 @@ export function BrowserTabsPanel({
 }: BrowserTabsPanelProps) {
     const compact = width < COMPACT_THRESHOLD;
     const showClose = !compact && width >= CLOSE_BUTTON_THRESHOLD;
+
+    /** Map each tab's groupId to a sequential index (0, 1, 0, 1, ...) based on
+     *  the order groups first appear in the tab list. */
+    const groupColorMap = useMemo(() => {
+        const map = new Map<string, number>();
+        let idx = 0;
+        for (const tab of tabs) {
+            if (!map.has(tab.groupId)) {
+                map.set(tab.groupId, idx++);
+            }
+        }
+        return map;
+    }, [tabs]);
 
     const [hoveredTabId, setHoveredTabId] = useState<string | null>(null);
     const hoveredTabRef = useRef<HTMLDivElement | null>(null);
@@ -386,6 +420,7 @@ export function BrowserTabsPanel({
                         compact={compact}
                         showClose={showClose}
                         isHovered={tab.id === hoveredTabId}
+                        groupColorIndex={groupColorMap.get(tab.groupId) ?? 0}
                         onSwitch={handleSwitchTab}
                         onClose={handleCloseTab}
                         onToggleMute={handleToggleMute}

@@ -4,6 +4,7 @@ Last 20 completed tasks, newest first. Older tasks are pruned.
 
 | ID | Title | Epic | Notes |
 |----|-------|------|-------|
+| US-393 | Browser tab UX improvements | — | Dark favicon glow (drop-shadow filter), tab activation history (close returns to previous tab), auto tab grouping with visual left border indicator, new tab (+) appends at end. 4 files changed. |
 | US-360 | View Actual DOM — include iframe content | — | Moved DOM collection to main process via `collectDom` IPC channel. Uses `WebFrameMain.framesInSubtree` to collect all frame DOMs (incl. cross-origin), cheerio to inject content inside `<iframe>` elements. Both "View Actual DOM" and "Show Resources" updated. 3 files changed. |
 | US-361 | Adopt libarchive-wasm for multi-format archive support | EPIC-018 | Replaced jszip (read) with libarchive-wasm. Supports RAR, 7z, TAR (+gz/bz2/xz), cab, ISO. jszip kept for ZIP writes. Added `ITransformer.writable`; `ContentPipe.writable` checks transformers. Renamed Zip* → Archive* (classes, files, IDs). New helpers: `getArchiveExtension()`, `isZipBasedArchive()`. WASM loaded from `assets/libarchive/`. ~20 files changed. |
 | US-359 | Links panel improvements | EPIC-018 | Rich tooltips with copy-as-JSON, "Edit Link" context menu, navigation fixes (pipe passthrough, target resolution), ILink.target + ILinkMetadata.fallbackTarget/title, DataUrlProvider for data: URLs, inline script/style extraction, language detection from title, deduplication. 14 files changed (1 new). |
