@@ -6,7 +6,13 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ---
 
-## Version 3.0.3 (Upcoming)
+## Version 3.0.4 (Upcoming)
+
+*No changes yet.*
+
+---
+
+## Version 3.0.3
 
 ### New Features
 
@@ -34,6 +40,10 @@ Release notes and changelog for Persephone (formerly js-notepad).
 - **Browser: new tab position** — The **+** button now always adds new tabs at the end of the list. Tabs opened from links are still inserted after the active tab.
 
 - **MCP: `browser_hover` tool** — New MCP browser automation tool that hovers over an element, firing `mouseenter` and `mouseover` events. Useful for revealing tooltips, dropdown menus, and any UI that reacts to mouse hover. Accepts a CSS `selector` or an accessibility `ref` from a snapshot, and returns an updated accessibility snapshot.
+
+### Bug Fixes
+
+- **HTML Preview: preload script error** — Opening an HTML preview no longer produces a console error (`module not found: node:path`). The cause was Electron injecting the main preload script into the sandboxed preview iframe. Fixed by disabling `nodeIntegrationInSubFrames` — nothing in the app depends on Node.js inside iframes.
 
 ---
 
