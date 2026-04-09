@@ -21,7 +21,6 @@ Overview of all active and planned epics and tasks.
 - **EPIC-011** — [Chrome Extension Support for Built-in Browser](epics/EPIC-011.md)
 - *(no epic)*
   - [ ] US-347: CategoryView / CategoryEditor Breadcrumb
-  - [ ] US-325: Fix webview preload script error in HTML view
 
 
 ---
