@@ -445,6 +445,19 @@ function createMcpServer(): InstanceType<typeof McpServer> {
     );
 
     server.tool(
+        "browser_hover",
+        "Hover over an element on the page. Triggers mouseenter and mouseover events — useful for revealing tooltips, dropdown menus, and hover-dependent UI. Returns updated accessibility snapshot.",
+        {
+            selector: z.string().optional().describe("CSS selector for the target element."),
+            ref: z.string().optional().describe("Element ref from accessibility snapshot (e.g., 'e52')."),
+            element: z.string().optional().describe("Human-readable element description (used as CSS selector)."),
+            windowIndex: windowIndexParam,
+        },
+        async ({ selector, ref, element, windowIndex }) =>
+            toToolResult(await sendToRenderer("browser_hover", { selector, ref, element }, windowIndex)),
+    );
+
+    server.tool(
         "browser_type",
         "Type text into editable element. Clears existing content first. Works on inputs, textareas, and contentEditable elements. By default fills text at once; use slowly for character-by-character typing. Returns updated accessibility snapshot.",
         {

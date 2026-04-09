@@ -337,8 +337,8 @@ High-level wrapper in `BrowserEditorFacade` using CDP `Runtime.evaluate`:
 - Filters noise (none, generic, InlineTextBox), deduplicates StaticText
 
 #### US-369: MCP browser automation commands
-13 Playwright-compatible MCP tools registered in `mcp-http-server.ts`, dispatched via `mcp-handler.ts`:
-- `browser_navigate`, `browser_snapshot`, `browser_click`, `browser_type`, `browser_select_option`, `browser_press_key`, `browser_evaluate`, `browser_tabs`, `browser_navigate_back`, `browser_wait_for`, `browser_take_screenshot`, `browser_network_requests`, `browser_close`
+14 Playwright-compatible MCP tools registered in `mcp-http-server.ts`, dispatched via `mcp-handler.ts`:
+- `browser_navigate`, `browser_snapshot`, `browser_click`, `browser_hover`, `browser_type`, `browser_select_option`, `browser_press_key`, `browser_evaluate`, `browser_tabs`, `browser_navigate_back`, `browser_wait_for`, `browser_take_screenshot`, `browser_network_requests`, `browser_close`
 - Ref resolution via CDP `DOM.resolveNode` + `Runtime.callFunctionOn`
 
 ### Phase 2: Architecture & Quality (Planned)

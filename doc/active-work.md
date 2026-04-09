@@ -8,31 +8,6 @@ Overview of all active and planned epics and tasks.
 
 ## Active
 
-- **EPIC-021** — [Browser Automation API (Lightweight RPA)](epics/EPIC-021.md)
-  - *Phase 1 (Done):*
-  - [x] [US-365: CDP integration (Electron debugger API)](tasks/US-365-playwright-cdp-integration/README.md)
-  - [x] [US-366: Browser query and interaction API](tasks/US-366-browser-query-interaction-api/README.md)
-  - [x] [US-367: Browser wait methods (waitForSelector, waitForNavigation)](tasks/US-367-browser-wait-methods/README.md)
-  - [x] [US-368: Tab management and background automation](tasks/US-368-tab-management-automation/README.md)
-  - [x] [US-371: Browser accessibility snapshot](tasks/US-371-browser-accessibility-snapshot/README.md)
-  - [x] [US-369: MCP browser automation commands](tasks/US-369-mcp-browser-commands/README.md)
-  - *Phase 2 (Architecture & Quality):*
-  - [x] [US-375: Automation layer architecture (refactoring)](tasks/US-375-automation-layer-architecture/README.md)
-  - [x] [US-376: Input dispatch via CDP (Trusted Types fix)](tasks/US-376-input-dispatch-cdp/README.md)
-  - [x] [US-377: Ref resolution improvements](tasks/US-377-ref-resolution/README.md)
-  - [x] [US-374: Accessibility snapshot: include iframes, detect overlays/popups](tasks/US-374-iframe-snapshot/README.md)
-  - *Phase 3 (Advanced):*
-  - [ ] US-370: Data protection hooks (PHI sanitization layer)
-  - [x] [US-372: Fix script implicit return with block-body callbacks](tasks/US-372-fix-script-implicit-return/README.md)
-  - [ ] [US-373: Missing Playwright MCP browser tools (hover, drag, dialog, console, upload, resize, etc.)](tasks/US-373-deferred-mcp-browser-tools/README.md)
-  - [x] [US-379: Fix browser_evaluate — accept `function` param (Playwright compat)](tasks/US-379-browser-evaluate-param-fix/README.md)
-  - [x] [US-380: Fix browser_select_option — accept `values` array (Playwright compat)](tasks/US-380-browser-select-option-values/README.md)
-  - [x] [US-381: Fix browser_wait_for — add `time` and `textGone` params (Playwright compat)](tasks/US-381-browser-wait-for-playwright/README.md)
-  - [x] [US-382: Fix browser_tabs — action-based interface (Playwright compat)](tasks/US-382-browser-tabs-action/README.md)
-  - [x] [US-378: Known issues & edge cases (review before epic completion)](tasks/US-378-browser-automation-fixes/README.md)
-  - [x] [US-383: Block browser automation on incognito/Tor pages](tasks/US-383-browser-automation-privacy-guard/README.md)
-  - [x] [US-384: MCP browser tools toggle (optional Playwright tools)](tasks/US-384-mcp-browser-tools-toggle/README.md)
-
 ## Planned
 
 - **EPIC-014** — [Claude AI Chat Panel](epics/EPIC-014.md)

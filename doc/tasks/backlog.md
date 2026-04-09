@@ -359,6 +359,18 @@ persephone
 
 ---
 
+## Browser Automation
+
+### US-370: Data protection hooks (PHI sanitization layer)
+
+**Goal:** Add hooks to the browser automation layer that sanitize sensitive data (PHI, PII) before it is returned by `browser_snapshot` or passed to AI agents.
+
+**Background:** EPIC-021 deferred this task. The automation layer is now stable and this would be a clean insertion point. See [EPIC-021.md](../epics/EPIC-021.md) section US-370 for the original design notes.
+
+**Complexity:** Medium-High
+
+---
+
 ## Technical Debt
 
 | Issue | Description | Complexity |

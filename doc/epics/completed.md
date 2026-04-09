@@ -4,6 +4,31 @@ Last 10 completed epics, newest first. Older epics are pruned.
 
 ---
 
+## EPIC-021 — [Browser Automation API (Lightweight RPA)](EPIC-021.md)
+
+- [x] US-365: CDP integration (Electron debugger API)
+- [x] US-366: Browser query and interaction API
+- [x] US-367: Browser wait methods (waitForSelector, waitForNavigation)
+- [x] US-368: Tab management and background automation
+- [x] US-371: Browser accessibility snapshot
+- [x] US-369: MCP browser automation commands
+- [x] US-375: Automation layer architecture (refactoring)
+- [x] US-376: Input dispatch via CDP (Trusted Types fix)
+- [x] US-377: Ref resolution improvements
+- [x] US-374: Accessibility snapshot: include iframes, detect overlays/popups
+- [x] US-372: Fix script implicit return with block-body callbacks
+- [x] US-373: Missing Playwright MCP browser tools (browser_hover implemented)
+- [x] US-379: Fix browser_evaluate — accept `function` param (Playwright compat)
+- [x] US-380: Fix browser_select_option — accept `values` array (Playwright compat)
+- [x] US-381: Fix browser_wait_for — add `time` and `textGone` params (Playwright compat)
+- [x] US-382: Fix browser_tabs — action-based interface (Playwright compat)
+- [x] US-378: Known issues & edge cases (review before epic completion)
+- [x] US-383: Block browser automation on incognito/Tor pages
+- [x] US-384: MCP browser tools toggle (optional Playwright tools)
+- [ ] US-370: Data protection hooks (PHI sanitization layer) — moved to backlog
+
+---
+
 ## EPIC-020 — [Browser Network Request Logging & Resource Discovery](EPIC-020.md)
 
 - [x] US-362: Network request logging in main process

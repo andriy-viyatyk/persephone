@@ -33,6 +33,8 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 - **Browser: new tab position** — The **+** button now always adds new tabs at the end of the list. Tabs opened from links are still inserted after the active tab.
 
+- **MCP: `browser_hover` tool** — New MCP browser automation tool that hovers over an element, firing `mouseenter` and `mouseover` events. Useful for revealing tooltips, dropdown menus, and any UI that reacts to mouse hover. Accepts a CSS `selector` or an accessibility `ref` from a snapshot, and returns an updated accessibility snapshot.
+
 ---
 
 ## Version 3.0.2

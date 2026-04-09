@@ -36,6 +36,7 @@ These shortcuts work regardless of which editor is active.
 | `Ctrl+X` | Cut line (or selection) |
 | `Ctrl+C` | Copy line (or selection) |
 | `Ctrl+V` | Paste |
+| `Ctrl+Shift+V` | Paste as Markdown / HTML (Markdown and HTML files only) |
 | `Ctrl+A` | Select all |
 | `Ctrl+Y` | Delete line |
 | `Ctrl+D` | Select next occurrence |

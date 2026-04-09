@@ -149,6 +149,30 @@ async function browserClick(target: IBrowserTarget, params: any): Promise<McpRes
     return { result: await snapshot(target) };
 }
 
+async function browserHover(target: IBrowserTarget, params: any): Promise<McpResponse> { // eslint-disable-line @typescript-eslint/no-explicit-any
+    target.focusWebview();
+    const hoverJs = `
+        this.scrollIntoView({block:'center'});
+        this.dispatchEvent(new MouseEvent('mouseenter', {bubbles:false, composed:true}));
+        this.dispatchEvent(new MouseEvent('mouseover',  {bubbles:true,  composed:true}));
+    `;
+    const selector = refOrSelector(params);
+    if (selector) {
+        const s = JSON.stringify(selector);
+        await target.cdp().evaluate(`(() => {
+            const el = document.querySelector(${s});
+            if (!el) throw new Error('Element not found: ' + ${s});
+            ${hoverJs.replace(/this/g, "el")}
+        })()`);
+    } else if (params?.ref) {
+        await callOnRef(target.cdp(), params.ref,
+            `function() { ${hoverJs} }`);
+    } else {
+        return { error: { code: -32602, message: "Missing 'selector' or 'ref' parameter" } };
+    }
+    return { result: await snapshot(target) };
+}
+
 async function browserType(target: IBrowserTarget, params: any): Promise<McpResponse> { // eslint-disable-line @typescript-eslint/no-explicit-any
     const text = params?.text;
     if (text == null) return { error: { code: -32602, message: "Missing 'text' parameter" } };
@@ -383,6 +407,7 @@ export async function handleBrowserCommand(
         case "browser_navigate":        return browserNavigate(target, params);
         case "browser_snapshot":        return browserSnapshot(target);
         case "browser_click":           return browserClick(target, params);
+        case "browser_hover":           return browserHover(target, params);
         case "browser_type":            return browserType(target, params);
         case "browser_select_option":   return browserSelectOption(target, params);
         case "browser_press_key":       return browserPressKey(target, params);
