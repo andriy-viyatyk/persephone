@@ -8,6 +8,17 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ## Version 3.0.3 (Upcoming)
 
+### New Features
+
+- **Script API: `ai.ClaudeSession`** — Scripts now have access to a global `ai` namespace with a `ClaudeSession` class for building multi-turn conversations with Claude via the Anthropic API. Create a session, set a system message, add user messages, define tools, and call `send()` — the session handles the full tool-call loop internally. Supports event callbacks for `"tool-call"`, `"tool-result"`, `"assistant-message"`, and `"error"`. See the [`ai` API reference](./api/ai.md).
+
+  ```javascript
+  const session = new ai.ClaudeSession({ apiKey: "sk-ant-..." });
+  session.systemMessage("You are a helpful assistant.");
+  session.userMessage("Summarize this data.");
+  const reply = await session.send();
+  ```
+
 ### Improvements
 
 - **Browser: tab groups** — Internal browser tabs are now automatically organized into visual groups. Tabs opened from a link inherit the parent tab's group; manually created tabs start a new group. Groups are shown as a vertical left border with alternating brightness for easy visual distinction. Drag a tab out of its group to create a new group. Groups are persisted across app restarts.

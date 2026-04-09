@@ -3,6 +3,7 @@ import type { IApp } from "./app";
 import type { IPage } from "./page";
 import type { IUiLog, IStyledTextBuilder } from "./ui-log";
 import type { IIoNamespace } from "./io";
+import type { IAiNamespace } from "./ai";
 
 declare global {
     /** The application object. Access all app functionality through this. */
@@ -29,6 +30,16 @@ declare global {
      * const text = await pipe.readText();
      */
     const io: IIoNamespace;
+
+    /**
+     * AI model integrations. Create Claude sessions for conversations, tool use, and automation.
+     *
+     * @example
+     * const session = new ai.ClaudeSession({ apiKey: "sk-ant-..." });
+     * session.userMessage("Hello!");
+     * const reply = await session.send();
+     */
+    const ai: IAiNamespace;
 
     /**
      * Import a module. Use `require("library/...")` to load modules from the script library.

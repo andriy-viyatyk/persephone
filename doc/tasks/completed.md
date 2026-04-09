@@ -4,6 +4,7 @@ Last 20 completed tasks, newest first. Older tasks are pruned.
 
 | ID | Title | Epic | Notes |
 |----|-------|------|-------|
+| US-394 | ClaudeSession Helper Class for Scripting | — | Exposes `ai.ClaudeSession` global to scripts wrapping `@anthropic-ai/sdk`. Auto-manages message history, tool-call loop (maxToolRounds=20 safety limit), events (tool-call, tool-result, assistant-message), and toolChoice per send(). 3 new files + 6 modified. |
 | US-393 | Browser tab UX improvements | — | Dark favicon glow (drop-shadow filter), tab activation history (close returns to previous tab), auto tab grouping with visual left border indicator, new tab (+) appends at end. 4 files changed. |
 | US-360 | View Actual DOM — include iframe content | — | Moved DOM collection to main process via `collectDom` IPC channel. Uses `WebFrameMain.framesInSubtree` to collect all frame DOMs (incl. cross-origin), cheerio to inject content inside `<iframe>` elements. Both "View Actual DOM" and "Show Resources" updated. 3 files changed. |
 | US-361 | Adopt libarchive-wasm for multi-format archive support | EPIC-018 | Replaced jszip (read) with libarchive-wasm. Supports RAR, 7z, TAR (+gz/bz2/xz), cab, ISO. jszip kept for ZIP writes. Added `ITransformer.writable`; `ContentPipe.writable` checks transformers. Renamed Zip* → Archive* (classes, files, IDs). New helpers: `getArchiveExtension()`, `isZipBasedArchive()`. WASM loaded from `assets/libarchive/`. ~20 files changed. |

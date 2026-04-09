@@ -10,6 +10,7 @@ import type { LogViewModel } from "../editors/log-view/LogViewModel";
 import React from "react";
 import { fpResolve } from "../core/utils/file-path";
 import { createIoNamespace } from "./api-wrapper/IoNamespace";
+import { createAiNamespace } from "./api-wrapper/AiNamespace";
 
 export interface ConsoleLogEntry {
     level: "log" | "error" | "warn" | "info";
@@ -60,6 +61,7 @@ export class ScriptContext {
     readonly app: AppWrapper;
     readonly page: PageWrapper | undefined;
     readonly io = createIoNamespace();
+    readonly ai = createAiNamespace();
     readonly React = React;
     readonly styledText = styledText;
     readonly preventOutput: () => void;

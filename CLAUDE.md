@@ -213,8 +213,8 @@ const { PdfViewer } = await import("../pdf/PdfViewer");
 import { PdfViewer } from "../pdf/PdfViewer";
 ```
 
-### 2. Script Context (`page`, `app`, and `io` objects)
-Scripts access content via `page`, the application via `app`, and the content pipe system via `io`:
+### 2. Script Context (`page`, `app`, `io`, and `ai` objects)
+Scripts access content via `page`, the application via `app`, the content pipe system via `io`, and AI integrations via `ai`:
 ```javascript
 const data = JSON.parse(page.content);
 page.grouped.content = JSON.stringify(result);
@@ -300,6 +300,8 @@ See [/doc/standards/coding-style.md](doc/standards/coding-style.md) for complete
 | cURL/fetch parser        | `/src/renderer/core/utils/curl-parser.ts`         |
 | Open URL dialog          | `/src/renderer/ui/dialogs/OpenUrlDialog.tsx`      |
 | Script `io` namespace    | `/src/renderer/scripting/api-wrapper/IoNamespace.ts` |
+| Script `ai` namespace    | `/src/renderer/scripting/api-wrapper/AiNamespace.ts` |
+| Script `ClaudeSession`   | `/src/renderer/scripting/api-wrapper/ClaudeSession.ts` |
 | Script library service   | `/src/renderer/api/library-service.ts`            |
 | Script autoloading       | `/src/renderer/scripting/AutoloadRunner.ts`       |
 | Script execution (core)  | `/src/renderer/scripting/ScriptRunnerBase.ts`     |

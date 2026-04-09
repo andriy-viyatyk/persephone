@@ -250,6 +250,59 @@ await app.events.openLink.sendAsync(event);
 
 See the [Events API](./api/events.md) for the full pipeline reference.
 
+## The `ai` Namespace
+
+Scripts have access to a global `ai` object for **AI model integrations**. Currently this provides `ClaudeSession` — a helper class that wraps the Anthropic API to manage multi-turn conversations, tool calls, and event callbacks automatically.
+
+### Quick start
+
+```javascript
+const session = new ai.ClaudeSession({ apiKey: "sk-ant-..." });
+session.systemMessage("You are a helpful assistant.");
+session.userMessage("Summarize this text in one sentence.");
+const reply = await session.send();
+return reply;
+```
+
+### With tools
+
+Define tools as plain JavaScript functions. Claude will call them as needed during the response:
+
+```javascript
+const session = new ai.ClaudeSession({ apiKey: "sk-ant-..." });
+
+session.tools = [{
+    name: "read_file",
+    description: "Read the content of a file",
+    inputSchema: {
+        type: "object",
+        properties: { path: { type: "string" } },
+        required: ["path"],
+    },
+    tool: async ({ path }) => await app.fs.read(path),
+}];
+
+session.userMessage("Read C:/data/notes.txt and summarize it.");
+const reply = await session.send();
+return reply;
+```
+
+### Multi-turn conversations
+
+Messages accumulate across multiple `send()` calls. Call `clear()` to start fresh:
+
+```javascript
+const session = new ai.ClaudeSession({ apiKey: "sk-ant-..." });
+session.userMessage("What is a closure?");
+await session.send();
+
+session.userMessage("Show me an example.");
+const reply = await session.send();
+return reply;
+```
+
+See the [`ai` API reference](./api/ai.md) for the complete method list, event types, and more examples.
+
 ## Examples
 
 ### Transform JSON
