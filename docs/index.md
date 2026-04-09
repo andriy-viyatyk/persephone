@@ -54,6 +54,7 @@ persephone is a Windows Notepad replacement designed for developers. It combines
 - File comparison (diff view)
 - File encryption
 - Full Node.js access in scripts
+- **AI scripting** — call Claude directly from scripts via `ai.ClaudeSession` (multi-turn conversations, tool use)
 - AI agent integration — connect external tools like Claude Desktop, Claude Code, or ChatGPT to control persephone via HTTP (MCP)
 
 ## Getting Help

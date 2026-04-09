@@ -47,7 +47,6 @@ Overview of all active and planned epics and tasks.
 - *(no epic)*
   - [ ] US-347: CategoryView / CategoryEditor Breadcrumb
   - [ ] US-325: Fix webview preload script error in HTML view
-  - [ ] [US-392: Paste Rich Text as Markdown in Monaco Editor](tasks/US-392-paste-rich-text-as-markdown/README.md)
 
 
 ---

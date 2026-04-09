@@ -7,6 +7,7 @@ import { useContentViewModel } from "../base/useContentViewModel";
 import { pagesModel } from "../../api/pages";
 import { api } from "../../../ipc/renderer/api";
 import type { IContentHost } from "../base/IContentHost";
+import { convertHtmlToMarkdown, readClipboardHtml } from "./paste-rich-text";
 
 const TextEditorRoot = styled.div({
     flex: "1 1 auto",
@@ -25,6 +26,7 @@ export type TextEditorState = typeof defaultTextEditorState;
 export class TextViewModel extends ContentViewModel<TextEditorState> {
     editorRef = null as monaco.editor.IStandaloneCodeEditor | null;
     private wheelListenerCleanup: (() => void) | null = null;
+    private richPasteActionDisposable: monaco.IDisposable | null = null;
     private selectionListenerDisposable: monaco.IDisposable | null = null;
     /** Set before mount to scroll Monaco to a specific line after it initializes */
     pendingRevealLine: number | null = null;
@@ -55,6 +57,8 @@ export class TextViewModel extends ContentViewModel<TextEditorState> {
         this.selectionListenerDisposable = null;
         this.wheelListenerCleanup?.();
         this.wheelListenerCleanup = null;
+        this.richPasteActionDisposable?.dispose();
+        this.richPasteActionDisposable = null;
     }
 
     handleEditorDidMount = (editor: monaco.editor.IStandaloneCodeEditor) => {
@@ -62,6 +66,7 @@ export class TextViewModel extends ContentViewModel<TextEditorState> {
         this.focusEditor();
         this.setupWheelZoom(editor);
         this.setupSelectionListener(editor);
+        this.setupRichPaste(editor);
 
         if (this.pendingRevealLine) {
             const line = this.pendingRevealLine;
@@ -219,6 +224,36 @@ export class TextViewModel extends ContentViewModel<TextEditorState> {
                 });
             };
         }
+    };
+
+    setupRichPaste = (editor: monaco.editor.IStandaloneCodeEditor) => {
+        this.richPasteActionDisposable = editor.addAction({
+            id: "paste-as-rich",
+            label: "Paste as Markdown / HTML",
+            keybindings: [
+                monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyV,
+            ],
+            run: async () => {
+                const language = this.host.state.get().language;
+                if (language !== "markdown" && language !== "html") return;
+
+                const html = await readClipboardHtml();
+                if (!html) return;
+
+                const text = language === "html"
+                    ? html
+                    : await convertHtmlToMarkdown(html);
+
+                const selection = editor.getSelection();
+                if (selection) {
+                    editor.executeEdits("paste", [{
+                        range: selection,
+                        text,
+                        forceMoveMarkers: true,
+                    }]);
+                }
+            },
+        });
     };
 }
 

@@ -23,6 +23,8 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### Improvements
 
+- **Paste as Markdown / HTML** — In Markdown and HTML files, press **Ctrl+Shift+V** to paste clipboard content as converted Markdown (or raw HTML). The clipboard's HTML representation is read and converted via [Turndown](https://github.com/mixmark-io/turndown). Regular **Ctrl+V** continues to paste plain text as before.
+
 - **Browser: tab groups** — Internal browser tabs are now automatically organized into visual groups. Tabs opened from a link inherit the parent tab's group; manually created tabs start a new group. Groups are shown as a vertical left border with alternating brightness for easy visual distinction. Drag a tab out of its group to create a new group. Groups are persisted across app restarts.
 
 - **Browser: tab activation history** — Closing a tab now returns focus to the previously active tab instead of the adjacent one. This makes the "open link in new tab → read → close → back to where you were" workflow seamless.

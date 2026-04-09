@@ -4,6 +4,7 @@ Last 20 completed tasks, newest first. Older tasks are pruned.
 
 | ID | Title | Epic | Notes |
 |----|-------|------|-------|
+| US-392 | Paste Rich Text as Markdown in Monaco Editor | — | Ctrl+Shift+V in markdown/html pages reads clipboard HTML and pastes as converted Markdown (or raw HTML). Uses Monaco `addAction` keybinding + Turndown (dynamic import) for HTML→Markdown. Regular Ctrl+V unchanged. 2 files changed (1 new: `paste-rich-text.ts`). |
 | US-393 | Interactive Resource Templates in MCP Inspector | — | Resource templates (parameterized URIs) are now interactive: clickable in sidebar, detail panel shows name/URI/description/MIME, `TextAreaField` per `{param}`, "Read Resource" expands template and calls `readResource`, results shown via `ResourceContentView`. Mutual exclusion with static resources. 2 files changed. |
 | US-394 | ClaudeSession Helper Class for Scripting | — | Exposes `ai.ClaudeSession` global to scripts wrapping `@anthropic-ai/sdk`. Auto-manages message history, tool-call loop (maxToolRounds=20 safety limit), events (tool-call, tool-result, assistant-message), and toolChoice per send(). 3 new files + 6 modified. |
 | — | Browser tab UX improvements | — | Dark favicon glow (drop-shadow filter), tab activation history (close returns to previous tab), auto tab grouping with visual left border indicator, new tab (+) appends at end. 4 files changed. |
