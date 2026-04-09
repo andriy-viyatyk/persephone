@@ -19,6 +19,8 @@ Release notes and changelog for Persephone (formerly js-notepad).
   const reply = await session.send();
   ```
 
+- **MCP Inspector: interactive resource templates** — Resource templates (parameterized URIs like `docs://documents/{document_id}`) in the MCP Inspector are now fully interactive. Click a template in the sidebar to select it, fill in parameter values in the detail panel, and click **Read Resource** to read the resource at the constructed URI. Results are displayed using the same adaptive rendering as static resources (Markdown, JSON/code, images). Selecting a template deselects any previously selected static resource, and vice versa.
+
 ### Improvements
 
 - **Browser: tab groups** — Internal browser tabs are now automatically organized into visual groups. Tabs opened from a link inherit the parent tab's group; manually created tabs start a new group. Groups are shown as a vertical left border with alternating brightness for easy visual distinction. Drag a tab out of its group to create a new group. Groups are persisted across app restarts.

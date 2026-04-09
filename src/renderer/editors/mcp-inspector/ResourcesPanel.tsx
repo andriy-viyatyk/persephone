@@ -1,9 +1,10 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import styled from "@emotion/styled";
 import color from "../../theme/color";
 import { Button } from "../../components/basic/Button";
+import { TextAreaField } from "../../components/basic/TextAreaField";
 import { Splitter } from "../../components/layout/Splitter";
-import { McpInspectorEditorModel } from "./McpInspectorEditorModel";
+import { McpInspectorEditorModel, extractTemplateParams } from "./McpInspectorEditorModel";
 import { ResourceContentView } from "./ResourceContentView";
 
 // ============================================================================
@@ -178,6 +179,33 @@ const ResourcesPanelRoot = styled.div({
         color: color.error.text,
     },
 
+    "& .section-title": {
+        fontSize: 11,
+        fontWeight: 600,
+        color: color.text.light,
+        textTransform: "uppercase",
+        letterSpacing: 0.5,
+        paddingBottom: 4,
+        borderBottom: `1px solid ${color.border.light}`,
+    },
+
+    "& .arg-field": {
+        display: "flex",
+        flexDirection: "column",
+        gap: 3,
+    },
+
+    "& .arg-label": {
+        fontSize: 12,
+        color: color.text.default,
+    },
+
+    "& .no-params": {
+        fontSize: 12,
+        color: color.text.light,
+        fontStyle: "italic",
+    },
+
     "& .empty-detail": {
         flex: "1 1 auto",
         display: "flex",
@@ -201,9 +229,18 @@ export function ResourcesPanel({ model }: ResourcesPanelProps) {
     const [sidebarWidth, setSidebarWidth] = useState(260);
 
     const selectedRes = rs.resources.find((r) => r.uri === rs.selectedUri) || null;
+    const selectedTmpl = rs.templates.find((t) => t.uriTemplate === rs.selectedTemplateUri) || null;
+    const templateParams = useMemo(
+        () => selectedTmpl ? extractTemplateParams(selectedTmpl.uriTemplate) : [],
+        [selectedTmpl],
+    );
 
     const handleRead = useCallback(() => {
         model.readResource();
+    }, [model]);
+
+    const handleReadTemplate = useCallback(() => {
+        model.readTemplateResource();
     }, [model]);
 
     const totalCount = rs.resources.length + rs.templates.length;
@@ -234,8 +271,9 @@ export function ResourcesPanel({ model }: ResourcesPanelProps) {
                             {rs.templates.map((t) => (
                                 <div
                                     key={t.uriTemplate}
-                                    className="sidebar-item"
+                                    className={`sidebar-item${t.uriTemplate === rs.selectedTemplateUri ? " active" : ""}`}
                                     title={t.uriTemplate}
+                                    onClick={() => model.selectTemplate(t.uriTemplate)}
                                 >
                                     <span className="res-name">{t.name}</span>
                                     <span className="res-uri">{t.uriTemplate}</span>
@@ -253,7 +291,7 @@ export function ResourcesPanel({ model }: ResourcesPanelProps) {
                 borderSized="right"
             />
 
-            {/* Detail */}
+            {/* Detail — static resource */}
             {selectedRes ? (
                 <div className="res-detail">
                     <div className="res-detail-top">
@@ -283,6 +321,59 @@ export function ResourcesPanel({ model }: ResourcesPanelProps) {
                     {rs.readContent && (
                         <div className="res-detail-content">
                             <ResourceContentView content={rs.readContent} />
+                        </div>
+                    )}
+                </div>
+
+            /* Detail — resource template */
+            ) : selectedTmpl ? (
+                <div className="res-detail">
+                    <div className="res-detail-top">
+                        <div className="detail-name">{selectedTmpl.name}</div>
+                        <div className="detail-uri">{selectedTmpl.uriTemplate}</div>
+                        {selectedTmpl.description && (
+                            <div className="detail-description">{selectedTmpl.description}</div>
+                        )}
+                        {selectedTmpl.mimeType && (
+                            <span className="detail-mime">{selectedTmpl.mimeType}</span>
+                        )}
+
+                        {/* Parameters */}
+                        <div className="section-title">Parameters</div>
+                        {templateParams.length === 0 ? (
+                            <div className="no-params">No parameters</div>
+                        ) : (
+                            templateParams.map((param) => (
+                                <div className="arg-field" key={param}>
+                                    <div className="arg-label">{param}</div>
+                                    <TextAreaField
+                                        value={rs.templateArgs[param] || ""}
+                                        onChange={(v) => model.setTemplateArg(param, v)}
+                                        placeholder={param}
+                                        readonly={rs.templateReadLoading}
+                                    />
+                                </div>
+                            ))
+                        )}
+
+                        <span className="read-btn">
+                            <Button
+                                type="flat"
+                                size="small"
+                                onClick={handleReadTemplate}
+                                disabled={rs.templateReadLoading}
+                            >
+                                {rs.templateReadLoading ? "Reading…" : "▶ Read Resource"}
+                            </Button>
+                        </span>
+                        {rs.templateReadError && (
+                            <div className="error-text">{rs.templateReadError}</div>
+                        )}
+                    </div>
+
+                    {rs.templateReadContent && (
+                        <div className="res-detail-content">
+                            <ResourceContentView content={rs.templateReadContent} />
                         </div>
                     )}
                 </div>

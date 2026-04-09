@@ -100,9 +100,9 @@ The resource template UI should follow the same layout pattern.
 
 ## Concerns / Open Questions
 
-1. **RFC 6570 complexity** — Full RFC 6570 supports operators like `{+path}`, `{#fragment}`, `{?query}`, `{&continuation}`. Most MCP servers only use simple `{name}` expansion. We should start with simple substitution and potentially add advanced support later if needed.
+1. **RFC 6570 complexity** — ✅ **Resolved:** Only support simple `{name}` parameters. No operators like `{+path}`, `{#fragment}`, etc.
 
-2. **Input field type** — Should template parameters use single-line `InputField` or multi-line `TextAreaField`? Most URI parameters are short strings, so single-line input (`InputField`) would be more appropriate than the `TextAreaField` used for prompts. However, using `TextAreaField` for consistency with the prompts panel is also valid.
+2. **Input field type** — ✅ **Resolved:** Use `TextAreaField` for consistency with the Prompts panel.
 
 ## Acceptance Criteria
 

@@ -383,7 +383,7 @@ A tool for connecting to and testing MCP (Model Context Protocol) servers. Open 
 - **Connection panel** — Enter a server URL (HTTP transport) or a command with arguments (stdio transport). Give the connection a display name for easy identification.
 - **Connect / Disconnect** — Connect to any MCP server and see its capabilities instantly.
 - **Tools tab** — Lists all tools exposed by the server. Select a tool to see its input schema and run it with custom arguments. Results are shown as formatted JSON.
-- **Resources tab** — Lists resources provided by the server. Click to read and display resource content.
+- **Resources tab** — Lists resources and resource templates provided by the server. Click a static resource to read and display its content. Click a resource template to open a parameter input form — fill in the URI parameters and click **Read Resource** to construct the URI and read the resource. Results render adaptively (Markdown, JSON, images, binary).
 - **Prompts tab** — Lists prompt templates. Select a prompt, fill in any arguments, and preview the resulting messages.
 - **Request history** — A collapsible history panel records all requests and responses with timing information, useful for debugging.
 - **Scripting API** — Scripts can interact with MCP Inspector pages via `const mcp = await page.asMcpInspector()`. See the [asMcpInspector() API reference](./api/page.md#asmcpinspectorpromiseimcpinspectoreditor) for details.

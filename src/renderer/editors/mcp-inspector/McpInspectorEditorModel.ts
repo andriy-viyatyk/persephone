@@ -92,6 +92,12 @@ export interface McpResourcesPanelState {
     readLoading: boolean;
     readContent: McpResourceContent | null;
     readError: string;
+    // Template selection
+    selectedTemplateUri: string;
+    templateArgs: Record<string, string>;
+    templateReadLoading: boolean;
+    templateReadContent: McpResourceContent | null;
+    templateReadError: string;
 }
 
 const getDefaultResourcesPanelState = (): McpResourcesPanelState => ({
@@ -101,6 +107,11 @@ const getDefaultResourcesPanelState = (): McpResourcesPanelState => ({
     readLoading: false,
     readContent: null,
     readError: "",
+    selectedTemplateUri: "",
+    templateArgs: {},
+    templateReadLoading: false,
+    templateReadContent: null,
+    templateReadError: "",
 });
 
 // ============================================================================
@@ -457,13 +468,81 @@ export class McpInspectorEditorModel extends EditorModel<McpInspectorEditorState
         }
     };
 
-    /** Select a resource by URI. Clears previous content. */
+    /** Select a resource by URI. Clears previous content and deselects template. */
     selectResource = (uri: string): void => {
         this.resourcesState.update((s) => {
             s.selectedUri = uri;
             s.readContent = null;
             s.readError = "";
+            s.selectedTemplateUri = "";
+            s.templateArgs = {};
+            s.templateReadContent = null;
+            s.templateReadError = "";
         });
+    };
+
+    /** Select a resource template. Clears static resource selection. */
+    selectTemplate = (uriTemplate: string): void => {
+        this.resourcesState.update((s) => {
+            s.selectedTemplateUri = uriTemplate;
+            s.templateArgs = {};
+            s.templateReadContent = null;
+            s.templateReadError = "";
+            s.selectedUri = "";
+            s.readContent = null;
+            s.readError = "";
+        });
+    };
+
+    /** Update a single template argument value. */
+    setTemplateArg = (name: string, value: string): void => {
+        this.resourcesState.update((s) => {
+            s.templateArgs = { ...s.templateArgs, [name]: value };
+        });
+    };
+
+    /** Read a resource by expanding the selected template with entered arguments. */
+    readTemplateResource = async (): Promise<void> => {
+        const client = this.connection.getClient();
+        if (!client) return;
+        const rs = this.resourcesState.get();
+        if (!rs.selectedTemplateUri) return;
+
+        const expandedUri = expandUriTemplate(rs.selectedTemplateUri, rs.templateArgs);
+        this.resourcesState.update((s) => {
+            s.templateReadLoading = true;
+            s.templateReadContent = null;
+            s.templateReadError = "";
+        });
+        const readParams = { uri: expandedUri };
+        const start = Date.now();
+        try {
+            const result = await client.readResource(readParams);
+            this.logRequest("resources/read", readParams, result, null, Date.now() - start);
+            const first = result.contents?.[0] as any;
+            if (first) {
+                this.resourcesState.update((s) => {
+                    s.templateReadLoading = false;
+                    s.templateReadContent = {
+                        uri: first.uri || expandedUri,
+                        mimeType: first.mimeType || "",
+                        text: first.text,
+                        blob: first.blob,
+                    };
+                });
+            } else {
+                this.resourcesState.update((s) => {
+                    s.templateReadLoading = false;
+                    s.templateReadError = "No content returned.";
+                });
+            }
+        } catch (err: any) {
+            this.logRequest("resources/read", readParams, null, err?.message || String(err), Date.now() - start);
+            this.resourcesState.update((s) => {
+                s.templateReadLoading = false;
+                s.templateReadError = err?.message || String(err);
+            });
+        }
     };
 
     /** Read the currently selected resource. */
@@ -672,6 +751,22 @@ export class McpInspectorEditorModel extends EditorModel<McpInspectorEditorState
 // ============================================================================
 // Helpers
 // ============================================================================
+
+/** Extract simple `{param}` names from a URI template. */
+export function extractTemplateParams(uriTemplate: string): string[] {
+    const params: string[] = [];
+    const re = /\{([^}]+)\}/g;
+    let match: RegExpExecArray | null;
+    while ((match = re.exec(uriTemplate)) !== null) {
+        params.push(match[1]);
+    }
+    return params;
+}
+
+/** Replace `{param}` placeholders in a URI template with values from args. */
+export function expandUriTemplate(uriTemplate: string, args: Record<string, string>): string {
+    return uriTemplate.replace(/\{([^}]+)\}/g, (_, name) => args[name] ?? "");
+}
 
 function normalizePromptContent(block: any): McpPromptMessageContent {
     if (!block || typeof block === "string") return { type: "text", text: block || "" };

@@ -377,13 +377,13 @@ persephone/
 │   │   ├── BaseImageView.tsx
 │   │   └── index.ts
 │   ├── mcp-inspector/      # MCP Inspector (standalone)
-│   │   ├── McpInspectorEditorModel.ts      # EditorModel — connection, tools, resources, prompts state
+│   │   ├── McpInspectorEditorModel.ts      # EditorModel — connection, tools, resources (+ templates), prompts state
 │   │   ├── McpInspectorView.tsx      # Main view — connection bar, panel routing
 │   │   ├── McpConnectionManager.ts   # MCP SDK Client wrapper (connect/disconnect)
 │   │   ├── ToolsPanel.tsx            # Tools panel — sidebar list, detail, arg form, result
 │   │   ├── ToolArgForm.tsx           # JSON Schema → argument form generator
 │   │   ├── ToolResultView.tsx        # Tool call result renderer (text/image/resource)
-│   │   ├── ResourcesPanel.tsx        # Resources panel — sidebar, read resource, content display
+│   │   ├── ResourcesPanel.tsx        # Resources panel — sidebar, static resources + interactive templates, content display
 │   │   ├── ResourceContentView.tsx   # Adaptive content renderer (markdown/monaco/image)
 │   │   ├── PromptsPanel.tsx          # Prompts panel — sidebar, arg form, messages display
 │   │   ├── McpConnectionStore.ts    # Saved connections store (mcp-connections.json persistence)
