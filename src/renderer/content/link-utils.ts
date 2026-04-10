@@ -1,5 +1,5 @@
 import type { IPipeDescriptor } from "../api/types/io.pipe";
-import type { ILinkMetadata } from "../api/types/io.events";
+import type { ILinkData } from "../../shared/link-data";
 import { isArchivePath, parseArchivePath } from "../core/utils/file-path";
 import { TREE_CATEGORY_PREFIX } from "./tree-providers/tree-provider-link";
 
@@ -62,7 +62,7 @@ export function isUrlOrCurl(href: string): boolean {
  */
 export function resolveUrlToPipeDescriptor(
     url: string,
-    metadata?: ILinkMetadata,
+    data?: ILinkData,
 ): IPipeDescriptor | null {
     // tree-category:// → no pipe
     if (url.startsWith(TREE_CATEGORY_PREFIX)) return null;
@@ -74,7 +74,7 @@ export function resolveUrlToPipeDescriptor(
 
     // HTTP/HTTPS
     if (isHttpUrl(url)) {
-        return resolveHttpPipeDescriptor(url, metadata);
+        return resolveHttpPipeDescriptor(url, data);
     }
 
     // File path (normalize file:// URLs)
@@ -102,11 +102,11 @@ function resolveFilePipeDescriptor(url: string): IPipeDescriptor | null {
     };
 }
 
-function resolveHttpPipeDescriptor(url: string, metadata?: ILinkMetadata): IPipeDescriptor {
+function resolveHttpPipeDescriptor(url: string, data?: ILinkData): IPipeDescriptor {
     const httpConfig: Record<string, unknown> = { url };
-    if (metadata?.method) httpConfig.method = metadata.method;
-    if (metadata?.headers) httpConfig.headers = metadata.headers;
-    if (metadata?.body) httpConfig.body = metadata.body;
+    if (data?.method) httpConfig.method = data.method;
+    if (data?.headers) httpConfig.headers = data.headers;
+    if (data?.body) httpConfig.body = data.body;
 
     // No "!" archive detection for HTTP URLs — "!" is valid in HTTP URLs.
     // Archive-in-HTTP support deferred to future.

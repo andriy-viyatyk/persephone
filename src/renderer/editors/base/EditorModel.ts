@@ -97,7 +97,7 @@ export class EditorModel<T extends IEditorState = IEditorState, R = any> extends
      *
      * Base implementation clears secondaryEditor (model removed from sidebar).
      * Subclasses override to conditionally keep:
-     *   - ArchiveEditorModel: keeps if newModel.sourceLink?.metadata?.sourceId === this.id
+     *   - ArchiveEditorModel: keeps if newModel.sourceLink?.sourceId === this.id
      */
     beforeNavigateAway(_newModel: EditorModel): void {
         this.secondaryEditor = undefined;

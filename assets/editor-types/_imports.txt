@@ -11,7 +11,7 @@ graph-editor.d.ts
 grid-editor.d.ts
 html-editor.d.ts
 io.d.ts
-io.events.d.ts
+io.link-data.d.ts
 io.pipe.d.ts
 io.provider.d.ts
 io.transformer.d.ts

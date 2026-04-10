@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { TreeProviderView } from "../../components/tree-provider";
 import type { TreeProviderViewRef } from "../../components/tree-provider";
 import { app } from "../../api/app";
-import { RawLinkEvent } from "../../api/events/events";
+import { createLinkData } from "../../../shared/link-data";
 import type { ITreeProviderItem } from "../../api/types/io.tree";
 import type { SecondaryEditorProps } from "../../ui/navigation/secondary-editor-registry";
 import type { ArchiveEditorModel } from "./ArchiveEditorModel";
@@ -30,9 +30,7 @@ export default function ArchiveSecondaryEditor({ model, headerRef }: SecondaryEd
         archiveModel.selectionState.update((s) => { s.selectedHref = item.href; });
         const url = provider?.getNavigationUrl(item) ?? item.href;
         const pageId = archiveModel.page?.id;
-        app.events.openRawLink.sendAsync(new RawLinkEvent(
-            url, undefined, { pageId, sourceId: archiveModel.id },
-        ));
+        app.events.openRawLink.sendAsync(createLinkData(url, { pageId, sourceId: archiveModel.id }));
     }, [provider, archiveModel]);
 
     const isActivePagePanel = archiveModel === archiveModel.page?.mainEditor;

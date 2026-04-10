@@ -70,11 +70,18 @@ export class BrowserUrlBarModel {
 
     get isBlankPage() {
         const { urlInput } = this.model.state.get();
-        return !urlInput;
+        return !urlInput || urlInput === "about:blank";
     }
 
     get showSearchEngineSelector() {
-        return this.isBlankPage || !!this.detectedSearch;
+        if (this.isBlankPage || this.detectedSearch) return true;
+        const { urlInput } = this.model.state.get();
+        if (!urlInput) return false;
+        const trimmed = urlInput.trim();
+        // Hide for URLs with a protocol scheme
+        if (/^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed)) return false;
+        // Show for anything else (search queries, partial text)
+        return true;
     }
 
     get currentEngineName() {

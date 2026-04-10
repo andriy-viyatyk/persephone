@@ -422,7 +422,7 @@ Bookmarks load through two paths:
 **Manual trigger (interactive):** User clicks ☆ (star) or "Open Links" → check `model.bookmarks !== null` → if null, read profile's bookmarks file path from settings → if no file path, show "Associate Bookmarks File" dialog → create `BrowserBookmarks(filePath)` → `init()` with password dialog if encrypted → store on `BrowserEditorModel.bookmarks`.
 
 After initialization, `BrowserEditorModel` sets two callbacks on `linkModel`:
-- `onInternalLinkOpen` — routes link clicks to the correct browser page (navigates current blank tab, or adds new tab if current tab has content). `Ctrl+Click` always opens in a new tab (detected via `window.event.ctrlKey` in the callback).
+- `onLinkOpen` — modifies the link event data before it enters the `openRawLink` pipeline: sets `target: "browser"` and `metadata.browserPageId` pointing to the owning browser page. The HTTP resolver's browser branch then routes the URL to that specific page (navigates current blank tab via `browserTabMode: "navigate"`, or adds a new tab if the current tab has content).
 - `onGetLinkMenuItems` — returns an "Open in New Tab" menu item that calls `model.addTab(url)`. These items are prepended to the link context menu (before "Edit"), providing mouse-only access to new-tab behavior without requiring `Ctrl+Click`.
 
 ### Three Entry Points

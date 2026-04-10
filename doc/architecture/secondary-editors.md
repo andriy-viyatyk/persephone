@@ -118,6 +118,39 @@ When user navigates to a new file (`navigatePageTo()`):
 
 ---
 
+## 4b. Promote / Demote Flow
+
+A secondary editor can be toggled into the main editor role (and back) via `promoteSecondaryToMain(model)`:
+
+**Promote** (secondary → main):
+```
+1. page.promoteSecondaryToMain(model)  // model is in secondaryEditors[], not mainEditor
+   └── page.setMainEditor(model)       // standard navigation lifecycle
+       ├── oldEditor.beforeNavigateAway(model)
+       │   └── base: this.secondaryEditor = undefined → removed from sidebar → disposed
+       ├── model becomes mainEditor AND stays in secondaryEditors[] (Pattern B)
+       ├── notifyMainEditorChanged()
+       └── pagesModel.resubscribeEditor(page)
+```
+
+**Demote** (main → secondary-only):
+```
+1. page.promoteSecondaryToMain(model)  // model IS mainEditor
+   ├── this._mainEditor = null         // clear without dispose (model stays as secondary)
+   ├── state.mainEditorId = null       // UI re-renders: content area becomes empty
+   ├── notifyMainEditorChanged()       // secondaries notified with null
+   ├── queueMicrotask: restore/reduce panels
+   │   ├── If _prePromotePanels saved → restore pre-promote panel list
+   │   └── If no saved panels (was originally main, Pattern B) → reduce to base panel only
+   └── pagesModel.resubscribeEditor(page)
+```
+
+The demote path does NOT call `setMainEditor(null)` — that would dispose the model. Instead it directly clears the reference, keeping the model alive in `secondaryEditors[]`.
+
+**Panel save/restore:** When promoting, the current panel list is saved as `_prePromotePanels`. On demote, if saved panels exist (model was promoted from secondary), they are restored. If no saved panels exist (model was originally the main editor — Pattern B), the panel list is reduced to the first (base) panel only, stripping main-editor-only panels like Tags/Hostnames. The `queueMicrotask` ensures this runs after React unmount cleanup.
+
+---
+
 ## 5. Panel Management
 
 **Active panel:** `PageModel.activePanel` tracks which panel is expanded (e.g., `"explorer"`, `"archive-tree"`). Only one panel is expanded at a time.
@@ -186,6 +219,7 @@ For Pattern B (mainEditor in secondaryEditors[]), the model may be disposed twic
 | `addSecondaryEditor(model)` | Adds model to array, calls `model.setPage(this)`, bumps version |
 | `removeSecondaryEditor(model)` | Removes, disposes, falls back `activePanel` if needed |
 | `removeSecondaryEditorWithoutDispose(model)` | Removes without disposing (used by `secondaryEditor` setter). Skips `setPage(null)` if model is the mainEditor (Pattern B guard). |
+| `promoteSecondaryToMain(model)` | Toggle: if model is secondary-only → promotes to mainEditor (old main goes through `setMainEditor` lifecycle); if model IS mainEditor → demotes (clears mainEditor to null, model stays as secondary). Calls `resubscribeEditor` for persistence. |
 | `findSecondaryEditor(editorId)` | Lookup by editor model ID |
 | `confirmSecondaryRelease()` | Iterates modified secondaries, prompts user via `confirmRelease()` |
 | `restoreSecondaryEditors(ownerEditor)` | Restores from `pendingSecondaryDescriptors`, deduplicates against owner |
@@ -359,7 +393,7 @@ Both `ExplorerEditorModel` and `ArchiveEditorModel` expose `treeProvider` and `s
 
 ### Navigation Survival
 
-When CategoryEditor navigates (user double-clicks a subfolder), it passes the host's model ID as `sourceId` in the RawLinkEvent metadata. This ensures the secondary editor's `_isOpenedFromThisArchive()` check recognizes the navigation and keeps the panel alive.
+When CategoryEditor navigates (user double-clicks a subfolder), it passes the host's model ID as `sourceId` in the ILinkData. This ensures the secondary editor's `_isOpenedFromThisArchive()` check recognizes the navigation and keeps the panel alive.
 
 ### PageModel Notification
 

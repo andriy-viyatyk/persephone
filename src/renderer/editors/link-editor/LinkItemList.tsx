@@ -47,7 +47,7 @@ export function LinkItemList({ links, model, selectedLinkId, pinnedLinkIds }: Li
     const handleOpen = useCallback((link: ILink) => {
         if (link.href) {
             requestFaviconSave(getHostname(link.href));
-            model.openLink(link.href);
+            model.openLink(link);
         }
     }, [model]);
 

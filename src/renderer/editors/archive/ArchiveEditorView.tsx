@@ -10,7 +10,7 @@ import {
     RefreshIcon,
 } from "../../theme/icons";
 import { app } from "../../api/app";
-import { RawLinkEvent } from "../../api/events/events";
+import { createLinkData } from "../../../shared/link-data";
 import type { ITreeProviderItem } from "../../api/types/io.tree";
 import type { ArchiveEditorModel } from "./ArchiveEditorModel";
 import color from "../../theme/color";
@@ -31,9 +31,7 @@ export function ArchiveEditorView({ model }: { model: ArchiveEditorModel }) {
 
     const handleItemClick = useCallback((item: ITreeProviderItem) => {
         const url = provider?.getNavigationUrl(item) ?? item.href;
-        app.events.openRawLink.sendAsync(new RawLinkEvent(
-            url, undefined, { pageId, sourceId: model.id },
-        ));
+        app.events.openRawLink.sendAsync(createLinkData(url, { pageId, sourceId: model.id }));
     }, [provider, pageId, model.id]);
 
     const handleCollapseAll = useCallback(() => {

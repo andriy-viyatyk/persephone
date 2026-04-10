@@ -62,7 +62,7 @@ app.events.fileExplorer.itemContextMenu.subscribe((event) => {
 
 ### openRawLink
 
-`IEventChannel<IRawLinkEvent>`
+`IEventChannel<ILinkData>`
 
 Layer 1 of the content open pipeline. Fired when a raw string (file path, URL, cURL command) needs to be parsed into a structured link. Parsers subscribe here and set `event.handled = true` when they recognize the format.
 
@@ -70,47 +70,69 @@ Scripts can also **send** to this channel to programmatically open content:
 
 ```javascript
 // Open any URL or file path — Persephone auto-selects the right editor
-const event = new io.RawLinkEvent("https://example.com/data.json");
-await app.events.openRawLink.sendAsync(event);
+await app.events.openRawLink.sendAsync(
+    io.createLinkData("https://example.com/data.json")
+);
 ```
 
-#### IRawLinkEvent
+#### ILinkData properties (Layer 1)
+
+When subscribing to `openRawLink`, the event IS the `ILinkData` object:
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `raw` | `string` | The raw link string (file path, URL, cURL, etc.). Read-only. |
+| `href` | `string` | The raw link string (file path, URL, cURL, etc.). Set by `io.createLinkData()`. |
+| `target` | `string \| undefined` | Target editor ID override. Optional — auto-resolved from URL if omitted. |
 | `handled` | `boolean` | Set to `true` to stop further processing. |
 
 ---
 
 ### openLink
 
-`IEventChannel<IOpenLinkEvent>`
+`IEventChannel<ILinkData>`
 
 Layer 2 of the content open pipeline. Fired with a normalized URL to be resolved into a content pipe. Resolvers subscribe here and build provider + transformer chains.
 
-Scripts can send to this channel to open a known URL directly:
+Scripts can send to this channel to open a known URL directly (skipping Layer 1 raw parsing):
 
 ```javascript
 // Open a specific URL, optionally specifying the target editor
-const event = new io.OpenLinkEvent("C:/data/report.pdf");
-await app.events.openLink.sendAsync(event);
+await app.events.openLink.sendAsync(
+    io.createLinkData("C:/data/report.pdf", { url: "C:/data/report.pdf" })
+);
 ```
 
-#### IOpenLinkEvent
+#### OpenLinkEvent properties
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `url` | `string` | Normalized URL or file path. Read-only. |
+| `url` | `string` | Normalized URL or file path. Set by Layer 1 parsers (or by the caller directly). |
 | `target` | `string \| undefined` | Target editor ID. Optional — auto-resolved if omitted. |
-| `metadata` | `ILinkMetadata \| undefined` | Open hints: `pageId`, `revealLine`, `highlightText`, HTTP `headers`/`method`/`body`. |
 | `handled` | `boolean` | Set to `true` to stop further processing. |
+
+#### ILinkMetadata
+
+Open hint fields on `ILinkData`. All fields are optional.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `pageId` | `string?` | Open in this specific existing page instead of a new tab. |
+| `revealLine` | `number?` | Scroll to this line after opening. |
+| `highlightText` | `string?` | Highlight occurrences of this text after opening. |
+| `headers` | `Record<string, string>?` | HTTP request headers (from cURL parser, etc.). |
+| `method` | `string?` | HTTP method (from cURL parser). |
+| `body` | `string?` | HTTP request body. |
+| `title` | `string?` | Page title override. |
+| `fallbackTarget` | `string?` | Fallback editor for unrecognized URLs. Set to `"monaco"` to open in text editor instead of browser. |
+| `browserMode` | `string?` | Route to a specific browser: `"os-default"`, `"internal"`, `"incognito"`, or `"profile:<name>"`. Omit to use the `link-open-behavior` setting. |
+| `browserPageId` | `string?` | Route to a specific already-open browser page by ID. URL is added as a new tab (or navigates the active tab when `browserTabMode` is `"navigate"`). |
+| `browserTabMode` | `"navigate" \| "addTab"?` | Controls tab behavior when `browserPageId` is set. `"navigate"` uses the active tab, `"addTab"` opens a new one (default). |
 
 ---
 
 ### openContent
 
-`IEventChannel<IOpenContentEvent>`
+`IEventChannel<ILinkData>`
 
 Layer 3 of the content open pipeline. Fired with an assembled content pipe and target editor. The app's open handler subscribes here and creates/navigates pages.
 
@@ -123,14 +145,17 @@ app.events.openContent.subscribe((event) => {
 });
 ```
 
-#### IOpenContentEvent
+#### OpenContentEvent properties
+
+When subscribing to `openContent`, the event IS the `ILinkData` object enriched by Layers 1–2. Key fields:
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `pipe` | `IContentPipe` | Assembled content pipe (provider + transformers). Read-only. |
-| `target` | `string` | Resolved editor ID. Read-only. |
-| `metadata` | `ILinkMetadata \| undefined` | Pass-through metadata from Layer 1/2. Read-only. |
+| `pipe` | `IContentPipe` | Assembled content pipe (provider + transformers). Set by Layer 2 resolvers. |
+| `target` | `string` | Resolved editor ID. Set by Layer 2. |
+| `url` | `string` | Resolved URL or file path from Layer 1. |
 | `handled` | `boolean` | Set to `true` to stop further processing. |
+| *(other fields)* | | All original `ILinkData` fields (title, headers, pageId, etc.) pass through unchanged. |
 
 ---
 
@@ -187,8 +212,9 @@ Scripts can call `send()` or `sendAsync()` on any exposed channel. The link pipe
 
 ```javascript
 // Open a URL — routes through all registered parsers and resolvers
-const event = new io.RawLinkEvent("https://example.com/data.json");
-await app.events.openRawLink.sendAsync(event);
+await app.events.openRawLink.sendAsync(
+    io.createLinkData("https://example.com/data.json")
+);
 ```
 
 ```javascript

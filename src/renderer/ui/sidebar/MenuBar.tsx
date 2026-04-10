@@ -9,7 +9,7 @@ import { pagesModel } from "../../api/pages";
 import { menuFolders } from "../../api/menu-folders";
 import { recent } from "../../api/recent";
 import { app } from "../../api/app";
-import { RawLinkEvent } from "../../api/events/events";
+import { createLinkData } from "../../../shared/link-data";
 import type { MenuFolder } from "../../api/menu-folders";
 import color from "../../theme/color";
 import {
@@ -501,7 +501,7 @@ export function MenuBar(props: MenuBarProps) {
                             onStateChange={(s) => model.expandStateMap.set(folder.id!, s)}
                             onItemClick={(item) => {
                                 if (!item.isDirectory) {
-                                    app.events.openRawLink.sendAsync(new RawLinkEvent(item.href));
+                                    app.events.openRawLink.sendAsync(createLinkData(item.href));
                                     props.onClose?.();
                                 }
                             }}

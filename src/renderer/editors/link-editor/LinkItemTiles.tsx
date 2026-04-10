@@ -46,7 +46,7 @@ export function LinkItemTiles({ links, model, viewMode, selectedLinkId, pinnedLi
     const handleOpen = useCallback((link: ILink) => {
         if (link.href) {
             requestFaviconSave(getHostname(link.href));
-            model.openLink(link.href);
+            model.openLink(link);
         }
     }, [model]);
 

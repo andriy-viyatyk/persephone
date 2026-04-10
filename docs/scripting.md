@@ -238,14 +238,16 @@ To open content from a pipe in a new tab, fire it through the link pipeline:
 
 ```javascript
 // Open a URL in Persephone (auto-selects editor by content type)
-const event = new io.RawLinkEvent("https://example.com/report.pdf");
-await app.events.openRawLink.sendAsync(event);
+await app.events.openRawLink.sendAsync(
+    io.createLinkData("https://example.com/report.pdf")
+);
 ```
 
 ```javascript
-// Open a specific file path
-const event = new io.OpenLinkEvent("C:/data/file.json");
-await app.events.openLink.sendAsync(event);
+// Open a specific file path (skip Layer 1 raw parsing, go directly to Layer 2)
+await app.events.openLink.sendAsync(
+    io.createLinkData("C:/data/file.json", { url: "C:/data/file.json" })
+);
 ```
 
 See the [Events API](./api/events.md) for the full pipeline reference.

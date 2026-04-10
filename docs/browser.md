@@ -27,7 +27,7 @@ A dropdown appears when you focus or type in the URL bar:
 
 ### Search Engine Selector
 
-A clickable label appears in the URL bar on blank pages and search result pages:
+A clickable label appears in the URL bar on blank pages and search result pages. It is hidden when the input already contains a full URL with a protocol scheme (e.g., `https://`), keeping the toolbar uncluttered during direct navigation.
 
 - **11 engines:** Google (default), Bing, DuckDuckGo, Yahoo, Ecosia, Brave, Startpage, Qwant, Baidu, Perplexity, Gibiru
 - Switch engines on a search results page to **re-search the same query** on a different engine

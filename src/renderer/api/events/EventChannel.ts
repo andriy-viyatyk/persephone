@@ -1,4 +1,3 @@
-import { BaseEvent } from "./BaseEvent";
 import type { ISubscriptionObject } from "../types/events";
 
 export type EventHandler<TEvent> = (event: TEvent) => void | Promise<void>;
@@ -18,7 +17,7 @@ export interface EventChannelOptions {
  *   subscribers can modify the event, short-circuits on `event.handled === true`
  * - `subscribe(handler)` — register a handler (sync or async)
  */
-export class EventChannel<TEvent extends BaseEvent> {
+export class EventChannel<TEvent extends { handled?: boolean }> {
     private handlers: EventHandler<TEvent>[] = [];
     private readonly channelName: string;
     private readonly errorHandler: (error: unknown, channelName: string) => void;

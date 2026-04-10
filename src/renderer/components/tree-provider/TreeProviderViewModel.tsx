@@ -96,6 +96,8 @@ export class TreeProviderViewModel extends TComponentModel<
         } else if (this.oldProps?.provider !== this.props.provider) {
             this.subscribeWatch();
             this.buildTree();
+        } else if (this.oldProps?.showLinks !== this.props.showLinks) {
+            this.recomputeDisplayTree();
         }
     };
 
@@ -348,6 +350,13 @@ export class TreeProviderViewModel extends TComponentModel<
             s.displayTree = displayTree;
             s.treeViewKey += keyDelta;
         });
+    };
+
+    /** Recompute displayTree from the current raw tree (e.g., after showLinks changes). */
+    private recomputeDisplayTree = () => {
+        const { tree, searchText } = this.state.get();
+        const displayTree = this.computeDisplayTree(tree, searchText);
+        this.state.update((s) => { s.displayTree = displayTree; });
     };
 
     private computeDisplayTree = (

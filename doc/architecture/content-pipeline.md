@@ -11,20 +11,20 @@ The pipeline was introduced in EPIC-012 to replace scattered file I/O calls acro
 Opening content flows through three event-driven layers. Each layer is registered as an `EventChannel` subscriber during bootstrap. Subscribers execute in LIFO order, so later registrations act as higher-priority interceptors.
 
 ```
-  Raw string (file path, URL, cURL command)
+  Caller creates ILinkData via createLinkData(href, options?)
          │
   ┌──────▼──────────────────────────────────────────────┐
   │  Layer 1 — Parsers (parsers.ts)                     │
   │  openRawLink → openLink                             │
-  │  Normalize raw input into a structured OpenLinkEvent │
+  │  Parse href, enrich ILinkData (set url, target, etc)│
   └──────┬──────────────────────────────────────────────┘
-         │  OpenLinkEvent { url, target?, metadata? }
+         │  ILinkData { href, url, target?, ...fields }
   ┌──────▼──────────────────────────────────────────────┐
   │  Layer 2 — Resolvers (resolvers.ts)                 │
   │  openLink → openContent                             │
-  │  Build provider + transformers, resolve target editor│
+  │  Build pipe, enrich ILinkData (set pipe, pipeDesc.) │
   └──────┬──────────────────────────────────────────────┘
-         │  OpenContentEvent { pipe, target, metadata? }
+         │  ILinkData { url, pipe, pipeDescriptor, target, ... }
   ┌──────▼──────────────────────────────────────────────┐
   │  Layer 3 — Open Handler (open-handler.ts)           │
   │  openContent → page creation                        │
@@ -34,7 +34,7 @@ Opening content flows through three event-driven layers. Each layer is registere
 
 ### Layer 1 — Parsers
 
-Registered in `parsers.ts` via `registerRawLinkParsers()`. Each parser checks the raw string and fires an `OpenLinkEvent` on `app.events.openLink`. Registration order (LIFO):
+Registered in `parsers.ts` via `registerRawLinkParsers()`. Each parser receives an `ILinkData` object, reads `data.href`, enriches the object (sets `data.url`, HTTP fields, etc.), and forwards the same object on `app.events.openLink`. Registration order (LIFO):
 
 | Parser | Detects | Example input |
 |--------|---------|---------------|
@@ -47,20 +47,20 @@ Registered in `parsers.ts` via `registerRawLinkParsers()`. Each parser checks th
 
 ### Layer 2 — Resolvers
 
-Registered in `resolvers.ts` via `registerResolvers()`. Each resolver uses `resolveUrlToPipeDescriptor()` (from `link-utils.ts`) to create a pipe descriptor, then `createPipeFromDescriptor()` (from `registry.ts`) to instantiate the pipe. Fires an `OpenContentEvent` on `app.events.openContent`.
+Registered in `resolvers.ts` via `registerResolvers()`. Each resolver uses `resolveUrlToPipeDescriptor()` (from `link-utils.ts`) to create a pipe descriptor, then `createPipeFromDescriptor()` (from `registry.ts`) to instantiate the pipe. Enriches the `ILinkData` object (sets `data.pipe`, `data.pipeDescriptor`, `data.target`) and forwards the same object on `app.events.openContent`.
 
 - **File resolver** (fallback) -- resolves file paths and archive paths (with "!") to pipe descriptors. Resolves target editor via `editorRegistry.resolveId()`.
-- **HTTP resolver** -- resolves HTTP/HTTPS URLs to pipe descriptors. Maps file extensions to editors via a built-in extension table. URLs without recognized extensions open in the browser tab (unless `metadata.fallbackTarget` overrides). cURL/fetch requests with `Accept` headers use header-based editor resolution.
+- **HTTP resolver** -- resolves HTTP/HTTPS URLs to pipe descriptors. Maps file extensions to editors via a built-in extension table. URLs without recognized extensions open in the browser tab (unless `data.fallbackTarget` overrides). cURL/fetch requests with `Accept` headers use header-based editor resolution.
 
 The `resolveUrlToPipeDescriptor()` utility is also used by tree providers to create pipes from URLs without going through the event channel system.
 
 ### Layer 3 — Open Handler
 
-Registered in `open-handler.ts` via `registerOpenHandler()`. Reconstructs the full file path from the pipe (combining provider `sourceUrl` + ZipTransformer `entryPath` for archive files). Builds an `ISourceLink` descriptor from the event (resolved URL + cleaned metadata, excluding ephemeral fields like `pageId`/`revealLine`/`highlightText`). Then either:
+Registered in `open-handler.ts` via `registerOpenHandler()`. Reconstructs the full file path from the pipe (combining provider `sourceUrl` + ArchiveTransformer `entryPath` for archive files). Cleans the `ILinkData` via `cleanForStorage()` (strips ephemeral fields like `handled`, `pipe`, `pageId`, `revealLine`, `highlightText`) and stores the result as `IEditorState.sourceLink`. Then either:
 - Opens a new page via `pagesModel.lifecycle.openFile(filePath, pipe, { sourceLink })` -- the page owns the pipe.
-- Navigates an existing page via `pagesModel.lifecycle.navigatePageTo()` (when `metadata.pageId` is set) -- disposes the pipe since navigation creates its own.
+- Navigates an existing page via `pagesModel.lifecycle.navigatePageTo()` (when `data.pageId` is set) -- disposes the pipe since navigation creates its own.
 
-The `sourceLink` is stored in `IEditorState.sourceLink` and persisted across app restarts. It records the page's origin (what link opened it and with what metadata) but is informational only — it does not affect page content or I/O.
+The `sourceLink` (`ILinkData` with ephemeral fields removed) is stored in `IEditorState.sourceLink` and persisted across app restarts. It records the page's origin (URL, target editor, title, ILink metadata, HTTP fields, etc.) but is informational only — it does not affect page content or I/O.
 
 ## Content Pipe
 

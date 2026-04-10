@@ -1,4 +1,4 @@
-import type { IRawLinkEvent, IOpenLinkEvent, IOpenContentEvent } from "./io.events";
+import type { ILinkData } from "./io.link-data";
 
 /**
  * Menu item definition for context menus and popup menus.
@@ -100,13 +100,14 @@ export interface ISubscriptionObject {
  * });
  * // Later: sub.unsubscribe();
  */
-export interface IEventChannel<T extends IBaseEvent> {
+export interface IEventChannel<T extends { handled?: boolean }> {
     /** Register a handler (sync or async). In sendAsync: newest subscriber runs first (LIFO). */
     subscribe(handler: (event: T) => void | Promise<void>): ISubscriptionObject;
     /** Send an event synchronously. Calls all subscribers in LIFO order. */
     send(event: T): void;
-    /** Send an event asynchronously. Calls all subscribers in LIFO order, awaiting each. */
-    sendAsync(event: T): Promise<void>;
+    /** Send an event asynchronously. Calls subscribers in LIFO order, awaiting each.
+     *  Returns `true` when completed (always true in current implementation). */
+    sendAsync(event: T): Promise<boolean>;
 }
 
 /**
@@ -164,9 +165,9 @@ export interface IAppEvents {
     readonly fileExplorer: IFileExplorerEvents;
     readonly browser: IBrowserEvents;
     /** Layer 1: Raw string → parsed link. Parsers subscribe here. */
-    readonly openRawLink: IEventChannel<IRawLinkEvent>;
+    readonly openRawLink: IEventChannel<ILinkData>;
     /** Layer 2: Structured link → provider + transformers. Resolvers subscribe here. */
-    readonly openLink: IEventChannel<IOpenLinkEvent>;
+    readonly openLink: IEventChannel<ILinkData>;
     /** Layer 3: Content pipe + target → open page. Openers subscribe here. */
-    readonly openContent: IEventChannel<IOpenContentEvent>;
+    readonly openContent: IEventChannel<ILinkData>;
 }

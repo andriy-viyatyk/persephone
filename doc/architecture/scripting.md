@@ -257,8 +257,8 @@ interface IIoNamespace {
     readonly ArchiveTransformer: new (entryPath: string) => ITransformer;
     readonly DecryptTransformer: new (password: string) => ITransformer;
     readonly ArchiveTreeProvider: new (sourceUrl: string) => ITreeProvider;
-    readonly RawLinkEvent: new (raw: string) => IRawLinkEvent;
-    readonly OpenLinkEvent: new (url: string, target?: string, metadata?: Record<string, unknown>) => IOpenLinkEvent;
+    createLinkData(href: string, options?: Partial<ILinkData>): ILinkData;
+    linkToLinkData(link: ILink): ILinkData;
     createPipe(provider: IProvider, ...transformers: ITransformer[]): IContentPipe;
 }
 ```
@@ -276,10 +276,10 @@ const pipe = io.createPipe(new io.HttpProvider(url, { headers: { "Authorization"
 const archive = new io.ArchiveTreeProvider("C:\\docs.zip");
 const items = await archive.list("");
 const url = archive.getNavigationUrl(items[0]);
-await app.events.openRawLink.sendAsync(new io.RawLinkEvent(url));
+await app.events.openRawLink.sendAsync(io.createLinkData(url));
 
 // Open a URL through the link pipeline
-await app.events.openRawLink.sendAsync(new io.RawLinkEvent("https://api.com/data.json"));
+await app.events.openRawLink.sendAsync(io.createLinkData("https://api.com/data.json"));
 ```
 
 ### `ai` — AI Model Integrations
@@ -340,8 +340,8 @@ Scripts can both subscribe to and send events. `send()` is synchronous, `sendAsy
 app.events.openRawLink.subscribe((event) => { /* handle */ });
 
 // Send events
-app.events.openRawLink.send(new io.RawLinkEvent("C:\\file.txt"));
-await app.events.openRawLink.sendAsync(new io.RawLinkEvent(url));
+app.events.openRawLink.sendAsync(io.createLinkData("C:\\file.txt"));
+await app.events.openRawLink.sendAsync(io.createLinkData(url));
 ```
 
 ### `React`

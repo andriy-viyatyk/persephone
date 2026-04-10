@@ -412,7 +412,17 @@ export class BrowserEditorModel extends EditorModel<BrowserEditorState, void> {
             return; // encrypted or failed — user will trigger manually
         }
         this.bookmarks = bm;
-        bm.linkModel.onInternalLinkOpen = (url) => this.bookmarksUI.handleBookmarkLinkClick(url);
+        bm.linkModel.onLinkOpen = (data) => {
+            data.target = "browser";
+            data.browserPageId = this.page?.id;
+            // Navigate current tab if it's empty; otherwise add a new tab
+            const s = this.state.get();
+            const currentTab = s.tabs.find((t) => t.id === s.activeTabId);
+            const currentUrl = currentTab?.url || "";
+            if (!currentUrl || currentUrl === "about:blank") {
+                data.browserTabMode = "navigate";
+            }
+        };
         bm.linkModel.onGetLinkMenuItems = (link) => link.href ? [{
             label: "Open in New Tab",
             icon: createElement(OpenLinkIcon),
@@ -433,7 +443,17 @@ export class BrowserEditorModel extends EditorModel<BrowserEditorState, void> {
             return null;
         }
         this.bookmarks = bm;
-        bm.linkModel.onInternalLinkOpen = (url) => this.bookmarksUI.handleBookmarkLinkClick(url);
+        bm.linkModel.onLinkOpen = (data) => {
+            data.target = "browser";
+            data.browserPageId = this.page?.id;
+            // Navigate current tab if it's empty; otherwise add a new tab
+            const s = this.state.get();
+            const currentTab = s.tabs.find((t) => t.id === s.activeTabId);
+            const currentUrl = currentTab?.url || "";
+            if (!currentUrl || currentUrl === "about:blank") {
+                data.browserTabMode = "navigate";
+            }
+        };
         bm.linkModel.onGetLinkMenuItems = (link) => link.href ? [{
             label: "Open in New Tab",
             icon: createElement(OpenLinkIcon),

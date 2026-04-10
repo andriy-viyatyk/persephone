@@ -1,8 +1,8 @@
 import type { IProvider, IProviderDescriptor } from "./io.provider";
 import type { ITransformer, ITransformerDescriptor } from "./io.transformer";
 import type { IContentPipe, IPipeDescriptor } from "./io.pipe";
-import type { IBaseEvent } from "./events";
-import type { ILinkMetadata } from "./io.events";
+import type { ILinkData } from "./io.link-data";
+import type { ILink } from "./io.tree";
 
 /**
  * Provider constructor for local binary files.
@@ -47,57 +47,13 @@ export interface IDecryptTransformerConstructor {
 }
 
 /**
- * Raw link event constructor — Layer 1 input.
- * @example
- * await app.events.openRawLink.sendAsync(new io.RawLinkEvent("C:\\file.txt"));
- * await app.events.openRawLink.sendAsync(new io.RawLinkEvent("https://api.com/data.json"));
- */
-export interface IRawLinkEventConstructor {
-    new(raw: string, target?: string, metadata?: ILinkMetadata): IBaseEvent & {
-        readonly raw: string;
-        target?: string;
-        metadata?: ILinkMetadata;
-    };
-}
-
-/**
- * Open link event constructor — Layer 2 input.
- * @example
- * await app.events.openLink.sendAsync(new io.OpenLinkEvent("https://api.com/data", undefined, {
- *     headers: { "Authorization": "Bearer token" },
- * }));
- */
-export interface IOpenLinkEventConstructor {
-    new(url: string, target?: string, metadata?: ILinkMetadata): IBaseEvent & {
-        readonly url: string;
-        target?: string;
-        metadata?: ILinkMetadata;
-    };
-}
-
-/**
- * Open content event constructor — Layer 3 input.
- * @example
- * const pipe = io.createPipe(new io.FileProvider("C:\\data.zip"), new io.ArchiveTransformer("C:\\data.zip", "report.csv"));
- * await app.events.openContent.sendAsync(new io.OpenContentEvent(pipe, "grid-csv"));
- */
-export interface IOpenContentEventConstructor {
-    new(pipe: IContentPipe, target: string, metadata?: ILinkMetadata): IBaseEvent & {
-        readonly pipe: IContentPipe;
-        readonly target: string;
-        readonly metadata?: ILinkMetadata;
-    };
-}
-
-/**
- * The `io` global namespace — content pipe building and link events.
+ * The `io` global namespace — content pipe building and link pipeline helpers.
  *
  * Available in scripts alongside `app`, `page`, and `ui`.
  *
- * **Link pipeline (3 layers):**
- * - Use `io.RawLinkEvent` to open any link (file path, URL, cURL command) through the full pipeline (Layer 1 → 2 → 3)
- * - Use `io.OpenLinkEvent` to skip raw parsing and go directly to provider resolution (Layer 2 → 3)
- * - Use `io.OpenContentEvent` to open a pre-assembled pipe directly in an editor (Layer 3)
+ * **Opening links (ILinkData pipeline):**
+ * - Use `io.createLinkData(href)` to open any link through the full pipeline (Layer 1 → 2 → 3)
+ * - Use `io.linkToLinkData(link)` to open an ILink with all fields preserved
  * - Use `io.createPipe()` with providers and transformers to build custom content pipes
  *
  * @example
@@ -111,7 +67,13 @@ export interface IOpenContentEventConstructor {
  * @example
  * // Open a URL through the link pipeline
  * await app.events.openRawLink.sendAsync(
- *     new io.RawLinkEvent("https://api.com/data.json")
+ *     io.createLinkData("https://api.com/data.json")
+ * );
+ *
+ * @example
+ * // Open with options
+ * await app.events.openRawLink.sendAsync(
+ *     io.createLinkData("https://example.com", { target: "browser", browserMode: "incognito" })
  * );
  */
 export interface IIoNamespace {
@@ -123,12 +85,22 @@ export interface IIoNamespace {
     readonly ArchiveTransformer: IArchiveTransformerConstructor;
     /** Transformer for AES-GCM decryption/encryption (non-persistent). */
     readonly DecryptTransformer: IDecryptTransformerConstructor;
-    /** Raw link event constructor for Layer 1 (openRawLink). */
-    readonly RawLinkEvent: IRawLinkEventConstructor;
-    /** Open link event constructor for Layer 2 (openLink). */
-    readonly OpenLinkEvent: IOpenLinkEventConstructor;
-    /** Open content event constructor for Layer 3 (openContent). */
-    readonly OpenContentEvent: IOpenContentEventConstructor;
+    /**
+     * Create an ILinkData from a raw link string.
+     * @example
+     * await app.events.openRawLink.sendAsync(io.createLinkData("C:\\file.txt"));
+     * await app.events.openRawLink.sendAsync(io.createLinkData("https://example.com", {
+     *     target: "browser",
+     *     browserMode: "incognito",
+     * }));
+     */
+    createLinkData(href: string, options?: Partial<Omit<ILinkData, "href" | "handled">>): ILinkData;
+    /**
+     * Convert an ILink to ILinkData — preserves all ILink fields through the pipeline.
+     * @example
+     * await app.events.openRawLink.sendAsync(io.linkToLinkData(link));
+     */
+    linkToLinkData(link: ILink): ILinkData;
     /** Create a content pipe from a provider and optional transformers. */
     createPipe(provider: IProvider, ...transformers: ITransformer[]): IContentPipe;
 }

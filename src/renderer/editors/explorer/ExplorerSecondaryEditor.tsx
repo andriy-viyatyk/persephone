@@ -3,7 +3,8 @@ import { createPortal } from "react-dom";
 import { TreeProviderView, TreeProviderViewRef } from "../../components/tree-provider";
 import type { TreeProviderViewSavedState } from "../../components/tree-provider";
 import { FileTreeProvider } from "../../content/tree-providers/FileTreeProvider";
-import { RawLinkEvent, ContextMenuEvent } from "../../api/events/events";
+import { ContextMenuEvent } from "../../api/events/events";
+import { createLinkData } from "../../../shared/link-data";
 import { app } from "../../api/app";
 import type { ITreeProviderItem } from "../../api/types/io.tree";
 import type { SecondaryEditorProps } from "../../ui/navigation/secondary-editor-registry";
@@ -56,11 +57,7 @@ export default function ExplorerSecondaryEditor({ model: rawModel, headerRef }: 
         if (current?.toLowerCase() === item.href.toLowerCase()) return;
         model.setSelectedHref(item.href);
         const url = model.treeProvider?.getNavigationUrl(item) ?? item.href;
-        app.events.openRawLink.sendAsync(new RawLinkEvent(
-            url,
-            undefined,
-            { pageId, sourceId: "explorer" },
-        ));
+        app.events.openRawLink.sendAsync(createLinkData(url, { pageId, sourceId: "explorer" }));
     }, [pageId, model]);
 
     const handleStateChange = useCallback((state: TreeProviderViewSavedState) => {

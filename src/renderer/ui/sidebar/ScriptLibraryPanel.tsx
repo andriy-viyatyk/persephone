@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import styled from "@emotion/styled";
 import { settings } from "../../api/settings";
 import { app } from "../../api/app";
-import { RawLinkEvent } from "../../api/events/events";
+import { createLinkData } from "../../../shared/link-data";
 import {
     TreeProviderView,
     type TreeProviderViewRef,
@@ -99,7 +99,7 @@ export function ScriptLibraryPanel(props: ScriptLibraryPanelProps) {
                 onStateChange={props.onExpandStateChange}
                 onItemClick={(item) => {
                     if (!item.isDirectory) {
-                        app.events.openRawLink.sendAsync(new RawLinkEvent(item.href));
+                        app.events.openRawLink.sendAsync(createLinkData(item.href));
                         props.onClose?.();
                     }
                 }}

@@ -771,7 +771,6 @@ function BrowserEditorView({ model }: BrowserEditorViewProps) {
                         bookmarks={model.bookmarks}
                         width={bookmarksWidth}
                         onChangeWidth={(w) => model.state.update((s) => { s.bookmarksWidth = w; })}
-                        onLinkClick={bookmarksUI.handleBookmarkLinkClick}
                         onClose={bookmarksUI.handleCloseBookmarks}
                     />
                 )}

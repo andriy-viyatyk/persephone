@@ -1,7 +1,7 @@
 import rendererEvents from "../../../ipc/renderer/renderer-events";
 import { pagesModel } from "../pages";
 import { app } from "../app";
-import { RawLinkEvent } from "../events/events";
+import { createLinkData } from "../../../shared/link-data";
 import { api } from "../../../ipc/renderer/api";
 import { ui } from "../ui";
 import { UpdateCheckResult } from "../../../ipc/api-param-types";
@@ -34,7 +34,7 @@ export class RendererEventsService {
 
     private handleOpenFile = async (filePath: string) => {
         try {
-            await app.events.openRawLink.sendAsync(new RawLinkEvent(filePath));
+            await app.events.openRawLink.sendAsync(createLinkData(filePath));
         } catch (err) {
             ui.notify(`Failed to open file: ${err instanceof Error ? err.message : String(err)}`, "error");
         }
@@ -74,7 +74,7 @@ export class RendererEventsService {
 
     private handleOpenUrl = async (url: string) => {
         try {
-            await app.events.openRawLink.sendAsync(new RawLinkEvent(url));
+            await app.events.openRawLink.sendAsync(createLinkData(url));
         } catch (err) {
             ui.notify(`Failed to open URL: ${err instanceof Error ? err.message : String(err)}`, "error");
         }
@@ -83,7 +83,7 @@ export class RendererEventsService {
     private handleExternalUrl = async (url: string) => {
         try {
             // Route through pipeline — HTTP resolver decides content vs browser based on extension
-            await app.events.openRawLink.sendAsync(new RawLinkEvent(url));
+            await app.events.openRawLink.sendAsync(createLinkData(url));
         } catch (err) {
             ui.notify(`Failed to open URL: ${err instanceof Error ? err.message : String(err)}`, "error");
         }

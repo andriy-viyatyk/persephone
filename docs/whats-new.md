@@ -8,7 +8,23 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ## Version 3.0.4 (Upcoming)
 
-*No changes yet.*
+### Improvements
+
+- **Link Editor: Target field** — The Add/Edit Link dialog now has a **Target** dropdown. Set a target editor for any link item so it always opens in the right viewer — Text Editor, Browser, PDF Viewer, Image Viewer, Markdown Preview, HTML Preview, SVG Preview, JSON Grid, or CSV Grid. Leave it as **(auto-detect)** to use the default behavior (detect by file extension or content type).
+
+- **Link Editor: promote to main editor** — The link category sidebar panel now has a **swap** button in its header. Click it to promote the panel to the main editor (full-page view of the link collection); click it again to demote it back to sidebar-only mode. This makes it easy to manage links from the sidebar without leaving your current main tab.
+
+- **Browser: search engine selector** — The search engine selector in the URL bar is now hidden when the input contains a full URL with a protocol scheme (e.g., `https://`). It still appears for blank pages and search terms, keeping the toolbar uncluttered when navigating directly to URLs.
+
+### Breaking Changes
+
+- **Link Editor: browser selector removed** — The per-session browser selector toolbar button in the Link Editor has been removed. Links now open using the app-wide **Settings → Link Open Behavior** setting by default. Use the right-click context menu (Open in Default Browser, Open in Internal Browser, browser profiles, Open in Incognito) to control where a specific link opens. Per-link target editors can be set permanently via the **Target** field in the Add/Edit Link dialog.
+
+- **Script API: `io.RawLinkEvent`, `io.OpenLinkEvent`, `io.OpenContentEvent` removed** — These event class constructors have been replaced by `io.createLinkData(href, options?)` and `io.linkToLinkData(link)`. The three link pipeline channels (`openRawLink`, `openLink`, `openContent`) now all use a single flat `ILinkData` object. Update your scripts:
+  - `new io.RawLinkEvent("url")` → `io.createLinkData("url")`
+  - `new io.RawLinkEvent("url", target, metadata)` → `io.createLinkData("url", { target, ...metadata })`
+  - `new io.OpenLinkEvent("url", target, metadata)` → `io.createLinkData("url", { url: "url", target, ...metadata })`
+  - See the [io API reference](./api/io.md#link-pipeline-helpers) for the full list of available options.
 
 ---
 
@@ -40,6 +56,10 @@ Release notes and changelog for Persephone (formerly js-notepad).
 - **Browser: new tab position** — The **+** button now always adds new tabs at the end of the list. Tabs opened from links are still inserted after the active tab.
 
 - **MCP: `browser_hover` tool** — New MCP browser automation tool that hovers over an element, firing `mouseenter` and `mouseover` events. Useful for revealing tooltips, dropdown menus, and any UI that reacts to mouse hover. Accepts a CSS `selector` or an accessibility `ref` from a snapshot, and returns an updated accessibility snapshot.
+
+- **MCP Server Log: redesigned log items** — Each log entry in the MCP Server Log now collapses to a compact one-line summary (method, tool/resource name, duration) and expands to show connected **Request** and **Response** blocks with scrollable, syntax-highlighted JSON (up to 10 lines visible before scrolling).
+
+- **Log View: clear confirmation** — The **Clear** button in the Log View now shows a confirmation dialog before clearing all log entries, preventing accidental data loss.
 
 ### Bug Fixes
 
@@ -139,7 +159,7 @@ Release notes and changelog for Persephone (formerly js-notepad).
 - **HTTP and archive content in all editors** — Paste an `https://` URL into the Open dialog and Persephone fetches and opens it directly in the right editor: Monaco for code and text files, Image Viewer for images, PDF Viewer for PDFs. ZIP archive entries also open natively in all editors.
 - **File Explorer panel** — The page sidebar now features a full File Explorer with collapsible panels, file content search (click the search icon or right-click a folder → "Search in Folder"), and archive browsing (click a `.zip`/`.docx`/`.xlsx` file to browse its contents inline). The tree auto-refreshes on external changes and search state persists across restarts.
 - **Folder View** — Click a folder in the File Explorer to show its contents as a list in the page area. Click files to open them, or click subfolders to navigate deeper. The sidebar tree stays synced with the folder view selection.
-- **Script API: `io` namespace** — New global available in scripts for building content pipes, firing link pipeline events, and browsing ZIP archives programmatically. Includes `io.FileProvider`, `io.HttpProvider`, `io.ZipTransformer`, `io.DecryptTransformer`, `io.ZipTreeProvider`, `io.createPipe()`, and event constructors (`io.RawLinkEvent`, `io.OpenLinkEvent`, `io.OpenContentEvent`). See [Scripting — io namespace](./scripting.md#the-io-namespace). *(`io.ZipTreeProvider` removed in v3.0.1. `io.ZipTransformer` renamed to `io.ArchiveTransformer` with an updated constructor in v3.0.1.)*
+- **Script API: `io` namespace** — New global available in scripts for building content pipes, firing link pipeline events, and browsing ZIP archives programmatically. Includes `io.FileProvider`, `io.HttpProvider`, `io.ZipTransformer`, `io.DecryptTransformer`, `io.ZipTreeProvider`, `io.createPipe()`, and event constructors (`io.RawLinkEvent`, `io.OpenLinkEvent`, `io.OpenContentEvent`). See [Scripting — io namespace](./scripting.md#the-io-namespace). *(`io.ZipTreeProvider` removed in v3.0.1. `io.ZipTransformer` renamed to `io.ArchiveTransformer` with an updated constructor in v3.0.1. `io.RawLinkEvent`, `io.OpenLinkEvent`, and `io.OpenContentEvent` constructors removed in v3.0.4 — use `io.createLinkData()` instead.)*
 - **Script API: `app.events.send` / `app.events.sendAsync`** — Scripts can now fire events into any event channel, not just subscribe to them. See [Events API](./api/events.md#ieventchannel).
 
 ### Improvements

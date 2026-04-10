@@ -339,6 +339,58 @@ export class PageModel {
         this._saveStateDebounced();
     }
 
+    /**
+     * Toggle a secondary editor as the page's main editor.
+     * - If the model is a secondary but NOT the current mainEditor → promote it (old mainEditor
+     *   goes through normal navigation-away lifecycle and may be disposed).
+     * - If the model IS the current mainEditor → demote it (mainEditor becomes null, model
+     *   stays as secondary editor in the sidebar).
+     *
+     * Saves/restores the model's secondary panel list across the toggle so that panels
+     * added by the main editor component (e.g., Tags, Hostnames) are removed on demote.
+     */
+    async promoteSecondaryToMain(model: EditorModel): Promise<void> {
+        if (this._mainEditor === model) {
+            // Demote: clear main editor, keep model as secondary.
+            // Restore panels to the pre-promote snapshot (removes main-editor-only panels).
+            const savedPanels = (model as any)._prePromotePanels as string[] | undefined; // eslint-disable-line @typescript-eslint/no-explicit-any
+            delete (model as any)._prePromotePanels; // eslint-disable-line @typescript-eslint/no-explicit-any
+
+            this._mainEditor = null;
+            this.state.update((s) => { s.mainEditorId = null; });
+            this.notifyMainEditorChanged();
+
+            // Restore after React unmount cleanup (which may try to clear panels)
+            queueMicrotask(() => {
+                if (model.page !== this) return;
+                if (savedPanels?.length) {
+                    // Was promoted from secondary — restore the pre-promote panel list.
+                    model.secondaryEditor = savedPanels;
+                } else {
+                    // Was originally the main editor (Pattern B) — reduce to
+                    // base panel only (strip main-editor-only panels like Tags/Hostnames).
+                    const current = model.secondaryEditor;
+                    if (current && current.length > 1) {
+                        model.secondaryEditor = [current[0]];
+                    }
+                }
+                // Model is already in secondaryEditors[] — bump version
+                // so PageNavigator re-renders with the reduced panel list.
+                this.secondaryEditorsVersion.update((s) => { s.version++; });
+            });
+        } else if (this.secondaryEditors.includes(model)) {
+            // Save current panels before promote — the main editor component may add more
+            (model as any)._prePromotePanels = model.secondaryEditor ? [...model.secondaryEditor] : undefined; // eslint-disable-line @typescript-eslint/no-explicit-any
+            // Promote: make secondary the main editor
+            await this.setMainEditor(model);
+        } else {
+            return; // not a secondary editor on this page
+        }
+        // Re-subscribe persistence tracking to the (possibly null) main editor
+        const { pagesModel } = await import("../pages");
+        pagesModel.resubscribeEditor(this);
+    }
+
     /** Notify mainEditor if it implements onSecondaryEditorsChanged (e.g., CategoryEditor). */
     private _notifyMainEditorOfSecondaryChange(): void {
         const me = this._mainEditor;

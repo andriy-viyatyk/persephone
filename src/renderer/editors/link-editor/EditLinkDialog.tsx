@@ -9,6 +9,7 @@ import { Button } from "../../components/basic/Button";
 import { TextAreaField } from "../../components/basic/TextAreaField";
 import { TextField } from "../../components/basic/TextField";
 import { PathInput } from "../../components/basic/PathInput";
+import { ComboSelect } from "../../components/form/ComboSelect";
 import color from "../../theme/color";
 import { CloseIcon, RenameIcon } from "../../theme/icons";
 import { LinkItem } from "./linkTypes";
@@ -146,6 +147,7 @@ interface EditLinkDialogState {
     category: string;
     tags: string[];
     imgSrc: string;
+    target: string;
     categories: string[];
     availableTags: string[];
     discoveredImages: string[];
@@ -153,6 +155,20 @@ interface EditLinkDialogState {
 }
 
 export type EditLinkResult = Omit<LinkItem, "id"> | undefined;
+
+/** Editor targets that handle the openRawLink flow for URL links. */
+const targetEditorOptions = [
+    { value: "", label: "(auto-detect)" },
+    { value: "monaco", label: "Text Editor" },
+    { value: "browser", label: "Browser" },
+    { value: "image-view", label: "Image Viewer" },
+    { value: "pdf-view", label: "PDF Viewer" },
+    { value: "md-view", label: "Markdown Preview" },
+    { value: "html-view", label: "HTML Preview" },
+    { value: "svg-view", label: "SVG Preview" },
+    { value: "grid-json", label: "JSON Grid" },
+    { value: "grid-csv", label: "CSV Grid" },
+];
 
 // =============================================================================
 // Model
@@ -195,6 +211,10 @@ class EditLinkDialogModel extends TDialogModel<EditLinkDialogState, EditLinkResu
         this.state.update((s) => { s.imgSrc = value; });
     };
 
+    setTarget = (value?: typeof targetEditorOptions[number]) => {
+        this.state.update((s) => { s.target = value?.value ?? ""; });
+    };
+
     setNewTag = (value: string) => {
         this.state.update((s) => { s.newTag = value; });
     };
@@ -234,6 +254,7 @@ class EditLinkDialogModel extends TDialogModel<EditLinkDialogState, EditLinkResu
             tags: state.tags,
             isDirectory: false,
             imgSrc: state.imgSrc.trim() || undefined,
+            target: state.target || undefined,
         });
     };
 }
@@ -287,6 +308,18 @@ function EditLinkDialog({ model }: ViewPropsRO<EditLinkDialogModel>) {
                             paths={state.categories}
                             separator="/"
                             placeholder="Category path..."
+                        />
+                    </div>
+
+                    {/* Target Editor */}
+                    <div className="form-row">
+                        <span className="form-label">Target</span>
+                        <ComboSelect
+                            className="form-field"
+                            selectFrom={targetEditorOptions}
+                            getLabel={(opt: typeof targetEditorOptions[number]) => opt.label}
+                            value={targetEditorOptions.find((o) => o.value === state.target) ?? targetEditorOptions[0]}
+                            onChange={model.setTarget}
                         />
                     </div>
 
@@ -412,6 +445,7 @@ export function showEditLinkDialog(options: ShowEditLinkDialogOptions = {}): Pro
         category: link.category ?? "",
         tags: link.tags ? [...link.tags] : [],
         imgSrc: link.imgSrc ?? "",
+        target: link.target ?? "",
         categories,
         availableTags: tags,
         discoveredImages,

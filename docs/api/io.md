@@ -243,73 +243,75 @@ Release the provider's resources (file handles, connections). Call this when you
 
 ---
 
-## Event Constructors
+## Link Pipeline Helpers
 
-The `io` namespace provides constructors for events used in the content open pipeline. Send these events through `app.events` to open content programmatically.
+The `io` namespace provides helper functions for creating `ILinkData` objects — the unified event type that flows through the `openRawLink → openLink → openContent` pipeline. Send these objects through `app.events` to open content programmatically.
 
 For full details on event channels and the pipeline, see [app.events](./events.md).
 
-### RawLinkEvent
+### io.createLinkData(href, options?)
 
-Layer 1 input. Pass a raw string (file path, URL, cURL command) and Persephone will parse, resolve, and open it automatically.
+Creates an `ILinkData` object for sending through `app.events.openRawLink`. The object flows through Layer 1 (raw string parsing) → Layer 2 (URL resolution) → Layer 3 (page open). All options are optional top-level fields on `ILinkData`.
 
 ```javascript
-const event = new io.RawLinkEvent("https://example.com/data.json");
-await app.events.openRawLink.sendAsync(event);
+// Open any URL or file — Persephone auto-selects the editor
+await app.events.openRawLink.sendAsync(
+    io.createLinkData("https://example.com/data.json")
+);
 ```
 
 ```javascript
 // Open a local file
 await app.events.openRawLink.sendAsync(
-    new io.RawLinkEvent("C:/reports/summary.pdf")
+    io.createLinkData("C:/reports/summary.pdf")
+);
+```
+
+```javascript
+// Open in incognito browser
+await app.events.openRawLink.sendAsync(
+    io.createLinkData("https://example.com", { target: "browser", browserMode: "incognito" })
 );
 ```
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `raw` | `string` | Raw link string -- file path, URL, or cURL command. |
+| `href` | `string` | Raw link string — file path, URL, or cURL command. |
+| `options` | `Partial<ILinkData>?` | Optional fields to set on the data object (see `ILinkData` fields below). |
 
-The returned event has a `raw` property (read-only) and a `handled` property (set to `true` by handlers).
-
-### OpenLinkEvent
-
-Layer 2 input. Skip raw parsing and go directly to provider resolution. Use this when you already have a normalized URL and optionally want to specify the target editor or pass metadata.
-
-```javascript
-const event = new io.OpenLinkEvent("C:/data/report.pdf");
-await app.events.openLink.sendAsync(event);
-```
-
-```javascript
-// With metadata (HTTP headers, target page, etc.)
-const event = new io.OpenLinkEvent("https://api.example.com/data", undefined, {
-    headers: { "Authorization": "Bearer token" },
-});
-await app.events.openLink.sendAsync(event);
-```
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `url` | `string` | Normalized URL or file path. |
-| `target` | `string?` | Target editor ID. Optional -- auto-resolved if omitted. |
-| `metadata` | `ILinkMetadata?` | Open hints: `pageId`, `revealLine`, `highlightText`, HTTP `headers`/`method`/`body`, `title`, `fallbackTarget`, or custom data. |
-
-**`ILinkMetadata` fields:**
+**Key `ILinkData` fields you can pass as options:**
 
 | Field | Type | Description |
 |-------|------|-------------|
+| `target` | `string?` | Target editor ID override (e.g., `"browser"`, `"monaco"`). Auto-resolved from URL if omitted. |
+| `url` | `string?` | Normalized URL — skip Layer 1 parsing by providing the resolved URL directly. |
 | `pageId` | `string?` | Open in this specific existing page instead of a new tab. |
 | `revealLine` | `number?` | Scroll to this line after opening. |
 | `highlightText` | `string?` | Highlight occurrences of this text after opening. |
-| `headers` | `Record<string, string>?` | HTTP request headers (from cURL parser, etc.). |
-| `method` | `string?` | HTTP method (from cURL parser). |
+| `headers` | `Record<string, string>?` | HTTP request headers. |
+| `method` | `string?` | HTTP method. |
 | `body` | `string?` | HTTP request body. |
-| `title` | `string?` | Page title override. When set, the opened page uses this title instead of deriving it from the file path. |
-| `fallbackTarget` | `string?` | Fallback editor when the URL has no recognized extension. Without this, unrecognized HTTP URLs open in the browser. Set to `"monaco"` to force text editor fallback. |
+| `title` | `string?` | Page title override. |
+| `fallbackTarget` | `string?` | Fallback editor when the URL has no recognized extension. Set to `"monaco"` to force text editor fallback instead of opening in the browser. |
+| `browserMode` | `string?` | Route to a specific browser: `"os-default"`, `"internal"`, `"incognito"`, or `"profile:<name>"`. Omit to use the `link-open-behavior` setting. |
+| `browserPageId` | `string?` | Route to a specific already-open browser page by ID. URL is added as a new tab (or navigates the active tab if `browserTabMode` is `"navigate"`). |
+| `browserTabMode` | `"navigate" \| "addTab"?` | When `browserPageId` is set: `"navigate"` navigates the active tab, `"addTab"` opens a new tab (default). |
 
-### OpenContentEvent
+### io.linkToLinkData(link)
 
-Layer 3 input. Open a pre-assembled content pipe directly in an editor, bypassing URL parsing and provider resolution. Use this when you've already built a pipe and know which editor to use.
+Converts an `ILink` object (e.g., from a `.link.json` collection) to an `ILinkData`, preserving all fields (title, category, tags, imgSrc, target). Use this when opening a link from a collection through the pipeline.
+
+```javascript
+const linkEditor = await page.asLink();
+for (const link of linkEditor.links) {
+    const data = io.linkToLinkData(link);
+    await app.events.openRawLink.sendAsync(data);
+}
+```
+
+### Opening a pre-assembled pipe (Layer 3)
+
+To open a pre-assembled content pipe directly in an editor (bypassing URL parsing and provider resolution), use `app.events.openContent.sendAsync()` with a `createLinkData` call that includes `pipe` and `target`:
 
 ```javascript
 const pipe = io.createPipe(
@@ -317,15 +319,9 @@ const pipe = io.createPipe(
     new io.ArchiveTransformer("C:/data.zip", "report.csv"),
 );
 await app.events.openContent.sendAsync(
-    new io.OpenContentEvent(pipe, "grid-csv")
+    io.createLinkData("C:/data.zip", { pipe, target: "grid-csv" })
 );
 ```
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `pipe` | `IContentPipe` | Assembled content pipe (provider + transformers). |
-| `target` | `string` | Target editor ID (e.g., `"monaco"`, `"grid-csv"`, `"image-view"`). |
-| `metadata` | `ILinkMetadata?` | Pass-through metadata: `pageId`, `revealLine`, etc. |
 
 ---
 
@@ -392,7 +388,7 @@ console.log("Written to " + pipe.displayName);
 ```javascript
 // Persephone auto-selects the right editor (PDF viewer, grid, text, etc.)
 await app.events.openRawLink.sendAsync(
-    new io.RawLinkEvent("https://example.com/report.pdf")
+    io.createLinkData("https://example.com/report.pdf")
 );
 ```
 
@@ -411,11 +407,12 @@ app.events.openLink.subscribe((event) => {
 ### Open a URL with custom HTTP headers
 
 ```javascript
-const event = new io.OpenLinkEvent("https://api.example.com/data.json", undefined, {
-    headers: {
-        "Authorization": "Bearer my-token",
-        "Accept": "application/json",
-    },
-});
-await app.events.openLink.sendAsync(event);
+await app.events.openLink.sendAsync(
+    io.createLinkData("https://api.example.com/data.json", {
+        headers: {
+            "Authorization": "Bearer my-token",
+            "Accept": "application/json",
+        },
+    })
+);
 ```

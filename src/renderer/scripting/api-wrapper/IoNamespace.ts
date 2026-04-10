@@ -4,13 +4,13 @@ import { ArchiveTransformer } from "../../content/transformers/ArchiveTransforme
 import { DecryptTransformer } from "../../content/transformers/DecryptTransformer";
 import { ArchiveTreeProvider } from "../../content/tree-providers/ArchiveTreeProvider";
 import { createPipe } from "../../content/ContentPipe";
-import { RawLinkEvent, OpenLinkEvent, OpenContentEvent } from "../../api/events/events";
+import { createLinkData, linkToLinkData } from "../../../shared/link-data";
 
 /**
  * Create the `io` namespace object exposed to scripts.
  *
  * Provides provider/transformer constructors, tree providers,
- * pipe assembly, and event constructors for the link pipeline.
+ * pipe assembly, and ILinkData helper functions for the link pipeline.
  */
 export function createIoNamespace() {
     return {
@@ -28,9 +28,8 @@ export function createIoNamespace() {
         // Pipe assembly
         createPipe,
 
-        // Event constructors
-        RawLinkEvent,
-        OpenLinkEvent,
-        OpenContentEvent,
+        // Link pipeline helpers
+        createLinkData,
+        linkToLinkData,
     };
 }

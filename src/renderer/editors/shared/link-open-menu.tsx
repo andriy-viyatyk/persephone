@@ -3,14 +3,16 @@ import { MenuItem } from "../../components/overlay/PopupMenu";
 import { GlobeIcon, OpenFileIcon } from "../../theme/icons";
 import { IncognitoIcon } from "../../theme/language-icons";
 import { DEFAULT_BROWSER_COLOR } from "../../theme/palette-colors";
+import { createLinkData } from "../../../shared/link-data";
 import { settings } from "../../api/settings";
-
-import { shell } from "../../api/shell";
 
 /**
  * Appends "Open in ..." menu items for a URL to the given menu items array.
  * Includes: OS default browser, internal browser (default profile),
  * each user-configured browser profile, and incognito.
+ *
+ * All items route through the openRawLink pipeline with target="browser"
+ * and appropriate browserMode metadata.
  */
 export function appendLinkOpenMenuItems(
     menuItems: MenuItem[],
@@ -19,39 +21,37 @@ export function appendLinkOpenMenuItems(
 ): void {
     const disabled = options?.disabled ?? false;
 
+    const fireOpenRawLink = async (browserMode: string) => {
+        const { app } = await import("../../api/app");
+        await app.events.openRawLink.sendAsync(
+            createLinkData(href, { target: "browser", browserMode }),
+        );
+    };
+
     menuItems.push(
         {
             label: "Open in Default Browser",
             icon: <OpenFileIcon />,
-            onClick: () => { shell.openExternal(href); },
+            onClick: () => { fireOpenRawLink("os-default"); },
             disabled,
             startGroup: options?.startGroup,
         },
         {
             label: "Open in Internal Browser",
             icon: <GlobeIcon color={DEFAULT_BROWSER_COLOR} />,
-            onClick: async () => {
-                const { pagesModel } = await import("../../api/pages");
-                pagesModel.openUrlInBrowserTab(href, { profileName: "" });
-            },
+            onClick: () => { fireOpenRawLink("internal"); },
             disabled,
         },
         ...settings.get("browser-profiles").map((profile) => ({
             label: `Open in ${profile.name}`,
             icon: <GlobeIcon color={profile.color} />,
-            onClick: async () => {
-                const { pagesModel } = await import("../../api/pages");
-                pagesModel.openUrlInBrowserTab(href, { profileName: profile.name });
-            },
+            onClick: () => { fireOpenRawLink(`profile:${profile.name}`); },
             disabled,
         })),
         {
             label: "Open in Incognito",
             icon: <IncognitoIcon />,
-            onClick: async () => {
-                const { pagesModel } = await import("../../api/pages");
-                pagesModel.openUrlInBrowserTab(href, { incognito: true });
-            },
+            onClick: () => { fireOpenRawLink("incognito"); },
             disabled,
         },
     );

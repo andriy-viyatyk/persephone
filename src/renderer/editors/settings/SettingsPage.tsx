@@ -7,7 +7,7 @@ import { EditorModule } from "../types";
 import color from "../../theme/color";
 import { settings } from "../../api/settings";
 import { app } from "../../api/app";
-import { RawLinkEvent } from "../../api/events/events";
+import { createLinkData } from "../../../shared/link-data";
 import { applyTheme, getAvailableThemes } from "../../theme/themes";
 import { TextAreaField, TextAreaFieldRef } from "../../components/basic/TextAreaField";
 import { DEFAULT_BROWSER_COLOR, TAG_COLORS } from "../../theme/palette-colors";
@@ -1323,7 +1323,7 @@ function SettingsPage({ model }: SettingsEditorProps) {
     const handleOpenSettingsFile = () => {
         const filePath = settings.settingsFilePath;
         if (filePath) {
-            app.events.openRawLink.sendAsync(new RawLinkEvent(filePath));
+            app.events.openRawLink.sendAsync(createLinkData(filePath));
         }
     };
 

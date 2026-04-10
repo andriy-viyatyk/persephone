@@ -8,7 +8,7 @@ import { api } from "../../../ipc/renderer/api";
 import { fs as appFs } from "../fs";
 import { editorRegistry } from "../../editors/registry";
 import { app } from "../app";
-import { RawLinkEvent } from "../events/events";
+import { createLinkData } from "../../../shared/link-data";
 import { PageModel } from "./PageModel";
 
 /**
@@ -144,7 +144,7 @@ export class PagesPersistenceModel {
 
         const fileToOpen = await api.getFileToOpen();
         if (fileToOpen) {
-            await app.events.openRawLink.sendAsync(new RawLinkEvent(fileToOpen));
+            await app.events.openRawLink.sendAsync(createLinkData(fileToOpen));
         }
 
         const urlToOpen = await api.getUrlToOpen();

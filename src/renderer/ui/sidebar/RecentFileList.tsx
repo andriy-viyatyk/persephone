@@ -3,7 +3,7 @@ import { forwardRef, useCallback, useEffect, useMemo } from "react";
 import { pagesModel } from "../../api/pages";
 import { recent } from "../../api/recent";
 import { app } from "../../api/app";
-import { RawLinkEvent } from "../../api/events/events";
+import { createLinkData } from "../../../shared/link-data";
 import { FileListItem, FileList, FileListRef } from "./FileList";
 import { MenuItem } from "../../components/overlay/PopupMenu";
 import { api } from "../../../ipc/renderer/api";
@@ -36,7 +36,7 @@ export const RecentFileList = forwardRef<FileListRef, RecentFileListProps>(
 
         const onItemClick = useCallback(
             (item: FileListItem) => {
-                app.events.openRawLink.sendAsync(new RawLinkEvent(item.filePath));
+                app.events.openRawLink.sendAsync(createLinkData(item.filePath));
                 props.onClose?.();
             },
             [props.onClose]
@@ -48,7 +48,7 @@ export const RecentFileList = forwardRef<FileListRef, RecentFileListProps>(
                     label: "Open",
                     icon: <OpenFileIcon />,
                     onClick: () => {
-                        app.events.openRawLink.sendAsync(new RawLinkEvent(item.filePath));
+                        app.events.openRawLink.sendAsync(createLinkData(item.filePath));
                         props.onClose?.();
                     },
                 },

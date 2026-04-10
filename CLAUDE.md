@@ -227,7 +227,7 @@ grid.addRows(5);
 // Content pipe API — providers, transformers, events
 const pipe = io.createPipe(new io.HttpProvider(url, { headers }));
 const text = await pipe.readText();
-await app.events.openRawLink.sendAsync(new io.RawLinkEvent(url));
+await app.events.openRawLink.sendAsync(io.createLinkData(url));
 ```
 
 ### 3. Grouped Pages
@@ -241,10 +241,10 @@ await app.events.openRawLink.sendAsync(new io.RawLinkEvent(url));
 - See [state-management.md](doc/architecture/state-management.md)
 
 ### 5. Content Delivery Pipeline
-Content I/O flows through a 3-layer pipeline (`/src/renderer/content/`):
-- **Layer 1 (Parsers):** Raw string → structured link event (`openRawLink` → `openLink`)
-- **Layer 2 (Resolvers):** Link event → provider + transformers → content pipe (`openLink` → `openContent`)
-- **Layer 3 (Open Handler):** Content pipe → page creation with pipe assigned
+Content I/O flows through a 3-layer pipeline (`/src/renderer/content/`). A single `ILinkData` object is created by the caller and enriched by each layer:
+- **Layer 1 (Parsers):** Reads `data.href`, sets `data.url` (resolved path/URL), forwards same object (`openRawLink` → `openLink`)
+- **Layer 2 (Resolvers):** Sets `data.pipe` (temporal) + `data.pipeDescriptor` (persisted) + `data.target`, forwards same object (`openLink` → `openContent`)
+- **Layer 3 (Open Handler):** Consumes `data.pipe`, calls `cleanForStorage(data)` to build `sourceLink`, creates/navigates page
 
 Content pipes (`IContentPipe`) compose a provider (data source) with transformers (data effects):
 ```typescript
@@ -276,6 +276,7 @@ See [/doc/standards/coding-style.md](doc/standards/coding-style.md) for complete
 | Purpose                  | File                                              |
 |--------------------------|---------------------------------------------------|
 | Shared types (IEditorState)| `/src/shared/types.ts`                            |
+| ILinkData helpers        | `/src/shared/link-data.ts`                        |
 | App object model         | `/src/renderer/api/app.ts`                        |
 | Page/tab management      | `/src/renderer/api/pages/PagesModel.ts`           |
 | Page container (tab)     | `/src/renderer/api/pages/PageModel.ts`            |

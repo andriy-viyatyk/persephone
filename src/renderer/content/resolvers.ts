@@ -1,5 +1,4 @@
 import { app } from "../api/app";
-import { OpenContentEvent } from "../api/events/events";
 import { editorRegistry } from "../editors/registry";
 import { isArchivePath, parseArchivePath } from "../core/utils/file-path";
 import { createPipeFromDescriptor } from "./registry";
@@ -46,41 +45,40 @@ export function extractEffectivePath(url: string): string {
  */
 export function registerResolvers(): void {
     // File resolver — fallback, handles plain file paths and virtual paths (tree-category://)
-    app.events.openLink.subscribe(async (event) => {
+    app.events.openLink.subscribe(async (data) => {
         // Skip HTTP URLs — handled by HTTP resolver
-        if (isHttpUrl(event.url)) return;
+        if (isHttpUrl(data.url)) return;
 
-        const pipeDescriptor = resolveUrlToPipeDescriptor(event.url);
+        const pipeDescriptor = resolveUrlToPipeDescriptor(data.url);
         if (!pipeDescriptor) {
             // Virtual paths (tree-category://, etc.) don't resolve to a pipe
             // but still need to flow through openContent for page creation.
             // Create a placeholder file pipe — CategoryEditor resolves its treeProvider from secondary editors, not the pipe.
-            if (event.url.includes("://")) {
-                const target = event.target || "monaco";
-                const placeholder = createPipeFromDescriptor({
-                    provider: { type: "file", config: { path: event.url } },
+            if (data.url.includes("://")) {
+                data.target ||= "monaco";
+                data.pipeDescriptor = {
+                    provider: { type: "file", config: { path: data.url } },
                     transformers: [],
-                });
-                await app.events.openContent.sendAsync(
-                    new OpenContentEvent(placeholder, target, event.metadata),
-                );
-                event.handled = true;
+                };
+                data.pipe = createPipeFromDescriptor(data.pipeDescriptor);
+                data.handled = false;
+                await app.events.openContent.sendAsync(data);
+                data.handled = true;
             }
             return;
         }
 
         // Resolve target editor if not already specified
-        const target = event.target
-            || editorRegistry.resolveId(extractEffectivePath(event.url))
+        data.target = data.target
+            || editorRegistry.resolveId(extractEffectivePath(data.url))
             || "monaco";
-
-        const pipe = createPipeFromDescriptor(pipeDescriptor);
+        data.pipeDescriptor = pipeDescriptor;
+        data.pipe = createPipeFromDescriptor(pipeDescriptor);
 
         // Fire Layer 3
-        await app.events.openContent.sendAsync(
-            new OpenContentEvent(pipe, target, event.metadata)
-        );
-        event.handled = true;
+        data.handled = false;
+        await app.events.openContent.sendAsync(data);
+        data.handled = true;
     });
 
     // HTTP resolver — handles http:// and https:// URLs.
@@ -140,28 +138,27 @@ export function registerResolvers(): void {
         ".pdf": { editor: "pdf-view" },
     };
 
-    app.events.openLink.subscribe(async (event) => {
-        if (!isHttpUrl(event.url)) return;
+    app.events.openLink.subscribe(async (data) => {
+        if (!isHttpUrl(data.url)) return;
 
         // Route to RestClient when target is "rest-client"
-        if (event.target === "rest-client") {
+        if (data.target === "rest-client") {
             const { openInRestClient } = await import("../editors/rest-client/open-in-rest-client");
-            await openInRestClient(event.url, event.metadata);
-            event.handled = true;
+            await openInRestClient(data.url, data);
+            data.handled = true;
             return;
         }
 
-        const metadata = event.metadata;
-        const openInBrowser = event.target === "browser";
-        const effectivePath = extractEffectivePath(event.url);
+        const openInBrowser = data.target === "browser";
+        const effectivePath = extractEffectivePath(data.url);
         const ext = effectivePath.includes(".")
             ? effectivePath.slice(effectivePath.lastIndexOf(".")).toLowerCase()
             : "";
         let mapping = ext ? httpContentExtensions[ext] : undefined;
 
         // For cURL/fetch requests without file extension: use Accept header to pick editor
-        if (!mapping && metadata?.headers) {
-            const accept = metadata.headers["accept"] || metadata.headers["Accept"] || "";
+        if (!mapping && data.headers) {
+            const accept = data.headers["accept"] || data.headers["Accept"] || "";
             if (accept.includes("json")) mapping = { editor: "monaco" };
             else if (accept.includes("xml")) mapping = { editor: "monaco" };
             else if (accept.includes("css")) mapping = { editor: "monaco" };
@@ -172,42 +169,83 @@ export function registerResolvers(): void {
         }
 
         // If headers present (cURL/fetch) but still no mapping — default to Monaco plaintext
-        if (!mapping && metadata?.headers) {
+        if (!mapping && data.headers) {
             mapping = { editor: "monaco" };
         }
 
         // Fallback target from metadata (e.g., "Links" panel sets "monaco" to avoid browser)
-        if (!mapping && metadata?.fallbackTarget) {
-            mapping = { editor: metadata.fallbackTarget };
+        if (!mapping && data.fallbackTarget) {
+            mapping = { editor: data.fallbackTarget };
         }
 
-        if (openInBrowser || !mapping) {
-            // No recognized extension or explicit browser target — open in browser tab
-            const { settings } = await import("../api/settings");
-            const behavior = settings.get("link-open-behavior");
-            if (behavior === "internal-browser" || openInBrowser) {
+        // If an explicit non-browser editor target is set (e.g., "image-view", "monaco"),
+        // skip the browser branch and use it as the content target directly.
+        const hasExplicitEditorTarget = data.target && data.target !== "browser";
+
+        const browserMode = data.browserMode;
+        if (browserMode || openInBrowser || (!mapping && !hasExplicitEditorTarget)) {
+            // Explicit browser mode, explicit "browser" target, or no recognized extension
+
+            // Route to a specific browser page if browserPageId is set
+            const browserPageId = data.browserPageId;
+            if (browserPageId) {
                 const { pagesModel } = await import("../api/pages");
-                await pagesModel.lifecycle.openUrlInBrowserTab(event.url, {
-                    external: openInBrowser,
-                });
-            } else {
-                const { shell } = await import("../api/shell");
-                shell.openExternal(event.url);
+                const page = pagesModel.query.findPage(browserPageId);
+                const editor = page?.mainEditor;
+                if (editor && "navigate" in editor && "addTab" in editor) {
+                    const tabMode = data.browserTabMode ?? "addTab";
+                    if (tabMode === "navigate") {
+                        (editor as any).navigate(data.url); // eslint-disable-line @typescript-eslint/no-explicit-any
+                    } else {
+                        (editor as any).addTab(data.url); // eslint-disable-line @typescript-eslint/no-explicit-any
+                    }
+                }
+                data.handled = true;
+                return;
             }
-            event.handled = true;
+
+            // Browser mode routing
+            if (browserMode === "os-default") {
+                const { shell } = await import("../api/shell");
+                shell.openExternal(data.url);
+            } else if (browserMode === "incognito") {
+                const { pagesModel } = await import("../api/pages");
+                await pagesModel.lifecycle.openUrlInBrowserTab(data.url, { incognito: true });
+            } else if (browserMode?.startsWith("profile:")) {
+                const profileName = browserMode.slice("profile:".length);
+                const { pagesModel } = await import("../api/pages");
+                await pagesModel.lifecycle.openUrlInBrowserTab(data.url, { profileName });
+            } else if (browserMode === "internal") {
+                const { pagesModel } = await import("../api/pages");
+                await pagesModel.lifecycle.openUrlInBrowserTab(data.url, { profileName: "" });
+            } else {
+                // No browserMode — use link-open-behavior setting (existing fallback)
+                const { settings } = await import("../api/settings");
+                const behavior = settings.get("link-open-behavior");
+                if (behavior === "internal-browser" || openInBrowser) {
+                    const { pagesModel } = await import("../api/pages");
+                    await pagesModel.lifecycle.openUrlInBrowserTab(data.url, {
+                        external: openInBrowser,
+                    });
+                } else {
+                    const { shell } = await import("../api/shell");
+                    shell.openExternal(data.url);
+                }
+            }
+            data.handled = true;
             return;
         }
 
-        // Recognized extension — open as content via pipe
-        const target = event.target || mapping.editor;
+        // Recognized extension or explicit editor target — open as content via pipe
+        data.target = data.target || mapping?.editor;
 
-        const pipeDescriptor = resolveUrlToPipeDescriptor(event.url, event.metadata);
+        const pipeDescriptor = resolveUrlToPipeDescriptor(data.url, data);
         if (!pipeDescriptor) return;
-        const pipe = createPipeFromDescriptor(pipeDescriptor);
 
-        await app.events.openContent.sendAsync(
-            new OpenContentEvent(pipe, target, event.metadata)
-        );
-        event.handled = true;
+        data.pipeDescriptor = pipeDescriptor;
+        data.pipe = createPipeFromDescriptor(pipeDescriptor);
+        data.handled = false;
+        await app.events.openContent.sendAsync(data);
+        data.handled = true;
     });
 }

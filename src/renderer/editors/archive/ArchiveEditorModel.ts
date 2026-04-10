@@ -112,9 +112,11 @@ export class ArchiveEditorModel extends EditorModel<ArchiveEditorModelState> {
         }
     }
 
-    /** Check if a model was opened from this archive via sourceLink metadata. */
+    /** Check if a model was opened from this archive via sourceLink. */
     private _isOpenedFromThisArchive(model: EditorModel): boolean {
-        return model.state.get().sourceLink?.metadata?.sourceId === this.id;
+        const sl = model.state.get().sourceLink;
+        // Support both new format (sourceId top-level) and legacy persisted format (in metadata)
+        return (sl?.sourceId ?? (sl as any)?.metadata?.sourceId) === this.id; // eslint-disable-line @typescript-eslint/no-explicit-any
     }
 
     async dispose(): Promise<void> {

@@ -1,6 +1,4 @@
 import { app } from "../api/app";
-import { OpenLinkEvent } from "../api/events/events";
-import type { ILinkMetadata } from "../api/types/io.events";
 import { isArchivePath } from "../core/utils/file-path";
 import { parseHttpRequest } from "../core/utils/curl-parser";
 import { TREE_CATEGORY_PREFIX } from "./tree-providers/tree-provider-link";
@@ -17,71 +15,80 @@ import { normalizeFileUrl, isFileUrl, isPlausibleFilePath } from "./link-utils";
  */
 export function registerRawLinkParsers(): void {
     // File parser — fallback for plain file paths and file:// URLs
-    app.events.openRawLink.subscribe(async (event) => {
-        let filePath = event.raw;
+    app.events.openRawLink.subscribe(async (data) => {
+        let filePath = data.href;
         if (isFileUrl(filePath)) {
             filePath = normalizeFileUrl(filePath);
         }
         if (!isPlausibleFilePath(filePath)) {
             const { ui } = await import("../api/ui");
             ui.notify(`Invalid file path: ${filePath}`, "warning");
-            event.handled = true;
+            data.handled = true;
             return;
         }
-        await app.events.openLink.sendAsync(new OpenLinkEvent(filePath, event.target, event.metadata));
-        event.handled = true;
+        data.url = filePath;
+        data.handled = false;
+        await app.events.openLink.sendAsync(data);
+        data.handled = true;
     });
 
     // Archive parser — detects "!" separator
-    app.events.openRawLink.subscribe(async (event) => {
-        if (!isArchivePath(event.raw)) return;
-        let archivePath = event.raw;
+    app.events.openRawLink.subscribe(async (data) => {
+        if (!isArchivePath(data.href)) return;
+        let archivePath = data.href;
         if (isFileUrl(archivePath)) {
             archivePath = normalizeFileUrl(archivePath);
         }
-        await app.events.openLink.sendAsync(new OpenLinkEvent(archivePath, event.target, event.metadata));
-        event.handled = true;
+        data.url = archivePath;
+        data.handled = false;
+        await app.events.openLink.sendAsync(data);
+        data.handled = true;
     });
 
     // HTTP parser — detects http:// and https:// URLs
-    app.events.openRawLink.subscribe(async (event) => {
-        if (!event.raw.startsWith("http://") && !event.raw.startsWith("https://")) return;
-        await app.events.openLink.sendAsync(new OpenLinkEvent(event.raw, event.target, event.metadata));
-        event.handled = true;
+    app.events.openRawLink.subscribe(async (data) => {
+        if (!data.href.startsWith("http://") && !data.href.startsWith("https://")) return;
+        data.url = data.href;
+        data.handled = false;
+        await app.events.openLink.sendAsync(data);
+        data.handled = true;
     });
 
     // data: URL parser — inline content (scripts, styles)
-    app.events.openRawLink.subscribe(async (event) => {
-        if (!event.raw.startsWith("data:")) return;
-        await app.events.openLink.sendAsync(new OpenLinkEvent(event.raw, event.target, event.metadata));
-        event.handled = true;
+    app.events.openRawLink.subscribe(async (data) => {
+        if (!data.href.startsWith("data:")) return;
+        data.url = data.href;
+        data.handled = false;
+        await app.events.openLink.sendAsync(data);
+        data.handled = true;
     });
 
     // tree-category:// parser — detects category links for folder/category navigation
-    app.events.openRawLink.subscribe(async (event) => {
-        if (!event.raw.startsWith(TREE_CATEGORY_PREFIX)) return;
-        await app.events.openLink.sendAsync(
-            new OpenLinkEvent(event.raw, event.target ?? "category-view", event.metadata),
-        );
-        event.handled = true;
+    app.events.openRawLink.subscribe(async (data) => {
+        if (!data.href.startsWith(TREE_CATEGORY_PREFIX)) return;
+        data.url = data.href;
+        data.target ??= "category-view";
+        data.handled = false;
+        await app.events.openLink.sendAsync(data);
+        data.handled = true;
     });
 
     // cURL / fetch parser — detects "curl " or "fetch(" commands
-    app.events.openRawLink.subscribe(async (event) => {
-        const trimmed = event.raw.trim();
+    app.events.openRawLink.subscribe(async (data) => {
+        const trimmed = data.href.trim();
         if (!/^(curl\s|fetch\()/i.test(trimmed)) return;
 
         const parsed = parseHttpRequest(trimmed);
         if (!parsed) return;
 
-        const metadata: ILinkMetadata = {};
-        if (parsed.method !== "GET") metadata.method = parsed.method;
-        if (Object.keys(parsed.headers).length > 0) metadata.headers = parsed.headers;
-        if (parsed.body) metadata.body = parsed.body;
+        // Set cURL-parsed fields, but don't override caller-provided values
+        if (parsed.method !== "GET") data.method ??= parsed.method;
+        if (Object.keys(parsed.headers).length > 0) data.headers ??= parsed.headers;
+        if (parsed.body) data.body ??= parsed.body;
 
-        // Merge cURL metadata with caller metadata (caller overrides)
-        const merged = event.metadata ? { ...metadata, ...event.metadata } : metadata;
-        await app.events.openLink.sendAsync(new OpenLinkEvent(parsed.url, event.target, merged));
-        event.handled = true;
+        data.url = parsed.url;
+        data.handled = false;
+        await app.events.openLink.sendAsync(data);
+        data.handled = true;
     });
 }

@@ -7,7 +7,7 @@ import { Button } from "../../components/basic/Button";
 import { FlexSpace } from "../../components/layout/Elements";
 import { NavPanelIcon } from "../../theme/icons";
 import { app } from "../../api/app";
-import { RawLinkEvent } from "../../api/events/events";
+import { createLinkData } from "../../../shared/link-data";
 import type { ITreeProvider, ITreeProviderItem } from "../../api/types/io.tree";
 import type { TOneState } from "../../core/state/state";
 import type { NavigationState } from "../../api/pages/PageModel";
@@ -119,7 +119,7 @@ export function CategoryEditor({ model }: { model: CategoryEditorModel }) {
     const handleNavigate = useCallback((item: ITreeProviderItem) => {
         host?.selectionState.update((s) => { s.selectedHref = item.href; });
         const url = provider?.getNavigationUrl(item) ?? item.href;
-        app.events.openRawLink.sendAsync(new RawLinkEvent(url, undefined, { pageId, sourceId: hostId }));
+        app.events.openRawLink.sendAsync(createLinkData(url, { pageId, sourceId: hostId }));
     }, [provider, pageId, hostId]);
 
     const handleToggleNavigator = useCallback(() => {

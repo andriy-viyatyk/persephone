@@ -3,8 +3,8 @@ import { useCallback, useMemo, useState, useSyncExternalStore } from "react";
 import { TreeProviderView } from "../../../components/tree-provider/TreeProviderView";
 import { highlightText } from "../../../components/basic/useHighlightedText";
 import { app } from "../../../api/app";
-import { RawLinkEvent } from "../../../api/events/events";
 import type { ContextMenuEvent } from "../../../api/events/events";
+import { createLinkData } from "../../../../shared/link-data";
 import type { ILink } from "../../../api/types/io.tree";
 import color from "../../../theme/color";
 import type { LinkViewModel } from "../LinkViewModel";
@@ -69,11 +69,10 @@ export function LinkCategoryPanel({ vm, useOpenRawLink, categoriesOnly = true, p
             setSelectedItemHref(item.href);
             const navUrl = vm.treeProvider.getNavigationUrl(item);
             app.events.openRawLink.sendAsync(
-                new RawLinkEvent(
-                    navUrl,
-                    item.target || undefined,
-                    pageId ? { pageId, fallbackTarget: "monaco", title: item.title } : undefined,
-                ),
+                createLinkData(navUrl, {
+                    target: item.target || undefined,
+                    ...(pageId ? { pageId, fallbackTarget: "monaco", title: item.title } : undefined),
+                }),
             );
         } else {
             vm.setSelectedCategory(item.href);

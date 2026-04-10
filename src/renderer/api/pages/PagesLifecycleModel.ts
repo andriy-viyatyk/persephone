@@ -1,6 +1,8 @@
 import type { PagesModel } from "./PagesModel";
 import { EditorModel } from "../../editors/base";
-import { IEditorState, ISourceLink, EditorView, EditorType, PageDescriptor } from "../../../shared/types";
+import { IEditorState, EditorView, EditorType, PageDescriptor } from "../../../shared/types";
+import { createLinkData } from "../../../shared/link-data";
+import type { ILinkData } from "../../../shared/link-data";
 import {
     isTextFileModel,
     newTextFileModel,
@@ -297,7 +299,7 @@ export class PagesLifecycleModel {
     openFile = async (
         filePath?: string,
         pipe?: IContentPipe,
-        options?: { sourceLink?: ISourceLink },
+        options?: { sourceLink?: ILinkData; target?: string },
     ): Promise<PageModel | undefined> => {
         if (!filePath) return undefined;
         const existingPage = this.model.state
@@ -309,7 +311,7 @@ export class PagesLifecycleModel {
             return existingPage;
         }
 
-        const editor = await this.createEditorFromFile(filePath, pipe);
+        const editor = await this.createEditorFromFile(filePath, pipe, options?.target);
         if (options?.sourceLink) {
             editor.state.update((s) => { s.sourceLink = options.sourceLink; });
         }
@@ -385,8 +387,7 @@ export class PagesLifecycleModel {
 
         if (result.type === "url") {
             const { app: appInstance } = await import("../app");
-            const { RawLinkEvent } = await import("../events/events");
-            await appInstance.events.openRawLink.sendAsync(new RawLinkEvent(result.value));
+            await appInstance.events.openRawLink.sendAsync(createLinkData(result.value));
         } else if (result.type === "file") {
             const filePaths = await api.showOpenFileDialog({
                 title: "Open File",
@@ -394,8 +395,7 @@ export class PagesLifecycleModel {
             });
             if (filePaths && filePaths.length > 0) {
                 const { app: appInstance } = await import("../app");
-                const { RawLinkEvent } = await import("../events/events");
-                await appInstance.events.openRawLink.sendAsync(new RawLinkEvent(filePaths[0]));
+                await appInstance.events.openRawLink.sendAsync(createLinkData(filePaths[0]));
             }
         }
     };
@@ -451,7 +451,7 @@ export class PagesLifecycleModel {
             revealLine?: number;
             highlightText?: string;
             forceTextEditor?: boolean;
-            sourceLink?: ISourceLink;
+            sourceLink?: ILinkData;
             pipe?: IContentPipe;
             /** Editor target from the link pipeline (e.g., "image-view", "monaco"). */
             target?: string;
@@ -668,14 +668,12 @@ export class PagesLifecycleModel {
 
     handleOpenUrl = async (url: string) => {
         const { app: appInstance } = await import("../app");
-        const { RawLinkEvent } = await import("../events/events");
-        await appInstance.events.openRawLink.sendAsync(new RawLinkEvent(url));
+        await appInstance.events.openRawLink.sendAsync(createLinkData(url));
     };
 
     handleExternalUrl = async (url: string) => {
         const { app: appInstance } = await import("../app");
-        const { RawLinkEvent } = await import("../events/events");
-        await appInstance.events.openRawLink.sendAsync(new RawLinkEvent(url));
+        await appInstance.events.openRawLink.sendAsync(createLinkData(url));
     };
 
     openPathInNewWindow = (filePath: string) => {

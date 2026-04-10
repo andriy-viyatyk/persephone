@@ -199,6 +199,12 @@ export function LinkEditor(props: LinkEditorProps) {
         }
 
         return () => {
+            // Don't clear panels if this model was demoted to secondary-only
+            // (still in secondaryEditors[] but no longer mainEditor)
+            const page = model.page;
+            if (page && page.mainEditor !== model && page.secondaryEditors.includes(model)) {
+                return;
+            }
             model.secondaryEditor = undefined;
         };
     }, [vm, showPanelsInSidebar, hasTags, hasHostnames]); // eslint-disable-line react-hooks/exhaustive-deps

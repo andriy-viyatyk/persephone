@@ -16,6 +16,7 @@ The default editor for all text files, powered by Monaco (the same engine as VS 
 - **Column selection** — `Shift+Alt+Arrow` keys for rectangular selection
 - **Minimap** — code overview on the right side
 - **Delete line** — `Ctrl+Y` deletes the entire current line
+- **Paste as Markdown / HTML** — In Markdown and HTML files, press `Ctrl+Shift+V` to paste clipboard content as converted Markdown (or raw HTML). Uses [Turndown](https://github.com/mixmark-io/turndown) for conversion. Regular `Ctrl+V` pastes plain text as before.
 
 The text editor also provides a **Script Panel** for running JavaScript or TypeScript against any file's content. See [Scripting](./scripting.md) for details.
 
@@ -302,14 +303,13 @@ For `.link.json` files — a structured link manager:
 
 - **Categories**, **tags**, and **hostnames** for organizing and filtering links
 - **Filter panels** — Categories, Tags, and Hostnames panels let you filter links by navigation. These panels adapt based on whether the page sidebar is open:
-  - **With sidebar open** — Categories, Tags, and Hostnames appear as separate panels in the page sidebar (the same sidebar used by the File Explorer). Click a panel header to expand it. The breadcrumb in the toolbar shows the current filter path.
+  - **With sidebar open** — Categories, Tags, and Hostnames appear as separate panels in the page sidebar (the same sidebar used by the File Explorer). Click a panel header to expand it. The breadcrumb in the toolbar shows the current filter path. The **Categories** panel header has a swap button (⇄) to promote it into the main editor area (full-page link list view) or demote it back to sidebar-only mode.
   - **Without sidebar** — A collapsible left panel inside the editor shows the three filters (Categories, Tags, Hostnames) as tabs. Resize it by dragging the splitter.
 - **Multiple view modes** — List, Landscape tiles, Portrait tiles (normal and large variants)
 - **View mode per category, per tag, and per hostname** — each filter remembers its preferred layout
 - **Image tiles** — tile views display preview images with "no image" placeholder for links without images
-- **Edit/Create dialog** — title (auto-growing), URL, category (with autocomplete), tags (chip-based with autocomplete), image URL with preview
+- **Edit/Create dialog** — title (auto-growing), URL, category (with autocomplete), tags (chip-based with autocomplete), image URL with preview, **Target** editor dropdown (auto-detect, Text Editor, Browser, PDF Viewer, Image Viewer, Markdown Preview, HTML Preview, SVG Preview, JSON Grid, CSV Grid)
 - **Search** — toolbar search filters links by title or URL
-- **Browser selector button** — toolbar button to choose where links open: OS default browser, internal browser, a specific browser profile, or incognito. Initialized from the app setting, adjustable per session.
 - **Context menu** — Edit, Open in Default Browser, Open in Internal Browser, browser profiles, Open in Incognito, Copy URL, Pin/Unpin, Delete
   - For links with images: Copy Image URL, Open Image in New Tab (opens in Image Viewer)
 - **Delete confirmation** — with Ctrl+click bypass for quick delete

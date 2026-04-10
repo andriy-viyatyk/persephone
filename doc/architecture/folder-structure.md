@@ -140,7 +140,7 @@ persephone/
 │       ├── io.provider.d.ts  # IProvider, IProviderStat, IProviderDescriptor
 │       ├── io.transformer.d.ts # ITransformer, ITransformerDescriptor
 │       ├── io.pipe.d.ts      # IContentPipe, IPipeDescriptor
-│       ├── io.events.d.ts    # IRawLinkEvent, IOpenLinkEvent, IOpenContentEvent, ILinkMetadata
+│       ├── io.link-data.d.ts # ILinkData — unified link descriptor for the pipeline (EPIC-023)
 │       └── io.tree.d.ts     # ITreeProvider, ILink (was ITreeProviderItem), ITreeStat, ITreeSearch*
 │
 ├── content/                # Content delivery layer — providers, transformers, pipes (EPIC-012)

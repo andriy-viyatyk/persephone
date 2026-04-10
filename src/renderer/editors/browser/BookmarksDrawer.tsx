@@ -5,7 +5,6 @@ import color from "../../theme/color";
 import { Splitter } from "../../components/layout/Splitter";
 import { LinkEditor } from "../link-editor/LinkEditor";
 import { BrowserBookmarks } from "./BrowserBookmarks";
-import { pagesModel } from "../../api/pages";
 
 // =============================================================================
 // Styles
@@ -101,7 +100,6 @@ interface BookmarksDrawerProps {
     bookmarks: BrowserBookmarks;
     width: number;
     onChangeWidth: (width: number) => void;
-    onLinkClick: (url: string) => void;
     onClose: () => void;
 }
 
@@ -110,7 +108,6 @@ export function BookmarksDrawer({
     bookmarks,
     width,
     onChangeWidth,
-    onLinkClick,
     onClose,
 }: BookmarksDrawerProps) {
     const [isAnimating, setIsAnimating] = useState(false);
@@ -150,19 +147,6 @@ export function BookmarksDrawer({
         },
         [onClose],
     );
-
-    // Intercept link clicks: monkey-patch pagesModel.handleOpenUrl while drawer is open
-    // so LinkItemList's click handler routes URLs to a new internal tab instead.
-    useEffect(() => {
-        if (!open) return;
-        const originalHandleOpenUrl = pagesModel.handleOpenUrl;
-        pagesModel.handleOpenUrl = async (url: string) => {
-            onLinkClick(url);
-        };
-        return () => {
-            pagesModel.handleOpenUrl = originalHandleOpenUrl;
-        };
-    }, [open, onLinkClick]);
 
     if (!open) return null;
 

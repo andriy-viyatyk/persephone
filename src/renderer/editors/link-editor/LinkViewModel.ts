@@ -9,8 +9,9 @@ import { getHostname } from "../../components/tree-provider/favicon-cache";
 import { LinkItem, LinkEditorData, LinkViewMode } from "./linkTypes";
 import { showEditLinkDialog } from "./EditLinkDialog";
 import { ui } from "../../api/ui";
-import { settings } from "../../api/settings";
-import { shell } from "../../api/shell";
+import type { ILink } from "../../api/types/io.tree";
+import { createLinkData } from "../../../shared/link-data";
+import type { ILinkData } from "../../../shared/link-data";
 import type { TextFileModel } from "../text/TextEditorModel";
 import { LinkTreeProvider } from "./LinkTreeProvider";
 
@@ -42,11 +43,6 @@ export const defaultLinkEditorState = {
     filteredLinks: [] as LinkItem[],
     // Selection
     selectedLinkId: "" as string,
-    // Browser selection for link opening.
-    // "": use pagesModel.handleOpenUrl (BookmarksDrawer), "os-default": OS browser,
-    // "internal-default": built-in default profile, "profile:<name>": named profile,
-    // "incognito": incognito mode.
-    selectedBrowser: "" as string,
 };
 
 export type LinkEditorState = typeof defaultLinkEditorState;
@@ -70,12 +66,11 @@ export class LinkViewModel extends ContentViewModel<LinkEditorState> {
     containerElement: HTMLElement | null = null;
 
     /**
-     * Optional callback for handling default link clicks internally.
-     * When set, clicking a link (with no specific browser selected) calls this instead of pagesModel.handleOpenUrl.
-     * Used by browser editor to route links to the correct browser page/tab.
-     * @param url The URL to open
+     * Optional callback to modify link data before it enters the openRawLink pipeline.
+     * Used by BrowserEditorModel to set target/browserPageId so links open in the owning browser page.
+     * The callback modifies data in-place.
      */
-    onInternalLinkOpen?: (url: string) => void;
+    onLinkOpen?: (data: ILinkData) => void;
 
     /**
      * Optional callback to provide extra context menu items for a link.
@@ -541,6 +536,7 @@ export class LinkViewModel extends ContentViewModel<LinkEditorState> {
                 if (updates.category !== undefined) link.category = updates.category;
                 if (updates.tags !== undefined) link.tags = updates.tags;
                 if (updates.imgSrc !== undefined) link.imgSrc = updates.imgSrc;
+                if ("target" in updates) link.target = updates.target;
             }
         });
         if (updates.category !== undefined) this.loadCategories();
@@ -730,6 +726,7 @@ export class LinkViewModel extends ContentViewModel<LinkEditorState> {
                     tags: result.tags,
                     isDirectory: false,
                     imgSrc: result.imgSrc,
+                    target: result.target,
                 };
                 this.state.update((s) => {
                     s.data.links.unshift(newLink);
@@ -743,62 +740,20 @@ export class LinkViewModel extends ContentViewModel<LinkEditorState> {
     };
 
     // =========================================================================
-    // Browser Selection
+    // Link Opening
     // =========================================================================
 
-    /**
-     * Initialize browser selection based on settings.
-     * Called by the component (not in onInit) — BookmarksDrawer skips this
-     * to keep selectedBrowser as "" for its own open-link handling.
-     */
-    initBrowserSelection = () => {
-        const behavior = settings.get("link-open-behavior");
-        if (behavior === "default-browser") {
-            this.state.update((s) => { s.selectedBrowser = "os-default"; });
-        } else {
-            this.state.update((s) => { s.selectedBrowser = "internal-default"; });
-        }
-    };
+    openLink = async (link: ILink | { href: string; target?: string }) => {
+        const url = link.href;
+        if (!url) return;
 
-    setSelectedBrowser = (value: string) => {
-        this.state.update((s) => { s.selectedBrowser = value; });
-    };
+        const linkData = createLinkData(url, { target: link.target || undefined });
 
-    openLink = async (url: string) => {
-        // If a browser page owns this link model, route links there
-        if (this.onInternalLinkOpen) {
-            this.onInternalLinkOpen(url);
-            return;
-        }
+        // Let owner (e.g., Browser) modify linkData before pipeline dispatch
+        this.onLinkOpen?.(linkData);
 
-        const { selectedBrowser } = this.state.get();
-
-        if (!selectedBrowser) {
-            const { pagesModel } = await import("../../api/pages");
-            pagesModel.handleOpenUrl(url);
-            return;
-        }
-
-        if (selectedBrowser === "os-default") {
-            shell.openExternal(url);
-            return;
-        }
-
-        const { pagesModel } = await import("../../api/pages");
-
-        if (selectedBrowser === "incognito") {
-            pagesModel.openUrlInBrowserTab(url, { incognito: true });
-            return;
-        }
-
-        if (selectedBrowser.startsWith("profile:")) {
-            const profileName = selectedBrowser.slice("profile:".length);
-            pagesModel.openUrlInBrowserTab(url, { profileName });
-            return;
-        }
-
-        // "internal-default" — pass empty profileName to match only default-profile tabs
-        pagesModel.openUrlInBrowserTab(url, { profileName: "" });
+        const { app } = await import("../../api/app");
+        await app.events.openRawLink.sendAsync(linkData);
     };
 }
 

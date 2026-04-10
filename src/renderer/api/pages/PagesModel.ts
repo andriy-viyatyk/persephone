@@ -3,7 +3,7 @@ import { TModel } from "../../core/state/model";
 import { TGlobalState } from "../../core/state/state";
 import { EditorModel } from "../../editors/base";
 import { EditorView, PageDescriptor } from "../../../shared/types";
-import { RawLinkEvent } from "../events/events";
+import { createLinkData } from "../../../shared/link-data";
 import type { ILink } from "../types/io.tree";
 import { PageModel } from "./PageModel";
 
@@ -193,7 +193,7 @@ export class PagesModel extends TModel<OpenFilesState> {
         if (!filePath) return undefined;
         // Route through the link pipeline (Layer 1 → 2 → 3)
         const { app } = await import("../app");
-        await app.events.openRawLink.sendAsync(new RawLinkEvent(filePath));
+        await app.events.openRawLink.sendAsync(createLinkData(filePath));
         // Return the page if it was opened (for backward compatibility)
         return this.state.get().pages.find((p) => p.mainEditor?.filePath === filePath);
     };

@@ -220,14 +220,14 @@ ui.log("Hello");
 
 ---
 
-- **[io](./io.md)** — Content pipe builder (providers, transformers, event constructors)
+- **[io](./io.md)** — Content pipe builder (providers, transformers, link pipeline helpers)
   - `new io.FileProvider(filePath)` — local file data source
   - `new io.HttpProvider(url, options?)` — HTTP/HTTPS data source
   - `new io.ArchiveTransformer(archivePath, entryPath)` — extract an archive entry (ZIP, RAR, 7z, TAR, etc.)
   - `new io.DecryptTransformer(password)` — decrypt AES-GCM content
   - `io.createPipe(provider, ...transformers)` — assemble a content pipe
-  - `new io.RawLinkEvent(raw)` — create a Layer 1 raw link event
-  - `new io.OpenLinkEvent(url, target?, metadata?)` — create a Layer 2 open link event
+  - `io.createLinkData(href, options?)` — create an `ILinkData` for the link pipeline (`openRawLink`)
+  - `io.linkToLinkData(link)` — convert an `ILink` to `ILinkData` preserving all fields
 
 ---
 

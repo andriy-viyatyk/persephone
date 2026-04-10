@@ -1319,6 +1319,13 @@ export const WebScraperIcon = createIcon(24)(
     </>,
 );
 
+export const SwapIcon = createIcon(24)(
+    <g stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M5 9h12l-3.5-3.5" />
+        <path d="M19 15H7l3.5 3.5" />
+    </g>,
+);
+
 export const MoreVertIcon = createIcon(24)(
     <>
         <circle cx="12" cy="6" r="1.5" fill="currentColor" />

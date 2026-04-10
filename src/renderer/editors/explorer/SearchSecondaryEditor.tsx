@@ -1,9 +1,8 @@
 import React, { useCallback } from "react";
 import { createPortal } from "react-dom";
 import { FileSearch } from "../../components/file-search";
-import { RawLinkEvent } from "../../api/events/events";
 import { app } from "../../api/app";
-import type { ILinkMetadata } from "../../api/types/io.events";
+import { createLinkData } from "../../../shared/link-data";
 import type { SecondaryEditorProps } from "../../ui/navigation/secondary-editor-registry";
 import type { ExplorerEditorModel } from "./ExplorerEditorModel";
 import { Button } from "../../components/basic/Button";
@@ -20,12 +19,10 @@ export default function SearchSecondaryEditor({ model: rawModel, headerRef }: Se
 
     const handleSearchResultClick = useCallback((filePath: string, lineNumber?: number) => {
         model.setSelectedHref(filePath);
-        const metadata: ILinkMetadata = { pageId };
-        if (lineNumber) {
-            metadata.revealLine = lineNumber;
-            metadata.highlightText = model.searchState?.query;
-        }
-        app.events.openRawLink.sendAsync(new RawLinkEvent(filePath, undefined, metadata));
+        app.events.openRawLink.sendAsync(createLinkData(filePath, {
+            pageId,
+            ...(lineNumber ? { revealLine: lineNumber, highlightText: model.searchState?.query } : undefined),
+        }));
     }, [pageId, model]);
 
     const headerContent = (

@@ -2,34 +2,34 @@
  * Open a URL in the RestClient editor.
  * Handles both cURL-parsed metadata (method, headers, body) and plain URLs.
  */
-import type { ILinkMetadata } from "../../api/types/io.events";
+import type { ILinkData } from "../../../shared/link-data";
 import type { RestClientData } from "./restClientTypes";
 import { createDefaultRequest } from "./restClientTypes";
 
 export async function openInRestClient(
     url: string,
-    metadata?: ILinkMetadata,
+    data?: ILinkData,
 ): Promise<void> {
     const { pagesModel } = await import("../../api/pages");
 
     const request = createDefaultRequest(requestName(url));
     request.url = url;
 
-    if (metadata?.method) {
-        request.method = metadata.method;
+    if (data?.method) {
+        request.method = data.method;
     }
 
-    if (metadata?.headers) {
-        request.headers = Object.entries(metadata.headers).map(
+    if (data?.headers) {
+        request.headers = Object.entries(data.headers).map(
             ([key, value]) => ({ key, value: String(value), enabled: true }),
         );
     }
 
-    if (metadata?.body) {
-        request.body = metadata.body;
+    if (data?.body) {
+        request.body = data.body;
         request.bodyType = "raw";
-        const contentType = metadata.headers?.["Content-Type"]
-            || metadata.headers?.["content-type"] || "";
+        const contentType = data.headers?.["Content-Type"]
+            || data.headers?.["content-type"] || "";
         if (contentType.includes("json")) {
             request.bodyLanguage = "json";
         } else if (contentType.includes("xml")) {

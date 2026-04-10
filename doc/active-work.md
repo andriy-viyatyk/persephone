@@ -8,8 +8,28 @@ Overview of all active and planned epics and tasks.
 
 ## Active
 
+- **EPIC-023** — [Unified ILinkData Pipeline](epics/EPIC-023.md) *(prerequisite for EPIC-022)*
+  - [x] [US-404: Define `ILinkData` interface and helper functions](tasks/US-404-link-data-interface/README.md)
+  - [x] [US-405: Loosen EventChannel constraint and consolidate link pipeline events](tasks/US-405-event-channel-constraint/README.md)
+  - [x] [US-406: Refactor Layer 1 parsers to use ILinkData](tasks/US-406-refactor-parsers-ilinkdata/README.md)
+  - [x] [US-407: Refactor Layer 2 resolvers to use ILinkData](tasks/US-407-refactor-resolvers-ilinkdata/README.md)
+  - [x] [US-408: Refactor Layer 3 open handler and replace ISourceLink](tasks/US-408-replace-isourcelink/README.md)
+  - [x] [US-409: Update all pipeline callers to use createLinkData / linkToLinkData](tasks/US-409-migrate-callers-createLinkData/README.md)
+  - [x] [US-410: Update script API types, IoNamespace, and editor-types](tasks/US-410-script-api-types/README.md)
+
 ## Planned
 
+- **EPIC-023** *(continued)*
+  - [ ] US-411: Update architecture documentation
+- **EPIC-022** — [LinkEditor Embedded Scripts](epics/EPIC-022.md)
+  - [ ] US-396: Data model — `LinkScriptItem` type and `scripts` field in `LinkEditorData`
+  - [ ] US-397: ScriptRunner — `runWithScope()` for custom context variable injection
+  - [ ] US-398: LinkEditorScriptProvider — virtual IProvider backed by LinkViewModel
+  - [ ] US-399: Resolver — handle `link-editor-script://` URL scheme
+  - [ ] US-400: Scripts panel UI — collapsible panel with tree view in LinkEditor
+  - [ ] US-401: Add/Edit Script dialog
+  - [ ] US-402: Script execution engine — event matching and execution in LinkViewModel
+  - [ ] US-403: Script types and facade for script API
 - **EPIC-014** — [Claude AI Chat Panel](epics/EPIC-014.md)
   - [ ] US-385: Right panel slot in Pages.tsx layout
   - [ ] US-386: ClaudeChatModel + SDK integration (query, streaming, abort)

@@ -1,5 +1,5 @@
 import { app } from "../api/app";
-import { RawLinkEvent } from "../api/events/events";
+import { createLinkData } from "../../shared/link-data";
 import {
     FolderOpenIcon,
     NewWindowIcon,
@@ -40,7 +40,7 @@ export function registerTreeContextMenuHandlers(): void {
             label: "Open in Rest Client",
             onClick: () =>
                 app.events.openRawLink.sendAsync(
-                    new RawLinkEvent(href, "rest-client"),
+                    createLinkData(href, { target: "rest-client" }),
                 ),
         });
     });
@@ -77,7 +77,7 @@ export function registerTreeContextMenuHandlers(): void {
                     startGroup: true,
                     label: "Open in New Tab",
                     icon: <OpenFileIcon />,
-                    onClick: () => app.events.openRawLink.sendAsync(new RawLinkEvent(item.href)),
+                    onClick: () => app.events.openRawLink.sendAsync(createLinkData(item.href)),
                 },
                 {
                     label: "Open in New Window",

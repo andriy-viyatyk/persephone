@@ -199,7 +199,7 @@ export function PinnedLinksPanel({ pinnedLinks, model, selectedLinkId, style }: 
     const handleOpenLink = useCallback((link: LinkItem) => {
         if (link.href) {
             requestFaviconSave(getHostname(link.href));
-            model.openLink(link.href);
+            model.openLink(link);
         }
     }, [model]);
 
