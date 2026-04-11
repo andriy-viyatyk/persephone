@@ -39,6 +39,14 @@ export interface IProvider {
     readonly writable: boolean;
     /** Read binary content from the source. */
     readBinary(): Promise<Buffer>;
+    /**
+     * Create a readable stream from the source with an optional byte range.
+     * Used for large binary content (video, audio) where loading the full
+     * buffer into memory is impractical.
+     * Optional — providers that do not support streaming should omit this method.
+     * The range end is inclusive (same as the HTTP Range header convention).
+     */
+    createReadStream?(range?: { start: number; end: number }): NodeJS.ReadableStream;
     /** Write binary content to the source. Only present if writable. */
     writeBinary?(data: Buffer): Promise<void>;
     /** Get resource metadata (size, modified date, existence). */

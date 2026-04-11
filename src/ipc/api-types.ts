@@ -7,6 +7,8 @@ import {
     RuntimeVersions,
     SaveFileDialogParams,
     UpdateCheckResult,
+    VideoStreamSessionConfig,
+    VideoStreamSessionResult,
 } from "./api-param-types";
 
 export enum Endpoint {
@@ -52,6 +54,10 @@ export enum Endpoint {
     getMcpStatus = "getMcpStatus",
     setBrowserToolsEnabled = "setBrowserToolsEnabled",
     startScreenSnip = "startScreenSnip",
+    createVideoStreamSession = "createVideoStreamSession",
+    deleteVideoStreamSession = "deleteVideoStreamSession",
+    deleteVideoStreamSessionsByPage = "deleteVideoStreamSessionsByPage",
+    openInVlc = "openInVlc",
 }
 
 export interface McpStatus {
@@ -109,6 +115,10 @@ export type Api = {
     [Endpoint.getMcpStatus]: () => Promise<McpStatus>;
     [Endpoint.setBrowserToolsEnabled]: (enabled: boolean) => Promise<void>;
     [Endpoint.startScreenSnip]: () => Promise<string | null>;
+    [Endpoint.createVideoStreamSession]: (config: VideoStreamSessionConfig, port?: number) => Promise<VideoStreamSessionResult>;
+    [Endpoint.deleteVideoStreamSession]: (sessionId: string) => Promise<void>;
+    [Endpoint.deleteVideoStreamSessionsByPage]: (pageId: string) => Promise<void>;
+    [Endpoint.openInVlc]: (url: string, vlcPath?: string) => Promise<void>;
 };
 
 export enum EventEndpoint {

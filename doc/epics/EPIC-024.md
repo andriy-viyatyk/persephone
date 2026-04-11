@@ -2,8 +2,9 @@
 
 ## Status
 
-**Status:** Active
+**Status:** Completed
 **Created:** 2026-04-11
+**Completed:** 2026-04-11
 
 ## Overview
 
@@ -481,12 +482,12 @@ function openInVlc(url: string): void {
 
 | Task | Title | Status |
 |------|-------|--------|
-| US-412 | Video player standalone editor — model, registration, UI shell | Planned |
-| US-413 | Video playback component (video.js + hls.js) | Planned |
-| US-414 | URL input with cURL parsing and format detection | Planned |
-| US-415 | IProvider streaming extension (readStream + range support) | Planned |
-| US-416 | Local video streaming server for VLC and proxied sources | Planned |
-| US-417 | VLC integration — settings and launch | Planned |
+| [US-412](../tasks/US-412-video-player-shell/README.md) | Video player standalone editor — model, registration, UI shell | Active |
+| [US-413](../tasks/US-413-video-playback-component/README.md) | Video playback component (video.js + hls.js) | Active |
+| [US-414](../tasks/US-414-url-input-curl-parsing/README.md) | URL input with cURL parsing and format detection | Active |
+| [US-415](../tasks/US-415-iprovider-streaming/README.md) | IProvider streaming extension (readStream + range support) | Active |
+| [US-416](../tasks/US-416-video-stream-server/README.md) | Local video streaming server for VLC and proxied sources | Active |
+| [US-417](../tasks/US-417-vlc-integration/README.md) | VLC integration — settings and launch | Active |
 
 ## Resolved Concerns
 

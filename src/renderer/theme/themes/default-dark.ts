@@ -115,6 +115,7 @@ export const defaultDark: ThemeDefinition = {
         "--color-misc-green": "#89d185",
         "--color-misc-red": "#f88070",
         "--color-misc-yellow": "#cca700",
+        "--color-misc-vlc": "#ff8800",
 
         // error
         "--color-error-bg": "#000000",

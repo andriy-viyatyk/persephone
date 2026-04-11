@@ -51,6 +51,7 @@ const color = {
         green: "var(--color-misc-green)",
         red: "var(--color-misc-red)",
         yellow: "var(--color-misc-yellow)",
+        vlc: "var(--color-misc-vlc)",
     },
     error: {
         background: "var(--color-error-bg)",

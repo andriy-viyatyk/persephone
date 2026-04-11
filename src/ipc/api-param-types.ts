@@ -68,3 +68,24 @@ export interface DownloadEntry {
     startTime: number;
     error?: string;
 }
+
+export interface VideoStreamSessionConfig {
+    /** Local file path to stream. Mutually exclusive with url. */
+    filePath?: string;
+    /** HTTP/HTTPS URL to proxy. Mutually exclusive with filePath. */
+    url?: string;
+    /** Custom request headers forwarded to the source URL. */
+    headers?: Record<string, string>;
+    /** HTTP method for the source request. Defaults to "GET". */
+    method?: string;
+    /**
+     * Owner page ID. When provided, deleteVideoStreamSessionsByPage() will
+     * destroy all sessions for this page — call it from the editor's dispose().
+     */
+    pageId?: string;
+}
+
+export interface VideoStreamSessionResult {
+    sessionId: string;
+    streamingUrl: string;
+}

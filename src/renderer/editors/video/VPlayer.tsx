@@ -1,0 +1,234 @@
+import videojs from "video.js";
+import Hls from "hls.js";
+import "video.js/dist/video-js.css";
+import type { HlsConfig } from "hls.js";
+import { useEffect, useRef } from "react";
+import type Player from "video.js/dist/types/player";
+import styled from "@emotion/styled";
+import type { VideoFormat, PlayerState } from "./video-types";
+import type { ParsedHttpRequest } from "../../core/utils/curl-parser";
+import { createNodeFetchLoaderClass } from "./NodeFetchHlsLoader";
+
+// ── Props ─────────────────────────────────────────────────────────────────────
+
+export interface VPlayerProps {
+    src?: string;
+    format?: VideoFormat;
+    muted?: boolean;
+    /** Parsed HTTP request from cURL input. When headers are present, hls.js
+     *  uses NodeFetchHlsLoader to bypass Chromium's forbidden header restrictions. */
+    parsedRequest?: ParsedHttpRequest | null;
+    onStateChange?: (state: PlayerState, error?: unknown) => void;
+    onMutedChange?: (muted: boolean) => void;
+}
+
+// ── Styled components ─────────────────────────────────────────────────────────
+
+const VideoRoot = styled.div`
+    position: absolute;
+    inset: 0;
+    [data-vjs-player],
+    .video-js {
+        width: 100%;
+        height: 100%;
+    }
+    &.src-empty .vjs-modal-dialog-content {
+        display: none;
+    }
+    & video.native {
+        width: 100%;
+        height: 100%;
+        outline: none;
+    }
+`;
+
+// ── HLS sub-component (video.js + hls.js) ────────────────────────────────────
+
+function HlsPlayer({
+    src,
+    muted,
+    parsedRequest,
+    onStateChangeRef,
+    onMutedChangeRef,
+}: {
+    src: string;
+    muted?: boolean;
+    parsedRequest?: ParsedHttpRequest | null;
+    onStateChangeRef: React.RefObject<VPlayerProps["onStateChange"]>;
+    onMutedChangeRef: React.RefObject<VPlayerProps["onMutedChange"]>;
+}) {
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const playerRef = useRef<Player | null>(null);
+    const hlsRef = useRef<Hls | null>(null);
+
+    useEffect(() => {
+        const video = videoRef.current;
+        if (!video) return;
+
+        const player = videojs(video, {
+            controls: true,
+            autoplay: true,
+            preload: "auto",
+            muted: muted ?? false,
+            fill: true,
+        });
+        playerRef.current = player;
+
+        player.on("loadstart", () => onStateChangeRef.current?.("loading"));
+        player.on("playing", () => onStateChangeRef.current?.("playing"));
+        player.on("pause", () => onStateChangeRef.current?.("paused"));
+        player.on("volumechange", () => onMutedChangeRef.current?.(player.muted() ?? false));
+        player.on("error", () => {
+            const error = player.error();
+            if (error?.code === 4) {
+                onStateChangeRef.current?.("unsupported format", error);
+            } else {
+                onStateChangeRef.current?.("error", error ?? undefined);
+            }
+        });
+
+        return () => {
+            hlsRef.current?.destroy();
+            hlsRef.current = null;
+            player.dispose();
+            playerRef.current = null;
+        };
+    }, []); // initialize once on mount
+
+    useEffect(() => {
+        const video = videoRef.current;
+        if (!video || !src) return;
+
+        hlsRef.current?.destroy();
+
+        const hlsConfig: Partial<HlsConfig> = {};
+        if (parsedRequest?.headers && Object.keys(parsedRequest.headers).length > 0) {
+            hlsConfig.loader = createNodeFetchLoaderClass(parsedRequest.headers);
+        }
+
+        const hls = new Hls(hlsConfig);
+        hlsRef.current = hls;
+        hls.loadSource(src);
+        hls.attachMedia(video);
+    }, [src, parsedRequest]);
+
+    useEffect(() => {
+        if (playerRef.current) {
+            playerRef.current.muted(muted ?? false);
+        }
+    }, [muted]);
+
+    return <video ref={videoRef} className="video-js" />;
+}
+
+// ── Native sub-component (plain <video> for MP4/WebM/etc.) ───────────────────
+
+/**
+ * Simple native video player for non-HLS sources.
+ *
+ * Note: some H.264 files may stutter in Chromium due to decoder limitations
+ * (e.g. non-standard resolutions, complex encoding profiles). These files
+ * play fine in VLC — use the "Open in VLC" button as a fallback.
+ */
+function NativePlayer({
+    src,
+    muted,
+    onStateChangeRef,
+    onMutedChangeRef,
+}: {
+    src: string;
+    muted?: boolean;
+    onStateChangeRef: React.RefObject<VPlayerProps["onStateChange"]>;
+    onMutedChangeRef: React.RefObject<VPlayerProps["onMutedChange"]>;
+}) {
+    const videoRef = useRef<HTMLVideoElement>(null);
+
+    useEffect(() => {
+        const video = videoRef.current;
+        if (!video) return;
+
+        const onLoadStart = () => onStateChangeRef.current?.("loading");
+        const onPlaying = () => onStateChangeRef.current?.("playing");
+        const onPause = () => onStateChangeRef.current?.("paused");
+        const onVolumeChange = () => onMutedChangeRef.current?.(video.muted);
+        const onError = () => {
+            const err = video.error;
+            if (err?.code === MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED) {
+                onStateChangeRef.current?.("unsupported format", err);
+            } else {
+                onStateChangeRef.current?.("error", err ?? undefined);
+            }
+        };
+
+        video.addEventListener("loadstart", onLoadStart);
+        video.addEventListener("playing", onPlaying);
+        video.addEventListener("pause", onPause);
+        video.addEventListener("volumechange", onVolumeChange);
+        video.addEventListener("error", onError);
+
+        return () => {
+            video.removeEventListener("loadstart", onLoadStart);
+            video.removeEventListener("playing", onPlaying);
+            video.removeEventListener("pause", onPause);
+            video.removeEventListener("volumechange", onVolumeChange);
+            video.removeEventListener("error", onError);
+        };
+    }, [onStateChangeRef, onMutedChangeRef]);
+
+    useEffect(() => {
+        if (videoRef.current) {
+            videoRef.current.muted = muted ?? false;
+        }
+    }, [muted]);
+
+    return (
+        <video
+            ref={videoRef}
+            className="native"
+            src={src}
+            controls
+            autoPlay
+            muted={muted}
+        />
+    );
+}
+
+// ── Main component ───────────────────────────────────────────────────────────
+
+export function VPlayer({
+    src,
+    format,
+    muted,
+    parsedRequest,
+    onStateChange,
+    onMutedChange,
+}: VPlayerProps) {
+    const onStateChangeRef = useRef(onStateChange);
+    const onMutedChangeRef = useRef(onMutedChange);
+    onStateChangeRef.current = onStateChange;
+    onMutedChangeRef.current = onMutedChange;
+
+    const isHls = format === "m3u8" && Hls.isSupported();
+
+    return (
+        <VideoRoot className={src ? "vplayer" : "vplayer src-empty"}>
+            {src && isHls && (
+                <HlsPlayer
+                    src={src}
+                    muted={muted}
+                    parsedRequest={parsedRequest}
+                    onStateChangeRef={onStateChangeRef}
+                    onMutedChangeRef={onMutedChangeRef}
+                />
+            )}
+            {src && !isHls && (
+                <NativePlayer
+                    src={src}
+                    muted={muted}
+                    onStateChangeRef={onStateChangeRef}
+                    onMutedChangeRef={onMutedChangeRef}
+                />
+            )}
+        </VideoRoot>
+    );
+}

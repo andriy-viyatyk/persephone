@@ -3,7 +3,7 @@ import { Api, Endpoint, EventEndpoint, McpStatus } from "../api-types";
 import { getAssetPath, getAppRootPath } from "../../main/utils";
 import { showOpenFileDialog, showOpenFolderDialog, showSaveFileDialog } from "./dialog-handlers";
 import { getFileToOpen, getUrlToOpen, windowReady } from "./window-handlers";
-import { DownloadEntry, OpenFileDialogParams, RuntimeVersions, SaveFileDialogParams, UpdateCheckResult } from "../api-param-types";
+import { DownloadEntry, OpenFileDialogParams, RuntimeVersions, SaveFileDialogParams, UpdateCheckResult, VideoStreamSessionConfig, VideoStreamSessionResult } from "../api-param-types";
 import { openWindows } from "../../main/open-windows";
 import { initRendererEvents } from "./renderer-events";
 import { WindowPages } from "../../shared/types";
@@ -215,6 +215,30 @@ class Controller implements MainApi {
         const { startScreenSnip } = await import("../../main/snip-service");
         return startScreenSnip();
     }
+
+    createVideoStreamSession = async (
+        event: IpcMainEvent,
+        config: VideoStreamSessionConfig,
+        port?: number,
+    ): Promise<VideoStreamSessionResult> => {
+        const { createSession } = await import("../../main/video-stream-server");
+        return createSession(config, port);
+    };
+
+    deleteVideoStreamSession = async (event: IpcMainEvent, sessionId: string): Promise<void> => {
+        const { deleteSession } = await import("../../main/video-stream-server");
+        deleteSession(sessionId);
+    };
+
+    deleteVideoStreamSessionsByPage = async (event: IpcMainEvent, pageId: string): Promise<void> => {
+        const { deleteSessionsByPage } = await import("../../main/video-stream-server");
+        deleteSessionsByPage(pageId);
+    };
+
+    openInVlc = async (event: IpcMainEvent, url: string, vlcPath?: string): Promise<void> => {
+        const { openInVlc } = await import("../../main/vlc-launcher");
+        openInVlc(url, vlcPath);
+    };
 }
 
 const controllerInstance = new Controller();
@@ -275,6 +299,10 @@ const init = () => {
     bindEndpoint(Endpoint.getMcpStatus, controllerInstance.getMcpStatus);
     bindEndpoint(Endpoint.setBrowserToolsEnabled, controllerInstance.setBrowserToolsEnabled);
     bindEndpoint(Endpoint.startScreenSnip, controllerInstance.startScreenSnip);
+    bindEndpoint(Endpoint.createVideoStreamSession, controllerInstance.createVideoStreamSession);
+    bindEndpoint(Endpoint.deleteVideoStreamSession, controllerInstance.deleteVideoStreamSession);
+    bindEndpoint(Endpoint.deleteVideoStreamSessionsByPage, controllerInstance.deleteVideoStreamSessionsByPage);
+    bindEndpoint(Endpoint.openInVlc, controllerInstance.openInVlc);
 
     initRendererEvents();
 }

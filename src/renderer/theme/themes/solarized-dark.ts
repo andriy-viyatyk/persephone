@@ -65,6 +65,7 @@ export const solarizedDark: ThemeDefinition = {
         "--color-misc-green": "#859900",
         "--color-misc-red": "#dc322f",
         "--color-misc-yellow": "#b58900",
+        "--color-misc-vlc": "#ff8800",
 
         // error
         "--color-error-bg": "#002b36",

@@ -796,6 +796,14 @@ export class PagesLifecycleModel {
         }
     };
 
+    showVideoPlayerPage = async (): Promise<void> => {
+        const videoModule = await import("../../editors/video/VideoPlayerEditor");
+        const model = await videoModule.default.newEmptyEditorModel("videoPage");
+        if (model) {
+            this.addPage(model);
+        }
+    };
+
     openImageInNewTab = async (imageUrl: string): Promise<void> => {
         const imgModule = await import("../../editors/image/ImageViewer");
         const imgModel =

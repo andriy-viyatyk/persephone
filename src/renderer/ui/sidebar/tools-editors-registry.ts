@@ -5,7 +5,7 @@ import {
     DrawIcon, GraphIcon, GridIcon, IncognitoIcon, RestClientIcon, TorIcon,
     JavascriptIcon, LinkIcon, NotebookIcon, TodoIcon, TypescriptIcon,
 } from "../../theme/language-icons";
-import { GlobeIcon, McpIcon } from "../../theme/icons";
+import { GlobeIcon, McpIcon, PlayerIcon } from "../../theme/icons";
 import { DEFAULT_BROWSER_COLOR } from "../../theme/palette-colors";
 
 // =============================================================================
@@ -135,6 +135,13 @@ const staticItems: CreatableItem[] = [
         icon: React.createElement(McpIcon),
         create: () => { pagesModel.showMcpInspectorPage(); },
         category: "tool",
+    },
+    {
+        id: "video-view",
+        label: "Video Player",
+        icon: React.createElement(PlayerIcon, { color: DEFAULT_BROWSER_COLOR }),
+        create: () => pagesModel.showVideoPlayerPage(),
+        category: "tool" as const,
     },
 ];
 

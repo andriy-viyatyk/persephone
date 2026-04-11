@@ -396,6 +396,11 @@ persephone/
 │   │   └── index.ts
 │   ├── settings/           # Settings page (standalone)
 │   │   └── SettingsPage.tsx
+│   ├── video/              # Video player (standalone)
+│   │   ├── VideoPlayerEditor.tsx  # EditorModel + EditorModule (state, model, component)
+│   │   ├── VPlayer.tsx            # Video playback component (video.js + hls.js)
+│   │   ├── NodeFetchHlsLoader.ts  # Custom hls.js loader via nodeFetch (bypass forbidden headers)
+│   │   └── video-types.ts         # VideoFormat, PlayerState, detectVideoFormat()
 │   ├── category/           # Category/folder view (standalone, provider-agnostic)
 │   │   ├── CategoryEditor.tsx             # Wraps CategoryView, resolves provider from secondary editors
 │   │   ├── CategoryEditorModel.ts         # Page model — decodes tree-category:// link
@@ -530,6 +535,8 @@ persephone/
 ├── worker-host.ts          # Worker thread host for app.runAsync (IPC + worker_threads)
 ├── snip-service.ts         # Screen snip (spawns persephone-snip.exe, reads PNG from stdout)
 ├── version-service.ts      # Version checking (runs in main, not renderer)
+├── video-stream-server.ts  # Local HTTP streaming server (range requests, faststart MP4 relocation, session management)
+├── vlc-launcher.ts         # VLC process launcher (spawn + auto-detect VLC path)
 ├── tray-setup.ts           # System tray
 ├── drag-model.ts           # Tab drag between windows
 ├── e-store.ts              # Electron store wrapper

@@ -27,6 +27,11 @@ export class FileProvider implements IProvider {
         return nodefs.promises.readFile(this.filePath);
     }
 
+    createReadStream(range?: { start: number; end: number }): NodeJS.ReadableStream {
+        const options = range ? { start: range.start, end: range.end } : undefined;
+        return nodefs.createReadStream(this.filePath, options);
+    }
+
     async writeBinary(data: Buffer): Promise<void> {
         await nodefs.promises.writeFile(this.filePath, data);
     }

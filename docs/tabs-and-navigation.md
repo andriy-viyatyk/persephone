@@ -165,7 +165,7 @@ The **Tools & Editors** entry appears between Recent Files and Script Library. I
 
 Click any item to create a new page with that editor. Pinned editors are saved in settings (`pinned-editors`) and persist across restarts. The default pinned set is: Script (JS), Script (TS), Drawing, Grid (JSON), Grid (CSV), Browser.
 
-Items include all standard editors (Script, Grid, Notebook, Todo, Links, Drawing, Force Graph, Browser) as well as MCP Inspector and individual browser profiles (Incognito and named profiles).
+Items include all standard editors (Script, Grid, Notebook, Todo, Links, Drawing, Force Graph, Browser, Video Player) as well as MCP Inspector and individual browser profiles (Incognito and named profiles).
 
 ### Script Library
 

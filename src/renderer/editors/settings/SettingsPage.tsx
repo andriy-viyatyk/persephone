@@ -378,7 +378,7 @@ const SettingsEditorRoot = styled.div({
         },
     },
 
-    "& .tor-field-label": {
+    "& .settings-field-label": {
         fontSize: 11,
         color: color.text.dark,
         minWidth: 42,
@@ -660,6 +660,14 @@ function BookmarksFileLine({ filePath, onBrowse, onClear }: {
     );
 }
 
+async function browseVlcExe(): Promise<string | undefined> {
+    const result = await api.showOpenFileDialog({
+        title: "Select vlc.exe",
+        filters: [{ name: "Executable Files", extensions: ["exe"] }],
+    });
+    return result?.[0];
+}
+
 async function browseTorExe(): Promise<string | undefined> {
     const result = await api.showOpenFileDialog({
         title: "Select tor.exe",
@@ -720,7 +728,7 @@ function TorProfileRow() {
                 <span className="profile-name">Tor</span>
             </div>
             <div className="profile-bookmarks-line">
-                <span className="tor-field-label">tor.exe:</span>
+                <span className="settings-field-label">tor.exe:</span>
                 {torExeFilename ? (
                     <span className="profile-bookmarks-path" title={torExePath} onClick={handleBrowseTorExe}>
                         {torExeFilename}
@@ -735,7 +743,7 @@ function TorProfileRow() {
                 )}
             </div>
             <div className="profile-bookmarks-line">
-                <span className="tor-field-label">Port:</span>
+                <span className="settings-field-label">Port:</span>
                 <input
                     className="tor-port-input"
                     type="text"
@@ -1289,6 +1297,98 @@ function DrawingLibrarySection() {
 }
 
 // ============================================================================
+// Video Player Section
+// ============================================================================
+
+function VideoPlayerSection() {
+    const vlcPath = settings.use("vlc-path");
+    const videoStreamPort = settings.use("video-stream.port");
+    const [portValue, setPortValue] = useState(String(videoStreamPort));
+
+    useEffect(() => {
+        setPortValue(String(videoStreamPort));
+    }, [videoStreamPort]);
+
+    const handleBrowseVlc = async () => {
+        const filePath = await browseVlcExe();
+        if (filePath) {
+            settings.set("vlc-path", filePath);
+        }
+    };
+
+    const handleClearVlc = () => {
+        settings.set("vlc-path", "");
+    };
+
+    const handlePortBlur = () => {
+        const num = parseInt(portValue, 10);
+        if (num >= 1024 && num <= 65535) {
+            settings.set("video-stream.port", num);
+        } else {
+            setPortValue(String(videoStreamPort));
+        }
+    };
+
+    const handlePortKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === "Enter") {
+            (e.target as HTMLInputElement).blur();
+        }
+    };
+
+    const vlcFilename = vlcPath ? fpBasename(vlcPath) : "";
+
+    return (
+        <>
+            <div className="section-label">Video Player</div>
+            <div className="section-hint">
+                VLC integration and local video streaming server settings
+            </div>
+            <div className="profile-row-group">
+                <div className="profile-bookmarks-line">
+                    <span className="settings-field-label">vlc.exe:</span>
+                    {vlcFilename ? (
+                        <span
+                            className="profile-bookmarks-path"
+                            title={vlcPath}
+                            onClick={handleBrowseVlc}
+                        >
+                            {vlcFilename}
+                        </span>
+                    ) : (
+                        <span
+                            className="profile-bookmarks-placeholder"
+                            onClick={handleBrowseVlc}
+                        >
+                            Auto-detect
+                        </span>
+                    )}
+                    {vlcFilename && (
+                        <button
+                            className="profile-bookmarks-clear"
+                            onClick={handleClearVlc}
+                            title="Remove VLC path"
+                        >
+                            ×
+                        </button>
+                    )}
+                </div>
+                <div className="profile-bookmarks-line">
+                    <span className="settings-field-label">Stream port:</span>
+                    <input
+                        className="tor-port-input"
+                        type="text"
+                        value={portValue}
+                        onChange={(e) => setPortValue(e.target.value)}
+                        onBlur={handlePortBlur}
+                        onKeyDown={handlePortKeyDown}
+                    />
+                </div>
+            </div>
+        </>
+    );
+}
+
+// ============================================================================
 // SettingsPage Component
 // ============================================================================
 
@@ -1402,6 +1502,10 @@ function SettingsPage({ model }: SettingsEditorProps) {
                 <hr className="divider" />
 
                 <DrawingLibrarySection />
+
+                <hr className="divider" />
+
+                <VideoPlayerSection />
 
                 <hr className="divider" />
 

@@ -57,6 +57,45 @@ export class HttpProvider implements IProvider {
         return this._cachedBuffer;
     }
 
+    createReadStream(range?: { start: number; end: number }): NodeJS.ReadableStream {
+        const { PassThrough } = require("stream") as typeof import("stream");
+        const passThrough = new PassThrough();
+
+        const headers: Record<string, string> = { ...this.headers };
+        if (range) {
+            headers["Range"] = `bytes=${range.start}-${range.end}`;
+        }
+
+        import("../../api/node-fetch")
+            .then(({ nodeFetch }) => nodeFetch(this.url, { method: this.method, headers }))
+            .then((response) => {
+                if (!response.ok && response.status !== 206) {
+                    passThrough.destroy(
+                        new Error(`HTTP ${response.status}: ${response.statusText}`),
+                    );
+                    return;
+                }
+                if (!response.body) {
+                    passThrough.end();
+                    return;
+                }
+                const reader = response.body.getReader();
+                const pump = (): void => {
+                    reader.read().then(({ done, value }) => {
+                        if (done) {
+                            passThrough.end();
+                            return;
+                        }
+                        passThrough.write(Buffer.from(value), () => pump());
+                    }).catch((err) => passThrough.destroy(err));
+                };
+                pump();
+            })
+            .catch((err) => passThrough.destroy(err));
+
+        return passThrough;
+    }
+
     toDescriptor(): IProviderDescriptor {
         return {
             type: "http",

@@ -8,14 +8,6 @@ Overview of all active and planned epics and tasks.
 
 ## Active
 
-- **EPIC-024** — [Video Player Editor](epics/EPIC-024.md)
-  - [ ] US-412: Video player standalone editor — model, registration, UI shell
-  - [ ] US-413: Video playback component (video.js + hls.js)
-  - [ ] US-414: URL input with cURL parsing and format detection
-  - [ ] US-415: IProvider streaming extension (readStream + range support)
-  - [ ] US-416: Local video streaming server for VLC and proxied sources
-  - [ ] US-417: VLC integration — settings and launch
-
 ## Planned
 
 - **EPIC-022** — [LinkEditor Embedded Scripts](epics/EPIC-022.md)

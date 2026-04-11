@@ -65,6 +65,7 @@ export const abyss: ThemeDefinition = {
         "--color-misc-green": "#22aa44",
         "--color-misc-red": "#ff4444",
         "--color-misc-yellow": "#ddbb88",
+        "--color-misc-vlc": "#ff8800",
 
         // error
         "--color-error-bg": "#000c18",

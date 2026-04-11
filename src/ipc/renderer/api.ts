@@ -7,6 +7,8 @@ import {
     RuntimeVersions,
     SaveFileDialogParams,
     UpdateCheckResult,
+    VideoStreamSessionConfig,
+    VideoStreamSessionResult,
 } from "../api-param-types";
 import { Api, Endpoint, McpStatus } from "../api-types";
 
@@ -223,6 +225,22 @@ class ApiCalls implements Api {
     startScreenSnip = async (): Promise<string | null> => {
         return executeOnce<string | null>(Endpoint.startScreenSnip);
     }
+
+    createVideoStreamSession = async (config: VideoStreamSessionConfig, port?: number) => {
+        return executeOnce<VideoStreamSessionResult>(Endpoint.createVideoStreamSession, config, port);
+    };
+
+    deleteVideoStreamSession = async (sessionId: string) => {
+        return executeOnce<void>(Endpoint.deleteVideoStreamSession, sessionId);
+    };
+
+    deleteVideoStreamSessionsByPage = async (pageId: string) => {
+        return executeOnce<void>(Endpoint.deleteVideoStreamSessionsByPage, pageId);
+    };
+
+    openInVlc = async (url: string, vlcPath?: string) => {
+        return executeOnce<void>(Endpoint.openInVlc, url, vlcPath);
+    };
 }
 
 export const api = new ApiCalls();

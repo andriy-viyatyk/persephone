@@ -9,7 +9,7 @@ persephone is a Windows Notepad replacement designed for developers. It combines
 - **Monaco Editor** - The same editor that powers VS Code
 - **Syntax Highlighting** - 50+ programming languages
 - **JavaScript & TypeScript Execution** - Run scripts to transform content
-- **Multiple Editors** - Grid view for JSON/CSV, Markdown preview, Drawing canvas, Rest Client, PDF viewer, and more
+- **Multiple Editors** - Grid view for JSON/CSV, Markdown preview, Drawing canvas, Rest Client, PDF viewer, Video Player, and more
 - **Tab Management** - Multiple files with drag-and-drop, grouping, and compare
 
 ## Quick Start

@@ -146,7 +146,7 @@ See [state-management.md](./state-management.md).
 
 See [editors.md](./editors.md).
 
-- All editors in `/editors/` — 16 editor folders
+- All editors in `/editors/` — 17 editor folders
 - Two categories: **content-views** (share TextFileModel) and **page-editors** (standalone)
 - `EditorModel` base class for state, `ContentViewModel` for view state
 - Dynamic loading via `import()` for code splitting

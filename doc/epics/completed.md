@@ -4,6 +4,17 @@ Last 10 completed epics, newest first. Older epics are pruned.
 
 ---
 
+## EPIC-024 — [Video Player Editor](EPIC-024.md)
+
+- [x] US-412: Video player standalone editor — model, registration, UI shell
+- [x] US-413: Video playback component (video.js + hls.js)
+- [x] US-414: URL input with cURL parsing and format detection
+- [x] US-415: IProvider streaming extension (readStream + range support)
+- [x] US-416: Local video streaming server for VLC and proxied sources
+- [x] US-417: VLC integration — settings and launch
+
+---
+
 ## EPIC-023 — [Unified ILinkData Pipeline](EPIC-023.md)
 
 - [x] US-404: Define `ILinkData` interface and helper functions

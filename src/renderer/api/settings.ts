@@ -37,7 +37,9 @@ export type AppSettingsKey =
     | "pinned-editors"
     | "tor.exe-path"
     | "tor.socks-port"
-    | "tor.bookmarks-file";
+    | "tor.bookmarks-file"
+    | "vlc-path"
+    | "video-stream.port";
 
 // =============================================================================
 // State
@@ -65,6 +67,8 @@ const settingsComments: Partial<Record<AppSettingsKey, string>> = {
     "tor.exe-path": "Path to tor.exe. Required for Browser (Tor) mode.\nDownload the Tor Expert Bundle or find tor.exe in your Tor Browser installation folder.",
     "tor.socks-port": "SOCKS proxy port for Tor.\nDefault: 9050. Change if port 9050 is already in use.",
     "tor.bookmarks-file": "Path to the .link.json bookmarks file for Browser (Tor) mode.",
+    "vlc-path": "Path to VLC executable.\nLeave empty to auto-detect C:\\Program Files\\VideoLAN\\VLC\\vlc.exe.",
+    "video-stream.port": "Port for the local video streaming server.\nUsed by the video player for VLC integration and proxied HTTP sources. Default: 7866.",
 };
 
 const defaultAppSettingsState = {
@@ -87,6 +91,8 @@ const defaultAppSettingsState = {
         "tor.exe-path": "",
         "tor.socks-port": 9050,
         "tor.bookmarks-file": "",
+        "vlc-path": "",
+        "video-stream.port": 7866,
     },
 };
 

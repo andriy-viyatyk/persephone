@@ -64,6 +64,7 @@ export const quietLight: ThemeDefinition = {
         "--color-misc-green": "#50A14F",
         "--color-misc-red": "#E45649",
         "--color-misc-yellow": "#C18401",
+        "--color-misc-vlc": "#ff8800",
 
         // error
         "--color-error-bg": "#F5F5F5",

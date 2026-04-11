@@ -66,6 +66,41 @@ For `.pdf` files — opens automatically:
 - Text search within PDF
 - Read-only view
 
+## Video Player
+
+For video files (`.mp4`, `.webm`, `.ogg`, `.m3u8`, `.m3u`) — opens automatically. Also available as a standalone page via the **+** dropdown → **Video Player**.
+
+**Opening a video:**
+- Paste a file path, HTTPS URL, or HLS/M3U8 stream URL into the URL bar at the top and press **Enter** to start playback.
+- Paste a full **cURL** or **fetch** command (any format) to play a stream that requires custom HTTP headers (e.g., `Authorization`, `Origin`, `Referer`). The parser reuses the same cURL engine as the [Open URL dialog](./getting-started.md) and Rest Client.
+- For local file paths: type or paste the absolute path (e.g., `C:\Videos\movie.mp4`) and press **Enter**.
+
+**Supported sources:**
+| Source | How it plays |
+|--------|-------------|
+| Local MP4/WebM/OGG file | Routed through the local streaming server — smooth seeking for large files |
+| HTTPS URL to MP4/WebM | Routed through the local streaming server — forwards Range requests to the origin |
+| HLS/M3U8 stream | Played directly by hls.js; uses Node.js HTTP (bypassing Chromium restrictions) when custom headers are present |
+
+**Player controls:**
+- Standard video controls: play/pause, seek bar, volume, fullscreen
+- **Mute button** on the tab — toggle audio without opening the player
+- Mute state is remembered across Video Player instances within the same session
+
+**State badge:** When the player is loading, in an error state, or the format is unsupported, a badge at the bottom of the player area shows the current state.
+
+**VLC integration:**
+- When the built-in player cannot play a file (error or unsupported format), an **Open in VLC** button appears.
+- All sources — including HTTP with custom headers — are served through the local streaming server, so VLC always receives a plain `http://127.0.0.1:PORT/...` URL.
+- Configure VLC in **Settings → Video Player → vlc.exe**. Leave empty to auto-detect from the default installation path (`C:\Program Files\VideoLAN\VLC\vlc.exe`).
+
+**Settings (Video Player section in Settings):**
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `vlc-path` | *(auto-detect)* | Full path to `vlc.exe`. Leave empty to auto-detect. |
+| `video-stream.port` | `7866` | Port for the local HTTP streaming server. Change if `7866` is in use. |
+
 ## Image Viewer
 
 For image files (`.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`, `.bmp`, `.ico`) — opens automatically:
@@ -415,6 +450,7 @@ Some files support multiple editors:
 | `.zip`, `.docx`, `.xlsx`, etc. | Archive Editor |
 | `.asar` | Archive Editor (read-only) |
 | `.pdf` | PDF only |
+| `.mp4`, `.webm`, `.ogg`, `.m3u8`, `.m3u` | Video Player only |
 | Images | Image Viewer only |
 | Other | Text only |
 

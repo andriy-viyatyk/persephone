@@ -136,6 +136,12 @@ export function registerResolvers(): void {
         ".ico": { editor: "image-view" },
         // PDF → PDF viewer
         ".pdf": { editor: "pdf-view" },
+        // Video → Video Player
+        ".mp4": { editor: "video-view" },
+        ".webm": { editor: "video-view" },
+        ".ogg": { editor: "video-view" },
+        ".m3u8": { editor: "video-view" },
+        ".m3u": { editor: "video-view" },
     };
 
     app.events.openLink.subscribe(async (data) => {

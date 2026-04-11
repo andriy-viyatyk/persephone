@@ -595,6 +595,23 @@ editorRegistry.register({
     },
 });
 
+// Video player (standalone page editor)
+editorRegistry.register({
+    id: "video-view",
+    name: "Video Player",
+    editorType: "videoPage",
+    category: "standalone",
+    acceptFile: (fileName) => {
+        const videoExtensions = [".mp4", ".webm", ".ogg", ".m3u8", ".m3u"];
+        if (matchesExtension(fileName, videoExtensions)) return 100;
+        return -1;
+    },
+    loadModule: async () => {
+        const module = await import("./video/VideoPlayerEditor");
+        return module.default;
+    },
+});
+
 // MCP Inspector (standalone page editor — no file association)
 editorRegistry.register({
     id: "mcp-view",

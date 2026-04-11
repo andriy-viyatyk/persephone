@@ -8,6 +8,17 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ## Version 3.0.4 (Upcoming)
 
+### New Features
+
+- **Video Player** — A new standalone Video Player editor lets you play video from local files, HTTPS URLs, and HLS/M3U8 adaptive streams. Paste a plain URL or a full cURL/fetch command (with custom headers) into the URL bar and press **Enter** to start playback. The player automatically routes all sources through a local HTTP streaming server for smooth seeking and range request support. A **VLC** button appears when the built-in player cannot play a file — click it to open the current source in VLC. Configure the VLC path and streaming server port in **Settings → Video Player**.
+
+  Supported formats: MP4, WebM, OGG/Ogg, HLS/M3U8 adaptive streams.
+  File associations: `.mp4`, `.webm`, `.ogg`, `.m3u8`, `.m3u` files open directly in the Video Player.
+
+  Open a new Video Player tab from the **+** dropdown → **Video Player** (if pinned), or from the **Tools & Editors** panel.
+
+  See **[Video Player](./editors.md#video-player)** for complete documentation.
+
 ### Improvements
 
 - **Link Editor: Target field** — The Add/Edit Link dialog now has a **Target** dropdown. Set a target editor for any link item so it always opens in the right viewer — Text Editor, Browser, PDF Viewer, Image Viewer, Markdown Preview, HTML Preview, SVG Preview, JSON Grid, or CSV Grid. Leave it as **(auto-detect)** to use the default behavior (detect by file extension or content type).

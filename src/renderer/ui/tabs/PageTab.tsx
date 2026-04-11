@@ -138,7 +138,7 @@ const PageTabRoot = styled.div({
         flexShrink: 0,
         "&.withIcon": {
             width: 15,
-            margin: "0 2px 0 4px",
+            margin: "0 4px 0 4px",
             "& svg, & img": {
                 width: 15,
                 height: 15,
