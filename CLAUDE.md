@@ -105,18 +105,40 @@ The goal: after `/compact`, the agent reads the task README.md and can implement
 
 **Do NOT run completion steps automatically after implementation.** After implementation, the user will test the changes manually. During testing, bugs or adjustments may appear that require additional code changes. Only when the user explicitly says **"let's complete the task"** (or similar) should you proceed with the completion steps below.
 
+#### Standalone tasks (no epic)
+
 1. Verify all acceptance criteria are met
 2. **Run `/review`** — validates code against architecture docs, reports concerns
 3. **Run `/document`** — updates developer docs in `/doc/` (architecture, standards, CLAUDE.md)
 4. **Run `/userdoc`** — updates user docs in `/docs/` (guides, API reference, what's new)
 5. **Update the dashboard** [/doc/active-work.md](doc/active-work.md):
    - Mark task `[x]` in the Active section
-   - If standalone task (no epic): move to [/doc/tasks/completed.md](doc/tasks/completed.md) and remove from dashboard
-   - If epic task: leave `[x]` in dashboard until epic completes
-6. **When epic completes**: move entire epic block (with tasks) to [/doc/epics/completed.md](doc/epics/completed.md) and remove from dashboard
-7. **Task folder cleanup** (if one exists): **ask user for confirmation** before deleting.
+   - Move to [/doc/tasks/completed.md](doc/tasks/completed.md) and remove from dashboard
+6. **Task folder cleanup** (if one exists): **ask user for confirmation** before deleting.
 
-**Steps 2-4 are mandatory.** Only skip if the user explicitly says to skip them.
+Steps 2-4 are mandatory. Only skip if the user explicitly says to.
+
+#### Epic tasks — deferred review model
+
+Review and docs updates (`/review`, `/document`, `/userdoc`) are **scoped to the epic, not individual tasks**. This avoids redundant reviews when later tasks touch the same code.
+
+**When a task within an epic is completed:**
+1. Verify acceptance criteria are met
+2. Keep task as `[ ]` (unchecked) in [/doc/active-work.md](doc/active-work.md) — it stays "in progress" on the dashboard
+3. Do NOT run `/review`, `/document`, `/userdoc` unless the user explicitly asks
+
+**When the user explicitly requests review during epic work:**
+The user may say "review done tasks" or "run review for completed tasks" at any point. When they do:
+1. Run `/review`, `/document`, `/userdoc` covering all implemented-but-unreviewed tasks
+2. Mark those tasks `[x]` in the dashboard
+
+**When completing the epic:**
+1. If unreviewed tasks remain — run `/review`, `/document`, `/userdoc` for them first, then mark `[x]`
+2. If all tasks are already `[x]` — no additional review needed
+3. Move entire epic block (with tasks) to [/doc/epics/completed.md](doc/epics/completed.md) and remove from dashboard
+4. **Task folder cleanup** (if any exist): **ask user for confirmation** before deleting
+
+**Summary:** `[ ]` = implemented but unreviewed. `[x]` = reviewed and done. Review is mandatory before an epic can close.
 
 ## Documentation Map
 
