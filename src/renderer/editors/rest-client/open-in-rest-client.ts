@@ -41,7 +41,7 @@ export async function openInRestClient(
         }
     }
 
-    const data: RestClientData = {
+    const restClientData: RestClientData = {
         type: "rest-client",
         requests: [request],
     };
@@ -50,7 +50,7 @@ export async function openInRestClient(
         "rest-client",
         "json",
         restClientTitle(url),
-        JSON.stringify(data, null, 4),
+        JSON.stringify(restClientData, null, 4),
     );
 }
 
