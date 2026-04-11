@@ -88,7 +88,7 @@ Becomes a pure layout container:
 
 Each secondary editor reacts to `onMainEditorChanged(newMainEditor)` and manages its own highlighting:
 - `ExplorerEditorModel` — highlights file in tree if mainEditor has a local file path
-- `ZipEditorModel` — highlights entry if mainEditor was opened from this archive (via `sourceLink.metadata.sourceId`)
+- `ZipEditorModel` — highlights entry if mainEditor was opened from this archive (via `sourceLink.sourceId`)
 - Future editors — same pattern
 
 No shared `selectionState` on PageModel.

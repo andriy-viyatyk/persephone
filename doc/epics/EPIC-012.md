@@ -5,6 +5,8 @@
 **Created:** 2026-03-24
 
 > **Note:** This is a design document. The core pipeline (providers, transformers, pipes, 3-layer link pipeline) is implemented. Some items described below are **not yet implemented** and marked accordingly: `BufferProvider`, `GunzipTransformer`, `EncodingTransformer`, `ITreeProvider` (FileSystemTreeProvider, ZipTreeProvider), `io.tree.d.ts`. Encoding is handled directly by `ContentPipe` (not via a transformer).
+>
+> **Historical note (EPIC-023):** The event types described in this document (`IRawLinkEvent`, `IOpenLinkEvent`, `IOpenContentEvent`, `ILinkMetadata`) were replaced by a unified `ILinkData` type in EPIC-023. All three pipeline channels now carry `ILinkData`. See [EPIC-023](EPIC-023.md) for details.
 
 ## Goal
 

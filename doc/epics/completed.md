@@ -4,6 +4,19 @@ Last 10 completed epics, newest first. Older epics are pruned.
 
 ---
 
+## EPIC-023 — [Unified ILinkData Pipeline](EPIC-023.md)
+
+- [x] US-404: Define `ILinkData` interface and helper functions
+- [x] US-405: Loosen EventChannel constraint and consolidate link pipeline events
+- [x] US-406: Refactor Layer 1 parsers to use ILinkData
+- [x] US-407: Refactor Layer 2 resolvers to use ILinkData
+- [x] US-408: Refactor Layer 3 open handler and replace ISourceLink
+- [x] US-409: Update all pipeline callers to use createLinkData / linkToLinkData
+- [x] US-410: Update script API types, IoNamespace, and editor-types
+- [x] US-411: Update architecture documentation
+
+---
+
 ## EPIC-021 — [Browser Automation API (Lightweight RPA)](EPIC-021.md)
 
 - [x] US-365: CDP integration (Electron debugger API)

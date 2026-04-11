@@ -77,7 +77,7 @@ export class ArchiveEditorModel extends EditorModel<ArchiveEditorModelState> {
 
     /**
      * Navigation survival: keep this model as secondary editor if the new page
-     * was opened from this archive (sourceLink.metadata.sourceId matches).
+     * was opened from this archive (sourceLink.sourceId matches).
      */
     beforeNavigateAway(newModel: EditorModel): void {
         if (this._isOpenedFromThisArchive(newModel)) return;
@@ -114,9 +114,7 @@ export class ArchiveEditorModel extends EditorModel<ArchiveEditorModelState> {
 
     /** Check if a model was opened from this archive via sourceLink. */
     private _isOpenedFromThisArchive(model: EditorModel): boolean {
-        const sl = model.state.get().sourceLink;
-        // Support both new format (sourceId top-level) and legacy persisted format (in metadata)
-        return (sl?.sourceId ?? (sl as any)?.metadata?.sourceId) === this.id; // eslint-disable-line @typescript-eslint/no-explicit-any
+        return model.state.get().sourceLink?.sourceId === this.id;
     }
 
     async dispose(): Promise<void> {

@@ -2,8 +2,9 @@
 
 ## Status
 
-**Status:** Planned
+**Status:** Done
 **Created:** 2026-04-10
+**Completed:** 2026-04-11
 **Priority:** High — must be completed before EPIC-022 (LinkEditor Embedded Scripts)
 
 ## Overview
@@ -427,7 +428,7 @@ await app.events.openRawLink.sendAsync(io.createLinkData("https://example.com", 
 | US-408 | Refactor Layer 3 open handler and replace ISourceLink (remove deprecated alias) | Done |
 | US-409 | Update all pipeline callers to use createLinkData / linkToLinkData | Done |
 | US-410 | Update script API types, IoNamespace, and editor-types | Done |
-| US-411 | Update architecture documentation | Planned |
+| US-411 | Update architecture documentation | Done |
 
 ## Resolved Concerns
 

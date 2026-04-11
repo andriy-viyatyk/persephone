@@ -8,19 +8,16 @@ Overview of all active and planned epics and tasks.
 
 ## Active
 
-- **EPIC-023** — [Unified ILinkData Pipeline](epics/EPIC-023.md) *(prerequisite for EPIC-022)*
-  - [x] [US-404: Define `ILinkData` interface and helper functions](tasks/US-404-link-data-interface/README.md)
-  - [x] [US-405: Loosen EventChannel constraint and consolidate link pipeline events](tasks/US-405-event-channel-constraint/README.md)
-  - [x] [US-406: Refactor Layer 1 parsers to use ILinkData](tasks/US-406-refactor-parsers-ilinkdata/README.md)
-  - [x] [US-407: Refactor Layer 2 resolvers to use ILinkData](tasks/US-407-refactor-resolvers-ilinkdata/README.md)
-  - [x] [US-408: Refactor Layer 3 open handler and replace ISourceLink](tasks/US-408-replace-isourcelink/README.md)
-  - [x] [US-409: Update all pipeline callers to use createLinkData / linkToLinkData](tasks/US-409-migrate-callers-createLinkData/README.md)
-  - [x] [US-410: Update script API types, IoNamespace, and editor-types](tasks/US-410-script-api-types/README.md)
+- **EPIC-024** — [Video Player Editor](epics/EPIC-024.md)
+  - [ ] US-412: Video player standalone editor — model, registration, UI shell
+  - [ ] US-413: Video playback component (video.js + hls.js)
+  - [ ] US-414: URL input with cURL parsing and format detection
+  - [ ] US-415: IProvider streaming extension (readStream + range support)
+  - [ ] US-416: Local video streaming server for VLC and proxied sources
+  - [ ] US-417: VLC integration — settings and launch
 
 ## Planned
 
-- **EPIC-023** *(continued)*
-  - [ ] US-411: Update architecture documentation
 - **EPIC-022** — [LinkEditor Embedded Scripts](epics/EPIC-022.md)
   - [ ] US-396: Data model — `LinkScriptItem` type and `scripts` field in `LinkEditorData`
   - [ ] US-397: ScriptRunner — `runWithScope()` for custom context variable injection

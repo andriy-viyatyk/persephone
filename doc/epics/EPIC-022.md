@@ -4,6 +4,7 @@
 
 **Status:** Planned
 **Created:** 2026-04-10
+**Updated:** 2026-04-11
 
 ## Overview
 
@@ -100,17 +101,17 @@ Fires in `openLink()` before the URL is sent to `app.events.openRawLink`.
 
 | Context variable | Type | Description |
 |---|---|---|
-| `openingLink` | `{ link: LinkItem, rawUrl: string, target?: string, metadata: ILinkMetadata }` (mutable) | The link being opened. Script can modify `rawUrl`, `target`, `metadata` |
+| `openingLink` | `ILinkData` (mutable) | The link being opened. Script can modify `href`, `target`, `browserMode`, etc. All original ILink fields (title, category, tags) are preserved. |
 | `linkEditor` | `LinkViewModel` | The LinkEditor model |
 
 **Hostname filtering:** Only scripts where `hostname` is empty OR matches `getHostname(link.href)` are executed.
 
 **Execution flow:**
-1. `openLink()` builds the `data` object (rawUrl, target, metadata)
+1. `openLink()` builds the `ILinkData` object — must use `linkToLinkData(link)` for full ILink inputs to preserve all metadata (title, category, tags, etc.), or `createLinkData(href, { target })` for simple `{href, target}` inputs (see concern C9)
 2. `onLinkOpen?.()` callback runs (Browser editor hook)
 3. Collect all enabled scripts with `event === "beforeLinkOpen"` and matching hostname
 4. Execute each matching script sequentially, passing context
-5. Use the (possibly modified) `openingLink` data to fire `openRawLink`
+5. Use the (possibly modified) `openingLink` ILinkData to fire `openRawLink`
 
 ### Custom Script Context Injection
 
@@ -194,17 +195,19 @@ class LinkEditorScriptProvider implements IProvider {
 - Provider does NOT implement `watch()` — one-way data flow: Monaco → LinkViewModel only. Once a script is opened in Monaco, its content in Monaco does not update from LinkEditor changes. Saving from Monaco overwrites the script in LinkEditor regardless of its current state.
 
 **Resolver registration:**
-Register a new Layer 2 resolver that handles `link-editor-script://` URLs:
+Register a new Layer 2 resolver that handles `link-editor-script://` URLs. After EPIC-023, all three link pipeline channels (`openRawLink`, `openLink`, `openContent`) carry `ILinkData` directly. The resolver subscribes to `openLink` (Layer 2) and enriches the same `ILinkData` object:
 
 ```typescript
 // In resolvers.ts or a new link-editor-script-resolver.ts
-app.events.openLink.subscribe(async (event) => {
-    if (!event.url.startsWith("link-editor-script://")) return;
+app.events.openLink.subscribe(async (data) => {
+    const url = data.url ?? data.href;
+    if (!url.startsWith("link-editor-script://")) return;
     
-    const [pageId, scriptId] = event.url.slice("link-editor-script://".length).split("/");
+    const [pageId, scriptId] = url.slice("link-editor-script://".length).split("/");
     const page = pagesModel.findPage(pageId);
     if (!page?.mainEditor) return;
     
+    // TextFileModel implements IContentHost — acquireViewModelSync returns cached LinkViewModel
     const linkVm = (page.mainEditor as TextFileModel).acquireViewModelSync("link-editor") as LinkViewModel;
     if (!linkVm) return;
     
@@ -212,28 +215,41 @@ app.events.openLink.subscribe(async (event) => {
     const script = linkVm.getScriptById(scriptId);
     const pipe = new ContentPipe(provider);
     
-    await app.events.openContent.sendAsync(
-        new OpenContentEvent(pipe, "monaco", {
-            title: script?.name,
-            // language is determined by file extension in displayName
-        }),
-    );
-    event.handled = true;
+    // Enrich the same ILinkData object (EPIC-023 pattern)
+    data.target = "monaco";
+    data.title = script?.name;
+    data.pipe = pipe;
+    data.pipeDescriptor = pipe.toDescriptor();
+    
+    // Forward to Layer 3, then mark handled
+    data.handled = false;
+    await app.events.openContent.sendAsync(data);
+    data.handled = true;
 });
 ```
 
 **Provider registry:**
-Register a factory for descriptor restoration (even though `restorable: false`, the registry needs the type for pipe creation):
+Register a factory for descriptor restoration. Since `restorable: false`, this only serves as a fallback if a persisted pipe descriptor references this type (e.g., across restart). It returns a minimal stub:
 
 ```typescript
 // In registry.ts
 registerProvider("link-editor-script", (config) => {
-    // Non-restorable — return a stub that yields empty content
-    return new BufferProvider(Buffer.alloc(0), {
+    // Non-restorable — return a read-only stub that yields empty content.
+    // No BufferProvider exists in codebase; use an inline object implementing IProvider.
+    const sourceUrl = `link-editor-script://${config.pageId}/${config.scriptId}`;
+    return {
         type: "link-editor-script",
-        sourceUrl: `link-editor-script://${config.pageId}/${config.scriptId}`,
+        restorable: false,
+        writable: false,
+        sourceUrl,
         displayName: "Script (disconnected)",
-    });
+        readBinary: async () => Buffer.alloc(0),
+        writeBinary: async () => { throw new Error("Provider is read-only (disconnected)"); },
+        toDescriptor: () => ({
+            type: "link-editor-script",
+            config: { pageId: config.pageId, scriptId: config.scriptId },
+        }),
+    } as IProvider;
 });
 ```
 
@@ -273,7 +289,15 @@ A new dialog (similar to `EditLinkDialog`) with fields:
 | US-400 | Scripts panel UI: collapsible panel with tree view in LinkEditor | Planned |
 | US-401 | Add/Edit Script dialog | Planned |
 | US-402 | Script execution engine: event matching and execution in LinkViewModel | Planned |
-| US-403 | Script types and facade for script API (`io.events.d.ts`, `link-editor.d.ts`) | Planned |
+| US-403 | Script types and facade for script API (`io.link-data.d.ts`, `link-editor.d.ts`) | Planned |
+
+## Open Concerns (post-EPIC-023 review)
+
+| # | Concern | Details |
+|---|---------|---------|
+| C9 | `openLink()` loses ILink data | Current `LinkViewModel.openLink()` (line 746) uses `createLinkData(url, { target })` — only preserves `href` and `target`, discards `title`, `category`, `tags`, `imgSrc`, etc. For `beforeLinkOpen` scripts to read link metadata, this must be changed to use `linkToLinkData(link)` when the input is a full ILink. EPIC-023 planned this change but the implementation only used `createLinkData`. **Fix in US-402.** |
+| C10 | `BufferProvider` doesn't exist | EPIC-022 originally referenced `BufferProvider` for the disconnected registry stub, but no such class exists. Use an inline object implementing `IProvider` instead. Updated in doc. |
+| C11 | `ILinkData.url` is optional | After EPIC-023, `ILinkData.url` is `string | undefined` (set by Layer 1 parsers). Resolver code must use `data.url ?? data.href` for null-safe access. Updated in doc. |
 
 ## Resolved Concerns
 
@@ -291,6 +315,16 @@ All concerns reviewed and decided on 2026-04-10:
 | C8 | Dynamic prefix performance | Not a concern — scripts are small (1-2 pages of code). |
 
 ## Notes
+
+### 2026-04-11 — Post-EPIC-023 review
+- EPIC-023 (Unified ILinkData Pipeline) completed — all three link pipeline channels now carry `ILinkData` directly instead of separate event classes
+- Updated resolver code example: subscriber parameter is `ILinkData` (not a wrapper event), use `data.url ?? data.href` for null-safe URL access, enrich the same ILinkData object instead of creating a new one, then forward to `openContent` with `handled` reset pattern
+- Removed `BufferProvider` reference (doesn't exist) — replaced with inline `IProvider` stub for disconnected registry entry
+- Discovered that `LinkViewModel.openLink()` only passes `href` + `target` to `createLinkData()`, losing ILink metadata (title, category, tags). Must fix in US-402 to use `linkToLinkData(link)` when input is a full ILink, so `beforeLinkOpen` scripts have access to all link fields
+- `ILinkData.url` is optional (set by Layer 1 parsers) — all code referencing it needs null-safe access
+- `ScriptContext` class (in `ScriptContext.ts`) needs a new `ctx?: Record<string, unknown>` property — architecture approach unchanged
+- `ScriptRunnerBase.executeInternal()` SCRIPT_PREFIX injection approach confirmed viable — just append `var key=this.ctx.key,...` for each ctx entry
+- Key files verified: `TextFileModel` (TextEditorModel.ts:45), `acquireViewModelSync` (IContentHost.ts:56), `ExpandedPanel` type (LinkViewModel.ts:21), `ContentPipe` constructor, `registerProvider` in registry.ts
 
 ### 2026-04-10
 - Epic created based on user's architectural vision

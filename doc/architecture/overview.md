@@ -189,14 +189,14 @@ Unified content I/O layer in `/src/renderer/content/` that decouples editors fro
 - **IContentPipe** — composes a provider with transformers. Handles encoding detection (`readText()`/`writeText()`).
 - **IPipeDescriptor** — serializable pipe state for persistence across app restarts.
 
-**3-layer open flow:**
-1. **Parsers** (`parsers.ts`): raw string → structured link event (`openRawLink` → `openLink`)
-2. **Resolvers** (`resolvers.ts`): link event → provider + transformers + target editor (`openLink` → `openContent`)
-3. **Open Handler** (`open-handler.ts`): content pipe → page creation with pipe assigned
+**3-layer open flow** (all layers pass a single `ILinkData` object):
+1. **Parsers** (`parsers.ts`): parse raw href, enrich ILinkData (`openRawLink` → `openLink`)
+2. **Resolvers** (`resolvers.ts`): build pipe + resolve target editor (`openLink` → `openContent`)
+3. **Open Handler** (`open-handler.ts`): consume pipe, create page
 
 **Dual pipe pattern:** TextFileIOModel maintains two pipes — primary (source file/URL) and cache (auto-save). Both share the same transformer chain, ensuring cached content has the same format as the source (e.g., encrypted files stay encrypted in cache).
 
-**Script access:** The `io` global namespace exposes providers, transformers, `createPipe()`, and event constructors to scripts.
+**Script access:** The `io` global namespace exposes providers, transformers, `createPipe()`, `createLinkData()`, and `linkToLinkData()` to scripts.
 
 ### 6. Theming System
 

@@ -68,7 +68,7 @@ PageModel
 
 - ArchiveEditorModel sets `this.secondaryEditor = ["archive-tree"]` in `restore()` or `setPage()`
 - When user navigates to a file inside the archive, ArchiveEditorModel becomes a secondary editor:
-  - `beforeNavigateAway(newEditor)` checks `newEditor.sourceLink.metadata.sourceId === this.id`
+  - `beforeNavigateAway(newEditor)` checks `newEditor.sourceLink?.sourceId === this.id`
   - If the new file was opened from this archive → keeps `secondaryEditor` → **survives as secondary**
   - `setMainEditor()` checks `survivesAsSecondary = secondaryEditors.includes(oldEditor)` — if true, old editor is NOT disposed
 - When user navigates to an unrelated file → `beforeNavigateAway()` clears `secondaryEditor` → removed from sidebar → disposed

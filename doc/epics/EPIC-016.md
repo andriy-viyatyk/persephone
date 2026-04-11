@@ -75,7 +75,7 @@ A lifecycle hook gives page models a chance to survive navigation. The new model
 oldModel.beforeNavigateAway(newModel);
 
 // Base PageModel: clears secondaryEditor → removed from secondaryModels[]
-// ZipPageModel override: checks newModel.sourceLink.metadata.sourceId === this.id
+// ArchiveEditorModel override: checks newModel.sourceLink.sourceId === this.id
 //   → match (file opened from this archive): keeps secondaryEditor → stays
 //   → no match (unrelated file): clears secondaryEditor → removed and disposed
 ```
@@ -129,7 +129,7 @@ During navigation (`navigatePageTo`):
 
 | # | Task | Description | Depends on | Status |
 |---|---|---|---|---|
-| 0.1 | [Source link persistence in IPageState](../tasks/US-312-source-link-persistence/README.md) (US-312) | Add `ISourceLink` to `IPageState` storing resolved URL + accumulated metadata. Open handler builds sourceLink and passes to openFile/navigatePageTo. Persisted across restarts. Foundation for `beforeNavigateAway(newModel)` identity checks. | — | Done |
+| 0.1 | [Source link persistence in IPageState](../tasks/US-312-source-link-persistence/README.md) (US-312) | Add `sourceLink` (now `ILinkData`) to `IEditorState` storing resolved URL + accumulated metadata. Open handler builds sourceLink and passes to openFile/navigatePageTo. Persisted across restarts. Foundation for `beforeNavigateAway(newModel)` identity checks. *(Note: `ISourceLink` was replaced by `ILinkData` in EPIC-023.)* | — | Done |
 
 ### Phase 1: Architecture Foundation
 
