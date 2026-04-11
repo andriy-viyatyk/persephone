@@ -6,7 +6,13 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ---
 
-## Version 3.0.4 (Upcoming)
+## Version 3.0.5 (Upcoming)
+
+*No changes yet.*
+
+---
+
+## Version 3.0.4
 
 ### New Features
 
@@ -26,6 +32,8 @@ Release notes and changelog for Persephone (formerly js-notepad).
 - **Link Editor: promote to main editor** — The link category sidebar panel now has a **swap** button in its header. Click it to promote the panel to the main editor (full-page view of the link collection); click it again to demote it back to sidebar-only mode. This makes it easy to manage links from the sidebar without leaving your current main tab.
 
 - **Browser: search engine selector** — The search engine selector in the URL bar is now hidden when the input contains a full URL with a protocol scheme (e.g., `https://`). It still appears for blank pages and search terms, keeping the toolbar uncluttered when navigating directly to URLs.
+
+- **Browser: cinema mode** — Hover over any `<video>` or `<iframe>` in the built-in browser to reveal an expand button. Click it to fill the entire browser viewport with the element, hiding the surrounding page content. Press **Escape** or click the button again to collapse back to the normal view. Works on YouTube, Twitch, and other sites that use overlay-based players.
 
 ### Breaking Changes
 
