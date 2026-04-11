@@ -165,6 +165,7 @@ ui.log("Hello");
       - `.onBookmark` — Before Add/Edit Bookmark dialog → modify title, URL, images, category, tags
     - **[.openRawLink](./events.md#openrawlink)** — Layer 1: parse a raw string (path, URL, cURL) into a structured link
     - **[.openLink](./events.md#openlink)** — Layer 2: resolve a URL into a content pipe
+    - **[.openContent](./events.md#opencontent)** — Layer 3: content pipe + target → open page (subscribe to observe/intercept page opens)
     - All channels support `.subscribe()`, `.send()`, and `.sendAsync()`
   - **[.editors](./editors.md)** — Editor registry
     - `.getAll()` / `.getById(id)` / `.resolve(filePath)` / `.resolveId(filePath)`

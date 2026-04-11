@@ -86,7 +86,11 @@ document.addEventListener("keydown", (e) => {
         e.stopImmediatePropagation();
         ipcRenderer.sendToHost("show-find-bar");
     } else if (e.key === "Escape") {
-        ipcRenderer.sendToHost("hide-find-bar");
+        if (expandedTarget) {
+            exitCinema();
+        } else {
+            ipcRenderer.sendToHost("hide-find-bar");
+        }
     }
 }, true);
 
@@ -118,16 +122,326 @@ document.addEventListener("click", (e) => {
     }
 }, true); // Capture phase: fires before page scripts that may stopPropagation
 
+// ── Cinema Mode — Expand <video>/<iframe> to Full Page ──────────────
+// Detects <video> and <iframe> elements on any page. On hover, shows an
+// expand/collapse button in the top-right corner. Clicking expands the
+// element to fill the entire webview page, hiding other content.
+//
+// Design: button is created on mouseenter and removed on mouseleave.
+// This avoids sites (e.g. YouTube) that clean up unexpected DOM children,
+// and avoids Trusted Types CSP that blocks innerHTML.
+
+type CinemaTarget = HTMLVideoElement | HTMLIFrameElement;
+
+let expandedTarget: CinemaTarget | null = null;
+let expandedOriginalStyle = "";
+let expandedOriginalControls = false;
+let controlsObserver: MutationObserver | null = null;
+let cinemaBtn: HTMLElement | null = null;
+let cinemaBackdrop: HTMLElement | null = null;
+let cinemaAncestors: { el: HTMLElement; css: string }[] = [];
+let hiddenSiblings: { el: HTMLElement; orig: string }[] = [];
+
+const SVG_NS = "http://www.w3.org/2000/svg";
+
+function createSvgIcon(pathD: string): SVGSVGElement {
+    const svg = document.createElementNS(SVG_NS, "svg");
+    svg.setAttribute("width", "18");
+    svg.setAttribute("height", "18");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("fill", "white");
+    const path = document.createElementNS(SVG_NS, "path");
+    path.setAttribute("d", pathD);
+    svg.appendChild(path);
+    return svg;
+}
+
+const EXPAND_PATH =
+    "M3 3h7v2H5v5H3V3zm11 0h7v7h-2V5h-5V3zM3 14h2v5h5v2H3v-7zm18 0v7h-7v-2h5v-5h2z";
+const COLLAPSE_PATH =
+    "M10 3v4H5v2h7V3h-2zm4 0v6h7V7h-5V3h-2zM5 15h5v6h-2v-4H5v-2zm14 0h-5v6h2v-4h5v-2z";
+
+function isDecorativeElement(el: CinemaTarget): boolean {
+    const rect = el.getBoundingClientRect();
+    if (rect.width < 100 || rect.height < 50) return true;
+    if (el instanceof HTMLVideoElement) {
+        if (el.autoplay && el.muted && el.loop) return true;
+    }
+    return false;
+}
+
+function createCinemaBtn(target: CinemaTarget): HTMLElement {
+    const btn = document.createElement("div");
+    btn.style.cssText = [
+        "position:fixed",
+        "width:32px",
+        "height:32px",
+        "background:rgba(0,0,0,0.6)",
+        "border:none",
+        "border-radius:4px",
+        "cursor:pointer",
+        "display:flex",
+        "align-items:center",
+        "justify-content:center",
+        "z-index:2147483647",
+        "pointer-events:auto",
+    ].join(";") + ";";
+
+    const isExpanded = expandedTarget === target;
+    btn.appendChild(createSvgIcon(isExpanded ? COLLAPSE_PATH : EXPAND_PATH));
+    btn.title = isExpanded ? "Exit Cinema Mode" : "Cinema Mode";
+
+    if (isExpanded) {
+        btn.style.top = "8px";
+        btn.style.right = "8px";
+    } else {
+        const rect = target.getBoundingClientRect();
+        // Clamp to viewport so the button doesn't go off-screen
+        // when the element or its container is wider than the viewport
+        const right = Math.min(rect.right, window.innerWidth);
+        btn.style.top = (rect.top + 8) + "px";
+        btn.style.left = (right - 40) + "px";
+    }
+
+    btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (expandedTarget === target) {
+            exitCinema();
+        } else {
+            enterCinema(target);
+        }
+    });
+
+    return btn;
+}
+
+let cinemaBtnScrollHandler: (() => void) | null = null;
+
+function showCinemaBtn(target: CinemaTarget) {
+    if (cinemaBtn) return;
+    cinemaBtn = createCinemaBtn(target);
+    document.body.appendChild(cinemaBtn);
+
+    cinemaBtn.addEventListener("mouseenter", () => {
+        target.dataset.cinemaHover = "1";
+    });
+    cinemaBtn.addEventListener("mouseleave", () => {
+        delete target.dataset.cinemaHover;
+        removeCinemaBtn();
+    });
+
+    // Reposition on scroll so the button follows the target
+    cinemaBtnScrollHandler = () => {
+        if (!cinemaBtn || expandedTarget) return;
+        const rect = target.getBoundingClientRect();
+        const right = Math.min(rect.right, window.innerWidth);
+        cinemaBtn.style.top = (rect.top + 8) + "px";
+        cinemaBtn.style.left = (right - 40) + "px";
+    };
+    window.addEventListener("scroll", cinemaBtnScrollHandler, true);
+}
+
+function removeCinemaBtn() {
+    if (!cinemaBtn) return;
+    if (cinemaBtn.matches(":hover")) return;
+    if (expandedTarget) return;
+    if (cinemaBtnScrollHandler) {
+        window.removeEventListener("scroll", cinemaBtnScrollHandler, true);
+        cinemaBtnScrollHandler = null;
+    }
+    cinemaBtn.remove();
+    cinemaBtn = null;
+}
+
+function attachCinemaListeners(target: CinemaTarget) {
+    if (target.dataset.cinemaReady) return;
+    target.dataset.cinemaReady = "1";
+
+    const tryAttach = () => {
+        if (target.dataset.cinemaAttached) return;
+        if (isDecorativeElement(target)) return;
+        target.dataset.cinemaAttached = "1";
+
+        // Listen on the parent container too — overlay divs (e.g. click handlers)
+        // often sit on top of the video and intercept mouse events.
+        const hoverTarget = target.parentElement || target;
+        hoverTarget.addEventListener("mouseenter", () => {
+            showCinemaBtn(target);
+        });
+        hoverTarget.addEventListener("mouseleave", () => {
+            setTimeout(() => {
+                if (!target.dataset.cinemaHover) removeCinemaBtn();
+            }, 100);
+        });
+    };
+
+    // Defer for elements that may not have dimensions yet
+    if (target instanceof HTMLVideoElement && target.readyState < 1) {
+        target.addEventListener("loadedmetadata", tryAttach, { once: true });
+        setTimeout(tryAttach, 1000);
+        setTimeout(tryAttach, 3000);
+    } else {
+        const rect = target.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0) {
+            tryAttach();
+        } else {
+            setTimeout(tryAttach, 1000);
+            setTimeout(tryAttach, 3000);
+        }
+    }
+}
+
+function enterCinema(target: CinemaTarget) {
+    if (expandedTarget) exitCinema();
+
+    expandedTarget = target;
+    expandedOriginalStyle = target.style.cssText;
+
+    // For <video>: show native controls and keep them on
+    if (target instanceof HTMLVideoElement) {
+        expandedOriginalControls = target.controls;
+        target.controls = true;
+        controlsObserver = new MutationObserver(() => {
+            if (expandedTarget instanceof HTMLVideoElement && !expandedTarget.controls) {
+                expandedTarget.controls = true;
+            }
+        });
+        controlsObserver.observe(target, { attributes: true, attributeFilter: ["controls"] });
+    }
+
+    // Expand the entire ancestor chain to fill the viewport.
+    // Don't touch the target element itself — sites continuously overwrite
+    // its inline styles. Instead, resize the containers and let the site's
+    // own JS resize the content to fit.
+    cinemaAncestors = [];
+    let el: HTMLElement | null = target.parentElement;
+    while (el && el !== document.documentElement) {
+        cinemaAncestors.push({ el, css: el.style.cssText });
+        el.style.cssText += [
+            ";position:fixed !important",
+            "top:0 !important",
+            "left:0 !important",
+            "width:100vw !important",
+            "height:100vh !important",
+            "max-width:none !important",
+            "max-height:none !important",
+            "margin:0 !important",
+            "padding:0 !important",
+            "z-index:2147483646 !important",
+            "overflow:visible !important",
+        ].join(";") + ";";
+        el = el.parentElement;
+    }
+
+    // Hide siblings of every ancestor to remove sidebar, header, etc.
+    hiddenSiblings = [];
+    let current: HTMLElement | null = target;
+    while (current && current !== document.documentElement) {
+        const par: HTMLElement | null = current.parentElement;
+        if (par) {
+            for (const child of par.children) {
+                if (child === current || !(child instanceof HTMLElement)) continue;
+                hiddenSiblings.push({ el: child, orig: child.style.visibility });
+                child.style.visibility = "hidden";
+            }
+        }
+        current = par;
+    }
+
+    // Black backdrop
+    cinemaBackdrop = document.createElement("div");
+    cinemaBackdrop.style.cssText = [
+        "position:fixed",
+        "top:0",
+        "left:0",
+        "width:100vw",
+        "height:100vh",
+        "background:black",
+        "z-index:2147483645",
+    ].join(";") + ";";
+    document.body.appendChild(cinemaBackdrop);
+
+    // Recreate button in expanded position
+    if (cinemaBtn) { cinemaBtn.remove(); cinemaBtn = null; }
+    cinemaBtn = createCinemaBtn(target);
+    document.body.appendChild(cinemaBtn);
+
+    document.documentElement.dataset.cinemaActive = "1";
+    document.documentElement.style.overflow = "hidden";
+
+    // Trigger site's resize handlers so the content fills the new container size
+    window.dispatchEvent(new Event("resize"));
+}
+
+function exitCinema() {
+    if (!expandedTarget) return;
+
+    // Restore video controls
+    if (controlsObserver) { controlsObserver.disconnect(); controlsObserver = null; }
+    if (expandedTarget instanceof HTMLVideoElement) {
+        expandedTarget.controls = expandedOriginalControls;
+    }
+    expandedTarget.style.cssText = expandedOriginalStyle;
+    expandedTarget = null;
+    expandedOriginalStyle = "";
+
+    // Restore ancestor styles (reverse order for clean teardown)
+    for (let i = cinemaAncestors.length - 1; i >= 0; i--) {
+        cinemaAncestors[i].el.style.cssText = cinemaAncestors[i].css;
+    }
+    cinemaAncestors = [];
+
+    // Restore hidden siblings
+    for (const saved of hiddenSiblings) {
+        saved.el.style.visibility = saved.orig;
+    }
+    hiddenSiblings = [];
+
+    if (cinemaBackdrop) { cinemaBackdrop.remove(); cinemaBackdrop = null; }
+    if (cinemaBtn) { cinemaBtn.remove(); cinemaBtn = null; }
+
+    delete document.documentElement.dataset.cinemaActive;
+    document.documentElement.style.overflow = "";
+
+    // Trigger site's resize handlers to recalculate back to original size
+    window.dispatchEvent(new Event("resize"));
+}
+
+function initCinemaMode() {
+    const processTarget = (target: CinemaTarget) => attachCinemaListeners(target);
+
+    document.querySelectorAll<HTMLVideoElement>("video").forEach(processTarget);
+    document.querySelectorAll<HTMLIFrameElement>("iframe").forEach(processTarget);
+
+    const observer = new MutationObserver((mutations) => {
+        for (const mutation of mutations) {
+            for (const node of mutation.addedNodes) {
+                if (node instanceof HTMLVideoElement || node instanceof HTMLIFrameElement) {
+                    processTarget(node);
+                } else if (node instanceof HTMLElement) {
+                    node.querySelectorAll<HTMLVideoElement>("video").forEach(processTarget);
+                    node.querySelectorAll<HTMLIFrameElement>("iframe").forEach(processTarget);
+                }
+            }
+        }
+    });
+
+    observer.observe(document.body, { childList: true, subtree: true });
+}
+
 // ── Bootstrap ────────────────────────────────────────────────────────
 
 if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", () => {
         reportAll();
         observeHead();
+        initCinemaMode();
     });
 } else {
     reportAll();
     observeHead();
+    initCinemaMode();
 }
 
 // Some sites set favicon/title via JS after the load event.

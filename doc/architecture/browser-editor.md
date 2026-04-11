@@ -217,7 +217,7 @@ The renderer builds the menu dynamically based on `params` fields from the `cont
 | `src/main/cdp-service.ts` | Main | CDP session management — debugger attach/detach/send via IPC |
 | `src/main/network-logger.ts` | Main | Per-page HTTP request/response logging via `session.webRequest`, circular buffer, IPC access |
 | `src/main/tor-service.ts` | Main | Tor process lifecycle: spawn/kill tor.exe, per-partition SOCKS5 proxy, torrc generation |
-| `src/preload-webview.ts` | Guest | MutationObserver for title/favicon, image tracking on link clicks |
+| `src/preload-webview.ts` | Guest | MutationObserver for title/favicon, image tracking on link clicks, cinema mode (expand `<video>`/`<iframe>` to full page) |
 | `src/ipc/browser-ipc.ts` | Shared | IPC channel names and type definitions |
 | `src/ipc/tor-ipc.ts` | Shared | Tor IPC channels: start, stop, log |
 | `src/ipc/popup-rate-limiter.ts` | Shared | Time-window rate limiter for popup/tab spam blocking |
@@ -242,6 +242,29 @@ The main process `page-favicon-updated` event works for most cases, but the prel
 - Runs in an isolated JavaScript context (context isolation) — page scripts cannot interfere
 - Sends messages via `ipcRenderer.sendToHost()` → received as `ipc-message` events on the `<webview>` element
 - Retries after page `load` event (200ms + 1000ms) for JS-heavy sites that set metadata late
+
+## Cinema Mode (Preload)
+
+The preload script injects a cinema mode feature — an expand/collapse button that appears on `<video>` and `<iframe>` elements when hovered, allowing the user to expand a video to fill the entire webview page.
+
+**How it works:**
+
+1. `initCinemaMode()` scans the page for `<video>` and `<iframe>` elements and sets up a `MutationObserver` to catch dynamically added elements.
+2. `attachCinemaListeners()` registers `mouseenter`/`mouseleave` on each element's **parent container** (not the element itself — overlay divs often intercept events on the element).
+3. On hover, `showCinemaBtn()` creates a `position: fixed` button (using DOM API, not `innerHTML` — pages with Trusted Types CSP block `innerHTML`) and appends it to `document.body`. The button repositions on `scroll` events.
+4. On click, `enterCinema()`:
+   - Saves each ancestor's `style.cssText`, then sets all ancestors to `position: fixed; 100vw × 100vh` — expanding the container chain without touching the target element itself (sites like YouTube continuously overwrite the video's inline styles)
+   - Hides siblings of every ancestor via `visibility: hidden` (keeps the ancestor chain visible so the GPU compositor continues rendering video frames)
+   - Appends a black backdrop div to `document.body`
+   - Dispatches `window.resize` to trigger the site's resize handlers (e.g. YouTube recalculates video size from the new container dimensions)
+   - For `<video>` elements: enables `video.controls = true` and watches with `MutationObserver` to restore it if the site removes the attribute
+5. On collapse (button click or Escape), `exitCinema()` restores all saved styles and dispatches `window.resize` again.
+
+**Key implementation constraints:**
+- Button uses `document.createElementNS()` for SVG icons (not `innerHTML`) — required for pages with Trusted Types CSP (e.g. YouTube)
+- Button is created on `mouseenter` and destroyed on `mouseleave` — sites like YouTube clean up unexpected persistent DOM children
+- Never touches `<video>` inline styles directly — YouTube's JS overwrites them continuously; containers are resized instead
+- `visibility: hidden` on siblings (not `display: none`) — keeps layout intact, preventing reflow that would confuse the site's JS
 
 ## Favicon Handling
 

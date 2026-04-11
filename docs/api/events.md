@@ -200,9 +200,9 @@ Every event channel exposes the same interface for subscribing and sending event
 
 | Method | Returns | Description |
 |--------|---------|-------------|
-| `subscribe(handler)` | `ISubscriptionObject` | Register a handler. Newest subscribers run first (LIFO order). |
-| `send(event)` | `void` | Fire an event synchronously. Subscribers run in LIFO order. The event object is frozen — subscribers can observe but not modify it. |
-| `sendAsync(event)` | `Promise<void>` | Fire an event asynchronously. Subscribers run in LIFO order, each awaited in turn. Subscribers can modify the event. Stops early if `event.handled` is set to `true`. |
+| `subscribe(handler)` | `ISubscriptionObject` | Register a handler. Newest subscribers run first in `sendAsync` (LIFO order). |
+| `send(event)` | `void` | Fire an event synchronously. Subscribers run in registration order (FIFO). The event object is frozen — subscribers can observe but not modify it. |
+| `sendAsync(event)` | `Promise<boolean>` | Fire an event asynchronously. Subscribers run in LIFO order (newest first), each awaited in turn. Subscribers can modify the event. Stops early if `event.handled` is set to `true`. |
 
 Handlers can be synchronous or `async` — async handlers are awaited before the next handler runs.
 
@@ -279,12 +279,11 @@ event.items.push({
 
 Events flow through handlers sequentially:
 
-1. `subscribe()` handlers run in LIFO order (newest subscriber first)
-2. For `sendAsync()`: each handler can modify the event; if any handler sets `event.handled = true`, remaining handlers are skipped (short-circuit)
-3. For `send()`: the event is frozen — handlers observe but cannot modify it; all handlers always run
-4. Errors in individual handlers are caught and logged — they don't break the pipeline
+1. For `sendAsync()`: handlers run in LIFO order (newest subscriber first); each handler can modify the event; if any handler sets `event.handled = true`, remaining handlers are skipped (short-circuit)
+2. For `send()`: handlers run in FIFO order (registration order); the event is frozen — handlers observe but cannot modify it; all handlers always run
+3. Errors in individual handlers are caught and logged — they don't break the pipeline
 
-The LIFO order means scripts that subscribe at runtime run **before** the built-in app handlers. This lets autoload scripts intercept and override default behavior.
+The LIFO order in `sendAsync()` means scripts that subscribe at runtime run **before** the built-in app handlers. This lets autoload scripts intercept and override default behavior.
 
 ## ContextMenuTargetKind Values
 
