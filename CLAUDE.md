@@ -354,8 +354,10 @@ See [/doc/standards/coding-style.md](doc/standards/coding-style.md) for complete
 | Tor service              | `/src/main/tor-service.ts`                        |
 | Named Pipe server        | `/src/main/pipe-server.ts`                        |
 | MCP HTTP server          | `/src/main/mcp-http-server.ts`                    |
-| Video player editor      | `/src/renderer/editors/video/VideoPlayerEditor.tsx` |
+| Audio/Video player editor| `/src/renderer/editors/video/VideoPlayerEditor.tsx` |
 | Video playback component | `/src/renderer/editors/video/VPlayer.tsx`          |
+| Audio player component   | `/src/renderer/editors/video/AudioPlayer.tsx`      |
+| Audio visualizer         | `/src/renderer/editors/video/AudioVisualizer.tsx`  |
 | Video streaming server   | `/src/main/video-stream-server.ts`                |
 | VLC launcher             | `/src/main/vlc-launcher.ts`                       |
 | MCP resource guides      | `/assets/mcp-res-*.md`                            |

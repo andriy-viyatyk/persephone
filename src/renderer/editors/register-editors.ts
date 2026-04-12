@@ -602,7 +602,7 @@ editorRegistry.register({
     editorType: "videoPage",
     category: "standalone",
     acceptFile: (fileName) => {
-        const videoExtensions = [".mp4", ".webm", ".ogg", ".m3u8", ".m3u"];
+        const videoExtensions = [".mp4", ".webm", ".ogg", ".m3u8", ".m3u", ".mp3", ".wav", ".aac", ".flac", ".m4a"];
         if (matchesExtension(fileName, videoExtensions)) return 100;
         return -1;
     },

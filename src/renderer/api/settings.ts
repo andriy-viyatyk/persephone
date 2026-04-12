@@ -39,7 +39,8 @@ export type AppSettingsKey =
     | "tor.socks-port"
     | "tor.bookmarks-file"
     | "vlc-path"
-    | "video-stream.port";
+    | "video-stream.port"
+    | "visualizer-effect";
 
 // =============================================================================
 // State
@@ -69,6 +70,7 @@ const settingsComments: Partial<Record<AppSettingsKey, string>> = {
     "tor.bookmarks-file": "Path to the .link.json bookmarks file for Browser (Tor) mode.",
     "vlc-path": "Path to VLC executable.\nLeave empty to auto-detect C:\\Program Files\\VideoLAN\\VLC\\vlc.exe.",
     "video-stream.port": "Port for the local video streaming server.\nUsed by the video player for VLC integration and proxied HTTP sources. Default: 7866.",
+    "visualizer-effect": "Audio visualizer effect type.\nAvailable: bars, circular.",
 };
 
 const defaultAppSettingsState = {
@@ -93,6 +95,7 @@ const defaultAppSettingsState = {
         "tor.bookmarks-file": "",
         "vlc-path": "",
         "video-stream.port": 7866,
+        "visualizer-effect": "bars" as string,
     },
 };
 

@@ -68,9 +68,9 @@ For `.pdf` files — opens automatically:
 
 ## Video Player
 
-For video files (`.mp4`, `.webm`, `.ogg`, `.m3u8`, `.m3u`) — opens automatically. Also available as a standalone page via the **+** dropdown → **Video Player**.
+For video files (`.mp4`, `.webm`, `.ogg`, `.m3u8`, `.m3u`) and audio files (`.mp3`, `.wav`, `.aac`, `.flac`, `.m4a`) — opens automatically. Also available as a standalone page via the **+** dropdown → **Video Player**.
 
-**Opening a video:**
+**Opening a video or audio file:**
 - Paste a file path, HTTPS URL, or HLS/M3U8 stream URL into the URL bar at the top and press **Enter** to start playback.
 - Paste a full **cURL** or **fetch** command (any format) to play a stream that requires custom HTTP headers (e.g., `Authorization`, `Origin`, `Referer`). The parser reuses the same cURL engine as the [Open URL dialog](./getting-started.md) and Rest Client.
 - For local file paths: type or paste the absolute path (e.g., `C:\Videos\movie.mp4`) and press **Enter**.
@@ -79,6 +79,7 @@ For video files (`.mp4`, `.webm`, `.ogg`, `.m3u8`, `.m3u`) — opens automatical
 | Source | How it plays |
 |--------|-------------|
 | Local MP4/WebM/OGG file | Routed through the local streaming server — smooth seeking for large files |
+| Local MP3/WAV/AAC/FLAC/M4A file | Routed through the local streaming server with animated spectrum visualizer |
 | HTTPS URL to MP4/WebM | Routed through the local streaming server — forwards Range requests to the origin |
 | HLS/M3U8 stream | Played directly by hls.js; uses Node.js HTTP (bypassing Chromium restrictions) when custom headers are present |
 
@@ -86,6 +87,13 @@ For video files (`.mp4`, `.webm`, `.ogg`, `.m3u8`, `.m3u`) — opens automatical
 - Standard video controls: play/pause, seek bar, volume, fullscreen
 - **Mute button** on the tab — toggle audio without opening the player
 - Mute state is remembered across Video Player instances within the same session
+
+**Audio playback:**
+
+When you open an audio-only file (`.mp3`, `.wav`, `.aac`, `.flac`, `.m4a`), a spectrum analyzer visualizer fills the player area instead of a blank video frame. The visualizer reacts in real time to the playing audio.
+
+- **Effect switcher** — Hover over the visualizer to reveal effect buttons in the top-right corner. Two styles are available: **Bars** (vertical frequency bars) and **Circular** (radial spectrum). Click a button to switch. The selected effect is remembered across sessions.
+- Click anywhere on the visualizer canvas to toggle play/pause.
 
 **State badge:** When the player is loading, in an error state, or the format is unsupported, a badge at the bottom of the player area shows the current state.
 
@@ -451,6 +459,7 @@ Some files support multiple editors:
 | `.asar` | Archive Editor (read-only) |
 | `.pdf` | PDF only |
 | `.mp4`, `.webm`, `.ogg`, `.m3u8`, `.m3u` | Video Player only |
+| `.mp3`, `.wav`, `.aac`, `.flac`, `.m4a` | Video Player only (audio with visualizer) |
 | Images | Image Viewer only |
 | Other | Text only |
 

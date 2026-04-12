@@ -8,6 +8,7 @@ import styled from "@emotion/styled";
 import type { VideoFormat, PlayerState } from "./video-types";
 import type { ParsedHttpRequest } from "../../core/utils/curl-parser";
 import { createNodeFetchLoaderClass } from "./NodeFetchHlsLoader";
+import { AudioPlayer } from "./AudioPlayer";
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
@@ -209,6 +210,7 @@ export function VPlayer({
     onMutedChangeRef.current = onMutedChange;
 
     const isHls = format === "m3u8" && Hls.isSupported();
+    const isAudio = format === "audio";
 
     return (
         <VideoRoot className={src ? "vplayer" : "vplayer src-empty"}>
@@ -221,8 +223,16 @@ export function VPlayer({
                     onMutedChangeRef={onMutedChangeRef}
                 />
             )}
-            {src && !isHls && (
+            {src && !isHls && !isAudio && (
                 <NativePlayer
+                    src={src}
+                    muted={muted}
+                    onStateChangeRef={onStateChangeRef}
+                    onMutedChangeRef={onMutedChangeRef}
+                />
+            )}
+            {src && isAudio && (
+                <AudioPlayer
                     src={src}
                     muted={muted}
                     onStateChangeRef={onStateChangeRef}

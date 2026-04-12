@@ -8,7 +8,13 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ## Version 3.0.5 (Upcoming)
 
-*No changes yet.*
+### New Features
+
+- **Audio Player with spectrum visualizer** — The Video Player now supports audio-only files (`.mp3`, `.wav`, `.aac`, `.flac`, `.m4a`). When you open an audio file, the black video area is replaced by an animated spectrum analyzer that reacts in real time to the playing audio. Two visualizer effects are available: **Bars** (vertical frequency bars) and **Circular** (radial spectrum). Hover over the visualizer to reveal the effect switcher buttons in the top-right corner. The selected effect is saved across sessions. Click anywhere on the visualizer to toggle play/pause.
+
+  File associations: `.mp3`, `.wav`, `.aac`, `.flac`, `.m4a` files now open directly in the Video Player with the audio visualizer.
+
+  See **[Video Player](./editors.md#video-player)** for complete documentation.
 
 ---
 

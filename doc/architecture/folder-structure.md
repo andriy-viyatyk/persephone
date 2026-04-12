@@ -396,9 +396,15 @@ persephone/
 │   │   └── index.ts
 │   ├── settings/           # Settings page (standalone)
 │   │   └── SettingsPage.tsx
-│   ├── video/              # Video player (standalone)
+│   ├── video/              # Audio/Video player (standalone)
 │   │   ├── VideoPlayerEditor.tsx  # EditorModel + EditorModule (state, model, component)
 │   │   ├── VPlayer.tsx            # Video playback component (video.js + hls.js)
+│   │   ├── AudioPlayer.tsx        # Audio file playback with visualizer
+│   │   ├── AudioVisualizer.tsx    # Audio frequency visualization with switchable effects
+│   │   ├── effects/               # Audio visualizer effect implementations
+│   │   │   ├── types.ts           # IVisualizerEffect interface, EffectType
+│   │   │   ├── BarsEffect.ts      # Frequency bars visualizer
+│   │   │   └── CircularEffect.ts  # Circular rings visualizer with cross-band modulation
 │   │   ├── NodeFetchHlsLoader.ts  # Custom hls.js loader via nodeFetch (bypass forbidden headers)
 │   │   └── video-types.ts         # VideoFormat, PlayerState, detectVideoFormat()
 │   ├── category/           # Category/folder view (standalone, provider-agnostic)
