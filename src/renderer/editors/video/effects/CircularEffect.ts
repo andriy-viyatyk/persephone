@@ -2,9 +2,9 @@ import type { IVisualizerEffect } from "./types";
 
 // Three frequency bands mapped to RGB rings
 const BANDS = [
-    { startFrac: 0.000, endFrac: 0.060, darkRgb: "70, 15, 7",  lightRgb: "180, 40, 10",  baseR: 0.00, rotSpeed:  0.003,     segments: 16, modSource: 2, expansionScale: 1.0 }, // bass modulated by treble
-    { startFrac: 0.060, endFrac: 0.280, darkRgb: "12, 60, 16", lightRgb: "10, 140, 30",  baseR: 0.44, rotSpeed: -0.00143,  segments: 24, modSource: 0, expansionScale: 0.7 }, // mid modulated by bass
-    { startFrac: 0.280, endFrac: 0.650, darkRgb: "15, 32, 70", lightRgb: "20, 60, 180",  baseR: 0.74, rotSpeed:  0.0009375, segments: 32, modSource: 1, expansionScale: 0.5 }, // treble modulated by mid
+    { startFrac: 0.000, endFrac: 0.060, darkRgb: "70, 15, 7",  lightRgb: "180, 40, 10",  darkSparkRgb: "240, 225, 220", lightSparkRgb: "210, 170, 155", sparkMin: 0.75, sparkMax: 0.85,  baseR: 0.00, rotSpeed:  0.003,     segments: 16, modSource: 2, expansionScale: 1.0 }, // bass  — needs loud signal
+    { startFrac: 0.060, endFrac: 0.280, darkRgb: "12, 60, 16", lightRgb: "10, 140, 30",  darkSparkRgb: "220, 240, 225", lightSparkRgb: "155, 210, 170", sparkMin: 0.50, sparkMax: 0.60,  baseR: 0.44, rotSpeed: -0.00143,  segments: 24, modSource: 0, expansionScale: 0.7 }, // mid   — moderate sensitivity
+    { startFrac: 0.280, endFrac: 0.650, darkRgb: "15, 32, 70", lightRgb: "20, 60, 180",  darkSparkRgb: "220, 225, 240", lightSparkRgb: "155, 170, 210", sparkMin: 0.30, sparkMax: 0.40, baseR: 0.74, rotSpeed:  0.0009375, segments: 32, modSource: 1, expansionScale: 0.5 }, // treble — most sensitive
 ] as const;
 
 const MAX_SPIKE_FRAC  = 0.11;
@@ -13,6 +13,20 @@ const SAMPLES_PER_SEG = 8;
 const MOD_STRENGTH    = 0.6;
 const GLOW_WIDTH      = 14;
 const GLOW_PAD        = Math.ceil(GLOW_WIDTH / 2) + 2;
+
+// Spark (asterisk) particle system
+const SPARK_SPEED     = 0.12;   // fraction of unit per second (radial outward)
+const SPARK_MIN_RATE  = 1;      // emissions per second at zero energy
+const SPARK_MAX_RATE  = 15;     // emissions per second at full energy
+const SPARK_SIZE      = 2;      // spark dot radius in pixels
+const SPARK_MAX_AGE   = 10;     // max lifetime in seconds
+
+interface Spark {
+    x: number; y: number;       // screen position
+    vx: number; vy: number;     // velocity (px/sec)
+    bandIdx: number;            // index into BANDS (for stamp lookup)
+    age: number;                // seconds alive
+}
 
 // Reorder: center-out mapping so loudest spike is at the center of each segment
 const REORDER = (() => {
@@ -45,6 +59,13 @@ export class CircularEffect implements IVisualizerEffect {
     private ocW = 0;
     private ocH = 0;
 
+    // Spark particle system
+    private sparks: Spark[] = [];
+    private sparkAccum = new Float32Array(BANDS.length);
+    private lastDrawTime = 0;
+    private sparkStamps: OffscreenCanvas[] = [];
+    private sparkStampDark = false;
+
     // Pre-allocated segment point arrays (reused per band per frame)
     private segOX = new Float32Array(SEG_PTS);
     private segOY = new Float32Array(SEG_PTS);
@@ -54,6 +75,8 @@ export class CircularEffect implements IVisualizerEffect {
     dispose(): void {
         this.oc = null;
         this.octx = null;
+        this.sparks.length = 0;
+        this.sparkStamps.length = 0;
     }
 
     draw(ctx: CanvasRenderingContext2D, analyser: AnalyserNode, W: number, H: number, isDark: boolean): void {
@@ -61,6 +84,11 @@ export class CircularEffect implements IVisualizerEffect {
             this.data = new Uint8Array(analyser.frequencyBinCount);
         }
         analyser.getByteFrequencyData(this.data);
+
+        // Delta time for spark particle system
+        const now = performance.now() / 1000;
+        const dt = this.lastDrawTime > 0 ? Math.min(now - this.lastDrawTime, 0.1) : 0;
+        this.lastDrawTime = now;
 
         // Fade trail
         ctx.globalCompositeOperation = "source-over";
@@ -114,6 +142,41 @@ export class CircularEffect implements IVisualizerEffect {
             this.octx = this.oc.getContext("2d")!;
         }
 
+        // ── Rebuild spark stamps if theme changed ───────────────────────────
+        if (this.sparkStamps.length !== BANDS.length || this.sparkStampDark !== isDark) {
+            this.sparkStampDark = isDark;
+            const sz = SPARK_SIZE * 2 + 4;
+            const half = sz / 2;
+            for (let i = 0; i < BANDS.length; i++) {
+                const sc = new OffscreenCanvas(sz, sz);
+                const sctx = sc.getContext("2d")!;
+                sctx.fillStyle = `rgb(${isDark ? BANDS[i].darkSparkRgb : BANDS[i].lightSparkRgb})`;
+                sctx.beginPath();
+                sctx.arc(half, half, SPARK_SIZE, 0, Math.PI * 2);
+                sctx.fill();
+                this.sparkStamps[i] = sc;
+            }
+        }
+
+        // ── Update and draw sparks (behind circles) ─────────────────────────
+        ctx.globalCompositeOperation = "source-over";
+        const sparkHalf = (SPARK_SIZE * 2 + 4) / 2;
+        for (let j = this.sparks.length - 1; j >= 0; j--) {
+            const s = this.sparks[j];
+            s.x += s.vx * dt;
+            s.y += s.vy * dt;
+            s.age += dt;
+
+            if (s.x < -20 || s.x > W + 20 || s.y < -20 || s.y > H + 20 || s.age > SPARK_MAX_AGE) {
+                this.sparks[j] = this.sparks[this.sparks.length - 1];
+                this.sparks.pop();
+                continue;
+            }
+
+            ctx.globalAlpha = Math.max(0, 1 - s.age / SPARK_MAX_AGE);
+            ctx.drawImage(this.sparkStamps[s.bandIdx], s.x - sparkHalf, s.y - sparkHalf);
+        }
+
         // ── Draw & stamp each band ───────────────────────────────────────────
         ctx.globalCompositeOperation = isDark ? "lighter" : "multiply";
 
@@ -126,6 +189,28 @@ export class CircularEffect implements IVisualizerEffect {
             const segAngle = Math.PI * 2 / segments;
             const baseAlpha = 0.20 + energy * 0.80;
             const color    = `rgb(${isDark ? band.darkRgb : band.lightRgb})`;
+
+            // Emit sparks based on band energy
+            // No sparks below sparkMin; ramp up above sparkMax
+            let sparkRate = 0;
+            if (energy > band.sparkMin) {
+                const sparkEnergy = Math.max(0, energy - band.sparkMax) / (1 - band.sparkMax);
+                sparkRate = SPARK_MIN_RATE + sparkEnergy * sparkEnergy * (SPARK_MAX_RATE - SPARK_MIN_RATE);
+            }
+            this.sparkAccum[i] += sparkRate * dt;
+            while (this.sparkAccum[i] >= 1) {
+                this.sparkAccum[i] -= 1;
+                const a = Math.random() * Math.PI * 2;
+                const speed = unit * SPARK_SPEED;
+                this.sparks.push({
+                    x: cx + Math.cos(a) * ringR,
+                    y: cy + Math.sin(a) * ringR,
+                    vx: Math.cos(a) * speed,
+                    vy: Math.sin(a) * speed,
+                    bandIdx: i,
+                    age: 0,
+                });
+            }
 
             // Ring center in offscreen coords
             const ox = GLOW_PAD;
@@ -227,4 +312,5 @@ export class CircularEffect implements IVisualizerEffect {
         ctx.globalCompositeOperation = "source-over";
         ctx.globalAlpha = 1.0;
     }
+
 }

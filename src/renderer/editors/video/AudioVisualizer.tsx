@@ -186,7 +186,7 @@ export function AudioVisualizer({ mediaRef, playing }: AudioVisualizerProps) {
                         key={type}
                         $active={selectedEffect === type}
                         title={label}
-                        onClick={() => settings.set("visualizer-effect", type)}
+                        onClick={(e) => { e.stopPropagation(); settings.set("visualizer-effect", type); }}
                     >
                         {icon}
                     </EffectButton>
