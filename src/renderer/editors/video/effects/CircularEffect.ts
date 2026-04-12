@@ -2,9 +2,9 @@ import type { IVisualizerEffect } from "./types";
 
 // Three frequency bands mapped to RGB rings
 const BANDS = [
-    { startFrac: 0.000, endFrac: 0.060, darkRgb: "70, 15, 7",  lightRgb: "180, 40, 10",  darkSparkRgb: "240, 225, 220", lightSparkRgb: "210, 170, 155", sparkMin: 0.75, sparkMax: 0.85,  baseR: 0.00, rotSpeed:  0.003,     segments: 16, modSource: 2, expansionScale: 1.0 }, // bass  — needs loud signal
-    { startFrac: 0.060, endFrac: 0.280, darkRgb: "12, 60, 16", lightRgb: "10, 140, 30",  darkSparkRgb: "220, 240, 225", lightSparkRgb: "155, 210, 170", sparkMin: 0.50, sparkMax: 0.60,  baseR: 0.44, rotSpeed: -0.00143,  segments: 24, modSource: 0, expansionScale: 0.7 }, // mid   — moderate sensitivity
-    { startFrac: 0.280, endFrac: 0.650, darkRgb: "15, 32, 70", lightRgb: "20, 60, 180",  darkSparkRgb: "220, 225, 240", lightSparkRgb: "155, 170, 210", sparkMin: 0.30, sparkMax: 0.40, baseR: 0.74, rotSpeed:  0.0009375, segments: 32, modSource: 1, expansionScale: 0.5 }, // treble — most sensitive
+    { startFrac: 0.000, endFrac: 0.060, darkRgb: "70, 15, 7",  lightRgb: "180, 40, 10",  darkSparkRgb: "240, 225, 220", lightSparkRgb: "210, 170, 155", sparkMin: 0.75, sparkMax: 0.85, sparkSize: 1, baseR: 0.00, rotSpeed:  0.003,     segments: 16, modSource: 2, expansionScale: 1.0 }, // bass
+    { startFrac: 0.060, endFrac: 0.280, darkRgb: "12, 60, 16", lightRgb: "10, 140, 30",  darkSparkRgb: "220, 240, 225", lightSparkRgb: "155, 210, 170", sparkMin: 0.50, sparkMax: 0.60, sparkSize: 2, baseR: 0.44, rotSpeed: -0.00143,  segments: 24, modSource: 0, expansionScale: 0.7 }, // mid
+    { startFrac: 0.280, endFrac: 0.650, darkRgb: "15, 32, 70", lightRgb: "20, 60, 180",  darkSparkRgb: "220, 225, 240", lightSparkRgb: "155, 170, 210", sparkMin: 0.30, sparkMax: 0.40, sparkSize: 3, baseR: 0.74, rotSpeed:  0.0009375, segments: 32, modSource: 1, expansionScale: 0.5 }, // treble
 ] as const;
 
 const MAX_SPIKE_FRAC  = 0.11;
@@ -18,7 +18,6 @@ const GLOW_PAD        = Math.ceil(GLOW_WIDTH / 2) + 2;
 const SPARK_SPEED     = 0.12;   // fraction of unit per second (radial outward)
 const SPARK_MIN_RATE  = 1;      // emissions per second at zero energy
 const SPARK_MAX_RATE  = 15;     // emissions per second at full energy
-const SPARK_SIZE      = 2;      // spark dot radius in pixels
 const SPARK_MAX_AGE   = 10;     // max lifetime in seconds
 
 interface Spark {
@@ -145,14 +144,15 @@ export class CircularEffect implements IVisualizerEffect {
         // ── Rebuild spark stamps if theme changed ───────────────────────────
         if (this.sparkStamps.length !== BANDS.length || this.sparkStampDark !== isDark) {
             this.sparkStampDark = isDark;
-            const sz = SPARK_SIZE * 2 + 4;
-            const half = sz / 2;
             for (let i = 0; i < BANDS.length; i++) {
+                const r = BANDS[i].sparkSize;
+                const sz = r * 2 + 4;
+                const half = sz / 2;
                 const sc = new OffscreenCanvas(sz, sz);
                 const sctx = sc.getContext("2d")!;
                 sctx.fillStyle = `rgb(${isDark ? BANDS[i].darkSparkRgb : BANDS[i].lightSparkRgb})`;
                 sctx.beginPath();
-                sctx.arc(half, half, SPARK_SIZE, 0, Math.PI * 2);
+                sctx.arc(half, half, r, 0, Math.PI * 2);
                 sctx.fill();
                 this.sparkStamps[i] = sc;
             }
@@ -160,7 +160,6 @@ export class CircularEffect implements IVisualizerEffect {
 
         // ── Update and draw sparks (behind circles) ─────────────────────────
         ctx.globalCompositeOperation = "source-over";
-        const sparkHalf = (SPARK_SIZE * 2 + 4) / 2;
         for (let j = this.sparks.length - 1; j >= 0; j--) {
             const s = this.sparks[j];
             s.x += s.vx * dt;
@@ -173,8 +172,10 @@ export class CircularEffect implements IVisualizerEffect {
                 continue;
             }
 
+            const stamp = this.sparkStamps[s.bandIdx];
+            const stampHalf = stamp.width / 2;
             ctx.globalAlpha = Math.max(0, 1 - s.age / SPARK_MAX_AGE);
-            ctx.drawImage(this.sparkStamps[s.bandIdx], s.x - sparkHalf, s.y - sparkHalf);
+            ctx.drawImage(stamp, s.x - stampHalf, s.y - stampHalf);
         }
 
         // ── Draw & stamp each band ───────────────────────────────────────────
