@@ -10,7 +10,7 @@ export type PlayerState =
     | "unsupported format"
     | "error";
 
-const AUDIO_EXTENSIONS = [".mp3", ".wav", ".aac", ".flac", ".m4a"];
+const AUDIO_EXTENSIONS = [".mp3", ".wav", ".aac", ".flac", ".m4a", ".wma", ".ogg", ".opus"];
 
 /**
  * Infer video/audio format from URL.
