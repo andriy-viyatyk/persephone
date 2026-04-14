@@ -37,6 +37,10 @@ export interface IClaudeSessionConfig {
     temperature?: number;
     /** Maximum tool-call loop iterations. Default: 20. Prevents infinite loops. */
     maxToolRounds?: number;
+    /** System instructions for Claude (e.g. role, behavior, constraints). Same as calling systemMessage() after construction. */
+    system?: string;
+    /** Sequences that cause Claude to stop generating immediately when encountered. */
+    stopSequences?: string[];
 }
 
 /**
@@ -104,6 +108,8 @@ export interface IClaudeSession {
     readonly temperature: number | undefined;
     /** Maximum tool-call loop iterations. */
     readonly maxToolRounds: number;
+    /** Stop sequences configured for this session. */
+    readonly stopSequences: string[] | undefined;
 
     /** Copy of the current message history. */
     readonly messages: Array<{ role: string; content: any }>;

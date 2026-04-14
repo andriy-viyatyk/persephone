@@ -8,7 +8,22 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ## Version 3.0.6 (Upcoming)
 
-*No changes yet.*
+### New Features
+
+- **Audio Player: custom controls bar** — Audio playback now has a custom control bar overlaid on the visualizer canvas. The bar shows a play/pause button, current time, a seek bar, total duration, and a mute toggle. The controls fade out when you are not hovering over the player and reappear automatically on hover, keeping the visualizer unobstructed during playback.
+
+- **Audio visualizer: No-effect mode** — A third button ("⊘ No effect") has been added to the effect switcher. When selected, the visualizer canvas is cleared and, if the file name contains artist/title information (e.g., `Artist – Title.mp3`), the track name and artist are displayed centered on screen. ID3 metadata is read first; the filename is used as a fallback.
+
+### Improvements
+
+- **Audio visualizer: Bars effect** — The Bars effect has been significantly improved:
+  - Bars are now centered both horizontally and vertically — they grow symmetrically from the center, matching the area used by the Circular effect.
+  - Each bar has its own rainbow color (red/orange on the left shifting through green to blue/violet on the right), rendered with a horizontal 3D gradient for depth.
+  - Mini-bar particles are emitted from the top and bottom of each bar when the signal is strong. The particles drift away and fade out over time (pre-rendered stamps for performance).
+
+- **File Explorer integration for Video/Audio Player** — Opening a media file from the File Explorer panel now highlights the file in the Explorer tree, matching the behavior of the text editor. A **File Explorer** button has also been added to the Video Player toolbar so you can open the Explorer panel without switching tabs.
+
+- **Audio visualizer: Circular effect** — The Circular effect no longer paints a dark background on the canvas. The trail fade now uses alpha compositing, so the player background color (from the active theme) shows through correctly.
 
 ---
 

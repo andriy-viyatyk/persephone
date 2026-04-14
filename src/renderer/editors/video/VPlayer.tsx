@@ -19,6 +19,8 @@ export interface VPlayerProps {
     /** Parsed HTTP request from cURL input. When headers are present, hls.js
      *  uses NodeFetchHlsLoader to bypass Chromium's forbidden header restrictions. */
     parsedRequest?: ParsedHttpRequest | null;
+    /** Original file path or URL before streaming server wrapping — used for filename-based metadata fallback. */
+    sourceUrl?: string;
     onStateChange?: (state: PlayerState, error?: unknown) => void;
     onMutedChange?: (muted: boolean) => void;
 }
@@ -201,6 +203,7 @@ export function VPlayer({
     format,
     muted,
     parsedRequest,
+    sourceUrl,
     onStateChange,
     onMutedChange,
 }: VPlayerProps) {
@@ -235,6 +238,7 @@ export function VPlayer({
                 <AudioPlayer
                     src={src}
                     muted={muted}
+                    sourceUrl={sourceUrl}
                     onStateChangeRef={onStateChangeRef}
                     onMutedChangeRef={onMutedChangeRef}
                 />

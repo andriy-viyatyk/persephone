@@ -357,6 +357,7 @@ See [/doc/standards/coding-style.md](doc/standards/coding-style.md) for complete
 | Audio/Video player editor| `/src/renderer/editors/video/VideoPlayerEditor.tsx` |
 | Video playback component | `/src/renderer/editors/video/VPlayer.tsx`          |
 | Audio player component   | `/src/renderer/editors/video/AudioPlayer.tsx`      |
+| Audio controls bar       | `/src/renderer/editors/video/AudioControls.tsx`    |
 | Audio visualizer         | `/src/renderer/editors/video/AudioVisualizer.tsx`  |
 | Video streaming server   | `/src/main/video-stream-server.ts`                |
 | VLC launcher             | `/src/main/vlc-launcher.ts`                       |

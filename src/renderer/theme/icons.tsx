@@ -1133,6 +1133,17 @@ export const StopIcon = createIcon(24)(
     />,
 );
 
+export const PlayIcon = createIcon(24)(
+    <path d="M8 5v14l11-7L8 5z" fill="currentColor" />,
+);
+
+export const PauseIcon = createIcon(24)(
+    <g fill="currentColor">
+        <rect x="6" y="5" width="4" height="14" rx="1" />
+        <rect x="14" y="5" width="4" height="14" rx="1" />
+    </g>,
+);
+
 export const CaseSensitiveIcon = createIcon(16)(
     <text
         x="8"

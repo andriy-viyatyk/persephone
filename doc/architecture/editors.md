@@ -61,6 +61,7 @@ Standalone editors with their own EditorModel.
 | `mcp-view` | MCP Inspector | `mcpInspectorPage` | (none — opened via UI) |
 | `about-view` | About | `aboutPage` | (none — opened via UI) |
 | `settings-view` | Settings | `settingsPage` | (none — opened via UI) |
+| `video-view` | Video/Audio Player | `videoPage` | `.mp4`, `.mkv`, `.webm`, `.mp3`, `.flac`, `.wav`, `.ogg`, `.m3u8`, `.hls` |
 | `compare` | Compare | (triggered) | (none — opened via diff command) |
 
 **Characteristics:**
@@ -161,6 +162,7 @@ TDialogModel<T, R>   (from core/state/model.ts)
     ├── TextFileModel         # Content-view host (Monaco, Grid, Markdown, etc.)
     ├── BrowserEditorModel      # Browser (multi-tab, webview, IPC)
     ├── McpInspectorEditorModel     # MCP Inspector (connection manager, server inspection)
+    ├── VideoEditorModel      # Video/Audio Player (multi-format media, streaming server integration)
     ├── NotebookEditorModel   # Notebook (.note.json — page-level model)
     └── (PdfViewer, ImageViewer, About, Settings, Compare — inline models)
 

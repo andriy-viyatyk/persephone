@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import styled from "@emotion/styled";
 import { AudioVisualizer } from "./AudioVisualizer";
+import { AudioControls } from "./AudioControls";
 import type { PlayerState } from "./video-types";
 import color from "../../theme/color";
-import { isCurrentThemeDark } from "../../theme/themes";
 
 export interface AudioPlayerProps {
     src: string;
     muted?: boolean;
+    /** Original file path or URL — used for filename-based metadata fallback in the visualizer. */
+    sourceUrl?: string;
     onStateChangeRef: React.RefObject<((state: PlayerState, error?: unknown) => void) | undefined>;
     onMutedChangeRef: React.RefObject<((muted: boolean) => void) | undefined>;
 }
@@ -15,27 +17,50 @@ export interface AudioPlayerProps {
 const AudioPlayerRoot = styled.div`
     position: absolute;
     inset: 0;
-    display: flex;
-    flex-direction: column;
 
     & .visualizer-area {
-        flex: 1;
-        position: relative;
+        position: absolute;
+        inset: 0;
         overflow: hidden;
         background: ${color.background.dark};
         cursor: pointer;
     }
 
-    & audio.audio-native {
-        width: 100%;
-        height: 40px;
-        flex-shrink: 0;
-        outline: none;
+    & .controls-overlay {
+        position: absolute;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 33%;
+        min-width: 260px;
+        border-radius: 8px;
+        overflow: hidden;
+        pointer-events: auto;
+        background: transparent;
+        transition: background 0.2s ease;
+    }
+
+    &:hover .controls-overlay {
         background: ${color.background.dark};
+    }
+
+    & .controls-overlay:hover input[type="range"] {
+        opacity: 1;
+    }
+
+    & .controls-overlay .idle-hide {
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s ease;
+    }
+
+    & .controls-overlay:hover .idle-hide {
+        opacity: 1;
+        pointer-events: auto;
     }
 `;
 
-export function AudioPlayer({ src, muted, onStateChangeRef, onMutedChangeRef }: AudioPlayerProps) {
+export function AudioPlayer({ src, muted, sourceUrl, onStateChangeRef, onMutedChangeRef }: AudioPlayerProps) {
     const audioRef = useRef<HTMLAudioElement>(null);
     const [playing, setPlaying] = useState(false);
 
@@ -85,17 +110,12 @@ export function AudioPlayer({ src, muted, onStateChangeRef, onMutedChangeRef }: 
                     if (audio) audio.paused ? audio.play() : audio.pause();
                 }}
             >
-                <AudioVisualizer mediaRef={audioRef} playing={playing} />
+                <AudioVisualizer mediaRef={audioRef} playing={playing} sourceUrl={sourceUrl} />
             </div>
-            <audio
-                ref={audioRef}
-                className="audio-native"
-                src={src}
-                controls
-                autoPlay
-                muted={muted}
-                style={{ colorScheme: isCurrentThemeDark() ? "dark" : "light" }}
-            />
+            <audio ref={audioRef} src={src} autoPlay muted={muted} style={{ display: "none" }} />
+            <div className="controls-overlay">
+                <AudioControls audioRef={audioRef} playing={playing} />
+            </div>
         </AudioPlayerRoot>
     );
 }

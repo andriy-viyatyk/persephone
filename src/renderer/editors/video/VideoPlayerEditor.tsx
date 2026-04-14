@@ -6,7 +6,8 @@ import { TComponentState } from "../../core/state/state";
 import { EditorModule } from "../types";
 import { TextAreaField } from "../../components/basic/TextAreaField";
 import color from "../../theme/color";
-import { PlayerIcon, VlcIcon } from "../../theme/icons";
+import { PlayerIcon, VlcIcon, NavPanelIcon } from "../../theme/icons";
+import { Button } from "../../components/basic/Button";
 import { DEFAULT_BROWSER_COLOR } from "../../theme/palette-colors";
 import type { ParsedHttpRequest } from "../../core/utils/curl-parser";
 import { parseHttpRequest } from "../../core/utils/curl-parser";
@@ -302,6 +303,7 @@ function VideoPlayerEditor({ model }: VideoPlayerEditorProps) {
     const inputText = model.state.use((s) => s.inputText);
     const format = model.state.use((s) => s.format);
     const muted = model.state.use((s) => s.pageMuted);
+    const filePath = model.state.use((s) => s.filePath);
     const parsedRequest = model.state.use((s) => s.parsedRequest);
     const playerState = model.state.use((s) => s.playerState);
     const showBadge = playerState !== "playing" && playerState !== "paused" && playerState !== "stopped";
@@ -310,6 +312,16 @@ function VideoPlayerEditor({ model }: VideoPlayerEditorProps) {
     return (
         <VideoEditorRoot>
             <PageToolbar borderBottom>
+                {(model.page?.canOpenNavigator(null, filePath) || filePath) && (
+                    <Button
+                        type="icon"
+                        size="small"
+                        title="File Explorer"
+                        onClick={() => model.page?.toggleNavigator(null, filePath)}
+                    >
+                        <NavPanelIcon />
+                    </Button>
+                )}
                 <UrlInputArea
                     value={inputText}
                     onChange={model.setInputText}
@@ -329,6 +341,7 @@ function VideoPlayerEditor({ model }: VideoPlayerEditorProps) {
                         format={format}
                         muted={muted}
                         parsedRequest={parsedRequest}
+                        sourceUrl={url}
                         onStateChange={model.onPlayerStateChange}
                         onMutedChange={model.onMutedChange}
                     />
@@ -357,6 +370,7 @@ const videoEditorModule: EditorModule = {
     newEditorModel: async (filePath?: string) => {
         const initialState = getDefaultVideoEditorState();
         if (filePath) {
+            initialState.filePath = filePath;
             initialState.inputText = filePath;
             initialState.url = filePath;
             initialState.format = detectVideoFormat(filePath);

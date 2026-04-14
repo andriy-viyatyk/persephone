@@ -3,4 +3,4 @@ export interface IVisualizerEffect {
     dispose?(): void;
 }
 
-export type EffectType = "bars" | "circular";
+export type EffectType = "bars" | "circular" | "none";

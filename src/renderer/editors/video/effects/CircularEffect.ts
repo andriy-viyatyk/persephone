@@ -89,9 +89,9 @@ export class CircularEffect implements IVisualizerEffect {
         const dt = this.lastDrawTime > 0 ? Math.min(now - this.lastDrawTime, 0.1) : 0;
         this.lastDrawTime = now;
 
-        // Fade trail
-        ctx.globalCompositeOperation = "source-over";
-        ctx.fillStyle = isDark ? "rgba(0, 0, 0, 0.28)" : "rgba(255, 255, 255, 0.28)";
+        // Fade trail — destination-out erases previous content while keeping canvas transparent
+        ctx.globalCompositeOperation = "destination-out";
+        ctx.fillStyle = "rgba(0, 0, 0, 0.28)";
         ctx.fillRect(0, 0, W, H);
 
         const cx       = W / 2;

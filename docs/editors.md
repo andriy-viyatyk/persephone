@@ -68,7 +68,7 @@ For `.pdf` files — opens automatically:
 
 ## Video Player
 
-For video files (`.mp4`, `.webm`, `.ogg`, `.m3u8`, `.m3u`) and audio files (`.mp3`, `.wav`, `.aac`, `.flac`, `.m4a`) — opens automatically. Also available as a standalone page via the **+** dropdown → **Video Player**.
+For video files (`.mp4`, `.webm`, `.avi`, `.mkv`, `.mov`, `.m3u8`, `.m3u`) and audio files (`.mp3`, `.wav`, `.aac`, `.flac`, `.m4a`, `.wma`, `.ogg`, `.opus`) — opens automatically. Also available as a standalone page via the **+** dropdown → **Video Player**.
 
 **Opening a video or audio file:**
 - Paste a file path, HTTPS URL, or HLS/M3U8 stream URL into the URL bar at the top and press **Enter** to start playback.
@@ -78,8 +78,9 @@ For video files (`.mp4`, `.webm`, `.ogg`, `.m3u8`, `.m3u`) and audio files (`.mp
 **Supported sources:**
 | Source | How it plays |
 |--------|-------------|
-| Local MP4/WebM/OGG file | Routed through the local streaming server — smooth seeking for large files |
-| Local MP3/WAV/AAC/FLAC/M4A file | Routed through the local streaming server with animated spectrum visualizer |
+| Local MP4/WebM/AVI/MKV/MOV file | Routed through the local streaming server — smooth seeking for large files. AVI/MKV/MOV require VLC if the built-in player cannot decode them. |
+| Local MP3/WAV/AAC/FLAC/M4A/OGG/OPUS file | Routed through the local streaming server with animated spectrum visualizer |
+| Local WMA file | Opens with the spectrum visualizer; use **Open in VLC** if playback fails (WMA is not supported by Chromium's built-in decoder) |
 | HTTPS URL to MP4/WebM | Routed through the local streaming server — forwards Range requests to the origin |
 | HLS/M3U8 stream | Played directly by hls.js; uses Node.js HTTP (bypassing Chromium restrictions) when custom headers are present |
 
@@ -90,9 +91,9 @@ For video files (`.mp4`, `.webm`, `.ogg`, `.m3u8`, `.m3u`) and audio files (`.mp
 
 **Audio playback:**
 
-When you open an audio-only file (`.mp3`, `.wav`, `.aac`, `.flac`, `.m4a`), a spectrum analyzer visualizer fills the player area instead of a blank video frame. The visualizer reacts in real time to the playing audio.
+When you open an audio-only file (`.mp3`, `.wav`, `.aac`, `.flac`, `.m4a`, `.wma`, `.ogg`, `.opus`), a spectrum analyzer visualizer fills the player area instead of a blank video frame. The visualizer reacts in real time to the playing audio.
 
-- **Effect switcher** — Hover over the visualizer to reveal effect buttons in the top-right corner. Two styles are available: **Bars** (vertical frequency bars) and **Circular** (radial spectrum). Click a button to switch. The selected effect is remembered across sessions.
+- **Effect switcher** — Hover over the visualizer to reveal effect buttons in the top-right corner. Two styles are available: **Bars** (vertical frequency bars) and **Circular** (radial spectrum with spark particles that fly outward on volume peaks). Click a button to switch. The selected effect is remembered across sessions.
 - Click anywhere on the visualizer canvas to toggle play/pause.
 
 **State badge:** When the player is loading, in an error state, or the format is unsupported, a badge at the bottom of the player area shows the current state.

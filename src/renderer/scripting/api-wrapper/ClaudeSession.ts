@@ -37,6 +37,8 @@ export interface ClaudeSessionConfig {
     maxTokens?: number;
     temperature?: number;
     maxToolRounds?: number;
+    system?: string;
+    stopSequences?: string[];
 }
 
 export interface ClaudeSendOptions {
@@ -64,6 +66,7 @@ export class ClaudeSession {
     readonly maxTokens: number;
     readonly temperature: number | undefined;
     readonly maxToolRounds: number;
+    readonly stopSequences: string[] | undefined;
 
     constructor(config: ClaudeSessionConfig) {
         loadSdk();
@@ -75,6 +78,8 @@ export class ClaudeSession {
         this.maxTokens = config.maxTokens || DEFAULT_MAX_TOKENS;
         this.temperature = config.temperature;
         this.maxToolRounds = config.maxToolRounds ?? DEFAULT_MAX_TOOL_ROUNDS;
+        this.stopSequences = config.stopSequences;
+        if (config.system) this._systemMessage = config.system;
     }
 
     // -------------------------------------------------------------------------
@@ -136,6 +141,7 @@ export class ClaudeSession {
         };
         if (this._systemMessage) reqOptions.system = this._systemMessage;
         if (this.temperature !== undefined) reqOptions.temperature = this.temperature;
+        if (this.stopSequences?.length) reqOptions.stop_sequences = this.stopSequences;
         if (apiTools.length > 0) {
             reqOptions.tools = apiTools;
             if (options?.toolChoice) {
