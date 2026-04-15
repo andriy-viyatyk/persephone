@@ -217,7 +217,7 @@ The renderer builds the menu dynamically based on `params` fields from the `cont
 | `src/main/cdp-service.ts` | Main | CDP session management — debugger attach/detach/send via IPC |
 | `src/main/network-logger.ts` | Main | Per-page HTTP request/response logging via `session.webRequest`, circular buffer, IPC access |
 | `src/main/tor-service.ts` | Main | Tor process lifecycle: spawn/kill tor.exe, per-partition SOCKS5 proxy, torrc generation |
-| `src/preload-webview.ts` | Guest | MutationObserver for title/favicon, image tracking on link clicks, cinema mode (expand `<video>`/`<iframe>` to full page) |
+| `src/preload-webview.ts` | Guest | MutationObserver for title/favicon, image tracking on link clicks, cinema mode (expand `<video>` to full page) |
 | `src/ipc/browser-ipc.ts` | Shared | IPC channel names and type definitions |
 | `src/ipc/tor-ipc.ts` | Shared | Tor IPC channels: start, stop, log |
 | `src/ipc/popup-rate-limiter.ts` | Shared | Time-window rate limiter for popup/tab spam blocking |
@@ -245,11 +245,11 @@ The main process `page-favicon-updated` event works for most cases, but the prel
 
 ## Cinema Mode (Preload)
 
-The preload script injects a cinema mode feature — an expand/collapse button that appears on `<video>` and `<iframe>` elements when hovered, allowing the user to expand a video to fill the entire webview page.
+The preload script injects a cinema mode feature — an expand/collapse button that appears on `<video>` elements when hovered, allowing the user to expand a video to fill the entire webview page.
 
 **How it works:**
 
-1. `initCinemaMode()` scans the page for `<video>` and `<iframe>` elements and sets up a `MutationObserver` to catch dynamically added elements.
+1. `initCinemaMode()` scans the page for `<video>` elements and sets up a `MutationObserver` to catch dynamically added elements.
 2. `attachCinemaListeners()` registers `mouseenter`/`mouseleave` on each element's **parent container** (not the element itself — overlay divs often intercept events on the element).
 3. On hover, `showCinemaBtn()` creates a `position: fixed` button (using DOM API, not `innerHTML` — pages with Trusted Types CSP block `innerHTML`) and appends it to `document.body`. The button repositions on `scroll` events.
 4. On click, `enterCinema()`:

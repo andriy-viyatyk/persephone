@@ -62,7 +62,7 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 - **Browser: search engine selector** — The search engine selector in the URL bar is now hidden when the input contains a full URL with a protocol scheme (e.g., `https://`). It still appears for blank pages and search terms, keeping the toolbar uncluttered when navigating directly to URLs.
 
-- **Browser: cinema mode** — Hover over any `<video>` or `<iframe>` in the built-in browser to reveal an expand button. Click it to fill the entire browser viewport with the element, hiding the surrounding page content. Press **Escape** or click the button again to collapse back to the normal view. Works on YouTube, Twitch, and other sites that use overlay-based players.
+- **Browser: cinema mode** — Hover over any `<video>` in the built-in browser to reveal an expand button. Click it to fill the entire browser viewport with the video, hiding the surrounding page content. Press **Escape** or click the button again to collapse back to the normal view. Works on YouTube, Twitch, and other sites that use overlay-based players.
 
 ### Breaking Changes
 

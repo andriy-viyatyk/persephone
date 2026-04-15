@@ -122,8 +122,8 @@ document.addEventListener("click", (e) => {
     }
 }, true); // Capture phase: fires before page scripts that may stopPropagation
 
-// ── Cinema Mode — Expand <video>/<iframe> to Full Page ──────────────
-// Detects <video> and <iframe> elements on any page. On hover, shows an
+// ── Cinema Mode — Expand <video> to Full Page ───────────────────────
+// Detects <video> elements on any page. On hover, shows an
 // expand/collapse button in the top-right corner. Clicking expands the
 // element to fill the entire webview page, hiding other content.
 //
@@ -131,7 +131,7 @@ document.addEventListener("click", (e) => {
 // This avoids sites (e.g. YouTube) that clean up unexpected DOM children,
 // and avoids Trusted Types CSP that blocks innerHTML.
 
-type CinemaTarget = HTMLVideoElement | HTMLIFrameElement;
+type CinemaTarget = HTMLVideoElement;
 
 let expandedTarget: CinemaTarget | null = null;
 let expandedOriginalStyle = "";
@@ -412,16 +412,14 @@ function initCinemaMode() {
     const processTarget = (target: CinemaTarget) => attachCinemaListeners(target);
 
     document.querySelectorAll<HTMLVideoElement>("video").forEach(processTarget);
-    document.querySelectorAll<HTMLIFrameElement>("iframe").forEach(processTarget);
 
     const observer = new MutationObserver((mutations) => {
         for (const mutation of mutations) {
             for (const node of mutation.addedNodes) {
-                if (node instanceof HTMLVideoElement || node instanceof HTMLIFrameElement) {
+                if (node instanceof HTMLVideoElement) {
                     processTarget(node);
                 } else if (node instanceof HTMLElement) {
                     node.querySelectorAll<HTMLVideoElement>("video").forEach(processTarget);
-                    node.querySelectorAll<HTMLIFrameElement>("iframe").forEach(processTarget);
                 }
             }
         }
