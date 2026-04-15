@@ -6,15 +6,19 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ---
 
-## Version 3.0.6 (Upcoming)
+## Version 3.0.7 (Upcoming)
 
-### New Features
+*No changes yet.*
+
+---
+
+## Version 3.0.6
+
+### Improvements
 
 - **Audio Player: custom controls bar** — Audio playback now has a custom control bar overlaid on the visualizer canvas. The bar shows a play/pause button, current time, a seek bar, total duration, and a mute toggle. The controls fade out when you are not hovering over the player and reappear automatically on hover, keeping the visualizer unobstructed during playback.
 
 - **Audio visualizer: No-effect mode** — A third button ("⊘ No effect") has been added to the effect switcher. When selected, the visualizer canvas is cleared and, if the file name contains artist/title information (e.g., `Artist – Title.mp3`), the track name and artist are displayed centered on screen. ID3 metadata is read first; the filename is used as a fallback.
-
-### Improvements
 
 - **Audio visualizer: Bars effect** — The Bars effect has been significantly improved:
   - Bars are now centered both horizontally and vertically — they grow symmetrically from the center, matching the area used by the Circular effect.
