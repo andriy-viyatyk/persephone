@@ -105,15 +105,32 @@ function LinkTagsNavigationPanel({ vm, pageId }: LinkTagsNavigationPanelProps) {
         }
     }, []);
 
+    // Initialize bottom height to 50% of container after it finishes expanding.
+    // The panel has an expand animation, so we debounce ResizeObserver to capture the final size.
+    useEffect(() => {
+        if (bottomHeight !== undefined || !rootRef.current) return;
+        const el = rootRef.current;
+        let timer: ReturnType<typeof setTimeout>;
+        const observer = new ResizeObserver(() => {
+            clearTimeout(timer);
+            timer = setTimeout(() => {
+                const h = el.clientHeight;
+                if (h > 0) {
+                    setBottomHeight(Math.max(40, h * 0.5));
+                    observer.disconnect();
+                }
+            }, 200);
+        });
+        observer.observe(el);
+        return () => { clearTimeout(timer); observer.disconnect(); };
+    }, [bottomHeight]);
+
     // Scroll selected item into view when selection changes (e.g., player auto-advances)
     useEffect(() => {
         if (!selectedLinkId || !gridRef.current) return;
         const row = tagItems.findIndex((item) => (item.id ?? item.href) === selectedLinkId);
         if (row >= 0) gridRef.current.scrollToRow(row, "nearest");
     }, [selectedLinkId, tagItems]);
-
-    // Compute effective bottom height: use state if set, otherwise 50% of container
-    const effectiveHeight = bottomHeight ?? (rootRef.current ? rootRef.current.clientHeight * 0.5 : 150);
 
     return (
         <NavigationPanelRoot ref={rootRef}>
@@ -124,11 +141,11 @@ function LinkTagsNavigationPanel({ vm, pageId }: LinkTagsNavigationPanelProps) {
                 <>
                     <Splitter
                         type="horizontal"
-                        initialHeight={effectiveHeight}
+                        initialHeight={bottomHeight ?? 150}
                         onChangeHeight={handleChangeHeight}
                         borderSized="top"
                     />
-                    <div className="tags-bottom" style={{ height: effectiveHeight }}>
+                    <div className="tags-bottom" style={{ height: bottomHeight ?? 150 }}>
                         <LinksList
                             ref={gridRef}
                             links={tagItems}
