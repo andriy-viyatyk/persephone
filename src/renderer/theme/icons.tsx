@@ -1144,6 +1144,23 @@ export const PauseIcon = createIcon(24)(
     </g>,
 );
 
+export const NextTrackIcon = createIcon(24)(
+    <g fill="currentColor">
+        <path d="M6 5v14l10-7L6 5z" />
+        <rect x="17" y="5" width="2.5" height="14" rx="0.5" />
+    </g>,
+);
+
+export const ShuffleIcon = createIcon(24)(
+    <g fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M16 3h5v5" />
+        <path d="M4 20L21 3" />
+        <path d="M21 16v5h-5" />
+        <path d="M15 15l6 6" />
+        <path d="M4 4l5 5" />
+    </g>,
+);
+
 export const CaseSensitiveIcon = createIcon(16)(
     <text
         x="8"

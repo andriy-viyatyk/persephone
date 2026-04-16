@@ -25,6 +25,8 @@ new ai.ClaudeSession(config: IClaudeSessionConfig): IClaudeSession
 | `maxTokens` | `number` | `4096` | Max tokens per response |
 | `temperature` | `number` | — | Sampling temperature (0–1) |
 | `maxToolRounds` | `number` | `20` | Max tool-call loop iterations before stopping |
+| `system` | `string` | — | System instructions for Claude (role, behavior, constraints). Equivalent to calling `systemMessage()` after construction. |
+| `stopSequences` | `string[]` | — | Sequences that cause Claude to stop generating immediately when encountered. |
 
 ---
 
@@ -36,6 +38,7 @@ new ai.ClaudeSession(config: IClaudeSessionConfig): IClaudeSession
 | `maxTokens` | `number` | Max tokens per response |
 | `temperature` | `number \| undefined` | Sampling temperature |
 | `maxToolRounds` | `number` | Max tool-call loop iterations |
+| `stopSequences` | `string[] \| undefined` | Stop sequences configured for this session |
 | `messages` | `Array<{role, content}>` | Copy of the current message history |
 | `lastResponse` | `string \| undefined` | The last assistant text response |
 | `tools` | `IClaudeToolDef[]` | Tool definitions (get/set) |
@@ -232,6 +235,21 @@ const formatted = await session.send();
 
 page.grouped.content = formatted;
 page.grouped.language = "json";
+```
+
+#### Using `system` and `stopSequences` in the constructor
+
+```javascript
+// Both can be set in the constructor instead of calling systemMessage() separately
+const session = new ai.ClaudeSession({
+    apiKey: "sk-ant-...",
+    system: "You are a concise assistant. Keep answers under 3 sentences.",
+    stopSequences: ["---", "END"],
+});
+
+session.userMessage("Explain closures in JavaScript.");
+const reply = await session.send();
+return reply;
 ```
 
 ---

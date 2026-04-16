@@ -228,6 +228,8 @@ For Pattern B (mainEditor in secondaryEditors[]), the model may be disposed twic
 | `expandPanel(panelId)` | Sets activePanel if panelId exists in any secondary editor |
 | `findExplorer()` | Returns the ExplorerEditorModel from secondaryEditors (if any) |
 | `createExplorer(rootPath)` | Creates ExplorerEditorModel, adds to secondaryEditors |
+| `getTransient<T>(key)` | Read a transient (non-persisted) runtime value by key. Returns undefined if not set. |
+| `setTransient(key, value)` | Write a transient runtime value. Pass undefined to delete. Cleared on page close / app restart. |
 
 ---
 
@@ -238,7 +240,7 @@ For Pattern B (mainEditor in secondaryEditors[]), the model may be disposed twic
 | `ExplorerEditorModel` | `["explorer"]` or `["explorer", "search"]` | A (separate) | Always survives navigation | `PageModel.createExplorer()` or restore |
 | `ArchiveEditorModel` | `["archive-tree"]` | B (mainEditor) | Survives if new editor was opened from this archive | `_openArchive()` in PagesLifecycleModel |
 | `TextFileModel` (links, main) | `["link-category", "link-tags"?, "link-hostnames"?]` | B (mainEditor) | Removed on navigation (default `beforeNavigateAway`). Removed when PageNavigator closes, re-registered when it opens. | LinkEditor component `useEffect` (subscribes to `pageNavigatorToggled` event) |
-| `TextFileModel` (links, standalone) | `["link-category"]` | A (separate) | Always survives (base `onMainEditorChanged` is no-op). Exposes `treeProvider`/`selectionState` via duck-typing for CategoryEditor discovery. | `openLinks()` in PagesLifecycleModel |
+| `TextFileModel` (links, standalone) | `["link-category"]` | A (separate) | Always survives (base `onMainEditorChanged` is no-op). Exposes `treeProvider`/`selectionState`/`selectByHref()` via duck-typing for CategoryEditor discovery and player track navigation. | `openLinks()` in PagesLifecycleModel |
 
 ---
 

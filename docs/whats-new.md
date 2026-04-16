@@ -8,7 +8,29 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ## Version 3.0.7 (Upcoming)
 
-*No changes yet.*
+### New Features
+
+- **Audio Player — Next Track & Shuffle** — The audio player now auto-plays the next track when the current one ends, and supports a shuffle mode. Works when a file was opened from the **Explorer** panel (filesystem folder) or the **Links** panel (link collection category):
+  - **Shuffle** and **Next Track** buttons appear in the audio controls bar when a source panel is available.
+  - **Shuffle mode** uses a shuffle bag — all tracks in the folder/category play before any track repeats. The setting persists across app restarts.
+  - When a track is auto-advanced, the selection highlight in the Explorer or Links panel updates to follow the current track.
+  - If a file was opened by directly typing a URL, no buttons are shown (feature is not available without a source panel).
+
+### Improvements
+
+- **Script API: `ai.ClaudeSession` — `system` and `stopSequences` config options** — Two new options are available when constructing a `ClaudeSession`:
+  - `system` — set the system message directly in the constructor instead of calling `session.systemMessage()` after construction.
+  - `stopSequences` — an array of strings that cause Claude to stop generating immediately when encountered in the output.
+
+  ```javascript
+  const session = new ai.ClaudeSession({
+      apiKey: "sk-ant-...",
+      system: "You are a concise assistant.",
+      stopSequences: ["---", "END"],
+  });
+  ```
+
+  The `stopSequences` value is also exposed as a read-only `session.stopSequences` property. See the [`ai` API reference](./api/ai.md) for details.
 
 ---
 

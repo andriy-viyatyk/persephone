@@ -93,7 +93,8 @@ For video files (`.mp4`, `.webm`, `.avi`, `.mkv`, `.mov`, `.m3u8`, `.m3u`) and a
 
 When you open an audio-only file (`.mp3`, `.wav`, `.aac`, `.flac`, `.m4a`, `.wma`, `.ogg`, `.opus`), a spectrum analyzer visualizer fills the player area instead of a blank video frame. The visualizer reacts in real time to the playing audio.
 
-- **Effect switcher** — Hover over the visualizer to reveal effect buttons in the top-right corner. Two styles are available: **Bars** (vertical frequency bars) and **Circular** (radial spectrum with spark particles that fly outward on volume peaks). Click a button to switch. The selected effect is remembered across sessions.
+- **Effect switcher** — Hover over the visualizer to reveal effect buttons in the top-right corner. Three styles are available: **Bars** (vertical frequency bars), **Circular** (radial spectrum with spark particles that fly outward on volume peaks), and **No effect** (displays the track name and artist on a blank canvas, read from ID3 metadata or the filename). Click a button to switch. The selected effect is remembered across sessions.
+- **Controls bar** — Hover over the visualizer to reveal a playback controls bar centered near the bottom: play/pause button, current time, seek bar, total duration, and a mute toggle. The bar fades out when idle and reappears on hover, keeping the visualizer unobstructed.
 - Click anywhere on the visualizer canvas to toggle play/pause.
 
 **State badge:** When the player is loading, in an error state, or the format is unsupported, a badge at the bottom of the player area shows the current state.
@@ -459,8 +460,8 @@ Some files support multiple editors:
 | `.zip`, `.docx`, `.xlsx`, etc. | Archive Editor |
 | `.asar` | Archive Editor (read-only) |
 | `.pdf` | PDF only |
-| `.mp4`, `.webm`, `.ogg`, `.m3u8`, `.m3u` | Video Player only |
-| `.mp3`, `.wav`, `.aac`, `.flac`, `.m4a` | Video Player only (audio with visualizer) |
+| `.mp4`, `.webm`, `.avi`, `.mkv`, `.mov`, `.m3u8`, `.m3u` | Video Player only |
+| `.mp3`, `.wav`, `.aac`, `.flac`, `.m4a`, `.wma`, `.ogg`, `.opus` | Video Player only (audio with visualizer) |
 | Images | Image Viewer only |
 | Other | Text only |
 

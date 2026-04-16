@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { useCallback, useMemo, useState, useSyncExternalStore } from "react";
+import { useCallback, useMemo, useSyncExternalStore } from "react";
 import { TreeProviderView } from "../../../components/tree-provider/TreeProviderView";
 import { highlightText } from "../../../components/basic/useHighlightedText";
 import { app } from "../../../api/app";
@@ -60,17 +60,27 @@ export function LinkCategoryPanel({ vm, useOpenRawLink, categoriesOnly = true, p
         (cb) => vm.state.subscribe(cb),
         () => vm.state.get().selectedCategory,
     );
-    // When showing links (not categories-only), track the clicked item for highlight
-    const [selectedItemHref, setSelectedItemHref] = useState<string | undefined>(undefined);
+    // Derive selected item href from LinkViewModel's selectedLinkId (single source of truth)
+    const selectedLinkId = useSyncExternalStore(
+        (cb) => vm.state.subscribe(cb),
+        () => vm.state.get().selectedLinkId,
+    );
+    const selectedItemHref = useMemo(() => {
+        if (!selectedLinkId) return undefined;
+        const link = vm.state.get().data.links.find((l) => l.id === selectedLinkId);
+        return link?.href;
+    }, [selectedLinkId, vm]);
     const tooltipId = useMemo(() => "lcp-" + crypto.randomUUID(), []);
 
     const handleItemClick = useCallback((item: ILink) => {
         if (useOpenRawLink) {
-            setSelectedItemHref(item.href);
+            if (item.id) vm.selectLink(item.id);
             const navUrl = vm.treeProvider.getNavigationUrl(item);
             app.events.openRawLink.sendAsync(
                 createLinkData(navUrl, {
                     target: item.target || undefined,
+                    sourceId: "link-category",
+                    category: item.category,
                     ...(pageId ? { pageId, fallbackTarget: "monaco", title: item.title } : undefined),
                 }),
             );

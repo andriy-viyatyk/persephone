@@ -10,7 +10,13 @@ export type PlayerState =
     | "unsupported format"
     | "error";
 
-const AUDIO_EXTENSIONS = [".mp3", ".wav", ".aac", ".flac", ".m4a", ".wma", ".ogg", ".opus"];
+export const AUDIO_EXTENSIONS = [".mp3", ".wav", ".aac", ".flac", ".m4a", ".wma", ".ogg", ".opus"];
+
+/** Check if a file path or URL refers to an audio file by extension. */
+export function isAudioFile(href: string): boolean {
+    const lower = href.toLowerCase();
+    return AUDIO_EXTENSIONS.some((ext) => lower.endsWith(ext));
+}
 
 /**
  * Infer video/audio format from URL.

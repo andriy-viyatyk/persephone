@@ -23,6 +23,16 @@ export interface VPlayerProps {
     sourceUrl?: string;
     onStateChange?: (state: PlayerState, error?: unknown) => void;
     onMutedChange?: (muted: boolean) => void;
+    /** Called when audio playback reaches the end. */
+    onEnded?: () => void;
+    /** Whether a next track is available (shows Next/Shuffle buttons). */
+    hasNext?: boolean;
+    /** Whether shuffle mode is on. */
+    shuffle?: boolean;
+    /** Skip to the next track. */
+    onNext?: () => void;
+    /** Toggle shuffle mode. */
+    onToggleShuffle?: () => void;
 }
 
 // ── Styled components ─────────────────────────────────────────────────────────
@@ -206,11 +216,18 @@ export function VPlayer({
     sourceUrl,
     onStateChange,
     onMutedChange,
+    onEnded,
+    hasNext,
+    shuffle,
+    onNext,
+    onToggleShuffle,
 }: VPlayerProps) {
     const onStateChangeRef = useRef(onStateChange);
     const onMutedChangeRef = useRef(onMutedChange);
+    const onEndedRef = useRef(onEnded);
     onStateChangeRef.current = onStateChange;
     onMutedChangeRef.current = onMutedChange;
+    onEndedRef.current = onEnded;
 
     const isHls = format === "m3u8" && Hls.isSupported();
     const isAudio = format === "audio";
@@ -241,6 +258,11 @@ export function VPlayer({
                     sourceUrl={sourceUrl}
                     onStateChangeRef={onStateChangeRef}
                     onMutedChangeRef={onMutedChangeRef}
+                    onEndedRef={onEndedRef}
+                    hasNext={hasNext}
+                    shuffle={shuffle}
+                    onNext={onNext}
+                    onToggleShuffle={onToggleShuffle}
                 />
             )}
         </VideoRoot>

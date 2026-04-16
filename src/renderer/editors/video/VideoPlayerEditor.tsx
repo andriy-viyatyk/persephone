@@ -11,12 +11,16 @@ import { Button } from "../../components/basic/Button";
 import { DEFAULT_BROWSER_COLOR } from "../../theme/palette-colors";
 import type { ParsedHttpRequest } from "../../core/utils/curl-parser";
 import { parseHttpRequest } from "../../core/utils/curl-parser";
-import { detectVideoFormat } from "./video-types";
+import { detectVideoFormat, isAudioFile } from "./video-types";
 import type { VideoFormat, PlayerState } from "./video-types";
 import { VPlayer } from "./VPlayer";
 import { api } from "../../../ipc/renderer/api";
 import { settings } from "../../api/settings";
 import { ui } from "../../api/ui";
+import { app } from "../../api/app";
+import { createLinkData } from "../../../shared/link-data";
+import { fpDirname } from "../../core/utils/file-path";
+import type { ITreeProvider, ILink } from "../../api/types/io.tree";
 
 // ── State ────────────────────────────────────────────────────────────────────
 
@@ -158,6 +162,150 @@ export class VideoEditorModel extends EditorModel<VideoEditorState, void> {
         sessionMuted = newMuted;
         this.state.update((s) => { s.pageMuted = newMuted; });
     };
+
+    // ── Next track / shuffle ──────────────────────────────────────
+
+    /** Whether shuffle mode is enabled (persisted in app.settings). */
+    get shuffle(): boolean {
+        return settings.get("audio-shuffle") === true;
+    }
+
+    /** Toggle shuffle mode. */
+    toggleShuffle = () => {
+        settings.set("audio-shuffle", !this.shuffle);
+    };
+
+    /** Whether the player can potentially play a next track (has a source provider). */
+    get canPlayNext(): boolean {
+        const sourceId = this.state.get().sourceLink?.sourceId;
+        return sourceId === "explorer" || sourceId === "link-category";
+    }
+
+    /**
+     * Find the ITreeProvider that provided the currently playing track.
+     * Scans page.secondaryEditors[] matching sourceLink.sourceId.
+     */
+    private findSourceProvider(): ITreeProvider | null {
+        const page = this.page;
+        if (!page) return null;
+        const sourceId = this.state.get().sourceLink?.sourceId;
+        if (!sourceId) return null;
+
+        for (const editor of page.secondaryEditors) {
+            if (!("treeProvider" in editor)) continue;
+            const tp = (editor as any).treeProvider as ITreeProvider | null; // eslint-disable-line @typescript-eslint/no-explicit-any
+            if (sourceId === "explorer" && tp?.type === "file") return tp;
+            if (sourceId === "link-category" && tp?.type === "link") return tp;
+        }
+        return null;
+    }
+
+    /**
+     * List audio files in the same directory/category as the current track.
+     * Returns the list and the index of the current track within it.
+     */
+    private async getSiblingTracks(): Promise<{ items: ILink[]; currentIndex: number } | null> {
+        const provider = this.findSourceProvider();
+        if (!provider) return null;
+
+        const { sourceLink, url } = this.state.get();
+        let parentPath: string;
+        if (provider.type === "file") {
+            parentPath = fpDirname(url || sourceLink?.href || "");
+            if (!parentPath) return null;
+        } else {
+            parentPath = sourceLink?.category ?? provider.rootPath;
+        }
+
+        const allItems = await provider.list(parentPath);
+        const audioItems = allItems.filter((item) => !item.isDirectory && isAudioFile(item.href));
+        if (audioItems.length === 0) return null;
+
+        const currentHref = (url || sourceLink?.href || "").toLowerCase();
+        const currentIndex = audioItems.findIndex((item) => item.href.toLowerCase() === currentHref);
+
+        return { items: audioItems, currentIndex };
+    }
+
+    /** Play the next (or random) track from the source provider. */
+    async playNext(): Promise<void> {
+        const result = await this.getSiblingTracks();
+        if (!result || result.items.length <= 1) return;
+
+        const { items, currentIndex } = result;
+        let nextIndex: number;
+
+        if (this.shuffle) {
+            nextIndex = this.getShuffleBagNext(items, currentIndex);
+        } else {
+            nextIndex = currentIndex >= 0 ? (currentIndex + 1) % items.length : 0;
+        }
+
+        const nextItem = items[nextIndex];
+        this.navigateToTrack(nextItem);
+    }
+
+    /** Navigate to a new track via the openRawLink pipeline. */
+    private navigateToTrack(item: ILink): void {
+        const provider = this.findSourceProvider();
+        if (!provider) return;
+
+        const sourceId = this.state.get().sourceLink?.sourceId;
+        const pageId = this.page?.id;
+        const navUrl = provider.getNavigationUrl(item);
+
+        // Update the source panel's selection highlight before navigation
+        if (this.page) {
+            for (const editor of this.page.secondaryEditors) {
+                if (!("treeProvider" in editor)) continue;
+                const tp = (editor as any).treeProvider; // eslint-disable-line @typescript-eslint/no-explicit-any
+                if (sourceId === "explorer" && tp?.type === "file" && "selectionState" in editor) {
+                    (editor as any).selectionState.set({ selectedHref: item.href }); // eslint-disable-line @typescript-eslint/no-explicit-any
+                }
+                if (sourceId === "link-category" && tp?.type === "link" && "selectByHref" in editor) {
+                    (editor as any).selectByHref(item.href); // eslint-disable-line @typescript-eslint/no-explicit-any
+                }
+            }
+        }
+
+        app.events.openRawLink.sendAsync(
+            createLinkData(navUrl, {
+                pageId,
+                sourceId,
+                category: item.category,
+                target: item.target || undefined,
+                title: item.title,
+            }),
+        );
+    }
+
+    /**
+     * Pick the next index from a shuffle bag stored in page transient state.
+     * The bag is a shuffled array of indices. When exhausted, it reshuffles.
+     */
+    private getShuffleBagNext(items: ILink[], currentIndex: number): number {
+        const page = this.page;
+        if (!page) return 0;
+
+        const key = "audio-shuffle-bag";
+        let bag = page.getTransient<number[]>(key);
+
+        // Invalidate bag if track count changed
+        if (bag && bag.length > items.length) bag = null;
+
+        if (!bag || bag.length === 0) {
+            bag = Array.from({ length: items.length }, (_, i) => i)
+                .filter((i) => i !== currentIndex);
+            for (let i = bag.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [bag[i], bag[j]] = [bag[j], bag[i]];
+            }
+        }
+
+        const nextIndex = bag.shift()!;
+        page.setTransient(key, bag);
+        return nextIndex;
+    }
 
     /** Clean up streaming server sessions when the editor tab is closed. */
     async dispose(): Promise<void> {
@@ -306,6 +454,8 @@ function VideoPlayerEditor({ model }: VideoPlayerEditorProps) {
     const filePath = model.state.use((s) => s.filePath);
     const parsedRequest = model.state.use((s) => s.parsedRequest);
     const playerState = model.state.use((s) => s.playerState);
+    const shuffle = settings.use("audio-shuffle") === true;
+    const canPlayNext = model.canPlayNext;
     const showBadge = playerState !== "playing" && playerState !== "paused" && playerState !== "stopped";
     const showVlcButton = url && !["loading", "playing", "stopped"].includes(playerState);
 
@@ -344,6 +494,11 @@ function VideoPlayerEditor({ model }: VideoPlayerEditorProps) {
                         sourceUrl={url}
                         onStateChange={model.onPlayerStateChange}
                         onMutedChange={model.onMutedChange}
+                        onEnded={() => model.playNext()}
+                        hasNext={canPlayNext}
+                        shuffle={shuffle}
+                        onNext={() => model.playNext()}
+                        onToggleShuffle={model.toggleShuffle}
                     />
                 )}
                 {!url && (

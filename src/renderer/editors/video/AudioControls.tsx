@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import styled from "@emotion/styled";
 import color from "../../theme/color";
-import { PlayIcon, PauseIcon, VolumeIcon, VolumeMutedIcon } from "../../theme/icons";
+import { PlayIcon, PauseIcon, VolumeIcon, VolumeMutedIcon, ShuffleIcon, NextTrackIcon } from "../../theme/icons";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -97,9 +97,17 @@ const AudioControlsRoot = styled.div`
 export interface AudioControlsProps {
     audioRef: React.RefObject<HTMLAudioElement>;
     playing: boolean;
+    /** Whether a next track is available. */
+    hasNext?: boolean;
+    /** Whether shuffle mode is on. */
+    shuffle?: boolean;
+    /** Skip to the next track. */
+    onNext?: () => void;
+    /** Toggle shuffle mode. */
+    onToggleShuffle?: () => void;
 }
 
-export function AudioControls({ audioRef, playing }: AudioControlsProps) {
+export function AudioControls({ audioRef, playing, hasNext, shuffle, onNext, onToggleShuffle }: AudioControlsProps) {
     const [currentTime, setCurrentTime] = useState(0);
     const [duration, setDuration]       = useState(0);
     const [muted, setMuted]             = useState(false);
@@ -183,6 +191,22 @@ export function AudioControls({ audioRef, playing }: AudioControlsProps) {
             <button className="control-button idle-hide" onClick={toggleMute} title={muted ? "Unmute" : "Mute"}>
                 {muted ? <VolumeMutedIcon /> : <VolumeIcon />}
             </button>
+
+            {hasNext && (
+                <button
+                    className="control-button idle-hide"
+                    onClick={onToggleShuffle}
+                    title={shuffle ? "Shuffle: On" : "Shuffle: Off"}
+                    style={shuffle ? { color: color.misc.blue } : undefined}
+                >
+                    <ShuffleIcon />
+                </button>
+            )}
+            {hasNext && (
+                <button className="control-button idle-hide" onClick={onNext} title="Next Track">
+                    <NextTrackIcon />
+                </button>
+            )}
         </AudioControlsRoot>
     );
 }

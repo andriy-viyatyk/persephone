@@ -40,7 +40,8 @@ export type AppSettingsKey =
     | "tor.bookmarks-file"
     | "vlc-path"
     | "video-stream.port"
-    | "visualizer-effect";
+    | "visualizer-effect"
+    | "audio-shuffle";
 
 // =============================================================================
 // State
@@ -71,6 +72,7 @@ const settingsComments: Partial<Record<AppSettingsKey, string>> = {
     "vlc-path": "Path to VLC executable.\nLeave empty to auto-detect C:\\Program Files\\VideoLAN\\VLC\\vlc.exe.",
     "video-stream.port": "Port for the local video streaming server.\nUsed by the video player for VLC integration and proxied HTTP sources. Default: 7866.",
     "visualizer-effect": "Audio visualizer effect type.\nAvailable: bars, circular.",
+    "audio-shuffle": "Whether shuffle mode is enabled for audio playback.",
 };
 
 const defaultAppSettingsState = {
@@ -96,6 +98,7 @@ const defaultAppSettingsState = {
         "vlc-path": "",
         "video-stream.port": 7866,
         "visualizer-effect": "bars" as string,
+        "audio-shuffle": false,
     },
 };
 

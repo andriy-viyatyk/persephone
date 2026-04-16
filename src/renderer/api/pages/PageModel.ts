@@ -82,6 +82,25 @@ export class PageModel {
     /** Deferred activePanel — set during restore, applied after restoreSecondaryEditors(). */
     private _pendingActivePanel: string | undefined = undefined;
 
+    // ── Transient state (not persisted) ────────────────────────────
+
+    /** Runtime-only key-value store. Survives editor navigation, cleared on page close / app restart. */
+    private _transient = new Map<string, unknown>();
+
+    /** Get a transient value by key. Returns undefined if not set. */
+    getTransient<T>(key: string): T | undefined {
+        return this._transient.get(key) as T | undefined;
+    }
+
+    /** Set a transient value. Pass undefined to delete. */
+    setTransient(key: string, value: unknown): void {
+        if (value === undefined) {
+            this._transient.delete(key);
+        } else {
+            this._transient.set(key, value);
+        }
+    }
+
     // ── Internal ─────────────────────────────────────────────────────
 
     private _cacheName = "nav-panel";

@@ -21,8 +21,9 @@ export default function LinkCategorySecondaryEditor({ model, headerRef }: Second
         model.page?.promoteSecondaryToMain(model);
     }, [model]);
 
-    // Expose treeProvider and selectionState on the model (duck-typing)
-    // so that CategoryEditor can find it via findTreeProviderHost().
+    // Expose treeProvider, selectionState, and selectByHref on the model (duck-typing)
+    // so that CategoryEditor can find it via findTreeProviderHost()
+    // and VideoEditorModel can update link selection on track navigation.
     useEffect(() => {
         if (!vm || isMainEditor) return;
         const m = model as any; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -30,8 +31,13 @@ export default function LinkCategorySecondaryEditor({ model, headerRef }: Second
         if (!m.selectionState) {
             m.selectionState = new TOneState<NavigationState>({ selectedHref: null });
         }
+        m.selectByHref = (href: string) => {
+            const link = vm.state.get().data.links.find((l) => l.href === href);
+            if (link?.id) vm.selectLink(link.id);
+        };
         return () => {
             m.treeProvider = null;
+            m.selectByHref = null;
         };
     }, [vm, model, isMainEditor]);
 

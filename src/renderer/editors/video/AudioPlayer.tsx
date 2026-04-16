@@ -12,6 +12,16 @@ export interface AudioPlayerProps {
     sourceUrl?: string;
     onStateChangeRef: React.RefObject<((state: PlayerState, error?: unknown) => void) | undefined>;
     onMutedChangeRef: React.RefObject<((muted: boolean) => void) | undefined>;
+    /** Called when audio playback reaches the end. */
+    onEndedRef: React.RefObject<(() => void) | undefined>;
+    /** Whether a next track is available (shows Next/Shuffle buttons). */
+    hasNext?: boolean;
+    /** Whether shuffle mode is on. */
+    shuffle?: boolean;
+    /** Skip to the next track. */
+    onNext?: () => void;
+    /** Toggle shuffle mode. */
+    onToggleShuffle?: () => void;
 }
 
 const AudioPlayerRoot = styled.div`
@@ -32,7 +42,7 @@ const AudioPlayerRoot = styled.div`
         left: 50%;
         transform: translateX(-50%);
         width: 33%;
-        min-width: 260px;
+        min-width: fit-content;
         border-radius: 8px;
         overflow: hidden;
         pointer-events: auto;
@@ -40,7 +50,7 @@ const AudioPlayerRoot = styled.div`
         transition: background 0.2s ease;
     }
 
-    &:hover .controls-overlay {
+    & .controls-overlay:hover {
         background: ${color.background.dark};
     }
 
@@ -60,7 +70,7 @@ const AudioPlayerRoot = styled.div`
     }
 `;
 
-export function AudioPlayer({ src, muted, sourceUrl, onStateChangeRef, onMutedChangeRef }: AudioPlayerProps) {
+export function AudioPlayer({ src, muted, sourceUrl, onStateChangeRef, onMutedChangeRef, onEndedRef, hasNext, shuffle, onNext, onToggleShuffle }: AudioPlayerProps) {
     const audioRef = useRef<HTMLAudioElement>(null);
     const [playing, setPlaying] = useState(false);
 
@@ -72,6 +82,7 @@ export function AudioPlayer({ src, muted, sourceUrl, onStateChangeRef, onMutedCh
         const onPlaying = () => { onStateChangeRef.current?.("playing"); setPlaying(true); };
         const onPause = () => { onStateChangeRef.current?.("paused"); setPlaying(false); };
         const onVolumeChange = () => onMutedChangeRef.current?.(audio.muted);
+        const onEnded = () => onEndedRef.current?.();
         const onError = () => {
             setPlaying(false);
             const err = audio.error;
@@ -86,6 +97,7 @@ export function AudioPlayer({ src, muted, sourceUrl, onStateChangeRef, onMutedCh
         audio.addEventListener("playing", onPlaying);
         audio.addEventListener("pause", onPause);
         audio.addEventListener("volumechange", onVolumeChange);
+        audio.addEventListener("ended", onEnded);
         audio.addEventListener("error", onError);
 
         return () => {
@@ -93,9 +105,10 @@ export function AudioPlayer({ src, muted, sourceUrl, onStateChangeRef, onMutedCh
             audio.removeEventListener("playing", onPlaying);
             audio.removeEventListener("pause", onPause);
             audio.removeEventListener("volumechange", onVolumeChange);
+            audio.removeEventListener("ended", onEnded);
             audio.removeEventListener("error", onError);
         };
-    }, [onStateChangeRef, onMutedChangeRef]);
+    }, [onStateChangeRef, onMutedChangeRef, onEndedRef]);
 
     useEffect(() => {
         if (audioRef.current) audioRef.current.muted = muted ?? false;
@@ -114,7 +127,14 @@ export function AudioPlayer({ src, muted, sourceUrl, onStateChangeRef, onMutedCh
             </div>
             <audio ref={audioRef} src={src} autoPlay muted={muted} style={{ display: "none" }} />
             <div className="controls-overlay">
-                <AudioControls audioRef={audioRef} playing={playing} />
+                <AudioControls
+                    audioRef={audioRef}
+                    playing={playing}
+                    hasNext={hasNext}
+                    shuffle={shuffle}
+                    onNext={onNext}
+                    onToggleShuffle={onToggleShuffle}
+                />
             </div>
         </AudioPlayerRoot>
     );
