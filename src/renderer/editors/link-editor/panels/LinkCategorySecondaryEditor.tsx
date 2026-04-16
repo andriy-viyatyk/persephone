@@ -41,6 +41,24 @@ export default function LinkCategorySecondaryEditor({ model, headerRef }: Second
         };
     }, [vm, model, isMainEditor]);
 
+    // Dynamically register "link-tags" sub-panel when tags exist (standalone secondary mode only).
+    // When LinksEditor is the main editor, LinkEditor.tsx handles panel registration via buildPanelList().
+    useEffect(() => {
+        if (!vm || isMainEditor) return;
+        const updatePanels = () => {
+            const hasTags = vm.state.get().tags.length > 0;
+            const panels = ["link-category"];
+            if (hasTags) panels.push("link-tags");
+            const current = model.state.get().secondaryEditor;
+            if (JSON.stringify(current) !== JSON.stringify(panels)) {
+                model.secondaryEditor = panels;
+            }
+        };
+        updatePanels();
+        const unsub = vm.state.subscribe(updatePanels);
+        return () => unsub();
+    }, [vm, model, isMainEditor]);
+
     if (!vm) return null;
 
     const headerContent = (

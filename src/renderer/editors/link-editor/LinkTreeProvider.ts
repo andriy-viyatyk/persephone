@@ -179,6 +179,10 @@ export class LinkTreeProvider implements ITreeProvider {
 
     getTagItems(tag: string): ILink[] {
         const links = this.vm.state.get().data.links;
+
+        // Empty tag = "All" — return all items (no filter)
+        if (!tag) return links.map(l => this.linkToItem(l));
+
         const separator = ":";
         let filtered: LinkItem[];
 

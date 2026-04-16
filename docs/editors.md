@@ -94,7 +94,8 @@ For video files (`.mp4`, `.webm`, `.avi`, `.mkv`, `.mov`, `.m3u8`, `.m3u`) and a
 When you open an audio-only file (`.mp3`, `.wav`, `.aac`, `.flac`, `.m4a`, `.wma`, `.ogg`, `.opus`), a spectrum analyzer visualizer fills the player area instead of a blank video frame. The visualizer reacts in real time to the playing audio.
 
 - **Effect switcher** — Hover over the visualizer to reveal effect buttons in the top-right corner. Three styles are available: **Bars** (vertical frequency bars), **Circular** (radial spectrum with spark particles that fly outward on volume peaks), and **No effect** (displays the track name and artist on a blank canvas, read from ID3 metadata or the filename). Click a button to switch. The selected effect is remembered across sessions.
-- **Controls bar** — Hover over the visualizer to reveal a playback controls bar centered near the bottom: play/pause button, current time, seek bar, total duration, and a mute toggle. The bar fades out when idle and reappears on hover, keeping the visualizer unobstructed.
+- **Controls bar** — Hover over the visualizer to reveal a playback controls bar centered near the bottom: play/pause button, current time, seek bar, total duration, a mute toggle, and (when a source panel is available) **Shuffle** and **Next Track** buttons. The bar fades out when idle and reappears on hover, keeping the visualizer unobstructed.
+- **Next Track & Shuffle** — When a file was opened from the **File Explorer** panel or the **Links** panel, the player automatically advances to the next audio file in the same folder or category when the current track ends. A **Shuffle** button toggles shuffle mode: all tracks in the folder/category play once in random order before any track repeats (shuffle bag algorithm). The shuffle state persists across app restarts. When a track auto-advances, the selection highlight in the Explorer or Links panel updates to follow the current track. These buttons are hidden when a file was opened by typing a URL directly (no source panel available).
 - Click anywhere on the visualizer canvas to toggle play/pause.
 
 **State badge:** When the player is loading, in an error state, or the format is unsupported, a badge at the bottom of the player area shows the current state.
@@ -110,6 +111,8 @@ When you open an audio-only file (`.mp3`, `.wav`, `.aac`, `.flac`, `.m4a`, `.wma
 |---------|---------|-------------|
 | `vlc-path` | *(auto-detect)* | Full path to `vlc.exe`. Leave empty to auto-detect. |
 | `video-stream.port` | `7866` | Port for the local HTTP streaming server. Change if `7866` is in use. |
+| `visualizer-effect` | `bars` | Active audio visualizer effect (`bars`, `circular`). Persisted automatically when you switch effects. |
+| `audio-shuffle` | `false` | Whether shuffle mode is enabled for audio playback. Persisted automatically when you toggle the Shuffle button. |
 
 ## Image Viewer
 

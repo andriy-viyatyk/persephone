@@ -193,7 +193,7 @@ export default class RenderGridModel extends TComponentModel<
 
     setProps = () => {
         if (this.inputChangted()) {
-            this.updateRenderInfo(undefined, undefined, true);
+            this.updateRenderInfo({ all: true }, undefined, true);
         }
 
         if (this.isFirstUse) {

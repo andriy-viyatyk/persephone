@@ -46,6 +46,13 @@ export class ContentViewModelHost {
         const factory = editorRegistry.getViewModelFactory(editorId)
             ?? await editorRegistry.loadViewModelFactory(editorId);
 
+        // Re-check after await — another concurrent acquire may have created the vm
+        entry = this._viewModels.get(editorId);
+        if (entry) {
+            entry.refs++;
+            return entry.vm;
+        }
+
         // Create and initialize the view model
         const vm = factory(host);
         vm.init();

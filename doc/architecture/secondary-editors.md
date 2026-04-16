@@ -240,7 +240,7 @@ For Pattern B (mainEditor in secondaryEditors[]), the model may be disposed twic
 | `ExplorerEditorModel` | `["explorer"]` or `["explorer", "search"]` | A (separate) | Always survives navigation | `PageModel.createExplorer()` or restore |
 | `ArchiveEditorModel` | `["archive-tree"]` | B (mainEditor) | Survives if new editor was opened from this archive | `_openArchive()` in PagesLifecycleModel |
 | `TextFileModel` (links, main) | `["link-category", "link-tags"?, "link-hostnames"?]` | B (mainEditor) | Removed on navigation (default `beforeNavigateAway`). Removed when PageNavigator closes, re-registered when it opens. | LinkEditor component `useEffect` (subscribes to `pageNavigatorToggled` event) |
-| `TextFileModel` (links, standalone) | `["link-category"]` | A (separate) | Always survives (base `onMainEditorChanged` is no-op). Exposes `treeProvider`/`selectionState`/`selectByHref()` via duck-typing for CategoryEditor discovery and player track navigation. | `openLinks()` in PagesLifecycleModel |
+| `TextFileModel` (links, standalone) | `["link-category", "link-tags"?]` (dynamic) | A (separate) | Always survives (base `onMainEditorChanged` is no-op). Exposes `treeProvider`/`selectionState`/`selectByHref()` via duck-typing for CategoryEditor discovery and player track navigation. "link-tags" dynamically registered when tags exist (US-423). | LinkCategorySecondaryEditor useEffect (subscribes to `vm.state` for tag changes) |
 
 ---
 
@@ -416,3 +416,61 @@ PageModel
       ├── ExplorerEditorModel (treeProvider: FileTreeProvider)
       └── ArchiveEditorModel (treeProvider: ArchiveTreeProvider)
 ```
+
+## 13. Tag-Based Navigation Panel
+
+**Source code:** [`LinkTagsSecondaryEditor.tsx`](../../src/renderer/editors/link-editor/panels/LinkTagsSecondaryEditor.tsx), [`LinkTreeProvider.ts`](../../src/renderer/editors/link-editor/LinkTreeProvider.ts)
+
+When a `TextFileModel` (links, standalone) is opened as a secondary editor with available tags, the Tags navigation panel (`"link-tags"`) renders two parts:
+
+**Top:** `LinkTagsPanel` — existing tag selector (unchanged from main editor). User selects a tag, which updates shared `LinkViewModel.state.selectedTag`.
+
+**Bottom:** `LinksList` grid with links for the selected tag. Clicking a link dispatches `openRawLink` with:
+- `sourceId: "link-tag"` — signals that this link came from tag-based navigation
+- `selectedTag: string` — the selected tag, stored in `ILinkData.selectedTag`
+- Link is opened in the same page (if standalone) or in player if appropriate
+
+### Provider Support
+
+Tag-based navigation requires the secondary editor's `ITreeProvider` to expose:
+
+```typescript
+interface ITreeProvider {
+    readonly hasTags: boolean;
+    getTags?(): ITreeTagInfo[];      // All tags with counts
+    getTagItems?(tag: string): ILink[]; // Links matching a tag
+}
+```
+
+`LinkTreeProvider` implements both:
+- `getTags()` — aggregates unique tags from all links, with item counts
+- `getTagItems(tag)` — returns all (non-directory) links with the specified tag. Empty string `""` returns all non-directory links (the "All" virtual tag).
+
+### Player Track Navigation
+
+When `VideoEditorModel` navigates to a link with `sourceId === "link-tag"`:
+
+1. **Lookup sibling provider:** Scans `page.secondaryEditors[]` for a links editor exposing `treeProvider` + `selectByHref()` (duck-typed).
+2. **Get sibling tracks:** Calls `treeProvider.getTagItems(sourceLink.selectedTag)` to list all links in the same tag.
+3. **Track navigation:** `canPlayNext()`, `findSourceProvider()`, `getSiblingTracks()`, and `navigateToTrack()` all recognize `sourceId === "link-tag"` and use the tag-filtered sibling list instead of a directory listing.
+4. **Selection update:** After navigation, `selectByHref()` is called to highlight the new link in the tags panel.
+
+This pattern allows the player to treat tags as navigation containers (like folders), supporting next/previous track within a tag.
+
+### ILinkData Additions
+
+The `sourceId: "link-tag"` pattern uses a new field on `ILinkData`:
+
+```typescript
+export interface ILinkData {
+    // ... other fields ...
+    
+    // ── Source tracking ───────────────────────────────────────────
+    sourceId?: string;     // "link-tag", "archive-id", etc.
+    selectedTag?: string;  // Tag name when opened from tag navigation
+                           // Not persisted in sourceLink, re-read from sourceId on restore
+}
+```
+
+`selectedTag` is **ephemeral** — not persisted to `sourceLink` because the player re-derives it on restore by reading `sourceLink.selectedTag` (which was set when the link was stored).
+

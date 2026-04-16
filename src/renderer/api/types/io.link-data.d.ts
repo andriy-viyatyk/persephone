@@ -93,4 +93,9 @@ export interface ILinkData {
     /** ID of the source editor/model that initiated this link opening.
      *  Used by ArchiveEditorModel to track provenance. */
     sourceId?: string;
+    /** The selected tag when opened from a Tags panel (sourceId === "link-tag").
+     *  Used by the player to find sibling tracks within the same tag.
+     *  Named "selectedTag" (not "tag") because a link can have multiple tags —
+     *  this is the tag the user selected, not a property of the link itself. */
+    selectedTag?: string;
 }

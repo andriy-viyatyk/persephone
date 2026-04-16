@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, { useCallback, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { useDrag } from "react-dnd";
 import RenderGrid from "../../components/virtualization/RenderGrid/RenderGrid";
 import RenderGridModel from "../../components/virtualization/RenderGrid/RenderGridModel";
@@ -220,14 +220,16 @@ export interface LinksListProps {
     onGridModel?: (model: RenderGridModel | null) => void;
 }
 
-export function LinksList({
+export const LinksList = React.forwardRef<RenderGridModel, LinksListProps>(function LinksList({
     links, selectedId, getId = defaultGetId, searchText = "",
     onSelect, onEdit, onDelete, onDoubleClick, onContextMenu,
     getAdditionalIcon, dragSourceId, onGridModel,
-}: LinksListProps) {
+}: LinksListProps, ref: React.ForwardedRef<RenderGridModel>) {
     const gridRef = useRef<RenderGridModel>(null);
     const [gridWidth, setGridWidth] = useState<number | undefined>(undefined);
     const faviconVersion = useFavicons(links);
+
+    useImperativeHandle(ref, () => gridRef.current!, []);
 
     // Expose grid model to parent
     const gridModelNotified = useRef(false);
@@ -279,4 +281,4 @@ export function LinksList({
             onResize={handleResize}
         />
     );
-}
+});

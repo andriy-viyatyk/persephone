@@ -337,6 +337,7 @@ See [/doc/standards/coding-style.md](doc/standards/coding-style.md) for complete
 | Editor registry          | `/src/renderer/editors/registry.ts`               |
 | Secondary editor registry| `/src/renderer/ui/navigation/secondary-editor-registry.ts` |
 | Editor registration      | `/src/renderer/editors/register-editors.ts`       |
+| Content view model host  | `/src/renderer/editors/base/ContentViewModelHost.ts` |
 | Text editor model        | `/src/renderer/editors/text/TextEditorModel.ts`   |
 | Grid editor              | `/src/renderer/editors/grid/GridViewModel.ts`     |
 | Log view editor          | `/src/renderer/editors/log-view/LogViewModel.ts`  |

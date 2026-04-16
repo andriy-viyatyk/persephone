@@ -178,7 +178,7 @@ export class VideoEditorModel extends EditorModel<VideoEditorState, void> {
     /** Whether the player can potentially play a next track (has a source provider). */
     get canPlayNext(): boolean {
         const sourceId = this.state.get().sourceLink?.sourceId;
-        return sourceId === "explorer" || sourceId === "link-category";
+        return sourceId === "explorer" || sourceId === "link-category" || sourceId === "link-tag";
     }
 
     /**
@@ -195,7 +195,7 @@ export class VideoEditorModel extends EditorModel<VideoEditorState, void> {
             if (!("treeProvider" in editor)) continue;
             const tp = (editor as any).treeProvider as ITreeProvider | null; // eslint-disable-line @typescript-eslint/no-explicit-any
             if (sourceId === "explorer" && tp?.type === "file") return tp;
-            if (sourceId === "link-category" && tp?.type === "link") return tp;
+            if ((sourceId === "link-category" || sourceId === "link-tag") && tp?.type === "link") return tp;
         }
         return null;
     }
@@ -209,6 +209,19 @@ export class VideoEditorModel extends EditorModel<VideoEditorState, void> {
         if (!provider) return null;
 
         const { sourceLink, url } = this.state.get();
+        const sourceId = sourceLink?.sourceId;
+
+        // Tag-based listing: getTagItems handles both specific tag and "All" (empty = no filter)
+        if (sourceId === "link-tag" && provider.getTagItems) {
+            const tag = sourceLink?.selectedTag ?? "";
+            const allItems = provider.getTagItems(tag);
+            const audioItems = allItems.filter((item) => !item.isDirectory && isAudioFile(item.href));
+            if (audioItems.length === 0) return null;
+            const currentHref = (url || sourceLink?.href || "").toLowerCase();
+            const currentIndex = audioItems.findIndex((item) => item.href.toLowerCase() === currentHref);
+            return { items: audioItems, currentIndex };
+        }
+
         let parentPath: string;
         if (provider.type === "file") {
             parentPath = fpDirname(url || sourceLink?.href || "");
@@ -254,7 +267,11 @@ export class VideoEditorModel extends EditorModel<VideoEditorState, void> {
         const pageId = this.page?.id;
         const navUrl = provider.getNavigationUrl(item);
 
-        // Update the source panel's selection highlight before navigation
+        // Update the source panel's selection highlight.
+        // Explorer uses synchronous selectionState (works before navigation).
+        // Link panels use selectByHref → vm.selectLink which must run AFTER navigation
+        // completes, otherwise the openRawLink pipeline's synchronous state changes
+        // cause React to batch-render with a stale selectedLinkId snapshot.
         if (this.page) {
             for (const editor of this.page.secondaryEditors) {
                 if (!("treeProvider" in editor)) continue;
@@ -262,21 +279,37 @@ export class VideoEditorModel extends EditorModel<VideoEditorState, void> {
                 if (sourceId === "explorer" && tp?.type === "file" && "selectionState" in editor) {
                     (editor as any).selectionState.set({ selectedHref: item.href }); // eslint-disable-line @typescript-eslint/no-explicit-any
                 }
-                if (sourceId === "link-category" && tp?.type === "link" && "selectByHref" in editor) {
-                    (editor as any).selectByHref(item.href); // eslint-disable-line @typescript-eslint/no-explicit-any
-                }
             }
         }
 
+        const page = this.page;
+        const itemHref = item.href;
         app.events.openRawLink.sendAsync(
             createLinkData(navUrl, {
                 pageId,
                 sourceId,
                 category: item.category,
+                selectedTag: sourceId === "link-tag"
+                    ? this.state.get().sourceLink?.selectedTag
+                    : undefined,
                 target: item.target || undefined,
                 title: item.title,
             }),
-        );
+        ).then(() => {
+            // Update link panel selection AFTER navigation completes.
+            // Use requestAnimationFrame to ensure React has flushed the navigation
+            // render before we trigger another state update for selection.
+            requestAnimationFrame(() => {
+                if (!page) return;
+                for (const editor of page.secondaryEditors) {
+                    if (!("treeProvider" in editor) || !("selectByHref" in editor)) continue;
+                    const tp = (editor as any).treeProvider; // eslint-disable-line @typescript-eslint/no-explicit-any
+                    if ((sourceId === "link-category" || sourceId === "link-tag") && tp?.type === "link") {
+                        (editor as any).selectByHref(itemHref); // eslint-disable-line @typescript-eslint/no-explicit-any
+                    }
+                }
+            });
+        });
     }
 
     /**
