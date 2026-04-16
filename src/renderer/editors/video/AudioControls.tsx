@@ -171,6 +171,12 @@ export function AudioControls({ audioRef, playing, hasNext, shuffle, onNext, onT
                 {playing ? <PauseIcon /> : <PlayIcon />}
             </button>
 
+            {hasNext && (
+                <button className="control-button idle-hide" onClick={onNext} title="Next Track">
+                    <NextTrackIcon />
+                </button>
+            )}
+
             <span className="time-label idle-hide">{formatTime(currentTime)}</span>
 
             <input
@@ -200,11 +206,6 @@ export function AudioControls({ audioRef, playing, hasNext, shuffle, onNext, onT
                     style={shuffle ? { color: color.misc.blue } : undefined}
                 >
                     <ShuffleIcon />
-                </button>
-            )}
-            {hasNext && (
-                <button className="control-button idle-hide" onClick={onNext} title="Next Track">
-                    <NextTrackIcon />
                 </button>
             )}
         </AudioControlsRoot>
