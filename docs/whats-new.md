@@ -6,9 +6,19 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ---
 
-## Version 3.0.8 (Upcoming)
+## Version 3.0.9 (Upcoming)
 
 *No changes yet.*
+
+---
+
+## Version 3.0.8
+
+### Bug Fixes
+
+- **Default browser infinite loop** — When Persephone was registered as the Windows default browser, clicking any link in an external app (Outlook, Teams, VSCode, etc.) triggered an infinite loop: the URL was sent to `shell.openExternal`, which invoked Persephone again, which called `shell.openExternal` again, and so on. This caused system-wide focus stealing and made Persephone unresponsive. External URLs now open directly in an internal browser tab, breaking the cycle.
+
+- **Browser registration: quoted registry values** — The Windows registry entries written when registering Persephone as default browser had their quotes stripped by the shell. This was a latent bug that would cause failures for install paths containing spaces. Registry commands now bypass the shell entirely, preserving quoted values correctly.
 
 ---
 
