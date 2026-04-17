@@ -82,8 +82,12 @@ export class RendererEventsService {
 
     private handleExternalUrl = async (url: string) => {
         try {
-            // Route through pipeline — HTTP resolver decides content vs browser based on extension
-            await app.events.openRawLink.sendAsync(createLinkData(url));
+            // Route through pipeline — HTTP resolver decides content vs browser based on extension.
+            // `browserMode: "internal"` prevents shell.openExternal fallback, which would loop
+            // back to us when Persephone is the OS default browser (US-425).
+            await app.events.openRawLink.sendAsync(
+                createLinkData(url, { browserMode: "internal" }),
+            );
         } catch (err) {
             ui.notify(`Failed to open URL: ${err instanceof Error ? err.message : String(err)}`, "error");
         }

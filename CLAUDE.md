@@ -354,6 +354,7 @@ See [/doc/standards/coding-style.md](doc/standards/coding-style.md) for complete
 | Theme definitions        | `/src/renderer/theme/themes/`                     |
 | Tor service              | `/src/main/tor-service.ts`                        |
 | Named Pipe server        | `/src/main/pipe-server.ts`                        |
+| Windows browser registration | `/src/main/browser-registration.ts`           |
 | MCP HTTP server          | `/src/main/mcp-http-server.ts`                    |
 | Audio/Video player editor| `/src/renderer/editors/video/VideoPlayerEditor.tsx` |
 | Video playback component | `/src/renderer/editors/video/VPlayer.tsx`          |

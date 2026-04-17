@@ -1,4 +1,4 @@
-import { execSync } from "node:child_process";
+import { execFileSync, execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { app } from "electron";
@@ -21,20 +21,20 @@ function getLauncherPath(): string {
 }
 
 function regAdd(keyPath: string, valueName: string | null, data: string, type = "REG_SZ"): void {
-    const parts = ["reg", "add", `"HKCU\\${keyPath}"`, "/f"];
+    const args = ["add", `HKCU\\${keyPath}`, "/f"];
     if (valueName === null) {
-        parts.push("/ve"); // default value
+        args.push("/ve"); // default value
     } else {
-        parts.push("/v", `"${valueName}"`);
+        args.push("/v", valueName);
     }
-    parts.push("/t", type, "/d", `"${data}"`);
-    execSync(parts.join(" "), { windowsHide: true, stdio: "ignore" });
+    args.push("/t", type, "/d", data);
+    execFileSync("reg", args, { windowsHide: true, stdio: "ignore" });
 }
 
 function regDelete(keyPath: string, tree = true): void {
     try {
         if (tree) {
-            execSync(`reg delete "HKCU\\${keyPath}" /f`, { windowsHide: true, stdio: "ignore" });
+            execFileSync("reg", ["delete", `HKCU\\${keyPath}`, "/f"], { windowsHide: true, stdio: "ignore" });
         }
     } catch {
         // Key doesn't exist — fine
@@ -43,7 +43,7 @@ function regDelete(keyPath: string, tree = true): void {
 
 function regDeleteValue(keyPath: string, valueName: string): void {
     try {
-        execSync(`reg delete "HKCU\\${keyPath}" /v "${valueName}" /f`, { windowsHide: true, stdio: "ignore" });
+        execFileSync("reg", ["delete", `HKCU\\${keyPath}`, "/v", valueName, "/f"], { windowsHide: true, stdio: "ignore" });
     } catch {
         // Value doesn't exist — fine
     }
@@ -51,13 +51,13 @@ function regDeleteValue(keyPath: string, valueName: string): void {
 
 function regQuery(keyPath: string, valueName?: string): string | null {
     try {
-        const parts = ["reg", "query", `"HKCU\\${keyPath}"`];
+        const args = ["query", `HKCU\\${keyPath}`];
         if (valueName === undefined) {
-            parts.push("/ve"); // default value
+            args.push("/ve"); // default value
         } else {
-            parts.push("/v", `"${valueName}"`);
+            args.push("/v", valueName);
         }
-        const output = execSync(parts.join(" "), { windowsHide: true, encoding: "utf-8" });
+        const output = execFileSync("reg", args, { windowsHide: true, encoding: "utf-8" });
         return output;
     } catch {
         return null;

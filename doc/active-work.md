@@ -8,6 +8,9 @@ Overview of all active and planned epics and tasks.
 
 ## Active
 
+- *(no epic)*
+  - [ ] [US-425: Fix infinite-loop when Persephone is the OS default browser](tasks/US-425-default-browser-loop/README.md)
+
 
 ## Planned
 
