@@ -8,12 +8,27 @@ Overview of all active and planned epics and tasks.
 
 ## Active
 
-- *(no epic)*
-  - [ ] [US-425: Fix infinite-loop when Persephone is the OS default browser](tasks/US-425-default-browser-loop/README.md)
+- **EPIC-026** — [Trait System — Universal Data Adaptation Layer](epics/EPIC-026.md)
+  - [ ] US-428: Trait system core — TraitKey, TraitSet, Traited, traited()
+  - [ ] US-429: Well-known trait keys — display, conversion, and behavioral trait interfaces
+  - [ ] US-438: Trait resolution helpers — resolveTraited(), defaultTraits for common shapes
+  - [ ] US-439: Add traits to existing types — Link, FilePath, MenuItem namespaces
+  - [ ] US-440: Pilot: apply traits to PopupMenu family and all call sites
+  - [ ] US-444: Drag-and-drop trait discovery — TraitSet on drag payloads
+  - [ ] US-445: Editor facade refactor — replace as*() methods with trait-based discovery
+  - [ ] US-446: Documentation — trait system guide in /doc/architecture/
 
 
 ## Planned
 
+- **EPIC-025** — [Unified Component Library and Storybook Editor](epics/EPIC-025.md) *(depends on EPIC-026)*
+  - [ ] US-426: Design tokens — spacing, sizing, border-radius, font-size constants
+  - [ ] US-427: Layout primitives — Flex, HStack, VStack, Panel, Card, Spacer
+  - [ ] US-432: Dialog consolidation — unify UI dialogs and log-view dialogs
+  - [ ] US-433: Editor migration — replace inline styled containers with layout primitives
+  - [ ] US-434: Storybook editor — component browser, live preview, property editor
+  - [ ] US-435: Storybook — script tab for building and testing UI via scripts
+  - [ ] US-436: Script UI API — expose component library to scripting engine
 - **EPIC-022** — [LinkEditor Embedded Scripts](epics/EPIC-022.md)
   - [ ] US-396: Data model — `LinkScriptItem` type and `scripts` field in `LinkEditorData`
   - [ ] US-397: ScriptRunner — `runWithScope()` for custom context variable injection
