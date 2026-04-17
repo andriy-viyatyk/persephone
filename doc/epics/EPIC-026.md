@@ -113,21 +113,21 @@ class TraitKey<T> {
 }
 
 // Bag of trait implementations — "here's everything this type can do"
-class TraitSet<V> {
-  private map = new Map<symbol, any>();
+class TraitSet {
+  private map = new Map<symbol, unknown>();
   add<T>(key: TraitKey<T>, impl: T): this;
   get<T>(key: TraitKey<T>): T | undefined;
-  has(key: TraitKey<any>): boolean;
+  has(key: TraitKey<unknown>): boolean;
 }
 
 // Data + capabilities bundled together
-interface Traited<T, V> {
-  target: V;
-  traits: TraitSet<V>;
+interface Traited<V> {
+  readonly target: V;
+  readonly traits: TraitSet;
 }
 
 // Helper to create Traited values — always explicit
-function traited<V>(target: V, traits: TraitSet<V>): Traited<any, V>;
+function traited<V>(target: V, traits: TraitSet): Traited<V>;
 ```
 
 ### Two Usage Tiers
@@ -180,7 +180,7 @@ export namespace Link {
     icon?: string;
   }
 
-  export const traits = new TraitSet<ILink>()
+  export const traits = new TraitSet()
     .add(OPTION, {
       title: (l) => l.label ?? l.url,
       value: (l) => l.url,
@@ -201,11 +201,11 @@ export namespace Link {
 
 ### Component Integration Pattern
 
-Components accept `T[] | Traited<T, any>` and resolve once:
+Components accept `T[] | Traited<T[]>` and resolve once:
 
 ```typescript
 interface ComboBoxProps<T> {
-  items: T[] | Traited<T, any>;
+  items: T[] | Traited<T[]>;
   onSelect?: (item: T) => void;  // always returns raw T
 }
 
@@ -222,49 +222,72 @@ function ComboBox<T>({ items, onSelect }: ComboBoxProps<T>) {
 
 ### Drag-and-Drop Discovery
 
-```typescript
-// Source: attach all capabilities
-const payload = traited(filePath, FilePath.traits);
+TraitSet objects contain functions and cannot survive cross-window serialization. Instead, drag payloads carry a serializable `typeId` + `data`, and a **TraitRegistry** resolves the TraitSet at the drop target.
 
-// Target: query for needed trait
-if (payload.traits.has(LINK)) {
-  const link = payload.traits.get(LINK)!.link(payload.target);
-  addLink(link);
+```typescript
+// TraitRegistry — maps type identifiers to TraitSets
+class TraitRegistry {
+  register(typeId: string, traits: TraitSet): void;
+  get(typeId: string): TraitSet | undefined;
 }
 
-// Dragover: accept/reject
-if (payload.traits.has(LINK)) e.preventDefault();
+// Drag source: serialize typeId + data via HTML5 dataTransfer
+dataTransfer.setData("application/persephone-trait", JSON.stringify({
+  typeId: "ILink",
+  data: { href: "...", title: "...", category: "..." }
+}));
+
+// Drop target: deserialize, resolve traits from registry
+const { typeId, data } = JSON.parse(getData("application/persephone-trait"));
+const traits = traitRegistry.get(typeId);
+if (traits?.has(LINK)) {
+  const linkTrait = traits.get(LINK)!;
+  const url = linkTrait.href(data);
+  // use it
+}
+
+// Lazy traits (e.g., FILE_FOLDER → LINK_COLLECTION)
+// The trait accessor does expensive work only when called by the drop target
+traitRegistry.register("FileFolder", new TraitSet()
+  .add(LINK_COLLECTION, {
+    getLinks: async (folder) => scanFolderRecursively(folder.path),
+  })
+);
 ```
+
+This approach enables cross-window drag-and-drop for free — HTML5 `dataTransfer` string data is mediated by the OS between Electron windows.
 
 ## Linked Tasks
 
 | Task | Title | Status |
 |------|-------|--------|
-| US-428 | Trait system core — TraitKey, TraitSet, Traited, traited() | Planned |
-| US-429 | Well-known trait keys — define display, conversion, and behavioral trait interfaces | Planned |
-| US-438 | Trait resolution helpers — resolveTraited(), defaultTraits for common shapes | Planned |
-| US-439 | Add traits to existing types — Link, FilePath, MenuItem, EditorDefinition namespaces | Planned |
-| US-440 | Pilot: apply traits to PopupMenu family (PopupMenu, AppPopupMenu, WithPopupMenu) and all call sites | Planned |
-| US-444 | Drag-and-drop trait discovery — TraitSet on drag payloads, consumer queries | Planned |
+| US-428 | Trait system core — TraitKey, TraitSet, Traited, traited() | Done |
+| US-444 | Trait-based drag-drop infrastructure + link pilot — TraitRegistry, serialization, native HTML5 DnD, convert link-drag | Planned |
+| US-447 | Convert remaining data drags to trait-based system — todo, notes, REST, browser tabs, pinned links, explorer files/folders | Planned |
+| US-448 | Cross-type drop targets — FILE_FOLDER→Links import, cross-editor category drops, LINK→RestClient | Planned |
+| US-449 | Remove React-DnD dependency — convert component-level drags to native HTML5 | Planned |
 | US-445 | Editor facade refactor — replace hard-coded as*() methods with trait-based discovery | Planned |
 | US-446 | Documentation — trait system guide in /doc/architecture/ | Planned |
 
 ## Phase Plan
 
-**Phase 1 — Core Infrastructure (US-428, US-429, US-438)**
-Define `TraitKey`, `TraitSet`, `Traited`, `traited()`, `resolveTraited()`. Define all well-known trait interfaces. New code only — no existing changes.
+**Phase 1 — Core Primitives (US-428)** ✅
+`TraitKey`, `TraitSet`, `Traited`, `traited()`, `isTraited()`. New code only.
 
-**Phase 2 — Type Trait Implementations (US-439)**
-Add trait namespaces to existing types. Co-locate `TraitSet` definitions with type interfaces. No component changes yet — this just makes traits available.
+**Phase 2 — Drag-and-Drop Infrastructure (US-444)**
+TraitRegistry for cross-window serialization, native HTML5 drag/drop utilities, LINK trait key, convert link-drag in TreeProviderView as pilot. Cross-window verification.
 
-**Phase 3 — Pilot Component Retrofit (US-440)**
-Convert the PopupMenu family (PopupMenu, AppPopupMenu, WithPopupMenu) to traits — replace the fixed `MenuItem` interface, update all call sites. ComboSelect is deliberately excluded: it depends on List, which underlies several other components, making the migration scope too large for a pilot. PopupMenu is self-contained and has a clear fixed-interface problem (MenuItem) that traits solve well. Detailed investigation of the component will happen within the task scope.
+**Phase 3 — Drag-and-Drop Expansion (US-447, US-448)**
+Convert remaining data drags (todo, notes, REST, browser tabs, pinned links, explorer files/folders) to trait-based system. Implement cross-type drop targets: FILE_FOLDER with lazy LINK_COLLECTION trait for folder import, cross-editor link category drops, LINK drops into RestClient.
 
-**Phase 4 — Advanced Application (US-444, US-445)**
-Apply traits to drag-and-drop and editor facades. Script API backward compatibility is not a concern — scripting is not widely used yet.
+**Phase 4 — React-DnD Removal (US-449)**
+Convert remaining component-level drags (grid columns, menu folders, pinned editors) to native HTML5. Remove `react-dnd` and `react-dnd-html5-backend` dependencies.
 
-**Phase 5 — Documentation (US-446)**
-Write the architecture guide so future development follows the trait pattern consistently.
+**Phase 5 — Editor Facade Refactor (US-445)**
+Replace hard-coded `as*()` methods with trait-based discovery. Script API backward compatibility is not a concern.
+
+**Phase 6 — Documentation (US-446)**
+Write the architecture guide after real working examples exist.
 
 ## Migration Strategy
 
@@ -274,7 +297,7 @@ Write the architecture guide so future development follows the trait pattern con
 
 ## Resolved Concerns
 
-1. **TraitSet internal typing** — `Map<symbol, any>` is acceptable. TypeScript itself has no runtime type safety; `TraitKey<T>` phantom types provide compile-time safety at call sites, which is the standard TypeScript guarantee.
+1. **TraitSet internal typing** — `Map<symbol, unknown>` internally, with `TraitKey<T>` phantom types providing compile-time safety at call sites. `TraitSet` has no type parameter (V was phantom and unused in method signatures). `Traited<V>` has one type parameter for the target value.
 
 2. **Performance for large lists** — Not a concern. All grids, lists, and combobox dropdowns in Persephone are virtualized, so only visible items call trait accessors. No benchmarking needed.
 
@@ -288,11 +311,11 @@ Write the architecture guide so future development follows the trait pattern con
 
 ## Resolved Open Questions
 
-1. **Pilot component selection** — **PopupMenu family** (PopupMenu, AppPopupMenu, WithPopupMenu). ComboSelect excluded — it depends on List, which underlies multiple other components, making the migration scope too large for a pilot. PopupMenu is self-contained with a clear fixed-interface problem (`MenuItem`).
+1. **Pilot selection** — **Drag-and-drop (link-drag).** PopupMenu was investigated and rejected — `onClick` is context-dependent (closures capture surrounding scope), so MenuItem is an action-carrying UI description, not a data-adaptation problem. Traits don't reduce complexity there. Drag-and-drop is a better fit: data sources declare capabilities, drop targets query for what they need, and cross-window serialization requires a registry.
 
 2. **Trait interface granularity** — **One trait per UI context, optional methods for optional properties.** For example, `MenuItemTrait<T>` includes `label` (required), `icon?`, `disabled?`, `hotKey?`, `startGroup?` (all optional). Components check optional accessors with `?.()`: `trait.icon?.(item)`. This keeps the number of traits manageable while allowing minimal implementations for simple cases.
 
-3. **Trait composition / fallback conversions** — **Deferred.** Explicit fallbacks (e.g., "anything with LINK can derive OPTION") are a valid idea but not needed yet. After Phase 2 (adding traits to types), if significant duplication appears across type namespaces, fallback conversions can be added as an enhancement. Keep it simple for now.
+3. **Trait composition / fallback conversions** — **Deferred.** Explicit fallbacks (e.g., "anything with LINK can derive OPTION") are a valid idea but not needed yet. If significant duplication appears across type trait implementations, fallback conversions can be added as an enhancement. Keep it simple for now.
 
 ## Remaining Open Questions
 
@@ -321,3 +344,9 @@ None — all design questions resolved. Ready for implementation.
 - **Trait interface granularity: one trait per UI context, optional methods for optional properties.** `trait.icon?.(item)` pattern. Keeps trait count low while supporting minimal implementations.
 - **Trait fallback conversions: deferred.** Valid idea (register LINK→OPTION fallback so any LINK type auto-derives OPTION), but savings are small (~1 line per type) vs. added complexity (resolution order, ambiguity, harder debugging). Will revisit after Phase 2 if real duplication appears.
 - All design questions resolved. Epic is ready for implementation.
+- **Simplified generics:** `TraitSet<V>` → `TraitSet` (V was phantom — unused in any method signature). `Traited<T, V>` → `Traited<V>` (T was phantom — unused in interface body). Type safety comes from `TraitKey<T>` at call sites, not from container type parameters.
+- **Restructured tasks: vertical slices instead of horizontal layers.** Removed US-429 (all trait interfaces upfront), US-438 (resolveTraited standalone), US-439 (add traits to types standalone). These were speculative — defining interfaces and helpers before any consumer exists leads to overdesign and rework. Instead, each task is a complete vertical slice: US-440 defines MenuItemTrait + resolveTraited + converts PopupMenu + updates call sites. Trait interfaces are defined at point of use, not in advance.
+- **Removed US-440 (PopupMenu pilot).** Investigation showed PopupMenu is a poor trait candidate: `onClick` is context-dependent (closures capture surrounding scope), not type-dependent. MenuItem is an action-carrying UI description — traits can't help with the dominant concern. Savings would be ~2 lines per mapped item, and the majority of menu construction is hardcoded inline.
+- **Drag-and-drop is the real trait pilot.** Investigated all 12 drag types in the codebase. Data-item drags (links, notes, todos, REST requests, browser tabs) benefit from traits: sources declare capabilities, targets query for what they need. Cross-window drag requires serialization via HTML5 `dataTransfer` — TraitSet objects can't survive (they contain functions), so a TraitRegistry maps typeId strings to TraitSets at the drop target.
+- **React-DnD can be removed.** No custom drag previews or drag layers are used — just the browser's native ghost element. All 11 components use only basic features (isDragging, isOver, type matching) that native HTML5 events can provide.
+- **Split drag-drop work into 4 tasks:** US-444 (infrastructure + link pilot), US-447 (convert remaining data drags), US-448 (cross-type drop targets including lazy FILE_FOLDER→LINK_COLLECTION), US-449 (remove React-DnD).

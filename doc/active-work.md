@@ -9,12 +9,11 @@ Overview of all active and planned epics and tasks.
 ## Active
 
 - **EPIC-026** — [Trait System — Universal Data Adaptation Layer](epics/EPIC-026.md)
-  - [ ] US-428: Trait system core — TraitKey, TraitSet, Traited, traited()
-  - [ ] US-429: Well-known trait keys — display, conversion, and behavioral trait interfaces
-  - [ ] US-438: Trait resolution helpers — resolveTraited(), defaultTraits for common shapes
-  - [ ] US-439: Add traits to existing types — Link, FilePath, MenuItem namespaces
-  - [ ] US-440: Pilot: apply traits to PopupMenu family and all call sites
-  - [ ] US-444: Drag-and-drop trait discovery — TraitSet on drag payloads
+  - [ ] [US-428: Trait system core — TraitKey, TraitSet, Traited, traited()](tasks/US-428-trait-system-core/README.md)
+  - [ ] US-444: Trait-based drag-drop infrastructure + link pilot — TraitRegistry, serialization, native HTML5 DnD, convert link-drag
+  - [ ] US-447: Convert remaining data drags to trait-based system — todo, notes, REST, browser tabs, pinned links, explorer files/folders
+  - [ ] US-448: Cross-type drop targets — FILE_FOLDER→Links import, cross-editor category drops, LINK→RestClient
+  - [ ] US-449: Remove React-DnD dependency — convert component-level drags to native HTML5
   - [ ] US-445: Editor facade refactor — replace as*() methods with trait-based discovery
   - [ ] US-446: Documentation — trait system guide in /doc/architecture/
 
