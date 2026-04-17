@@ -139,15 +139,16 @@ A secondary editor can be toggled into the main editor role (and back) via `prom
    ├── this._mainEditor = null         // clear without dispose (model stays as secondary)
    ├── state.mainEditorId = null       // UI re-renders: content area becomes empty
    ├── notifyMainEditorChanged()       // secondaries notified with null
-   ├── queueMicrotask: restore/reduce panels
+   ├── queueMicrotask: restore panels if promoted-from-secondary
    │   ├── If _prePromotePanels saved → restore pre-promote panel list
-   │   └── If no saved panels (was originally main, Pattern B) → reduce to base panel only
+   │   └── If no saved panels (was originally main, Pattern B) → leave panels as-is
+   │       (secondary editor component manages its own panel list via useEffect)
    └── pagesModel.resubscribeEditor(page)
 ```
 
 The demote path does NOT call `setMainEditor(null)` — that would dispose the model. Instead it directly clears the reference, keeping the model alive in `secondaryEditors[]`.
 
-**Panel save/restore:** When promoting, the current panel list is saved as `_prePromotePanels`. On demote, if saved panels exist (model was promoted from secondary), they are restored. If no saved panels exist (model was originally the main editor — Pattern B), the panel list is reduced to the first (base) panel only, stripping main-editor-only panels like Tags/Hostnames. The `queueMicrotask` ensures this runs after React unmount cleanup.
+**Panel save/restore:** When promoting, the current panel list is saved as `_prePromotePanels`. On demote, if saved panels exist (model was promoted from secondary), they are restored. For Pattern B (model was originally the main editor, no saved panels), panels are left unchanged — the secondary editor component (e.g., `LinkCategorySecondaryEditor`) manages the panel list reactively via `useEffect`. The `queueMicrotask` ensures this runs after React unmount cleanup.
 
 ---
 
@@ -216,7 +217,7 @@ For Pattern B (mainEditor in secondaryEditors[]), the model may be disposed twic
 
 | Method | Description |
 |--------|-------------|
-| `addSecondaryEditor(model)` | Adds model to array, calls `model.setPage(this)`, bumps version |
+| `addSecondaryEditor(model)` | Adds model to array, calls `model.setPage(this)`, bumps version. If model is already registered, still bumps version (panel list may have changed). |
 | `removeSecondaryEditor(model)` | Removes, disposes, falls back `activePanel` if needed |
 | `removeSecondaryEditorWithoutDispose(model)` | Removes without disposing (used by `secondaryEditor` setter). Skips `setPage(null)` if model is the mainEditor (Pattern B guard). |
 | `promoteSecondaryToMain(model)` | Toggle: if model is secondary-only → promotes to mainEditor (old main goes through `setMainEditor` lifecycle); if model IS mainEditor → demotes (clears mainEditor to null, model stays as secondary). Calls `resubscribeEditor` for persistence. |
@@ -239,7 +240,7 @@ For Pattern B (mainEditor in secondaryEditors[]), the model may be disposed twic
 |-------|-----------|---------|----------|-----------|
 | `ExplorerEditorModel` | `["explorer"]` or `["explorer", "search"]` | A (separate) | Always survives navigation | `PageModel.createExplorer()` or restore |
 | `ArchiveEditorModel` | `["archive-tree"]` | B (mainEditor) | Survives if new editor was opened from this archive | `_openArchive()` in PagesLifecycleModel |
-| `TextFileModel` (links, main) | `["link-category", "link-tags"?, "link-hostnames"?]` | B (mainEditor) | Removed on navigation (default `beforeNavigateAway`). Removed when PageNavigator closes, re-registered when it opens. | LinkEditor component `useEffect` (subscribes to `pageNavigatorToggled` event) |
+| `TextFileModel` (links, main) | `["link-category", "link-tags", "link-hostnames"]` (always all 3) | B (mainEditor) | Removed on navigation (default `beforeNavigateAway`). Removed when PageNavigator closes, re-registered when it opens. First open fires `pageNavigatorToggled` via `PageModel.toggleNavigator()`. | LinkEditor component `useEffect` (subscribes to `pageNavigatorToggled` event) |
 | `TextFileModel` (links, standalone) | `["link-category", "link-tags"?]` (dynamic) | A (separate) | Always survives (base `onMainEditorChanged` is no-op). Exposes `treeProvider`/`selectionState`/`selectByHref()` via duck-typing for CategoryEditor discovery and player track navigation. "link-tags" dynamically registered when tags exist (US-423). | LinkCategorySecondaryEditor useEffect (subscribes to `vm.state` for tag changes) |
 
 ---

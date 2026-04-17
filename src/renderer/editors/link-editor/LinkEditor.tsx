@@ -114,12 +114,8 @@ const VIEW_MODE_ORDER: LinkViewMode[] = [
 const noopUnsubscribe = () => () => {};
 const getDefaultState = () => defaultLinkEditorState;
 
-function buildPanelList(hasTags: boolean, hasHostnames: boolean): string[] {
-    const panels = ["link-category"];
-    if (hasTags) panels.push("link-tags");
-    if (hasHostnames) panels.push("link-hostnames");
-    return panels;
-}
+/** All link-editor sidebar panels — always shown regardless of data availability. */
+const LINK_PANELS = ["link-category", "link-tags", "link-hostnames"];
 
 // =============================================================================
 // Component
@@ -170,8 +166,6 @@ export function LinkEditor(props: LinkEditorProps) {
 
     // ── Secondary editor registration ───────────────────────────────────
 
-    const hasTags = pageState.tags.length > 0;
-    const hasHostnames = pageState.hostnames.length > 0;
     const showPanelsInSidebar = hasPage && isNavigatorOpen;
 
     useEffect(() => {
@@ -184,8 +178,7 @@ export function LinkEditor(props: LinkEditorProps) {
             return;
         }
 
-        const panels = buildPanelList(hasTags, hasHostnames);
-        model.secondaryEditor = panels;
+        model.secondaryEditor = LINK_PANELS;
 
         // Expand the sidebar panel matching LinkViewModel's current expandedPanel
         const reverseMap: Record<string, string> = {
@@ -194,9 +187,7 @@ export function LinkEditor(props: LinkEditorProps) {
             "hostnames": "link-hostnames",
         };
         const panelToExpand = reverseMap[pageState.expandedPanel] ?? "link-category";
-        if (panels.includes(panelToExpand)) {
-            model.page?.expandPanel(panelToExpand);
-        }
+        model.page?.expandPanel(panelToExpand);
 
         return () => {
             // Don't clear panels if this model was demoted to secondary-only
@@ -207,7 +198,7 @@ export function LinkEditor(props: LinkEditorProps) {
             }
             model.secondaryEditor = undefined;
         };
-    }, [vm, showPanelsInSidebar, hasTags, hasHostnames]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [vm, showPanelsInSidebar]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // ── Grid and view mode ──────────────────────────────────────────────
 

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback, useEffect, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import type { SecondaryEditorProps } from "../../../ui/navigation/secondary-editor-registry";
 import type { TextFileModel } from "../../text/TextEditorModel";
@@ -8,13 +8,23 @@ import { LinkCategoryPanel } from "./LinkCategoryPanel";
 import { TOneState, useOptionalState } from "../../../core/state/state";
 import type { NavigationState } from "../../../api/pages/PageModel";
 import { Button } from "../../../components/basic/Button";
-import { SwapIcon } from "../../../theme/icons";
+import { SaveIcon, SwapIcon } from "../../../theme/icons";
 
 export default function LinkCategorySecondaryEditor({ model, headerRef }: SecondaryEditorProps) {
     const vm = useContentViewModel<LinkViewModel>(model as TextFileModel, "link-view");
     // Subscribe to mainEditorId so we re-render on promote/demote toggle
     const mainEditorId = useOptionalState(model.page?.state, (s) => s.mainEditorId, null);
     const isMainEditor = mainEditorId === model.id;
+
+    const modified = useSyncExternalStore(
+        (cb) => model.state.subscribe(cb),
+        () => model.state.get().modified,
+    );
+
+    const handleSave = useCallback((e: React.MouseEvent) => {
+        e.stopPropagation();
+        (model as TextFileModel).saveFile();
+    }, [model]);
 
     const handleToggleMainEditor = useCallback((e: React.MouseEvent) => {
         e.stopPropagation();
@@ -41,8 +51,9 @@ export default function LinkCategorySecondaryEditor({ model, headerRef }: Second
         };
     }, [vm, model, isMainEditor]);
 
-    // Dynamically register "link-tags" sub-panel when tags exist (standalone secondary mode only).
-    // When LinksEditor is the main editor, LinkEditor.tsx handles panel registration via buildPanelList().
+    // Dynamically register panels in standalone secondary mode (main editor is NOT Links).
+    // Links: always visible. Tags: visible if any tags exist. Hostnames: hidden.
+    // When LinksEditor IS the main editor, LinkEditor.tsx handles panel registration (all 3 always).
     useEffect(() => {
         if (!vm || isMainEditor) return;
         const updatePanels = () => {
@@ -65,6 +76,14 @@ export default function LinkCategorySecondaryEditor({ model, headerRef }: Second
         <>
             {isMainEditor ? "Categories" : "Links"}
             <span className="panel-spacer" />
+            {!isMainEditor && modified && (
+                <Button type="icon" size="small"
+                    title="Save"
+                    onClick={handleSave}
+                >
+                    <SaveIcon width={14} height={14} />
+                </Button>
+            )}
             <Button type="icon" size="small"
                 title={isMainEditor ? "Demote to sidebar only" : "Open as main editor"}
                 onClick={handleToggleMainEditor}

@@ -71,6 +71,20 @@ function LinkTagsNavigationPanel({ vm, pageId }: LinkTagsNavigationPanelProps) {
         () => vm.state.get().selectedLinkId,
     );
 
+    const allTags = useSyncExternalStore(
+        (cb) => vm.state.subscribe(cb),
+        () => vm.state.get().tags,
+    );
+
+    const handleToggleTag = useCallback((item: ILink, tag: string) => {
+        if (!item.id) return;
+        const current = item.tags ?? [];
+        const tags = current.includes(tag)
+            ? current.filter((t) => t !== tag)
+            : [...current, tag];
+        vm.updateLink(item.id, { tags });
+    }, [vm]);
+
     // Get items for the selected tag — all links, no audio filter.
     // Empty selectedTag = "All" — show all non-directory links (same as main LinksEditor).
     const tagItems = useMemo(() => {
@@ -152,6 +166,8 @@ function LinkTagsNavigationPanel({ vm, pageId }: LinkTagsNavigationPanelProps) {
                             selectedId={selectedLinkId || undefined}
                             onSelect={handleSelect}
                             onDoubleClick={handleSelect}
+                            allTags={allTags}
+                            onToggleTag={handleToggleTag}
                         />
                     </div>
                 </>

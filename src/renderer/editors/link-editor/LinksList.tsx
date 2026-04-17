@@ -110,16 +110,18 @@ interface LinksListRowProps {
     additionalIcon?: React.ReactNode;
     /** When set, row is draggable. Value is used as sourceId in LinkDragEvent. */
     dragSourceId?: string;
+    allTags?: string[];
     onSelect?: (link: ILink) => void;
     onEdit?: (link: ILink) => void;
     onDelete?: (link: ILink, skipConfirm: boolean) => void;
     onDoubleClick?: (link: ILink) => void;
     onContextMenu?: (e: React.MouseEvent, link: ILink) => void;
+    onToggleTag?: (link: ILink, tag: string) => void;
 }
 
 function LinksListRow({
     link, isSelected, searchText, additionalIcon,
-    dragSourceId, onSelect, onEdit, onDelete, onDoubleClick, onContextMenu,
+    dragSourceId, allTags, onSelect, onEdit, onDelete, onDoubleClick, onContextMenu, onToggleTag,
 }: LinksListRowProps) {
     const tooltipId = useMemo(() => crypto.randomUUID(), []);
 
@@ -191,7 +193,7 @@ function LinksListRow({
                     )}
                 </span>
             )}
-            <LinkTooltip id={tooltipId} link={link} />
+            <LinkTooltip id={tooltipId} link={link} allTags={allTags} onToggleTag={onToggleTag} />
         </div>
     );
 }
@@ -216,6 +218,10 @@ export interface LinksListProps {
     getAdditionalIcon?: (link: ILink) => React.ReactNode;
     /** Enable drag. When set, items are draggable with this sourceId in LinkDragEvent. */
     dragSourceId?: string;
+    /** All available tags for inline tag editing in tooltip. */
+    allTags?: string[];
+    /** Toggle a tag on a link (add if absent, remove if present). */
+    onToggleTag?: (link: ILink, tag: string) => void;
     /** Called with the RenderGridModel on mount, null on unmount. */
     onGridModel?: (model: RenderGridModel | null) => void;
 }
@@ -223,7 +229,7 @@ export interface LinksListProps {
 export const LinksList = React.forwardRef<RenderGridModel, LinksListProps>(function LinksList({
     links, selectedId, getId = defaultGetId, searchText = "",
     onSelect, onEdit, onDelete, onDoubleClick, onContextMenu,
-    getAdditionalIcon, dragSourceId, onGridModel,
+    getAdditionalIcon, dragSourceId, allTags, onToggleTag, onGridModel,
 }: LinksListProps, ref: React.ForwardedRef<RenderGridModel>) {
     const gridRef = useRef<RenderGridModel>(null);
     const [gridWidth, setGridWidth] = useState<number | undefined>(undefined);
@@ -256,17 +262,19 @@ export const LinksList = React.forwardRef<RenderGridModel, LinksListProps>(funct
                         searchText={searchText}
                         additionalIcon={getAdditionalIcon?.(link)}
                         dragSourceId={dragSourceId}
+                        allTags={allTags}
                         onSelect={onSelect}
                         onEdit={onEdit}
                         onDelete={onDelete}
                         onDoubleClick={onDoubleClick}
                         onContextMenu={onContextMenu}
+                        onToggleTag={onToggleTag}
                     />
                 </div>
             );
         },
-        [links, selectedId, getId, searchText, getAdditionalIcon, dragSourceId,
-         onSelect, onEdit, onDelete, onDoubleClick, onContextMenu, faviconVersion],
+        [links, selectedId, getId, searchText, getAdditionalIcon, dragSourceId, allTags,
+         onSelect, onEdit, onDelete, onDoubleClick, onContextMenu, onToggleTag, faviconVersion],
     );
 
     return (

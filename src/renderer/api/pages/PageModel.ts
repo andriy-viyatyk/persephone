@@ -6,7 +6,7 @@ import type { IContentPipe } from "../types/io.pipe";
 import { fs } from "../fs";
 import { parseObject } from "../../core/utils/parse-utils";
 import { debounce } from "../../../shared/utils";
-import { panelExpanded } from "../../core/state/events";
+import { pageNavigatorToggled, panelExpanded } from "../../core/state/events";
 import { fpDirname } from "../../core/utils/file-path";
 
 export interface NavigationState {
@@ -303,6 +303,10 @@ export class PageModel {
         // Create Explorer + ensure sidebar is visible
         await this.createExplorer(rootPath);
         this.ensurePageNavigatorModel();
+        // Fire toggle event so editors (e.g. LinkEditor) know the sidebar opened.
+        // ensurePageNavigatorModel() creates the model with open: true but doesn't
+        // fire the event (unlike toggle()/close()), so subscribers wouldn't know.
+        pageNavigatorToggled.send({ pageId: this.id, isOpen: true });
     }
 
     /** Whether the navigator can be opened. */
@@ -318,7 +322,12 @@ export class PageModel {
 
     /** Add an editor model as a secondary editor in the sidebar. */
     addSecondaryEditor(model: EditorModel): void {
-        if (this.secondaryEditors.includes(model)) return;
+        if (this.secondaryEditors.includes(model)) {
+            // Already registered — bump version so PageNavigator re-renders
+            // to pick up panel list changes (model.state.secondaryEditor may differ).
+            this.secondaryEditorsVersion.update((s) => { s.version++; });
+            return;
+        }
         this.secondaryEditors.push(model);
         model.setPage(this);
         this.secondaryEditorsVersion.update((s) => { s.version++; });
@@ -385,14 +394,10 @@ export class PageModel {
                 if (savedPanels?.length) {
                     // Was promoted from secondary — restore the pre-promote panel list.
                     model.secondaryEditor = savedPanels;
-                } else {
-                    // Was originally the main editor (Pattern B) — reduce to
-                    // base panel only (strip main-editor-only panels like Tags/Hostnames).
-                    const current = model.secondaryEditor;
-                    if (current && current.length > 1) {
-                        model.secondaryEditor = [current[0]];
-                    }
                 }
+                // Pattern B (originally main editor): don't strip panels here —
+                // the secondary editor component manages its own panel list via useEffect.
+
                 // Model is already in secondaryEditors[] — bump version
                 // so PageNavigator re-renders with the reduced panel list.
                 this.secondaryEditorsVersion.update((s) => { s.version++; });

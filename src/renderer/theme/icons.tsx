@@ -759,14 +759,28 @@ export const CompareIcon = createIcon(32)(
 );
 
 export const SaveIcon = createIcon(24)(
-    <path
-        d="M17 21H7C5.89543 21 5 20.1046 5 19V5C5 3.89543 5.89543 3 7 3H14L19 8V19C19 20.1046 18.1046 21 17 21Z"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-    />,
+    <>
+        <path
+            d="M5 5C5 3.89543 5.89543 3 7 3H15L19 7V19C19 20.1046 18.1046 21 17 21H7C5.89543 21 5 20.1046 5 19V5Z"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinejoin="round"
+            fill="none"
+        />
+        <path
+            d="M8 3V8H14V3"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinejoin="round"
+            fill="none"
+        />
+        <rect
+            x="8" y="13" width="8" height="5" rx="0.5"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            fill="none"
+        />
+    </>,
 );
 
 export const DuplicateIcon = createIcon(24)(

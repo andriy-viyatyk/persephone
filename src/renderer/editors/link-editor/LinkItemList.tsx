@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
 import RenderGridModel from "../../components/virtualization/RenderGrid/RenderGridModel";
 import { useHighlightedText } from "../../components/basic/useHighlightedText";
 import { CopyIcon, DeleteIcon, OpenFileIcon, PinFilledIcon, PinIcon, RenameIcon } from "../../theme/icons";
@@ -26,6 +26,20 @@ interface LinkItemListProps {
 export function LinkItemList({ links, model, selectedLinkId, pinnedLinkIds }: LinkItemListProps) {
     const gridModelRef = useRef<RenderGridModel | null>(null);
     const searchText = useHighlightedText();
+
+    const allTags = useSyncExternalStore(
+        (cb) => model.state.subscribe(cb),
+        () => model.state.get().tags,
+    );
+
+    const handleToggleTag = useCallback((link: ILink, tag: string) => {
+        if (!link.id) return;
+        const current = link.tags ?? [];
+        const tags = current.includes(tag)
+            ? current.filter((t) => t !== tag)
+            : [...current, tag];
+        model.updateLink(link.id, { tags });
+    }, [model]);
 
     useEffect(() => {
         model.setGridModel(gridModelRef.current);
@@ -141,6 +155,8 @@ export function LinkItemList({ links, model, selectedLinkId, pinnedLinkIds }: Li
             onContextMenu={handleContextMenu}
             getAdditionalIcon={getAdditionalIcon}
             dragSourceId={model.treeProvider.sourceUrl}
+            allTags={allTags}
+            onToggleTag={handleToggleTag}
             onGridModel={handleGridModel}
         />
     );

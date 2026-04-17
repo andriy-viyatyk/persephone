@@ -18,14 +18,25 @@ const ARCHIVE_SEPARATOR = "!";
 
 // ── Archive path helpers ────────────────────────────────────────────
 
-/** Check whether a file path is an archive path (contains `!` separator). */
+/**
+ * Check whether a file path is an archive path (contains `!` separator
+ * where the left side has a known archive extension).
+ *
+ * Simple `!` in filenames (e.g., "Crash!Boom!Bang!.mp3") is NOT treated
+ * as an archive separator — only `!` after a recognized archive extension is.
+ */
 export function isArchivePath(filePath: string): boolean {
-    return filePath.includes(ARCHIVE_SEPARATOR);
+    return findArchiveSeparator(filePath) >= 0;
 }
 
-/** Parse an archive path into its archive file and inner path components. */
+/**
+ * Parse an archive path into its archive file and inner path components.
+ *
+ * Scans for `!` positions where the left side has a known archive extension.
+ * This correctly handles filenames containing `!` that are not archive paths.
+ */
 export function parseArchivePath(filePath: string): { archivePath: string; innerPath: string } {
-    const idx = filePath.indexOf(ARCHIVE_SEPARATOR);
+    const idx = findArchiveSeparator(filePath);
     if (idx === -1) {
         return { archivePath: filePath, innerPath: "" };
     }
@@ -33,6 +44,21 @@ export function parseArchivePath(filePath: string): { archivePath: string; inner
         archivePath: filePath.substring(0, idx),
         innerPath: filePath.substring(idx + 1),
     };
+}
+
+/**
+ * Find the position of the `!` archive separator in a file path.
+ * Returns the index of the `!` where the left side has a known archive extension,
+ * or -1 if no valid archive separator is found.
+ */
+function findArchiveSeparator(filePath: string): number {
+    let idx = -1;
+    while ((idx = filePath.indexOf(ARCHIVE_SEPARATOR, idx + 1)) !== -1) {
+        const left = filePath.substring(0, idx);
+        const ext = getArchiveExtension(left);
+        if (ARCHIVE_EXTENSIONS.has(ext)) return idx;
+    }
+    return -1;
 }
 
 /** Combine an archive file path and inner path into an archive path. */

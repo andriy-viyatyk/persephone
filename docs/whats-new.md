@@ -10,11 +10,23 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### New Features
 
-- **Audio Player — Next Track & Shuffle** — The audio player now auto-plays the next track when the current one ends, and supports a shuffle mode. Works when a file was opened from the **Explorer** panel (filesystem folder) or the **Links** panel (link collection category):
-  - **Shuffle** and **Next Track** buttons appear in the audio controls bar when a source panel is available.
-  - **Shuffle mode** uses a shuffle bag — all tracks in the folder/category play before any track repeats. The setting persists across app restarts.
-  - When a track is auto-advanced, the selection highlight in the Explorer or Links panel updates to follow the current track.
+- **Audio Player — Next Track & Shuffle** — The audio player now auto-plays the next track when the current one ends, and supports a shuffle mode. Works when a file was opened from the **File Explorer** panel (filesystem folder) or the **Links** panel (link category or tag):
+  - **Next Track** and **Shuffle** buttons appear in the audio controls bar when a source panel is available.
+  - **Shuffle mode** uses a shuffle bag — all tracks in the folder/category/tag play before any track repeats. The setting persists across app restarts.
+  - When a track is auto-advanced, the selection highlight in the File Explorer or Links panel updates to follow the current track.
   - If a file was opened by directly typing a URL, no buttons are shown (feature is not available without a source panel).
+
+- **Links panel — Tags sidebar with link list** — When the **Tags** panel is open in the sidebar (the sidebar used by the File Explorer and Links editor), it now shows a resizable bottom pane listing all links in the selected tag. Clicking a link navigates to it and establishes it as the source for Next Track/Shuffle — so the audio player will advance through tracks within that tag's set. The pane scrolls automatically to follow the current track when the player auto-advances.
+
+- **Tag editing in link tooltips** — Hover over any link in the **Links** editor to see its tooltip. The tooltip now includes a tag editing section at the bottom: all available tags appear as badges you can click to toggle on or off for that link. An inline input at the end of the badge list lets you add a new tag (press Enter to confirm).
+
+- **Save button in Links sidebar** — When the Links file has unsaved changes and the Links editor is running as a sidebar panel (not the main content area), a floppy-disk save button now appears in the panel header for quick saving without switching tabs.
+
+### Bug Fixes
+
+- **Links panels always visible in sidebar** — The Categories, Tags, and Hostnames panels now always appear in the sidebar immediately when you open the File Explorer panel for a links file. Previously the panels sometimes required toggling the sidebar twice, and Tags/Hostnames would stay hidden if no tags or hostnames existed yet.
+
+- **Files with `!` in their name open correctly** — Files whose names contain an exclamation mark (e.g., `Roxette - Crash!Boom!Bang!.mp3`) were previously misidentified as archive paths and failed to open. The `!` character is now only treated as an archive path separator when it immediately follows a recognized archive extension (`.zip`, `.rar`, `.7z`, etc.).
 
 ### Improvements
 
