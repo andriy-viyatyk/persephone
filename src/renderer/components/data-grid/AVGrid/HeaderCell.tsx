@@ -1,7 +1,7 @@
-import React, { useCallback, useRef } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import styled from "@emotion/styled";
 import clsx from "clsx";
-import { useDrag, useDrop } from "react-dnd";
+import { TraitTypeId, setTraitDragData, getTraitDragData, hasTraitDragData } from "../../../core/traits";
 
 import color from "../../../theme/color";
 import { TCellRendererProps, TSortDirection } from "./avGridTypes";
@@ -162,28 +162,58 @@ export function HeaderCell({ key, col, style, model }: TCellRendererProps) {
         );
     }
 
-    const [{ isDragging }, drag] = useDrag({
-        type: "COLUMN_DRAG",
-        item: { key: column.key },
-        collect: (monitor) => ({
-            isDragging: monitor.isDragging(),
-        }),
-        canDrag: () => {
-            return !column.isStatusColumn && !resizingRef.current;
-        },
-    });
+    const [isDragging, setIsDragging] = useState(false);
+    const [isOver, setIsOver] = useState(false);
+    const dragEnterCount = useRef(0);
 
-    const [{ isOver }, drop] = useDrop({
-        accept: ["COLUMN_DRAG", "FREEZE_DRAG"],
-        drop({ key: dropKey }: { key: string }) {
-            model.actions.columnsReorder(dropKey, column.key as string);
-        },
-        collect: (monitor) => ({
-            isOver: monitor.isOver(),
-            canDrop: monitor.canDrop(),
-        }),
-        canDrop: () => !column.isStatusColumn,
-    });
+    const handleDragStart = useCallback((e: React.DragEvent) => {
+        if (column.isStatusColumn || resizingRef.current) {
+            e.preventDefault();
+            return;
+        }
+        setTraitDragData(e.dataTransfer, TraitTypeId.GridColumn, { key: column.key });
+        setIsDragging(true);
+    }, [column.key, column.isStatusColumn]);
+
+    const handleDragEnd = useCallback(() => {
+        setIsDragging(false);
+    }, []);
+
+    const handleDragEnter = useCallback((e: React.DragEvent) => {
+        dragEnterCount.current++;
+        if (!column.isStatusColumn && hasTraitDragData(e.dataTransfer)) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+            setIsOver(true);
+        }
+    }, [column.isStatusColumn]);
+
+    const handleGridDragOver = useCallback((e: React.DragEvent) => {
+        if (!column.isStatusColumn && hasTraitDragData(e.dataTransfer)) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+        }
+    }, [column.isStatusColumn]);
+
+    const handleDragLeave = useCallback(() => {
+        dragEnterCount.current--;
+        if (dragEnterCount.current <= 0) {
+            dragEnterCount.current = 0;
+            setIsOver(false);
+        }
+    }, []);
+
+    const handleGridDrop = useCallback((e: React.DragEvent) => {
+        e.preventDefault();
+        dragEnterCount.current = 0;
+        setIsOver(false);
+        if (column.isStatusColumn) return;
+        const payload = getTraitDragData(e.dataTransfer);
+        if (payload?.typeId === TraitTypeId.GridColumn) {
+            const data = payload.data as { key: string };
+            model.actions.columnsReorder(data.key, column.key as string);
+        }
+    }, [column.key, column.isStatusColumn, model]);
 
     const filterClick = useCallback(
         (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -221,11 +251,16 @@ export function HeaderCell({ key, col, style, model }: TCellRendererProps) {
         <HeaderCellRoot
             ref={(ref) => {
                 headerRef.current = ref as HTMLElement;
-                drag(ref);
-                drop(ref);
             }}
             key={key}
             style={style}
+            draggable={!column.isStatusColumn}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+            onDragEnter={handleDragEnter}
+            onDragOver={handleGridDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleGridDrop}
             className={clsx("header-cell", {
                 "header-resizible": column.resizible,
                 "is-dragging": isDragging,

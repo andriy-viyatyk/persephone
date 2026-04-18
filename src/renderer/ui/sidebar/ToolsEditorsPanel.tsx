@@ -1,6 +1,6 @@
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import styled from "@emotion/styled";
-import { useDrag, useDrop } from "react-dnd";
+import { TraitTypeId, setTraitDragData, hasTraitDragData, getTraitDragData } from "../../core/traits";
 import color from "../../theme/color";
 import { settings } from "../../api/settings";
 import { CreatableItem, DEFAULT_PINNED_EDITORS, getCreatableItems } from "./tools-editors-registry";
@@ -10,7 +10,8 @@ import { PinIcon, PinFilledIcon } from "../../theme/icons";
 // Constants
 // =============================================================================
 
-const PINNED_DRAG_TYPE = "PINNED_EDITOR_DRAG";
+/** Tracks which index is being dragged for live reorder. Only one drag at a time. */
+let draggingPinnedEditorIndex = -1;
 
 // =============================================================================
 // Styles
@@ -130,28 +131,48 @@ function PinnedItem({ item, index, onUnpin, onClick, onMove }: {
     onMove: (dragIndex: number, hoverIndex: number) => void;
 }) {
     const ref = useRef<HTMLDivElement>(null);
+    const [isDragging, setIsDragging] = useState(false);
+    const [isOver, setIsOver] = useState(false);
 
-    const [{ isDragging }, drag] = useDrag({
-        type: PINNED_DRAG_TYPE,
-        item: { index },
-        collect: (monitor) => ({
-            isDragging: monitor.isDragging(),
-        }),
-    });
+    const handleDragStart = useCallback((e: React.DragEvent) => {
+        e.stopPropagation();
+        draggingPinnedEditorIndex = index;
+        setTraitDragData(e.dataTransfer, TraitTypeId.PinnedEditor, { index });
+        setIsDragging(true);
+    }, [index]);
 
-    const [{ isOver }, drop] = useDrop({
-        accept: PINNED_DRAG_TYPE,
-        hover({ index: dragIndex }: { index: number }) {
-            if (dragIndex !== index) {
-                onMove(dragIndex, index);
-            }
-        },
-        collect: (monitor) => ({
-            isOver: monitor.isOver(),
-        }),
-    });
+    const handleDragEnd = useCallback(() => {
+        draggingPinnedEditorIndex = -1;
+        setIsDragging(false);
+        setIsOver(false);
+    }, []);
 
-    drag(drop(ref));
+    const handleDragEnter = useCallback((e: React.DragEvent) => {
+        if (hasTraitDragData(e.dataTransfer) && draggingPinnedEditorIndex >= 0 && draggingPinnedEditorIndex !== index) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+            setIsOver(true);
+        }
+    }, [index]);
+
+    // Live reorder on dragOver — matches React-DnD's hover() behavior
+    const handleDragOver = useCallback((e: React.DragEvent) => {
+        if (draggingPinnedEditorIndex >= 0 && draggingPinnedEditorIndex !== index) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+            onMove(draggingPinnedEditorIndex, index);
+            draggingPinnedEditorIndex = index; // Update after swap
+        }
+    }, [index, onMove]);
+
+    const handleDragLeave = useCallback(() => {
+        setIsOver(false);
+    }, []);
+
+    const handleDrop = useCallback((e: React.DragEvent) => {
+        e.preventDefault();
+        setIsOver(false);
+    }, []);
 
     const handleUnpin = useCallback((e: React.MouseEvent) => {
         e.stopPropagation();
@@ -161,6 +182,13 @@ function PinnedItem({ item, index, onUnpin, onClick, onMove }: {
     return (
         <div
             ref={ref}
+            draggable
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+            onDragEnter={handleDragEnter}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
             className={`item-row${isDragging ? " dragging" : ""}${isOver ? " drag-over" : ""}`}
             onClick={() => onClick(item)}
         >

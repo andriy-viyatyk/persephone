@@ -178,7 +178,7 @@ function LinksTileCell({
 
     const handleDragStart = useCallback((e: React.DragEvent) => {
         if (!dragSourceId) { e.preventDefault(); return; }
-        e.stopPropagation(); // Prevent react-dnd HTML5Backend from cancelling native drag
+        e.stopPropagation(); // Prevent parent elements from interfering with this drag
         setTraitDragData(e.dataTransfer, TraitTypeId.ILink, { items: [link], sourceId: dragSourceId });
         setIsDragging(true);
     }, [link, dragSourceId]);

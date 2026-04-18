@@ -152,7 +152,7 @@ const BrowserTabsPanelRoot = styled.div({
 });
 
 // =============================================================================
-// Tab Item (extracted for react-dnd hooks)
+// Tab Item
 // =============================================================================
 
 interface TabItemProps {

@@ -28,8 +28,8 @@ import type { MenuItem } from "../../components/overlay/PopupMenu";
 import { WithPopupMenu } from "../../components/overlay/WithPopupMenu";
 import { ContextMenuEvent } from "../../api/events/events";
 import { monacoLanguages } from "../../core/utils/monaco-languages";
-import { useDrag, useDrop } from "react-dnd";
-import { useMemo } from "react";
+import { useMemo, useState, useCallback, useRef } from "react";
+import { TraitTypeId, setTraitDragData, getTraitDragData, hasTraitDragData } from "../../core/traits";
 import { api } from "../../../ipc/renderer/api";
 import {
     isTextFileModel,
@@ -445,14 +445,20 @@ class PageTabModel extends TComponentModel<null, PageTabProps> {
     }
 
     handleDragStart = (e: React.DragEvent) => {
-        e.dataTransfer.setData(
-            "application/persephone-tab",
-            JSON.stringify(this.getDragData())
-        );
-        e.dataTransfer.effectAllowed = "move";
+        const page = this.props.model;
+        // Trait data for same-window tab reorder (all tabs)
+        setTraitDragData(e.dataTransfer, TraitTypeId.PageTab, { key: page.id });
+        // Persephone-tab data for cross-window movement (non-pinned only)
+        if (!page.pinned) {
+            e.dataTransfer.setData(
+                "application/persephone-tab",
+                JSON.stringify(this.getDragData())
+            );
+        }
     };
 
     handleDragEnd = (e: React.DragEvent) => {
+        if (this.props.model.pinned) return;
         const droppedOutside =
             e.clientX < 0 ||
             e.clientX > window.innerWidth ||
@@ -466,14 +472,27 @@ class PageTabModel extends TComponentModel<null, PageTabProps> {
     };
 
     handleDrop = (e: React.DragEvent) => {
+        const id = this.props.model.id;
+        // Cross-window tab movement (check first — has priority)
         const dataStr = e.dataTransfer?.getData("application/persephone-tab");
-        const data = parseObject(dataStr);
+        const tabData = parseObject(dataStr);
         if (
-            data &&
-            data.sourceWindowIndex !== undefined &&
-            data.sourceWindowIndex !== appWindow.windowIndex
+            tabData &&
+            tabData.sourceWindowIndex !== undefined &&
+            tabData.sourceWindowIndex !== appWindow.windowIndex
         ) {
             api.addDragEvent(this.getDragData(true));
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+        }
+        // Same-window tab reorder
+        const payload = getTraitDragData(e.dataTransfer);
+        if (payload?.typeId === TraitTypeId.PageTab) {
+            const data = payload.data as { key: string };
+            if (data.key !== id) {
+                pagesModel.moveTab(data.key, id);
+            }
             e.preventDefault();
             e.stopPropagation();
         }
@@ -543,26 +562,32 @@ export function PageTab(props: PageTabProps) {
 
     const id = page.id;
 
-    const [{ isDragging }, drag] = useDrag({
-        type: "COLUMN_DRAG",
-        item: { key: id },
-        collect: (monitor) => ({
-            isDragging: monitor.isDragging(),
-        }),
-        canDrag: () => true,
-    });
+    const [isOver, setIsOver] = useState(false);
+    const dragEnterCount = useRef(0);
 
-    const [{ isOver }, drop] = useDrop({
-        accept: ["COLUMN_DRAG", "FREEZE_DRAG"],
-        drop({ key: dropKey }: { key: string }) {
-            pagesModel.moveTab(dropKey, id);
-        },
-        collect: (monitor) => ({
-            isOver: monitor.isOver(),
-            canDrop: monitor.canDrop(),
-        }),
-        canDrop: () => true,
-    });
+    const handleDragEnter = useCallback((e: React.DragEvent) => {
+        dragEnterCount.current++;
+        if (hasTraitDragData(e.dataTransfer)) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+            setIsOver(true);
+        }
+    }, []);
+
+    const handleDragOver = useCallback((e: React.DragEvent) => {
+        if (hasTraitDragData(e.dataTransfer)) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+        }
+    }, []);
+
+    const handleDragLeave = useCallback(() => {
+        dragEnterCount.current--;
+        if (dragEnterCount.current <= 0) {
+            dragEnterCount.current = 0;
+            setIsOver(false);
+        }
+    }, []);
 
     const activeLanguages = settings.use("tab-recent-languages");
     const languageMenuItems = useMemo(
@@ -576,10 +601,6 @@ export function PageTab(props: PageTabProps) {
 
     return (
         <PageTabRoot
-            ref={(node) => {
-                drag(node);
-                drop(node);
-            }}
             className={clsx("page-tab", {
                 isActive: tabModel.isActive,
                 modified,
@@ -593,10 +614,13 @@ export function PageTab(props: PageTabProps) {
             style={pinned && props.pinnedLeft !== undefined ? { left: props.pinnedLeft } : undefined}
             onClick={tabModel.handleClick}
             onContextMenu={tabModel.handleContextMenu}
-            draggable={!pinned}
-            onDragStart={pinned ? undefined : tabModel.handleDragStart}
-            onDragEnd={pinned ? undefined : tabModel.handleDragEnd}
-            onDrop={pinned ? undefined : tabModel.handleDrop}
+            draggable
+            onDragStart={tabModel.handleDragStart}
+            onDragEnd={tabModel.handleDragEnd}
+            onDrop={tabModel.handleDrop}
+            onDragEnter={handleDragEnter}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
         >
             {pinned && filePath && (
                 <span className="pinned-tooltip-trigger" data-tooltip-id={id} />

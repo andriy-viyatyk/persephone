@@ -131,7 +131,7 @@ function TreeCell<T extends TreeItem = TreeItem>({
         if (!traitTypeId || !getDragData) { e.preventDefault(); return; }
         const data = getDragData(item.item);
         if (data == null) { e.preventDefault(); return; }
-        e.stopPropagation(); // Prevent react-dnd HTML5Backend from cancelling native drag
+        e.stopPropagation(); // Prevent parent elements from interfering with this drag
         setTraitDragData(e.dataTransfer, traitTypeId, data);
         setIsDragging(true);
     }, [item.item, model.props]);

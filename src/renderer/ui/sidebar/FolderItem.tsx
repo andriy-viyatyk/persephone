@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import clsx from "clsx";
-import { useCallback, useMemo, useRef } from "react";
-import { useDrag, useDrop } from "react-dnd";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { TraitTypeId, setTraitDragData, getTraitDragData, hasTraitDragData } from "../../core/traits";
 import color from "../../theme/color";
 import { OverflowTooltipText } from "../../components/basic/OverflowTooltipText";
 import { Tooltip } from "../../components/basic/Tooltip";
@@ -10,8 +10,6 @@ import { menuFolders } from "../../api/menu-folders";
 import type { MenuFolder } from "../../api/menu-folders";
 import type { MenuItem } from "../../components/overlay/PopupMenu";
 import { ContextMenuEvent } from "../../api/events/events";
-
-const FOLDER_DRAG_TYPE = "FOLDER_DRAG";
 
 const FolderItemRoot = styled.div({
     paddingLeft: 4,
@@ -73,30 +71,43 @@ export function FolderItem(props: FolderItemProps) {
 
     const id = useMemo(() => crypto.randomUUID(), []);
     const ref = useRef<HTMLDivElement>(null);
+    const [isDragging, setIsDragging] = useState(false);
+    const [isOver, setIsOver] = useState(false);
+    const dragEnterCount = useRef(0);
 
-    const [{ isDragging }, drag] = useDrag({
-        type: FOLDER_DRAG_TYPE,
-        item: { id: folder.id },
-        collect: (monitor) => ({
-            isDragging: monitor.isDragging(),
-        }),
-        canDrag: () => canDrag,
-    });
+    const handleFolderDragStart = useCallback((e: React.DragEvent) => {
+        if (!canDrag) { e.preventDefault(); return; }
+        e.stopPropagation();
+        setTraitDragData(e.dataTransfer, TraitTypeId.MenuFolder, { id: folder.id });
+        setIsDragging(true);
+    }, [canDrag, folder.id]);
 
-    const [{ isOver }, drop] = useDrop({
-        accept: FOLDER_DRAG_TYPE,
-        drop({ id: draggedId }: { id: string }) {
-            if (draggedId !== folder.id && folder.id) {
-                menuFolders.move(draggedId, folder.id);
+    const handleFolderDragEnd = useCallback(() => {
+        setIsDragging(false);
+    }, []);
+
+    const handleFolderDragEnter = useCallback((e: React.DragEvent) => {
+        dragEnterCount.current++;
+        if (canDrop && hasTraitDragData(e.dataTransfer)) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+            setIsOver(true);
+        }
+    }, [canDrop]);
+
+    const handleFolderDrop = useCallback((e: React.DragEvent) => {
+        e.preventDefault();
+        dragEnterCount.current = 0;
+        setIsOver(false);
+        if (!canDrop) return;
+        const payload = getTraitDragData(e.dataTransfer);
+        if (payload?.typeId === TraitTypeId.MenuFolder) {
+            const data = payload.data as { id: string };
+            if (data.id !== folder.id && folder.id) {
+                menuFolders.move(data.id, folder.id);
             }
-        },
-        collect: (monitor) => ({
-            isOver: monitor.isOver() && monitor.canDrop(),
-        }),
-        canDrop: () => canDrop,
-    });
-
-    drag(drop(ref));
+        }
+    }, [canDrop, folder.id]);
 
     const handleClick = useCallback(
         (e: React.MouseEvent) => {
@@ -136,10 +147,23 @@ export function FolderItem(props: FolderItemProps) {
         (e: React.DragEvent) => {
             if (!canDrop) {
                 e.dataTransfer.dropEffect = "none";
+                return;
+            }
+            if (hasTraitDragData(e.dataTransfer)) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = "move";
             }
         },
         [canDrop]
     );
+
+    const handleDragLeave = useCallback(() => {
+        dragEnterCount.current--;
+        if (dragEnterCount.current <= 0) {
+            dragEnterCount.current = 0;
+            setIsOver(false);
+        }
+    }, []);
 
     const tooltip = useMemo(
         () => getTooltip?.(folder, index),
@@ -158,6 +182,13 @@ export function FolderItem(props: FolderItemProps) {
         <FolderItemRoot
             ref={ref}
             style={{ ...restStyle, top: adjustedTop, height: adjustedHeight }}
+            draggable={canDrag}
+            onDragStart={handleFolderDragStart}
+            onDragEnd={handleFolderDragEnd}
+            onDragEnter={handleFolderDragEnter}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleFolderDrop}
             className={clsx("list-item", {
                 selected,
                 dragging: isDragging,
@@ -166,7 +197,6 @@ export function FolderItem(props: FolderItemProps) {
             onClick={handleClick}
             onDoubleClick={handleDoubleClick}
             onContextMenu={handleContextMenu}
-            onDragOver={handleDragOver}
             data-tooltip-id={id}
         >
             {Boolean(icon) && icon}
