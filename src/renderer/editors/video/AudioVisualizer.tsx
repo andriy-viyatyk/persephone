@@ -176,6 +176,19 @@ export function AudioVisualizer({ mediaRef, playing, sourceUrl }: AudioVisualize
     const selectedEffect = (settings.use("visualizer-effect") || "bars") as EffectType;
     const effectRef = useRef<IVisualizerEffect | null>(createEffect(selectedEffect));
     const [trackInfo, setTrackInfo] = useState<TrackInfo | null>(null);
+    const [pageVisible, setPageVisible] = useState(true);
+
+    // Track page visibility — stops RAF when the page tab is hidden (display: none)
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const observer = new IntersectionObserver(
+            ([entry]) => setPageVisible(entry.isIntersecting),
+            { threshold: 0 },
+        );
+        observer.observe(canvas);
+        return () => observer.disconnect();
+    }, []);
 
     // Swap effect instance when selection changes
     useEffect(() => {
@@ -232,7 +245,7 @@ export function AudioVisualizer({ mediaRef, playing, sourceUrl }: AudioVisualize
         }
     }, [playing]);
 
-    // Animation loop — restarts when playing or selectedEffect changes
+    // Animation loop — restarts when playing, selectedEffect, or page visibility changes
     useEffect(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;
@@ -243,6 +256,9 @@ export function AudioVisualizer({ mediaRef, playing, sourceUrl }: AudioVisualize
             ctx2d?.clearRect(0, 0, canvas.width, canvas.height);
             return;
         }
+
+        // Page hidden (tab inactive) — skip expensive RAF loop
+        if (!pageVisible) return;
 
         const analyser = analyserRef.current;
         if (!analyser) return;
@@ -260,7 +276,7 @@ export function AudioVisualizer({ mediaRef, playing, sourceUrl }: AudioVisualize
 
         rafRef.current = requestAnimationFrame(draw);
         return () => cancelAnimationFrame(rafRef.current);
-    }, [playing, selectedEffect]);
+    }, [playing, selectedEffect, pageVisible]);
 
     // Cleanup on unmount
     useEffect(() => {
