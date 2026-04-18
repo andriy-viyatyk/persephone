@@ -14,7 +14,6 @@ Overview of all active and planned epics and tasks.
   - [ ] [US-447: Convert remaining data drags to trait-based system](tasks/US-447-convert-data-drags-to-traits/README.md)
   - [ ] [US-448: Cross-type drop targets — FILE_FOLDER→Links import, cross-editor category drops, LINK→RestClient](tasks/US-448-cross-type-drop-targets/README.md)
   - [ ] [US-449: Remove React-DnD dependency — convert component-level drags to native HTML5](tasks/US-449-remove-react-dnd/README.md)
-  - [ ] US-445: Editor facade refactor — replace as*() methods with trait-based discovery
   - [ ] US-446: Documentation — trait system guide in /doc/architecture/
 
 

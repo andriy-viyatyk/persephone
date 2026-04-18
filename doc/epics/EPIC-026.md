@@ -266,7 +266,6 @@ This approach enables cross-window drag-and-drop for free — HTML5 `dataTransfe
 | US-447 | Convert remaining data drags to trait-based system — todo, notes, REST, browser tabs, pinned links, explorer files/folders | Planned |
 | US-448 | Cross-type drop targets — FILE_FOLDER→Links import, cross-editor category drops, LINK→RestClient | Active |
 | US-449 | Remove React-DnD dependency — convert component-level drags to native HTML5 | Active |
-| US-445 | Editor facade refactor — replace hard-coded as*() methods with trait-based discovery | Planned |
 | US-446 | Documentation — trait system guide in /doc/architecture/ | Planned |
 
 ## Phase Plan
@@ -283,10 +282,7 @@ Convert remaining data drags (todo, notes, REST, browser tabs, pinned links, exp
 **Phase 4 — React-DnD Removal (US-449)**
 Convert remaining component-level drags (grid columns, menu folders, pinned editors) to native HTML5. Remove `react-dnd` and `react-dnd-html5-backend` dependencies.
 
-**Phase 5 — Editor Facade Refactor (US-445)**
-Replace hard-coded `as*()` methods with trait-based discovery. Script API backward compatibility is not a concern.
-
-**Phase 6 — Documentation (US-446)**
+**Phase 5 — Documentation (US-446)**
 Write the architecture guide after real working examples exist.
 
 ## Migration Strategy
