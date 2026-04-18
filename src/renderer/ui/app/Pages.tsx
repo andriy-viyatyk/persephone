@@ -8,6 +8,8 @@ import { PageNavigator } from "../navigation/PageNavigator";
 import { AppPageManager } from "../../components/page-manager/AppPageManager";
 import type { PageModel } from "../../api/pages/PageModel";
 import { useOptionalState } from "../../core/state/state";
+import { Ornament } from "../../theme/Ornament";
+import color from "../../theme/color";
 
 const PageEditorContainer = styled.div(
     {
@@ -19,6 +21,24 @@ const PageEditorContainer = styled.div(
     },
     { label: "PageEditorContainer" },
 );
+
+const EmptyPageRoot = styled.div({
+    flex: "1 1 auto",
+    position: "relative",
+    overflow: "hidden",
+    minWidth: 100,
+});
+
+const OrnamentWrapper = styled.div({
+    position: "absolute",
+    bottom: 16,
+    right: 16,
+    width: 300,
+    height: 252,
+    color: color.border.default,
+    opacity: 0.5,
+    pointerEvents: "none",
+});
 
 function NavigationWrapper({ page }: { page: PageModel }) {
     const hasSidebar = page.state.use((s) => s.hasSidebar);
@@ -79,9 +99,17 @@ function PageContent({ pageId }: { pageId: string }) {
     return (
         <>
             <NavigationWrapper page={page} />
-            <PageEditorContainer key={page.id}>
-                {editor && <RenderEditor model={editor} />}
-            </PageEditorContainer>
+            {editor ? (
+                <PageEditorContainer key={page.id}>
+                    <RenderEditor model={editor} />
+                </PageEditorContainer>
+            ) : (
+                <EmptyPageRoot key={page.id}>
+                    <OrnamentWrapper>
+                        <Ornament style={{ width: "100%", height: "100%" }} />
+                    </OrnamentWrapper>
+                </EmptyPageRoot>
+            )}
         </>
     );
 }
