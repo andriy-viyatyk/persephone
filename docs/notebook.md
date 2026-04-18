@@ -103,6 +103,7 @@ The left panel shows a collapsible category tree:
 - **Drag a category** in the tree and drop onto another to make it a subcategory
   - Dragging onto "All" makes it a root-level category
   - A confirmation dialog shows how many notes will be affected
+- **Drag links or files** from the Links editor or File Explorer onto a category in the tree to create notes from them — each item becomes a note with the link title as its title and the URL/path as the note body
 
 ### Breadcrumb Navigation
 

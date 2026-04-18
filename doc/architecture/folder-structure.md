@@ -296,6 +296,7 @@ persephone/
 │   │   │   ├── LinkCategorySecondaryEditor.tsx  # Secondary editor wrapper
 │   │   │   ├── LinkTagsSecondaryEditor.tsx      # Secondary editor wrapper
 │   │   │   └── LinkHostnamesSecondaryEditor.tsx # Secondary editor wrapper
+│   │   ├── linkTraits.ts        # ILink trait definition + registration (TraitTypeId.ILink)
 │   │   ├── LinksList.tsx        # View-only list rendering (no ViewModel deps)
 │   │   ├── LinksTiles.tsx       # View-only tiles rendering (no ViewModel deps)
 │   │   ├── LinkItemList.tsx     # Wrapper: wires LinksList to LinkViewModel
@@ -492,6 +493,11 @@ persephone/
 │   │   ├── events.ts       # Subscription event system
 │   │   ├── view.tsx        # View registry (dialogs/poppers)
 │   │   └── index.ts
+│   ├── traits/             # Trait system — drag-and-drop type negotiation (EPIC-026)
+│   │   ├── traits.ts       # TraitKey<T>, TraitSet, Traited<V>, traited(), isTraited()
+│   │   ├── TraitRegistry.ts # TraitRegistry singleton + TraitTypeId enum
+│   │   ├── dnd.ts          # setTraitDragData, getTraitDragData, hasTraitDragData, resolveTraits
+│   │   └── index.ts        # Public exports
 │   ├── utils/              # Utility functions
 │   │   ├── utils.ts        # General helpers
 │   │   ├── parse-utils.ts  # JSON5, JS parsing

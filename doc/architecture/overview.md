@@ -198,7 +198,17 @@ Unified content I/O layer in `/src/renderer/content/` that decouples editors fro
 
 **Script access:** The `io` global namespace exposes providers, transformers, `createPipe()`, `createLinkData()`, and `linkToLinkData()` to scripts.
 
-### 6. Theming System
+### 6. Trait System
+
+See [trait-system.md](./trait-system.md).
+
+- Universal mechanism for drag-and-drop type negotiation — replaces React-DnD and ad-hoc string checks
+- Core primitives in `core/traits/`: `TraitKey<T>`, `TraitSet`, `Traited<V>`, `traited()`, `isTraited()`
+- `TraitRegistry` maps serializable `TraitTypeId` strings to `TraitSet` objects (bridges DnD serialization boundary)
+- All drag-and-drop is native HTML5; `setTraitDragData`/`getTraitDragData`/`hasTraitDragData`/`resolveTraits` utilities in `core/traits/dnd.ts`
+- Only `ILink` has a registered TraitSet; other `TraitTypeId` values are type discriminators for within-component reorder
+
+### 7. Theming System
 
 - CSS Custom Properties — `color.ts` returns `var()` references, theme definitions set actual values on `:root`
 - 55+ component files import `color` unchanged — zero migration when adding themes
@@ -254,3 +264,4 @@ Every editor follows the same pattern:
 - [Scripting](./scripting.md) — Script execution and API wrappers
 - [Pages Architecture](./pages-architecture.md) — Pages lifecycle and submodels
 - [Context Menu](./context-menu.md) — Context menu event flow, bubbling, and EventChannel integration
+- [Trait System](./trait-system.md) — Drag-and-drop type negotiation, TraitRegistry, native HTML5 DnD patterns

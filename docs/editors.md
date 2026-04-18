@@ -111,7 +111,7 @@ When you open an audio-only file (`.mp3`, `.wav`, `.aac`, `.flac`, `.m4a`, `.wma
 |---------|---------|-------------|
 | `vlc-path` | *(auto-detect)* | Full path to `vlc.exe`. Leave empty to auto-detect. |
 | `video-stream.port` | `7866` | Port for the local HTTP streaming server. Change if `7866` is in use. |
-| `visualizer-effect` | `bars` | Active audio visualizer effect (`bars`, `circular`). Persisted automatically when you switch effects. |
+| `visualizer-effect` | `bars` | Active audio visualizer effect (`bars`, `circular`, `none`). Persisted automatically when you switch effects. |
 | `audio-shuffle` | `false` | Whether shuffle mode is enabled for audio playback. Persisted automatically when you toggle the Shuffle button. |
 
 ## Image Viewer
@@ -221,7 +221,7 @@ For `.note.json` files — a structured notes interface:
 - **Categories** and **tags** for organizing notes
 - Each note has its own code editor (Monaco, Grid, Markdown, SVG)
 - **Full-text search** with highlighting across all content
-- **Drag-and-drop** to reorganize categories
+- **Drag-and-drop** to reorganize categories; drag links from the Links editor (or files from the File Explorer) onto a category to create notes from them
 - **Expand** notes to full editor size
 - **Run JavaScript or TypeScript** from individual notes
 - Optional **comments** on each note
@@ -364,7 +364,7 @@ For `.link.json` files — a structured link manager:
 - **Delete confirmation** — with Ctrl+click bypass for quick delete
 - **Double-click** to open a link in list and tile views. Use the right-click context menu → **Edit** to open the edit dialog.
 - **Favicons** — cached favicons from the internal browser are displayed next to links in list view and as fallback in tile view
-- **Drag-and-drop** — drag links onto categories to reassign them; drag categories onto other categories to reparent (with confirmation)
+- **Drag-and-drop** — drag links onto categories to reassign them; drag categories onto other categories to reparent (with confirmation); drag files or folders from the File Explorer (or links from another editor) onto the main area to import them as new links. Folders are scanned recursively (confirmation required if more than 100 files are found). Duplicate entries are skipped.
 - **Tag editing in tooltips** — Hover over any link to see its tooltip. The tooltip includes a tag section: all available tags appear as clickable badges (highlighted when assigned to the link). Click a badge to toggle the tag on or off. An inline input at the end of the badge row lets you type a new tag name and press Enter to add it.
 - **Pinned links panel** — pin important links for quick access; pinned panel appears on the right edge, auto-hides when empty, resizable, with drag-to-reorder support. Double-click a pinned link to open it. Right-click for a context menu: Edit, Open in Default Browser, browser profiles, Open in Incognito, Copy URL, Unpin, Delete. Hover a pinned link to see a rich tooltip with title, URL, and thumbnail image.
 - **Session state persistence** — selected category, tag, hostname, and expanded panel are remembered across app restarts
@@ -376,7 +376,7 @@ For `.rest.json` files — an HTTP request collection editor:
 
 - **Two-panel layout** — collection tree on the left, request detail on the right
 - **Request collection** — organize multiple HTTP requests in a single file
-- **Collection grouping** — requests can be organized into named collections (one level deep). Collections are virtual — derived from each request's `collection` field. Drag-drop requests between collections, use context menus to add/delete/duplicate, and edit collection and request names inline in the header bar. New requests inherit the collection of the currently selected request.
+- **Collection grouping** — requests can be organized into named collections (one level deep). Collections are virtual — derived from each request's `collection` field. Drag-drop requests between collections, use context menus to add/delete/duplicate, and edit collection and request names inline in the header bar. New requests inherit the collection of the currently selected request. You can also drag links from the Links editor (or files from the File Explorer) onto a collection or request to create new requests pre-populated with those URLs.
 - **Add, delete, rename, reorder** requests within the collection
 - **Request body types** — choose between **none**, **x-www-form-urlencoded** (key-value editor), **raw** body with a language sub-selector (JSON, JavaScript, HTML, XML, plaintext), **binary** (file picker that streams from disk), or **form-data** (multipart/form-data with text and file fields per row). Raw body uses Monaco Editor with syntax highlighting. Content-Type header is set automatically when you switch body type or language. Binary uploads stream directly from disk with no file size limit.
 - **Smart defaults** — changing the HTTP method syncs the body type (e.g., GET clears the body, POST defaults to raw). Pasting from clipboard auto-detects JSON or form-urlencoded content.

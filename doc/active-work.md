@@ -8,14 +8,7 @@ Overview of all active and planned epics and tasks.
 
 ## Active
 
-- **EPIC-026** — [Trait System — Universal Data Adaptation Layer](epics/EPIC-026.md)
-  - [ ] [US-428: Trait system core — TraitKey, TraitSet, Traited, traited()](tasks/US-428-trait-system-core/README.md)
-  - [ ] [US-444: Trait-based drag-drop infrastructure + link pilot — TraitRegistry, serialization, native HTML5 DnD, convert link-drag](tasks/US-444-trait-drag-drop-infrastructure/README.md)
-  - [ ] [US-447: Convert remaining data drags to trait-based system](tasks/US-447-convert-data-drags-to-traits/README.md)
-  - [ ] [US-448: Cross-type drop targets — FILE_FOLDER→Links import, cross-editor category drops, LINK→RestClient](tasks/US-448-cross-type-drop-targets/README.md)
-  - [ ] [US-449: Remove React-DnD dependency — convert component-level drags to native HTML5](tasks/US-449-remove-react-dnd/README.md)
-  - [ ] US-446: Documentation — trait system guide in /doc/architecture/
-
+*(none)*
 
 ## Planned
 

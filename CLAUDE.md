@@ -311,6 +311,10 @@ See [/doc/standards/coding-style.md](doc/standards/coding-style.md) for complete
 | App settings             | `/src/renderer/api/settings.ts`                   |
 | Event channel system     | `/src/renderer/api/events/EventChannel.ts`        |
 | App events namespace     | `/src/renderer/api/events/AppEvents.ts`           |
+| Trait system core        | `/src/renderer/core/traits/traits.ts`             |
+| Trait registry + TraitTypeId | `/src/renderer/core/traits/TraitRegistry.ts`  |
+| Drag-and-drop utilities  | `/src/renderer/core/traits/dnd.ts`                |
+| ILink trait definition   | `/src/renderer/editors/link-editor/linkTraits.ts` |
 | Content pipe             | `/src/renderer/content/ContentPipe.ts`            |
 | Content pipe registry    | `/src/renderer/content/registry.ts`               |
 | File provider            | `/src/renderer/content/providers/FileProvider.ts` |

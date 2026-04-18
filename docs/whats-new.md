@@ -8,7 +8,18 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ## Version 3.0.9 (Upcoming)
 
-*No changes yet.*
+### New Features
+
+- **Cross-editor drag-and-drop** — You can now drag items from the Links editor into other editors, and vice versa:
+  - **Links → Notebook** — Drag one or more links (or a file from the File Explorer) onto a category in the Notebook category tree. A note is created for each dropped item, with the link URL as the note body and the link title as the note title.
+  - **Links → Rest Client** — Drag one or more links onto a collection or request in the Rest Client tree. A new request is created for each link, pre-populated with the link URL.
+  - **Files/Links → Links editor** — Drag items from the File Explorer or from another editor onto the main area of the Links editor. Files and folders are imported as new links. Folders are scanned recursively; if more than 100 files are found, a confirmation dialog appears before proceeding. Duplicate entries (already in the collection) are skipped automatically.
+
+- **Pinned tabs are now draggable** — Pinned (compact) tabs can be reordered by dragging within the pinned section of the tab bar. Previously, pinned tabs could not be dragged at all.
+
+### Bug Fixes and Improvements
+
+- **Audio visualizer: pauses when tab is in the background** — The visualizer animation loop now stops automatically when you switch to a different tab, eliminating frame-rate drops and crashes that occurred with the Circular effect running in the background.
 
 ---
 

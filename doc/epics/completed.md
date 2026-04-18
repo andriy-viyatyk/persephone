@@ -4,6 +4,17 @@ Last 10 completed epics, newest first. Older epics are pruned.
 
 ---
 
+## EPIC-026 — [Trait System — Universal Data Adaptation Layer](EPIC-026.md)
+
+- [x] [US-428: Trait system core — TraitKey, TraitSet, Traited, traited()](../tasks/US-428-trait-system-core/README.md)
+- [x] [US-444: Trait-based drag-drop infrastructure + link pilot — TraitRegistry, serialization, native HTML5 DnD, convert link-drag](../tasks/US-444-trait-drag-drop-infrastructure/README.md)
+- [x] [US-447: Convert remaining data drags to trait-based system](../tasks/US-447-convert-data-drags-to-traits/README.md)
+- [x] [US-448: Cross-type drop targets — FILE_FOLDER→Links import, cross-editor category drops, LINK→RestClient](../tasks/US-448-cross-type-drop-targets/README.md)
+- [x] [US-449: Remove React-DnD dependency — convert component-level drags to native HTML5](../tasks/US-449-remove-react-dnd/README.md)
+- [x] US-446: Documentation — trait system guide in /doc/architecture/
+
+---
+
 ## EPIC-024 — [Video Player Editor](EPIC-024.md)
 
 - [x] US-412: Video player standalone editor — model, registration, UI shell
