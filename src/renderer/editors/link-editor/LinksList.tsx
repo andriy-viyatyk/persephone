@@ -1,6 +1,5 @@
 import styled from "@emotion/styled";
 import React, { useCallback, useImperativeHandle, useMemo, useRef, useState } from "react";
-import { useDrag } from "react-dnd";
 import RenderGrid from "../../components/virtualization/RenderGrid/RenderGrid";
 import RenderGridModel from "../../components/virtualization/RenderGrid/RenderGridModel";
 import { RenderCellParams, RenderSizeOptional } from "../../components/virtualization/RenderGrid/types";
@@ -12,7 +11,7 @@ import type { ILink } from "../../api/types/io.tree";
 import { TreeProviderItemIcon } from "../../components/tree-provider/TreeProviderItemIcon";
 import { LinkTooltip } from "./LinkTooltip";
 import { useFavicons } from "../../components/tree-provider/favicon-cache";
-import { LINK_DRAG_TYPE, LinkDragEvent } from "./linkTypes";
+import { TraitTypeId, setTraitDragData } from "../../core/traits";
 
 const ROW_HEIGHT = 28;
 
@@ -108,7 +107,7 @@ interface LinksListRowProps {
     isSelected: boolean;
     searchText: string;
     additionalIcon?: React.ReactNode;
-    /** When set, row is draggable. Value is used as sourceId in LinkDragEvent. */
+    /** When set, row is draggable. Value is used as sourceId in drag payload. */
     dragSourceId?: string;
     allTags?: string[];
     onSelect?: (link: ILink) => void;
@@ -124,15 +123,18 @@ function LinksListRow({
     dragSourceId, allTags, onSelect, onEdit, onDelete, onDoubleClick, onContextMenu, onToggleTag,
 }: LinksListRowProps) {
     const tooltipId = useMemo(() => crypto.randomUUID(), []);
+    const [isDragging, setIsDragging] = useState(false);
 
-    const [{ isDragging }, drag] = useDrag({
-        type: LINK_DRAG_TYPE,
-        item: { type: LINK_DRAG_TYPE, items: [link], sourceId: dragSourceId } as LinkDragEvent,
-        canDrag: !!dragSourceId,
-        collect: (monitor) => ({
-            isDragging: monitor.isDragging(),
-        }),
-    });
+    const handleDragStart = useCallback((e: React.DragEvent) => {
+        if (!dragSourceId) { e.preventDefault(); return; }
+        e.stopPropagation(); // Prevent react-dnd HTML5Backend from cancelling native drag
+        setTraitDragData(e.dataTransfer, TraitTypeId.ILink, { items: [link], sourceId: dragSourceId });
+        setIsDragging(true);
+    }, [link, dragSourceId]);
+
+    const handleDragEnd = useCallback(() => {
+        setIsDragging(false);
+    }, []);
 
     const handleDoubleClick = onDoubleClick
         ? () => onDoubleClick(link)
@@ -140,7 +142,9 @@ function LinksListRow({
 
     return (
         <div
-            ref={(node) => { drag(node); }}
+            draggable={!!dragSourceId}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
             className={isSelected ? "link-row selected" : "link-row"}
             style={isDragging ? { opacity: 0.4 } : undefined}
             onClick={() => onSelect?.(link)}
@@ -216,7 +220,7 @@ export interface LinksListProps {
     onContextMenu?: (e: React.MouseEvent, link: ILink) => void;
     /** Callback to get additional icon for a link row (e.g., pin indicator). */
     getAdditionalIcon?: (link: ILink) => React.ReactNode;
-    /** Enable drag. When set, items are draggable with this sourceId in LinkDragEvent. */
+    /** Enable drag. When set, items are draggable with this sourceId in drag payload. */
     dragSourceId?: string;
     /** All available tags for inline tag editing in tooltip. */
     allTags?: string[];

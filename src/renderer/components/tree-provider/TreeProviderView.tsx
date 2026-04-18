@@ -2,14 +2,16 @@ import { useCallback, useEffect, useRef } from "react";
 import styled from "@emotion/styled";
 import { useComponentModel } from "../../core/state/model";
 import { TreeView } from "../TreeView/TreeView";
-import { TreeViewRef, DragItem } from "../TreeView";
+import { TreeViewRef } from "../TreeView";
 import { TextField } from "../basic/TextField";
 import { Button } from "../basic/Button";
 import { CloseIcon } from "../../theme/icons";
 import { highlightText } from "../basic/useHighlightedText";
 import color from "../../theme/color";
 import { TreeProviderItemIcon } from "./TreeProviderItemIcon";
-import { LINK_DRAG_TYPE, LinkDragEvent } from "../../editors/link-editor/linkTypes";
+import { LINK } from "../../editors/link-editor/linkTraits";
+import { TraitTypeId, resolveTraits } from "../../core/traits";
+import type { TraitDragPayload } from "../../core/traits";
 import {
     TreeProviderViewModel,
     TreeProviderViewProps,
@@ -172,28 +174,30 @@ export function TreeProviderView(
     // Drag-drop (only if writable)
     const writable = props.provider.writable;
 
-    const getDragItem = useCallback((node: TreeProviderNode) => {
+    const getDragData = useCallback((node: TreeProviderNode) => {
         if (!writable) return null;
         // Don't drag root
         if (node.data.href === props.provider.rootPath) return null;
-        return {
-            type: LINK_DRAG_TYPE,
-            items: [node.data],
-            sourceId: props.provider.sourceUrl,
-        } as LinkDragEvent;
+        return { items: [node.data], sourceId: props.provider.sourceUrl };
     }, [writable, props.provider.rootPath, props.provider.sourceUrl]);
 
-    const canDrop = useCallback((dropNode: TreeProviderNode, dragItem: DragItem) => {
+    const canTraitDrop = useCallback((dropNode: TreeProviderNode, payload: TraitDragPayload) => {
         if (!writable) return false;
-        const linkDrag = dragItem as unknown as LinkDragEvent;
-        if (linkDrag.items?.length === 1 && linkDrag.items[0].href === dropNode.data.href) return false;
+        const traits = resolveTraits(payload.typeId);
+        const linkTrait = traits?.get(LINK);
+        if (!linkTrait) return false;
+        const items = linkTrait.getItems(payload.data);
+        if (items.length === 1 && items[0].href === dropNode.data.href) return false;
         return true;
     }, [writable]);
 
-    const onDrop = useCallback((dropNode: TreeProviderNode, dragItem: DragItem) => {
-        const linkDrag = dragItem as unknown as LinkDragEvent;
-        if (linkDrag.items?.length) {
-            model.moveItems(linkDrag.items, dropNode);
+    const onTraitDrop = useCallback((dropNode: TreeProviderNode, payload: TraitDragPayload) => {
+        const traits = resolveTraits(payload.typeId);
+        const linkTrait = traits?.get(LINK);
+        if (!linkTrait) return;
+        const items = linkTrait.getItems(payload.data);
+        if (items.length) {
+            model.moveItems(items, dropNode);
         }
     }, [model]);
 
@@ -271,11 +275,11 @@ export function TreeProviderView(
                     onItemDoubleClick={model.onItemDoubleClick}
                     onItemContextMenu={model.onItemContextMenu}
                     onExpandChange={model.onExpandChange}
-                    dragType={writable ? LINK_DRAG_TYPE : undefined}
-                    getDragItem={writable ? getDragItem : undefined}
-                    dropTypes={writable ? [LINK_DRAG_TYPE] : undefined}
-                    canDrop={writable ? canDrop : undefined}
-                    onDrop={writable ? onDrop : undefined}
+                    traitTypeId={writable ? TraitTypeId.ILink : undefined}
+                    getDragData={writable ? getDragData : undefined}
+                    acceptsDrop={writable}
+                    canTraitDrop={writable ? canTraitDrop : undefined}
+                    onTraitDrop={writable ? onTraitDrop : undefined}
                     rootCollapsible={false}
                     defaultExpandAll={isDeepSearch}
                     initialExpandMap={model.initialExpandMap}

@@ -689,10 +689,25 @@ export class TreeProviderViewModel extends TComponentModel<
 
         const targetPath = this.getListPath(targetDir);
 
-        if (provider.moveToCategory) {
+        // Separate directory (category) items from regular link items
+        const dirItems = sourceItems.filter(i => i.isDirectory);
+        const linkItems = sourceItems.filter(i => !i.isDirectory);
+        const dirsHandled = !!(provider.renameCategoryPath && dirItems.length);
+
+        // Move category sub-trees via renameCategoryPath (link providers)
+        if (dirsHandled) {
+            for (const dir of dirItems) {
+                await provider.renameCategoryPath?.(dir.href, targetPath);
+            }
+        }
+
+        // Items still needing handling: links always, dirs only if not handled above
+        const remaining = dirsHandled ? linkItems : sourceItems;
+
+        if (provider.moveToCategory && remaining.length) {
             // Link provider path: moveToCategory (no confirmation needed)
-            await provider.moveToCategory(sourceItems.map(i => i.href), targetPath);
-        } else if (provider.rename && sourceItems.length === 1) {
+            await provider.moveToCategory(remaining.map(i => i.href), targetPath);
+        } else if (provider.rename && remaining.length === 1) {
             // File provider path: rename (with confirmation)
             const source = sourceItems[0];
             const newPath = targetPath

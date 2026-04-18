@@ -55,6 +55,8 @@ export interface ITreeProvider {
 
     /** Move multiple items to a target category in one batch. */
     moveToCategory?(hrefs: string[], targetCategory: string): Promise<void>;
+    /** Move an entire category sub-tree to a new parent category. */
+    renameCategoryPath?(sourcePath: string, targetCategory: string): Promise<void>;
     /** Delete multiple items in one batch. */
     deleteItems?(hrefs: string[]): Promise<void>;
 

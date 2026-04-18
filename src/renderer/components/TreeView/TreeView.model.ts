@@ -1,9 +1,12 @@
 import { TComponentModel } from "../../core/state/model";
 import RenderGridModel from "../virtualization/RenderGrid/RenderGridModel";
+import type { TraitTypeId, TraitDragPayload } from "../../core/traits";
 
-// Drag & Drop types for TreeView
+// Drag & Drop types for TreeView (React-DnD — legacy, kept for backward compat)
+/** @deprecated Use trait-based drag props instead (traitTypeId, getDragData, acceptsDrop) */
 export type DragType = string;
 
+/** @deprecated Use trait-based drag props instead (traitTypeId, getDragData, acceptsDrop) */
 export interface DragItem {
     type: DragType;
     [key: string]: any;
@@ -59,14 +62,31 @@ export interface TreeViewProps<T extends TreeItem = TreeItem> {
     getSelected?: (item: T) => boolean;
     onItemClick?: (item: T) => void;
     onItemContextMenu?: (item: T, e: React.MouseEvent) => void;
+
+    // ── React-DnD props (legacy — kept for backward compat with notebook, REST client) ──
+    /** @deprecated Use traitTypeId + getDragData instead */
     dropTypes?: DragType[];
+    /** @deprecated Use onTraitDrop instead */
     onDrop?: (dropItem: T, dragItem: DragItem) => void;
-    /** Whether a drop on this item is allowed. Return false to prevent drop highlight and action. */
+    /** @deprecated Use canTraitDrop instead */
     canDrop?: (dropItem: T, dragItem: DragItem) => boolean;
-    /** Drag type for making tree cells draggable */
+    /** @deprecated Use traitTypeId instead */
     dragType?: DragType;
-    /** Get drag item data for a tree node. Return null to prevent dragging. */
+    /** @deprecated Use getDragData instead */
     getDragItem?: (item: T) => DragItem | null;
+
+    // ── Trait-based drag-drop props (new) ────────────────────────────────────
+    /** Trait type ID for making tree cells draggable (registered in traitRegistry). */
+    traitTypeId?: TraitTypeId;
+    /** Get serializable drag data for a tree node. Return null to prevent dragging. */
+    getDragData?: (item: T) => unknown | null;
+    /** Whether this tree accepts trait drops. */
+    acceptsDrop?: boolean;
+    /** Check if a specific drop is allowed on this node. */
+    canTraitDrop?: (dropItem: T, payload: TraitDragPayload) => boolean;
+    /** Handle a trait drop on a tree node. */
+    onTraitDrop?: (dropItem: T, payload: TraitDragPayload) => void;
+
     /** Whether root element can be collapsed. Default: false */
     rootCollapsible?: boolean;
     /** Change this value to trigger a grid refresh (e.g., when external selection state changes) */

@@ -1,20 +1,8 @@
 import type { ILink } from "../../api/types/io.tree";
 import { TextFileModel } from "../text/TextEditorModel";
 
-// =============================================================================
-// Drag Types
-// =============================================================================
-
-/** Unified drag type for all ILink items (links, categories, files, archive entries). */
-export const LINK_DRAG_TYPE = "link-drag";
-
-/** Drag payload for ILink items. Carries an array of links + optional source identifier. */
-export interface LinkDragEvent {
-    type: typeof LINK_DRAG_TYPE;
-    items: ILink[];
-    /** Source identifier — provider sourceUrl or model id. Used to distinguish internal vs external drops. */
-    sourceId?: string;
-}
+// Ensure link traits are registered at startup
+import "./linkTraits";
 
 export const LINK_PIN_DRAG = "LINK_PIN_DRAG";
 

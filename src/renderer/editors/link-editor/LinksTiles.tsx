@@ -1,13 +1,13 @@
 import styled from "@emotion/styled";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useDrag } from "react-dnd";
 import RenderGrid from "../../components/virtualization/RenderGrid/RenderGrid";
 import RenderGridModel from "../../components/virtualization/RenderGrid/RenderGridModel";
 import { RenderCellParams, RenderSizeOptional } from "../../components/virtualization/RenderGrid/types";
 import color from "../../theme/color";
 import { DeleteIcon, GlobeIcon, RenameIcon } from "../../theme/icons";
 import type { ILink } from "../../api/types/io.tree";
-import { LINK_DRAG_TYPE, LinkDragEvent, LinkViewMode } from "./linkTypes";
+import { LinkViewMode } from "./linkTypes";
+import { TraitTypeId, setTraitDragData } from "../../core/traits";
 import { getHostname, getFaviconPathSync, useFavicons } from "../../components/tree-provider/favicon-cache";
 
 // =============================================================================
@@ -161,7 +161,7 @@ interface LinksTileCellProps {
     isSelected: boolean;
     imageHeight: number;
     additionalIcon?: React.ReactNode;
-    /** When set, tile is draggable. Value is used as sourceId in LinkDragEvent. */
+    /** When set, tile is draggable. Value is used as sourceId in drag payload. */
     dragSourceId?: string;
     onSelect?: (link: ILink) => void;
     onEdit?: (link: ILink) => void;
@@ -174,14 +174,18 @@ function LinksTileCell({
     link, isSelected, imageHeight, additionalIcon,
     dragSourceId, onSelect, onEdit, onDelete, onDoubleClick, onContextMenu,
 }: LinksTileCellProps) {
-    const [{ isDragging }, drag] = useDrag({
-        type: LINK_DRAG_TYPE,
-        item: { type: LINK_DRAG_TYPE, items: [link], sourceId: dragSourceId } as LinkDragEvent,
-        canDrag: !!dragSourceId,
-        collect: (monitor) => ({
-            isDragging: monitor.isDragging(),
-        }),
-    });
+    const [isDragging, setIsDragging] = useState(false);
+
+    const handleDragStart = useCallback((e: React.DragEvent) => {
+        if (!dragSourceId) { e.preventDefault(); return; }
+        e.stopPropagation(); // Prevent react-dnd HTML5Backend from cancelling native drag
+        setTraitDragData(e.dataTransfer, TraitTypeId.ILink, { items: [link], sourceId: dragSourceId });
+        setIsDragging(true);
+    }, [link, dragSourceId]);
+
+    const handleDragEnd = useCallback(() => {
+        setIsDragging(false);
+    }, []);
 
     const handleDoubleClick = onDoubleClick
         ? () => onDoubleClick(link)
@@ -189,7 +193,9 @@ function LinksTileCell({
 
     return (
         <div
-            ref={(node) => { drag(node); }}
+            draggable={!!dragSourceId}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
             className={isSelected ? "tile-inner selected" : "tile-inner"}
             style={isDragging ? { opacity: 0.4 } : undefined}
             title={link.href || link.title}
@@ -268,7 +274,7 @@ export interface LinksTilesProps {
     onContextMenu?: (e: React.MouseEvent, link: ILink) => void;
     /** Callback to get additional icon for a tile (e.g., pin indicator). */
     getAdditionalIcon?: (link: ILink) => React.ReactNode;
-    /** Enable drag. When set, items are draggable with this sourceId in LinkDragEvent. */
+    /** Enable drag. When set, items are draggable with this sourceId in drag payload. */
     dragSourceId?: string;
     /** Called with the RenderGridModel on mount, null on unmount. */
     onGridModel?: (model: RenderGridModel | null) => void;

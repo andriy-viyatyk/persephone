@@ -262,7 +262,7 @@ This approach enables cross-window drag-and-drop for free — HTML5 `dataTransfe
 | Task | Title | Status |
 |------|-------|--------|
 | US-428 | Trait system core — TraitKey, TraitSet, Traited, traited() | Done |
-| US-444 | Trait-based drag-drop infrastructure + link pilot — TraitRegistry, serialization, native HTML5 DnD, convert link-drag | Planned |
+| US-444 | Trait-based drag-drop infrastructure + link pilot — TraitRegistry, serialization, native HTML5 DnD, convert link-drag | Active |
 | US-447 | Convert remaining data drags to trait-based system — todo, notes, REST, browser tabs, pinned links, explorer files/folders | Planned |
 | US-448 | Cross-type drop targets — FILE_FOLDER→Links import, cross-editor category drops, LINK→RestClient | Planned |
 | US-449 | Remove React-DnD dependency — convert component-level drags to native HTML5 | Planned |

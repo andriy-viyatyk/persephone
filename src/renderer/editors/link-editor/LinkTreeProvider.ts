@@ -168,6 +168,25 @@ export class LinkTreeProvider implements ITreeProvider {
         }
     }
 
+    /**
+     * Move an entire category sub-tree to a new parent.
+     * All links whose category equals `sourcePath` or starts with `sourcePath/`
+     * get their category prefix replaced.
+     * Example: renameCategoryPath("A/B", "C") → "A/B"→"C/B", "A/B/D"→"C/B/D"
+     */
+    async renameCategoryPath(sourcePath: string, targetCategory: string): Promise<void> {
+        const { links } = this.vm.state.get().data;
+        const nameStart = sourcePath.lastIndexOf("/") + 1;
+        const prefix = sourcePath + "/";
+        for (const l of links) {
+            if (l.category === sourcePath || l.category?.startsWith(prefix)) {
+                const suffix = l.category.slice(nameStart);
+                const newCategory = targetCategory ? targetCategory + "/" + suffix : suffix;
+                this.vm.moveLinkToCategory(l.id, newCategory);
+            }
+        }
+    }
+
     // =========================================================================
     // Tags
     // =========================================================================
