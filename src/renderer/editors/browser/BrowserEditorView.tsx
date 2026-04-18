@@ -288,6 +288,13 @@ function BrowserWebviewItem({
         let registered = false;
 
         const onDomReady = () => {
+            // Capture URL from the initial src-based load so navigateWebview
+            // doesn't try to reload the page on the first tab switch.
+            const currentUrl = webview.getURL();
+            if (currentUrl && currentUrl !== "about:blank") {
+                model.currentUrls.set(internalTabId, currentUrl);
+            }
+
             model.webview.webviewReady.add(internalTabId);
             const webContentsId = webview.getWebContentsId();
             const request: BrowserRegisterRequest = {

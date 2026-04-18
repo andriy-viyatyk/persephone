@@ -214,12 +214,16 @@ function registerWebview(event: IpcMainEvent, request: BrowserRegisterRequest) {
         });
     });
 
-    on("did-start-navigation", (_e: any, url: string) => {
-        // Block navigation to dangerous protocols
+    // Block page-initiated navigations to dangerous protocols.
+    // will-navigate fires only for navigations triggered by the page
+    // (links, window.location, forms) — NOT for programmatic loadURL().
+    // This allows app-initiated file:// navigations (MCP, restore) while
+    // blocking third-party sites from redirecting to local files.
+    on("will-navigate", (event: any, url: string) => {
         try {
             const parsed = new URL(url);
             if (BLOCKED_PROTOCOLS.includes(parsed.protocol)) {
-                wc.stop();
+                event.preventDefault();
                 sendEvent(
                     sender,
                     tabId,
