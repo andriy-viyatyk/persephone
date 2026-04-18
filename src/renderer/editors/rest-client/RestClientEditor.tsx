@@ -18,7 +18,8 @@ import { RequestBuilder } from "./RequestBuilder";
 import { ResponseViewer, getResponseSize } from "./ResponseViewer";
 import { METHOD_COLORS } from "./httpConstants";
 import { IContentHost } from "../base/IContentHost";
-import { TraitTypeId, type TraitDragPayload } from "../../core/traits";
+import { TraitTypeId, type TraitDragPayload, resolveTraits } from "../../core/traits";
+import { LINK } from "../link-editor/linkTraits";
 
 // =============================================================================
 // Tree item type
@@ -689,14 +690,41 @@ function RequestTree({ vm, root, selectedId }: {
         [],
     );
 
+    const canTraitDrop = useCallback(
+        (_dropItem: RequestTreeItem, payload: TraitDragPayload) => {
+            if (_dropItem.isRoot) return false;
+            if (payload.typeId === TraitTypeId.RestRequest) return true;
+            const traits = resolveTraits(payload.typeId);
+            return !!traits?.get(LINK);
+        },
+        [],
+    );
+
     const onTraitDrop = useCallback(
         (dropItem: RequestTreeItem, payload: TraitDragPayload) => {
             if (dropItem.isRoot) return;
-            const data = payload.data as { id: string };
-            if (dropItem.isCollection) {
-                vm.moveRequest(data.id, dropItem.id, dropItem.collectionName ?? "");
-            } else {
-                vm.moveRequest(data.id, dropItem.id, dropItem.request?.collection);
+
+            if (payload.typeId === TraitTypeId.RestRequest) {
+                const data = payload.data as { id: string };
+                if (dropItem.isCollection) {
+                    vm.moveRequest(data.id, dropItem.id, dropItem.collectionName ?? "");
+                } else {
+                    vm.moveRequest(data.id, dropItem.id, dropItem.request?.collection);
+                }
+                return;
+            }
+
+            const traits = resolveTraits(payload.typeId);
+            const linkTrait = traits?.get(LINK);
+            if (!linkTrait) return;
+            const items = linkTrait.getItems(payload.data);
+            const collection = dropItem.isCollection
+                ? (dropItem.collectionName ?? "")
+                : (dropItem.request?.collection ?? "");
+            for (const item of items) {
+                if (!item.href) continue;
+                const req = vm.addRequest(item.title || item.href, collection);
+                vm.updateRequest(req.id, { url: item.href });
             }
         },
         [vm],
@@ -713,6 +741,7 @@ function RequestTree({ vm, root, selectedId }: {
             traitTypeId={TraitTypeId.RestRequest}
             getDragData={getDragData}
             acceptsDrop
+            canTraitDrop={canTraitDrop}
             onTraitDrop={onTraitDrop}
             defaultExpandAll
             refreshKey={selectedId}

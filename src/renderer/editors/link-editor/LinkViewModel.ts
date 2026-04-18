@@ -527,6 +527,132 @@ export class LinkViewModel extends ContentViewModel<LinkEditorState> {
         return newLink;
     };
 
+    /**
+     * Import one or more ILink items into the collection.
+     * Directories are scanned recursively; if the scan exceeds 100 files,
+     * a confirmation dialog asks the user before proceeding.
+     * Duplicate hrefs (already in collection) are skipped.
+     */
+    importLinks = async (items: ILink[]) => {
+        const fp = await import("../../core/utils/file-path");
+        const existingHrefs = new Set(
+            this.state.get().data.links.map((l) => l.href.toLowerCase()),
+        );
+
+        const directLinks: Partial<LinkItem>[] = [];
+        const foldersToScan: ILink[] = [];
+
+        for (const item of items) {
+            if (item.isDirectory) {
+                foldersToScan.push(item);
+            } else {
+                if (existingHrefs.has(item.href.toLowerCase())) continue;
+                existingHrefs.add(item.href.toLowerCase());
+                directLinks.push({
+                    title: item.title,
+                    href: item.href,
+                    category: item.category || "",
+                    tags: item.tags?.length ? item.tags : undefined,
+                    imgSrc: item.imgSrc,
+                });
+            }
+        }
+
+        const SCAN_LIMIT = 100;
+        let folderLinks: Partial<LinkItem>[] = [];
+
+        if (foldersToScan.length) {
+            const scanned = await this.scanFolders(
+                foldersToScan, existingHrefs, fp, SCAN_LIMIT,
+            );
+
+            if (scanned.limitReached) {
+                const choice = await ui.confirm(
+                    `The folder contains more than ${SCAN_LIMIT} files. Import all files?`,
+                    { title: "Import Folder", buttons: ["Import All", "Cancel"] },
+                );
+                if (choice !== "Import All") return;
+
+                const existingHrefs2 = new Set(
+                    this.state.get().data.links.map((l) => l.href.toLowerCase()),
+                );
+                for (const dl of directLinks) {
+                    if (dl.href) existingHrefs2.add(dl.href.toLowerCase());
+                }
+                const fullScan = await this.scanFolders(
+                    foldersToScan, existingHrefs2, fp, 0,
+                );
+                folderLinks = fullScan.links;
+            } else {
+                folderLinks = scanned.links;
+            }
+        }
+
+        const allLinks = [...directLinks, ...folderLinks];
+
+        if (!allLinks.length) {
+            const { app } = await import("../../api/app");
+            app.ui.notify("All items already exist in this collection", "info");
+            return;
+        }
+
+        for (const link of allLinks) {
+            this.addLink(link);
+        }
+
+        if (allLinks.length > 1) {
+            const { app } = await import("../../api/app");
+            app.ui.notify(`Imported ${allLinks.length} links`, "info");
+        }
+    };
+
+    private scanFolders = async (
+        folders: ILink[],
+        existingHrefs: Set<string>,
+        fp: typeof import("../../core/utils/file-path"),
+        limit: number,
+    ): Promise<{ links: Partial<LinkItem>[]; limitReached: boolean }> => {
+        const { app } = await import("../../api/app");
+        const links: Partial<LinkItem>[] = [];
+        const queue = [...folders];
+
+        while (queue.length > 0) {
+            const folder = queue.shift()!;
+            let entries: { name: string; isDirectory: boolean }[];
+            try {
+                entries = await app.fs.listDirWithTypes(folder.href);
+            } catch {
+                continue;
+            }
+
+            for (const entry of entries) {
+                const fullPath = fp.fpJoin(folder.href, entry.name);
+                if (entry.isDirectory) {
+                    queue.push({
+                        title: entry.name,
+                        href: fullPath,
+                        category: folder.category || "",
+                        tags: [],
+                        isDirectory: true,
+                    });
+                    continue;
+                }
+                if (existingHrefs.has(fullPath.toLowerCase())) continue;
+                existingHrefs.add(fullPath.toLowerCase());
+                links.push({
+                    title: entry.name,
+                    href: fullPath,
+                    category: folder.category || "",
+                });
+                if (limit > 0 && links.length >= limit) {
+                    return { links, limitReached: true };
+                }
+            }
+        }
+
+        return { links, limitReached: false };
+    };
+
     updateLink = (id: string, updates: Partial<Omit<LinkItem, "id">>) => {
         this.state.update((s) => {
             const link = s.data.links.find((l) => l.id === id);

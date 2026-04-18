@@ -3,7 +3,9 @@ import { splitWithSeparators } from "../../core/utils/utils";
 import { ui } from "../../api/ui";
 import { CategoryTreeItem } from "../../components/TreeView";
 import { NoteItem, NotebookData } from "./notebookTypes";
-import { TraitTypeId, type TraitDragPayload } from "../../core/traits";
+import { TraitTypeId, type TraitDragPayload, resolveTraits } from "../../core/traits";
+import { LINK } from "../link-editor/linkTraits";
+import type { ILink } from "../../api/types/io.tree";
 import { ContentViewModel } from "../base/ContentViewModel";
 import type { IContentHost } from "../base/IContentHost";
 import type { TextFileModel } from "../text";
@@ -640,7 +642,36 @@ export class NotebookViewModel extends ContentViewModel<NotebookViewState> {
         } else if (payload.typeId === TraitTypeId.NotebookCategory) {
             const data = payload.data as { category: string };
             this.moveCategory(data.category, dropItem.category);
+        } else {
+            const traits = resolveTraits(payload.typeId);
+            const linkTrait = traits?.get(LINK);
+            if (!linkTrait) return;
+            const items = linkTrait.getItems(payload.data);
+            for (const item of items) {
+                this.createNoteFromLink(item, dropItem.category);
+            }
         }
+    };
+
+    private createNoteFromLink = (link: ILink, category: string) => {
+        const now = new Date().toISOString();
+        const note: NoteItem = {
+            id: crypto.randomUUID(),
+            title: link.title || link.href,
+            category,
+            tags: [],
+            content: {
+                language: "plaintext",
+                content: link.href,
+            },
+            createdDate: now,
+            updatedDate: now,
+        };
+        this.state.update((s) => {
+            s.data.notes.unshift(note);
+        });
+        this.loadCategories();
+        this.applyFilters();
     };
 
     /**

@@ -23,6 +23,8 @@ import { LinkHostnamesPanel } from "./panels/LinkHostnamesPanel";
 import { LinkItemList } from "./LinkItemList";
 import { LinkItemTiles } from "./LinkItemTiles";
 import { PinnedLinksPanel } from "./PinnedLinksPanel";
+import { hasTraitDragData, getTraitDragData, resolveTraits } from "../../core/traits";
+import { LINK } from "./linkTraits";
 import { EditorError } from "../base/EditorError";
 import { useContentViewModel } from "../base/useContentViewModel";
 
@@ -52,6 +54,10 @@ const LinkEditorRoot = styled.div({
         flexDirection: "column",
         overflow: "hidden",
         position: "relative",
+    },
+    "& .center-panel.drag-over": {
+        outline: `2px dashed ${color.border.active}`,
+        outlineOffset: -2,
     },
     "& .empty-state": {
         flex: 1,
@@ -217,6 +223,49 @@ export function LinkEditor(props: LinkEditorProps) {
     );
     const pinnedPanelWidth = pageState.data.state.pinnedPanelWidth ?? 100;
 
+    // ── Center panel drop zone ──────────────────────────────────────────
+    const [centerDragOver, setCenterDragOver] = useState(false);
+    const centerDragCount = useRef(0);
+
+    const handleCenterDragEnter = useCallback((e: React.DragEvent) => {
+        centerDragCount.current++;
+        if (hasTraitDragData(e.dataTransfer)) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+            setCenterDragOver(true);
+        }
+    }, []);
+
+    const handleCenterDragOver = useCallback((e: React.DragEvent) => {
+        if (hasTraitDragData(e.dataTransfer)) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+        }
+    }, []);
+
+    const handleCenterDragLeave = useCallback(() => {
+        centerDragCount.current--;
+        if (centerDragCount.current <= 0) {
+            centerDragCount.current = 0;
+            setCenterDragOver(false);
+        }
+    }, []);
+
+    const handleCenterDrop = useCallback((e: React.DragEvent) => {
+        e.preventDefault();
+        centerDragCount.current = 0;
+        setCenterDragOver(false);
+        const payload = getTraitDragData(e.dataTransfer);
+        if (!payload) return;
+        const traits = resolveTraits(payload.typeId);
+        const linkTrait = traits?.get(LINK);
+        if (!linkTrait) return;
+        const items = linkTrait.getItems(payload.data);
+        if (items.length) {
+            vm.importLinks(items);
+        }
+    }, [vm]);
+
     const showViewModeMenu = useCallback((e: React.MouseEvent) => {
         if (!vm) return;
         const rect = e.currentTarget.getBoundingClientRect();
@@ -341,7 +390,13 @@ export function LinkEditor(props: LinkEditorProps) {
                     </>
                 )}
                 <HighlightedTextProvider value={pageState.searchText}>
-                    <div className="center-panel">
+                    <div
+                        className={clsx("center-panel", centerDragOver && "drag-over")}
+                        onDragEnter={handleCenterDragEnter}
+                        onDragOver={handleCenterDragOver}
+                        onDragLeave={handleCenterDragLeave}
+                        onDrop={handleCenterDrop}
+                    >
                         {allLinks.length === 0 ? (
                             <div className="empty-state">
                                 <div className="title">Links</div>

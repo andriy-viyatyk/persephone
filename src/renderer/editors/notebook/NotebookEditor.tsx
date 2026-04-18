@@ -22,7 +22,8 @@ import { NotebookViewModel, defaultNotebookViewState, NotebookViewState } from "
 import { NoteItemView } from "./NoteItemView";
 import { ExpandedNoteView } from "./ExpandedNoteView";
 import { NotebookEditorProps } from "./notebookTypes";
-import { TraitTypeId } from "../../core/traits";
+import { TraitTypeId, type TraitDragPayload, resolveTraits } from "../../core/traits";
+import { LINK } from "../link-editor/linkTraits";
 import { EditorError } from "../base/EditorError";
 import { useContentViewModel } from "../base/useContentViewModel";
 
@@ -196,6 +197,16 @@ export function NotebookEditor({ model }: NotebookEditorProps) {
         [vm, pageState.categoriesSize]
     );
 
+    const canCategoryTraitDrop = useCallback(
+        (_dropItem: CategoryTreeItem, payload: TraitDragPayload) => {
+            if (payload.typeId === TraitTypeId.Note) return true;
+            if (payload.typeId === TraitTypeId.NotebookCategory) return true;
+            const traits = resolveTraits(payload.typeId);
+            return !!traits?.get(LINK);
+        },
+        [],
+    );
+
     if (!vm) return null;
 
     if (pageState.error) {
@@ -291,6 +302,7 @@ export function NotebookEditor({ model }: NotebookEditorProps) {
                                 traitTypeId={TraitTypeId.NotebookCategory}
                                 getDragData={vm.getCategoryDragData}
                                 acceptsDrop
+                                canTraitDrop={canCategoryTraitDrop}
                                 onTraitDrop={vm.categoryTraitDrop}
                             />
                         </div>
