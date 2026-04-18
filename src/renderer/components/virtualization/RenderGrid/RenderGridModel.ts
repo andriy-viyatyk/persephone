@@ -256,6 +256,10 @@ export default class RenderGridModel extends TComponentModel<
         const oldInput: Partial<RenderGridModelInput> = this.oldInput || {};
         this.oldInput = newInput;
 
+        // Note: offset is NOT compared here. Scroll offset changes are handled
+        // by onScroll → updateRenderInfo which renders only the newly visible
+        // cells. Comparing offset here would trigger updateRenderInfo({ all: true })
+        // on every scroll, recreating ALL visible cells unnecessarily.
         return (
             newInput.rowCount !== oldInput.rowCount ||
             newInput.columnCount !== oldInput.columnCount ||
@@ -273,10 +277,6 @@ export default class RenderGridModel extends TComponentModel<
             !oldInput.size ||
             newInput.size.width !== oldInput.size.width ||
             newInput.size.height !== oldInput.size.height ||
-            !newInput.offset ||
-            !oldInput.offset ||
-            newInput.offset.x !== oldInput.offset.x ||
-            newInput.offset.y !== oldInput.offset.y ||
             newInput.scrollBarWidth !== oldInput.scrollBarWidth ||
             newInput.scrollBarHeight !== oldInput.scrollBarHeight
         );
