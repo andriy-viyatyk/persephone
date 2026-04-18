@@ -21,7 +21,8 @@ import { CloseIcon, PlusIcon } from "../../theme/icons";
 import { NotebookViewModel, defaultNotebookViewState, NotebookViewState } from "./NotebookViewModel";
 import { NoteItemView } from "./NoteItemView";
 import { ExpandedNoteView } from "./ExpandedNoteView";
-import { NotebookEditorProps, NOTE_DRAG, CATEGORY_DRAG } from "./notebookTypes";
+import { NotebookEditorProps } from "./notebookTypes";
+import { TraitTypeId } from "../../core/traits";
 import { EditorError } from "../base/EditorError";
 import { useContentViewModel } from "../base/useContentViewModel";
 
@@ -287,10 +288,10 @@ export function NotebookEditor({ model }: NotebookEditorProps) {
                                 getSelected={vm.getCategoryItemSelected}
                                 getLabel={getTreeItemLabel}
                                 refreshKey={pageState.selectedCategory}
-                                dropTypes={[NOTE_DRAG, CATEGORY_DRAG]}
-                                onDrop={vm.categoryDrop}
-                                dragType={CATEGORY_DRAG}
-                                getDragItem={vm.getCategoryDragItem}
+                                traitTypeId={TraitTypeId.NotebookCategory}
+                                getDragData={vm.getCategoryDragData}
+                                acceptsDrop
+                                onTraitDrop={vm.categoryTraitDrop}
                             />
                         </div>
                     </CollapsiblePanel>

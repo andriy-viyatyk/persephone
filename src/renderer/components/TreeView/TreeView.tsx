@@ -1,7 +1,6 @@
-import { CSSProperties, Ref, useCallback, useImperativeHandle, useState } from "react";
+import { CSSProperties, Ref, useCallback, useImperativeHandle, useRef, useState } from "react";
 import styled from "@emotion/styled";
 import clsx from "clsx";
-import { useDrag, useDrop } from "react-dnd";
 
 import { useComponentModel } from "../../core/state/model";
 import { setTraitDragData, getTraitDragData, hasTraitDragData } from "../../core/traits";
@@ -9,7 +8,6 @@ import RenderGrid from "../virtualization/RenderGrid/RenderGrid";
 import { Percent, RenderCellParams } from "../virtualization/RenderGrid/types";
 import {
     defaultTreeViewState,
-    DragItem,
     TreeItem,
     TreeViewItem,
     TreeViewModel,
@@ -114,93 +112,9 @@ interface TreeCellProps<T extends TreeItem = TreeItem> {
     style: CSSProperties;
 }
 
-// ── Legacy React-DnD tree cell ──────────────────────────────────────────────
+// ── Native HTML5 tree cell ────────────────────────────────────────────────
 
-function TreeCellLegacy<T extends TreeItem = TreeItem>({
-    item,
-    model,
-    style,
-}: TreeCellProps<T>) {
-    const levels = Array.from({ length: item.level }, (_, i) => i);
-
-    const [{ isOver }, drop] = useDrop({
-        accept: model.props.dropTypes ?? [],
-        canDrop(dragItem: DragItem) {
-            return model.props.canDrop?.(item.item, dragItem) ?? true;
-        },
-        drop(dragItem: DragItem) {
-            model.props.onDrop?.(item.item, dragItem);
-        },
-        collect: (monitor) => ({
-            isOver: monitor.isOver() && monitor.canDrop(),
-        }),
-    });
-
-    const [{ isDragging }, drag] = useDrag({
-        type: model.props.dragType || "__NONE__",
-        item: () => model.props.getDragItem?.(item.item),
-        collect: (monitor) => ({
-            isDragging: monitor.isDragging(),
-        }),
-        canDrag: () => {
-            if (!model.props.dragType || !model.props.getDragItem) return false;
-            return model.props.getDragItem(item.item) !== null;
-        },
-    });
-
-    return (
-        <div
-            ref={(node) => {
-                drag(drop(node));
-            }}
-            style={style}
-            onClick={() => {
-                model.props.onItemClick?.(item.item);
-                model.gridRef?.update({ all: true });
-            }}
-            onDoubleClick={() => {
-                model.props.onItemDoubleClick?.(item.item);
-            }}
-            onContextMenu={(e) => {
-                model.props.onItemContextMenu?.(item.item, e);
-            }}
-            className={clsx("tree-cell", {
-                selected: model.props.getSelected?.(item.item),
-                dragOver: isOver,
-                dragging: isDragging,
-            })}
-        >
-            {levels.map((l) => (
-                <div key={l} className="level-shift">
-                    {l === 0 && model.props.getBadge?.(item.item)}
-                </div>
-            ))}
-            {item.level === 0 && !model.props.rootCollapsible ? (
-                <></>
-            ) : item.items?.length || model.props.getHasChildren?.(item.item) ? (
-                <Button
-                    type="icon"
-                    size="small"
-                    className="expand-button"
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        model.toggleExpanded(item);
-                    }}
-                >
-                    {item.expanded ? <ChevronDownIcon /> : <ChevronRightIcon />}
-                </Button>
-            ) : (
-                <div className="empty-button expand-button" />
-            )}
-            <div className="label-icon">{model.props.getIcon?.(item.item)}</div>
-            {model.props.getLabel(item.item)}
-        </div>
-    );
-}
-
-// ── Trait-based native HTML5 tree cell ──────────────────────────────────────
-
-function TreeCellTrait<T extends TreeItem = TreeItem>({
+function TreeCell<T extends TreeItem = TreeItem>({
     item,
     model,
     style,
@@ -208,6 +122,7 @@ function TreeCellTrait<T extends TreeItem = TreeItem>({
     const levels = Array.from({ length: item.level }, (_, i) => i);
     const [isDragging, setIsDragging] = useState(false);
     const [isOver, setIsOver] = useState(false);
+    const dragEnterCount = useRef(0);
 
     const canDrag = !!model.props.traitTypeId && !!model.props.getDragData;
 
@@ -226,6 +141,7 @@ function TreeCellTrait<T extends TreeItem = TreeItem>({
     }, []);
 
     const handleDragEnter = useCallback((e: React.DragEvent) => {
+        dragEnterCount.current++;
         if (!model.props.acceptsDrop) return;
         if (hasTraitDragData(e.dataTransfer)) {
             e.preventDefault();
@@ -243,12 +159,17 @@ function TreeCellTrait<T extends TreeItem = TreeItem>({
     }, [model.props.acceptsDrop]);
 
     const handleDragLeave = useCallback(() => {
-        setIsOver(false);
+        dragEnterCount.current--;
+        if (dragEnterCount.current <= 0) {
+            dragEnterCount.current = 0;
+            setIsOver(false);
+        }
     }, []);
 
     const handleDrop = useCallback((e: React.DragEvent) => {
         e.preventDefault();
         e.stopPropagation();
+        dragEnterCount.current = 0;
         setIsOver(false);
         const payload = getTraitDragData(e.dataTransfer);
         if (!payload) return;
@@ -310,16 +231,6 @@ function TreeCellTrait<T extends TreeItem = TreeItem>({
             {model.props.getLabel(item.item)}
         </div>
     );
-}
-
-// ── Tree cell dispatcher ────────────────────────────────────────────────────
-
-function TreeCell<T extends TreeItem = TreeItem>(props: TreeCellProps<T>) {
-    // Use trait-based cell when traitTypeId or acceptsDrop is set, otherwise legacy React-DnD
-    if (props.model.props.traitTypeId || props.model.props.acceptsDrop) {
-        return <TreeCellTrait {...props} />;
-    }
-    return <TreeCellLegacy {...props} />;
 }
 
 export function TreeView<T extends TreeItem = TreeItem>(

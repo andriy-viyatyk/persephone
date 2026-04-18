@@ -1,15 +1,13 @@
 import styled from "@emotion/styled";
 import { useCallback, useMemo, useRef, useState } from "react";
-import { useDrag, useDrop } from "react-dnd";
 import { useFloating, offset as floatingOffset, autoUpdate } from "@floating-ui/react";
 import color from "../../theme/color";
+import { TraitTypeId, setTraitDragData, getTraitDragData, hasTraitDragData } from "../../core/traits";
 import { CloseIcon, GlobeIcon, PlusIcon, VolumeIcon, VolumeMutedIcon } from "../../theme/icons";
 import { BrowserEditorModel, BrowserTabData } from "./BrowserEditorModel";
 import { Button } from "../../components/basic/Button";
 import type { MenuItem } from "../../components/overlay/PopupMenu";
 import { ContextMenuEvent } from "../../api/events/events";
-
-const BROWSER_TAB_DRAG = "BROWSER_TAB_DRAG";
 
 /** Below this width, hide tab titles and show icon-only compact mode. */
 const COMPACT_THRESHOLD = 70;
@@ -182,23 +180,53 @@ function TabItem({
     tab, model, isActive, compact, showClose, isHovered, groupColorIndex,
     onSwitch, onClose, onToggleMute, onContextMenu, onMouseEnter, onMouseLeave,
 }: TabItemProps) {
-    const [{ isDragging }, drag] = useDrag({
-        type: BROWSER_TAB_DRAG,
-        item: { tabId: tab.id },
-        collect: (monitor) => ({
-            isDragging: monitor.isDragging(),
-        }),
-    });
+    const [isDragging, setIsDragging] = useState(false);
+    const [isOver, setIsOver] = useState(false);
+    const dragEnterCount = useRef(0);
 
-    const [{ isOver }, drop] = useDrop({
-        accept: BROWSER_TAB_DRAG,
-        drop(item: { tabId: string }) {
-            model.moveTab(item.tabId, tab.id);
-        },
-        collect: (monitor) => ({
-            isOver: monitor.isOver(),
-        }),
-    });
+    const handleDragStart = useCallback((e: React.DragEvent) => {
+        e.stopPropagation();
+        setTraitDragData(e.dataTransfer, TraitTypeId.BrowserTab, { tabId: tab.id });
+        setIsDragging(true);
+    }, [tab.id]);
+
+    const handleDragEnd = useCallback(() => {
+        setIsDragging(false);
+    }, []);
+
+    const handleDragEnter = useCallback((e: React.DragEvent) => {
+        dragEnterCount.current++;
+        if (hasTraitDragData(e.dataTransfer)) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+            setIsOver(true);
+        }
+    }, []);
+
+    const handleDragOver = useCallback((e: React.DragEvent) => {
+        if (hasTraitDragData(e.dataTransfer)) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+        }
+    }, []);
+
+    const handleDragLeave = useCallback(() => {
+        dragEnterCount.current--;
+        if (dragEnterCount.current <= 0) {
+            dragEnterCount.current = 0;
+            setIsOver(false);
+        }
+    }, []);
+
+    const handleDrop = useCallback((e: React.DragEvent) => {
+        e.preventDefault();
+        dragEnterCount.current = 0;
+        setIsOver(false);
+        const payload = getTraitDragData(e.dataTransfer);
+        if (!payload || payload.typeId !== TraitTypeId.BrowserTab) return;
+        const data = payload.data as { tabId: string };
+        model.moveTab(data.tabId, tab.id);
+    }, [model, tab.id]);
 
     const cls = [
         "tab-item",
@@ -213,7 +241,13 @@ function TabItem({
 
     return (
         <div
-            ref={(node) => { drag(drop(node)); }}
+            draggable
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+            onDragEnter={handleDragEnter}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
             className={cls}
             style={{ "--group-color": groupBorderColor } as React.CSSProperties}
             onClick={() => onSwitch(tab.id)}

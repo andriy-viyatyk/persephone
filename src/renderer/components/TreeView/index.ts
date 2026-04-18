@@ -6,7 +6,5 @@ export type {
     TreeViewState,
     TreeViewProps,
     TreeViewRef,
-    DragType,
-    DragItem,
 } from "./TreeView.model";
 export type { CategoryTreeItem, CategoryTreeProps } from "./CategoryTree";

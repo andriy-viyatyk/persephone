@@ -1,11 +1,11 @@
 import styled from "@emotion/styled";
-import { useCallback } from "react";
-import { useDrag, useDrop } from "react-dnd";
+import { useCallback, useRef, useState } from "react";
 import color from "../../theme/color";
+import { TraitTypeId, setTraitDragData, getTraitDragData, hasTraitDragData } from "../../core/traits";
 import { CopyIcon, DeleteIcon, OpenFileIcon, PinFilledIcon, RenameIcon } from "../../theme/icons";
 import { appendLinkOpenMenuItems } from "../shared/link-open-menu";
 import { ContextMenuEvent } from "../../api/events/events";
-import { LinkItem, LINK_PIN_DRAG } from "./linkTypes";
+import { LinkItem } from "./linkTypes";
 import { LinkViewModel } from "./LinkViewModel";
 import { LinkTooltip } from "./LinkTooltip";
 import { TreeProviderItemIcon } from "../../components/tree-provider/TreeProviderItemIcon";
@@ -107,8 +107,11 @@ const PinnedLinksPanelRoot = styled.div({
 });
 
 // =============================================================================
-// Pinned Item Row (extracted for useDrag/useDrop hooks)
+// Pinned Item Row (native HTML5 drag-and-drop)
 // =============================================================================
+
+// Module-level: track which index is being dragged (only one drag at a time)
+let draggingPinIndex = -1;
 
 interface PinnedItemProps {
     link: LinkItem;
@@ -120,40 +123,63 @@ interface PinnedItemProps {
 }
 
 function PinnedItem({ link, index, isSelected, model, onOpenLink, onContextMenu }: PinnedItemProps) {
-    const [{ isDragging }, drag] = useDrag({
-        type: LINK_PIN_DRAG,
-        item: { type: LINK_PIN_DRAG, index },
-        collect: (monitor) => ({
-            isDragging: monitor.isDragging(),
-        }),
-    });
+    const [isDragging, setIsDragging] = useState(false);
+    const [isOver, setIsOver] = useState(false);
+    const dragEnterCount = useRef(0);
 
-    const [{ isOver, dropPosition }, drop] = useDrop({
-        accept: LINK_PIN_DRAG,
-        drop(dragItem: { index: number }) {
-            if (dragItem.index !== index) {
-                const toIndex = dragItem.index < index ? index : index;
-                model.reorderPinnedLink(dragItem.index, toIndex);
-            }
-        },
-        collect: (monitor) => {
-            if (!monitor.isOver()) return { isOver: false, dropPosition: "" };
-            const dragItem = monitor.getItem<{ index: number }>();
-            if (!dragItem || dragItem.index === index) return { isOver: false, dropPosition: "" };
-            return {
-                isOver: true,
-                dropPosition: dragItem.index < index ? "below" : "above",
-            };
-        },
-    });
+    const handleDragStart = useCallback((e: React.DragEvent) => {
+        e.stopPropagation();
+        draggingPinIndex = index;
+        setTraitDragData(e.dataTransfer, TraitTypeId.PinnedLink, { index });
+        setIsDragging(true);
+    }, [index]);
 
-    const setRef = useCallback(
-        (node: HTMLDivElement | null) => {
-            drag(node);
-            drop(node);
-        },
-        [drag, drop],
-    );
+    const handleDragEnd = useCallback(() => {
+        draggingPinIndex = -1;
+        setIsDragging(false);
+    }, []);
+
+    const handleDragEnter = useCallback((e: React.DragEvent) => {
+        dragEnterCount.current++;
+        if (hasTraitDragData(e.dataTransfer) && draggingPinIndex >= 0 && draggingPinIndex !== index) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+            setIsOver(true);
+        }
+    }, [index]);
+
+    const handleDragOver = useCallback((e: React.DragEvent) => {
+        if (hasTraitDragData(e.dataTransfer) && draggingPinIndex >= 0 && draggingPinIndex !== index) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+        }
+    }, [index]);
+
+    const handleDragLeave = useCallback(() => {
+        dragEnterCount.current--;
+        if (dragEnterCount.current <= 0) {
+            dragEnterCount.current = 0;
+            setIsOver(false);
+        }
+    }, []);
+
+    const handleDrop = useCallback((e: React.DragEvent) => {
+        e.preventDefault();
+        dragEnterCount.current = 0;
+        setIsOver(false);
+        const payload = getTraitDragData(e.dataTransfer);
+        if (!payload || payload.typeId !== TraitTypeId.PinnedLink) return;
+        const data = payload.data as { index: number };
+        if (data.index !== index) {
+            const toIndex = data.index < index ? index : index;
+            model.reorderPinnedLink(data.index, toIndex);
+        }
+    }, [index, model]);
+
+    // dropPosition from module-level draggingPinIndex
+    const dropPosition = isOver && draggingPinIndex >= 0 && draggingPinIndex !== index
+        ? (draggingPinIndex < index ? "below" : "above")
+        : "";
 
     let className = "pinned-item";
     if (isSelected) className += " selected";
@@ -165,7 +191,13 @@ function PinnedItem({ link, index, isSelected, model, onOpenLink, onContextMenu 
 
     return (
         <div
-            ref={setRef}
+            draggable
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+            onDragEnter={handleDragEnter}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
             className={className}
             onClick={() => model.selectLink(link.id)}
             onDoubleClick={() => { if (link.href) onOpenLink(link); }}

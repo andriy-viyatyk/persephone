@@ -18,12 +18,11 @@ import { RequestBuilder } from "./RequestBuilder";
 import { ResponseViewer, getResponseSize } from "./ResponseViewer";
 import { METHOD_COLORS } from "./httpConstants";
 import { IContentHost } from "../base/IContentHost";
+import { TraitTypeId, type TraitDragPayload } from "../../core/traits";
 
 // =============================================================================
 // Tree item type
 // =============================================================================
-
-const REST_REQUEST_DRAG = "rest-request-drag";
 
 interface RequestTreeItem extends TreeItem {
     id: string;
@@ -682,23 +681,22 @@ function RequestTree({ vm, root, selectedId }: {
         [vm],
     );
 
-    const getDragItem = useCallback(
+    const getDragData = useCallback(
         (item: RequestTreeItem) => {
             if (item.isRoot || item.isCollection) return null;
-            return { type: REST_REQUEST_DRAG, id: item.id };
+            return { id: item.id };
         },
         [],
     );
 
-    const onDrop = useCallback(
-        (dropItem: RequestTreeItem, dragItem: { type: string; id: string }) => {
+    const onTraitDrop = useCallback(
+        (dropItem: RequestTreeItem, payload: TraitDragPayload) => {
             if (dropItem.isRoot) return;
+            const data = payload.data as { id: string };
             if (dropItem.isCollection) {
-                // Drop on collection → move to end of that collection
-                vm.moveRequest(dragItem.id, dropItem.id, dropItem.collectionName ?? "");
+                vm.moveRequest(data.id, dropItem.id, dropItem.collectionName ?? "");
             } else {
-                // Drop on request → adopt target's collection
-                vm.moveRequest(dragItem.id, dropItem.id, dropItem.request?.collection);
+                vm.moveRequest(data.id, dropItem.id, dropItem.request?.collection);
             }
         },
         [vm],
@@ -712,10 +710,10 @@ function RequestTree({ vm, root, selectedId }: {
             getSelected={getSelected}
             onItemClick={onItemClick}
             onItemContextMenu={onItemContextMenu}
-            dragType={REST_REQUEST_DRAG}
-            getDragItem={getDragItem}
-            dropTypes={[REST_REQUEST_DRAG]}
-            onDrop={onDrop}
+            traitTypeId={TraitTypeId.RestRequest}
+            getDragData={getDragData}
+            acceptsDrop
+            onTraitDrop={onTraitDrop}
             defaultExpandAll
             refreshKey={selectedId}
         />

@@ -4,8 +4,6 @@ import { TextFileModel } from "../text/TextEditorModel";
 // Ensure link traits are registered at startup
 import "./linkTraits";
 
-export const LINK_PIN_DRAG = "LINK_PIN_DRAG";
-
 // =============================================================================
 // Link Item
 // =============================================================================

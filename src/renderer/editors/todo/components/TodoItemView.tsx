@@ -1,15 +1,15 @@
 import styled from "@emotion/styled";
-import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import clsx from "clsx";
-import { useDrag, useDrop } from "react-dnd";
 import color from "../../../theme/color";
+import { TraitTypeId, setTraitDragData, getTraitDragData, hasTraitDragData } from "../../../core/traits";
 import { CheckedIcon, UncheckedIcon, DeleteIcon, DragHandleIcon } from "../../../theme/icons";
 import { Button } from "../../../components/basic/Button";
 import { TextAreaField } from "../../../components/basic/TextAreaField";
 import { formatDate } from "../../../core/utils/utils";
 import { WithPopupMenu } from "../../../components/overlay/WithPopupMenu";
 import { MenuItem } from "../../../components/overlay/PopupMenu";
-import { TodoItem, TodoTag, TODO_ITEM_DRAG } from "../todoTypes";
+import { TodoItem, TodoTag } from "../todoTypes";
 import { TodoViewModel } from "../TodoViewModel";
 
 // =============================================================================
@@ -205,48 +205,71 @@ interface TodoItemViewProps {
 export function TodoItemView({ item, tags, pageModel, cellRef }: TodoItemViewProps) {
     const isDraggable = !item.done;
 
-    // Drag-and-drop for reordering undone items;
+    // Native HTML5 drag-and-drop for reordering undone items;
     // moveItem() shows warnings when reorder is blocked by filters
-    const [{ isDragging }, drag] = useDrag({
-        type: TODO_ITEM_DRAG,
-        item: { id: item.id },
-        collect: (monitor) => ({
-            isDragging: monitor.isDragging(),
-        }),
-        canDrag: () => isDraggable,
-    });
+    const [isDragging, setIsDragging] = useState(false);
+    const [isOver, setIsOver] = useState(false);
+    const dragEnterCount = useRef(0);
 
-    const [{ isOver }, drop] = useDrop({
-        accept: TODO_ITEM_DRAG,
-        drop(dragItem: { id: string }) {
-            if (dragItem.id !== item.id) {
-                pageModel.moveItem(dragItem.id, item.id);
-            }
-        },
-        collect: (monitor) => ({
-            isOver: monitor.isOver() && monitor.canDrop(),
-        }),
-        canDrop: () => isDraggable,
-    });
+    const handleDragStart = useCallback((e: React.DragEvent) => {
+        if (!isDraggable) { e.preventDefault(); return; }
+        e.stopPropagation();
+        setTraitDragData(e.dataTransfer, TraitTypeId.TodoItem, { id: item.id });
+        setIsDragging(true);
+    }, [item.id, isDraggable]);
 
-    // Combine cellRef (for RenderFlexGrid measurement) with drop ref
+    const handleDragEnd = useCallback(() => {
+        setIsDragging(false);
+    }, []);
+
+    const handleDragEnter = useCallback((e: React.DragEvent) => {
+        dragEnterCount.current++;
+        if (!isDraggable) return;
+        if (hasTraitDragData(e.dataTransfer)) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+            setIsOver(true);
+        }
+    }, [isDraggable]);
+
+    const handleDragOver = useCallback((e: React.DragEvent) => {
+        if (!isDraggable) return;
+        if (hasTraitDragData(e.dataTransfer)) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+        }
+    }, [isDraggable]);
+
+    const handleDragLeave = useCallback(() => {
+        dragEnterCount.current--;
+        if (dragEnterCount.current <= 0) {
+            dragEnterCount.current = 0;
+            setIsOver(false);
+        }
+    }, []);
+
+    const handleDrop = useCallback((e: React.DragEvent) => {
+        e.preventDefault();
+        dragEnterCount.current = 0;
+        setIsOver(false);
+        if (!isDraggable) return;
+        const payload = getTraitDragData(e.dataTransfer);
+        if (!payload || payload.typeId !== TraitTypeId.TodoItem) return;
+        const data = payload.data as { id: string };
+        if (data.id !== item.id) {
+            pageModel.moveItem(data.id, item.id);
+        }
+    }, [item.id, isDraggable, pageModel]);
+
+    // Combine cellRef (for RenderFlexGrid measurement) with node ref
     const setNodeRef = useCallback(
         (node: HTMLDivElement | null) => {
-            drop(node);
             nodeRef.current = node;
             if (cellRef) {
                 (cellRef as { current: HTMLDivElement | null }).current = node;
             }
         },
-        [drop, cellRef]
-    );
-
-    // Drag handle ref — only this element initiates drag
-    const setDragRef = useCallback(
-        (node: HTMLSpanElement | null) => {
-            drag(node);
-        },
-        [drag]
+        [cellRef]
     );
 
     // Persist measured height to model (for getInitialRowHeight on reload)
@@ -337,6 +360,10 @@ export function TodoItemView({ item, tags, pageModel, cellRef }: TodoItemViewPro
         <TodoItemRoot
             ref={setNodeRef}
             className={clsx(isDragging && "dragging", isOver && "drop-over")}
+            onDragEnter={handleDragEnter}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
         >
             <div className="checkbox-col">
                 <span
@@ -348,9 +375,11 @@ export function TodoItemView({ item, tags, pageModel, cellRef }: TodoItemViewPro
                 </span>
                 {isDraggable && (
                     <span
-                        ref={setDragRef}
                         className="drag-handle"
                         title="Drag to reorder"
+                        draggable
+                        onDragStart={handleDragStart}
+                        onDragEnd={handleDragEnd}
                     >
                         <DragHandleIcon />
                     </span>

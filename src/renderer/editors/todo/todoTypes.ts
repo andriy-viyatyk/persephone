@@ -65,9 +65,3 @@ export interface TodoEditorProps {
     model: TextFileModel;
 }
 
-// =============================================================================
-// Drag-and-Drop Types
-// =============================================================================
-
-/** Drag type for reordering undone todo items */
-export const TODO_ITEM_DRAG = "TODO_ITEM_DRAG";

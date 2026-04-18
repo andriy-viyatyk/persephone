@@ -2,16 +2,6 @@ import { TComponentModel } from "../../core/state/model";
 import RenderGridModel from "../virtualization/RenderGrid/RenderGridModel";
 import type { TraitTypeId, TraitDragPayload } from "../../core/traits";
 
-// Drag & Drop types for TreeView (React-DnD — legacy, kept for backward compat)
-/** @deprecated Use trait-based drag props instead (traitTypeId, getDragData, acceptsDrop) */
-export type DragType = string;
-
-/** @deprecated Use trait-based drag props instead (traitTypeId, getDragData, acceptsDrop) */
-export interface DragItem {
-    type: DragType;
-    [key: string]: any;
-}
-
 export interface TreeItem<T extends TreeItem<T> = any> {
     items?: T[];
 }
@@ -63,19 +53,7 @@ export interface TreeViewProps<T extends TreeItem = TreeItem> {
     onItemClick?: (item: T) => void;
     onItemContextMenu?: (item: T, e: React.MouseEvent) => void;
 
-    // ── React-DnD props (legacy — kept for backward compat with notebook, REST client) ──
-    /** @deprecated Use traitTypeId + getDragData instead */
-    dropTypes?: DragType[];
-    /** @deprecated Use onTraitDrop instead */
-    onDrop?: (dropItem: T, dragItem: DragItem) => void;
-    /** @deprecated Use canTraitDrop instead */
-    canDrop?: (dropItem: T, dragItem: DragItem) => boolean;
-    /** @deprecated Use traitTypeId instead */
-    dragType?: DragType;
-    /** @deprecated Use getDragData instead */
-    getDragItem?: (item: T) => DragItem | null;
-
-    // ── Trait-based drag-drop props (new) ────────────────────────────────────
+    // ── Trait-based drag-drop props ────────────────────────────────────────────
     /** Trait type ID for making tree cells draggable (registered in traitRegistry). */
     traitTypeId?: TraitTypeId;
     /** Get serializable drag data for a tree node. Return null to prevent dragging. */

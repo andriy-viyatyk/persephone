@@ -1,8 +1,9 @@
 import { debounce } from "../../../shared/utils";
 import { splitWithSeparators } from "../../core/utils/utils";
 import { ui } from "../../api/ui";
-import { CategoryTreeItem, DragItem } from "../../components/TreeView";
-import { NoteItem, NotebookData, NOTE_DRAG, CATEGORY_DRAG } from "./notebookTypes";
+import { CategoryTreeItem } from "../../components/TreeView";
+import { NoteItem, NotebookData } from "./notebookTypes";
+import { TraitTypeId, type TraitDragPayload } from "../../core/traits";
 import { ContentViewModel } from "../base/ContentViewModel";
 import type { IContentHost } from "../base/IContentHost";
 import type { TextFileModel } from "../text";
@@ -629,26 +630,26 @@ export class NotebookViewModel extends ContentViewModel<NotebookViewState> {
     // =========================================================================
 
     /**
-     * Handle drop onto a category tree node.
-     * Dispatches based on drag item type (note or category).
+     * Handle trait-based drop onto a category tree node.
+     * Dispatches based on payload typeId (note or category).
      */
-    categoryDrop = (dropItem: CategoryTreeItem, dragItem: DragItem) => {
-        if (dragItem.type === NOTE_DRAG) {
-            // Dropping a note onto a category → change note's category
-            this.updateNoteCategory(dragItem.noteId, dropItem.category);
-        } else if (dragItem.type === CATEGORY_DRAG) {
-            // Dropping a category onto another → reparent
-            this.moveCategory(dragItem.category, dropItem.category);
+    categoryTraitDrop = (dropItem: CategoryTreeItem, payload: TraitDragPayload) => {
+        if (payload.typeId === TraitTypeId.Note) {
+            const data = payload.data as { noteId: string };
+            this.updateNoteCategory(data.noteId, dropItem.category);
+        } else if (payload.typeId === TraitTypeId.NotebookCategory) {
+            const data = payload.data as { category: string };
+            this.moveCategory(data.category, dropItem.category);
         }
     };
 
     /**
-     * Get drag item for a category tree node.
+     * Get drag data for a category tree node.
      * Returns null for root category (not draggable).
      */
-    getCategoryDragItem = (item: CategoryTreeItem): DragItem | null => {
+    getCategoryDragData = (item: CategoryTreeItem): { category: string } | null => {
         if (!item.category) return null; // Root "All" is not draggable
-        return { type: CATEGORY_DRAG, category: item.category };
+        return { category: item.category };
     };
 
     /**

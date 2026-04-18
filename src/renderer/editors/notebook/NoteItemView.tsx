@@ -1,7 +1,8 @@
 import styled from "@emotion/styled";
 import clsx from "clsx";
-import { useDrag } from "react-dnd";
+import { useCallback, useState } from "react";
 import { useComponentModel } from "../../core/state/model";
+import { TraitTypeId, setTraitDragData } from "../../core/traits";
 import color from "../../theme/color";
 import { CircleIcon, CloseIcon, DeleteIcon, PlusIcon, WindowMaximizeIcon } from "../../theme/icons";
 import { Button } from "../../components/basic/Button";
@@ -12,7 +13,6 @@ import { EditorConfigProvider, EditorStateStorageProvider, useObjectStateStorage
 import { NoteItemToolbar } from "./note-editor/NoteItemToolbar";
 import { NoteItemActiveEditor } from "./note-editor/NoteItemActiveEditor";
 import { NoteItemViewProps, NoteItemViewModel, defaultNoteItemViewState } from "./NoteItemViewModel";
-import { NOTE_DRAG } from "./notebookTypes";
 
 // Max height for editors embedded in note items
 const NOTE_EDITOR_MAX_HEIGHT = 400;
@@ -363,14 +363,18 @@ export function NoteItemView(props: NoteItemViewProps) {
     const searchText = useHighlightedText();
     model.searchText = searchText;
 
-    // Drag handle on note indicator
-    const [{ isDragging }, drag] = useDrag({
-        type: NOTE_DRAG,
-        item: { type: NOTE_DRAG, noteId: note.id },
-        collect: (monitor) => ({
-            isDragging: monitor.isDragging(),
-        }),
-    });
+    // Native HTML5 drag on note indicator
+    const [isDragging, setIsDragging] = useState(false);
+
+    const handleDragStart = useCallback((e: React.DragEvent) => {
+        e.stopPropagation();
+        setTraitDragData(e.dataTransfer, TraitTypeId.Note, { noteId: note.id });
+        setIsDragging(true);
+    }, [note.id]);
+
+    const handleDragEnd = useCallback(() => {
+        setIsDragging(false);
+    }, []);
 
     const stateStorage = useObjectStateStorage(
         notebookModel.getNoteState,
@@ -383,7 +387,7 @@ export function NoteItemView(props: NoteItemViewProps) {
             <div className="deactivation-area" onClick={model.handleDeactivate} />
 
             {/* Note indicator dot (drag handle) */}
-            <div className="note-indicator" ref={(node) => { drag(node); }}>
+            <div className="note-indicator" draggable onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
                 <CircleIcon />
             </div>
 
