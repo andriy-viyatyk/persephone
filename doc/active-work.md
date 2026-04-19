@@ -8,18 +8,19 @@ Overview of all active and planned epics and tasks.
 
 ## Active
 
-*(none)*
+- **EPIC-025** — [Unified Component Library and Storybook Editor](epics/EPIC-025.md)
+  - [x] US-437: Design system HTML — closed; exploration complete
+  - [x] [US-438: Pattern research — adopted patterns + component naming table](tasks/US-438-pattern-research/README.md) *(Phase 0)*
+  - [x] US-439: New components folder setup + CLAUDE.md *(Phase 1)*
+  - [x] US-426: Design tokens — spacing, sizing, border-radius, font-size constants *(Phase 1)*
+  - [ ] US-427: Layout primitives — Flex, HStack, VStack, Panel, Card, Spacer *(Phase 1)*
+  - [ ] US-440: Bootstrap component set — minimal components needed for Storybook *(Phase 2)*
+  - [ ] US-434: Storybook editor — component browser, live preview, property editor *(Phase 3)*
+  - [ ] US-435: Storybook — script tab for building and testing UI via scripts *(Phase 3)*
+  - [ ] US-432: Dialog component — new implementation + migration *(Phase 4, first)*
+  - [ ] US-436: Script UI API — expose new component library to scripting engine *(Phase 6)*
 
 ## Planned
-
-- **EPIC-025** — [Unified Component Library and Storybook Editor](epics/EPIC-025.md) *(depends on EPIC-026)*
-  - [ ] US-426: Design tokens — spacing, sizing, border-radius, font-size constants
-  - [ ] US-427: Layout primitives — Flex, HStack, VStack, Panel, Card, Spacer
-  - [ ] US-432: Dialog consolidation — unify UI dialogs and log-view dialogs
-  - [ ] US-433: Editor migration — replace inline styled containers with layout primitives
-  - [ ] US-434: Storybook editor — component browser, live preview, property editor
-  - [ ] US-435: Storybook — script tab for building and testing UI via scripts
-  - [ ] US-436: Script UI API — expose component library to scripting engine
 - **EPIC-022** — [LinkEditor Embedded Scripts](epics/EPIC-022.md)
   - [ ] US-396: Data model — `LinkScriptItem` type and `scripts` field in `LinkEditorData`
   - [ ] US-397: ScriptRunner — `runWithScope()` for custom context variable injection

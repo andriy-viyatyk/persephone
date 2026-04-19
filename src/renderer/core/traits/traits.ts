@@ -66,3 +66,69 @@ export function isTraited<V = unknown>(value: unknown): value is Traited<V> {
         && (value as Traited).traits instanceof TraitSet
     );
 }
+
+// ── Accessor trait helpers ────────────────────────────────────────────────────
+
+/**
+ * Derives an accessor-map type from a component's data interface.
+ * Each field of T becomes a function `(source: unknown) => NonNullable<T[K]>`.
+ * Optional fields in T stay optional in the accessor — callers use `trait.field?.(src)`.
+ *
+ * Primary use: as the type parameter of TraitKey, so trait registrations are
+ * automatically checked against the target interface:
+ *
+ *   export const OPTION_KEY = new TraitKey<TraitType<IOption>>("option");
+ *
+ *   new TraitSet().add(OPTION_KEY, {
+ *       label:    (item: MyItem) => item.title,   // TS error if IOption changes
+ *       value:    (item: MyItem) => item.id,
+ *       disabled: (item: MyItem) => !item.active,
+ *   });
+ *
+ * Component props accept either direct data or a Traited wrapper:
+ *   options: IOption[] | Traited<unknown[]>
+ * Use resolveTraited() inside the component to normalise both cases.
+ */
+export type TraitType<T> = {
+    readonly [K in keyof T]: (source: unknown) => NonNullable<T[K]>;
+};
+
+/**
+ * Like TraitType<T> but every accessor is optional.
+ * Use when the source type is already structurally close to T and only
+ * a subset of fields need remapping. Components must fall back to the
+ * raw source value for any accessor that is absent.
+ */
+export type PartialTraitType<T> = {
+    readonly [K in keyof T]?: (source: unknown) => NonNullable<T[K]>;
+};
+
+/**
+ * Resolves a Traited<unknown[]> into a typed T[] using the accessor trait.
+ * Call this at the top of a component that accepts `items: T[] | Traited<unknown[]>`:
+ *
+ *   function MyList({ items }: { items: IOption[] | Traited<unknown[]> }) {
+ *       const options = isTraited(items)
+ *           ? resolveTraited(items, OPTION_KEY)
+ *           : items;
+ *       // use options: IOption[]
+ *   }
+ *
+ * Falls back to casting target as T[] when the trait key is not registered,
+ * so components degrade gracefully when a TraitSet is incomplete.
+ */
+export function resolveTraited<T>(
+    items: Traited<unknown[]>,
+    key: TraitKey<TraitType<T>>,
+): T[] {
+    const accessor = items.traits.get(key);
+    if (!accessor) return items.target as T[];
+    return items.target.map((source) =>
+        Object.fromEntries(
+            (Object.keys(accessor) as (keyof typeof accessor)[]).map((k) => [
+                k,
+                accessor[k](source),
+            ]),
+        ) as T,
+    );
+}
