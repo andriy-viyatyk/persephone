@@ -96,43 +96,72 @@ Expose the consolidated component library through the scripting engine:
 - A script can build a custom editor UI from layout primitives and form elements
 - Trait system (from EPIC-026) available to scripts for data binding
 
-### 5. UI Descriptor Pattern
+### 5. UI Descriptor Pattern — ComponentSet
 
-A **declarative UI descriptor** is a plain object (JSON-like, may carry function references) that describes a component without instantiating it. A registry maps a `type` string to the actual React component; a container renders the array. This pattern is well-established: VS Code contribution points, AG Grid column definitions, Ant Design ProComponents, and low-code platforms all use it.
+A **UI descriptor** is a plain object (JSON-like, may carry function references) that describes a component without instantiating it. Rather than embedding descriptor logic inside each container component, a single utility component — **`ComponentSet`** — handles descriptor-to-component resolution and renders the result as a flat React fragment (no wrapper element).
 
-**When to use it — strong cases:**
-- **Scripting** — scripts have no JSX, so descriptor objects are the only practical way to build UI. This is the primary motivation.
-- **Cross-boundary contributions** — one component declares toolbar items without knowing the toolbar's internals (replaces the current portal/ref approach in `TextEditorView.tsx`).
-- **Data-driven UI** — when the structure of the UI itself comes from runtime data or user configuration.
-
-**When NOT to use it:**
-- Static, known UI where JSX is available — `<Button onClick={fn}>Run</Button>` is always cleaner than a descriptor object.
-
-**TypeScript shape — discriminated union, not generic:**
-
-`JsonOption<ComboBox>` as an array element type loses per-item typing. The correct approach is a discriminated union where each variant is fully typed by its `type` field:
-
-```typescript
-type ToolbarItem =
-    | { type: "button";    label: string; icon?: ReactNode; onClick: () => void; disabled?: boolean }
-    | { type: "toggle";    label: string; checked: boolean; onChange: (v: boolean) => void }
-    | { type: "select";    options: IOption[]; value: IOption; onChange: (v: IOption) => void }
-    | { type: "separator" }
-    | { type: "text";      value: string }
+```tsx
+<Toolbar>
+    <ComponentSet descriptors={items} />
+</Toolbar>
 ```
 
-TypeScript narrows correctly in `switch(item.type)` inside the renderer. Adding a new variant produces a compile error if the renderer switch is not updated.
+`ComponentSet` returns a `<Fragment>` — no extra DOM node — so the container's layout (flex, grid) applies directly to the rendered children, exactly as if the components were written as JSX inline.
 
-The `JsonOption<T>` generic is still useful as a per-component helper type for defining a single variant's shape, before assembling them into the union.
+**Why this shape:**
+- Containers (`Toolbar`, `Menu`, `StatusBar`) remain **pure layout components** — they know nothing about descriptors.
+- `ComponentSet` is **universal** — one component, one registry, works inside any container.
+- Scripts have no JSX. Passing a descriptor array is the only practical way for scripts to build UI. `ComponentSet` makes this possible everywhere.
+- Cross-boundary contributions (a child declaring toolbar items without knowing the toolbar's internals) use the same mechanism — pass a descriptor array, render via `ComponentSet`.
+
+**`ComponentItem` — discriminated union using intersections:**
+
+Each variant is `{ type: "x" } & XProps`. No duplication — the existing component props are the descriptor shape, extended with a type discriminant:
+
+```typescript
+type ComponentItem =
+    | { type: "button"    } & ButtonProps
+    | { type: "toggle"    } & ToggleProps
+    | { type: "select"    } & SelectProps
+    | { type: "separator" }
+    | { type: "text"      } & TextProps
+```
+
+TypeScript narrows correctly — after `item.type === "button"`, the type is `ButtonProps`. Adding a new variant produces a compile error in `ComponentSet` if the registry is not updated.
+
+**`ComponentSet` implementation sketch:**
+
+```tsx
+const REGISTRY: Record<string, React.ComponentType<any>> = {
+    button:    Button,
+    toggle:    Toggle,
+    select:    Select,
+    separator: Separator,
+    text:      Text,
+};
+
+export function ComponentSet({ descriptors }: { descriptors: ComponentItem[] }) {
+    return (
+        <>
+            {descriptors.map((item, i) => {
+                const { type, ...props } = item;
+                const Component = REGISTRY[type];
+                return Component ? <Component key={i} {...props} /> : null;
+            })}
+        </>
+    );
+}
+```
+
+**When to use / when not to:**
+- **Use** — when the component list is dynamic (built at runtime, from data, or from a script). The array can be built conditionally, mutated, sorted, or serialized.
+- **Do not use** — for static, known UI where JSX is available. `<Button onClick={fn}>Run</Button>` is always cleaner than a descriptor.
 
 **Toolbar contribution — concrete re-engineering:**
 
 Current approach: `TextEditorView` passes DOM refs (`setEditorToolbarRefFirst/Last`) to child components that portal their controls into those slots. This is fragile and couples DOM lifecycle to render order.
 
-Proposed approach: child components receive a `setToolbarItems: (items: ToolbarItem[]) => void` prop (or context). They declare their items as data during render; the parent collects and renders the array via the registry. Ordering is explicit. No DOM hacks. Items can be merged, filtered, or sorted by the parent.
-
-**Open question — scope:**
-It is not yet decided whether the descriptor pattern should be optional on *all* library components (every component gets a `descriptor?: XDescriptor` prop) or only on specialized container/contribution-point components (Toolbar, ContextMenu, StatusBar). Narrow scope avoids complexity; broad scope enables more scripting flexibility. To be resolved during pattern research (US-438).
+Proposed approach: child components declare a `ComponentItem[]` array (via prop or context); the parent renders `<ComponentSet descriptors={items} />` inside `<Toolbar>`. Ordering is explicit. No DOM hacks. Items can be merged, filtered, or sorted before rendering.
 
 ### 6. Data Attributes for Interactive State and Component Identity
 
@@ -201,6 +230,32 @@ This is required behavior per ARIA spec for all modal dialogs. Without it, Tab e
 
 **Applies to:** All components in `src/renderer/ui/dialogs/` and any component that renders a blocking overlay. Does **not** apply to non-modal side panels that don't block background interaction.
 
+### 9. Trait-based Data Binding for List and Data Components
+
+Any component that accepts a list of data items (`Select`, `MultiSelect`, `ListBox`, `Tree`, `SegmentedControl`, etc.) accepts `T[] | Traited<T[]>` for its items/options prop and calls `resolveTraited(items, KEY)` once at the top of the component to resolve the data into the component's native shape.
+
+```tsx
+import { resolveTraited, Traited, TraitType } from "../../core/traits/traits";
+import { TraitRegistry } from "../../core/traits/TraitRegistry";
+
+const OPTION_KEY = TraitRegistry.register<TraitType<IOption>>("select-option");
+
+function Select<T>({ items, value, onChange }: SelectProps<T>) {
+    const options = resolveTraited<IOption>(items, OPTION_KEY);
+    // options is always IOption[] from here — consume normally
+}
+```
+
+**Two usage tiers:**
+- **Direct** — caller passes `IOption[]` directly (data already matches the component's native shape). No mapping needed.
+- **Explicit** — caller passes `traited(myData, { label: d => d.name, value: d => d.id })` for foreign data shapes.
+
+**Rules:**
+- Old accessor props (`getLabel`, `getValue`, `getIcon`, etc.) are removed at point of conversion — no dual approach.
+- `TraitSet` has no type parameters. `Traited<V>` has one (the target value type).
+- The `TraitRegistry.register()` call is co-located with the component (one key per component), not in a global registry file.
+- Components with a single scalar value (e.g. `Checkbox`, `Input`, `TextField`) do not use this pattern — it applies only to list/collection props.
+
 ## Linked Tasks
 
 | Task | Title | Status |
@@ -261,8 +316,8 @@ Expose the new component library to the scripting engine. Depends on Phases 1–
 1. **Migration scope** — Resolved by iterative per-component approach in Phase 4. Each component is replaced immediately after it is built and tested in Storybook. No big-bang migration. Rarely-used components can simply be left on the old library until needed.
 2. **Storybook editor architecture** — Should it be a single editor that renders any component, or should each component define its own storybook configuration file? Need to decide on the component metadata format. To be resolved in US-434 task planning.
 3. **Script UI security** — Scripts building arbitrary UIs could create confusing interfaces. Should there be sandboxing or capability limits? To be resolved in US-436 task planning.
-4. **Trait integration** — Resolved by EPIC-026 design (2026-04-18). Components accept `T[] | Traited<T[]>` and call `resolveTraited(items, KEY)` once at the top. Two tiers: direct (data already matches native shape) and explicit `traited(data, traits)` for foreign data. `TraitSet` has no type parameters; `Traited<V>` has one (the target value type). Old accessor props (`getLabel`, `getIcon`, etc.) are removed at point of conversion — no dual approach.
-5. **UI descriptor scope** — Should every library component expose an optional descriptor prop (broad scope, maximum scripting flexibility) or only container/contribution-point components like Toolbar, ContextMenu, and StatusBar (narrow scope, less complexity)? To be resolved at the end of US-438 as part of the naming/API review.
+4. **Trait integration** — Resolved. See Design Decision #9 for the full pattern.
+5. **UI descriptor scope** — Resolved. Narrow scope: only container/contribution-point components (Toolbar, ContextMenu, StatusBar, etc.) expose a `descriptors` prop. Leaf components (Button, Input, etc.) are used via plain JSX and appear as variants inside a parent union. See Design Decision #5.
 
 ## Notes
 
