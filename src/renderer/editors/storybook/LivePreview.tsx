@@ -1,23 +1,9 @@
 import React from "react";
-import styled from "@emotion/styled";
-import color from "../../theme/color";
+import { Panel } from "../../uikit/Panel/Panel";
 import { Text } from "../../uikit/Text/Text";
-import { spacing } from "../../uikit/tokens";
 import { findStory } from "./storyRegistry";
 import { STORYBOOK_MANAGED_PROPS } from "./storyTypes";
 import { StorybookEditorModel } from "./StorybookEditorModel";
-
-const Root = styled.div({
-    flex: "1 1 auto",
-    overflow: "auto",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: spacing.xl,
-    '&[data-bg="default"]': { backgroundColor: color.background.default },
-    '&[data-bg="light"]': { backgroundColor: color.background.light },
-    '&[data-bg="dark"]': { backgroundColor: color.background.dark },
-});
 
 export function LivePreview({ model }: { model: StorybookEditorModel }) {
     const { selectedStoryId, propValues, previewBackground } = model.state.use();
@@ -25,15 +11,29 @@ export function LivePreview({ model }: { model: StorybookEditorModel }) {
 
     if (!story) {
         return (
-            <Root data-type="live-preview" data-bg={previewBackground}>
+            <Panel
+                data-type="live-preview"
+                flex
+                overflow="auto"
+                align="center"
+                justify="center"
+                padding="xl"
+                background={previewBackground}
+            >
                 <Text variant="caption">Select a component</Text>
-            </Root>
+            </Panel>
         );
     }
 
     const Component = story.component as React.ComponentType<any>;
     const hasChildrenProp = story.props.some((p) => p.name === "children");
-    const componentProps = { ...propValues };
+    const componentProps: Record<string, unknown> = { ...propValues };
+
+    // Drop empty-string enum values so they don't override component defaults.
+    for (const key of Object.keys(componentProps)) {
+        if (componentProps[key] === "") delete componentProps[key];
+    }
+
     if (!hasChildrenProp && story.previewChildren) {
         componentProps.children = story.previewChildren();
     }
@@ -47,8 +47,16 @@ export function LivePreview({ model }: { model: StorybookEditorModel }) {
     }
 
     return (
-        <Root data-type="live-preview" data-bg={previewBackground}>
+        <Panel
+            data-type="live-preview"
+            flex
+            overflow="auto"
+            align="center"
+            justify="center"
+            padding="xl"
+            background={previewBackground}
+        >
             <Component {...componentProps} />
-        </Root>
+        </Panel>
     );
 }

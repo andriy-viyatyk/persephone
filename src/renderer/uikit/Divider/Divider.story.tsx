@@ -1,25 +1,24 @@
 import React from "react";
 import { Divider } from "./Divider";
-import { HStack } from "../Flex";
-import { VStack } from "../Flex";
+import { Panel } from "../Panel/Panel";
 import { Story } from "../../editors/storybook/storyTypes";
 
 const DividerInPreview = ({ orientation }: { orientation?: "horizontal" | "vertical" }) => {
     if (orientation === "vertical") {
         return React.createElement(
-            HStack,
-            { gap: 12, align: "center" as any, style: { height: 80, padding: 16 } },
-            React.createElement("span", null, "Left"),
+            Panel,
+            { direction: "row", gap: "xl", align: "center", height: 80, padding: "xl" },
+            React.createElement("span", { key: "l" }, "Left"),
             React.createElement(Divider, { orientation: "vertical" }),
-            React.createElement("span", null, "Right"),
+            React.createElement("span", { key: "r" }, "Right"),
         );
     }
     return React.createElement(
-        VStack,
-        { gap: 8, style: { width: 200, padding: 16 } },
-        React.createElement("span", null, "Above"),
+        Panel,
+        { direction: "column", gap: "lg", width: 200, padding: "xl" },
+        React.createElement("span", { key: "a" }, "Above"),
         React.createElement(Divider, { orientation: "horizontal" }),
-        React.createElement("span", null, "Below"),
+        React.createElement("span", { key: "b" }, "Below"),
     );
 };
 

@@ -244,6 +244,44 @@ export function ComponentSet({ descriptors }: { descriptors: ComponentItem[] }) 
 
 ---
 
+## Rule 7 — No Emotion outside UIKit (mandatory in app code)
+
+Application code (everything outside `src/renderer/uikit/`) **must not** use Emotion or any
+inline style escape hatch when composing UIKit components.
+
+**Forbidden in app code:**
+- `import styled from "@emotion/styled"` — no `styled.div`, `styled(Component)`, etc.
+- `import { css } from "@emotion/css"` — no class generation
+- Passing `style={…}` to a UIKit component
+- Passing `className=…` to a UIKit component
+
+**The rule on UIKit component types:** UIKit components forbid `style` and `className` at
+the type level (`extends Omit<React.HTMLAttributes<…>, "style" | "className">`). Trying to
+pass them produces a TypeScript error.
+
+**Inside UIKit (`src/renderer/uikit/`)** Emotion is still used for component implementations.
+Internal helpers and primitive HTML elements (`<div style={{…}}>`) are also fine — the rule
+applies to *consumers* of UIKit, not to UIKit itself.
+
+**When a layout need can't be expressed by existing props:** extend the UIKit component's
+prop surface, do not work around the rule. The right answer is "Panel needs a new prop", not
+"this one place needs `style=`".
+
+**Why:**
+- **Consistency.** Every screen in Persephone uses the same Panel/Button/Toolbar with the
+  same defaults. No one-off styling drift.
+- **JSON descriptors.** Scripts will eventually build UIs from descriptor objects
+  (`{ component: "Panel", direction: "row", gap: "sm" }`). A descriptor can carry props but
+  not Emotion — so anything achievable only through Emotion is unreachable from scripts.
+- **AI agent legibility.** With layout expressed in props, an agent can read intent from JSX
+  alone without consulting separate `styled.*` blocks.
+
+**When this rule may be relaxed:** when scripts need to ship custom styles into UIs, a curated
+escape hatch (e.g. `style?: Pick<CSSProperties, "color" | …>`) may be added — see EPIC-025
+Phase 6 (Script UI API). Until then, no escape hatch.
+
+---
+
 ## Naming conventions
 
 ### Component names

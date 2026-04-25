@@ -1,33 +1,14 @@
 import React from "react";
-import styled from "@emotion/styled";
-import color from "../../theme/color";
+import { Panel } from "../../uikit/Panel/Panel";
 import { Button } from "../../uikit/Button/Button";
 import { Input } from "../../uikit/Input/Input";
 import { Label } from "../../uikit/Label/Label";
 import { Checkbox } from "../../uikit/Checkbox/Checkbox";
-import { Flex, VStack } from "../../uikit/Flex/Flex";
-import { spacing, gap } from "../../uikit/tokens";
+import { Text } from "../../uikit/Text/Text";
 import { ICON_PRESETS } from "./iconPresets";
 import { PropDef, STORYBOOK_MANAGED_PROPS } from "./storyTypes";
 import { StorybookEditorModel } from "./StorybookEditorModel";
 import { findStory } from "./storyRegistry";
-
-const Root = styled.div({
-    width: 280,
-    flexShrink: 0,
-    overflowY: "auto",
-    display: "flex",
-    flexDirection: "column",
-    borderLeft: `1px solid ${color.border.default}`,
-    padding: spacing.md,
-    gap: spacing.md,
-});
-
-const EmptyMessage = styled.div({
-    color: color.text.light,
-    fontSize: 12,
-    padding: spacing.md,
-});
 
 function PropRow({ def, value, onChange }: {
     def: PropDef;
@@ -49,22 +30,22 @@ function PropRow({ def, value, onChange }: {
 
     if (def.type === "string") {
         return (
-            <VStack gap={gap.xs}>
-                <Label>{label}</Label>
+            <Panel direction="column" gap="xs">
+                <Label color="light">{label}</Label>
                 <Input
                     value={String(value ?? "")}
                     onChange={(v) => onChange(v)}
                     size="sm"
                     placeholder={def.placeholder}
                 />
-            </VStack>
+            </Panel>
         );
     }
 
     if (def.type === "number") {
         return (
-            <VStack gap={gap.xs}>
-                <Label>{label}</Label>
+            <Panel direction="column" gap="xs">
+                <Label color="light">{label}</Label>
                 <Input
                     value={String(value ?? "")}
                     onChange={(v) => {
@@ -77,15 +58,15 @@ function PropRow({ def, value, onChange }: {
                     max={def.max}
                     step={def.step}
                 />
-            </VStack>
+            </Panel>
         );
     }
 
     if (def.type === "enum") {
         return (
-            <VStack gap={gap.xs}>
-                <Label>{label}</Label>
-                <Flex wrap={true} gap={gap.xs}>
+            <Panel direction="column" gap="xs">
+                <Label color="light">{label}</Label>
+                <Panel direction="row" wrap gap="xs">
                     {def.options.map((opt) => (
                         <Button
                             key={opt}
@@ -93,19 +74,19 @@ function PropRow({ def, value, onChange }: {
                             variant={value === opt ? "primary" : "link"}
                             onClick={() => onChange(opt)}
                         >
-                            {opt}
+                            {opt === "" ? <Label italic color="inherit">(empty)</Label> : opt}
                         </Button>
                     ))}
-                </Flex>
-            </VStack>
+                </Panel>
+            </Panel>
         );
     }
 
     if (def.type === "icon") {
         return (
-            <VStack gap={gap.xs}>
-                <Label>{label}</Label>
-                <Flex wrap={true} gap={gap.xs}>
+            <Panel direction="column" gap="xs">
+                <Label color="light">{label}</Label>
+                <Panel direction="row" wrap gap="xs">
                     {ICON_PRESETS.map((preset) => (
                         <Button
                             key={preset.id}
@@ -116,8 +97,8 @@ function PropRow({ def, value, onChange }: {
                             {preset.label}
                         </Button>
                     ))}
-                </Flex>
-            </VStack>
+                </Panel>
+            </Panel>
         );
     }
 
@@ -131,14 +112,35 @@ export function PropertyEditor({ model }: { model: StorybookEditorModel }) {
 
     if (!story || visibleProps.length === 0) {
         return (
-            <Root data-type="property-editor">
-                <EmptyMessage>No editable props</EmptyMessage>
-            </Root>
+            <Panel
+                data-type="property-editor"
+                direction="column"
+                width={280}
+                shrink={false}
+                overflowY="auto"
+                borderLeft
+                borderColor="default"
+                padding="md"
+            >
+                <Panel padding="md">
+                    <Text variant="caption">No editable props</Text>
+                </Panel>
+            </Panel>
         );
     }
 
     return (
-        <Root data-type="property-editor">
+        <Panel
+            data-type="property-editor"
+            direction="column"
+            width={280}
+            shrink={false}
+            overflowY="auto"
+            borderLeft
+            borderColor="default"
+            padding="md"
+            gap="md"
+        >
             {visibleProps.map((def) => (
                 <PropRow
                     key={def.name}
@@ -147,14 +149,15 @@ export function PropertyEditor({ model }: { model: StorybookEditorModel }) {
                     onChange={(v) => model.setPropValue(def.name, v)}
                 />
             ))}
-            <Button
-                variant="ghost"
-                size="sm"
-                onClick={model.resetProps}
-                style={{ marginTop: spacing.md, alignSelf: "flex-start" }}
-            >
-                Reset Props
-            </Button>
-        </Root>
+            <Panel align="start">
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={model.resetProps}
+                >
+                    Reset Props
+                </Button>
+            </Panel>
+        </Panel>
     );
 }

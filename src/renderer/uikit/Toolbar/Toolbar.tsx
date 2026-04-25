@@ -1,11 +1,10 @@
 import React from "react";
-import styled from "@emotion/styled";
-import color from "../../theme/color";
-import { gap, spacing } from "../tokens";
+import { Panel } from "../Panel/Panel";
 
 // --- Types ---
 
-export interface ToolbarProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface ToolbarProps
+    extends Omit<React.HTMLAttributes<HTMLDivElement>, "style" | "className"> {
     orientation?: "horizontal" | "vertical";
     background?: "default" | "light" | "dark";
     borderTop?: boolean;
@@ -13,44 +12,6 @@ export interface ToolbarProps extends React.HTMLAttributes<HTMLDivElement> {
     disabled?: boolean;
     "aria-label"?: string;
 }
-
-// --- Styled ---
-
-const Root = styled.div(
-    {
-        display: "flex",
-        alignItems: "center",
-        columnGap: gap.sm,
-        flexWrap: "nowrap",
-        overflow: "hidden",
-        flexShrink: 0,
-        padding: `${spacing.xs}px ${spacing.sm}px`,
-
-        // Empty toolbars collapse — preserves the historical PageToolbar behavior.
-        "&:empty": { display: "none" },
-
-        '&[data-bg="default"]': { backgroundColor: color.background.default },
-        '&[data-bg="light"]':   { backgroundColor: color.background.light },
-        '&[data-bg="dark"]':    { backgroundColor: color.background.dark },
-
-        '&[data-orientation="vertical"]': {
-            flexDirection: "column",
-            alignItems: "stretch",
-            columnGap: 0,
-            rowGap: gap.sm,
-            padding: `${spacing.sm}px ${spacing.xs}px`,
-        },
-
-        "&[data-border-top]":    { borderTop:    `1px solid ${color.border.light}` },
-        "&[data-border-bottom]": { borderBottom: `1px solid ${color.border.light}` },
-
-        "&[data-disabled]": {
-            opacity: 0.6,
-            pointerEvents: "none",
-        },
-    },
-    { label: "Toolbar" },
-);
 
 // --- Roving tabindex helper (Rule 4) ---
 
@@ -189,8 +150,10 @@ export function Toolbar({
         disabled,
     );
 
+    const isHorizontal = orientation === "horizontal";
+
     return (
-        <Root
+        <Panel
             ref={rootRef}
             role="toolbar"
             aria-orientation={orientation}
@@ -198,15 +161,22 @@ export function Toolbar({
             data-type="toolbar"
             data-roving-host=""
             data-orientation={orientation}
-            data-bg={background}
-            data-border-top={borderTop || undefined}
-            data-border-bottom={borderBottom || undefined}
-            data-disabled={disabled || undefined}
+            direction={isHorizontal ? "row" : "column"}
+            align={isHorizontal ? "center" : "stretch"}
+            gap="sm"
+            paddingX={isHorizontal ? "sm" : "xs"}
+            paddingY={isHorizontal ? "xs" : "sm"}
+            overflow="hidden"
+            shrink={false}
+            background={background}
+            borderTop={borderTop}
+            borderBottom={borderBottom}
+            disabled={disabled}
             onKeyDown={(e) => { handleKey(e); onKeyDown?.(e); }}
             onFocusCapture={(e) => { handleFocusCapture(e); onFocusCapture?.(e); }}
             {...rest}
         >
             {children}
-        </Root>
+        </Panel>
     );
 }

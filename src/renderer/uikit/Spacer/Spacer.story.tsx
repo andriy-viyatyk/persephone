@@ -1,21 +1,23 @@
 import React from "react";
 import { Spacer } from "./Spacer";
-import { HStack } from "../Flex";
-import color from "../../theme/color";
+import { Panel } from "../Panel/Panel";
 import { Story } from "../../editors/storybook/storyTypes";
 
 const SpacerInPreview = (props: any) => {
     const { size, ...rest } = props;
     return React.createElement(
-        HStack,
+        Panel,
         {
-            gap: 4,
-            align: "center" as any,
-            style: { width: 240, padding: 8, border: `1px dashed ${color.border.default}` },
+            direction: "row",
+            gap: "sm",
+            align: "center",
+            width: 240,
+            padding: "md",
+            border: true,
         },
-        React.createElement("span", null, "Left"),
+        React.createElement("span", { key: "l" }, "Left"),
         React.createElement(Spacer, { ...rest, size: size || undefined }),
-        React.createElement("span", null, "Right"),
+        React.createElement("span", { key: "r" }, "Right"),
     );
 };
 

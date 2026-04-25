@@ -1,13 +1,12 @@
 import React from "react";
-import styled from "@emotion/styled";
 import { EditorType } from "../../../shared/types";
 import { TComponentState } from "../../core/state/state";
 import { EditorModule } from "../types";
+import { Panel } from "../../uikit/Panel/Panel";
 import { Toolbar } from "../../uikit/Toolbar/Toolbar";
 import { SegmentedControl } from "../../uikit/SegmentedControl/SegmentedControl";
+import { Spacer } from "../../uikit/Spacer/Spacer";
 import { Text } from "../../uikit/Text/Text";
-import { HStack } from "../../uikit/Flex/Flex";
-import { spacing } from "../../uikit/tokens";
 import {
     PreviewBackground,
     StorybookEditorModel,
@@ -19,35 +18,6 @@ import { ComponentBrowser } from "./ComponentBrowser";
 import { LivePreview } from "./LivePreview";
 import { PropertyEditor } from "./PropertyEditor";
 
-// ============================================================================
-// Styles
-// ============================================================================
-
-const Root = styled.div({
-    flex: "1 1 auto",
-    display: "flex",
-    flexDirection: "column",
-    overflow: "hidden",
-});
-
-const Body = styled.div({
-    flex: "1 1 auto",
-    display: "flex",
-    flexDirection: "row",
-    overflow: "hidden",
-});
-
-const ToolbarTitle = styled.span({
-    fontWeight: 600,
-    fontSize: 13,
-    paddingLeft: spacing.sm,
-    paddingRight: spacing.md,
-});
-
-// ============================================================================
-// View
-// ============================================================================
-
 const BG_OPTIONS: Array<{ value: PreviewBackground; label: string }> = [
     { value: "dark",    label: "Dark"    },
     { value: "default", label: "Default" },
@@ -57,31 +27,33 @@ const BG_OPTIONS: Array<{ value: PreviewBackground; label: string }> = [
 function StorybookEditorView({ model }: { model: StorybookEditorModel }) {
     const { previewBackground } = model.state.use();
     return (
-        <Root data-type="storybook-editor">
+        <Panel
+            data-type="storybook-editor"
+            direction="column"
+            flex
+            overflow="hidden"
+        >
             <Toolbar borderBottom aria-label="Storybook editor toolbar">
-                <ToolbarTitle>Storybook</ToolbarTitle>
-                <HStack gap={spacing.sm} align="center" style={{ marginLeft: "auto" }}>
-                    <Text variant="caption">Background:</Text>
-                    <SegmentedControl
-                        items={BG_OPTIONS}
-                        value={previewBackground}
-                        onChange={(v) => model.setPreviewBackground(v as PreviewBackground)}
-                        size="sm"
-                    />
-                </HStack>
+                <Panel paddingLeft="sm" paddingRight="md">
+                    <Text variant="heading">Storybook</Text>
+                </Panel>
+                <Spacer />
+                <Text variant="caption">Background:</Text>
+                <SegmentedControl
+                    items={BG_OPTIONS}
+                    value={previewBackground}
+                    onChange={(v) => model.setPreviewBackground(v as PreviewBackground)}
+                    size="sm"
+                />
             </Toolbar>
-            <Body>
+            <Panel direction="row" flex overflow="hidden">
                 <ComponentBrowser model={model} />
                 <LivePreview model={model} />
                 <PropertyEditor model={model} />
-            </Body>
-        </Root>
+            </Panel>
+        </Panel>
     );
 }
-
-// ============================================================================
-// Editor Module
-// ============================================================================
 
 const storybookEditorModule: EditorModule = {
     Editor: StorybookEditorView as any,

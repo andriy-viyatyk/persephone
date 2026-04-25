@@ -8,7 +8,11 @@ export const labelStory: Story = {
     component: Label as any,
     props: [
         { name: "children", type: "string", default: "Field label" },
-        { name: "variant", type: "enum", options: ["default", "section", "error", "warning", "success"], default: "default" },
+        { name: "variant", type: "enum", options: ["default", "uppercased"], default: "default" },
+        { name: "color",   type: "enum", options: ["default", "light", "dark", "inherit", "error", "warning", "success"], default: "default" },
+        { name: "size",    type: "enum", options: ["xs", "sm", "md", "base", "lg", "xl", "xxl"], default: "sm" },
+        { name: "italic",  type: "boolean", default: false },
+        { name: "bold",    type: "boolean", default: false },
         { name: "required", type: "boolean", default: false },
         { name: "disabled", type: "boolean", default: false },
     ],

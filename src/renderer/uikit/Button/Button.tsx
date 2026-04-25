@@ -18,6 +18,8 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
      * variants. Default: "default".
      */
     background?: "default" | "light" | "dark";
+    /** Stretch to the full width of the parent. */
+    block?: boolean;
 }
 
 // --- Styled ---
@@ -120,6 +122,11 @@ const Root = styled.button(
             pointerEvents: "none",
         },
 
+        "&[data-block]": {
+            display: "flex",
+            width: "100%",
+        },
+
         "& svg": {
             width: height.iconMd,
             height: height.iconMd,
@@ -132,7 +139,7 @@ const Root = styled.button(
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     function Button(
-        { variant = "default", size = "md", background = "default", icon, disabled, children, ...rest },
+        { variant = "default", size = "md", background = "default", block, icon, disabled, children, ...rest },
         ref,
     ) {
         return (
@@ -142,6 +149,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
                 data-variant={variant}
                 data-size={size}
                 data-bg={background}
+                data-block={block || undefined}
                 data-disabled={disabled || undefined}
                 disabled={disabled}
                 type="button"

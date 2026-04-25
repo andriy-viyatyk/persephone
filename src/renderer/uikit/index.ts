@@ -2,13 +2,9 @@
 // Components are exported here as they are implemented.
 // See CLAUDE.md in this folder for authoring rules.
 
-// Layout primitives (US-427)
-export { Flex, HStack, VStack } from "./Flex";
-export type { FlexProps, HStackProps, VStackProps } from "./Flex";
+// Layout primitives
 export { Panel } from "./Panel";
 export type { PanelProps } from "./Panel";
-export { Card } from "./Card";
-export type { CardProps } from "./Card";
 export { Spacer } from "./Spacer";
 export type { SpacerProps } from "./Spacer";
 export { Toolbar } from "./Toolbar";
@@ -29,3 +25,5 @@ export { Divider } from "./Divider";
 export type { DividerProps } from "./Divider";
 export { Text } from "./Text";
 export type { TextProps } from "./Text";
+export { SegmentedControl } from "./SegmentedControl";
+export type { SegmentedControlProps } from "./SegmentedControl";
