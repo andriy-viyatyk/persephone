@@ -796,6 +796,15 @@ export class PagesLifecycleModel {
         }
     };
 
+    showStorybookPage = async (): Promise<void> => {
+        const storybookModule = await import("../../editors/storybook/StorybookEditorView");
+        const model = await storybookModule.default.newEmptyEditorModel("storybookPage");
+        if (model) {
+            const page = new PageModel(storybookModule.STORYBOOK_PAGE_ID);
+            this.addPage(model, page);
+        }
+    };
+
     showVideoPlayerPage = async (): Promise<void> => {
         const videoModule = await import("../../editors/video/VideoPlayerEditor");
         const model = await videoModule.default.newEmptyEditorModel("videoPage");

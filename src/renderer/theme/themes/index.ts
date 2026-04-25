@@ -69,6 +69,7 @@ export function applyTheme(themeId: string): void {
     for (const [key, value] of Object.entries(theme.colors)) {
         root.style.setProperty(key, value);
     }
+    root.style.colorScheme = theme.isDark ? "dark" : "light";
 
     currentThemeId = theme.id;
 

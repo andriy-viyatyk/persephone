@@ -32,6 +32,10 @@ const Root = styled.label(
             width: height.iconMd,
             height: height.iconMd,
             color: color.text.light,
+            "& svg": {
+                width: height.iconMd,
+                height: height.iconMd,
+            },
         },
         "&:hover [data-part='icon']": {
             color: color.text.default,

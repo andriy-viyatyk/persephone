@@ -7,17 +7,40 @@ import { fontSize, height, spacing, gap, radius } from "../tokens";
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
     /** Visual style. Default: "default". */
-    variant?: "default" | "primary" | "ghost" | "danger";
+    variant?: "default" | "primary" | "ghost" | "danger" | "link";
     /** Control height. Default: "md". */
     size?: "sm" | "md";
     /** Icon rendered before children. */
     icon?: React.ReactNode;
+    /**
+     * Parent container background — adjusts hover/active colors so they stay
+     * visible against the parent. Affects "default", "ghost", and "link"
+     * variants. Default: "default".
+     */
+    background?: "default" | "light" | "dark";
 }
 
 // --- Styled ---
 
 const Root = styled.button(
     {
+        // Adaptive background tokens — overridden by data-bg below.
+        // Default assumes parent uses color.background.default.
+        "--btn-rest-bg": color.background.default,
+        "--btn-hover-bg": color.background.light,
+        "--btn-active-bg": color.background.dark,
+
+        '&[data-bg="light"]': {
+            "--btn-rest-bg": color.background.light,
+            "--btn-hover-bg": color.background.default,
+            "--btn-active-bg": color.background.dark,
+        },
+        '&[data-bg="dark"]': {
+            "--btn-rest-bg": color.background.dark,
+            "--btn-hover-bg": color.background.default,
+            "--btn-active-bg": color.background.light,
+        },
+
         display: "inline-flex",
         alignItems: "center",
         gap: gap.md,
@@ -29,32 +52,34 @@ const Root = styled.button(
         textWrap: "nowrap",
         fontSize: fontSize.base,
         color: color.text.default,
-        backgroundColor: color.background.default,
+        backgroundColor: "var(--btn-rest-bg)",
 
         "&:hover": {
-            backgroundColor: color.background.light,
+            backgroundColor: "var(--btn-hover-bg)",
         },
         "&:active": {
-            backgroundColor: color.background.dark,
+            backgroundColor: "var(--btn-active-bg)",
         },
 
         '&[data-variant="primary"]': {
-            backgroundColor: color.icon.active,
+            backgroundColor: color.background.selection,
             color: color.text.selection,
             "&:hover": {
                 filter: "brightness(1.1)",
+                backgroundColor: color.background.selection,
             },
             "&:active": {
                 filter: "brightness(0.9)",
+                backgroundColor: color.background.selection,
             },
         },
         '&[data-variant="ghost"]': {
             backgroundColor: "transparent",
             "&:hover": {
-                backgroundColor: color.background.light,
+                backgroundColor: "var(--btn-hover-bg)",
             },
             "&:active": {
-                backgroundColor: color.background.dark,
+                backgroundColor: "var(--btn-active-bg)",
             },
         },
         '&[data-variant="danger"]': {
@@ -65,6 +90,17 @@ const Root = styled.button(
             },
             "&:active": {
                 backgroundColor: color.error.background,
+            },
+        },
+        '&[data-variant="link"]': {
+            backgroundColor: "transparent",
+            color: color.misc.blue,
+            borderColor: color.border.default,
+            "&:hover": {
+                backgroundColor: "var(--btn-hover-bg)",
+            },
+            "&:active": {
+                backgroundColor: "var(--btn-active-bg)",
             },
         },
 
@@ -96,7 +132,7 @@ const Root = styled.button(
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     function Button(
-        { variant = "default", size = "md", icon, disabled, children, ...rest },
+        { variant = "default", size = "md", background = "default", icon, disabled, children, ...rest },
         ref,
     ) {
         return (
@@ -105,6 +141,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
                 data-type="button"
                 data-variant={variant}
                 data-size={size}
+                data-bg={background}
                 data-disabled={disabled || undefined}
                 disabled={disabled}
                 type="button"

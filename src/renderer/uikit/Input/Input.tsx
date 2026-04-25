@@ -43,6 +43,21 @@ const Root = styled.input(
             opacity: 0.5,
             pointerEvents: "none",
         },
+
+        "&[type='number']": {
+            paddingRight: spacing.xs,
+
+            "&::-webkit-inner-spin-button": {
+                cursor: "pointer",
+                background: "transparent",
+                opacity: 0.5,
+                transition: "opacity 0.15s",
+                marginRight: -spacing.xs,
+            },
+            "&:hover::-webkit-inner-spin-button, &:focus::-webkit-inner-spin-button": {
+                opacity: 1,
+            },
+        },
     },
     { label: "Input" },
 );

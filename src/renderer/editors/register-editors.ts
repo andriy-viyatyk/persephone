@@ -624,6 +624,18 @@ editorRegistry.register({
     },
 });
 
+// Storybook (standalone page editor — no file acceptance)
+editorRegistry.register({
+    id: "storybook-view",
+    name: "Storybook",
+    editorType: "storybookPage",
+    category: "standalone",
+    loadModule: async () => {
+        const module = await import("./storybook/StorybookEditorView");
+        return module.default;
+    },
+});
+
 // Browser (standalone page editor - no file acceptance)
 editorRegistry.register({
     id: "browser-view",

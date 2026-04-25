@@ -1,0 +1,73 @@
+import { IEditorState } from "../../../shared/types";
+import { getDefaultEditorModelState, EditorModel } from "../base";
+import { TComponentState } from "../../core/state/state";
+import { ALL_STORIES, findStory } from "./storyRegistry";
+import { Story, PropDef } from "./storyTypes";
+
+export const STORYBOOK_PAGE_ID = "storybook-page";
+
+export type PreviewBackground = "default" | "light" | "dark";
+
+export interface StorybookEditorState extends IEditorState {
+    selectedStoryId: string;
+    propValues: Record<string, unknown>;
+    previewBackground: PreviewBackground;
+}
+
+export const getDefaultStorybookEditorState = (): StorybookEditorState => {
+    const first = ALL_STORIES[0];
+    return {
+        ...getDefaultEditorModelState(),
+        id: STORYBOOK_PAGE_ID,
+        type: "storybookPage",
+        title: "Storybook",
+        editor: "storybook-view",
+        selectedStoryId: first?.id ?? "",
+        propValues: first ? buildInitialProps(first) : {},
+        previewBackground: "light",
+    };
+};
+
+export function buildInitialProps(story: Story): Record<string, unknown> {
+    const out: Record<string, unknown> = { ...(story.defaultProps as Record<string, unknown> | undefined) };
+    for (const def of story.props) {
+        if (out[def.name] !== undefined) continue;
+        if ("default" in def && def.default !== undefined) {
+            out[def.name] = def.default;
+        }
+    }
+    return out;
+}
+
+export class StorybookEditorModel extends EditorModel<StorybookEditorState, void> {
+    noLanguage = true;
+    skipSave = true;
+
+    selectStory = (id: string): void => {
+        const story = findStory(id);
+        if (!story) return;
+        this.state.update((s) => {
+            s.selectedStoryId = id;
+            s.propValues = buildInitialProps(story);
+        });
+    };
+
+    setPropValue = (name: string, value: unknown): void => {
+        this.state.update((s) => {
+            s.propValues = { ...s.propValues, [name]: value };
+        });
+    };
+
+    resetProps = (): void => {
+        const story = findStory(this.state.get().selectedStoryId);
+        if (!story) return;
+        this.state.update((s) => { s.propValues = buildInitialProps(story); });
+    };
+
+    setPreviewBackground = (bg: PreviewBackground): void => {
+        this.state.update((s) => { s.previewBackground = bg; });
+    };
+}
+
+// Re-export for use by StorybookEditorView module
+export type { Story, PropDef };

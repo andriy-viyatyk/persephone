@@ -241,6 +241,7 @@ export class PagesModel extends TModel<OpenFilesState> {
     }) => this.lifecycle.showBrowserPage(options);
     showMcpInspectorPage = (options?: { url?: string }) =>
         this.lifecycle.showMcpInspectorPage(options);
+    showStorybookPage = () => this.lifecycle.showStorybookPage();
     showVideoPlayerPage = () => this.lifecycle.showVideoPlayerPage();
     openImageInNewTab = (imageUrl: string) =>
         this.lifecycle.openImageInNewTab(imageUrl);

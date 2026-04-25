@@ -266,7 +266,7 @@ function Select<T>({ items, value, onChange }: SelectProps<T>) {
 | US-426 | Design tokens — spacing, sizing, border-radius, font-size constants | Phase 1 / Planned |
 | [US-427](../tasks/US-427-layout-primitives/README.md) | Layout primitives — Flex, HStack, VStack, Panel, Card, Spacer | Phase 1 / Active |
 | [US-440](../tasks/US-440-bootstrap-components/README.md) | Bootstrap component set — minimal components needed for Storybook | Phase 2 / Active |
-| US-434 | Storybook editor — component browser, live preview, property editor | Phase 3 / Planned |
+| [US-434](../tasks/US-434-storybook-editor/README.md) | Storybook editor — component browser, live preview, property editor | Phase 3 / Active |
 | US-435 | Storybook — script tab for building and testing UI via scripts | Phase 3 / Planned |
 | US-432 | Dialog component — new implementation + migration (Phase 4, first component) | Phase 4 / Planned |
 | US-436 | Script UI API — expose new component library to scripting engine | Phase 6 / Planned |
