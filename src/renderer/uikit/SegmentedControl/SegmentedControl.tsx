@@ -120,15 +120,18 @@ export function SegmentedControl({
             case "ArrowRight":
             case "ArrowDown":
                 e.preventDefault();
+                e.stopPropagation();
                 moveFocus(i, 1);
                 break;
             case "ArrowLeft":
             case "ArrowUp":
                 e.preventDefault();
+                e.stopPropagation();
                 moveFocus(i, -1);
                 break;
             case "Home": {
                 e.preventDefault();
+                e.stopPropagation();
                 const first = segments.findIndex((s) => !s.disabled);
                 if (first >= 0) {
                     focusButton(first);
@@ -138,6 +141,7 @@ export function SegmentedControl({
             }
             case "End": {
                 e.preventDefault();
+                e.stopPropagation();
                 for (let j = segments.length - 1; j >= 0; j--) {
                     if (!segments[j].disabled) {
                         focusButton(j);
@@ -154,6 +158,7 @@ export function SegmentedControl({
         <Root
             ref={rootRef}
             data-type="segmented-control"
+            data-roving-host=""
             data-disabled={disabled || undefined}
             role="radiogroup"
         >

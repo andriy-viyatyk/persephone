@@ -1,12 +1,13 @@
 import { Story } from "./storyTypes";
 
 // Layout
-import { flexStory }   from "../../uikit/Flex/Flex.story";
-import { hstackStory } from "../../uikit/Flex/HStack.story";
-import { vstackStory } from "../../uikit/Flex/VStack.story";
-import { panelStory }  from "../../uikit/Panel/Panel.story";
-import { cardStory }   from "../../uikit/Card/Card.story";
-import { spacerStory } from "../../uikit/Spacer/Spacer.story";
+import { flexStory }    from "../../uikit/Flex/Flex.story";
+import { hstackStory }  from "../../uikit/Flex/HStack.story";
+import { vstackStory }  from "../../uikit/Flex/VStack.story";
+import { panelStory }   from "../../uikit/Panel/Panel.story";
+import { cardStory }    from "../../uikit/Card/Card.story";
+import { spacerStory }  from "../../uikit/Spacer/Spacer.story";
+import { toolbarStory } from "../../uikit/Toolbar/Toolbar.story";
 
 // Bootstrap
 import { buttonStory }           from "../../uikit/Button/Button.story";
@@ -19,7 +20,7 @@ import { textStory }             from "../../uikit/Text/Text.story";
 import { segmentedControlStory } from "../../uikit/SegmentedControl/SegmentedControl.story";
 
 export const ALL_STORIES: Story[] = [
-    flexStory, hstackStory, vstackStory, panelStory, cardStory, spacerStory,
+    flexStory, hstackStory, vstackStory, panelStory, cardStory, spacerStory, toolbarStory,
     buttonStory, iconButtonStory, inputStory, labelStory, checkboxStory, dividerStory, textStory,
     segmentedControlStory,
 ];

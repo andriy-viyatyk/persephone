@@ -11,6 +11,8 @@ export { Card } from "./Card";
 export type { CardProps } from "./Card";
 export { Spacer } from "./Spacer";
 export type { SpacerProps } from "./Spacer";
+export { Toolbar } from "./Toolbar";
+export type { ToolbarProps } from "./Toolbar";
 
 // Bootstrap components (US-440)
 export { Button } from "./Button";

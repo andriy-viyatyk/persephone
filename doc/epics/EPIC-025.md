@@ -267,6 +267,7 @@ function Select<T>({ items, value, onChange }: SelectProps<T>) {
 | [US-427](../tasks/US-427-layout-primitives/README.md) | Layout primitives — Flex, HStack, VStack, Panel, Card, Spacer | Phase 1 / Active |
 | [US-440](../tasks/US-440-bootstrap-components/README.md) | Bootstrap component set — minimal components needed for Storybook | Phase 2 / Active |
 | [US-434](../tasks/US-434-storybook-editor/README.md) | Storybook editor — component browser, live preview, property editor | Phase 3 / Active |
+| [US-450](../tasks/US-450-uikit-toolbar/README.md) | UIKit Toolbar — semantic landmark, roving tabindex, Storybook adoption | Phase 3 polish / Active |
 | US-435 | Storybook — script tab for building and testing UI via scripts | Phase 3 / Planned |
 | US-432 | Dialog component — new implementation + migration (Phase 4, first component) | Phase 4 / Planned |
 | US-436 | Script UI API — expose new component library to scripting engine | Phase 6 / Planned |
@@ -287,8 +288,8 @@ Three parallel workstreams, all new code — no changes to existing components:
 **Phase 2 — Bootstrap Components (US-440)**
 Implement the minimal set of components that the Storybook editor UI itself needs (e.g. Button, Input, Label, and whatever else the Storybook shell requires). Pure implementation — no Storybook testing yet, no replacement of old components. This is a short, focused phase to unblock Phase 3.
 
-**Phase 3 — Storybook Editor (US-434, US-435)**
-Build the Storybook editor as a built-in Persephone editor type, using the Phase 2 bootstrap components. As a side effect, this validates and tweaks the bootstrap components — they become the first components tested in Storybook. Storybook is the testing tool for all phases that follow.
+**Phase 3 — Storybook Editor (US-434, US-435, US-450)**
+Build the Storybook editor as a built-in Persephone editor type, using the Phase 2 bootstrap components. As a side effect, this validates and tweaks the bootstrap components — they become the first components tested in Storybook. Storybook is the testing tool for all phases that follow. **US-450** adds a Toolbar to UIKit (with roving tabindex and `role="toolbar"`) and adopts it inside the Storybook editor only — full per-editor migration of `PageToolbar` is deferred.
 
 **Phase 4 — Full Component Library (iterative, one component at a time)**
 For each component in the naming table (from US-438):

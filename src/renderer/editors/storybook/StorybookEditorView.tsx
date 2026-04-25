@@ -3,7 +3,7 @@ import styled from "@emotion/styled";
 import { EditorType } from "../../../shared/types";
 import { TComponentState } from "../../core/state/state";
 import { EditorModule } from "../types";
-import { PageToolbar } from "../base";
+import { Toolbar } from "../../uikit/Toolbar/Toolbar";
 import { SegmentedControl } from "../../uikit/SegmentedControl/SegmentedControl";
 import { Text } from "../../uikit/Text/Text";
 import { HStack } from "../../uikit/Flex/Flex";
@@ -58,7 +58,7 @@ function StorybookEditorView({ model }: { model: StorybookEditorModel }) {
     const { previewBackground } = model.state.use();
     return (
         <Root data-type="storybook-editor">
-            <PageToolbar>
+            <Toolbar borderBottom aria-label="Storybook editor toolbar">
                 <ToolbarTitle>Storybook</ToolbarTitle>
                 <HStack gap={spacing.sm} align="center" style={{ marginLeft: "auto" }}>
                     <Text variant="caption">Background:</Text>
@@ -69,7 +69,7 @@ function StorybookEditorView({ model }: { model: StorybookEditorModel }) {
                         size="sm"
                     />
                 </HStack>
-            </PageToolbar>
+            </Toolbar>
             <Body>
                 <ComponentBrowser model={model} />
                 <LivePreview model={model} />

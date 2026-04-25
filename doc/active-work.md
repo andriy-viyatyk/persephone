@@ -16,6 +16,7 @@ Overview of all active and planned epics and tasks.
   - [ ] [US-427: Layout primitives — Flex, HStack, VStack, Panel, Card, Spacer](tasks/US-427-layout-primitives/README.md) *(Phase 1)*
   - [ ] [US-440: Bootstrap component set — minimal components needed for Storybook](tasks/US-440-bootstrap-components/README.md) *(Phase 2)*
   - [ ] [US-434: Storybook editor — component browser, live preview, property editor](tasks/US-434-storybook-editor/README.md) *(Phase 3)*
+  - [ ] [US-450: UIKit Toolbar — semantic landmark, roving tabindex, Storybook adoption](tasks/US-450-uikit-toolbar/README.md) *(Phase 3 polish)*
   - [ ] US-435: Storybook — script tab for building and testing UI via scripts *(Phase 3)*
   - [ ] US-432: Dialog component — new implementation + migration *(Phase 4, first)*
   - [ ] US-436: Script UI API — expose new component library to scripting engine *(Phase 6)*
