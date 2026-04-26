@@ -18,9 +18,10 @@ Overview of all active and planned epics and tasks.
   - [ ] [US-434: Storybook editor — component browser, live preview, property editor](tasks/US-434-storybook-editor/README.md) *(Phase 3)*
   - [ ] [US-450: UIKit Toolbar — semantic landmark, roving tabindex, Storybook adoption](tasks/US-450-uikit-toolbar/README.md) *(Phase 3 polish)*
   - [ ] [US-451: UIKit layout refactor — unified Panel + Storybook lighthouse](tasks/US-451-uikit-panel-refactor/README.md) *(Phase 3 polish)*
-  - [ ] US-435: Storybook — script tab for building and testing UI via scripts *(Phase 3)*
   - [ ] US-432: Dialog component — new implementation + migration *(Phase 4, first)*
+  - [ ] [US-452: About screen — UIKit migration](tasks/US-452-about-screen-migration/README.md) *(Phase 4 — per-screen migration)*
   - [ ] US-436: Script UI API — expose new component library to scripting engine *(Phase 6)*
+  - [ ] US-435: Storybook — script tab for building and testing UI via scripts *(Phase 6)*
 
 ## Planned
 - **EPIC-022** — [LinkEditor Embedded Scripts](epics/EPIC-022.md)
@@ -43,6 +44,7 @@ Overview of all active and planned epics and tasks.
 - **EPIC-011** — [Chrome Extension Support for Built-in Browser](epics/EPIC-011.md)
 - *(no epic)*
   - [ ] US-347: CategoryView / CategoryEditor Breadcrumb
+  - [ ] US-453: Storybook property editor — fix scroll when prop list exceeds panel height
 
 
 ---

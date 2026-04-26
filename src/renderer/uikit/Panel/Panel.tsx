@@ -6,6 +6,7 @@ import { spacing, gap as gapTokens, radius } from "../tokens";
 // --- Types ---
 
 type Size = "none" | "xs" | "sm" | "md" | "lg" | "xl" | "xxl";
+type PaddingSize = Size | "xxxl";
 
 type Align = "start" | "center" | "end" | "stretch" | "baseline";
 type Justify = "start" | "center" | "end" | "between" | "around" | "evenly";
@@ -25,13 +26,13 @@ export interface PanelProps
     shrink?: boolean;
 
     /** Uniform padding. Side-specific props win over `paddingX`/`paddingY` win over `padding`. */
-    padding?: Size;
-    paddingX?: Size;
-    paddingY?: Size;
-    paddingTop?: Size;
-    paddingBottom?: Size;
-    paddingLeft?: Size;
-    paddingRight?: Size;
+    padding?: PaddingSize;
+    paddingX?: PaddingSize;
+    paddingY?: PaddingSize;
+    paddingTop?: PaddingSize;
+    paddingBottom?: PaddingSize;
+    paddingLeft?: PaddingSize;
+    paddingRight?: PaddingSize;
 
     /** Gap between children. */
     gap?: Size;
@@ -44,6 +45,14 @@ export interface PanelProps
     /** Fixed width/height in px (number) or any CSS length (string, e.g. "50%"). */
     width?: number | string;
     height?: number | string;
+    /** Max width — number → px, string passes through (e.g. "100%"). */
+    maxWidth?: number | string;
+    /** Min width — number → px, string passes through. */
+    minWidth?: number | string;
+    /** Max height — number → px, string passes through. */
+    maxHeight?: number | string;
+    /** Min height — number → px, string passes through. */
+    minHeight?: number | string;
 
     overflow?: Overflow;
     overflowX?: Overflow;
@@ -129,7 +138,7 @@ const JUSTIFY_MAP: Record<Justify, string> = {
     evenly: "space-evenly",
 };
 
-function spaceVal(v?: Size): number | undefined {
+function spaceVal(v?: PaddingSize): number | undefined {
     if (v === undefined) return undefined;
     if (v === "none") return 0;
     return spacing[v];
@@ -152,6 +161,10 @@ function flexVal(v: PanelProps["flex"]): string | undefined {
     if (v === true) return "1 1 auto";
     if (typeof v === "number") return `${v} 1 auto`;
     return v;
+}
+
+function isScrollable(v?: Overflow): boolean {
+    return v === "auto" || v === "scroll";
 }
 
 // --- Component ---
@@ -177,6 +190,10 @@ export const Panel = React.forwardRef<HTMLDivElement, PanelProps>(function Panel
         justify,
         width,
         height,
+        maxWidth,
+        minWidth,
+        maxHeight,
+        minHeight,
         overflow,
         overflowX,
         overflowY,
@@ -217,12 +234,19 @@ export const Panel = React.forwardRef<HTMLDivElement, PanelProps>(function Panel
 
         width,
         height,
+        maxWidth,
+        minWidth,
+        maxHeight,
+        minHeight,
         overflow,
         overflowX,
         overflowY,
 
         borderRadius: radiusVal(rounded),
     };
+
+    const scrollable =
+        isScrollable(overflow) || isScrollable(overflowX) || isScrollable(overflowY);
 
     return (
         <Root
@@ -238,6 +262,7 @@ export const Panel = React.forwardRef<HTMLDivElement, PanelProps>(function Panel
             data-border-color={borderColor || undefined}
             data-shadow={shadow || undefined}
             data-disabled={disabled || undefined}
+            className={scrollable ? "scroll-container" : undefined}
             {...rest}
             style={inlineStyle}
         >

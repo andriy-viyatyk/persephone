@@ -32,6 +32,7 @@ function StorybookEditorView({ model }: { model: StorybookEditorModel }) {
             direction="column"
             flex
             overflow="hidden"
+            height={0}
         >
             <Toolbar borderBottom aria-label="Storybook editor toolbar">
                 <Panel paddingLeft="sm" paddingRight="md">
@@ -46,7 +47,7 @@ function StorybookEditorView({ model }: { model: StorybookEditorModel }) {
                     size="sm"
                 />
             </Toolbar>
-            <Panel direction="row" flex overflow="hidden">
+            <Panel direction="row" flex overflow="hidden" height={0}>
                 <ComponentBrowser model={model} />
                 <LivePreview model={model} />
                 <PropertyEditor model={model} />

@@ -269,11 +269,12 @@ function Select<T>({ items, value, onChange }: SelectProps<T>) {
 | [US-434](../tasks/US-434-storybook-editor/README.md) | Storybook editor — component browser, live preview, property editor | Phase 3 / Active |
 | [US-450](../tasks/US-450-uikit-toolbar/README.md) | UIKit Toolbar — semantic landmark, roving tabindex, Storybook adoption | Phase 3 polish / Active |
 | [US-451](../tasks/US-451-uikit-panel-refactor/README.md) | UIKit layout refactor — unified Panel + Storybook lighthouse | Phase 3 polish / Active |
-| US-435 | Storybook — script tab for building and testing UI via scripts | Phase 3 / Planned |
 | US-432 | Dialog component — new UIKit implementation | Phase 4 / Planned |
+| — | **Per-screen migration tasks** — tracked individually in [active-work.md](../active-work.md), not enumerated here | Phase 4 / Active |
 | US-436 | Script UI API — expose new component library to scripting engine | Phase 6 / Planned |
+| US-435 | Storybook — script tab for building and testing UI via scripts | Phase 6 / Planned |
 
-> US-433 (Editor migration) is superseded — migration is now per-screen during Phase 4. Individual screen-migration tasks will be created as each screen is reached.
+> US-433 (Editor migration) is superseded — migration is now per-screen during Phase 4. Per-screen tasks (`US-452+`) are tracked on the dashboard rather than listed here, to keep this document stable as the migration progresses.
 
 ## Phase Plan
 
@@ -289,8 +290,8 @@ Three parallel workstreams, all new code — no changes to existing components:
 **Phase 2 — Bootstrap Components (US-440)**
 Implement the minimal set of components that the Storybook editor UI itself needs (e.g. Button, Input, Label, and whatever else the Storybook shell requires). Pure implementation — no Storybook testing yet, no replacement of old components. This is a short, focused phase to unblock Phase 3.
 
-**Phase 3 — Storybook Editor (US-434, US-435, US-450)**
-Build the Storybook editor as a built-in Persephone editor type, using the Phase 2 bootstrap components. As a side effect, this validates and tweaks the bootstrap components — they become the first components tested in Storybook. Storybook is the testing tool for all phases that follow. **US-450** adds a Toolbar to UIKit (with roving tabindex and `role="toolbar"`) and adopts it inside the Storybook editor only — full per-editor migration of `PageToolbar` is deferred.
+**Phase 3 — Storybook Editor (US-434, US-450)**
+Build the Storybook editor as a built-in Persephone editor type, using the Phase 2 bootstrap components. As a side effect, this validates and tweaks the bootstrap components — they become the first components tested in Storybook. Storybook is the testing tool for all phases that follow. **US-450** adds a Toolbar to UIKit (with roving tabindex and `role="toolbar"`) and adopts it inside the Storybook editor only — full per-editor migration of `PageToolbar` is deferred. The Storybook script tab (US-435) is intentionally deferred to Phase 6 — script integration is meaningful only after the component library is settled and screens are migrated.
 
 **Phase 4 — Per-Screen Migration (iterative, one screen at a time)**
 For each screen in Persephone:
@@ -315,8 +316,12 @@ These virtualized and internally complex components are too risky to rewrite fro
 - Apply trait integration (`Traited<V>`) at the data prop level
 No full rewrite — incremental improvement only.
 
-**Phase 6 — Script API (US-436)**
-Expose the new component library to the scripting engine. Depends on Phases 1–4. EPIC-026 trait interfaces are already available.
+**Phase 6 — Script Integration (US-436, US-435)**
+Final phase, after the component library is stable and per-screen migration (Phase 4) is complete. Two pieces:
+- **US-436** — expose the new component library to the scripting engine so scripts can build UIs from the same primitives the app uses.
+- **US-435** — add a Storybook "script" tab where users can write scripts that build / test UI from components, validating the script API end-to-end against the same components Storybook is already exercising.
+
+Deferred to last because script integration is only meaningful once the component surface is settled. Driving it earlier would mean reworking the script API every time a UIKit prop changes during migration. EPIC-026 trait interfaces are already available.
 
 ## Concerns / Open Questions
 

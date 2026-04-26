@@ -1,154 +1,16 @@
-import styled from "@emotion/styled";
 import { useEffect, useState } from "react";
 import { IEditorState, EditorType } from "../../../shared/types";
 import { getDefaultEditorModelState, EditorModel } from "../base";
 import { TComponentState } from "../../core/state/state";
 import { EditorModule } from "../types";
-import color from "../../theme/color";
 import { PersephoneIcon } from "../../theme/icons";
+import { Panel, Text, Button, Divider } from "../../uikit";
 import { app } from "../../api/app";
 import { shell } from "../../api/shell";
 import type { IRuntimeVersions, IUpdateInfo } from "../../api/types/shell";
 import rendererEvents from "../../../ipc/renderer/renderer-events";
 import { EventEndpoint } from "../../../ipc/api-types";
 import type { UpdateCheckResult } from "../../../ipc/api-param-types";
-
-// ============================================================================
-// Styled Component
-// ============================================================================
-
-const AboutEditorRoot = styled.div({
-    flex: "1 1 auto",
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 32,
-    overflow: "auto",
-    fontFamily: "Arial, sans-serif",
-
-    "& .about-card": {
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        maxWidth: 400,
-        width: "100%",
-        padding: 32,
-        backgroundColor: color.background.light,
-        borderRadius: 8,
-    },
-
-    "& .app-icon": {
-        width: 64,
-        height: 64,
-        marginBottom: 16,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        "& svg": {
-            width: "100%",
-            height: "100%",
-        },
-    },
-
-    "& .app-name": {
-        margin: 0,
-        fontSize: 24,
-        fontWeight: 600,
-        color: color.text.default,
-    },
-
-    "& .version-text": {
-        fontSize: 14,
-        color: color.text.light,
-        marginTop: 4,
-    },
-
-    "& .divider": {
-        width: "100%",
-        border: "none",
-        borderTop: `1px solid ${color.border.default}`,
-        margin: "20px 0",
-    },
-
-    "& .info-section": {
-        width: "100%",
-        display: "flex",
-        flexDirection: "column",
-        gap: 8,
-    },
-
-    "& .info-row": {
-        display: "flex",
-        justifyContent: "space-between",
-        fontSize: 13,
-        "& .label": {
-            color: color.text.light,
-        },
-        "& .value": {
-            color: color.text.default,
-            fontFamily: "monospace",
-        },
-    },
-
-    "& .update-section": {
-        width: "100%",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        gap: 12,
-    },
-
-    "& .update-button": {
-        padding: "8px 16px",
-        fontSize: 13,
-        fontWeight: 500,
-        color: color.text.selection,
-        backgroundColor: color.background.selection,
-        border: "none",
-        borderRadius: 4,
-        cursor: "pointer",
-        "&:hover": {
-            opacity: 0.9,
-        },
-        "&:disabled": {
-            opacity: 0.6,
-            cursor: "not-allowed",
-        },
-    },
-
-    "& .update-status": {
-        fontSize: 13,
-        textAlign: "center",
-        color: color.text.light,
-        "&.success": {
-            color: color.misc.green,
-        },
-        "&.warning": {
-            color: color.misc.yellow,
-        },
-    },
-
-    "& .link-button": {
-        padding: "6px 12px",
-        fontSize: 12,
-        color: color.misc.blue,
-        backgroundColor: "transparent",
-        border: `1px solid ${color.border.default}`,
-        borderRadius: 4,
-        cursor: "pointer",
-        "&:hover": {
-            backgroundColor: color.background.dark,
-        },
-    },
-
-    "& .links-section": {
-        display: "flex",
-        gap: 8,
-        flexWrap: "wrap",
-        justifyContent: "center",
-    },
-});
 
 // ============================================================================
 // AboutEditorModel (Page Model)
@@ -202,16 +64,14 @@ function mapUpdateResult(result: UpdateCheckResult): IUpdateInfo {
     };
 }
 
-function AboutPage({ model }: AboutEditorProps) {
+function AboutPage(_props: AboutEditorProps) {
     const [runtimeVersions, setRuntimeVersions] = useState<IRuntimeVersions | null>(null);
     const [updateResult, setUpdateResult] = useState<IUpdateInfo | null>(null);
     const [checking, setChecking] = useState(false);
 
     useEffect(() => {
-        // Load runtime version info
         shell.version.runtimeVersions().then(setRuntimeVersions);
 
-        // Subscribe to update available events
         const subscription = rendererEvents[EventEndpoint.eUpdateAvailable].subscribe(
             (result: UpdateCheckResult) => {
                 setUpdateResult(mapUpdateResult(result));
@@ -235,107 +95,103 @@ function AboutPage({ model }: AboutEditorProps) {
 
     const renderUpdateStatus = () => {
         if (checking) {
-            return <div className="update-status">Checking for updates...</div>;
+            return <Text size="md" color="light">Checking for updates...</Text>;
         }
-
         if (!updateResult) {
             return null;
         }
-
         if (updateResult.updateAvailable && updateResult.releaseVersion && updateResult.releaseUrl) {
             const { releaseVersion, releaseUrl } = updateResult;
             return (
                 <>
-                    <div className="update-status warning">
+                    <Text size="md" color="warning">
                         New version {releaseVersion} available!
-                    </div>
-                    <div className="links-section">
-                        <button
-                            className="link-button"
-                            onClick={() => shell.openExternal(releaseUrl)}
-                        >
+                    </Text>
+                    <Panel justify="center" wrap gap="lg">
+                        <Button variant="link" size="sm" onClick={() => shell.openExternal(releaseUrl)}>
                             Download
-                        </button>
-                        <button
-                            className="link-button"
-                            onClick={() =>
-                                shell.openExternal(
-                                    "https://github.com/andriy-viyatyk/persephone/blob/main/docs/whats-new.md"
-                                )
-                            }
+                        </Button>
+                        <Button
+                            variant="link"
+                            size="sm"
+                            onClick={() => shell.openExternal("https://github.com/andriy-viyatyk/persephone/blob/main/docs/whats-new.md")}
                         >
                             What's New
-                        </button>
-                    </div>
+                        </Button>
+                    </Panel>
                 </>
             );
         }
-
-        return <div className="update-status success">You're up to date!</div>;
+        return <Text size="md" color="success">You're up to date!</Text>;
     };
 
     return (
-        <AboutEditorRoot>
-            <div className="about-card">
-                <div className="app-icon">
+        <Panel direction="column" align="center" justify="center" padding="xxxl" flex overflow="auto">
+            <Panel
+                direction="column"
+                align="center"
+                padding="xxxl"
+                background="light"
+                rounded="xl"
+                width="100%"
+                maxWidth={400}
+                gap="xl"
+            >
+                <Panel width={64} height={64} align="center" justify="center">
                     <PersephoneIcon width={64} height={64} />
-                </div>
+                </Panel>
 
-                <h1 className="app-name">Persephone</h1>
-                <div className="version-text">Version {app.version || "..."}</div>
+                <Panel direction="column" align="center" gap="xs">
+                    <Text size="xxl" bold>Persephone</Text>
+                    <Text color="light">Version {app.version || "..."}</Text>
+                </Panel>
 
-                <hr className="divider" />
+                <Divider />
 
-                <div className="info-section">
-                    <div className="info-row">
-                        <span className="label">Electron</span>
-                        <span className="value">{runtimeVersions?.electron || "..."}</span>
-                    </div>
-                    <div className="info-row">
-                        <span className="label">Node.js</span>
-                        <span className="value">{runtimeVersions?.node || "..."}</span>
-                    </div>
-                    <div className="info-row">
-                        <span className="label">Chromium</span>
-                        <span className="value">{runtimeVersions?.chrome || "..."}</span>
-                    </div>
-                </div>
+                <Panel direction="column" gap="lg" width="100%">
+                    <Panel justify="between">
+                        <Text size="md" color="light">Electron</Text>
+                        <Text size="md">{runtimeVersions?.electron || "..."}</Text>
+                    </Panel>
+                    <Panel justify="between">
+                        <Text size="md" color="light">Node.js</Text>
+                        <Text size="md">{runtimeVersions?.node || "..."}</Text>
+                    </Panel>
+                    <Panel justify="between">
+                        <Text size="md" color="light">Chromium</Text>
+                        <Text size="md">{runtimeVersions?.chrome || "..."}</Text>
+                    </Panel>
+                </Panel>
 
-                <hr className="divider" />
+                <Divider />
 
-                <div className="update-section">
-                    <button
-                        className="update-button"
-                        onClick={handleCheckForUpdates}
-                        disabled={checking}
-                    >
+                <Panel direction="column" align="center" gap="lg" width="100%">
+                    <Button variant="primary" onClick={handleCheckForUpdates} disabled={checking}>
                         {checking ? "Checking..." : "Check for Updates"}
-                    </button>
+                    </Button>
                     {renderUpdateStatus()}
-                </div>
+                </Panel>
 
-                <hr className="divider" />
+                <Divider />
 
-                <div className="links-section">
-                    <button
-                        className="link-button"
-                        onClick={() =>
-                            shell.openExternal("https://github.com/andriy-viyatyk/persephone")
-                        }
+                <Panel justify="center" wrap gap="lg" width="100%">
+                    <Button
+                        variant="link"
+                        size="sm"
+                        onClick={() => shell.openExternal("https://github.com/andriy-viyatyk/persephone")}
                     >
                         GitHub Repository
-                    </button>
-                    <button
-                        className="link-button"
-                        onClick={() =>
-                            shell.openExternal("https://github.com/andriy-viyatyk/persephone/issues")
-                        }
+                    </Button>
+                    <Button
+                        variant="link"
+                        size="sm"
+                        onClick={() => shell.openExternal("https://github.com/andriy-viyatyk/persephone/issues")}
                     >
                         Report Issue
-                    </button>
-                </div>
-            </div>
-        </AboutEditorRoot>
+                    </Button>
+                </Panel>
+            </Panel>
+        </Panel>
     );
 }
 
