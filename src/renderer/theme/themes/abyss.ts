@@ -75,9 +75,15 @@ export const abyss: ThemeDefinition = {
 
         // success
         "--color-success-bg": "#000c18",
-        "--color-success-text": "#6688cc",
+        "--color-success-text": "#22aa44",
         "--color-success-border": "#000c18",
-        "--color-success-text-hover": "#6688cc",
+        "--color-success-text-hover": "#22aa44",
+
+        // primary
+        "--color-primary-bg": "#000c18",
+        "--color-primary-text": "#6688cc",
+        "--color-primary-border": "#000c18",
+        "--color-primary-text-hover": "#6688cc",
 
         // warning
         "--color-warning-bg": "#000c18",

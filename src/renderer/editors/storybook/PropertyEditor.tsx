@@ -123,7 +123,7 @@ export function PropertyEditor({ model }: { model: StorybookEditorModel }) {
                 padding="md"
             >
                 <Panel padding="md">
-                    <Text variant="caption">No editable props</Text>
+                    <Text size="sm" color="light">No editable props</Text>
                 </Panel>
             </Panel>
         );

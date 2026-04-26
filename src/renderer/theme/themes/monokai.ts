@@ -75,9 +75,15 @@ export const monokai: ThemeDefinition = {
 
         // success
         "--color-success-bg": "#272822",
-        "--color-success-text": "#66d9ef",
+        "--color-success-text": "#a6e22e",
         "--color-success-border": "#272822",
-        "--color-success-text-hover": "#66d9ef",
+        "--color-success-text-hover": "#a6e22e",
+
+        // primary
+        "--color-primary-bg": "#272822",
+        "--color-primary-text": "#66d9ef",
+        "--color-primary-border": "#272822",
+        "--color-primary-text-hover": "#66d9ef",
 
         // warning
         "--color-warning-bg": "#272822",

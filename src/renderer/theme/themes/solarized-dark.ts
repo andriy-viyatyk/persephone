@@ -75,9 +75,15 @@ export const solarizedDark: ThemeDefinition = {
 
         // success
         "--color-success-bg": "#002b36",
-        "--color-success-text": "#268bd2",
+        "--color-success-text": "#859900",
         "--color-success-border": "#002b36",
-        "--color-success-text-hover": "#268bd2",
+        "--color-success-text-hover": "#859900",
+
+        // primary
+        "--color-primary-bg": "#002b36",
+        "--color-primary-text": "#268bd2",
+        "--color-primary-border": "#002b36",
+        "--color-primary-text-hover": "#268bd2",
 
         // warning
         "--color-warning-bg": "#002b36",

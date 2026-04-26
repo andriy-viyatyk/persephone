@@ -35,10 +35,10 @@ function StorybookEditorView({ model }: { model: StorybookEditorModel }) {
         >
             <Toolbar borderBottom aria-label="Storybook editor toolbar">
                 <Panel paddingLeft="sm" paddingRight="md">
-                    <Text variant="heading">Storybook</Text>
+                    <Text size="lg" bold>Storybook</Text>
                 </Panel>
                 <Spacer />
-                <Text variant="caption">Background:</Text>
+                <Text size="sm" color="light">Background:</Text>
                 <SegmentedControl
                     items={BG_OPTIONS}
                     value={previewBackground}

@@ -10,9 +10,9 @@ Overview of all active and planned epics and tasks.
 
 - **EPIC-025** — [Unified Component Library and Storybook Editor](epics/EPIC-025.md)
   - [x] US-437: Design system HTML — closed; exploration complete
-  - [x] [US-438: Pattern research — adopted patterns + component naming table](tasks/US-438-pattern-research/README.md) *(Phase 0)*
-  - [x] US-439: New components folder setup + CLAUDE.md *(Phase 1)*
-  - [x] US-426: Design tokens — spacing, sizing, border-radius, font-size constants *(Phase 1)*
+  - [ ] [US-438: Pattern research — adopted patterns + component naming table](tasks/US-438-pattern-research/README.md) *(Phase 0)*
+  - [ ] US-439: New components folder setup + CLAUDE.md *(Phase 1)*
+  - [ ] US-426: Design tokens — spacing, sizing, border-radius, font-size constants *(Phase 1)*
   - [ ] [US-427: Layout primitives — Flex, HStack, VStack, Panel, Card, Spacer](tasks/US-427-layout-primitives/README.md) *(Phase 1)*
   - [ ] [US-440: Bootstrap component set — minimal components needed for Storybook](tasks/US-440-bootstrap-components/README.md) *(Phase 2)*
   - [ ] [US-434: Storybook editor — component browser, live preview, property editor](tasks/US-434-storybook-editor/README.md) *(Phase 3)*

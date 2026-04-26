@@ -5,52 +5,95 @@ import { fontSize } from "../tokens";
 
 // --- Types ---
 
-export interface TextProps extends React.HTMLAttributes<HTMLSpanElement> {
-    /** Typography preset. Default: "body". */
-    variant?: "heading" | "body" | "caption" | "code";
+export type TextVariant = "default" | "uppercased";
+export type TextColor =
+    | "inherit"
+    | "default"
+    | "light"
+    | "dark"
+    | "error"
+    | "warning"
+    | "success"
+    | "primary";
+export type TextSize = "xs" | "sm" | "md" | "base" | "lg" | "xl" | "xxl";
+
+export interface TextStyleProps {
+    /** Visual variant. "uppercased" applies uppercase + letter-spacing. Default: "default". */
+    variant?: TextVariant;
+    /** Text color. Default: "default" (color.text.default). */
+    color?: TextColor;
+    /** Font size from the fontSize token scale. Default: "base". */
+    size?: TextSize;
+    /** Render text in italic. */
+    italic?: boolean;
+    /** Render text in bold (font-weight 600). */
+    bold?: boolean;
+    /** Prevent text wrapping (white-space: nowrap). */
+    nowrap?: boolean;
 }
+
+export interface TextProps extends
+    Omit<React.HTMLAttributes<HTMLSpanElement>, "style" | "className" | "color">,
+    TextStyleProps {}
 
 // --- Styled ---
 
 const Root = styled.span(
     {
-        // Default: body
-        fontSize: fontSize.base,
-        color: color.text.default,
-        fontWeight: "normal",
+        // --- Size ---
+        '&[data-size="xs"]':   { fontSize: fontSize.xs },
+        '&[data-size="sm"]':   { fontSize: fontSize.sm },
+        '&[data-size="md"]':   { fontSize: fontSize.md },
+        '&[data-size="base"]': { fontSize: fontSize.base },
+        '&[data-size="lg"]':   { fontSize: fontSize.lg },
+        '&[data-size="xl"]':   { fontSize: fontSize.xl },
+        '&[data-size="xxl"]':  { fontSize: fontSize.xxl },
 
-        '&[data-variant="heading"]': {
-            fontSize: fontSize.lg,
-            color: color.text.default,
-            fontWeight: 600,
+        // --- Color ---
+        '&[data-color="inherit"]': { color: "inherit" },
+        '&[data-color="default"]': { color: color.text.default },
+        '&[data-color="light"]':   { color: color.text.light },
+        '&[data-color="dark"]':    { color: color.text.dark },
+        '&[data-color="error"]':   { color: color.error.text },
+        '&[data-color="warning"]': { color: color.warning.text },
+        '&[data-color="success"]': { color: color.success.text },
+        '&[data-color="primary"]': { color: color.primary.text },
+
+        // --- Variant ---
+        '&[data-variant="uppercased"]': {
+            textTransform: "uppercase",
+            letterSpacing: 0.5,
         },
-        '&[data-variant="body"]': {
-            fontSize: fontSize.base,
-            color: color.text.default,
-            fontWeight: "normal",
-        },
-        '&[data-variant="caption"]': {
-            fontSize: fontSize.sm,
-            color: color.text.light,
-            fontWeight: "normal",
-        },
-        '&[data-variant="code"]': {
-            fontSize: fontSize.md,
-            color: color.text.default,
-            fontWeight: "normal",
-            fontFamily: "monospace",
-        },
+
+        // --- Modifiers ---
+        "&[data-bold]":   { fontWeight: 600 },
+        "&[data-italic]": { fontStyle: "italic" },
+        "&[data-nowrap]": { whiteSpace: "nowrap" },
     },
     { label: "Text" },
 );
 
 // --- Component ---
 
-export function Text({ variant = "body", children, ...rest }: TextProps) {
+export function Text({
+    variant = "default",
+    color: colorProp = "default",
+    size = "base",
+    italic,
+    bold,
+    nowrap,
+    children,
+    ...rest
+}: TextProps) {
     return (
         <Root
             data-type="text"
             data-variant={variant}
+            data-color={colorProp}
+            data-size={size}
+            data-bold={bold || undefined}
+            data-italic={italic || undefined}
+            data-nowrap={nowrap || undefined}
             {...rest}
         >
             {children}

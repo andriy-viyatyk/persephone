@@ -49,7 +49,8 @@ import { ThemeDefinition } from "./types";
 // --color-misc-yellow             editorWarning.foreground
 //
 // --color-error-*                 inputValidation.errorBackground/Border
-// --color-success-*               inputValidation.infoBackground/Border
+// --color-success-*               (green — terminal.ansiGreen / testing.iconPassed)
+// --color-primary-*               (accent — inputValidation.infoBackground/Border, textLink)
 // --color-warning-*               inputValidation.warningBackground/Border
 //
 // --color-minimap-bg              minimapSlider.background
@@ -125,9 +126,15 @@ export const defaultDark: ThemeDefinition = {
 
         // success
         "--color-success-bg": "#000000",
-        "--color-success-text": "#2aaaff",
+        "--color-success-text": "#89d185",
         "--color-success-border": "#000000",
-        "--color-success-text-hover": "#2aaaff",
+        "--color-success-text-hover": "#89d185",
+
+        // primary
+        "--color-primary-bg": "#000000",
+        "--color-primary-text": "#2aaaff",
+        "--color-primary-border": "#000000",
+        "--color-primary-text-hover": "#2aaaff",
 
         // warning
         "--color-warning-bg": "#000000",

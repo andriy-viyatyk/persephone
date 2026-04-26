@@ -75,9 +75,15 @@ export const solarizedLight: ThemeDefinition = {
 
         // success
         "--color-success-bg": "#FDF6E3",
-        "--color-success-text": "#268bd2",
+        "--color-success-text": "#859900",
         "--color-success-border": "#FDF6E3",
-        "--color-success-text-hover": "#2176b8",
+        "--color-success-text-hover": "#6f8000",
+
+        // primary
+        "--color-primary-bg": "#FDF6E3",
+        "--color-primary-text": "#268bd2",
+        "--color-primary-border": "#FDF6E3",
+        "--color-primary-text-hover": "#2176b8",
 
         // warning
         "--color-warning-bg": "#FDF6E3",

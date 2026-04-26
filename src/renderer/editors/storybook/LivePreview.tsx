@@ -20,7 +20,7 @@ export function LivePreview({ model }: { model: StorybookEditorModel }) {
                 padding="xl"
                 background={previewBackground}
             >
-                <Text variant="caption">Select a component</Text>
+                <Text size="sm" color="light">Select a component</Text>
             </Panel>
         );
     }

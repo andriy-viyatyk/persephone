@@ -75,9 +75,15 @@ export const tomorrowNightBlue: ThemeDefinition = {
 
         // success
         "--color-success-bg": "#002451",
-        "--color-success-text": "#bbdaff",
+        "--color-success-text": "#d1f1a9",
         "--color-success-border": "#002451",
-        "--color-success-text-hover": "#bbdaff",
+        "--color-success-text-hover": "#d1f1a9",
+
+        // primary
+        "--color-primary-bg": "#002451",
+        "--color-primary-text": "#bbdaff",
+        "--color-primary-border": "#002451",
+        "--color-primary-text-hover": "#bbdaff",
 
         // warning
         "--color-warning-bg": "#002451",

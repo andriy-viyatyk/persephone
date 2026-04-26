@@ -262,18 +262,18 @@ function Select<T>({ items, value, onChange }: SelectProps<T>) {
 |------|-------|--------|
 | US-437 | Design system HTML — tokens, component library, and Persephone screen mockups | Closed |
 | [US-438](../tasks/US-438-pattern-research/README.md) | Pattern research — adopted patterns + component naming table | Phase 0 / Active |
-| US-439 | New components folder setup + CLAUDE.md | Phase 1 / Planned |
-| US-426 | Design tokens — spacing, sizing, border-radius, font-size constants | Phase 1 / Planned |
+| US-439 | New components folder setup + CLAUDE.md | Phase 1 / Active |
+| US-426 | Design tokens — spacing, sizing, border-radius, font-size constants | Phase 1 / Active |
 | [US-427](../tasks/US-427-layout-primitives/README.md) | Layout primitives — Flex, HStack, VStack, Panel, Card, Spacer | Phase 1 / Active |
 | [US-440](../tasks/US-440-bootstrap-components/README.md) | Bootstrap component set — minimal components needed for Storybook | Phase 2 / Active |
 | [US-434](../tasks/US-434-storybook-editor/README.md) | Storybook editor — component browser, live preview, property editor | Phase 3 / Active |
 | [US-450](../tasks/US-450-uikit-toolbar/README.md) | UIKit Toolbar — semantic landmark, roving tabindex, Storybook adoption | Phase 3 polish / Active |
 | [US-451](../tasks/US-451-uikit-panel-refactor/README.md) | UIKit layout refactor — unified Panel + Storybook lighthouse | Phase 3 polish / Active |
 | US-435 | Storybook — script tab for building and testing UI via scripts | Phase 3 / Planned |
-| US-432 | Dialog component — new implementation + migration (Phase 4, first component) | Phase 4 / Planned |
+| US-432 | Dialog component — new UIKit implementation | Phase 4 / Planned |
 | US-436 | Script UI API — expose new component library to scripting engine | Phase 6 / Planned |
 
-> US-433 (Editor migration) is superseded — migration is now per-component during Phase 4. Individual tasks will be created as each component is implemented and tested.
+> US-433 (Editor migration) is superseded — migration is now per-screen during Phase 4. Individual screen-migration tasks will be created as each screen is reached.
 
 ## Phase Plan
 
@@ -292,16 +292,21 @@ Implement the minimal set of components that the Storybook editor UI itself need
 **Phase 3 — Storybook Editor (US-434, US-435, US-450)**
 Build the Storybook editor as a built-in Persephone editor type, using the Phase 2 bootstrap components. As a side effect, this validates and tweaks the bootstrap components — they become the first components tested in Storybook. Storybook is the testing tool for all phases that follow. **US-450** adds a Toolbar to UIKit (with roving tabindex and `role="toolbar"`) and adopts it inside the Storybook editor only — full per-editor migration of `PageToolbar` is deferred.
 
-**Phase 4 — Full Component Library (iterative, one component at a time)**
-For each component in the naming table (from US-438):
-1. Analyze all Persephone UI locations that use the old equivalent — collect all states, props, and variants needed
-2. Implement the new component in the new folder following the CLAUDE.md rules
-3. Add the component to Storybook — test and tweak all states visually
-4. Replace the old component throughout the app immediately (while focused on it)
+**Phase 4 — Per-Screen Migration (iterative, one screen at a time)**
+For each screen in Persephone:
+1. **Pick a screen** — start simple (dialogs, side panels, settings) and work toward complex (editors, page tabs).
+2. **Audit components** — list which UIKit components the screen needs; identify which already exist and which are missing.
+3. **Build missing components in Storybook first** — implement each missing component in `src/renderer/uikit/`, add a `*.story.ts` entry, and verify all states/variants visually before touching the screen.
+4. **Rewrite the screen** — replace all old components with their UIKit equivalents in one focused pass. The screen ends up using only `uikit/` components, no `styled.*`, `style=`, or `className=` (Rule 7).
+5. **Test the rewritten screen** — manual smoke test of the screen's golden path and edge cases; run any existing automated coverage.
 
-Ordering is driven by dependencies — some components must exist before others can be replaced. Per-component tasks are created individually as each one is reached. Dialog (US-432) is the first planned example.
+The old `src/renderer/components/` folder stays in place during the migration as a behavioral reference — useful for comparing old vs. new behavior when investigating regressions. It is removed only after all screens are migrated (final step of Phase 4).
 
-> Some components may block their own replacement if they depend on other new components not yet built. In those cases, build the dependency first, then return.
+Per-screen tasks are created individually as each screen is reached. Ordering is driven by:
+- **Component dependency** — a screen waits if it needs UIKit components that haven't been built yet (those get built when the first screen needing them comes up).
+- **Complexity** — start with simple screens to build confidence in patterns; tackle complex screens (editors, page tabs) after the UIKit catalog is fuller.
+
+> Some screens contain components that are intentionally not rewritten — see Phase 5. Those components are adopted in place; the rest of the screen still migrates to UIKit.
 
 **Phase 5 — Complex Component Adoption (AVGrid, List, ComboSelect)**
 These virtualized and internally complex components are too risky to rewrite from scratch. Instead, adopt new patterns in place:
@@ -315,13 +320,20 @@ Expose the new component library to the scripting engine. Depends on Phases 1–
 
 ## Concerns / Open Questions
 
-1. **Migration scope** — Resolved by iterative per-component approach in Phase 4. Each component is replaced immediately after it is built and tested in Storybook. No big-bang migration. Rarely-used components can simply be left on the old library until needed.
+1. **Migration scope** — Resolved by iterative per-screen migration in Phase 4. Each screen is rewritten in one focused pass after any missing UIKit components are built and tested in Storybook. The old `src/renderer/components/` folder is preserved during the migration as a behavioral reference for investigating regressions; it is removed only after all screens have been migrated. No big-bang migration; screens that haven't been reached yet keep using the old components.
 2. **Storybook editor architecture** — Should it be a single editor that renders any component, or should each component define its own storybook configuration file? Need to decide on the component metadata format. To be resolved in US-434 task planning.
 3. **Script UI security** — Scripts building arbitrary UIs could create confusing interfaces. Should there be sandboxing or capability limits? To be resolved in US-436 task planning.
 4. **Trait integration** — Resolved. See Design Decision #9 for the full pattern.
 5. **UI descriptor scope** — Resolved. Narrow scope: only container/contribution-point components (Toolbar, ContextMenu, StatusBar, etc.) expose a `descriptors` prop. Leaf components (Button, Input, etc.) are used via plain JSX and appear as variants inside a parent union. See Design Decision #5.
 
 ## Notes
+
+### 2026-04-26 (migration strategy: per-component → per-screen)
+- Phase 4 strategy changed from per-component migration to per-screen migration. Reason: rewriting one component at a time forces context-switching across many screens and risks subtle behavioral regressions when the same component is consumed differently in different places. Per-screen migration concentrates the work on one self-contained area at a time, making the rewrite + verify loop tighter.
+- New Phase 4 loop: pick a screen → audit which UIKit components exist vs. missing → build the missing ones in Storybook first → rewrite the screen entirely with UIKit → test the screen.
+- The old `src/renderer/components/` folder is preserved during migration as a behavioral reference. It is removed only after all screens are migrated (final step of Phase 4).
+- US-432 (Dialog) re-scoped: still planned as a component implementation task because many screens depend on it, but the "+ migration" framing is dropped — old dialog usages are replaced screen by screen during normal Phase 4 work.
+- Phase 5 (complex component adopt-in-place) survives as a rule applied during Phase 4: when a screen contains AVGrid / List / ComboSelect, those components are adopted in place, while the rest of the screen migrates to UIKit.
 
 ### 2026-04-19 (US-438 complete — naming table)
 - Pattern review complete. Adopted: data attributes (#6), roving tabindex (#7), focus trap (#8). Skipped: compound components, variant recipe, asChild. Controlled-by-default confirmed as existing practice.

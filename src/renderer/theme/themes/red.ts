@@ -76,9 +76,15 @@ export const red: ThemeDefinition = {
 
         // success
         "--color-success-bg": "#300000",
-        "--color-success-text": "#6c9ef8",
+        "--color-success-text": "#7cc47c",
         "--color-success-border": "#300000",
-        "--color-success-text-hover": "#6c9ef8",
+        "--color-success-text-hover": "#7cc47c",
+
+        // primary
+        "--color-primary-bg": "#300000",
+        "--color-primary-text": "#6c9ef8",
+        "--color-primary-border": "#300000",
+        "--color-primary-text-hover": "#6c9ef8",
 
         // warning
         "--color-warning-bg": "#300000",

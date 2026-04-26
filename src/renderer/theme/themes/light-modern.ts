@@ -74,9 +74,15 @@ export const lightModern: ThemeDefinition = {
 
         // success
         "--color-success-bg": "#FFFFFF",
-        "--color-success-text": "#005FB8",
+        "--color-success-text": "#1A7F37",
         "--color-success-border": "#FFFFFF",
-        "--color-success-text-hover": "#004C93",
+        "--color-success-text-hover": "#14592A",
+
+        // primary
+        "--color-primary-bg": "#FFFFFF",
+        "--color-primary-text": "#005FB8",
+        "--color-primary-border": "#FFFFFF",
+        "--color-primary-text-hover": "#004C93",
 
         // warning
         "--color-warning-bg": "#FFFFFF",

@@ -74,9 +74,15 @@ export const quietLight: ThemeDefinition = {
 
         // success
         "--color-success-bg": "#F5F5F5",
-        "--color-success-text": "#4B69C6",
+        "--color-success-text": "#50A14F",
         "--color-success-border": "#F5F5F5",
-        "--color-success-text-hover": "#3B59B6",
+        "--color-success-text-hover": "#408140",
+
+        // primary
+        "--color-primary-bg": "#F5F5F5",
+        "--color-primary-text": "#4B69C6",
+        "--color-primary-border": "#F5F5F5",
+        "--color-primary-text-hover": "#3B59B6",
 
         // warning
         "--color-warning-bg": "#F5F5F5",

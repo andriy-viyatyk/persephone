@@ -65,6 +65,12 @@ const color = {
         border: "var(--color-success-border)",
         textHover: "var(--color-success-text-hover)",
     },
+    primary: {
+        background: "var(--color-primary-bg)",
+        text: "var(--color-primary-text)",
+        border: "var(--color-primary-border)",
+        textHover: "var(--color-primary-text-hover)",
+    },
     warning: {
         background: "var(--color-warning-bg)",
         text: "var(--color-warning-text)",

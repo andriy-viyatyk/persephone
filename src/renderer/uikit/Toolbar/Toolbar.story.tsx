@@ -12,7 +12,7 @@ const ToolbarDemo = (props: any) => {
     const [picked, setPicked] = React.useState("default");
     return (
         <Toolbar {...props}>
-            <Text variant="caption">Demo:</Text>
+            <Text size="sm" color="light">Demo:</Text>
             <Button>Action</Button>
             <IconButton icon={resolveIconPreset("save")} aria-label="Save" />
             <Spacer />
