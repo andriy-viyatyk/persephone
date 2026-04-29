@@ -39,10 +39,9 @@ If the user gives work without a defined task (e.g., "fix this bug", "add this f
 ### Dashboard rules (STRICT)
 
 The dashboard [/doc/active-work.md](doc/active-work.md) MUST be kept up to date at every stage:
-- **When a task document is created:** Move the task to **Active** and add a link to the document. Format: `- [ ] [US-XXX: Title](tasks/US-XXX-short-name/README.md)`
-- **When work begins on a Planned task (even without a task doc):** Move it from Planned to Active.
+- **When a task document is created:** Add the task to the dashboard with a link to the document. Format: `- [ ] [US-XXX: Title](tasks/US-XXX-short-name/README.md)`. Place it in **Active** if work is starting now, or in **Planned** if it's queued for later — both sections may contain tasks with documents.
+- **When work begins on a Planned task:** Move it from Planned to Active.
 - **When a task is completed:** Mark `[x]` and follow the completion rules (standalone → completed.md, epic task → stays until epic completes).
-- **Never leave a task with a document in Planned** — if a document exists, the task is actively being worked on.
 
 ### Creating a new task ("Let's create a task for ...")
 
@@ -60,7 +59,7 @@ When the user says **"let's create a task for [description]"** (or similar), fol
    - **Implementation plan** — Step-by-step checklist of what to create/modify, with file paths and key details. Each step should have enough detail that the agent can implement it without re-reading the entire codebase.
    - **Concerns / Open questions** — Anything ambiguous, risky, or needing user input. Flag design decisions that could go either way.
    - **Acceptance criteria** — How to verify the task is complete
-4. **Add to dashboard** — Move (or add) the task entry to the **Active** section of [/doc/active-work.md](doc/active-work.md) under the relevant epic (or "no epic"). The entry MUST be a link to the task document: `- [ ] [US-XXX: Title](tasks/US-XXX-short-name/README.md)`. If the task was previously in the **Planned** section, remove it from there.
+4. **Add to dashboard** — Add (or move) the task entry to [/doc/active-work.md](doc/active-work.md) under the relevant epic (or "no epic"). Place it in **Active** if work is starting immediately, or **Planned** if it's queued for later. The entry MUST be a link to the task document: `- [ ] [US-XXX: Title](tasks/US-XXX-short-name/README.md)`. If the task already exists elsewhere in the dashboard, remove the old entry.
 5. **Link to epic** if applicable (update epic's task table in its doc)
 6. **Present the document to the user** — Summarize key points and highlight concerns
 7. **Wait for user review** — Do NOT start implementation. The user will review, ask questions, request changes, and eventually say "let's implement"

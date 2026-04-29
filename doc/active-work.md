@@ -45,6 +45,7 @@ Overview of all active and planned epics and tasks.
 - *(no epic)*
   - [ ] US-347: CategoryView / CategoryEditor Breadcrumb
   - [ ] US-453: Storybook property editor — fix scroll when prop list exceeds panel height
+  - [ ] [US-454: DrawIO Viewer — read-only viewer for `.drawio` files](tasks/US-454-drawio-viewer/README.md)
 
 
 ---
