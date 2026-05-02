@@ -6,7 +6,7 @@ import { createPortal } from "react-dom";
 import { Minimap } from "../../components/layout/Minimap";
 import { useEditorConfig } from "../base";
 import { Button } from "../../components/basic/Button";
-import { MarkdownSearchBar } from "./MarkdownSearchBar";
+import { FindBar } from "../shared/FindBar";
 import { MarkdownViewModel, MarkdownViewState, defaultMarkdownViewState } from "./MarkdownViewModel";
 import { useContentViewModel } from "../base/useContentViewModel";
 import { MarkdownBlock, MarkdownBlockHandle } from "./MarkdownBlock";
@@ -141,11 +141,11 @@ export function MarkdownView({ model }: MarkdownViewProps) {
                 tabIndex={-1}
             >
                 {showSearchBar && (
-                    <MarkdownSearchBar
-                        searchText={pageState.searchText}
+                    <FindBar
+                        text={pageState.searchText}
                         currentMatch={pageState.currentMatchIndex}
                         totalMatches={pageState.totalMatches}
-                        onSearchTextChange={vm.setSearchText}
+                        onTextChange={vm.setSearchText}
                         onNext={vm.nextMatch}
                         onPrev={vm.prevMatch}
                         onClose={vm.closeSearch}

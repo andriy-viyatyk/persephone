@@ -26,6 +26,11 @@ Overview of all active and planned epics and tasks.
   - [ ] [US-458: ImageViewer — UIKit migration](tasks/US-458-image-viewer-migration/README.md) *(Phase 4 — per-screen migration)*
   - [ ] [US-459: BaseImageView — UIKit adoption](tasks/US-459-base-image-view-adoption/README.md) *(Phase 5 — adopt-in-place)*
   - [ ] [US-460: MarkdownSearchBar — UIKit migration](tasks/US-460-markdown-search-bar-migration/README.md) *(Phase 4 — per-screen migration)*
+  - [ ] [US-461: Shared FindBar — consolidate MarkdownSearchBar + BrowserFindBar](tasks/US-461-shared-findbar-consolidation/README.md) *(Phase 4 — per-screen migration)*
+  - [ ] US-462: TorStatusOverlay — UIKit migration *(Phase 4 — per-screen migration)*
+  - [ ] US-463: BrowserDownloadsPopup + DownloadButton — UIKit migration *(Phase 4 — per-screen migration)*
+  - [ ] US-464: UrlSuggestionsDropdown — UIKit migration *(Phase 4 — per-screen migration)*
+  - [ ] US-465: CompareEditor — UIKit migration *(Phase 4 — per-screen migration)*
   - [ ] US-436: Script UI API — expose new component library to scripting engine *(Phase 6)*
   - [ ] US-435: Storybook — script tab for building and testing UI via scripts *(Phase 6)*
 

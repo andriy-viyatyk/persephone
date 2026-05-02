@@ -43,7 +43,7 @@ import { LinkEditor } from "../link-editor/LinkEditor";
 import { BrowserBookmarks } from "./BrowserBookmarks";
 import { DownloadButton } from "./DownloadButton";
 import { BrowserDownloadsPopup } from "./BrowserDownloadsPopup";
-import { BrowserFindBar } from "./BrowserFindBar";
+import { FindBar } from "../shared/FindBar";
 import { PageManager } from "../../components/page-manager/PageManager";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -761,14 +761,15 @@ function BrowserEditorView({ model }: BrowserEditorViewProps) {
                     )}
                     {popupOpen && <div className="webview-click-overlay" />}
                     {findBarVisible && (
-                        <BrowserFindBar
-                            findText={findText}
-                            activeMatch={findActiveMatch}
+                        <FindBar
+                            text={findText}
+                            currentMatch={findActiveMatch}
                             totalMatches={findTotalMatches}
-                            onFindTextChange={webview.setFindText}
+                            onTextChange={webview.setFindText}
                             onNext={webview.findNext}
                             onPrev={webview.findPrev}
                             onClose={webview.closeFind}
+                            placeholder="Find in page..."
                         />
                     )}
                 </div>

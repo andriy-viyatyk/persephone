@@ -2,18 +2,28 @@ import { useEffect, useRef } from "react";
 import { Panel, Input, IconButton, Text } from "../../uikit";
 import { CloseIcon, ChevronUpIcon, ChevronDownIcon } from "../../theme/icons";
 
-export interface MarkdownSearchBarProps {
-    searchText: string;
+export interface FindBarProps {
+    text: string;
     currentMatch: number;
     totalMatches: number;
-    onSearchTextChange: (text: string) => void;
+    onTextChange: (text: string) => void;
     onNext: () => void;
     onPrev: () => void;
     onClose: () => void;
+    placeholder?: string;
 }
 
-export function MarkdownSearchBar(props: MarkdownSearchBarProps) {
-    const { searchText, currentMatch, totalMatches, onSearchTextChange, onNext, onPrev, onClose } = props;
+export function FindBar(props: FindBarProps) {
+    const {
+        text,
+        currentMatch,
+        totalMatches,
+        onTextChange,
+        onNext,
+        onPrev,
+        onClose,
+        placeholder = "Find...",
+    } = props;
     const inputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
@@ -43,7 +53,7 @@ export function MarkdownSearchBar(props: MarkdownSearchBarProps) {
         }
     };
 
-    const matchLabel = searchText
+    const matchLabel = text
         ? totalMatches > 0
             ? `${currentMatch + 1} of ${totalMatches}`
             : "No results"
@@ -69,10 +79,10 @@ export function MarkdownSearchBar(props: MarkdownSearchBarProps) {
                 <Input
                     ref={inputRef}
                     size="sm"
-                    value={searchText}
-                    onChange={onSearchTextChange}
+                    value={text}
+                    onChange={onTextChange}
                     onKeyDown={onKeyDown}
-                    placeholder="Find..."
+                    placeholder={placeholder}
                 />
             </Panel>
             <Panel minWidth={50} align="center" justify="center">
