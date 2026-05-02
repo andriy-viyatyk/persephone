@@ -1,10 +1,116 @@
-import styled from "@emotion/styled";
-import color from "../../theme/color";
-import { Popper } from "../../components/overlay/Popper";
-import { Button } from "../../components/basic/Button";
+import { Panel, Text, Button, IconButton, Spacer, Popover, Tooltip } from "../../uikit";
 import { CloseIcon, FolderOpenIcon } from "../../theme/icons";
+import color from "../../theme/color";
 import { downloads } from "../../api/downloads";
 import { DownloadEntry } from "../../../ipc/api-param-types";
+import { TPopperModel } from "../../ui/dialogs/poppers/types";
+import {
+    closePopper,
+    showPopper,
+    visiblePoppers,
+} from "../../ui/dialogs/poppers/Poppers";
+import { TComponentState } from "../../core/state/state";
+import { DefaultView, ViewPropsRO, Views } from "../../core/state/view";
+
+// =============================================================================
+// Module-private model
+// =============================================================================
+
+const defaultDownloadsPopupState = {} as Record<string, never>;
+type DownloadsPopupState = typeof defaultDownloadsPopupState;
+
+class DownloadsPopupModel extends TPopperModel<DownloadsPopupState, void> {}
+
+// =============================================================================
+// Module-private view (registered with the global Poppers registry)
+// =============================================================================
+
+const downloadsPopupId = Symbol("DownloadsPopup");
+const ignoreSelector = "[data-downloads-button]";
+const popupOffset: [number, number] = [0, 4];
+
+function DownloadsPopupView({ model }: ViewPropsRO<DownloadsPopupModel>) {
+    const downloadsList = downloads.state.use((s) => s.downloads);
+    const hasCompleted = downloadsList.some((d) => d.status !== "downloading");
+
+    return (
+        <Popover
+            open
+            {...model.position}
+            outsideClickIgnoreSelector={ignoreSelector}
+            onClose={() => model.close()}
+        >
+            <Panel direction="column" width={320}>
+                <Panel
+                    direction="row"
+                    align="center"
+                    paddingX="lg"
+                    paddingY="md"
+                    borderBottom
+                >
+                    <Text size="md" bold>Downloads</Text>
+                    <Spacer />
+                    {hasCompleted && (
+                        <Button size="sm" variant="ghost" onClick={downloads.clearCompleted}>
+                            Clear
+                        </Button>
+                    )}
+                </Panel>
+                <Panel direction="column" overflowY="auto" maxHeight={400}>
+                    {downloadsList.length === 0 ? (
+                        <Panel paddingY="xxl" paddingX="lg" align="center" justify="center">
+                            <Text size="md" color="light">No downloads</Text>
+                        </Panel>
+                    ) : (
+                        downloadsList.map((dl, i) => (
+                            <DownloadItem
+                                key={dl.id}
+                                entry={dl}
+                                showBorder={i < downloadsList.length - 1}
+                            />
+                        ))
+                    )}
+                </Panel>
+            </Panel>
+        </Popover>
+    );
+}
+
+Views.registerView(downloadsPopupId, DownloadsPopupView as DefaultView);
+
+// =============================================================================
+// Public imperative API
+// =============================================================================
+
+/**
+ * Open the downloads popup anchored to the given element. Resolves when the popup
+ * closes (click-outside, Escape, or explicit `closeDownloadsPopup()`). No-op if
+ * the popup is already open.
+ */
+export const showDownloadsPopup = async (anchor: Element): Promise<void> => {
+    if (isDownloadsPopupOpen()) return;
+    const state = new TComponentState(defaultDownloadsPopupState);
+    const model = new DownloadsPopupModel(state);
+    model.position = {
+        elementRef: anchor,
+        placement: "bottom-end",
+        offset: popupOffset,
+    };
+    await showPopper<void>({ viewId: downloadsPopupId, model });
+};
+
+/** Close the downloads popup if it is currently open. */
+export const closeDownloadsPopup = (): void => {
+    closePopper(downloadsPopupId);
+};
+
+/** Whether the downloads popup is currently open. */
+export const isDownloadsPopupOpen = (): boolean =>
+    visiblePoppers().some((p) => p.viewId === downloadsPopupId);
+
+// =============================================================================
+// Module-private item view
+// =============================================================================
 
 function formatBytes(bytes: number): string {
     if (bytes <= 0) return "0 B";
@@ -14,141 +120,7 @@ function formatBytes(bytes: number): string {
     return `${value < 10 ? value.toFixed(1) : Math.round(value)} ${units[i]}`;
 }
 
-const PopupContent = styled.div({
-    width: 320,
-    display: "flex",
-    flexDirection: "column",
-
-    "& .downloads-header": {
-        display: "flex",
-        alignItems: "center",
-        padding: "8px 12px",
-        borderBottom: `1px solid ${color.border.light}`,
-        "& .downloads-title": {
-            flex: 1,
-            fontSize: 13,
-            fontWeight: 600,
-            color: color.text.default,
-        },
-    },
-
-    "& .downloads-list": {
-        overflow: "auto",
-        maxHeight: 400,
-    },
-
-    "& .download-item": {
-        display: "flex",
-        flexDirection: "column",
-        padding: "8px 12px",
-        gap: 4,
-        borderBottom: `1px solid ${color.border.light}`,
-        "&:last-child": {
-            borderBottom: "none",
-        },
-    },
-
-    "& .download-row": {
-        display: "flex",
-        alignItems: "center",
-        gap: 8,
-    },
-
-    "& .download-filename": {
-        flex: 1,
-        fontSize: 13,
-        color: color.text.default,
-        overflow: "hidden",
-        textOverflow: "ellipsis",
-        whiteSpace: "nowrap",
-    },
-
-    "& .download-status": {
-        fontSize: 12,
-        color: color.text.light,
-        whiteSpace: "nowrap",
-    },
-
-    "& .download-progress-bar": {
-        height: 3,
-        borderRadius: 2,
-        backgroundColor: color.border.light,
-        overflow: "hidden",
-        "& .download-progress-fill": {
-            height: "100%",
-            borderRadius: 2,
-            backgroundColor: color.border.active,
-            transition: "width 0.3s ease",
-        },
-    },
-
-    "& .download-actions": {
-        display: "flex",
-        gap: 4,
-        "& button": {
-            fontSize: 12,
-            padding: "1px 6px",
-        },
-    },
-
-    "& .download-error": {
-        fontSize: 12,
-        color: color.error.text,
-    },
-
-    "& .downloads-empty": {
-        padding: "24px 12px",
-        textAlign: "center",
-        fontSize: 13,
-        color: color.text.light,
-    },
-});
-
-interface BrowserDownloadsPopupProps {
-    anchorEl: HTMLElement | null;
-    onClose: () => void;
-}
-
-export function BrowserDownloadsPopup({ anchorEl, onClose }: BrowserDownloadsPopupProps) {
-    const downloadsList = downloads.state.use((s) => s.downloads);
-    const hasCompleted = downloadsList.some((d) => d.status !== "downloading");
-
-    return (
-        <Popper
-            open={!!anchorEl}
-            elementRef={anchorEl}
-            placement="bottom-end"
-            offset={[0, 4]}
-            onClose={onClose}
-        >
-            <PopupContent>
-                <div className="downloads-header">
-                    <span className="downloads-title">Downloads</span>
-                    {hasCompleted && (
-                        <Button
-                            size="small"
-                            type="flat"
-                            onClick={downloads.clearCompleted}
-                        >
-                            Clear
-                        </Button>
-                    )}
-                </div>
-                <div className="downloads-list">
-                    {downloadsList.length === 0 ? (
-                        <div className="downloads-empty">No downloads</div>
-                    ) : (
-                        downloadsList.map((dl) => (
-                            <DownloadItem key={dl.id} entry={dl} />
-                        ))
-                    )}
-                </div>
-            </PopupContent>
-        </Popper>
-    );
-}
-
-function DownloadItem({ entry }: { entry: DownloadEntry }) {
+function DownloadItem({ entry, showBorder }: { entry: DownloadEntry; showBorder: boolean }) {
     const { id, filename, status, receivedBytes, totalBytes, error } = entry;
     const isDownloading = status === "downloading";
     const progress = totalBytes > 0 ? Math.min(1, receivedBytes / totalBytes) : 0;
@@ -162,62 +134,72 @@ function DownloadItem({ entry }: { entry: DownloadEntry }) {
             : "Failed";
 
     return (
-        <div className="download-item" title={entry.savePath || filename}>
-            <div className="download-row">
-                <span className="download-filename">{filename}</span>
-                <span className="download-status">{statusText}</span>
-            </div>
+        <Panel
+            direction="column"
+            paddingY="md"
+            paddingX="lg"
+            gap="sm"
+            borderBottom={showBorder || undefined}
+        >
+            <Panel direction="row" align="center" gap="md">
+                <Tooltip content={entry.savePath || filename}>
+                    <Panel flex overflow="hidden">
+                        <Text truncate size="md">{filename}</Text>
+                    </Panel>
+                </Tooltip>
+                <Text size="sm" color="light" nowrap>{statusText}</Text>
+            </Panel>
             {isDownloading && (
-                <div className="download-progress-bar">
+                <div
+                    style={{
+                        height: 3,
+                        borderRadius: 2,
+                        backgroundColor: color.border.light,
+                        overflow: "hidden",
+                    }}
+                >
                     <div
-                        className="download-progress-fill"
-                        style={{ width: `${progress * 100}%` }}
+                        style={{
+                            height: "100%",
+                            width: `${progress * 100}%`,
+                            backgroundColor: color.border.active,
+                            borderRadius: 2,
+                            transition: "width 0.3s ease",
+                        }}
                     />
                 </div>
             )}
             {error && status === "failed" && (
-                <div className="download-error">{error}</div>
+                <Text size="sm" color="error">{error}</Text>
             )}
-            <div className="download-actions">
+            <Panel direction="row" gap="sm">
                 {isDownloading && (
-                    <Button
-                        size="small"
-                        type="flat"
-                        onClick={() => downloads.cancelDownload(id)}
-                    >
+                    <Button size="sm" variant="ghost" onClick={() => downloads.cancelDownload(id)}>
                         Cancel
                     </Button>
                 )}
                 {status === "completed" && (
                     <>
-                        <Button
-                            size="small"
-                            type="flat"
-                            onClick={() => downloads.openDownload(id)}
-                        >
+                        <Button size="sm" variant="ghost" onClick={() => downloads.openDownload(id)}>
                             Open
                         </Button>
-                        <Button
-                            size="small"
-                            type="icon"
+                        <IconButton
+                            size="sm"
                             title="Show in Folder"
+                            icon={<FolderOpenIcon />}
                             onClick={() => downloads.showInFolder(id)}
-                        >
-                            <FolderOpenIcon />
-                        </Button>
+                        />
                     </>
                 )}
                 {(status === "failed" || status === "cancelled") && (
-                    <Button
-                        size="small"
-                        type="icon"
+                    <IconButton
+                        size="sm"
                         title="Dismiss"
+                        icon={<CloseIcon />}
                         onClick={() => downloads.clearCompleted()}
-                    >
-                        <CloseIcon />
-                    </Button>
+                    />
                 )}
-            </div>
-        </div>
+            </Panel>
+        </Panel>
     );
 }

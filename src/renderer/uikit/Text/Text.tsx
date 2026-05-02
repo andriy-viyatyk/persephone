@@ -32,6 +32,11 @@ export interface TextStyleProps {
     nowrap?: boolean;
     /** Preserve newlines and wrap on word boundaries (white-space: pre-wrap). Mutually exclusive with `nowrap`. */
     preWrap?: boolean;
+    /**
+     * Truncate with an ellipsis. Wrap in a flex parent (e.g. `<Panel flex overflow="hidden">`)
+     * so the parent can clip — `min-width: 0` on the truncated Text lets it shrink below content size.
+     */
+    truncate?: boolean;
 }
 
 export interface TextProps extends
@@ -72,6 +77,13 @@ const Root = styled.span(
         "&[data-italic]":   { fontStyle: "italic" },
         "&[data-nowrap]":   { whiteSpace: "nowrap" },
         "&[data-pre-wrap]": { whiteSpace: "pre-wrap" },
+        "&[data-truncate]": {
+            display: "block",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            minWidth: 0,
+        },
     },
     { label: "Text" },
 );
@@ -86,6 +98,7 @@ export function Text({
     bold,
     nowrap,
     preWrap,
+    truncate,
     children,
     ...rest
 }: TextProps) {
@@ -99,6 +112,7 @@ export function Text({
             data-italic={italic || undefined}
             data-nowrap={nowrap || undefined}
             data-pre-wrap={preWrap || undefined}
+            data-truncate={truncate || undefined}
             {...rest}
         >
             {children}

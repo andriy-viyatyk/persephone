@@ -15,5 +15,6 @@ export const textStory: Story = {
         { name: "bold",    type: "boolean", default: false },
         { name: "nowrap",  type: "boolean", default: false },
         { name: "preWrap", type: "boolean", default: false },
+        { name: "truncate", type: "boolean", default: false },
     ],
 };

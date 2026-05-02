@@ -1,125 +1,85 @@
 import { useRef } from "react";
-import styled from "@emotion/styled";
+import { Panel, IconButton } from "../../uikit";
 import { DownloadIcon } from "../../theme/icons";
 import color from "../../theme/color";
-import { Tooltip } from "../../components/basic/Tooltip";
-
 import { downloads } from "../../api/downloads";
+import {
+    closeDownloadsPopup,
+    isDownloadsPopupOpen,
+    showDownloadsPopup,
+} from "./BrowserDownloadsPopup";
 
-const ICON_SIZE = 16;
 const RING_SIZE = 22;
 const RING_CENTER = RING_SIZE / 2;
 const RING_RADIUS = 9;
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 
-const DownloadButtonRoot = styled.button({
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    position: "relative",
-    width: 24,
-    height: 24,
-    padding: 0,
-    border: "none",
-    borderRadius: 6,
-    backgroundColor: "transparent",
-    cursor: "pointer",
-    outline: "none",
-    "& svg.download-icon": {
-        width: ICON_SIZE,
-        height: ICON_SIZE,
-        color: color.icon.light,
-    },
-    "&:hover svg.download-icon": {
-        color: color.icon.default,
-    },
-    "&:active svg.download-icon": {
-        color: color.icon.dark,
-    },
-    "&.active svg.download-icon": {
-        color: color.icon.active,
-    },
-    "& .progress-ring": {
-        position: "absolute",
-        top: (24 - RING_SIZE) / 2,
-        left: (24 - RING_SIZE) / 2,
-        width: RING_SIZE,
-        height: RING_SIZE,
-        pointerEvents: "none",
-    },
-    "& .progress-ring-bg": {
-        fill: "none",
-        stroke: color.border.light,
-        strokeWidth: 1.5,
-    },
-    "& .progress-ring-fg": {
-        fill: "none",
-        stroke: color.border.active,
-        strokeWidth: 1.5,
-        strokeLinecap: "round",
-        transform: "rotate(-90deg)",
-        transformOrigin: "center",
-        transition: "stroke-dashoffset 0.3s ease",
-    },
-});
-
-interface DownloadButtonProps {
-    onClick: (anchorEl: HTMLElement) => void;
-}
-
-export function DownloadButton({ onClick }: DownloadButtonProps) {
-    const tooltipId = useRef(crypto.randomUUID()).current;
+export function DownloadButton() {
     const buttonRef = useRef<HTMLButtonElement>(null);
 
     const { hasActive, progress } = downloads.state.use((s) => {
         const active = s.downloads.filter((d) => d.status === "downloading");
-        const hasActive = active.length > 0;
-        let progress = 0;
-        if (hasActive) {
+        const hasActiveDl = active.length > 0;
+        let prog = 0;
+        if (hasActiveDl) {
             const totalBytes = active.reduce((sum, d) => sum + d.totalBytes, 0);
             const receivedBytes = active.reduce((sum, d) => sum + d.receivedBytes, 0);
-            progress = totalBytes > 0 ? Math.min(1, receivedBytes / totalBytes) : 0;
+            prog = totalBytes > 0 ? Math.min(1, receivedBytes / totalBytes) : 0;
         }
-        return { hasActive, progress };
+        return { hasActive: hasActiveDl, progress: prog };
     });
 
     const dashOffset = RING_CIRCUMFERENCE * (1 - progress);
 
     const handleClick = () => {
-        if (buttonRef.current) {
-            onClick(buttonRef.current);
+        if (!buttonRef.current) return;
+        if (isDownloadsPopupOpen()) {
+            closeDownloadsPopup();
+        } else {
+            showDownloadsPopup(buttonRef.current);
         }
     };
 
     return (
-        <>
-            <DownloadButtonRoot
+        <Panel position="relative" align="center" justify="center" data-downloads-button>
+            <IconButton
                 ref={buttonRef}
-                className={hasActive ? "active" : undefined}
+                size="sm"
+                title="Downloads"
+                active={hasActive || undefined}
+                icon={<DownloadIcon />}
                 onClick={handleClick}
-                data-tooltip-id={tooltipId}
-            >
-                <DownloadIcon className="download-icon" />
-                {hasActive && (
-                    <svg className="progress-ring" viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}>
-                        <circle
-                            className="progress-ring-bg"
-                            cx={RING_CENTER}
-                            cy={RING_CENTER}
-                            r={RING_RADIUS}
-                        />
-                        <circle
-                            className="progress-ring-fg"
-                            cx={RING_CENTER}
-                            cy={RING_CENTER}
-                            r={RING_RADIUS}
-                            strokeDasharray={RING_CIRCUMFERENCE}
-                            strokeDashoffset={dashOffset}
-                        />
-                    </svg>
-                )}
-            </DownloadButtonRoot>
-            <Tooltip id={tooltipId}>Downloads</Tooltip>
-        </>
+            />
+            {hasActive && (
+                <svg
+                    viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}
+                    width={RING_SIZE}
+                    height={RING_SIZE}
+                    style={{ position: "absolute", top: 1, left: 1, pointerEvents: "none" }}
+                >
+                    <circle
+                        cx={RING_CENTER}
+                        cy={RING_CENTER}
+                        r={RING_RADIUS}
+                        fill="none"
+                        stroke={color.border.light}
+                        strokeWidth={1.5}
+                    />
+                    <circle
+                        cx={RING_CENTER}
+                        cy={RING_CENTER}
+                        r={RING_RADIUS}
+                        fill="none"
+                        stroke={color.border.active}
+                        strokeWidth={1.5}
+                        strokeLinecap="round"
+                        strokeDasharray={RING_CIRCUMFERENCE}
+                        strokeDashoffset={dashOffset}
+                        transform={`rotate(-90 ${RING_CENTER} ${RING_CENTER})`}
+                        style={{ transition: "stroke-dashoffset 0.3s ease" }}
+                    />
+                </svg>
+            )}
+        </Panel>
     );
 }

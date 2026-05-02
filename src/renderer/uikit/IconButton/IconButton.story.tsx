@@ -19,6 +19,7 @@ export const iconButtonStory: Story = {
         { name: "iconPreset", type: "icon", default: "folder", label: "Icon" },
         { name: "size", type: "enum", options: ["sm", "md"], default: "md" },
         { name: "title", type: "string", default: "" },
+        { name: "active", type: "boolean", default: false },
         { name: "disabled", type: "boolean", default: false },
     ],
 };

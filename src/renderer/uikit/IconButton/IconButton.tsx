@@ -17,6 +17,11 @@ export interface IconButtonProps extends Omit<React.ButtonHTMLAttributes<HTMLBut
     icon: React.ReactNode;
     /** Control size. Default: "md". */
     size?: "sm" | "md";
+    /**
+     * Highlighted/toggled state. When true, the icon color is `color.icon.active` and that
+     * color overrides the hover/press feedback. Use for toolbar toggles and indicator buttons.
+     */
+    active?: boolean;
 }
 
 // --- Styled ---
@@ -65,6 +70,10 @@ const Root = styled.button(
             },
         },
 
+        "&[data-active]": {
+            color: color.icon.active,
+        },
+
         "&[data-disabled]": {
             color: color.icon.disabled,
             pointerEvents: "none",
@@ -76,12 +85,13 @@ const Root = styled.button(
 // --- Component ---
 
 export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
-    function IconButton({ icon, size = "md", disabled, title, ...rest }, ref) {
+    function IconButton({ icon, size = "md", active, disabled, title, ...rest }, ref) {
         const button = (
             <Root
                 ref={ref}
                 data-type="icon-button"
                 data-size={size}
+                data-active={active || undefined}
                 data-disabled={disabled || undefined}
                 disabled={disabled}
                 type="button"

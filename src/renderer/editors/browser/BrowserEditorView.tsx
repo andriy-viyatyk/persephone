@@ -42,7 +42,6 @@ import { BookmarksDrawer } from "./BookmarksDrawer";
 import { LinkEditor } from "../link-editor/LinkEditor";
 import { BrowserBookmarks } from "./BrowserBookmarks";
 import { DownloadButton } from "./DownloadButton";
-import { BrowserDownloadsPopup } from "./BrowserDownloadsPopup";
 import { FindBar } from "../shared/FindBar";
 import { PageManager } from "../../components/page-manager/PageManager";
 
@@ -495,11 +494,6 @@ function BrowserEditorView({ model }: BrowserEditorViewProps) {
     });
 
     const isInitialLoad = useRef(true);
-    const [downloadsAnchor, setDownloadsAnchor] = useState<HTMLElement | null>(null);
-    const handleDownloadClick = useCallback((el: HTMLElement) => {
-        setDownloadsAnchor((prev) => (prev ? null : el));
-    }, []);
-    const handleDownloadsClose = useCallback(() => setDownloadsAnchor(null), []);
 
     // IPC event handler lifecycle
     useEffect(() => {
@@ -659,7 +653,7 @@ function BrowserEditorView({ model }: BrowserEditorViewProps) {
                     >
                         <BookmarkIcon />
                     </Button>
-                    <DownloadButton onClick={handleDownloadClick} />
+                    <DownloadButton />
                     <WithPopupMenu items={webview.getPageMenuItems()}>
                         {(openMenu) => (
                             <Button
@@ -793,10 +787,6 @@ function BrowserEditorView({ model }: BrowserEditorViewProps) {
                 onHoveredIndexChange={(i) => model.state.update((s) => { s.hoveredIndex = i; })}
                 onSelect={urlBar.handleSuggestionSelect}
                 onClearVisible={suggestionsMode === "search" ? urlBar.handleClearVisible : undefined}
-            />
-            <BrowserDownloadsPopup
-                anchorEl={downloadsAnchor}
-                onClose={handleDownloadsClose}
             />
         </BrowserEditorViewRoot>
     );

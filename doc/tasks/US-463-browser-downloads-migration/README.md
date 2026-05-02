@@ -132,7 +132,7 @@ The popup is rendered inside the legacy [Popper](../../../src/renderer/component
 | Hover/active CSS → icon color cycles `light` / `default` / `dark` | Built into IconButton's styled rules | none |
 | `.active` class → icon color `color.icon.active` while downloading | **No `active` prop on IconButton today** | **Add `IconButton.active?: boolean` → `data-active` → `color.icon.active`.** |
 | Outer wrapper for ring + button | UIKit `<Panel position="relative">` containing IconButton + raw `<svg>` overlay | none |
-| Tooltip "Downloads" via react-tooltip `data-tooltip-id` | UIKit IconButton's native `title="Downloads"` (HTML title attribute) | Same drift as US-462 close button. Different hover delay, no styled bubble. Acceptable — the toolbar will be migrated holistically later. |
+| Tooltip "Downloads" via react-tooltip `data-tooltip-id` | UIKit IconButton's `title="Downloads"` prop, which auto-wraps in UIKit Tooltip (US-467) | None. UIKit Tooltip provides themed bubble, 600ms show / 100ms hide delays, portaled to `<body>`. |
 | `<svg className="progress-ring">` with two `<circle>`s | Raw `<svg>` child inside the wrapping Panel; positioning via inline `style` (allowed on raw SVG, not a UIKit component) | none — Rule 7 only forbids `style=` on UIKit components. |
 | `useRef<HTMLButtonElement>` to capture the anchor for the popup | `useRef<HTMLButtonElement>` forwarded into IconButton (already supports `ref` via `forwardRef`) | none |
 
@@ -146,9 +146,9 @@ The popup is rendered inside the legacy [Popper](../../../src/renderer/component
 | `.downloads-title` — flex 1, fontSize 13, fontWeight 600 + Spacer-like effect | `<Text size="md" bold>Downloads</Text>` then `<Spacer />` to push Clear right | `size="md"` = 13 (matches), `bold` = font-weight 600 (matches). |
 | `<Button size="small" type="flat">Clear</Button>` | `<Button size="sm" variant="ghost">Clear</Button>` | UIKit ghost button matches "flat" — transparent bg, hover `color.background.light`. Drift in hover behavior is mild and consistent with US-462. |
 | `.downloads-list` — overflow auto, maxHeight 400 | `<Panel direction="column" overflowY="auto" maxHeight={400}>` | none |
-| `.download-item` — column, padding 8/12, gap 4, borderBottom (none on last) | `<Panel direction="column" paddingY="md" paddingX="lg" gap="sm" borderBottom={!isLast} title={...}>` | `gap="sm"` = 4 (matches). Last-item border handled by passing `borderBottom={index < list.length - 1}` from parent loop. |
+| `.download-item` — column, padding 8/12, gap 4, borderBottom (none on last) | `<Panel direction="column" paddingY="md" paddingX="lg" gap="sm" borderBottom={!isLast}>` (no `title` — see filename row below) | `gap="sm"` = 4 (matches). Last-item border handled by passing `borderBottom={index < list.length - 1}` from parent loop. |
 | `.download-row` — flex row, align center, gap 8 | `<Panel direction="row" align="center" gap="md">` | `gap="md"` = 6 (drift: 8 → 6, acceptable). |
-| `.download-filename` — flex 1, fontSize 13, overflow hidden, text-overflow ellipsis, white-space nowrap | `<Panel flex overflow="hidden"><Text truncate size="md">{filename}</Text></Panel>` | **`Text.truncate?: boolean` missing today.** Add it: `display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0`. Reusable wherever a Text inside a flex child needs ellipsis. |
+| `.download-filename` — flex 1, fontSize 13, overflow hidden, text-overflow ellipsis, white-space nowrap, full path on hover (legacy `title=` on the wrapping `.download-item` div) | `<Tooltip content={savePath || filename}><Panel flex overflow="hidden"><Text truncate size="md">{filename}</Text></Panel></Tooltip>` | **`Text.truncate?: boolean` missing today.** Add it: `display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0`. Reusable wherever a Text inside a flex child needs ellipsis. UIKit Tooltip wraps the flex Panel (Panel is `forwardRef`-compatible); the tooltip is scoped to the filename area only — hovering the status text or action buttons no longer shows it, avoiding the double-tooltip overlap when hovering the "Open"/"Show in Folder" buttons that already carry their own UIKit tooltips. |
 | `.download-status` — fontSize 12, color light, whiteSpace nowrap | `<Text size="sm" color="light" nowrap>{statusText}</Text>` | `size="sm"` = 12 (matches). |
 | `.download-progress-bar` — 3px track, radius 2, color.border.light bg, overflow hidden, with inner fill (height 100%, radius 2, color.border.active bg, transition width 0.3s) | Raw `<div style={{...}}>` track + `<div style={{...}}>` fill (leaf decorative element, not UIKit composition) | Pragmatic exception. UIKit Panel can't carry an arbitrary background color (only `default/light/dark/overlay`); promoting a 3px progress bar to UIKit `ProgressBar` is meaningful but out of scope here. Documented and accepted. |
 | `.download-error` — fontSize 12, color error | `<Text size="sm" color="error">{error}</Text>` | none |
@@ -164,7 +164,9 @@ Two minimal additions, both reusable beyond this screen.
 Add an optional highlighted-state flag to [IconButton.tsx](../../../src/renderer/uikit/IconButton/IconButton.tsx). Implementation:
 
 ```tsx
-export interface IconButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+export interface IconButtonProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "title"> {
+    /** Tooltip content. After US-467, IconButton wraps in UIKit `<Tooltip>` when set. */
+    title?: React.ReactNode;
     icon: React.ReactNode;
     size?: "sm" | "md";
     /** Highlighted/toggled state. When true, icon stroke uses `color.icon.active` (overrides hover/press feedback). */
@@ -185,8 +187,8 @@ const Root = styled.button(
 );
 
 export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
-    function IconButton({ icon, size = "md", active, disabled, ...rest }, ref) {
-        return (
+    function IconButton({ icon, size = "md", active, disabled, title, ...rest }, ref) {
+        const button = (
             <Root
                 ref={ref}
                 data-type="icon-button"
@@ -200,9 +202,12 @@ export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
                 <span data-part="icon">{icon}</span>
             </Root>
         );
+        return title ? <Tooltip content={title}>{button}</Tooltip> : button;
     },
 );
 ```
+
+**Important — preserve US-467's tooltip wrap**: the current `IconButton.tsx` after US-467 declares `extends Omit<…, "title">`, has `title?: React.ReactNode`, and conditionally wraps the button in `<Tooltip content={title}>`. The diff for this task is **strictly additive**: add `active?: boolean` to the interface, add `data-active={active || undefined}` to `<Root>`, add the `&[data-active]` styled rule. Do NOT replace the interface body or the component body wholesale — that would silently re-narrow `title` back to `string` and drop the tooltip wrap.
 
 CSS rule order matters: `&[data-active]` is declared **after** `&:hover` and `&:active` so that — when the button is highlighted (`data-active`) — that color wins over the hover/press feedback. This matches legacy behavior where `.active` overrode hover/active. `&[data-disabled]` is declared last so disabled wins over everything.
 
@@ -252,11 +257,11 @@ export function Text({ /* …existing… */, truncate, ... }: TextProps) {
 
 Why a `truncate` prop on Text and not a separate `TruncatedText` component (per the US-438 naming table): `TruncatedText` (formerly `OverflowTooltipText`) is intended to also show a tooltip when the text is actually truncated. That requires width measurement and ResizeObserver — meaningful complexity. A simple ellipsis prop on Text covers 80% of cases without the tooltip layer. When `TruncatedText` is built later, it can wrap or compose `Text truncate` internally.
 
-### Popover — UIKit (from US-466), Tooltip — legacy dropped
+### Popover — UIKit (from US-466), Tooltip — UIKit (from US-467)
 
 `Popper` is replaced by the UIKit `Popover` built in [US-466](../US-466-uikit-popover/README.md). `BrowserDownloadsPopup.tsx` now imports `Popover` from `../../uikit` and the legacy `components/overlay/Popper.tsx` is no longer referenced from this file.
 
-`Tooltip` (react-tooltip wrapper at [components/basic/Tooltip.tsx](../../../src/renderer/components/basic/Tooltip.tsx)) is dropped from `DownloadButton.tsx` entirely — replaced by `IconButton title="Downloads"` (native HTML tooltip), matching the [US-462 close button](../US-462-tor-status-overlay-migration/README.md) precedent. UIKit Tooltip is a future task ([US-467 placeholder](../../active-work.md)) that will normalize tooltip styling toolbar-wide.
+`Tooltip` (react-tooltip wrapper at [components/basic/Tooltip.tsx](../../../src/renderer/components/basic/Tooltip.tsx)) is dropped from `DownloadButton.tsx` entirely. After [US-467](../US-467-uikit-tooltip/README.md), passing `title="Downloads"` to UIKit `IconButton` automatically wraps it in UIKit `<Tooltip>` (themed bubble, 600ms show delay, portaled to `<body>`). No tooltip styling drift remains.
 
 ### Rule 7 boundary recap
 
@@ -280,7 +285,6 @@ Both files after migration contain no Emotion imports and no `style=`/`className
 | Drift | Old | New | Reason |
 |---|---|---|---|
 | DownloadButton borderRadius | 6 | 3 (`radius.sm` via IconButton) | UIKit IconButton standard. 3px difference is barely visible at 24×24. |
-| DownloadButton tooltip | react-tooltip with delay/styling | native HTML `title` attribute | Same drift as US-462 close button. Toolbar will be migrated wholesale later. |
 | Popup row gap | 8px | 6px (`gap="md"`) | Closest token. 2px tighter — visually neutral. |
 | Action-button padding | `1px 6px` | UIKit Button `0 4px` | UIKit standard for `size="sm"`. |
 | Action-button hover background | legacy flat hover | UIKit ghost variant hover (`color.background.light`) | Variant matches behaviorally; subtle background tint on hover. |
@@ -312,14 +316,15 @@ Both files after migration contain no Emotion imports and no `style=`/`className
 
 ## Implementation plan
 
-### Step 1 — Extend `IconButton` with `active` prop
+### Step 1 — Extend `IconButton` with `active` prop (additive only)
 
 [src/renderer/uikit/IconButton/IconButton.tsx](../../../src/renderer/uikit/IconButton/IconButton.tsx):
 
-- Add `active?: boolean` to `IconButtonProps`.
-- Destructure in the component body (after `disabled`).
+- Add `active?: boolean` to `IconButtonProps` (the existing `extends Omit<…, "title">` and `title?: React.ReactNode` from US-467 stay untouched).
+- Destructure `active` in the component body (after `disabled`, before `title`).
 - Pass `data-active={active || undefined}` on `<Root>`.
 - Add `'&[data-active]': { color: color.icon.active }` to the styled rules — placed **after** `&:hover` / `&:active` / size selectors and **before** `&[data-disabled]`.
+- Do NOT touch the existing `title ? <Tooltip content={title}>{button}</Tooltip> : button` return.
 
 ### Step 2 — Update `IconButton.story.tsx`
 
@@ -433,7 +438,7 @@ Notes:
 Replace the entire file body with:
 
 ```tsx
-import { Panel, Text, Button, IconButton, Spacer, Popover } from "../../uikit";
+import { Panel, Text, Button, IconButton, Spacer, Popover, Tooltip } from "../../uikit";
 import { CloseIcon, FolderOpenIcon } from "../../theme/icons";
 import color from "../../theme/color";
 import { downloads } from "../../api/downloads";
@@ -580,12 +585,13 @@ function DownloadItem({ entry, showBorder }: { entry: DownloadEntry; showBorder:
             paddingX="lg"
             gap="sm"
             borderBottom={showBorder || undefined}
-            title={entry.savePath || filename}
         >
             <Panel direction="row" align="center" gap="md">
-                <Panel flex overflow="hidden">
-                    <Text truncate size="md">{filename}</Text>
-                </Panel>
+                <Tooltip content={entry.savePath || filename}>
+                    <Panel flex overflow="hidden">
+                        <Text truncate size="md">{filename}</Text>
+                    </Panel>
+                </Tooltip>
                 <Text size="sm" color="light" nowrap>{statusText}</Text>
             </Panel>
             {isDownloading && (
@@ -701,9 +707,9 @@ A `ProgressBar` component is meaningful future UIKit (file uploads, AI generatio
 
 Same reasoning as #1. The ring is one consumer (DownloadButton) drawing two `<circle>`s — raw SVG with inline styles is appropriate for leaf content. Promoting to UIKit when there's a second consumer (e.g. an AI agent progress badge somewhere) is the right cue.
 
-### 3. Should we keep react-tooltip (`Tooltip`) for the Downloads button? — RESOLVED: no, native `title="Downloads"`
+### 3. Should we keep react-tooltip (`Tooltip`) for the Downloads button? — RESOLVED: no, UIKit Tooltip via `IconButton title="Downloads"`
 
-US-462 already established the precedent: a single migrated button uses the native HTML `title` attribute via `IconButton title="…"`. The toolbar will be migrated wholesale later; until then, a one-button drift in tooltip styling is acceptable. Drops the legacy Tooltip import from `DownloadButton.tsx`.
+After [US-467](../US-467-uikit-tooltip/README.md), passing `title="…"` to UIKit `IconButton` auto-wraps the button in UIKit `<Tooltip>` (themed bubble, 600ms show / 100ms hide delays, portaled to `<body>`). The legacy react-tooltip import is dropped from `DownloadButton.tsx`. No tooltip styling drift — UIKit Tooltip is a real replacement, not a fallback to a browser-native tooltip.
 
 ### 4. Should we replace `Popper` with a UIKit `Popover`? — RESOLVED: yes, depends on US-466
 
@@ -717,9 +723,16 @@ Original draft said "no, defer". Reversed — UIKit `Popover` is being built fir
 
 uikit/CLAUDE.md's standard data-attribute table lists `data-active` for "item is focused / highlighted" — exactly the semantics here. The CSS pseudo-class `:active` (mouse-pressed) uses a different selector and remains usable for press-feedback visuals. Order of styled rules ensures `&[data-active]` overrides `&:hover` and `&:active` (matches legacy `.active` overriding both).
 
-### 7. `Text.truncate` — should there be a tooltip when truncated? — RESOLVED: no, use the native `title` on the parent Panel
+### 7. `Text.truncate` — should there be a tooltip when truncated? — RESOLVED: wrap the filename's flex Panel in UIKit Tooltip
 
-Legacy `<div className="download-item" title={entry.savePath || filename}>` carries a tooltip on the wrapping container, not on the truncated text itself. The new code preserves that — `<Panel … title={…}>` carries the same native tooltip. Showing a measure-aware in-text tooltip ("only when actually truncated") is the future `TruncatedText` component's job — out of scope.
+Legacy `<div className="download-item" title={entry.savePath || filename}>` carried a native browser tooltip on the entire item container. Reusing that pattern in the migration (a `title=` on the outer Panel) caused two problems:
+
+1. **Double tooltip when hovering action buttons.** The native item-level tooltip fires anywhere inside the row, so hovering the "Open" / "Show in Folder" / "Cancel" buttons shows both the button's UIKit tooltip *and* the native full-path tooltip stacked on top of each other.
+2. **Native vs UIKit drift inside one popup.** Every other tooltip in the popover is a styled UIKit Tooltip; only the filename one would have been an unstyled browser tooltip.
+
+Resolution: scope the tooltip to the filename area only, and use UIKit Tooltip for it. The existing `<Panel flex overflow="hidden">` (which exists to make the Text truncate work) is wrapped in `<Tooltip content={savePath || filename}>`. UIKit Tooltip uses `cloneElement` and requires a `forwardRef`-compatible single child — Panel qualifies, Text currently does not. Hovering anywhere outside the filename area shows no tooltip; hovering the action buttons shows only their own UIKit tooltips ("Show in Folder", "Dismiss"). No double-tooltip overlap.
+
+Showing the tooltip *only when actually truncated* (measure-aware via ResizeObserver) is the future `TruncatedText` component's job — out of scope. The current behavior shows the tooltip on every hover, which is fine since the content (`savePath || filename`) is always meaningful.
 
 ### 8. Folder placement — do these files move to `editors/shared/` or to UIKit? — RESOLVED: no, stay in `editors/browser/`
 
@@ -784,21 +797,21 @@ This makes the toggle robust.
 4. `Text.tsx` exposes a `truncate?: boolean` prop; passing it makes a Text inside `<Panel flex overflow="hidden">` clip with an ellipsis.
 5. `BrowserEditorView.tsx` no longer references `BrowserDownloadsPopup` (no import, no JSX render), no longer holds `downloadsAnchor` state, and no longer has `handleDownloadClick` / `handleDownloadsClose`.
 6. `npx tsc --noEmit` reports no new errors on `IconButton.tsx`, `Text.tsx`, `DownloadButton.tsx`, `BrowserDownloadsPopup.tsx`, `BrowserEditorView.tsx`.
-7. **Smoke test — idle state**: Open a browser tab. The download button (16×16 download icon in a 24×24 container) appears in the toolbar in light icon color. No progress ring. Native HTML tooltip "Downloads" appears on hover.
+7. **Smoke test — idle state**: Open a browser tab. The download button (16×16 download icon in a 24×24 container) appears in the toolbar in light icon color. No progress ring. UIKit Tooltip "Downloads" appears after ~600ms hover; bubble matches theme; portaled to `<body>` (verifiable via DevTools as `[data-type='tooltip']`).
 8. **Smoke test — active download**: Start a download. The icon turns to `color.icon.active` (orange in the default-dark theme). A circular ring appears around it; ring fill animates as bytes arrive. Hovering the button does not switch the color (active wins over hover).
 9. **Smoke test — popup open**: Click the download button. Popup opens anchored bottom-end with 4px offset. 320px wide. Header reads "Downloads" in bold; "Clear" button appears on the right when at least one non-active download exists.
 10. **Smoke test — toggle**: Click the download button while the popup is already open. Popup closes (the button does NOT immediately reopen it). Click again — popup reopens. This validates concern #12 (`outsideClickIgnoreSelector="[data-downloads-button]"`).
 11. **Smoke test — click-outside dismissal**: Open the popup, click anywhere else in the page (not on the button). Popup closes.
 12. **Smoke test — Escape dismissal**: Open the popup, press Escape. Popup closes.
 13. **Smoke test — empty state**: With no downloads, popup shows "No downloads" centered in a padded area.
-14. **Smoke test — active item**: While downloading, the item shows filename truncated with ellipsis if too long, status text "X.Y MB / Z.Z MB" right-aligned, a 3px progress bar fills as bytes arrive, and a "Cancel" button under the row.
-15. **Smoke test — completed item**: After completion, the item shows filename + total bytes, "Open" button + folder icon-button. Clicking folder icon opens Explorer at the file. Clicking "Open" launches the file.
+14. **Smoke test — active item**: While downloading, the item shows filename truncated with ellipsis if too long, status text "X.Y MB / Z.Z MB" right-aligned, a 3px progress bar fills as bytes arrive, and a "Cancel" button under the row. Hovering the filename shows a UIKit Tooltip with the full save path (or filename if `savePath` is unset); hovering the status text or progress bar shows nothing.
+15. **Smoke test — completed item**: After completion, the item shows filename + total bytes, "Open" button + folder icon-button. Clicking folder icon opens Explorer at the file. Clicking "Open" launches the file. Hovering the folder icon shows only its own UIKit Tooltip "Show in Folder" — **no overlap** with the filename's full-path tooltip (the filename tooltip is scoped to the filename area, not the row).
 16. **Smoke test — failed item**: With a failure, the item shows the error text in `color.error.text`, status reads "Failed", and an X icon-button dismisses the entry.
 17. **Smoke test — cancelled item**: With a cancellation, status reads "Cancelled" and an X icon-button dismisses.
 18. **Smoke test — Clear button**: Clicking "Clear" removes all non-active items.
-19. **Smoke test — DevTools**: Inspect the popup. The popup root has `data-type="popover"` (UIKit Popover). Inside: `data-type="panel"` for the column container; the header `data-type="panel"` with `data-border-bottom`; items `data-type="panel"`. Filename text has `data-type="text" data-truncate`. The download button wrapper has `data-downloads-button` (presence-based). The IconButton inside has `data-type="icon-button" data-size="sm"`, plus `data-active` while downloading.
+19. **Smoke test — DevTools**: Inspect the popup. The popup root has `data-type="popover"` (UIKit Popover). Inside: `data-type="panel"` for the column container; the header `data-type="panel"` with `data-border-bottom`; items `data-type="panel"` (no native `title` attribute on the item Panel). Filename text has `data-type="text" data-truncate`. Hovering the filename for ~600ms produces a `[data-type="tooltip"]` element portaled to `<body>` containing the full path. The download button wrapper has `data-downloads-button` (presence-based). The IconButton inside has `data-type="icon-button" data-size="sm"`, plus `data-active` while downloading.
 20. **Smoke test — popup is portaled**: Inspect the DOM tree — the popover sits inside `<body>` (not nested in the BrowserEditor's container). Confirms US-466's portal-by-default behavior.
-21. **Smoke test — themes**: Cycle `default-dark`, `light-modern`, `monokai`. Active-icon color, ring fill color, error text, and progress-bar fill all update with theme. Border tokens render correctly in each theme.
+21. **Smoke test — themes**: Cycle `default-dark`, `light-modern`, `monokai`. Active-icon color, ring fill color, error text, progress-bar fill, and the UIKit Tooltip bubble (background, text, border) all update with theme. Border tokens render correctly in each theme.
 
 ## Files Changed summary
 
