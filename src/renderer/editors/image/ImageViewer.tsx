@@ -10,8 +10,8 @@ import { fs } from "../../api/fs";
 import { ui } from "../../api/ui";
 import { pagesModel } from "../../api/pages";
 
-import { BaseImageView } from "./BaseImageView";
-import type { BaseImageViewRef } from "./BaseImageView";
+import { BaseImageView } from "../shared/BaseImageView";
+import type { BaseImageViewRef } from "../shared/BaseImageView";
 import { fpBasename, fpExtname } from "../../core/utils/file-path";
 import { buildExcalidrawJsonWithImage, getImageDimensions, extToMime } from "../draw/drawExport";
 import { ContentPipe } from "../../content/ContentPipe";
@@ -337,7 +337,3 @@ export default imageEditorModule;
 // Named exports
 export { ImageViewer, ImageEditorModel };
 export type { ImageViewerProps, ImageEditorModelState };
-
-// Re-export base components for reuse
-export { BaseImageView, ImageViewModel, defaultImageViewState } from "./BaseImageView";
-export type { BaseImageViewProps, ImageViewState } from "./BaseImageView";

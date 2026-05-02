@@ -3,49 +3,51 @@ import { forwardRef, useEffect, useImperativeHandle } from "react";
 // Note: useEffect kept for visibility-check effect (runs every render, no effect() equivalent)
 import { TComponentModel, useComponentModel } from "../../core/state/model";
 import color from "../../theme/color";
+import { spacing, radius, fontSize } from "../../uikit/tokens";
 
 // ============================================================================
 // Styled Components
 // ============================================================================
 
-export const BaseImageViewRoot = styled.div({
-    flex: "1 1 auto",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    height: "100%",
-    overflow: "hidden",
-    position: "relative",
-    backgroundColor: color.background.default,
-    outline: "none",
-    "& img": {
-        transformOrigin: "center center",
-        userSelect: "none",
-        maxWidth: "none", // Allow scaling beyond container
-        maxHeight: "none",
-    },
-    "& .zoom-indicator": {
-        position: "absolute",
-        bottom: 12,
-        right: 12,
-        padding: "4px 8px",
-        backgroundColor: color.background.overlay,
-        color: color.text.default,
-        borderRadius: 4,
-        fontSize: 12,
-        fontFamily: "monospace",
-        cursor: "pointer",
-        "&:hover": {
-            backgroundColor: color.background.overlayHover,
+export const BaseImageViewRoot = styled.div(
+    {
+        flex: "1 1 auto",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        height: "100%",
+        overflow: "hidden",
+        position: "relative",
+        backgroundColor: color.background.default,
+        outline: "none",
+        cursor: "grab",
+        "& img": {
+            transformOrigin: "center center",
+            userSelect: "none",
+            maxWidth: "none", // Allow scaling beyond container
+            maxHeight: "none",
+        },
+        "& [data-part='zoom-indicator']": {
+            position: "absolute",
+            bottom: spacing.lg,
+            right: spacing.lg,
+            padding: `${spacing.sm}px ${spacing.md}px`,
+            backgroundColor: color.background.overlay,
+            color: color.text.default,
+            borderRadius: radius.md,
+            fontSize: fontSize.sm,
+            fontFamily: "monospace",
+            cursor: "pointer",
+            "&:hover": {
+                backgroundColor: color.background.overlayHover,
+            },
+        },
+        "&[data-dragging]": {
+            cursor: "grabbing",
         },
     },
-    "&.dragging": {
-        cursor: "grabbing",
-    },
-    "&.can-drag": {
-        cursor: "grab",
-    },
-});
+    { label: "BaseImageViewRoot" },
+);
 
 // ============================================================================
 // Constants
@@ -368,7 +370,8 @@ export const BaseImageView = forwardRef<BaseImageViewRef, BaseImageViewProps>(fu
     return (
         <BaseImageViewRoot
             ref={viewModel.setContainerRef}
-            className={`${state.isDragging ? "dragging" : ""} can-drag`}
+            data-type="image-view"
+            data-dragging={state.isDragging || undefined}
             onMouseDown={viewModel.handleMouseDown}
             onMouseMove={viewModel.handleMouseMove}
             onMouseUp={viewModel.handleMouseUp}
@@ -386,7 +389,7 @@ export const BaseImageView = forwardRef<BaseImageViewRef, BaseImageViewProps>(fu
                 style={imageStyle}
             />
             <div
-                className="zoom-indicator"
+                data-part="zoom-indicator"
                 onClick={viewModel.resetView}
                 title="Reset Zoom"
             >

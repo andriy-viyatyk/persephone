@@ -1,7 +1,7 @@
 import { useRef, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
-import { BaseImageView } from "../image";
-import type { BaseImageViewRef } from "../image";
+import { BaseImageView } from "../shared/BaseImageView";
+import type { BaseImageViewRef } from "../shared/BaseImageView";
 import { TextFileModel } from "../text/TextEditorModel";
 import { CopyIcon, SunIcon, MoonIcon } from "../../theme/icons";
 import { DrawIcon } from "../../theme/language-icons";
