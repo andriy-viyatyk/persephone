@@ -5,9 +5,9 @@ import { SettingsIcon } from "../../theme/icons";
 import { Story } from "../../editors/storybook/storyTypes";
 
 const IconButtonWithPreset = (props: any) => {
-    const { iconPreset, ...rest } = props;
+    const { iconPreset, title, ...rest } = props;
     const icon = resolveIconPreset(iconPreset) ?? React.createElement(SettingsIcon);
-    return React.createElement(IconButton, { ...rest, icon });
+    return React.createElement(IconButton, { ...rest, title: title || undefined, icon });
 };
 
 export const iconButtonStory: Story = {
@@ -18,6 +18,7 @@ export const iconButtonStory: Story = {
     props: [
         { name: "iconPreset", type: "icon", default: "folder", label: "Icon" },
         { name: "size", type: "enum", options: ["sm", "md"], default: "md" },
+        { name: "title", type: "string", default: "" },
         { name: "disabled", type: "boolean", default: false },
     ],
 };

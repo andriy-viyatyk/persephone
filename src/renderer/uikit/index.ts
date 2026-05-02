@@ -33,3 +33,5 @@ export type { SpinnerProps } from "./Spinner";
 // Overlay
 export { Popover } from "./Popover";
 export type { PopoverProps, PopoverPosition } from "./Popover";
+export { Tooltip } from "./Tooltip";
+export type { TooltipProps } from "./Tooltip";

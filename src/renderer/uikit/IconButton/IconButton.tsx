@@ -2,10 +2,17 @@ import React from "react";
 import styled from "@emotion/styled";
 import color from "../../theme/color";
 import { height, spacing, radius } from "../tokens";
+import { Tooltip } from "../Tooltip/Tooltip";
 
 // --- Types ---
 
-export interface IconButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+export interface IconButtonProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "title"> {
+    /**
+     * When set, the IconButton is wrapped in a UIKit `<Tooltip>` displaying this content on
+     * hover/focus. Especially valuable for IconButtons since they have no visible label to
+     * clarify their purpose. When unset, no tooltip is rendered.
+     */
+    title?: React.ReactNode;
     /** The icon to render. */
     icon: React.ReactNode;
     /** Control size. Default: "md". */
@@ -69,8 +76,8 @@ const Root = styled.button(
 // --- Component ---
 
 export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
-    function IconButton({ icon, size = "md", disabled, ...rest }, ref) {
-        return (
+    function IconButton({ icon, size = "md", disabled, title, ...rest }, ref) {
+        const button = (
             <Root
                 ref={ref}
                 data-type="icon-button"
@@ -83,5 +90,6 @@ export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
                 <span data-part="icon">{icon}</span>
             </Root>
         );
+        return title ? <Tooltip content={title}>{button}</Tooltip> : button;
     },
 );

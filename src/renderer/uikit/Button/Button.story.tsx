@@ -4,8 +4,12 @@ import { resolveIconPreset } from "../../editors/storybook/iconPresets";
 import { Story } from "../../editors/storybook/storyTypes";
 
 const ButtonWithIcon = (props: any) => {
-    const { iconPreset, ...rest } = props;
-    return React.createElement(Button, { ...rest, icon: resolveIconPreset(iconPreset) });
+    const { iconPreset, title, ...rest } = props;
+    return React.createElement(Button, {
+        ...rest,
+        title: title || undefined,
+        icon: resolveIconPreset(iconPreset),
+    });
 };
 
 export const buttonStory: Story = {
@@ -19,6 +23,7 @@ export const buttonStory: Story = {
         { name: "size", type: "enum", options: ["sm", "md"], default: "md" },
         { name: "background", type: "enum", options: ["default", "light", "dark"], default: "default" },
         { name: "iconPreset", type: "icon", default: "none", label: "Icon" },
+        { name: "title", type: "string", default: "" },
         { name: "disabled", type: "boolean", default: false },
     ],
 };

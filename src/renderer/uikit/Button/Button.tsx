@@ -2,10 +2,17 @@ import React from "react";
 import styled from "@emotion/styled";
 import color from "../../theme/color";
 import { fontSize, height, spacing, gap, radius } from "../tokens";
+import { Tooltip } from "../Tooltip/Tooltip";
 
 // --- Types ---
 
-export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+export interface ButtonProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "title"> {
+    /**
+     * When set, the button is wrapped in a UIKit `<Tooltip>` displaying this content on
+     * hover/focus. Accepts a plain string or rich `ReactNode`. When unset, no tooltip is
+     * rendered and no event handlers are attached.
+     */
+    title?: React.ReactNode;
     /** Visual style. Default: "default". */
     variant?: "default" | "primary" | "ghost" | "danger" | "link";
     /** Control height. Default: "md". */
@@ -139,10 +146,10 @@ const Root = styled.button(
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     function Button(
-        { variant = "default", size = "md", background = "default", block, icon, disabled, children, ...rest },
+        { variant = "default", size = "md", background = "default", block, icon, disabled, title, children, ...rest },
         ref,
     ) {
-        return (
+        const button = (
             <Root
                 ref={ref}
                 data-type="button"
@@ -159,5 +166,6 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
                 {children}
             </Root>
         );
+        return title ? <Tooltip content={title}>{button}</Tooltip> : button;
     },
 );

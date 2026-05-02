@@ -18,12 +18,13 @@ import { spinnerStory }          from "../../uikit/Spinner/Spinner.story";
 
 // Overlay
 import { popoverStory }          from "../../uikit/Popover/Popover.story";
+import { tooltipStory }          from "../../uikit/Tooltip/Tooltip.story";
 
 export const ALL_STORIES: Story[] = [
     panelStory, spacerStory, toolbarStory,
     buttonStory, iconButtonStory, inputStory, labelStory, checkboxStory, dividerStory, textStory,
     segmentedControlStory, spinnerStory,
-    popoverStory,
+    popoverStory, tooltipStory,
 ];
 
 export function findStory(id: string): Story | undefined {

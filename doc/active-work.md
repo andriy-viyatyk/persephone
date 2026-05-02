@@ -20,7 +20,7 @@ Overview of all active and planned epics and tasks.
   - [ ] [US-451: UIKit layout refactor — unified Panel + Storybook lighthouse](tasks/US-451-uikit-panel-refactor/README.md) *(Phase 3 polish)*
   - [ ] US-432: Dialog component — new implementation + migration *(Phase 4, first)*
   - [ ] [US-466: UIKit Popover — overlay primitive](tasks/US-466-uikit-popover/README.md) *(Phase 4 — overlay infrastructure; blocks US-463)*
-  - [ ] US-467: UIKit Tooltip — overlay primitive *(Phase 4 — overlay infrastructure; placeholder, not yet planned)*
+  - [ ] [US-467: UIKit Tooltip — overlay primitive](tasks/US-467-uikit-tooltip/README.md) *(Phase 4 — overlay infrastructure)*
   - [ ] [US-452: About screen — UIKit migration](tasks/US-452-about-screen-migration/README.md) *(Phase 4 — per-screen migration)*
   - [ ] [US-455: MermaidView — UIKit migration](tasks/US-455-mermaid-view-migration/README.md) *(Phase 4 — per-screen migration)*
   - [ ] [US-456: SvgView — UIKit migration](tasks/US-456-svg-view-migration/README.md) *(Phase 4 — per-screen migration)*
