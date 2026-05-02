@@ -12,6 +12,7 @@ type Align = "start" | "center" | "end" | "stretch" | "baseline";
 type Justify = "start" | "center" | "end" | "between" | "around" | "evenly";
 type Direction = "row" | "column" | "row-reverse" | "column-reverse";
 type Overflow = "visible" | "hidden" | "auto" | "scroll";
+type Position = "relative" | "absolute" | "fixed";
 
 export interface PanelProps
     extends Omit<React.HTMLAttributes<HTMLDivElement>, "style" | "className"> {
@@ -58,6 +59,13 @@ export interface PanelProps
     overflowX?: Overflow;
     overflowY?: Overflow;
 
+    /** CSS position. Default: undefined (static). Use "relative" on parents of absolutely-positioned children. */
+    position?: Position;
+    /** CSS `inset` shorthand — number → px, string passes through. Sets all four sides at once. */
+    inset?: number | string;
+    /** Stack order. Use sparingly — overlays / popovers only. */
+    zIndex?: number;
+
     /** All four borders. */
     border?: boolean;
     borderTop?: boolean;
@@ -71,8 +79,8 @@ export interface PanelProps
     rounded?: Size;
     /** Drop shadow (Card-style elevation). */
     shadow?: boolean;
-    /** Background fill. Maps to color.background.{default,light,dark}. */
-    background?: "default" | "light" | "dark";
+    /** Background fill. Maps to color.background.{default,light,dark,overlay}. */
+    background?: "default" | "light" | "dark" | "overlay";
 
     /** Dim + disable pointer events on the whole panel. */
     disabled?: boolean;
@@ -95,6 +103,7 @@ const Root = styled.div(
         '&[data-bg="default"]': { backgroundColor: color.background.default },
         '&[data-bg="light"]':   { backgroundColor: color.background.light },
         '&[data-bg="dark"]':    { backgroundColor: color.background.dark },
+        '&[data-bg="overlay"]': { backgroundColor: color.background.overlay },
 
         // --- Borders (subtle = color.border.light, default = color.border.default) ---
         "&[data-border]":        { border:       `1px solid ${color.border.light}` },
@@ -197,6 +206,9 @@ export const Panel = React.forwardRef<HTMLDivElement, PanelProps>(function Panel
         overflow,
         overflowX,
         overflowY,
+        position,
+        inset,
+        zIndex,
         border,
         borderTop,
         borderBottom,
@@ -241,6 +253,10 @@ export const Panel = React.forwardRef<HTMLDivElement, PanelProps>(function Panel
         overflow,
         overflowX,
         overflowY,
+
+        position,
+        inset,
+        zIndex,
 
         borderRadius: radiusVal(rounded),
     };

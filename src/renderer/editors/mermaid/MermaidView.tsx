@@ -1,47 +1,15 @@
-import styled from "@emotion/styled";
 import { useRef, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { BaseImageView } from "../image";
 import type { BaseImageViewRef } from "../image";
 import { TextFileModel } from "../text/TextEditorModel";
-import { Button } from "../../components/basic/Button";
 import { CopyIcon, SunIcon, MoonIcon } from "../../theme/icons";
 import { DrawIcon } from "../../theme/language-icons";
 import { pagesModel } from "../../api/pages";
 import { buildExcalidrawJsonWithImage, getImageDimensions } from "../draw/drawExport";
-import { CircularProgress } from "../../components/basic/CircularProgress";
-import { EditorError } from "../base/EditorError";
-import color from "../../theme/color";
 import { useContentViewModel } from "../base/useContentViewModel";
+import { Panel, Text, IconButton, Spinner } from "../../uikit";
 import { MermaidViewModel, MermaidViewState, defaultMermaidViewState } from "./MermaidViewModel";
-
-// ============================================================================
-// Styled Components
-// ============================================================================
-
-const MermaidViewRoot = styled.div({
-    display: "flex",
-    flexDirection: "column",
-    flex: "1 1 auto",
-    overflow: "hidden",
-    position: "relative",
-    "& .mermaid-loading": {
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        flex: "1 1 auto",
-        backgroundColor: color.background.default,
-    },
-    "& .mermaid-loading-overlay": {
-        position: "absolute",
-        inset: 0,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        backgroundColor: color.background.overlay,
-        zIndex: 1,
-    },
-});
 
 // ============================================================================
 // MermaidView Component - content-view for Mermaid diagrams
@@ -69,21 +37,18 @@ function MermaidView({ model }: MermaidViewProps) {
     const { svgUrl, error, loading, lightMode } = pageState;
 
     return (
-        <MermaidViewRoot>
+        <Panel direction="column" flex overflow="hidden" position="relative" height={0}>
             {Boolean(model.editorToolbarRefLast) &&
                 createPortal(
                     <>
-                        <Button
-                            type="icon"
-                            size="small"
+                        <IconButton
+                            size="sm"
                             title={lightMode ? "Switch to Dark Theme" : "Switch to Light Theme"}
                             onClick={vm.toggleLightMode}
-                        >
-                            {lightMode ? <MoonIcon /> : <SunIcon />}
-                        </Button>
-                        <Button
-                            type="icon"
-                            size="small"
+                            icon={lightMode ? <MoonIcon /> : <SunIcon />}
+                        />
+                        <IconButton
+                            size="sm"
                             title="Open in Drawing Editor"
                             disabled={!svgUrl}
                             onClick={async () => {
@@ -96,31 +61,39 @@ function MermaidView({ model }: MermaidViewProps) {
                                 const title = model.state.get().title.replace(/\.\w+$/, "") + ".excalidraw";
                                 pagesModel.addEditorPage("draw-view", "json", title, json);
                             }}
-                        >
-                            <DrawIcon />
-                        </Button>
-                        <Button
-                            type="icon"
-                            size="small"
+                            icon={<DrawIcon />}
+                        />
+                        <IconButton
+                            size="sm"
                             title="Copy Image to Clipboard (Ctrl+C)"
                             onClick={() => imageRef.current?.copyToClipboard()}
                             disabled={!svgUrl}
-                        >
-                            <CopyIcon />
-                        </Button>
+                            icon={<CopyIcon />}
+                        />
                     </>,
                     model.editorToolbarRefLast!
                 )}
-            {error && <EditorError>{error}</EditorError>}
+            {error && (
+                <Panel flex align="center" justify="center" padding="xxxl">
+                    <Text color="warning" preWrap>{error}</Text>
+                </Panel>
+            )}
             {loading && svgUrl && (
-                <div className="mermaid-loading-overlay">
-                    <CircularProgress />
-                </div>
+                <Panel
+                    position="absolute"
+                    inset={0}
+                    zIndex={1}
+                    align="center"
+                    justify="center"
+                    background="overlay"
+                >
+                    <Spinner />
+                </Panel>
             )}
             {loading && !svgUrl ? (
-                <div className="mermaid-loading">
-                    <CircularProgress />
-                </div>
+                <Panel flex align="center" justify="center" background="default">
+                    <Spinner />
+                </Panel>
             ) : svgUrl ? (
                 <BaseImageView
                     ref={imageRef}
@@ -128,7 +101,7 @@ function MermaidView({ model }: MermaidViewProps) {
                     alt="Mermaid Diagram"
                 />
             ) : null}
-        </MermaidViewRoot>
+        </Panel>
     );
 }
 

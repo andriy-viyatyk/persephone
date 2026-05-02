@@ -14,5 +14,6 @@ export const textStory: Story = {
         { name: "italic",  type: "boolean", default: false },
         { name: "bold",    type: "boolean", default: false },
         { name: "nowrap",  type: "boolean", default: false },
+        { name: "preWrap", type: "boolean", default: false },
     ],
 };

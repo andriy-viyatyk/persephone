@@ -27,3 +27,5 @@ export { Text } from "./Text";
 export type { TextProps } from "./Text";
 export { SegmentedControl } from "./SegmentedControl";
 export type { SegmentedControlProps } from "./SegmentedControl";
+export { Spinner } from "./Spinner";
+export type { SpinnerProps } from "./Spinner";

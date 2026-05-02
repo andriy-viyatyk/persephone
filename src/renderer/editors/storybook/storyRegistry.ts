@@ -14,11 +14,12 @@ import { checkboxStory }         from "../../uikit/Checkbox/Checkbox.story";
 import { dividerStory }          from "../../uikit/Divider/Divider.story";
 import { textStory }             from "../../uikit/Text/Text.story";
 import { segmentedControlStory } from "../../uikit/SegmentedControl/SegmentedControl.story";
+import { spinnerStory }          from "../../uikit/Spinner/Spinner.story";
 
 export const ALL_STORIES: Story[] = [
     panelStory, spacerStory, toolbarStory,
     buttonStory, iconButtonStory, inputStory, labelStory, checkboxStory, dividerStory, textStory,
-    segmentedControlStory,
+    segmentedControlStory, spinnerStory,
 ];
 
 export function findStory(id: string): Story | undefined {

@@ -30,6 +30,8 @@ export interface TextStyleProps {
     bold?: boolean;
     /** Prevent text wrapping (white-space: nowrap). */
     nowrap?: boolean;
+    /** Preserve newlines and wrap on word boundaries (white-space: pre-wrap). Mutually exclusive with `nowrap`. */
+    preWrap?: boolean;
 }
 
 export interface TextProps extends
@@ -66,9 +68,10 @@ const Root = styled.span(
         },
 
         // --- Modifiers ---
-        "&[data-bold]":   { fontWeight: 600 },
-        "&[data-italic]": { fontStyle: "italic" },
-        "&[data-nowrap]": { whiteSpace: "nowrap" },
+        "&[data-bold]":     { fontWeight: 600 },
+        "&[data-italic]":   { fontStyle: "italic" },
+        "&[data-nowrap]":   { whiteSpace: "nowrap" },
+        "&[data-pre-wrap]": { whiteSpace: "pre-wrap" },
     },
     { label: "Text" },
 );
@@ -82,6 +85,7 @@ export function Text({
     italic,
     bold,
     nowrap,
+    preWrap,
     children,
     ...rest
 }: TextProps) {
@@ -94,6 +98,7 @@ export function Text({
             data-bold={bold || undefined}
             data-italic={italic || undefined}
             data-nowrap={nowrap || undefined}
+            data-pre-wrap={preWrap || undefined}
             {...rest}
         >
             {children}
