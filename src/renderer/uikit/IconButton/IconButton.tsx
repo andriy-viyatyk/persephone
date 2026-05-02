@@ -28,6 +28,12 @@ const Root = styled.button(
         color: color.icon.light,
         flexShrink: 0,
 
+        "& [data-part='icon']": {
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+        },
+
         "&:hover": {
             color: color.icon.default,
         },

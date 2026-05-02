@@ -1,12 +1,9 @@
-import { useRef } from "react";
 import { IEditorState, EditorType } from "../../../shared/types";
 import { getDefaultEditorModelState, EditorModel } from "../base";
-import { PageToolbar } from "../base/EditorToolbar";
 import { TComponentState } from "../../core/state/state";
 import { EditorModule } from "../types";
 import { FileIcon } from "../../components/icons/FileIcon";
-import { Button } from "../../components/basic/Button";
-import { FlexSpace } from "../../components/layout/Elements";
+import { Toolbar, IconButton, Spacer } from "../../uikit";
 import { CopyIcon, NavPanelIcon, SaveIcon } from "../../theme/icons";
 import { DrawIcon } from "../../theme/language-icons";
 import { fs } from "../../api/fs";
@@ -38,6 +35,11 @@ const getDefaultImageViewerModelState = (): ImageEditorModelState => ({
 class ImageEditorModel extends EditorModel<ImageEditorModelState, void> {
     noLanguage = true;
     private cacheFileCreated = false;
+    imageRef: BaseImageViewRef | null = null;
+
+    setImageRef = (ref: BaseImageViewRef | null) => {
+        this.imageRef = ref;
+    };
 
     getRestoreData() {
         const data = super.getRestoreData();
@@ -208,6 +210,39 @@ class ImageEditorModel extends EditorModel<ImageEditorModelState, void> {
             s.title = fpBasename(savePath);
         });
     };
+
+    toggleNavigator = () => {
+        const filePath = this.state.get().filePath;
+        this.page?.toggleNavigator(this.pipe, filePath);
+    };
+
+    copyImageToClipboard = () => {
+        this.imageRef?.copyToClipboard();
+    };
+
+    openInDrawingEditor = async () => {
+        const { filePath, url } = this.state.get();
+        let dataUrl: string;
+        let mimeType: string;
+        if (this.pipe) {
+            const buffer = await this.pipe.readBinary();
+            const ext = fpExtname(filePath || this.pipe.provider.sourceUrl || ".png").toLowerCase();
+            mimeType = extToMime(ext);
+            dataUrl = `data:${mimeType};base64,${buffer.toString("base64")}`;
+        } else if (url) {
+            const response = await fetch(url);
+            const blob = await response.blob();
+            mimeType = blob.type || "image/png";
+            const buffer = Buffer.from(await blob.arrayBuffer());
+            dataUrl = `data:${mimeType};base64,${buffer.toString("base64")}`;
+        } else {
+            return;
+        }
+        const dims = await getImageDimensions(dataUrl);
+        const json = buildExcalidrawJsonWithImage(dataUrl, mimeType, dims.width, dims.height);
+        const baseName = filePath ? fpBasename(filePath).replace(/\.\w+$/, "") : "image";
+        pagesModel.addEditorPage("draw-view", "json", baseName + ".excalidraw", json);
+    };
 }
 
 // ============================================================================
@@ -221,76 +256,43 @@ interface ImageViewerProps {
 function ImageViewer({ model }: ImageViewerProps) {
     const filePath = model.state.use((s) => s.filePath);
     const url = model.state.use((s) => s.url);
-    const imageRef = useRef<BaseImageViewRef>(null);
     const src = url || "";
     const alt = filePath ? fpBasename(filePath) : "Image";
 
     return (
         <>
-            <PageToolbar borderBottom>
+            <Toolbar borderBottom>
                 {(model.page?.canOpenNavigator(model.pipe, filePath) || filePath) && (
-                    <Button
-                        type="icon"
-                        size="small"
+                    <IconButton
+                        size="sm"
                         title="File Explorer"
-                        onClick={() => {
-                            model.page?.toggleNavigator(model.pipe, filePath);
-                        }}
-                    >
-                        <NavPanelIcon />
-                    </Button>
+                        onClick={model.toggleNavigator}
+                        icon={<NavPanelIcon />}
+                    />
                 )}
-                <FlexSpace />
+                <Spacer />
                 {!filePath && url && (
-                    <Button
-                        type="icon"
-                        size="small"
+                    <IconButton
+                        size="sm"
                         title="Save Image to File"
                         onClick={model.saveImage}
-                    >
-                        <SaveIcon />
-                    </Button>
+                        icon={<SaveIcon />}
+                    />
                 )}
-                <Button
-                    type="icon"
-                    size="small"
+                <IconButton
+                    size="sm"
                     title="Open in Drawing Editor"
-                    onClick={async () => {
-                        const { filePath: fp, url: u } = model.state.get();
-                        let dataUrl: string;
-                        let mimeType: string;
-                        if (model.pipe) {
-                            const buffer = await model.pipe.readBinary();
-                            const ext = fpExtname(fp || model.pipe.provider.sourceUrl || ".png").toLowerCase();
-                            mimeType = extToMime(ext);
-                            dataUrl = `data:${mimeType};base64,${buffer.toString("base64")}`;
-                        } else if (u) {
-                            const response = await fetch(u);
-                            const blob = await response.blob();
-                            mimeType = blob.type || "image/png";
-                            const buffer = Buffer.from(await blob.arrayBuffer());
-                            dataUrl = `data:${mimeType};base64,${buffer.toString("base64")}`;
-                        } else {
-                            return;
-                        }
-                        const dims = await getImageDimensions(dataUrl);
-                        const json = buildExcalidrawJsonWithImage(dataUrl, mimeType, dims.width, dims.height);
-                        const baseName = fp ? fpBasename(fp).replace(/\.\w+$/, "") : "image";
-                        pagesModel.addEditorPage("draw-view", "json", baseName + ".excalidraw", json);
-                    }}
-                >
-                    <DrawIcon />
-                </Button>
-                <Button
-                    type="icon"
-                    size="small"
+                    onClick={model.openInDrawingEditor}
+                    icon={<DrawIcon />}
+                />
+                <IconButton
+                    size="sm"
                     title="Copy Image to Clipboard (Ctrl+C)"
-                    onClick={() => imageRef.current?.copyToClipboard()}
-                >
-                    <CopyIcon />
-                </Button>
-            </PageToolbar>
-            <BaseImageView ref={imageRef} src={src} alt={alt} />
+                    onClick={model.copyImageToClipboard}
+                    icon={<CopyIcon />}
+                />
+            </Toolbar>
+            <BaseImageView ref={model.setImageRef} src={src} alt={alt} />
         </>
     );
 }
