@@ -3,12 +3,12 @@ import { createPortal } from "react-dom";
 import { BaseImageView } from "../image";
 import type { BaseImageViewRef } from "../image";
 import { TextFileModel } from "../text/TextEditorModel";
-import { Button } from "../../components/basic/Button";
 import { CopyIcon } from "../../theme/icons";
 import { DrawIcon } from "../../theme/language-icons";
 import { pagesModel } from "../../api/pages";
 import { buildExcalidrawJsonWithImage, getImageDimensions } from "../draw/drawExport";
 import { useContentViewModel } from "../base/useContentViewModel";
+import { IconButton } from "../../uikit";
 import { SvgViewModel, defaultSvgViewState } from "./SvgViewModel";
 
 // ============================================================================
@@ -48,9 +48,8 @@ function SvgView({ model }: SvgViewProps) {
             {Boolean(model.editorToolbarRefLast) &&
                 createPortal(
                     <>
-                        <Button
-                            type="icon"
-                            size="small"
+                        <IconButton
+                            size="sm"
                             title="Open in Drawing Editor"
                             onClick={async () => {
                                 const svgContent = model.state.get().content;
@@ -61,17 +60,14 @@ function SvgView({ model }: SvgViewProps) {
                                 const title = model.state.get().title.replace(/\.svg$/i, "") + ".excalidraw";
                                 pagesModel.addEditorPage("draw-view", "json", title, json);
                             }}
-                        >
-                            <DrawIcon />
-                        </Button>
-                        <Button
-                            type="icon"
-                            size="small"
+                            icon={<DrawIcon />}
+                        />
+                        <IconButton
+                            size="sm"
                             title="Copy Image to Clipboard (Ctrl+C)"
                             onClick={() => imageRef.current?.copyToClipboard()}
-                        >
-                            <CopyIcon />
-                        </Button>
+                            icon={<CopyIcon />}
+                        />
                     </>,
                     model.editorToolbarRefLast!
                 )}
