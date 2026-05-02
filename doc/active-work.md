@@ -25,7 +25,7 @@ Overview of all active and planned epics and tasks.
   - [ ] [US-457: HtmlView — UIKit migration](tasks/US-457-html-view-migration/README.md) *(Phase 4 — per-screen migration)*
   - [ ] [US-458: ImageViewer — UIKit migration](tasks/US-458-image-viewer-migration/README.md) *(Phase 4 — per-screen migration)*
   - [ ] [US-459: BaseImageView — UIKit adoption](tasks/US-459-base-image-view-adoption/README.md) *(Phase 5 — adopt-in-place)*
-  - [ ] US-460: MarkdownSearchBar — UIKit migration *(Phase 4 — per-screen migration)*
+  - [ ] [US-460: MarkdownSearchBar — UIKit migration](tasks/US-460-markdown-search-bar-migration/README.md) *(Phase 4 — per-screen migration)*
   - [ ] US-436: Script UI API — expose new component library to scripting engine *(Phase 6)*
   - [ ] US-435: Storybook — script tab for building and testing UI via scripts *(Phase 6)*
 

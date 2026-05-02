@@ -65,6 +65,14 @@ export interface PanelProps
     inset?: number | string;
     /** Stack order. Use sparingly — overlays / popovers only. */
     zIndex?: number;
+    /** CSS top — number → px, string passes through (e.g. "auto", "50%"). Use with `position` to anchor an edge. */
+    top?: number | string;
+    /** CSS right — number → px, string passes through. */
+    right?: number | string;
+    /** CSS bottom — number → px, string passes through. */
+    bottom?: number | string;
+    /** CSS left — number → px, string passes through. */
+    left?: number | string;
 
     /** All four borders. */
     border?: boolean;
@@ -209,6 +217,10 @@ export const Panel = React.forwardRef<HTMLDivElement, PanelProps>(function Panel
         position,
         inset,
         zIndex,
+        top,
+        right,
+        bottom,
+        left,
         border,
         borderTop,
         borderBottom,
@@ -257,6 +269,10 @@ export const Panel = React.forwardRef<HTMLDivElement, PanelProps>(function Panel
         position,
         inset,
         zIndex,
+        top,
+        right,
+        bottom,
+        left,
 
         borderRadius: radiusVal(rounded),
     };
