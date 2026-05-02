@@ -6,9 +6,11 @@ import { ProgressIcon } from "../../theme/icons";
 // --- Types ---
 
 export interface SpinnerProps
-    extends Omit<React.HTMLAttributes<HTMLSpanElement>, "style" | "className"> {
+    extends Omit<React.HTMLAttributes<HTMLSpanElement>, "style" | "className" | "color"> {
     /** Outer size in px. Default: 32. */
     size?: number;
+    /** CSS color override applied to the spinner stroke. Default: inherits via currentColor. */
+    color?: string;
 }
 
 // --- Styled ---
@@ -18,14 +20,15 @@ const spin = keyframes({
     to:   { transform: "rotate(360deg)" },
 });
 
-const Root = styled.span<{ $size: number }>(
-    ({ $size }) => ({
+const Root = styled.span<{ $size: number; $color?: string }>(
+    ({ $size, $color }) => ({
         display: "inline-flex",
         alignItems: "center",
         justifyContent: "center",
         width: $size,
         height: $size,
         flexShrink: 0,
+        color: $color,
         "& svg": {
             width: $size,
             height: $size,
@@ -37,7 +40,7 @@ const Root = styled.span<{ $size: number }>(
 
 // --- Component ---
 
-export function Spinner({ size = 32, ...rest }: SpinnerProps) {
+export function Spinner({ size = 32, color, ...rest }: SpinnerProps) {
     return (
         <Root
             data-type="spinner"
@@ -45,6 +48,7 @@ export function Spinner({ size = 32, ...rest }: SpinnerProps) {
             aria-live="polite"
             aria-label="Loading"
             $size={size}
+            $color={color}
             {...rest}
         >
             <ProgressIcon />

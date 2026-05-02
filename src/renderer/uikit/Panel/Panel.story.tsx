@@ -8,6 +8,8 @@ const ALIGNS = ["start", "center", "end", "stretch", "baseline"];
 const JUSTIFIES = ["start", "center", "end", "between", "around", "evenly"];
 const DIRECTIONS = ["row", "column", "row-reverse", "column-reverse"];
 const OVERFLOWS = ["visible", "hidden", "auto", "scroll"];
+const WHITE_SPACES = ["normal", "nowrap", "pre", "pre-wrap", "pre-line"];
+const WORD_BREAKS = ["normal", "break-all", "keep-all", "break-word"];
 
 export const panelStory: Story = {
     id: "panel",
@@ -20,6 +22,7 @@ export const panelStory: Story = {
         { name: "gap",         type: "enum",    options: SIZES, default: "sm" },
         { name: "align",       type: "enum",    options: [...ALIGNS, ""], default: "" },
         { name: "justify",     type: "enum",    options: [...JUSTIFIES, ""], default: "" },
+        { name: "alignSelf",   type: "enum",    options: [...ALIGNS, ""], default: "" },
         { name: "wrap",        type: "boolean", default: false },
         { name: "border",      type: "boolean", default: false },
         { name: "borderTop",   type: "boolean", default: false },
@@ -28,6 +31,8 @@ export const panelStory: Story = {
         { name: "shadow",      type: "boolean", default: false },
         { name: "background",  type: "enum",    options: ["", "default", "light", "dark", "overlay"], default: "" },
         { name: "overflow",    type: "enum",    options: ["", ...OVERFLOWS], default: "" },
+        { name: "whiteSpace",  type: "enum",    options: ["", ...WHITE_SPACES], default: "" },
+        { name: "wordBreak",   type: "enum",    options: ["", ...WORD_BREAKS], default: "" },
         { name: "width",       type: "string", default: "" },
         { name: "height",      type: "string", default: "" },
         { name: "maxWidth",    type: "string", default: "" },

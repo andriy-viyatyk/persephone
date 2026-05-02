@@ -13,6 +13,8 @@ type Justify = "start" | "center" | "end" | "between" | "around" | "evenly";
 type Direction = "row" | "column" | "row-reverse" | "column-reverse";
 type Overflow = "visible" | "hidden" | "auto" | "scroll";
 type Position = "relative" | "absolute" | "fixed";
+type WhiteSpace = "normal" | "nowrap" | "pre" | "pre-wrap" | "pre-line";
+type WordBreak = "normal" | "break-all" | "keep-all" | "break-word";
 
 export interface PanelProps
     extends Omit<React.HTMLAttributes<HTMLDivElement>, "style" | "className"> {
@@ -42,6 +44,8 @@ export interface PanelProps
     align?: Align;
     /** justify-content. */
     justify?: Justify;
+    /** align-self — overrides parent's `align-items` for this item only. Useful when the parent's alignment doesn't propagate as expected. */
+    alignSelf?: Align;
 
     /** Fixed width/height in px (number) or any CSS length (string, e.g. "50%"). */
     width?: number | string;
@@ -58,6 +62,12 @@ export interface PanelProps
     overflow?: Overflow;
     overflowX?: Overflow;
     overflowY?: Overflow;
+
+    /** Controls whitespace handling for descendants. Use "pre-wrap" for log/code panes that contain real `\n` characters. */
+    whiteSpace?: WhiteSpace;
+
+    /** Controls how words break to fit the container. Use "break-word" for log/code panes with long unbreakable tokens (URLs, hashes). */
+    wordBreak?: WordBreak;
 
     /** CSS position. Default: undefined (static). Use "relative" on parents of absolutely-positioned children. */
     position?: Position;
@@ -205,6 +215,7 @@ export const Panel = React.forwardRef<HTMLDivElement, PanelProps>(function Panel
         gap: gapProp,
         align,
         justify,
+        alignSelf,
         width,
         height,
         maxWidth,
@@ -214,6 +225,8 @@ export const Panel = React.forwardRef<HTMLDivElement, PanelProps>(function Panel
         overflow,
         overflowX,
         overflowY,
+        whiteSpace,
+        wordBreak,
         position,
         inset,
         zIndex,
@@ -255,6 +268,7 @@ export const Panel = React.forwardRef<HTMLDivElement, PanelProps>(function Panel
 
         alignItems: align ? ALIGN_MAP[align] : undefined,
         justifyContent: justify ? JUSTIFY_MAP[justify] : undefined,
+        alignSelf: alignSelf ? ALIGN_MAP[alignSelf] : undefined,
 
         width,
         height,
@@ -265,6 +279,8 @@ export const Panel = React.forwardRef<HTMLDivElement, PanelProps>(function Panel
         overflow,
         overflowX,
         overflowY,
+        whiteSpace,
+        wordBreak,
 
         position,
         inset,
