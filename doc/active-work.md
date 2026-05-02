@@ -22,7 +22,7 @@ Overview of all active and planned epics and tasks.
   - [ ] [US-452: About screen — UIKit migration](tasks/US-452-about-screen-migration/README.md) *(Phase 4 — per-screen migration)*
   - [ ] [US-455: MermaidView — UIKit migration](tasks/US-455-mermaid-view-migration/README.md) *(Phase 4 — per-screen migration)*
   - [ ] [US-456: SvgView — UIKit migration](tasks/US-456-svg-view-migration/README.md) *(Phase 4 — per-screen migration)*
-  - [ ] US-457: HtmlView — UIKit migration *(Phase 4 — per-screen migration)*
+  - [ ] [US-457: HtmlView — UIKit migration](tasks/US-457-html-view-migration/README.md) *(Phase 4 — per-screen migration)*
   - [ ] US-458: ImageViewer — UIKit migration *(Phase 4 — per-screen migration)*
   - [ ] US-459: BaseImageView — UIKit adoption *(Phase 5 — adopt-in-place)*
   - [ ] US-460: MarkdownSearchBar — UIKit migration *(Phase 4 — per-screen migration)*

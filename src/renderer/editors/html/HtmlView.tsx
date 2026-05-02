@@ -1,7 +1,7 @@
-import styled from "@emotion/styled";
 import { useMemo, useSyncExternalStore } from "react";
 import { TextFileModel } from "../text/TextEditorModel";
 import { useContentViewModel } from "../base/useContentViewModel";
+import { Panel } from "../../uikit";
 import { HtmlViewModel, defaultHtmlViewState } from "./HtmlViewModel";
 
 const navigationBlockerScript = `<script>document.addEventListener("click",function(e){var a=e.target.closest("a");if(a&&a.href){e.preventDefault();}},true);</script>`;
@@ -13,19 +13,6 @@ const navigationBlockerScript = `<script>document.addEventListener("click",funct
 interface HtmlViewProps {
     model: TextFileModel;
 }
-
-const HtmlViewRoot = styled.div({
-    width: "100%",
-    height: "100%",
-    overflow: "hidden",
-
-    "& .html-preview-iframe": {
-        width: "100%",
-        height: "100%",
-        border: "none",
-        backgroundColor: "#fff",
-    },
-});
 
 const noopUnsubscribe = () => () => {};
 const getDefaultState = () => defaultHtmlViewState;
@@ -39,7 +26,6 @@ function HtmlView({ model }: HtmlViewProps) {
     const vm = useContentViewModel<HtmlViewModel>(model, "html-view");
     const content = model.state.use((s) => s.content);
 
-    // Subscribe to VM state (unconditional — Rules of Hooks)
     useSyncExternalStore(
         vm ? (cb) => vm.state.subscribe(cb) : noopUnsubscribe,
         vm ? () => vm.state.get() : getDefaultState,
@@ -53,14 +39,14 @@ function HtmlView({ model }: HtmlViewProps) {
     if (!vm) return null;
 
     return (
-        <HtmlViewRoot>
+        <Panel flex overflow="hidden">
             <iframe
-                className="html-preview-iframe"
                 srcDoc={safeSrcDoc}
                 sandbox="allow-scripts"
                 title="HTML Preview"
+                style={{ flex: 1, border: "none" }}
             />
-        </HtmlViewRoot>
+        </Panel>
     );
 }
 
