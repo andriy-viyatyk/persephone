@@ -29,3 +29,7 @@ export { SegmentedControl } from "./SegmentedControl";
 export type { SegmentedControlProps } from "./SegmentedControl";
 export { Spinner } from "./Spinner";
 export type { SpinnerProps } from "./Spinner";
+
+// Overlay
+export { Popover } from "./Popover";
+export type { PopoverProps, PopoverPosition } from "./Popover";

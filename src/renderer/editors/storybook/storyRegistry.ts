@@ -16,10 +16,14 @@ import { textStory }             from "../../uikit/Text/Text.story";
 import { segmentedControlStory } from "../../uikit/SegmentedControl/SegmentedControl.story";
 import { spinnerStory }          from "../../uikit/Spinner/Spinner.story";
 
+// Overlay
+import { popoverStory }          from "../../uikit/Popover/Popover.story";
+
 export const ALL_STORIES: Story[] = [
     panelStory, spacerStory, toolbarStory,
     buttonStory, iconButtonStory, inputStory, labelStory, checkboxStory, dividerStory, textStory,
     segmentedControlStory, spinnerStory,
+    popoverStory,
 ];
 
 export function findStory(id: string): Story | undefined {

@@ -19,6 +19,8 @@ Overview of all active and planned epics and tasks.
   - [ ] [US-450: UIKit Toolbar — semantic landmark, roving tabindex, Storybook adoption](tasks/US-450-uikit-toolbar/README.md) *(Phase 3 polish)*
   - [ ] [US-451: UIKit layout refactor — unified Panel + Storybook lighthouse](tasks/US-451-uikit-panel-refactor/README.md) *(Phase 3 polish)*
   - [ ] US-432: Dialog component — new implementation + migration *(Phase 4, first)*
+  - [ ] [US-466: UIKit Popover — overlay primitive](tasks/US-466-uikit-popover/README.md) *(Phase 4 — overlay infrastructure; blocks US-463)*
+  - [ ] US-467: UIKit Tooltip — overlay primitive *(Phase 4 — overlay infrastructure; placeholder, not yet planned)*
   - [ ] [US-452: About screen — UIKit migration](tasks/US-452-about-screen-migration/README.md) *(Phase 4 — per-screen migration)*
   - [ ] [US-455: MermaidView — UIKit migration](tasks/US-455-mermaid-view-migration/README.md) *(Phase 4 — per-screen migration)*
   - [ ] [US-456: SvgView — UIKit migration](tasks/US-456-svg-view-migration/README.md) *(Phase 4 — per-screen migration)*
@@ -28,7 +30,7 @@ Overview of all active and planned epics and tasks.
   - [ ] [US-460: MarkdownSearchBar — UIKit migration](tasks/US-460-markdown-search-bar-migration/README.md) *(Phase 4 — per-screen migration)*
   - [ ] [US-461: Shared FindBar — consolidate MarkdownSearchBar + BrowserFindBar](tasks/US-461-shared-findbar-consolidation/README.md) *(Phase 4 — per-screen migration)*
   - [ ] [US-462: TorStatusOverlay — UIKit migration](tasks/US-462-tor-status-overlay-migration/README.md) *(Phase 4 — per-screen migration)*
-  - [ ] US-463: BrowserDownloadsPopup + DownloadButton — UIKit migration *(Phase 4 — per-screen migration)*
+  - [ ] [US-463: BrowserDownloadsPopup + DownloadButton — UIKit migration](tasks/US-463-browser-downloads-migration/README.md) *(Phase 4 — per-screen migration; blocked on US-466)*
   - [ ] US-464: UrlSuggestionsDropdown — UIKit migration *(Phase 4 — per-screen migration)*
   - [ ] US-465: CompareEditor — UIKit migration *(Phase 4 — per-screen migration)*
   - [ ] US-436: Script UI API — expose new component library to scripting engine *(Phase 6)*
