@@ -141,8 +141,9 @@ export const Popover = forwardRef<HTMLDivElement, PopoverProps>(function Popover
         if (!open) return;
         const handleClickOutside = (event: MouseEvent) => {
             if (!internalRef.current || internalRef.current.contains(event.target as Node)) return;
+            const target = event.target as Element | null;
+            if (target?.closest('[data-type="tooltip"]')) return;
             if (outsideClickIgnoreSelector) {
-                const target = event.target as Element | null;
                 if (target?.closest(outsideClickIgnoreSelector)) return;
             }
             onClose?.();
