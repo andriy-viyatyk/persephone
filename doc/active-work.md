@@ -26,6 +26,7 @@ Overview of all active and planned epics and tasks.
   - [ ] [US-470: UIKit Textarea — multi-line text input primitive](tasks/US-470-uikit-textarea/README.md) *(Phase 4 — form infrastructure; blocks US-432 Phase 4)*
   - [ ] [US-471: UIKit Input — start/end slots](tasks/US-471-uikit-input-slots/README.md) *(Phase 4 — form infrastructure; blocks US-472)*
   - [ ] [US-472: UIKit Select — searchable single-value combobox](tasks/US-472-uikit-select/README.md) *(Phase 4 — form infrastructure; blocked on US-471)*
+  - [ ] [US-473: UIKit Popover — resizable mode](tasks/US-473-uikit-popover-resizable/README.md) *(Phase 4 — overlay infrastructure; follow-up to US-466)*
   - [ ] [US-452: About screen — UIKit migration](tasks/US-452-about-screen-migration/README.md) *(Phase 4 — per-screen migration)*
   - [ ] [US-455: MermaidView — UIKit migration](tasks/US-455-mermaid-view-migration/README.md) *(Phase 4 — per-screen migration)*
   - [ ] [US-456: SvgView — UIKit migration](tasks/US-456-svg-view-migration/README.md) *(Phase 4 — per-screen migration)*
