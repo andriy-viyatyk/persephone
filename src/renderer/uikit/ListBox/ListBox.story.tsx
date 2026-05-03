@@ -25,7 +25,7 @@ function ListBoxDemo({
     loading = false,
     customRow = false,
 }: DemoProps) {
-    const [value, setValue] = useState<IListBoxItem["value"] | null>(null);
+    const [value, setValue] = useState<IListBoxItem | null>(null);
     const [active, setActive] = useState<number>(0);
     const [removed, setRemoved] = useState<Set<IListBoxItem["value"]>>(new Set());
     const visible = ITEMS.filter((it) => !removed.has(it.value));
@@ -63,7 +63,7 @@ function ListBoxDemo({
             <ListBox
                 items={visible}
                 value={value}
-                onChange={(v) => setValue(v)}
+                onChange={(item) => setValue(item)}
                 activeIndex={active}
                 onActiveChange={setActive}
                 searchText={searchText}

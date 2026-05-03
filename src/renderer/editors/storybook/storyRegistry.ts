@@ -24,13 +24,14 @@ import { tooltipStory }          from "../../uikit/Tooltip/Tooltip.story";
 
 // Lists
 import { listBoxStory }          from "../../uikit/ListBox/ListBox.story";
+import { selectStory }           from "../../uikit/Select/Select.story";
 
 export const ALL_STORIES: Story[] = [
     panelStory, spacerStory, toolbarStory,
     buttonStory, iconButtonStory, inputStory, labelStory, checkboxStory, dividerStory, textStory,
     segmentedControlStory, radioGroupStory, spinnerStory, textareaStory,
     popoverStory, tooltipStory,
-    listBoxStory,
+    listBoxStory, selectStory,
 ];
 
 export function findStory(id: string): Story | undefined {

@@ -45,3 +45,5 @@ export { ListBox, LIST_ITEM_KEY } from "./ListBox";
 export type { ListBoxProps, ListBoxRef, IListBoxItem, ListItemRenderContext } from "./ListBox";
 export { ListItem } from "./ListBox";
 export type { ListItemProps } from "./ListBox";
+export { Select } from "./Select";
+export type { SelectProps, ItemsSource, SelectItemsResult } from "./Select";

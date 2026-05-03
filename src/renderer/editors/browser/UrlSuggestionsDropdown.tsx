@@ -66,7 +66,7 @@ export function UrlSuggestionsDropdown({
                 items={listItems}
                 activeIndex={hoveredIndex}
                 onActiveChange={onHoveredIndexChange}
-                onChange={(value) => onSelect(value as string)}
+                onChange={(item) => onSelect(item.value as string)}
                 searchText={mode === "search" ? searchText : undefined}
                 keyboardNav={false}
                 growToHeight={400}

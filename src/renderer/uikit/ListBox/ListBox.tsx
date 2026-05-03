@@ -62,10 +62,15 @@ export interface ListBoxRef {
 export interface ListBoxProps<T = IListBoxItem>
     extends Omit<React.HTMLAttributes<HTMLDivElement>, "style" | "className" | "onChange"> {
     items: T[] | Traited<unknown[]>;
-    /** Currently-selected value. `null` when nothing is selected. */
-    value?: IListBoxItem["value"] | null;
-    /** Fires when the user selects an item (click or Enter when `keyboardNav`). */
-    onChange?: (value: IListBoxItem["value"], item: IListBoxItem) => void;
+    /**
+     * Currently-selected item. `null` when nothing is selected. May reference an
+     * item not present in `items` — the checkmark simply will not render then.
+     *   • Plain `T` — used when `T = IListBoxItem`. Reads `.label` / `.value` / `.icon` directly.
+     *   • `Traited<T>` — used with custom `T`. Reads accessor from `value.traits.get(LIST_ITEM_KEY)`.
+     */
+    value?: T | Traited<T> | null;
+    /** Fires when the user selects an item. Emits the source `T` (matches the shape passed via `items`). */
+    onChange?: (item: T) => void;
     /** Index of the currently-highlighted (active) row. Controlled. */
     activeIndex?: number | null;
     /** Fires when the active row changes — mouse hover or internal keyboard nav. */
@@ -118,6 +123,12 @@ const EmptyRoot = styled.div(
 const columnWidth: ElementLength = (() => "100%" as Percent) as ElementLength;
 const defaultRowHeight = 24;
 
+function runAccessor<R>(source: unknown, accessor: TraitType<R>): R {
+    return Object.fromEntries(
+        (Object.keys(accessor) as (keyof TraitType<R>)[]).map((k) => [k, accessor[k](source)]),
+    ) as R;
+}
+
 function ListBoxInner<T = IListBoxItem>(
     {
         items,
@@ -152,10 +163,26 @@ function ListBoxInner<T = IListBoxItem>(
         return { resolved: arr as unknown as IListBoxItem[], sources: arr };
     }, [items]);
 
+    // Resolve a single value (plain T or Traited<T>) to IListBoxItem.
+    // Decoupled from items resolution — Traited<T> values carry their own accessor.
+    const resolveSingleValue = useCallback((v: T | Traited<T>): IListBoxItem => {
+        if (isTraited<T>(v)) {
+            const acc = v.traits.get(LIST_ITEM_KEY);
+            if (acc) return runAccessor<IListBoxItem>(v.target, acc);
+            return v.target as unknown as IListBoxItem;
+        }
+        return v as unknown as IListBoxItem;
+    }, []);
+
+    const selectedKey = useMemo(
+        () => (value != null ? resolveSingleValue(value).value : null),
+        [value, resolveSingleValue],
+    );
+
     // Force RenderGrid re-render when display inputs change.
     useEffect(() => {
         gridRef.current?.update({ all: true });
-    }, [resolved, value, activeIndex, searchText, renderItem, rowHeight]);
+    }, [resolved, selectedKey, activeIndex, searchText, renderItem, rowHeight]);
 
     useImperativeHandle(
         ref,
@@ -176,9 +203,9 @@ function ListBoxInner<T = IListBoxItem>(
         (idx: number) => {
             const item = resolved[idx];
             if (!item || item.disabled) return;
-            onChange?.(item.value, item);
+            onChange?.(sources[idx]);
         },
-        [resolved, onChange],
+        [resolved, sources, onChange],
     );
 
     const onItemMouseEnter = useCallback(
@@ -194,7 +221,7 @@ function ListBoxInner<T = IListBoxItem>(
         ({ row: idx, key, style }) => {
             const item = resolved[idx];
             if (!item) return null;
-            const selected = item.value === value;
+            const selected = selectedKey != null && item.value === selectedKey;
             const active = idx === activeIndex;
             const id = itemId(idx);
 
@@ -226,7 +253,7 @@ function ListBoxInner<T = IListBoxItem>(
         [
             resolved,
             sources,
-            value,
+            selectedKey,
             activeIndex,
             searchText,
             renderItem,
