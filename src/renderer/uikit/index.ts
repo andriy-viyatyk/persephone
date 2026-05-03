@@ -27,6 +27,8 @@ export { Text } from "./Text";
 export type { TextProps } from "./Text";
 export { SegmentedControl } from "./SegmentedControl";
 export type { SegmentedControlProps } from "./SegmentedControl";
+export { RadioGroup, RADIO_KEY } from "./RadioGroup";
+export type { RadioGroupProps, IRadio } from "./RadioGroup";
 export { Spinner } from "./Spinner";
 export type { SpinnerProps } from "./Spinner";
 
