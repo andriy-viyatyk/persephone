@@ -33,6 +33,8 @@ export { Spinner } from "./Spinner";
 export type { SpinnerProps } from "./Spinner";
 export { Textarea } from "./Textarea";
 export type { TextareaProps, TextareaRef } from "./Textarea";
+export { PathInput } from "./PathInput";
+export type { PathInputProps } from "./PathInput";
 
 // Overlay
 export { Popover } from "./Popover";

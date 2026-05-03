@@ -10,7 +10,7 @@
 
 Build the UIKit `PathInput` primitive: a single-line text input with a popover suggestion list driven by a flat array of separator-delimited paths (e.g. `"work/projects/persephone"`). Suggestions show one segment at a time — folder rows append the separator and keep the input in edit mode; leaf rows commit and close. Used by `EditLinkDialog` for the **Category** field (separator `/`) and the **Tag-add** field (separator `:`, `maxDepth=1`).
 
-Built by composing `Input` + `Popover` + `ListBox` — no new low-level abstractions. Same composition shape as `Select`, but the data model is tree-shaped paths, not a flat item list, and the trigger is committed on `Enter` / `Tab` / blur rather than only via the dropdown.
+Built by composing `Input` + `Popover` with an inline list of suggestion rows — no `ListBox`, since path counts are small enough that virtualization buys nothing (see Concern #1). The data model is tree-shaped paths, not a flat item list, and the trigger is committed on `Enter` / `Tab` / blur rather than only via the dropdown.
 
 ---
 
@@ -24,7 +24,7 @@ The legacy implementation is `src/renderer/components/basic/PathInput.tsx` (455 
 |--------|-------|
 | `<input className="path-input-field">` | `Input` (US-440) |
 | `Popper` | `Popover` (US-466) |
-| inline `<div className="suggestion-item">` rows | `ListBox` (US-468) with custom `renderItem` |
+| inline `<div className="suggestion-item">` rows | inline `<SuggestionRow>` rows rendered directly inside `Popover` |
 | `clsx`, `styled.*` for app code | tokens + `data-*` attributes |
 
 ### Suggestion semantics (preserved verbatim from legacy)
@@ -198,16 +198,16 @@ export function getPathSuggestions(
 
         const nextSepIndex = remaining.indexOf(separator);
         if (nextSepIndex >= 0) {
+            // Folder — always overwrite (folder wins on collision with a leaf).
             const folderPath = currentPrefix + remaining.slice(0, nextSepIndex);
-            if (!map.has(folderPath)) {
-                map.set(folderPath, {
-                    path: folderPath,
-                    label: remaining.slice(0, nextSepIndex),
-                    isFolder: true,
-                    matchPrefix: currentPrefix,
-                });
-            }
+            map.set(folderPath, {
+                path: folderPath,
+                label: remaining.slice(0, nextSepIndex),
+                isFolder: true,
+                matchPrefix: currentPrefix,
+            });
         } else if (!map.has(path)) {
+            // Leaf — only insert if no entry exists yet (a folder added later still wins).
             map.set(path, {
                 path,
                 label: remaining,
@@ -245,7 +245,6 @@ import color from "../../theme/color";
 import { spacing } from "../tokens";
 import { Input } from "../Input";
 import { Popover } from "../Popover";
-import { ListBox, IListBoxItem } from "../ListBox";
 import { getPathSuggestions, exceedsMaxDepth, PathSuggestion } from "./suggestions";
 
 export interface PathInputProps
@@ -268,7 +267,8 @@ const SuggestionRow = styled.div(
         display: "flex",
         alignItems: "center",
         gap: 0,
-        height: "100%",
+        height: 24,
+        flexShrink: 0,
         paddingLeft: spacing.md,
         paddingRight: spacing.md,
         cursor: "pointer",
@@ -300,45 +300,16 @@ export const PathInput = forwardRef<HTMLInputElement, PathInputProps>(function P
 });
 ```
 
-### Step 3 — Suggestions, derived state, and `IListBoxItem` shaping
+### Step 3 — Derived suggestions
 
 ```tsx
 const suggestions = useMemo<PathSuggestion[]>(() => {
     if (exceedsMaxDepth(value, separator, maxDepth)) return [];
     return getPathSuggestions(value, paths, separator);
 }, [value, paths, separator, maxDepth]);
-
-const items = useMemo<IListBoxItem[]>(() =>
-    suggestions.map((s) => ({
-        value: s.path,
-        label: (
-            <SuggestionRow data-active={undefined}>
-                {s.matchPrefix && <span data-part="prefix">{s.matchPrefix}</span>}
-                <span data-part="segment">{s.label}</span>
-                {s.isFolder && <span data-part="separator">{separator}</span>}
-            </SuggestionRow>
-        ),
-    })),
-    [suggestions, separator],
-);
 ```
 
-The `IListBoxItem` `label` is a ReactNode here (not a string) — `ListBox` renders it as-is. Each row's active state is driven via `data-active={active || undefined}` inside a custom `renderItem`:
-
-```tsx
-const renderItem = useCallback(
-    ({ item, active, id }: ListItemRenderContext<IListBoxItem>) => (
-        <div role="option" id={id} data-active={active || undefined} style={{ height: "100%" }}>
-            {item.label}
-        </div>
-    ),
-    [],
-);
-```
-
-…actually use the simpler approach: skip `renderItem` and instead set `data-active` on the row inside the `label` ReactNode by deriving it from `activeIndex`. Cleaner: pass `searchText=""` (no highlight), use the default `<ListItem>` which already wires `data-active`, and put the matchPrefix/segment/separator markup directly into `item.label`. Default `<ListItem>` styles tag the row with `data-active` automatically; we don't need a custom renderer.
-
-Final shape: `items` carries `IListBoxItem` rows with the React-node labels (matchPrefix span + segment span + folder separator span). Default `ListItem` handles row chrome (active highlight, padding); the inner spans handle the muted-prefix coloring. This matches how `Select` consumes `ListBox` today.
+Suggestions render directly as `<SuggestionRow>` elements inside the popover (see Step 8) — no `IListBoxItem` mapping, no `renderItem` glue.
 
 ### Step 4 — Open / close behavior + active index
 
@@ -350,7 +321,7 @@ Open/close:
 - **Open triggers:** `onFocus` on the input, typing (the `onChange` handler sets `open=true`), `ArrowDown`/`ArrowUp` while closed.
 - **Close triggers:** outside click (`Popover.onClose`), `Escape` while open, leaf selection.
 - **Reset on close:** `activeIndex = null`.
-- The popover only renders when `open && items.length > 0`, otherwise the input acts as a plain text field.
+- The popover only renders when `open && suggestions.length > 0`, otherwise the input acts as a plain text field.
 
 ```tsx
 const [open, setOpen] = useState(false);
@@ -410,7 +381,7 @@ Open popover:
   Escape    → setOpen(false), preventDefault
 ```
 
-Mouse hover: `onMouseEnter` on each `<ListBox>` row sets `activeIndex` (driven via `onActiveChange`).
+Mouse hover: `onMouseEnter` on each `<SuggestionRow>` sets `activeIndex` directly (Step 8).
 
 ### Step 7 — Blur with selection-suppression dance
 
@@ -433,7 +404,7 @@ const handleBlur = useCallback(() => {
 
 The 150ms timeout matches legacy. With UIKit `Popover` rendered in a portal, mouse-down on a suggestion does steal focus from the input — the timeout gives `onClick` a chance to fire `selectSuggestion` (which sets `selectionMadeRef.current = true`) before this blur fallback runs.
 
-### Step 8 — Render: Input + Popover + ListBox
+### Step 8 — Render: Input + Popover with inline suggestion rows
 
 ```tsx
 <Root
@@ -462,29 +433,51 @@ The 150ms timeout matches legacy. With UIKit `Popover` rendered in a portal, mou
         aria-label={ariaLabel}
         aria-labelledby={ariaLabelledBy}
         aria-haspopup="listbox"
-        aria-expanded={open && items.length > 0}
+        aria-expanded={open && suggestions.length > 0}
     />
     <Popover
-        open={open && items.length > 0}
+        open={open && suggestions.length > 0}
         onClose={() => setOpen(false)}
         elementRef={inputRef.current}
         placement="bottom-start"
         offset={[0, 2]}
         matchAnchorWidth
+        maxHeight={240}
+        role="listbox"
     >
-        <ListBox
-            items={items}
-            activeIndex={activeIndex}
-            onActiveChange={setActiveIndex}
-            onChange={(item) => {
-                const s = suggestions.find((x) => x.path === item.value);
-                if (s) selectSuggestion(s);
-            }}
-            rowHeight={24}
-            growToHeight={240}
-        />
+        {suggestions.map((s, i) => (
+            <SuggestionRow
+                key={s.path}
+                ref={(el) => { rowsRef.current[i] = el; }}
+                role="option"
+                data-active={activeIndex === i || undefined}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => selectSuggestion(s)}
+                onMouseEnter={() => setActiveIndex(i)}
+            >
+                {s.matchPrefix && <span data-part="prefix">{s.matchPrefix}</span>}
+                <span data-part="segment">{s.label}</span>
+                {s.isFolder && <span data-part="separator">{separator}</span>}
+            </SuggestionRow>
+        ))}
     </Popover>
 </Root>
+```
+
+`onMouseDown.preventDefault()` on each row keeps focus on the input — clicks register without triggering the input's blur. The 150ms blur grace in Step 7 covers Tab / outside-click cases.
+
+**Active-row scroll-into-view:**
+
+```tsx
+const rowsRef = useRef<Array<HTMLDivElement | null>>([]);
+useEffect(() => {
+    rowsRef.current.length = suggestions.length;
+}, [suggestions.length]);
+useEffect(() => {
+    if (activeIndex != null && activeIndex >= 0) {
+        rowsRef.current[activeIndex]?.scrollIntoView({ block: "nearest" });
+    }
+}, [activeIndex]);
 ```
 
 The popover's `outsideClickIgnoreSelector` is **not** needed: `Popover` already ignores clicks on the floating element itself, and `Input`'s `onBlur` handles input-side defocus. (Compare to `Select`, which needed it because the chevron click would race with outside-close — `PathInput` has no chevron, so the only ways to close are Escape, outside click, or commit.)
@@ -540,65 +533,31 @@ Demo wrapper holds `useState<string>("")` for the value and a `useState<string>(
 
 ### 1. Do we need virtualization?
 
-ListBox virtualizes via `RenderGrid`. Path counts in real Persephone usage are small (categories: ~dozens; tags: ~dozens to low hundreds). Virtualization adds no perceivable cost and aligns with `Select`'s composition pattern, so we use it. No special handling needed.
+No. Path counts in real Persephone usage are small (categories: ~dozens; tags: ~dozens to low hundreds). Skip `ListBox` and render suggestion rows as plain `<SuggestionRow role="option">` elements directly inside the popover. This avoids `IListBoxItem` mapping, custom `renderItem`, and `growToHeight` semantics — the simpler markup is easier to read and maintain. Active-row scroll-into-view is handled directly via `scrollIntoView({ block: "nearest" })` on each row's ref (see Step 8).
 
-### 2. `ListBox` `value` semantics — do we pass `null`?
+### 2. Folder vs leaf collision in `paths`
 
-Yes. PathInput is a text input, not a single-value picker; nothing is "selected" in the dropdown — the dropdown is purely a suggestion list. Pass `value={null}` to `ListBox` so no checkmark renders.
+Example: `paths = ["work", "work/projects", "work/projects/persephone"]`. With no input, the path `"work"` produces a leaf suggestion `"work"`, and the path `"work/projects"` produces a folder suggestion `"work"` — same key.
 
-### 3. Handling the case where `paths` includes an entry equal to a folder prefix
+The legacy `getSuggestions` uses `if (!suggestions.has(path))` (first-wins), so the leaf wins and the user cannot drill into the folder from that row. This matches a real-world bug — sometimes clicking a child node in the dropdown doesn't apply because the parent was committed as a leaf instead.
 
-Example: `paths = ["work", "work/projects", "work/projects/persephone"]`, user types nothing. `getPathSuggestions` produces:
-- `"work"` (leaf), `"work"` (folder, deduped to leaf-or-folder by `path` key — folder wins since it's added first if encountered first).
+**Resolution: folder wins.** `getPathSuggestions` (Step 1) writes folder entries unconditionally (`map.set` overwrites any prior leaf) and writes leaf entries only when no entry exists yet (`if (!map.has(path))` — a folder added later still overwrites). Iteration order is irrelevant: any folder in the input always survives. The user can still commit `"work"` as a leaf by typing it whole and pressing `Enter` — only the dropdown row prefers drill-down on collision.
 
-Actually, looking at the legacy: a path is classified by whether the **remainder past the prefix** contains another separator. With `currentPrefix=""` and `path="work"`, remainder is `"work"` with no separator → leaf. With `path="work/projects"`, remainder is `"work/projects"` with separator at index 4 → folder `"work"`. The second `set("work", folder)` runs **after** the first `set("work", leaf)` and overwrites it, but the legacy uses `if (!suggestions.has(path))` → first wins → leaf.
-
-So under the legacy rules, `"work"` from the first path wins as a leaf, and the user can't drill into `"work/projects"` from this row. **Resolution:** preserve legacy behavior verbatim. If a downstream consumer reports the issue we can revisit; not in scope for US-474.
-
-### 4. Single source of truth for `data-active` on suggestion rows
-
-`ListBox`'s default `<ListItem>` already sets `data-active` on the row chrome. The matchPrefix/segment muted-color rule is defined inside the `SuggestionRow` styled — but if we put the spans inside `IListBoxItem.label`, they live inside the default `<ListItem>` and have no opportunity to react to the row's active state.
-
-**Resolution:** use a custom `renderItem` for `ListBox` that wraps the label content in a row whose `data-active` mirrors the active state. The custom renderer does not replace the default — it's only used in `PathInput`. The `SuggestionRow` styled lives inside `PathInput.tsx` and selects via `&[data-active]`.
-
-```tsx
-const renderItem = useCallback(
-    (ctx: ListItemRenderContext<IListBoxItem>) => (
-        <SuggestionRow
-            id={ctx.id}
-            data-active={ctx.active || undefined}
-            data-selected={ctx.selected || undefined}
-            onMouseDown={(e) => e.preventDefault() /* keep input focus */}
-            onClick={() => {
-                const s = suggestions[ctx.index];
-                if (s) selectSuggestion(s);
-            }}
-            onMouseEnter={() => setActiveIndex(ctx.index)}
-        >
-            {ctx.item.label}
-        </SuggestionRow>
-    ),
-    [suggestions, selectSuggestion],
-);
-```
-
-Note `onMouseDown.preventDefault()` so clicking a row does **not** blur the input — without this, the 150ms blur-grace dance would have to do all the heavy lifting. With it, the click handler runs while focus stays on the input, and `selectionMadeRef.current = true` is set synchronously before any blur could fire.
-
-### 5. Tag-add field with empty `value`
+### 3. Tag-add field with empty `value`
 
 When `value=""` and the user opens the popover (focus), suggestions show all top-level paths up to the next separator. For tags with `separator=":"` and `paths=["hobby:music", "hobby:photography", "work:p1"]`, the top-level suggestions become folders `"hobby"` and `"work"` — exactly what we want (the user picks a namespace, then types the leaf, then Enters to add).
 
-For an unprefixed tag like `"react"` with no colon, the user types it whole and presses Enter → `onBlur("react")` fires → `addTagFromBlur("react")` runs → tag added. No popover interaction needed. Verified the legacy supports this; new implementation must preserve it.
+For an unprefixed tag like `"react"` with no colon, the user types it whole and presses Enter → `onBlur("react")` fires → `addTagFromBlur("react")` runs → tag added. No popover interaction needed. Legacy supports this; new implementation preserves it.
 
-### 6. `Popover` close-on-outside-click vs leaf commit race
+### 4. `Popover` close-on-outside-click vs leaf commit race
 
 When the user clicks a leaf row:
-1. `mousedown` on the row — `onMouseDown.preventDefault()` keeps input focus, also stops the `Popover`'s outside-click from firing (the click target is inside the popover, not outside).
-2. `click` on the row — `selectSuggestion` runs synchronously.
+1. `mousedown` on the row — `onMouseDown.preventDefault()` keeps input focus, and the click target is inside the popover (not outside), so the popover's outside-click handler does not fire.
+2. `click` on the row — `selectSuggestion` runs synchronously, sets `selectionMadeRef.current = true`, calls `onChange(leafPath)` and `onBlur(leafPath)`, closes popover.
 
 Outside-click only fires for clicks landing outside the popover. Confirmed safe.
 
-### 7. Migration of the legacy consumer
+### 5. Migration of the legacy consumer
 
 `EditLinkDialog` migration is the responsibility of US-432 Phase 4. UIKit `PathInput` ships with its own story; the actual consumer migration (drop `className`, change import path) happens later. Keep legacy `src/renderer/components/basic/PathInput.tsx` untouched in this task.
 
@@ -615,7 +574,9 @@ Outside-click only fires for clicks landing outside the popover. Confirmed safe.
 - [ ] `Tab` on a highlighted folder commits the folder (append separator); `Tab` with no highlight: native blur → `onBlur(value)`.
 - [ ] `Escape` while open closes popover. `Escape` while closed blurs input → `onBlur(undefined)`.
 - [ ] `ArrowDown` / `ArrowUp` opens popover (when closed) or moves `activeIndex` (when open).
+- [ ] Active row scrolls into view when navigated by keyboard, even when the popover is short relative to the suggestion count.
 - [ ] Mouse hover sets `activeIndex` to the hovered row.
+- [ ] Given `paths = ["work", "work/projects"]` and empty input, the dropdown shows `"work"` as a folder (drill-down), not as a leaf — folder wins on collision.
 - [ ] `maxDepth=N`, value with `>N` segments → popover does not render even if `paths` would generate suggestions.
 - [ ] `disabled` blocks all interaction; `readOnly` allows focus and selection but blocks typing/popover.
 - [ ] `autoFocus=true` mounts focused with caret at end of `value`.
@@ -629,7 +590,7 @@ Outside-click only fires for clicks landing outside the popover. Confirmed safe.
 
 | File | Change |
 |------|--------|
-| `src/renderer/uikit/PathInput/PathInput.tsx` | New — main component (Input + Popover + ListBox composition) |
+| `src/renderer/uikit/PathInput/PathInput.tsx` | New — main component (Input + Popover with inline suggestion rows) |
 | `src/renderer/uikit/PathInput/suggestions.ts` | New — `getPathSuggestions`, `exceedsMaxDepth` pure helpers |
 | `src/renderer/uikit/PathInput/PathInput.story.tsx` | New — Storybook entry with separator/maxDepth/disabled/readOnly/size controls |
 | `src/renderer/uikit/PathInput/index.ts` | New — barrel export |
@@ -642,4 +603,4 @@ Outside-click only fires for clicks landing outside the popover. Confirmed safe.
 - `src/renderer/editors/link-editor/EditLinkDialog.tsx` — migration is part of US-432 Phase 4, not US-474.
 - `src/renderer/uikit/Input/Input.tsx` — existing surface is sufficient.
 - `src/renderer/uikit/Popover/Popover.tsx` — `matchAnchorWidth` already does what we need.
-- `src/renderer/uikit/ListBox/ListBox.tsx` — `renderItem` is the documented extension point; no API change needed.
+- `src/renderer/uikit/ListBox/ListBox.tsx` — `PathInput` does not depend on `ListBox` (see Concern #1); no API change needed.

@@ -17,6 +17,7 @@ import { segmentedControlStory } from "../../uikit/SegmentedControl/SegmentedCon
 import { radioGroupStory }       from "../../uikit/RadioGroup/RadioGroup.story";
 import { spinnerStory }          from "../../uikit/Spinner/Spinner.story";
 import { textareaStory }         from "../../uikit/Textarea/Textarea.story";
+import { pathInputStory }        from "../../uikit/PathInput/PathInput.story";
 
 // Overlay
 import { popoverStory }          from "../../uikit/Popover/Popover.story";
@@ -29,7 +30,7 @@ import { selectStory }           from "../../uikit/Select/Select.story";
 export const ALL_STORIES: Story[] = [
     panelStory, spacerStory, toolbarStory,
     buttonStory, iconButtonStory, inputStory, labelStory, checkboxStory, dividerStory, textStory,
-    segmentedControlStory, radioGroupStory, spinnerStory, textareaStory,
+    segmentedControlStory, radioGroupStory, spinnerStory, textareaStory, pathInputStory,
     popoverStory, tooltipStory,
     listBoxStory, selectStory,
 ];
