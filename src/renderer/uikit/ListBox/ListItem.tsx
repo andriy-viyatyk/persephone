@@ -3,7 +3,7 @@ import styled from "@emotion/styled";
 import color from "../../theme/color";
 import { gap, height, spacing } from "../tokens";
 import { CheckIcon } from "../../theme/icons";
-import { highlight } from "./highlight";
+import { highlight } from "../shared/highlight";
 
 // --- Types ---
 
