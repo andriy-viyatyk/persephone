@@ -150,9 +150,7 @@ uikit/Dialog/
 
 ### Phase 2 — Simple dialog migrations (no missing UIKit deps)
 
-**Blocked on:** [US-469 — UIKit RadioGroup](../US-469-uikit-radiogroup/README.md). InputDialog's optional radio-options row needs the new `RadioGroup` primitive (SegmentedControl's joined-pill affordance is wrong for a radio list — see US-469 Background).
-
-**Scope:** Migrate `ConfirmationDialog`, `InputDialog`, `PasswordDialog`, `LibrarySetupDialog`. After US-469 lands, all four use only UIKit primitives (`Panel`, `Text`, `Button`, `Input`, `Checkbox`, `Label`, `IconButton`, `RadioGroup`).
+**Scope:** Migrate `ConfirmationDialog`, `InputDialog`, `PasswordDialog`, `LibrarySetupDialog`. All four use only UIKit primitives (`Panel`, `Text`, `Button`, `Input`, `Checkbox`, `Label`, `IconButton`, `RadioGroup`). [US-469 — UIKit RadioGroup](../US-469-uikit-radiogroup/README.md) (which provides the radio-options row for `InputDialog`) is implemented.
 
 For each dialog:
 1. Replace `import { Dialog, DialogContent } from "./Dialog"` with `import { Dialog, DialogContent } from "../../uikit"`.
@@ -163,7 +161,7 @@ For each dialog:
 6. Rebuild the body with UIKit primitives (`Panel padding gap` instead of styled `.confirmation-message`, `.confirmation-dialog-buttons`, etc.).
 7. Drop `color` import where no longer used. Drop `clsx`, drop styled, drop `@emotion/styled` import.
 8. For `LibrarySetupDialog`: replace the raw `<input>` with `<Input>`; replace the `<label class="checkbox-row"><input type="checkbox">…</label>` with `<Checkbox label="Copy example scripts">`. Keep the Browse button click handler unchanged.
-9. For `InputDialog`'s radio options row: replace with `<RadioGroup orientation="horizontal" wrap items={state.options.map(o => ({ value: o }))} value={state.selectedOption} onChange={model.setSelectedOption} />` (delivered by US-469).
+9. For `InputDialog`'s radio options row: replace with `<RadioGroup orientation="horizontal" wrap items={state.options.map(o => ({ value: o }))} value={state.selectedOption} onChange={model.setSelectedOption} />`.
 
 **Phase 2 acceptance:**
 - All four dialogs render identically (within accepted token-driven drift in spacing).
@@ -193,6 +191,8 @@ Steps mirror Phase 2 (drop `styled(DialogContent)`, move sizing to props, rebuil
 | **`Tag`** | inline `tag-chip` styled span | EditLinkDialog (tags row) |
 
 **Each missing primitive becomes its own UIKit task** (`US-XXX`), created in [active-work.md](../../active-work.md) under EPIC-025 when reached. Naming follows the EPIC-025 naming table (Phase 4 already uses this pattern for Popover/Tooltip/ListBox). Phase 4 of US-432 starts only after those primitives are in `uikit/`.
+
+**Textarea design (binding):** the UIKit `Textarea` primitive **must** use a `contentEditable` `<div>` (mirror `src/renderer/components/basic/TextAreaField.tsx`), **not** a native `<textarea>`. Reason: contentEditable enables auto-grow/shrink to content, richer paste/key handling, and clean `singleLine` mode — features a fixed-height native `<textarea>` cannot do without layout hacks. This decision is locked in for the dedicated Textarea sub-task; do not re-litigate inside that task.
 
 After the primitives exist:
 
@@ -224,7 +224,7 @@ After the primitives exist:
 
 ## Concerns / Open questions
 
-1. **Radio row for `InputDialog`** — Resolved. `SegmentedControl` is the wrong affordance (joined pill bar, not a radio list). [US-469](../US-469-uikit-radiogroup/README.md) adds a UIKit `RadioGroup` primitive; Phase 2 of US-432 blocks on it.
+1. **Radio row for `InputDialog`** — Resolved. `SegmentedControl` is the wrong affordance (joined pill bar, not a radio list). [US-469](../US-469-uikit-radiogroup/README.md) added a UIKit `RadioGroup` primitive (implemented and merged); Phase 2 of US-432 is now unblocked.
 2. **Mount-as-open vs. `open` prop** — Resolved: mount-as-open. The `Dialogs.tsx` queue host already controls mount/unmount; an `open` prop would be redundant in the only consumer. If a non-queue use-case shows up later, add `open` then.
 3. **`headerButtons` slot** — currently named `buttons` in legacy `DialogContent`. Renamed to `headerButtons` in the new API to disambiguate from body action buttons. Used by zero current dialogs (legacy `buttons` prop is never set anywhere we audited). Kept for parity; remove if Phase 5 finds it still unused.
 4. **Focus trap edge cases** — what if every focusable child is `disabled`, or the dialog has only static text? **Resolution:** the FocusTrap falls back to focusing the dialog root with `tabIndex={-1}` set programmatically, so Esc still works and the trap still scopes Tab.

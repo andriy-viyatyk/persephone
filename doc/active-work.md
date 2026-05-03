@@ -23,6 +23,7 @@ Overview of all active and planned epics and tasks.
   - [ ] [US-467: UIKit Tooltip — overlay primitive](tasks/US-467-uikit-tooltip/README.md) *(Phase 4 — overlay infrastructure)*
   - [ ] [US-468: UIKit ListBox — virtualized list primitive](tasks/US-468-uikit-listbox/README.md) *(Phase 4 — list infrastructure; blocks US-464)*
   - [ ] [US-469: UIKit RadioGroup — selection primitive](tasks/US-469-uikit-radiogroup/README.md) *(Phase 4 — form infrastructure; blocks US-432 Phase 2)*
+  - [ ] [US-470: UIKit Textarea — multi-line text input primitive](tasks/US-470-uikit-textarea/README.md) *(Phase 4 — form infrastructure; blocks US-432 Phase 4)*
   - [ ] [US-452: About screen — UIKit migration](tasks/US-452-about-screen-migration/README.md) *(Phase 4 — per-screen migration)*
   - [ ] [US-455: MermaidView — UIKit migration](tasks/US-455-mermaid-view-migration/README.md) *(Phase 4 — per-screen migration)*
   - [ ] [US-456: SvgView — UIKit migration](tasks/US-456-svg-view-migration/README.md) *(Phase 4 — per-screen migration)*
