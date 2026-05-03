@@ -33,7 +33,7 @@ Overview of all active and planned epics and tasks.
   - [ ] [US-462: TorStatusOverlay — UIKit migration](tasks/US-462-tor-status-overlay-migration/README.md) *(Phase 4 — per-screen migration)*
   - [ ] [US-463: BrowserDownloadsPopup + DownloadButton — UIKit migration](tasks/US-463-browser-downloads-migration/README.md) *(Phase 4 — per-screen migration; blocked on US-466)*
   - [ ] [US-464: UrlSuggestionsDropdown — UIKit migration](tasks/US-464-url-suggestions-dropdown-migration/README.md) *(Phase 4 — per-screen migration; blocked on US-468)*
-  - [ ] US-465: CompareEditor — UIKit migration *(Phase 4 — per-screen migration)*
+  - [ ] [US-465: CompareEditor — UIKit migration](tasks/US-465-compare-editor-migration/README.md) *(Phase 4 — per-screen migration)*
   - [ ] US-436: Script UI API — expose new component library to scripting engine *(Phase 6)*
   - [ ] US-435: Storybook — script tab for building and testing UI via scripts *(Phase 6)*
 
