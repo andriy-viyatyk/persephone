@@ -20,6 +20,7 @@ interface DemoProps {
     longContent?: boolean;
     useIgnoreSelector?: boolean;
     matchAnchorWidth?: boolean;
+    resizable?: boolean;
 }
 
 const PopoverDemo = ({
@@ -30,6 +31,7 @@ const PopoverDemo = ({
     longContent = false,
     useIgnoreSelector = false,
     matchAnchorWidth = false,
+    resizable = false,
 }: DemoProps) => {
     const anchorRef = useRef<HTMLButtonElement>(null);
     const [open, setOpen] = useState(false);
@@ -60,11 +62,17 @@ const PopoverDemo = ({
                     useIgnoreSelector ? '[data-test-ignore="true"]' : undefined
                 }
                 matchAnchorWidth={matchAnchorWidth}
+                resizable={resizable}
                 onClose={() => setOpen(false)}
             >
                 <Panel direction="column" padding="md" gap="sm" minWidth="200px">
                     <Text>Hello from Popover</Text>
                     <Text size="sm" color="light">Placement: {placement}</Text>
+                    {resizable && (
+                        <Text size="sm">
+                            Long line that overflows when the popover is narrow — drag the bottom-right corner to enlarge.
+                        </Text>
+                    )}
                     {longContent &&
                         Array.from({ length: 30 }).map((_, i) => (
                             <Text key={i} size="sm">Item {i + 1}</Text>
@@ -88,5 +96,6 @@ export const popoverStory: Story = {
         { name: "longContent",       type: "boolean", default: false },
         { name: "useIgnoreSelector", type: "boolean", default: false },
         { name: "matchAnchorWidth",  type: "boolean", default: false },
+        { name: "resizable",         type: "boolean", default: false },
     ],
 };

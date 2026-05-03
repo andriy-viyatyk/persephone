@@ -57,6 +57,12 @@ export interface SelectProps<T = IListBoxItem>
     maxVisibleItems?: number;
     /** Pixel height of each row. Forwarded to the inner ListBox. Default: 24. */
     rowHeight?: number;
+    /**
+     * When true, the dropdown gains a resize handle at the bottom-right corner.
+     * Forwarded to the inner Popover. Useful when long item labels exceed the
+     * input width and `matchAnchorWidth` truncates the list.
+     */
+    resizable?: boolean;
     "aria-label"?: string;
     "aria-labelledby"?: string;
 }
@@ -110,6 +116,7 @@ function SelectInner<T = IListBoxItem>(
         emptyMessage,
         maxVisibleItems = defaultMaxVisibleItems,
         rowHeight = defaultRowHeight,
+        resizable,
         "aria-label": ariaLabel,
         "aria-labelledby": ariaLabelledBy,
         ...rest
@@ -354,6 +361,7 @@ function SelectInner<T = IListBoxItem>(
                 placement="bottom-start"
                 offset={[0, 2]}
                 matchAnchorWidth
+                resizable={resizable}
                 outsideClickIgnoreSelector={`[data-type="select"][data-id="${selectId}"]`}
             >
                 <ListBox<IListBoxItem>

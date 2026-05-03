@@ -15,6 +15,7 @@ interface DemoProps {
     itemCount?: number;
     withIcons?: boolean;
     itemsMode?: "array" | "lazy-fn" | "lazy-promise";
+    resizable?: boolean;
 }
 
 function buildItems(count: number, withIcons: boolean): IListBoxItem[] {
@@ -42,6 +43,7 @@ function SelectDemo({
     itemCount = 50,
     withIcons = true,
     itemsMode = "array",
+    resizable = false,
 }: DemoProps) {
     const [value, setValue] = useState<IListBoxItem | null>(null);
 
@@ -66,6 +68,7 @@ function SelectDemo({
                 readOnly={readOnly}
                 size={size}
                 filterMode={filterMode}
+                resizable={resizable}
                 aria-label="Demo select"
             />
             <Text size="xs" color="light">
@@ -95,5 +98,6 @@ export const selectStory: Story = {
             default: "array",
             label: "Items mode",
         },
+        { name: "resizable", type: "boolean", default: false },
     ],
 };

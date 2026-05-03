@@ -1,4 +1,4 @@
-import React, { forwardRef, useCallback, useEffect, useMemo, useRef } from "react";
+import React, { forwardRef, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactDOM from "react-dom";
 import {
     Placement,
@@ -13,6 +13,7 @@ import {
 import styled from "@emotion/styled";
 import color from "../../theme/color";
 import { radius } from "../tokens";
+import { ResizeHandleIcon } from "../../theme/icons";
 
 // --- Types ---
 
@@ -52,6 +53,16 @@ export interface PopoverProps
      * automatically on `autoUpdate` (resize, scroll). Default: false.
      */
     matchAnchorWidth?: boolean;
+    /**
+     * When true, a resize handle is rendered at the bottom-right corner. The user
+     * can drag it to grow the popover above its initial / anchor-matched size.
+     * Once the user has dragged, the popover keeps its new size for the rest of
+     * the open session — `matchAnchorWidth` no longer re-applies. On close, the
+     * manual size is discarded; opening again starts fresh.
+     */
+    resizable?: boolean;
+    /** Fired during a drag with the live `(width, height)`. Optional. */
+    onResize?: (width: number, height: number) => void;
     children?: React.ReactNode;
 }
 
@@ -59,6 +70,7 @@ export interface PopoverProps
 
 const Root = styled.div(
     {
+        position: "relative",
         backgroundColor: color.background.default,
         border: `1px solid ${color.border.default}`,
         borderRadius: radius.lg,
@@ -69,7 +81,43 @@ const Root = styled.div(
     { label: "Popover" },
 );
 
+const ResizeHandle = styled.div(
+    {
+        position: "absolute",
+        right: 2,
+        bottom: 2,
+        width: 14,
+        height: 14,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        cursor: "nwse-resize",
+        color: color.text.light,
+        opacity: 0.6,
+        userSelect: "none",
+        touchAction: "none",
+        zIndex: 1,
+        "&:hover": { opacity: 1 },
+        '&[data-edge="top"]': {
+            top: 2,
+            bottom: "unset",
+            cursor: "nesw-resize",
+            transform: "rotate(-90deg)",
+        },
+        "& > svg": {
+            width: 12,
+            height: 12,
+        },
+    },
+    { label: "PopoverResizeHandle" },
+);
+
 // --- Component ---
+
+interface ManualSize {
+    width: number;
+    height: number;
+}
 
 export const Popover = forwardRef<HTMLDivElement, PopoverProps>(function Popover(
     {
@@ -84,6 +132,8 @@ export const Popover = forwardRef<HTMLDivElement, PopoverProps>(function Popover
         maxHeight,
         outsideClickIgnoreSelector,
         matchAnchorWidth,
+        resizable,
+        onResize,
         children,
         ...rest
     },
@@ -101,6 +151,12 @@ export const Popover = forwardRef<HTMLDivElement, PopoverProps>(function Popover
         return undefined;
     }, [elementRef, x, y]);
 
+    const [manualSize, setManualSize] = useState<ManualSize | null>(null);
+    const manualSizeRef = useRef<ManualSize | null>(null);
+    useEffect(() => {
+        manualSizeRef.current = manualSize;
+    }, [manualSize]);
+
     const middleware = useMemo(() => {
         const m = [
             flip(),
@@ -117,7 +173,7 @@ export const Popover = forwardRef<HTMLDivElement, PopoverProps>(function Popover
                     const styles: Record<string, string> = {
                         maxHeight: `${Math.max(100, availableHeight - 20)}px`,
                     };
-                    if (matchAnchorWidth) {
+                    if (matchAnchorWidth && !manualSizeRef.current) {
                         styles.width = `${rects.reference.width}px`;
                     }
                     Object.assign(elements.floating.style, styles);
@@ -144,11 +200,20 @@ export const Popover = forwardRef<HTMLDivElement, PopoverProps>(function Popover
     });
 
     const internalRef = useRef<HTMLDivElement | null>(null);
+    const initialSizeRef = useRef<ManualSize | null>(null);
     const mergedRefs = useMergeRefs([refs.setFloating, ref, internalRef]);
 
     useEffect(() => {
         refs.setPositionReference(placeRef ?? null);
     }, [placeRef, refs]);
+
+    // Reset manual size when the popover closes.
+    useEffect(() => {
+        if (!open) {
+            setManualSize(null);
+            initialSizeRef.current = null;
+        }
+    }, [open]);
 
     useEffect(() => {
         if (!open) return;
@@ -172,18 +237,79 @@ export const Popover = forwardRef<HTMLDivElement, PopoverProps>(function Popover
         };
     }, [open, onClose, outsideClickIgnoreSelector]);
 
+    const isTopPlacement = actualPlacement.startsWith("top");
+
+    const onHandlePointerDown = useCallback(
+        (event: React.PointerEvent<HTMLDivElement>) => {
+            if (event.pointerType === "mouse" && event.buttons !== 1) return;
+            const root = internalRef.current;
+            if (!root) return;
+            event.preventDefault();
+            event.stopPropagation();
+
+            const startRect = root.getBoundingClientRect();
+            if (!initialSizeRef.current) {
+                initialSizeRef.current = { width: startRect.width, height: startRect.height };
+            }
+            const initial = initialSizeRef.current;
+            const startX = event.clientX;
+            const startY = event.clientY;
+            const isTop = isTopPlacement;
+
+            const onPointerMove = (e: PointerEvent) => {
+                if (!internalRef.current) return;
+                e.preventDefault();
+                const dx = e.clientX - startX;
+                const dy = isTop ? -(e.clientY - startY) : e.clientY - startY;
+                const w = Math.max(initial.width, startRect.width + dx);
+                const h = Math.max(initial.height, startRect.height + dy);
+                setManualSize({ width: w, height: h });
+                onResize?.(w, h);
+            };
+            const onLost = () => {
+                root.removeEventListener("pointermove", onPointerMove);
+                root.removeEventListener("lostpointercapture", onLost);
+                root.removeEventListener("pointerup", onLost);
+            };
+
+            root.setPointerCapture(event.pointerId);
+            root.addEventListener("pointermove", onPointerMove);
+            root.addEventListener("lostpointercapture", onLost);
+            root.addEventListener("pointerup", onLost);
+        },
+        [isTopPlacement, onResize],
+    );
+
     if (!open || !placeRef) return null;
+
+    const inlineStyle: React.CSSProperties = {
+        ...floatingStyles,
+        zIndex: 1000,
+        ...(maxHeight ? { maxHeight } : {}),
+        ...(manualSize ? { width: manualSize.width, height: manualSize.height } : {}),
+    };
 
     return ReactDOM.createPortal(
         <Root
             data-type="popover"
             data-placement={actualPlacement}
+            data-resizable={resizable || undefined}
+            data-resized={manualSize ? "" : undefined}
             onKeyDown={onKeyDown}
             {...rest}
             ref={mergedRefs}
-            style={{ ...floatingStyles, zIndex: 1000, ...(maxHeight ? { maxHeight } : {}) }}
+            style={inlineStyle}
         >
             {children}
+            {resizable && (
+                <ResizeHandle
+                    data-type="popover-resize-handle"
+                    data-edge={isTopPlacement ? "top" : "bottom"}
+                    onPointerDown={onHandlePointerDown}
+                >
+                    <ResizeHandleIcon />
+                </ResizeHandle>
+            )}
         </Root>,
         document.body,
     );
