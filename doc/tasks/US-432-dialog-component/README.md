@@ -23,15 +23,17 @@ The `src/renderer/ui/dialogs/` folder contains:
 
 ### Concrete dialogs to migrate (7 total)
 
-| File | Body shape | UIKit deps needed |
-|------|-----------|-------------------|
+All UIKit primitives needed for migration now exist (see "Phase 4 — UIKit dependency status" below). Migration order is gated by Dialog (Phase 1), then complexity.
+
+| File | Body shape | UIKit deps |
+|------|-----------|------------|
 | `ui/dialogs/ConfirmationDialog.tsx` | message + 2–3 buttons | `Panel`, `Text`, `Button` |
-| `ui/dialogs/InputDialog.tsx` | message + `TextField` + optional radio options + 2 buttons | `Panel`, `Text`, `Button`, `Input`, `SegmentedControl` (replaces radio `Button` row) |
+| `ui/dialogs/InputDialog.tsx` | message + `TextField` + optional radio options + 2 buttons | `Panel`, `Text`, `Button`, `Input`, `RadioGroup` (replaces radio `Button` row) |
 | `ui/dialogs/PasswordDialog.tsx` | label + 1–2 password fields + error + 2 buttons | `Panel`, `Text`, `Button`, `Input` (with `type="password"` and a `Label` above) |
 | `ui/dialogs/TextDialog.tsx` | Monaco `<Editor>` + buttons (sized 600×400 by default, or `width`/`height` props) | `Panel`, `Button` + Monaco `<Editor>` (kept as-is) |
-| `ui/dialogs/OpenUrlDialog.tsx` | `TextAreaField` + 3 buttons (with one left-aligned) | `Panel`, `Button` + UIKit **`Textarea`** (does not exist yet) |
+| `ui/dialogs/OpenUrlDialog.tsx` | `TextAreaField` + 3 buttons (with one left-aligned) | `Panel`, `Button`, `Textarea` |
 | `ui/dialogs/LibrarySetupDialog.tsx` | folder input + Browse button + checkbox + hint + 2 buttons | `Panel`, `Text`, `Button`, `Input`, `Checkbox` |
-| `editors/link-editor/EditLinkDialog.tsx` | 6 form rows (`TextAreaField`/`TextField`/`PathInput`/`ComboSelect`/tag chips/image preview) + 2 buttons | `Panel`, `Text`, `Button`, `Input` + UIKit **`Textarea`**, **`Select`**, **`PathInput`**, **`Tag`** (none exist yet) |
+| `editors/link-editor/EditLinkDialog.tsx` | 6 form rows (`TextAreaField`/`TextField`/`PathInput`/`ComboSelect`/tag chips/image preview) + 2 buttons | `Panel`, `Text`, `Label`, `Button`, `Input`, `Textarea`, `Select`, `PathInput`, `TagsInput` |
 
 ### EPIC-025 rules in scope
 
@@ -150,7 +152,7 @@ uikit/Dialog/
 
 ### Phase 2 — Simple dialog migrations (no missing UIKit deps)
 
-**Scope:** Migrate `ConfirmationDialog`, `InputDialog`, `PasswordDialog`, `LibrarySetupDialog`. All four use only UIKit primitives (`Panel`, `Text`, `Button`, `Input`, `Checkbox`, `Label`, `IconButton`, `RadioGroup`). [US-469 — UIKit RadioGroup](../US-469-uikit-radiogroup/README.md) (which provides the radio-options row for `InputDialog`) is implemented.
+**Scope:** Migrate `ConfirmationDialog`, `InputDialog`, `PasswordDialog`, `LibrarySetupDialog`. All four use only UIKit primitives (`Panel`, `Text`, `Button`, `Input`, `Checkbox`, `Label`, `IconButton`, `RadioGroup`). All deps are in place — [US-469 — UIKit RadioGroup](../US-469-uikit-radiogroup/README.md) (radio-options row for `InputDialog`) is merged.
 
 For each dialog:
 1. Replace `import { Dialog, DialogContent } from "./Dialog"` with `import { Dialog, DialogContent } from "../../uikit"`.
@@ -169,40 +171,65 @@ For each dialog:
 - TypeScript: no `style=` / `className=` on UIKit components in the migrated files.
 - Manual smoke test of each dialog's flow (Confirm yes/no, Input enter+escape+radio selection, Password encrypt with mismatch error, LibrarySetup browse + link).
 
-### Phase 3 — Monaco-embedded migration: `TextDialog`
+### Phase 3 — Monaco / Textarea migrations: `TextDialog` + `OpenUrlDialog`
 
-**Scope:** Migrate `TextDialog`. No new UIKit primitives needed — Monaco `<Editor>` is embedded as-is.
+**Scope:** Migrate `TextDialog` and `OpenUrlDialog`. Both use only UIKit primitives that are in place — Monaco `<Editor>` (embedded as-is) and UIKit `Textarea` ([US-470](../US-470-uikit-textarea/README.md), done).
 
-Steps mirror Phase 2 (drop `styled(DialogContent)`, move sizing to props, rebuild body with `Panel`s). The Monaco `<Editor>` instance is unchanged; it sits inside a `<Panel flex overflow="hidden">` so it claims the available space between header and buttons.
+Steps mirror Phase 2 (drop `styled(DialogContent)`, move sizing to props, rebuild body with `Panel`s).
+
+- **`TextDialog`** — Monaco `<Editor>` instance is unchanged; it sits inside a `<Panel flex overflow="hidden">` so it claims the available space between header and buttons. Default sizing (600×400) and the `width`/`height` overrides map to `<DialogContent width height>`.
+- **`OpenUrlDialog`** — replace `TextAreaField` with UIKit `<Textarea minHeight={80} maxHeight={300}>`. The legacy `TextAreaFieldRef.div.focus()` pattern becomes `TextareaRef.focus()`. Button row has a left-aligned "Open File" and right-aligned Cancel/Open: use `<Panel direction="row" justify="between">` with the Open File button on the left and an inner `<Panel direction="row" gap="sm">` for Cancel + Open on the right. The leading icon on "Open File" goes via `<Button icon={<OpenFileIcon />}>`.
 
 **Phase 3 acceptance:**
-- TextDialog renders at the configured size (default 600×400, configurable via `width`/`height` props on the consumer side that map to `<DialogContent width height>`).
+- `TextDialog` renders at the configured size (default 600×400, configurable via `width`/`height` props on the consumer side that map to `<DialogContent width height>`).
 - Monaco editor remains read-only by default with the same options.
+- `OpenUrlDialog` autofocuses the textarea, accepts paths/URLs/cURL, Ctrl+Enter submits, Esc closes, "Open File" opens the file picker, "Open" is disabled when the textarea is empty/whitespace.
 
-### Phase 4 — Complex dialog migrations (require new UIKit primitives)
+### Phase 4 — Complex dialog migration: `EditLinkDialog`
 
-**Scope:** Migrate `OpenUrlDialog` and `EditLinkDialog`. These require UIKit primitives that **do not exist yet**:
+**Scope:** Migrate `EditLinkDialog`. All UIKit primitives needed are now in `uikit/`:
 
-| Required UIKit primitive | Replaces | Used by |
+| UIKit primitive | Replaces (legacy) | Status |
 |---|---|---|
-| **`Textarea`** | `components/basic/TextAreaField` | OpenUrlDialog, EditLinkDialog |
-| **`Select`** | `components/form/ComboSelect` | EditLinkDialog |
-| **`PathInput`** | `components/basic/PathInput` | EditLinkDialog (category, tag autocomplete) |
-| **`Tag`** | inline `tag-chip` styled span | EditLinkDialog (tags row) |
+| `Textarea` | `components/basic/TextAreaField` | [US-470](../US-470-uikit-textarea/README.md) — done |
+| `Select` | `components/form/ComboSelect` | [US-472](../US-472-uikit-select/README.md) — done |
+| `PathInput` | `components/basic/PathInput` (category row) | [US-474](../US-474-uikit-pathinput/README.md) — done |
+| `Tag` + `TagsInput` | inline `tag-chip` spans + separate add `PathInput` | [US-475](../US-475-uikit-tag/README.md) — done |
 
-**Each missing primitive becomes its own UIKit task** (`US-XXX`), created in [active-work.md](../../active-work.md) under EPIC-025 when reached. Naming follows the EPIC-025 naming table (Phase 4 already uses this pattern for Popover/Tooltip/ListBox). Phase 4 of US-432 starts only after those primitives are in `uikit/`.
+**Textarea design (locked, shipped):** UIKit `Textarea` uses a `contentEditable` `<div>` (mirrors legacy `TextAreaField`), not a native `<textarea>`. This is preserved by US-470 and gives auto-grow/shrink, richer paste/key handling, and a clean `singleLine` mode.
 
-**Textarea design (binding):** the UIKit `Textarea` primitive **must** use a `contentEditable` `<div>` (mirror `src/renderer/components/basic/TextAreaField.tsx`), **not** a native `<textarea>`. Reason: contentEditable enables auto-grow/shrink to content, richer paste/key handling, and clean `singleLine` mode — features a fixed-height native `<textarea>` cannot do without layout hacks. This decision is locked in for the dedicated Textarea sub-task; do not re-litigate inside that task.
+**`EditLinkDialog`** — biggest body of work. Six form rows; each is `<Panel direction="row" align="center" gap="md">` with a `<Text>`/`<Label>` and a UIKit input. Per-row mapping:
 
-After the primitives exist:
+| Row | Before | After |
+|---|---|---|
+| Title | `<TextAreaField className="form-field" singleLine value={state.linkTitle} … />` | `<Textarea singleLine value={…} onChange={…} placeholder="Link title…" autoFocus />` |
+| URL | `<TextField value={state.href} … />` | `<Input value={…} onChange={…} placeholder="https://…" />` |
+| Category | `<PathInput value={state.category} paths={state.categories} separator="/" … />` (legacy) | `<PathInput value={…} paths={…} separator="/" … />` from `uikit/` |
+| Target | `<ComboSelect selectFrom={targetEditorOptions} … />` | `<Select items={targetEditorOptions} value={…} onChange={…} />` |
+| Tags | inline chip-render loop + separate `<PathInput className="tag-add-input">` (driven by `state.newTag` + `addTagFromBlur` + `removeTag`) | `<TagsInput value={state.tags} onChange={model.setTags} items={state.availableTags} separator=":" maxDepth={1} />` |
+| Image URL | `<TextField endButtons={[clearBtn]} … />` | `<Input value={…} onChange={…} endSlot={state.imgSrc ? <IconButton size="sm" icon={<CloseIcon />} onClick={() => model.setImgSrc("")} /> : null} />` (uses `Input`'s slot prop from US-471) |
 
-- **`OpenUrlDialog`** — replace `TextAreaField` with `<Textarea>`; rebuild body and button row with `Panel`. Note: the button row has a left-aligned "Open File" button and right-aligned Cancel/Open. Use `<Panel direction="row" justify="between">` with two inner `Panel`s, or `Panel justify="end"` plus `<Spacer />` between leading and trailing groups.
-- **`EditLinkDialog`** — biggest body of work. Six form rows; each is a `<Panel direction="row" align="center" gap="md">` with a `<Text>` label and a UIKit input. Replace the inline `tag-chip` spans with `<Tag onRemove={…}>`. Replace the discovered-images thumbnail grid with a `Panel direction="row" wrap gap="sm"` of `<img>`s inside `Panel border` wrappers (raw `<img>` is acceptable; this isn't a primitive's job).
+**Model simplification (TagsInput absorbs transient state):** when `EditLinkDialog` migrates to `<TagsInput>`, the following members in `EditLinkDialogModel` and `EditLinkDialogState` (`src/renderer/editors/link-editor/EditLinkDialog.tsx`) become dead code and **must be removed**:
+
+- State: `newTag: string`
+- Methods: `setNewTag`, `addTagFromBlur`, `removeTag`
+
+Replace them with a single setter:
+
+```ts
+setTags = (tags: string[]) => {
+    this.state.update((s) => { s.tags = tags; });
+};
+```
+
+The dedupe-on-add and trim-trailing-separator semantics that previously lived in `addTagFromBlur` are already implemented inside `TagsInput`, so behavior is preserved.
+
+**Discovered-images grid** — replace the thumbnail grid with `<Panel direction="row" wrap gap="sm">` of `<img>`s wrapped in `<Panel border>` for the selected outline. Raw `<img>` is acceptable (this isn't a primitive's job).
 
 **Phase 4 acceptance:**
-- All UIKit primitive sub-tasks complete and have stories.
-- `OpenUrlDialog` and `EditLinkDialog` use no `styled`, no `style=`, no `className=` on UIKit components.
-- Smoke test: open URL flow with file fallback; create + edit a link with all six fields, tag add/remove, image preview.
+- `EditLinkDialog` uses no `styled`, no `style=`, no `className=` on UIKit components.
+- `EditLinkDialogModel` and `EditLinkDialogState` no longer carry `newTag` / `setNewTag` / `addTagFromBlur` / `removeTag`; tag mutation flows through `setTags(next: string[])`.
+- Smoke test: create + edit a link with all six fields, tag add/remove (including dedupe-on-add and trailing-`:` strip), image preview.
 
 ### Phase 5 — Cleanup
 
@@ -231,13 +258,14 @@ After the primitives exist:
 5. **Right-docked dialog (`position="right"`) styling** — currently full height, `borderLeft`, no shadow. Confirm this matches the new `DialogContent` styling (which adds `boxShadow` for the centered case). **Resolution:** condition the shadow on `position !== "right"` inside `DialogContent` styled definition (or via parent `[data-position="right"] > [data-type="dialog-content"]` selector on the `Dialog` root).
 6. **Backdrop click vs. body click** — `onBackdropClick` must fire only when the click lands on the overlay, not on the dialog content (current legacy code uses `onClick` on root, which fires for both — bug masked because `Dialogs.tsx` host doesn't use `onBackdropClick` today, but the prop exists). **Resolution:** in the new `Dialog`, gate `onBackdropClick` with `e.target === e.currentTarget`.
 7. **`pulse` animation** — preserve as-is. It is part of Persephone's dialog feel; tokens don't apply to keyframes.
-8. **z-index** — legacy uses `100`; UIKit `Popover` uses `1000`. Dialogs should be above popovers (a popover inside a dialog must appear above the dialog backdrop). Bump dialog z-index to `1500` so `Popover` (1000) inside a dialog still renders above the dialog body — needs to be verified during Phase 1 storybook (open a Popover from inside a story-wrapped Dialog).
+8. **z-index** — Resolved: keep dialog z-index at `100` (legacy value). UIKit `Popover` uses `1000`. A popover anchored from a control *inside* a dialog renders into a body-level portal, so its z-index must be greater than the dialog's overlay so the popover appears above the dialog content. With dialog `100` < popover `1000`, popovers inside dialogs work correctly. Verified in Phase 1 storybook by opening a Popover from inside a story-wrapped Dialog.
 
 ## Acceptance Criteria (whole task)
 
 - [ ] `src/renderer/uikit/Dialog/` exists with `Dialog`, `DialogContent`, story, and `index.ts` export
 - [ ] `Dialog` enforces focus trap (visibly observable in Storybook)
 - [ ] All 7 concrete dialogs render and behave identically to before, but consume the UIKit primitive
+- [ ] `EditLinkDialog` uses `<TagsInput>` for the Tags row; `newTag` / `setNewTag` / `addTagFromBlur` / `removeTag` removed from its model
 - [ ] No `styled(DialogContent)`, no `@emotion/styled` import in `ui/dialogs/*.tsx` or `editors/link-editor/EditLinkDialog.tsx`
 - [ ] No `style=` / `className=` on `<Dialog>` or `<DialogContent>` anywhere in app code (TypeScript guarantees this)
 - [ ] Legacy `ui/dialogs/Dialog.tsx` deleted; `ui/dialogs/index.ts` no longer exports `Dialog`/`DialogContent`/`DialogPosition`
@@ -265,8 +293,8 @@ After the primitives exist:
 | `src/renderer/ui/dialogs/PasswordDialog.tsx` | 2 |
 | `src/renderer/ui/dialogs/LibrarySetupDialog.tsx` | 2 |
 | `src/renderer/ui/dialogs/TextDialog.tsx` | 3 |
-| `src/renderer/ui/dialogs/OpenUrlDialog.tsx` | 4 (after `Textarea` UIKit task) |
-| `src/renderer/editors/link-editor/EditLinkDialog.tsx` | 4 (after `Textarea`/`Select`/`PathInput`/`Tag` UIKit tasks) |
+| `src/renderer/ui/dialogs/OpenUrlDialog.tsx` | 3 |
+| `src/renderer/editors/link-editor/EditLinkDialog.tsx` | 4 — also drop `newTag` / `setNewTag` / `addTagFromBlur` / `removeTag`; add `setTags` |
 
 ### Phase 5 — deleted / cleaned
 

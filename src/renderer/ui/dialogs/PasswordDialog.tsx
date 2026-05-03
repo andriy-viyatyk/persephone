@@ -1,57 +1,11 @@
-import styled from "@emotion/styled";
 import { useCallback, useState } from "react";
 
 import { showDialog } from "./Dialogs";
-import { Dialog, DialogContent } from "./Dialog";
-import color from "../../theme/color";
+import { Dialog, DialogContent, Panel, Text, Button, Input, Label } from "../../uikit";
 import { TDialogModel } from "../../core/state/model";
 import { DefaultView, ViewPropsRO, Views } from "../../core/state/view";
 import { LockIcon } from "../../theme/icons";
-import { Button } from "../../components/basic/Button";
-import { TextField } from "../../components/basic/TextField";
 import { TComponentState } from "../../core/state/state";
-
-// =============================================================================
-// Styles
-// =============================================================================
-
-const PasswordDialogContent = styled(DialogContent)({
-    minWidth: 340,
-    maxWidth: 500,
-    "& .password-form": {
-        display: "flex",
-        flexDirection: "column",
-        padding: "16px 24px",
-        gap: 8,
-    },
-    "& .password-field": {
-        marginTop: 16,
-        "& input": {
-            width: 280,
-        },
-    },
-    "& .password-error": {
-        color: color.misc.red,
-        fontSize: 13,
-    },
-    "& .password-buttons": {
-        display: "flex",
-        flexDirection: "row",
-        justifyContent: "flex-end",
-        columnGap: 8,
-        padding: 8,
-    },
-    "& .dialog-button": {
-        minWidth: 80,
-        display: "flex",
-        flexDirection: "row",
-        justifyContent: "center",
-        padding: "4px 12px",
-        "&:hover": {
-            borderColor: color.border.active,
-        },
-    },
-});
 
 // =============================================================================
 // Model
@@ -113,52 +67,48 @@ function PasswordDialog({ model }: ViewPropsRO<PasswordDialogModel>) {
 
     return (
         <Dialog onKeyDown={model.handleKeyDown} autoFocus={false}>
-            <PasswordDialogContent
-                title={
-                    <>
-                        <LockIcon color={color.icon.default} />{" "}
-                        {isDecrypt ? "Decrypt File" : "Encrypt File"}
-                    </>
-                }
+            <DialogContent
+                title={isDecrypt ? "Decrypt File" : "Encrypt File"}
+                icon={<LockIcon />}
                 onClose={() => model.close(undefined)}
+                minWidth={340}
+                maxWidth={500}
             >
-                <div className="password-form">
-                    <TextField
-                        label="Password"
-                        type="password"
-                        value={password}
-                        onChange={setPassword}
-                        className="password-field"
-                        autoFocus
-                        onKeyDown={handleKeyDown}
-                    />
-                    {!isDecrypt && (
-                        <TextField
-                            label="Confirm Password"
+                <Panel direction="column" paddingX="xxl" paddingY="xl" gap="md">
+                    <Panel direction="column" gap="xs">
+                        <Label>Password</Label>
+                        <Input
                             type="password"
-                            value={confirm}
-                            onChange={setConfirm}
-                            className="password-field"
+                            value={password}
+                            onChange={setPassword}
+                            autoFocus
                             onKeyDown={handleKeyDown}
                         />
+                    </Panel>
+                    {!isDecrypt && (
+                        <Panel direction="column" gap="xs">
+                            <Label>Confirm Password</Label>
+                            <Input
+                                type="password"
+                                value={confirm}
+                                onChange={setConfirm}
+                                onKeyDown={handleKeyDown}
+                            />
+                        </Panel>
                     )}
-                    {error && <div className="password-error">{error}</div>}
-                </div>
-                <div className="password-buttons">
-                    <Button
-                        onClick={doSubmit}
-                        className="dialog-button"
-                    >
+                    {error && (
+                        <Text color="error" size="sm">{error}</Text>
+                    )}
+                </Panel>
+                <Panel direction="row" justify="end" gap="sm" padding="md">
+                    <Button onClick={doSubmit}>
                         {isDecrypt ? "Decrypt" : "Encrypt"}
                     </Button>
-                    <Button
-                        onClick={() => model.close(undefined)}
-                        className="dialog-button"
-                    >
+                    <Button onClick={() => model.close(undefined)}>
                         Cancel
                     </Button>
-                </div>
-            </PasswordDialogContent>
+                </Panel>
+            </DialogContent>
         </Dialog>
     );
 }

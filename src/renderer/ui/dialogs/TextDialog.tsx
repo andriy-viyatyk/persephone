@@ -1,40 +1,11 @@
-import styled from "@emotion/styled";
 import { Editor, OnMount } from "@monaco-editor/react";
 
-import { Dialog, DialogContent } from "./Dialog";
+import { Dialog, DialogContent, Panel, Button } from "../../uikit";
 import { TDialogModel } from "../../core/state/model";
 import { DefaultView, ViewPropsRO, Views } from "../../core/state/view";
-import color from "../../theme/color";
 import { ConfirmIcon } from "../../theme/icons";
-import { Button } from "../../components/basic/Button";
 import { TComponentState } from "../../core/state/state";
 import { showDialog } from "./Dialogs";
-
-const TextDialogContent = styled(DialogContent)({
-    width: 600,
-    height: 400,
-    "& .text-dialog-editor": {
-        flex: "1 1 auto",
-        overflow: "hidden",
-    },
-    "& .text-dialog-buttons": {
-        display: "flex",
-        flexDirection: "row",
-        justifyContent: "flex-end",
-        columnGap: 8,
-        padding: 8,
-    },
-    "& .dialog-button": {
-        minWidth: 60,
-        display: "flex",
-        flexDirection: "row",
-        justifyContent: "center",
-        padding: "4px 12px",
-        "&:hover": {
-            borderColor: color.border.active,
-        },
-    },
-});
 
 const textDialogId = Symbol("textDialog");
 
@@ -98,23 +69,16 @@ function TextDialog({ model }: ViewPropsRO<TextDialogModel>) {
         editor.focus();
     };
 
-    const sizeStyle = {
-        ...(state.width ? { width: state.width } : {}),
-        ...(state.height ? { height: state.height } : {}),
-    };
-
     return (
         <Dialog onKeyDown={model.handleKeyDown} autoFocus={false}>
-            <TextDialogContent
-                title={
-                    <>
-                        <ConfirmIcon color={color.icon.default} /> {title}
-                    </>
-                }
+            <DialogContent
+                title={title}
+                icon={<ConfirmIcon />}
                 onClose={() => model.close(undefined)}
-                style={sizeStyle}
+                width={state.width || 600}
+                height={state.height || 400}
             >
-                <div className="text-dialog-editor">
+                <Panel flex overflow="hidden">
                     <Editor
                         value={state.text || ""}
                         language={opts?.language || "plaintext"}
@@ -132,19 +96,18 @@ function TextDialog({ model }: ViewPropsRO<TextDialogModel>) {
                             domReadOnly: readOnly,
                         }}
                     />
-                </div>
-                <div className="text-dialog-buttons">
+                </Panel>
+                <Panel direction="row" justify="end" gap="sm" padding="md">
                     {buttons.map((bt, i) => (
                         <Button
                             key={i}
                             onClick={() => model.close({ text: model.editorText, button: bt })}
-                            className="dialog-button"
                         >
                             {bt}
                         </Button>
                     ))}
-                </div>
-            </TextDialogContent>
+                </Panel>
+            </DialogContent>
         </Dialog>
     );
 }

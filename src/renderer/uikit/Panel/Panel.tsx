@@ -90,8 +90,8 @@ export interface PanelProps
     borderBottom?: boolean;
     borderLeft?: boolean;
     borderRight?: boolean;
-    /** Border color. Default: "subtle" (color.border.light). "default" uses color.border.default. */
-    borderColor?: "subtle" | "default";
+    /** Border color. Default: "subtle" (color.border.light). "default" uses color.border.default. "active" uses color.border.active for selection / active-state cues. */
+    borderColor?: "subtle" | "default" | "active";
 
     /** Border radius from radius scale. */
     rounded?: Size;
@@ -135,6 +135,12 @@ const Root = styled.div(
         '&[data-border-color="default"][data-border-bottom]':      { borderBottomColor: color.border.default },
         '&[data-border-color="default"][data-border-left]':        { borderLeftColor: color.border.default },
         '&[data-border-color="default"][data-border-right]':       { borderRightColor: color.border.default },
+
+        '&[data-border-color="active"]':                          { borderColor: color.border.active },
+        '&[data-border-color="active"][data-border-top]':         { borderTopColor: color.border.active },
+        '&[data-border-color="active"][data-border-bottom]':      { borderBottomColor: color.border.active },
+        '&[data-border-color="active"][data-border-left]':        { borderLeftColor: color.border.active },
+        '&[data-border-color="active"][data-border-right]':       { borderRightColor: color.border.active },
 
         "&[data-shadow]": { boxShadow: `0 2px 8px ${color.shadow.default}` },
 

@@ -1,140 +1,22 @@
-import styled from "@emotion/styled";
-import clsx from "clsx";
-import { Dialog, DialogContent } from "../../ui/dialogs/Dialog";
+import {
+    Dialog,
+    DialogContent,
+    Panel,
+    Text,
+    Button,
+    IconButton,
+    Input,
+    Textarea,
+    Select,
+    PathInput,
+    TagsInput,
+} from "../../uikit";
 import { TDialogModel } from "../../core/state/model";
 import { DefaultView, ViewPropsRO, Views } from "../../core/state/view";
 import { TComponentState } from "../../core/state/state";
 import { showDialog } from "../../ui/dialogs/Dialogs";
-import { Button } from "../../components/basic/Button";
-import { TextAreaField } from "../../components/basic/TextAreaField";
-import { TextField } from "../../components/basic/TextField";
-import { PathInput } from "../../components/basic/PathInput";
-import { ComboSelect } from "../../components/form/ComboSelect";
-import color from "../../theme/color";
 import { CloseIcon, RenameIcon } from "../../theme/icons";
 import { LinkItem } from "./linkTypes";
-
-// =============================================================================
-// Styles
-// =============================================================================
-
-const EditLinkDialogContent = styled(DialogContent)({
-    minWidth: 500,
-    maxWidth: 700,
-    "& .form-body": {
-        display: "flex",
-        flexDirection: "column",
-        gap: 6,
-        padding: "8px 16px",
-    },
-    "& .form-row": {
-        display: "flex",
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 8,
-    },
-    "& .form-label": {
-        width: 80,
-        flexShrink: 0,
-        fontSize: 13,
-        color: color.text.light,
-        textAlign: "right",
-    },
-    "& .form-field": {
-        flex: 1,
-        minWidth: 0,
-    },
-    "& .tags-container": {
-        flex: 1,
-        display: "flex",
-        flexWrap: "wrap",
-        alignItems: "center",
-        gap: 4,
-        minHeight: 28,
-    },
-    "& .tag-chip": {
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 2,
-        padding: "2px 6px 2px 8px",
-        fontSize: 12,
-        borderRadius: 3,
-        backgroundColor: color.background.light,
-        color: color.text.default,
-        border: `1px solid ${color.border.default}`,
-    },
-    "& .tag-remove": {
-        display: "flex",
-        alignItems: "center",
-        cursor: "pointer",
-        opacity: 0.6,
-        "& svg": { width: 12, height: 12 },
-        "&:hover": { opacity: 1 },
-    },
-    "& .tag-add-input": {
-        flex: "1 1 100px",
-        minWidth: 100,
-    },
-    "& .image-section": {
-        marginLeft: 88,
-    },
-    "& .image-preview": {
-        maxHeight: 200,
-        borderRadius: 4,
-        overflow: "hidden",
-        backgroundColor: color.background.dark,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        "& img": {
-            maxWidth: "100%",
-            maxHeight: 200,
-            objectFit: "contain",
-        },
-    },
-    "& .discovered-images-label": {
-        fontSize: 12,
-        color: color.text.light,
-        marginTop: 8,
-        marginBottom: 4,
-    },
-    "& .discovered-images-grid": {
-        display: "flex",
-        flexWrap: "wrap",
-        gap: 4,
-    },
-    "& .discovered-image-thumb": {
-        width: 60,
-        height: 60,
-        borderRadius: 3,
-        objectFit: "cover",
-        cursor: "pointer",
-        border: "2px solid transparent",
-        "&:hover": {
-            borderColor: color.misc.blue,
-        },
-        "&.selected": {
-            borderColor: color.misc.blue,
-        },
-    },
-    "& .dialog-buttons": {
-        display: "flex",
-        flexDirection: "row",
-        justifyContent: "flex-end",
-        columnGap: 8,
-        padding: "4px 16px 8px",
-    },
-    "& .dialog-button": {
-        minWidth: 60,
-        display: "flex",
-        flexDirection: "row",
-        justifyContent: "center",
-        padding: "4px 12px",
-        "&:hover": {
-            borderColor: color.border.active,
-        },
-    },
-});
 
 // =============================================================================
 // Types
@@ -151,13 +33,17 @@ interface EditLinkDialogState {
     categories: string[];
     availableTags: string[];
     discoveredImages: string[];
-    newTag: string;
 }
 
 export type EditLinkResult = Omit<LinkItem, "id"> | undefined;
 
+interface TargetOption {
+    value: string;
+    label: string;
+}
+
 /** Editor targets that handle the openRawLink flow for URL links. */
-const targetEditorOptions = [
+const targetEditorOptions: TargetOption[] = [
     { value: "", label: "(auto-detect)" },
     { value: "monaco", label: "Text Editor" },
     { value: "browser", label: "Browser" },
@@ -211,34 +97,12 @@ class EditLinkDialogModel extends TDialogModel<EditLinkDialogState, EditLinkResu
         this.state.update((s) => { s.imgSrc = value; });
     };
 
-    setTarget = (value?: typeof targetEditorOptions[number]) => {
-        this.state.update((s) => { s.target = value?.value ?? ""; });
+    setTarget = (option: TargetOption) => {
+        this.state.update((s) => { s.target = option.value; });
     };
 
-    setNewTag = (value: string) => {
-        this.state.update((s) => { s.newTag = value; });
-    };
-
-    addTagFromBlur = (finalValue?: string) => {
-        if (finalValue === undefined) {
-            this.state.update((s) => { s.newTag = ""; });
-            return;
-        }
-        const tagValue = finalValue.trim();
-        const cleanTag = tagValue.endsWith(":") ? tagValue.slice(0, -1) : tagValue;
-        if (!cleanTag) return;
-        this.state.update((s) => {
-            if (!s.tags.includes(cleanTag)) {
-                s.tags = [...s.tags, cleanTag];
-            }
-            s.newTag = "";
-        });
-    };
-
-    removeTag = (tag: string) => {
-        this.state.update((s) => {
-            s.tags = s.tags.filter((t) => t !== tag);
-        });
+    setTags = (tags: string[]) => {
+        this.state.update((s) => { s.tags = tags; });
     };
 
     selectDiscoveredImage = (url: string) => {
@@ -263,45 +127,65 @@ class EditLinkDialogModel extends TDialogModel<EditLinkDialogState, EditLinkResu
 // View
 // =============================================================================
 
+const LABEL_WIDTH = 80;
+
+function FormRow({ label, children }: { label: string; children: React.ReactNode }) {
+    return (
+        <Panel direction="row" align="center" gap="md">
+            <Panel width={LABEL_WIDTH} direction="row" justify="end">
+                <Text size="sm" color="light">{label}</Text>
+            </Panel>
+            <Panel flex minWidth={0}>{children}</Panel>
+        </Panel>
+    );
+}
+
+function IndentedRow({ children }: { children: React.ReactNode }) {
+    return (
+        <Panel direction="row" gap="md">
+            <Panel width={LABEL_WIDTH} />
+            <Panel flex minWidth={0} direction="column" gap="xs">
+                {children}
+            </Panel>
+        </Panel>
+    );
+}
+
 function EditLinkDialog({ model }: ViewPropsRO<EditLinkDialogModel>) {
     const state = model.state.use();
+    const selectedTarget = targetEditorOptions.find((o) => o.value === state.target) ?? targetEditorOptions[0];
 
     return (
         <Dialog onKeyDown={model.handleKeyDown} autoFocus={false}>
-            <EditLinkDialogContent
-                title={<><RenameIcon color={color.icon.default} /> {state.dialogTitle}</>}
+            <DialogContent
+                title={state.dialogTitle}
+                icon={<RenameIcon />}
                 onClose={() => model.close(undefined)}
+                minWidth={500}
+                maxWidth={700}
             >
-                <div className="form-body">
-                    {/* Title */}
-                    <div className="form-row">
-                        <span className="form-label">Title</span>
-                        <TextAreaField
-                            className="form-field"
+                <Panel direction="column" gap="sm" paddingX="xl" paddingY="md">
+                    <FormRow label="Title">
+                        <Textarea
+                            singleLine
                             value={state.linkTitle}
                             onChange={model.setTitle}
-                            singleLine
                             placeholder="Link title..."
                             autoFocus
+                            size="sm"
                         />
-                    </div>
+                    </FormRow>
 
-                    {/* URL */}
-                    <div className="form-row">
-                        <span className="form-label">URL</span>
-                        <TextField
-                            className="form-field"
+                    <FormRow label="URL">
+                        <Input
                             value={state.href}
                             onChange={model.setHref}
                             placeholder="https://..."
                         />
-                    </div>
+                    </FormRow>
 
-                    {/* Category */}
-                    <div className="form-row">
-                        <span className="form-label">Category</span>
+                    <FormRow label="Category">
                         <PathInput
-                            className="form-field"
                             value={state.category}
                             onChange={model.setCategory}
                             onBlur={model.setCategoryFromBlur}
@@ -309,109 +193,100 @@ function EditLinkDialog({ model }: ViewPropsRO<EditLinkDialogModel>) {
                             separator="/"
                             placeholder="Category path..."
                         />
-                    </div>
+                    </FormRow>
 
-                    {/* Target Editor */}
-                    <div className="form-row">
-                        <span className="form-label">Target</span>
-                        <ComboSelect
-                            className="form-field"
-                            selectFrom={targetEditorOptions}
-                            getLabel={(opt: typeof targetEditorOptions[number]) => opt.label}
-                            value={targetEditorOptions.find((o) => o.value === state.target) ?? targetEditorOptions[0]}
+                    <FormRow label="Target">
+                        <Select
+                            items={targetEditorOptions}
+                            value={selectedTarget}
                             onChange={model.setTarget}
                         />
-                    </div>
+                    </FormRow>
 
-                    {/* Tags */}
-                    <div className="form-row">
-                        <span className="form-label">Tags</span>
-                        <div className="tags-container">
-                            {state.tags.map((tag) => (
-                                <span key={tag} className="tag-chip">
-                                    {tag}
-                                    <span className="tag-remove" onClick={() => model.removeTag(tag)}>
-                                        <CloseIcon />
-                                    </span>
-                                </span>
-                            ))}
-                            <PathInput
-                                className="tag-add-input"
-                                value={state.newTag}
-                                onChange={model.setNewTag}
-                                onBlur={model.addTagFromBlur}
-                                paths={state.availableTags}
-                                separator=":"
-                                maxDepth={1}
-                                placeholder="Type + Enter to add"
-                            />
-                        </div>
-                    </div>
+                    <FormRow label="Tags">
+                        <TagsInput
+                            value={state.tags}
+                            onChange={model.setTags}
+                            items={state.availableTags}
+                            separator=":"
+                            maxDepth={1}
+                            placeholder="Type + Enter to add"
+                        />
+                    </FormRow>
 
-                    {/* Image URL */}
-                    <div className="form-row">
-                        <span className="form-label">Image URL</span>
-                        <TextField
-                            className="form-field"
+                    <FormRow label="Image URL">
+                        <Input
                             value={state.imgSrc}
                             onChange={model.setImgSrc}
                             placeholder="https://... (optional)"
-                            endButtons={state.imgSrc ? [
-                                <Button
-                                    size="small"
-                                    type="icon"
-                                    key="clear-img"
+                            endSlot={state.imgSrc ? (
+                                <IconButton
+                                    size="sm"
+                                    icon={<CloseIcon />}
                                     title="Clear Image URL"
                                     onClick={() => model.setImgSrc("")}
-                                >
-                                    <CloseIcon />
-                                </Button>,
-                            ] : undefined}
+                                />
+                            ) : null}
                         />
-                    </div>
+                    </FormRow>
 
-                    {/* Image Preview */}
                     {state.imgSrc && (
-                        <div className="image-section">
-                            <div className="image-preview">
-                                <img src={state.imgSrc} alt="Preview" />
-                            </div>
-                        </div>
+                        <IndentedRow>
+                            <Panel
+                                flex
+                                border
+                                rounded="md"
+                                padding="xs"
+                                background="dark"
+                                align="center"
+                                justify="center"
+                                maxHeight={200}
+                                overflow="hidden"
+                            >
+                                <img
+                                    src={state.imgSrc}
+                                    alt="Preview"
+                                    style={{ maxWidth: "100%", maxHeight: 192, objectFit: "contain" }}
+                                />
+                            </Panel>
+                        </IndentedRow>
                     )}
 
-                    {/* Discovered Images (populated by browser in US-028) */}
                     {state.discoveredImages.length > 0 && (
-                        <div className="image-section">
-                            <div className="discovered-images-label">Discovered Images</div>
-                            <div className="discovered-images-grid">
-                                {state.discoveredImages.map((url, i) => (
-                                    <img
-                                        key={i}
-                                        src={url}
-                                        alt={`Image ${i + 1}`}
-                                        className={clsx("discovered-image-thumb", { selected: url === state.imgSrc })}
-                                        onClick={() => model.selectDiscoveredImage(url)}
-                                    />
-                                ))}
-                            </div>
-                        </div>
+                        <IndentedRow>
+                            <Text size="xs" color="light">Discovered Images</Text>
+                            <Panel direction="row" wrap gap="sm">
+                                {state.discoveredImages.map((url, i) => {
+                                    const isSelected = url === state.imgSrc;
+                                    return (
+                                        <Panel
+                                            key={i}
+                                            border
+                                            borderColor={isSelected ? "active" : "subtle"}
+                                            rounded="sm"
+                                            overflow="hidden"
+                                            onClick={() => model.selectDiscoveredImage(url)}
+                                        >
+                                            <img
+                                                src={url}
+                                                alt={`Image ${i + 1}`}
+                                                width={60}
+                                                height={60}
+                                                style={{ objectFit: "cover", display: "block", cursor: "pointer" }}
+                                            />
+                                        </Panel>
+                                    );
+                                })}
+                            </Panel>
+                        </IndentedRow>
                     )}
-                </div>
+                </Panel>
 
-                {/* Buttons */}
-                <div className="dialog-buttons">
-                    <Button onClick={() => model.close(undefined)} className="dialog-button">
-                        Cancel
-                    </Button>
-                    <Button
-                        onClick={model.save}
-                        className="dialog-button"
-                        style={{ backgroundColor: color.background.light }}
-                    >
-                        Save
-                    </Button>
-                </div>
-            </EditLinkDialogContent>
+                <Panel direction="row" justify="end" gap="sm" padding="md">
+                    <Button onClick={() => model.close(undefined)}>Cancel</Button>
+                    <Button variant="primary" onClick={model.save}>Save</Button>
+                </Panel>
+            </DialogContent>
         </Dialog>
     );
 }
@@ -449,7 +324,6 @@ export function showEditLinkDialog(options: ShowEditLinkDialogOptions = {}): Pro
         categories,
         availableTags: tags,
         discoveredImages,
-        newTag: "",
     };
 
     const model = new EditLinkDialogModel(new TComponentState(modelState));

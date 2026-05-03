@@ -1,50 +1,12 @@
-import styled from "@emotion/styled";
-import { Dialog, DialogContent } from "./Dialog";
+import { useEffect, useRef } from "react";
+
+import { Dialog, DialogContent, Panel, Button, Textarea } from "../../uikit";
+import type { TextareaRef } from "../../uikit";
 import { TDialogModel } from "../../core/state/model";
 import { DefaultView, ViewPropsRO, Views } from "../../core/state/view";
-import color from "../../theme/color";
 import { OpenFileIcon } from "../../theme/icons";
-import { Button } from "../../components/basic/Button";
 import { TComponentState } from "../../core/state/state";
 import { showDialog } from "./Dialogs";
-import { TextAreaField, TextAreaFieldRef } from "../../components/basic/TextAreaField";
-import { useRef, useEffect } from "react";
-
-const OpenUrlDialogContent = styled(DialogContent)({
-    minWidth: 500,
-    maxWidth: 800,
-    "& .url-input": {
-        margin: "16px 24px 8px 24px",
-        minHeight: 80,
-        maxHeight: 300,
-        overflowY: "auto",
-        fontSize: 13,
-    },
-    "& .dialog-buttons": {
-        display: "flex",
-        flexDirection: "row",
-        justifyContent: "flex-end",
-        columnGap: 8,
-        padding: "4px 8px 8px 8px",
-        "& .open-file-button": {
-            marginRight: "auto",
-        },
-    },
-    "& .dialog-button": {
-        minWidth: 60,
-        display: "flex",
-        flexDirection: "row",
-        justifyContent: "center",
-        padding: "4px 12px",
-        columnGap: 4,
-        "&.ok-button": {
-            backgroundColor: color.background.light,
-        },
-        "&:hover": {
-            borderColor: color.border.active,
-        },
-    },
-});
 
 const openUrlDialogId = Symbol("openUrlDialog");
 
@@ -61,7 +23,7 @@ class OpenUrlDialogModel extends TDialogModel<OpenUrlDialogState, OpenUrlDialogR
             this.close(undefined);
         }
 
-        // Ctrl+Enter to submit (Enter alone creates newlines in TextArea)
+        // Ctrl+Enter to submit (Enter alone creates newlines in Textarea)
         if (e.key === "Enter" && e.ctrlKey) {
             e.preventDefault();
             this.submit();
@@ -86,11 +48,11 @@ class OpenUrlDialogModel extends TDialogModel<OpenUrlDialogState, OpenUrlDialogR
 
 function OpenUrlDialog({ model }: ViewPropsRO<OpenUrlDialogModel>) {
     const state = model.state.use();
-    const textRef = useRef<TextAreaFieldRef>(null);
+    const textRef = useRef<TextareaRef>(null);
 
     useEffect(() => {
         setTimeout(() => {
-            textRef.current?.div?.focus();
+            textRef.current?.focus();
         }, 0);
     }, []);
 
@@ -98,39 +60,38 @@ function OpenUrlDialog({ model }: ViewPropsRO<OpenUrlDialogModel>) {
 
     return (
         <Dialog onKeyDown={model.handleKeyDown} autoFocus={false}>
-            <OpenUrlDialogContent
+            <DialogContent
                 title="Open"
+                icon={<OpenFileIcon />}
                 onClose={() => model.close(undefined)}
+                minWidth={500}
+                maxWidth={800}
             >
-                <TextAreaField
-                    ref={textRef}
-                    className="url-input"
-                    value={state.value}
-                    onChange={model.setValue}
-                    placeholder="Paste file path, URL, or cURL command"
-                />
-                <div className="dialog-buttons">
-                    <Button
-                        className="dialog-button open-file-button"
-                        onClick={model.openFile}
-                    >
-                        <OpenFileIcon /> Open File
+                <Panel direction="column" paddingX="xxl" paddingTop="xl" paddingBottom="sm">
+                    <Textarea
+                        ref={textRef}
+                        value={state.value}
+                        onChange={model.setValue}
+                        placeholder="Paste file path, URL, or cURL command"
+                        minHeight={80}
+                        maxHeight={300}
+                        size="sm"
+                    />
+                </Panel>
+                <Panel direction="row" align="center" justify="between" padding="md">
+                    <Button icon={<OpenFileIcon />} onClick={model.openFile}>
+                        Open File
                     </Button>
-                    <Button
-                        className="dialog-button"
-                        onClick={() => model.close(undefined)}
-                    >
-                        Cancel
-                    </Button>
-                    <Button
-                        className="dialog-button ok-button"
-                        onClick={model.submit}
-                        disabled={isEmpty}
-                    >
-                        Open
-                    </Button>
-                </div>
-            </OpenUrlDialogContent>
+                    <Panel direction="row" gap="sm">
+                        <Button onClick={() => model.close(undefined)}>
+                            Cancel
+                        </Button>
+                        <Button onClick={model.submit} disabled={isEmpty}>
+                            Open
+                        </Button>
+                    </Panel>
+                </Panel>
+            </DialogContent>
         </Dialog>
     );
 }

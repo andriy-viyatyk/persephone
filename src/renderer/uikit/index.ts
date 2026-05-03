@@ -45,6 +45,8 @@ export { Popover } from "./Popover";
 export type { PopoverProps, PopoverPosition } from "./Popover";
 export { Tooltip } from "./Tooltip";
 export type { TooltipProps } from "./Tooltip";
+export { Dialog, DialogContent } from "./Dialog";
+export type { DialogProps, DialogContentProps, DialogPosition } from "./Dialog";
 
 // Lists
 export { ListBox, LIST_ITEM_KEY } from "./ListBox";

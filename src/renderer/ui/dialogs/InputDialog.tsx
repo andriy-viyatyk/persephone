@@ -1,53 +1,10 @@
-import styled from "@emotion/styled";
-import { Dialog, DialogContent } from "./Dialog";
+import { Dialog, DialogContent, Panel, Text, Button, Input, RadioGroup } from "../../uikit";
 import { TDialogModel } from "../../core/state/model";
 import { DefaultView, ViewPropsRO, Views } from "../../core/state/view";
-import color from "../../theme/color";
-import { ConfirmIcon, RadioCheckedIcon, RadioUncheckedIcon } from "../../theme/icons";
-import { Button } from "../../components/basic/Button";
+import { ConfirmIcon } from "../../theme/icons";
 import { TComponentState } from "../../core/state/state";
 import { showDialog } from "./Dialogs";
-import { TextField } from "../../components/basic/TextField";
 import { useEffect, useRef } from "react";
-
-const InputDialogContent = styled(DialogContent)({
-    minWidth: 340,
-    maxWidth: 800,
-    "& .confirmation-message": {
-        padding: "16px 24px 4px 24px",
-        fontSize: 16,
-        color: color.text.default,
-    },
-    "& .confirmation-dialog-buttons": {
-        display: "flex",
-        flexDirection: "row",
-        justifyContent: "flex-end",
-        columnGap: 8,
-        padding: 8,
-    },
-    "& .value-input": {
-        margin: "0 24px",
-    },
-    "& .input-dialog-options": {
-        display: "flex",
-        flexDirection: "row",
-        columnGap: 4,
-        padding: "4px 24px",
-    },
-    "& .dialog-button": {
-        minWidth: 60,
-        display: "flex",
-        flexDirection: "row",
-        justifyContent: "center",
-        padding: "4px 12px",
-        "&.ok-button": {
-            backgroundColor: color.background.light,
-        },
-        "&:hover": {
-            borderColor: color.border.active,
-        },
-    },
-});
 
 const inputDialogId = Symbol("inputDialog");
 
@@ -115,7 +72,6 @@ function InputDialog({ model }: ViewPropsRO<InputDialogModel>) {
     const inputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
-        // Delay focus to run after popup menu's focus-restore completes
         setTimeout(() => {
             if (state.selectAll) {
                 inputRef.current?.select();
@@ -127,51 +83,43 @@ function InputDialog({ model }: ViewPropsRO<InputDialogModel>) {
 
     return (
         <Dialog onKeyDown={model.handleKeyDown} autoFocus={false}>
-            <InputDialogContent
-                title={
-                    <>
-                        <ConfirmIcon color={color.icon.default} /> {state.title}
-                    </>
-                }
+            <DialogContent
+                title={state.title}
+                icon={<ConfirmIcon />}
                 onClose={() => model.close(undefined)}
+                minWidth={340}
+                maxWidth={800}
             >
-                <div className="confirmation-message">{state.message}</div>
-                <TextField
-                    ref={inputRef}
-                    className="value-input"
-                    value={state.value}
-                    onChange={model.setValue}
-                    autoFocus
-                />
+                <Panel direction="column" paddingX="xxl" paddingTop="xl" paddingBottom="sm" gap="md">
+                    <Text>{state.message}</Text>
+                    <Input
+                        ref={inputRef}
+                        value={state.value ?? ""}
+                        onChange={model.setValue}
+                    />
+                </Panel>
                 {state.options && state.options.length > 0 && (
-                    <div className="input-dialog-options">
-                        {state.options.map((option) => (
-                            <Button
-                                key={option}
-                                type="flat"
-                                size="small"
-                                onClick={() => model.setSelectedOption(option)}
-                            >
-                                {state.selectedOption === option
-                                    ? <RadioCheckedIcon />
-                                    : <RadioUncheckedIcon />}
-                                {option}
-                            </Button>
-                        ))}
-                    </div>
+                    <Panel paddingX="xxl" paddingY="sm">
+                        <RadioGroup
+                            orientation="horizontal"
+                            wrap
+                            items={state.options.map((o) => ({ value: o }))}
+                            value={state.selectedOption ?? ""}
+                            onChange={model.setSelectedOption}
+                        />
+                    </Panel>
                 )}
-                <div className="confirmation-dialog-buttons">
+                <Panel direction="row" justify="end" gap="sm" padding="md">
                     {state.buttons?.map((bt, i) => (
                         <Button
                             key={i}
-                            onClick={() => model.close({ value: state.value, button: bt, selectedOption: state.selectedOption })}
-                            className="dialog-button"
+                            onClick={() => model.close({ value: state.value ?? "", button: bt, selectedOption: state.selectedOption })}
                         >
                             {bt}
                         </Button>
                     ))}
-                </div>
-            </InputDialogContent>
+                </Panel>
+            </DialogContent>
         </Dialog>
     );
 }

@@ -1,5 +1,3 @@
-export { Dialog, DialogContent } from './Dialog';
-export type { DialogPosition } from './Dialog';
 export { Dialogs, dialogsState, showDialog, closeDialog } from './Dialogs';
 // Alerts
 export { AlertsBar } from './alerts/AlertsBar';
