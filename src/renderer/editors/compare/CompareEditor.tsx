@@ -1,37 +1,10 @@
-import styled from "@emotion/styled";
 import * as monaco from "monaco-editor";
-import { TextFileModel } from "../text";
+import { useEffect } from "react";
 import { DiffEditor } from "@monaco-editor/react";
-import { PageToolbar } from "../base/EditorToolbar";
-import { Button } from "../../components/basic/Button";
+import { TextFileModel } from "../text";
+import { Panel, Toolbar, Text, IconButton } from "../../uikit";
 import { CompareIcon } from "../../theme/icons";
 import { TComponentModel, useComponentModel } from "../../core/state/model";
-import { useEffect } from "react";
-import color from "../../theme/color";
-
-const CompareEditorRoot = styled.div({
-    flex: "1 1 auto",
-    display: "flex",
-    flexDirection: "column",
-    overflow: "hidden",
-    height: "100%",
-    "& .file-path": {
-        flex: "1 1 auto",
-        overflow: "hidden",
-        direction: "rtl",
-        textOverflow: "ellipsis",
-        whiteSpace: "nowrap",
-        textAlign: "left",
-        color: color.text.light,
-        "&.file-path-left": {
-            textAlign: "right",
-        },
-    },
-    "& .arrow-icon": {
-        margin: "0 8px",
-        fontSize: 20,
-    },
-});
 
 interface CompareEditorProps {
     model: TextFileModel;
@@ -83,34 +56,43 @@ export function CompareEditor(props: CompareEditorProps) {
         };
     }, []);
 
+    const leftLabel = filePath || title;
+    const rightLabel = groupedFilePath || groupedTitle;
+
     return (
-        <CompareEditorRoot>
-            <PageToolbar borderBottom>
-                <div
-                    className="file-path file-path-left"
-                    title={filePath || title}
-                >
-                    {filePath || title}
-                </div>
-                <span className="arrow-icon">→</span>
-                <div
-                    className="file-path"
-                    title={groupedFilePath || groupedTitle}
-                >
-                    {groupedFilePath || groupedTitle}
-                </div>
-                <Button
-                    size="small"
-                    type="icon"
+        <Panel direction="column" flex overflow="hidden">
+            <Toolbar borderBottom>
+                <Panel flex overflow="hidden" justify="end">
+                    <Text
+                        dir="rtl"
+                        truncate
+                        color="light"
+                        title={leftLabel}
+                    >
+                        {leftLabel}
+                    </Text>
+                </Panel>
+                <Text size="xl" color="light">→</Text>
+                <Panel flex overflow="hidden">
+                    <Text
+                        dir="rtl"
+                        truncate
+                        color="light"
+                        title={rightLabel}
+                    >
+                        {rightLabel}
+                    </Text>
+                </Panel>
+                <IconButton
+                    size="sm"
                     title="Exit Compare Mode"
                     onClick={() => {
                         model.setCompareMode(false);
                         groupedModel.setCompareMode(false);
                     }}
-                >
-                    <CompareIcon />
-                </Button>
-            </PageToolbar>
+                    icon={<CompareIcon />}
+                />
+            </Toolbar>
             <DiffEditor
                 language={language}
                 original={content}
@@ -123,7 +105,7 @@ export function CompareEditor(props: CompareEditorProps) {
                 }}
                 theme="custom-dark"
             />
-        </CompareEditorRoot>
+        </Panel>
     );
 }
 
