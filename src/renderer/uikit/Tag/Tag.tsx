@@ -1,0 +1,173 @@
+import React from "react";
+import styled from "@emotion/styled";
+import color from "../../theme/color";
+import { CloseIcon } from "../../theme/icons";
+import { fontSize, radius, spacing } from "../tokens";
+
+// --- Types ---
+
+export interface TagProps
+    extends Omit<
+        React.HTMLAttributes<HTMLSpanElement>,
+        "style" | "className" | "onClick"
+    > {
+    /** Tag label — rendered as the primary content. */
+    label: React.ReactNode;
+    /** Optional leading element (e.g. a colored dot). */
+    icon?: React.ReactNode;
+    /** When provided, renders an X button after the label that calls this on click. */
+    onRemove?: () => void;
+    /** When provided, the tag becomes clickable; fires on body click. */
+    onClick?: () => void;
+    /** Toggle/selected state — visually filled with `background.selection`. */
+    selected?: boolean;
+    /** Disabled state — opacity 0.5, pointer-events none. */
+    disabled?: boolean;
+    /** Visual variant. Default: "filled". */
+    variant?: "filled" | "outlined";
+    /** Size variant. Default: "md". */
+    size?: "sm" | "md";
+    /** Remove-button visibility. Default: "always". */
+    removeAffordance?: "always" | "hover";
+    /** Accessible label for the remove button. Default: "Remove tag". */
+    removeAriaLabel?: string;
+}
+
+// --- Styled ---
+
+const Root = styled.span(
+    {
+        display: "inline-flex",
+        alignItems: "center",
+        gap: spacing.xs,
+        whiteSpace: "nowrap",
+        userSelect: "none",
+        borderRadius: radius.sm,
+        border: "1px solid transparent",
+        color: color.text.default,
+        backgroundColor: "transparent",
+
+        '&[data-variant="filled"]': {
+            backgroundColor: color.background.light,
+            borderColor: color.border.default,
+        },
+        '&[data-variant="outlined"]': {
+            backgroundColor: "transparent",
+            borderColor: color.border.default,
+        },
+
+        '&[data-size="sm"]': {
+            fontSize: fontSize.xs,
+            padding: "1px 7px",
+            minHeight: 18,
+        },
+        '&[data-size="md"]': {
+            fontSize: fontSize.sm,
+            padding: "2px 6px",
+            minHeight: 22,
+        },
+
+        "&[data-selected]": {
+            backgroundColor: color.background.selection,
+            color: color.text.selection,
+            borderColor: color.border.active,
+        },
+
+        "&[data-clickable]": {
+            cursor: "pointer",
+            "&:hover": {
+                borderColor: color.border.active,
+            },
+        },
+
+        "&[data-disabled]": {
+            opacity: 0.5,
+            pointerEvents: "none",
+        },
+    },
+    { label: "Tag" },
+);
+
+const RemoveButton = styled.button(
+    {
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "transparent",
+        border: "none",
+        padding: 0,
+        marginLeft: spacing.xs,
+        marginRight: -1,
+        cursor: "pointer",
+        color: "inherit",
+        opacity: 0.6,
+        "& svg": { width: 12, height: 12 },
+        "&:hover": { opacity: 1 },
+        "&:focus-visible": {
+            outline: `1px solid ${color.border.active}`,
+            outlineOffset: 1,
+        },
+
+        '[data-remove-affordance="hover"] &': {
+            opacity: 0,
+        },
+        '[data-remove-affordance="hover"]:hover &, [data-remove-affordance="hover"]:focus-within &': {
+            opacity: 0.6,
+            "&:hover": { opacity: 1 },
+        },
+    },
+    { label: "TagRemoveButton" },
+);
+
+// --- Component ---
+
+export function Tag({
+    label,
+    icon,
+    onRemove,
+    onClick,
+    selected,
+    disabled,
+    variant = "filled",
+    size = "md",
+    removeAffordance = "always",
+    removeAriaLabel = "Remove tag",
+    ...rest
+}: TagProps) {
+    const handleRemoveClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+        e.stopPropagation();
+        if (!disabled) onRemove?.();
+    };
+
+    const handleRootClick = () => {
+        if (!disabled) onClick?.();
+    };
+
+    return (
+        <Root
+            data-type="tag"
+            data-variant={variant}
+            data-size={size}
+            data-disabled={disabled || undefined}
+            data-selected={selected || undefined}
+            data-clickable={onClick && !disabled ? "" : undefined}
+            data-removable={onRemove ? "" : undefined}
+            data-remove-affordance={onRemove ? removeAffordance : undefined}
+            onClick={onClick ? handleRootClick : undefined}
+            {...rest}
+        >
+            {icon}
+            <span>{label}</span>
+            {onRemove && (
+                <RemoveButton
+                    type="button"
+                    aria-label={removeAriaLabel}
+                    onClick={handleRemoveClick}
+                    disabled={disabled}
+                >
+                    <CloseIcon />
+                </RemoveButton>
+            )}
+        </Root>
+    );
+}

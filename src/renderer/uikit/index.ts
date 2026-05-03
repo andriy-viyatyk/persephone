@@ -35,6 +35,10 @@ export { Textarea } from "./Textarea";
 export type { TextareaProps, TextareaRef } from "./Textarea";
 export { PathInput } from "./PathInput";
 export type { PathInputProps } from "./PathInput";
+export { Tag } from "./Tag";
+export type { TagProps } from "./Tag";
+export { TagsInput } from "./TagsInput";
+export type { TagsInputProps } from "./TagsInput";
 
 // Overlay
 export { Popover } from "./Popover";

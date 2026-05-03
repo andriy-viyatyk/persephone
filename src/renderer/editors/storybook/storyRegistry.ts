@@ -18,6 +18,8 @@ import { radioGroupStory }       from "../../uikit/RadioGroup/RadioGroup.story";
 import { spinnerStory }          from "../../uikit/Spinner/Spinner.story";
 import { textareaStory }         from "../../uikit/Textarea/Textarea.story";
 import { pathInputStory }        from "../../uikit/PathInput/PathInput.story";
+import { tagStory }              from "../../uikit/Tag/Tag.story";
+import { tagsInputStory }        from "../../uikit/TagsInput/TagsInput.story";
 
 // Overlay
 import { popoverStory }          from "../../uikit/Popover/Popover.story";
@@ -31,6 +33,7 @@ export const ALL_STORIES: Story[] = [
     panelStory, spacerStory, toolbarStory,
     buttonStory, iconButtonStory, inputStory, labelStory, checkboxStory, dividerStory, textStory,
     segmentedControlStory, radioGroupStory, spinnerStory, textareaStory, pathInputStory,
+    tagStory, tagsInputStory,
     popoverStory, tooltipStory,
     listBoxStory, selectStory,
 ];
