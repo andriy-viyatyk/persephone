@@ -68,3 +68,6 @@ export interface PanelExpandedEvent {
 
 /** Fired when a secondary editor panel is expanded in PageNavigator. */
 export const panelExpanded = new Subscription<PanelExpandedEvent>();
+
+/** Fired when any text editor's compareMode toggles. Pages listens to refresh its layout. */
+export const compareModeChanged = new Subscription<void>();

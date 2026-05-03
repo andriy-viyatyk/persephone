@@ -20,6 +20,8 @@ const defaultOpenFilesState = {
     ordered: [] as PageModel[],
     leftRight: new Map<string, string>(),
     rightLeft: new Map<string, string>(),
+    /** Bumped to force a Pages re-render when off-state changes (e.g. compareMode) need to flow into the layout. */
+    rerender: 0,
 };
 
 export type OpenFilesState = typeof defaultOpenFilesState;
@@ -129,6 +131,13 @@ export class PagesModel extends TModel<OpenFilesState> {
                 this.lifecycle.addEmptyPage();
             }
         }, 0);
+    };
+
+    /** Bump the `rerender` field so subscribers of `state.use()` re-render. Use when off-state changes (e.g. compareMode) must flow into the layout. */
+    rerender = () => {
+        this.state.update((s) => {
+            s.rerender = s.rerender + 1;
+        });
     };
 
     closeFirstPageIfEmpty = () => {

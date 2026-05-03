@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+import { useEffect } from "react";
 import { Splitter } from "../../components/layout/Splitter";
 import { pagesModel } from "../../api/pages";
 import { RenderEditor } from "./RenderEditor";
@@ -8,6 +9,7 @@ import { PageNavigator } from "../navigation/PageNavigator";
 import { AppPageManager } from "../../components/page-manager/AppPageManager";
 import type { PageModel } from "../../api/pages/PageModel";
 import { useOptionalState } from "../../core/state/state";
+import { compareModeChanged } from "../../core/state/events";
 import { Ornament } from "../../theme/Ornament";
 import color from "../../theme/color";
 
@@ -118,6 +120,11 @@ export function Pages() {
     const { pages, leftRight } = pagesModel.state.use();
     const activePage = pagesModel.activePage;
     const groupedPage = pagesModel.groupedPage;
+
+    useEffect(() => {
+        const sub = compareModeChanged.subscribe(() => pagesModel.rerender());
+        return () => sub.unsubscribe();
+    }, []);
 
     const compareModeIds = new Set<string>();
     for (const [leftId] of leftRight) {
