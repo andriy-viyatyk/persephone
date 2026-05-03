@@ -29,6 +29,9 @@ const Root = styled.input(
         "&:focus, &:active": {
             borderColor: color.border.active,
         },
+        "&[readonly]:focus, &[readonly]:active": {
+            borderColor: color.border.light,
+        },
 
         '&[data-size="sm"]': {
             height: height.controlSm,

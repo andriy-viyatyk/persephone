@@ -31,6 +31,8 @@ export { RadioGroup, RADIO_KEY } from "./RadioGroup";
 export type { RadioGroupProps, IRadio } from "./RadioGroup";
 export { Spinner } from "./Spinner";
 export type { SpinnerProps } from "./Spinner";
+export { Textarea } from "./Textarea";
+export type { TextareaProps, TextareaRef } from "./Textarea";
 
 // Overlay
 export { Popover } from "./Popover";
