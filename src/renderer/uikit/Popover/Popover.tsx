@@ -71,6 +71,8 @@ export interface PopoverProps
 const Root = styled.div(
     {
         position: "relative",
+        display: "flex",
+        flexDirection: "column",
         backgroundColor: color.background.default,
         border: `1px solid ${color.border.default}`,
         borderRadius: radius.lg,

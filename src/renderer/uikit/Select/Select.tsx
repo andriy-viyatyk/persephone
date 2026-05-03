@@ -140,6 +140,7 @@ function SelectInner<T = IListBoxItem>(
     const [open, setOpen] = useState(false);
     const [searchText, setSearchText] = useState("");
     const [activeIndex, setActiveIndex] = useState<number | null>(null);
+    const [popoverResized, setPopoverResized] = useState(false);
 
     // Load items (sync immediately, async on first open).
     const { items: loadedItems, sources: loadedSources, loading: itemsLoading } =
@@ -187,11 +188,12 @@ function SelectInner<T = IListBoxItem>(
         return typeof selectedResolved.label === "string" ? selectedResolved.label : "";
     }, [open, searchText, selectedResolved]);
 
-    // Reset search + active when the popover closes.
+    // Reset search + active + manual-resize flag when the popover closes.
     useEffect(() => {
         if (!open) {
             setSearchText("");
             setActiveIndex(null);
+            setPopoverResized(false);
         }
     }, [open]);
 
@@ -362,6 +364,7 @@ function SelectInner<T = IListBoxItem>(
                 offset={[0, 2]}
                 matchAnchorWidth
                 resizable={resizable}
+                onResize={() => setPopoverResized(true)}
                 outsideClickIgnoreSelector={`[data-type="select"][data-id="${selectId}"]`}
             >
                 <ListBox<IListBoxItem>
@@ -373,7 +376,7 @@ function SelectInner<T = IListBoxItem>(
                     onChange={onListChange}
                     searchText={searchText}
                     rowHeight={rowHeight}
-                    growToHeight={maxVisibleItems * rowHeight}
+                    growToHeight={popoverResized ? undefined : maxVisibleItems * rowHeight}
                     loading={itemsLoading}
                     emptyMessage={emptyMessage ?? "no results"}
                 />

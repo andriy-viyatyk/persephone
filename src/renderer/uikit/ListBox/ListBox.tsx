@@ -184,6 +184,15 @@ function ListBoxInner<T = IListBoxItem>(
         gridRef.current?.update({ all: true });
     }, [resolved, selectedKey, activeIndex, searchText, renderItem, rowHeight]);
 
+    // Keep the active row visible whenever activeIndex changes — covers external
+    // drivers (Select keyboard handler, etc.) that update activeIndex without
+    // going through ListBox's own keyboardNav path.
+    useEffect(() => {
+        if (activeIndex != null && activeIndex >= 0) {
+            gridRef.current?.scrollToRow(activeIndex);
+        }
+    }, [activeIndex]);
+
     useImperativeHandle(
         ref,
         () => ({
