@@ -81,6 +81,17 @@ const Item = styled.button(
             color: color.text.light,
         },
 
+        "& .item-icon": {
+            flexShrink: 0,
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+        },
+        "& .item-icon > svg": {
+            width: height.iconMd,
+            height: height.iconMd,
+        },
+
         "&:hover .radio-icon, &:focus-visible .radio-icon": {
             color: color.text.default,
         },
@@ -230,7 +241,7 @@ export function RadioGroup({
                         {selected
                             ? <RadioCheckedIcon className="radio-icon" />
                             : <RadioUncheckedIcon className="radio-icon" />}
-                        {radio.icon}
+                        {radio.icon && <span className="item-icon">{radio.icon}</span>}
                         {radio.label ?? radio.value}
                     </Item>
                 );
