@@ -46,6 +46,12 @@ export interface PopoverProps
      * input dropdowns where clicks on the input itself should keep the popover open.
      */
     outsideClickIgnoreSelector?: string;
+    /**
+     * Match the floating element's width to the anchor's width. Useful for
+     * combobox / autocomplete / suggestions dropdowns. The width updates
+     * automatically on `autoUpdate` (resize, scroll). Default: false.
+     */
+    matchAnchorWidth?: boolean;
     children?: React.ReactNode;
 }
 
@@ -77,6 +83,7 @@ export const Popover = forwardRef<HTMLDivElement, PopoverProps>(function Popover
         onKeyDown,
         maxHeight,
         outsideClickIgnoreSelector,
+        matchAnchorWidth,
         children,
         ...rest
     },
@@ -100,14 +107,20 @@ export const Popover = forwardRef<HTMLDivElement, PopoverProps>(function Popover
             size({
                 apply({
                     availableHeight,
+                    rects,
                     elements,
                 }: {
                     availableHeight: number;
+                    rects: { reference: { width: number } };
                     elements: { floating: HTMLElement };
                 }) {
-                    Object.assign(elements.floating.style, {
+                    const styles: Record<string, string> = {
                         maxHeight: `${Math.max(100, availableHeight - 20)}px`,
-                    });
+                    };
+                    if (matchAnchorWidth) {
+                        styles.width = `${rects.reference.width}px`;
+                    }
+                    Object.assign(elements.floating.style, styles);
                 },
             }),
         ];
@@ -115,7 +128,7 @@ export const Popover = forwardRef<HTMLDivElement, PopoverProps>(function Popover
             m.unshift(floatingOffset({ mainAxis: offset[1], crossAxis: offset[0] }));
         }
         return m;
-    }, [offset]);
+    }, [offset, matchAnchorWidth]);
 
     const onOpenChange = useCallback((value: boolean) => {
         if (value) onClose?.();

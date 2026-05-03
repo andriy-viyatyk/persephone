@@ -19,6 +19,7 @@ interface DemoProps {
     maxHeight?: string;
     longContent?: boolean;
     useIgnoreSelector?: boolean;
+    matchAnchorWidth?: boolean;
 }
 
 const PopoverDemo = ({
@@ -28,6 +29,7 @@ const PopoverDemo = ({
     maxHeight = "",
     longContent = false,
     useIgnoreSelector = false,
+    matchAnchorWidth = false,
 }: DemoProps) => {
     const anchorRef = useRef<HTMLButtonElement>(null);
     const [open, setOpen] = useState(false);
@@ -57,6 +59,7 @@ const PopoverDemo = ({
                 outsideClickIgnoreSelector={
                     useIgnoreSelector ? '[data-test-ignore="true"]' : undefined
                 }
+                matchAnchorWidth={matchAnchorWidth}
                 onClose={() => setOpen(false)}
             >
                 <Panel direction="column" padding="md" gap="sm" minWidth="200px">
@@ -84,5 +87,6 @@ export const popoverStory: Story = {
         { name: "maxHeight",         type: "string",  default: "" },
         { name: "longContent",       type: "boolean", default: false },
         { name: "useIgnoreSelector", type: "boolean", default: false },
+        { name: "matchAnchorWidth",  type: "boolean", default: false },
     ],
 };
