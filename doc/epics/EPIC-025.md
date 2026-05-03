@@ -269,7 +269,7 @@ function Select<T>({ items, value, onChange }: SelectProps<T>) {
 | [US-434](../tasks/US-434-storybook-editor/README.md) | Storybook editor — component browser, live preview, property editor | Phase 3 / Active |
 | [US-450](../tasks/US-450-uikit-toolbar/README.md) | UIKit Toolbar — semantic landmark, roving tabindex, Storybook adoption | Phase 3 polish / Active |
 | [US-451](../tasks/US-451-uikit-panel-refactor/README.md) | UIKit layout refactor — unified Panel + Storybook lighthouse | Phase 3 polish / Active |
-| US-432 | Dialog component — new UIKit implementation | Phase 4 / Planned |
+| [US-432](../tasks/US-432-dialog-component/README.md) | Dialog component — new implementation + migration | Phase 4 / Planned |
 | — | **Per-screen migration tasks** — tracked individually in [active-work.md](../active-work.md), not enumerated here | Phase 4 / Active |
 | US-436 | Script UI API — expose new component library to scripting engine | Phase 6 / Planned |
 | US-435 | Storybook — script tab for building and testing UI via scripts | Phase 6 / Planned |

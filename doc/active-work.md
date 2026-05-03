@@ -18,10 +18,11 @@ Overview of all active and planned epics and tasks.
   - [ ] [US-434: Storybook editor — component browser, live preview, property editor](tasks/US-434-storybook-editor/README.md) *(Phase 3)*
   - [ ] [US-450: UIKit Toolbar — semantic landmark, roving tabindex, Storybook adoption](tasks/US-450-uikit-toolbar/README.md) *(Phase 3 polish)*
   - [ ] [US-451: UIKit layout refactor — unified Panel + Storybook lighthouse](tasks/US-451-uikit-panel-refactor/README.md) *(Phase 3 polish)*
-  - [ ] US-432: Dialog component — new implementation + migration *(Phase 4, first)*
+  - [ ] [US-432: Dialog component — new implementation + migration](tasks/US-432-dialog-component/README.md) *(Phase 4, first)*
   - [ ] [US-466: UIKit Popover — overlay primitive](tasks/US-466-uikit-popover/README.md) *(Phase 4 — overlay infrastructure; blocks US-463)*
   - [ ] [US-467: UIKit Tooltip — overlay primitive](tasks/US-467-uikit-tooltip/README.md) *(Phase 4 — overlay infrastructure)*
   - [ ] [US-468: UIKit ListBox — virtualized list primitive](tasks/US-468-uikit-listbox/README.md) *(Phase 4 — list infrastructure; blocks US-464)*
+  - [ ] [US-469: UIKit RadioGroup — selection primitive](tasks/US-469-uikit-radiogroup/README.md) *(Phase 4 — form infrastructure; blocks US-432 Phase 2)*
   - [ ] [US-452: About screen — UIKit migration](tasks/US-452-about-screen-migration/README.md) *(Phase 4 — per-screen migration)*
   - [ ] [US-455: MermaidView — UIKit migration](tasks/US-455-mermaid-view-migration/README.md) *(Phase 4 — per-screen migration)*
   - [ ] [US-456: SvgView — UIKit migration](tasks/US-456-svg-view-migration/README.md) *(Phase 4 — per-screen migration)*
