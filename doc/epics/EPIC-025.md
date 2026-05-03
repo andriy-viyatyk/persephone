@@ -301,7 +301,7 @@ For each screen in Persephone:
 4. **Rewrite the screen** — replace all old components with their UIKit equivalents in one focused pass. The screen ends up using only `uikit/` components, no `styled.*`, `style=`, or `className=` (Rule 7).
 5. **Test the rewritten screen** — manual smoke test of the screen's golden path and edge cases; run any existing automated coverage.
 
-The old `src/renderer/components/` folder stays in place during the migration as a behavioral reference — useful for comparing old vs. new behavior when investigating regressions. It is removed only after all screens are migrated (final step of Phase 4).
+The old `src/renderer/components/` folder stays in place during the migration as a behavioral reference — useful for comparing old vs. new behavior when investigating regressions. It is dropped in **Phase 7 — Final Cleanup**, once Phase 5 has moved every remaining adopt-in-place complex component into `uikit/` and no consumer references the legacy folder.
 
 Per-screen tasks are created individually as each screen is reached. Ordering is driven by:
 - **Component dependency** — a screen waits if it needs UIKit components that haven't been built yet (those get built when the first screen needing them comes up).
@@ -309,29 +309,46 @@ Per-screen tasks are created individually as each screen is reached. Ordering is
 
 > Some screens contain components that are intentionally not rewritten — see Phase 5. Those components are adopted in place; the rest of the screen still migrates to UIKit.
 
-**Phase 5 — Complex Component Adoption (AVGrid, List, ComboSelect)**
-These virtualized and internally complex components are too risky to rewrite from scratch. Instead, adopt new patterns in place:
-- Add `data-type` and `data-*` state attributes
-- Apply roving tabindex where missing (List, AVGrid header)
-- Apply trait integration (`Traited<V>`) at the data prop level
-No full rewrite — incremental improvement only.
+**Phase 5 — Complex Component Review & Migration (AVGrid, RenderGrid, CollapsiblePanelStack)**
+These virtualized and internally complex components are too risky to rewrite from scratch — but they are still reusable components and belong in `uikit/` like everything else. Per component:
+
+1. **Review** against the UIKit authoring rules (Rule 1 data attributes, Rule 7 no Emotion in app code, design tokens, naming).
+2. **Apply patterns that fit naturally** — `data-type` and `data-*` state attributes, roving tabindex where missing (AVGrid header row), trait integration (`Traited<V>`) at the data prop level.
+3. **Document deviations** — components that don't fit every authoring rule (e.g. `RenderGrid` is a virtualization engine — no `data-type` semantics; `data-type` is only meaningful for components with a stable visual identity) get a header comment in their own file noting the deviation. Deviations are not folder splits.
+4. **Move the component into `src/renderer/uikit/`.** Relocation is the last step, after the in-place review and pattern adoption.
+
+No full rewrite of the engine logic — incremental improvement only — but the final destination is UIKit either way. Other complex components flagged during Phase 4 (e.g. `PopupMenu` if its rewrite cost is too high at the time) are handled by the same Phase 5 procedure.
 
 **Phase 6 — Script Integration (US-436, US-435)**
-Final phase, after the component library is stable and per-screen migration (Phase 4) is complete. Two pieces:
+After the component library is stable and per-screen migration (Phase 4) is complete. Two pieces:
 - **US-436** — expose the new component library to the scripting engine so scripts can build UIs from the same primitives the app uses.
 - **US-435** — add a Storybook "script" tab where users can write scripts that build / test UI from components, validating the script API end-to-end against the same components Storybook is already exercising.
 
-Deferred to last because script integration is only meaningful once the component surface is settled. Driving it earlier would mean reworking the script API every time a UIKit prop changes during migration. EPIC-026 trait interfaces are already available.
+Deferred until the component surface is settled. Driving it earlier would mean reworking the script API every time a UIKit prop changes during migration. EPIC-026 trait interfaces are already available.
+
+**Phase 7 — Final Cleanup**
+Final phase. Once Phase 5 has moved every adopt-in-place complex component into `uikit/`:
+
+1. Grep for remaining imports from `src/renderer/components/` across `src/`. Any matches indicate a screen still using a legacy component — that screen has not been fully migrated and must be revisited (Phase 4) or its complex component must be migrated (Phase 5).
+2. When the grep returns zero matches, **delete `src/renderer/components/`**.
+
+The end state of EPIC-025 is a single component folder — `src/renderer/uikit/` — containing every reusable UI component in the project, including engine-level building blocks (`RenderGrid`) and complex composites (`AVGrid`, `CollapsiblePanelStack`). No second components home, no `core/virtualization/` split.
 
 ## Concerns / Open Questions
 
-1. **Migration scope** — Resolved by iterative per-screen migration in Phase 4. Each screen is rewritten in one focused pass after any missing UIKit components are built and tested in Storybook. The old `src/renderer/components/` folder is preserved during the migration as a behavioral reference for investigating regressions; it is removed only after all screens have been migrated. No big-bang migration; screens that haven't been reached yet keep using the old components.
+1. **Migration scope** — Resolved by iterative per-screen migration in Phase 4. Each screen is rewritten in one focused pass after any missing UIKit components are built and tested in Storybook. The old `src/renderer/components/` folder is preserved during the migration as a behavioral reference for investigating regressions; it is removed in **Phase 7** once **Phase 5** has moved the adopt-in-place complex components (`AVGrid`, `RenderGrid`, `CollapsiblePanelStack`) into `uikit/`. End state: a single `uikit/` folder containing every reusable component. No big-bang migration; screens that haven't been reached yet keep using the old components.
 2. **Storybook editor architecture** — Should it be a single editor that renders any component, or should each component define its own storybook configuration file? Need to decide on the component metadata format. To be resolved in US-434 task planning.
 3. **Script UI security** — Scripts building arbitrary UIs could create confusing interfaces. Should there be sandboxing or capability limits? To be resolved in US-436 task planning.
 4. **Trait integration** — Resolved. See Design Decision #9 for the full pattern.
 5. **UI descriptor scope** — Resolved. Narrow scope: only container/contribution-point components (Toolbar, ContextMenu, StatusBar, etc.) expose a `descriptors` prop. Leaf components (Button, Input, etc.) are used via plain JSX and appear as variants inside a parent union. See Design Decision #5.
 
 ## Notes
+
+### 2026-05-03 (single-folder end state for components)
+- The end state of EPIC-025 is a **single component folder** — `src/renderer/uikit/` — containing every reusable UI component, including engine-level building blocks (`RenderGrid`) and complex composites (`AVGrid`, `CollapsiblePanelStack`). The old `src/renderer/components/` folder is dropped entirely.
+- Phase 5 retitled and clarified: complex components are reviewed and patterns are applied where they fit, but the component is **moved into `uikit/` either way**. Components that don't fit every UIKit authoring rule (no `data-type`, no design tokens) still live in `uikit/` — the deviation is documented in the component's header comment rather than driving a folder split (e.g. `RenderGrid` has no `data-type` because it's a virtualization engine, not a visually identifiable component; that's noted in its file header, not a reason to keep it elsewhere).
+- New **Phase 7 — Final Cleanup** added after Phase 6: drops `src/renderer/components/` once Phase 5 has emptied it.
+- Supersedes the 2026-04-19 note bullet that originally read "Complex components excluded from new library (adopt in place)" — that framing led to a permanent split between `uikit/` and `components/`, which is not the project's end state.
 
 ### 2026-04-26 (migration strategy: per-component → per-screen)
 - Phase 4 strategy changed from per-component migration to per-screen migration. Reason: rewriting one component at a time forces context-switching across many screens and risks subtle behavioral regressions when the same component is consumed differently in different places. Per-screen migration concentrates the work on one self-contained area at a time, making the rewrite + verify loop tighter.
@@ -344,7 +361,7 @@ Deferred to last because script integration is only meaningful once the componen
 - Pattern review complete. Adopted: data attributes (#6), roving tabindex (#7), focus trap (#8). Skipped: compound components, variant recipe, asChild. Controlled-by-default confirmed as existing practice.
 - Component naming table finalized. Key renames: `Chip→Tag`, `SwitchButtons→SegmentedControl`, `ComboSelect→Select`, `ListMultiselect→MultiSelect`, `List→ListBox`, `Popper→Popover`, `PopupMenu→Menu`, `TreeView→Tree`, `FlexSpace→Spacer`, `CircularProgress→Spinner`, `TextAreaField→Textarea`, `OverflowTooltipText→TruncatedText`.
 - New components predicted: `Flex`, `HStack`, `VStack`, `Panel`, `Card`, `Divider`, `Label`, `IconButton`, `Badge`, `ScrollArea`.
-- Complex components excluded from new library (adopt in place): `AVGrid`, `RenderGrid`, `CollapsiblePanelStack`.
+- Complex components reviewed in place and migrated into UIKit at the end of Phase 5: `AVGrid`, `RenderGrid`, `CollapsiblePanelStack`. Patterns applied where they fit; full rewrite not required; final folder is `uikit/`. *(Updated 2026-05-03 — see top note. The original 2026-04-19 framing of "excluded from new library / adopt in place" was superseded once it became clear it would leave a permanent split between `uikit/` and `components/`, which is not the project's end state.)*
 - Full naming table in [US-438 README](../tasks/US-438-pattern-research/README.md).
 
 ### 2026-04-19 (implementation plan rewrite)
