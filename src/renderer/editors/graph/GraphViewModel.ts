@@ -12,7 +12,7 @@ import { buildNodeContextMenu, buildEmptyAreaContextMenu, buildGroupNodeContextM
 import type { MenuItem } from "../../components/overlay/PopupMenu";
 import { showInputDialog } from "../../ui/dialogs/InputDialog";
 import { showConfirmationDialog } from "../../ui/dialogs/ConfirmationDialog";
-import { alertsBarModel } from "../../ui/dialogs/alerts/AlertsBar";
+import { alertsBarModel } from "../../uikit";
 import { buildMarkdown } from "./GraphTooltip";
 import { pagesModel } from "../../api/pages";
 

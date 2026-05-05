@@ -1,6 +1,5 @@
-import { AlertsBar } from "./ui/dialogs/alerts/AlertsBar";
+import { AlertsBar, ProgressOverlay } from "./uikit";
 import { Dialogs } from "./ui/dialogs/Dialogs";
-import { Progress } from "./ui/dialogs/progress/Progress";
 import { Poppers } from "./ui/dialogs/poppers/Poppers";
 import { MainPage } from "./ui/app/MainPage";
 import "./editors/register-editors";
@@ -12,7 +11,7 @@ export default function AppContent() {
             <GlobalStyles />
             <MainPage />
             <Dialogs />
-            <Progress />
+            <ProgressOverlay />
             <AlertsBar />
             <Poppers />
         </>

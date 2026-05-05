@@ -1,4 +1,4 @@
-import { TGlobalState } from "../../../core/state/state";
+import { TGlobalState } from "../../core/state/state";
 
 interface ProgressItem {
     id: number;

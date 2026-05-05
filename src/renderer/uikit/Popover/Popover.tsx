@@ -63,6 +63,15 @@ export interface PopoverProps
     resizable?: boolean;
     /** Fired during a drag with the live `(width, height)`. Optional. */
     onResize?: (width: number, height: number) => void;
+    /**
+     * Whether the popover root is the scroll container. Default: true. Set to false when the
+     * caller wants to manage its own internal scroll area (e.g. `Menu` keeps a non-scrolling
+     * search header above a scrollable list, so the scrollbar doesn't span the search row).
+     * When false, the root is `overflow: hidden` and the global `scroll-container` class is
+     * not applied — children must render their own scroll wrapper if content can exceed the
+     * popover height.
+     */
+    scroll?: boolean;
     children?: React.ReactNode;
 }
 
@@ -77,8 +86,11 @@ const Root = styled.div(
         border: `1px solid ${color.border.default}`,
         borderRadius: radius.lg,
         boxShadow: `0 2px 8px ${color.shadow.default}`,
-        overflow: "auto",
+        overflow: "hidden",
         WebkitAppRegion: "no-drag",
+        "&[data-scroll]": {
+            overflow: "auto",
+        },
     },
     { label: "Popover" },
 );
@@ -136,6 +148,7 @@ export const Popover = forwardRef<HTMLDivElement, PopoverProps>(function Popover
         matchAnchorWidth,
         resizable,
         onResize,
+        scroll = true,
         children,
         ...rest
     },
@@ -293,7 +306,9 @@ export const Popover = forwardRef<HTMLDivElement, PopoverProps>(function Popover
 
     return ReactDOM.createPortal(
         <Root
+            className={scroll ? "scroll-container" : undefined}
             data-type="popover"
+            data-scroll={scroll || undefined}
             data-placement={actualPlacement}
             data-resizable={resizable || undefined}
             data-resized={manualSize ? "" : undefined}

@@ -8,7 +8,7 @@ import type {
     ITextDialogResult,
     NotificationType,
 } from "./types/ui";
-import { alertsBarModel } from "../ui/dialogs/alerts/AlertsBar";
+import { alertsBarModel } from "../uikit";
 
 class UserInterface implements IUserInterface {
     async confirm(message: string, options?: IConfirmOptions): Promise<string | null> {
@@ -46,23 +46,23 @@ class UserInterface implements IUserInterface {
     }
 
     async showProgress<T>(promise: Promise<T>, label?: string): Promise<T> {
-        const { showProgress } = await import("../ui/dialogs/progress/ProgressModel");
+        const { showProgress } = await import("../uikit/Progress/progressModel");
         return showProgress(promise, label ?? "Processing...");
     }
 
-    async createProgress(label?: string): Promise<import("../ui/dialogs/progress/ProgressModel").ProgressHandle> {
-        const { createProgress } = await import("../ui/dialogs/progress/ProgressModel");
+    async createProgress(label?: string): Promise<import("../uikit/Progress/progressModel").ProgressHandle> {
+        const { createProgress } = await import("../uikit/Progress/progressModel");
         return createProgress(label ?? "Processing...");
     }
 
     notifyProgress(label: string, timeout?: number): void {
-        import("../ui/dialogs/progress/ProgressModel").then(({ notifyProgress }) => {
+        import("../uikit/Progress/progressModel").then(({ notifyProgress }) => {
             notifyProgress(label, timeout);
         });
     }
 
     async addScreenLock(): Promise<{ release: () => void }> {
-        const { addScreenLock, removeScreenLock } = await import("../ui/dialogs/progress/ProgressModel");
+        const { addScreenLock, removeScreenLock } = await import("../uikit/Progress/progressModel");
         const lock = addScreenLock();
         return { release: () => removeScreenLock(lock) };
     }

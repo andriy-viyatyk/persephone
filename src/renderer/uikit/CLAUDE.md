@@ -280,6 +280,27 @@ prop surface, do not work around the rule. The right answer is "Panel needs a ne
 escape hatch (e.g. `style?: Pick<CSSProperties, "color" | …>`) may be added — see EPIC-025
 Phase 6 (Script UI API). Until then, no escape hatch.
 
+**Application chrome exception (`src/renderer/ui/`)**
+
+Files in `src/renderer/ui/` that render the Persephone application's one-of-a-kind chrome
+surfaces (page tab strip, sidebar, navigation bar, etc.) are not subject to the no-Emotion
+clause. Their visual layout is unique to Persephone, will not be reused elsewhere, and would
+distort the UIKit surface if every chrome quirk became a `Panel` prop or a new UIKit primitive.
+
+Such files MAY use `@emotion/styled`, `style={…}`, and `className=…` on their own local
+elements (plain `<div>`s, etc.) for chrome layout. They MUST still:
+
+- Use only UIKit components (`Button`, `IconButton`, `Tooltip`, `Divider`, `Panel`, …) for
+  primitive rendering — no imports from `src/renderer/components/basic/` or
+  `components/form/` for new code.
+- Apply Rule 1 (`data-*` for state) on their own elements.
+- Avoid passing `style={…}` or `className=…` to UIKit components (that's still a TypeScript
+  error).
+
+This exception does **not** apply to anything that could plausibly be reused (forms,
+dialogs, settings panels, list rows). For those, the strict rule still holds — extend a
+UIKit primitive instead of styling around it.
+
 ---
 
 ## Naming conventions

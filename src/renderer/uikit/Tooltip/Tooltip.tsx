@@ -5,6 +5,7 @@ import {
     useFloating,
     offset as floatingOffset,
     flip,
+    shift,
     autoUpdate,
 } from "@floating-ui/react";
 import styled from "@emotion/styled";
@@ -72,7 +73,11 @@ export function Tooltip({
     const hideTimerRef = useRef<number | null>(null);
 
     const middleware = useMemo(
-        () => [floatingOffset({ mainAxis: offset[1], crossAxis: offset[0] }), flip()],
+        () => [
+            floatingOffset({ mainAxis: offset[1], crossAxis: offset[0] }),
+            flip(),
+            shift({ padding: 4 }),
+        ],
         [offset],
     );
 

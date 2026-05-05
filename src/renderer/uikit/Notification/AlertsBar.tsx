@@ -1,8 +1,8 @@
 import { useEffect } from 'react';
 
-import { TModel } from '../../../core/state/model';
-import { TMessageType } from '../../../core/utils/types';
-import { TGlobalState } from '../../../core/state/state';
+import { TModel } from '../../core/state/model';
+import { TMessageType } from '../../core/utils/types';
+import { TGlobalState } from '../../core/state/state';
 import { AlertData, AlertItem } from './AlertItem';
 
 const maxAlerts = 3;

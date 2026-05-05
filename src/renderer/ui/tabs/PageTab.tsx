@@ -1,12 +1,10 @@
 import styled from "@emotion/styled";
-import clsx from "clsx";
 
 import color from "../../theme/color";
 import { pagesModel } from "../../api/pages";
 import { appWindow } from "../../api/window";
 import { settings } from "../../api/settings";
 import type { PageModel } from "../../api/pages/PageModel";
-import { Button } from "../../components/basic/Button";
 import {
     CircleIcon,
     CloseIcon,
@@ -24,18 +22,17 @@ import {
 } from "../../theme/icons";
 import { LanguageIcon } from "../../components/icons/LanguageIcon";
 import { TComponentModel, useComponentModel } from "../../core/state/model";
-import type { MenuItem } from "../../components/overlay/PopupMenu";
-import { WithPopupMenu } from "../../components/overlay/WithPopupMenu";
+import { IconButton, Tooltip, WithMenu } from "../../uikit";
+import type { MenuItem } from "../../uikit";
 import { ContextMenuEvent } from "../../api/events/events";
 import { monacoLanguages } from "../../core/utils/monaco-languages";
-import { useMemo, useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useMemo } from "react";
 import { TraitTypeId, setTraitDragData, getTraitDragData, hasTraitDragData } from "../../core/traits";
 import { api } from "../../../ipc/renderer/api";
 import {
     isTextFileModel,
     TextFileModel,
 } from "../../editors/text";
-import { Tooltip } from "../../components/basic/Tooltip";
 import { PageDragData } from "../../../shared/types";
 import { parseObject } from "../../core/utils/parse-utils";
 import { ui } from "../../api/ui";
@@ -47,150 +44,158 @@ const TAB_PADDING = 4; // 2px left + 2px right
 export const pinnedTabWidth = 2 * ICON_SLOT + TAB_PADDING; // language + modified dot
 export const pinnedTabEncryptedWidth = 3 * ICON_SLOT + TAB_PADDING; // language + encryption + modified dot
 
-const PageTabRoot = styled.div({
-    display: "flex",
-    alignItems: "center",
-    borderTopLeftRadius: 6,
-    borderTopRightRadius: 6,
-    border: `1px solid transparent`,
-    borderBottom: "none",
-    padding: "4px 2px 3px 2px",
-    minHeight: 22,
-    WebkitAppRegion: "no-drag",
-    userSelect: "none",
-    width: 200,
-    minWidth: minTabWidth,
-    flexShrink: 1,
-    overflow: "hidden",
-    "& .title-label": {
-        flex: "1 1 auto",
-        fontSize: 13,
-        color: color.text.light,
+const PageTabRoot = styled.div(
+    {
+        display: "flex",
+        alignItems: "center",
+        borderTopLeftRadius: 6,
+        borderTopRightRadius: 6,
+        border: `1px solid transparent`,
+        borderBottom: "none",
+        padding: "4px 2px 3px 2px",
+        minHeight: 22,
+        WebkitAppRegion: "no-drag",
+        userSelect: "none",
+        width: 200,
+        minWidth: minTabWidth,
         flexShrink: 1,
         overflow: "hidden",
-        textOverflow: "ellipsis",
-        whiteSpace: "nowrap",
-    },
-    "&.temp .title-label": {
-        fontStyle: "italic",
-    },
-    "&.deleted .title-label": {
-        color: color.misc.red,
-    },
-    "&.deleted .modified-icon": {
-        color: color.misc.red,
-    },
-    "& .close-button": {
-        flexShrink: 0,
-        visibility: "hidden",
-    },
-    "& .sound-button": {
-        flexShrink: 0,
-        visibility: "hidden",
-        "&.sound-active": {
+
+        '& [data-part="title-label"]': {
+            flex: "1 1 auto",
+            fontSize: 13,
+            color: color.text.light,
+            flexShrink: 1,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+        },
+        '&[data-temp] [data-part="title-label"]': {
+            fontStyle: "italic",
+        },
+        '&[data-deleted] [data-part="title-label"]': {
+            color: color.misc.red,
+        },
+        '&[data-deleted] [data-part="modified-icon"]': {
+            color: color.misc.red,
+        },
+
+        '& [data-part="close-button"]': {
+            flexShrink: 0,
+            visibility: "hidden",
+        },
+        '& [data-part="sound-button"]': {
+            flexShrink: 0,
+            visibility: "hidden",
+        },
+        '& [data-part="sound-button"][data-active]': {
             visibility: "visible",
         },
-    },
-    "&.isActive": {
-        backgroundColor: color.background.default,
-        borderColor: color.border.default,
-        color: color.text.default,
-        "&:not(.deleted) .title-label": {
+
+        "&[data-active]": {
+            backgroundColor: color.background.default,
+            borderColor: color.border.default,
             color: color.text.default,
+            '&:not([data-deleted]) [data-part="title-label"]': {
+                color: color.text.default,
+            },
+            '& [data-part="close-button"]': {
+                visibility: "visible",
+            },
         },
-        "& .close-button": {
-            visibility: "visible",
+        "&:hover": {
+            borderColor: color.border.default,
+            '& [data-part="close-button"]': {
+                visibility: "visible",
+            },
+            '& [data-part="sound-button"]': {
+                visibility: "visible",
+            },
         },
-    },
-    "&:hover": {
-        borderColor: color.border.default,
-        "& .close-button": {
-            visibility: "visible",
+        "&[data-drag-over]": {
+            backgroundColor: color.background.default,
         },
-        "& .sound-button": {
-            visibility: "visible",
-        },
-    },
-    "&.isDraggOver": {
-        backgroundColor: color.background.default,
-    },
-    "& .modified-icon": {
-        display: "none",
-    },
-    "&.modified .close-button": {
-        visibility: "visible",
-    },
-    "&.modified:not(:hover)": {
-        "& .modified-icon": {
-            display: "inline-block",
-        },
-        "& .close-icon": {
+        '& [data-part="modified-icon"]': {
             display: "none",
         },
-    },
-    "& .encryption-icon": {
-        paddingBottom: 4,
-        marginRight: 2,
-    },
-    "& .empty-language": {
-        width: 6,
-        height: 14,
-        flexShrink: 0,
-        "&.withIcon": {
+        '&[data-modified] [data-part="close-button"]': {
+            visibility: "visible",
+        },
+        "&[data-modified]:not(:hover)": {
+            '& [data-part="modified-icon"]': {
+                display: "inline-block",
+            },
+            '& [data-part="close-icon"]': {
+                display: "none",
+            },
+        },
+        '& [data-part="encryption-icon"]': {
+            paddingBottom: 4,
+            marginRight: 2,
+        },
+        '& [data-part="empty-language"]': {
+            width: 6,
+            height: 14,
+            flexShrink: 0,
+        },
+        '& [data-part="empty-language"][data-with-icon]': {
             width: 15,
             margin: "0 4px 0 4px",
             "& svg, & img": {
                 width: 15,
                 height: 15,
-            }
+            },
+        },
+        "&:not([data-active]) > button": {
+            cursor: "default",
+        },
+
+        "&[data-pinned]": {
+            width: pinnedTabWidth,
+            minWidth: pinnedTabWidth,
+            flexShrink: 0,
+            position: "sticky",
+            zIndex: 1,
+            backgroundColor: color.background.dark,
+            "&[data-active], &[data-drag-over]": {
+                backgroundColor: color.background.default,
+            },
+            '& [data-part="title-label"]': {
+                flex: "0 0 auto",
+            },
+            '& [data-part="close-button"]': {
+                visibility: "visible",
+                pointerEvents: "none",
+            },
+            '& [data-part="close-icon"]': {
+                display: "none",
+            },
+        },
+        '&[data-pinned][data-grouped] [data-part="close-button"]': {
+            pointerEvents: "auto",
+        },
+        '&[data-pinned][data-grouped] [data-part="close-icon"]': {
+            display: "inline-block",
+        },
+        '&[data-pinned][data-modified] [data-part="modified-icon"]': {
+            display: "inline-block",
+        },
+        "&[data-pinned][data-has-encryption]": {
+            width: pinnedTabEncryptedWidth,
+            minWidth: pinnedTabEncryptedWidth,
+        },
+
+        '& [data-part="pinned-tooltip-trigger"]': {
+            position: "absolute",
+            inset: 0,
+        },
+        '&[data-pinned] > *:not([data-part="pinned-tooltip-trigger"])': {
+            position: "relative",
+            zIndex: 1,
         },
     },
-    "&:not(.isActive) > button": {
-        cursor: "default",
-    },
-    "&.pinned": {
-        width: pinnedTabWidth,
-        minWidth: pinnedTabWidth,
-        flexShrink: 0,
-        position: "sticky",
-        zIndex: 1,
-        backgroundColor: color.background.dark,
-        "&.isActive, &.isDraggOver": {
-            backgroundColor: color.background.default,
-        },
-        "& .title-label": {
-            flex: "0 0 auto",
-        },
-        "& .close-button": {
-            visibility: "visible",
-            pointerEvents: "none",
-        },
-        "& .close-icon": {
-            display: "none",
-        },
-    },
-    "&.pinned.grouped .close-button": {
-        pointerEvents: "auto",
-    },
-    "&.pinned.grouped .close-icon": {
-        display: "inline-block",
-    },
-    "&.pinned.modified .modified-icon": {
-        display: "inline-block",
-    },
-    "&.pinned-encrypted": {
-        width: pinnedTabEncryptedWidth,
-        minWidth: pinnedTabEncryptedWidth,
-    },
-    "& .pinned-tooltip-trigger": {
-        position: "absolute",
-        inset: 0,
-    },
-    "&.pinned > *:not(.pinned-tooltip-trigger)": {
-        position: "relative",
-        zIndex: 1,
-    },
-});
+    { label: "PageTabRoot" },
+);
 
 interface PageTabProps {
     model: PageModel;
@@ -560,8 +565,6 @@ export function PageTab(props: PageTabProps) {
             _pageMuted: s.pageMuted ?? false,
         }), { title: "Empty", modified: false, language: "", filePath: "", deleted: false, temp: false, _anyTabAudible: false, _pageMuted: false });
 
-    const id = page.id;
-
     const [isOver, setIsOver] = useState(false);
     const dragEnterCount = useRef(0);
 
@@ -597,20 +600,24 @@ export function PageTab(props: PageTabProps) {
 
     const encrypted = editor && isTextFileModel(editor) && editor.encrypted;
     const decrypted = editor && isTextFileModel(editor) && editor.decrypted;
-    const isPinnedEncrypted = pinned && (encrypted || decrypted);
+    const hasEncryption = Boolean(encrypted || decrypted);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const showSoundButton = _anyTabAudible || _pageMuted || (editor as any)?.toggleMuteAll;
+    const closeIconNode = tabModel.isGrouped
+        ? <GroupIcon data-part="close-icon" />
+        : <CloseIcon data-part="close-icon" />;
 
     return (
         <PageTabRoot
-            className={clsx("page-tab", {
-                isActive: tabModel.isActive,
-                modified,
-                isDraggOver: isOver,
-                temp,
-                deleted,
-                pinned,
-                grouped: tabModel.isGrouped,
-                "pinned-encrypted": isPinnedEncrypted,
-            })}
+            data-type="page-tab"
+            data-active={tabModel.isActive || undefined}
+            data-modified={modified || undefined}
+            data-drag-over={isOver || undefined}
+            data-temp={temp || undefined}
+            data-deleted={deleted || undefined}
+            data-pinned={pinned || undefined}
+            data-grouped={tabModel.isGrouped || undefined}
+            data-has-encryption={hasEncryption || undefined}
             style={pinned && props.pinnedLeft !== undefined ? { left: props.pinnedLeft } : undefined}
             onClick={tabModel.handleClick}
             onContextMenu={tabModel.handleContextMenu}
@@ -623,22 +630,21 @@ export function PageTab(props: PageTabProps) {
             onDragLeave={handleDragLeave}
         >
             {pinned && filePath && (
-                <span className="pinned-tooltip-trigger" data-tooltip-id={id} />
+                <Tooltip content={filePath} placement="bottom" delayShow={1500}>
+                    <span data-part="pinned-tooltip-trigger" />
+                </Tooltip>
             )}
             {editor?.noLanguage ? (
-                <span
-                    className={clsx("empty-language", {
-                        withIcon: editor.getIcon,
-                    })}
-                >
+                <span data-part="empty-language" data-with-icon={editor.getIcon ? "" : undefined}>
                     {editor.getIcon ? editor.getIcon() : null}
                 </span>
             ) : (
-                <WithPopupMenu items={languageMenuItems}>
+                <WithMenu items={languageMenuItems}>
                     {(setOpen) => (
-                        <Button
-                            size="small"
-                            type="icon"
+                        <IconButton
+                            size="sm"
+                            title={language}
+                            icon={<LanguageIcon language={language} fileName={title} />}
                             onClick={(e) => {
                                 if (!tabModel.isActive && e.ctrlKey) {
                                     tabModel.handleClick(e);
@@ -649,63 +655,54 @@ export function PageTab(props: PageTabProps) {
                                     setOpen(e.currentTarget);
                                 }
                             }}
-                            title={language}
-                        >
-                            <LanguageIcon
-                                language={language}
-                                fileName={title}
-                            />
-                        </Button>
+                        />
                     )}
-                </WithPopupMenu>
+                </WithMenu>
             )}
-            <span className="title-label" data-tooltip-id={pinned ? undefined : id}>
-                {(encrypted || decrypted) && (
-                    <span
-                        className="encryption-icon"
-                        onClick={tabModel.encryptionClick}
-                        title={encrypted ? "Decrypt File" : "Encrypt File"}
-                    >
-                        {encrypted ? "🔒" : "🔓"}
-                    </span>
-                )}
-                {!pinned && title}
-            </span>
-            {(_anyTabAudible || _pageMuted || (editor as any)?.toggleMuteAll) && (
-                <Button
-                    size="small"
-                    type="icon"
-                    className={clsx("sound-button", { "sound-active": _anyTabAudible || _pageMuted })}
+            <Tooltip
+                content={!pinned && filePath ? filePath : null}
+                placement="bottom"
+                delayShow={1500}
+            >
+                <span data-part="title-label">
+                    {hasEncryption && (
+                        <span
+                            data-part="encryption-icon"
+                            onClick={tabModel.encryptionClick}
+                            title={encrypted ? "Decrypt File" : "Encrypt File"}
+                        >
+                            {encrypted ? "🔒" : "🔓"}
+                        </span>
+                    )}
+                    {!pinned && title}
+                </span>
+            </Tooltip>
+            {showSoundButton && (
+                <IconButton
+                    size="sm"
+                    data-part="sound-button"
+                    active={(_anyTabAudible || _pageMuted) || undefined}
+                    title={_pageMuted ? "Unmute Page" : "Mute Page"}
+                    icon={_pageMuted ? <VolumeMutedIcon /> : <VolumeIcon />}
                     onClick={(e) => {
                         e.stopPropagation();
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         (editor as any)?.toggleMuteAll?.();
                     }}
-                    title={_pageMuted ? "Unmute Page" : "Mute Page"}
-                    background={tabModel.isActive ? "default" : "dark"}
-                >
-                    {_pageMuted ? <VolumeMutedIcon /> : <VolumeIcon />}
-                </Button>
+                />
             )}
-            <Button
-                size="small"
-                type="icon"
-                onClick={tabModel.closeClick}
+            <IconButton
+                size="sm"
+                data-part="close-button"
                 title={tabModel.isGrouped ? "Ungroup" : "Close Page"}
-                className="close-button"
-                background={tabModel.isActive ? "default" : "dark"}
-            >
-                {tabModel.isGrouped ? (
-                    <GroupIcon className="close-icon" />
-                ) : (
-                    <CloseIcon className="close-icon" />
-                )}
-                <CircleIcon className="modified-icon" />
-            </Button>
-            {filePath && (
-                <Tooltip id={id} place="bottom" delayShow={1500}>
-                    {filePath}
-                </Tooltip>
-            )}
+                icon={
+                    <>
+                        {closeIconNode}
+                        <CircleIcon data-part="modified-icon" />
+                    </>
+                }
+                onClick={tabModel.closeClick}
+            />
         </PageTabRoot>
     );
 }

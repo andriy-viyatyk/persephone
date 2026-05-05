@@ -41,6 +41,15 @@ Overview of all active and planned epics and tasks.
   - [ ] [US-463: BrowserDownloadsPopup + DownloadButton — UIKit migration](tasks/US-463-browser-downloads-migration/README.md) *(Phase 4 — per-screen migration; blocked on US-466)*
   - [ ] [US-464: UrlSuggestionsDropdown — UIKit migration](tasks/US-464-url-suggestions-dropdown-migration/README.md) *(Phase 4 — per-screen migration; blocked on US-468)*
   - [ ] [US-465: CompareEditor — UIKit migration](tasks/US-465-compare-editor-migration/README.md) *(Phase 4 — per-screen migration)*
+  - [ ] [US-476: AlertsBar + AlertItem — UIKit migration](tasks/US-476-alerts-bar-migration/README.md) *(Phase 4 — per-screen migration)*
+  - [ ] [US-477: Progress dialog — UIKit migration](tasks/US-477-progress-dialog-migration/README.md) *(Phase 4 — per-screen migration)*
+  - [ ] [US-481: UIKit Menu + WithMenu](tasks/US-481-uikit-menu-with-menu/README.md) *(Phase 4 — UIKit primitive)*
+  - [ ] US-484: UIKit ListBox extensions — row tooltip, context menu, predicate selection, section rows *(Phase 4 — list infrastructure; blocks US-479)*
+  - [ ] US-485: UIKit Tree — virtualized expand/collapse tree primitive *(Phase 4 — list infrastructure)*
+  - [ ] US-486: UIKit Splitter — resizable divider primitive *(Phase 4 — layout infrastructure)*
+  - [ ] [US-478: PageTabs / PageTab — UIKit migration](tasks/US-478-page-tabs-migration/README.md) *(Phase 4 — per-screen migration)*
+  - [ ] [US-479: Sidebar lists — UIKit migration (FileList / OpenTabsList / RecentFileList / FolderItem)](tasks/US-479-sidebar-lists-migration/README.md) *(Phase 4 — per-screen migration; blocked on US-484)*
+  - [ ] [US-480: MarkdownView — UIKit migration](tasks/US-480-markdown-view-migration/README.md) *(Phase 4 — per-screen migration)*
   - [ ] US-436: Script UI API — expose new component library to scripting engine *(Phase 6)*
   - [ ] US-435: Storybook — script tab for building and testing UI via scripts *(Phase 6)*
 

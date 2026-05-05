@@ -1,8 +1,4 @@
 export { Dialogs, dialogsState, showDialog, closeDialog } from './Dialogs';
-// Alerts
-export { AlertsBar } from './alerts/AlertsBar';
-export { AlertItem } from './alerts/AlertItem';
-export type { AlertData } from './alerts/AlertItem';
 
 // Poppers
 export { Poppers, showPopper, closePopper, visiblePoppers } from './poppers/Poppers';

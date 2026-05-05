@@ -25,6 +25,8 @@ import { tagsInputStory }        from "../../uikit/TagsInput/TagsInput.story";
 import { popoverStory }          from "../../uikit/Popover/Popover.story";
 import { tooltipStory }          from "../../uikit/Tooltip/Tooltip.story";
 import { dialogStory }           from "../../uikit/Dialog/Dialog.story";
+import { notificationStory }     from "../../uikit/Notification/Notification.story";
+import { menuStory }             from "../../uikit/Menu/Menu.story";
 
 // Lists
 import { listBoxStory }          from "../../uikit/ListBox/ListBox.story";
@@ -35,7 +37,7 @@ export const ALL_STORIES: Story[] = [
     buttonStory, iconButtonStory, inputStory, labelStory, checkboxStory, dividerStory, textStory,
     segmentedControlStory, radioGroupStory, spinnerStory, textareaStory, pathInputStory,
     tagStory, tagsInputStory,
-    popoverStory, tooltipStory, dialogStory,
+    popoverStory, tooltipStory, dialogStory, notificationStory, menuStory,
     listBoxStory, selectStory,
 ];
 
