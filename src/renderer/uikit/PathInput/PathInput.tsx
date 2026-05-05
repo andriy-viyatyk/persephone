@@ -1,60 +1,15 @@
-import React, {
-    forwardRef,
-    useCallback,
-    useEffect,
-    useMemo,
-    useRef,
-    useState,
-} from "react";
+import React, { forwardRef, useCallback } from "react";
 import styled from "@emotion/styled";
 import color from "../../theme/color";
 import { spacing } from "../tokens";
+import { useComponentModel } from "../../core/state/model";
 import { Input } from "../Input";
 import { Popover } from "../Popover";
-import { exceedsMaxDepth, getPathSuggestions, PathSuggestion } from "./suggestions";
-
-// --- Types ---
-
-export interface PathInputProps
-    extends Omit<
-        React.HTMLAttributes<HTMLDivElement>,
-        "style" | "className" | "onChange" | "onBlur"
-    > {
-    /** Current path value. */
-    value: string;
-    /** Live-update handler — fires on every keystroke and on folder selection. */
-    onChange: (value: string) => void;
-    /** Available paths used to derive suggestions. */
-    paths: string[];
-    /** Path separator. Default: "/". */
-    separator?: string;
-    /** Placeholder shown when value is empty. */
-    placeholder?: string;
-    /**
-     * Commit handler — fires once per edit session when the input commits or cancels.
-     *   • leaf-selection: `finalValue = leaf path`
-     *   • Enter on typed value: `finalValue = value`
-     *   • blur: `finalValue = current value`
-     *   • Escape (popover already closed) or Enter on empty/separator-trailing value: `finalValue = undefined`
-     * Folder selection does NOT fire onBlur — the input keeps editing.
-     */
-    onBlur?: (finalValue?: string) => void;
-    /** Auto-focus on mount with caret at end. Default: false. */
-    autoFocus?: boolean;
-    /**
-     * Maximum number of separator-delimited segments. When the input has more
-     * segments than this, suggestions are hidden.
-     */
-    maxDepth?: number;
-    /** Disabled state — input cannot be focused, popover never opens. */
-    disabled?: boolean;
-    /** Read-only state — input is focusable, but typing/popover are blocked. */
-    readOnly?: boolean;
-    /** Control size. Default: "md". */
-    size?: "sm" | "md";
-    "aria-label"?: string;
-    "aria-labelledby"?: string;
-}
+import {
+    PathInputModel,
+    PathInputProps,
+    defaultPathInputState,
+} from "./PathInputModel";
 
 // --- Styled ---
 
@@ -98,185 +53,49 @@ const SuggestionRow = styled.div(
 // --- Component ---
 
 export const PathInput = forwardRef<HTMLInputElement, PathInputProps>(function PathInput(
-    {
+    props,
+    ref,
+) {
+    const model = useComponentModel(props, PathInputModel, defaultPathInputState);
+    const { open, activeIndex } = model.state.use((s) => ({
+        open: s.open,
+        activeIndex: s.activeIndex,
+    }));
+
+    // Merge the model's input ref with the caller's forwarded ref. This is the only
+    // useCallback in the View — pure ref-forwarding glue, not component logic.
+    const setInputRef = useCallback(
+        (el: HTMLInputElement | null) => {
+            model.setInputRef(el);
+            if (typeof ref === "function") ref(el);
+            else if (ref) (ref as React.MutableRefObject<HTMLInputElement | null>).current = el;
+        },
+        [model, ref],
+    );
+
+    const {
         value,
-        onChange,
-        paths,
-        separator = "/",
+        separator,
         placeholder,
-        onBlur,
         autoFocus,
-        maxDepth,
         disabled,
         readOnly,
         size = "md",
         "aria-label": ariaLabel,
         "aria-labelledby": ariaLabelledBy,
+        // Capture (don't forward) — model handles these via this.props
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        onChange: _onChange,
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        paths: _paths,
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        onBlur: _onBlur,
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        maxDepth: _maxDepth,
         ...rest
-    },
-    ref,
-) {
-    const [open, setOpen] = useState(false);
-    const [activeIndex, setActiveIndex] = useState<number | null>(null);
-    const inputRef = useRef<HTMLInputElement | null>(null);
-    const rowsRef = useRef<Array<HTMLDivElement | null>>([]);
-    const selectionMadeRef = useRef(false);
-    const escapeCancelledRef = useRef(false);
+    } = props;
 
-    const setInputRef = useCallback(
-        (el: HTMLInputElement | null) => {
-            inputRef.current = el;
-            if (typeof ref === "function") ref(el);
-            else if (ref) (ref as React.MutableRefObject<HTMLInputElement | null>).current = el;
-        },
-        [ref],
-    );
-
-    const suggestions = useMemo<PathSuggestion[]>(() => {
-        if (exceedsMaxDepth(value, separator, maxDepth)) return [];
-        return getPathSuggestions(value, paths, separator);
-    }, [value, paths, separator, maxDepth]);
-
-    // Keep row refs sized to the suggestion list.
-    useEffect(() => {
-        rowsRef.current.length = suggestions.length;
-    }, [suggestions.length]);
-
-    // Reset highlight whenever the suggestion list changes.
-    useEffect(() => {
-        setActiveIndex(null);
-    }, [suggestions]);
-
-    // Scroll the active row into view (mouse hover or keyboard nav).
-    useEffect(() => {
-        if (activeIndex != null && activeIndex >= 0) {
-            rowsRef.current[activeIndex]?.scrollIntoView({ block: "nearest" });
-        }
-    }, [activeIndex]);
-
-    // autoFocus: place caret at end of value after the native focus fires on mount.
-    useEffect(() => {
-        if (autoFocus && inputRef.current) {
-            const len = inputRef.current.value.length;
-            inputRef.current.setSelectionRange(len, len);
-        }
-    }, [autoFocus]);
-
-    const selectSuggestion = useCallback(
-        (s: PathSuggestion) => {
-            if (s.isFolder) {
-                onChange(s.path + separator);
-                inputRef.current?.focus();
-            } else {
-                selectionMadeRef.current = true;
-                onChange(s.path);
-                setOpen(false);
-                onBlur?.(s.path);
-            }
-        },
-        [onChange, onBlur, separator],
-    );
-
-    const onInputChange = useCallback(
-        (v: string) => {
-            onChange(v);
-            if (!disabled && !readOnly && !open) setOpen(true);
-        },
-        [onChange, disabled, readOnly, open],
-    );
-
-    const onInputFocus = useCallback(() => {
-        if (!disabled && !readOnly) setOpen(true);
-    }, [disabled, readOnly]);
-
-    const handleBlur = useCallback(() => {
-        // 150ms grace so suggestion-row mouse clicks (and the Tab fall-through)
-        // get a chance to set selectionMadeRef before the commit fires.
-        setTimeout(() => {
-            if (selectionMadeRef.current || escapeCancelledRef.current) {
-                selectionMadeRef.current = false;
-                escapeCancelledRef.current = false;
-                return;
-            }
-            if (!inputRef.current?.contains(document.activeElement)) {
-                setOpen(false);
-                onBlur?.(value);
-            }
-        }, 150);
-    }, [onBlur, value]);
-
-    const onInputKeyDown = useCallback(
-        (e: React.KeyboardEvent<HTMLInputElement>) => {
-            if (!open) {
-                if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-                    e.preventDefault();
-                    if (!disabled && !readOnly) setOpen(true);
-                } else if (e.key === "Escape") {
-                    e.preventDefault();
-                    escapeCancelledRef.current = true;
-                    inputRef.current?.blur();
-                    onBlur?.(undefined);
-                }
-                return;
-            }
-
-            const n = suggestions.length;
-            switch (e.key) {
-                case "ArrowDown": {
-                    e.preventDefault();
-                    if (n === 0) break;
-                    setActiveIndex((cur) => {
-                        if (cur == null || cur < 0) return 0;
-                        return cur < n - 1 ? cur + 1 : 0;
-                    });
-                    break;
-                }
-                case "ArrowUp": {
-                    e.preventDefault();
-                    if (n === 0) break;
-                    setActiveIndex((cur) => {
-                        if (cur == null || cur <= 0) return n - 1;
-                        return cur - 1;
-                    });
-                    break;
-                }
-                case "Enter": {
-                    e.preventDefault();
-                    if (activeIndex != null && activeIndex >= 0 && suggestions[activeIndex]) {
-                        selectSuggestion(suggestions[activeIndex]);
-                    } else if (value !== "" && !value.endsWith(separator)) {
-                        selectionMadeRef.current = true;
-                        setOpen(false);
-                        onBlur?.(value);
-                    }
-                    break;
-                }
-                case "Tab": {
-                    if (activeIndex != null && activeIndex >= 0 && suggestions[activeIndex]) {
-                        e.preventDefault();
-                        selectSuggestion(suggestions[activeIndex]);
-                    }
-                    break;
-                }
-                case "Escape": {
-                    e.preventDefault();
-                    setOpen(false);
-                    break;
-                }
-            }
-        },
-        [
-            open,
-            suggestions,
-            activeIndex,
-            value,
-            separator,
-            selectSuggestion,
-            onBlur,
-            disabled,
-            readOnly,
-        ],
-    );
+    const suggestions = model.suggestions.value;
 
     return (
         <Root
@@ -290,14 +109,14 @@ export const PathInput = forwardRef<HTMLInputElement, PathInputProps>(function P
                 ref={setInputRef}
                 size={size}
                 value={value}
-                onChange={onInputChange}
+                onChange={model.onInputChange}
                 placeholder={placeholder}
                 disabled={disabled}
                 readOnly={readOnly}
                 autoFocus={autoFocus}
-                onFocus={onInputFocus}
-                onBlur={handleBlur}
-                onKeyDown={onInputKeyDown}
+                onFocus={model.onInputFocus}
+                onBlur={model.onInputBlur}
+                onKeyDown={model.onInputKeyDown}
                 autoComplete="off"
                 aria-label={ariaLabel}
                 aria-labelledby={ariaLabelledBy}
@@ -306,8 +125,8 @@ export const PathInput = forwardRef<HTMLInputElement, PathInputProps>(function P
             />
             <Popover
                 open={open && suggestions.length > 0}
-                onClose={() => setOpen(false)}
-                elementRef={inputRef.current}
+                onClose={model.onPopoverClose}
+                elementRef={model.inputRef}
                 placement="bottom-start"
                 offset={[0, 2]}
                 matchAnchorWidth
@@ -319,20 +138,23 @@ export const PathInput = forwardRef<HTMLInputElement, PathInputProps>(function P
                     <SuggestionRow
                         key={s.path}
                         ref={(el) => {
-                            rowsRef.current[i] = el;
+                            model.setRowRef(i, el);
                         }}
                         role="option"
                         data-active={activeIndex === i || undefined}
-                        onMouseDown={(e) => e.preventDefault()}
-                        onClick={() => selectSuggestion(s)}
-                        onMouseEnter={() => setActiveIndex(i)}
+                        onMouseDown={model.onRowMouseDown}
+                        onClick={() => model.onRowClick(s)}
+                        onMouseEnter={() => model.onRowMouseEnter(i)}
                     >
                         {s.matchPrefix && <span data-part="prefix">{s.matchPrefix}</span>}
                         <span data-part="segment">{s.label}</span>
-                        {s.isFolder && <span data-part="separator">{separator}</span>}
+                        {s.isFolder && <span data-part="separator">{separator ?? "/"}</span>}
                     </SuggestionRow>
                 ))}
             </Popover>
         </Root>
     );
 });
+
+// Re-export the public type from its canonical location (the model file).
+export type { PathInputProps } from "./PathInputModel";

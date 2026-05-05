@@ -303,6 +303,67 @@ UIKit primitive instead of styling around it.
 
 ---
 
+## Rule 8 — Model-view architecture for complex components
+
+Simple components stay as plain function components with React hooks. Once a component
+grows past the small-and-readable threshold, migrate it to the model-view pattern documented
+in [`/doc/standards/model-view-pattern.md`](../../../doc/standards/model-view-pattern.md).
+
+### Thresholds (from the standard doc)
+
+**Migrate to model-view when any of the following hold:**
+
+- More than 4–5 `useState()` hooks
+- More than 3 `useCallback()` hooks
+- The component function body is long and hard to follow at a glance
+- Hooks have many or cyclic dependencies that force `// eslint-disable react-hooks/exhaustive-deps`
+- Multiple `useEffect`s with overlapping responsibilities
+
+**Stay with plain hooks when:**
+
+- 1–2 simple `useState()` hooks
+- 1–2 `useCallback()` hooks
+- Body is short and presentational
+- The component is a thin wrapper over a primitive
+
+### What the migration looks like
+
+The pattern moves all logic into a `TComponentModel` subclass; the View becomes a pure
+render function. Refs, handlers, computed values, side effects, and memos all live in the
+model. See the standard doc for the full pattern, including:
+
+- `TComponentState` — the state primitive
+- `TComponentModel` — the base class with `init()`, `dispose()`, `effect()`, `memo()`
+- `useComponentModel(props, ModelClass, defaultState)` — the single React hook the View uses
+
+### Naming and file layout
+
+Co-locate the model with the component. Inside the component's UIKit subfolder:
+
+```
+uikit/ListBox/
+    ListBox.tsx           ← View (pure render)
+    ListBoxModel.ts       ← Model (TComponentModel subclass)
+    ListBox.story.tsx
+    index.ts
+```
+
+Model classes are suffixed `Model` (matching the rest of the codebase — `GridPageModel`,
+`MarkdownViewModel`, `ImageViewModel`).
+
+### Why this matters in UIKit specifically
+
+UIKit primitives are reused across the entire app. A component with 10+ `useCallback`s and
+tangled `useEffect` deps is harder to extend in follow-up tasks (the next consumer often
+needs one more prop, one more state slice, one more effect). The model-view split keeps
+each new feature additive — a new method on the model rather than a new closure with a new
+dependency that risks breaking the existing ones.
+
+It also unlocks alternative views over the same model later (e.g. a dense vs. comfortable
+ListBox skin) without touching the logic.
+
+---
+
 ## Naming conventions
 
 ### Component names

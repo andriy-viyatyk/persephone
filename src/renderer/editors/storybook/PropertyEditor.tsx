@@ -106,7 +106,7 @@ function PropRow({ def, value, onChange }: {
 }
 
 export function PropertyEditor({ model }: { model: StorybookEditorModel }) {
-    const { selectedStoryId, propValues } = model.state.use();
+    const { selectedStoryId, propValues, rightPanelWidth } = model.state.use();
     const story = findStory(selectedStoryId);
     const visibleProps = story?.props.filter((p) => !STORYBOOK_MANAGED_PROPS.has(p.name)) ?? [];
 
@@ -115,11 +115,9 @@ export function PropertyEditor({ model }: { model: StorybookEditorModel }) {
             <Panel
                 data-type="property-editor"
                 direction="column"
-                width={280}
+                width={rightPanelWidth}
                 shrink={false}
                 overflowY="auto"
-                borderLeft
-                borderColor="default"
                 padding="md"
             >
                 <Panel padding="md">
@@ -133,11 +131,9 @@ export function PropertyEditor({ model }: { model: StorybookEditorModel }) {
         <Panel
             data-type="property-editor"
             direction="column"
-            width={280}
+            width={rightPanelWidth}
             shrink={false}
             overflowY="auto"
-            borderLeft
-            borderColor="default"
             padding="md"
             gap="md"
         >

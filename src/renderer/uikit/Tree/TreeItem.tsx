@@ -1,0 +1,233 @@
+import React, { forwardRef } from "react";
+import styled from "@emotion/styled";
+import color from "../../theme/color";
+import { gap, height, spacing } from "../tokens";
+import { ChevronDownIcon, ChevronRightIcon } from "../../theme/icons";
+import { highlight } from "../shared/highlight";
+import { Tooltip } from "../Tooltip";
+import { Spinner } from "../Spinner";
+
+// --- Types ---
+
+export interface TreeItemProps
+    extends Omit<React.HTMLAttributes<HTMLDivElement>, "style" | "className"> {
+    /** Stable id used for `aria-activedescendant` wiring. */
+    id?: string;
+    /** Depth — 0 for root rows, +1 per level. */
+    level: number;
+    /** True when the row is currently expanded. */
+    expanded: boolean;
+    /** True when the row has children — drives chevron visibility. */
+    hasChildren: boolean;
+    /** Leading icon (rendered after the chevron). */
+    icon?: React.ReactNode;
+    /** Label content. When `searchText` is provided, plain-string labels are highlighted. */
+    label: React.ReactNode;
+    /** Highlight matches in the label. Only applied when `label` is a string. */
+    searchText?: string;
+    /** True when this item is the current selection of its Tree. */
+    selected?: boolean;
+    /** True when this item is the current `activeIndex` of its Tree. */
+    active?: boolean;
+    /** True when this row is the source of an active drag. */
+    dragging?: boolean;
+    /** True when this row is the drop target under the drag cursor. */
+    dropActive?: boolean;
+    /** True when `loadChildren` is currently in flight for this row. */
+    loading?: boolean;
+    /** True when this item should not respond to clicks. */
+    disabled?: boolean;
+    /**
+     * Tooltip body shown after the standard hover delay. When `null`, `undefined`, `false`,
+     * or empty string, no tooltip is rendered.
+     */
+    tooltip?: React.ReactNode;
+    /** Indentation step in pixels per level. Default: 16. */
+    indentSize?: number;
+    /**
+     * Called when the user clicks the chevron. Tree's model owns expansion state — pass
+     * `(e) => model.onChevronClick(e, idx)` from the View.
+     */
+    onChevronClick?: (e: React.MouseEvent) => void;
+}
+
+// --- Styled ---
+
+const Root = styled.div(
+    {
+        display: "inline-flex",
+        width: "100%",
+        boxSizing: "border-box",
+        alignItems: "center",
+        gap: gap.sm,
+        paddingRight: spacing.sm,
+        cursor: "pointer",
+        color: color.text.default,
+        userSelect: "none",
+        whiteSpace: "nowrap",
+        overflow: "hidden",
+
+        "&[data-disabled]": { opacity: 0.4, pointerEvents: "none" },
+        "&[data-active]:not([data-selected])": {
+            backgroundColor: color.background.message,
+        },
+        "&[data-selected]": {
+            backgroundColor: color.background.light,
+        },
+        "&[data-dragging]": {
+            opacity: 0.5,
+        },
+        "&[data-drop-active]": {
+            backgroundColor: color.background.selection,
+            color: color.text.dark,
+        },
+        "&[data-loading]": {
+            // Hook for future "dim while loading" styling — current visual change is the
+            // chevron→spinner swap inside the row, kept attribute-only for now.
+        },
+
+        "& > .tree-icon": {
+            display: "flex",
+            alignItems: "center",
+            flexShrink: 0,
+            "& svg": {
+                width: height.iconMd,
+                height: height.iconMd,
+            },
+        },
+
+        "& > .label": {
+            flex: "1 1 auto",
+            minWidth: 0,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+        },
+    },
+    { label: "TreeItem" },
+);
+
+const Indent = styled.div<{ size: number; first: boolean }>(
+    ({ size, first }) => ({
+        width: size,
+        height: "100%",
+        flexShrink: 0,
+        borderLeft: first ? "none" : `1px solid ${color.border.light}`,
+    }),
+    { label: "TreeItemIndent" },
+);
+
+const Chevron = styled.button<{ size: number }>(
+    ({ size }) => ({
+        width: size,
+        height: size,
+        flexShrink: 0,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 0,
+        margin: 0,
+        border: "none",
+        background: "transparent",
+        cursor: "pointer",
+        color: color.icon.default,
+
+        "&:hover": {
+            color: color.icon.active,
+        },
+
+        "& svg": {
+            width: 12,
+            height: 12,
+        },
+    }),
+    { label: "TreeItemChevron" },
+);
+
+const ChevronStub = styled.div<{ size: number }>(
+    ({ size }) => ({
+        width: size,
+        height: size,
+        flexShrink: 0,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+    }),
+    { label: "TreeItemChevronStub" },
+);
+
+// --- Component ---
+
+const defaultIndentSize = 16;
+
+export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(function TreeItem(
+    {
+        id,
+        level,
+        expanded,
+        hasChildren,
+        icon,
+        label,
+        searchText,
+        selected,
+        active,
+        dragging,
+        dropActive,
+        loading,
+        disabled,
+        tooltip,
+        indentSize = defaultIndentSize,
+        onChevronClick,
+        ...rest
+    },
+    ref,
+) {
+    const labelNode =
+        typeof label === "string" && searchText ? highlight(label, searchText) : label;
+
+    const row = (
+        <Root
+            ref={ref}
+            id={id}
+            data-type="tree-item"
+            data-state={expanded ? "open" : "closed"}
+            data-selected={selected || undefined}
+            data-active={active || undefined}
+            data-dragging={dragging || undefined}
+            data-drop-active={dropActive || undefined}
+            data-loading={loading || undefined}
+            data-disabled={disabled || undefined}
+            role="treeitem"
+            aria-selected={selected ? "true" : "false"}
+            aria-expanded={hasChildren ? expanded : undefined}
+            aria-level={level + 1}
+            aria-disabled={disabled ? "true" : undefined}
+            {...rest}
+        >
+            {Array.from({ length: level }).map((_, i) => (
+                <Indent key={i} size={indentSize} first={i === 0} />
+            ))}
+            {loading ? (
+                <ChevronStub size={indentSize} aria-label="Loading">
+                    <Spinner size={12} />
+                </ChevronStub>
+            ) : hasChildren ? (
+                <Chevron
+                    size={indentSize}
+                    type="button"
+                    tabIndex={-1}
+                    aria-label={expanded ? "Collapse" : "Expand"}
+                    onClick={onChevronClick}
+                >
+                    {expanded ? <ChevronDownIcon /> : <ChevronRightIcon />}
+                </Chevron>
+            ) : (
+                <ChevronStub size={indentSize} />
+            )}
+            {icon && <span className="tree-icon">{icon}</span>}
+            <span className="label">{labelNode}</span>
+        </Root>
+    );
+
+    if (tooltip == null || tooltip === false || tooltip === "") return row;
+    return <Tooltip content={tooltip}>{row}</Tooltip>;
+});

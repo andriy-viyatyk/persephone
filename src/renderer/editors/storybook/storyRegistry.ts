@@ -1,9 +1,10 @@
 import { Story } from "./storyTypes";
 
 // Layout
-import { panelStory }   from "../../uikit/Panel/Panel.story";
-import { spacerStory }  from "../../uikit/Spacer/Spacer.story";
-import { toolbarStory } from "../../uikit/Toolbar/Toolbar.story";
+import { panelStory }    from "../../uikit/Panel/Panel.story";
+import { spacerStory }   from "../../uikit/Spacer/Spacer.story";
+import { splitterStory } from "../../uikit/Splitter/Splitter.story";
+import { toolbarStory }  from "../../uikit/Toolbar/Toolbar.story";
 
 // Bootstrap
 import { buttonStory }           from "../../uikit/Button/Button.story";
@@ -31,14 +32,15 @@ import { menuStory }             from "../../uikit/Menu/Menu.story";
 // Lists
 import { listBoxStory }          from "../../uikit/ListBox/ListBox.story";
 import { selectStory }           from "../../uikit/Select/Select.story";
+import { treeStory }             from "../../uikit/Tree/Tree.story";
 
 export const ALL_STORIES: Story[] = [
-    panelStory, spacerStory, toolbarStory,
+    panelStory, spacerStory, splitterStory, toolbarStory,
     buttonStory, iconButtonStory, inputStory, labelStory, checkboxStory, dividerStory, textStory,
     segmentedControlStory, radioGroupStory, spinnerStory, textareaStory, pathInputStory,
     tagStory, tagsInputStory,
     popoverStory, tooltipStory, dialogStory, notificationStory, menuStory,
-    listBoxStory, selectStory,
+    listBoxStory, selectStory, treeStory,
 ];
 
 export function findStory(id: string): Story | undefined {

@@ -12,6 +12,8 @@ export interface StorybookEditorState extends IEditorState {
     selectedStoryId: string;
     propValues: Record<string, unknown>;
     previewBackground: PreviewBackground;
+    leftPanelWidth: number;
+    rightPanelWidth: number;
 }
 
 export const getDefaultStorybookEditorState = (): StorybookEditorState => {
@@ -25,6 +27,8 @@ export const getDefaultStorybookEditorState = (): StorybookEditorState => {
         selectedStoryId: first?.id ?? "",
         propValues: first ? buildInitialProps(first) : {},
         previewBackground: "light",
+        leftPanelWidth: 200,
+        rightPanelWidth: 280,
     };
 };
 
@@ -66,6 +70,14 @@ export class StorybookEditorModel extends EditorModel<StorybookEditorState, void
 
     setPreviewBackground = (bg: PreviewBackground): void => {
         this.state.update((s) => { s.previewBackground = bg; });
+    };
+
+    setLeftPanelWidth = (w: number): void => {
+        this.state.update((s) => { s.leftPanelWidth = w; });
+    };
+
+    setRightPanelWidth = (w: number): void => {
+        this.state.update((s) => { s.rightPanelWidth = w; });
     };
 }
 

@@ -66,35 +66,6 @@ When the user says **"let's create a task for [description]"** (or similar), fol
 
 **Important:** Do not rush this phase. Spend time reading code thoroughly. Missing a pattern or dependency during investigation leads to rework during implementation.
 
-### Preparing a task document for context compaction
-
-Complex tasks often consume most of the context window during investigation, document creation, and concern resolution — leaving little room for implementation. When the user says **"prepare document for compact"**, **"I need to compact before implementation"**, or similar:
-
-1. **Re-read the task document** from start to finish
-2. **Make it fully self-contained** — an agent starting fresh after compaction must understand everything without access to the conversation history:
-   - Replace vague references with exact file paths and method names
-   - Include current code snippets that will be changed (before → after)
-   - Spell out the algorithm logic step by step — no "see above" or "as discussed"
-   - List all edge cases explicitly
-   - State which files need NO changes (so the agent doesn't waste time investigating)
-   - Add a **Files Changed summary table** at the bottom
-3. **Resolve any remaining ambiguity** — if a concern was discussed and resolved in conversation but the document still says "TBD" or "open question", update it with the resolution
-4. **Remove conversational artifacts** — delete thinking-out-loud notes like "Wait —", "Actually...", "Hmm" that made sense during investigation but confuse a fresh reader
-
-The goal: after `/compact`, the agent reads the task README.md and can implement correctly without asking the user to repeat decisions already made.
-
-### When starting a new task (not already in progress):
-1. **Review first, don't implement immediately**
-2. Read the task documentation (if it exists) and provide a summary of:
-   - What we're going to do (main points)
-   - Key files involved
-   - Any concerns or decisions needed
-3. **Wait for user approval** before implementing
-4. User will say either:
-   - "Let's implement it fully" - proceed with full implementation
-   - "Let's implement subtask X" - implement only that part
-   - Discuss concerns first
-
 ### During implementation:
 - Update task progress checklist
 - Ask for clarification when uncertain

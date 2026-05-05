@@ -7,6 +7,8 @@ export { Panel } from "./Panel";
 export type { PanelProps } from "./Panel";
 export { Spacer } from "./Spacer";
 export type { SpacerProps } from "./Spacer";
+export { Splitter } from "./Splitter";
+export type { SplitterProps } from "./Splitter";
 export { Toolbar } from "./Toolbar";
 export type { ToolbarProps } from "./Toolbar";
 
@@ -59,7 +61,17 @@ export type { MenuProps, WithMenuProps, MenuItem } from "./Menu";
 // Lists
 export { ListBox, LIST_ITEM_KEY } from "./ListBox";
 export type { ListBoxProps, ListBoxRef, IListBoxItem, ListItemRenderContext } from "./ListBox";
-export { ListItem } from "./ListBox";
-export type { ListItemProps } from "./ListBox";
+export { ListItem, SectionItem } from "./ListBox";
+export type { ListItemProps, SectionItemProps } from "./ListBox";
 export { Select } from "./Select";
 export type { SelectProps, ItemsSource, SelectItemsResult } from "./Select";
+export { Tree, TREE_ITEM_KEY } from "./Tree";
+export type {
+    TreeProps,
+    TreeRef,
+    ITreeItem,
+    TreeItemRenderContext,
+    TreeRow,
+} from "./Tree";
+export { TreeItem, TreeSectionItem } from "./Tree";
+export type { TreeItemProps, TreeSectionItemProps } from "./Tree";

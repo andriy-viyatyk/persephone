@@ -44,9 +44,12 @@ Overview of all active and planned epics and tasks.
   - [ ] [US-476: AlertsBar + AlertItem — UIKit migration](tasks/US-476-alerts-bar-migration/README.md) *(Phase 4 — per-screen migration)*
   - [ ] [US-477: Progress dialog — UIKit migration](tasks/US-477-progress-dialog-migration/README.md) *(Phase 4 — per-screen migration)*
   - [ ] [US-481: UIKit Menu + WithMenu](tasks/US-481-uikit-menu-with-menu/README.md) *(Phase 4 — UIKit primitive)*
-  - [ ] US-484: UIKit ListBox extensions — row tooltip, context menu, predicate selection, section rows *(Phase 4 — list infrastructure; blocks US-479)*
-  - [ ] US-485: UIKit Tree — virtualized expand/collapse tree primitive *(Phase 4 — list infrastructure)*
-  - [ ] US-486: UIKit Splitter — resizable divider primitive *(Phase 4 — layout infrastructure)*
+  - [ ] [US-484: UIKit ListBox extensions — row tooltip, context menu, predicate selection, section rows](tasks/US-484-uikit-listbox-extensions/README.md) *(Phase 4 — list infrastructure; blocks US-479)*
+  - [ ] [US-485: UIKit Tree — virtualized expand/collapse tree primitive](tasks/US-485-uikit-tree/README.md) *(Phase 4 — list infrastructure)*
+  - [ ] [US-488: UIKit Tree extensions — drag-and-drop via traits](tasks/US-488-uikit-tree-dnd/README.md) *(Phase 4 — list infrastructure; blocked on US-485)*
+  - [ ] [US-489: UIKit Tree extensions — lazy children loading](tasks/US-489-uikit-tree-lazy-load/README.md) *(Phase 4 — list infrastructure; blocked on US-485)*
+  - [ ] [US-486: UIKit Splitter — resizable divider primitive](tasks/US-486-uikit-splitter/README.md) *(Phase 4 — layout infrastructure)*
+  - [ ] [US-487: UIKit model-view migrations — Select, Menu, Popover, PathInput](tasks/US-487-uikit-model-view-migrations/README.md) *(Phase 4 — UIKit primitive cleanup; 4 phases)*
   - [ ] [US-478: PageTabs / PageTab — UIKit migration](tasks/US-478-page-tabs-migration/README.md) *(Phase 4 — per-screen migration)*
   - [ ] [US-479: Sidebar lists — UIKit migration (FileList / OpenTabsList / RecentFileList / FolderItem)](tasks/US-479-sidebar-lists-migration/README.md) *(Phase 4 — per-screen migration; blocked on US-484)*
   - [ ] [US-480: MarkdownView — UIKit migration](tasks/US-480-markdown-view-migration/README.md) *(Phase 4 — per-screen migration)*

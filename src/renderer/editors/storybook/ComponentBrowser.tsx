@@ -6,18 +6,16 @@ import { storiesBySection } from "./storyRegistry";
 import { StorybookEditorModel } from "./StorybookEditorModel";
 
 export function ComponentBrowser({ model }: { model: StorybookEditorModel }) {
-    const { selectedStoryId } = model.state.use();
+    const { selectedStoryId, leftPanelWidth } = model.state.use();
     const sections = storiesBySection();
 
     return (
         <Panel
             data-type="component-browser"
             direction="column"
-            width={200}
+            width={leftPanelWidth}
             shrink={false}
             overflowY="auto"
-            borderRight
-            borderColor="default"
             padding="sm"
             gap="xs"
         >

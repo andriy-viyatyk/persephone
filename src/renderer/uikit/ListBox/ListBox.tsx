@@ -1,97 +1,19 @@
-import React, {
-    forwardRef,
-    useCallback,
-    useEffect,
-    useId,
-    useImperativeHandle,
-    useMemo,
-    useRef,
-} from "react";
+import React, { forwardRef, useId, useImperativeHandle } from "react";
 import styled from "@emotion/styled";
 import color from "../../theme/color";
 import { spacing } from "../tokens";
-import {
-    isTraited,
-    resolveTraited,
-    TraitKey,
-    Traited,
-    TraitType,
-} from "../../core/traits/traits";
+import { useComponentModel } from "../../core/state/model";
 import RenderGrid from "../../components/virtualization/RenderGrid/RenderGrid";
-import RenderGridModel from "../../components/virtualization/RenderGrid/RenderGridModel";
 import {
     ElementLength,
     Percent,
     RenderCellFunc,
-    RowAlign,
 } from "../../components/virtualization/RenderGrid/types";
 import { Spinner } from "../Spinner/Spinner";
 import { ListItem } from "./ListItem";
-
-// --- Types ---
-
-export interface IListBoxItem {
-    /** Stable identifier — what `value` / `onChange` refer to. */
-    value: string | number;
-    /** Display label. Strings are eligible for `searchText` highlighting. */
-    label: React.ReactNode;
-    /** Leading icon. */
-    icon?: React.ReactNode;
-    /** Disables this item without affecting siblings. */
-    disabled?: boolean;
-}
-
-export const LIST_ITEM_KEY = new TraitKey<TraitType<IListBoxItem>>("listbox-item");
-
-export interface ListItemRenderContext<T> {
-    /** Resolved item shape (post-trait). */
-    item: IListBoxItem;
-    /** Original source item (pre-trait). Equal to `item` when `T = IListBoxItem`. */
-    source: T;
-    index: number;
-    selected: boolean;
-    active: boolean;
-    /** Stable DOM id — must be set on the rendered row when callers want `aria-activedescendant`. */
-    id: string;
-}
-
-export interface ListBoxRef {
-    scrollToIndex: (index: number, align?: RowAlign) => void;
-}
-
-export interface ListBoxProps<T = IListBoxItem>
-    extends Omit<React.HTMLAttributes<HTMLDivElement>, "style" | "className" | "onChange"> {
-    items: T[] | Traited<unknown[]>;
-    /**
-     * Currently-selected item. `null` when nothing is selected. May reference an
-     * item not present in `items` — the checkmark simply will not render then.
-     *   • Plain `T` — used when `T = IListBoxItem`. Reads `.label` / `.value` / `.icon` directly.
-     *   • `Traited<T>` — used with custom `T`. Reads accessor from `value.traits.get(LIST_ITEM_KEY)`.
-     */
-    value?: T | Traited<T> | null;
-    /** Fires when the user selects an item. Emits the source `T` (matches the shape passed via `items`). */
-    onChange?: (item: T) => void;
-    /** Index of the currently-highlighted (active) row. Controlled. */
-    activeIndex?: number | null;
-    /** Fires when the active row changes — mouse hover or internal keyboard nav. */
-    onActiveChange?: (index: number) => void;
-    /** Plain-string label highlight passed to the default `<ListItem>`. */
-    searchText?: string;
-    /** Custom row renderer. Receives a context with the resolved item + flags. */
-    renderItem?: (ctx: ListItemRenderContext<T>) => React.ReactNode;
-    /** When true, the ListBox handles ArrowUp/ArrowDown/Home/End/Enter on its root. Default: false. */
-    keyboardNav?: boolean;
-    /** Spinner state — replaces item rendering with a loading row. */
-    loading?: boolean;
-    /** Renders when `items` is empty and not `loading`. */
-    emptyMessage?: React.ReactNode;
-    /** Pixel height of each row. Default: 24. */
-    rowHeight?: number;
-    /** When set, the list grows to fit content up to this max height. */
-    growToHeight?: React.CSSProperties["height"];
-    /** Top/bottom whitespace padding inside the scroll container. */
-    whiteSpaceY?: number;
-}
+import { SectionItem } from "./SectionItem";
+import { ListBoxModel, defaultListBoxState } from "./ListBoxModel";
+import { IListBoxItem, ListBoxProps, ListBoxRef } from "./types";
 
 // --- Styled ---
 
@@ -118,224 +40,119 @@ const EmptyRoot = styled.div(
     { label: "ListBoxEmpty" },
 );
 
-// --- Component ---
+// --- Constants ---
 
 const columnWidth: ElementLength = (() => "100%" as Percent) as ElementLength;
 const defaultRowHeight = 24;
 
-function runAccessor<R>(source: unknown, accessor: TraitType<R>): R {
-    return Object.fromEntries(
-        (Object.keys(accessor) as (keyof TraitType<R>)[]).map((k) => [k, accessor[k](source)]),
-    ) as R;
-}
+// --- Component ---
 
-function ListBoxInner<T = IListBoxItem>(
-    {
-        items,
-        value,
-        onChange,
-        activeIndex,
-        onActiveChange,
-        searchText,
-        renderItem,
-        keyboardNav = false,
-        loading,
-        emptyMessage,
-        rowHeight = defaultRowHeight,
-        growToHeight,
-        whiteSpaceY,
-        id: idProp,
-        ...rest
-    }: ListBoxProps<T>,
+function ListBoxView<T = IListBoxItem>(
+    props: ListBoxProps<T>,
     ref: React.ForwardedRef<ListBoxRef>,
 ) {
     const reactId = useId();
-    const rootId = idProp ?? `lb-${reactId}`;
-    const gridRef = useRef<RenderGridModel | null>(null);
-
-    // Resolve traited input → IListBoxItem[] + parallel array of source `T`.
-    const { resolved, sources } = useMemo(() => {
-        if (isTraited<unknown[]>(items)) {
-            const r = resolveTraited<IListBoxItem>(items, LIST_ITEM_KEY);
-            return { resolved: r, sources: items.target as T[] };
-        }
-        const arr = items as T[];
-        return { resolved: arr as unknown as IListBoxItem[], sources: arr };
-    }, [items]);
-
-    // Resolve a single value (plain T or Traited<T>) to IListBoxItem.
-    // Decoupled from items resolution — Traited<T> values carry their own accessor.
-    const resolveSingleValue = useCallback((v: T | Traited<T>): IListBoxItem => {
-        if (isTraited<T>(v)) {
-            const acc = v.traits.get(LIST_ITEM_KEY);
-            if (acc) return runAccessor<IListBoxItem>(v.target, acc);
-            return v.target as unknown as IListBoxItem;
-        }
-        return v as unknown as IListBoxItem;
-    }, []);
-
-    const selectedKey = useMemo(
-        () => (value != null ? resolveSingleValue(value).value : null),
-        [value, resolveSingleValue],
+    const model = useComponentModel(
+        props,
+        ListBoxModel as unknown as ListBoxModel<T>,
+        defaultListBoxState,
     );
-
-    // Force RenderGrid re-render when display inputs change.
-    useEffect(() => {
-        gridRef.current?.update({ all: true });
-    }, [resolved, selectedKey, activeIndex, searchText, renderItem, rowHeight]);
-
-    // Keep the active row visible whenever activeIndex changes — covers external
-    // drivers (Select keyboard handler, etc.) that update activeIndex without
-    // going through ListBox's own keyboardNav path.
-    useEffect(() => {
-        if (activeIndex != null && activeIndex >= 0) {
-            gridRef.current?.scrollToRow(activeIndex);
-        }
-    }, [activeIndex]);
+    model.setReactId(reactId);
 
     useImperativeHandle(
         ref,
-        () => ({
-            scrollToIndex: (i, align) => {
-                gridRef.current?.scrollToRow(i, align);
-            },
-        }),
-        [],
+        () => ({ scrollToIndex: model.scrollToIndex }),
+        [model],
     );
 
-    const itemId = useCallback(
-        (idx: number) => `${rootId}-item-${resolved[idx].value}`,
-        [rootId, resolved],
-    );
+    const {
+        loading,
+        emptyMessage,
+        searchText,
+        renderItem,
+        keyboardNav = false,
+        rowHeight = defaultRowHeight,
+        growToHeight,
+        whiteSpaceY,
+        activeIndex,
+        getTooltip,
+        // Capture (don't forward) — model handles these via this.props
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        items: _items,
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        value: _value,
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        onChange: _onChange,
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        isSelected: _isSelected,
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        onActiveChange: _onActiveChange,
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        onContextMenu: _onContextMenu,
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        getContextMenu: _getContextMenu,
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        id: _idProp,
+        ...rest
+    } = props;
 
-    const onItemClick = useCallback(
-        (idx: number) => {
-            const item = resolved[idx];
-            if (!item || item.disabled) return;
-            onChange?.(sources[idx]);
-        },
-        [resolved, sources, onChange],
-    );
+    const rootId = model.rootId;
+    const { resolved, sources } = model.resolved.value;
 
-    const onItemMouseEnter = useCallback(
-        (idx: number) => {
-            const item = resolved[idx];
-            if (!item || item.disabled) return;
-            if (idx !== activeIndex) onActiveChange?.(idx);
-        },
-        [resolved, activeIndex, onActiveChange],
-    );
+    const renderCell: RenderCellFunc = ({ row: idx, key, style }) => {
+        const item = resolved[idx];
+        if (!item) return null;
 
-    const renderCell = useCallback<RenderCellFunc>(
-        ({ row: idx, key, style }) => {
-            const item = resolved[idx];
-            if (!item) return null;
-            const selected = selectedKey != null && item.value === selectedKey;
-            const active = idx === activeIndex;
-            const id = itemId(idx);
-
-            const content = renderItem
-                ? renderItem({ item, source: sources[idx], index: idx, selected, active, id })
-                : (
-                    <ListItem
-                        id={id}
-                        icon={item.icon}
-                        label={item.label}
-                        searchText={searchText}
-                        selected={selected}
-                        active={active}
-                        disabled={item.disabled}
-                    />
-                );
-
+        if (item.section) {
             return (
-                <div
-                    key={key}
-                    style={style}
-                    onClick={() => onItemClick(idx)}
-                    onMouseEnter={() => onItemMouseEnter(idx)}
-                >
-                    {content}
+                <div key={key} style={style}>
+                    <SectionItem id={model.itemId(idx)} label={item.label} />
                 </div>
             );
-        },
-        [
-            resolved,
-            sources,
-            selectedKey,
-            activeIndex,
-            searchText,
-            renderItem,
-            itemId,
-            onItemClick,
-            onItemMouseEnter,
-        ],
-    );
+        }
 
-    const onKeyDown = useCallback(
-        (e: React.KeyboardEvent<HTMLDivElement>) => {
-            if (!keyboardNav) return;
-            const n = resolved.length;
-            if (n === 0) return;
-            const cur = activeIndex ?? -1;
-            switch (e.key) {
-                case "ArrowDown": {
-                    e.preventDefault();
-                    const next = Math.min(n - 1, cur + 1);
-                    onActiveChange?.(next);
-                    gridRef.current?.scrollToRow(next);
-                    break;
-                }
-                case "ArrowUp": {
-                    e.preventDefault();
-                    const next = Math.max(0, cur - 1);
-                    onActiveChange?.(next);
-                    gridRef.current?.scrollToRow(next);
-                    break;
-                }
-                case "PageDown": {
-                    e.preventDefault();
-                    const page = Math.max(1, gridRef.current?.visibleRowCount ?? 1);
-                    const next = Math.min(n - 1, (cur < 0 ? 0 : cur) + page);
-                    onActiveChange?.(next);
-                    gridRef.current?.scrollToRow(next);
-                    break;
-                }
-                case "PageUp": {
-                    e.preventDefault();
-                    const page = Math.max(1, gridRef.current?.visibleRowCount ?? 1);
-                    const next = Math.max(0, (cur < 0 ? 0 : cur) - page);
-                    onActiveChange?.(next);
-                    gridRef.current?.scrollToRow(next);
-                    break;
-                }
-                case "Home": {
-                    e.preventDefault();
-                    onActiveChange?.(0);
-                    gridRef.current?.scrollToRow(0);
-                    break;
-                }
-                case "End": {
-                    e.preventDefault();
-                    onActiveChange?.(n - 1);
-                    gridRef.current?.scrollToRow(n - 1);
-                    break;
-                }
-                case "Enter": {
-                    if (cur >= 0) {
-                        e.preventDefault();
-                        onItemClick(cur);
-                    }
-                    break;
-                }
-            }
-        },
-        [keyboardNav, resolved.length, activeIndex, onActiveChange, onItemClick],
-    );
+        const selected = model.isSelectedAt(idx);
+        const active = idx === activeIndex;
+        const id = model.itemId(idx);
+        const tooltip = getTooltip?.(sources[idx], idx);
+
+        const content = renderItem
+            ? renderItem({ item, source: sources[idx], index: idx, selected, active, id })
+            : (
+                <ListItem
+                    id={id}
+                    icon={item.icon}
+                    label={item.label}
+                    searchText={searchText}
+                    selected={selected}
+                    active={active}
+                    disabled={item.disabled}
+                    tooltip={tooltip}
+                />
+            );
+
+        return (
+            <div
+                key={key}
+                style={style}
+                onClick={() => model.onItemClick(idx)}
+                onMouseEnter={() => model.onItemMouseEnter(idx)}
+                onContextMenu={(e) => model.onItemContextMenu(e, idx)}
+            >
+                {content}
+            </div>
+        );
+    };
 
     if (loading) {
         return (
-            <Root id={rootId} data-type="list-box" data-loading="" {...rest}>
+            <Root
+                id={rootId}
+                data-type="list-box"
+                data-loading=""
+                onContextMenu={model.onRootContextMenu}
+                {...rest}
+            >
                 <EmptyRoot>
                     <Spinner size={16} /> loading…
                 </EmptyRoot>
@@ -345,7 +162,13 @@ function ListBoxInner<T = IListBoxItem>(
 
     if (resolved.length === 0) {
         return (
-            <Root id={rootId} data-type="list-box" data-empty="" {...rest}>
+            <Root
+                id={rootId}
+                data-type="list-box"
+                data-empty=""
+                onContextMenu={model.onRootContextMenu}
+                {...rest}
+            >
                 <EmptyRoot>{emptyMessage ?? "no rows"}</EmptyRoot>
             </Root>
         );
@@ -353,7 +176,7 @@ function ListBoxInner<T = IListBoxItem>(
 
     const activeId =
         activeIndex != null && activeIndex >= 0 && activeIndex < resolved.length
-            ? itemId(activeIndex)
+            ? model.itemId(activeIndex)
             : undefined;
 
     return (
@@ -363,11 +186,12 @@ function ListBoxInner<T = IListBoxItem>(
             role="listbox"
             tabIndex={keyboardNav ? 0 : -1}
             aria-activedescendant={activeId}
-            onKeyDown={onKeyDown}
+            onKeyDown={model.onKeyDown}
+            onContextMenu={model.onRootContextMenu}
             {...rest}
         >
             <RenderGrid
-                ref={gridRef}
+                ref={model.setGridRef}
                 columnCount={1}
                 rowCount={resolved.length}
                 columnWidth={columnWidth}
@@ -382,6 +206,18 @@ function ListBoxInner<T = IListBoxItem>(
     );
 }
 
-export const ListBox = forwardRef(ListBoxInner) as <T = IListBoxItem>(
+export const ListBox = forwardRef(ListBoxView) as <T = IListBoxItem>(
     props: ListBoxProps<T> & { ref?: React.Ref<ListBoxRef> },
 ) => React.ReactElement | null;
+
+// Re-export public types and the trait key from the canonical location, so consumers
+// can `import { LIST_ITEM_KEY, ListBoxProps } from "./ListBox"`.
+export {
+    LIST_ITEM_KEY,
+} from "./types";
+export type {
+    IListBoxItem,
+    ListBoxProps,
+    ListBoxRef,
+    ListItemRenderContext,
+} from "./types";

@@ -4,6 +4,7 @@ import color from "../../theme/color";
 import { gap, height, spacing } from "../tokens";
 import { CheckIcon } from "../../theme/icons";
 import { highlight } from "../shared/highlight";
+import { Tooltip } from "../Tooltip";
 
 // --- Types ---
 
@@ -23,6 +24,11 @@ export interface ListItemProps
     active?: boolean;
     /** True when this item should not respond to clicks. */
     disabled?: boolean;
+    /**
+     * Tooltip body shown after the standard hover delay. When `null`, `undefined`, `false`,
+     * or empty string, no tooltip is rendered.
+     */
+    tooltip?: React.ReactNode;
     /** Trailing slot — defaults to a check icon when `selected`. */
     trailing?: React.ReactNode;
 }
@@ -76,6 +82,7 @@ export const ListItem = forwardRef<HTMLDivElement, ListItemProps>(function ListI
         selected,
         active,
         disabled,
+        tooltip,
         trailing,
         ...rest
     },
@@ -83,7 +90,7 @@ export const ListItem = forwardRef<HTMLDivElement, ListItemProps>(function ListI
 ) {
     const labelNode =
         typeof label === "string" && searchText ? highlight(label, searchText) : label;
-    return (
+    const row = (
         <Root
             ref={ref}
             id={id}
@@ -101,4 +108,6 @@ export const ListItem = forwardRef<HTMLDivElement, ListItemProps>(function ListI
             {trailing ?? (selected ? <CheckIcon /> : null)}
         </Root>
     );
+    if (tooltip == null || tooltip === false || tooltip === "") return row;
+    return <Tooltip content={tooltip}>{row}</Tooltip>;
 });

@@ -6,6 +6,7 @@ import { Panel } from "../../uikit/Panel/Panel";
 import { Toolbar } from "../../uikit/Toolbar/Toolbar";
 import { SegmentedControl } from "../../uikit/SegmentedControl/SegmentedControl";
 import { Spacer } from "../../uikit/Spacer/Spacer";
+import { Splitter } from "../../uikit/Splitter/Splitter";
 import { Text } from "../../uikit/Text/Text";
 import {
     PreviewBackground,
@@ -25,7 +26,7 @@ const BG_OPTIONS: Array<{ value: PreviewBackground; label: string }> = [
 ];
 
 function StorybookEditorView({ model }: { model: StorybookEditorModel }) {
-    const { previewBackground } = model.state.use();
+    const { previewBackground, leftPanelWidth, rightPanelWidth } = model.state.use();
     return (
         <Panel
             data-type="storybook-editor"
@@ -49,7 +50,25 @@ function StorybookEditorView({ model }: { model: StorybookEditorModel }) {
             </Toolbar>
             <Panel direction="row" flex overflow="hidden" height={0}>
                 <ComponentBrowser model={model} />
+                <Splitter
+                    value={leftPanelWidth}
+                    onChange={model.setLeftPanelWidth}
+                    side="before"
+                    border="before"
+                    background={previewBackground}
+                    hoverBackground="overlay"
+                    min={120}
+                />
                 <LivePreview model={model} />
+                <Splitter
+                    value={rightPanelWidth}
+                    onChange={model.setRightPanelWidth}
+                    side="after"
+                    border="after"
+                    background={previewBackground}
+                    hoverBackground="overlay"
+                    min={200}
+                />
                 <PropertyEditor model={model} />
             </Panel>
         </Panel>
