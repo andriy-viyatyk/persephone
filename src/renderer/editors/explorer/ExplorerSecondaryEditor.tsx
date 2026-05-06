@@ -21,7 +21,7 @@ import { fpBasename, fpDirname } from "../../core/utils/file-path";
 
 export default function ExplorerSecondaryEditor({ model: rawModel, headerRef }: SecondaryEditorProps) {
     const model = rawModel as ExplorerEditorModel;
-    const rootPath = model.rootPath;
+    const { rootPath } = model.state.use();
     const treeProviderRef = useRef<TreeProviderViewRef>(null);
 
     // Create/update FileTreeProvider

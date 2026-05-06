@@ -5,7 +5,7 @@ import { recent } from "../../api/recent";
 import { app } from "../../api/app";
 import { createLinkData } from "../../../shared/link-data";
 import { FileListItem, FileList, FileListRef } from "./FileList";
-import { MenuItem } from "../../components/overlay/PopupMenu";
+import type { MenuItem } from "../../uikit/Menu";
 import { api } from "../../../ipc/renderer/api";
 import {
     FolderOpenIcon,

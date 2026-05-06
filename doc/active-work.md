@@ -51,10 +51,19 @@ Overview of all active and planned epics and tasks.
   - [ ] [US-486: UIKit Splitter — resizable divider primitive](tasks/US-486-uikit-splitter/README.md) *(Phase 4 — layout infrastructure)*
   - [ ] [US-487: UIKit model-view migrations — Select, Menu, Popover, PathInput](tasks/US-487-uikit-model-view-migrations/README.md) *(Phase 4 — UIKit primitive cleanup; 4 phases)*
   - [ ] [US-478: PageTabs / PageTab — UIKit migration](tasks/US-478-page-tabs-migration/README.md) *(Phase 4 — per-screen migration)*
-  - [ ] [US-479: Sidebar lists — UIKit migration (FileList / OpenTabsList / RecentFileList / FolderItem)](tasks/US-479-sidebar-lists-migration/README.md) *(Phase 4 — per-screen migration; blocked on US-484)*
+  - [ ] [US-479: FileList + RecentFileList — UIKit migration](tasks/US-479-filelist-migration/README.md) *(Phase 4 — per-screen migration; blocked on US-484)*
+  - [ ] [US-490: OpenTabsList — UIKit migration](tasks/US-490-opentabslist-migration/README.md) *(Phase 4 — per-screen migration)*
+  - [ ] [US-491: FolderItem + MenuBar left list — UIKit migration](tasks/US-491-folderitem-migration/README.md) *(Phase 4 — per-screen migration)*
+  - [ ] [US-495: ScriptLibraryPanel — UIKit migration](tasks/US-495-scriptlibrarypanel-migration/README.md) *(Phase 4 — per-screen migration; blocks US-492)*
+  - [ ] [US-496: ToolsEditorsPanel — UIKit migration](tasks/US-496-toolseditorspanel-migration/README.md) *(Phase 4 — per-screen migration; blocks US-492)*
+  - [ ] [US-497: TreeProviderView — UIKit Tree migration](tasks/US-497-treeproviderview-migration/README.md) *(Phase 4 — shared component; touches 6 consumers; plan ready for review)*
+  - [ ] [US-492: Sidebar — final integration testing and cleanup](tasks/US-492-sidebar-integration-testing/README.md) *(Phase 4 — per-screen migration; plan ready for review)*
   - [ ] [US-480: MarkdownView — UIKit migration](tasks/US-480-markdown-view-migration/README.md) *(Phase 4 — per-screen migration)*
   - [ ] US-436: Script UI API — expose new component library to scripting engine *(Phase 6)*
   - [ ] US-435: Storybook — script tab for building and testing UI via scripts *(Phase 6)*
+- *(no epic)*
+  - [ ] US-493: Fix Explorer panel not refreshing on `navigateUp` / `makeRoot` — subscribe `ExplorerSecondaryEditor` to `model.state.use()` so `rootPath` is reactive
+  - [ ] US-494: Fix Open Tabs list — clicking a current-window document page does not activate it. `OpenTabsList` was passing `mainEditor.state.id` (editor UUID) instead of `page.id` (page UUID), so `pagesModel.showPage()` lookup silently failed for any page with a `mainEditor`
 
 ## Planned
 - **EPIC-022** — [LinkEditor Embedded Scripts](epics/EPIC-022.md)

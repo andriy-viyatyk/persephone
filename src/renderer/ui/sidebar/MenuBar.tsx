@@ -2,8 +2,17 @@ import styled from "@emotion/styled";
 import clsx from "clsx";
 import { useCallback, useEffect, useMemo } from "react";
 import { TComponentModel, useComponentModel } from "../../core/state/model";
-import { Button } from "../../components/basic/Button";
-import { List, ListOptionRenderer } from "../../components/form/List";
+import {
+    ListBox,
+    LIST_ITEM_KEY,
+    IconButton,
+    Spacer,
+    Splitter,
+    Panel,
+} from "../../uikit";
+import type { ListItemRenderContext } from "../../uikit/ListBox";
+import type { MenuItem } from "../../uikit/Menu";
+import { TraitSet, traited } from "../../core/traits/traits";
 import { api } from "../../../ipc/renderer/api";
 import { pagesModel } from "../../api/pages";
 import { menuFolders } from "../../api/menu-folders";
@@ -13,7 +22,6 @@ import { createLinkData } from "../../../shared/link-data";
 import type { MenuFolder } from "../../api/menu-folders";
 import color from "../../theme/color";
 import {
-    ArrowRightIcon,
     ClearListIcon,
     EmptyIcon,
     FolderOpenIcon,
@@ -26,7 +34,6 @@ import {
     SettingsIcon,
 } from "../../theme/icons";
 import { OpenTabsList } from "./OpenTabsList";
-import { FlexSpace } from "../../components/layout/Elements";
 import { RecentFileList } from "./RecentFileList";
 import {
     TreeProviderView,
@@ -35,10 +42,8 @@ import {
 } from "../../components/tree-provider/TreeProviderView";
 import { FileTreeProvider } from "../../content/tree-providers/FileTreeProvider";
 import { FileListRef } from "./FileList";
-import type { MenuItem } from "../../components/overlay/PopupMenu";
 import { ContextMenuEvent } from "../../api/events/events";
 import { FolderIcon } from "../../components/icons/FileIcon";
-import { Splitter } from "../../components/layout/Splitter";
 import { FolderItem } from "./FolderItem";
 import { ScriptLibraryPanel } from "./ScriptLibraryPanel";
 import { ToolsEditorsPanel } from "./ToolsEditorsPanel";
@@ -69,83 +74,9 @@ const MenuBarRoot = styled("div")({
         backgroundColor: color.background.dark,
         transform: "translateX(-100%)",
         transition: "transform 50ms ease-in-out",
-        "& .menu-bar-header": {
-            display: "flex",
-            alignItems: "center",
-            columnGap: 4,
-            marginBottom: 4,
-        },
-        "& .menu-bar-panel": {
-            flex: "1 1 auto",
-            display: "flex",
-            flexDirection: "column",
-            padding: 2,
-        },
-        "& .menu-bar-left": {
-            borderRight: `1px solid ${color.border.light}`,
-            width: 40,
-            flex: "1 1 40%",
-            "& .list-item": {
-                "&:hover": {
-                    backgroundColor: color.background.default,
-                },
-                "& > svg": {
-                    width: 16,
-                    height: 16,
-                },
-                "& .selected-icon": {
-                    color: color.text.light,
-                    width: 16,
-                    height: 16,
-                    marginRight: 6,
-                },
-                "& .selected-icon-button": {
-                    display: "inline-flex",
-                    alignItems: "center",
-                    borderRadius: 3,
-                    cursor: "pointer",
-                    "&:hover": {
-                        backgroundColor: color.background.light,
-                    },
-                },
-            },
-            "& .list-item.selected": {
-                backgroundColor: color.background.selection,
-                color: color.text.selection,
-                "& .selected-icon": {
-                    color: color.icon.selection,
-                },
-            },
-            "& .add-folder-button": {
-                fontSize: 13,
-                color: color.text.light,
-                "&:hover": {
-                    color: color.text.default,
-                },
-            },
-        },
-        "& .menu-bar-right": {
-            paddingRight: 3,
-            width: 60,
-            flex: "1 1 60%",
-        },
-        "& .content-splitter": {
-            flexShrink: 0,
-            flexGrow: 0,
-            width: 6,
-            backgroundColor: color.background.dark,
-            borderRight: "none",
-            "&:hover": {
-                backgroundColor: color.background.default,
-            },
-        },
     },
     "&.open .menu-bar-content": {
         transform: "translateX(0)", // Slide in when open
-    },
-    "& button svg": {
-        width: 20,
-        height: 20,
     },
 });
 
@@ -168,6 +99,11 @@ const staticFolders: MenuFolder[] = [
 const isStaticFolder = (folder: MenuFolder) => {
     return Boolean(staticFolders.find((f) => f.id === folder.id));
 };
+
+const folderItemTraits = new TraitSet().add(LIST_ITEM_KEY, {
+    value: (item: unknown) => (item as MenuFolder).id ?? "",
+    label: (item: unknown) => (item as MenuFolder).name,
+});
 
 /** Static folders that support "open in tab" (double-click / selected icon click). */
 const canOpenInTab = (folder: MenuFolder) => {
@@ -274,10 +210,6 @@ class MenuBarModel extends TComponentModel<MenuBarState, MenuBarProps> {
         this.state.update((s) => {
             s.leftItemId = item.id;
         });
-    };
-
-    getLeftItemsHovered = (item: MenuFolder) => {
-        return item.id === this.state.get().leftItemId;
     };
 
     getFolderLabel = (folder: MenuFolder) => {
@@ -444,29 +376,25 @@ export function MenuBar(props: MenuBarProps) {
         }
     }, [folders]);
 
-    const folderRowRenderer: ListOptionRenderer<MenuFolder> = useCallback(
-        ({ row, index, style, onClick, selected, selectedIcon, itemMarginY, getTooltip, getContextMenu }) => {
-            return (
-                <FolderItem
-                    key={row.id}
-                    folder={row}
-                    index={index}
-                    style={style}
-                    selected={selected}
-                    onClick={onClick}
-                    onDoubleClick={canOpenInTab(row) ? model.openFolderInTab : undefined}
-                    icon={model.getFolderIcon(row)}
-                    label={model.getFolderLabel(row)}
-                    selectedIcon={selectedIcon}
-                    onSelectedIconClick={canOpenInTab(row) ? model.openFolderInTab : undefined}
-                    itemMarginY={itemMarginY}
-                    getTooltip={getTooltip}
-                    getContextMenu={getContextMenu}
-                    canDrag={!isStaticFolder(row)}
-                    canDrop={!isStaticFolder(row)}
-                />
-            );
-        },
+    const tFolders = useMemo(
+        () => traited(allFolders, folderItemTraits),
+        [allFolders]
+    );
+
+    const folderRenderItem = useCallback(
+        (ctx: ListItemRenderContext<MenuFolder>) => (
+            <FolderItem
+                folder={ctx.source}
+                selected={ctx.selected}
+                icon={model.getFolderIcon(ctx.source)}
+                label={model.getFolderLabel(ctx.source)}
+                tooltip={model.getFolderTooltip(ctx.source)}
+                onDoubleClick={canOpenInTab(ctx.source) ? model.openFolderInTab : undefined}
+                onSelectedIconClick={canOpenInTab(ctx.source) ? model.openFolderInTab : undefined}
+                canDrag={!isStaticFolder(ctx.source)}
+                canDrop={!isStaticFolder(ctx.source)}
+            />
+        ),
         [model]
     );
 
@@ -530,71 +458,74 @@ export function MenuBar(props: MenuBarProps) {
                 tabIndex={0}
                 style={{ width: state.contentWidth }}
             >
-                <div className="menu-bar-panel menu-bar-left">
-                    <div className="menu-bar-header">
-                        <Button
-                            size="medium"
-                            type="icon"
-                            background="dark"
-                            onClick={model.openFile}
+                <Panel
+                    direction="column"
+                    flex={"1 1 40%"}
+                    minWidth={0}
+                    padding="xs"
+                    borderRight
+                >
+                    <Panel
+                        direction="row"
+                        align="center"
+                        gap="sm"
+                        paddingBottom="sm"
+                    >
+                        <IconButton
+                            size="md"
+                            icon={<OpenFileIcon />}
                             title="Open File (Ctrl+O)"
-                        >
-                            <OpenFileIcon />
-                        </Button>
-                        <Button
-                            size="medium"
-                            type="icon"
-                            background="dark"
-                            onClick={model.newWindow}
+                            onClick={model.openFile}
+                        />
+                        <IconButton
+                            size="md"
+                            icon={<NewWindowIcon />}
                             title="New Window (Ctrl+Shift+N)"
-                        >
-                            <NewWindowIcon />
-                        </Button>
-                        <FlexSpace />
-                        <Button
-                            size="medium"
-                            type="icon"
-                            background="dark"
-                            onClick={model.openAbout}
+                            onClick={model.newWindow}
+                        />
+                        <Spacer />
+                        <IconButton
+                            size="md"
+                            icon={<InfoIcon />}
                             title="About"
-                        >
-                            <InfoIcon />
-                        </Button>
-                        <Button
-                            size="medium"
-                            type="icon"
-                            background="dark"
-                            onClick={model.openSettings}
+                            onClick={model.openAbout}
+                        />
+                        <IconButton
+                            size="md"
+                            icon={<SettingsIcon />}
                             title="Settings"
-                        >
-                            <SettingsIcon />
-                        </Button>
-                    </div>
-                    <List
-                        options={allFolders}
-                        getLabel={model.getFolderLabel}
-                        getSelected={model.getLeftItemsHovered}
-                        onClick={model.setLeftItem}
-                        getIcon={model.getFolderIcon}
-                        selectedIcon={
-                            <ArrowRightIcon className="selected-icon" />
-                        }
+                            onClick={model.openSettings}
+                        />
+                    </Panel>
+                    <ListBox<MenuFolder>
+                        items={tFolders}
                         rowHeight={22}
-                        getContextMenu={model.getMenuFolderContextMenu}
+                        isSelected={(folder) => folder.id === state.leftItemId}
+                        onChange={model.setLeftItem}
+                        getContextMenu={(folder) => {
+                            model.setLeftItem(folder);
+                            return model.getMenuFolderContextMenu(folder);
+                        }}
                         onContextMenu={model.onLeftPanelContextMenu}
-                        getTooltip={model.getFolderTooltip}
-                        rowRenderer={folderRowRenderer}
+                        renderItem={folderRenderItem}
                     />
-                </div>
-                <div className="menu-bar-panel menu-bar-right">
+                </Panel>
+                <Panel
+                    direction="column"
+                    flex={"1 1 60%"}
+                    minWidth={0}
+                    paddingRight="xs"
+                >
                     {renderRightList()}
-                </div>
+                </Panel>
                 <Splitter
-                    initialWidth={state.contentWidth}
-                    onChangeWidth={model.setContentWidth}
-                    type="vertical"
-                    borderSized="right"
-                    className="content-splitter"
+                    orientation="vertical"
+                    side="before"
+                    value={state.contentWidth}
+                    onChange={model.setContentWidth}
+                    border="none"
+                    background="dark"
+                    hoverBackground="default"
                 />
             </div>
         </MenuBarRoot>

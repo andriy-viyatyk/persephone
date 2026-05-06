@@ -1,69 +1,66 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import styled from "@emotion/styled";
-import { TraitTypeId, setTraitDragData, hasTraitDragData, getTraitDragData } from "../../core/traits";
+import { TraitTypeId, setTraitDragData, hasTraitDragData } from "../../core/traits";
+import { TraitSet, traited } from "../../core/traits/traits";
 import color from "../../theme/color";
 import { settings } from "../../api/settings";
 import { CreatableItem, DEFAULT_PINNED_EDITORS, getCreatableItems } from "./tools-editors-registry";
 import { PinIcon, PinFilledIcon } from "../../theme/icons";
+import { ListBox, LIST_ITEM_KEY, IconButton } from "../../uikit";
+import type { ListItemRenderContext } from "../../uikit";
 
 // =============================================================================
-// Constants
+// Types
+// =============================================================================
+
+type SectionMarker = { kind: "section"; label: string };
+type RowSource = CreatableItem | SectionMarker;
+
+const isSection = (x: RowSource): x is SectionMarker =>
+    "kind" in x && x.kind === "section";
+
+// =============================================================================
+// Module-level drag state
 // =============================================================================
 
 /** Tracks which index is being dragged for live reorder. Only one drag at a time. */
 let draggingPinnedEditorIndex = -1;
 
 // =============================================================================
-// Styles
+// Traits
 // =============================================================================
 
-const PanelRoot = styled.div({
-    flex: "1 1 auto",
-    overflow: "auto",
-    padding: "8px 0",
-
-    "& .section-header": {
-        fontSize: 11,
-        fontWeight: 600,
-        color: color.text.light,
-        textTransform: "uppercase" as const,
-        letterSpacing: "0.5px",
-        padding: "8px 12px 4px",
+const rowTraits = new TraitSet().add(LIST_ITEM_KEY, {
+    value: (item: unknown) => {
+        const it = item as RowSource;
+        return isSection(it) ? `section-${it.label}` : it.id;
     },
-
-    "& .item-row": {
-        display: "flex",
-        alignItems: "center",
-        gap: 8,
-        padding: "5px 12px",
-        cursor: "pointer",
-        fontSize: 13,
-        color: color.text.default,
-        "&:hover": {
-            background: color.background.light,
-        },
+    label: (item: unknown) => (item as RowSource).label,
+    icon: (item: unknown) => {
+        const it = item as RowSource;
+        return isSection(it) ? undefined : it.icon;
     },
+    section: (item: unknown) => isSection(item as RowSource),
+});
 
-    "& .item-row.dragging": {
-        opacity: 0.4,
-    },
+// =============================================================================
+// Row chrome (chrome exception per Rule 7 — see doc/tasks/US-496/README.md)
+// =============================================================================
 
-    "& .item-row.drag-over": {
-        borderTop: `2px solid ${color.border.active}`,
-    },
-
-    "& .item-icon": {
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        width: 18,
-        height: 18,
-        flexShrink: 0,
-        "& svg": {
-            width: 16,
-            height: 16,
-        },
-    },
+const RowStyled = styled.div({
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    padding: "5px 12px",
+    width: "100%",
+    height: "100%",
+    boxSizing: "border-box",
+    cursor: "pointer",
+    color: color.text.default,
+    fontSize: 13,
+    "&:hover":             { background: color.background.light },
+    "&[data-dragging]":    { opacity: 0.4 },
+    "&[data-drag-over]":   { borderTop: `2px solid ${color.border.active}` },
 
     "& .item-label": {
         flex: "1 1 auto",
@@ -71,66 +68,28 @@ const PanelRoot = styled.div({
         textOverflow: "ellipsis",
         whiteSpace: "nowrap",
     },
-
-    "& .pin-button": {
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        width: 20,
-        height: 20,
+    "& .item-icon": {
+        display: "inline-flex",
+        width: 18,
+        height: 18,
         flexShrink: 0,
-        cursor: "pointer",
-        borderRadius: 3,
-        opacity: 0,
-        color: color.text.light,
-        "&:hover": {
-            background: color.background.selection,
-            color: color.text.default,
-        },
-        "& svg": {
-            width: 14,
-            height: 14,
-        },
+        "& svg": { width: 16, height: 16 },
     },
 
-    "& .item-row:hover .pin-button": {
-        opacity: 1,
-    },
-
-    "& .drag-handle": {
-        display: "flex",
-        alignItems: "center",
-        cursor: "grab",
-        color: color.text.light,
-        flexShrink: 0,
-        fontSize: 11,
-        opacity: 0,
-        userSelect: "none",
-    },
-
-    "& .item-row:hover .drag-handle": {
-        opacity: 0.6,
-    },
-
-    "& .separator": {
-        height: 1,
-        background: color.border.light,
-        margin: "6px 12px",
-    },
-});
+    "& .pin-button-wrapper":       { display: "inline-flex", opacity: 0, flexShrink: 0 },
+    "&:hover .pin-button-wrapper": { opacity: 1 },
+}, { label: "ToolsEditorsRow" });
 
 // =============================================================================
-// Pinned Item (draggable)
+// Pinned row (draggable)
 // =============================================================================
 
-function PinnedItem({ item, index, onUnpin, onClick, onMove }: {
+function PinnedRow({ item, index, onUnpin, onMove }: {
     item: CreatableItem;
     index: number;
     onUnpin: (id: string) => void;
-    onClick: (item: CreatableItem) => void;
     onMove: (dragIndex: number, hoverIndex: number) => void;
 }) {
-    const ref = useRef<HTMLDivElement>(null);
     const [isDragging, setIsDragging] = useState(false);
     const [isOver, setIsOver] = useState(false);
 
@@ -148,26 +107,26 @@ function PinnedItem({ item, index, onUnpin, onClick, onMove }: {
     }, []);
 
     const handleDragEnter = useCallback((e: React.DragEvent) => {
-        if (hasTraitDragData(e.dataTransfer) && draggingPinnedEditorIndex >= 0 && draggingPinnedEditorIndex !== index) {
+        if (hasTraitDragData(e.dataTransfer) &&
+            draggingPinnedEditorIndex >= 0 &&
+            draggingPinnedEditorIndex !== index) {
             e.preventDefault();
             e.dataTransfer.dropEffect = "move";
             setIsOver(true);
         }
     }, [index]);
 
-    // Live reorder on dragOver — matches React-DnD's hover() behavior
+    // Live reorder during dragOver — matches React-DnD's hover() behavior
     const handleDragOver = useCallback((e: React.DragEvent) => {
         if (draggingPinnedEditorIndex >= 0 && draggingPinnedEditorIndex !== index) {
             e.preventDefault();
             e.dataTransfer.dropEffect = "move";
             onMove(draggingPinnedEditorIndex, index);
-            draggingPinnedEditorIndex = index; // Update after swap
+            draggingPinnedEditorIndex = index;
         }
     }, [index, onMove]);
 
-    const handleDragLeave = useCallback(() => {
-        setIsOver(false);
-    }, []);
+    const handleDragLeave = useCallback(() => setIsOver(false), []);
 
     const handleDrop = useCallback((e: React.DragEvent) => {
         e.preventDefault();
@@ -180,8 +139,10 @@ function PinnedItem({ item, index, onUnpin, onClick, onMove }: {
     }, [onUnpin, item.id]);
 
     return (
-        <div
-            ref={ref}
+        <RowStyled
+            data-type="tools-editor-row"
+            data-dragging={isDragging || undefined}
+            data-drag-over={isOver || undefined}
             draggable
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
@@ -189,27 +150,28 @@ function PinnedItem({ item, index, onUnpin, onClick, onMove }: {
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
-            className={`item-row${isDragging ? " dragging" : ""}${isOver ? " drag-over" : ""}`}
-            onClick={() => onClick(item)}
         >
-            <span className="drag-handle">⋮⋮</span>
             <span className="item-icon">{item.icon}</span>
             <span className="item-label">{item.label}</span>
-            <span className="pin-button" onClick={handleUnpin} title="Unpin">
-                <PinFilledIcon />
+            <span className="pin-button-wrapper">
+                <IconButton
+                    size="sm"
+                    icon={<PinFilledIcon />}
+                    title="Unpin"
+                    onClick={handleUnpin}
+                />
             </span>
-        </div>
+        </RowStyled>
     );
 }
 
 // =============================================================================
-// Unpinned Item
+// Unpinned row
 // =============================================================================
 
-function UnpinnedItem({ item, onPin, onClick }: {
+function UnpinnedRow({ item, onPin }: {
     item: CreatableItem;
     onPin: (id: string) => void;
-    onClick: (item: CreatableItem) => void;
 }) {
     const handlePin = useCallback((e: React.MouseEvent) => {
         e.stopPropagation();
@@ -217,13 +179,18 @@ function UnpinnedItem({ item, onPin, onClick }: {
     }, [onPin, item.id]);
 
     return (
-        <div className="item-row" onClick={() => onClick(item)}>
+        <RowStyled data-type="tools-editor-row">
             <span className="item-icon">{item.icon}</span>
             <span className="item-label">{item.label}</span>
-            <span className="pin-button" onClick={handlePin} title="Pin to menu">
-                <PinIcon />
+            <span className="pin-button-wrapper">
+                <IconButton
+                    size="sm"
+                    icon={<PinIcon />}
+                    title="Pin to menu"
+                    onClick={handlePin}
+                />
             </span>
-        </div>
+        </RowStyled>
     );
 }
 
@@ -261,10 +228,20 @@ export function ToolsEditorsPanel({ onClose }: ToolsEditorsPanelProps) {
             .sort((a, b) => a.label.localeCompare(b.label));
     }, [pinnedIds, allItems]);
 
-    const handleClick = useCallback((item: CreatableItem) => {
-        item.create();
-        onClose?.();
-    }, [onClose]);
+    const allRows = useMemo<RowSource[]>(() => {
+        const out: RowSource[] = [];
+        if (pinnedItems.length > 0) {
+            out.push({ kind: "section", label: "Pinned" });
+            out.push(...pinnedItems);
+        }
+        if (unpinnedItems.length > 0) {
+            out.push({ kind: "section", label: "All Editors & Tools" });
+            out.push(...unpinnedItems);
+        }
+        return out;
+    }, [pinnedItems, unpinnedItems]);
+
+    const tRows = useMemo(() => traited(allRows, rowTraits), [allRows]);
 
     const handlePin = useCallback((id: string) => {
         const current: string[] = settings.get("pinned-editors") ?? DEFAULT_PINNED_EDITORS;
@@ -289,37 +266,29 @@ export function ToolsEditorsPanel({ onClose }: ToolsEditorsPanelProps) {
         settings.set("pinned-editors", [...current]);
     }, []);
 
+    const handleChange = useCallback((source: RowSource) => {
+        if (!isSection(source)) {
+            source.create();
+            onClose?.();
+        }
+    }, [onClose]);
+
+    const renderItem = useCallback((ctx: ListItemRenderContext<RowSource>) => {
+        if (isSection(ctx.source)) return null;
+        const src = ctx.source;
+        const pIdx = pinnedItems.indexOf(src);
+        return pIdx >= 0
+            ? <PinnedRow item={src} index={pIdx} onUnpin={handleUnpin} onMove={handleMove} />
+            : <UnpinnedRow item={src} onPin={handlePin} />;
+    }, [pinnedItems, handleUnpin, handleMove, handlePin]);
+
     return (
-        <PanelRoot>
-            {pinnedItems.length > 0 && (
-                <>
-                    <div className="section-header">Pinned</div>
-                    {pinnedItems.map((item, index) => (
-                        <PinnedItem
-                            key={item.id}
-                            item={item}
-                            index={index}
-                            onUnpin={handleUnpin}
-                            onClick={handleClick}
-                            onMove={handleMove}
-                        />
-                    ))}
-                </>
-            )}
-            {unpinnedItems.length > 0 && (
-                <>
-                    {pinnedItems.length > 0 && <div className="separator" />}
-                    <div className="section-header">All Editors & Tools</div>
-                    {unpinnedItems.map((item) => (
-                        <UnpinnedItem
-                            key={item.id}
-                            item={item}
-                            onPin={handlePin}
-                            onClick={handleClick}
-                        />
-                    ))}
-                </>
-            )}
-        </PanelRoot>
+        <ListBox<RowSource>
+            items={tRows}
+            rowHeight={28}
+            whiteSpaceY={8}
+            onChange={handleChange}
+            renderItem={renderItem}
+        />
     );
 }

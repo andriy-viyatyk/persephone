@@ -1,7 +1,7 @@
 import type React from "react";
 import { TComponentModel } from "../../core/state/model";
 import type { ITreeProvider, ITreeProviderItem, ILink } from "../../api/types/io.tree";
-import type { TreeItem, TreeViewRef } from "../TreeView";
+import type { TreeRef } from "../../uikit/Tree";
 import type { MenuItem } from "../overlay/PopupMenu";
 import { ContextMenuEvent } from "../../api/events/events";
 import { app } from "../../api/app";
@@ -20,8 +20,8 @@ import {
 // Types
 // =============================================================================
 
-/** Internal tree node wrapping ITreeProviderItem for TreeView rendering. */
-export interface TreeProviderNode extends TreeItem<TreeProviderNode> {
+/** Internal tree node wrapping ITreeProviderItem for UIKit Tree rendering. */
+export interface TreeProviderNode {
     data: ITreeProviderItem;
     /** undefined = not loaded (lazy), [] = empty directory */
     items?: TreeProviderNode[];
@@ -56,7 +56,8 @@ export interface TreeProviderViewState {
     displayTree: TreeProviderNode | null;
     searchText: string;
     searchVisible: boolean;
-    treeViewKey: number;
+    /** Bumped only when crossing the deep ↔ shallow search boundary, to remount Tree. */
+    searchKey: number;
     error: string | null;
 }
 
@@ -65,7 +66,7 @@ export const defaultTreeProviderViewState: TreeProviderViewState = {
     displayTree: null,
     searchText: "",
     searchVisible: false,
-    treeViewKey: 0,
+    searchKey: 0,
     error: null,
 };
 
@@ -77,7 +78,7 @@ export class TreeProviderViewModel extends TComponentModel<
     TreeProviderViewState,
     TreeProviderViewProps
 > {
-    treeViewRef: TreeViewRef | null = null;
+    treeRef: TreeRef | null = null;
     savedExpandMap: Record<string, boolean> | null = null;
     initialExpandMap: Record<string, boolean> | undefined = undefined;
     private watchSubscription?: { unsubscribe: () => void };
@@ -116,23 +117,15 @@ export class TreeProviderViewModel extends TComponentModel<
     };
 
     private initializeTree = async () => {
+        // buildTree seeds `initialExpandMap` with `{ rootPath: true, descendants: false }`
+        // before its state.update, so the first render with `state.displayTree` already
+        // has the correct `defaultExpandedValues` and the (chevron-less) root opens.
         await this.buildTree();
 
         // Pre-load children for restored expanded paths
         if (this.props.initialState?.expandedPaths?.length) {
             await this.loadChildrenForPaths(this.props.initialState.expandedPaths);
         }
-
-        // Build collapsed map to prevent TreeView's level < 2 auto-expand.
-        // Without this, TreeView auto-expands level 0-1 nodes even though
-        // children haven't been loaded yet (lazy loading).
-        const tree = this.state.get().tree;
-        if (tree) {
-            const collapsedMap = this.buildAllCollapsedMap(tree);
-            this.initialExpandMap = { ...collapsedMap, ...this.initialExpandMap };
-        }
-
-        this.state.update((s) => { s.treeViewKey++; });
     };
 
     private buildAllCollapsedMap = (tree: TreeProviderNode): Record<string, boolean> => {
@@ -151,8 +144,8 @@ export class TreeProviderViewModel extends TComponentModel<
         return map;
     };
 
-    setTreeViewRef = (ref: TreeViewRef | null) => {
-        this.treeViewRef = ref;
+    setTreeRef = (ref: TreeRef | null) => {
+        this.treeRef = ref;
     };
 
     // ── Tree building ────────────────────────────────────────────────────
@@ -160,11 +153,26 @@ export class TreeProviderViewModel extends TComponentModel<
     buildTree = async () => {
         const { provider } = this.props;
 
-        // Capture expanded paths before rebuild (for refresh)
-        const expandMap = this.treeViewRef?.getExpandMap() ?? {};
-        const expandedPaths = Object.entries(expandMap)
-            .filter(([, expanded]) => expanded)
-            .map(([id]) => id);
+        // Capture currently-expanded paths before rebuild. We need the EFFECTIVE expansion
+        // — both user-toggled state from Tree (state.expanded) AND restored hints
+        // (initialExpandMap entries set to true). Without the hint contribution, a refresh
+        // fired before any user interaction (e.g. FileTreeProvider's FS watcher firing
+        // moments after mount) would lose the restored expansion: getExpandedMap returns
+        // only state.expanded, which is empty for hint-only expansions, so the rebuild
+        // wouldn't reload grandchildren — leaving expanded chevrons with no children.
+        // User-toggled state wins where both are defined (so an explicitly collapsed
+        // hint-expanded folder stays collapsed across refresh).
+        const treeStateMap = this.treeRef?.getExpandedMap() ?? {};
+        const allKeys = new Set<string>([
+            ...Object.keys(treeStateMap).map((k) => String(k)),
+            ...Object.keys(this.initialExpandMap ?? {}),
+        ]);
+        const expandedPaths: string[] = [];
+        for (const key of allKeys) {
+            const fromState = treeStateMap[key];
+            const effective = fromState !== undefined ? fromState : !!this.initialExpandMap?.[key];
+            if (effective) expandedPaths.push(key);
+        }
 
         try {
             const items = filterTreeItems(await provider.list(provider.rootPath));
@@ -178,6 +186,16 @@ export class TreeProviderViewModel extends TComponentModel<
                 },
                 items: items.map(toNode),
             };
+
+            // Seed `initialExpandMap` BEFORE the state update so the very first render with
+            // `state.displayTree` reads `defaultExpandedValues={ rootPath: true, ... }` and
+            // expands the root (whose chevron is hidden — only this default keeps it open).
+            // Subsequent builds skip the seed: once the root is in the map, user state in
+            // Tree's own `state.expanded` overrides the hint anyway.
+            if (!this.initialExpandMap || !(provider.rootPath in this.initialExpandMap)) {
+                const collapsedMap = this.buildAllCollapsedMap(rootNode);
+                this.initialExpandMap = { ...collapsedMap, ...this.initialExpandMap };
+            }
 
             const { searchText } = this.state.get();
             const displayTree = this.computeDisplayTree(rootNode, searchText);
@@ -286,7 +304,7 @@ export class TreeProviderViewModel extends TComponentModel<
     // ── State persistence ────────────────────────────────────────────────
 
     getState = (): TreeProviderViewSavedState => {
-        const expandMap = this.treeViewRef?.getExpandMap() ?? {};
+        const expandMap = this.treeRef?.getExpandedMap() ?? {};
         const expandedPaths = Object.entries(expandMap)
             .filter(([, expanded]) => expanded)
             .map(([id]) => id);
@@ -322,7 +340,7 @@ export class TreeProviderViewModel extends TComponentModel<
             s.searchVisible = false;
             s.displayTree = this.computeDisplayTree(s.tree, "");
             if (wasDeep) {
-                s.treeViewKey++;
+                s.searchKey++;
             }
         });
     };
@@ -336,7 +354,10 @@ export class TreeProviderViewModel extends TComponentModel<
         if (wasDeep !== isDeep) {
             keyDelta = 1;
             if (isDeep) {
-                this.savedExpandMap = this.treeViewRef?.getExpandMap() ?? {};
+                const map = this.treeRef?.getExpandedMap() ?? {};
+                this.savedExpandMap = Object.fromEntries(
+                    Object.entries(map).map(([k, v]) => [String(k), v as boolean]),
+                );
                 this.initialExpandMap = undefined;
             } else {
                 this.initialExpandMap = this.savedExpandMap ?? undefined;
@@ -348,7 +369,7 @@ export class TreeProviderViewModel extends TComponentModel<
         this.state.update((s) => {
             s.searchText = text;
             s.displayTree = displayTree;
-            s.treeViewKey += keyDelta;
+            s.searchKey += keyDelta;
         });
     };
 
@@ -389,7 +410,7 @@ export class TreeProviderViewModel extends TComponentModel<
     };
 
     private getExpandedPaths = (): Set<string> => {
-        const map = this.treeViewRef?.getExpandMap() ?? {};
+        const map = this.treeRef?.getExpandedMap() ?? {};
         return new Set(
             Object.entries(map)
                 .filter(([, expanded]) => expanded)
@@ -412,35 +433,30 @@ export class TreeProviderViewModel extends TComponentModel<
         const rootLower = provider.rootPath.toLowerCase();
         const ancestors: string[] = [];
         let current = href;
-        while (true) {
-            const parent = fpDirname(current);
-            if (parent === current || parent.toLowerCase() === rootLower) break;
+        let parent = fpDirname(current);
+        while (parent !== current && parent.toLowerCase() !== rootLower) {
             ancestors.unshift(parent);
             current = parent;
+            parent = fpDirname(current);
         }
 
         // Load children for all ancestor paths (no-op for already loaded)
         const allPaths = [provider.rootPath, ...ancestors];
         await this.loadChildrenForPaths(allPaths);
 
-        // Wait for React to re-render TreeView with the new children data
+        // Wait for React to re-render Tree with the new children data
         await new Promise((r) => setTimeout(r, 0));
 
-        // Expand all ancestors in TreeView
-        for (const p of allPaths) {
-            this.treeViewRef?.expandItem(p);
-        }
-
-        // Wait for TreeView to re-render expanded rows, then scroll
-        await new Promise((r) => setTimeout(r, 0));
-        this.treeViewRef?.scrollToItem(href);
+        // UIKit Tree's revealItem expands ancestors found in the loaded tree, then scrolls.
+        await this.treeRef?.revealItem(href);
     };
 
     // ── Click handlers ───────────────────────────────────────────────────
 
     onItemClick = (node: TreeProviderNode) => {
-        if (node.data.isDirectory) {
-            this.treeViewRef?.toggleItem(node.data.href);
+        // Root is non-collapsible — click toggles every other directory only.
+        if (node.data.isDirectory && node.data.href !== this.props.provider.rootPath) {
+            this.treeRef?.toggleItem(node.data.href);
         }
         // Fire onItemClick for all items (files and folders).
         // Parent decides whether to navigate based on selection state.

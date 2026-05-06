@@ -1,51 +1,86 @@
 import styled from "@emotion/styled";
-import clsx from "clsx";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { TraitTypeId, setTraitDragData, getTraitDragData, hasTraitDragData } from "../../core/traits";
 import color from "../../theme/color";
-import { OverflowTooltipText } from "../../components/basic/OverflowTooltipText";
-import { Tooltip } from "../../components/basic/Tooltip";
+import { Tooltip } from "../../uikit";
+import { ArrowRightIcon } from "../../theme/icons";
 
 import { menuFolders } from "../../api/menu-folders";
 import type { MenuFolder } from "../../api/menu-folders";
-import type { MenuItem } from "../../components/overlay/PopupMenu";
-import { ContextMenuEvent } from "../../api/events/events";
 
-const FolderItemRoot = styled.div({
-    paddingLeft: 4,
-    cursor: "pointer",
-    color: color.text.default,
-    flexDirection: "row",
-    columnGap: 6,
-    display: "inline-flex",
-    alignItems: "center",
-    overflow: "hidden",
-    "&.dragging": {
-        opacity: 0.5,
+const Root = styled.div(
+    {
+        display: "inline-flex",
+        alignItems: "center",
+        columnGap: 6,
+        paddingLeft: 4,
+        cursor: "pointer",
+        color: color.text.default,
+        overflow: "hidden",
+        width: "100%",
+        height: "100%",
+        boxSizing: "border-box",
+
+        "&:hover": {
+            backgroundColor: color.background.default,
+        },
+        "&[data-selected]": {
+            backgroundColor: color.background.selection,
+            color: color.text.selection,
+        },
+        "&[data-dragging]": {
+            opacity: 0.5,
+        },
+        "&[data-drag-over]": {
+            borderTop: `2px solid ${color.border.active}`,
+        },
+
+        "& > svg": {
+            width: 16,
+            height: 16,
+            flexShrink: 0,
+        },
+
+        "& .item-text": {
+            flex: "1 1 auto",
+            minWidth: 0,
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+        },
+
+        "& .selected-icon": {
+            color: color.text.light,
+            width: 16,
+            height: 16,
+            marginRight: 6,
+            flexShrink: 0,
+        },
+        "&[data-selected] .selected-icon": {
+            color: color.icon.selection,
+        },
+
+        "& .selected-icon-button": {
+            display: "inline-flex",
+            alignItems: "center",
+            borderRadius: 3,
+            cursor: "pointer",
+            "&:hover": {
+                backgroundColor: color.background.light,
+            },
+        },
     },
-    "&.drag-over": {
-        borderTop: `2px solid ${color.border.active}`,
-    },
-    "& .item-text": {
-        flex: "1 1",
-        whiteSpace: "nowrap",
-    },
-});
+    { label: "FolderItem" },
+);
 
 export interface FolderItemProps {
     folder: MenuFolder;
-    index: number;
-    style: React.CSSProperties;
     selected: boolean;
-    onClick: (folder: MenuFolder, index?: number, e?: React.MouseEvent) => void;
-    onDoubleClick?: (folder: MenuFolder) => void;
     icon: React.ReactNode;
     label: React.ReactNode;
-    selectedIcon?: React.ReactNode;
+    tooltip?: React.ReactNode;
+    onDoubleClick?: (folder: MenuFolder) => void;
     onSelectedIconClick?: (folder: MenuFolder, e: React.MouseEvent) => void;
-    itemMarginY?: number;
-    getTooltip?: (folder: MenuFolder, index?: number) => string | undefined;
-    getContextMenu?: (folder: MenuFolder, index?: number) => MenuItem[] | undefined;
     canDrag?: boolean;
     canDrop?: boolean;
 }
@@ -53,24 +88,16 @@ export interface FolderItemProps {
 export function FolderItem(props: FolderItemProps) {
     const {
         folder,
-        index,
-        style,
         selected,
-        onClick,
-        onDoubleClick,
         icon,
         label,
-        selectedIcon,
+        tooltip,
+        onDoubleClick,
         onSelectedIconClick,
-        itemMarginY,
-        getTooltip,
-        getContextMenu,
         canDrag = true,
         canDrop = true,
     } = props;
 
-    const id = useMemo(() => crypto.randomUUID(), []);
-    const ref = useRef<HTMLDivElement>(null);
     const [isDragging, setIsDragging] = useState(false);
     const [isOver, setIsOver] = useState(false);
     const dragEnterCount = useRef(0);
@@ -109,40 +136,6 @@ export function FolderItem(props: FolderItemProps) {
         }
     }, [canDrop, folder.id]);
 
-    const handleClick = useCallback(
-        (e: React.MouseEvent) => {
-            onClick(folder, index, e);
-        },
-        [onClick, folder, index]
-    );
-
-    const handleDoubleClick = useCallback(
-        () => {
-            onDoubleClick?.(folder);
-        },
-        [onDoubleClick, folder]
-    );
-
-    const handleSelectedIconClick = useCallback(
-        (e: React.MouseEvent) => {
-            e.stopPropagation();
-            onSelectedIconClick?.(folder, e);
-        },
-        [onSelectedIconClick, folder]
-    );
-
-    const handleContextMenu = useCallback(
-        (e: React.MouseEvent) => {
-            onClick?.(folder, index, e);
-            const menuItems = getContextMenu?.(folder, index);
-            if (menuItems) {
-                const ctxEvent = ContextMenuEvent.fromNativeEvent(e, "sidebar-folder");
-                ctxEvent.items.push(...menuItems);
-            }
-        },
-        [getContextMenu, folder, index, onClick]
-    );
-
     const handleDragOver = useCallback(
         (e: React.DragEvent) => {
             if (!canDrop) {
@@ -165,23 +158,27 @@ export function FolderItem(props: FolderItemProps) {
         }
     }, []);
 
-    const tooltip = useMemo(
-        () => getTooltip?.(folder, index),
-        [getTooltip, folder, index]
+    const handleDoubleClick = useCallback(
+        () => {
+            onDoubleClick?.(folder);
+        },
+        [onDoubleClick, folder]
     );
 
-    const { top, height, ...restStyle } = style;
-    const adjustedTop = itemMarginY
-        ? (top as number) + itemMarginY
-        : (top as number);
-    const adjustedHeight = itemMarginY
-        ? (height as number) - itemMarginY * 2
-        : (height as number);
+    const handleSelectedIconClick = useCallback(
+        (e: React.MouseEvent) => {
+            e.stopPropagation();
+            onSelectedIconClick?.(folder, e);
+        },
+        [onSelectedIconClick, folder]
+    );
 
-    return (
-        <FolderItemRoot
-            ref={ref}
-            style={{ ...restStyle, top: adjustedTop, height: adjustedHeight }}
+    const row = (
+        <Root
+            data-type="folder-item"
+            data-selected={selected || undefined}
+            data-dragging={isDragging || undefined}
+            data-drag-over={isOver || undefined}
             draggable={canDrag}
             onDragStart={handleFolderDragStart}
             onDragEnd={handleFolderDragEnd}
@@ -189,34 +186,25 @@ export function FolderItem(props: FolderItemProps) {
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleFolderDrop}
-            className={clsx("list-item", {
-                selected,
-                dragging: isDragging,
-                "drag-over": isOver,
-            })}
-            onClick={handleClick}
             onDoubleClick={handleDoubleClick}
-            onContextMenu={handleContextMenu}
-            data-tooltip-id={id}
         >
             {Boolean(icon) && icon}
-            <OverflowTooltipText className="item-text">{label}</OverflowTooltipText>
-            {selected && selectedIcon && (
+            <span className="item-text">{label}</span>
+            {selected && (
                 onSelectedIconClick ? (
                     <span
                         className="selected-icon-button"
                         onClick={handleSelectedIconClick}
                         title="Open folder in new tab"
                     >
-                        {selectedIcon}
+                        <ArrowRightIcon className="selected-icon" />
                     </span>
-                ) : selectedIcon
+                ) : (
+                    <ArrowRightIcon className="selected-icon" />
+                )
             )}
-            {Boolean(tooltip) && (
-                <Tooltip id={id} delayShow={1500}>
-                    {tooltip}
-                </Tooltip>
-            )}
-        </FolderItemRoot>
+        </Root>
     );
+
+    return tooltip ? <Tooltip content={tooltip}>{row}</Tooltip> : row;
 }

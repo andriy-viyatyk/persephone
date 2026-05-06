@@ -45,6 +45,13 @@ export interface TreeItemProps
     /** Indentation step in pixels per level. Default: 16. */
     indentSize?: number;
     /**
+     * When true, no chevron and no chevron-stub placeholder are rendered for this row.
+     * The icon sits flush after the row's indents. Use for non-collapsible rows
+     * (e.g. a single permanent root in a tree-provider view) to avoid a leading column
+     * of empty space.
+     */
+    hideChevron?: boolean;
+    /**
      * Called when the user clicks the chevron. Tree's model owns expansion state — pass
      * `(e) => model.onChevronClick(e, idx)` from the View.
      */
@@ -59,7 +66,7 @@ const Root = styled.div(
         width: "100%",
         boxSizing: "border-box",
         alignItems: "center",
-        gap: gap.sm,
+        gap: gap.xs,
         paddingRight: spacing.sm,
         cursor: "pointer",
         color: color.text.default,
@@ -158,6 +165,9 @@ const ChevronStub = styled.div<{ size: number }>(
 // --- Component ---
 
 const defaultIndentSize = 16;
+// Chevron column is intentionally narrower than indents — keeps the level guides at 16px
+// steps for clean hierarchy while making the row's leading whitespace tight.
+const chevronColumnSize = 14;
 
 export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(function TreeItem(
     {
@@ -176,6 +186,7 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(function TreeI
         disabled,
         tooltip,
         indentSize = defaultIndentSize,
+        hideChevron,
         onChevronClick,
         ...rest
     },
@@ -206,13 +217,13 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(function TreeI
             {Array.from({ length: level }).map((_, i) => (
                 <Indent key={i} size={indentSize} first={i === 0} />
             ))}
-            {loading ? (
-                <ChevronStub size={indentSize} aria-label="Loading">
+            {hideChevron ? null : loading ? (
+                <ChevronStub size={chevronColumnSize} aria-label="Loading">
                     <Spinner size={12} />
                 </ChevronStub>
             ) : hasChildren ? (
                 <Chevron
-                    size={indentSize}
+                    size={chevronColumnSize}
                     type="button"
                     tabIndex={-1}
                     aria-label={expanded ? "Collapse" : "Expand"}
@@ -221,7 +232,7 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(function TreeI
                     {expanded ? <ChevronDownIcon /> : <ChevronRightIcon />}
                 </Chevron>
             ) : (
-                <ChevronStub size={indentSize} />
+                <ChevronStub size={chevronColumnSize} />
             )}
             {icon && <span className="tree-icon">{icon}</span>}
             <span className="label">{labelNode}</span>

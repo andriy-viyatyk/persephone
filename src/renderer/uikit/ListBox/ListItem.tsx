@@ -31,6 +31,15 @@ export interface ListItemProps
     tooltip?: React.ReactNode;
     /** Trailing slot — defaults to a check icon when `selected`. */
     trailing?: React.ReactNode;
+    /**
+     * Visual style.
+     *   • `"select"` (default) — strong selection-style highlight on hover/active.
+     *     Matches Select dropdowns and menus where selection feedback should be loud.
+     *   • `"browse"` — soft hover background (no text-color change). Matches the
+     *     legacy folder tree feel; use for sidebar / browse-style lists where hover
+     *     is purely a navigation cue.
+     */
+    variant?: "select" | "browse";
 }
 
 // --- Styled ---
@@ -49,9 +58,12 @@ const Root = styled.div(
         overflow: "hidden",
 
         "&[data-disabled]": { opacity: 0.4, pointerEvents: "none" },
-        "&[data-active]": {
+        '&[data-variant="select"][data-active]': {
             backgroundColor: color.background.selection,
             color: color.text.selection,
+        },
+        '&[data-variant="browse"][data-active]': {
+            backgroundColor: color.background.message,
         },
 
         "& > svg": {
@@ -84,6 +96,7 @@ export const ListItem = forwardRef<HTMLDivElement, ListItemProps>(function ListI
         disabled,
         tooltip,
         trailing,
+        variant = "select",
         ...rest
     },
     ref,
@@ -95,6 +108,7 @@ export const ListItem = forwardRef<HTMLDivElement, ListItemProps>(function ListI
             ref={ref}
             id={id}
             data-type="list-item"
+            data-variant={variant}
             data-selected={selected || undefined}
             data-active={active || undefined}
             data-disabled={disabled || undefined}

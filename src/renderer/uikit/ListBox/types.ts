@@ -118,4 +118,15 @@ export interface ListBoxProps<T = IListBoxItem>
     growToHeight?: React.CSSProperties["height"];
     /** Top/bottom whitespace padding inside the scroll container. */
     whiteSpaceY?: number;
+    /**
+     * Visual style for the default `<ListItem>` row renderer.
+     *   • `"select"` (default) — strong selection-style hover/active feedback.
+     *     Matches Select dropdowns and menus.
+     *   • `"browse"` — soft hover background. Use for sidebar / browse-style
+     *     lists where hover is a navigation cue, not a selection prompt.
+     *
+     * Ignored when a custom `renderItem` is supplied — caller is responsible for
+     * setting the variant on its own `<ListItem>`.
+     */
+    variant?: "select" | "browse";
 }

@@ -95,6 +95,8 @@ function TreeView<T = ITreeItem>(
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         onChange: _onChange,
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        onItemDoubleClick: _onItemDoubleClick,
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         isSelected: _isSelected,
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         onActiveChange: _onActiveChange,
@@ -221,6 +223,7 @@ function TreeView<T = ITreeItem>(
                 style={style}
                 draggable={canDrag || undefined}
                 onClick={() => model.onItemClick(idx)}
+                onDoubleClick={() => model.onItemDoubleClick(idx)}
                 onMouseEnter={() => model.onItemMouseEnter(idx)}
                 onContextMenu={(e) => model.onItemContextMenu(e, idx)}
                 onDragStart={canDrag ? (e) => model.onDragStart(e, idx) : undefined}

@@ -1,17 +1,22 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import styled from "@emotion/styled";
 import { useComponentModel } from "../../core/state/model";
-import { TreeView } from "../TreeView/TreeView";
-import { TreeViewRef } from "../TreeView";
-import { TextField } from "../basic/TextField";
-import { Button } from "../basic/Button";
+import { TraitSet, traited } from "../../core/traits/traits";
+import {
+    Tree,
+    TREE_ITEM_KEY,
+    TreeItem,
+    Input,
+    IconButton,
+    Panel,
+    Text,
+} from "../../uikit";
+import type { TreeRef, TreeItemRenderContext } from "../../uikit";
 import { CloseIcon } from "../../theme/icons";
-import { highlightText } from "../basic/useHighlightedText";
-import color from "../../theme/color";
-import { TreeProviderItemIcon } from "./TreeProviderItemIcon";
 import { LINK } from "../../editors/link-editor/linkTraits";
 import { TraitTypeId, resolveTraits } from "../../core/traits";
 import type { TraitDragPayload } from "../../core/traits";
+import { TreeProviderItemIcon } from "./TreeProviderItemIcon";
 import {
     TreeProviderViewModel,
     TreeProviderViewProps,
@@ -22,47 +27,34 @@ import {
 
 export type { TreeProviderViewProps, TreeProviderViewSavedState };
 
-const TreeProviderViewRoot = styled.div({
+// Trait set translates a TreeProviderNode into the UIKit Tree's ITreeItem accessors.
+// `value` is the node's href (stable id), `label`/`icon` drive default rendering when
+// `props.getLabel` is not supplied. Children are walked via the Tree's `getChildren`
+// prop instead of a trait accessor — the accessor type would force a recursive resolve
+// to ITreeItem, but a child of TreeProviderNode is itself a TreeProviderNode that the
+// trait re-applies on the next level.
+const tpvNodeTraits = new TraitSet().add(TREE_ITEM_KEY, {
+    value: (node: unknown) => (node as TreeProviderNode).data.href,
+    label: (node: unknown) => (node as TreeProviderNode).data.title,
+    icon: (node: unknown) => (
+        <TreeProviderItemIcon item={(node as TreeProviderNode).data} />
+    ),
+});
+
+const getNodeChildren = (node: TreeProviderNode) => node.items;
+
+// Chrome wrapper — purely keyboard-plumbing chrome (Ctrl+F intercept, focus return on
+// Escape). UIKit Panel doesn't expose `outline` suppression, and the wiring is unique to
+// this shared view, so we keep one styled div for the wrapper. UIKit primitives drive
+// every other surface in this file.
+const Root = styled.div({
     display: "flex",
     flexDirection: "column",
     width: "100%",
     height: "100%",
     overflow: "hidden",
     outline: "none",
-
-    "& .tpv-tree": {
-        flex: "1 1 auto",
-        overflow: "hidden",
-        paddingLeft: 4,
-    },
-
-    "& .tpv-search": {
-        padding: 4,
-        borderTop: `1px solid ${color.border.light}`,
-        flexShrink: 0,
-        "& .text-field": {
-            width: "100%",
-        },
-    },
-
-    "& .tpv-error": {
-        padding: 8,
-        fontSize: 12,
-        color: color.misc.red,
-    },
-
-    "& .tpv-empty": {
-        padding: 8,
-        fontSize: 12,
-        color: color.text.light,
-    },
-
-    "& .tpv-item-label": {
-        overflow: "hidden",
-        textOverflow: "ellipsis",
-        fontSize: 14,
-    },
-});
+}, { label: "TreeProviderViewRoot" });
 
 export interface TreeProviderViewRef {
     refresh(): void;
@@ -70,8 +62,6 @@ export interface TreeProviderViewRef {
     hideSearch(): void;
     collapseAll(): void;
     getState(): TreeProviderViewSavedState;
-    getScrollTop(): number;
-    setScrollTop(value: number): void;
     /** Expand ancestors, load children if needed, and scroll to show item. */
     revealItem(href: string): void;
 }
@@ -86,12 +76,12 @@ export function TreeProviderView(
         defaultTreeProviderViewState,
     );
     const state = model.state.use();
-    const treeViewRef = useRef<TreeViewRef>(null);
+    const treeRef = useRef<TreeRef>(null);
     const searchInputRef = useRef<HTMLInputElement>(null);
     const rootRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        model.setTreeViewRef(treeViewRef.current);
+        model.setTreeRef(treeRef.current);
     });
 
     // Expose ref methods
@@ -108,12 +98,18 @@ export function TreeProviderView(
                 rootRef.current?.focus();
             },
             collapseAll: () => {
-                treeViewRef.current?.collapseAll();
-                props.onStateChange?.({ expandedPaths: [] });
+                const rootPath = props.provider.rootPath;
+                treeRef.current?.collapseAll();
+                // Tree.collapseAll queues a microtask that walks every node including the
+                // root — re-expand root after that microtask settles, otherwise the root
+                // collapses and the user can't open it again (no chevron). setTimeout(0)
+                // sequences after the microtask queue.
+                setTimeout(() => {
+                    treeRef.current?.expandItem(rootPath);
+                }, 0);
+                props.onStateChange?.({ expandedPaths: [rootPath] });
             },
             getState: model.getState,
-            getScrollTop: () => treeViewRef.current?.getScrollTop() ?? 0,
-            setScrollTop: (value: number) => treeViewRef.current?.setScrollTop(value),
             revealItem: model.revealItem,
         };
         if (typeof ref === "function") {
@@ -131,42 +127,21 @@ export function TreeProviderView(
     }, [ref, model]);
 
     const isDeepSearch = state.searchText.length >= 3;
-
-    const getLabel = useCallback((node: TreeProviderNode) => {
-        if (props.getLabel) {
-            return props.getLabel(node.data, state.searchText);
-        }
-        return (
-            <span className="tpv-item-label" title={node.data.href}>
-                {state.searchText
-                    ? highlightText(state.searchText, node.data.title)
-                    : node.data.title
-                }
-            </span>
-        );
-    }, [state.searchText, props.getLabel]);
-
-    const getIcon = useCallback((node: TreeProviderNode) => (
-        <TreeProviderItemIcon item={node.data} />
-    ), []);
-
-    const getId = useCallback((node: TreeProviderNode) => node.data.href, []);
-
     const showLinks = props.showLinks !== false;
+
     const getHasChildren = useCallback(
         (node: TreeProviderNode) => {
             if (!node.data.isDirectory) return false;
             const { hasSubDirectories, hasItems } = node.data;
-            // When flags are undefined (FileTreeProvider, ArchiveTreeProvider), assume expandable
+            // Undefined flags (FileTreeProvider, ArchiveTreeProvider) → assume expandable
             if (hasSubDirectories === undefined && hasItems === undefined) return true;
-            // When flags are set, decide based on showLinks mode
             if (showLinks) return !!(hasSubDirectories || hasItems);
             return !!hasSubDirectories;
         },
         [showLinks],
     );
 
-    const getSelected = useCallback((node: TreeProviderNode) => {
+    const isSelected = useCallback((node: TreeProviderNode) => {
         if (!props.selectedHref) return false;
         return node.data.href.toLowerCase() === props.selectedHref.toLowerCase();
     }, [props.selectedHref]);
@@ -176,7 +151,6 @@ export function TreeProviderView(
 
     const getDragData = useCallback((node: TreeProviderNode) => {
         if (!writable) return null;
-        // Don't drag root
         if (node.data.href === props.provider.rootPath) return null;
         return { items: [node.data], sourceId: props.provider.sourceUrl };
     }, [writable, props.provider.rootPath, props.provider.sourceUrl]);
@@ -200,6 +174,14 @@ export function TreeProviderView(
             model.moveItems(items, dropNode);
         }
     }, [model]);
+
+    // Tree's onExpandChange emits string|number; our values are always strings (hrefs).
+    const handleExpandChange = useCallback(
+        (value: string | number, expanded: boolean) => {
+            model.onExpandChange(String(value), expanded);
+        },
+        [model],
+    );
 
     // Keyboard
     const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
@@ -237,79 +219,109 @@ export function TreeProviderView(
         rootRef.current?.focus();
     }, [model]);
 
-    // Error/empty states
+    const renderItem = useCallback((ctx: TreeItemRenderContext<TreeProviderNode>) => {
+        const node = ctx.source;
+        const labelContent = props.getLabel
+            ? props.getLabel(node.data, state.searchText)
+            : node.data.title;
+        // Root is the single permanent ancestor in every tree-provider view — render it
+        // without a chevron and without the chevron-column placeholder (icon sits flush
+        // after zero indents). The model also blocks toggle for the root href so click
+        // / collapseAll / keyboard cannot collapse it.
+        return (
+            <TreeItem
+                id={ctx.id}
+                level={ctx.level}
+                expanded={ctx.expanded}
+                hasChildren={ctx.hasChildren}
+                hideChevron={ctx.level === 0}
+                icon={<TreeProviderItemIcon item={node.data} />}
+                label={labelContent}
+                searchText={state.searchText}
+                selected={ctx.selected}
+                active={ctx.active}
+                dragging={ctx.dragging}
+                dropActive={ctx.dropActive}
+                loading={ctx.loading}
+                tooltip={node.data.href}
+                onChevronClick={ctx.toggleExpanded}
+                onContextMenu={(e) => model.onItemContextMenu(node, e)}
+            />
+        );
+    }, [props.getLabel, state.searchText, model]);
+
+    // Items wrapped as a single-rooted Traited — the Tree memo walks children via the trait.
+    const tNodes = useMemo(
+        () => (state.displayTree ? traited([state.displayTree], tpvNodeTraits) : null),
+        [state.displayTree],
+    );
+
+    // Error / empty states
     if (state.error) {
         return (
-            <TreeProviderViewRoot>
-                <div className="tpv-error">{state.error}</div>
-            </TreeProviderViewRoot>
+            <Panel padding="md" data-type="tree-provider-error">
+                <Text size="sm" color="error">{state.error}</Text>
+            </Panel>
         );
     }
 
-    if (!state.displayTree) {
+    if (!tNodes) {
         return (
-            <TreeProviderViewRoot>
-                <div className="tpv-empty">No content</div>
-            </TreeProviderViewRoot>
+            <Panel padding="md" data-type="tree-provider-empty">
+                <Text size="sm" color="light">No content</Text>
+            </Panel>
         );
     }
 
     return (
-        <TreeProviderViewRoot
+        <Root
             ref={rootRef}
             tabIndex={0}
+            data-type="tree-provider-view"
             onKeyDown={handleKeyDown}
             onContextMenu={model.onBackgroundContextMenu}
         >
-            <div className="tpv-tree">
-                <TreeView<TreeProviderNode>
-                    key={state.treeViewKey}
-                    ref={treeViewRef}
-                    root={state.displayTree}
-                    getId={getId}
-                    getLabel={getLabel}
-                    getIcon={getIcon}
-                    getHasChildren={getHasChildren}
-                    getSelected={getSelected}
-                    onItemClick={model.onItemClick}
-                    onItemDoubleClick={model.onItemDoubleClick}
-                    onItemContextMenu={model.onItemContextMenu}
-                    onExpandChange={model.onExpandChange}
-                    traitTypeId={writable ? TraitTypeId.ILink : undefined}
-                    getDragData={writable ? getDragData : undefined}
-                    acceptsDrop={writable}
-                    canTraitDrop={writable ? canTraitDrop : undefined}
-                    onTraitDrop={writable ? onTraitDrop : undefined}
-                    rootCollapsible={false}
-                    defaultExpandAll={isDeepSearch}
-                    initialExpandMap={model.initialExpandMap}
-                    refreshKey={`${props.selectedHref || ""}-${state.searchText}`}
-                />
-            </div>
+            <Tree<TreeProviderNode>
+                key={state.searchKey}
+                ref={treeRef}
+                items={tNodes}
+                getChildren={getNodeChildren}
+                isSelected={isSelected}
+                onChange={model.onItemClick}
+                onItemDoubleClick={model.onItemDoubleClick}
+                searchText={state.searchText}
+                defaultExpandedValues={model.initialExpandMap}
+                defaultExpandAll={isDeepSearch}
+                onExpandChange={handleExpandChange}
+                getHasChildren={getHasChildren}
+                traitTypeId={writable ? TraitTypeId.ILink : undefined}
+                getDragData={writable ? getDragData : undefined}
+                acceptsDrop={writable}
+                canTraitDrop={writable ? canTraitDrop : undefined}
+                onTraitDrop={writable ? onTraitDrop : undefined}
+                renderItem={renderItem}
+            />
             {state.searchVisible && (
-                <div className="tpv-search">
-                    <TextField
+                <Panel direction="row" padding="xs" borderTop data-type="tpv-search">
+                    <Input
                         ref={searchInputRef}
+                        size="sm"
                         value={state.searchText}
                         onChange={model.setSearchText}
                         placeholder="Search..."
                         onKeyDown={handleSearchKeyDown}
                         onBlur={handleSearchBlur}
-                        endButtons={[
-                            <Button
-                                size="small"
-                                type="icon"
-                                key="close-search"
+                        endSlot={state.searchText ? (
+                            <IconButton
+                                size="sm"
                                 title="Close Search"
+                                icon={<CloseIcon />}
                                 onClick={handleSearchClose}
-                                invisible={!state.searchText}
-                            >
-                                <CloseIcon />
-                            </Button>,
-                        ]}
+                            />
+                        ) : undefined}
                     />
-                </div>
+                </Panel>
             )}
-        </TreeProviderViewRoot>
+        </Root>
     );
 }

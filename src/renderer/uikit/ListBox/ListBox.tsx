@@ -76,6 +76,7 @@ function ListBoxView<T = IListBoxItem>(
         whiteSpaceY,
         activeIndex,
         getTooltip,
+        variant,
         // Capture (don't forward) — model handles these via this.props
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         items: _items,
@@ -128,6 +129,7 @@ function ListBoxView<T = IListBoxItem>(
                     active={active}
                     disabled={item.disabled}
                     tooltip={tooltip}
+                    variant={variant}
                 />
             );
 

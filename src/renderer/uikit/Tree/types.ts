@@ -139,6 +139,11 @@ export interface TreeProps<T = ITreeItem>
     /** Fires when the user selects (clicks or hits Enter on) a row. Emits the source `T`. */
     onChange?: (item: T) => void;
     /**
+     * Fires when the user double-clicks a row. Section and disabled rows do not fire — same
+     * gate as `onChange`. Emits the source `T` and the row's depth `level`.
+     */
+    onItemDoubleClick?: (source: T, level: number) => void;
+    /**
      * Predicate that overrides `value`-based identity. When supplied, `value` is ignored.
      * Mirrors `ListBox.isSelected`. Single-select only — multi-select is out of scope for V1.
      */

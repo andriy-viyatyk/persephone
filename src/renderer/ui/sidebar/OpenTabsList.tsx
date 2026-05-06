@@ -1,46 +1,32 @@
-import styled from "@emotion/styled";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { List } from "../../components/form/List";
+import { ListBox, LIST_ITEM_KEY } from "../../uikit";
+import { TraitSet, traited } from "../../core/traits/traits";
 import { api } from "../../../ipc/renderer/api";
 import { pagesModel } from "../../api/pages";
 import { appWindow } from "../../api/window";
 import { IEditorState, WindowPages } from "../../../shared/types";
-import color from "../../theme/color";
-import { EmptyIcon } from "../../theme/icons";
 import { LanguageIcon } from "../../components/icons/LanguageIcon";
-
-const OpenTabsListRoot = styled(List)({
-    "& .list-item": {
-        "& svg": {
-            width: 16,
-            height: 16,
-        },
-        "&:hover": {
-            backgroundColor: color.background.default,
-        },
-        "&.selected": {
-            backgroundColor: color.background.default,
-        },
-        "&.window-item": {
-            textAlign: "center",
-            cursor: "default",
-            "&:hover": {
-                backgroundColor: "transparent",
-            }
-        },
-    },
-});
 
 interface ListItem {
     windowIndex: number;
     page?: Partial<IEditorState>;
 }
 
-const getPageLabel = (item: ListItem) =>
-    item.page ? item.page.title : `window-${item.windowIndex}`;
-const getPageIcon = (item: ListItem) =>
-    item.page ? <LanguageIcon language={item.page.language} /> : <EmptyIcon />;
-const getTooltip = (item: ListItem) => (item.page as any)?.filePath;
+const openTabsListTraits = new TraitSet().add(LIST_ITEM_KEY, {
+    value: (item: unknown) => {
+        const it = item as ListItem;
+        return it.page?.id ?? `window-${it.windowIndex}`;
+    },
+    label: (item: unknown) => {
+        const it = item as ListItem;
+        return it.page ? (it.page.title ?? "") : `window-${it.windowIndex}`;
+    },
+    icon: (item: unknown) => {
+        const it = item as ListItem;
+        return it.page ? <LanguageIcon language={it.page.language} /> : undefined;
+    },
+    section: (item: unknown) => !(item as ListItem).page,
+});
 
 interface OpenTabsListProps {
     onClose?: () => void;
@@ -49,6 +35,7 @@ interface OpenTabsListProps {
 
 export function OpenTabsList(props: OpenTabsListProps) {
     const [allWindowsPages, setAllWindowsPages] = useState<WindowPages[]>([]);
+    const [activeIndex, setActiveIndex] = useState<number | null>(null);
     const state = pagesModel.state.use();
     const currentWindowIndex = appWindow.windowIndex;
 
@@ -75,7 +62,12 @@ export function OpenTabsList(props: OpenTabsListProps) {
     const items = useMemo<ListItem[]>(() => {
         const currentPages = state.pages.map((page) => ({
             windowIndex: currentWindowIndex,
-            page: page.mainEditor?.state.get() ?? { id: page.id, title: page.title },
+            // mainEditor.state.id is the editor UUID, not the page UUID — override
+            // so onClick can resolve the page via pagesModel.showPage(page.id).
+            page: {
+                ...(page.mainEditor?.state.get() ?? { title: page.title }),
+                id: page.id,
+            },
         }));
 
         const resItems: any[] = [
@@ -103,12 +95,17 @@ export function OpenTabsList(props: OpenTabsListProps) {
             return arr.filter(i => i.page && i.page.id === item.page.id).length > 1;
         });
         if (hasDuplicateId) {
-            // heppans when moving tub in current window
-            // it displays then in this window and in window where it moved from
+            // happens when moving a tab in the current window
+            // it displays then in this window and in the window it was moved from
             setTimeout(loadWindowPages, 50);
         }
         return allItems;
     }, [state.pages, allWindowsPages, currentWindowIndex]);
+
+    const tItems = useMemo(
+        () => traited(items, openTabsListTraits),
+        [items],
+    );
 
     const onClick = useCallback((item: ListItem) => {
         if (item.page) {
@@ -121,25 +118,22 @@ export function OpenTabsList(props: OpenTabsListProps) {
         }
     }, [props.onClose, currentWindowIndex]);
 
-    const getSelected = useCallback((item: ListItem) => {
-        return item.page?.id === activePageId;
-    }, [activePageId]);
-
-    const getOptionClass = useCallback((item: ListItem) => {
-        return item.page ? "page-item" : "window-item";
-    }, [activePageId]);
+    const isSelected = useCallback(
+        (item: ListItem) => item.page?.id === activePageId,
+        [activePageId],
+    );
 
     return (
-        <OpenTabsListRoot
-            options={items}
-            getLabel={getPageLabel}
-            getIcon={getPageIcon}
-            getSelected={getSelected}
-            getOptionClass={getOptionClass}
-            selectedIcon={<span />}
+        <ListBox<ListItem>
+            items={tItems}
             rowHeight={22}
-            onClick={onClick}
-            getTooltip={getTooltip}
+            activeIndex={activeIndex}
+            onActiveChange={setActiveIndex}
+            onChange={onClick}
+            isSelected={isSelected}
+            getTooltip={(item) => item.page?.filePath}
+            emptyMessage="no tabs"
+            variant="browse"
         />
     );
 }

@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import styled from "@emotion/styled";
 import { settings } from "../../api/settings";
 import { app } from "../../api/app";
 import { createLinkData } from "../../../shared/link-data";
@@ -10,51 +9,7 @@ import {
 } from "../../components/tree-provider/TreeProviderView";
 import { FileTreeProvider } from "../../content/tree-providers/FileTreeProvider";
 import { FolderOpenIcon } from "../../theme/icons";
-import color from "../../theme/color";
-const ScriptLibraryPanelRoot = styled.div({
-    display: "flex",
-    flexDirection: "column",
-    height: "100%",
-
-    "& .library-placeholder": {
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 12,
-        height: "100%",
-        padding: 16,
-    },
-
-    "& .library-placeholder-hint": {
-        fontSize: 11,
-        color: color.text.light,
-        textAlign: "center",
-        lineHeight: 1.5,
-        maxWidth: 200,
-    },
-
-    "& .library-action-button": {
-        display: "flex",
-        alignItems: "center",
-        gap: 6,
-        padding: "6px 12px",
-        fontSize: 12,
-        color: color.text.default,
-        backgroundColor: color.background.dark,
-        border: `1px solid ${color.border.default}`,
-        borderRadius: 4,
-        cursor: "pointer",
-        "&:hover": {
-            borderColor: color.text.light,
-        },
-        "& svg": {
-            width: 14,
-            height: 14,
-            flexShrink: 0,
-        },
-    },
-});
+import { Panel, Button, Text } from "../../uikit";
 
 interface ScriptLibraryPanelProps {
     onClose?: () => void;
@@ -66,31 +21,48 @@ interface ScriptLibraryPanelProps {
 export function ScriptLibraryPanel(props: ScriptLibraryPanelProps) {
     const libraryPath = settings.use("script-library.path");
 
+    const provider = useMemo(
+        () => (libraryPath ? new FileTreeProvider(libraryPath) : null),
+        [libraryPath],
+    );
+
     const handleSelectFolder = async () => {
         const { showLibrarySetupDialog } = await import("../dialogs/LibrarySetupDialog");
         showLibrarySetupDialog();
     };
 
-    if (!libraryPath) {
+    if (!libraryPath || !provider) {
         return (
-            <ScriptLibraryPanelRoot>
-                <div className="library-placeholder">
-                    <button className="library-action-button" onClick={handleSelectFolder}>
-                        <FolderOpenIcon />
+            <Panel
+                direction="column"
+                height="100%"
+                data-type="script-library-panel"
+            >
+                <Panel
+                    direction="column"
+                    align="center"
+                    justify="center"
+                    gap="xl"
+                    padding="xl"
+                    flex
+                >
+                    <Button
+                        background="dark"
+                        icon={<FolderOpenIcon />}
+                        onClick={handleSelectFolder}
+                    >
                         Select Folder
-                    </button>
-                    <div className="library-placeholder-hint">
+                    </Button>
+                    <Text size="xs" color="light" align="center">
                         Select an existing folder with scripts or create a new one to store your saved scripts and reusable modules
-                    </div>
-                </div>
-            </ScriptLibraryPanelRoot>
+                    </Text>
+                </Panel>
+            </Panel>
         );
     }
 
-    const provider = useMemo(() => new FileTreeProvider(libraryPath), [libraryPath]);
-
     return (
-        <ScriptLibraryPanelRoot>
+        <Panel direction="column" height="100%" data-type="script-library-panel">
             <TreeProviderView
                 ref={props.explorerRef}
                 key={libraryPath}
@@ -104,6 +76,6 @@ export function ScriptLibraryPanel(props: ScriptLibraryPanelProps) {
                     }
                 }}
             />
-        </ScriptLibraryPanelRoot>
+        </Panel>
     );
 }

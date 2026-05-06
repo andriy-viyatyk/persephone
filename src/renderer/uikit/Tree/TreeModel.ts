@@ -272,6 +272,12 @@ export class TreeModel<T = ITreeItem> extends TComponentModel<
         this.props.onChange?.(r.source);
     };
 
+    onItemDoubleClick = (rowIndex: number) => {
+        const r = this.rows.value[rowIndex];
+        if (!r || r.item.disabled || r.item.section) return;
+        this.props.onItemDoubleClick?.(r.source, r.level);
+    };
+
     onChevronClick = (e: React.MouseEvent, rowIndex: number) => {
         e.stopPropagation();
         this.toggleAt(rowIndex);

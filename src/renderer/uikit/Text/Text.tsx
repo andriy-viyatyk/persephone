@@ -37,6 +37,12 @@ export interface TextStyleProps {
      * so the parent can clip — `min-width: 0` on the truncated Text lets it shrink below content size.
      */
     truncate?: boolean;
+    /**
+     * Text alignment. Forces `display: block` since Text is a span by default and
+     * `text-align` on an inline span does not affect wrapped-content layout. Use this
+     * when the Text spans multiple lines and you need the wrapped lines aligned.
+     */
+    align?: "left" | "center" | "right";
 }
 
 export interface TextProps extends
@@ -84,6 +90,11 @@ const Root = styled.span(
             whiteSpace: "nowrap",
             minWidth: 0,
         },
+
+        // --- Alignment ---
+        '&[data-align="left"]':   { textAlign: "left",   display: "block" },
+        '&[data-align="center"]': { textAlign: "center", display: "block" },
+        '&[data-align="right"]':  { textAlign: "right",  display: "block" },
     },
     { label: "Text" },
 );
@@ -99,6 +110,7 @@ export function Text({
     nowrap,
     preWrap,
     truncate,
+    align,
     children,
     ...rest
 }: TextProps) {
@@ -113,6 +125,7 @@ export function Text({
             data-nowrap={nowrap || undefined}
             data-pre-wrap={preWrap || undefined}
             data-truncate={truncate || undefined}
+            data-align={align || undefined}
             {...rest}
         >
             {children}

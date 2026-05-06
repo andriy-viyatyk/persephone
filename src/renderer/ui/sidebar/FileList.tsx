@@ -1,43 +1,10 @@
 import styled from "@emotion/styled";
 import { forwardRef, useImperativeHandle, useMemo, useRef, useState } from "react";
-import { List } from "../../components/form/List";
-import color from "../../theme/color";
-import { MenuItem } from "../../components/overlay/PopupMenu";
+import { ListBox, LIST_ITEM_KEY, Input, IconButton, Panel } from "../../uikit";
+import type { MenuItem } from "../../uikit/Menu";
+import { TraitSet, traited } from "../../core/traits/traits";
 import { FileIcon, FolderIcon } from "../../components/icons/FileIcon";
-import { TextField } from "../../components/basic/TextField";
-import { HighlightedTextProvider, highlightText, searchMatch } from "../../components/basic/useHighlightedText";
-import { Button } from "../../components/basic/Button";
 import { CloseIcon } from "../../theme/icons";
-
-const FileListWrapper = styled("div")({
-    flex: "1 1 auto",
-    display: "flex",
-    flexDirection: "column",
-    overflow: "hidden",
-    outline: "none",
-    "& .file-list-search": {
-        padding: "4px",
-        "& .text-field": {
-            width: "100%",
-        },
-    },
-});
-
-const FileListStyled = styled(List)({
-    "& .list-item": {
-        userSelect: "none",
-        "& svg": {
-            width: 16,
-            height: 16,
-        },
-        "&:hover": {
-            backgroundColor: color.background.default,
-        },
-        "&.selected": {
-            backgroundColor: color.background.default,
-        },
-    },
-});
 
 export interface FileListItem {
     filePath: string;
@@ -45,14 +12,10 @@ export interface FileListItem {
     isFolder?: boolean;
 }
 
-const getFileLabel = (item: FileListItem) => item.title;
-const getFileIcon = (item: FileListItem) => {
-    if (item.isFolder) {
-        return <FolderIcon />;
-    }
-    return <FileIcon path={item.filePath} />;
-};
-const getTooltip = (item: FileListItem) => item.filePath;
+export interface FileListRef {
+    showSearch: () => void;
+    hideSearch: () => void;
+}
 
 interface FileListProps {
     items: FileListItem[];
@@ -62,25 +25,30 @@ interface FileListProps {
     searchable?: boolean;
 }
 
-export interface FileListRef {
-    showSearch: () => void;
-    hideSearch: () => void;
-}
+const FileListWrapper = styled.div({
+    flex: "1 1 auto",
+    display: "flex",
+    flexDirection: "column",
+    overflow: "hidden",
+    outline: "none",
+});
+
+const fileListTraits = new TraitSet().add(LIST_ITEM_KEY, {
+    value: (item: unknown) => (item as FileListItem).filePath,
+    label: (item: unknown) => (item as FileListItem).title,
+    icon: (item: unknown) =>
+        (item as FileListItem).isFolder
+            ? <FolderIcon />
+            : <FileIcon path={(item as FileListItem).filePath} />,
+});
 
 export const FileList = forwardRef<FileListRef, FileListProps>(
     function FileList(props, ref) {
         const [searchText, setSearchText] = useState("");
         const [searchVisible, setSearchVisible] = useState(false);
+        const [activeIndex, setActiveIndex] = useState<number | null>(null);
         const rootRef = useRef<HTMLDivElement>(null);
         const searchInputRef = useRef<HTMLInputElement>(null);
-
-        useImperativeHandle(ref, () => ({
-            showSearch: () => {
-                setSearchVisible(true);
-                setTimeout(() => searchInputRef.current?.focus(), 0);
-            },
-            hideSearch,
-        }));
 
         const hideSearch = () => {
             setSearchVisible(false);
@@ -98,18 +66,32 @@ export const FileList = forwardRef<FileListRef, FileListProps>(
             }
         };
 
+        useImperativeHandle(ref, () => ({
+            showSearch: () => {
+                setSearchVisible(true);
+                setTimeout(() => searchInputRef.current?.focus(), 0);
+            },
+            hideSearch,
+        }));
+
         const filteredItems = useMemo(() => {
             if (!searchText) {
                 return props.items;
             }
-            const searchLower = searchText
+            const lower = searchText
                 .toLowerCase()
                 .split(" ")
                 .filter((s) => s);
-            return props.items.filter((item) =>
-                searchMatch(item, searchLower, [(i) => i.title])
-            );
+            return props.items.filter((item) => {
+                const title = item.title.toLowerCase();
+                return lower.every((s) => title.includes(s));
+            });
         }, [props.items, searchText]);
+
+        const tItems = useMemo(
+            () => traited(filteredItems, fileListTraits),
+            [filteredItems]
+        );
 
         const onKeyDown = (e: React.KeyboardEvent) => {
             if (e.key === "Escape" && searchVisible) {
@@ -127,50 +109,43 @@ export const FileList = forwardRef<FileListRef, FileListProps>(
             }
         };
 
-        const getFileLabelHighlighted = (item: FileListItem) => {
-            return highlightText(searchText, item.title);
-        };
-
         return (
             <FileListWrapper ref={rootRef} tabIndex={0} onKeyDown={onKeyDown}>
                 {searchVisible && (
-                    <div className="file-list-search">
-                        <TextField
+                    <Panel padding="sm">
+                        <Input
                             ref={searchInputRef}
                             value={searchText}
                             onChange={setSearchText}
                             placeholder="Search..."
                             onKeyDown={onSearchKeyDown}
                             onBlur={onSearchBlur}
-                            endButtons={[
-                                <Button
-                                    size="small"
-                                    type="icon"
-                                    key="clear-search"
-                                    title="Clear Search"
-                                    onClick={hideSearchAndFocus}
-                                    invisible={!searchText}
-                                >
-                                    <CloseIcon />
-                                </Button>,
-                            ]}
+                            endSlot={
+                                searchText ? (
+                                    <IconButton
+                                        icon={<CloseIcon />}
+                                        title="Clear Search"
+                                        size="sm"
+                                        onClick={hideSearchAndFocus}
+                                    />
+                                ) : null
+                            }
                         />
-                    </div>
+                    </Panel>
                 )}
-                <HighlightedTextProvider value={searchText}>
-                    <FileListStyled
-                        options={filteredItems}
-                        getLabel={searchText ? getFileLabelHighlighted : getFileLabel}
-                        getIcon={getFileIcon}
-                        selectedIcon={<span />}
-                        rowHeight={22}
-                        onClick={props.onClick}
-                        getTooltip={getTooltip}
-                        getContextMenu={props.getContextMenu}
-                        onContextMenu={props.onContextMenu}
-                        emptyMessage="no files"
-                    />
-                </HighlightedTextProvider>
+                <ListBox<FileListItem>
+                    items={tItems}
+                    searchText={searchText || undefined}
+                    rowHeight={22}
+                    activeIndex={activeIndex}
+                    onActiveChange={setActiveIndex}
+                    onChange={props.onClick}
+                    getTooltip={(item) => item.filePath}
+                    getContextMenu={props.getContextMenu}
+                    onContextMenu={props.onContextMenu}
+                    emptyMessage="no files"
+                    variant="browse"
+                />
             </FileListWrapper>
         );
     }
