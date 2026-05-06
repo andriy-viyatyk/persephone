@@ -5,7 +5,21 @@ import { fontSize, radius, spacing } from "../tokens";
 
 // --- Types ---
 
-export interface TextareaProps {
+export interface TextareaProps
+    extends Omit<
+        React.HTMLAttributes<HTMLDivElement>,
+        // Rule 7 — forbid style/className on UIKit components.
+        | "style" | "className"
+        // Reimplemented with a string-value API instead of an event API.
+        | "onChange" | "onInput"
+        // Owned by the component (single-line stripping, paste handling, contentEditable).
+        | "onPaste" | "onKeyDown"
+        | "contentEditable"
+        // The component's content comes from `value`, not `children`.
+        | "children"
+        // Never makes sense on a contentEditable surface.
+        | "dangerouslySetInnerHTML"
+    > {
     /** Current text value. */
     value: string;
     /** Change handler — receives the string value directly, not the event. */
@@ -26,8 +40,6 @@ export interface TextareaProps {
     size?: "sm" | "md";
     /** Auto-focus on mount. Default: false. */
     autoFocus?: boolean;
-    "aria-label"?: string;
-    "aria-labelledby"?: string;
 }
 
 /** Imperative handle exposed via `ref`. */
@@ -86,8 +98,8 @@ const Root = styled.div(
 // --- Component ---
 
 export const Textarea = React.forwardRef<TextareaRef, TextareaProps>(
-    function Textarea(
-        {
+    function Textarea(props, ref) {
+        const {
             value,
             onChange,
             placeholder,
@@ -98,11 +110,8 @@ export const Textarea = React.forwardRef<TextareaRef, TextareaProps>(
             maxHeight,
             size = "md",
             autoFocus,
-            "aria-label": ariaLabel,
-            "aria-labelledby": ariaLabelledBy,
-        },
-        ref,
-    ) {
+            ...rest
+        } = props;
         const divRef = React.useRef<HTMLDivElement>(null);
         const editable = !disabled && !readOnly;
 
@@ -172,10 +181,9 @@ export const Textarea = React.forwardRef<TextareaRef, TextareaProps>(
         return (
             <Root
                 ref={divRef}
+                {...rest}
                 role="textbox"
                 aria-multiline={!singleLine}
-                aria-label={ariaLabel}
-                aria-labelledby={ariaLabelledBy}
                 contentEditable={editable ? "plaintext-only" : false}
                 spellCheck={false}
                 data-type="textarea"

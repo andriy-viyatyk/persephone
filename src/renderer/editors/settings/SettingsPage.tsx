@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import styled from "@emotion/styled";
 import { IEditorState, EditorType } from "../../../shared/types";
 import { getDefaultEditorModelState, EditorModel } from "../base";
 import { TComponentState } from "../../core/state/state";
@@ -9,559 +8,22 @@ import { settings } from "../../api/settings";
 import { app } from "../../api/app";
 import { createLinkData } from "../../../shared/link-data";
 import { applyTheme, getAvailableThemes } from "../../theme/themes";
-import { TextAreaField, TextAreaFieldRef } from "../../components/basic/TextAreaField";
 import { DEFAULT_BROWSER_COLOR, TAG_COLORS } from "../../theme/palette-colors";
-import { WithPopupMenu } from "../../components/overlay/WithPopupMenu";
-import { MenuItem } from "../../components/overlay/PopupMenu";
 import { ui } from "../../api/ui";
 import { getPartitionString } from "../browser/BrowserEditorModel";
 import { IncognitoIcon, TorIcon } from "../../theme/language-icons";
+import { CloseIcon } from "../../theme/icons";
 import { api } from "../../../ipc/renderer/api";
 import rendererEvents from "../../../ipc/renderer/renderer-events";
 const { ipcRenderer } = require("electron");
 import { fpBasename } from "../../core/utils/file-path";
 import { BrowserChannel } from "../../../ipc/browser-ipc";
-
-// ============================================================================
-// Styled Component
-// ============================================================================
-
-const SettingsEditorRoot = styled.div({
-    flex: "1 1 auto",
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    padding: 32,
-    overflow: "auto",
-    fontFamily: "Arial, sans-serif",
-
-    "& .settings-card": {
-        display: "flex",
-        flexDirection: "column",
-        maxWidth: 500,
-        width: "100%",
-        padding: 32,
-        margin: "auto 0",
-        backgroundColor: color.background.light,
-        borderRadius: 8,
-    },
-
-    "& .settings-title": {
-        margin: 0,
-        fontSize: 24,
-        fontWeight: 600,
-        color: color.text.default,
-        marginBottom: 24,
-    },
-
-    "& .section-label": {
-        fontSize: 14,
-        fontWeight: 600,
-        color: color.text.default,
-        marginBottom: 12,
-    },
-
-    "& .theme-section-label": {
-        fontSize: 11,
-        fontWeight: 600,
-        color: color.text.light,
-        textTransform: "uppercase" as const,
-        letterSpacing: 0.5,
-        marginBottom: 8,
-    },
-
-    "& .theme-grid": {
-        display: "flex",
-        flexWrap: "wrap",
-        gap: 10,
-        marginBottom: 16,
-    },
-
-    "& .theme-card": {
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        gap: 8,
-        padding: "12px 16px",
-        minWidth: 120,
-        backgroundColor: color.background.dark,
-        border: `1px solid ${color.border.default}`,
-        borderRadius: 6,
-        cursor: "pointer",
-        transition: "border-color 0.15s",
-
-        "&:hover": {
-            borderColor: color.text.light,
-        },
-
-        "&.active": {
-            borderColor: color.border.active,
-        },
-    },
-
-    "& .theme-preview": {
-        width: 80,
-        height: 48,
-        borderRadius: 4,
-        border: `1px solid ${color.border.default}`,
-        display: "flex",
-        flexDirection: "column",
-        overflow: "hidden",
-    },
-
-    "& .theme-preview-header": {
-        height: 12,
-    },
-
-    "& .theme-preview-body": {
-        flex: 1,
-        padding: "4px 6px",
-        display: "flex",
-        flexDirection: "column",
-        gap: 2,
-    },
-
-    "& .theme-preview-line": {
-        height: 3,
-        borderRadius: 1,
-        opacity: 0.6,
-    },
-
-    "& .theme-name": {
-        fontSize: 12,
-        color: color.text.default,
-        textAlign: "center",
-    },
-
-    "& .divider": {
-        width: "100%",
-        border: "none",
-        borderTop: `1px solid ${color.border.default}`,
-        margin: "20px 0",
-    },
-
-    "& .section-hint": {
-        fontSize: 11,
-        color: color.text.light,
-        marginBottom: 8,
-    },
-
-    "& .extensions-field": {
-        fontSize: 12,
-        lineHeight: 1.5,
-        maxHeight: 200,
-        overflowY: "auto",
-    },
-
-    "& .link-button": {
-        padding: "6px 12px",
-        fontSize: 12,
-        color: color.misc.blue,
-        backgroundColor: "transparent",
-        border: `1px solid ${color.border.default}`,
-        borderRadius: 4,
-        cursor: "pointer",
-        "&:hover": {
-            backgroundColor: color.background.dark,
-        },
-    },
-
-    "& .profile-list": {
-        display: "flex",
-        flexDirection: "column",
-        gap: 4,
-        marginBottom: 12,
-    },
-
-    "& .profile-row": {
-        display: "flex",
-        alignItems: "center",
-        gap: 8,
-        padding: "6px 8px",
-    },
-
-    "& .profile-color-dot": {
-        width: 12,
-        height: 12,
-        borderRadius: "50%",
-        flexShrink: 0,
-        border: `1px solid ${color.border.default}`,
-        "&.clickable": {
-            cursor: "pointer",
-            "&:hover": {
-                outline: `2px solid ${color.border.active}`,
-                outlineOffset: 1,
-            },
-        },
-    },
-
-    "& .profile-name": {
-        fontSize: 13,
-        color: color.text.default,
-        flex: 1,
-    },
-
-    "& .profile-default-badge": {
-        fontSize: 10,
-        color: color.text.light,
-        textTransform: "uppercase" as const,
-        letterSpacing: 0.5,
-        padding: "1px 6px",
-        border: `1px solid ${color.border.default}`,
-        borderRadius: 3,
-    },
-
-    "& .profile-set-default": {
-        fontSize: 11,
-        color: color.misc.blue,
-        background: "none",
-        border: "none",
-        cursor: "pointer",
-        padding: "2px 4px",
-        "&:hover": {
-            textDecoration: "underline",
-        },
-    },
-
-    "& .profile-clear-data": {
-        fontSize: 11,
-        color: color.text.light,
-        background: "none",
-        border: "none",
-        cursor: "pointer",
-        padding: "2px 4px",
-        opacity: 0,
-        transition: "opacity 0.15s",
-        "&:hover": {
-            color: color.text.default,
-        },
-    },
-
-    "& .profile-cleared": {
-        fontSize: 11,
-        color: color.misc.green,
-        padding: "2px 4px",
-    },
-
-    "& .profile-remove": {
-        fontSize: 14,
-        color: color.text.light,
-        background: "none",
-        border: "none",
-        cursor: "pointer",
-        padding: "0 4px",
-        opacity: 0,
-        transition: "opacity 0.15s",
-        "&:hover": {
-            color: color.text.default,
-        },
-    },
-
-    "& .profile-add-form": {
-        display: "flex",
-        flexDirection: "column",
-        gap: 8,
-    },
-
-    "& .profile-add-row": {
-        display: "flex",
-        alignItems: "center",
-        gap: 8,
-    },
-
-    "& .profile-name-input": {
-        flex: 1,
-        fontSize: 13,
-        padding: "4px 8px",
-        backgroundColor: color.background.dark,
-        border: `1px solid ${color.border.default}`,
-        borderRadius: 4,
-        color: color.text.default,
-        outline: "none",
-        "&:focus": {
-            borderColor: color.border.active,
-        },
-    },
-
-    "& .profile-add-button": {
-        fontSize: 12,
-        padding: "4px 12px",
-        color: color.text.default,
-        backgroundColor: color.background.dark,
-        border: `1px solid ${color.border.default}`,
-        borderRadius: 4,
-        cursor: "pointer",
-        "&:hover": {
-            borderColor: color.text.light,
-        },
-        "&:disabled": {
-            opacity: 0.4,
-            cursor: "default",
-        },
-    },
-
-    "& .color-palette": {
-        display: "flex",
-        flexWrap: "wrap",
-        gap: 6,
-    },
-
-    "& .color-swatch": {
-        width: 18,
-        height: 18,
-        borderRadius: "50%",
-        cursor: "pointer",
-        border: "2px solid transparent",
-        transition: "border-color 0.15s",
-        "&:hover": {
-            borderColor: color.text.light,
-        },
-        "&.selected": {
-            borderColor: color.text.default,
-        },
-    },
-
-    "& .profile-empty": {
-        fontSize: 12,
-        color: color.text.light,
-        fontStyle: "italic",
-        marginBottom: 8,
-    },
-
-    "& .profile-row-group": {
-        display: "flex",
-        flexDirection: "column",
-        borderRadius: 4,
-        backgroundColor: color.background.dark,
-        "&:hover .profile-remove, &:hover .profile-clear-data": {
-            opacity: 1,
-        },
-    },
-
-    "& .profile-bookmarks-line": {
-        display: "flex",
-        alignItems: "center",
-        gap: 6,
-        padding: "2px 8px 6px 28px",
-        fontSize: 11,
-        color: color.text.light,
-    },
-
-    "& .profile-bookmarks-path": {
-        cursor: "pointer",
-        overflow: "hidden",
-        textOverflow: "ellipsis",
-        whiteSpace: "nowrap",
-        "&:hover": {
-            color: color.text.default,
-        },
-    },
-
-    "& .profile-bookmarks-placeholder": {
-        fontStyle: "italic",
-        cursor: "pointer",
-        "&:hover": {
-            color: color.text.default,
-        },
-    },
-
-    "& .profile-bookmarks-clear": {
-        fontSize: 11,
-        color: color.text.light,
-        background: "none",
-        border: "none",
-        cursor: "pointer",
-        padding: "0 2px",
-        flexShrink: 0,
-        "&:hover": {
-            color: color.text.default,
-        },
-    },
-
-    "& .settings-field-label": {
-        fontSize: 11,
-        color: color.text.dark,
-        minWidth: 42,
-        flexShrink: 0,
-    },
-
-    "& .tor-port-input": {
-        width: 56,
-        fontSize: 11,
-        padding: "2px 6px",
-        backgroundColor: color.background.dark,
-        border: `1px solid ${color.border.default}`,
-        borderRadius: 3,
-        color: color.text.default,
-        outline: "none",
-        "&:focus": {
-            borderColor: color.border.active,
-        },
-    },
-
-    "& .browser-reg-row": {
-        display: "flex",
-        alignItems: "center",
-        gap: 8,
-        flexWrap: "wrap",
-    },
-
-    "& .browser-reg-status": {
-        fontSize: 12,
-        color: color.text.light,
-        "&.registered": {
-            color: color.misc.green,
-        },
-    },
-
-    "& .settings-select": {
-        fontSize: 13,
-        padding: "6px 8px",
-        backgroundColor: color.background.dark,
-        border: `1px solid ${color.border.default}`,
-        borderRadius: 4,
-        color: color.text.default,
-        outline: "none",
-        cursor: "pointer",
-        "&:focus": {
-            borderColor: color.border.active,
-        },
-    },
-
-    "& .mcp-toggle-row": {
-        display: "flex",
-        alignItems: "center",
-        gap: 8,
-        marginBottom: 12,
-    },
-
-    "& .mcp-toggle-label": {
-        fontSize: 13,
-        color: color.text.default,
-        cursor: "pointer",
-        userSelect: "none" as const,
-    },
-
-    "& .mcp-field-row": {
-        display: "flex",
-        alignItems: "center",
-        gap: 8,
-        marginBottom: 12,
-    },
-
-    "& .mcp-field-label": {
-        fontSize: 13,
-        color: color.text.default,
-    },
-
-    "& .mcp-port-input": {
-        width: 72,
-        fontSize: 13,
-        padding: "4px 8px",
-        backgroundColor: color.background.dark,
-        border: `1px solid ${color.border.default}`,
-        borderRadius: 4,
-        color: color.text.default,
-        outline: "none",
-        "&:focus": {
-            borderColor: color.border.active,
-        },
-        "&:disabled": {
-            opacity: 0.5,
-            cursor: "not-allowed",
-        },
-    },
-
-    "& .mcp-status-line": {
-        display: "flex",
-        alignItems: "center",
-        gap: 6,
-        fontSize: 12,
-        color: color.text.light,
-        marginBottom: 12,
-    },
-
-    "& .mcp-status-dot": {
-        width: 8,
-        height: 8,
-        borderRadius: "50%",
-        flexShrink: 0,
-    },
-
-    "& .mcp-url-row": {
-        display: "flex",
-        alignItems: "center",
-        gap: 8,
-        marginBottom: 12,
-    },
-
-    "& .mcp-url": {
-        fontSize: 12,
-        fontFamily: "monospace",
-        padding: "4px 8px",
-        backgroundColor: color.background.dark,
-        borderRadius: 4,
-        border: `1px solid ${color.border.default}`,
-        color: color.text.default,
-        userSelect: "all" as const,
-    },
-
-    "& .mcp-copy-button": {
-        fontSize: 11,
-        padding: "3px 8px",
-        color: color.text.light,
-        backgroundColor: "transparent",
-        border: `1px solid ${color.border.default}`,
-        borderRadius: 4,
-        cursor: "pointer",
-        whiteSpace: "nowrap" as const,
-        "&:hover": {
-            color: color.text.default,
-            backgroundColor: color.background.dark,
-        },
-    },
-
-    "& .mcp-config": {
-        fontSize: 11,
-        fontFamily: "monospace",
-        lineHeight: 1.5,
-        padding: "8px 12px",
-        backgroundColor: color.background.dark,
-        borderRadius: 4,
-        border: `1px solid ${color.border.default}`,
-        color: color.text.default,
-        whiteSpace: "pre" as const,
-        overflow: "auto",
-        marginBottom: 8,
-    },
-
-    "& .library-path-row": {
-        display: "flex",
-        alignItems: "center",
-        gap: 8,
-        marginBottom: 8,
-    },
-
-    "& .library-path-display": {
-        flex: 1,
-        fontSize: 12,
-        fontFamily: "monospace",
-        padding: "6px 8px",
-        backgroundColor: color.background.dark,
-        border: `1px solid ${color.border.default}`,
-        borderRadius: 4,
-        color: color.text.default,
-        overflow: "hidden",
-        textOverflow: "ellipsis",
-        whiteSpace: "nowrap" as const,
-    },
-
-    "& .library-path-placeholder": {
-        color: color.text.light,
-        fontStyle: "italic",
-        fontFamily: "inherit",
-    },
-});
+import { ColorizedCode } from "../shared/ColorizedCode";
+import {
+    Panel, Button, IconButton, Input, Textarea, Select, Checkbox,
+    Divider, Text, Dot, WithMenu,
+} from "../../uikit";
+import type { TextareaRef, IListBoxItem, MenuItem } from "../../uikit";
 
 // ============================================================================
 // Theme Preview
@@ -576,12 +38,31 @@ interface ThemePreviewProps {
 
 function ThemePreview({ bgDefault, bgDark, textDefault, accentColor }: ThemePreviewProps) {
     return (
-        <div className="theme-preview">
-            <div className="theme-preview-header" style={{ backgroundColor: bgDark }} />
-            <div className="theme-preview-body" style={{ backgroundColor: bgDefault }}>
-                <div className="theme-preview-line" style={{ backgroundColor: accentColor, width: "60%" }} />
-                <div className="theme-preview-line" style={{ backgroundColor: textDefault, width: "80%" }} />
-                <div className="theme-preview-line" style={{ backgroundColor: textDefault, width: "45%" }} />
+        <div
+            style={{
+                width: 80,
+                height: 48,
+                borderRadius: 4,
+                border: `1px solid ${color.border.default}`,
+                display: "flex",
+                flexDirection: "column",
+                overflow: "hidden",
+            }}
+        >
+            <div style={{ height: 12, backgroundColor: bgDark }} />
+            <div
+                style={{
+                    flex: 1,
+                    padding: "4px 6px",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 2,
+                    backgroundColor: bgDefault,
+                }}
+            >
+                <div style={{ height: 3, borderRadius: 1, opacity: 0.6, backgroundColor: accentColor, width: "60%" }} />
+                <div style={{ height: 3, borderRadius: 1, opacity: 0.6, backgroundColor: textDefault, width: "80%" }} />
+                <div style={{ height: 3, borderRadius: 1, opacity: 0.6, backgroundColor: textDefault, width: "45%" }} />
             </div>
         </div>
     );
@@ -618,6 +99,77 @@ class SettingsEditorModel extends EditorModel<SettingsEditorModelState, void> {
 }
 
 // ============================================================================
+// Shared inline styles for one-off chrome (Rule 7 — plain HTML elements only)
+// ============================================================================
+
+const labelTextStyle: React.CSSProperties = {
+    fontSize: 11,
+    color: color.text.light,
+};
+
+const fieldLabelStyle: React.CSSProperties = {
+    fontSize: 11,
+    color: color.text.dark,
+    minWidth: 42,
+    flexShrink: 0,
+};
+
+const linkStyle: React.CSSProperties = {
+    cursor: "pointer",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+};
+
+const placeholderStyle: React.CSSProperties = {
+    fontStyle: "italic",
+    cursor: "pointer",
+};
+
+const defaultBadgeStyle: React.CSSProperties = {
+    fontSize: 10,
+    color: color.text.light,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    padding: "1px 6px",
+    border: `1px solid ${color.border.default}`,
+    borderRadius: 3,
+};
+
+const monoTextStyle: React.CSSProperties = {
+    fontSize: 12,
+    fontFamily: "monospace",
+    padding: "4px 8px",
+    backgroundColor: color.background.dark,
+    borderRadius: 4,
+    border: `1px solid ${color.border.default}`,
+    color: color.text.default,
+    userSelect: "all",
+};
+
+const configBlockStyle: React.CSSProperties = {
+    fontSize: 11,
+    fontFamily: "monospace",
+    lineHeight: 1.5,
+    padding: "8px 12px",
+    backgroundColor: color.background.dark,
+    borderRadius: 4,
+    border: `1px solid ${color.border.default}`,
+    color: color.text.default,
+    overflow: "auto",
+    margin: 0,
+};
+
+const pathDisplayStyle: React.CSSProperties = {
+    fontSize: 12,
+    fontFamily: "monospace",
+    color: color.text.default,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+};
+
+// ============================================================================
 // Browser Profiles Section
 // ============================================================================
 
@@ -642,21 +194,41 @@ function BookmarksFileLine({ filePath, onBrowse, onClear }: {
 }) {
     const filename = filePath ? fpBasename(filePath) : "";
     return (
-        <div className="profile-bookmarks-line">
-            <span>📁</span>
+        <Panel
+            direction="row"
+            align="center"
+            gap="md"
+            paddingTop="xs"
+            paddingRight="md"
+            paddingBottom="sm"
+            paddingLeft="xxl"
+        >
+            <span style={labelTextStyle}>📁</span>
             {filename ? (
-                <span className="profile-bookmarks-path" title={filePath} onClick={onBrowse}>
+                <span
+                    style={{ ...labelTextStyle, ...linkStyle }}
+                    title={filePath}
+                    onClick={onBrowse}
+                >
                     {filename}
                 </span>
             ) : (
-                <span className="profile-bookmarks-placeholder" onClick={onBrowse}>
+                <span
+                    style={{ ...labelTextStyle, ...placeholderStyle }}
+                    onClick={onBrowse}
+                >
                     No bookmarks file
                 </span>
             )}
             {filename && (
-                <button className="profile-bookmarks-clear" onClick={onClear} title="Remove bookmarks file">×</button>
+                <IconButton
+                    size="sm"
+                    icon={<CloseIcon />}
+                    title="Remove bookmarks file"
+                    onClick={onClear}
+                />
             )}
-        </div>
+        </Panel>
     );
 }
 
@@ -722,43 +294,74 @@ function TorProfileRow() {
     const torExeFilename = torExePath ? fpBasename(torExePath) : "";
 
     return (
-        <div className="profile-row-group">
-            <div className="profile-row">
+        <Panel direction="column" rounded="sm" background="dark">
+            <Panel direction="row" align="center" gap="md" paddingX="md" paddingY="xs">
                 <TorIcon style={{ width: 14, height: 14, flexShrink: 0 }} />
-                <span className="profile-name">Tor</span>
-            </div>
-            <div className="profile-bookmarks-line">
-                <span className="settings-field-label">tor.exe:</span>
+                <Panel flex>
+                    <Text size="sm">Tor</Text>
+                </Panel>
+            </Panel>
+            <Panel
+                direction="row"
+                align="center"
+                gap="md"
+                paddingTop="xs"
+                paddingRight="md"
+                paddingBottom="sm"
+                paddingLeft="xxl"
+            >
+                <span style={fieldLabelStyle}>tor.exe:</span>
                 {torExeFilename ? (
-                    <span className="profile-bookmarks-path" title={torExePath} onClick={handleBrowseTorExe}>
+                    <span
+                        style={{ ...labelTextStyle, ...linkStyle }}
+                        title={torExePath}
+                        onClick={handleBrowseTorExe}
+                    >
                         {torExeFilename}
                     </span>
                 ) : (
-                    <span className="profile-bookmarks-placeholder" onClick={handleBrowseTorExe}>
+                    <span
+                        style={{ ...labelTextStyle, ...placeholderStyle }}
+                        onClick={handleBrowseTorExe}
+                    >
                         Not configured
                     </span>
                 )}
                 {torExeFilename && (
-                    <button className="profile-bookmarks-clear" onClick={handleClearTorExe} title="Remove tor.exe path">×</button>
+                    <IconButton
+                        size="sm"
+                        icon={<CloseIcon />}
+                        title="Remove tor.exe path"
+                        onClick={handleClearTorExe}
+                    />
                 )}
-            </div>
-            <div className="profile-bookmarks-line">
-                <span className="settings-field-label">Port:</span>
-                <input
-                    className="tor-port-input"
+            </Panel>
+            <Panel
+                direction="row"
+                align="center"
+                gap="md"
+                paddingTop="xs"
+                paddingRight="md"
+                paddingBottom="sm"
+                paddingLeft="xxl"
+            >
+                <span style={fieldLabelStyle}>Port:</span>
+                <Input
+                    size="sm"
+                    width={56}
                     type="text"
                     value={portValue}
-                    onChange={(e) => setPortValue(e.target.value)}
+                    onChange={setPortValue}
                     onBlur={handlePortBlur}
                     onKeyDown={handlePortKeyDown}
                 />
-            </div>
+            </Panel>
             <BookmarksFileLine
                 filePath={torBookmarksFile}
                 onBrowse={handleBrowseTorBookmarks}
                 onClear={() => settings.set("tor.bookmarks-file", "")}
             />
-        </div>
+        </Panel>
     );
 }
 
@@ -812,22 +415,16 @@ function BrowserProfilesSection() {
         settings.set("browser-default-profile", defaultProfile === name ? "" : name);
     };
 
-    const handleColorChange = (name: string, newColor: string) => {
+    const handleColorChange = (name: string, newProfileColor: string) => {
         settings.set("browser-profiles", profiles.map((p) =>
-            p.name === name ? { ...p, color: newColor } : p,
+            p.name === name ? { ...p, color: newProfileColor } : p,
         ));
     };
 
     const getColorMenuItems = (profileName: string, currentColor: string): MenuItem[] =>
         TAG_COLORS.map((c) => ({
             label: c.name,
-            icon: <span style={{
-                display: "inline-block",
-                width: 10,
-                height: 10,
-                borderRadius: "50%",
-                backgroundColor: c.hex,
-            }} />,
+            icon: <Dot size={10} color={c.hex} />,
             onClick: () => handleColorChange(profileName, c.hex),
             selected: currentColor === c.hex,
         }));
@@ -868,114 +465,137 @@ function BrowserProfilesSection() {
 
     return (
         <>
-            <div className="section-label">Browser Profiles</div>
-            <div className="section-hint">
-                Isolated browsing sessions with separate cookies, storage, and cache
-            </div>
+            <Panel paddingBottom="lg"><Text bold size="sm">Browser Profiles</Text></Panel>
+            <Panel paddingBottom="md">
+                <Text color="light" size="xs">
+                    Isolated browsing sessions with separate cookies, storage, and cache
+                </Text>
+            </Panel>
 
-            <div className="profile-list">
-                <div className="profile-row-group">
-                    <div className="profile-row">
-                        <span className="profile-color-dot" style={{ backgroundColor: DEFAULT_BROWSER_COLOR }} />
-                        <span className="profile-name">Default</span>
+            <Panel direction="column" gap="sm" paddingBottom="lg">
+                {/* Default profile */}
+                <Panel direction="column" rounded="sm" background="dark">
+                    <Panel direction="row" align="center" gap="md" paddingX="md" paddingY="xs">
+                        <Dot size="md" color={DEFAULT_BROWSER_COLOR} bordered />
+                        <Panel flex>
+                            <Text size="sm">Default</Text>
+                        </Panel>
                         {defaultProfile === "" ? (
-                            <span className="profile-default-badge">default</span>
+                            <span style={defaultBadgeStyle}>default</span>
                         ) : (
-                            <button className="profile-set-default" onClick={() => handleSetDefault("")}>
+                            <Button variant="ghost" size="sm" background="light" onClick={() => handleSetDefault("")}>
                                 set default
-                            </button>
+                            </Button>
                         )}
                         {clearedProfile === "" && (
-                            <span className="profile-cleared">Cleared</span>
+                            <Text color="success" size="xs">Cleared</Text>
                         )}
-                        <button className="profile-clear-data" onClick={() => handleClearData("")}>
+                        <Button variant="ghost" size="sm" background="light" onClick={() => handleClearData("")}>
                             clear data
-                        </button>
-                    </div>
+                        </Button>
+                    </Panel>
                     <BookmarksFileLine
                         filePath={defaultBookmarksFile}
                         onBrowse={handleBrowseDefaultBookmarks}
                         onClear={() => settings.set("browser-default-bookmarks-file", "")}
                     />
-                </div>
+                </Panel>
+
+                {/* Custom profiles */}
                 {profiles.map((profile) => (
-                    <div key={profile.name} className="profile-row-group">
-                        <div className="profile-row">
-                            <WithPopupMenu items={getColorMenuItems(profile.name, profile.color)}>
-                                {(openMenu) => (
-                                    <span
-                                        className="profile-color-dot clickable"
-                                        style={{ backgroundColor: profile.color }}
+                    <Panel key={profile.name} direction="column" rounded="sm" background="dark">
+                        <Panel direction="row" align="center" gap="md" paddingX="md" paddingY="xs">
+                            <WithMenu items={getColorMenuItems(profile.name, profile.color)}>
+                                {(setOpen) => (
+                                    <Dot
+                                        size="md"
+                                        color={profile.color}
+                                        bordered
                                         title="Change color"
-                                        onClick={(e) => openMenu(e.currentTarget)}
+                                        onClick={(e) => setOpen(e.currentTarget)}
                                     />
                                 )}
-                            </WithPopupMenu>
-                            <span className="profile-name">{profile.name}</span>
+                            </WithMenu>
+                            <Panel flex>
+                                <Text size="sm">{profile.name}</Text>
+                            </Panel>
                             {defaultProfile === profile.name ? (
-                                <span className="profile-default-badge">default</span>
+                                <span style={defaultBadgeStyle}>default</span>
                             ) : (
-                                <button className="profile-set-default" onClick={() => handleSetDefault(profile.name)}>
+                                <Button variant="ghost" size="sm" background="light" onClick={() => handleSetDefault(profile.name)}>
                                     set default
-                                </button>
+                                </Button>
                             )}
                             {clearedProfile === profile.name && (
-                                <span className="profile-cleared">Cleared</span>
+                                <Text color="success" size="xs">Cleared</Text>
                             )}
-                            <button className="profile-clear-data" onClick={() => handleClearData(profile.name)}>
+                            <Button variant="ghost" size="sm" background="light" onClick={() => handleClearData(profile.name)}>
                                 clear data
-                            </button>
-                            <button className="profile-remove" onClick={() => handleRemoveProfile(profile.name)}>
-                                ×
-                            </button>
-                        </div>
+                            </Button>
+                            <IconButton
+                                size="sm"
+                                icon={<CloseIcon />}
+                                title="Remove profile"
+                                onClick={() => handleRemoveProfile(profile.name)}
+                            />
+                        </Panel>
                         <BookmarksFileLine
                             filePath={profile.bookmarksFile || ""}
                             onBrowse={() => handleBrowseProfileBookmarks(profile.name)}
                             onClear={() => handleClearProfileBookmarks(profile.name)}
                         />
-                    </div>
+                    </Panel>
                 ))}
-                <div className="profile-row-group">
-                    <div className="profile-row">
+
+                {/* Incognito */}
+                <Panel direction="column" rounded="sm" background="dark">
+                    <Panel direction="row" align="center" gap="md" paddingX="md" paddingY="xs">
                         <IncognitoIcon style={{ width: 14, height: 14, flexShrink: 0 }} />
-                        <span className="profile-name">Incognito</span>
-                    </div>
+                        <Panel flex>
+                            <Text size="sm">Incognito</Text>
+                        </Panel>
+                    </Panel>
                     <BookmarksFileLine
                         filePath={incognitoBookmarksFile}
                         onBrowse={handleBrowseIncognitoBookmarks}
                         onClear={() => settings.set("browser-incognito-bookmarks-file", "")}
                     />
-                </div>
-                <TorProfileRow />
-            </div>
+                </Panel>
 
-            <div className="profile-add-form">
-                <div className="profile-add-row">
-                    <input
-                        className="profile-name-input"
-                        placeholder="Profile name"
-                        value={newName}
-                        onChange={(e) => setNewName(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                    />
-                    <button className="profile-add-button" disabled={!canAdd} onClick={handleAddProfile}>
+                {/* Tor */}
+                <TorProfileRow />
+            </Panel>
+
+            {/* Add profile form */}
+            <Panel direction="column" gap="md">
+                <Panel direction="row" align="center" gap="md">
+                    <Panel flex>
+                        <Input
+                            size="sm"
+                            placeholder="Profile name"
+                            value={newName}
+                            onChange={setNewName}
+                            onKeyDown={handleKeyDown}
+                        />
+                    </Panel>
+                    <Button variant="default" size="sm" background="light" disabled={!canAdd} onClick={handleAddProfile}>
                         Add
-                    </button>
-                </div>
-                <div className="section-hint">Profile color:</div>
-                <div className="color-palette">
+                    </Button>
+                </Panel>
+                <Text color="light" size="xs">Profile color:</Text>
+                <Panel direction="row" wrap gap="md">
                     {TAG_COLORS.map((c) => (
-                        <span
+                        <Dot
                             key={c.hex}
-                            className={`color-swatch${newColor === c.hex ? " selected" : ""}`}
-                            style={{ backgroundColor: c.hex }}
+                            size="lg"
+                            color={c.hex}
+                            selected={newColor === c.hex}
                             title={c.name}
                             onClick={() => setNewColor(c.hex)}
                         />
                     ))}
-                </div>
-            </div>
+                </Panel>
+            </Panel>
         </>
     );
 }
@@ -984,18 +604,24 @@ function BrowserProfilesSection() {
 // Link Behavior Section
 // ============================================================================
 
+const LINK_BEHAVIOR_ITEMS: IListBoxItem[] = [
+    { value: "default-browser",  label: "Open in default OS browser" },
+    { value: "internal-browser", label: "Open in internal Browser tab" },
+];
+
 function LinkBehaviorSection() {
     const linkBehavior = settings.use("link-open-behavior");
-
-    const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        settings.set("link-open-behavior", e.target.value as "default-browser" | "internal-browser");
-    };
-
     return (
-        <select className="settings-select" value={linkBehavior} onChange={handleChange}>
-            <option value="default-browser">Open in default OS browser</option>
-            <option value="internal-browser">Open in internal Browser tab</option>
-        </select>
+        <Panel maxWidth={300}>
+            <Select
+                items={LINK_BEHAVIOR_ITEMS}
+                value={LINK_BEHAVIOR_ITEMS.find((i) => i.value === linkBehavior) ?? null}
+                onChange={(item) => settings.set(
+                    "link-open-behavior",
+                    item.value as "default-browser" | "internal-browser",
+                )}
+            />
+        </Panel>
     );
 }
 
@@ -1041,28 +667,30 @@ function DefaultBrowserSection() {
 
     return (
         <>
-            <div className="section-hint">
-                Register Persephone as a browser so it appears in Windows Default Apps
-            </div>
-            <div className="browser-reg-row">
+            <Panel paddingBottom="md">
+                <Text color="light" size="xs">
+                    Register Persephone as a browser so it appears in Windows Default Apps
+                </Text>
+            </Panel>
+            <Panel direction="row" align="center" gap="md" wrap>
                 {registered === null ? (
-                    <span className="browser-reg-status">Checking...</span>
+                    <Text size="sm" color="light">Checking...</Text>
                 ) : registered ? (
                     <>
-                        <span className="browser-reg-status registered">Registered</span>
-                        <button className="link-button" disabled={busy} onClick={handleUnregister}>
+                        <Text size="sm" color="success">Registered</Text>
+                        <Button variant="link" size="sm" background="light" disabled={busy} onClick={handleUnregister}>
                             Unregister
-                        </button>
+                        </Button>
                     </>
                 ) : (
-                    <button className="link-button" disabled={busy} onClick={handleRegister}>
+                    <Button variant="link" size="sm" background="light" disabled={busy} onClick={handleRegister}>
                         Register as Default Browser
-                    </button>
+                    </Button>
                 )}
-                <button className="link-button" onClick={handleOpenSettings}>
+                <Button variant="link" size="sm" background="light" onClick={handleOpenSettings}>
                     Open Windows Default Apps
-                </button>
-            </div>
+                </Button>
+            </Panel>
         </>
     );
 }
@@ -1134,73 +762,74 @@ function McpSection() {
 
     return (
         <>
-            <div className="section-label">MCP Server</div>
-            <div className="section-hint">
-                AI agents (Claude, ChatGPT, Gemini) can control Persephone via MCP
-            </div>
+            <Panel paddingBottom="lg"><Text bold size="sm">MCP Server</Text></Panel>
+            <Panel paddingBottom="md">
+                <Text color="light" size="xs">
+                    AI agents (Claude, ChatGPT, Gemini) can control Persephone via MCP
+                </Text>
+            </Panel>
 
-            <div className="mcp-toggle-row">
-                <input type="checkbox" checked={mcpEnabled} onChange={handleToggle} id="mcp-enabled" />
-                <label htmlFor="mcp-enabled" className="mcp-toggle-label">
+            <Panel direction="row" align="center" gap="md" paddingBottom="lg">
+                <Checkbox checked={mcpEnabled} onChange={handleToggle}>
                     Enable MCP server
-                </label>
-            </div>
+                </Checkbox>
+            </Panel>
 
-            <div className="mcp-toggle-row">
-                <input
-                    type="checkbox"
+            <Panel direction="row" align="center" gap="md" paddingBottom="lg">
+                <Checkbox
                     checked={!!browserToolsEnabled}
-                    onChange={handleBrowserToolsToggle}
-                    id="mcp-browser-tools-enabled"
                     disabled={!!mcpEnabled}
-                />
-                <label htmlFor="mcp-browser-tools-enabled" className="mcp-toggle-label">
+                    onChange={handleBrowserToolsToggle}
+                >
                     Enable browser interaction
-                </label>
-            </div>
+                </Checkbox>
+            </Panel>
 
-            <div className="mcp-field-row">
-                <span className="mcp-field-label">Port:</span>
-                <input
-                    className="mcp-port-input"
+            <Panel direction="row" align="center" gap="md" paddingBottom="lg">
+                <Text size="sm">Port:</Text>
+                <Input
+                    size="sm"
+                    width={72}
                     type="text"
                     value={portValue}
-                    onChange={(e) => setPortValue(e.target.value)}
+                    onChange={setPortValue}
                     onBlur={handlePortBlur}
                     onKeyDown={handlePortKeyDown}
                     disabled={mcpEnabled}
                 />
-            </div>
+            </Panel>
 
             {mcpEnabled && status && (
                 <>
-                    <div className="mcp-status-line">
-                        <span
-                            className="mcp-status-dot"
-                            style={{ backgroundColor: status.running ? color.misc.green : color.text.light }}
-                        />
-                        {status.running
-                            ? `Running${status.clientCount > 0 ? ` — ${status.clientCount} client${status.clientCount !== 1 ? "s" : ""} connected` : ""}`
-                            : "Stopped"
-                        }
-                    </div>
+                    <Panel direction="row" align="center" gap="md" paddingBottom="lg">
+                        <Dot size="sm" color={status.running ? "success" : "neutral"} />
+                        <Text size="sm" color="light">
+                            {status.running
+                                ? `Running${status.clientCount > 0 ? ` — ${status.clientCount} client${status.clientCount !== 1 ? "s" : ""} connected` : ""}`
+                                : "Stopped"}
+                        </Text>
+                    </Panel>
 
-                    <div className="mcp-url-row">
-                        <span className="mcp-url">{status.url}</span>
-                        <button className="mcp-copy-button" onClick={() => handleCopy(status.url, "url")}>
+                    <Panel direction="row" align="center" gap="md" paddingBottom="lg">
+                        <span style={monoTextStyle}>{status.url}</span>
+                        <Button variant="default" size="sm" background="light" onClick={() => handleCopy(status.url, "url")}>
                             {copied === "url" ? "Copied!" : "Copy URL"}
-                        </button>
-                    </div>
+                        </Button>
+                    </Panel>
                 </>
             )}
 
-            <div className="section-hint" style={{ marginTop: 4 }}>
-                AI client configuration:
-            </div>
-            <div className="mcp-config">{configJson}</div>
-            <button className="mcp-copy-button" onClick={() => handleCopy(configJson, "config")}>
-                {copied === "config" ? "Copied!" : "Copy"}
-            </button>
+            <Panel paddingTop="sm" paddingBottom="md">
+                <Text color="light" size="xs">AI client configuration:</Text>
+            </Panel>
+            <pre style={configBlockStyle}>
+                <ColorizedCode code={configJson} language="json" />
+            </pre>
+            <Panel paddingTop="md">
+                <Button variant="default" size="sm" background="light" onClick={() => handleCopy(configJson, "config")}>
+                    {copied === "config" ? "Copied!" : "Copy"}
+                </Button>
+            </Panel>
         </>
     );
 }
@@ -1223,27 +852,29 @@ function ScriptLibrarySection() {
 
     return (
         <>
-            <div className="section-label">Script Library</div>
-            <div className="section-hint">
-                Folder for saved scripts and reusable modules
-            </div>
-            <div className="library-path-row">
-                <div className="library-path-display">
+            <Panel paddingBottom="lg"><Text bold size="sm">Script Library</Text></Panel>
+            <Panel paddingBottom="md">
+                <Text color="light" size="xs">
+                    Folder for saved scripts and reusable modules
+                </Text>
+            </Panel>
+            <Panel direction="row" align="center" gap="md">
+                <Panel flex minWidth={0} paddingY="sm" paddingX="md" background="dark" border rounded="sm" overflow="hidden">
                     {libraryPath ? (
-                        <span title={libraryPath}>{libraryPath}</span>
+                        <span style={pathDisplayStyle} title={libraryPath}>{libraryPath}</span>
                     ) : (
-                        <span className="library-path-placeholder">Not linked</span>
+                        <Text size="sm" italic color="light">Not linked</Text>
                     )}
-                </div>
-                <button className="link-button" onClick={handleBrowse}>
+                </Panel>
+                <Button variant="link" size="sm" background="light" onClick={handleBrowse}>
                     Browse...
-                </button>
+                </Button>
                 {libraryPath && (
-                    <button className="link-button" onClick={handleUnlink}>
+                    <Button variant="link" size="sm" background="light" onClick={handleUnlink}>
                         Unlink
-                    </button>
+                    </Button>
                 )}
-            </div>
+            </Panel>
         </>
     );
 }
@@ -1271,27 +902,29 @@ function DrawingLibrarySection() {
 
     return (
         <>
-            <div className="section-label">Drawing Library</div>
-            <div className="section-hint">
-                Folder for Excalidraw library items (reusable shapes)
-            </div>
-            <div className="library-path-row">
-                <div className="library-path-display">
+            <Panel paddingBottom="lg"><Text bold size="sm">Drawing Library</Text></Panel>
+            <Panel paddingBottom="md">
+                <Text color="light" size="xs">
+                    Folder for Excalidraw library items (reusable shapes)
+                </Text>
+            </Panel>
+            <Panel direction="row" align="center" gap="md">
+                <Panel flex minWidth={0} paddingY="sm" paddingX="md" background="dark" border rounded="sm" overflow="hidden">
                     {libraryPath ? (
-                        <span title={libraryPath}>{libraryPath}</span>
+                        <span style={pathDisplayStyle} title={libraryPath}>{libraryPath}</span>
                     ) : (
-                        <span className="library-path-placeholder">Default (auto)</span>
+                        <Text size="sm" italic color="light">Default (auto)</Text>
                     )}
-                </div>
-                <button className="link-button" onClick={handleBrowse}>
+                </Panel>
+                <Button variant="link" size="sm" background="light" onClick={handleBrowse}>
                     Browse...
-                </button>
+                </Button>
                 {libraryPath && (
-                    <button className="link-button" onClick={handleReset}>
+                    <Button variant="link" size="sm" background="light" onClick={handleReset}>
                         Reset
-                    </button>
+                    </Button>
                 )}
-            </div>
+            </Panel>
         </>
     );
 }
@@ -1339,16 +972,26 @@ function VideoPlayerSection() {
 
     return (
         <>
-            <div className="section-label">Video Player</div>
-            <div className="section-hint">
-                VLC integration and local video streaming server settings
-            </div>
-            <div className="profile-row-group">
-                <div className="profile-bookmarks-line">
-                    <span className="settings-field-label">vlc.exe:</span>
+            <Panel paddingBottom="lg"><Text bold size="sm">Video Player</Text></Panel>
+            <Panel paddingBottom="md">
+                <Text color="light" size="xs">
+                    VLC integration and local video streaming server settings
+                </Text>
+            </Panel>
+            <Panel direction="column" rounded="sm" background="dark">
+                <Panel
+                    direction="row"
+                    align="center"
+                    gap="md"
+                    paddingTop="xs"
+                    paddingRight="md"
+                    paddingBottom="sm"
+                    paddingLeft="xxl"
+                >
+                    <span style={fieldLabelStyle}>vlc.exe:</span>
                     {vlcFilename ? (
                         <span
-                            className="profile-bookmarks-path"
+                            style={{ ...labelTextStyle, ...linkStyle }}
                             title={vlcPath}
                             onClick={handleBrowseVlc}
                         >
@@ -1356,34 +999,42 @@ function VideoPlayerSection() {
                         </span>
                     ) : (
                         <span
-                            className="profile-bookmarks-placeholder"
+                            style={{ ...labelTextStyle, ...placeholderStyle }}
                             onClick={handleBrowseVlc}
                         >
                             Auto-detect
                         </span>
                     )}
                     {vlcFilename && (
-                        <button
-                            className="profile-bookmarks-clear"
-                            onClick={handleClearVlc}
+                        <IconButton
+                            size="sm"
+                            icon={<CloseIcon />}
                             title="Remove VLC path"
-                        >
-                            ×
-                        </button>
+                            onClick={handleClearVlc}
+                        />
                     )}
-                </div>
-                <div className="profile-bookmarks-line">
-                    <span className="settings-field-label">Stream port:</span>
-                    <input
-                        className="tor-port-input"
+                </Panel>
+                <Panel
+                    direction="row"
+                    align="center"
+                    gap="md"
+                    paddingTop="xs"
+                    paddingRight="md"
+                    paddingBottom="sm"
+                    paddingLeft="xxl"
+                >
+                    <span style={fieldLabelStyle}>Stream port:</span>
+                    <Input
+                        size="sm"
+                        width={56}
                         type="text"
                         value={portValue}
-                        onChange={(e) => setPortValue(e.target.value)}
+                        onChange={setPortValue}
                         onBlur={handlePortBlur}
                         onKeyDown={handlePortKeyDown}
                     />
-                </div>
-            </div>
+                </Panel>
+            </Panel>
         </>
     );
 }
@@ -1396,7 +1047,7 @@ interface SettingsEditorProps {
     model: SettingsEditorModel;
 }
 
-function SettingsPage({ model }: SettingsEditorProps) {
+function SettingsPage(_props: SettingsEditorProps) {
     const currentThemeId = settings.use("theme");
     const searchExtensions = settings.use("search-extensions");
     const themes = getAvailableThemes();
@@ -1404,7 +1055,7 @@ function SettingsPage({ model }: SettingsEditorProps) {
     const lightThemes = themes.filter((t) => !t.isDark);
 
     const extensionsText = searchExtensions.join(", ");
-    const extensionsRef = useRef<TextAreaFieldRef>(null);
+    const extensionsRef = useRef<TextareaRef>(null);
 
     const handleThemeChange = (themeId: string) => {
         applyTheme(themeId);
@@ -1428,92 +1079,125 @@ function SettingsPage({ model }: SettingsEditorProps) {
     };
 
     const renderThemeGrid = (sectionThemes: typeof themes) => (
-        <div className="theme-grid">
+        <Panel direction="row" wrap gap="lg" justify="center" paddingBottom="xl">
             {sectionThemes.map((theme) => (
                 <div
                     key={theme.id}
-                    className={`theme-card${currentThemeId === theme.id ? " active" : ""}`}
                     onClick={() => handleThemeChange(theme.id)}
+                    style={{ cursor: "pointer" }}
                 >
-                    <ThemePreview
-                        bgDefault={theme.colors["--color-bg-default"]}
-                        bgDark={theme.colors["--color-bg-dark"]}
-                        textDefault={theme.colors["--color-text-default"]}
-                        accentColor={theme.colors["--color-misc-blue"]}
-                    />
-                    <span className="theme-name">{theme.name}</span>
+                    <Panel
+                        direction="column"
+                        align="center"
+                        justify="center"
+                        gap="md"
+                        paddingY="lg"
+                        paddingX="md"
+                        width={160}
+                        height={100}
+                        background="dark"
+                        border
+                        borderColor={currentThemeId === theme.id ? "active" : "default"}
+                        rounded="md"
+                    >
+                        <ThemePreview
+                            bgDefault={theme.colors["--color-bg-default"]}
+                            bgDark={theme.colors["--color-bg-dark"]}
+                            textDefault={theme.colors["--color-text-default"]}
+                            accentColor={theme.colors["--color-misc-blue"]}
+                        />
+                        <Text size="sm" align="center">{theme.name}</Text>
+                    </Panel>
                 </div>
             ))}
-        </div>
+        </Panel>
     );
 
     return (
-        <SettingsEditorRoot>
-            <div className="settings-card">
-                <h1 className="settings-title">Settings</h1>
+        <Panel direction="column" align="center" padding="xxxl">
+            <Panel
+                direction="column"
+                width="100%"
+                maxWidth={560}
+                padding="xxxl"
+                background="light"
+                rounded="lg"
+            >
+                    <h1 style={{ margin: 0, fontSize: 24, fontWeight: 600, color: color.text.default, marginBottom: 24 }}>
+                        Settings
+                    </h1>
 
-                <div className="section-label">Theme</div>
+                    <Panel paddingBottom="lg"><Text bold size="sm">Theme</Text></Panel>
 
-                <div className="theme-section-label">Dark</div>
-                {renderThemeGrid(darkThemes)}
+                    <Panel paddingBottom="md">
+                        <Text variant="uppercased" color="light" bold size="xs">Dark</Text>
+                    </Panel>
+                    {renderThemeGrid(darkThemes)}
 
-                <div className="theme-section-label">Light</div>
-                {renderThemeGrid(lightThemes)}
+                    <Panel paddingBottom="md">
+                        <Text variant="uppercased" color="light" bold size="xs">Light</Text>
+                    </Panel>
+                    {renderThemeGrid(lightThemes)}
 
-                <hr className="divider" />
+                    <Panel paddingY="xl"><Divider /></Panel>
 
-                <BrowserProfilesSection />
+                    <BrowserProfilesSection />
 
-                <hr className="divider" />
+                    <Panel paddingY="xl"><Divider /></Panel>
 
-                <div className="section-label">Links</div>
-                <div className="section-hint">
-                    How external links open from editors (Monaco, Markdown)
-                </div>
-                <LinkBehaviorSection />
+                    <Panel paddingBottom="lg"><Text bold size="sm">Links</Text></Panel>
+                    <Panel paddingBottom="md">
+                        <Text color="light" size="xs">
+                            How external links open from editors (Monaco, Markdown)
+                        </Text>
+                    </Panel>
+                    <LinkBehaviorSection />
 
-                <hr className="divider" />
+                    <Panel paddingY="xl"><Divider /></Panel>
 
-                <div className="section-label">Default Browser</div>
-                <DefaultBrowserSection />
+                    <Panel paddingBottom="lg"><Text bold size="sm">Default Browser</Text></Panel>
+                    <DefaultBrowserSection />
 
-                <hr className="divider" />
+                    <Panel paddingY="xl"><Divider /></Panel>
 
-                <div className="section-label">File Search</div>
-                <div className="section-hint">
-                    File extensions included in content search (comma-separated)
-                </div>
-                <TextAreaField
-                    ref={extensionsRef}
-                    className="extensions-field"
-                    singleLine
-                    value={extensionsText}
-                    onBlur={handleExtensionsBlur}
-                />
+                    <Panel paddingBottom="lg"><Text bold size="sm">File Search</Text></Panel>
+                    <Panel paddingBottom="md">
+                        <Text color="light" size="xs">
+                            File extensions included in content search (comma-separated)
+                        </Text>
+                    </Panel>
+                    <Textarea
+                        ref={extensionsRef}
+                        singleLine
+                        value={extensionsText}
+                        onBlur={handleExtensionsBlur}
+                        maxHeight={200}
+                        size="sm"
+                    />
 
-                <hr className="divider" />
+                    <Panel paddingY="xl"><Divider /></Panel>
 
-                <McpSection />
+                    <McpSection />
 
-                <hr className="divider" />
+                    <Panel paddingY="xl"><Divider /></Panel>
 
-                <ScriptLibrarySection />
+                    <ScriptLibrarySection />
 
-                <hr className="divider" />
+                    <Panel paddingY="xl"><Divider /></Panel>
 
-                <DrawingLibrarySection />
+                    <DrawingLibrarySection />
 
-                <hr className="divider" />
+                    <Panel paddingY="xl"><Divider /></Panel>
 
-                <VideoPlayerSection />
+                    <VideoPlayerSection />
 
-                <hr className="divider" />
+                    <Panel paddingY="xl"><Divider /></Panel>
 
-                <button className="link-button" onClick={handleOpenSettingsFile}>
+                    <Button variant="link" size="sm" background="light" onClick={handleOpenSettingsFile}>
                     View Settings File
-                </button>
-            </div>
-        </SettingsEditorRoot>
+                </Button>
+            </Panel>
+        </Panel>
     );
 }
 

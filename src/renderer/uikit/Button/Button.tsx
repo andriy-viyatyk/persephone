@@ -52,6 +52,7 @@ const Root = styled.button(
 
         display: "inline-flex",
         alignItems: "center",
+        justifyContent: "center",
         gap: gap.md,
         cursor: "pointer",
         border: "1px solid transparent",

@@ -18,7 +18,8 @@ const PageEditorContainer = styled.div(
         flex: "1 1 auto",
         display: "flex",
         flexDirection: "column",
-        overflow: "hidden",
+        overflowX: "hidden",
+        overflowY: "auto",
         minWidth: 100,
     },
     { label: "PageEditorContainer" },
@@ -102,7 +103,7 @@ function PageContent({ pageId }: { pageId: string }) {
         <>
             <NavigationWrapper page={page} />
             {editor ? (
-                <PageEditorContainer key={page.id}>
+                <PageEditorContainer key={page.id} className="scroll-container">
                     <RenderEditor model={editor} />
                 </PageEditorContainer>
             ) : (

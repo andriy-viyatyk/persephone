@@ -15,6 +15,12 @@ export interface InputProps
     startSlot?: React.ReactNode;
     /** Content rendered inside the input chrome, after the text. */
     endSlot?: React.ReactNode;
+    /** Fixed width — number → px, string passes through. Default: fills parent (100%). */
+    width?: number | string;
+    /** Minimum width — number → px, string passes through. */
+    minWidth?: number | string;
+    /** Maximum width — number → px, string passes through. */
+    maxWidth?: number | string;
 }
 
 // --- Styled ---
@@ -115,7 +121,11 @@ const Slot = styled.div(
 
 export const Input = React.forwardRef<HTMLInputElement, InputProps>(
     function Input(
-        { onChange, size = "md", disabled, readOnly, startSlot, endSlot, ...rest },
+        {
+            onChange, size = "md", disabled, readOnly, startSlot, endSlot,
+            width, minWidth, maxWidth,
+            ...rest
+        },
         ref,
     ) {
         const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -125,12 +135,18 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
         const hasStart = startSlot !== undefined && startSlot !== null && startSlot !== false;
         const hasEnd = endSlot !== undefined && endSlot !== null && endSlot !== false;
 
+        const wrapperStyle: React.CSSProperties = {};
+        if (width !== undefined)    wrapperStyle.width = width;
+        if (minWidth !== undefined) wrapperStyle.minWidth = minWidth;
+        if (maxWidth !== undefined) wrapperStyle.maxWidth = maxWidth;
+
         return (
             <Wrapper
                 data-type="input"
                 data-size={size}
                 data-disabled={disabled || undefined}
                 data-readonly={readOnly || undefined}
+                style={wrapperStyle}
             >
                 {hasStart && <Slot data-part="start-slot">{startSlot}</Slot>}
                 <Field

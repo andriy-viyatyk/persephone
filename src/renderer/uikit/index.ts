@@ -25,6 +25,8 @@ export { Checkbox } from "./Checkbox";
 export type { CheckboxProps } from "./Checkbox";
 export { Divider } from "./Divider";
 export type { DividerProps } from "./Divider";
+export { Dot } from "./Dot";
+export type { DotProps, DotColor } from "./Dot";
 export { Text } from "./Text";
 export type { TextProps } from "./Text";
 export { SegmentedControl } from "./SegmentedControl";

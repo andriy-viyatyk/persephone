@@ -13,6 +13,7 @@ import { inputStory }            from "../../uikit/Input/Input.story";
 import { labelStory }            from "../../uikit/Label/Label.story";
 import { checkboxStory }         from "../../uikit/Checkbox/Checkbox.story";
 import { dividerStory }          from "../../uikit/Divider/Divider.story";
+import { dotStory }              from "../../uikit/Dot/Dot.story";
 import { textStory }             from "../../uikit/Text/Text.story";
 import { segmentedControlStory } from "../../uikit/SegmentedControl/SegmentedControl.story";
 import { radioGroupStory }       from "../../uikit/RadioGroup/RadioGroup.story";
@@ -36,7 +37,7 @@ import { treeStory }             from "../../uikit/Tree/Tree.story";
 
 export const ALL_STORIES: Story[] = [
     panelStory, spacerStory, splitterStory, toolbarStory,
-    buttonStory, iconButtonStory, inputStory, labelStory, checkboxStory, dividerStory, textStory,
+    buttonStory, iconButtonStory, inputStory, labelStory, checkboxStory, dividerStory, dotStory, textStory,
     segmentedControlStory, radioGroupStory, spinnerStory, textareaStory, pathInputStory,
     tagStory, tagsInputStory,
     popoverStory, tooltipStory, dialogStory, notificationStory, menuStory,

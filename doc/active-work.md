@@ -59,6 +59,12 @@ Overview of all active and planned epics and tasks.
   - [ ] [US-497: TreeProviderView — UIKit Tree migration](tasks/US-497-treeproviderview-migration/README.md) *(Phase 4 — shared component; touches 6 consumers; plan ready for review)*
   - [ ] [US-492: Sidebar — final integration testing and cleanup](tasks/US-492-sidebar-integration-testing/README.md) *(Phase 4 — per-screen migration; plan ready for review)*
   - [ ] [US-480: MarkdownView — UIKit migration](tasks/US-480-markdown-view-migration/README.md) *(Phase 4 — per-screen migration)*
+  - [ ] [US-503: UIKit `Dot` primitive — colored circle for status / swatch / palette](tasks/US-503-uikit-dot/README.md) *(Phase 4 — UIKit primitive infrastructure; plan ready for review; primitive only — per-screen retrofits live in US-498/US-499/US-502; unblocks US-498)*
+  - [ ] [US-498: Settings page — UIKit migration](tasks/US-498-settings-page-migration/README.md) *(Phase 4 — per-screen migration; plan ready for implementation; US-503 Dot primitive in place)*
+  - [ ] [US-499: TodoEditor — UIKit migration](tasks/US-499-todoeditor-migration/README.md) *(Phase 4 — per-screen migration; placeholder)*
+  - [ ] [US-500: TextEditor chrome — UIKit migration](tasks/US-500-text-editor-chrome-migration/README.md) *(Phase 4 — per-screen migration; placeholder)*
+  - [ ] [US-501: RestClient editor — UIKit migration](tasks/US-501-rest-client-migration/README.md) *(Phase 4 — per-screen migration; placeholder)*
+  - [ ] [US-502: MCP Inspector — UIKit migration](tasks/US-502-mcp-inspector-migration/README.md) *(Phase 4 — per-screen migration; placeholder)*
   - [ ] US-436: Script UI API — expose new component library to scripting engine *(Phase 6)*
   - [ ] US-435: Storybook — script tab for building and testing UI via scripts *(Phase 6)*
 - *(no epic)*
