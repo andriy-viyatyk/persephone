@@ -1,15 +1,16 @@
 import { Editor } from "@monaco-editor/react";
 import * as monaco from "monaco-editor";
-import styled from "@emotion/styled";
 
 import { TModel } from "../../core/state/model";
 import { TextFileModel } from "./TextEditorModel";
-import { Splitter } from "../../components/layout/Splitter";
-import color from "../../theme/color";
+import { Panel } from "../../uikit/Panel/Panel";
+import { Splitter } from "../../uikit/Splitter/Splitter";
+import { IconButton } from "../../uikit/IconButton/IconButton";
+import { Spacer } from "../../uikit/Spacer/Spacer";
+import { Select } from "../../uikit/Select/Select";
+import { IListBoxItem } from "../../uikit/ListBox";
 import { PageToolbar } from "../base/EditorToolbar";
 import { CloseIcon, OpenFileIcon, RunAllIcon, RunIcon, SaveIcon } from "../../theme/icons";
-import { Button } from "../../components/basic/Button";
-import { FlexSpace } from "../../components/layout/Elements";
 import { TComponentState } from "../../core/state/state";
 import { fs } from "../../api/fs";
 import { parseObject } from "../../core/utils/parse-utils";
@@ -17,34 +18,9 @@ import { debounce } from "../../../shared/utils";
 import { libraryService, ScriptPanelEntry } from "../../api/library-service";
 import { settings } from "../../api/settings";
 import { showInputDialog } from "../../ui/dialogs/InputDialog";
-import { ComboSelect } from "../../components/form/ComboSelect";
 
 const nodefs = require("fs") as typeof import("fs");
-import { fpDirname, fpJoin } from "../../core/utils/file-path";
-
-const ScriptPanelRoot = styled.div({
-    flexShrink: 0,
-    display: "flex",
-    flexDirection: "column",
-    overflow: "hidden",
-    "& .splitter": {
-        borderTop: "none",
-        borderBottom: `1px solid ${color.border.light}`,
-    },
-    "& .page-toolbar": {
-        marginBottom: 2,
-    },
-    "& .script-selector": {
-        height: 22,
-        minWidth: 120,
-        maxWidth: 200,
-        fontSize: 12,
-        "& input": {
-            height: 22,
-            fontSize: 12,
-        },
-    },
-});
+import { fpJoin } from "../../core/utils/file-path";
 
 export interface ScriptPanelState {
     content: string;
@@ -66,13 +42,18 @@ export const defaultScriptPanelState: ScriptPanelState = {
     dirty: false,
 };
 
-/** Dropdown entry for the script selector. */
-export interface ScriptDropdownEntry {
-    /** Display label (e.g. "my-script" or "all/my-script") */
+/** Dropdown entry for the script selector. Satisfies IListBoxItem so it can be
+ *  consumed directly by UIKit Select. */
+export interface ScriptDropdownEntry extends IListBoxItem {
+    /** Stable identifier — entry path for library scripts, "__unsaved__" for ad-hoc. */
+    value: string;
+    /** Display label (e.g. "my-script" or "all/my-script"). */
     label: string;
-    /** The underlying ScriptPanelEntry, or null for "(unsaved script)" */
+    /** The underlying ScriptPanelEntry, or null for "(unsaved script)". */
     entry: ScriptPanelEntry | null;
 }
+
+const UNSAVED_VALUE = "__unsaved__";
 
 export class ScriptPanelModel extends TModel<ScriptPanelState> {
     editorRef = null as monaco.editor.IStandaloneCodeEditor | null;
@@ -202,13 +183,13 @@ export class ScriptPanelModel extends TModel<ScriptPanelState> {
         // Language-specific scripts
         const langScripts = index[language] || [];
         for (const entry of langScripts) {
-            entries.push({ label: entry.name, entry });
+            entries.push({ value: entry.path, label: entry.name, entry });
         }
 
         // "all" scripts — prefixed to distinguish
         const allScripts = index["all"] || [];
         for (const entry of allScripts) {
-            entries.push({ label: "all/" + entry.name, entry });
+            entries.push({ value: entry.path, label: "all/" + entry.name, entry });
         }
 
         return entries;
@@ -347,11 +328,11 @@ interface ScriptPanelProps {
     model: TextFileModel;
 }
 
-const UNSAVED_ENTRY: ScriptDropdownEntry = { label: "(unsaved script)", entry: null };
-
-function getDropdownLabel(entry: ScriptDropdownEntry): string {
-    return entry.label;
-}
+const UNSAVED_ENTRY: ScriptDropdownEntry = {
+    value: UNSAVED_VALUE,
+    label: "(unsaved script)",
+    entry: null,
+};
 
 export function ScriptPanel({ model }: ScriptPanelProps) {
     const scriptModel = model.script;
@@ -369,80 +350,77 @@ export function ScriptPanel({ model }: ScriptPanelProps) {
     const selectedEntry = scriptModel.getSelectedDropdownEntry(availableScripts) ?? UNSAVED_ENTRY;
 
     return (
-        <ScriptPanelRoot
-            style={{ height: state.height }}
+        <Panel
+            direction="column"
+            height={state.height}
+            overflow="hidden"
+            shrink={false}
             onKeyDown={scriptModel.handleKeyDown}
         >
             <Splitter
-                type="horizontal"
-                initialHeight={state.height}
-                borderSized="top"
-                onChangeHeight={scriptModel.setHeight}
+                orientation="horizontal"
+                value={state.height}
+                onChange={scriptModel.setHeight}
+                side="after"
+                min={60}
             />
             <PageToolbar>
-                <Button
+                <IconButton
                     title={state.hasSelection ? "Run Selected Script (F5)" : "Run Script (F5)"}
-                    type="icon"
-                    size="small"
+                    size="sm"
+                    icon={<RunIcon />}
                     onClick={() => model.runRelatedScript()}
-                >
-                    <RunIcon />
-                </Button>
-                {state.hasSelection && (
-                    <Button
-                        key="run-all_script"
-                        type="icon"
-                        size="small"
-                        title="Run All Script"
-                        onClick={() => model.runRelatedScript(true)}
-                    >
-                        <RunAllIcon />
-                    </Button>
-                )}
-                <ComboSelect
-                    className="script-selector"
-                    selectFrom={allEntries}
-                    getLabel={getDropdownLabel}
-                    value={selectedEntry}
-                    onChange={(entry?: ScriptDropdownEntry) => scriptModel.selectScript(entry ?? null)}
                 />
-                <Button
+                {state.hasSelection && (
+                    <IconButton
+                        key="run-all_script"
+                        size="sm"
+                        title="Run All Script"
+                        icon={<RunAllIcon />}
+                        onClick={() => model.runRelatedScript(true)}
+                    />
+                )}
+                <Select<ScriptDropdownEntry>
+                    items={allEntries}
+                    value={selectedEntry}
+                    onChange={(item) => scriptModel.selectScript(item)}
+                    size="sm"
+                    minWidth={120}
+                    maxWidth={200}
+                />
+                <IconButton
                     title="Save Script to Library"
-                    type="icon"
-                    size="small"
+                    size="sm"
+                    icon={<SaveIcon />}
                     disabled={!state.dirty}
                     onClick={scriptModel.saveToLibrary}
-                >
-                    <SaveIcon />
-                </Button>
-                <Button
+                />
+                <IconButton
                     title="Open in New Tab"
-                    type="icon"
-                    size="small"
+                    size="sm"
+                    icon={<OpenFileIcon />}
                     onClick={scriptModel.openInTab}
-                >
-                    <OpenFileIcon />
-                </Button>
-                <FlexSpace />
-                <Button
+                />
+                <Spacer />
+                <IconButton
                     title="Close Script Editor"
-                    type="icon"
-                    size="small"
+                    size="sm"
+                    icon={<CloseIcon />}
                     onClick={scriptModel.toggleOpen}
-                >
-                    <CloseIcon />
-                </Button>
+                />
             </PageToolbar>
-            <Editor
-                value={state.content}
-                language="typescript"
-                onMount={scriptModel.handleEditorDidMount}
-                onChange={scriptModel.handleEditorChange}
-                theme="custom-dark"
-                options={{
-                    automaticLayout: true,
-                }}
-            />
-        </ScriptPanelRoot>
+            <Panel flex={1} minHeight={0}>
+                <Editor
+                    value={state.content}
+                    language="typescript"
+                    onMount={scriptModel.handleEditorDidMount}
+                    onChange={scriptModel.handleEditorChange}
+                    theme="custom-dark"
+                    options={{
+                        automaticLayout: true,
+                    }}
+                />
+            </Panel>
+        </Panel>
     );
 }

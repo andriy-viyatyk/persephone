@@ -1,11 +1,10 @@
 import { ReactNode, useMemo, useSyncExternalStore } from "react";
 import { isTextFileModel, TextFileModel } from "./TextEditorModel";
 import type { EditorView } from "../../../shared/types";
-import { Button } from "../../components/basic/Button";
+import { IconButton } from "../../uikit/IconButton/IconButton";
+import { SegmentedControl, ISegment } from "../../uikit/SegmentedControl/SegmentedControl";
+import { Spacer } from "../../uikit/Spacer/Spacer";
 import { CompareIcon, NavPanelIcon, RunAllIcon, RunIcon, WebScraperIcon } from "../../theme/icons";
-import { SwitchButtons } from "../../components/form/SwitchButtons";
-import { FlexSpace } from "../../components/layout/Elements";
-import styled from "@emotion/styled";
 import { editorRegistry } from "../registry";
 import { pagesModel } from "../../api/pages";
 import { ui } from "../../api/ui";
@@ -26,11 +25,11 @@ function useOptionalModelState<T, R>(
     );
 }
 
-const EditorToolbarRoot = styled.div({
+const portalTargetStyle: React.CSSProperties = {
     display: "flex",
     alignItems: "center",
     gap: 4,
-});
+};
 
 interface TextToolbarProps {
     model: TextFileModel;
@@ -74,20 +73,26 @@ export function TextToolbar({ model, setEditorToolbarRefFirst, setEditorToolbarR
         return base;
     }, [language, fileName, detectedContentEditor]);
 
+    const segItems: ISegment[] = useMemo(
+        () => switchOptions.options.map((opt) => ({
+            value: opt,
+            label: switchOptions.getOptionLabel(opt),
+        })),
+        [switchOptions],
+    );
+
 
     if (model.page?.canOpenNavigator(model.pipe, filePath) || filePath) {
         actions.push(
-            <Button
+            <IconButton
                 key="nav-panel"
-                type="icon"
-                size="small"
+                size="sm"
                 title="File Explorer"
+                icon={<NavPanelIcon />}
                 onClick={() => {
                     model.page?.toggleNavigator(model.pipe, filePath);
                 }}
-            >
-                <NavPanelIcon />
-            </Button>
+            />
         );
     }
 
@@ -96,66 +101,58 @@ export function TextToolbar({ model, setEditorToolbarRefFirst, setEditorToolbarR
         const leftGroupedEditor = leftGroupedPage?.mainEditor;
         if (leftGroupedEditor && isTextFileModel(leftGroupedEditor)) {
             actions.push(
-                <Button
+                <IconButton
                     key="compare-with-left"
-                    type="icon"
-                    size="small"
+                    size="sm"
                     title="Compare with Left Page"
+                    icon={<CompareIcon />}
                     onClick={() => {
                         model.setCompareMode(true);
                         leftGroupedEditor.setCompareMode(true);
                     }}
-                >
-                    <CompareIcon />
-                </Button>
+                />
             );
         }
     }
 
     if (isScriptLanguage(language)) {
         actions.push(
-            <Button
+            <IconButton
                 key="run-script"
-                type="icon"
-                size="small"
+                size="sm"
                 title={
                     hasSelection
                         ? "Run Selected Script (F5)"
                         : "Run Script (F5)"
                 }
+                icon={<RunIcon />}
                 onClick={() => model.runScript()}
-            >
-                <RunIcon />
-            </Button>
+            />
         );
         if (hasSelection) {
             actions.push(
-                <Button
+                <IconButton
                     key="run-all_script"
-                    type="icon"
-                    size="small"
+                    size="sm"
                     title="Run All Script"
+                    icon={<RunAllIcon />}
                     onClick={() => model.runScript(true)}
-                >
-                    <RunAllIcon />
-                </Button>
+                />
             );
         }
     }
 
-    actions.push(<FlexSpace key="flex-space" />);
+    actions.push(<Spacer key="flex-space" />);
 
     if (language === "html") {
         actions.push(
-            <Button
+            <IconButton
                 key="show-resources"
-                type="icon"
-                size="small"
+                size="sm"
                 title="Show Resources"
+                icon={<WebScraperIcon />}
                 onClick={() => showHtmlResources(model)}
-            >
-                <WebScraperIcon />
-            </Button>
+            />
         );
     }
 
@@ -164,34 +161,34 @@ export function TextToolbar({ model, setEditorToolbarRefFirst, setEditorToolbarR
         // so extract it, unshift the portal, then unshift NavPanel back to front.
         const navBtn = filePath ? actions.shift() : null;
         actions.unshift(
-            <EditorToolbarRoot key="editor-toolbar-first" ref={setEditorToolbarRefFirst} />
+            <div
+                key="editor-toolbar-first"
+                ref={setEditorToolbarRefFirst}
+                style={portalTargetStyle}
+            />
         );
         if (navBtn) {
             actions.unshift(navBtn);
         }
         actions.push(
-            <EditorToolbarRoot key="editor-toolbar-last" ref={setEditorToolbarRefLast} />,
+            <div
+                key="editor-toolbar-last"
+                ref={setEditorToolbarRefLast}
+                style={portalTargetStyle}
+            />,
         )
     }
 
-    const lastItems: ReactNode[] = [];
-    if (switchOptions.options.length) {
-        lastItems.push(
-            <SwitchButtons
+    if (segItems.length) {
+        actions.push(
+            <SegmentedControl
                 key="json-editor-switch"
-                options={switchOptions.options}
+                items={segItems}
                 value={editor || "monaco"}
-                onChange={model.changeEditor}
-                getLabel={switchOptions.getOptionLabel}
-                style={{ margin: 1 }}
+                onChange={(v) => model.changeEditor(v as EditorView)}
+                size="sm"
             />
         );
-    }
-
-    if (lastItems.length > 0) {
-        actions.push(
-            ...lastItems
-        )
     }
 
     return <>{actions}</>;

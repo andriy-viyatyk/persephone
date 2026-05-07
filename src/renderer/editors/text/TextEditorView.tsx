@@ -1,53 +1,13 @@
-import styled from "@emotion/styled";
-import { clsx } from "clsx";
 import { useEffect, useRef } from "react";
 import { TextFileModel } from "./TextEditorModel";
 import { PageToolbar } from "../base/EditorToolbar";
 import { TextToolbar } from "./TextToolbar";
 import { ScriptPanel } from "./ScriptPanel";
 import { TextFooter } from "./TextFooter";
-import color from "../../theme/color";
 import { ActiveEditor } from "./ActiveEditor";
-import { FlexSpace } from "../../components/layout/Elements";
+import { Panel } from "../../uikit/Panel/Panel";
+import { Spacer } from "../../uikit/Spacer/Spacer";
 import { pagesModel } from "../../api/pages";
-
-const TextEditorViewRoot = styled.div({
-    flex: "1 1 auto",
-    display: "flex",
-    flexDirection: "column",
-    height: 200,
-    rowGap: 2,
-    position: "relative",
-    outline: "none",
-    "& .editor-overlay": {
-        position: "absolute",
-        inset: 0,
-        zIndex: 5,
-        backgroundColor: color.background.default,
-        display: "flex",
-        flexDirection: "column",
-        "&:empty": {
-            display: "none",
-        },
-    },
-    "& .footer-bar": {
-        paddingRight: 8,
-        "& .footer-label": {
-            padding: "0 8px 0 0",
-            color: color.text.light,
-            "&::before": {
-                content: '"|"',
-                marginRight: 8,
-                color: color.border.default,
-            },
-        },
-        "& .hide-empty": {
-            "&:empty": {
-                display: "none",
-            },
-        },
-    },
-});
 
 interface TextEditorViewProps {
     model: TextFileModel;
@@ -73,11 +33,15 @@ export function TextEditorView({ model }: TextEditorViewProps) {
     }, [model]);
 
     return (
-        <TextEditorViewRoot
+        <Panel
             ref={rootRef}
-            className={clsx("file-page")}
-            onKeyDown={model.handleKeyDown}
+            direction="column"
+            flex={1}
+            height={0}
+            position="relative"
+            gap="xs"
             tabIndex={0}
+            onKeyDown={model.handleKeyDown}
         >
             <PageToolbar borderBottom>
                 <TextToolbar
@@ -86,15 +50,12 @@ export function TextEditorView({ model }: TextEditorViewProps) {
                     setEditorToolbarRefFirst={model.setEditorToolbarRefFirst}
                 />
             </PageToolbar>
-            {restored ? <ActiveEditor model={model} /> : <FlexSpace />}
+            {restored ? <ActiveEditor model={model} /> : <Spacer />}
             <ScriptPanel model={model} />
-            <PageToolbar borderTop className="footer-bar">
+            <PageToolbar borderTop>
                 <TextFooter model={model} />
             </PageToolbar>
-            <div
-                ref={model.setEditorOverlayRef}
-                className="editor-overlay"
-            />
-        </TextEditorViewRoot>
+            <div ref={model.setEditorOverlayRef} className="editor-overlay" />
+        </Panel>
     );
 }

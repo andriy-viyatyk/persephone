@@ -16,6 +16,9 @@ interface DemoProps {
     withIcons?: boolean;
     itemsMode?: "array" | "lazy-fn" | "lazy-promise";
     resizable?: boolean;
+    width?: number;
+    minWidth?: number;
+    maxWidth?: number;
 }
 
 function buildItems(count: number, withIcons: boolean): IListBoxItem[] {
@@ -44,6 +47,9 @@ function SelectDemo({
     withIcons = true,
     itemsMode = "array",
     resizable = false,
+    width,
+    minWidth,
+    maxWidth,
 }: DemoProps) {
     const [value, setValue] = useState<IListBoxItem | null>(null);
 
@@ -58,7 +64,7 @@ function SelectDemo({
     }, [itemsMode, itemCount, withIcons]);
 
     return (
-        <Panel direction="column" gap="md" width={360}>
+        <Panel direction="column" gap="md" width={600}>
             <Select<IListBoxItem>
                 items={items}
                 value={value}
@@ -69,6 +75,9 @@ function SelectDemo({
                 size={size}
                 filterMode={filterMode}
                 resizable={resizable}
+                width={width || undefined}
+                minWidth={minWidth || undefined}
+                maxWidth={maxWidth || undefined}
                 aria-label="Demo select"
             />
             <Text size="xs" color="light">
@@ -99,5 +108,8 @@ export const selectStory: Story = {
             label: "Items mode",
         },
         { name: "resizable", type: "boolean", default: false },
+        { name: "width",     type: "number",  default: 0,   min: 0, max: 600, step: 20, label: "Width (0 = unset)" },
+        { name: "minWidth",  type: "number",  default: 0,   min: 0, max: 400, step: 20, label: "Min width (0 = unset)" },
+        { name: "maxWidth",  type: "number",  default: 0,   min: 0, max: 600, step: 20, label: "Max width (0 = unset)" },
     ],
 };

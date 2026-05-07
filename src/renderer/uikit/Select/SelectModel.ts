@@ -71,6 +71,12 @@ export interface SelectProps<T = IListBoxItem>
      * input width and `matchAnchorWidth` truncates the list.
      */
     resizable?: boolean;
+    /** Fixed width — number → px, string passes through. Default: fills parent (100%). Forwarded to inner Input. */
+    width?: number | string;
+    /** Minimum width — number → px, string passes through. Forwarded to inner Input. */
+    minWidth?: number | string;
+    /** Maximum width — number → px, string passes through. Forwarded to inner Input. */
+    maxWidth?: number | string;
     "aria-label"?: string;
     "aria-labelledby"?: string;
 }

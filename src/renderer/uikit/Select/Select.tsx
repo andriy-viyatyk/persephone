@@ -62,6 +62,9 @@ function SelectInner<T = IListBoxItem>(
         size = "md",
         emptyMessage,
         resizable,
+        width,
+        minWidth,
+        maxWidth,
         "aria-label": ariaLabel,
         "aria-labelledby": ariaLabelledBy,
         // Captured (not forwarded) — model handles via this.props
@@ -90,6 +93,11 @@ function SelectInner<T = IListBoxItem>(
     const rowHeight = model.rowHeight;
     const maxVisibleItems = model.maxVisibleItems;
 
+    const rootStyle: React.CSSProperties = {};
+    if (width !== undefined)    rootStyle.width = width;
+    if (minWidth !== undefined) rootStyle.minWidth = minWidth;
+    if (maxWidth !== undefined) rootStyle.maxWidth = maxWidth;
+
     return (
         <Root
             ref={model.setRootRef}
@@ -98,6 +106,7 @@ function SelectInner<T = IListBoxItem>(
             data-state={open ? "open" : "closed"}
             data-disabled={disabled || undefined}
             data-readonly={readOnly || undefined}
+            style={Object.keys(rootStyle).length > 0 ? rootStyle : undefined}
             {...rest}
         >
             <Input

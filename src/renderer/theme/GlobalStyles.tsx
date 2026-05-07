@@ -125,6 +125,21 @@ function buildGlobalStyles() {
         .scroll-container:hover {
             scrollbar-color: ${color.background.scrollBarThumb} transparent;
         }
+
+        /* Portal mount target inside TextEditorView for full-area overlays
+         * (e.g. NotebookEditor's expanded note view). Hidden when no portal
+         * content is present so the bg color does not blanket the editor. */
+        .editor-overlay {
+            position: absolute;
+            inset: 0;
+            z-index: 5;
+            background-color: ${color.background.default};
+            display: flex;
+            flex-direction: column;
+        }
+        .editor-overlay:empty {
+            display: none;
+        }
     `;
 }
 

@@ -63,7 +63,7 @@ Overview of all active and planned epics and tasks.
   - [ ] [US-498: Settings page — UIKit migration](tasks/US-498-settings-page-migration/README.md) *(Phase 4 — per-screen migration; plan ready for implementation; US-503 Dot primitive in place)*
   - [ ] [US-504: UIKit ghost variants + hover-reveal pattern](tasks/US-504-uikit-ghost-and-hover-reveal/README.md) *(Phase 4 — UIKit primitive infrastructure; plan ready for review; primitive only — per-screen retrofits live in US-499; unblocks US-499)*
   - [ ] [US-499: TodoEditor — UIKit migration](tasks/US-499-todoeditor-migration/README.md) *(Phase 4 — per-screen migration; plan ready for implementation; US-504 ghost variants + hover-reveal in place)*
-  - [ ] [US-500: TextEditor chrome — UIKit migration](tasks/US-500-text-editor-chrome-migration/README.md) *(Phase 4 — per-screen migration; placeholder)*
+  - [ ] [US-500: TextEditor chrome — UIKit migration](tasks/US-500-text-editor-chrome-migration/README.md) *(Phase 4 — per-screen migration; plan ready for implementation)*
   - [ ] [US-501: RestClient editor — UIKit migration](tasks/US-501-rest-client-migration/README.md) *(Phase 4 — per-screen migration; placeholder)*
   - [ ] [US-502: MCP Inspector — UIKit migration](tasks/US-502-mcp-inspector-migration/README.md) *(Phase 4 — per-screen migration; placeholder)*
   - [ ] US-436: Script UI API — expose new component library to scripting engine *(Phase 6)*

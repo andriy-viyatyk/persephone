@@ -1,21 +1,22 @@
 import { ReactNode } from "react";
-import styled from "@emotion/styled";
-import clsx from "clsx";
 
 import { TextFileModel } from "./TextEditorModel";
-import { Button } from "../../components/basic/Button";
+import { Button } from "../../uikit/Button/Button";
+import { Spacer } from "../../uikit/Spacer/Spacer";
+import { Divider } from "../../uikit/Divider/Divider";
 import color from "../../theme/color";
-import { FlexSpace } from "../../components/layout/Elements";
 
-const FooterButton = styled(Button)({
-    "&.footer-button": {
-        color: color.text.light,
-        fontSize: 13,
-        "&.isActive": {
-            color: color.text.default,
-        },
-    },
-});
+const labelStyle: React.CSSProperties = {
+    color: color.text.light,
+    padding: "0 4px",
+    fontSize: 13,
+    display: "flex",
+    alignItems: "center",
+};
+
+const portalTargetStyle: React.CSSProperties = {
+    ...labelStyle,
+};
 
 interface TextFooterProps {
     model: TextFileModel;
@@ -32,30 +33,33 @@ export function TextFooter({ model }: TextFooterProps) {
     const actions: ReactNode[] = [];
 
     actions.push(
-        <FooterButton
+        <Button
             key="toggle-script"
-            size="small"
-            type="icon"
+            variant="ghost"
+            size="sm"
             onClick={model.script.toggleOpen}
-            className={clsx("footer-button", { isActive: open })}
         >
-            script
-        </FooterButton>,
-        <FlexSpace key="flex-space" />
+            <span style={{ color: open ? color.text.default : color.text.light, fontSize: 13 }}>
+                script
+            </span>
+        </Button>,
+        <Spacer key="flex-space" />
     );
 
     if (editor && editor !== "monaco") {
         actions.push(
+            <Divider key="editor-place-divider" orientation="vertical" />,
             <div
-                ref={model.setFooterRefLast}
                 key="editor-place-last"
-                className="footer-label hide-empty"
+                ref={model.setFooterRefLast}
+                style={portalTargetStyle}
             />
         );
     }
 
     actions.push(
-        <span className="footer-label" key="encoding-label">
+        <Divider key="encoding-divider" orientation="vertical" />,
+        <span key="encoding-label" style={labelStyle}>
             {encoding || "utf-8"}
         </span>
     );
