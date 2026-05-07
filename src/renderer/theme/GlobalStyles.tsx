@@ -140,6 +140,17 @@ function buildGlobalStyles() {
         .editor-overlay:empty {
             display: none;
         }
+
+        /* TextFooter portal target — hidden when the secondary editor pushes
+         * no footer content. The :has() rule also hides the leading Divider
+         * so the user does not see two adjacent dividers with nothing
+         * between them. */
+        .footer-portal-target:empty {
+            display: none;
+        }
+        [data-type="divider"]:has(+ .footer-portal-target:empty) {
+            display: none;
+        }
     `;
 }
 

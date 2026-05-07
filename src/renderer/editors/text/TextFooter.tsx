@@ -52,6 +52,7 @@ export function TextFooter({ model }: TextFooterProps) {
             <div
                 key="editor-place-last"
                 ref={model.setFooterRefLast}
+                className="footer-portal-target"
                 style={portalTargetStyle}
             />
         );
