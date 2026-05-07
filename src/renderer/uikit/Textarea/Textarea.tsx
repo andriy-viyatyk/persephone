@@ -38,6 +38,13 @@ export interface TextareaProps
     maxHeight?: number;
     /** Size variant — controls font size. Default: "md". */
     size?: "sm" | "md";
+    /**
+     * Visual variant. `"default"` renders the standard chrome (dark background, gray border).
+     * `"ghost"` renders transparent background and border at rest, with a gray border on hover
+     * and a blue border on focus — for inline-edit fields embedded in list/grid rows. Default:
+     * `"default"`.
+     */
+    variant?: "default" | "ghost";
     /** Auto-focus on mount. Default: false. */
     autoFocus?: boolean;
 }
@@ -91,6 +98,17 @@ const Root = styled.div(
             opacity: 0.5,
             pointerEvents: "none",
         },
+
+        // Ghost variant — transparent at rest, hover/focus borders only.
+        '&[data-variant="ghost"]': {
+            backgroundColor: "transparent",
+            borderColor: "transparent",
+        },
+        '&[data-variant="ghost"]:hover':                       { borderColor: color.border.default },
+        '&[data-variant="ghost"]:focus, &[data-variant="ghost"]:active': { borderColor: color.border.active },
+        '&[data-variant="ghost"][data-readonly]:focus, &[data-variant="ghost"][data-readonly]:active': {
+            borderColor: "transparent",
+        },
     },
     { label: "Textarea" },
 );
@@ -109,6 +127,7 @@ export const Textarea = React.forwardRef<TextareaRef, TextareaProps>(
             minHeight,
             maxHeight,
             size = "md",
+            variant = "default",
             autoFocus,
             ...rest
         } = props;
@@ -188,6 +207,7 @@ export const Textarea = React.forwardRef<TextareaRef, TextareaProps>(
                 spellCheck={false}
                 data-type="textarea"
                 data-size={size}
+                data-variant={variant}
                 data-disabled={disabled || undefined}
                 data-readonly={readOnly || undefined}
                 data-single-line={singleLine || undefined}

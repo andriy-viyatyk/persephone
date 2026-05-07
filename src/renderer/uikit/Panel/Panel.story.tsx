@@ -47,10 +47,16 @@ export const panelStory: Story = {
         { name: "bottom",      type: "string", default: "" },
         { name: "left",        type: "string", default: "" },
         { name: "disabled",    type: "boolean", default: false },
+        { name: "revealChildrenOnHover", type: "boolean", default: false, label: "Reveal hover-tagged children on hover" },
     ],
     previewChildren: () => React.createElement(React.Fragment, null,
         React.createElement("span", { key: "a" }, "Child A"),
         React.createElement("span", { key: "b" }, "Child B"),
         React.createElement("span", { key: "c" }, "Child C"),
+        React.createElement(
+            "span",
+            { key: "hover", "data-visibility": "parent-hover" },
+            "[hover-revealed]",
+        ),
     ),
 };

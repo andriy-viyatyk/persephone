@@ -22,6 +22,12 @@ export interface IconButtonProps extends Omit<React.ButtonHTMLAttributes<HTMLBut
      * color overrides the hover/press feedback. Use for toolbar toggles and indicator buttons.
      */
     active?: boolean;
+    /**
+     * Sets `data-visibility="parent-hover"` so an ancestor `Panel` with
+     * `revealChildrenOnHover` keeps this button hidden until the panel is hovered or contains
+     * keyboard focus. Outside such a panel the prop has no effect.
+     */
+    hideUntilParentHover?: boolean;
 }
 
 // --- Styled ---
@@ -85,7 +91,7 @@ const Root = styled.button(
 // --- Component ---
 
 export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
-    function IconButton({ icon, size = "md", active, disabled, title, ...rest }, ref) {
+    function IconButton({ icon, size = "md", active, disabled, title, hideUntilParentHover, ...rest }, ref) {
         const button = (
             <Root
                 ref={ref}
@@ -93,6 +99,7 @@ export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
                 data-size={size}
                 data-active={active || undefined}
                 data-disabled={disabled || undefined}
+                data-visibility={hideUntilParentHover ? "parent-hover" : undefined}
                 disabled={disabled}
                 type="button"
                 {...rest}

@@ -1,116 +1,37 @@
-import styled from "@emotion/styled";
 import React, { useCallback, useRef, useState } from "react";
-import clsx from "clsx";
 import color from "../../../theme/color";
-import { PlusIcon, DeleteIcon, RenameIcon, CircleIcon } from "../../../theme/icons";
-import { Button } from "../../../components/basic/Button";
-import { TextField } from "../../../components/basic/TextField";
-import { WithPopupMenu } from "../../../components/overlay/WithPopupMenu";
-import { MenuItem } from "../../../components/overlay/PopupMenu";
+import { PlusIcon, DeleteIcon, RenameIcon } from "../../../theme/icons";
+import { Panel } from "../../../uikit/Panel/Panel";
+import { Input } from "../../../uikit/Input/Input";
+import { IconButton } from "../../../uikit/IconButton/IconButton";
+import { WithMenu } from "../../../uikit/Menu/WithMenu";
+import { Dot } from "../../../uikit/Dot/Dot";
+import type { MenuItem } from "../../../uikit/Menu/types";
 import { TodoViewModel } from "../TodoViewModel";
 import { ListCount, TodoTag } from "../todoTypes";
 import { TAG_COLORS } from "../todoColors";
 
-// =============================================================================
-// Styles
-// =============================================================================
+const SECTION_LABEL_STYLE: React.CSSProperties = {
+    fontSize: 13,
+    color: color.text.light,
+    opacity: 0.6,
+    padding: "6px 8px 2px",
+    textTransform: "uppercase",
+    textAlign: "center",
+};
 
-const TodoListPanelRoot = styled.div({
-    display: "flex",
-    flexDirection: "column",
+const NAME_STYLE: React.CSSProperties = {
+    flex: "1 1 auto",
     overflow: "hidden",
-    flex: 1,
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+};
 
-    "& .add-row": {
-        display: "flex",
-        alignItems: "center",
-        gap: 4,
-        padding: "4px 8px",
-        flexShrink: 0,
-        backgroundColor: color.background.default,
-    },
-    "& .add-input": {
-        flex: "1 1 auto",
-        minWidth: 0,
-        "& input": {
-            backgroundColor: color.background.default,
-            "&:focus": {
-                backgroundColor: color.background.dark,
-            },
-        },
-    },
-    "& .section-items": {
-        flex: 1,
-        overflowY: "auto",
-        overflowX: "hidden",
-    },
-    "& .section-label": {
-        fontSize: 13,
-        color: color.text.light,
-        opacity: 0.6,
-        padding: "6px 8px 2px",
-        textTransform: "uppercase",
-        textAlign: "center",
-    },
-    "& .list-item": {
-        display: "flex",
-        alignItems: "center",
-        padding: "0 8px",
-        minHeight: 28,
-        cursor: "pointer",
-        fontSize: 13,
-        color: color.text.light,
-        gap: 4,
-        "&:hover": {
-            backgroundColor: color.background.light,
-        },
-        "&:hover .list-actions": {
-            opacity: 1,
-        },
-        "&.selected": {
-            color: color.misc.blue,
-            backgroundColor: color.background.light,
-        },
-    },
-    "& .list-name": {
-        flex: "1 1 auto",
-        overflow: "hidden",
-        textOverflow: "ellipsis",
-        whiteSpace: "nowrap",
-    },
-    "& .list-count": {
-        flexShrink: 0,
-        fontSize: 11,
-        opacity: 0.7,
-    },
-    "& .list-actions": {
-        display: "flex",
-        opacity: 0,
-        flexShrink: 0,
-    },
-    "& .rename-input": {
-        flex: "1 1 auto",
-        minWidth: 0,
-    },
-    "& .tag-dot": {
-        width: 8,
-        height: 8,
-        borderRadius: "50%",
-        flexShrink: 0,
-    },
-    "& .color-swatch": {
-        width: 14,
-        height: 14,
-        borderRadius: 3,
-        cursor: "pointer",
-        flexShrink: 0,
-        border: `1px solid ${color.border.default}`,
-    },
-});
-
-// =============================================================================
-// Component
-// =============================================================================
+const COUNT_STYLE: React.CSSProperties = {
+    flexShrink: 0,
+    fontSize: 11,
+    opacity: 0.7,
+};
 
 interface TodoListPanelProps {
     pageModel: TodoViewModel;
@@ -121,22 +42,53 @@ interface TodoListPanelProps {
     selectedTag: string;
 }
 
+interface RowShellProps {
+    selected: boolean;
+    onClick: () => void;
+    children: React.ReactNode;
+    revealOnHover?: boolean;
+}
+
+function RowShell({ selected, onClick, children, revealOnHover }: RowShellProps) {
+    const [hovered, setHovered] = useState(false);
+    const bg = selected || hovered ? color.background.light : "transparent";
+    const textColor = selected ? color.misc.blue : color.text.light;
+    return (
+        <div
+            onMouseEnter={() => setHovered(true)}
+            onMouseLeave={() => setHovered(false)}
+            onClick={onClick}
+            style={{
+                cursor: "pointer",
+                backgroundColor: bg,
+                color: textColor,
+                fontSize: 13,
+            }}
+        >
+            <Panel
+                direction="row"
+                align="center"
+                gap="xs"
+                paddingX="sm"
+                minHeight={28}
+                revealChildrenOnHover={revealOnHover}
+            >
+                {children}
+            </Panel>
+        </div>
+    );
+}
+
 export function TodoListPanel({ pageModel, lists, selectedList, listCounts, tags, selectedTag }: TodoListPanelProps) {
-    // --- List state ---
     const [newListName, setNewListName] = useState("");
     const [renamingList, setRenamingList] = useState<string | null>(null);
     const [renameListValue, setRenameListValue] = useState("");
     const renameListInputRef = useRef<HTMLInputElement>(null);
 
-    // --- Tag state ---
     const [newTagName, setNewTagName] = useState("");
     const [renamingTag, setRenamingTag] = useState<string | null>(null);
     const [renameTagValue, setRenameTagValue] = useState("");
     const renameTagInputRef = useRef<HTMLInputElement>(null);
-
-    // =========================================================================
-    // List handlers
-    // =========================================================================
 
     const handleAddList = useCallback(() => {
         if (newListName.trim()) {
@@ -179,10 +131,6 @@ export function TodoListPanel({ pageModel, lists, selectedList, listCounts, tags
         e.stopPropagation();
         pageModel.deleteList(listName);
     }, [pageModel]);
-
-    // =========================================================================
-    // Tag handlers
-    // =========================================================================
 
     const handleAddTag = useCallback(() => {
         if (newTagName.trim()) {
@@ -230,10 +178,6 @@ export function TodoListPanel({ pageModel, lists, selectedList, listCounts, tags
         pageModel.updateTagColor(tagName, newColor);
     }, [pageModel]);
 
-    // =========================================================================
-    // Helpers
-    // =========================================================================
-
     const renderCount = (count: ListCount | undefined) => {
         if (!count) return "0/0";
         return <><b>{count.undone}</b>/{count.total}</>;
@@ -242,13 +186,7 @@ export function TodoListPanel({ pageModel, lists, selectedList, listCounts, tags
     const getColorMenuItems = (tagName: string, currentColor: string): MenuItem[] => {
         const items: MenuItem[] = TAG_COLORS.map((c) => ({
             label: c.name,
-            icon: <span style={{
-                display: "inline-block",
-                width: 10,
-                height: 10,
-                borderRadius: "50%",
-                backgroundColor: c.hex,
-            }} />,
+            icon: <Dot size={10} color={c.hex} />,
             onClick: () => handleTagColorChange(tagName, c.hex),
             selected: currentColor === c.hex,
         }));
@@ -260,54 +198,55 @@ export function TodoListPanel({ pageModel, lists, selectedList, listCounts, tags
         return items;
     };
 
-    // =========================================================================
-    // Render
-    // =========================================================================
-
     return (
-        <TodoListPanelRoot>
-            {/* Add list row */}
-            <div className="add-row">
-                <TextField
-                    className="add-input"
+        <Panel direction="column" overflow="hidden" flex={1}>
+            <Panel
+                direction="row"
+                gap="xs"
+                paddingX="sm"
+                paddingY="xs"
+                align="center"
+                shrink={false}
+                background="default"
+            >
+                <Input
                     value={newListName}
                     onChange={setNewListName}
                     onKeyDown={handleAddListKeyDown}
                     placeholder="New list..."
                 />
-                <Button
-                    size="small"
-                    type="icon"
+                <IconButton
+                    size="sm"
+                    icon={<PlusIcon />}
                     title="Add list"
                     onClick={handleAddList}
                     disabled={!newListName.trim()}
-                >
-                    <PlusIcon />
-                </Button>
-            </div>
+                />
+            </Panel>
 
-            <div className="section-items">
-                {/* ============== Lists Section ============== */}
-                <div className="section-label">Lists</div>
-                {/* "All" option */}
-                <div
-                    className={clsx("list-item", selectedList === "" && "selected")}
+            <Panel direction="column" flex={1} overflowY="auto" overflowX="hidden">
+                <div style={SECTION_LABEL_STYLE}>Lists</div>
+
+                <RowShell
+                    selected={selectedList === ""}
                     onClick={() => pageModel.setSelectedList("")}
                 >
-                    <span className="list-name">All</span>
-                    <span className="list-count">{renderCount(listCounts[""])}</span>
-                </div>
-                {/* Named lists */}
+                    <span style={NAME_STYLE}>All</span>
+                    <span style={COUNT_STYLE}>{renderCount(listCounts[""])}</span>
+                </RowShell>
+
                 {lists.map((listName) => (
-                    <div
+                    <RowShell
                         key={listName}
-                        className={clsx("list-item", selectedList === listName && "selected")}
+                        selected={selectedList === listName}
                         onClick={() => pageModel.setSelectedList(listName)}
+                        revealOnHover
                     >
                         {renamingList === listName ? (
-                            <TextField
+                            <Input
+                                variant="ghost"
+                                size="sm"
                                 ref={renameListInputRef}
-                                className="rename-input"
                                 value={renameListValue}
                                 onChange={setRenameListValue}
                                 onKeyDown={handleListRenameKeyDown}
@@ -316,53 +255,48 @@ export function TodoListPanel({ pageModel, lists, selectedList, listCounts, tags
                             />
                         ) : (
                             <>
-                                <span className="list-name" title={listName}>{listName}</span>
-                                <span className="list-actions">
-                                    <Button
-                                        size="small"
-                                        type="icon"
-                                        title="Rename list"
-                                        onClick={(e) => handleStartListRename(e, listName)}
-                                    >
-                                        <RenameIcon />
-                                    </Button>
-                                    <Button
-                                        size="small"
-                                        type="icon"
-                                        title="Delete list"
-                                        onClick={(e) => handleDeleteList(e, listName)}
-                                    >
-                                        <DeleteIcon />
-                                    </Button>
-                                </span>
-                                <span className="list-count">{renderCount(listCounts[listName])}</span>
+                                <span style={NAME_STYLE} title={listName}>{listName}</span>
+                                <IconButton
+                                    hideUntilParentHover
+                                    size="sm"
+                                    icon={<RenameIcon />}
+                                    title="Rename list"
+                                    onClick={(e) => handleStartListRename(e, listName)}
+                                />
+                                <IconButton
+                                    hideUntilParentHover
+                                    size="sm"
+                                    icon={<DeleteIcon />}
+                                    title="Delete list"
+                                    onClick={(e) => handleDeleteList(e, listName)}
+                                />
+                                <span style={COUNT_STYLE}>{renderCount(listCounts[listName])}</span>
                             </>
                         )}
-                    </div>
+                    </RowShell>
                 ))}
 
-                {/* ============== Tags Section ============== */}
-                <div className="section-label">Tags</div>
+                <div style={SECTION_LABEL_STYLE}>Tags</div>
 
-                {/* "All Tags" option */}
-                <div
-                    className={clsx("list-item", selectedTag === "" && "selected")}
+                <RowShell
+                    selected={selectedTag === ""}
                     onClick={() => pageModel.setSelectedTag("")}
                 >
-                    <span className="list-name">All Tags</span>
-                </div>
+                    <span style={NAME_STYLE}>All Tags</span>
+                </RowShell>
 
-                {/* Tag items */}
                 {tags.map((tag) => (
-                    <div
+                    <RowShell
                         key={tag.name}
-                        className={clsx("list-item", selectedTag === tag.name && "selected")}
+                        selected={selectedTag === tag.name}
                         onClick={() => pageModel.setSelectedTag(tag.name)}
+                        revealOnHover
                     >
                         {renamingTag === tag.name ? (
-                            <TextField
+                            <Input
+                                variant="ghost"
+                                size="sm"
                                 ref={renameTagInputRef}
-                                className="rename-input"
                                 value={renameTagValue}
                                 onChange={setRenameTagValue}
                                 onKeyDown={handleTagRenameKeyDown}
@@ -371,76 +305,69 @@ export function TodoListPanel({ pageModel, lists, selectedList, listCounts, tags
                             />
                         ) : (
                             <>
-                                {tag.color ? (
-                                    <span
-                                        className="tag-dot"
-                                        style={{ backgroundColor: tag.color }}
-                                    />
-                                ) : (
-                                    <CircleIcon style={{ width: 8, height: 8, opacity: 0.3 }} />
-                                )}
-                                <span className="list-name" title={tag.name}>{tag.name}</span>
-                                <span className="list-actions">
-                                    <WithPopupMenu items={getColorMenuItems(tag.name, tag.color)}>
-                                        {(openMenu) => (
-                                            <Button
-                                                size="small"
-                                                type="icon"
-                                                title="Change color"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    openMenu(e.currentTarget);
-                                                }}
-                                            >
-                                                <span
-                                                    className="color-swatch"
-                                                    style={{ backgroundColor: tag.color || color.text.light }}
-                                                />
-                                            </Button>
-                                        )}
-                                    </WithPopupMenu>
-                                    <Button
-                                        size="small"
-                                        type="icon"
-                                        title="Rename tag"
-                                        onClick={(e) => handleStartTagRename(e, tag.name)}
-                                    >
-                                        <RenameIcon />
-                                    </Button>
-                                    <Button
-                                        size="small"
-                                        type="icon"
-                                        title="Delete tag"
-                                        onClick={(e) => handleDeleteTag(e, tag.name)}
-                                    >
-                                        <DeleteIcon />
-                                    </Button>
-                                </span>
+                                <Dot
+                                    size="sm"
+                                    color={tag.color || "neutral"}
+                                />
+                                <span style={NAME_STYLE} title={tag.name}>{tag.name}</span>
+                                <WithMenu items={getColorMenuItems(tag.name, tag.color)}>
+                                    {(setOpen) => (
+                                        <Dot
+                                            size={14}
+                                            bordered
+                                            hideUntilParentHover
+                                            color={tag.color || color.text.light}
+                                            title="Change color"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setOpen(e.currentTarget);
+                                            }}
+                                        />
+                                    )}
+                                </WithMenu>
+                                <IconButton
+                                    hideUntilParentHover
+                                    size="sm"
+                                    icon={<RenameIcon />}
+                                    title="Rename tag"
+                                    onClick={(e) => handleStartTagRename(e, tag.name)}
+                                />
+                                <IconButton
+                                    hideUntilParentHover
+                                    size="sm"
+                                    icon={<DeleteIcon />}
+                                    title="Delete tag"
+                                    onClick={(e) => handleDeleteTag(e, tag.name)}
+                                />
                             </>
                         )}
-                    </div>
+                    </RowShell>
                 ))}
-            </div>
+            </Panel>
 
-            {/* Add tag row */}
-            <div className="add-row">
-                <TextField
-                    className="add-input"
+            <Panel
+                direction="row"
+                gap="xs"
+                paddingX="sm"
+                paddingY="xs"
+                align="center"
+                shrink={false}
+                background="default"
+            >
+                <Input
                     value={newTagName}
                     onChange={setNewTagName}
                     onKeyDown={handleAddTagKeyDown}
                     placeholder="New tag..."
                 />
-                <Button
-                    size="small"
-                    type="icon"
+                <IconButton
+                    size="sm"
+                    icon={<PlusIcon />}
                     title="Add tag"
                     onClick={handleAddTag}
                     disabled={!newTagName.trim()}
-                >
-                    <PlusIcon />
-                </Button>
-            </div>
-        </TodoListPanelRoot>
+                />
+            </Panel>
+        </Panel>
     );
 }

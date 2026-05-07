@@ -11,6 +11,7 @@ interface DemoProps {
     initialValue?: string;
     placeholder?: string;
     size?: "sm" | "md";
+    variant?: "default" | "ghost";
     disabled?: boolean;
     readOnly?: boolean;
     slotPreset?: "none" | "chevron" | "search" | "unit";
@@ -20,6 +21,7 @@ function InputDemo({
     initialValue = "Hello",
     placeholder = "Placeholder text",
     size = "md",
+    variant = "default",
     disabled = false,
     readOnly = false,
     slotPreset = "none",
@@ -59,6 +61,7 @@ function InputDemo({
                 onChange={setValue}
                 placeholder={placeholder}
                 size={size}
+                variant={variant}
                 disabled={disabled}
                 readOnly={readOnly}
                 startSlot={startSlot}
@@ -66,6 +69,10 @@ function InputDemo({
                 aria-label="Demo input"
             />
             <Text>Value: {JSON.stringify(value)}</Text>
+            <Text size="sm" color="light">
+                Tip: switch <code>variant</code> to <code>ghost</code> to see the inline-edit
+                chrome (transparent at rest, hover/focus borders only).
+            </Text>
         </Panel>
     );
 }
@@ -79,6 +86,7 @@ export const inputStory: Story = {
         { name: "initialValue", type: "string", default: "Hello",                label: "Initial value" },
         { name: "placeholder",  type: "string", default: "Placeholder text" },
         { name: "size",         type: "enum",   options: ["sm", "md"], default: "md" },
+        { name: "variant",      type: "enum",   options: ["default", "ghost"], default: "default" },
         { name: "disabled",     type: "boolean", default: false },
         { name: "readOnly",     type: "boolean", default: false },
         {

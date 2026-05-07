@@ -27,6 +27,12 @@ export interface ButtonProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonE
     background?: "default" | "light" | "dark";
     /** Stretch to the full width of the parent. */
     block?: boolean;
+    /**
+     * Sets `data-visibility="parent-hover"` so an ancestor `Panel` with
+     * `revealChildrenOnHover` keeps this button hidden until the panel is hovered or contains
+     * keyboard focus. Outside such a panel the prop has no effect.
+     */
+    hideUntilParentHover?: boolean;
 }
 
 // --- Styled ---
@@ -147,7 +153,7 @@ const Root = styled.button(
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     function Button(
-        { variant = "default", size = "md", background = "default", block, icon, disabled, title, children, ...rest },
+        { variant = "default", size = "md", background = "default", block, icon, disabled, title, hideUntilParentHover, children, ...rest },
         ref,
     ) {
         const button = (
@@ -159,6 +165,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
                 data-bg={background}
                 data-block={block || undefined}
                 data-disabled={disabled || undefined}
+                data-visibility={hideUntilParentHover ? "parent-hover" : undefined}
                 disabled={disabled}
                 type="button"
                 {...rest}

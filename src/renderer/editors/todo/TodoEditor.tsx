@@ -1,11 +1,10 @@
-import styled from "@emotion/styled";
-import React, { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
-import { Button } from "../../components/basic/Button";
-import { TextField } from "../../components/basic/TextField";
-import { TextAreaField, TextAreaFieldRef } from "../../components/basic/TextAreaField";
-import { HighlightedTextProvider } from "../../components/basic/useHighlightedText";
-import { Splitter } from "../../components/layout/Splitter";
+import { Panel } from "../../uikit/Panel/Panel";
+import { Input } from "../../uikit/Input/Input";
+import { Textarea } from "../../uikit/Textarea/Textarea";
+import { IconButton } from "../../uikit/IconButton/IconButton";
+import { Splitter } from "../../uikit/Splitter/Splitter";
 import {
     RenderFlexCellParams,
     RenderFlexGrid,
@@ -21,94 +20,6 @@ import { TodoItemView } from "./components/TodoItemView";
 import { EditorError } from "../base/EditorError";
 import { useContentViewModel } from "../base/useContentViewModel";
 
-// =============================================================================
-// Styles
-// =============================================================================
-
-const TodoEditorRoot = styled.div({
-    flex: "1 1 auto",
-    display: "flex",
-    flexDirection: "row",
-    overflow: "hidden",
-    "& .left-panel": {
-        display: "flex",
-        flexDirection: "column",
-        overflow: "hidden",
-        backgroundColor: color.background.default,
-        minWidth: 100,
-        maxWidth: "80%",
-    },
-    "& .center-panel": {
-        flex: 1,
-        display: "flex",
-        flexDirection: "column",
-        overflow: "hidden",
-    },
-    "& .quick-add-row": {
-        display: "flex",
-        alignItems: "center",
-        gap: 6,
-        padding: "6px 8px",
-        marginBottom: 16,
-        flexShrink: 0,
-    },
-    "& .quick-add-input": {
-        flex: "1 1 auto",
-        minWidth: 0,
-        fontSize: 13,
-        backgroundColor: color.background.default,
-        "&:focus": {
-            backgroundColor: color.background.dark,
-        },
-    },
-    "& .items-grid": {
-        flex: 1,
-    },
-    "& .done-separator": {
-        display: "flex",
-        alignItems: "center",
-        width: "100%",
-        height: "fit-content",
-        gap: 8,
-        padding: "4px 20%",
-        color: color.text.light,
-        fontSize: 11,
-        "&::before, &::after": {
-            content: "''",
-            flex: 1,
-            borderBottom: `1px solid ${color.border.default}`,
-        },
-    },
-    "& .empty-state": {
-        flex: 1,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 16,
-        padding: 16,
-        color: color.text.light,
-        fontSize: 14,
-    },
-    "& .title": {
-        fontSize: 24,
-        color: color.text.default,
-    },
-    "& .subtitle": {
-        color: color.text.light,
-    },
-});
-
-const SearchField = styled(TextField)({
-    "& input": {
-        color: color.misc.blue,
-    },
-});
-
-// =============================================================================
-// Component
-// =============================================================================
-
 const noopUnsubscribe = () => () => {};
 const getDefaultState = () => defaultTodoEditorState;
 const getColumnWidth = () => "100%" as Percent;
@@ -116,14 +27,11 @@ const getColumnWidth = () => "100%" as Percent;
 export function TodoEditor({ model }: TodoEditorProps) {
     const vm = useContentViewModel<TodoViewModel>(model, "todo-view");
 
-    // Grid model ref for virtualized list updates (React rendering concern)
     const gridModelRef = useRef<RenderGridModel | null>(null);
     const setGridModel = useCallback((m: RenderGridModel | null) => {
         gridModelRef.current = m;
     }, []);
 
-    // Always call hooks unconditionally (Rules of Hooks).
-    // When vm is null (loading), subscribe to a no-op and return defaults.
     const pageState: TodoEditorState = useSyncExternalStore(
         vm ? (cb) => vm.state.subscribe(cb) : noopUnsubscribe,
         vm ? () => vm.state.get() : getDefaultState,
@@ -132,24 +40,20 @@ export function TodoEditor({ model }: TodoEditorProps) {
     const allItems = pageState.data.items;
     const tags = pageState.data.tags;
     const items = pageState.filteredItems;
-    const quickAddRef = useRef<TextAreaFieldRef>(null);
+    const [quickAddText, setQuickAddText] = useState("");
 
-    // Update virtualized grid when filteredItems or tags change (React rendering concern)
     useEffect(() => {
         gridModelRef.current?.update({ all: true });
     }, [items, tags]);
 
-    // Compute separator position between undone and done items
     const separatorIndex = useMemo(() => {
         const firstDoneIndex = items.findIndex((item: TodoItem) => item.done);
-        // Show separator only if there are both undone and done items
         if (firstDoneIndex > 0) return firstDoneIndex;
         return -1;
     }, [items]);
 
     const rowCount = items.length + (separatorIndex >= 0 ? 1 : 0);
 
-    // Map grid row to item (accounts for separator row offset)
     const getItemForRow = useCallback(
         (row: number): TodoItem | undefined => {
             if (separatorIndex >= 0 && row === separatorIndex) return undefined;
@@ -162,7 +66,6 @@ export function TodoEditor({ model }: TodoEditorProps) {
         [items, separatorIndex]
     );
 
-    // Provide stored heights to RenderFlexGrid for initial row sizing
     const getInitialRowHeight = useCallback(
         (row: number) => {
             const item = getItemForRow(row);
@@ -172,14 +75,13 @@ export function TodoEditor({ model }: TodoEditorProps) {
         [getItemForRow, vm]
     );
 
-    // Quick add
     const handleQuickAdd = useCallback(() => {
-        const trimmed = quickAddRef.current?.getText()?.trim();
+        const trimmed = quickAddText.trim();
         if (trimmed) {
             vm.addItem(trimmed);
-            quickAddRef.current?.clear();
+            setQuickAddText("");
         }
-    }, [vm]);
+    }, [vm, quickAddText]);
 
     const handleQuickAddKeyDown = useCallback(
         (e: React.KeyboardEvent) => {
@@ -191,14 +93,26 @@ export function TodoEditor({ model }: TodoEditorProps) {
         [handleQuickAdd]
     );
 
-    // Render cell
     const renderTodoCell = useCallback(
         (p: RenderFlexCellParams) => {
-            // Separator row
             if (separatorIndex >= 0 && p.row === separatorIndex) {
                 return (
-                    <div ref={p.ref} className="done-separator">
+                    <div
+                        ref={p.ref}
+                        style={{
+                            display: "flex",
+                            alignItems: "center",
+                            width: "100%",
+                            height: "fit-content",
+                            gap: 8,
+                            padding: "4px 20%",
+                            color: color.text.light,
+                            fontSize: 11,
+                        }}
+                    >
+                        <div style={{ flex: 1, borderBottom: `1px solid ${color.border.default}` }} />
                         Done
+                        <div style={{ flex: 1, borderBottom: `1px solid ${color.border.default}` }} />
                     </div>
                 );
             }
@@ -222,11 +136,7 @@ export function TodoEditor({ model }: TodoEditorProps) {
     if (!vm) return null;
 
     if (pageState.error) {
-        return (
-            <TodoEditorRoot>
-                <EditorError>{pageState.error}</EditorError>
-            </TodoEditorRoot>
-        );
+        return <EditorError>{pageState.error}</EditorError>;
     }
 
     const isQuickAddDisabled = !pageState.selectedList;
@@ -235,32 +145,32 @@ export function TodoEditor({ model }: TodoEditorProps) {
         <>
             {Boolean(model.editorToolbarRefLast) &&
                 createPortal(
-                    <SearchField
+                    <Input
                         value={pageState.searchText}
                         onChange={vm.setSearchText}
                         placeholder="Search..."
-                        endButtons={
-                            pageState.searchText
-                                ? [
-                                      <Button
-                                          key="clear"
-                                          size="small"
-                                          type="icon"
-                                          title="Clear search"
-                                          onClick={vm.clearSearch}
-                                      >
-                                          <CloseIcon />
-                                      </Button>,
-                                  ]
-                                : undefined
+                        endSlot={
+                            pageState.searchText ? (
+                                <IconButton
+                                    size="sm"
+                                    icon={<CloseIcon />}
+                                    title="Clear search"
+                                    onClick={vm.clearSearch}
+                                />
+                            ) : null
                         }
                     />,
                     model.editorToolbarRefLast
                 )}
-            <TodoEditorRoot>
-                <div
-                    className="left-panel"
-                    style={{ width: pageState.leftPanelWidth }}
+            <Panel direction="row" flex={1} overflow="hidden">
+                <Panel
+                    direction="column"
+                    minWidth={100}
+                    maxWidth="80%"
+                    overflow="hidden"
+                    background="default"
+                    width={pageState.leftPanelWidth}
+                    shrink={false}
                 >
                     <TodoListPanel
                         pageModel={vm}
@@ -270,59 +180,84 @@ export function TodoEditor({ model }: TodoEditorProps) {
                         tags={pageState.data.tags}
                         selectedTag={pageState.selectedTag}
                     />
-                </div>
+                </Panel>
                 <Splitter
-                    type="vertical"
-                    initialWidth={pageState.leftPanelWidth}
-                    onChangeWidth={vm.setLeftPanelWidth}
-                    borderSized="right"
+                    orientation="vertical"
+                    value={pageState.leftPanelWidth}
+                    onChange={vm.setLeftPanelWidth}
+                    border="after"
+                    min={100}
                 />
-                <HighlightedTextProvider value={pageState.searchText}>
-                    <div className="center-panel">
-                        {/* Quick-add input */}
-                        <div className="quick-add-row">
-                            <TextAreaField
-                                ref={quickAddRef}
-                                className="quick-add-input"
+                <Panel direction="column" flex={1} minWidth={0} overflow="hidden">
+                    <Panel
+                        direction="row"
+                        gap="xs"
+                        paddingX="sm"
+                        paddingY="xs"
+                        align="center"
+                        shrink={false}
+                    >
+                        <div
+                            onKeyDown={handleQuickAddKeyDown}
+                            style={{ flex: 1, minWidth: 0 }}
+                        >
+                            <Textarea
+                                value={quickAddText}
+                                onChange={setQuickAddText}
                                 singleLine
-                                onKeyDown={handleQuickAddKeyDown}
                                 placeholder={
                                     isQuickAddDisabled
                                         ? "Select a list to add items..."
                                         : "Add new todo item..."
                                 }
-                                readonly={isQuickAddDisabled}
+                                readOnly={isQuickAddDisabled}
                             />
-                            <Button
-                                size="small"
-                                type="icon"
-                                title="Add item"
-                                onClick={handleQuickAdd}
-                                disabled={isQuickAddDisabled}
-                            >
-                                <PlusIcon />
-                            </Button>
                         </div>
+                        <IconButton
+                            size="sm"
+                            icon={<PlusIcon />}
+                            title="Add item"
+                            onClick={handleQuickAdd}
+                            disabled={isQuickAddDisabled}
+                        />
+                    </Panel>
 
-                        {/* Items */}
-                        {allItems.length === 0 ? (
-                            <div className="empty-state">
-                                <div className="title">ToDo</div>
-                                <div className="subtitle">No items yet</div>
-                                <div className="subtitle">
-                                    Create a list, then add your first todo item
-                                </div>
-                            </div>
-                        ) : items.length === 0 ? (
-                            <div className="empty-state">
-                                <div className="subtitle">
-                                    No items match the current filter
-                                </div>
-                            </div>
-                        ) : (
+                    {allItems.length === 0 ? (
+                        <div
+                            style={{
+                                flex: 1,
+                                display: "flex",
+                                flexDirection: "column",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                gap: 16,
+                                padding: 16,
+                                color: color.text.light,
+                                fontSize: 14,
+                            }}
+                        >
+                            <div style={{ fontSize: 24, color: color.text.default }}>ToDo</div>
+                            <div>No items yet</div>
+                            <div>Create a list, then add your first todo item</div>
+                        </div>
+                    ) : items.length === 0 ? (
+                        <div
+                            style={{
+                                flex: 1,
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                padding: 16,
+                                color: color.text.light,
+                                fontSize: 14,
+                            }}
+                        >
+                            No items match the current filter
+                        </div>
+                    ) : (
+                        <Panel direction="column" flex={1} minHeight={0}>
                             <RenderFlexGrid
                                 ref={setGridModel}
-                                className="items-grid"
                                 columnCount={1}
                                 rowCount={rowCount}
                                 columnWidth={getColumnWidth}
@@ -332,10 +267,10 @@ export function TodoEditor({ model }: TodoEditorProps) {
                                 maxRowHeight={400}
                                 getInitialRowHeight={getInitialRowHeight}
                             />
-                        )}
-                    </div>
-                </HighlightedTextProvider>
-            </TodoEditorRoot>
+                        </Panel>
+                    )}
+                </Panel>
+            </Panel>
             {Boolean(model.editorFooterRefLast) &&
                 createPortal(
                     <span>

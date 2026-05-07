@@ -13,6 +13,7 @@ interface DemoProps {
     minHeight?: number;
     maxHeight?: number;
     size?: "sm" | "md";
+    variant?: "default" | "ghost";
     autoFocus?: boolean;
 }
 
@@ -25,6 +26,7 @@ function TextareaDemo({
     minHeight = 0,
     maxHeight = 0,
     size = "md",
+    variant = "default",
     autoFocus = false,
 }: DemoProps) {
     const [value, setValue] = React.useState<string>(initialValue);
@@ -45,10 +47,16 @@ function TextareaDemo({
                 minHeight={minHeight || undefined}
                 maxHeight={maxHeight || undefined}
                 size={size}
+                variant={variant}
                 autoFocus={autoFocus}
                 aria-label="Demo textarea"
             />
             <Text>Value: {JSON.stringify(value)}</Text>
+            <Text size="sm" color="light">
+                Tip: switch <code>variant</code> to <code>ghost</code> for the inline-edit
+                chrome (transparent at rest, hover/focus borders only) used by todo titles
+                and notebook cell descriptions.
+            </Text>
         </Panel>
     );
 }
@@ -67,6 +75,7 @@ export const textareaStory: Story = {
         { name: "minHeight",    type: "number", default: 0, min: 0, max: 200, step: 10, label: "Min height (0 = unset)" },
         { name: "maxHeight",    type: "number", default: 0, min: 0, max: 500, step: 50, label: "Max height (0 = unset)" },
         { name: "size",         type: "enum",   options: ["sm", "md"], default: "md" },
+        { name: "variant",      type: "enum",   options: ["default", "ghost"], default: "default" },
         { name: "autoFocus",    type: "boolean", default: false, label: "Auto-focus on mount" },
     ],
 };

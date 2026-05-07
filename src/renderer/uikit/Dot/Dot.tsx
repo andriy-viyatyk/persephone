@@ -43,6 +43,12 @@ export interface DotProps
      * be applied.
      */
     selected?: boolean;
+    /**
+     * Sets `data-visibility="parent-hover"` so an ancestor `Panel` with
+     * `revealChildrenOnHover` keeps this dot hidden until the panel is hovered or contains
+     * keyboard focus. Outside such a panel the prop has no effect.
+     */
+    hideUntilParentHover?: boolean;
 }
 
 // --- Helpers ---
@@ -94,7 +100,7 @@ const Root = styled.span(
 // --- Component ---
 
 export function Dot(props: DotProps) {
-    const { size = "sm", color: colorProp, bordered, selected, onClick, ...rest } = props;
+    const { size = "sm", color: colorProp, bordered, selected, hideUntilParentHover, onClick, ...rest } = props;
     const d = diameter(size);
     const fill = resolveFill(colorProp);
     const clickable = onClick !== undefined;
@@ -120,6 +126,7 @@ export function Dot(props: DotProps) {
             data-clickable={clickable || undefined}
             data-selected={selected || undefined}
             data-bordered={bordered || undefined}
+            data-visibility={hideUntilParentHover ? "parent-hover" : undefined}
             onClick={onClick}
             style={style}
         />

@@ -11,6 +11,13 @@ export interface InputProps
     onChange?: (value: string) => void;
     /** Control height. Default: "md". */
     size?: "sm" | "md";
+    /**
+     * Visual variant. `"default"` renders the standard chrome (dark background, gray border).
+     * `"ghost"` renders transparent background and border at rest, with a gray border on hover
+     * and a blue border on focus — for inline-edit fields embedded in list/grid rows. Default:
+     * `"default"`.
+     */
+    variant?: "default" | "ghost";
     /** Content rendered inside the input chrome, before the text. */
     startSlot?: React.ReactNode;
     /** Content rendered inside the input chrome, after the text. */
@@ -53,6 +60,15 @@ const Wrapper = styled.div(
             opacity: 0.5,
             pointerEvents: "none",
         },
+
+        // Ghost variant — transparent at rest, hover/focus borders only.
+        '&[data-variant="ghost"]': {
+            backgroundColor: "transparent",
+            borderColor: "transparent",
+        },
+        '&[data-variant="ghost"]:hover':                          { borderColor: color.border.default },
+        '&[data-variant="ghost"]:focus-within':                   { borderColor: color.border.active  },
+        '&[data-variant="ghost"][data-readonly]:focus-within':    { borderColor: "transparent" },
     },
     { label: "Input" },
 );
@@ -122,7 +138,7 @@ const Slot = styled.div(
 export const Input = React.forwardRef<HTMLInputElement, InputProps>(
     function Input(
         {
-            onChange, size = "md", disabled, readOnly, startSlot, endSlot,
+            onChange, size = "md", variant = "default", disabled, readOnly, startSlot, endSlot,
             width, minWidth, maxWidth,
             ...rest
         },
@@ -144,6 +160,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             <Wrapper
                 data-type="input"
                 data-size={size}
+                data-variant={variant}
                 data-disabled={disabled || undefined}
                 data-readonly={readOnly || undefined}
                 style={wrapperStyle}

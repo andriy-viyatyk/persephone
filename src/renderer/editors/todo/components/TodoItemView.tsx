@@ -1,199 +1,16 @@
-import styled from "@emotion/styled";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import clsx from "clsx";
 import color from "../../../theme/color";
 import { TraitTypeId, setTraitDragData, getTraitDragData, hasTraitDragData } from "../../../core/traits";
 import { CheckedIcon, UncheckedIcon, DeleteIcon, DragHandleIcon } from "../../../theme/icons";
-import { Button } from "../../../components/basic/Button";
-import { TextAreaField } from "../../../components/basic/TextAreaField";
+import { Panel } from "../../../uikit/Panel/Panel";
+import { Textarea } from "../../../uikit/Textarea/Textarea";
+import { IconButton } from "../../../uikit/IconButton/IconButton";
+import { WithMenu } from "../../../uikit/Menu/WithMenu";
+import { Dot } from "../../../uikit/Dot/Dot";
+import type { MenuItem } from "../../../uikit/Menu/types";
 import { formatDate } from "../../../core/utils/utils";
-import { WithPopupMenu } from "../../../components/overlay/WithPopupMenu";
-import { MenuItem } from "../../../components/overlay/PopupMenu";
 import { TodoItem, TodoTag } from "../todoTypes";
 import { TodoViewModel } from "../TodoViewModel";
-
-// =============================================================================
-// Styles
-// =============================================================================
-
-const TodoItemRoot = styled.div({
-    position: "relative",
-    width: "100%",
-    height: "fit-content",
-    padding: "4px 8px 4px 30px", // left padding reserves space for checkbox-col
-    "&:hover .item-actions": {
-        opacity: 1,
-    },
-    "&:hover .drag-handle": {
-        opacity: 1,
-    },
-    "&:hover .add-comment-btn": {
-        opacity: 0.5,
-    },
-    "&:hover .add-tag-btn": {
-        opacity: 0.5,
-    },
-    "&:hover .item-dates": {
-        opacity: 1,
-    },
-
-    "& .checkbox-col": {
-        position: "absolute",
-        left: 8,
-        top: 4,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        gap: 2,
-    },
-    "& .checkbox": {
-        cursor: "pointer",
-        marginTop: 2,
-        color: color.text.light,
-        opacity: 0.5,
-        "&:hover": {
-            opacity: 1,
-        },
-        "& svg": {
-            width: 16,
-            height: 16,
-        },
-    },
-    "& .drag-handle": {
-        opacity: 0,
-        cursor: "grab",
-        color: color.icon.light,
-        "& svg": {
-            width: 12,
-            height: 12,
-        },
-    },
-    // Two-column layout: left (title + comment), right (dates/delete + tag)
-    "& .content-cols": {
-        display: "flex",
-        gap: 6,
-        minHeight: 26,
-    },
-    "& .left-col": {
-        flex: "1 1 auto",
-        display: "flex",
-        flexDirection: "column",
-        minWidth: 0,
-        gap: 2,
-    },
-    "& .right-col": {
-        flexShrink: 0,
-        minWidth: 100,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "flex-end",
-    },
-    "& .right-top": {
-        display: "flex",
-        alignItems: "center",
-        gap: 2,
-        alignSelf: "stretch",
-    },
-    "& .title-input": {
-        flex: 1,
-        minWidth: 0,
-        backgroundColor: "transparent",
-        fontSize: 14,
-        padding: "1px 4px",
-        borderColor: "transparent",
-        "&:focus": {
-            borderColor: color.border.active,
-        },
-        "&.done": {
-            opacity: 0.6,
-        },
-    },
-    "& .item-actions": {
-        display: "flex",
-        alignItems: "center",
-        height: 20,
-        opacity: 0,
-        flexShrink: 0,
-    },
-    "& .item-dates": {
-        opacity: 0,
-        fontSize: 11,
-        color: color.text.light,
-        flexShrink: 0,
-        whiteSpace: "nowrap",
-        height: 20,
-        lineHeight: "20px",
-        alignSelf: "flex-start",
-    },
-    "& .comment-section": {
-        fontSize: 12,
-    },
-    "& .comment-field": {
-        maxHeight: 120,
-        overflowY: "auto",
-        fontSize: 12,
-        color: color.text.light,
-        borderColor: "transparent",
-        "&:hover": {
-            borderColor: color.border.default,
-        },
-        "&:focus": {
-            borderColor: color.misc.blue,
-        },
-    },
-    "& .add-comment-btn": {
-        opacity: 0,
-        fontSize: 11,
-        cursor: "pointer",
-        color: color.text.light,
-        "&:hover": {
-            opacity: 1,
-            color: color.misc.blue,
-        },
-    },
-    "& .tag-section": {
-        flex: "1 1 auto",
-    },
-    "& .add-tag-btn": {
-        opacity: 0,
-        fontSize: 11,
-        cursor: "pointer",
-        color: color.text.light,
-        "&:hover": {
-            opacity: 1,
-            color: color.misc.blue,
-        },
-    },
-    "& .tag-badge": {
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 4,
-        fontSize: 11,
-        cursor: "pointer",
-        color: color.text.light,
-        "&:hover": {
-            color: color.misc.blue,
-        },
-    },
-    "& .tag-dot": {
-        width: 8,
-        height: 8,
-        borderRadius: "50%",
-        flexShrink: 0,
-    },
-
-    // Drag-and-drop states
-    "&.dragging": {
-        opacity: 0.4,
-    },
-    "&.drop-over": {
-        backgroundColor: color.background.light,
-    },
-});
-
-// =============================================================================
-// Component
-// =============================================================================
 
 interface TodoItemViewProps {
     item: TodoItem;
@@ -205,8 +22,6 @@ interface TodoItemViewProps {
 export function TodoItemView({ item, tags, pageModel, cellRef }: TodoItemViewProps) {
     const isDraggable = !item.done;
 
-    // Native HTML5 drag-and-drop for reordering undone items;
-    // moveItem() shows warnings when reorder is blocked by filters
     const [isDragging, setIsDragging] = useState(false);
     const [isOver, setIsOver] = useState(false);
     const dragEnterCount = useRef(0);
@@ -261,7 +76,7 @@ export function TodoItemView({ item, tags, pageModel, cellRef }: TodoItemViewPro
         }
     }, [item.id, isDraggable, pageModel]);
 
-    // Combine cellRef (for RenderFlexGrid measurement) with node ref
+    const nodeRef = useRef<HTMLDivElement | null>(null);
     const setNodeRef = useCallback(
         (node: HTMLDivElement | null) => {
             nodeRef.current = node;
@@ -272,8 +87,6 @@ export function TodoItemView({ item, tags, pageModel, cellRef }: TodoItemViewPro
         [cellRef]
     );
 
-    // Persist measured height to model (for getInitialRowHeight on reload)
-    const nodeRef = useRef<HTMLDivElement | null>(null);
     useEffect(() => {
         const el = nodeRef.current;
         if (!el) return;
@@ -307,7 +120,6 @@ export function TodoItemView({ item, tags, pageModel, cellRef }: TodoItemViewPro
     }, [pageModel, item.id]);
 
     const handleCommentBlur = useCallback(() => {
-        // If comment is empty, remove it
         if (item.comment === "") {
             pageModel.removeComment(item.id);
         }
@@ -321,7 +133,6 @@ export function TodoItemView({ item, tags, pageModel, cellRef }: TodoItemViewPro
         pageModel.deleteItem(item.id);
     }, [pageModel, item.id]);
 
-    // Tag assignment
     const tagDef = useMemo(
         () => item.tag ? tags.find((t) => t.name === item.tag) : undefined,
         [item.tag, tags]
@@ -336,15 +147,7 @@ export function TodoItemView({ item, tags, pageModel, cellRef }: TodoItemViewPro
         for (const tag of tags) {
             menuItems.push({
                 label: tag.name,
-                icon: tag.color ? (
-                    <span style={{
-                        display: "inline-block",
-                        width: 8,
-                        height: 8,
-                        borderRadius: "50%",
-                        backgroundColor: tag.color,
-                    }} />
-                ) : undefined,
+                icon: tag.color ? <Dot size="sm" color={tag.color} /> : undefined,
                 onClick: () => pageModel.setItemTag(item.id, tag.name),
                 selected: item.tag === tag.name,
             });
@@ -357,120 +160,182 @@ export function TodoItemView({ item, tags, pageModel, cellRef }: TodoItemViewPro
         : formatDate(item.createdDate);
 
     return (
-        <TodoItemRoot
+        <div
             ref={setNodeRef}
-            className={clsx(isDragging && "dragging", isOver && "drop-over")}
             onDragEnter={handleDragEnter}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
+            style={{
+                width: "100%",
+                height: "fit-content",
+                opacity: isDragging ? 0.4 : 1,
+                backgroundColor: isOver ? color.background.light : undefined,
+            }}
         >
-            <div className="checkbox-col">
-                <span
-                    className="checkbox"
-                    onClick={handleCheckbox}
-                    title={item.done ? "Mark as undone" : "Mark as done"}
+            <Panel
+                revealChildrenOnHover
+                position="relative"
+                paddingTop="sm"
+                paddingBottom="sm"
+                paddingLeft="xxxl"
+                paddingRight="md"
+            >
+                <div
+                    style={{
+                        position: "absolute",
+                        left: 8,
+                        top: 4,
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        gap: 2,
+                    }}
                 >
-                    {item.done ? <CheckedIcon /> : <UncheckedIcon />}
-                </span>
-                {isDraggable && (
                     <span
-                        className="drag-handle"
-                        title="Drag to reorder"
-                        draggable
-                        onDragStart={handleDragStart}
-                        onDragEnd={handleDragEnd}
+                        onClick={handleCheckbox}
+                        title={item.done ? "Mark as undone" : "Mark as done"}
+                        style={{
+                            cursor: "pointer",
+                            marginTop: 2,
+                            color: color.text.light,
+                            opacity: 0.5,
+                            display: "inline-flex",
+                        }}
                     >
-                        <DragHandleIcon />
+                        {item.done
+                            ? <CheckedIcon style={{ width: 16, height: 16 }} />
+                            : <UncheckedIcon style={{ width: 16, height: 16 }} />}
                     </span>
-                )}
-            </div>
-            <div className="content-cols">
-                {/* Left column: title + comment */}
-                <div className="left-col">
-                    <TextAreaField
-                        className={clsx("title-input", item.done && "done")}
-                        singleLine
-                        value={item.title}
-                        onChange={handleTitleChange}
-                        onKeyDown={handleTitleKeyDown}
-                        placeholder="(untitled)"
-                    />
-                    <div className="comment-section">
+                    {isDraggable && (
+                        <span
+                            data-visibility="parent-hover"
+                            title="Drag to reorder"
+                            draggable
+                            onDragStart={handleDragStart}
+                            onDragEnd={handleDragEnd}
+                            style={{
+                                cursor: "grab",
+                                color: color.icon.light,
+                                display: "inline-flex",
+                            }}
+                        >
+                            <DragHandleIcon style={{ width: 12, height: 12 }} />
+                        </span>
+                    )}
+                </div>
+
+                <Panel direction="row" gap="md" minHeight={26} flex={1} minWidth={0}>
+                    <Panel direction="column" gap="xs" flex={1} minWidth={0}>
+                        <div
+                            onKeyDown={handleTitleKeyDown}
+                            style={{ opacity: item.done ? 0.6 : 1 }}
+                        >
+                            <Textarea
+                                variant="ghost"
+                                singleLine
+                                value={item.title}
+                                onChange={handleTitleChange}
+                                placeholder="(untitled)"
+                            />
+                        </div>
                         {item.comment !== null ? (
-                            <TextAreaField
-                                className="comment-field"
+                            <Textarea
+                                variant="ghost"
+                                size="sm"
                                 value={item.comment}
                                 onChange={handleCommentChange}
                                 onBlur={handleCommentBlur}
                                 placeholder="Add a comment..."
+                                maxHeight={120}
                             />
                         ) : (
                             <span
-                                className="add-comment-btn"
+                                data-visibility="parent-hover"
                                 onClick={handleAddComment}
+                                style={{
+                                    fontSize: 11,
+                                    cursor: "pointer",
+                                    color: color.text.light,
+                                    alignSelf: "flex-start",
+                                    padding: "0 4px",
+                                }}
                             >
                                 + Add comment
                             </span>
                         )}
-                    </div>
-                </div>
+                    </Panel>
 
-                {/* Right column: tag/delete + date */}
-                <div className="right-col">
-                    <div className="right-top">
-                        <div className="tag-section">
-                            <WithPopupMenu items={tagMenuItems}>
-                                {(openMenu) =>
-                                    item.tag ? (
-                                        <span
-                                            className="tag-badge"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                openMenu(e.currentTarget);
-                                            }}
-                                        >
-                                            {tagDef?.color && (
-                                                <span
-                                                    className="tag-dot"
-                                                    style={{ backgroundColor: tagDef.color }}
-                                                />
-                                            )}
-                                            {item.tag}
-                                        </span>
-                                    ) : (
-                                        <span
-                                            className="add-tag-btn"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                openMenu(e.currentTarget);
-                                            }}
-                                        >
-                                            + tag
-                                        </span>
-                                    )
-                                }
-                            </WithPopupMenu>
-                        </div>
-                        <span className="item-actions">
-                            <Button
-                                size="small"
-                                type="icon"
+                    <Panel direction="column" align="end" minWidth={100} shrink={false}>
+                        <Panel direction="row" align="center" gap="xs" alignSelf="stretch">
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                                <WithMenu items={tagMenuItems}>
+                                    {(setOpen) =>
+                                        item.tag ? (
+                                            <span
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setOpen(e.currentTarget);
+                                                }}
+                                                style={{
+                                                    display: "inline-flex",
+                                                    alignItems: "center",
+                                                    gap: 4,
+                                                    fontSize: 11,
+                                                    cursor: "pointer",
+                                                    color: color.text.light,
+                                                }}
+                                            >
+                                                {tagDef?.color && <Dot size="sm" color={tagDef.color} />}
+                                                {item.tag}
+                                            </span>
+                                        ) : (
+                                            <span
+                                                data-visibility="parent-hover"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setOpen(e.currentTarget);
+                                                }}
+                                                style={{
+                                                    fontSize: 11,
+                                                    cursor: "pointer",
+                                                    color: color.text.light,
+                                                }}
+                                            >
+                                                + tag
+                                            </span>
+                                        )
+                                    }
+                                </WithMenu>
+                            </div>
+                            <IconButton
+                                hideUntilParentHover
+                                size="sm"
+                                icon={<DeleteIcon />}
                                 title="Delete item"
                                 onClick={handleDelete}
-                            >
-                                <DeleteIcon />
-                            </Button>
+                            />
+                        </Panel>
+                        <span
+                            data-visibility="parent-hover"
+                            title={
+                                `Created: ${formatDate(item.createdDate)}` +
+                                (item.doneDate ? `\nDone: ${formatDate(item.doneDate)}` : "")
+                            }
+                            style={{
+                                fontSize: 11,
+                                color: color.text.light,
+                                whiteSpace: "nowrap",
+                                height: 20,
+                                lineHeight: "20px",
+                                alignSelf: "flex-start",
+                            }}
+                        >
+                            {dateInfo}
                         </span>
-                    </div>
-                    <span className="item-dates" title={
-                        `Created: ${formatDate(item.createdDate)}` +
-                        (item.doneDate ? `\nDone: ${formatDate(item.doneDate)}` : "")
-                    }>
-                        {dateInfo}
-                    </span>
-                </div>
-            </div>
-        </TodoItemRoot>
+                    </Panel>
+                </Panel>
+            </Panel>
+        </div>
     );
 }

@@ -104,6 +104,26 @@ function DotPreview({ size, color: colorProp, bordered, selected, clickable }: D
                     <Dot size="md" color="#444444" bordered />
                 </Panel>
             </Panel>
+
+            <Panel direction="column" gap="md">
+                <span>
+                    Hide until parent hover — pair with <code>Panel revealChildrenOnHover</code>.
+                    Hover the row below; the second dot fades in.
+                </span>
+                <Panel
+                    direction="row"
+                    align="center"
+                    gap="md"
+                    padding="md"
+                    border
+                    rounded="md"
+                    revealChildrenOnHover
+                >
+                    <Dot size="md" color="success" title="Always visible" />
+                    <span>Some row content</span>
+                    <Dot size="md" color="info" hideUntilParentHover title="Revealed on hover" />
+                </Panel>
+            </Panel>
         </Panel>
     );
 }

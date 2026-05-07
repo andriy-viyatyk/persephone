@@ -103,6 +103,15 @@ export interface PanelProps
     /** Dim + disable pointer events on the whole panel. */
     disabled?: boolean;
 
+    /**
+     * When `true`, descendant elements with `data-visibility="parent-hover"` start hidden
+     * (`opacity: 0`, `pointer-events: none`) and fade in when this Panel is hovered or contains
+     * keyboard focus. UIKit primitives expose a typed `hideUntilParentHover` prop that emits
+     * the data attribute; plain HTML elements set the attribute directly. Layout-stable —
+     * children always reserve their space.
+     */
+    revealChildrenOnHover?: boolean;
+
     children?: React.ReactNode;
 }
 
@@ -147,6 +156,18 @@ const Root = styled.div(
         "&[data-disabled]": {
             opacity: 0.6,
             pointerEvents: "none",
+        },
+
+        // Hover-reveal pattern: descendants tagged with data-visibility="parent-hover"
+        // are hidden by default and fade in when this Panel is hovered or contains focus.
+        '&[data-reveal-on-hover] [data-visibility="parent-hover"]': {
+            opacity: 0,
+            pointerEvents: "none",
+            transition: "opacity 0.15s",
+        },
+        '&[data-reveal-on-hover]:hover [data-visibility="parent-hover"], &[data-reveal-on-hover]:focus-within [data-visibility="parent-hover"]': {
+            opacity: 1,
+            pointerEvents: "auto",
         },
     },
     { label: "Panel" },
@@ -250,6 +271,7 @@ export const Panel = React.forwardRef<HTMLDivElement, PanelProps>(function Panel
         shadow,
         background,
         disabled,
+        revealChildrenOnHover,
         children,
         ...rest
     } = props;
@@ -316,6 +338,7 @@ export const Panel = React.forwardRef<HTMLDivElement, PanelProps>(function Panel
             data-border-color={borderColor || undefined}
             data-shadow={shadow || undefined}
             data-disabled={disabled || undefined}
+            data-reveal-on-hover={revealChildrenOnHover || undefined}
             className={scrollable ? "scroll-container" : undefined}
             {...rest}
             style={inlineStyle}
