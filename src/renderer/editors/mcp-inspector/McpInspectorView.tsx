@@ -1,331 +1,45 @@
-import { useCallback, useEffect } from "react";
-import styled from "@emotion/styled";
-import color from "../../theme/color";
-import { Button } from "../../components/basic/Button";
+import { useCallback, useEffect, useMemo } from "react";
+import { Panel } from "../../uikit/Panel";
+import { Text } from "../../uikit/Text";
+import { Tag } from "../../uikit/Tag";
+import { Dot, DotColor } from "../../uikit/Dot";
+import { Button } from "../../uikit/Button";
+import { IconButton } from "../../uikit/IconButton";
+import { Input } from "../../uikit/Input";
+import { Select } from "../../uikit/Select";
+import { IListBoxItem } from "../../uikit/ListBox";
+import { Divider } from "../../uikit/Divider";
+import { SegmentedControl, ISegment } from "../../uikit/SegmentedControl";
+import { CloseIcon } from "../../theme/icons";
 import { PageToolbar } from "../base";
 import { IEditorState, EditorType } from "../../../shared/types";
 import { TComponentState } from "../../core/state/state";
 import { EditorModule } from "../types";
-import { McpInspectorEditorModel, McpInspectorEditorState, getDefaultMcpInspectorEditorState } from "./McpInspectorEditorModel";
+import {
+    McpInspectorEditorModel,
+    McpInspectorEditorState,
+    McpPanelId,
+    getDefaultMcpInspectorEditorState,
+} from "./McpInspectorEditorModel";
 import { mcpConnectionStore } from "./McpConnectionStore";
 import { ToolsPanel } from "./ToolsPanel";
 import { ResourcesPanel } from "./ResourcesPanel";
 import { PromptsPanel } from "./PromptsPanel";
 import { MarkdownBlock } from "../markdown/MarkdownBlock";
 
-// ============================================================================
-// Styles
-// ============================================================================
+const TRANSPORT_ITEMS: IListBoxItem[] = [
+    { value: "http", label: "HTTP" },
+    { value: "stdio", label: "Stdio" },
+];
 
-const McpInspectorViewRoot = styled.div({
-    flex: "1 1 auto",
-    display: "flex",
-    flexDirection: "column",
-    outline: "none",
-    overflow: "hidden",
-
-    "& .connection-bar": {
-        display: "flex",
-        alignItems: "center",
-        gap: 6,
-        padding: "6px 10px",
-        flex: "1 1 auto",
-    },
-
-    "& .saved-select": {
-        appearance: "none" as const,
-        background: color.background.light,
-        color: color.text.default,
-        border: `1px solid ${color.border.default}`,
-        borderRadius: 3,
-        padding: "4px 8px",
-        fontSize: 12,
-        cursor: "pointer",
-        maxWidth: 160,
-        "&:focus": {
-            outline: "none",
-            borderColor: color.border.active,
-        },
-    },
-
-    "& .bar-separator": {
-        width: 1,
-        height: 18,
-        background: color.border.default,
-        flexShrink: 0,
-    },
-
-    "& .transport-select": {
-        appearance: "none" as const,
-        background: color.background.default,
-        color: color.text.default,
-        border: `1px solid ${color.border.default}`,
-        borderRadius: 3,
-        padding: "4px 8px",
-        fontSize: 12,
-        cursor: "pointer",
-        minWidth: 70,
-        "&:focus": {
-            outline: "none",
-            borderColor: color.border.active,
-        },
-    },
-
-    "& .url-input": {
-        flex: "1 1 auto",
-        background: color.background.default,
-        color: color.text.default,
-        border: `1px solid ${color.border.default}`,
-        borderRadius: 3,
-        padding: "4px 8px",
-        fontSize: 12,
-        fontFamily: "inherit",
-        "&:focus": {
-            outline: "none",
-            borderColor: color.border.active,
-        },
-        "&::placeholder": {
-            color: color.text.light,
-        },
-    },
-
-    "& .server-info": {
-        display: "flex",
-        alignItems: "center",
-        gap: 8,
-        padding: "4px 10px",
-        fontSize: 11,
-        color: color.text.light,
-        borderBottom: `1px solid ${color.border.light}`,
-    },
-
-    "& .server-name": {
-        color: color.text.default,
-        fontWeight: 500,
-    },
-
-    "& .capability-badge": {
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 3,
-        padding: "1px 6px",
-        borderRadius: 3,
-        fontSize: 11,
-        cursor: "pointer",
-        background: color.background.light,
-        color: color.text.light,
-        border: `1px solid ${color.border.light}`,
-        "&:hover": {
-            borderColor: color.border.active,
-            color: color.text.default,
-        },
-    },
-
-    "& .capability-badge.active": {
-        borderColor: color.border.active,
-        color: color.text.default,
-    },
-
-    "& .body": {
-        flex: "1 1 auto",
-        display: "flex",
-        overflow: "hidden",
-    },
-
-    "& .main-panel": {
-        flex: "1 1 auto",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        overflow: "auto",
-    },
-
-    "& .empty-state": {
-        textAlign: "center" as const,
-        color: color.text.light,
-        fontSize: 13,
-        padding: 20,
-        lineHeight: 1.6,
-    },
-
-    "& .error-message": {
-        color: color.error.text,
-        fontSize: 12,
-        padding: "4px 10px",
-        background: color.error.background,
-        borderBottom: `1px solid ${color.error.border}`,
-    },
-
-    "& .status-dot": {
-        display: "inline-block",
-        width: 6,
-        height: 6,
-        borderRadius: "50%",
-        marginRight: 4,
-    },
-
-    "& .status-dot.connected": {
-        background: color.success.text,
-    },
-
-    "& .status-dot.connecting": {
-        background: color.warning.text,
-    },
-
-    "& .status-dot.disconnected": {
-        background: color.text.light,
-    },
-
-    "& .status-dot.error": {
-        background: color.error.text,
-    },
-
-    // Server Info panel
-    "& .info-panel": {
-        flex: "1 1 auto",
-        overflow: "auto",
-        padding: "16px 20px",
-        display: "flex",
-        flexDirection: "column",
-        gap: 16,
-    },
-
-    "& .info-field": {
-        display: "flex",
-        flexDirection: "column",
-        gap: 4,
-    },
-
-    "& .info-label": {
-        fontSize: 11,
-        fontWeight: 500,
-        color: color.text.light,
-        textTransform: "uppercase" as const,
-        letterSpacing: "0.5px",
-    },
-
-    "& .info-value": {
-        fontSize: 13,
-        color: color.text.default,
-    },
-
-    "& .info-link": {
-        fontSize: 13,
-        color: color.border.active,
-        textDecoration: "none",
-        cursor: "pointer",
-        "&:hover": {
-            textDecoration: "underline",
-        },
-    },
-
-    "& .info-instructions": {
-        flex: "1 1 auto",
-        border: `1px solid ${color.border.default}`,
-        borderRadius: 4,
-        overflow: "auto",
-        padding: "8px 12px",
-    },
-
-    // Connections list (when disconnected)
-    "& .connections-list": {
-        width: "100%",
-        maxWidth: 560,
-        padding: "0 20px",
-    },
-
-    "& .connections-header": {
-        fontSize: 14,
-        fontWeight: 500,
-        color: color.text.default,
-        marginBottom: 12,
-    },
-
-    "& .conn-item": {
-        display: "flex",
-        alignItems: "center",
-        gap: 10,
-        padding: "8px 12px",
-        borderRadius: 4,
-        cursor: "pointer",
-        border: `1px solid ${color.border.light}`,
-        marginBottom: 6,
-        "&:hover": {
-            background: color.background.light,
-            borderColor: color.border.default,
-        },
-    },
-
-    "& .conn-item.active": {
-        borderColor: color.border.active,
-        background: color.background.light,
-    },
-
-    "& .conn-details": {
-        flex: "1 1 auto",
-        minWidth: 0,
-        overflow: "hidden",
-    },
-
-    "& .conn-name": {
-        fontSize: 13,
-        fontWeight: 500,
-        color: color.text.default,
-        overflow: "hidden",
-        textOverflow: "ellipsis",
-        whiteSpace: "nowrap",
-    },
-
-    "& .conn-url": {
-        fontSize: 12,
-        color: color.text.default,
-        fontFamily: "'Cascadia Code', 'Consolas', monospace",
-        overflow: "hidden",
-        textOverflow: "ellipsis",
-        whiteSpace: "nowrap",
-    },
-
-    "& .conn-transport-badge": {
-        fontSize: 11,
-        color: color.text.light,
-        background: color.background.light,
-        border: `1px solid ${color.border.light}`,
-        padding: "2px 6px",
-        borderRadius: 2,
-        flexShrink: 0,
-    },
-
-    "& .conn-delete": {
-        fontSize: 16,
-        color: color.text.light,
-        background: "none",
-        border: "none",
-        cursor: "pointer",
-        padding: "2px 6px",
-        borderRadius: 3,
-        opacity: 0,
-        flexShrink: 0,
-        "&:hover": {
-            color: color.error.text,
-            background: color.background.light,
-        },
-    },
-
-    "& .conn-item:hover .conn-delete": {
-        opacity: 1,
-    },
-
-    "& .connections-hint": {
-        fontSize: 11,
-        color: color.text.light,
-        marginTop: 8,
-        lineHeight: 1.5,
-    },
-});
-
-// ============================================================================
-// Component
-// ============================================================================
+function dotColorFor(status: string): DotColor {
+    switch (status) {
+        case "connected": return "success";
+        case "connecting": return "warning";
+        case "error": return "error";
+        default: return "neutral";
+    }
+}
 
 interface McpInspectorViewProps {
     model: McpInspectorEditorModel;
@@ -338,7 +52,6 @@ function McpInspectorView({ model }: McpInspectorViewProps) {
     const isConnecting = s.connectionStatus === "connecting";
     const connections = storeState.connections;
 
-    // Load connections store on mount
     useEffect(() => { mcpConnectionStore.load(); }, []);
 
     const handleConnect = useCallback(() => {
@@ -355,12 +68,10 @@ function McpInspectorView({ model }: McpInspectorViewProps) {
         }
     }, [model, isConnected, isConnecting]);
 
-    const handleSelectSaved = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
-        const id = e.target.value;
+    const handleSelectSaved = useCallback((id: string) => {
         if (!id) return;
         const conn = connections.find((c) => c.id === id);
         if (conn) model.fillFromSaved(conn);
-        e.target.value = "";
     }, [model, connections]);
 
     const handleClickConnection = useCallback((id: string) => {
@@ -373,139 +84,144 @@ function McpInspectorView({ model }: McpInspectorViewProps) {
         model.deleteSavedConnection(id);
     }, [model]);
 
+    const savedItems = useMemo<IListBoxItem[]>(
+        () => connections.map((c) => ({
+            value: c.id,
+            label: c.transport === "http" ? c.url : `${c.command} ${c.args}`,
+        })),
+        [connections],
+    );
+
+    const selectedTransport = useMemo(
+        () => TRANSPORT_ITEMS.find((it) => it.value === s.transportType) ?? null,
+        [s.transportType],
+    );
+
+    const panelSegments = useMemo<ISegment[]>(() => {
+        const out: ISegment[] = [{ value: "info", label: "Info" }];
+        if (s.hasTools) out.push({ value: "tools", label: "Tools" });
+        if (s.hasResources) out.push({ value: "resources", label: "Resources" });
+        if (s.hasPrompts) out.push({ value: "prompts", label: "Prompts" });
+        out.push({ value: "history", label: "History" });
+        return out;
+    }, [s.hasTools, s.hasResources, s.hasPrompts]);
+
     return (
-        <McpInspectorViewRoot>
+        <Panel direction="column" flex={1} overflow="hidden" tabIndex={-1}>
             {/* Connection bar */}
             <PageToolbar borderBottom>
-                <div className="connection-bar">
+                <Panel
+                    direction="row"
+                    align="center"
+                    gap="sm"
+                    paddingX="lg"
+                    paddingY="sm"
+                    flex={1}
+                >
                     {connections.length > 0 && !isConnected && !isConnecting && (
                         <>
-                            <select
-                                className="saved-select"
-                                value=""
-                                onChange={handleSelectSaved}
-                            >
-                                <option value="">Saved…</option>
-                                {connections.map((c) => (
-                                    <option key={c.id} value={c.id}>
-                                        {c.transport === "http" ? c.url : `${c.command} ${c.args}`}
-                                    </option>
-                                ))}
-                            </select>
-                            <span className="bar-separator" />
+                            <Select<IListBoxItem>
+                                items={savedItems}
+                                value={null}
+                                onChange={(it) => handleSelectSaved(String(it.value))}
+                                placeholder="Saved…"
+                                size="sm"
+                                maxWidth={160}
+                            />
+                            <Divider orientation="vertical" />
                         </>
                     )}
 
-                    <select
-                        className="transport-select"
-                        value={s.transportType}
-                        onChange={(e) => model.state.update((st) => {
-                            st.transportType = e.target.value as "http" | "stdio";
+                    <Select<IListBoxItem>
+                        items={TRANSPORT_ITEMS}
+                        value={selectedTransport}
+                        onChange={(it) => model.state.update((st) => {
+                            st.transportType = it.value as "http" | "stdio";
                         })}
                         disabled={isConnected || isConnecting}
-                    >
-                        <option value="http">HTTP</option>
-                        <option value="stdio">Stdio</option>
-                    </select>
+                        size="sm"
+                        minWidth={70}
+                        maxWidth={120}
+                    />
 
                     {s.transportType === "http" ? (
-                        <input
-                            className="url-input"
-                            type="text"
-                            placeholder="http://localhost:7865/mcp"
-                            value={s.url}
-                            onChange={(e) => model.state.update((st) => { st.url = e.target.value; })}
-                            onKeyDown={handleKeyDown}
-                            disabled={isConnected || isConnecting}
-                        />
+                        <Panel flex={1}>
+                            <Input
+                                placeholder="http://localhost:7865/mcp"
+                                value={s.url}
+                                onChange={(v) => model.state.update((st) => { st.url = v; })}
+                                onKeyDown={handleKeyDown}
+                                disabled={isConnected || isConnecting}
+                                size="sm"
+                            />
+                        </Panel>
                     ) : (
                         <>
-                            <input
-                                className="url-input"
-                                type="text"
+                            <Input
                                 placeholder="command (e.g. npx)"
                                 value={s.command}
-                                onChange={(e) => model.state.update((st) => { st.command = e.target.value; })}
+                                onChange={(v) => model.state.update((st) => { st.command = v; })}
                                 onKeyDown={handleKeyDown}
                                 disabled={isConnected || isConnecting}
-                                style={{ flex: "0 0 160px" }}
+                                size="sm"
+                                width={160}
                             />
-                            <input
-                                className="url-input"
-                                type="text"
-                                placeholder="args (e.g. -y @modelcontextprotocol/server-filesystem /path)"
-                                value={s.args}
-                                onChange={(e) => model.state.update((st) => { st.args = e.target.value; })}
-                                onKeyDown={handleKeyDown}
-                                disabled={isConnected || isConnecting}
-                            />
+                            <Panel flex={1}>
+                                <Input
+                                    placeholder="args (e.g. -y @modelcontextprotocol/server-filesystem /path)"
+                                    value={s.args}
+                                    onChange={(v) => model.state.update((st) => { st.args = v; })}
+                                    onKeyDown={handleKeyDown}
+                                    disabled={isConnected || isConnecting}
+                                    size="sm"
+                                />
+                            </Panel>
                         </>
                     )}
 
                     <Button
-                        type="flat"
-                        size="small"
+                        variant="default"
+                        size="sm"
                         onClick={handleConnect}
                         disabled={isConnecting}
                     >
                         {isConnecting ? "Connecting…" : isConnected ? "Disconnect" : "Connect"}
                     </Button>
-                </div>
+                </Panel>
             </PageToolbar>
 
             {/* Error message */}
             {s.connectionStatus === "error" && s.errorMessage && (
-                <div className="error-message">{s.errorMessage}</div>
+                <Panel paddingX="lg" paddingY="xs" background="light" borderBottom>
+                    <Text size="sm" color="error">{s.errorMessage}</Text>
+                </Panel>
             )}
 
             {/* Server info bar (when connected) */}
             {isConnected && (
-                <div className="server-info">
-                    <span className="status-dot connected" />
-                    <span className="server-name">{s.serverTitle || s.serverName}</span>
-                    {s.serverVersion && <span>v{s.serverVersion}</span>}
-                    <span style={{ margin: "0 4px" }}>—</span>
-                    <span
-                        className={`capability-badge${s.activePanel === "info" ? " active" : ""}`}
-                        onClick={() => model.setActivePanel("info")}
-                    >
-                        Info
-                    </span>
-                    {s.hasTools && (
-                        <span
-                            className={`capability-badge${s.activePanel === "tools" ? " active" : ""}`}
-                            onClick={() => model.setActivePanel("tools")}
-                        >
-                            Tools
-                        </span>
-                    )}
-                    {s.hasResources && (
-                        <span
-                            className={`capability-badge${s.activePanel === "resources" ? " active" : ""}`}
-                            onClick={() => model.setActivePanel("resources")}
-                        >
-                            Resources
-                        </span>
-                    )}
-                    {s.hasPrompts && (
-                        <span
-                            className={`capability-badge${s.activePanel === "prompts" ? " active" : ""}`}
-                            onClick={() => model.setActivePanel("prompts")}
-                        >
-                            Prompts
-                        </span>
-                    )}
-                    <span
-                        className={`capability-badge${s.activePanel === "history" ? " active" : ""}`}
-                        onClick={() => model.setActivePanel("history")}
-                    >
-                        History
-                    </span>
-                </div>
+                <Panel
+                    direction="row"
+                    align="center"
+                    gap="md"
+                    paddingX="lg"
+                    paddingY="xs"
+                    borderBottom
+                >
+                    <Dot size="xs" color={dotColorFor(s.connectionStatus)} />
+                    <Text size="sm" color="default" bold>{s.serverTitle || s.serverName}</Text>
+                    {s.serverVersion && <Text size="sm" color="light">v{s.serverVersion}</Text>}
+                    <Divider orientation="vertical" />
+                    <SegmentedControl
+                        items={panelSegments}
+                        value={s.activePanel}
+                        onChange={(v) => model.setActivePanel(v as McpPanelId)}
+                        size="sm"
+                    />
+                </Panel>
             )}
 
             {/* Body: panel content */}
-            <div className="body">
+            <Panel direction="row" flex={1} overflow="hidden" height={0}>
                 {isConnected && s.activePanel === "info" && (
                     <ServerInfoPanel state={s} />
                 )}
@@ -522,67 +238,88 @@ function McpInspectorView({ model }: McpInspectorViewProps) {
                     <HistoryPanel model={model} />
                 )}
                 {!isConnected && (
-                    <div className="main-panel">
+                    <Panel flex={1} align="center" justify="center" overflow="auto">
                         {connections.length > 0 && s.connectionStatus === "disconnected" ? (
-                            <div className="connections-list">
-                                <div className="connections-header">Saved Connections</div>
+                            <Panel
+                                direction="column"
+                                width="100%"
+                                maxWidth={560}
+                                paddingX="xl"
+                                gap="sm"
+                            >
+                                <Text size="base" color="default" bold>Saved Connections</Text>
                                 {connections.map((c) => {
                                     const isActive = c.transport === s.transportType
                                         && (c.transport === "http" ? c.url === s.url : c.command === s.command && c.args === s.args);
                                     return (
-                                    <div
-                                        key={c.id}
-                                        className={`conn-item${isActive ? " active" : ""}`}
-                                        onClick={() => handleClickConnection(c.id)}
-                                    >
-                                        <div className="conn-details">
-                                            <div className="conn-url">
-                                                {c.transport === "http" ? c.url : `${c.command} ${c.args}`}
-                                            </div>
-                                        </div>
-                                        <span className="conn-transport-badge">{c.transport.toUpperCase()}</span>
-                                        <button
-                                            className="conn-delete"
-                                            title="Delete connection"
-                                            onClick={(e) => handleDeleteConnection(e, c.id)}
+                                        <Panel
+                                            key={c.id}
+                                            direction="row"
+                                            align="center"
+                                            gap="md"
+                                            paddingX="lg"
+                                            paddingY="sm"
+                                            border
+                                            rounded="md"
+                                            borderColor={isActive ? "active" : "subtle"}
+                                            background={isActive ? "light" : undefined}
+                                            onClick={() => handleClickConnection(c.id)}
+                                            revealChildrenOnHover
                                         >
-                                            &times;
-                                        </button>
-                                    </div>
+                                            <Panel
+                                                direction="column"
+                                                flex={1}
+                                                overflow="hidden"
+                                                minWidth={0}
+                                            >
+                                                <Text size="sm" color="default" truncate>
+                                                    {c.transport === "http" ? c.url : `${c.command} ${c.args}`}
+                                                </Text>
+                                            </Panel>
+                                            <Tag size="sm" label={c.transport.toUpperCase()} />
+                                            <IconButton
+                                                icon={<CloseIcon />}
+                                                size="sm"
+                                                title="Delete connection"
+                                                hideUntilParentHover
+                                                onClick={(e) => handleDeleteConnection(e, c.id)}
+                                            />
+                                        </Panel>
                                     );
                                 })}
-                                <div className="connections-hint">
+                                <Text size="xs" color="light">
                                     Click a connection to fill the connection bar, then click Connect.
-                                </div>
-                            </div>
+                                </Text>
+                            </Panel>
                         ) : (
-                            <div className="empty-state">
+                            <Panel
+                                direction="column"
+                                align="center"
+                                gap="sm"
+                                padding="xl"
+                                maxWidth={560}
+                            >
                                 {s.connectionStatus === "disconnected" && (
-                                    <>
-                                        Enter a server URL or command above and click
-                                        <strong> Connect</strong> to get started.
-                                    </>
+                                    <Text size="sm" color="light" align="center">
+                                        Enter a server URL or command above and click <b>Connect</b> to get started.
+                                    </Text>
                                 )}
                                 {s.connectionStatus === "error" && (
-                                    <>
+                                    <Text size="sm" color="light" align="center">
                                         Connection failed. Check the URL and try again.
-                                    </>
+                                    </Text>
                                 )}
                                 {isConnecting && (
-                                    <>Connecting…</>
+                                    <Text size="sm" color="light" align="center">Connecting…</Text>
                                 )}
-                            </div>
+                            </Panel>
                         )}
-                    </div>
+                    </Panel>
                 )}
-            </div>
-        </McpInspectorViewRoot>
+            </Panel>
+        </Panel>
     );
 }
-
-// ============================================================================
-// Server Info Panel
-// ============================================================================
 
 function ServerInfoPanel({ state }: { state: McpInspectorEditorState }) {
     const displayName = state.serverTitle || state.serverName;
@@ -596,50 +333,62 @@ function ServerInfoPanel({ state }: { state: McpInspectorEditorState }) {
     }, [state.serverWebsiteUrl]);
 
     return (
-        <div className="info-panel">
-            <div className="info-field">
-                <div className="info-label">Server Name</div>
-                <div className="info-value">{displayName}</div>
-            </div>
+        <Panel
+            direction="column"
+            flex={1}
+            overflow="auto"
+            paddingX="xl"
+            paddingY="lg"
+            gap="lg"
+        >
+            <Panel direction="column" gap="xs">
+                <Text size="xs" variant="uppercased" color="light" bold>Server Name</Text>
+                <Text size="sm" color="default">{displayName}</Text>
+            </Panel>
             {state.serverVersion && (
-                <div className="info-field">
-                    <div className="info-label">Version</div>
-                    <div className="info-value">{state.serverVersion}</div>
-                </div>
+                <Panel direction="column" gap="xs">
+                    <Text size="xs" variant="uppercased" color="light" bold>Version</Text>
+                    <Text size="sm" color="default">{state.serverVersion}</Text>
+                </Panel>
             )}
             {state.serverDescription && (
-                <div className="info-field">
-                    <div className="info-label">Description</div>
-                    <div className="info-value">{state.serverDescription}</div>
-                </div>
+                <Panel direction="column" gap="xs">
+                    <Text size="xs" variant="uppercased" color="light" bold>Description</Text>
+                    <Text size="sm" color="default">{state.serverDescription}</Text>
+                </Panel>
             )}
             {state.serverWebsiteUrl && (
-                <div className="info-field">
-                    <div className="info-label">Website</div>
-                    <a
-                        className="info-link"
-                        href={state.serverWebsiteUrl}
-                        onClick={handleWebsiteClick}
-                    >
-                        {state.serverWebsiteUrl}
-                    </a>
-                </div>
+                <Panel direction="column" gap="xs">
+                    <Text size="xs" variant="uppercased" color="light" bold>Website</Text>
+                    <Text size="sm" color="primary">
+                        <a
+                            href={state.serverWebsiteUrl}
+                            onClick={handleWebsiteClick}
+                            style={{ color: "inherit" }}
+                        >
+                            {state.serverWebsiteUrl}
+                        </a>
+                    </Text>
+                </Panel>
             )}
             {state.instructions && (
-                <div className="info-field" style={{ flex: "1 1 auto" }}>
-                    <div className="info-label">Instructions</div>
-                    <div className="info-instructions">
+                <Panel direction="column" gap="xs" flex={1}>
+                    <Text size="xs" variant="uppercased" color="light" bold>Instructions</Text>
+                    <Panel
+                        flex={1}
+                        border
+                        rounded="md"
+                        overflow="auto"
+                        paddingX="lg"
+                        paddingY="md"
+                    >
                         <MarkdownBlock content={state.instructions} compact />
-                    </div>
-                </div>
+                    </Panel>
+                </Panel>
             )}
-        </div>
+        </Panel>
     );
 }
-
-// ============================================================================
-// History Panel
-// ============================================================================
 
 function HistoryPanel({ model }: { model: McpInspectorEditorModel }) {
     const count = model.historyCount;
@@ -649,32 +398,34 @@ function HistoryPanel({ model }: { model: McpInspectorEditorModel }) {
 
     if (count === 0) {
         return (
-            <div className="main-panel">
-                <div className="empty-state">No requests recorded yet.</div>
-            </div>
+            <Panel flex={1} align="center" justify="center">
+                <Text size="sm" color="light">No requests recorded yet.</Text>
+            </Panel>
         );
     }
 
     return (
-        <div className="main-panel">
-            <div className="empty-state">
-                <div>{count} request{count !== 1 ? "s" : ""} recorded</div>
-                <div style={{ marginTop: 12, display: "flex", gap: 8, justifyContent: "center" }}>
-                    <Button type="flat" size="small" onClick={handleShow}>
-                        Open in Log View
-                    </Button>
-                    <Button type="flat" size="small" onClick={handleClear}>
-                        Clear
-                    </Button>
-                </div>
-            </div>
-        </div>
+        <Panel
+            flex={1}
+            direction="column"
+            align="center"
+            justify="center"
+            gap="md"
+        >
+            <Text size="sm" color="light">
+                {count} request{count !== 1 ? "s" : ""} recorded
+            </Text>
+            <Panel direction="row" gap="md">
+                <Button variant="default" size="sm" onClick={handleShow}>
+                    Open in Log View
+                </Button>
+                <Button variant="default" size="sm" onClick={handleClear}>
+                    Clear
+                </Button>
+            </Panel>
+        </Panel>
     );
 }
-
-// ============================================================================
-// Editor Module
-// ============================================================================
 
 const mcpInspectorEditorModule: EditorModule = {
     Editor: McpInspectorView,
@@ -691,11 +442,11 @@ const mcpInspectorEditorModule: EditorModule = {
     },
 
     newEditorModelFromState: async (state: Partial<IEditorState>) => {
-        const s: McpInspectorEditorState = {
+        const sx: McpInspectorEditorState = {
             ...getDefaultMcpInspectorEditorState(),
             ...(state as Partial<McpInspectorEditorState>),
         };
-        return new McpInspectorEditorModel(new TComponentState(s));
+        return new McpInspectorEditorModel(new TComponentState(sx));
     },
 };
 

@@ -1,54 +1,8 @@
-import styled from "@emotion/styled";
-import color from "../../theme/color";
 import { Editor } from "@monaco-editor/react";
+import { Panel } from "../../uikit/Panel";
+import { Text } from "../../uikit/Text";
 import { MarkdownBlock } from "../markdown/MarkdownBlock";
 import { McpResourceContent } from "./McpInspectorEditorModel";
-
-// ============================================================================
-// Styles
-// ============================================================================
-
-const ResourceContentRoot = styled.div({
-    flex: "1 1 auto",
-    display: "flex",
-    flexDirection: "column",
-    overflow: "hidden",
-
-    "& .content-editor-wrapper": {
-        flex: "1 1 auto",
-        border: `1px solid ${color.border.default}`,
-        borderRadius: 4,
-        overflow: "hidden",
-        minHeight: 80,
-    },
-
-    "& .content-markdown-wrapper": {
-        flex: "1 1 auto",
-        border: `1px solid ${color.border.default}`,
-        borderRadius: 4,
-        overflow: "auto",
-        padding: "8px 12px",
-    },
-
-    "& .content-image": {
-        maxWidth: "100%",
-        borderRadius: 4,
-        border: `1px solid ${color.border.default}`,
-    },
-
-    "& .content-binary-info": {
-        fontSize: 12,
-        color: color.text.light,
-        padding: 12,
-        background: color.background.light,
-        borderRadius: 4,
-        border: `1px solid ${color.border.default}`,
-    },
-});
-
-// ============================================================================
-// Helpers
-// ============================================================================
 
 const EDITOR_OPTIONS: any = {
     automaticLayout: true,
@@ -65,7 +19,6 @@ const EDITOR_OPTIONS: any = {
     scrollbar: { alwaysConsumeMouseWheel: false },
 };
 
-/** Map mimeType to Monaco language id. */
 function mimeToLanguage(mimeType: string): string | null {
     const m = mimeType.toLowerCase();
     if (m === "application/json" || m.endsWith("+json")) return "json";
@@ -79,10 +32,6 @@ function mimeToLanguage(mimeType: string): string | null {
     return null;
 }
 
-// ============================================================================
-// Component
-// ============================================================================
-
 interface ResourceContentViewProps {
     content: McpResourceContent;
 }
@@ -90,64 +39,70 @@ interface ResourceContentViewProps {
 export function ResourceContentView({ content }: ResourceContentViewProps) {
     const mime = content.mimeType || "";
 
-    // Text content
     if (content.text !== undefined) {
-        // Markdown
         if (mime === "text/markdown" || mime === "text/x-markdown") {
             return (
-                <ResourceContentRoot>
-                    <div className="content-markdown-wrapper">
-                        <MarkdownBlock content={content.text} compact />
-                    </div>
-                </ResourceContentRoot>
+                <Panel
+                    direction="column"
+                    flex={1}
+                    overflow="auto"
+                    border
+                    rounded="md"
+                    paddingX="lg"
+                    paddingY="md"
+                    height={0}
+                >
+                    <MarkdownBlock content={content.text} compact />
+                </Panel>
             );
         }
 
-        // Monaco for other text
         const language = mimeToLanguage(mime) || "plaintext";
         return (
-            <ResourceContentRoot>
-                <div className="content-editor-wrapper">
-                    <Editor
-                        value={content.text}
-                        language={language}
-                        theme="custom-dark"
-                        options={EDITOR_OPTIONS}
-                    />
-                </div>
-            </ResourceContentRoot>
+            <Panel
+                direction="column"
+                flex={1}
+                overflow="hidden"
+                border
+                rounded="md"
+                height={0}
+            >
+                <Editor
+                    value={content.text}
+                    language={language}
+                    theme="custom-dark"
+                    options={EDITOR_OPTIONS}
+                />
+            </Panel>
         );
     }
 
-    // Binary content
     if (content.blob) {
-        // Image
         if (mime.startsWith("image/")) {
             return (
-                <ResourceContentRoot>
+                <Panel border rounded="md" overflow="auto" flex={1} height={0}>
                     <img
-                        className="content-image"
                         src={`data:${mime};base64,${content.blob}`}
                         alt={content.uri}
+                        style={{ maxWidth: "100%" }}
                     />
-                </ResourceContentRoot>
+                </Panel>
             );
         }
 
-        // Other binary
         const sizeKb = Math.round((content.blob.length * 3) / 4 / 1024);
         return (
-            <ResourceContentRoot>
-                <div className="content-binary-info">
+            <Panel padding="md" rounded="md" border background="light">
+                <Text size="sm" color="light">
                     Binary content: {mime || "unknown type"} ({sizeKb} KB)
-                </div>
-            </ResourceContentRoot>
+                </Text>
+            </Panel>
         );
     }
 
     return (
-        <ResourceContentRoot>
-            <div className="content-binary-info">No content.</div>
-        </ResourceContentRoot>
+        <Panel padding="md" rounded="md" border background="light">
+            <Text size="sm" color="light">No content.</Text>
+        </Panel>
     );
 }

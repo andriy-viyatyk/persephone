@@ -65,7 +65,7 @@ Overview of all active and planned epics and tasks.
   - [ ] [US-499: TodoEditor — UIKit migration](tasks/US-499-todoeditor-migration/README.md) *(Phase 4 — per-screen migration; plan ready for implementation; US-504 ghost variants + hover-reveal in place)*
   - [ ] [US-500: TextEditor chrome — UIKit migration](tasks/US-500-text-editor-chrome-migration/README.md) *(Phase 4 — per-screen migration; plan ready for implementation)*
   - [ ] [US-501: RestClient editor — UIKit migration](tasks/US-501-rest-client-migration/README.md) *(Phase 4 — per-screen migration; placeholder)*
-  - [ ] [US-502: MCP Inspector — UIKit migration](tasks/US-502-mcp-inspector-migration/README.md) *(Phase 4 — per-screen migration; placeholder)*
+  - [ ] [US-502: MCP Inspector — UIKit migration](tasks/US-502-mcp-inspector-migration/README.md) *(Phase 4 — per-screen migration; plan ready for review)*
   - [ ] US-436: Script UI API — expose new component library to scripting engine *(Phase 6)*
   - [ ] US-435: Storybook — script tab for building and testing UI via scripts *(Phase 6)*
 - *(no epic)*

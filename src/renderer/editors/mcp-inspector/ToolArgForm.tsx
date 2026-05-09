@@ -1,94 +1,15 @@
 import { useCallback, useMemo } from "react";
-import styled from "@emotion/styled";
-import color from "../../theme/color";
 import { Editor } from "@monaco-editor/react";
-import { TextField } from "../../components/basic/TextField";
-import { TextAreaField } from "../../components/basic/TextAreaField";
+import { Panel } from "../../uikit/Panel";
+import { Text } from "../../uikit/Text";
+import { Tag } from "../../uikit/Tag";
+import { Input } from "../../uikit/Input";
+import { Textarea } from "../../uikit/Textarea";
+import { Checkbox } from "../../uikit/Checkbox";
+import { Select } from "../../uikit/Select";
+import { IListBoxItem } from "../../uikit/ListBox";
 import { McpToolInfo } from "./McpInspectorEditorModel";
 
-// ============================================================================
-// Styles
-// ============================================================================
-
-const ToolArgFormRoot = styled.div({
-    display: "flex",
-    flexDirection: "column",
-    gap: 12,
-
-    "& .arg-field": {
-        display: "flex",
-        flexDirection: "column",
-        gap: 3,
-    },
-
-    // Override InputBase styles for TextField inputs in this editor
-    "& .text-field input": {
-        backgroundColor: color.background.default,
-        borderColor: color.border.default,
-    },
-
-    "& .arg-label": {
-        display: "flex",
-        alignItems: "center",
-        gap: 6,
-        fontSize: 14,
-        color: color.text.default,
-    },
-
-    "& .arg-type": {
-        fontSize: 11,
-        color: color.text.light,
-        background: color.background.light,
-        padding: "1px 5px",
-        borderRadius: 2,
-    },
-
-    "& .arg-required": {
-        fontSize: 11,
-        color: color.error.text,
-    },
-
-    "& .arg-description": {
-        fontSize: 13,
-        color: color.text.light,
-        marginTop: 1,
-    },
-
-    "& .arg-editor-wrapper": {
-        border: `1px solid ${color.border.default}`,
-        borderRadius: 3,
-        overflow: "hidden",
-        "&:focus-within": {
-            borderColor: color.border.active,
-        },
-    },
-
-    "& .arg-checkbox": {
-        display: "flex",
-        alignItems: "center",
-        gap: 6,
-        fontSize: 12,
-    },
-
-    "& .arg-select": {
-        background: color.background.default,
-        color: color.text.default,
-        border: `1px solid ${color.border.default}`,
-        borderRadius: 3,
-        padding: "4px 8px",
-        fontSize: 12,
-        "&:focus": {
-            outline: "none",
-            borderColor: color.border.active,
-        },
-    },
-});
-
-// ============================================================================
-// Helpers
-// ============================================================================
-
-/** Names that suggest code-like content needing Monaco. */
 const CODE_FIELD_PATTERNS = /^(script|code|content|body|query|json|yaml|xml|source|template|expression|command)$/i;
 
 function isCodeLikeField(name: string): boolean {
@@ -101,10 +22,6 @@ function getSchemaType(schema: any): string {
     if (schema.enum) return "enum";
     return "string";
 }
-
-// ============================================================================
-// Component
-// ============================================================================
 
 interface ToolArgFormProps {
     schema: McpToolInfo["inputSchema"];
@@ -119,11 +36,11 @@ export function ToolArgForm({ schema, args, onArgChange, disabled }: ToolArgForm
     const propEntries = useMemo(() => Object.entries(properties), [properties]);
 
     if (propEntries.length === 0) {
-        return <div style={{ fontSize: 13, color: color.text.light, fontStyle: "italic" }}>No arguments</div>;
+        return <Text size="md" color="light" italic>No arguments</Text>;
     }
 
     return (
-        <ToolArgFormRoot>
+        <Panel direction="column" gap="lg">
             {propEntries.map(([name, propSchema]) => (
                 <ArgField
                     key={name}
@@ -135,13 +52,9 @@ export function ToolArgForm({ schema, args, onArgChange, disabled }: ToolArgForm
                     disabled={disabled}
                 />
             ))}
-        </ToolArgFormRoot>
+        </Panel>
     );
 }
-
-// ============================================================================
-// ArgField
-// ============================================================================
 
 interface ArgFieldProps {
     name: string;
@@ -155,6 +68,7 @@ interface ArgFieldProps {
 function ArgField({ name, propSchema, required, value, onChange, disabled }: ArgFieldProps) {
     const type = getSchemaType(propSchema);
     const description = propSchema?.description;
+    const isBoolean = type === "boolean";
 
     const handleChange = useCallback(
         (v: string) => onChange(name, v),
@@ -167,59 +81,60 @@ function ArgField({ name, propSchema, required, value, onChange, disabled }: Arg
     );
 
     const handleCheckboxChange = useCallback(
-        (e: React.ChangeEvent<HTMLInputElement>) => onChange(name, String(e.target.checked)),
+        (c: boolean) => onChange(name, String(c)),
         [name, onChange],
     );
 
-    const handleSelectChange = useCallback(
-        (e: React.ChangeEvent<HTMLSelectElement>) => onChange(name, e.target.value),
-        [name, onChange],
+    const enumItems = useMemo<IListBoxItem[]>(
+        () => propSchema?.enum
+            ? (propSchema.enum as string[]).map((opt) => ({ value: opt, label: opt }))
+            : [],
+        [propSchema?.enum],
     );
 
-    // Determine which input to render
+    const selectedEnumItem = useMemo(
+        () => enumItems.find((it) => it.value === value) ?? null,
+        [enumItems, value],
+    );
+
     let input: React.ReactNode;
 
-    if (type === "boolean") {
+    if (isBoolean) {
         input = (
-            <label className="arg-checkbox">
-                <input
-                    type="checkbox"
-                    checked={value === "true"}
-                    onChange={handleCheckboxChange}
-                    disabled={disabled}
-                />
+            <Checkbox
+                checked={value === "true"}
+                onChange={handleCheckboxChange}
+                disabled={disabled}
+            >
                 {name}
-            </label>
+            </Checkbox>
         );
     } else if (propSchema?.enum) {
         input = (
-            <select
-                className="arg-select"
-                value={value}
-                onChange={handleSelectChange}
+            <Select<IListBoxItem>
+                items={enumItems}
+                value={selectedEnumItem}
+                onChange={(it) => onChange(name, String(it.value))}
+                placeholder="— select —"
                 disabled={disabled}
-            >
-                <option value="">— select —</option>
-                {(propSchema.enum as string[]).map((opt) => (
-                    <option key={opt} value={opt}>{opt}</option>
-                ))}
-            </select>
+                size="sm"
+            />
         );
     } else if (type === "number" || type === "integer") {
         input = (
-            <TextField
+            <Input
                 value={value}
                 onChange={handleChange}
                 placeholder={propSchema?.default !== undefined ? String(propSchema.default) : ""}
                 disabled={disabled}
+                size="sm"
             />
         );
     } else if (type === "object" || type === "array" || isCodeLikeField(name)) {
-        // Monaco editor for complex types and code-like fields
         const lang = (type === "object" || type === "array") ? "json" : "plaintext";
         const height = (type === "object" || type === "array") ? 120 : 80;
         input = (
-            <div className="arg-editor-wrapper" style={{ height }}>
+            <Panel border rounded="md" overflow="hidden" height={height}>
                 <Editor
                     value={value}
                     language={lang}
@@ -240,31 +155,31 @@ function ArgField({ name, propSchema, required, value, onChange, disabled }: Arg
                         scrollbar: { alwaysConsumeMouseWheel: false },
                     }}
                 />
-            </div>
+            </Panel>
         );
     } else {
-        // Simple string — use TextAreaField
         input = (
-            <TextAreaField
+            <Textarea
                 value={value}
                 onChange={handleChange}
                 placeholder={propSchema?.default !== undefined ? String(propSchema.default) : ""}
-                readonly={disabled}
+                readOnly={disabled}
+                size="sm"
             />
         );
     }
 
     return (
-        <div className="arg-field">
-            {type !== "boolean" && (
-                <div className="arg-label">
-                    <span>{name}</span>
-                    <span className="arg-type">{type}</span>
-                    {required && <span className="arg-required">required</span>}
-                </div>
+        <Panel direction="column" gap="xs">
+            {!isBoolean && (
+                <Panel direction="row" gap="md" align="center">
+                    <Text size="base" color="default">{name}</Text>
+                    <Tag size="sm" label={type} />
+                    {required && <Text size="xs" color="error">required</Text>}
+                </Panel>
             )}
             {input}
-            {description && <div className="arg-description">{description}</div>}
-        </div>
+            {description && <Text size="md" color="light">{description}</Text>}
+        </Panel>
     );
 }
