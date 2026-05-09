@@ -1,9 +1,10 @@
 import { useCallback, useRef } from "react";
-import styled from "@emotion/styled";
 import { TreeProviderView, TreeProviderViewRef } from "../../components/tree-provider";
 import { PageToolbar } from "../base/EditorToolbar";
-import { Button } from "../../components/basic/Button";
-import { FlexSpace } from "../../components/layout/Elements";
+import { Panel } from "../../uikit/Panel";
+import { IconButton } from "../../uikit/IconButton";
+import { Spacer } from "../../uikit/Spacer";
+import { Text } from "../../uikit/Text";
 import {
     CollapseAllIcon,
     NavPanelIcon,
@@ -13,16 +14,6 @@ import { app } from "../../api/app";
 import { createLinkData } from "../../../shared/link-data";
 import type { ITreeProviderItem } from "../../api/types/io.tree";
 import type { ArchiveEditorModel } from "./ArchiveEditorModel";
-import color from "../../theme/color";
-
-const ArchiveEditorViewRoot = styled.div({
-    display: "flex",
-    flexDirection: "column",
-    width: "100%",
-    height: "100%",
-    overflow: "hidden",
-    backgroundColor: color.background.default,
-});
 
 export function ArchiveEditorView({ model }: { model: ArchiveEditorModel }) {
     const provider = model.treeProvider;
@@ -48,42 +39,45 @@ export function ArchiveEditorView({ model }: { model: ArchiveEditorModel }) {
 
     if (!provider) {
         return (
-            <ArchiveEditorViewRoot>
-                <div style={{ padding: 16, color: color.text.light }}>
-                    No archive loaded.
-                </div>
-            </ArchiveEditorViewRoot>
+            <Panel
+                direction="column"
+                flex={1}
+                overflow="hidden"
+                background="default"
+                padding="xl"
+            >
+                <Text color="light">No archive loaded.</Text>
+            </Panel>
         );
     }
 
     return (
-        <ArchiveEditorViewRoot>
+        <Panel
+            direction="column"
+            flex={1}
+            overflow="hidden"
+            background="default"
+        >
             <PageToolbar borderBottom>
-                <Button
-                    type="icon"
-                    size="small"
+                <IconButton
+                    size="sm"
                     title="File Explorer"
+                    icon={<NavPanelIcon />}
                     onClick={handleToggleNavigator}
-                >
-                    <NavPanelIcon />
-                </Button>
-                <FlexSpace />
-                <Button
-                    type="icon"
-                    size="small"
+                />
+                <Spacer />
+                <IconButton
+                    size="sm"
                     title="Collapse All"
+                    icon={<CollapseAllIcon />}
                     onClick={handleCollapseAll}
-                >
-                    <CollapseAllIcon width={14} height={14} />
-                </Button>
-                <Button
-                    type="icon"
-                    size="small"
+                />
+                <IconButton
+                    size="sm"
                     title="Refresh"
+                    icon={<RefreshIcon />}
                     onClick={handleRefresh}
-                >
-                    <RefreshIcon width={14} height={14} />
-                </Button>
+                />
             </PageToolbar>
             <TreeProviderView
                 ref={treeRef}
@@ -91,6 +85,6 @@ export function ArchiveEditorView({ model }: { model: ArchiveEditorModel }) {
                 onItemClick={handleItemClick}
                 onItemDoubleClick={handleItemClick}
             />
-        </ArchiveEditorViewRoot>
+        </Panel>
     );
 }

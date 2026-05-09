@@ -66,11 +66,17 @@ Overview of all active and planned epics and tasks.
   - [ ] [US-500: TextEditor chrome — UIKit migration](tasks/US-500-text-editor-chrome-migration/README.md) *(Phase 4 — per-screen migration; plan ready for implementation)*
   - [ ] [US-501: RestClient editor — UIKit migration](tasks/US-501-rest-client-migration/README.md) *(Phase 4 — per-screen migration; placeholder)*
   - [ ] [US-502: MCP Inspector — UIKit migration](tasks/US-502-mcp-inspector-migration/README.md) *(Phase 4 — per-screen migration; plan ready for review)*
+  - [ ] [US-505: Archive editor — UIKit migration](tasks/US-505-archive-editor-migration/README.md) *(Phase 4 — per-screen migration; placeholder)*
+  - [ ] [US-506: Category editor — UIKit migration](tasks/US-506-category-editor-migration/README.md) *(Phase 4 — per-screen migration; placeholder)*
+  - [ ] [US-507: Explorer + Search secondary editors — UIKit migration](tasks/US-507-explorer-secondary-editors-migration/README.md) *(Phase 4 — per-screen migration; placeholder)*
+  - [ ] [US-508: Draw editor — UIKit migration](tasks/US-508-draw-editor-migration/README.md) *(Phase 4 — per-screen migration; placeholder)*
+  - [ ] [US-509: Grid editor chrome — UIKit migration](tasks/US-509-grid-editor-chrome-migration/README.md) *(Phase 4 — per-screen migration; placeholder)*
   - [ ] US-436: Script UI API — expose new component library to scripting engine *(Phase 6)*
   - [ ] US-435: Storybook — script tab for building and testing UI via scripts *(Phase 6)*
 - *(no epic)*
   - [ ] US-493: Fix Explorer panel not refreshing on `navigateUp` / `makeRoot` — subscribe `ExplorerSecondaryEditor` to `model.state.use()` so `rootPath` is reactive
   - [ ] US-494: Fix Open Tabs list — clicking a current-window document page does not activate it. `OpenTabsList` was passing `mainEditor.state.id` (editor UUID) instead of `page.id` (page UUID), so `pagesModel.showPage()` lookup silently failed for any page with a `mainEditor`
+  - [ ] US-510: Fix TreeProviderView chevron click also triggering row navigation — custom `renderItem` wired `onChevronClick={ctx.toggleExpanded}` directly, but `ctx.toggleExpanded` has signature `() => void` and never stops propagation, so the click bubbled up to Tree's row `onClick` and fired `onItemClick`. Wrapped to call `e.stopPropagation()` first.
 
 ## Planned
 - **EPIC-022** — [LinkEditor Embedded Scripts](epics/EPIC-022.md)

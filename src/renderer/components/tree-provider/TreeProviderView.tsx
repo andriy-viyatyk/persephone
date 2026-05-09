@@ -244,7 +244,10 @@ export function TreeProviderView(
                 dropActive={ctx.dropActive}
                 loading={ctx.loading}
                 tooltip={node.data.href}
-                onChevronClick={ctx.toggleExpanded}
+                onChevronClick={(e) => {
+                    e.stopPropagation();
+                    ctx.toggleExpanded();
+                }}
                 onContextMenu={(e) => model.onItemContextMenu(node, e)}
             />
         );

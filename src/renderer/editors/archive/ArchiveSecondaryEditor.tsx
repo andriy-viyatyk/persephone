@@ -7,7 +7,8 @@ import { createLinkData } from "../../../shared/link-data";
 import type { ITreeProviderItem } from "../../api/types/io.tree";
 import type { SecondaryEditorProps } from "../../ui/navigation/secondary-editor-registry";
 import type { ArchiveEditorModel } from "./ArchiveEditorModel";
-import { Button } from "../../components/basic/Button";
+import { IconButton } from "../../uikit/IconButton";
+import { Spacer } from "../../uikit/Spacer";
 import { CloseIcon } from "../../theme/icons";
 
 export default function ArchiveSecondaryEditor({ model, headerRef }: SecondaryEditorProps) {
@@ -38,16 +39,17 @@ export default function ArchiveSecondaryEditor({ model, headerRef }: SecondaryEd
     const headerContent = (
         <>
             Archive
-            <span className="panel-spacer" />
+            <Spacer />
             {!isActivePagePanel && (
-                <Button type="icon" size="small" title="Close"
+                <IconButton
+                    size="sm"
+                    title="Close"
+                    icon={<CloseIcon />}
                     onClick={(e: React.MouseEvent) => {
                         e.stopPropagation();
                         archiveModel.page?.removeSecondaryEditor(archiveModel);
                     }}
-                >
-                    <CloseIcon width={14} height={14} />
-                </Button>
+                />
             )}
         </>
     );
