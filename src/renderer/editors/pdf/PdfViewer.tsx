@@ -1,12 +1,12 @@
-import styled from "@emotion/styled";
 import { IEditorState, EditorType } from "../../../shared/types";
 import { getDefaultEditorModelState, EditorModel } from "../base";
 import { PageToolbar } from "../base/EditorToolbar";
 import { TComponentState } from "../../core/state/state";
 import { EditorModule } from "../types";
 import { FileIcon } from "../../components/icons/FileIcon";
-import { Button } from "../../components/basic/Button";
-import { FlexSpace } from "../../components/layout/Elements";
+import { Panel } from "../../uikit/Panel";
+import { IconButton } from "../../uikit/IconButton";
+import { Spacer } from "../../uikit/Spacer";
 import { NavPanelIcon } from "../../theme/icons";
 
 import { fpBasename } from "../../core/utils/file-path";
@@ -14,14 +14,6 @@ import { fs as appFs } from "../../api/fs";
 import { ContentPipe } from "../../content/ContentPipe";
 import { FileProvider } from "../../content/providers/FileProvider";
 import { ArchiveTransformer } from "../../content/transformers/ArchiveTransformer";
-
-const PdfViewerRoot = styled.div({
-    flex: "1 1 auto",
-    display: "flex",
-    flexDirection: "column",
-    height: 200,
-    position: "relative",
-});
 
 interface PdfEditorModelState extends IEditorState {
     /** Local file path to serve via safe-file:// (cache file for non-local sources). */
@@ -125,20 +117,18 @@ function PdfViewer({ model }: PdfViewerProps) {
         <>
             <PageToolbar borderBottom>
                 {(model.page?.canOpenNavigator(model.pipe, filePath) || filePath) && (
-                    <Button
-                        type="icon"
-                        size="small"
+                    <IconButton
+                        size="sm"
                         title="File Explorer"
+                        icon={<NavPanelIcon />}
                         onClick={() => {
                             model.page?.toggleNavigator(model.pipe, filePath);
                         }}
-                    >
-                        <NavPanelIcon />
-                    </Button>
+                    />
                 )}
-                <FlexSpace />
+                <Spacer />
             </PageToolbar>
-            <PdfViewerRoot>
+            <Panel direction="column" flex={1} overflow="hidden">
                 {viewerUrl && (
                     <object
                         data={viewerUrl}
@@ -146,7 +136,7 @@ function PdfViewer({ model }: PdfViewerProps) {
                         type="text/html"
                     />
                 )}
-            </PdfViewerRoot>
+            </Panel>
         </>
     );
 }

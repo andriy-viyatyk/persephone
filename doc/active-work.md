@@ -71,6 +71,11 @@ Overview of all active and planned epics and tasks.
   - [ ] [US-507: Explorer + Search secondary editors — UIKit migration](tasks/US-507-explorer-secondary-editors-migration/README.md) *(Phase 4 — per-screen migration; placeholder)*
   - [ ] [US-508: Draw editor — UIKit migration](tasks/US-508-draw-editor-migration/README.md) *(Phase 4 — per-screen migration; plan ready for review)*
   - [ ] [US-509: Grid editor chrome — UIKit migration](tasks/US-509-grid-editor-chrome-migration/README.md) *(Phase 4 — per-screen migration; plan ready for review)*
+  - [ ] [US-511: PDF Viewer — UIKit migration](tasks/US-511-pdf-viewer-migration/README.md) *(Phase 4 — per-screen migration; placeholder)*
+  - [ ] [US-512: Notebook editor — UIKit migration](tasks/US-512-notebook-editor-migration/README.md) *(Phase 4 — per-screen migration; placeholder)*
+  - [ ] [US-513: Graph editor — UIKit migration](tasks/US-513-graph-editor-migration/README.md) *(Phase 4 — per-screen migration; placeholder)*
+  - [ ] [US-514: Video / Audio Player editor — UIKit migration](tasks/US-514-video-audio-player-migration/README.md) *(Phase 4 — per-screen migration; placeholder)*
+  - [ ] [US-515: Browser editor chrome — UIKit migration](tasks/US-515-browser-editor-chrome-migration/README.md) *(Phase 4 — per-screen migration; placeholder; depends on US-471/481/486)*
   - [ ] US-436: Script UI API — expose new component library to scripting engine *(Phase 6)*
   - [ ] US-435: Storybook — script tab for building and testing UI via scripts *(Phase 6)*
 - *(no epic)*
