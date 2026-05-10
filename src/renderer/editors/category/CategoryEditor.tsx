@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import styled from "@emotion/styled";
 import { CategoryView } from "../../components/tree-provider/CategoryView";
 import type { CategoryViewMode } from "../../components/tree-provider/CategoryViewModel";
 import { PageToolbar } from "../base/EditorToolbar";
-import { Button } from "../../components/basic/Button";
-import { FlexSpace } from "../../components/layout/Elements";
+import { Panel } from "../../uikit/Panel";
+import { IconButton } from "../../uikit/IconButton";
+import { Spacer } from "../../uikit/Spacer";
+import { Text } from "../../uikit/Text";
 import { NavPanelIcon } from "../../theme/icons";
 import { app } from "../../api/app";
 import { createLinkData } from "../../../shared/link-data";
@@ -15,7 +16,6 @@ import type { EditorModel } from "../base";
 import type { CategoryEditorModel } from "./CategoryEditorModel";
 import type { EditorModule } from "../types";
 import type { EditorType, IEditorState } from "../../../shared/types";
-import color from "../../theme/color";
 import { folderViewModeService } from "./FolderViewModeService";
 
 // =============================================================================
@@ -45,19 +45,6 @@ function findTreeProviderHost(
     }
     return null;
 }
-
-// =============================================================================
-// Styles
-// =============================================================================
-
-const CategoryEditorRoot = styled.div({
-    display: "flex",
-    flexDirection: "column",
-    width: "100%",
-    height: "100%",
-    overflow: "hidden",
-    backgroundColor: color.background.default,
-});
 
 // =============================================================================
 // Component
@@ -128,38 +115,34 @@ export function CategoryEditor({ model }: { model: CategoryEditorModel }) {
 
     if (!provider) {
         return (
-            <CategoryEditorRoot>
+            <Panel direction="column" flex={1} overflow="hidden" background="default">
                 <PageToolbar borderBottom>
-                    <Button
-                        type="icon"
-                        size="small"
+                    <IconButton
+                        size="sm"
                         title="Navigation Panel"
+                        icon={<NavPanelIcon />}
                         onClick={handleToggleNavigator}
-                    >
-                        <NavPanelIcon />
-                    </Button>
-                    <FlexSpace />
+                    />
+                    <Spacer />
                 </PageToolbar>
-                <div style={{ padding: 16, color: color.text.light }}>
-                    Please select a category in the Navigation Panel.
-                </div>
-            </CategoryEditorRoot>
+                <Panel padding="xl">
+                    <Text color="light">Please select a category in the Navigation Panel.</Text>
+                </Panel>
+            </Panel>
         );
     }
 
     return (
-        <CategoryEditorRoot>
+        <Panel direction="column" flex={1} overflow="hidden" background="default">
             <PageToolbar borderBottom>
-                <Button
-                    type="icon"
-                    size="small"
+                <IconButton
+                    size="sm"
                     title="Navigation Panel"
+                    icon={<NavPanelIcon />}
                     onClick={handleToggleNavigator}
-                >
-                    <NavPanelIcon />
-                </Button>
-                <FlexSpace />
-                <div ref={setSearchPortal} style={{ display: "flex", alignItems: "center", gap: 4 }} />
+                />
+                <Spacer />
+                <Panel direction="row" align="center" gap="xs" ref={setSearchPortal} />
             </PageToolbar>
             <CategoryView
                 provider={provider}
@@ -172,7 +155,7 @@ export function CategoryEditor({ model }: { model: CategoryEditorModel }) {
                 onFolderClick={handleNavigate}
                 toolbarPortalRef={searchPortal}
             />
-        </CategoryEditorRoot>
+        </Panel>
     );
 }
 
