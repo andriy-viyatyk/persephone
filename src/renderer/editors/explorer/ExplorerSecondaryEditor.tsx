@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 import { TreeProviderView, TreeProviderViewRef } from "../../components/tree-provider";
 import type { TreeProviderViewSavedState } from "../../components/tree-provider";
@@ -9,7 +9,8 @@ import { app } from "../../api/app";
 import type { ITreeProviderItem } from "../../api/types/io.tree";
 import type { SecondaryEditorProps } from "../../ui/navigation/secondary-editor-registry";
 import type { ExplorerEditorModel } from "./ExplorerEditorModel";
-import { Button } from "../../components/basic/Button";
+import { IconButton } from "../../uikit/IconButton";
+import { Spacer } from "../../uikit/Spacer";
 import {
     CollapseAllIcon,
     FolderUpIcon,
@@ -91,35 +92,40 @@ export default function ExplorerSecondaryEditor({ model: rawModel, headerRef }: 
     const headerContent = (
         <>
             Explorer
-            <span className="panel-spacer" />
+            <Spacer />
             {provider?.navigable && (
-                <Button type="icon" size="small"
+                <IconButton
+                    size="sm"
                     title={canNavigateUp ? `Up to ${fpBasename(parentPath)}` : "Already at root"}
-                    onClick={(e: React.MouseEvent) => { e.stopPropagation(); model.navigateUp(); }}
                     disabled={!canNavigateUp}
-                >
-                    <FolderUpIcon width={14} height={14} />
-                </Button>
+                    icon={<FolderUpIcon />}
+                    onClick={(e) => { e.stopPropagation(); model.navigateUp(); }}
+                />
             )}
-            <Button type="icon" size="small" title="Search"
-                onClick={(e: React.MouseEvent) => { e.stopPropagation(); model.openSearch(); }}>
-                <SearchIcon width={14} height={14} />
-            </Button>
-            <Button type="icon" size="small" title="Collapse All"
-                onClick={(e: React.MouseEvent) => { e.stopPropagation(); treeProviderRef.current?.collapseAll(); }}>
-                <CollapseAllIcon width={14} height={14} />
-            </Button>
-            <Button type="icon" size="small" title="Refresh"
-                onClick={(e: React.MouseEvent) => { e.stopPropagation(); treeProviderRef.current?.refresh(); }}>
-                <RefreshIcon width={14} height={14} />
-            </Button>
-            <Button type="icon" size="small" title="Close Panel"
-                onClick={(e: React.MouseEvent) => {
-                    e.stopPropagation();
-                    model.page?.pageNavigatorModel?.close();
-                }}>
-                <CloseIcon width={14} height={14} />
-            </Button>
+            <IconButton
+                size="sm"
+                title="Search"
+                icon={<SearchIcon />}
+                onClick={(e) => { e.stopPropagation(); model.openSearch(); }}
+            />
+            <IconButton
+                size="sm"
+                title="Collapse All"
+                icon={<CollapseAllIcon />}
+                onClick={(e) => { e.stopPropagation(); treeProviderRef.current?.collapseAll(); }}
+            />
+            <IconButton
+                size="sm"
+                title="Refresh"
+                icon={<RefreshIcon />}
+                onClick={(e) => { e.stopPropagation(); treeProviderRef.current?.refresh(); }}
+            />
+            <IconButton
+                size="sm"
+                title="Close Panel"
+                icon={<CloseIcon />}
+                onClick={(e) => { e.stopPropagation(); model.page?.pageNavigatorModel?.close(); }}
+            />
         </>
     );
 

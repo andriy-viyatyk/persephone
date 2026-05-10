@@ -1,11 +1,13 @@
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { createPortal } from "react-dom";
 import { FileSearch } from "../../components/file-search";
 import { app } from "../../api/app";
 import { createLinkData } from "../../../shared/link-data";
 import type { SecondaryEditorProps } from "../../ui/navigation/secondary-editor-registry";
 import type { ExplorerEditorModel } from "./ExplorerEditorModel";
-import { Button } from "../../components/basic/Button";
+import { IconButton } from "../../uikit/IconButton";
+import { Spacer } from "../../uikit/Spacer";
+import { Text } from "../../uikit/Text";
 import { CloseIcon } from "../../theme/icons";
 import { fpBasename } from "../../core/utils/file-path";
 
@@ -27,14 +29,16 @@ export default function SearchSecondaryEditor({ model: rawModel, headerRef }: Se
 
     const headerContent = (
         <>
-            <span title={searchFolder} style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <Text truncate color="light" title={searchFolder}>
                 Search [{searchFolderName}]
-            </span>
-            <span className="panel-spacer" />
-            <Button type="icon" size="small" title="Close Search"
-                onClick={(e: React.MouseEvent) => { e.stopPropagation(); model.closeSearch(); }}>
-                <CloseIcon width={14} height={14} />
-            </Button>
+            </Text>
+            <Spacer />
+            <IconButton
+                size="sm"
+                title="Close Search"
+                icon={<CloseIcon />}
+                onClick={(e) => { e.stopPropagation(); model.closeSearch(); }}
+            />
         </>
     );
 
