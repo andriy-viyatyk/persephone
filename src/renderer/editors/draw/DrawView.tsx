@@ -1,4 +1,3 @@
-import styled from "@emotion/styled";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { Excalidraw, FONT_FAMILY, THEME, useHandleLibrary } from "@excalidraw/excalidraw";
@@ -6,11 +5,12 @@ import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/dist/types/
 import "@excalidraw/excalidraw/index.css";
 import { TextFileModel } from "../text/TextEditorModel";
 import { useContentViewModel } from "../base/useContentViewModel";
-import { CircularProgress } from "../../components/basic/CircularProgress";
 import { EditorError } from "../base/EditorError";
-import { Button } from "../../components/basic/Button";
-import { WithPopupMenu } from "../../components/overlay/WithPopupMenu";
-import type { MenuItem } from "../../components/overlay/PopupMenu";
+import { Panel } from "../../uikit/Panel";
+import { IconButton } from "../../uikit/IconButton";
+import { Spinner } from "../../uikit/Spinner";
+import { WithMenu } from "../../uikit/Menu";
+import type { MenuItem } from "../../uikit/Menu";
 import { SunIcon, MoonIcon, CopyIcon, DownloadIcon, NewWindowIcon, SnipIcon } from "../../theme/icons";
 import { DrawViewModel, DrawViewState, defaultDrawViewState } from "./DrawViewModel";
 import { exportAsSvgText, exportAsPngBlob, getImageDimensions, IMAGE_OFFSET_X, IMAGE_OFFSET_Y } from "./drawExport";
@@ -32,23 +32,6 @@ if (!(window as any).__EXCALIDRAW_ASSET_PATH_SET) {
     (window as any).EXCALIDRAW_ASSET_PATH = "app-asset://excalidraw/";
     (window as any).__EXCALIDRAW_ASSET_PATH_SET = true;
 }
-
-// =============================================================================
-// Styled Components
-// =============================================================================
-
-const DrawViewRoot = styled.div({
-    display: "flex",
-    flexDirection: "column",
-    flex: "1 1 auto",
-    overflow: "hidden",
-    position: "relative",
-    "& .excalidraw-wrapper": {
-        flex: "1 1 auto",
-        width: "100%",
-        height: "100%",
-    },
-});
 
 // =============================================================================
 // Component
@@ -301,65 +284,59 @@ export function DrawView({ model }: DrawViewProps) {
     const { loading, error, darkMode } = pageState;
 
     if (error) return <EditorError>{error}</EditorError>;
-    if (loading) return <CircularProgress />;
+    if (loading) return <Spinner />;
 
     return (
-        <DrawViewRoot>
+        <Panel direction="column" flex={1} overflow="hidden" position="relative">
             {Boolean(model.editorToolbarRefLast) &&
                 createPortal(
                     <>
-                        <Button
-                            type="icon"
-                            size="small"
+                        <IconButton
+                            size="sm"
                             title={darkMode ? "Switch to Light Theme" : "Switch to Dark Theme"}
+                            icon={darkMode ? <SunIcon /> : <MoonIcon />}
                             onClick={vm.toggleDarkMode}
-                        >
-                            {darkMode ? <SunIcon /> : <MoonIcon />}
-                        </Button>
-                        <Button
-                            type="icon"
-                            size="small"
+                        />
+                        <IconButton
+                            size="sm"
                             title="Copy Image to Clipboard"
+                            icon={<CopyIcon />}
                             onClick={handleCopyToClipboard}
-                        >
-                            <CopyIcon />
-                        </Button>
-                        <WithPopupMenu items={saveMenuItems}>
+                        />
+                        <WithMenu items={saveMenuItems}>
                             {(setOpen) => (
-                                <Button
-                                    type="icon"
-                                    size="small"
+                                <IconButton
+                                    size="sm"
                                     title="Save as file"
+                                    icon={<DownloadIcon />}
                                     onClick={(e) => setOpen(e.currentTarget)}
-                                >
-                                    <DownloadIcon />
-                                </Button>
+                                />
                             )}
-                        </WithPopupMenu>
-                        <WithPopupMenu items={openMenuItems}>
+                        </WithMenu>
+                        <WithMenu items={openMenuItems}>
                             {(setOpen) => (
-                                <Button
-                                    type="icon"
-                                    size="small"
+                                <IconButton
+                                    size="sm"
                                     title="Open in new tab"
+                                    icon={<NewWindowIcon />}
                                     onClick={(e) => setOpen(e.currentTarget)}
-                                >
-                                    <NewWindowIcon />
-                                </Button>
+                                />
                             )}
-                        </WithPopupMenu>
-                        <Button
-                            type="icon"
-                            size="small"
+                        </WithMenu>
+                        <IconButton
+                            size="sm"
                             title="Screen Snip"
+                            icon={<SnipIcon />}
                             onClick={handleScreenSnip}
-                        >
-                            <SnipIcon />
-                        </Button>
+                        />
                     </>,
                     model.editorToolbarRefLast!
                 )}
-            <div className="excalidraw-wrapper" onContextMenu={(e) => e.stopPropagation()} onClick={handleWrapperClick}>
+            <div
+                style={{ flex: "1 1 auto", width: "100%", height: "100%" }}
+                onContextMenu={(e) => e.stopPropagation()}
+                onClick={handleWrapperClick}
+            >
                 <Excalidraw
                     excalidrawAPI={(excApi) => { apiRef.current = excApi; setExcalidrawAPI(excApi); vm?.setExcalidrawApi(excApi); }}
                     libraryReturnUrl={LIBRARY_RETURN_URL}
@@ -383,6 +360,6 @@ export function DrawView({ model }: DrawViewProps) {
                     }}
                 />
             </div>
-        </DrawViewRoot>
+        </Panel>
     );
 }

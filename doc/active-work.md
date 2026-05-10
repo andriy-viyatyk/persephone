@@ -69,7 +69,7 @@ Overview of all active and planned epics and tasks.
   - [ ] [US-505: Archive editor — UIKit migration](tasks/US-505-archive-editor-migration/README.md) *(Phase 4 — per-screen migration; placeholder)*
   - [ ] [US-506: Category editor — UIKit migration](tasks/US-506-category-editor-migration/README.md) *(Phase 4 — per-screen migration; placeholder)*
   - [ ] [US-507: Explorer + Search secondary editors — UIKit migration](tasks/US-507-explorer-secondary-editors-migration/README.md) *(Phase 4 — per-screen migration; placeholder)*
-  - [ ] [US-508: Draw editor — UIKit migration](tasks/US-508-draw-editor-migration/README.md) *(Phase 4 — per-screen migration; placeholder)*
+  - [ ] [US-508: Draw editor — UIKit migration](tasks/US-508-draw-editor-migration/README.md) *(Phase 4 — per-screen migration; plan ready for review)*
   - [ ] [US-509: Grid editor chrome — UIKit migration](tasks/US-509-grid-editor-chrome-migration/README.md) *(Phase 4 — per-screen migration; placeholder)*
   - [ ] US-436: Script UI API — expose new component library to scripting engine *(Phase 6)*
   - [ ] US-435: Storybook — script tab for building and testing UI via scripts *(Phase 6)*
