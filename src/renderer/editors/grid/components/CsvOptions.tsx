@@ -1,44 +1,17 @@
-import styled from "@emotion/styled";
 import { Popper } from "../../../components/overlay/Popper";
-import color from "../../../theme/color";
-import {
-    CheckedIcon,
-    RadioCheckedIcon,
-    RadioUncheckedIcon,
-    UncheckedIcon,
-} from "../../../theme/icons";
-import { Button } from "../../../components/basic/Button";
 import ReactDOM from "react-dom";
 import { DefaultView, ViewPropsRO, Views } from "../../../core/state/view";
 import { useCallback, useEffect, useState } from "react";
 import { TComponentState } from "../../../core/state/state";
-import { TextField } from "../../../components/basic/TextField";
+import { Panel } from "../../../uikit/Panel";
+import { Checkbox } from "../../../uikit/Checkbox";
+import { RadioGroup } from "../../../uikit/RadioGroup";
+import type { IRadio } from "../../../uikit/RadioGroup";
+import { Input } from "../../../uikit/Input";
+import { Text } from "../../../uikit/Text";
 import { TPopperModel } from "../../../ui/dialogs/poppers/types";
 import { showPopper } from "../../../ui/dialogs/poppers/Poppers";
 import { GridViewModel } from "../GridViewModel";
-
-const CsvOptionsRoot = styled.div({
-    minWidth: 140,
-    minHeight: 60,
-    border: `1px solid ${color.border.default}`,
-    borderRadius: 4,
-    backgroundColor: color.background.default,
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "flex-start",
-    rowGap: 8,
-    color: color.text.default,
-    padding: 16,
-    "& .delimiter-text": {
-        color: color.text.light,
-        marginTop: 8,
-    },
-    "& .delimiter-other": {
-        display: "flex",
-        alignItems: "center",
-        columnGap: 8,
-    },
-});
 
 class CsvOptionsModel extends TPopperModel<null, void> {
     el = undefined as Element | undefined;
@@ -48,7 +21,11 @@ class CsvOptionsModel extends TPopperModel<null, void> {
 const defaultOffset = [0, 2] as [number, number];
 const showCsvOptionsId = Symbol("ShowCsvOptions");
 
-const delimiters = [",", ";", "\t"];
+const delimiterItems: IRadio[] = [
+    { value: ",", label: "," },
+    { value: ";", label: ";" },
+    { value: "\t", label: "\\t" },
+];
 
 export function CsvOptions({ model }: ViewPropsRO<CsvOptionsModel>) {
     const gridViewState = model.gridModel.state.use();
@@ -83,45 +60,36 @@ export function CsvOptions({ model }: ViewPropsRO<CsvOptionsModel>) {
             onClose={model.close}
             placement="bottom-end"
         >
-            <CsvOptionsRoot className="csv-options-root">
-                <Button
-                    size="small"
-                    type="icon"
-                    onClick={model.gridModel?.toggleWithColumns}
+            <Panel
+                direction="column"
+                align="start"
+                gap="sm"
+                padding="lg"
+                minWidth={140}
+                minHeight={60}
+            >
+                <Checkbox
+                    checked={gridViewState.csvWithColumns}
+                    onChange={() => model.gridModel?.toggleWithColumns()}
                 >
-                    {gridViewState.csvWithColumns ? (
-                        <CheckedIcon />
-                    ) : (
-                        <UncheckedIcon />
-                    )}
                     First row is header
-                </Button>
-                <div className="delimiter-text">Delimiter:</div>
-                {delimiters.map((delimiter) => (
-                    <Button
-                        key={delimiter}
-                        size="small"
-                        type="icon"
-                        onClick={() => model.gridModel?.setDelimiter(delimiter)}
-                    >
-                        {gridViewState.csvDelimiter === delimiter ? (
-                            <RadioCheckedIcon />
-                        ) : (
-                            <RadioUncheckedIcon />
-                        )}
-                        {delimiter === "\t" ? "\\t" : delimiter}
-                    </Button>
-                ))}
-                <div className="delimiter-other">
-                    Other:
-                    <TextField
+                </Checkbox>
+                <Text color="light">Delimiter:</Text>
+                <RadioGroup
+                    items={delimiterItems}
+                    value={gridViewState.csvDelimiter}
+                    onChange={(v) => model.gridModel?.setDelimiter(v)}
+                />
+                <Panel direction="row" align="center" gap="sm">
+                    <Text>Other:</Text>
+                    <Input
+                        size="sm"
                         value={other}
                         onChange={setOtherProxy}
                         width={40}
-                        className="csv-options-text-field"
                     />
-                </div>
-            </CsvOptionsRoot>
+                </Panel>
+            </Panel>
         </Popper>,
         document.body
     );

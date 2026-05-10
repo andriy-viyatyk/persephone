@@ -1,5 +1,4 @@
 import ReactDOM from "react-dom";
-import styled from "@emotion/styled";
 import { SetStateAction, useMemo, useRef } from "react";
 
 import { DefaultView, ViewPropsRO, Views } from "../../../core/state/view";
@@ -12,50 +11,19 @@ import { Popper } from "../../../components/overlay/Popper";
 import { TComponentState } from "../../../core/state/state";
 import { AVGridModel } from "../../../components/data-grid/AVGrid/model/AVGridModel";
 import AVGrid from "../../../components/data-grid/AVGrid/AVGrid";
-import color from "../../../theme/color";
 import { TPopperModel } from "../../../ui/dialogs/poppers/types";
 import { resolveState } from "../../../core/utils/utils";
 import { parseBoolean, parseNumber, parseString } from "../../../core/utils/parse-utils";
 import { showPopper, visiblePoppers } from "../../../ui/dialogs/poppers/Poppers";
-import { FlexSpace } from "../../../components/layout/Elements";
-import { Button } from "../../../components/basic/Button";
+import { Panel } from "../../../uikit/Panel";
+import { Button } from "../../../uikit/Button";
+import { Spacer } from "../../../uikit/Spacer";
+import { Text } from "../../../uikit/Text";
 
 const minWidth = 240;
 const minHeight = 160;
 const maxWidth = 440;
 const maxHeight = 300;
-
-const ColumnsOptionsRoot = styled.div<{ width?: number; height?: number }>(
-    (props) => ({
-        flex: "1 1 auto",
-        minWidth: props.width ?? minWidth,
-        minHeight: props.height ?? minHeight,
-        border: `1px solid ${color.border.default}`,
-        borderRadius: 4,
-        backgroundColor: color.background.default,
-        display: "flex",
-        flexDirection: "column",
-        position: "relative",
-        "& .buttons-bar": {
-            display: "flex",
-            flexDirection: "row",
-            justifyContent: "flex-end",
-            alignItems: "center",
-            columnGap: 16,
-            padding: "4px 16px",
-            "& .error-message": {
-                color: color.misc.red,
-            },
-        },
-        "& .edit-columns-header": {
-            backgroundColor: color.background.dark,
-            color: color.text.light,
-            fontSize: 13,
-            padding: "4px 8px",
-            borderBottom: `1px solid ${color.border.light}`,
-        }
-    })
-);
 
 const getColumns = (isCsv: boolean): Column[] => [
     {
@@ -330,12 +298,22 @@ export function ColumnsOptions({ model }: ViewPropsRO<ColumnsOptionsModel>) {
             placement="bottom-start"
             resizable
         >
-            <ColumnsOptionsRoot
-                className="columns-options-root"
-                width={model.width}
-                height={model.height}
+            <Panel
+                direction="column"
+                flex={1}
+                position="relative"
+                minWidth={model.width ?? minWidth}
+                minHeight={model.height ?? minHeight}
             >
-                <div className="edit-columns-header">Edit Columns</div>
+                <Panel
+                    direction="row"
+                    background="dark"
+                    paddingX="sm"
+                    paddingY="xs"
+                    borderBottom
+                >
+                    <Text size="sm" color="light">Edit Columns</Text>
+                </Panel>
                 <AVGrid
                     ref={gridRef}
                     columns={columns}
@@ -350,20 +328,27 @@ export function ColumnsOptions({ model }: ViewPropsRO<ColumnsOptionsModel>) {
                     entity="column"
                 />
                 {state.changed && (
-                    <div className="buttons-bar">
+                    <Panel
+                        direction="row"
+                        align="center"
+                        justify="end"
+                        gap="lg"
+                        paddingX="lg"
+                        paddingY="xs"
+                    >
                         {Boolean(state.error) && (
-                            <span className="error-message">{state.error}</span>
+                            <Text color="error">{state.error}</Text>
                         )}
-                        <FlexSpace />
+                        <Spacer />
                         <Button onClick={() => model.close(undefined)}>
                             Cancel
                         </Button>
-                        <Button onClick={() => model.applyChanges()}>
+                        <Button variant="primary" onClick={() => model.applyChanges()}>
                             Apply
                         </Button>
-                    </div>
+                    </Panel>
                 )}
-            </ColumnsOptionsRoot>
+            </Panel>
         </Popper>,
         document.body
     );

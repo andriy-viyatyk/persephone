@@ -1,14 +1,14 @@
-import styled from "@emotion/styled";
 import { getRowKey } from "./utils/grid-utils";
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import AVGrid from "../../components/data-grid/AVGrid/AVGrid";
 import { FiltersProvider } from "../../components/data-grid/AVGrid/filters/useFilters";
 import { FilterBar } from "../../components/data-grid/AVGrid/filters/FilterBar";
 import { createPortal } from "react-dom";
-import { TextField } from "../../components/basic/TextField";
+import { Panel } from "../../uikit/Panel";
+import { Input } from "../../uikit/Input";
+import { IconButton } from "../../uikit/IconButton";
+import { Button } from "../../uikit/Button";
 import { CloseIcon, ColumnsIcon } from "../../theme/icons";
-import { Button } from "../../components/basic/Button";
-import color from "../../theme/color";
 import { showColumnsOptions } from "./components/ColumnsOptions";
 import { GridViewModel, defaultGridViewState, GridViewState } from "./GridViewModel";
 import { showCsvOptions } from "./components/CsvOptions";
@@ -20,21 +20,6 @@ import type { EditorView } from "../../../shared/types";
 
 const noopUnsubscribe = () => () => {};
 const getDefaultState = () => defaultGridViewState;
-
-const GridPageRoot = styled.div<{ fitContent?: boolean }>(({ fitContent }) => ({
-    flex: "1 1 auto",
-    display: "flex",
-    flexDirection: "column",
-    height: fitContent ? "fit-content" : 200,
-    position: "relative",
-}));
-
-
-const SearchFieldRoot = styled(TextField)({
-    "& input": {
-        color: color.misc.blue,
-    },
-});
 
 interface GridEditorProps {
     model: TextFileModel;
@@ -76,32 +61,31 @@ export function GridEditor({ model }: GridEditorProps) {
         <>
             {Boolean(model.editorToolbarRefLast) &&
                 createPortal(
-                    <SearchFieldRoot
+                    <Input
+                        size="sm"
                         value={gridState.search}
                         onChange={vm.setSearch}
                         placeholder="Search..."
-                        endButtons={[
-                            <Button
-                                size="small"
-                                type="icon"
-                                key="clear-search"
-                                title="Clear Search"
-                                onClick={vm.clearSearch}
-                                invisible={!gridState.search}
-                            >
-                                <CloseIcon />
-                            </Button>,
-                        ]}
+                        endSlot={
+                            gridState.search ? (
+                                <IconButton
+                                    size="sm"
+                                    title="Clear Search"
+                                    icon={<CloseIcon />}
+                                    onClick={vm.clearSearch}
+                                />
+                            ) : undefined
+                        }
                     />,
                     model.editorToolbarRefLast
                 )}
             {Boolean(model.editorToolbarRefFirst) &&
                 createPortal(
                     <>
-                        <Button
-                            size="small"
-                            type="flat"
+                        <IconButton
+                            size="sm"
                             title="Edit Columns"
+                            icon={<ColumnsIcon />}
                             onClick={(e) => {
                                 if (vm.gridRef) {
                                     showColumnsOptions(
@@ -112,20 +96,13 @@ export function GridEditor({ model }: GridEditorProps) {
                                     );
                                 }
                             }}
-                        >
-                            <ColumnsIcon />
-                        </Button>
+                        />
                         {editorId === "grid-csv" && (
                             <Button
-                                size="small"
-                                type="icon"
-                                color="light"
-                                key="csv-options"
-                                className="csv-options-button"
+                                size="sm"
+                                variant="ghost"
                                 title="Csv Options"
-                                onClick={(e) => {
-                                    showCsvOptions(e.currentTarget, vm);
-                                }}
+                                onClick={(e) => showCsvOptions(e.currentTarget, vm)}
                             >
                                 ⚒-csv
                             </Button>
@@ -133,7 +110,12 @@ export function GridEditor({ model }: GridEditorProps) {
                     </>,
                     model.editorToolbarRefFirst
                 )}
-            <GridPageRoot fitContent={editorConfig.maxEditorHeight !== undefined}>
+            <Panel
+                direction="column"
+                flex={1}
+                position="relative"
+                height={editorConfig.maxEditorHeight !== undefined ? "fit-content" : 200}
+            >
                 <FiltersProvider
                     filters={gridState.filters}
                     setFilters={vm.setFilters}
@@ -164,7 +146,7 @@ export function GridEditor({ model }: GridEditorProps) {
                         growToHeight={editorConfig.maxEditorHeight}
                     />
                 </FiltersProvider>
-            </GridPageRoot>
+            </Panel>
             {Boolean(model.editorFooterRefLast) &&
                 createPortal(
                     <span className="records-count">
