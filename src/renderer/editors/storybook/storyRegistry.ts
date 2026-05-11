@@ -1,12 +1,14 @@
 import { Story } from "./storyTypes";
 
 // Layout
+import { collapsiblePanelStackStory } from "../../uikit/CollapsiblePanelStack/CollapsiblePanelStack.story";
 import { panelStory }    from "../../uikit/Panel/Panel.story";
 import { spacerStory }   from "../../uikit/Spacer/Spacer.story";
 import { splitterStory } from "../../uikit/Splitter/Splitter.story";
 import { toolbarStory }  from "../../uikit/Toolbar/Toolbar.story";
 
 // Bootstrap
+import { breadcrumbStory }       from "../../uikit/Breadcrumb/Breadcrumb.story";
 import { buttonStory }           from "../../uikit/Button/Button.story";
 import { iconButtonStory }       from "../../uikit/IconButton/IconButton.story";
 import { inputStory }            from "../../uikit/Input/Input.story";
@@ -36,7 +38,8 @@ import { selectStory }           from "../../uikit/Select/Select.story";
 import { treeStory }             from "../../uikit/Tree/Tree.story";
 
 export const ALL_STORIES: Story[] = [
-    panelStory, spacerStory, splitterStory, toolbarStory,
+    collapsiblePanelStackStory, panelStory, spacerStory, splitterStory, toolbarStory,
+    breadcrumbStory,
     buttonStory, iconButtonStory, inputStory, labelStory, checkboxStory, dividerStory, dotStory, textStory,
     segmentedControlStory, radioGroupStory, spinnerStory, textareaStory, pathInputStory,
     tagStory, tagsInputStory,

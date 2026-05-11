@@ -1,21 +1,7 @@
 import { Editor } from "@monaco-editor/react";
-import styled from "@emotion/styled";
-import { useEffect } from "react";
+import React, { useEffect } from "react";
 import { NoteItemEditModel } from "./NoteItemEditModel";
 import { useEditorConfig } from "../../base";
-
-// =============================================================================
-// Styles
-// =============================================================================
-
-const MiniTextEditorRoot = styled.div({
-    position: "relative",
-
-    "&.fill-container": {
-        flex: "1 1 auto",
-        overflow: "hidden",
-    },
-});
 
 // =============================================================================
 // Component
@@ -57,11 +43,12 @@ export function MiniTextEditor({ model }: MiniTextEditorProps) {
         editorModel.setHighlightText(editorConfig.highlightText);
     }, [editorConfig.highlightText]);
 
+    const rootStyle: React.CSSProperties = fillContainer
+        ? { position: "relative", flex: "1 1 auto", overflow: "hidden" }
+        : { position: "relative", height: contentHeight };
+
     return (
-        <MiniTextEditorRoot
-            className={fillContainer ? "fill-container" : undefined}
-            style={fillContainer ? undefined : { height: contentHeight }}
-        >
+        <div style={rootStyle}>
             <Editor
                 key={model.id}  // Force remount when note changes (ensures onMount is called)
                 height={fillContainer ? "100%" : contentHeight}
@@ -113,6 +100,6 @@ export function MiniTextEditor({ model }: MiniTextEditorProps) {
                     padding: { top: 4, bottom: 4 },
                 }}
             />
-        </MiniTextEditorRoot>
+        </div>
     );
 }

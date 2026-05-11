@@ -1,4 +1,18 @@
-import React from "react";
+import React, { createContext, useContext } from "react";
+
+// =============================================================================
+// Highlight Context — shares the active search text with descendant views.
+// =============================================================================
+
+const HighlightedTextContext = createContext<string | undefined>(undefined);
+
+/** Wrap a subtree to make `value` available to `useHighlightedText()` below. */
+export const HighlightedTextProvider = HighlightedTextContext.Provider;
+
+/** Read the current Provider's `value`. Returns `undefined` outside a Provider. */
+export function useHighlightedText(): string | undefined {
+    return useContext(HighlightedTextContext);
+}
 
 /**
  * Split `text` on whitespace-separated tokens of `searchText`, recursively, returning

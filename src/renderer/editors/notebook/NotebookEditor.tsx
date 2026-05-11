@@ -1,115 +1,32 @@
-import styled from "@emotion/styled";
-import { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
-import { Breadcrumb } from "../../components/basic/Breadcrumb";
-import { Button } from "../../components/basic/Button";
-import { TagsList } from "../../components/basic/TagsList";
-import { TextField } from "../../components/basic/TextField";
-import { HighlightedTextProvider } from "../../components/basic/useHighlightedText";
-import { CollapsiblePanel, CollapsiblePanelStack } from "../../components/layout/CollapsiblePanelStack";
-import { Splitter } from "../../components/layout/Splitter";
-import { CategoryTree, CategoryTreeItem } from "../../components/TreeView";
+import { Breadcrumb } from "../../uikit/Breadcrumb";
+import { Button } from "../../uikit/Button";
+import { CollapsiblePanel, CollapsiblePanelStack } from "../../uikit/CollapsiblePanelStack";
+import { IconButton } from "../../uikit/IconButton";
+import { Input } from "../../uikit/Input";
+import { Panel } from "../../uikit/Panel";
+import { Splitter } from "../../uikit/Splitter";
+import { Text } from "../../uikit/Text";
+import { Tree } from "../../uikit/Tree";
+import { HighlightedTextProvider } from "../../uikit/shared/highlight";
 import {
     RenderFlexCellParams,
     RenderFlexGrid,
 } from "../../components/virtualization/RenderGrid/RenderFlexGrid";
 import RenderGridModel from "../../components/virtualization/RenderGrid/RenderGridModel";
 import { Percent } from "../../components/virtualization/RenderGrid/types";
-import { splitWithSeparators } from "../../core/utils/utils";
-import color from "../../theme/color";
 import { CloseIcon, PlusIcon } from "../../theme/icons";
 import { NotebookViewModel, defaultNotebookViewState, NotebookViewState } from "./NotebookViewModel";
 import { NoteItemView } from "./NoteItemView";
 import { ExpandedNoteView } from "./ExpandedNoteView";
 import { NotebookEditorProps } from "./notebookTypes";
+import { TagsListView } from "./TagsListView";
+import { buildCategoryTreeItems, type CategoryItem } from "./category-tree";
 import { TraitTypeId, type TraitDragPayload, resolveTraits } from "../../core/traits";
 import { LINK } from "../link-editor/linkTraits";
 import { EditorError } from "../base/EditorError";
 import { useContentViewModel } from "../base/useContentViewModel";
-
-// =============================================================================
-// Styles
-// =============================================================================
-
-const NotebookEditorRoot = styled.div({
-    flex: "1 1 auto",
-    display: "flex",
-    flexDirection: "row",
-    overflow: "hidden",
-    "& .left-panel": {
-        display: "flex",
-        flexDirection: "column",
-        overflow: "hidden",
-        backgroundColor: color.background.dark,
-        minWidth: 100,
-        maxWidth: "80%",
-    },
-    "& .left-panel-content": {
-        padding: 8,
-        color: color.text.light,
-        fontSize: 13,
-    },
-    "& .category-tree-container": {
-        flex: 1,
-        display: "flex",
-        overflow: "hidden",
-        fontSize: 13,
-        paddingLeft: 4,
-    },
-    "& .tags-list-container": {
-        flex: 1,
-        display: "flex",
-        overflow: "hidden",
-        width: "100%",
-    },
-    "& .category-label-name": {
-        flex: "1 1 auto",
-    },
-    "& .category-label-size": {
-        margin: "0 4px",
-        fontSize: 12,
-    },
-    "& .tree-cell": {
-        color: color.text.light,
-        "&.selected": {
-            color: color.misc.blue,
-        },
-    },
-    "& .center-panel": {
-        flex: 1,
-        display: "flex",
-        flexDirection: "column",
-        overflow: "hidden",
-        position: "relative",
-    },
-    "& .empty-state": {
-        flex: 1,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 16,
-        padding: 16,
-        color: color.text.light,
-        fontSize: 14,
-    },
-    "& .notes-grid": {
-        flex: 1,
-    },
-    "& .title": {
-        fontSize: 24,
-        color: color.text.default,
-    },
-    "& .subtitle": {
-        color: color.text.light,
-    },
-});
-
-const SearchField = styled(TextField)({
-    "& input": {
-        color: color.misc.blue,
-    },
-});
 
 // =============================================================================
 // Component
@@ -180,25 +97,20 @@ export function NotebookEditor({ model }: NotebookEditorProps) {
         [notes, vm]
     );
 
-    // Category tree label with note count
-    const getTreeItemLabel = useCallback(
-        (item: CategoryTreeItem) => {
-            const name = splitWithSeparators(item.category, "/\\").pop() || "";
-            const size = vm?.getCategorySize(item.category);
-            return (
-                <>
-                    <span className="category-label-name">{name || "All"}</span>
-                    {size !== undefined && (
-                        <span className="category-label-size">{size}</span>
-                    )}
-                </>
-            );
-        },
-        [vm, pageState.categoriesSize]
+    // Build category tree items (label includes size badge per category).
+    // pageState.categoriesSize is in the dep list so labels refresh when counts change.
+    const categoryTreeItems = useMemo<CategoryItem[]>(() => {
+        if (!vm) return [];
+        return buildCategoryTreeItems(pageState.categories, vm.getCategorySize);
+    }, [pageState.categories, pageState.categoriesSize, vm]);
+
+    const isCategorySelected = useCallback(
+        (item: CategoryItem) => item.category === pageState.selectedCategory,
+        [pageState.selectedCategory],
     );
 
     const canCategoryTraitDrop = useCallback(
-        (_dropItem: CategoryTreeItem, payload: TraitDragPayload) => {
+        (_dropItem: CategoryItem, payload: TraitDragPayload) => {
             if (payload.typeId === TraitTypeId.Note) return true;
             if (payload.typeId === TraitTypeId.NotebookCategory) return true;
             const traits = resolveTraits(payload.typeId);
@@ -211,9 +123,9 @@ export function NotebookEditor({ model }: NotebookEditorProps) {
 
     if (pageState.error) {
         return (
-            <NotebookEditorRoot>
+            <Panel direction="row" flex={1} overflow="hidden">
                 <EditorError>{pageState.error}</EditorError>
-            </NotebookEditorRoot>
+            </Panel>
         );
     }
 
@@ -228,12 +140,14 @@ export function NotebookEditor({ model }: NotebookEditorProps) {
                             onChange={vm.setSelectedTag}
                             separators=":"
                             trailingParentSeparator
+                            size="sm"
                         />
                     ) : (
                         <Breadcrumb
                             rootLabel="Categories"
                             value={pageState.selectedCategory}
                             onChange={vm.setSelectedCategory}
+                            size="sm"
                         />
                     ),
                     model.editorToolbarRefFirst
@@ -242,96 +156,113 @@ export function NotebookEditor({ model }: NotebookEditorProps) {
                 createPortal(
                     <>
                         <Button
-                            size="small"
-                            type="raised"
+                            variant="primary"
+                            size="sm"
+                            icon={<PlusIcon />}
                             title="Add Note"
                             onClick={vm.addNote}
-                            style={{ borderColor: color.border.active }}
                         >
-                            <PlusIcon /> Add Note&nbsp;
+                            Add Note
                         </Button>
-                        <SearchField
+                        <Input
+                            size="sm"
                             value={pageState.searchText}
                             onChange={vm.setSearchText}
                             placeholder="Search..."
-                            endButtons={
-                                pageState.searchText ? [
-                                    <Button
-                                        key="clear"
-                                        size="small"
-                                        type="icon"
+                            endSlot={
+                                pageState.searchText ? (
+                                    <IconButton
+                                        size="sm"
+                                        icon={<CloseIcon />}
                                         title="Clear search"
                                         onClick={vm.clearSearch}
-                                    >
-                                        <CloseIcon />
-                                    </Button>,
-                                ] : undefined
+                                    />
+                                ) : null
                             }
                         />
                     </>,
                     model.editorToolbarRefLast
                 )}
-            <NotebookEditorRoot>
+            <Panel direction="row" flex={1} overflow="hidden">
                 <CollapsiblePanelStack
-                    className="left-panel"
-                    style={{ width: pageState.leftPanelWidth }}
                     activePanel={pageState.expandedPanel}
                     setActivePanel={vm.setExpandedPanel}
+                    width={pageState.leftPanelWidth}
+                    minWidth={100}
+                    maxWidth="80%"
                 >
                     <CollapsiblePanel id="tags" title="Tags">
-                        <div className="tags-list-container">
-                            <TagsList
-                                tags={pageState.tags}
-                                value={pageState.selectedTag}
-                                onChange={vm.setSelectedTag}
-                                getCount={vm.getTagSize}
-                            />
-                        </div>
+                        <TagsListView
+                            tags={pageState.tags}
+                            value={pageState.selectedTag}
+                            onChange={vm.setSelectedTag}
+                            getCount={vm.getTagSize}
+                        />
                     </CollapsiblePanel>
                     <CollapsiblePanel id="categories" title="Categories">
-                        <div className="category-tree-container">
-                            <CategoryTree
-                                categories={pageState.categories}
-                                separators="/\"
-                                rootLabel="All"
-                                rootCollapsible={false}
-                                onItemClick={vm.categoryItemClick}
-                                getSelected={vm.getCategoryItemSelected}
-                                getLabel={getTreeItemLabel}
-                                refreshKey={pageState.selectedCategory}
+                        <Panel direction="column" flex={1} overflow="hidden" paddingLeft="sm">
+                            <Tree<CategoryItem>
+                                items={categoryTreeItems}
+                                isSelected={isCategorySelected}
+                                onChange={(item) => vm.categoryItemClick(item)}
                                 traitTypeId={TraitTypeId.NotebookCategory}
-                                getDragData={vm.getCategoryDragData}
+                                getDragData={(item) => vm.getCategoryDragData(item)}
                                 acceptsDrop
-                                canTraitDrop={canCategoryTraitDrop}
-                                onTraitDrop={vm.categoryTraitDrop}
+                                canTraitDrop={(target, payload) =>
+                                    canCategoryTraitDrop(target, payload)
+                                }
+                                onTraitDrop={(target, payload) =>
+                                    vm.categoryTraitDrop(target, payload)
+                                }
+                                defaultExpandAll
                             />
-                        </div>
+                        </Panel>
                     </CollapsiblePanel>
                 </CollapsiblePanelStack>
                 <Splitter
-                    type="vertical"
-                    initialWidth={pageState.leftPanelWidth}
-                    onChangeWidth={vm.setLeftPanelWidth}
-                    borderSized="right"
+                    orientation="vertical"
+                    value={pageState.leftPanelWidth}
+                    onChange={vm.setLeftPanelWidth}
+                    border="after"
+                    min={100}
                 />
                 <HighlightedTextProvider value={pageState.searchText}>
-                    <div className="center-panel">
+                    <Panel
+                        direction="column"
+                        flex={1}
+                        overflow="hidden"
+                        position="relative"
+                    >
                         {allNotes.length === 0 ? (
-                            <div className="empty-state">
-                                <div className="title">Notes</div>
-                                <div className="subtitle">No notes yet</div>
-                                <div className="subtitle">
+                            <Panel
+                                direction="column"
+                                flex={1}
+                                align="center"
+                                justify="center"
+                                gap="xl"
+                                padding="xl"
+                            >
+                                <Text size="xxl">Notes</Text>
+                                <Text color="light">No notes yet</Text>
+                                <Text color="light">
                                     Click "Add Note" to create your first note
-                                </div>
-                            </div>
+                                </Text>
+                            </Panel>
                         ) : notes.length === 0 ? (
-                            <div className="empty-state">
-                                <div className="subtitle">No notes match the current filter</div>
-                            </div>
+                            <Panel
+                                direction="column"
+                                flex={1}
+                                align="center"
+                                justify="center"
+                                padding="xl"
+                            >
+                                <Text color="light">
+                                    No notes match the current filter
+                                </Text>
+                            </Panel>
                         ) : (
                             <RenderFlexGrid
                                 ref={setGridModel}
-                                className="notes-grid"
                                 columnCount={1}
                                 rowCount={notes.length}
                                 columnWidth={getColumnWidth}
@@ -342,9 +273,9 @@ export function NotebookEditor({ model }: NotebookEditorProps) {
                                 getInitialRowHeight={getInitialRowHeight}
                             />
                         )}
-                    </div>
+                    </Panel>
                 </HighlightedTextProvider>
-            </NotebookEditorRoot>
+            </Panel>
             {Boolean(model.editorFooterRefLast) &&
                 createPortal(
                     <span>

@@ -1,0 +1,219 @@
+import React, {
+    Children,
+    CSSProperties,
+    isValidElement,
+    ReactElement,
+    ReactNode,
+    useEffect,
+    useRef,
+} from "react";
+import styled from "@emotion/styled";
+import color from "../../theme/color";
+import { ChevronDownIcon, ChevronRightIcon } from "../../theme/icons";
+
+// =============================================================================
+// CollapsiblePanel — marker component (renders nothing on its own)
+// =============================================================================
+
+export interface CollapsiblePanelProps
+    extends Omit<React.HTMLAttributes<HTMLDivElement>, "style" | "className" | "title"> {
+    /** Unique panel identifier (used by `activePanel`). */
+    id: string;
+    /** Header title. Omit when the child portals its own header via headerRef. */
+    title?: ReactNode;
+    /** Panel content. */
+    children: ReactNode;
+    /** Optional leading icon in the header. */
+    icon?: ReactNode;
+    /** Optional trailing action buttons in the header. When present, the
+     *  expand/collapse chevron is hidden — buttons imply state visibility. */
+    buttons?: ReactNode;
+    /** Ref callback for the header element — children can portal into it. */
+    headerRef?: (el: HTMLDivElement | null) => void;
+    /** Always render content even when collapsed (hidden via display:none).
+     *  Useful when content portals into the header and must stay mounted. */
+    alwaysRenderContent?: boolean;
+}
+
+/** Marker component — renders nothing. Its props are read by `CollapsiblePanelStack`. */
+export function CollapsiblePanel(_props: CollapsiblePanelProps): ReactElement | null {
+    return null;
+}
+
+// =============================================================================
+// CollapsiblePanelStack — container
+// =============================================================================
+
+export interface CollapsiblePanelStackProps
+    extends Omit<React.HTMLAttributes<HTMLDivElement>, "style" | "className"> {
+    /** ID of the currently expanded panel. Controlled. */
+    activePanel: string;
+    /** Called when the user toggles a panel. */
+    setActivePanel: (panelId: string) => void;
+    /** Panel definitions — should be `<CollapsiblePanel>` children only. */
+    children: ReactNode;
+
+    /** Fixed width — number → px, string passes through. */
+    width?: number | string;
+    minWidth?: number | string;
+    maxWidth?: number | string;
+    height?: number | string;
+    minHeight?: number | string;
+    maxHeight?: number | string;
+}
+
+const StackRoot = styled.div(
+    {
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
+        boxSizing: "border-box",
+
+        '& > [data-type="collapsible-panel"]': {
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
+            transition: "flex 0.15s ease",
+        },
+        '& > [data-type="collapsible-panel"][data-state="closed"]': {
+            flex: "0 0 auto",
+        },
+        '& > [data-type="collapsible-panel"][data-state="open"]': {
+            flex: "1 1 auto",
+        },
+
+        '& [data-part="header"]': {
+            display: "flex",
+            alignItems: "center",
+            gap: 4,
+            padding: "2px 4px 2px 8px",
+            minHeight: 27,
+            fontSize: 12,
+            fontWeight: 500,
+            color: color.text.light,
+            backgroundColor: color.background.dark,
+            cursor: "pointer",
+            userSelect: "none",
+            borderBottom: `1px solid ${color.border.light}`,
+            "&:hover": { backgroundColor: color.background.light },
+            "& > svg": { width: 14, height: 14, flexShrink: 0 },
+        },
+        '& > [data-type="collapsible-panel"][data-state="open"] > [data-part="header"]': {
+            boxShadow: `inset 3px 0 0 ${color.misc.blue}`,
+            color: color.misc.blue,
+        },
+        '& [data-part="header-spacer"]': { flex: "1 1 auto" },
+
+        '& [data-part="content"]': {
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
+            backgroundColor: color.background.default,
+        },
+    },
+    { label: "CollapsiblePanelStack" },
+);
+
+export function CollapsiblePanelStack({
+    activePanel,
+    setActivePanel,
+    children,
+    width,
+    minWidth,
+    maxWidth,
+    height,
+    minHeight,
+    maxHeight,
+    ...rest
+}: CollapsiblePanelStackProps) {
+    const panels: CollapsiblePanelProps[] = [];
+    Children.forEach(children, (child) => {
+        if (isValidElement(child) && child.type === CollapsiblePanel) {
+            panels.push(child.props as CollapsiblePanelProps);
+        }
+    });
+
+    const previousPanelRef = useRef<string | null>(null);
+    const lastActivePanelRef = useRef(activePanel);
+
+    useEffect(() => {
+        if (activePanel !== lastActivePanelRef.current) {
+            previousPanelRef.current = lastActivePanelRef.current;
+            lastActivePanelRef.current = activePanel;
+        }
+    }, [activePanel]);
+
+    const handleToggle = (panelId: string) => {
+        if (activePanel === panelId) {
+            const prev = previousPanelRef.current;
+            if (prev && panels.some((p) => p.id === prev)) {
+                setActivePanel(prev);
+            } else {
+                const fallback = panels.find((p) => p.id !== panelId);
+                if (fallback) setActivePanel(fallback.id);
+            }
+        } else {
+            setActivePanel(panelId);
+        }
+    };
+
+    const inlineStyle: CSSProperties = {
+        width,
+        minWidth,
+        maxWidth,
+        height,
+        minHeight,
+        maxHeight,
+    };
+
+    return (
+        <StackRoot data-type="collapsible-panel-stack" {...rest} style={inlineStyle}>
+            {panels.map((panel) => {
+                const isOpen = activePanel === panel.id;
+                return (
+                    <div
+                        key={panel.id}
+                        data-type="collapsible-panel"
+                        data-state={isOpen ? "open" : "closed"}
+                    >
+                        <div
+                            data-part="header"
+                            ref={panel.headerRef}
+                            onClick={() => handleToggle(panel.id)}
+                        >
+                            {!panel.headerRef && !panel.buttons && (
+                                isOpen ? <ChevronDownIcon /> : <ChevronRightIcon />
+                            )}
+                            {panel.icon}
+                            {panel.title}
+                            {panel.buttons && (
+                                <>
+                                    <span data-part="header-spacer" />
+                                    <span
+                                        data-part="header-buttons"
+                                        onClick={(e) => e.stopPropagation()}
+                                    >
+                                        {panel.buttons}
+                                    </span>
+                                </>
+                            )}
+                        </div>
+                        {panel.alwaysRenderContent ? (
+                            <div
+                                data-part="content"
+                                style={isOpen ? undefined : { display: "none" }}
+                            >
+                                {panel.children}
+                            </div>
+                        ) : (
+                            isOpen && (
+                                <div data-part="content">{panel.children}</div>
+                            )
+                        )}
+                    </div>
+                );
+            })}
+        </StackRoot>
+    );
+}

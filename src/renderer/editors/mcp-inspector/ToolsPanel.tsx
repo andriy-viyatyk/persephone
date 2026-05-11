@@ -109,6 +109,7 @@ export function ToolsPanel({ model }: ToolsPanelProps) {
                         value={selectedItem}
                         onChange={(it) => model.selectTool(String(it.value))}
                         variant="browse"
+                        selectionStyle="accent"
                         keyboardNav
                         getTooltip={(it) => String(it.value)}
                     />

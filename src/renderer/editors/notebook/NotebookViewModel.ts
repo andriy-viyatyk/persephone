@@ -1,7 +1,7 @@
 import { debounce } from "../../../shared/utils";
 import { splitWithSeparators } from "../../core/utils/utils";
 import { ui } from "../../api/ui";
-import { CategoryTreeItem } from "../../components/TreeView";
+import type { CategoryItem } from "./category-tree";
 import { NoteItem, NotebookData } from "./notebookTypes";
 import { TraitTypeId, type TraitDragPayload, resolveTraits } from "../../core/traits";
 import { LINK } from "../link-editor/linkTraits";
@@ -287,7 +287,7 @@ export class NotebookViewModel extends ContentViewModel<NotebookViewState> {
         });
     };
 
-    categoryItemClick = (item: CategoryTreeItem) => {
+    categoryItemClick = (item: CategoryItem) => {
         this.setSelectedCategory(item.category);
     };
 
@@ -298,7 +298,7 @@ export class NotebookViewModel extends ContentViewModel<NotebookViewState> {
         this.applyFilters();
     };
 
-    getCategoryItemSelected = (item: CategoryTreeItem): boolean => {
+    getCategoryItemSelected = (item: CategoryItem): boolean => {
         return item.category === this.state.get().selectedCategory;
     };
 
@@ -635,7 +635,7 @@ export class NotebookViewModel extends ContentViewModel<NotebookViewState> {
      * Handle trait-based drop onto a category tree node.
      * Dispatches based on payload typeId (note or category).
      */
-    categoryTraitDrop = (dropItem: CategoryTreeItem, payload: TraitDragPayload) => {
+    categoryTraitDrop = (dropItem: CategoryItem, payload: TraitDragPayload) => {
         if (payload.typeId === TraitTypeId.Note) {
             const data = payload.data as { noteId: string };
             this.updateNoteCategory(data.noteId, dropItem.category);
@@ -678,7 +678,7 @@ export class NotebookViewModel extends ContentViewModel<NotebookViewState> {
      * Get drag data for a category tree node.
      * Returns null for root category (not draggable).
      */
-    getCategoryDragData = (item: CategoryTreeItem): { category: string } | null => {
+    getCategoryDragData = (item: CategoryItem): { category: string } | null => {
         if (!item.category) return null; // Root "All" is not draggable
         return { category: item.category };
     };

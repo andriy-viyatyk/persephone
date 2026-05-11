@@ -129,4 +129,14 @@ export interface ListBoxProps<T = IListBoxItem>
      * setting the variant on its own `<ListItem>`.
      */
     variant?: "select" | "browse";
+    /**
+     * How the selected state is rendered by the default `<ListItem>`.
+     *   • `"check"` (default) — trailing check icon.
+     *   • `"accent"` — filled selection background + trailing chevron-right
+     *     icon. Use for sidebar/browse lists where selection is persistent
+     *     navigation state and the selected row's details are shown to the right.
+     *
+     * Ignored when a custom `renderItem` is supplied.
+     */
+    selectionStyle?: "check" | "accent";
 }

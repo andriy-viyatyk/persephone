@@ -3,6 +3,11 @@
 // See CLAUDE.md in this folder for authoring rules.
 
 // Layout primitives
+export { CollapsiblePanel, CollapsiblePanelStack } from "./CollapsiblePanelStack";
+export type {
+    CollapsiblePanelProps,
+    CollapsiblePanelStackProps,
+} from "./CollapsiblePanelStack";
 export { Panel } from "./Panel";
 export type { PanelProps } from "./Panel";
 export { Spacer } from "./Spacer";
@@ -13,6 +18,8 @@ export { Toolbar } from "./Toolbar";
 export type { ToolbarProps } from "./Toolbar";
 
 // Bootstrap components (US-440)
+export { Breadcrumb } from "./Breadcrumb";
+export type { BreadcrumbProps } from "./Breadcrumb";
 export { Button } from "./Button";
 export type { ButtonProps } from "./Button";
 export { IconButton } from "./IconButton";

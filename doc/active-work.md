@@ -72,10 +72,13 @@ Overview of all active and planned epics and tasks.
   - [ ] [US-508: Draw editor — UIKit migration](tasks/US-508-draw-editor-migration/README.md) *(Phase 4 — per-screen migration; plan ready for review)*
   - [ ] [US-509: Grid editor chrome — UIKit migration](tasks/US-509-grid-editor-chrome-migration/README.md) *(Phase 4 — per-screen migration; plan ready for review)*
   - [ ] [US-511: PDF Viewer — UIKit migration](tasks/US-511-pdf-viewer-migration/README.md) *(Phase 4 — per-screen migration; placeholder)*
-  - [ ] [US-512: Notebook editor — UIKit migration](tasks/US-512-notebook-editor-migration/README.md) *(Phase 4 — per-screen migration; placeholder)*
+  - [ ] [US-516: UIKit Breadcrumb primitive](tasks/US-516-uikit-breadcrumb/README.md) *(Phase 4 — UIKit primitive infrastructure; plan ready for review; primitive only — per-screen retrofits live in US-512 + future LinkEditor migration; unblocks US-512)*
+  - [ ] [US-517: UIKit CollapsiblePanelStack primitive](tasks/US-517-uikit-collapsible-panel-stack/README.md) *(Phase 4 — UIKit primitive infrastructure; plan ready for review; primitive only — per-screen retrofits live in US-512 + future LinkEditor migration + opportunistic PageNavigator; unblocks US-512)*
+  - [ ] [US-512: Notebook editor — UIKit migration](tasks/US-512-notebook-editor-migration/README.md) *(Phase 4 — per-screen migration; plan ready for implementation — US-516 Breadcrumb and US-517 CollapsiblePanelStack delivered)*
   - [ ] [US-513: Graph editor — UIKit migration](tasks/US-513-graph-editor-migration/README.md) *(Phase 4 — per-screen migration; placeholder)*
   - [ ] [US-514: Video / Audio Player editor — UIKit migration](tasks/US-514-video-audio-player-migration/README.md) *(Phase 4 — per-screen migration; placeholder)*
   - [ ] [US-515: Browser editor chrome — UIKit migration](tasks/US-515-browser-editor-chrome-migration/README.md) *(Phase 4 — per-screen migration; placeholder; depends on US-471/481/486)*
+  - [ ] US-518: UIKit ListBox `selectionStyle="accent"` + Storybook left-panel migration — adds an `accent` selection-marker variant on `ListBox`/`ListItem` (3px blue left-edge stripe, matches `CollapsiblePanelStack` active panel; orthogonal to `variant`). Rewrites `ComponentBrowser` (Storybook left rail) to use `ListBox` with `variant="browse"` + `selectionStyle="accent"` so story names sit left-aligned instead of as centered block buttons. *(Phase 4 — UIKit primitive extension + per-screen migration)*
   - [ ] US-436: Script UI API — expose new component library to scripting engine *(Phase 6)*
   - [ ] US-435: Storybook — script tab for building and testing UI via scripts *(Phase 6)*
 - *(no epic)*

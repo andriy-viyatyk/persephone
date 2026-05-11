@@ -1,33 +1,16 @@
 import { ReactNode, useMemo } from "react";
-import styled from "@emotion/styled";
 import { NoteItemEditModel } from "./NoteItemEditModel";
-import { Button } from "../../../components/basic/Button";
+import { IconButton } from "../../../uikit/IconButton";
+import { Panel } from "../../../uikit/Panel";
+import { SegmentedControl, type ISegment } from "../../../uikit/SegmentedControl";
+import { WithMenu, type MenuItem } from "../../../uikit/Menu";
 import { RunAllIcon, RunIcon } from "../../../theme/icons";
-import { SwitchButtons } from "../../../components/form/SwitchButtons";
 import { editorRegistry } from "../../registry";
 import { LanguageIcon } from "../../../components/icons/LanguageIcon";
-import { WithPopupMenu } from "../../../components/overlay/WithPopupMenu";
-import { MenuItem } from "../../../components/overlay/PopupMenu";
 import { monacoLanguages } from "../../../core/utils/monaco-languages";
 import { settings } from "../../../api/settings";
 import { isScriptLanguage } from "../../../scripting/transpile";
-
-// =============================================================================
-// Styles
-// =============================================================================
-
-const ToolbarRoot = styled.div({
-    display: "flex",
-    alignItems: "center",
-    gap: 4,
-    flex: 1,
-});
-
-const EditorToolbarSlot = styled.div({
-    display: "flex",
-    alignItems: "center",
-    gap: 4,
-});
+import { EditorView } from "../../../../shared/types";
 
 // =============================================================================
 // Component
@@ -36,9 +19,18 @@ const EditorToolbarSlot = styled.div({
 interface NoteItemToolbarProps {
     model: NoteItemEditModel;
     children?: ReactNode;
+    /** When false, the right-side extras (run buttons, segmented control, editor
+     *  toolbar slots) fade to opacity 0. Default: true. */
+    extrasVisible?: boolean;
 }
 
-export function NoteItemToolbar({ model, children }: NoteItemToolbarProps) {
+const slotStyle: React.CSSProperties = {
+    display: "flex",
+    alignItems: "center",
+    gap: 4,
+};
+
+export function NoteItemToolbar({ model, children, extrasVisible = true }: NoteItemToolbarProps) {
     const { hasSelection } = model.editor.state.use((s) => ({
         hasSelection: s.hasSelection,
     }));
@@ -52,6 +44,16 @@ export function NoteItemToolbar({ model, children }: NoteItemToolbarProps) {
     const switchOptions = useMemo(() => {
         return editorRegistry.getSwitchOptions(language || "plaintext", undefined);
     }, [language]);
+
+    // Pre-shape segments for SegmentedControl (no getLabel prop in UIKit per Rule 3)
+    const segments = useMemo<ISegment[]>(
+        () =>
+            switchOptions.options.map((opt) => ({
+                value: opt,
+                label: switchOptions.getOptionLabel(opt),
+            })),
+        [switchOptions],
+    );
 
     // Language menu items
     const activeLanguages = settings.use("tab-recent-languages");
@@ -100,33 +102,29 @@ export function NoteItemToolbar({ model, children }: NoteItemToolbarProps) {
         ];
     }, [language, activeLanguages, model]);
 
-    // Build extras (hidden by default, shown on hover)
+    // Build extras (hidden by default, shown when extrasVisible)
     const extras: ReactNode[] = [];
 
     // Run script buttons for JavaScript/TypeScript
     if (isScriptLanguage(language)) {
         extras.push(
-            <Button
+            <IconButton
                 key="run-script"
-                type="icon"
-                size="small"
+                size="sm"
+                icon={<RunIcon />}
                 title={hasSelection ? "Run Selected Script" : "Run Script"}
                 onClick={() => model.runScript()}
-            >
-                <RunIcon />
-            </Button>
+            />
         );
         if (hasSelection) {
             extras.push(
-                <Button
+                <IconButton
                     key="run-all-script"
-                    type="icon"
-                    size="small"
+                    size="sm"
+                    icon={<RunAllIcon />}
                     title="Run All Script"
                     onClick={() => model.runScript(true)}
-                >
-                    <RunAllIcon />
-                </Button>
+                />
             );
         }
     }
@@ -134,56 +132,65 @@ export function NoteItemToolbar({ model, children }: NoteItemToolbarProps) {
     // Editor toolbar slots (for custom editors to inject content)
     if (editor && editor !== "monaco") {
         extras.unshift(
-            <EditorToolbarSlot
+            <div
                 key="editor-toolbar-first"
                 ref={model.setEditorToolbarRefFirst}
+                style={slotStyle}
             />
         );
         extras.push(
-            <EditorToolbarSlot
+            <div
                 key="editor-toolbar-last"
                 ref={model.setEditorToolbarRefLast}
+                style={slotStyle}
             />
         );
     }
 
     // Editor switch buttons
-    if (switchOptions.options.length > 0) {
+    if (segments.length > 0) {
         extras.push(
-            <SwitchButtons
+            <SegmentedControl
                 key="editor-switch"
-                options={switchOptions.options}
+                items={segments}
                 value={editor || "monaco"}
-                onChange={model.changeEditor}
-                getLabel={switchOptions.getOptionLabel}
-                style={{ margin: 1 }}
+                onChange={(v) => model.changeEditor(v as EditorView)}
+                size="sm"
             />
         );
     }
 
     return (
-        <ToolbarRoot>
-            {/* Language selector - always visible */}
-            <WithPopupMenu items={languageMenuItems}>
+        <Panel direction="row" align="center" gap="sm" flex={1}>
+            {/* Language selector — always visible */}
+            <WithMenu items={languageMenuItems}>
                 {(setOpen) => (
-                    <Button
-                        size="small"
-                        type="icon"
-                        onClick={(e) => setOpen(e.currentTarget)}
+                    <IconButton
+                        size="sm"
+                        icon={<LanguageIcon language={language} />}
                         title={language}
-                    >
-                        <LanguageIcon language={language} />
-                    </Button>
+                        onClick={(e) => setOpen(e.currentTarget)}
+                    />
                 )}
-            </WithPopupMenu>
+            </WithMenu>
 
-            {/* Title or other content - takes remaining space */}
+            {/* Title or other content — takes remaining space */}
             {children}
 
-            {/* Editor extras - hidden by default, shown on hover via parent CSS */}
+            {/* Editor extras — hidden by default, fade in when `extrasVisible` */}
             {extras.length > 0 && (
-                <div className="editor-extras">{extras}</div>
+                <div
+                    style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 4,
+                        opacity: extrasVisible ? 1 : 0,
+                        transition: "opacity 0.5s ease",
+                    }}
+                >
+                    {extras}
+                </div>
             )}
-        </ToolbarRoot>
+        </Panel>
     );
 }

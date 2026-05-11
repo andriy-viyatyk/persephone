@@ -1,9 +1,11 @@
-import styled from "@emotion/styled";
 import React, { useEffect, useMemo, useState } from "react";
 import { EditorConfigProvider, EditorStateStorageProvider, useObjectStateStorage } from "../base";
-import { Button } from "../../components/basic/Button";
-import { PathInput } from "../../components/basic/PathInput";
-import { TextAreaField } from "../../components/basic/TextAreaField";
+import { IconButton } from "../../uikit/IconButton";
+import { Input } from "../../uikit/Input";
+import { Panel } from "../../uikit/Panel";
+import { PathInput } from "../../uikit/PathInput";
+import { Textarea } from "../../uikit/Textarea";
+import { highlight, useHighlightedText } from "../../uikit/shared/highlight";
 import color from "../../theme/color";
 import { CircleIcon, CloseIcon, PlusIcon, WindowRestoreIcon } from "../../theme/icons";
 import { NoteItemToolbar } from "./note-editor/NoteItemToolbar";
@@ -14,228 +16,58 @@ import { NotebookViewModel } from "./NotebookViewModel";
 import { formatDate } from "../../core/utils/utils";
 
 // =============================================================================
-// Styles
+// Inline-style constants
 // =============================================================================
 
-const ExpandedNoteViewRoot = styled.div({
-    display: "flex",
-    flexDirection: "column",
-    flex: "1 1 auto",
-    overflow: "hidden",
-    paddingLeft: 24,
-    position: "relative",
+const indicatorStyle: React.CSSProperties = {
+    position: "absolute",
+    left: 4,
+    top: 8,
+    bottom: 8,
+    width: 16,
+    color: color.misc.blue,
+};
 
-    // Note indicator dot with vertical line — always blue (active state)
-    "& .note-indicator": {
-        position: "absolute",
-        left: 4,
-        top: 8,
-        bottom: 8,
-        width: 16,
-        color: color.misc.blue,
-        "& svg": {
-            width: 16,
-            height: 16,
-        },
-        // Vertical line under the dot
-        "&::after": {
-            content: "''",
-            position: "absolute",
-            left: "50%",
-            top: 16,
-            bottom: 0,
-            width: 1,
-            backgroundColor: color.misc.blue,
-        },
-    },
+const indicatorLineStyle: React.CSSProperties = {
+    position: "absolute",
+    left: "50%",
+    top: 16,
+    bottom: 0,
+    width: 1,
+    backgroundColor: color.misc.blue,
+};
 
-    "& .expanded-toolbar": {
-        display: "flex",
-        alignItems: "center",
-        gap: 8,
-        padding: "4px 8px",
-        borderBottom: `1px solid ${color.border.default}`,
-        fontSize: 12,
-        color: color.text.light,
-        flexShrink: 0,
-    },
+const categoryBadgeStyle: React.CSSProperties = {
+    padding: "2px 6px",
+    backgroundColor: color.background.light,
+    borderRadius: 3,
+    cursor: "pointer",
+    flexShrink: 0,
+};
 
-    "& .expanded-metadata": {
-        display: "flex",
-        alignItems: "center",
-        gap: 8,
-        flex: 1,
-        overflow: "hidden",
-    },
+const tagBadgeStyle: React.CSSProperties = {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 2,
+    padding: "2px 6px",
+    backgroundColor: color.background.dark,
+    borderRadius: 3,
+    cursor: "pointer",
+    whiteSpace: "nowrap",
+    flexShrink: 0,
+};
 
-    "& .category": {
-        padding: "2px 6px",
-        backgroundColor: color.background.light,
-        borderRadius: 3,
-        cursor: "pointer",
-        flexShrink: 0,
-        "&:hover": {
-            color: color.text.dark,
-        },
-    },
-
-    "& .path-input": {
-        "& .path-input-field": {
-            padding: "2px 6px",
-            fontSize: 12,
-            minWidth: 100,
-            maxWidth: 200,
-        },
-    },
-
-    "& .tags-container": {
-        display: "flex",
-        alignItems: "center",
-        gap: 4,
-        minWidth: 0,
-        overflow: "hidden",
-        flexShrink: 1,
-    },
-
-    "& .tag": {
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 2,
-        padding: "2px 6px",
-        backgroundColor: color.background.dark,
-        borderRadius: 3,
-        cursor: "pointer",
-        whiteSpace: "nowrap",
-        flexShrink: 0,
-        "&:hover": {
-            backgroundColor: color.background.light,
-        },
-        "& .tag-delete": {
-            display: "inline-flex",
-            alignItems: "center",
-            opacity: 0,
-            cursor: "pointer",
-            marginLeft: 2,
-            marginRight: -3,
-            "& svg": {
-                width: 12,
-                height: 12,
-            },
-            "&:hover": {
-                color: color.text.strong,
-            },
-        },
-        "&:hover .tag-delete": {
-            opacity: 1,
-        },
-    },
-
-    "& .tag-add-btn": {
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "2px 4px",
-        borderRadius: 2,
-        cursor: "pointer",
-        flexShrink: 0,
-        color: color.text.light,
-        backgroundColor: color.background.dark,
-        "& svg": {
-            width: 12,
-            height: 12,
-        },
-        "&:hover": {
-            backgroundColor: color.background.light,
-            color: color.text.default,
-        },
-    },
-
-    "& .tag-path-input": {
-        "& .path-input-field": {
-            padding: "2px 6px",
-            fontSize: 12,
-            minWidth: 80,
-            maxWidth: 160,
-        },
-    },
-
-    "& .expanded-editor-toolbar": {
-        display: "flex",
-        alignItems: "center",
-        gap: 4,
-        padding: "4px 8px",
-        borderBottom: `1px solid ${color.border.default}`,
-        flexShrink: 0,
-    },
-
-    "& .title-input": {
-        flex: 1,
-        border: "none",
-        background: "transparent",
-        color: color.text.strong,
-        fontSize: 14,
-        fontWeight: 500,
-        outline: "none",
-        padding: "2px 4px",
-        "&::placeholder": {
-            color: color.text.light,
-        },
-        "&:focus": {
-            backgroundColor: color.background.dark,
-        },
-    },
-
-    "& .editor-extras": {
-        display: "flex",
-        alignItems: "center",
-        gap: 4,
-    },
-
-    "& .expanded-content": {
-        flex: "1 1 auto",
-        display: "flex",
-        flexDirection: "column",
-        overflow: "hidden",
-        position: "relative",
-    },
-
-    "& .comment-section": {
-        padding: "4px 8px",
-        fontSize: 12,
-        flexShrink: 0,
-        borderTop: `1px solid ${color.border.default}`,
-    },
-
-    "& .comment-field": {
-        maxHeight: 160,
-        overflowY: "auto",
-        fontSize: 12,
-        color: color.text.light,
-        fontStyle: "italic",
-        backgroundColor: "transparent",
-        border: "none",
-        borderRadius: 0,
-        padding: "4px 0",
-        "&:focus": {
-            borderColor: "transparent",
-        },
-    },
-
-    "& .add-comment-btn": {
-        fontSize: 11,
-        cursor: "pointer",
-        color: color.text.light,
-        "&:hover": {
-            color: color.text.default,
-        },
-    },
-
-    "& .date": {
-        color: color.text.light,
-        fontSize: 11,
-        flexShrink: 0,
-    },
-});
+const tagAddBtnStyle: React.CSSProperties = {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: "2px 4px",
+    borderRadius: 2,
+    cursor: "pointer",
+    flexShrink: 0,
+    color: color.text.light,
+    backgroundColor: color.background.dark,
+};
 
 // =============================================================================
 // Types
@@ -260,6 +92,8 @@ export function ExpandedNoteView({
     tags,
     onCollapse,
 }: ExpandedNoteViewProps) {
+    const searchText = useHighlightedText();
+
     // Create edit model for expanded view
     const editModel = useMemo(
         () => new NoteItemEditModel(notebookModel, note),
@@ -306,17 +140,38 @@ export function ExpandedNoteView({
     };
 
     return (
-        <ExpandedNoteViewRoot tabIndex={0} onKeyDown={handleKeyDown}>
+        <div
+            tabIndex={0}
+            onKeyDown={handleKeyDown}
+            style={{
+                display: "flex",
+                flexDirection: "column",
+                flex: "1 1 auto",
+                overflow: "hidden",
+                paddingLeft: 24,
+                position: "relative",
+            }}
+        >
             {/* Note indicator — always blue to signal expanded note */}
-            <div className="note-indicator">
-                <CircleIcon />
+            <div style={indicatorStyle}>
+                <CircleIcon style={{ width: 16, height: 16 }} />
+                <div style={indicatorLineStyle} />
             </div>
 
             {/* Top toolbar: category, tags, date, collapse */}
-            <div className="expanded-toolbar">
-                <div className="expanded-metadata">
+            <Panel
+                direction="row"
+                align="center"
+                gap="md"
+                paddingX="md"
+                paddingY="sm"
+                borderBottom
+                shrink={false}
+            >
+                <Panel direction="row" align="center" gap="md" flex={1} overflow="hidden">
                     {editingCategory ? (
                         <PathInput
+                            size="sm"
                             value={categoryValue}
                             onChange={setCategoryValue}
                             onBlur={(finalValue?: string) => {
@@ -331,22 +186,33 @@ export function ExpandedNoteView({
                         />
                     ) : (
                         <span
-                            className="category"
+                            style={categoryBadgeStyle}
                             title="Category"
                             onClick={() => {
                                 setCategoryValue(note.category);
                                 setEditingCategory(true);
                             }}
                         >
-                            {note.category || "No category"}
+                            {note.category
+                                ? highlight(note.category, searchText)
+                                : "No category"}
                         </span>
                     )}
-                    <div className="tags-container">
+                    <div
+                        style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 4,
+                            minWidth: 0,
+                            overflow: "hidden",
+                            flexShrink: 1,
+                        }}
+                    >
                         {note.tags.map((tag: string, index: number) =>
                             editingTagIndex === index ? (
                                 <PathInput
                                     key={index}
-                                    className="tag-path-input"
+                                    size="sm"
                                     value={editingTagValue}
                                     onChange={setEditingTagValue}
                                     onBlur={(finalValue?: string) => {
@@ -368,28 +234,34 @@ export function ExpandedNoteView({
                             ) : (
                                 <span
                                     key={index}
-                                    className="tag"
+                                    style={tagBadgeStyle}
                                     onClick={() => {
                                         setEditingTagValue(note.tags[index]);
                                         setEditingTagIndex(index);
                                     }}
                                 >
-                                    {tag}
+                                    {highlight(tag, searchText)}
                                     <span
-                                        className="tag-delete"
+                                        style={{
+                                            display: "inline-flex",
+                                            alignItems: "center",
+                                            cursor: "pointer",
+                                            marginLeft: 2,
+                                            marginRight: -3,
+                                        }}
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             notebookModel.removeNoteTag(note.id, index);
                                         }}
                                     >
-                                        <CloseIcon />
+                                        <CloseIcon style={{ width: 12, height: 12 }} />
                                     </span>
                                 </span>
                             )
                         )}
                         {addingTag ? (
                             <PathInput
-                                className="tag-path-input"
+                                size="sm"
                                 value={newTagValue}
                                 onChange={setNewTagValue}
                                 onBlur={(finalValue?: string) => {
@@ -406,57 +278,87 @@ export function ExpandedNoteView({
                             />
                         ) : (
                             <span
-                                className="tag-add-btn"
+                                style={tagAddBtnStyle}
                                 title="Add tag"
                                 onClick={() => {
                                     setNewTagValue("");
                                     setAddingTag(true);
                                 }}
                             >
-                                <PlusIcon />
+                                <PlusIcon style={{ width: 12, height: 12 }} />
                             </span>
                         )}
                     </div>
                     <div style={{ flex: 1 }} />
-                    <span className="date">{formatDate(note.updatedDate)}</span>
-                </div>
-                <Button
-                    size="small"
-                    type="flat"
+                    <span style={{ color: color.text.light, fontSize: 11, flexShrink: 0 }}>
+                        {formatDate(note.updatedDate)}
+                    </span>
+                </Panel>
+                <IconButton
+                    size="sm"
+                    icon={<WindowRestoreIcon />}
                     title="Collapse (Esc)"
                     onClick={onCollapse}
-                >
-                    <WindowRestoreIcon />
-                </Button>
-            </div>
+                />
+            </Panel>
 
             {/* Editor toolbar: language, title, editor switch */}
-            <div className="expanded-editor-toolbar">
+            <Panel
+                direction="row"
+                align="center"
+                gap="sm"
+                paddingX="md"
+                paddingY="sm"
+                borderBottom
+                shrink={false}
+            >
                 <NoteItemToolbar model={editModel}>
-                    <input
-                        className="title-input"
-                        type="text"
+                    <Input
+                        variant="ghost"
+                        size="sm"
                         placeholder="note title..."
                         value={note.title}
-                        onChange={(e) => notebookModel.updateNoteTitle(note.id, e.target.value)}
+                        onChange={(value) => notebookModel.updateNoteTitle(note.id, value)}
                     />
                 </NoteItemToolbar>
-            </div>
+            </Panel>
 
-            {/* Content area - full height, no max constraint */}
-            <div className="expanded-content">
+            {/* Content area — flex={1} + height={0} forces flex-basis to 0 so
+                the column-flex parent fully controls our height; without it,
+                long editor content would overflow even with overflow: hidden. */}
+            <Panel
+                direction="column"
+                flex={1}
+                height={0}
+                overflow="hidden"
+                position="relative"
+            >
                 <EditorStateStorageProvider storage={stateStorage}>
-                    <EditorConfigProvider config={{ hideMinimap: false, disableAutoFocus: false, fillContainer: true }}>
+                    <EditorConfigProvider
+                        config={{
+                            hideMinimap: false,
+                            disableAutoFocus: false,
+                            fillContainer: true,
+                            highlightText: searchText,
+                        }}
+                    >
                         <NoteItemActiveEditor model={editModel} />
                     </EditorConfigProvider>
                 </EditorStateStorageProvider>
-            </div>
+            </Panel>
 
             {/* Comment section */}
-            <div className="comment-section">
+            <Panel
+                direction="column"
+                paddingX="md"
+                paddingY="sm"
+                borderTop
+                shrink={false}
+            >
                 {note.comment !== undefined ? (
-                    <TextAreaField
-                        className="comment-field"
+                    <Textarea
+                        variant="ghost"
+                        size="sm"
                         value={note.comment}
                         onChange={(value) => notebookModel.updateNoteComment(note.id, value)}
                         onBlur={() => {
@@ -465,17 +367,21 @@ export function ExpandedNoteView({
                             }
                         }}
                         placeholder="Add a comment..."
+                        maxHeight={160}
                     />
                 ) : (
                     <span
-                        className="add-comment-btn"
+                        style={{
+                            fontSize: 11,
+                            cursor: "pointer",
+                            color: color.text.light,
+                        }}
                         onClick={() => notebookModel.addComment(note.id)}
                     >
                         + Add comment
                     </span>
                 )}
-            </div>
-        </ExpandedNoteViewRoot>
+            </Panel>
+        </div>
     );
 }
-

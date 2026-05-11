@@ -47,6 +47,8 @@ interface DemoProps {
     contextMenu?: boolean;
     predicateSelection?: boolean;
     sections?: boolean;
+    variant?: "select" | "browse";
+    selectionStyle?: "check" | "accent";
 }
 
 function ListBoxDemo({
@@ -58,6 +60,8 @@ function ListBoxDemo({
     contextMenu = false,
     predicateSelection = false,
     sections = false,
+    variant = "select",
+    selectionStyle = "check",
 }: DemoProps) {
     const [value, setValue] = useState<IListBoxItem | null>(null);
     const [active, setActive] = useState<number>(0);
@@ -151,6 +155,8 @@ function ListBoxDemo({
                 getTooltip={getTooltip}
                 getContextMenu={getContextMenu}
                 onContextMenu={onContextMenu}
+                variant={variant}
+                selectionStyle={selectionStyle}
             />
         </Panel>
     );
@@ -170,5 +176,7 @@ export const listBoxStory: Story = {
         { name: "contextMenu",        type: "boolean", default: false },
         { name: "predicateSelection", type: "boolean", default: false },
         { name: "sections",           type: "boolean", default: false },
+        { name: "variant",            type: "enum",    options: ["select", "browse"], default: "select" },
+        { name: "selectionStyle",     type: "enum",    options: ["check", "accent"],  default: "check" },
     ],
 };

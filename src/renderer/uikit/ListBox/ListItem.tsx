@@ -2,7 +2,7 @@ import React, { forwardRef } from "react";
 import styled from "@emotion/styled";
 import color from "../../theme/color";
 import { gap, height, spacing } from "../tokens";
-import { CheckIcon } from "../../theme/icons";
+import { CheckIcon, ChevronRightIcon } from "../../theme/icons";
 import { highlight } from "../shared/highlight";
 import { Tooltip } from "../Tooltip";
 
@@ -40,6 +40,14 @@ export interface ListItemProps
      *     is purely a navigation cue.
      */
     variant?: "select" | "browse";
+    /**
+     * How the selected state is rendered.
+     *   • `"check"` (default) — trailing check icon (when no custom `trailing` is set).
+     *   • `"accent"` — filled selection background + trailing chevron-right icon.
+     *     Use for sidebar/browse lists where selection is persistent navigation
+     *     state and the selected row's details are shown to the right.
+     */
+    selectionStyle?: "check" | "accent";
 }
 
 // --- Styled ---
@@ -58,12 +66,16 @@ const Root = styled.div(
         overflow: "hidden",
 
         "&[data-disabled]": { opacity: 0.4, pointerEvents: "none" },
-        '&[data-variant="select"][data-active]': {
+        '&[data-variant="select"][data-active], &[data-variant="select"]:hover': {
             backgroundColor: color.background.selection,
             color: color.text.selection,
         },
-        '&[data-variant="browse"][data-active]': {
+        '&[data-variant="browse"][data-active], &[data-variant="browse"]:hover': {
             backgroundColor: color.background.message,
+        },
+        '&[data-selection-style="accent"][data-selected]': {
+            backgroundColor: color.background.selection,
+            color: color.text.selection,
         },
 
         "& > svg": {
@@ -97,18 +109,25 @@ export const ListItem = forwardRef<HTMLDivElement, ListItemProps>(function ListI
         tooltip,
         trailing,
         variant = "select",
+        selectionStyle = "check",
         ...rest
     },
     ref,
 ) {
     const labelNode =
         typeof label === "string" && searchText ? highlight(label, searchText) : label;
+    const defaultTrailing = selected
+        ? selectionStyle === "accent"
+            ? <ChevronRightIcon />
+            : <CheckIcon />
+        : null;
     const row = (
         <Root
             ref={ref}
             id={id}
             data-type="list-item"
             data-variant={variant}
+            data-selection-style={selectionStyle}
             data-selected={selected || undefined}
             data-active={active || undefined}
             data-disabled={disabled || undefined}
@@ -119,7 +138,7 @@ export const ListItem = forwardRef<HTMLDivElement, ListItemProps>(function ListI
         >
             {icon}
             <span className="label">{labelNode}</span>
-            {trailing ?? (selected ? <CheckIcon /> : null)}
+            {trailing ?? defaultTrailing}
         </Root>
     );
     if (tooltip == null || tooltip === false || tooltip === "") return row;
