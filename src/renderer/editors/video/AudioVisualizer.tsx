@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import styled from "@emotion/styled";
+import React, { useEffect, useRef, useState } from "react";
+import { IconButton, Panel } from "../../uikit";
 import type { EffectType, IVisualizerEffect } from "./effects/types";
 import { BarsEffect } from "./effects/BarsEffect";
 import { CircularEffect } from "./effects/CircularEffect";
@@ -58,87 +58,56 @@ const EFFECTS: { type: EffectType; icon: React.ReactNode; label: string }[] = [
     { type: "none",     icon: <NoneIcon />,     label: "No effect" },
 ];
 
-// ── Styled components ─────────────────────────────────────────────────────────
+// ── Inline-style constants ───────────────────────────────────────────────────
 
-const VisualizerRoot = styled.div`
-    position: relative;
-    width: 100%;
-    height: 100%;
+const canvasStyle: React.CSSProperties = {
+    width: "100%",
+    height: "100%",
+    display: "block",
+};
 
-    & .effect-switcher {
-        opacity: 0;
-        transition: opacity 0.2s ease;
-    }
+const trackInfoOverlayStyle: React.CSSProperties = {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    pointerEvents: "none",
+};
 
-    &:hover .effect-switcher {
-        opacity: 1;
-    }
+const trackTitleStyle: React.CSSProperties = {
+    fontSize: 16,
+    fontWeight: 600,
+    color: color.text.default,
+    textAlign: "center",
+    maxWidth: "80%",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+};
 
-    & .track-info-overlay {
-        position: absolute;
-        inset: 0;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 6px;
-        pointer-events: none;
-    }
+const trackArtistStyle: React.CSSProperties = {
+    fontSize: 13,
+    color: color.text.light,
+    textAlign: "center",
+    maxWidth: "80%",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+};
 
-    & .track-title {
-        font-size: 16px;
-        font-weight: 600;
-        color: ${color.text.normal};
-        text-align: center;
-        max-width: 80%;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-
-    & .track-artist {
-        font-size: 13px;
-        color: ${color.text.muted};
-        text-align: center;
-        max-width: 80%;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-`;
-
-const EffectSwitcher = styled.div`
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    display: flex;
-    gap: 4px;
-`;
-
-const VisualizerCanvas = styled.canvas`
-    width: 100%;
-    height: 100%;
-    display: block;
-`;
-
-const EffectButton = styled.button<{ $active?: boolean }>`
-    width: 28px;
-    height: 28px;
-    padding: 0;
-    border-radius: 4px;
-    border: 1px solid ${({ $active }) => $active ? color.border.active : color.border.default};
-    background: ${({ $active }) => $active ? color.background.light : color.background.dark};
-    color: ${({ $active }) => $active ? color.misc.yellow : color.icon.light};
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    &:hover {
-        border-color: ${color.border.active};
-        color: ${color.misc.yellow};
-    }
-`;
+const effectSwitcherStyle: React.CSSProperties = {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    display: "flex",
+    gap: 4,
+};
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -160,7 +129,7 @@ function parseFilenameInfo(sourceUrl: string): TrackInfo | null {
     const basename = sourceUrl.replace(/\\/g, "/").split("/").pop() ?? "";
     const name = basename.replace(/\.[^.]+$/, "").trim();
     if (!name) return null;
-    const sep = name.includes(" \u2013 ") ? " \u2013 " : name.includes(" - ") ? " - " : null;
+    const sep = name.includes(" – ") ? " – " : name.includes(" - ") ? " - " : null;
     if (sep) {
         const idx = name.indexOf(sep);
         return { artist: name.slice(0, idx).trim(), title: name.slice(idx + sep.length).trim() };
@@ -289,26 +258,27 @@ export function AudioVisualizer({ mediaRef, playing, sourceUrl }: AudioVisualize
     }, []);
 
     return (
-        <VisualizerRoot>
-            <VisualizerCanvas ref={canvasRef} />
+        <Panel position="relative" width="100%" height="100%" revealChildrenOnHover>
+            <canvas ref={canvasRef} style={canvasStyle} />
             {selectedEffect === "none" && trackInfo && (
-                <div className="track-info-overlay">
-                    {trackInfo.title  && <div className="track-title">{trackInfo.title}</div>}
-                    {trackInfo.artist && <div className="track-artist">{trackInfo.artist}</div>}
+                <div style={trackInfoOverlayStyle}>
+                    {trackInfo.title  && <div style={trackTitleStyle}>{trackInfo.title}</div>}
+                    {trackInfo.artist && <div style={trackArtistStyle}>{trackInfo.artist}</div>}
                 </div>
             )}
-            <EffectSwitcher className="effect-switcher">
+            <div style={effectSwitcherStyle} data-visibility="parent-hover">
                 {EFFECTS.map(({ type, icon, label }) => (
-                    <EffectButton
+                    <IconButton
                         key={type}
-                        $active={selectedEffect === type}
+                        variant="chip"
+                        size="sm"
+                        active={selectedEffect === type}
                         title={label}
+                        icon={icon}
                         onClick={(e) => { e.stopPropagation(); settings.set("visualizer-effect", type); }}
-                    >
-                        {icon}
-                    </EffectButton>
+                    />
                 ))}
-            </EffectSwitcher>
-        </VisualizerRoot>
+            </div>
+        </Panel>
     );
 }

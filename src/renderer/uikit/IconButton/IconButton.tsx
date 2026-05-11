@@ -18,6 +18,15 @@ export interface IconButtonProps extends Omit<React.ButtonHTMLAttributes<HTMLBut
     /** Control size. Default: "md". */
     size?: "sm" | "md";
     /**
+     * Visual variant. `"default"` (default) renders a transparent control whose only
+     * visible chrome is the icon itself; `active` tints the icon. `"chip"` renders a
+     * bordered + backgrounded chip: hover changes the border to active blue and the
+     * icon to yellow; the `active` state additionally fills the background with
+     * `color.background.light`. Use `"chip"` for toggle groups where the selected
+     * member should read as a distinct surface (e.g. effect / mode pickers).
+     */
+    variant?: "default" | "chip";
+    /**
      * Highlighted/toggled state. When true, the icon color is `color.icon.active` and that
      * color overrides the hover/press feedback. Use for toolbar toggles and indicator buttons.
      */
@@ -100,6 +109,21 @@ const Root = styled.button(
             color: color.icon.active,
         },
 
+        // Chip variant — bordered + backgrounded toggle chip.
+        '&[data-variant="chip"]': {
+            border: `1px solid ${color.border.default}`,
+            backgroundColor: color.background.dark,
+        },
+        '&[data-variant="chip"]:hover': {
+            borderColor: color.border.active,
+            color: color.misc.yellow,
+        },
+        '&[data-variant="chip"][data-active]': {
+            borderColor: color.border.active,
+            backgroundColor: color.background.light,
+            color: color.misc.yellow,
+        },
+
         "&[data-disabled]": {
             color: color.icon.disabled,
             pointerEvents: "none",
@@ -111,12 +135,13 @@ const Root = styled.button(
 // --- Component ---
 
 export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
-    function IconButton({ icon, size = "md", active, disabled, title, hideUntilParentHover, strikethrough, ...rest }, ref) {
+    function IconButton({ icon, size = "md", variant = "default", active, disabled, title, hideUntilParentHover, strikethrough, ...rest }, ref) {
         const button = (
             <Root
                 ref={ref}
                 data-type="icon-button"
                 data-size={size}
+                data-variant={variant}
                 data-active={active || undefined}
                 data-disabled={disabled || undefined}
                 data-strikethrough={strikethrough || undefined}

@@ -5,6 +5,7 @@ import type { HlsConfig } from "hls.js";
 import { useEffect, useRef } from "react";
 import type Player from "video.js/dist/types/player";
 import styled from "@emotion/styled";
+import { Panel } from "../../uikit";
 import type { VideoFormat, PlayerState } from "./video-types";
 import type { ParsedHttpRequest } from "../../core/utils/curl-parser";
 import { createNodeFetchLoaderClass } from "./NodeFetchHlsLoader";
@@ -35,25 +36,24 @@ export interface VPlayerProps {
     onToggleShuffle?: () => void;
 }
 
-// ── Styled components ─────────────────────────────────────────────────────────
+// ── Styled root ──────────────────────────────────────────────────────────────
 
-const VideoRoot = styled.div`
-    position: absolute;
-    inset: 0;
-    [data-vjs-player],
-    .video-js {
-        width: 100%;
-        height: 100%;
-    }
-    &.src-empty .vjs-modal-dialog-content {
-        display: none;
-    }
-    & video.native {
-        width: 100%;
-        height: 100%;
-        outline: none;
-    }
-`;
+// styled(Panel) wrapper — Rule 7 exception for video.js library descendant CSS
+// (.video-js, .vjs-*, [data-vjs-player]). Removable when video.js is replaced.
+const VideoRoot = styled(Panel)({
+    "[data-vjs-player], .video-js": {
+        width: "100%",
+        height: "100%",
+    },
+    "&[data-empty] .vjs-modal-dialog-content": {
+        display: "none",
+    },
+    "& video.native": {
+        width: "100%",
+        height: "100%",
+        outline: "none",
+    },
+});
 
 // ── HLS sub-component (video.js + hls.js) ────────────────────────────────────
 
@@ -233,7 +233,7 @@ export function VPlayer({
     const isAudio = format === "audio";
 
     return (
-        <VideoRoot className={src ? "vplayer" : "vplayer src-empty"}>
+        <VideoRoot position="absolute" top={0} right={0} bottom={0} left={0} data-empty={src ? undefined : ""}>
             {src && isHls && (
                 <HlsPlayer
                     src={src}

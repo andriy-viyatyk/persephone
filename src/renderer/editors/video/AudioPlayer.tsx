@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import styled from "@emotion/styled";
+import React, { useEffect, useRef, useState } from "react";
+import { Panel } from "../../uikit";
 import { AudioVisualizer } from "./AudioVisualizer";
 import { AudioControls } from "./AudioControls";
 import type { PlayerState } from "./video-types";
@@ -24,55 +24,84 @@ export interface AudioPlayerProps {
     onToggleShuffle?: () => void;
 }
 
-const AudioPlayerRoot = styled.div`
-    position: absolute;
-    inset: 0;
+// ── Reveal-on-hover CSS (option A from US-514 C5) ────────────────────────────
+// Plain <div> overlay with [data-audio-overlay] attribute. UIKit Panel cannot
+// express `transform`, `width: "33%"`, or `:hover` background fade, so the
+// overlay positioning is inline-style and the hover-driven visibility +
+// background transitions are injected once below.
 
-    & .visualizer-area {
-        position: absolute;
-        inset: 0;
-        overflow: hidden;
-        background: ${color.background.dark};
-        cursor: pointer;
-    }
-
-    & .controls-overlay {
-        position: absolute;
-        bottom: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 33%;
-        min-width: fit-content;
-        border-radius: 8px;
-        overflow: hidden;
-        pointer-events: auto;
-        background: transparent;
-        transition: background 0.2s ease;
-    }
-
-    & .controls-overlay:hover {
-        background: ${color.background.dark};
-    }
-
-    & .controls-overlay:hover input[type="range"] {
-        opacity: 1;
-    }
-
-    & .controls-overlay .idle-hide {
-        opacity: 0;
-        pointer-events: none;
-        transition: opacity 0.2s ease;
-    }
-
-    & .controls-overlay:hover .idle-hide {
-        opacity: 1;
-        pointer-events: auto;
-    }
+const overlayCss = `
+[data-audio-overlay] [data-visibility="parent-hover"] {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s;
+}
+[data-audio-overlay]:hover [data-visibility="parent-hover"],
+[data-audio-overlay]:focus-within [data-visibility="parent-hover"] {
+    opacity: 1;
+    pointer-events: auto;
+}
+[data-audio-overlay] [data-type="slider"] {
+    opacity: 0.4;
+    transition: opacity 0.2s ease;
+}
+[data-audio-overlay]:hover [data-type="slider"],
+[data-audio-overlay]:focus-within [data-type="slider"] {
+    opacity: 1;
+}
+[data-audio-overlay] {
+    background: transparent;
+    transition: background 0.2s ease;
+}
+[data-audio-overlay]:hover {
+    background: ${color.background.dark};
+}
 `;
+
+const OVERLAY_STYLE_ID = "audio-overlay-styles";
+function injectOverlayStyles() {
+    const existing = document.getElementById(OVERLAY_STYLE_ID);
+    if (existing) existing.remove();
+    const el = document.createElement("style");
+    el.id = OVERLAY_STYLE_ID;
+    el.textContent = overlayCss;
+    document.head.appendChild(el);
+}
+
+// ── Inline-style constants ───────────────────────────────────────────────────
+
+const visualizerAreaStyle: React.CSSProperties = {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    overflow: "hidden",
+    background: color.background.dark,
+    cursor: "pointer",
+};
+
+const audioElementStyle: React.CSSProperties = { display: "none" };
+
+const overlayStyle: React.CSSProperties = {
+    position: "absolute",
+    bottom: 20,
+    left: "50%",
+    transform: "translateX(-50%)",
+    width: "33%",
+    minWidth: "fit-content",
+    borderRadius: 8,
+    overflow: "hidden",
+    pointerEvents: "auto",
+};
+
+// ── Component ────────────────────────────────────────────────────────────────
 
 export function AudioPlayer({ src, muted, sourceUrl, onStateChangeRef, onMutedChangeRef, onEndedRef, hasNext, shuffle, onNext, onToggleShuffle }: AudioPlayerProps) {
     const audioRef = useRef<HTMLAudioElement>(null);
     const [playing, setPlaying] = useState(false);
+
+    useEffect(() => { injectOverlayStyles(); }, []);
 
     useEffect(() => {
         const audio = audioRef.current;
@@ -114,19 +143,18 @@ export function AudioPlayer({ src, muted, sourceUrl, onStateChangeRef, onMutedCh
         if (audioRef.current) audioRef.current.muted = muted ?? false;
     }, [muted]);
 
+    const togglePlayOnClick = () => {
+        const audio = audioRef.current;
+        if (audio) audio.paused ? audio.play() : audio.pause();
+    };
+
     return (
-        <AudioPlayerRoot>
-            <div
-                className="visualizer-area"
-                onClick={() => {
-                    const audio = audioRef.current;
-                    if (audio) audio.paused ? audio.play() : audio.pause();
-                }}
-            >
+        <Panel position="absolute" top={0} right={0} bottom={0} left={0}>
+            <div style={visualizerAreaStyle} onClick={togglePlayOnClick}>
                 <AudioVisualizer mediaRef={audioRef} playing={playing} sourceUrl={sourceUrl} />
             </div>
-            <audio ref={audioRef} src={src} autoPlay muted={muted} style={{ display: "none" }} />
-            <div className="controls-overlay">
+            <audio ref={audioRef} src={src} autoPlay muted={muted} style={audioElementStyle} />
+            <div data-audio-overlay="" style={overlayStyle}>
                 <AudioControls
                     audioRef={audioRef}
                     playing={playing}
@@ -136,6 +164,6 @@ export function AudioPlayer({ src, muted, sourceUrl, onStateChangeRef, onMutedCh
                     onToggleShuffle={onToggleShuffle}
                 />
             </div>
-        </AudioPlayerRoot>
+        </Panel>
     );
 }

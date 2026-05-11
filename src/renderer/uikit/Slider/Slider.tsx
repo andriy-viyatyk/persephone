@@ -27,6 +27,13 @@ export interface SliderProps
     disabled?: boolean;
     /** Fixed width — number → px, string passes through. Default: fills parent (100%). */
     width?: number | string;
+    /**
+     * Fill the played portion of the track with `color.border.active`, computed
+     * from `(value - min) / (max - min)`. Default: false (uniform track).
+     * Useful for media seek-bars where the elapsed portion should be visually
+     * distinct from the remaining portion.
+     */
+    showProgress?: boolean;
 }
 
 // --- Styled ---
@@ -47,7 +54,7 @@ const Root = styled.input(
         "&::-webkit-slider-runnable-track": {
             height: 4,
             borderRadius: radius.xs,
-            background: color.border.default,
+            background: `var(--slider-track-bg, ${color.border.default})`,
         },
         "&::-webkit-slider-thumb": {
             appearance: "none",
@@ -65,7 +72,7 @@ const Root = styled.input(
         "&::-moz-range-track": {
             height: 4,
             borderRadius: radius.xs,
-            background: color.border.default,
+            background: `var(--slider-track-bg, ${color.border.default})`,
         },
         "&::-moz-range-thumb": {
             width: 12,
@@ -102,13 +109,27 @@ export function Slider({
     size = "md",
     disabled,
     width,
+    showProgress,
     ...rest
 }: SliderProps) {
+    const rootStyle = React.useMemo<React.CSSProperties | undefined>(() => {
+        const out: React.CSSProperties & Record<string, string | number> = {};
+        if (width !== undefined) out.width = typeof width === "number" ? width : width;
+        if (showProgress) {
+            const range = max - min;
+            const pct = range > 0 ? ((value - min) / range) * 100 : 0;
+            const clamped = Math.max(0, Math.min(100, pct));
+            out["--slider-track-bg"] = `linear-gradient(to right, ${color.border.active} ${clamped}%, ${color.border.default} ${clamped}%)`;
+        }
+        return Object.keys(out).length > 0 ? out : undefined;
+    }, [width, showProgress, value, min, max]);
+
     return (
         <Root
             data-type="slider"
             data-size={size}
             data-disabled={disabled || undefined}
+            data-show-progress={showProgress || undefined}
             type="range"
             value={value}
             onChange={(e) => onChange(parseFloat(e.target.value))}
@@ -116,7 +137,7 @@ export function Slider({
             max={max}
             step={step}
             disabled={disabled}
-            style={width !== undefined ? { width } : undefined}
+            style={rootStyle}
             {...rest}
         />
     );

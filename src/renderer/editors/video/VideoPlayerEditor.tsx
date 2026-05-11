@@ -1,13 +1,11 @@
-import { createElement, ReactNode } from "react";
-import styled from "@emotion/styled";
+import React, { createElement, ReactNode } from "react";
 import { IEditorState, EditorType } from "../../../shared/types";
 import { getDefaultEditorModelState, EditorModel, PageToolbar } from "../base";
 import { TComponentState } from "../../core/state/state";
 import { EditorModule } from "../types";
-import { TextAreaField } from "../../components/basic/TextAreaField";
+import { Button, IconButton, Panel, Text, Textarea } from "../../uikit";
 import color from "../../theme/color";
 import { PlayerIcon, VlcIcon, NavPanelIcon } from "../../theme/icons";
-import { Button } from "../../components/basic/Button";
 import { DEFAULT_BROWSER_COLOR } from "../../theme/palette-colors";
 import type { ParsedHttpRequest } from "../../core/utils/curl-parser";
 import { parseHttpRequest } from "../../core/utils/curl-parser";
@@ -395,82 +393,27 @@ export class VideoEditorModel extends EditorModel<VideoEditorState, void> {
     }
 }
 
-// TextAreaField wrapper — auto-grow, max 3 lines visible
-const UrlInputArea = styled(TextAreaField)`
-    flex: 1;
-    min-height: 28px;
-    max-height: 72px;
-    overflow-y: auto;
-    font-size: 12px;
-    line-height: 20px;
-    resize: none;
-`;
+// ── Inline-style constants ───────────────────────────────────────────────────
 
-// ── Styled components ────────────────────────────────────────────────────────
+const stateBadgeStyle: React.CSSProperties = {
+    position: "absolute",
+    bottom: 24,
+    left: "50%",
+    transform: "translateX(-50%)",
+    padding: "4px 12px",
+    borderRadius: 4,
+    background: color.background.light,
+    color: color.text.light,
+    fontSize: 12,
+    pointerEvents: "none",
+};
 
-const VideoEditorRoot = styled.div`
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    background: ${color.background.dark};
-    overflow: hidden;
-
-    & .video-area {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        position: relative;
-        overflow: hidden;
-    }
-
-    & .state-badge {
-        position: absolute;
-        bottom: 24px;
-        left: 50%;
-        transform: translateX(-50%);
-        padding: 4px 12px;
-        border-radius: 4px;
-        background: ${color.background.light};
-        color: ${color.text.light};
-        font-size: 12px;
-        pointer-events: none;
-    }
-
-    & .placeholder-text {
-        color: ${color.text.light};
-        font-size: 13px;
-    }
-
-    & .vlc-button {
-        position: absolute;
-        bottom: 60px;
-        left: 50%;
-        transform: translateX(-50%);
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        padding: 6px 16px;
-        border-radius: 4px;
-        border: 1px solid ${color.border.default};
-        background: ${color.background.light};
-        color: ${color.text.default};
-        font-size: 12px;
-        cursor: pointer;
-        white-space: nowrap;
-        & svg {
-            color: ${color.misc.vlc};
-            width: 18px;
-            height: 18px;
-            flex-shrink: 0;
-        }
-        &:hover {
-            background: ${color.background.default};
-            border-color: ${color.border.active};
-        }
-    }
-`;
+const vlcButtonContainerStyle: React.CSSProperties = {
+    position: "absolute",
+    bottom: 60,
+    left: "50%",
+    transform: "translateX(-50%)",
+};
 
 // ── Component ────────────────────────────────────────────────────────────────
 
@@ -493,31 +436,37 @@ function VideoPlayerEditor({ model }: VideoPlayerEditorProps) {
     const showVlcButton = url && !["loading", "playing", "stopped"].includes(playerState);
 
     return (
-        <VideoEditorRoot>
+        <Panel direction="column" height="100%" background="dark" overflow="hidden">
             <PageToolbar borderBottom>
                 {(model.page?.canOpenNavigator(null, filePath) || filePath) && (
-                    <Button
-                        type="icon"
-                        size="small"
+                    <IconButton
+                        size="sm"
+                        icon={<NavPanelIcon />}
                         title="File Explorer"
                         onClick={() => model.page?.toggleNavigator(null, filePath)}
-                    >
-                        <NavPanelIcon />
-                    </Button>
+                    />
                 )}
-                <UrlInputArea
-                    value={inputText}
-                    onChange={model.setInputText}
-                    placeholder="Enter video URL or paste cURL command... (Enter to play, Shift+Enter for new line)"
+                <Panel
+                    direction="column"
+                    flex={1}
                     onKeyDown={(e) => {
-                        if (e.key === "Enter" && !e.shiftKey) {
+                        if (e.key === "Enter" && e.ctrlKey) {
                             e.preventDefault();
                             model.submitUrl(inputText);
                         }
                     }}
-                />
+                >
+                    <Textarea
+                        value={inputText}
+                        onChange={model.setInputText}
+                        placeholder="Enter video URL or paste cURL command... (Ctrl+Enter to play)"
+                        minHeight={28}
+                        maxHeight={72}
+                        size="sm"
+                    />
+                </Panel>
             </PageToolbar>
-            <div className="video-area">
+            <Panel direction="column" flex={1} align="center" justify="center" position="relative" overflow="hidden">
                 {url && (
                     <VPlayer
                         src={streamUrl}
@@ -535,19 +484,20 @@ function VideoPlayerEditor({ model }: VideoPlayerEditorProps) {
                     />
                 )}
                 {!url && (
-                    <span className="placeholder-text">Enter a video URL above to start playing</span>
+                    <Text size="md" color="light">Enter a video URL above to start playing</Text>
                 )}
                 {showBadge && (
-                    <div className="state-badge">{playerState}</div>
+                    <div style={stateBadgeStyle}>{playerState}</div>
                 )}
                 {showVlcButton && (
-                    <button className="vlc-button" onClick={model.openInVlc}>
-                        <VlcIcon />
-                        Open in VLC
-                    </button>
+                    <div style={vlcButtonContainerStyle}>
+                        <Button variant="link" icon={<VlcIcon />} onClick={model.openInVlc}>
+                            Open in VLC
+                        </Button>
+                    </div>
                 )}
-            </div>
-        </VideoEditorRoot>
+            </Panel>
+        </Panel>
     );
 }
 
