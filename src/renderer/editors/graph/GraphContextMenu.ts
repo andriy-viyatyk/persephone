@@ -1,5 +1,5 @@
 import { createElement, type ReactNode } from "react";
-import type { MenuItem } from "../../components/overlay/PopupMenu";
+import type { MenuItem } from "../../uikit";
 import type { NodePropertyLink } from "./types";
 
 /** Open-link icon (matches the Links editor OpenLinkIcon). */

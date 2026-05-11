@@ -1,8 +1,8 @@
-import styled from "@emotion/styled";
 import { createPortal } from "react-dom";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { IconButton, Input, Spinner, Text } from "../../uikit";
+import { highlight } from "../../uikit/shared/highlight";
 import { TextFileModel } from "../text/TextEditorModel";
-import { CircularProgress } from "../../components/basic/CircularProgress";
 import { EditorError } from "../base/EditorError";
 import { useContentViewModel } from "../base/useContentViewModel";
 import { GraphViewModel, GraphViewState, SearchResult, defaultGraphViewState } from "./GraphViewModel";
@@ -13,10 +13,8 @@ import { GraphDetailPanel } from "./GraphDetailPanel";
 import { GraphTuningSliders } from "./GraphTuningSliders";
 import { GraphExpansionSettings } from "./GraphExpansionSettings";
 import { GraphLegendPanel } from "./GraphLegendPanel";
-import { highlightText } from "../../components/basic/useHighlightedText";
-import { SettingsIcon, RefreshIcon, ExpandAllIcon, GraphGroupIcon, CopyIcon } from "../../theme/icons";
+import { CloseIcon, SettingsIcon, RefreshIcon, ExpandAllIcon, GraphGroupIcon, CopyIcon } from "../../theme/icons";
 import { DrawIcon } from "../../theme/language-icons";
-import { Button } from "../../components/basic/Button";
 import { pagesModel } from "../../api/pages";
 import { showConfirmationDialog } from "../../ui/dialogs/ConfirmationDialog";
 import color from "../../theme/color";
@@ -29,388 +27,136 @@ type ToolbarPanel = "closed" | "settings" | "expansion" | "results";
 const MAX_DISPLAYED_RESULTS = 100;
 
 // ============================================================================
-// Styled Components
+// Inline styles
 // ============================================================================
 
-const GraphViewRoot = styled.div({
+const rootStyle: React.CSSProperties = {
     display: "flex",
     flexDirection: "column",
     flex: "1 1 auto",
     overflow: "hidden",
     position: "relative",
-    "& .graph-loading": {
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        flex: "1 1 auto",
-        backgroundColor: color.graph.background,
-    },
-    "& .graph-canvas": {
-        width: "100%",
-        height: "100%",
-        flex: "1 1 auto",
-        backgroundColor: color.graph.background,
-    },
-    "& .graph-toolbar": {
-        position: "absolute",
-        top: 8,
-        left: 8,
-        display: "flex",
-        flexDirection: "column" as const,
-        width: "fit-content",
-        maxWidth: "80%",
-        backgroundColor: color.graph.background,
-        border: `1px solid ${color.border.default}`,
-        borderRadius: 4,
-        zIndex: 1,
-        opacity: 0.5,
-        transition: "opacity 0.15s",
-        "&:hover, &.expanded, &:focus-within, &.has-search": {
-            opacity: 1,
-        },
-        "&.expanded": {
-            borderColor: color.graph.nodeHighlight,
-        },
-    },
-    "& .graph-toolbar-row": {
-        display: "flex",
-        alignItems: "center",
-        gap: 4,
-        padding: 2,
-    },
-    "& .graph-icon-btn": {
-        width: 24,
-        height: 24,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        flexShrink: 0,
-        cursor: "pointer",
-        border: `1px solid transparent`,
-        borderRadius: 3,
-        backgroundColor: "transparent",
-        color: color.graph.labelText,
-        padding: 0,
-        "&:hover": {
-            borderColor: color.graph.nodeHighlight,
-        },
-        "&.active": {
-            borderColor: color.graph.nodeHighlight,
-        },
-        "&.disabled": {
-            opacity: 0.3,
-            pointerEvents: "none" as const,
-        },
-    },
-    "& .graph-icon-btn.strikethrough": {
-        position: "relative",
-        "&::after": {
-            content: '""',
-            position: "absolute",
-            top: "50%",
-            left: 2,
-            right: 2,
-            height: 1,
-            backgroundColor: color.text.default,
-            transform: "rotate(-45deg)",
-        },
-    },
-    "& .graph-search-wrap": {
-        position: "relative",
-        display: "inline-flex",
-        alignItems: "center",
-        width: 130,
-        flexShrink: 0,
-    },
-    "& .graph-search-input": {
-        width: "100%",
-        padding: "2px 18px 2px 6px",
-        fontSize: 11,
-        border: `1px solid ${color.border.default}`,
-        borderRadius: 3,
-        backgroundColor: color.graph.background,
-        color: color.graph.labelText,
-        outline: "none",
-        "&:focus": {
-            borderColor: color.graph.nodeHighlight,
-        },
-        "&::placeholder": {
-            color: color.text.light,
-        },
-    },
-    "& .graph-search-clear": {
-        position: "absolute",
-        right: 3,
-        top: "50%",
-        transform: "translateY(-50%)",
-        width: 14,
-        height: 14,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        cursor: "pointer",
-        fontSize: 12,
-        lineHeight: 1,
-        color: color.border.default,
-        borderRadius: 2,
-        "&:hover": {
-            color: color.graph.labelText,
-        },
-    },
-    "& .graph-search-wrap:hover .graph-search-clear, & .graph-search-input:focus ~ .graph-search-clear": {
-        color: color.graph.labelText,
-    },
-    "& .has-search .graph-search-input": {
-        color: color.graph.nodeHighlight,
-    },
-    "& .has-search .graph-search-clear": {
-        color: color.graph.nodeHighlight,
-    },
-    "& .graph-search-info": {
-        fontSize: 11,
-        color: color.graph.labelText,
-        whiteSpace: "nowrap",
-        flexShrink: 0,
-    },
-    "& .graph-selection-info": {
-        fontSize: 11,
-        color: color.graph.nodeHighlight,
-        whiteSpace: "nowrap",
-        flexShrink: 0,
-        cursor: "pointer",
-        "&:hover": {
-            textDecoration: "underline",
-        },
-    },
-    // Toolbar tabs
-    "& .toolbar-tabs": {
-        display: "flex",
-        borderBottom: `1px solid ${color.border.default}`,
-        backgroundColor: color.background.dark,
-    },
-    "& .toolbar-tab": {
-        padding: "3px 8px",
-        fontSize: 11,
-        cursor: "pointer",
-        color: color.graph.labelText,
-        borderBottom: "2px solid transparent",
-        backgroundColor: "transparent",
-        border: "none",
-        borderBottomWidth: 2,
-        borderBottomStyle: "solid" as const,
-        borderBottomColor: "transparent",
-        "&.active": {
-            borderBottomColor: color.graph.nodeHighlight,
-        },
-        "&:hover:not(.active)": {
-            borderBottomColor: color.border.default,
-        },
-    },
-    // Search results panel
-    "& .search-results": {
-        maxHeight: 300,
-        overflowY: "auto" as const,
-    },
-    "& .search-result-row": {
-        padding: "3px 8px",
-        cursor: "pointer",
-        fontSize: 11,
-        lineHeight: 1.4,
-        borderBottom: `1px solid ${color.border.default}`,
-        "&:last-child": {
-            borderBottom: "none",
-        },
-        "&:hover": {
-            backgroundColor: color.background.selection,
-        },
-        "&.keyboard-selected": {
-            backgroundColor: color.background.selection,
-        },
-        "&.hidden-node": {
-            opacity: 0.5,
-        },
-    },
-    "& .search-result-title": {
-        fontWeight: 600,
-        overflow: "hidden",
-        textOverflow: "ellipsis",
-        whiteSpace: "nowrap",
-    },
-    "& .search-result-prop": {
-        fontStyle: "italic",
-        overflow: "hidden",
-        textOverflow: "ellipsis",
-        whiteSpace: "nowrap",
-    },
-    "& .search-result-prop-key": {
-        opacity: 0.6,
-    },
-    "& .search-status-bar": {
-        padding: "3px 8px",
-        fontSize: 11,
-        color: color.graph.labelText,
-        borderTop: `1px solid ${color.border.default}`,
-        display: "flex",
-        justifyContent: "space-between",
-    },
-    "& .search-reveal": {
-        cursor: "pointer",
-        color: color.graph.nodeHighlight,
-        "&:hover": {
-            textDecoration: "underline",
-        },
-    },
-    "& .search-no-results": {
-        padding: 8,
-        fontSize: 11,
-        opacity: 0.5,
-        textAlign: "center" as const,
-    },
-    "& .graph-empty-hint": {
-        position: "absolute",
-        top: 48,
-        left: 0,
-        right: 0,
-        display: "flex",
-        justifyContent: "center",
-        pointerEvents: "none",
-        color: color.graph.labelText,
-        opacity: 0.5,
-        fontSize: 12,
-    },
-    // Legend panel (bottom-left)
-    "& .graph-legend": {
-        position: "absolute",
-        bottom: 8,
-        left: 8,
-        width: 260,
-        display: "flex",
-        flexDirection: "column" as const,
-        backgroundColor: color.graph.background,
-        border: `1px solid ${color.border.default}`,
-        borderRadius: 4,
-        zIndex: 1,
-        opacity: 0.5,
-        transition: "opacity 0.15s",
-        "&:hover, &.expanded, &:focus-within": {
-            opacity: 1,
-        },
-    },
-    "& .legend-header": {
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        padding: "3px 8px",
-        cursor: "pointer",
-        userSelect: "none" as const,
-    },
-    "& .legend-title": {
-        fontSize: 11,
-        fontWeight: 600,
-        color: color.graph.labelText,
-    },
-    "& .legend-chevron": {
-        fontSize: 11,
-        color: color.graph.labelText,
-        opacity: 0.6,
-        "&.expanded": {
-            color: color.graph.nodeHighlight,
-            opacity: 1,
-        },
-    },
-    "& .legend-tabs": {
-        display: "flex",
-        borderBottom: `1px solid ${color.border.default}`,
-        backgroundColor: color.background.dark,
-    },
-    "& .legend-tab": {
-        padding: "3px 8px",
-        fontSize: 11,
-        cursor: "pointer",
-        color: color.graph.labelText,
-        backgroundColor: "transparent",
-        border: "none",
-        borderBottomWidth: 2,
-        borderBottomStyle: "solid" as const,
-        borderBottomColor: "transparent",
-        "&.active": {
-            borderBottomColor: color.graph.nodeHighlight,
-        },
-        "&:hover:not(.active)": {
-            borderBottomColor: color.border.default,
-        },
-    },
-    "& .legend-content": {
-        maxHeight: 250,
-        overflowY: "auto" as const,
-        padding: "2px 0",
-    },
-    "& .legend-row": {
-        display: "flex",
-        alignItems: "center",
-        gap: 4,
-        padding: "2px 8px",
-        fontSize: 11,
-    },
-    "& .legend-checkbox": {
-        margin: 0,
-        flexShrink: 0,
-        cursor: "pointer",
-    },
-    "& .legend-icon": {
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        flexShrink: 0,
-        width: 16,
-        height: 16,
-        color: color.graph.labelText,
-    },
-    "& .legend-label": {
-        fontSize: 11,
-        color: color.graph.labelText,
-        flexShrink: 0,
-        minWidth: 50,
-    },
-    "& .legend-search-notice": {
-        display: "flex",
-        flexDirection: "column" as const,
-        alignItems: "center",
-        gap: 6,
-        padding: "10px 8px",
-        fontSize: 11,
-        color: color.warning.text,
-    },
-    "& .legend-clear-search": {
-        padding: "2px 10px",
-        fontSize: 11,
-        cursor: "pointer",
-        color: color.graph.labelText,
-        backgroundColor: "transparent",
-        border: `1px solid ${color.border.default}`,
-        borderRadius: 3,
-        "&:hover": {
-            borderColor: color.graph.nodeHighlight,
-        },
-    },
-    "& .legend-description": {
-        flex: 1,
-        minWidth: 0,
-        padding: "1px 4px",
-        fontSize: 11,
-        border: `1px solid ${color.border.default}`,
-        borderRadius: 3,
-        backgroundColor: color.graph.background,
-        color: color.graph.labelText,
-        outline: "none",
-        "&:focus": {
-            borderColor: color.graph.nodeHighlight,
-        },
-        "&::placeholder": {
-            color: color.text.light,
-        },
-    },
-});
+};
+
+const loadingStyle: React.CSSProperties = {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    flex: "1 1 auto",
+    backgroundColor: color.graph.background,
+};
+
+const canvasStyle: React.CSSProperties = {
+    width: "100%",
+    height: "100%",
+    flex: "1 1 auto",
+    backgroundColor: color.graph.background,
+};
+
+const emptyHintStyle: React.CSSProperties = {
+    position: "absolute",
+    top: 48,
+    left: 0,
+    right: 0,
+    display: "flex",
+    justifyContent: "center",
+    pointerEvents: "none",
+    color: color.graph.labelText,
+    opacity: 0.5,
+    fontSize: 12,
+};
+
+const toolbarRowStyle: React.CSSProperties = {
+    display: "flex",
+    alignItems: "center",
+    gap: 4,
+    padding: 2,
+};
+
+const searchInfoStyle: React.CSSProperties = {
+    fontSize: 11,
+    color: color.graph.labelText,
+    whiteSpace: "nowrap",
+    flexShrink: 0,
+};
+
+const selectionInfoStyle: React.CSSProperties = {
+    fontSize: 11,
+    color: color.graph.nodeHighlight,
+    whiteSpace: "nowrap",
+    flexShrink: 0,
+    cursor: "pointer",
+};
+
+const tabsRowStyle: React.CSSProperties = {
+    display: "flex",
+    borderBottom: `1px solid ${color.border.default}`,
+    backgroundColor: color.background.dark,
+};
+
+const tabStyleBase: React.CSSProperties = {
+    padding: "3px 8px",
+    fontSize: 11,
+    cursor: "pointer",
+    color: color.graph.labelText,
+    backgroundColor: "transparent",
+    border: "none",
+    borderBottomWidth: 2,
+    borderBottomStyle: "solid",
+    borderBottomColor: "transparent",
+};
+
+const tabActiveStyle: React.CSSProperties = {
+    ...tabStyleBase,
+    borderBottomColor: color.graph.nodeHighlight,
+};
+
+const searchResultsListStyle: React.CSSProperties = {
+    maxHeight: 300,
+    overflowY: "auto",
+};
+
+const searchResultRowBase: React.CSSProperties = {
+    padding: "3px 8px",
+    cursor: "pointer",
+    fontSize: 11,
+    lineHeight: 1.4,
+    borderBottom: `1px solid ${color.border.default}`,
+};
+
+const searchResultTitleStyle: React.CSSProperties = {
+    fontWeight: 600,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+};
+
+const searchResultPropStyle: React.CSSProperties = {
+    fontStyle: "italic",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+};
+
+const searchResultPropKeyStyle: React.CSSProperties = {
+    opacity: 0.6,
+};
+
+const searchStatusBarStyle: React.CSSProperties = {
+    padding: "3px 8px",
+    fontSize: 11,
+    color: color.graph.labelText,
+    borderTop: `1px solid ${color.border.default}`,
+    display: "flex",
+    justifyContent: "space-between",
+};
+
+const searchNoResultsStyle: React.CSSProperties = {
+    padding: 8,
+    fontSize: 11,
+    opacity: 0.5,
+    textAlign: "center",
+};
 
 // ============================================================================
 // GraphSearchResults Component
@@ -428,7 +174,6 @@ function GraphSearchResults({ results, searchQuery, selectedIndex, onSelect }: G
     const truncated = results.length > MAX_DISPLAYED_RESULTS;
     const displayed = truncated ? results.slice(0, MAX_DISPLAYED_RESULTS) : results;
 
-    // Scroll keyboard-selected item into view
     useEffect(() => {
         if (selectedIndex < 0 || !listRef.current) return;
         const row = listRef.current.children[selectedIndex] as HTMLElement | undefined;
@@ -436,29 +181,36 @@ function GraphSearchResults({ results, searchQuery, selectedIndex, onSelect }: G
     }, [selectedIndex]);
 
     return (
-        <div className="search-results" ref={listRef}>
-            {displayed.map((result, i) => (
-                <div
-                    key={result.nodeId}
-                    className={`search-result-row${!result.visible ? " hidden-node" : ""}${i === selectedIndex ? " keyboard-selected" : ""}`}
-                    onClick={() => onSelect(result.nodeId)}
-                >
-                    <div className="search-result-title">
-                        {highlightText(searchQuery, result.label)}
-                    </div>
-                    {result.matchedProps.map((prop) => (
-                        <div key={prop.key} className="search-result-prop">
-                            <span className="search-result-prop-key">
-                                {highlightText(searchQuery, prop.key)}
-                            </span>
-                            {": "}
-                            {highlightText(searchQuery, prop.value)}
+        <div style={searchResultsListStyle} ref={listRef}>
+            {displayed.map((result, i) => {
+                const rowStyle: React.CSSProperties = {
+                    ...searchResultRowBase,
+                    opacity: result.visible ? 1 : 0.5,
+                    backgroundColor: i === selectedIndex ? color.background.selection : undefined,
+                };
+                return (
+                    <div
+                        key={result.nodeId}
+                        style={rowStyle}
+                        onClick={() => onSelect(result.nodeId)}
+                    >
+                        <div style={searchResultTitleStyle}>
+                            {highlight(result.label, searchQuery)}
                         </div>
-                    ))}
-                </div>
-            ))}
+                        {result.matchedProps.map((prop) => (
+                            <div key={prop.key} style={searchResultPropStyle}>
+                                <span style={searchResultPropKeyStyle}>
+                                    {highlight(prop.key, searchQuery)}
+                                </span>
+                                {": "}
+                                {highlight(prop.value, searchQuery)}
+                            </div>
+                        ))}
+                    </div>
+                );
+            })}
             {truncated && (
-                <div className="search-no-results">
+                <div style={searchNoResultsStyle}>
                     and {results.length - MAX_DISPLAYED_RESULTS} more...
                 </div>
             )}
@@ -482,19 +234,19 @@ function GraphView({ model }: GraphViewProps) {
     const inputRef = useRef<HTMLInputElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const [toolbarPanel, setToolbarPanel] = useState<ToolbarPanel>("closed");
+    const [toolbarHovered, setToolbarHovered] = useState(false);
+    const [toolbarFocusWithin, setToolbarFocusWithin] = useState(false);
     const [expandRequest, setExpandRequest] = useState(0);
     const [collapseRequest, setCollapseRequest] = useState(0);
     const [selectedResultIndex, setSelectedResultIndex] = useState(-1);
     const panelDirtyRef = useRef(false);
     const panelExpandedRef = useRef(false);
-    /** Timestamp (ms) when the last popup was dismissed. Used to ignore the click that closed it. */
     const popupClosedAtRef = useRef(0);
 
     const toggleSettings = useCallback(() => {
         setToolbarPanel((prev) => prev === "settings" ? "closed" : "settings");
     }, []);
 
-    // Double-click on node → expand detail panel
     useEffect(() => {
         if (!vm) return;
         vm.onDoubleClickNode = () => setExpandRequest((n) => n + 1);
@@ -506,25 +258,23 @@ function GraphView({ model }: GraphViewProps) {
         vm ? () => vm.state.get() : getDefaultState,
     );
 
-    // Refresh resolved canvas colors when component re-renders (theme changes cause re-render)
     useEffect(() => {
         vm?.refreshColors();
     });
 
-    // Auto-switch to results tab when search results appear
     const { searchQuery, searchInfo, searchResults, tooltip, selectedNodes, linkedNodes, statusHint, groupingEnabled } = pageState;
+
     useEffect(() => {
         if (searchResults && searchResults.length > 0) {
             setToolbarPanel("results");
             setSelectedResultIndex(-1);
         } else if (!searchQuery) {
-            // Search cleared — close results panel (but keep settings if open)
             setToolbarPanel((prev) => prev === "results" ? "closed" : prev);
         }
     }, [searchResults, searchQuery]);
 
-    const onSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-        vm?.setSearchQuery(e.target.value);
+    const onSearchChange = useCallback((value: string) => {
+        vm?.setSearchQuery(value);
     }, [vm]);
 
     const onSelectResult = useCallback((nodeId: string) => {
@@ -602,20 +352,14 @@ function GraphView({ model }: GraphViewProps) {
         panelExpandedRef.current = exp;
     }, []);
 
-    // Capture-phase mousedown to dismiss open popups (e.g. quick-add menu).
-    // D3 zoom/drag calls stopImmediatePropagation() on canvas mousedown, preventing
-    // it from bubbling to document where Popper's click-outside listener lives.
     const onMouseDownCapture = useCallback((e: React.MouseEvent) => {
-        if (e.target === e.currentTarget) return; // only for child elements (canvas)
-        // If a popup is open (context menu or selection menu), record the
-        // dismiss timestamp so the subsequent click handler can ignore it.
+        if (e.target === e.currentTarget) return;
         if (vm?.isPopupOpen) {
             popupClosedAtRef.current = Date.now();
         }
         document.body.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
     }, [vm]);
 
-    // Shift key: show "selected with children" highlighting while held
     useEffect(() => {
         if (!vm) return;
         const activeRef = { current: false };
@@ -652,7 +396,6 @@ function GraphView({ model }: GraphViewProps) {
         };
     }, [vm]);
 
-    // Ctrl+F: focus search input, Ctrl+A: select all nodes
     useEffect(() => {
         const onKeyDown = (e: KeyboardEvent) => {
             if (e.ctrlKey && e.key === "f") {
@@ -671,7 +414,6 @@ function GraphView({ model }: GraphViewProps) {
         return () => document.removeEventListener("keydown", onKeyDown);
     }, [vm]);
 
-    // Selection menu handler
     const onSelectionClick = useCallback(async (e: React.MouseEvent) => {
         if (!vm) return;
         const count = selectedNodes.length;
@@ -702,26 +444,41 @@ function GraphView({ model }: GraphViewProps) {
 
     const { error, loading } = pageState;
     const isExpanded = toolbarPanel !== "closed";
+    const hasSearch = !!searchQuery;
     const resultCount = searchResults?.length ?? 0;
 
+    const toolbarStyle: React.CSSProperties = {
+        position: "absolute",
+        top: 8,
+        left: 8,
+        display: "flex",
+        flexDirection: "column",
+        width: "fit-content",
+        maxWidth: "80%",
+        backgroundColor: color.graph.background,
+        border: `1px solid ${isExpanded ? color.graph.nodeHighlight : color.border.default}`,
+        borderRadius: 4,
+        zIndex: 1,
+        opacity: (toolbarHovered || toolbarFocusWithin || isExpanded || hasSearch) ? 1 : 0.5,
+        transition: "opacity 0.15s",
+    };
+
     return (
-        <GraphViewRoot ref={containerRef} onMouseDownCapture={onMouseDownCapture}>
+        <div ref={containerRef} style={rootStyle} onMouseDownCapture={onMouseDownCapture}>
             {error && <EditorError>{error}</EditorError>}
             {loading ? (
-                <div className="graph-loading">
-                    <CircularProgress />
+                <div style={loadingStyle}>
+                    <Spinner />
                 </div>
             ) : (
                 <>
                     <canvas
-                        className="graph-canvas"
+                        style={canvasStyle}
                         ref={canvasRef}
                         onClick={(e) => {
                             if (panelDirtyRef.current) return;
-                            // Ignore the click that dismissed a popup menu (context or selection)
                             if (Date.now() - popupClosedAtRef.current < 300) return;
                             if (isExpanded || panelExpandedRef.current) {
-                                // If clicking a node and only detail panel is expanded, keep it open
                                 if (!isExpanded && panelExpandedRef.current && vm.renderer.hasNodeAt(e)) {
                                     vm.renderer.onClick(e);
                                     return;
@@ -737,88 +494,99 @@ function GraphView({ model }: GraphViewProps) {
                         onMouseMove={vm.renderer.onMouseMove}
                     />
                     {vm.isEmpty && (
-                        <div className="graph-empty-hint">
+                        <div style={emptyHintStyle}>
                             Right-click → Add Node to start building the graph
                         </div>
                     )}
-                    <div className={`graph-toolbar${isExpanded ? " expanded" : ""}${searchQuery ? " has-search" : ""}`}>
-                        <div className="graph-toolbar-row">
-                            <button
-                                className={`graph-icon-btn${toolbarPanel === "settings" ? " active" : ""}`}
+                    <div
+                        style={toolbarStyle}
+                        onMouseEnter={() => setToolbarHovered(true)}
+                        onMouseLeave={() => setToolbarHovered(false)}
+                        onFocus={() => setToolbarFocusWithin(true)}
+                        onBlur={(e) => {
+                            if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+                                setToolbarFocusWithin(false);
+                            }
+                        }}
+                    >
+                        <div style={toolbarRowStyle}>
+                            <IconButton
+                                size="sm"
+                                icon={<SettingsIcon />}
+                                active={toolbarPanel === "settings"}
                                 onClick={toggleSettings}
                                 title="Force tuning"
-                            >
-                                <SettingsIcon width={14} height={14} />
-                            </button>
-                            <button
-                                className={`graph-icon-btn${groupingEnabled ? " strikethrough" : ""}${!vm.hasGroups ? " disabled" : ""}`}
+                            />
+                            <IconButton
+                                size="sm"
+                                icon={<GraphGroupIcon />}
+                                strikethrough={groupingEnabled}
+                                disabled={!vm.hasGroups}
                                 onClick={() => vm.toggleGrouping()}
                                 title={groupingEnabled ? "Disable grouping" : "Enable grouping"}
-                                disabled={!vm.hasGroups}
-                            >
-                                <GraphGroupIcon width={14} height={14} />
-                            </button>
-                            <button
-                                className="graph-icon-btn"
+                            />
+                            <IconButton
+                                size="sm"
+                                icon={<RefreshIcon />}
                                 onClick={() => vm.resetView()}
                                 title="Reset view"
-                            >
-                                <RefreshIcon width={14} height={14} />
-                            </button>
+                            />
                             {vm.hasVisibilityFilter && (
-                                <button
-                                    className="graph-icon-btn"
+                                <IconButton
+                                    size="sm"
+                                    icon={<ExpandAllIcon />}
                                     onClick={handleExpandAll}
                                     title="Expand all nodes"
-                                >
-                                    <ExpandAllIcon width={14} height={14} />
-                                </button>
-                            )}
-                            <div className="graph-search-wrap">
-                                <input
-                                    ref={inputRef}
-                                    className="graph-search-input"
-                                    type="text"
-                                    placeholder="Search nodes..."
-                                    value={searchQuery}
-                                    onChange={onSearchChange}
-                                    onKeyDown={onSearchKeyDown}
-                                    onFocus={onSearchFocus}
                                 />
-                                {searchQuery && (
-                                    <span className="graph-search-clear" onClick={onSearchClear}>
-                                        ×
-                                    </span>
-                                )}
-                            </div>
+                            )}
+                            <Input
+                                ref={inputRef}
+                                size="sm"
+                                width={130}
+                                placeholder="Search nodes..."
+                                value={searchQuery}
+                                onChange={onSearchChange}
+                                onKeyDown={onSearchKeyDown}
+                                onFocus={onSearchFocus}
+                                endSlot={
+                                    searchQuery ? (
+                                        <IconButton
+                                            size="sm"
+                                            icon={<CloseIcon />}
+                                            title="Clear search"
+                                            onClick={onSearchClear}
+                                        />
+                                    ) : undefined
+                                }
+                            />
                             {searchInfo && !isExpanded && (
-                                <span className="graph-search-info">
+                                <span style={searchInfoStyle}>
                                     {searchInfo.visible} matched
                                 </span>
                             )}
                             {selectedNodes.length > 0 && (
-                                <span className="graph-selection-info" onClick={onSelectionClick}>
+                                <span style={selectionInfoStyle} onClick={onSelectionClick}>
                                     {selectedNodes.length} selected ▾
                                 </span>
                             )}
                         </div>
                         {isExpanded && (
                             <>
-                                <div className="toolbar-tabs">
+                                <div style={tabsRowStyle}>
                                     <button
-                                        className={`toolbar-tab${toolbarPanel === "settings" ? " active" : ""}`}
+                                        style={toolbarPanel === "settings" ? tabActiveStyle : tabStyleBase}
                                         onClick={() => setToolbarPanel("settings")}
                                     >
                                         Physics
                                     </button>
                                     <button
-                                        className={`toolbar-tab${toolbarPanel === "expansion" ? " active" : ""}`}
+                                        style={toolbarPanel === "expansion" ? tabActiveStyle : tabStyleBase}
                                         onClick={() => setToolbarPanel("expansion")}
                                     >
                                         Expansion
                                     </button>
                                     <button
-                                        className={`toolbar-tab${toolbarPanel === "results" ? " active" : ""}`}
+                                        style={toolbarPanel === "results" ? tabActiveStyle : tabStyleBase}
                                         onClick={() => setToolbarPanel("results")}
                                     >
                                         Results{resultCount > 0 ? ` (${resultCount})` : ""}
@@ -836,21 +604,21 @@ function GraphView({ model }: GraphViewProps) {
                                                 onSelect={onSelectResult}
                                             />
                                         ) : (
-                                            <div className="search-no-results">
+                                            <div style={searchNoResultsStyle}>
                                                 {searchQuery ? "No results" : "Type to search"}
                                             </div>
                                         )}
                                         {searchInfo && (
-                                            <div className="search-status-bar">
+                                            <div style={searchStatusBarStyle}>
                                                 <span>{searchInfo.visible} visible</span>
                                                 {searchInfo.hidden > 0 && (
-                                                    <span className="search-reveal" onClick={onRevealHidden}>
+                                                    <Text variant="link" onClick={onRevealHidden}>
                                                         [+{searchInfo.hidden} hidden]
-                                                    </span>
+                                                    </Text>
                                                 )}
-                                                <span className="search-reveal" onClick={() => vm.selectSearchResults()}>
+                                                <Text variant="link" onClick={() => vm.selectSearchResults()}>
                                                     [{selectedNodes.length > 0 ? "add to selection" : "select all"}]
-                                                </span>
+                                                </Text>
                                             </div>
                                         )}
                                     </>
@@ -889,9 +657,9 @@ function GraphView({ model }: GraphViewProps) {
             {Boolean(model.editorToolbarRefLast) &&
                 createPortal(
                     <>
-                        <Button
-                            type="icon"
-                            size="small"
+                        <IconButton
+                            size="sm"
+                            icon={<DrawIcon />}
                             title="Open in Drawing Editor"
                             onClick={async () => {
                                 const canvas = canvasElRef.current;
@@ -902,12 +670,10 @@ function GraphView({ model }: GraphViewProps) {
                                 const title = model.state.get().title.replace(/\.fg\.json$/i, "") + ".excalidraw";
                                 pagesModel.addEditorPage("draw-view", "json", title, json);
                             }}
-                        >
-                            <DrawIcon />
-                        </Button>
-                        <Button
-                            type="icon"
-                            size="small"
+                        />
+                        <IconButton
+                            size="sm"
+                            icon={<CopyIcon />}
                             title="Copy Image to Clipboard"
                             onClick={() => {
                                 const canvas = canvasElRef.current;
@@ -920,9 +686,7 @@ function GraphView({ model }: GraphViewProps) {
                                     }
                                 }, "image/png");
                             }}
-                        >
-                            <CopyIcon />
-                        </Button>
+                        />
                     </>,
                     model.editorToolbarRefLast!,
                 )}
@@ -934,7 +698,7 @@ function GraphView({ model }: GraphViewProps) {
                     </>,
                     model.editorFooterRefLast,
                 )}
-        </GraphViewRoot>
+        </div>
     );
 }
 

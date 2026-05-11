@@ -9,7 +9,7 @@ import { GraphGroupModel } from "./GraphGroupModel";
 import { GraphConnectivityModel } from "./GraphConnectivityModel";
 import { showAppPopupMenu } from "../../ui/dialogs/poppers/showPopupMenu";
 import { buildNodeContextMenu, buildEmptyAreaContextMenu, buildGroupNodeContextMenu, ContextMenuActions } from "./GraphContextMenu";
-import type { MenuItem } from "../../components/overlay/PopupMenu";
+import type { MenuItem } from "../../uikit";
 import { showInputDialog } from "../../ui/dialogs/InputDialog";
 import { showConfirmationDialog } from "../../ui/dialogs/ConfirmationDialog";
 import { alertsBarModel } from "../../uikit";

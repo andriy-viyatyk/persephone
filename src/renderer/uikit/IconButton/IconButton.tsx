@@ -1,7 +1,7 @@
 import React from "react";
 import styled from "@emotion/styled";
 import color from "../../theme/color";
-import { height, spacing, radius } from "../tokens";
+import { height, radius, spacing } from "../tokens";
 import { Tooltip } from "../Tooltip/Tooltip";
 
 // --- Types ---
@@ -28,12 +28,20 @@ export interface IconButtonProps extends Omit<React.ButtonHTMLAttributes<HTMLBut
      * keyboard focus. Outside such a panel the prop has no effect.
      */
     hideUntilParentHover?: boolean;
+    /**
+     * Render a 45° diagonal line over the icon to indicate a toggled-off or
+     * disabled-feature state. The line uses `currentColor` so it follows the
+     * icon color through default / hover / active / disabled states. Visible
+     * regardless of those states; does not block clicks.
+     */
+    strikethrough?: boolean;
 }
 
 // --- Styled ---
 
 const Root = styled.button(
     {
+        position: "relative",
         display: "inline-flex",
         alignItems: "center",
         justifyContent: "center",
@@ -45,6 +53,18 @@ const Root = styled.button(
         padding: spacing.xs,
         color: color.icon.light,
         flexShrink: 0,
+
+        "&[data-strikethrough]::after": {
+            content: '""',
+            position: "absolute",
+            top: "50%",
+            left: spacing.xs,
+            right: spacing.xs,
+            height: 1,
+            background: "currentColor",
+            transform: "rotate(-45deg)",
+            pointerEvents: "none",
+        },
 
         "& [data-part='icon']": {
             display: "inline-flex",
@@ -91,7 +111,7 @@ const Root = styled.button(
 // --- Component ---
 
 export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
-    function IconButton({ icon, size = "md", active, disabled, title, hideUntilParentHover, ...rest }, ref) {
+    function IconButton({ icon, size = "md", active, disabled, title, hideUntilParentHover, strikethrough, ...rest }, ref) {
         const button = (
             <Root
                 ref={ref}
@@ -99,6 +119,7 @@ export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
                 data-size={size}
                 data-active={active || undefined}
                 data-disabled={disabled || undefined}
+                data-strikethrough={strikethrough || undefined}
                 data-visibility={hideUntilParentHover ? "parent-hover" : undefined}
                 disabled={disabled}
                 type="button"

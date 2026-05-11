@@ -5,7 +5,7 @@ import { fontSize } from "../tokens";
 
 // --- Types ---
 
-export type TextVariant = "default" | "uppercased";
+export type TextVariant = "default" | "uppercased" | "link";
 export type TextColor =
     | "inherit"
     | "default"
@@ -76,6 +76,14 @@ const Root = styled.span(
         '&[data-variant="uppercased"]': {
             textTransform: "uppercase",
             letterSpacing: 0.5,
+        },
+        '&[data-variant="link"]': {
+            color: color.primary.text,
+            cursor: "pointer",
+            textDecoration: "none",
+        },
+        '&[data-variant="link"]:hover': {
+            textDecoration: "underline",
         },
 
         // --- Modifiers ---

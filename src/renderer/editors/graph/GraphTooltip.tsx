@@ -1,15 +1,15 @@
-import styled from "@emotion/styled";
 import { Fragment, useCallback, useLayoutEffect, useRef, useState } from "react";
 import ReactDOM from "react-dom";
+import { IconButton } from "../../uikit";
 import { GraphNode, getCustomProperties, toNavigableHref } from "./types";
 import { pagesModel } from "../../api/pages";
 import color from "../../theme/color";
 
 // =============================================================================
-// Styled
+// Inline-style constants
 // =============================================================================
 
-const GraphTooltipRoot = styled.div({
+const rootStyleBase: React.CSSProperties = {
     position: "fixed",
     zIndex: 10,
     pointerEvents: "auto",
@@ -24,77 +24,63 @@ const GraphTooltipRoot = styled.div({
     maxWidth: 400,
     boxShadow: `0 2px 8px ${color.shadow.default}`,
     lineHeight: 1.4,
-    "& .tooltip-badge": {
-        fontSize: 10,
-        fontWeight: 600,
-        textTransform: "uppercase" as const,
-        letterSpacing: 0.5,
-        color: color.graph.nodeSpecial,
-        marginBottom: 2,
-    },
-    "& .tooltip-title": {
-        fontWeight: 600,
-        marginBottom: 2,
-    },
-    "& .tooltip-id": {
-        fontSize: 11,
-        opacity: 0.7,
-        marginBottom: 4,
-    },
-    "& .tooltip-props": {
-        display: "grid",
-        gridTemplateColumns: "auto 1fr",
-        gap: "1px 8px",
-        fontSize: 11,
-        borderTop: `1px solid ${color.border.default}`,
-        paddingTop: 4,
-        marginTop: 2,
-    },
-    "& .tooltip-key": {
-        opacity: 0.7,
-    },
-    "& .tooltip-value": {
-        whiteSpace: "pre-wrap",
-        wordBreak: "break-word",
-    },
-    "& .tooltip-link": {
-        color: color.graph.nodeSpecial,
-        cursor: "pointer",
-        textDecoration: "none",
-        "&:hover": {
-            textDecoration: "underline",
-        },
-    },
-    "& .tooltip-header": {
-        display: "flex",
-        alignItems: "flex-start",
-        gap: 4,
-    },
-    "& .tooltip-header-content": {
-        flex: 1,
-        minWidth: 0,
-    },
-    "& .tooltip-copy": {
-        flexShrink: 0,
-        width: 20,
-        height: 20,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        cursor: "pointer",
-        borderRadius: 3,
-        border: "none",
-        background: "transparent",
-        color: color.graph.labelText,
-        opacity: 0.5,
-        padding: 0,
-        fontSize: 12,
-        "&:hover": {
-            opacity: 1,
-            backgroundColor: color.background.light,
-        },
-    },
-});
+};
+
+const headerStyle: React.CSSProperties = {
+    display: "flex",
+    alignItems: "flex-start",
+    gap: 4,
+};
+
+const headerContentStyle: React.CSSProperties = {
+    flex: 1,
+    minWidth: 0,
+};
+
+const badgeStyle: React.CSSProperties = {
+    fontSize: 10,
+    fontWeight: 600,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    color: color.graph.nodeSpecial,
+    marginBottom: 2,
+};
+
+const titleStyle: React.CSSProperties = {
+    fontWeight: 600,
+    marginBottom: 2,
+};
+
+const idStyle: React.CSSProperties = {
+    fontSize: 11,
+    opacity: 0.7,
+    marginBottom: 4,
+};
+
+const propsGridStyle: React.CSSProperties = {
+    display: "grid",
+    gridTemplateColumns: "auto 1fr",
+    gap: "1px 8px",
+    fontSize: 11,
+    borderTop: `1px solid ${color.border.default}`,
+    paddingTop: 4,
+    marginTop: 2,
+};
+
+const propKeyStyle: React.CSSProperties = {
+    opacity: 0.7,
+};
+
+const propValueStyle: React.CSSProperties = {
+    whiteSpace: "pre-wrap",
+    wordBreak: "break-word",
+};
+
+const linkStyle: React.CSSProperties = {
+    color: color.graph.nodeSpecial,
+    cursor: "pointer",
+    textDecoration: "none",
+};
 
 // =============================================================================
 // Component
@@ -127,7 +113,7 @@ function renderWithLinks(text: string): React.ReactNode {
         parts.push(
             <a
                 key={match.index}
-                className="tooltip-link"
+                style={linkStyle}
                 href={toNavigableHref(href)}
                 title={href}
             >
@@ -158,7 +144,6 @@ export function buildMarkdown(node: GraphNode, isRoot?: boolean): string {
         lines.push("| Property | Value |");
         lines.push("|----------|-------|");
         for (const [key, value] of customProps) {
-            // Escape pipe characters in values for table cells
             const escaped = value.replace(/\|/g, "\\|");
             lines.push(`| ${key} | ${escaped} |`);
         }
@@ -208,11 +193,9 @@ function GraphTooltip({ node, x, y, isRoot, onMouseEnter, onMouseLeave }: GraphT
         }
 
         if (top + rect.height > window.innerHeight - OFFSET) {
-            // Try flipping above the cursor
             top = y - rect.height - OFFSET;
         }
 
-        // If tooltip still overflows viewport, clamp and constrain height
         if (top < OFFSET) {
             top = OFFSET;
             maxHeight = window.innerHeight - OFFSET * 2;
@@ -243,33 +226,47 @@ function GraphTooltip({ node, x, y, isRoot, onMouseEnter, onMouseLeave }: GraphT
     const showId = !!node.title;
     const customProps = getCustomProperties(node);
 
+    const rootStyle: React.CSSProperties = {
+        ...rootStyleBase,
+        left: pos.left,
+        top: pos.top,
+        maxHeight: pos.maxHeight,
+        overflowY: pos.maxHeight ? "auto" : undefined,
+    };
+
     return ReactDOM.createPortal(
-        <GraphTooltipRoot ref={ref} style={{ left: pos.left, top: pos.top, maxHeight: pos.maxHeight, overflowY: pos.maxHeight ? "auto" : undefined }} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>
-            <div className="tooltip-header">
-                <div className="tooltip-header-content">
-                    {isRoot && <div className="tooltip-badge">Root Node</div>}
-                    {node.isGroup && <div className="tooltip-badge">Group</div>}
-                    <div className="tooltip-title">{renderWithLinks(title)}</div>
-                    {showId && <div className="tooltip-id">{node.id}</div>}
+        <div ref={ref} style={rootStyle} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>
+            <div style={headerStyle}>
+                <div style={headerContentStyle}>
+                    {isRoot && <div style={badgeStyle}>Root Node</div>}
+                    {node.isGroup && <div style={badgeStyle}>Group</div>}
+                    <div style={titleStyle}>{renderWithLinks(title)}</div>
+                    {showId && <div style={idStyle}>{node.id}</div>}
                 </div>
-                <button className="tooltip-copy" onClick={handleCopy} title="Copy as Markdown">
-                    {copied ? <CheckIcon /> : <CopyIcon />}
-                </button>
-                <button className="tooltip-copy" onClick={handleOpen} title="Open in new page">
-                    <OpenIcon />
-                </button>
+                <IconButton
+                    size="sm"
+                    icon={copied ? <CheckIcon /> : <CopyIcon />}
+                    onClick={handleCopy}
+                    title="Copy as Markdown"
+                />
+                <IconButton
+                    size="sm"
+                    icon={<OpenIcon />}
+                    onClick={handleOpen}
+                    title="Open in new page"
+                />
             </div>
             {customProps.length > 0 && (
-                <div className="tooltip-props">
+                <div style={propsGridStyle}>
                     {customProps.map(([key, value], i) => (
                         <Fragment key={i}>
-                            <span className="tooltip-key">{key}</span>
-                            <span className="tooltip-value" title={value}>{renderWithLinks(value)}</span>
+                            <span style={propKeyStyle}>{key}</span>
+                            <span style={propValueStyle} title={value}>{renderWithLinks(value)}</span>
                         </Fragment>
                     ))}
                 </div>
             )}
-        </GraphTooltipRoot>,
+        </div>,
         document.body,
     );
 }

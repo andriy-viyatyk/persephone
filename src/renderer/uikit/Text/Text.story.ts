@@ -8,7 +8,7 @@ export const textStory: Story = {
     component: Text as any,
     props: [
         { name: "children", type: "string", default: "Sample text" },
-        { name: "variant", type: "enum", options: ["default", "uppercased"], default: "default" },
+        { name: "variant", type: "enum", options: ["default", "uppercased", "link"], default: "default" },
         { name: "color",   type: "enum", options: ["default", "light", "dark", "inherit", "error", "warning", "success", "primary"], default: "default" },
         { name: "size",    type: "enum", options: ["xs", "sm", "md", "base", "lg", "xl", "xxl"], default: "base" },
         { name: "italic",  type: "boolean", default: false },

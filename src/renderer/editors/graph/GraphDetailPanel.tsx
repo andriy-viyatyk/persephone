@@ -1,5 +1,6 @@
 import styled from "@emotion/styled";
 import { SetStateAction, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Button, Input, Panel } from "../../uikit";
 import { GraphNode, NodeShape, nodeLabel, isReservedPropertyKey } from "./types";
 import AVGrid from "../../components/data-grid/AVGrid/AVGrid";
 import type { CellFocus, Column } from "../../components/data-grid/AVGrid/avGridTypes";
@@ -21,266 +22,205 @@ const MIN_HEIGHT = 200;
 const MAX_PERCENT = 0.9;
 
 // =============================================================================
-// Styled
+// Inline styles
 // =============================================================================
 
-const GraphDetailPanelRoot = styled.div({
+const headerStyleBase: React.CSSProperties = {
+    display: "flex",
+    alignItems: "center",
+    gap: 4,
+    padding: "4px 8px",
+    backgroundColor: color.background.default,
+    border: `1px solid ${color.border.default}`,
+    borderRadius: 4,
+    boxShadow: `0 2px 8px ${color.shadow.default}`,
+    cursor: "pointer",
+    minWidth: 120,
+};
+
+const headerNoSelectionStyle: React.CSSProperties = {
+    ...headerStyleBase,
+    opacity: 0.5,
+    pointerEvents: "none",
+    cursor: "default",
+};
+
+const headerLockedStyle: React.CSSProperties = {
+    ...headerStyleBase,
+    cursor: "default",
+};
+
+const panelTitleStyle: React.CSSProperties = {
+    flex: 1,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+    fontWeight: 600,
+    color: color.text.default,
+};
+
+const panelChevronStyle: React.CSSProperties = {
+    flexShrink: 0,
+    display: "flex",
+    alignItems: "center",
+    color: color.text.light,
+};
+
+const panelBodyStyle: React.CSSProperties = {
+    display: "flex",
+    flexDirection: "column",
+    marginTop: 2,
+    backgroundColor: color.background.default,
+    border: `1px solid ${color.border.default}`,
+    borderRadius: 4,
+    boxShadow: `0 2px 8px ${color.shadow.default}`,
+    overflow: "hidden",
+    position: "relative",
+};
+
+const tabsRowStyle: React.CSSProperties = {
+    display: "flex",
+    borderBottom: `1px solid ${color.border.default}`,
+};
+
+const tabStyleBase: React.CSSProperties = {
+    flex: 1,
+    padding: "4px 8px",
+    fontSize: 11,
+    border: "none",
+    background: "none",
+    cursor: "pointer",
+    color: color.text.light,
+    borderBottom: "2px solid transparent",
+};
+
+const tabActiveStyle: React.CSSProperties = {
+    ...tabStyleBase,
+    color: color.text.default,
+    borderBottomColor: color.border.active,
+};
+
+const tabDisabledStyle: React.CSSProperties = {
+    ...tabStyleBase,
+    opacity: 0.4,
+    cursor: "default",
+};
+
+const contentStyle: React.CSSProperties = {
+    flex: 1,
+    overflow: "auto",
+    padding: 8,
+};
+
+const contentNoPadStyle: React.CSSProperties = {
+    flex: 1,
+    padding: 0,
+    overflow: "hidden",
+    display: "flex",
+    flexDirection: "column",
+};
+
+const infoFieldStyle: React.CSSProperties = {
+    display: "flex",
+    flexDirection: "column",
+    gap: 2,
+    marginBottom: 8,
+};
+
+const infoLabelStyle: React.CSSProperties = {
+    fontSize: 11,
+    color: color.text.light,
+};
+
+const infoErrorStyle: React.CSSProperties = {
+    fontSize: 10,
+    color: color.error.text,
+    marginTop: 1,
+};
+
+const infoIconsRowStyle: React.CSSProperties = {
+    display: "flex",
+    alignItems: "center",
+    gap: 2,
+};
+
+const infoIconBtnBase: React.CSSProperties = {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: 24,
+    height: 24,
+    border: "1px solid transparent",
+    borderRadius: 3,
+    background: "none",
+    cursor: "pointer",
+    color: color.text.light,
+    padding: 0,
+};
+
+const infoIconBtnSelected: React.CSSProperties = {
+    ...infoIconBtnBase,
+    borderColor: color.border.active,
+    color: color.text.default,
+    backgroundColor: color.background.dark,
+};
+
+const infoIconBtnMixed: React.CSSProperties = {
+    ...infoIconBtnBase,
+    color: color.warning.text,
+};
+
+const multiInfoStyle: React.CSSProperties = {
+    fontSize: 11,
+    color: color.warning.text,
+    fontStyle: "italic",
+    marginBottom: 8,
+};
+
+const tabActionRowStyle: React.CSSProperties = {
+    display: "flex",
+    justifyContent: "flex-end",
+    gap: 4,
+    padding: "4px 6px",
+    borderTop: `1px solid ${color.border.default}`,
+    flexShrink: 0,
+};
+
+const propertiesStatusStyle: React.CSSProperties = {
+    fontSize: 10,
+    color: color.warning.text,
+    padding: "2px 6px",
+    borderTop: `1px solid ${color.border.default}`,
+    flexShrink: 0,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+    userSelect: "text",
+    cursor: "text",
+};
+
+const resizerStyle: React.CSSProperties = {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    width: 12,
+    height: 12,
+    cursor: "sw-resize",
+    opacity: 0.4,
+};
+
+// AVGrid cell-class colors — documented Rule 7 exception (see US-513 C7).
+// Floating-panel chrome (position/top/right/font/userSelect) also lives here so the
+// View body stays prop-free. Removable when AVGrid migrates.
+const DetailPanelRoot = styled(Panel)({
     position: "absolute",
     top: 8,
     right: 8,
     zIndex: 1,
-    display: "flex",
-    flexDirection: "column",
     fontSize: 12,
     userSelect: "none",
-
-    "& .panel-header": {
-        display: "flex",
-        alignItems: "center",
-        gap: 4,
-        padding: "4px 8px",
-        backgroundColor: color.background.default,
-        border: `1px solid ${color.border.default}`,
-        borderRadius: 4,
-        boxShadow: `0 2px 8px ${color.shadow.default}`,
-        cursor: "pointer",
-        minWidth: 120,
-    },
-    "& .panel-header.no-selection": {
-        opacity: 0.5,
-        pointerEvents: "none",
-        cursor: "default",
-    },
-    "& .panel-header.locked": {
-        cursor: "default",
-    },
-    "& .panel-title": {
-        flex: 1,
-        overflow: "hidden",
-        textOverflow: "ellipsis",
-        whiteSpace: "nowrap",
-        fontWeight: 600,
-        color: color.text.default,
-    },
-    "& .panel-chevron": {
-        flexShrink: 0,
-        display: "flex",
-        alignItems: "center",
-        color: color.text.light,
-    },
-
-    "& .panel-body": {
-        display: "flex",
-        flexDirection: "column",
-        marginTop: 2,
-        backgroundColor: color.background.default,
-        border: `1px solid ${color.border.default}`,
-        borderRadius: 4,
-        boxShadow: `0 2px 8px ${color.shadow.default}`,
-        overflow: "hidden",
-        position: "relative",
-    },
-    "& .panel-tabs": {
-        display: "flex",
-        borderBottom: `1px solid ${color.border.default}`,
-    },
-    "& .panel-tab": {
-        flex: 1,
-        padding: "4px 8px",
-        fontSize: 11,
-        border: "none",
-        background: "none",
-        cursor: "pointer",
-        color: color.text.light,
-        borderBottom: "2px solid transparent",
-        "&:hover": {
-            color: color.text.default,
-        },
-    },
-    "& .panel-tab.active": {
-        color: color.text.default,
-        borderBottomColor: color.border.active,
-    },
-    "& .panel-tab.disabled": {
-        opacity: 0.4,
-        cursor: "default",
-    },
-    "& .panel-content": {
-        flex: 1,
-        overflow: "auto",
-        padding: 8,
-    },
-    "& .panel-content.no-pad": {
-        padding: 0,
-        overflow: "hidden",
-        display: "flex",
-        flexDirection: "column",
-    },
-
-    // Info tab form
-    "& .info-field": {
-        display: "flex",
-        flexDirection: "column",
-        gap: 2,
-        marginBottom: 8,
-    },
-    "& .info-field:last-child": {
-        marginBottom: 0,
-    },
-    "& .info-label": {
-        fontSize: 11,
-        color: color.text.light,
-    },
-    "& .info-input": {
-        width: "100%",
-        padding: "3px 6px",
-        fontSize: 12,
-        border: `1px solid ${color.border.light}`,
-        borderRadius: 3,
-        backgroundColor: color.background.dark,
-        color: color.text.default,
-        outline: "none",
-        boxSizing: "border-box",
-        "&:focus": {
-            borderColor: color.border.active,
-        },
-    },
-    "& .info-input.error": {
-        borderColor: color.error.border,
-    },
-    "& .info-error": {
-        fontSize: 10,
-        color: color.error.text,
-        marginTop: 1,
-    },
-    // Inline icon selectors (level, shape)
-    "& .info-icons": {
-        display: "flex",
-        alignItems: "center",
-        gap: 2,
-    },
-    "& .info-icon-btn": {
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        width: 24,
-        height: 24,
-        border: `1px solid transparent`,
-        borderRadius: 3,
-        background: "none",
-        cursor: "pointer",
-        color: color.text.light,
-        padding: 0,
-        "&:hover": {
-            borderColor: color.border.default,
-            color: color.text.default,
-        },
-    },
-    "& .info-icon-btn.selected": {
-        borderColor: color.border.active,
-        color: color.text.default,
-        backgroundColor: color.background.dark,
-    },
-    "& .info-icon-btn.mixed": {
-        borderColor: "transparent",
-        color: color.warning.text,
-    },
-    "& .multi-info": {
-        fontSize: 11,
-        color: color.warning.text,
-        fontStyle: "italic",
-        marginBottom: 8,
-    },
-
-    // Links tab
-    "& .links-tab": {
-        display: "flex",
-        flexDirection: "column",
-        flex: 1,
-        overflow: "hidden",
-    },
-    "& .links-grid, & .properties-grid": {
-        display: "flex",
-        flexDirection: "column",
-        flex: 1,
-        overflow: "hidden",
-    },
-    "& .tab-action-row": {
-        display: "flex",
-        justifyContent: "flex-end",
-        gap: 4,
-        padding: "4px 6px",
-        borderTop: `1px solid ${color.border.default}`,
-        flexShrink: 0,
-    },
-    "& .tab-apply-btn": {
-        padding: "2px 12px",
-        fontSize: 11,
-        cursor: "pointer",
-        border: `1px solid ${color.border.active}`,
-        borderRadius: 3,
-        backgroundColor: color.border.active,
-        color: color.background.default,
-        "&:hover": {
-            opacity: 0.9,
-        },
-        "&.disabled": {
-            opacity: 0.4,
-            cursor: "default",
-            pointerEvents: "none",
-        },
-    },
-    "& .tab-cancel-btn": {
-        padding: "2px 12px",
-        fontSize: 11,
-        cursor: "pointer",
-        border: `1px solid ${color.border.default}`,
-        borderRadius: 3,
-        backgroundColor: "transparent",
-        color: color.text.light,
-        "&:hover": {
-            borderColor: color.text.light,
-        },
-    },
-    // Properties tab
-    "& .properties-tab": {
-        display: "flex",
-        flexDirection: "column",
-        flex: 1,
-        overflow: "hidden",
-    },
-    "& .data-cell.cell-error": {
-        color: color.error.text,
-    },
-    "& .data-cell.cell-mixed": {
-        color: color.warning.text,
-    },
-    "& .properties-status": {
-        fontSize: 10,
-        color: color.warning.text,
-        padding: "2px 6px",
-        borderTop: `1px solid ${color.border.default}`,
-        flexShrink: 0,
-        overflow: "hidden",
-        textOverflow: "ellipsis",
-        whiteSpace: "nowrap",
-        userSelect: "text",
-        cursor: "text",
-    },
-
-    // Resizer
-    "& .panel-resizer": {
-        position: "absolute",
-        bottom: 0,
-        left: 0,
-        width: 12,
-        height: 12,
-        cursor: "sw-resize",
-        opacity: 0.4,
-        "&:hover": {
-            opacity: 0.8,
-        },
-    },
+    "& .data-cell.cell-error": { color: color.error.text },
+    "& .data-cell.cell-mixed": { color: color.warning.text },
 });
 
 // =============================================================================
@@ -302,9 +242,7 @@ interface GraphDetailPanelProps {
     onExternalHover?: (id: string) => void;
     onExpandNode?: (nodeId: string) => void;
     containerRef?: React.RefObject<HTMLElement | null>;
-    /** Increment to request panel expansion (e.g. on double-click). */
     expandRequest?: number;
-    /** Increment to request panel collapse (e.g. on canvas click). */
     collapseRequest?: number;
 }
 
@@ -322,26 +260,22 @@ function GraphDetailPanel({
     const isMulti = nodes.length > 1;
     const singleNode = nodes.length === 1 ? nodes[0] : null;
 
-    // Panel expand/collapse state
     const [expanded, setExpanded] = useState(false);
-    const wasExpandedRef = useRef(true); // remember user preference
+    const wasExpandedRef = useRef(true);
     const hadSelectionRef = useRef(false);
     const [activeTab, setActiveTab] = useState("info");
     const [linksDirty, setLinksDirty] = useState(false);
     const [propertiesDirty, setPropertiesDirty] = useState(false);
     const anyDirty = linksDirty || propertiesDirty;
 
-    // Resize state
     const [size, setSize] = useState({ width: DEFAULT_WIDTH, height: DEFAULT_HEIGHT });
     const resizingRef = useRef(false);
     const resizeStartRef = useRef({ x: 0, y: 0, width: 0, height: 0 });
 
-    // Form state for text fields (commit on blur/Enter) — single selection only
     const [editId, setEditId] = useState("");
     const [editTitle, setEditTitle] = useState("");
     const [idError, setIdError] = useState("");
 
-    // Track dirty state from LinksTab and PropertiesTab
     const handleLinksDirtyChange = useCallback((dirty: boolean) => {
         setLinksDirty(dirty);
         onPanelDirtyChange?.(dirty || propertiesDirty);
@@ -352,10 +286,8 @@ function GraphDetailPanel({
         onPanelDirtyChange?.(dirty || linksDirty);
     }, [onPanelDirtyChange, linksDirty]);
 
-    // Stable key for tracking selection identity changes
     const selectionKey = useMemo(() => nodes.map((n) => n.id).sort().join(","), [nodes]);
 
-    // Sync form state when single node changes
     useEffect(() => {
         if (singleNode) {
             setEditId(singleNode.id);
@@ -364,14 +296,12 @@ function GraphDetailPanel({
         }
     }, [singleNode?.id, singleNode?.title]);
 
-    // Force active tab to "info" if switching to multi and currently on "links"
     useEffect(() => {
         if (isMulti && activeTab === "links") {
             setActiveTab("info");
         }
     }, [isMulti]);
 
-    // Handle expand/collapse transitions based on selection
     useEffect(() => {
         if (hasSelection) {
             if (!hadSelectionRef.current) {
@@ -384,24 +314,25 @@ function GraphDetailPanel({
             hadSelectionRef.current = false;
         }
     }, [selectionKey]);
-    // External expand request (e.g. double-click on node)
+
     useEffect(() => {
         if (expandRequest && hasSelection) {
             setExpanded(true);
             wasExpandedRef.current = true;
         }
     }, [expandRequest]);
-    // External collapse request (e.g. canvas click)
+
     useEffect(() => {
         if (collapseRequest && expanded && !anyDirty) {
             setExpanded(false);
             wasExpandedRef.current = false;
         }
     }, [collapseRequest]);
-    // Notify parent of expanded state changes
+
     useEffect(() => {
         onPanelExpandedChange?.(expanded);
     }, [expanded, onPanelExpandedChange]);
+
     const toggleExpanded = useCallback(() => {
         if (!hasSelection || anyDirty) return;
         setExpanded((prev) => {
@@ -410,7 +341,6 @@ function GraphDetailPanel({
         });
     }, [hasSelection, anyDirty]);
 
-    // Links tab highlighting: dim non-linked nodes when Links tab is active (single selection only)
     const linksTabActive = expanded && activeTab === "links" && !!singleNode;
     useEffect(() => {
         if (linksTabActive) {
@@ -422,10 +352,9 @@ function GraphDetailPanel({
             onExternalHover?.("");
         }
     }, [linksTabActive, singleNode?.id, linkedNodes]);
-    // Cleanup on unmount
+
     useEffect(() => () => { onHighlightSet?.(null); onExternalHover?.(""); }, []);
 
-    // ID commit on blur or Enter (single selection only)
     const commitId = useCallback(() => {
         if (!singleNode) return;
         const trimmed = editId.trim();
@@ -446,7 +375,6 @@ function GraphDetailPanel({
         }
     }, [singleNode, editId, onRenameNode]);
 
-    // Title commit on blur or Enter (single selection only)
     const commitTitle = useCallback(() => {
         if (!singleNode) return;
         const value = editTitle.trim();
@@ -469,7 +397,6 @@ function GraphDetailPanel({
         }
     }, [singleNode]);
 
-    // Resizer handlers
     const handleResizeStart = useCallback((e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
@@ -507,48 +434,52 @@ function GraphDetailPanel({
         document.addEventListener("mouseup", handleMouseUp);
     }, [size, containerRef]);
 
-    // Header text
     const headerText = isMulti
         ? `${nodes.length} nodes selected`
         : singleNode
             ? nodeLabel(singleNode)
             : "select node for edit";
-    const headerClass = hasSelection
-        ? `panel-header${anyDirty ? " locked" : ""}`
-        : "panel-header no-selection";
+    const headerStyle = hasSelection
+        ? (anyDirty ? headerLockedStyle : headerStyleBase)
+        : headerNoSelectionStyle;
 
-    // Whether links tab is available (single selection only)
     const linksAvailable = !isMulti;
 
+    const tabButtonStyle = (tab: string): React.CSSProperties => {
+        if (activeTab === tab) return tabActiveStyle;
+        if (anyDirty && activeTab !== tab) return tabDisabledStyle;
+        return tabStyleBase;
+    };
+
     return (
-        <GraphDetailPanelRoot>
-            <div className={headerClass} onClick={toggleExpanded}>
-                <span className="panel-title" title={headerText}>{headerText}</span>
+        <DetailPanelRoot direction="column">
+            <div style={headerStyle} onClick={toggleExpanded}>
+                <span style={panelTitleStyle} title={headerText}>{headerText}</span>
                 {hasSelection && (
-                    <span className="panel-chevron">
+                    <span style={panelChevronStyle}>
                         {expanded ? <ChevronUpIcon width={14} height={14} /> : <ChevronDownIcon width={14} height={14} />}
                     </span>
                 )}
             </div>
 
             {expanded && hasSelection && (
-                <div className="panel-body" style={{ width: size.width, height: size.height }}>
-                    <div className="panel-tabs">
+                <div style={{ ...panelBodyStyle, width: size.width, height: size.height }}>
+                    <div style={tabsRowStyle}>
                         <button
-                            className={`panel-tab ${activeTab === "info" ? "active" : ""}${anyDirty && activeTab !== "info" ? " disabled" : ""}`}
+                            style={tabButtonStyle("info")}
                             onClick={() => { if (!anyDirty) setActiveTab("info"); }}
                         >
                             Info
                         </button>
                         <button
-                            className={`panel-tab ${activeTab === "properties" ? "active" : ""}${anyDirty && activeTab !== "properties" ? " disabled" : ""}`}
+                            style={tabButtonStyle("properties")}
                             onClick={() => { if (!anyDirty) setActiveTab("properties"); }}
                         >
                             Properties
                         </button>
                         {linksAvailable && (
                             <button
-                                className={`panel-tab ${activeTab === "links" ? "active" : ""}${anyDirty && activeTab !== "links" ? " disabled" : ""}`}
+                                style={tabButtonStyle("links")}
                                 onClick={() => { if (!anyDirty) setActiveTab("links"); }}
                             >
                                 Links
@@ -556,7 +487,7 @@ function GraphDetailPanel({
                         )}
                     </div>
 
-                    <div className={`panel-content${activeTab !== "info" ? " no-pad" : ""}`}>
+                    <div style={activeTab !== "info" ? contentNoPadStyle : contentStyle}>
                         {activeTab === "info" && (
                             isMulti ? (
                                 <MultiInfoTab
@@ -597,11 +528,7 @@ function GraphDetailPanel({
                         )}
                     </div>
 
-                    {/* Resizer — bottom-left corner */}
-                    <div
-                        className="panel-resizer"
-                        onMouseDown={handleResizeStart}
-                    >
+                    <div style={resizerStyle} onMouseDown={handleResizeStart}>
                         <svg width="12" height="12" viewBox="0 0 12 12">
                             <line x1="2" y1="10" x2="0" y2="12" stroke={color.text.light} strokeWidth="1" />
                             <line x1="6" y1="10" x2="0" y2="4" stroke={color.text.light} strokeWidth="1" />
@@ -610,7 +537,7 @@ function GraphDetailPanel({
                     </div>
                 </div>
             )}
-        </GraphDetailPanelRoot>
+        </DetailPanelRoot>
     );
 }
 
@@ -629,8 +556,6 @@ interface LinksTabProps {
 }
 
 const KNOWN_KEYS = new Set(["id", "title", "level", "shape"]);
-
-/** charWidth scaled for the detail panel's 12px font (vs 14px default grid font) */
 const LINKS_CHAR_WIDTH = 7;
 const LINKS_COL_OPTS = { charWidth: LINKS_CHAR_WIDTH, padding: 16, minWidth: 50, maxWidth: 200 };
 
@@ -672,7 +597,6 @@ function LinksTab({ linkedNodes, selectedNodeId, onApply, onDirtyChange, onExter
     const originalIdsRef = useRef<Set<string>>(new Set());
     const rowCounterRef = useRef(0);
 
-    // Initialize rows and columns from linkedNodes prop
     useEffect(() => {
         const mapped = linkedNodes.map((n) => ({
             ...n,
@@ -685,7 +609,6 @@ function LinksTab({ linkedNodes, selectedNodeId, onApply, onDirtyChange, onExter
         originalIdsRef.current = new Set(linkedNodes.map((n) => n.id));
     }, [linkedNodes]);
 
-    // External hover: highlight the node corresponding to the focused grid row
     useEffect(() => {
         if (focus?.rowKey) {
             const row = rows.find((r) => r._rowKey === focus.rowKey);
@@ -694,13 +617,13 @@ function LinksTab({ linkedNodes, selectedNodeId, onApply, onDirtyChange, onExter
             onExternalHover?.("");
         }
     }, [focus?.rowKey]);
+
     const markDirty = useCallback(() => {
         setDirty(true);
         onDirtyChange(true);
     }, [onDirtyChange]);
 
     const editRow = useCallback((columnKey: string, rowKey: string, value: any) => {
-        // Validate level and shape
         if (columnKey === "level") {
             const num = Number(value);
             value = (num >= 1 && num <= 5) ? num : 5;
@@ -742,7 +665,6 @@ function LinksTab({ linkedNodes, selectedNodeId, onApply, onDirtyChange, onExter
     const getRowKey = useCallback((r: LinkRow) => r._rowKey, []);
 
     const handleApply = useCallback(() => {
-        // Strip _rowKey before sending to ViewModel
         const cleanRows = rows.map((r) => {
             const { _rowKey, ...rest } = r;
             return rest;
@@ -751,7 +673,6 @@ function LinksTab({ linkedNodes, selectedNodeId, onApply, onDirtyChange, onExter
     }, [rows, selectedNodeId, onApply]);
 
     const handleCancel = useCallback(() => {
-        // Reset to original linkedNodes
         const mapped = linkedNodes.map((n) => ({
             ...n,
             _rowKey: `link-${++rowCounterRef.current}`,
@@ -763,8 +684,8 @@ function LinksTab({ linkedNodes, selectedNodeId, onApply, onDirtyChange, onExter
     }, [linkedNodes, onDirtyChange]);
 
     return (
-        <div className="links-tab">
-            <div className="links-grid">
+        <Panel direction="column" flex={1} overflow="hidden">
+            <Panel direction="column" flex={1} overflow="hidden">
                 <AVGrid
                     columns={columns}
                     rows={rows}
@@ -780,18 +701,18 @@ function LinksTab({ linkedNodes, selectedNodeId, onApply, onDirtyChange, onExter
                     disableSorting
                     rowHeight={24}
                 />
-            </div>
+            </Panel>
             {dirty && (
-                <div className="tab-action-row">
-                    <button className="tab-cancel-btn" onClick={handleCancel}>
+                <div style={tabActionRowStyle}>
+                    <Button size="sm" variant="ghost" onClick={handleCancel}>
                         Cancel
-                    </button>
-                    <button className="tab-apply-btn" onClick={handleApply}>
+                    </Button>
+                    <Button size="sm" variant="primary" onClick={handleApply}>
                         Apply
-                    </button>
+                    </Button>
                 </div>
             )}
-        </div>
+        </Panel>
     );
 }
 
@@ -808,7 +729,6 @@ interface PropertiesTabProps {
     onDirtyChange: (dirty: boolean) => void;
 }
 
-/** Extract custom properties from a single node. */
 function extractCustomProperties(node: GraphNode): { key: string; value: string }[] {
     const rows: { key: string; value: string }[] = [];
     for (const [key, value] of Object.entries(node)) {
@@ -818,10 +738,7 @@ function extractCustomProperties(node: GraphNode): { key: string; value: string 
     return rows;
 }
 
-/** Build merged properties from multiple nodes.
- *  Returns rows with value set when all nodes agree, empty when values differ. */
 function extractMultiProperties(nodes: GraphNode[]): { key: string; value: string; allSame: boolean; uniqueValues: string[] }[] {
-    // Collect all custom keys across all nodes
     const keySet = new Set<string>();
     for (const node of nodes) {
         for (const key of Object.keys(node)) {
@@ -867,10 +784,8 @@ function PropertiesTab({ nodes, onApply, onBatchApply, onDirtyChange }: Properti
     const [statusMessage, setStatusMessage] = useState("");
     const originalKeysRef = useRef<Set<string>>(new Set());
     const rowCounterRef = useRef(0);
-    /** For multi-selection: stores value info per key for status messages. */
     const multiInfoRef = useRef<Map<string, { allSame: boolean; uniqueValues: string[] }>>(new Map());
 
-    // Initialize from node(s) props
     useEffect(() => {
         rowCounterRef.current = 0;
         if (isMulti) {
@@ -901,7 +816,6 @@ function PropertiesTab({ nodes, onApply, onBatchApply, onDirtyChange }: Properti
         setStatusMessage("");
     }, [selectionKey, nodes]);
 
-    // Update status message when focus changes
     useEffect(() => {
         if (!isMulti || !focus?.rowKey) {
             setStatusMessage("");
@@ -926,7 +840,6 @@ function PropertiesTab({ nodes, onApply, onBatchApply, onDirtyChange }: Properti
         }
     }, [focus?.rowKey, isMulti, rows]);
 
-    // Check for reserved keys in rows
     const hasInvalidKeys = useMemo(() =>
         rows.some((r) => r.key && isReservedPropertyKey(r.key)),
     [rows]);
@@ -972,7 +885,6 @@ function PropertiesTab({ nodes, onApply, onBatchApply, onDirtyChange }: Properti
 
     const handleApply = useCallback(() => {
         if (isMulti) {
-            // Only apply changed rows
             const propsToSet: Record<string, string> = {};
             for (const row of rows) {
                 if (!row._isChanged) continue;
@@ -980,14 +892,12 @@ function PropertiesTab({ nodes, onApply, onBatchApply, onDirtyChange }: Properti
                 if (!k || isReservedPropertyKey(k)) continue;
                 propsToSet[k] = row.value;
             }
-            // Keys that were originally present but are no longer in rows (deleted rows)
             const currentKeys = new Set(rows.map((r) => r.key.trim()).filter(Boolean));
             const keysToRemove = [...originalKeysRef.current].filter((k) => !currentKeys.has(k));
 
             const nodeIds = nodes.map((n) => n.id);
             onBatchApply(nodeIds, propsToSet, keysToRemove);
         } else if (singleNode) {
-            // For single node: also only apply changed rows
             const propsToSet: Record<string, string> = {};
             for (const row of rows) {
                 if (!row._isChanged) continue;
@@ -1029,7 +939,6 @@ function PropertiesTab({ nodes, onApply, onBatchApply, onDirtyChange }: Properti
         setStatusMessage("");
     }, [nodes, singleNode, isMulti, onDirtyChange]);
 
-    // Highlight reserved keys with error class; mixed values with warning class
     const cellClass = useCallback((row: PropertyRow, col: Column<PropertyRow>) => {
         if (col.key === "key" && row.key && isReservedPropertyKey(row.key)) {
             return "cell-error";
@@ -1044,8 +953,8 @@ function PropertiesTab({ nodes, onApply, onBatchApply, onDirtyChange }: Properti
     }, [isMulti]);
 
     return (
-        <div className="properties-tab">
-            <div className="properties-grid">
+        <Panel direction="column" flex={1} overflow="hidden">
+            <Panel direction="column" flex={1} overflow="hidden">
                 <AVGrid
                     columns={columns}
                     rows={rows}
@@ -1062,29 +971,23 @@ function PropertiesTab({ nodes, onApply, onBatchApply, onDirtyChange }: Properti
                     disableSorting
                     rowHeight={24}
                 />
-            </div>
+            </Panel>
             {statusMessage && (
-                <div className="properties-status">{statusMessage}</div>
+                <div style={propertiesStatusStyle}>{statusMessage}</div>
             )}
             {dirty && (
-                <div className="tab-action-row">
-                    <button className="tab-cancel-btn" onClick={handleCancel}>
+                <div style={tabActionRowStyle}>
+                    <Button size="sm" variant="ghost" onClick={handleCancel}>
                         Cancel
-                    </button>
-                    <button
-                        className={`tab-apply-btn${hasInvalidKeys ? " disabled" : ""}`}
-                        onClick={handleApply}
-                    >
+                    </Button>
+                    <Button size="sm" variant="primary" disabled={hasInvalidKeys} onClick={handleApply}>
                         Apply
-                    </button>
+                    </Button>
                 </div>
             )}
-        </div>
+        </Panel>
     );
 }
-
-// Shape & Level Icons — imported from shared module
-// (see GraphIcons.tsx for ShapeIcon and LevelIcon)
 
 // =============================================================================
 // Multi-Selection Info Tab
@@ -1098,7 +1001,6 @@ interface MultiInfoTabProps {
 function MultiInfoTab({ nodes, onBatchUpdateProps }: MultiInfoTabProps) {
     const nodeIds = useMemo(() => nodes.map((n) => n.id), [nodes]);
 
-    // Compute common level/shape across all selected nodes
     const commonLevel = useMemo(() => {
         const levels = new Set(nodes.map((n) => n.level ?? 5));
         return levels.size === 1 ? [...levels][0] : null;
@@ -1119,20 +1021,20 @@ function MultiInfoTab({ nodes, onBatchUpdateProps }: MultiInfoTabProps) {
 
     return (
         <>
-            <div className="multi-info">
+            <div style={multiInfoStyle}>
                 Batch edit level and shape for {nodes.length} selected nodes
             </div>
 
-            <div className="info-field">
-                <label className="info-label">Level</label>
-                <div className="info-icons">
+            <div style={infoFieldStyle}>
+                <label style={infoLabelStyle}>Level</label>
+                <div style={infoIconsRowStyle}>
                     {LEVELS.map((lvl) => {
                         const isSelected = commonLevel === lvl;
                         const isMixed = !isSelected && presentLevels.has(lvl);
                         return (
                             <button
                                 key={lvl}
-                                className={`info-icon-btn${isSelected ? " selected" : ""}${isMixed ? " mixed" : ""}`}
+                                style={isSelected ? infoIconBtnSelected : isMixed ? infoIconBtnMixed : infoIconBtnBase}
                                 onClick={() => onBatchUpdateProps(nodeIds, { level: lvl })}
                                 title={`Level ${lvl}`}
                             >
@@ -1143,16 +1045,16 @@ function MultiInfoTab({ nodes, onBatchUpdateProps }: MultiInfoTabProps) {
                 </div>
             </div>
 
-            <div className="info-field">
-                <label className="info-label">Shape</label>
-                <div className="info-icons">
+            <div style={infoFieldStyle}>
+                <label style={infoLabelStyle}>Shape</label>
+                <div style={infoIconsRowStyle}>
                     {SHAPES.map((shape) => {
                         const isSelected = commonShape === shape;
                         const isMixed = !isSelected && presentShapes.has(shape);
                         return (
                             <button
                                 key={shape}
-                                className={`info-icon-btn${isSelected ? " selected" : ""}${isMixed ? " mixed" : ""}`}
+                                style={isSelected ? infoIconBtnSelected : isMixed ? infoIconBtnMixed : infoIconBtnBase}
                                 onClick={() => onBatchUpdateProps(nodeIds, { shape: shape === "circle" ? undefined : shape })}
                                 title={shape}
                             >
@@ -1189,37 +1091,37 @@ function InfoTab({
 }: InfoTabProps) {
     return (
         <>
-            <div className="info-field">
-                <label className="info-label">ID</label>
-                <input
-                    className={`info-input ${idError ? "error" : ""}`}
+            <div style={infoFieldStyle}>
+                <label style={infoLabelStyle}>ID</label>
+                <Input
+                    size="sm"
                     value={editId}
-                    onChange={(e) => { setEditId(e.target.value); }}
+                    onChange={setEditId}
                     onBlur={commitId}
                     onKeyDown={handleKeyDown(commitId)}
                 />
-                {idError && <span className="info-error">{idError}</span>}
+                {idError && <span style={infoErrorStyle}>{idError}</span>}
             </div>
 
-            <div className="info-field">
-                <label className="info-label">Title</label>
-                <input
-                    className="info-input"
+            <div style={infoFieldStyle}>
+                <label style={infoLabelStyle}>Title</label>
+                <Input
+                    size="sm"
                     value={editTitle}
-                    onChange={(e) => setEditTitle(e.target.value)}
+                    onChange={setEditTitle}
                     onBlur={commitTitle}
                     onKeyDown={handleKeyDown(commitTitle)}
                     placeholder={node.id}
                 />
             </div>
 
-            <div className="info-field">
-                <label className="info-label">Level</label>
-                <div className="info-icons">
+            <div style={infoFieldStyle}>
+                <label style={infoLabelStyle}>Level</label>
+                <div style={infoIconsRowStyle}>
                     {LEVELS.map((lvl) => (
                         <button
                             key={lvl}
-                            className={`info-icon-btn ${(node.level ?? 5) === lvl ? "selected" : ""}`}
+                            style={(node.level ?? 5) === lvl ? infoIconBtnSelected : infoIconBtnBase}
                             onClick={() => onUpdateProps(node.id, { level: lvl })}
                             title={`Level ${lvl}`}
                         >
@@ -1229,13 +1131,13 @@ function InfoTab({
                 </div>
             </div>
 
-            <div className="info-field">
-                <label className="info-label">Shape</label>
-                <div className="info-icons">
+            <div style={infoFieldStyle}>
+                <label style={infoLabelStyle}>Shape</label>
+                <div style={infoIconsRowStyle}>
                     {SHAPES.map((shape) => (
                         <button
                             key={shape}
-                            className={`info-icon-btn ${(node.shape ?? "circle") === shape ? "selected" : ""}`}
+                            style={(node.shape ?? "circle") === shape ? infoIconBtnSelected : infoIconBtnBase}
                             onClick={() => onUpdateProps(node.id, { shape: shape === "circle" ? undefined : shape })}
                             title={shape}
                         >

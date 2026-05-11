@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import styled from "@emotion/styled";
+import { Button, Panel, Slider } from "../../uikit";
 import { GraphViewModel } from "./GraphViewModel";
 import { ForceGraphRenderer } from "./ForceGraphRenderer";
 import color from "../../theme/color";
@@ -16,70 +16,20 @@ const sliders = [
     { key: "collide" as const, label: "Collide", min: 0, max: 1, step: 0.05, default: defaults.collide },
 ];
 
-const GraphTuningSlidersRoot = styled.div({
-    padding: "6px 8px",
-    borderTop: `1px solid ${color.border.default}`,
-    display: "flex",
-    flexDirection: "column",
-    gap: 4,
-    "& .tuning-slider-row": {
-        display: "flex",
-        alignItems: "center",
-        gap: 6,
-    },
-    "& .tuning-slider-label": {
-        fontSize: 11,
-        color: color.graph.labelText,
-        width: 52,
-        flexShrink: 0,
-    },
-    "& .tuning-slider-input": {
-        flex: 1,
-        height: 4,
-        appearance: "none",
-        background: color.border.default,
-        borderRadius: 2,
-        outline: "none",
-        cursor: "pointer",
-        "&::-webkit-slider-thumb": {
-            appearance: "none",
-            width: 12,
-            height: 12,
-            marginTop: -4,
-            borderRadius: "50%",
-            background: color.graph.nodeHighlight,
-            cursor: "pointer",
-        },
-        "&::-webkit-slider-runnable-track": {
-            height: 4,
-            borderRadius: 2,
-        },
-    },
-    "& .tuning-slider-value": {
-        fontSize: 11,
-        color: color.graph.labelText,
-        width: 32,
-        textAlign: "right",
-        flexShrink: 0,
-    },
-    "& .tuning-reset-row": {
-        display: "flex",
-        justifyContent: "flex-end",
-        marginTop: 2,
-    },
-    "& .tuning-reset-btn": {
-        padding: "1px 8px",
-        fontSize: 11,
-        cursor: "pointer",
-        border: `1px solid ${color.border.default}`,
-        borderRadius: 3,
-        backgroundColor: "transparent",
-        color: color.graph.labelText,
-        "&:hover": {
-            borderColor: color.graph.nodeHighlight,
-        },
-    },
-});
+const labelStyle: React.CSSProperties = {
+    fontSize: 11,
+    color: color.graph.labelText,
+    width: 52,
+    flexShrink: 0,
+};
+
+const valueStyle: React.CSSProperties = {
+    fontSize: 11,
+    color: color.graph.labelText,
+    width: 32,
+    textAlign: "right",
+    flexShrink: 0,
+};
 
 function GraphTuningSliders({ vm }: GraphTuningSlidersProps) {
     const [values, setValues] = useState(() => {
@@ -91,8 +41,7 @@ function GraphTuningSliders({ vm }: GraphTuningSlidersProps) {
         };
     });
 
-    const onChange = useCallback((key: keyof typeof values, raw: string) => {
-        const value = parseFloat(raw);
+    const onChange = useCallback((key: keyof typeof values, value: number) => {
         setValues((prev) => ({ ...prev, [key]: value }));
         vm.updateForceParams({ [key]: value });
     }, [vm]);
@@ -107,26 +56,25 @@ function GraphTuningSliders({ vm }: GraphTuningSlidersProps) {
     }, [vm]);
 
     return (
-        <GraphTuningSlidersRoot>
+        <Panel direction="column" gap="xs" paddingX="md" paddingY="sm" borderTop>
             {sliders.map((s) => (
-                <div key={s.key} className="tuning-slider-row">
-                    <span className="tuning-slider-label">{s.label}</span>
-                    <input
-                        className="tuning-slider-input"
-                        type="range"
+                <Panel key={s.key} direction="row" align="center" gap="md">
+                    <span style={labelStyle}>{s.label}</span>
+                    <Slider
+                        size="sm"
                         min={s.min}
                         max={s.max}
                         step={s.step}
                         value={values[s.key]}
-                        onChange={(e) => onChange(s.key, e.target.value)}
+                        onChange={(value) => onChange(s.key, value)}
                     />
-                    <span className="tuning-slider-value">{values[s.key]}</span>
-                </div>
+                    <span style={valueStyle}>{values[s.key]}</span>
+                </Panel>
             ))}
-            <div className="tuning-reset-row">
-                <button className="tuning-reset-btn" onClick={onReset}>Reset</button>
-            </div>
-        </GraphTuningSlidersRoot>
+            <Panel direction="row" justify="end" paddingTop="xs">
+                <Button size="sm" variant="ghost" onClick={onReset}>Reset</Button>
+            </Panel>
+        </Panel>
     );
 }
 

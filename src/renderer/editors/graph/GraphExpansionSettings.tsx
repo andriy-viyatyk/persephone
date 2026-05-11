@@ -1,8 +1,8 @@
 import { useState, useCallback, useMemo } from "react";
-import styled from "@emotion/styled";
+import { Input, Panel, Select } from "../../uikit";
+import type { IListBoxItem } from "../../uikit";
 import { GraphViewModel } from "./GraphViewModel";
 import { nodeLabel } from "./types";
-import { ComboSelect } from "../../components/form/ComboSelect";
 import color from "../../theme/color";
 
 interface GraphExpansionSettingsProps {
@@ -12,51 +12,20 @@ interface GraphExpansionSettingsProps {
 /** Sentinel value representing "auto" root selection (no explicit rootNode). */
 const AUTO_ROOT = "__auto__";
 
-const GraphExpansionSettingsRoot = styled.div({
-    padding: "6px 8px",
-    display: "flex",
-    flexDirection: "column",
-    gap: 6,
+const labelStyle: React.CSSProperties = {
+    width: 72,
+    flexShrink: 0,
     fontSize: 11,
-    "& .expansion-row": {
-        display: "flex",
-        alignItems: "center",
-        gap: 6,
-    },
-    "& .expansion-label": {
-        width: 72,
-        flexShrink: 0,
-        color: color.graph.labelText,
-        opacity: 0.8,
-    },
-    "& .expansion-input": {
-        flex: 1,
-        minWidth: 0,
-    },
-    "& .expansion-number": {
-        width: "100%",
-        boxSizing: "border-box" as const,
-        padding: "2px 6px",
-        fontSize: 11,
-        border: `1px solid ${color.border.default}`,
-        borderRadius: 3,
-        backgroundColor: color.graph.background,
-        color: color.graph.labelText,
-        outline: "none",
-        "&:focus": {
-            borderColor: color.graph.nodeHighlight,
-        },
-        "&::placeholder": {
-            color: color.text.light,
-        },
-    },
-    "& .expansion-note": {
-        fontSize: 10,
-        fontStyle: "italic",
-        paddingTop: 2,
-        color: color.warning.text,
-    },
-});
+    color: color.graph.labelText,
+    opacity: 0.8,
+};
+
+const noteStyle: React.CSSProperties = {
+    fontSize: 10,
+    fontStyle: "italic",
+    paddingTop: 2,
+    color: color.warning.text,
+};
 
 function GraphExpansionSettings({ vm }: GraphExpansionSettingsProps) {
     const opts = vm.getExpansionOptions();
@@ -65,21 +34,20 @@ function GraphExpansionSettings({ vm }: GraphExpansionSettingsProps) {
     const [expandDepthStr, setExpandDepthStr] = useState(opts.expandDepth !== undefined ? String(opts.expandDepth) : "");
     const [maxVisibleStr, setMaxVisibleStr] = useState(opts.maxVisible !== undefined ? String(opts.maxVisible) : "");
 
-    // Build sorted node list for ComboSelect
-    const nodeOptions = useMemo(() => {
+    const items = useMemo<IListBoxItem[]>(() => {
         const nodes = vm.getAllNodes();
         const sorted = [...nodes].sort((a, b) => nodeLabel(a).localeCompare(nodeLabel(b)));
-        // Prepend auto option
-        return [AUTO_ROOT, ...sorted.map((n) => n.id)];
+        return [
+            { value: AUTO_ROOT, label: "(auto — lowest level)" },
+            ...sorted.map((n) => ({ value: n.id, label: nodeLabel(n) })),
+        ];
     }, [vm]);
 
-    const getNodeLabel = useCallback((value: string) => {
-        if (value === AUTO_ROOT) return "(auto — lowest level)";
-        const node = vm.getAllNodes().find((n) => n.id === value);
-        return node ? nodeLabel(node) : value;
-    }, [vm]);
+    const selectedValue = rootNode || AUTO_ROOT;
+    const selectedItem = items.find((i) => i.value === selectedValue) ?? null;
 
-    const onRootChange = useCallback((value?: string) => {
+    const onRootChange = useCallback((item: IListBoxItem) => {
+        const value = String(item.value);
         const nodeId = value === AUTO_ROOT ? undefined : value;
         setRootNode(nodeId ?? "");
         vm.setRootNode(nodeId);
@@ -123,50 +91,41 @@ function GraphExpansionSettings({ vm }: GraphExpansionSettingsProps) {
     }, []);
 
     return (
-        <GraphExpansionSettingsRoot>
-            <div className="expansion-row">
-                <span className="expansion-label">Root Node</span>
-                <div className="expansion-input">
-                    <ComboSelect
-                        selectFrom={nodeOptions}
-                        getLabel={getNodeLabel}
-                        value={rootNode || AUTO_ROOT}
-                        onChange={onRootChange}
-                    />
-                </div>
-            </div>
-            <div className="expansion-row">
-                <span className="expansion-label">Expand Depth</span>
-                <div className="expansion-input">
-                    <input
-                        className="expansion-number"
-                        type="text"
-                        placeholder="∞ (unlimited)"
-                        value={expandDepthStr}
-                        onChange={(e) => setExpandDepthStr(e.target.value)}
-                        onBlur={commitExpandDepth}
-                        onKeyDown={(e) => onKeyDown(e, commitExpandDepth)}
-                    />
-                </div>
-            </div>
-            <div className="expansion-row">
-                <span className="expansion-label">Max Visible</span>
-                <div className="expansion-input">
-                    <input
-                        className="expansion-number"
-                        type="text"
-                        placeholder="500 (default)"
-                        value={maxVisibleStr}
-                        onChange={(e) => setMaxVisibleStr(e.target.value)}
-                        onBlur={commitMaxVisible}
-                        onKeyDown={(e) => onKeyDown(e, commitMaxVisible)}
-                    />
-                </div>
-            </div>
-            <div className="expansion-note">
-                Depth and max visible apply when file is reopened
-            </div>
-        </GraphExpansionSettingsRoot>
+        <Panel direction="column" gap="md" paddingX="md" paddingY="sm">
+            <Panel direction="row" align="center" gap="md">
+                <span style={labelStyle}>Root Node</span>
+                <Select
+                    size="sm"
+                    items={items}
+                    value={selectedItem}
+                    onChange={onRootChange}
+                    filterMode="contains"
+                />
+            </Panel>
+            <Panel direction="row" align="center" gap="md">
+                <span style={labelStyle}>Expand Depth</span>
+                <Input
+                    size="sm"
+                    placeholder="∞ (unlimited)"
+                    value={expandDepthStr}
+                    onChange={setExpandDepthStr}
+                    onBlur={commitExpandDepth}
+                    onKeyDown={(e) => onKeyDown(e, commitExpandDepth)}
+                />
+            </Panel>
+            <Panel direction="row" align="center" gap="md">
+                <span style={labelStyle}>Max Visible</span>
+                <Input
+                    size="sm"
+                    placeholder="500 (default)"
+                    value={maxVisibleStr}
+                    onChange={setMaxVisibleStr}
+                    onBlur={commitMaxVisible}
+                    onKeyDown={(e) => onKeyDown(e, commitMaxVisible)}
+                />
+            </Panel>
+            <span style={noteStyle}>Depth and max visible apply when file is reopened</span>
+        </Panel>
     );
 }
 
