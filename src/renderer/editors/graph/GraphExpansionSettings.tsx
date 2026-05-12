@@ -91,10 +91,11 @@ function GraphExpansionSettings({ vm }: GraphExpansionSettingsProps) {
     }, []);
 
     return (
-        <Panel direction="column" gap="md" paddingX="md" paddingY="sm">
+        <Panel name="graph-expansion-settings" direction="column" gap="md" paddingX="md" paddingY="sm">
             <Panel direction="row" align="center" gap="md">
                 <span style={labelStyle}>Root Node</span>
                 <Select
+                    name="graph-expansion-root"
                     size="sm"
                     items={items}
                     value={selectedItem}
@@ -105,6 +106,7 @@ function GraphExpansionSettings({ vm }: GraphExpansionSettingsProps) {
             <Panel direction="row" align="center" gap="md">
                 <span style={labelStyle}>Expand Depth</span>
                 <Input
+                    name="graph-expansion-depth"
                     size="sm"
                     placeholder="∞ (unlimited)"
                     value={expandDepthStr}
@@ -116,6 +118,7 @@ function GraphExpansionSettings({ vm }: GraphExpansionSettingsProps) {
             <Panel direction="row" align="center" gap="md">
                 <span style={labelStyle}>Max Visible</span>
                 <Input
+                    name="graph-expansion-max"
                     size="sm"
                     placeholder="500 (default)"
                     value={maxVisibleStr}

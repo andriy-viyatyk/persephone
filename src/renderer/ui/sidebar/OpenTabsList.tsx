@@ -125,6 +125,7 @@ export function OpenTabsList(props: OpenTabsListProps) {
 
     return (
         <ListBox<ListItem>
+            name="sidebar-open-tabs"
             items={tItems}
             rowHeight={22}
             activeIndex={activeIndex}

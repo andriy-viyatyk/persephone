@@ -29,6 +29,7 @@ export function ComponentBrowser({ model }: { model: StorybookEditorModel }) {
 
     return (
         <Panel
+            name="storybook-component-browser"
             data-type="component-browser"
             direction="column"
             width={leftPanelWidth}
@@ -36,6 +37,7 @@ export function ComponentBrowser({ model }: { model: StorybookEditorModel }) {
             overflow="hidden"
         >
             <ListBox
+                name="storybook-component-list"
                 items={items}
                 value={value}
                 onChange={(item) => model.selectStory(String(item.value))}

@@ -29,6 +29,7 @@ function StorybookEditorView({ model }: { model: StorybookEditorModel }) {
     const { previewBackground, leftPanelWidth, rightPanelWidth } = model.state.use();
     return (
         <Panel
+            name="storybook-root"
             data-type="storybook-editor"
             direction="column"
             flex
@@ -42,15 +43,17 @@ function StorybookEditorView({ model }: { model: StorybookEditorModel }) {
                 <Spacer />
                 <Text size="sm" color="light">Background:</Text>
                 <SegmentedControl
+                    name="storybook-bg-select"
                     items={BG_OPTIONS}
                     value={previewBackground}
                     onChange={(v) => model.setPreviewBackground(v as PreviewBackground)}
                     size="sm"
                 />
             </Toolbar>
-            <Panel direction="row" flex overflow="hidden" height={0}>
+            <Panel name="storybook-body" direction="row" flex overflow="hidden" height={0}>
                 <ComponentBrowser model={model} />
                 <Splitter
+                    name="storybook-left-splitter"
                     value={leftPanelWidth}
                     onChange={model.setLeftPanelWidth}
                     side="before"
@@ -61,6 +64,7 @@ function StorybookEditorView({ model }: { model: StorybookEditorModel }) {
                 />
                 <LivePreview model={model} />
                 <Splitter
+                    name="storybook-right-splitter"
                     value={rightPanelWidth}
                     onChange={model.setRightPanelWidth}
                     side="after"

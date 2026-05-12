@@ -7,6 +7,9 @@ import { Tooltip } from "../Tooltip/Tooltip";
 // --- Types ---
 
 export interface ButtonProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "title"> {
+    /** Optional debug label emitted as `data-name` on the root element. Use to disambiguate
+     *  multiple instances of this primitive in DOM inspector output. Never used for styling. */
+    name?: string;
     /**
      * When set, the button is wrapped in a UIKit `<Tooltip>` displaying this content on
      * hover/focus. Accepts a plain string or rich `ReactNode`. When unset, no tooltip is
@@ -153,13 +156,14 @@ const Root = styled.button(
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     function Button(
-        { variant = "default", size = "md", background = "default", block, icon, disabled, title, hideUntilParentHover, children, ...rest },
+        { name, variant = "default", size = "md", background = "default", block, icon, disabled, title, hideUntilParentHover, children, ...rest },
         ref,
     ) {
         const button = (
             <Root
                 ref={ref}
                 data-type="button"
+                data-name={name}
                 data-variant={variant}
                 data-size={size}
                 data-bg={background}

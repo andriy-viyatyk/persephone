@@ -11,6 +11,9 @@ export interface BreadcrumbProps
         React.HTMLAttributes<HTMLDivElement>,
         "style" | "className" | "onChange"
     > {
+    /** Optional debug label emitted as `data-name` on the root element. Use to disambiguate
+     *  multiple instances of this primitive in DOM inspector output. Never used for styling. */
+    name?: string;
     rootLabel: React.ReactNode;
     value: string;
     onChange: (value: string) => void;
@@ -52,6 +55,7 @@ const Root = styled.div(
 // --- Component ---
 
 export function Breadcrumb({
+    name,
     rootLabel,
     value,
     onChange,
@@ -88,7 +92,7 @@ export function Breadcrumb({
     const rootIsCurrent = segments.length === 0;
 
     return (
-        <Root data-type="breadcrumb" data-size={size} {...rest}>
+        <Root data-type="breadcrumb" data-name={name} data-size={size} {...rest}>
             <span
                 data-part="root"
                 data-current={rootIsCurrent || undefined}

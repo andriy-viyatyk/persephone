@@ -39,7 +39,7 @@ function HtmlView({ model }: HtmlViewProps) {
     if (!vm) return null;
 
     return (
-        <Panel flex overflow="hidden">
+        <Panel name="html-view-root" flex overflow="hidden">
             <iframe
                 srcDoc={safeSrcDoc}
                 sandbox="allow-scripts"

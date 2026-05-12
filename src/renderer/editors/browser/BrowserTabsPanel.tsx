@@ -5,8 +5,8 @@ import color from "../../theme/color";
 import { TraitTypeId, setTraitDragData, getTraitDragData, hasTraitDragData } from "../../core/traits";
 import { CloseIcon, GlobeIcon, PlusIcon, VolumeIcon, VolumeMutedIcon } from "../../theme/icons";
 import { BrowserEditorModel, BrowserTabData } from "./BrowserEditorModel";
-import { Button } from "../../components/basic/Button";
-import type { MenuItem } from "../../components/overlay/PopupMenu";
+import { Panel, IconButton } from "../../uikit";
+import type { MenuItem } from "../../uikit";
 import { ContextMenuEvent } from "../../api/events/events";
 
 /** Below this width, hide tab titles and show icon-only compact mode. */
@@ -15,20 +15,12 @@ const COMPACT_THRESHOLD = 70;
 /** Below this width, hide the close button even in normal mode. */
 const CLOSE_BUTTON_THRESHOLD = 100;
 
-const BrowserTabsPanelRoot = styled.div({
-    display: "flex",
-    flexDirection: "column",
-    overflow: "hidden",
-    backgroundColor: color.background.default,
-    height: "100%",
+// ============================================================================
+// Styled — single styled(Panel) wrapper holding tabs strip chrome (Rule 7 exception)
+// ============================================================================
 
-    "& .tabs-list": {
-        flex: "1 1 auto",
-        overflowY: "auto",
-        overflowX: "hidden",
-    },
-
-    "& .tab-item": {
+const BrowserTabsRoot = styled(Panel)({
+    "[data-tab-item]": {
         display: "flex",
         alignItems: "center",
         height: 28,
@@ -50,35 +42,29 @@ const BrowserTabsPanelRoot = styled.div({
             borderRadius: 1,
             backgroundColor: "var(--group-color)",
         },
-        "&:hover": {
-            backgroundColor: color.background.light,
-        },
-        "&.active": {
+        "&:hover": { backgroundColor: color.background.light },
+        "&[data-active]": {
             backgroundColor: color.background.dark,
-            border: `1px solid ${color.border.active}`,
-        },
-        "&:hover .tab-close, &.active .tab-close": {
-            opacity: 1,
-        },
-        "&.dragging": {
-            opacity: 0.4,
-        },
-        "&.drop-target": {
             borderColor: color.border.active,
         },
-    },
+        "&[data-compact]": {
+            justifyContent: "center",
+            padding: "0 4px",
+            margin: "0 4px",
+        },
+        "&[data-hover-extended]": { borderRadius: "4px 0 0 4px" },
+        "&[data-dragging]": { opacity: 0.4 },
+        "&[data-drop-target]": { borderColor: color.border.active },
 
-    "& .tab-item.compact": {
-        justifyContent: "center",
-        padding: "0 4px",
-        margin: "0 4px",
+        "& [data-tab-close]": {
+            opacity: 0,
+            transition: "opacity 80ms",
+        },
+        "&:hover [data-tab-close], &[data-active] [data-tab-close]": {
+            opacity: 1,
+        },
     },
-
-    "& .tab-item.extended": {
-        borderRadius: "4px 0 0 4px",
-    },
-
-    "& .tab-favicon": {
+    "[data-tab-favicon]": {
         width: 14,
         height: 14,
         flexShrink: 0,
@@ -86,7 +72,7 @@ const BrowserTabsPanelRoot = styled.div({
             width: 14,
             height: 14,
             color: color.icon.default,
-            "&.hidden": { display: "none" },
+            "&[data-hidden]": { display: "none" },
         },
         "& img": {
             width: 14,
@@ -96,8 +82,7 @@ const BrowserTabsPanelRoot = styled.div({
             filter: "drop-shadow(0 0 1.5px rgba(255,255,255,0.9))",
         },
     },
-
-    "& .tab-title": {
+    "[data-tab-title]": {
         flex: "1 1 auto",
         fontSize: 12,
         color: color.text.default,
@@ -105,25 +90,7 @@ const BrowserTabsPanelRoot = styled.div({
         textOverflow: "ellipsis",
         whiteSpace: "nowrap",
     },
-
-    "& .tab-close": {
-        flexShrink: 0,
-        opacity: 0,
-    },
-
-    "& .add-tab-button": {
-        height: 28,
-        padding: "0 4px 0 8px",
-        display: "flex",
-        alignItems: "center",
-    },
-
-    "& .add-tab-button.compact": {
-        justifyContent: "center",
-        padding: "0 4px",
-    },
-
-    "& .tab-extension": {
+    "[data-tab-extension]": {
         display: "flex",
         alignItems: "center",
         width: 140,
@@ -135,7 +102,7 @@ const BrowserTabsPanelRoot = styled.div({
         border: `1px solid ${color.border.default}`,
         borderLeft: "none",
         backgroundColor: color.background.light,
-        "& .tab-extension-title": {
+        "& [data-part='title']": {
             flex: "1 1 auto",
             fontSize: 12,
             color: color.text.default,
@@ -143,9 +110,9 @@ const BrowserTabsPanelRoot = styled.div({
             overflow: "hidden",
             textOverflow: "ellipsis",
         },
-        "&.active": {
+        "&[data-active]": {
             backgroundColor: color.background.dark,
-            border: `1px solid ${color.border.active}`,
+            borderColor: color.border.active,
             borderLeft: "none",
         },
     },
@@ -228,15 +195,6 @@ function TabItem({
         model.moveTab(data.tabId, tab.id);
     }, [model, tab.id]);
 
-    const cls = [
-        "tab-item",
-        isActive && "active",
-        compact && "compact",
-        isHovered && "extended",
-        isDragging && "dragging",
-        isOver && "drop-target",
-    ].filter(Boolean).join(" ");
-
     const groupBorderColor = GROUP_COLORS[groupColorIndex % GROUP_COLORS.length];
 
     return (
@@ -248,54 +206,55 @@ function TabItem({
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
-            className={cls}
+            data-tab-item
+            data-active={isActive || undefined}
+            data-compact={compact || undefined}
+            data-dragging={isDragging || undefined}
+            data-drop-target={isOver || undefined}
+            data-hover-extended={isHovered || undefined}
             style={{ "--group-color": groupBorderColor } as React.CSSProperties}
             onClick={() => onSwitch(tab.id)}
             onContextMenu={(e) => onContextMenu(e, tab.id)}
             onMouseEnter={onMouseEnter ? (e) => onMouseEnter(e, tab.id) : undefined}
             onMouseLeave={onMouseLeave}
         >
-            <div className="tab-favicon">
+            <div data-tab-favicon>
                 {tab.favicon ? (
                     <img
                         src={tab.favicon}
                         alt=""
                         referrerPolicy="no-referrer"
                         onError={(e) => {
-                            // Hide broken image, show fallback globe icon
                             (e.target as HTMLImageElement).style.display = "none";
-                            (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden");
+                            (e.target as HTMLImageElement).nextElementSibling?.removeAttribute("data-hidden");
                         }}
                     />
                 ) : null}
-                <GlobeIcon className={tab.favicon ? "hidden" : ""} />
+                <GlobeIcon data-hidden={tab.favicon ? "" : undefined} />
             </div>
             {!compact && (
-                <div className="tab-title">
+                <div data-tab-title>
                     {tab.pageTitle || tab.url || "New Tab"}
                 </div>
             )}
             {!compact && (tab.audible || tab.muted) && (
-                <Button
-                    type="icon"
-                    size="small"
+                <IconButton
+                    name="tab-mute"
+                    size="sm"
+                    icon={tab.muted ? <VolumeMutedIcon /> : <VolumeIcon />}
                     title={tab.muted ? "Unmute Tab" : "Mute Tab"}
                     onClick={(e) => onToggleMute(e, tab.id)}
-                >
-                    {tab.muted ? <VolumeMutedIcon /> : <VolumeIcon />}
-                </Button>
+                />
             )}
             {showClose && (
-                <div className="tab-close">
-                    <Button
-                        type="icon"
-                        size="small"
-                        title="Close Tab"
-                        onClick={(e) => onClose(e, tab.id)}
-                    >
-                        <CloseIcon />
-                    </Button>
-                </div>
+                <IconButton
+                    data-tab-close
+                    name="tab-close"
+                    size="sm"
+                    icon={<CloseIcon />}
+                    title="Close Tab"
+                    onClick={(e) => onClose(e, tab.id)}
+                />
             )}
         </div>
     );
@@ -321,8 +280,6 @@ export function BrowserTabsPanel({
     const compact = width < COMPACT_THRESHOLD;
     const showClose = !compact && width >= CLOSE_BUTTON_THRESHOLD;
 
-    /** Map each tab's groupId to a sequential index (0, 1, 0, 1, ...) based on
-     *  the order groups first appear in the tab list. */
     const groupColorMap = useMemo(() => {
         const map = new Map<string, number>();
         let idx = 0;
@@ -443,8 +400,14 @@ export function BrowserTabsPanel({
     );
 
     return (
-        <BrowserTabsPanelRoot>
-            <div className="tabs-list">
+        <BrowserTabsRoot
+            name="browser-tabs-root"
+            direction="column" overflow="hidden" background="default" height="100%"
+        >
+            <Panel
+                name="browser-tabs-list"
+                direction="column" flex={1} overflowY="auto" overflowX="hidden"
+            >
                 {tabs.map((tab) => (
                     <TabItem
                         key={tab.id}
@@ -463,49 +426,52 @@ export function BrowserTabsPanel({
                         onMouseLeave={compact ? scheduleClose : undefined}
                     />
                 ))}
-                <div className={`add-tab-button${compact ? " compact" : ""}`}>
-                    <Button
-                        type="icon"
-                        size="small"
+                <Panel
+                    name="add-tab-row"
+                    direction="row" align="center"
+                    paddingX="xs" height={28}
+                    justify={compact ? "center" : "start"}
+                >
+                    <IconButton
+                        name="add-tab-button"
+                        size="sm"
+                        icon={<PlusIcon />}
                         title="New Tab"
                         onClick={handleNewTab}
-                    >
-                        <PlusIcon />
-                    </Button>
-                </div>
-            </div>
+                    />
+                </Panel>
+            </Panel>
             {compact && hoveredTab && (
                 <div
                     ref={refs.setFloating}
-                    className={`tab-extension${hoveredTabId === activeTabId ? " active" : ""}`}
+                    data-tab-extension
+                    data-active={hoveredTabId === activeTabId || undefined}
                     style={{ ...floatingStyles, zIndex: 1000 }}
                     onMouseEnter={cancelClose}
                     onMouseLeave={scheduleClose}
                     onClick={() => handleSwitchTab(hoveredTabId!)}
                 >
-                    <span className="tab-extension-title">
+                    <span data-part="title">
                         {hoveredTab.pageTitle || hoveredTab.url || "New Tab"}
                     </span>
                     {(hoveredTab.audible || hoveredTab.muted) && (
-                        <Button
-                            type="icon"
-                            size="small"
+                        <IconButton
+                            name="tab-extension-mute"
+                            size="sm"
+                            icon={hoveredTab.muted ? <VolumeMutedIcon /> : <VolumeIcon />}
                             title={hoveredTab.muted ? "Unmute Tab" : "Mute Tab"}
                             onClick={(e) => handleToggleMute(e, hoveredTabId!)}
-                        >
-                            {hoveredTab.muted ? <VolumeMutedIcon /> : <VolumeIcon />}
-                        </Button>
+                        />
                     )}
-                    <Button
-                        type="icon"
-                        size="small"
+                    <IconButton
+                        name="tab-extension-close"
+                        size="sm"
+                        icon={<CloseIcon />}
                         title="Close Tab"
                         onClick={(e) => handleExtensionClose(e, hoveredTabId!)}
-                    >
-                        <CloseIcon />
-                    </Button>
+                    />
                 </div>
             )}
-        </BrowserTabsPanelRoot>
+        </BrowserTabsRoot>
     );
 }

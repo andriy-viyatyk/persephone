@@ -511,6 +511,7 @@ function GraphView({ model }: GraphViewProps) {
                     >
                         <div style={toolbarRowStyle}>
                             <IconButton
+                                name="graph-settings"
                                 size="sm"
                                 icon={<SettingsIcon />}
                                 active={toolbarPanel === "settings"}
@@ -518,6 +519,7 @@ function GraphView({ model }: GraphViewProps) {
                                 title="Force tuning"
                             />
                             <IconButton
+                                name="graph-toggle-grouping"
                                 size="sm"
                                 icon={<GraphGroupIcon />}
                                 strikethrough={groupingEnabled}
@@ -526,6 +528,7 @@ function GraphView({ model }: GraphViewProps) {
                                 title={groupingEnabled ? "Disable grouping" : "Enable grouping"}
                             />
                             <IconButton
+                                name="graph-reset-view"
                                 size="sm"
                                 icon={<RefreshIcon />}
                                 onClick={() => vm.resetView()}
@@ -533,6 +536,7 @@ function GraphView({ model }: GraphViewProps) {
                             />
                             {vm.hasVisibilityFilter && (
                                 <IconButton
+                                    name="graph-expand-all"
                                     size="sm"
                                     icon={<ExpandAllIcon />}
                                     onClick={handleExpandAll}
@@ -540,6 +544,7 @@ function GraphView({ model }: GraphViewProps) {
                                 />
                             )}
                             <Input
+                                name="graph-search"
                                 ref={inputRef}
                                 size="sm"
                                 width={130}
@@ -551,6 +556,7 @@ function GraphView({ model }: GraphViewProps) {
                                 endSlot={
                                     searchQuery ? (
                                         <IconButton
+                                            name="graph-search-clear"
                                             size="sm"
                                             icon={<CloseIcon />}
                                             title="Clear search"
@@ -658,6 +664,7 @@ function GraphView({ model }: GraphViewProps) {
                 createPortal(
                     <>
                         <IconButton
+                            name="graph-open-in-draw"
                             size="sm"
                             icon={<DrawIcon />}
                             title="Open in Drawing Editor"
@@ -672,6 +679,7 @@ function GraphView({ model }: GraphViewProps) {
                             }}
                         />
                         <IconButton
+                            name="graph-copy-image"
                             size="sm"
                             icon={<CopyIcon />}
                             title="Copy Image to Clipboard"

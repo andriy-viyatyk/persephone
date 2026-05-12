@@ -70,7 +70,7 @@ function TextDialog({ model }: ViewPropsRO<TextDialogModel>) {
     };
 
     return (
-        <Dialog onKeyDown={model.handleKeyDown} autoFocus={false}>
+        <Dialog name="text-dialog" onKeyDown={model.handleKeyDown} autoFocus={false}>
             <DialogContent
                 title={title}
                 icon={<ConfirmIcon />}

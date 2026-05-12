@@ -42,6 +42,7 @@ export default function ArchiveSecondaryEditor({ model, headerRef }: SecondaryEd
             <Spacer />
             {!isActivePagePanel && (
                 <IconButton
+                    name="archive-secondary-close"
                     size="sm"
                     title="Close"
                     icon={<CloseIcon />}

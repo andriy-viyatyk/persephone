@@ -66,6 +66,7 @@ function ListBoxView<T = IListBoxItem>(
     );
 
     const {
+        name,
         loading,
         emptyMessage,
         searchText,
@@ -153,6 +154,7 @@ function ListBoxView<T = IListBoxItem>(
             <Root
                 id={rootId}
                 data-type="list-box"
+                data-name={name}
                 data-loading=""
                 onContextMenu={model.onRootContextMenu}
                 {...rest}
@@ -169,6 +171,7 @@ function ListBoxView<T = IListBoxItem>(
             <Root
                 id={rootId}
                 data-type="list-box"
+                data-name={name}
                 data-empty=""
                 onContextMenu={model.onRootContextMenu}
                 {...rest}
@@ -187,6 +190,7 @@ function ListBoxView<T = IListBoxItem>(
         <Root
             id={rootId}
             data-type="list-box"
+            data-name={name}
             role="listbox"
             tabIndex={keyboardNav ? 0 : -1}
             aria-activedescendant={activeId}

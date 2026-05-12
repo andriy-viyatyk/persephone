@@ -7,6 +7,9 @@ import { spacing } from "../tokens";
 
 export interface SectionItemProps
     extends Omit<React.HTMLAttributes<HTMLDivElement>, "style" | "className"> {
+    /** Optional debug label emitted as `data-name` on the root element. Use to disambiguate
+     *  multiple instances of this primitive in DOM inspector output. Never used for styling. */
+    name?: string;
     /** Stable id (forwarded so callers using aria can wire labelling). */
     id?: string;
     /** Section label. */
@@ -37,7 +40,7 @@ const Root = styled.div(
 // --- Component ---
 
 export const SectionItem = forwardRef<HTMLDivElement, SectionItemProps>(function SectionItem(
-    { id, label, ...rest },
+    { name, id, label, ...rest },
     ref,
 ) {
     return (
@@ -45,6 +48,7 @@ export const SectionItem = forwardRef<HTMLDivElement, SectionItemProps>(function
             ref={ref}
             id={id}
             data-type="list-section"
+            data-name={name}
             role="presentation"
             {...rest}
         >

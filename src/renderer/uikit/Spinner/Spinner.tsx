@@ -7,6 +7,9 @@ import { ProgressIcon } from "../../theme/icons";
 
 export interface SpinnerProps
     extends Omit<React.HTMLAttributes<HTMLSpanElement>, "style" | "className" | "color"> {
+    /** Optional debug label emitted as `data-name` on the root element. Use to disambiguate
+     *  multiple instances of this primitive in DOM inspector output. Never used for styling. */
+    name?: string;
     /** Outer size in px. Default: 32. */
     size?: number;
     /** CSS color override applied to the spinner stroke. Default: inherits via currentColor. */
@@ -40,10 +43,11 @@ const Root = styled.span<{ $size: number; $color?: string }>(
 
 // --- Component ---
 
-export function Spinner({ size = 32, color, ...rest }: SpinnerProps) {
+export function Spinner({ name, size = 32, color, ...rest }: SpinnerProps) {
     return (
         <Root
             data-type="spinner"
+            data-name={name}
             role="status"
             aria-live="polite"
             aria-label="Loading"

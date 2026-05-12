@@ -45,6 +45,7 @@ export function UrlSuggestionsDropdown({
 
     return (
         <Popover
+            name="url-suggestions"
             open={isOpen}
             elementRef={anchorEl}
             placement="bottom-start"
@@ -52,16 +53,17 @@ export function UrlSuggestionsDropdown({
             matchAnchorWidth
             onMouseDown={(e) => e.preventDefault()}
         >
-            <Panel direction="row" align="center" paddingY="sm" paddingX="md">
+            <Panel name="url-suggestions-header" direction="row" align="center" paddingY="sm" paddingX="md">
                 <Text size="xs" color="light">{headerLabel}</Text>
                 <Spacer />
                 {showClear && (
-                    <Button size="sm" variant="ghost" onClick={onClearVisible}>
+                    <Button name="url-suggestions-clear" size="sm" variant="ghost" onClick={onClearVisible}>
                         Clear
                     </Button>
                 )}
             </Panel>
             <ListBox
+                name="url-suggestions-list"
                 ref={listBoxRef}
                 items={listItems}
                 activeIndex={hoveredIndex}

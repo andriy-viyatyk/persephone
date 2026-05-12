@@ -258,7 +258,7 @@ export function AudioVisualizer({ mediaRef, playing, sourceUrl }: AudioVisualize
     }, []);
 
     return (
-        <Panel position="relative" width="100%" height="100%" revealChildrenOnHover>
+        <Panel name="audio-visualizer" position="relative" width="100%" height="100%" revealChildrenOnHover>
             <canvas ref={canvasRef} style={canvasStyle} />
             {selectedEffect === "none" && trackInfo && (
                 <div style={trackInfoOverlayStyle}>
@@ -270,6 +270,7 @@ export function AudioVisualizer({ mediaRef, playing, sourceUrl }: AudioVisualize
                 {EFFECTS.map(({ type, icon, label }) => (
                     <IconButton
                         key={type}
+                        name={`visualizer-${type}`}
                         variant="chip"
                         size="sm"
                         active={selectedEffect === type}

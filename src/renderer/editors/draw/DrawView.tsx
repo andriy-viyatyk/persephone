@@ -287,17 +287,19 @@ export function DrawView({ model }: DrawViewProps) {
     if (loading) return <Spinner />;
 
     return (
-        <Panel direction="column" flex={1} overflow="hidden" position="relative">
+        <Panel name="draw-root" direction="column" flex={1} overflow="hidden" position="relative">
             {Boolean(model.editorToolbarRefLast) &&
                 createPortal(
                     <>
                         <IconButton
+                            name="draw-theme"
                             size="sm"
                             title={darkMode ? "Switch to Light Theme" : "Switch to Dark Theme"}
                             icon={darkMode ? <SunIcon /> : <MoonIcon />}
                             onClick={vm.toggleDarkMode}
                         />
                         <IconButton
+                            name="draw-copy-image"
                             size="sm"
                             title="Copy Image to Clipboard"
                             icon={<CopyIcon />}
@@ -306,6 +308,7 @@ export function DrawView({ model }: DrawViewProps) {
                         <WithMenu items={saveMenuItems}>
                             {(setOpen) => (
                                 <IconButton
+                                    name="draw-save"
                                     size="sm"
                                     title="Save as file"
                                     icon={<DownloadIcon />}
@@ -316,6 +319,7 @@ export function DrawView({ model }: DrawViewProps) {
                         <WithMenu items={openMenuItems}>
                             {(setOpen) => (
                                 <IconButton
+                                    name="draw-open-new-tab"
                                     size="sm"
                                     title="Open in new tab"
                                     icon={<NewWindowIcon />}
@@ -324,6 +328,7 @@ export function DrawView({ model }: DrawViewProps) {
                             )}
                         </WithMenu>
                         <IconButton
+                            name="draw-snip"
                             size="sm"
                             title="Screen Snip"
                             icon={<SnipIcon />}

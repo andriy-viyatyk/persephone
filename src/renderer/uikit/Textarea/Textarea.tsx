@@ -20,6 +20,9 @@ export interface TextareaProps
         // Never makes sense on a contentEditable surface.
         | "dangerouslySetInnerHTML"
     > {
+    /** Optional debug label emitted as `data-name` on the root element. Use to disambiguate
+     *  multiple instances of this primitive in DOM inspector output. Never used for styling. */
+    name?: string;
     /** Current text value. */
     value: string;
     /** Change handler — receives the string value directly, not the event. */
@@ -118,6 +121,7 @@ const Root = styled.div(
 export const Textarea = React.forwardRef<TextareaRef, TextareaProps>(
     function Textarea(props, ref) {
         const {
+            name,
             value,
             onChange,
             placeholder,
@@ -206,6 +210,7 @@ export const Textarea = React.forwardRef<TextareaRef, TextareaProps>(
                 contentEditable={editable ? "plaintext-only" : false}
                 spellCheck={false}
                 data-type="textarea"
+                data-name={name}
                 data-size={size}
                 data-variant={variant}
                 data-disabled={disabled || undefined}

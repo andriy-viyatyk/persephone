@@ -10,6 +10,9 @@ import { Tooltip } from "../Tooltip";
 
 export interface ListItemProps
     extends Omit<React.HTMLAttributes<HTMLDivElement>, "style" | "className"> {
+    /** Optional debug label emitted as `data-name` on the root element. Use to disambiguate
+     *  multiple instances of this primitive in DOM inspector output. Never used for styling. */
+    name?: string;
     /** Stable id used for `aria-activedescendant` wiring. */
     id?: string;
     /** Leading icon. */
@@ -99,6 +102,7 @@ const Root = styled.div(
 
 export const ListItem = forwardRef<HTMLDivElement, ListItemProps>(function ListItem(
     {
+        name,
         id,
         icon,
         label,
@@ -126,6 +130,7 @@ export const ListItem = forwardRef<HTMLDivElement, ListItemProps>(function ListI
             ref={ref}
             id={id}
             data-type="list-item"
+            data-name={name}
             data-variant={variant}
             data-selection-style={selectionStyle}
             data-selected={selected || undefined}

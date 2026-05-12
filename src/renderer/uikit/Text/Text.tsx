@@ -47,7 +47,11 @@ export interface TextStyleProps {
 
 export interface TextProps extends
     Omit<React.HTMLAttributes<HTMLSpanElement>, "style" | "className" | "color">,
-    TextStyleProps {}
+    TextStyleProps {
+    /** Optional debug label emitted as `data-name` on the root element. Use to disambiguate
+     *  multiple instances of this primitive in DOM inspector output. Never used for styling. */
+    name?: string;
+}
 
 // --- Styled ---
 
@@ -110,6 +114,7 @@ const Root = styled.span(
 // --- Component ---
 
 export function Text({
+    name,
     variant = "default",
     color: colorProp = "default",
     size = "base",
@@ -125,6 +130,7 @@ export function Text({
     return (
         <Root
             data-type="text"
+            data-name={name}
             data-variant={variant}
             data-color={colorProp}
             data-size={size}

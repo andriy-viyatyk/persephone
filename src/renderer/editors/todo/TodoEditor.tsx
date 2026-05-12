@@ -146,12 +146,14 @@ export function TodoEditor({ model }: TodoEditorProps) {
             {Boolean(model.editorToolbarRefLast) &&
                 createPortal(
                     <Input
+                        name="todo-search"
                         value={pageState.searchText}
                         onChange={vm.setSearchText}
                         placeholder="Search..."
                         endSlot={
                             pageState.searchText ? (
                                 <IconButton
+                                    name="todo-search-clear"
                                     size="sm"
                                     icon={<CloseIcon />}
                                     title="Clear search"
@@ -162,8 +164,9 @@ export function TodoEditor({ model }: TodoEditorProps) {
                     />,
                     model.editorToolbarRefLast
                 )}
-            <Panel direction="row" flex={1} overflow="hidden">
+            <Panel name="todo-root" direction="row" flex={1} overflow="hidden">
                 <Panel
+                    name="todo-left-panel"
                     direction="column"
                     minWidth={100}
                     maxWidth="80%"
@@ -182,14 +185,16 @@ export function TodoEditor({ model }: TodoEditorProps) {
                     />
                 </Panel>
                 <Splitter
+                    name="todo-splitter"
                     orientation="vertical"
                     value={pageState.leftPanelWidth}
                     onChange={vm.setLeftPanelWidth}
                     border="after"
                     min={100}
                 />
-                <Panel direction="column" flex={1} minWidth={0} overflow="hidden">
+                <Panel name="todo-content" direction="column" flex={1} minWidth={0} overflow="hidden">
                     <Panel
+                        name="todo-quick-add-row"
                         direction="row"
                         gap="xs"
                         paddingX="sm"
@@ -202,6 +207,7 @@ export function TodoEditor({ model }: TodoEditorProps) {
                             style={{ flex: 1, minWidth: 0 }}
                         >
                             <Textarea
+                                name="todo-quick-add"
                                 value={quickAddText}
                                 onChange={setQuickAddText}
                                 singleLine
@@ -214,6 +220,7 @@ export function TodoEditor({ model }: TodoEditorProps) {
                             />
                         </div>
                         <IconButton
+                            name="todo-add-item"
                             size="sm"
                             icon={<PlusIcon />}
                             title="Add item"

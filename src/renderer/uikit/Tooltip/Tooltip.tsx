@@ -15,6 +15,9 @@ import { fontSize, radius, spacing } from "../tokens";
 // --- Types ---
 
 export interface TooltipProps {
+    /** Optional debug label emitted as `data-name` on the tooltip's floating root. Use to
+     *  disambiguate multiple instances in DOM inspector output. Never used for styling. */
+    name?: string;
     /**
      * Tooltip body. Plain strings render as text; ReactNode lets the consumer compose richer
      * content. When `null`, `undefined`, or `false`, the tooltip is suppressed and the trigger
@@ -60,6 +63,7 @@ const Root = styled.div(
 // --- Component ---
 
 export function Tooltip({
+    name,
     content,
     children,
     placement = "top",
@@ -169,6 +173,7 @@ export function Tooltip({
                 <Root
                     ref={refs.setFloating}
                     data-type="tooltip"
+                    data-name={name}
                     data-placement={actualPlacement}
                     role="tooltip"
                     style={{ ...floatingStyles, zIndex: 1100 }}

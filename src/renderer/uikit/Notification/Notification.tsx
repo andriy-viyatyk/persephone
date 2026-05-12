@@ -12,6 +12,9 @@ export type NotificationSeverity = "info" | "success" | "warning" | "error";
 
 export interface NotificationProps
     extends Omit<React.HTMLAttributes<HTMLDivElement>, "style" | "className"> {
+    /** Optional debug label emitted as `data-name` on the root element. Use to disambiguate
+     *  multiple instances of this primitive in DOM inspector output. Never used for styling. */
+    name?: string;
     /** Severity. Drives background, text, border, icon, and close-button hover color. */
     type: NotificationSeverity;
     /** Notification message. Renders with `white-space: pre-wrap` so `\n` are preserved. */
@@ -109,7 +112,7 @@ const ARIA_LIVE: Record<NotificationSeverity, "assertive" | "polite"> = {
 // --- Component ---
 
 export const Notification = React.forwardRef<HTMLDivElement, NotificationProps>(
-    function Notification({ type, message, onClick, onClose, ...rest }, ref) {
+    function Notification({ name, type, message, onClick, onClose, ...rest }, ref) {
         const handleClose = (e: React.MouseEvent) => {
             e.stopPropagation();
             onClose?.();
@@ -121,6 +124,7 @@ export const Notification = React.forwardRef<HTMLDivElement, NotificationProps>(
                 <Root
                     ref={ref}
                     data-type="notification"
+                    data-name={name}
                     data-severity={type}
                     data-clickable={onClick ? "" : undefined}
                     role={ARIA_ROLE[type]}

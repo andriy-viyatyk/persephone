@@ -17,6 +17,9 @@ import { ChevronDownIcon, ChevronRightIcon } from "../../theme/icons";
 
 export interface CollapsiblePanelProps
     extends Omit<React.HTMLAttributes<HTMLDivElement>, "style" | "className" | "title"> {
+    /** Optional debug label emitted as `data-name` on this panel's wrapper element.
+     *  Use to disambiguate multiple instances of this primitive in DOM inspector output. */
+    name?: string;
     /** Unique panel identifier (used by `activePanel`). */
     id: string;
     /** Header title. Omit when the child portals its own header via headerRef. */
@@ -46,6 +49,9 @@ export function CollapsiblePanel(_props: CollapsiblePanelProps): ReactElement | 
 
 export interface CollapsiblePanelStackProps
     extends Omit<React.HTMLAttributes<HTMLDivElement>, "style" | "className"> {
+    /** Optional debug label emitted as `data-name` on the root element. Use to disambiguate
+     *  multiple instances of this primitive in DOM inspector output. Never used for styling. */
+    name?: string;
     /** ID of the currently expanded panel. Controlled. */
     activePanel: string;
     /** Called when the user toggles a panel. */
@@ -116,6 +122,7 @@ const StackRoot = styled.div(
 );
 
 export function CollapsiblePanelStack({
+    name,
     activePanel,
     setActivePanel,
     children,
@@ -168,13 +175,14 @@ export function CollapsiblePanelStack({
     };
 
     return (
-        <StackRoot data-type="collapsible-panel-stack" {...rest} style={inlineStyle}>
+        <StackRoot data-type="collapsible-panel-stack" data-name={name} {...rest} style={inlineStyle}>
             {panels.map((panel) => {
                 const isOpen = activePanel === panel.id;
                 return (
                     <div
                         key={panel.id}
                         data-type="collapsible-panel"
+                        data-name={panel.name}
                         data-state={isOpen ? "open" : "closed"}
                     >
                         <div

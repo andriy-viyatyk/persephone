@@ -22,9 +22,9 @@ export function PromptsPanel({ model }: PromptsPanelProps) {
     }, [model]);
 
     return (
-        <Panel direction="row" flex={1} overflow="hidden">
+        <Panel name="mcp-prompts-panel" direction="row" flex={1} overflow="hidden">
             {/* Sidebar */}
-            <Panel direction="column" overflow="hidden" shrink={false} width={sidebarWidth}>
+            <Panel name="mcp-prompts-sidebar" direction="column" overflow="hidden" shrink={false} width={sidebarWidth}>
                 <Panel
                     direction="row"
                     align="center"
@@ -64,6 +64,7 @@ export function PromptsPanel({ model }: PromptsPanelProps) {
             </Panel>
 
             <Splitter
+                name="mcp-prompts-splitter"
                 orientation="vertical"
                 value={sidebarWidth}
                 onChange={setSidebarWidth}
@@ -113,6 +114,7 @@ export function PromptsPanel({ model }: PromptsPanelProps) {
 
                         <Panel>
                             <Button
+                                name="mcp-get-prompt"
                                 variant="primary"
                                 size="sm"
                                 onClick={handleGetPrompt}

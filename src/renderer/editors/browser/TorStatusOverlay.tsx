@@ -38,6 +38,7 @@ export function TorStatusOverlay({ model, torStatus, torLog }: TorStatusOverlayP
 
     return (
         <Panel
+            name="tor-overlay"
             position="absolute"
             top={0}
             right={0}
@@ -50,8 +51,9 @@ export function TorStatusOverlay({ model, torStatus, torLog }: TorStatusOverlayP
             overflow="hidden"
         >
             {canClose && (
-                <Panel position="absolute" top={8} right={8}>
+                <Panel name="tor-overlay-close-bar" position="absolute" top={8} right={8}>
                     <IconButton
+                        name="tor-overlay-close"
                         size="sm"
                         title="Close"
                         onClick={() => model.toggleTorOverlay()}
@@ -61,6 +63,7 @@ export function TorStatusOverlay({ model, torStatus, torLog }: TorStatusOverlayP
             )}
 
             <Panel
+                name="tor-overlay-status"
                 direction="column"
                 alignSelf="center"
                 align="center"
@@ -74,7 +77,7 @@ export function TorStatusOverlay({ model, torStatus, torLog }: TorStatusOverlayP
                 <Text size="base" color="light">{STATUS_MESSAGE[torStatus]}</Text>
 
                 {showReconnect && (
-                    <Button onClick={() => model.reconnectTor()}>Reconnect</Button>
+                    <Button name="tor-overlay-retry" onClick={() => model.reconnectTor()}>Reconnect</Button>
                 )}
             </Panel>
 

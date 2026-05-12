@@ -99,6 +99,7 @@ export const Popover = forwardRef<HTMLDivElement, PopoverProps>(function Popover
     const { manualSize } = model.state.use((s) => ({ manualSize: s.manualSize }));
 
     const {
+        name,
         open,
         onKeyDown,
         maxHeight,
@@ -142,6 +143,7 @@ export const Popover = forwardRef<HTMLDivElement, PopoverProps>(function Popover
         <Root
             className={scroll ? "scroll-container" : undefined}
             data-type="popover"
+            data-name={name}
             data-scroll={scroll || undefined}
             data-placement={actualPlacement}
             data-resizable={resizable || undefined}

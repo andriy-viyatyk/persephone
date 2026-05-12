@@ -27,6 +27,9 @@ export interface ISegment {
 export const SEGMENT_KEY = new TraitKey<TraitType<ISegment>>("segmented-control-segment");
 
 export interface SegmentedControlProps {
+    /** Optional debug label emitted as `data-name` on the root element. Use to disambiguate
+     *  multiple instances of this primitive in DOM inspector output. Never used for styling. */
+    name?: string;
     items: ISegment[] | Traited<unknown[]>;
     value: string;
     onChange: (value: string) => void;
@@ -76,6 +79,7 @@ const Root = styled.div(
 // --- Component ---
 
 export function SegmentedControl({
+    name,
     items,
     value,
     onChange,
@@ -158,6 +162,7 @@ export function SegmentedControl({
         <Root
             ref={rootRef}
             data-type="segmented-control"
+            data-name={name}
             data-roving-host=""
             data-disabled={disabled || undefined}
             role="radiogroup"

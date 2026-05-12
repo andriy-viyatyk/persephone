@@ -12,6 +12,7 @@ export function LivePreview({ model }: { model: StorybookEditorModel }) {
     if (!story) {
         return (
             <Panel
+                name="storybook-live-preview"
                 data-type="live-preview"
                 flex
                 overflow="auto"
@@ -48,6 +49,7 @@ export function LivePreview({ model }: { model: StorybookEditorModel }) {
 
     return (
         <Panel
+            name="storybook-live-preview"
             data-type="live-preview"
             flex
             overflow="auto"

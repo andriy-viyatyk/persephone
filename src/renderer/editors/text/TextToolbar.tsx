@@ -86,6 +86,7 @@ export function TextToolbar({ model, setEditorToolbarRefFirst, setEditorToolbarR
         actions.push(
             <IconButton
                 key="nav-panel"
+                name="text-nav-panel"
                 size="sm"
                 title="File Explorer"
                 icon={<NavPanelIcon />}
@@ -103,6 +104,7 @@ export function TextToolbar({ model, setEditorToolbarRefFirst, setEditorToolbarR
             actions.push(
                 <IconButton
                     key="compare-with-left"
+                    name="text-compare-left"
                     size="sm"
                     title="Compare with Left Page"
                     icon={<CompareIcon />}
@@ -119,6 +121,7 @@ export function TextToolbar({ model, setEditorToolbarRefFirst, setEditorToolbarR
         actions.push(
             <IconButton
                 key="run-script"
+                name="text-run-script"
                 size="sm"
                 title={
                     hasSelection
@@ -133,6 +136,7 @@ export function TextToolbar({ model, setEditorToolbarRefFirst, setEditorToolbarR
             actions.push(
                 <IconButton
                     key="run-all_script"
+                    name="text-run-all-script"
                     size="sm"
                     title="Run All Script"
                     icon={<RunAllIcon />}
@@ -148,6 +152,7 @@ export function TextToolbar({ model, setEditorToolbarRefFirst, setEditorToolbarR
         actions.push(
             <IconButton
                 key="show-resources"
+                name="text-show-resources"
                 size="sm"
                 title="Show Resources"
                 icon={<WebScraperIcon />}
@@ -183,6 +188,7 @@ export function TextToolbar({ model, setEditorToolbarRefFirst, setEditorToolbarR
         actions.push(
             <SegmentedControl
                 key="json-editor-switch"
+                name="text-editor-switch"
                 items={segItems}
                 value={editor || "monaco"}
                 onChange={(v) => model.changeEditor(v as EditorView)}

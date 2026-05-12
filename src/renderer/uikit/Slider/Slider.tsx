@@ -11,6 +11,9 @@ export interface SliderProps
         "value" | "onChange" | "min" | "max" | "step" | "type" | "size" |
         "style" | "className"
     > {
+    /** Optional debug label emitted as `data-name` on the root element. Use to disambiguate
+     *  multiple instances of this primitive in DOM inspector output. Never used for styling. */
+    name?: string;
     /** Current value. */
     value: number;
     /** Change handler — receives the parsed number directly. */
@@ -101,6 +104,7 @@ const Root = styled.input(
 // --- Component ---
 
 export function Slider({
+    name,
     value,
     onChange,
     min,
@@ -127,6 +131,7 @@ export function Slider({
     return (
         <Root
             data-type="slider"
+            data-name={name}
             data-size={size}
             data-disabled={disabled || undefined}
             data-show-progress={showProgress || undefined}

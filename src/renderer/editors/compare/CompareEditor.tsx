@@ -60,7 +60,7 @@ export function CompareEditor(props: CompareEditorProps) {
     const rightLabel = groupedFilePath || groupedTitle;
 
     return (
-        <Panel direction="column" flex overflow="hidden">
+        <Panel name="compare-root" direction="column" flex overflow="hidden">
             <Toolbar borderBottom>
                 <Panel flex overflow="hidden" justify="end">
                     <Text
@@ -84,6 +84,7 @@ export function CompareEditor(props: CompareEditorProps) {
                     </Text>
                 </Panel>
                 <IconButton
+                    name="compare-exit"
                     size="sm"
                     title="Exit Compare Mode"
                     onClick={() => {

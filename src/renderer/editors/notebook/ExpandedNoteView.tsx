@@ -160,6 +160,7 @@ export function ExpandedNoteView({
 
             {/* Top toolbar: category, tags, date, collapse */}
             <Panel
+                name="notebook-expanded-toolbar"
                 direction="row"
                 align="center"
                 gap="md"
@@ -295,6 +296,7 @@ export function ExpandedNoteView({
                     </span>
                 </Panel>
                 <IconButton
+                    name="notebook-expanded-collapse"
                     size="sm"
                     icon={<WindowRestoreIcon />}
                     title="Collapse (Esc)"
@@ -304,6 +306,7 @@ export function ExpandedNoteView({
 
             {/* Editor toolbar: language, title, editor switch */}
             <Panel
+                name="notebook-expanded-editor-toolbar"
                 direction="row"
                 align="center"
                 gap="sm"
@@ -327,6 +330,7 @@ export function ExpandedNoteView({
                 the column-flex parent fully controls our height; without it,
                 long editor content would overflow even with overflow: hidden. */}
             <Panel
+                name="notebook-expanded-content"
                 direction="column"
                 flex={1}
                 height={0}
@@ -349,6 +353,7 @@ export function ExpandedNoteView({
 
             {/* Comment section */}
             <Panel
+                name="notebook-expanded-comment"
                 direction="column"
                 paddingX="md"
                 paddingY="sm"

@@ -126,8 +126,9 @@ function AboutPage(_props: AboutEditorProps) {
     };
 
     return (
-        <Panel direction="column" align="center" justify="center" padding="xxxl" flex overflow="auto">
+        <Panel name="about-root" direction="column" align="center" justify="center" padding="xxxl" flex overflow="auto">
             <Panel
+                name="about-content"
                 direction="column"
                 align="center"
                 padding="xxxl"
@@ -166,7 +167,7 @@ function AboutPage(_props: AboutEditorProps) {
                 <Divider />
 
                 <Panel direction="column" align="center" gap="lg" width="100%">
-                    <Button variant="primary" onClick={handleCheckForUpdates} disabled={checking}>
+                    <Button name="about-check-updates" variant="primary" onClick={handleCheckForUpdates} disabled={checking}>
                         {checking ? "Checking..." : "Check for Updates"}
                     </Button>
                     {renderUpdateStatus()}
@@ -176,6 +177,7 @@ function AboutPage(_props: AboutEditorProps) {
 
                 <Panel justify="center" wrap gap="lg" width="100%">
                     <Button
+                        name="about-github"
                         variant="link"
                         size="sm"
                         onClick={() => shell.openExternal("https://github.com/andriy-viyatyk/persephone")}
@@ -183,6 +185,7 @@ function AboutPage(_props: AboutEditorProps) {
                         GitHub Repository
                     </Button>
                     <Button
+                        name="about-report-issue"
                         variant="link"
                         size="sm"
                         onClick={() => shell.openExternal("https://github.com/andriy-viyatyk/persephone/issues")}

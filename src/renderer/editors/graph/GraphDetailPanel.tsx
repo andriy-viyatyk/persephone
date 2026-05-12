@@ -452,7 +452,7 @@ function GraphDetailPanel({
     };
 
     return (
-        <DetailPanelRoot direction="column">
+        <DetailPanelRoot name="graph-detail-panel" direction="column">
             <div style={headerStyle} onClick={toggleExpanded}>
                 <span style={panelTitleStyle} title={headerText}>{headerText}</span>
                 {hasSelection && (

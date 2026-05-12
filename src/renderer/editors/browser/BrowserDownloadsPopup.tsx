@@ -35,13 +35,15 @@ function DownloadsPopupView({ model }: ViewPropsRO<DownloadsPopupModel>) {
 
     return (
         <Popover
+            name="downloads-popup"
             open
             {...model.position}
             outsideClickIgnoreSelector={ignoreSelector}
             onClose={() => model.close()}
         >
-            <Panel direction="column" width={320}>
+            <Panel name="downloads-popup-body" direction="column" width={320}>
                 <Panel
+                    name="downloads-popup-header"
                     direction="row"
                     align="center"
                     paddingX="lg"
@@ -51,12 +53,12 @@ function DownloadsPopupView({ model }: ViewPropsRO<DownloadsPopupModel>) {
                     <Text size="md" bold>Downloads</Text>
                     <Spacer />
                     {hasCompleted && (
-                        <Button size="sm" variant="ghost" onClick={downloads.clearCompleted}>
+                        <Button name="downloads-clear" size="sm" variant="ghost" onClick={downloads.clearCompleted}>
                             Clear
                         </Button>
                     )}
                 </Panel>
-                <Panel direction="column" overflowY="auto" maxHeight={400}>
+                <Panel name="downloads-list" direction="column" overflowY="auto" maxHeight={400}>
                     {downloadsList.length === 0 ? (
                         <Panel paddingY="xxl" paddingX="lg" align="center" justify="center">
                             <Text size="md" color="light">No downloads</Text>

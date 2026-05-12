@@ -35,6 +35,7 @@ export function TextFooter({ model }: TextFooterProps) {
     actions.push(
         <Button
             key="toggle-script"
+            name="text-toggle-script"
             variant="ghost"
             size="sm"
             onClick={model.script.toggleOpen}

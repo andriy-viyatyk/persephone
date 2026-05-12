@@ -60,6 +60,9 @@ export interface ListBoxRef {
 
 export interface ListBoxProps<T = IListBoxItem>
     extends Omit<React.HTMLAttributes<HTMLDivElement>, "style" | "className" | "onChange"> {
+    /** Optional debug label emitted as `data-name` on the root element. Use to disambiguate
+     *  multiple instances of this primitive in DOM inspector output. Never used for styling. */
+    name?: string;
     items: T[] | Traited<unknown[]>;
     /**
      * Currently-selected item. `null` when nothing is selected. May reference an

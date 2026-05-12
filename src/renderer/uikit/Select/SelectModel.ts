@@ -28,6 +28,9 @@ export interface SelectItemsResult<T> {
 
 export interface SelectProps<T = IListBoxItem>
     extends Omit<React.HTMLAttributes<HTMLDivElement>, "style" | "className" | "onChange"> {
+    /** Optional debug label emitted as `data-name` on the root element. Use to disambiguate
+     *  multiple instances of this primitive in DOM inspector output. Never used for styling. */
+    name?: string;
     /**
      * Item source — accepts:
      *   • `T[]` / `Traited<T[]>` — sync, ready immediately.

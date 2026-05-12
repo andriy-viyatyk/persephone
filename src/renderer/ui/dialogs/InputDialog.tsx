@@ -82,7 +82,7 @@ function InputDialog({ model }: ViewPropsRO<InputDialogModel>) {
     }, []);
 
     return (
-        <Dialog onKeyDown={model.handleKeyDown} autoFocus={false}>
+        <Dialog name="input-dialog" onKeyDown={model.handleKeyDown} autoFocus={false}>
             <DialogContent
                 title={state.title}
                 icon={<ConfirmIcon />}
@@ -93,6 +93,7 @@ function InputDialog({ model }: ViewPropsRO<InputDialogModel>) {
                 <Panel direction="column" paddingX="xxl" paddingTop="xl" paddingBottom="sm" gap="md">
                     <Text>{state.message}</Text>
                     <Input
+                        name="input-dialog-input"
                         ref={inputRef}
                         value={state.value ?? ""}
                         onChange={model.setValue}
@@ -101,6 +102,7 @@ function InputDialog({ model }: ViewPropsRO<InputDialogModel>) {
                 {state.options && state.options.length > 0 && (
                     <Panel paddingX="xxl" paddingY="sm">
                         <RadioGroup
+                            name="input-dialog-radio"
                             orientation="horizontal"
                             wrap
                             items={state.options.map((o) => ({ value: o }))}

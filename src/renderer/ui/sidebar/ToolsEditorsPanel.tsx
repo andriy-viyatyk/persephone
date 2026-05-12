@@ -284,6 +284,7 @@ export function ToolsEditorsPanel({ onClose }: ToolsEditorsPanelProps) {
 
     return (
         <ListBox<RowSource>
+            name="sidebar-tools-list"
             items={tRows}
             rowHeight={28}
             whiteSpaceY={8}

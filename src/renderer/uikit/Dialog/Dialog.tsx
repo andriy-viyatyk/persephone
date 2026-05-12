@@ -10,6 +10,9 @@ export type DialogPosition = "center" | "right";
 
 export interface DialogProps
     extends Omit<React.HTMLAttributes<HTMLDivElement>, "style" | "className"> {
+    /** Optional debug label emitted as `data-name` on the root element. Use to disambiguate
+     *  multiple instances of this primitive in DOM inspector output. Never used for styling. */
+    name?: string;
     /** Where to anchor the dialog body. Default: "center". */
     position?: DialogPosition;
     /** Click on the backdrop (outside the dialog body). */
@@ -84,6 +87,7 @@ function getFocusable(root: HTMLElement): HTMLElement[] {
 // --- Component ---
 
 export function Dialog({
+    name,
     position = "center",
     onBackdropClick,
     autoFocus = true,
@@ -169,6 +173,7 @@ export function Dialog({
         <Root
             ref={rootRef}
             data-type="dialog"
+            data-name={name}
             data-position={position}
             tabIndex={-1}
             onKeyDown={handleKeyDown}

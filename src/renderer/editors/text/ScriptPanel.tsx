@@ -351,6 +351,7 @@ export function ScriptPanel({ model }: ScriptPanelProps) {
 
     return (
         <Panel
+            name="script-panel"
             direction="column"
             height={state.height}
             overflow="hidden"
@@ -358,6 +359,7 @@ export function ScriptPanel({ model }: ScriptPanelProps) {
             onKeyDown={scriptModel.handleKeyDown}
         >
             <Splitter
+                name="script-panel-splitter"
                 orientation="horizontal"
                 value={state.height}
                 onChange={scriptModel.setHeight}
@@ -366,6 +368,7 @@ export function ScriptPanel({ model }: ScriptPanelProps) {
             />
             <PageToolbar>
                 <IconButton
+                    name="script-run"
                     title={state.hasSelection ? "Run Selected Script (F5)" : "Run Script (F5)"}
                     size="sm"
                     icon={<RunIcon />}
@@ -374,6 +377,7 @@ export function ScriptPanel({ model }: ScriptPanelProps) {
                 {state.hasSelection && (
                     <IconButton
                         key="run-all_script"
+                        name="script-run-all"
                         size="sm"
                         title="Run All Script"
                         icon={<RunAllIcon />}
@@ -381,6 +385,7 @@ export function ScriptPanel({ model }: ScriptPanelProps) {
                     />
                 )}
                 <Select<ScriptDropdownEntry>
+                    name="script-select"
                     items={allEntries}
                     value={selectedEntry}
                     onChange={(item) => scriptModel.selectScript(item)}
@@ -389,6 +394,7 @@ export function ScriptPanel({ model }: ScriptPanelProps) {
                     maxWidth={200}
                 />
                 <IconButton
+                    name="script-save"
                     title="Save Script to Library"
                     size="sm"
                     icon={<SaveIcon />}
@@ -396,6 +402,7 @@ export function ScriptPanel({ model }: ScriptPanelProps) {
                     onClick={scriptModel.saveToLibrary}
                 />
                 <IconButton
+                    name="script-open-tab"
                     title="Open in New Tab"
                     size="sm"
                     icon={<OpenFileIcon />}
@@ -403,13 +410,14 @@ export function ScriptPanel({ model }: ScriptPanelProps) {
                 />
                 <Spacer />
                 <IconButton
+                    name="script-close"
                     title="Close Script Editor"
                     size="sm"
                     icon={<CloseIcon />}
                     onClick={scriptModel.toggleOpen}
                 />
             </PageToolbar>
-            <Panel flex={1} minHeight={0}>
+            <Panel name="script-monaco-host" flex={1} minHeight={0}>
                 <Editor
                     value={state.content}
                     language="typescript"

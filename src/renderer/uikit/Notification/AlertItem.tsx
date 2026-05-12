@@ -11,6 +11,8 @@ export interface AlertData {
 }
 
 interface AlertItemProps {
+    /** Optional debug label forwarded to the inner Notification's `data-name`. */
+    name?: string;
     data: AlertData;
     top: number;
     right: number;
@@ -24,7 +26,7 @@ const AUTOCLOSE_SECONDS: Record<TMessageType, number> = {
 };
 
 export const AlertItem = forwardRef<HTMLDivElement, AlertItemProps>(
-    function AlertItem({ data, top, right }, ref) {
+    function AlertItem({ name, data, top, right }, ref) {
         const { onClose } = data;
         const autoClose = AUTOCLOSE_SECONDS[data.type];
 
@@ -49,6 +51,7 @@ export const AlertItem = forwardRef<HTMLDivElement, AlertItemProps>(
                 zIndex={1000}
             >
                 <Notification
+                    name={name}
                     type={data.type}
                     message={data.message}
                     onClick={() => onClose("clicked")}

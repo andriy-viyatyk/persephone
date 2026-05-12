@@ -11,6 +11,9 @@ import { Spinner } from "../Spinner";
 
 export interface TreeItemProps
     extends Omit<React.HTMLAttributes<HTMLDivElement>, "style" | "className"> {
+    /** Optional debug label emitted as `data-name` on the root element. Use to disambiguate
+     *  multiple instances of this primitive in DOM inspector output. Never used for styling. */
+    name?: string;
     /** Stable id used for `aria-activedescendant` wiring. */
     id?: string;
     /** Depth — 0 for root rows, +1 per level. */
@@ -171,6 +174,7 @@ const chevronColumnSize = 14;
 
 export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(function TreeItem(
     {
+        name,
         id,
         level,
         expanded,
@@ -200,6 +204,7 @@ export const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(function TreeI
             ref={ref}
             id={id}
             data-type="tree-item"
+            data-name={name}
             data-state={expanded ? "open" : "closed"}
             data-selected={selected || undefined}
             data-active={active || undefined}

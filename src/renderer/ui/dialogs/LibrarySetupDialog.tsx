@@ -77,7 +77,7 @@ function LibrarySetupDialog({ model }: ViewPropsRO<LibrarySetupDialogModel>) {
     };
 
     return (
-        <Dialog onKeyDown={model.handleKeyDown} autoFocus={false}>
+        <Dialog name="library-setup-dialog" onKeyDown={model.handleKeyDown} autoFocus={false}>
             <DialogContent
                 title={state.title}
                 icon={<FolderOpenIcon />}
@@ -97,17 +97,18 @@ function LibrarySetupDialog({ model }: ViewPropsRO<LibrarySetupDialogModel>) {
                         <Panel direction="row" gap="sm" align="center">
                             <Panel flex>
                                 <Input
+                                    name="library-setup-folder"
                                     value={folderPath}
                                     onChange={setFolderPath}
                                     placeholder="Select or type a folder path..."
                                     autoFocus
                                 />
                             </Panel>
-                            <Button onClick={handleBrowse}>Browse...</Button>
+                            <Button name="library-setup-browse" onClick={handleBrowse}>Browse...</Button>
                         </Panel>
                     </Panel>
                     <Panel direction="column" gap="xs">
-                        <Checkbox checked={copyExamples} onChange={setCopyExamples}>
+                        <Checkbox name="library-setup-copy-examples" checked={copyExamples} onChange={setCopyExamples}>
                             Copy example scripts
                         </Checkbox>
                         <Panel paddingLeft="xxl">
@@ -116,10 +117,10 @@ function LibrarySetupDialog({ model }: ViewPropsRO<LibrarySetupDialogModel>) {
                     </Panel>
                 </Panel>
                 <Panel direction="row" justify="end" gap="sm" padding="md">
-                    <Button onClick={handleLink} disabled={!folderPath.trim() || linking}>
+                    <Button name="library-setup-link" onClick={handleLink} disabled={!folderPath.trim() || linking}>
                         {linking ? "Linking..." : "Link"}
                     </Button>
-                    <Button onClick={() => model.close(undefined)}>
+                    <Button name="library-setup-cancel" onClick={() => model.close(undefined)}>
                         Cancel
                     </Button>
                 </Panel>

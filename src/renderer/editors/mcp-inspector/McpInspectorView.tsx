@@ -107,10 +107,11 @@ function McpInspectorView({ model }: McpInspectorViewProps) {
     }, [s.hasTools, s.hasResources, s.hasPrompts]);
 
     return (
-        <Panel direction="column" flex={1} overflow="hidden" tabIndex={-1}>
+        <Panel name="mcp-inspector-root" direction="column" flex={1} overflow="hidden" tabIndex={-1}>
             {/* Connection bar */}
             <PageToolbar borderBottom>
                 <Panel
+                    name="mcp-connection-bar"
                     direction="row"
                     align="center"
                     gap="sm"
@@ -121,6 +122,7 @@ function McpInspectorView({ model }: McpInspectorViewProps) {
                     {connections.length > 0 && !isConnected && !isConnecting && (
                         <>
                             <Select<IListBoxItem>
+                                name="mcp-saved-connections"
                                 items={savedItems}
                                 value={null}
                                 onChange={(it) => handleSelectSaved(String(it.value))}
@@ -133,6 +135,7 @@ function McpInspectorView({ model }: McpInspectorViewProps) {
                     )}
 
                     <Select<IListBoxItem>
+                        name="mcp-transport"
                         items={TRANSPORT_ITEMS}
                         value={selectedTransport}
                         onChange={(it) => model.state.update((st) => {
@@ -147,6 +150,7 @@ function McpInspectorView({ model }: McpInspectorViewProps) {
                     {s.transportType === "http" ? (
                         <Panel flex={1}>
                             <Input
+                                name="mcp-url"
                                 placeholder="http://localhost:7865/mcp"
                                 value={s.url}
                                 onChange={(v) => model.state.update((st) => { st.url = v; })}
@@ -158,6 +162,7 @@ function McpInspectorView({ model }: McpInspectorViewProps) {
                     ) : (
                         <>
                             <Input
+                                name="mcp-command"
                                 placeholder="command (e.g. npx)"
                                 value={s.command}
                                 onChange={(v) => model.state.update((st) => { st.command = v; })}
@@ -168,6 +173,7 @@ function McpInspectorView({ model }: McpInspectorViewProps) {
                             />
                             <Panel flex={1}>
                                 <Input
+                                    name="mcp-args"
                                     placeholder="args (e.g. -y @modelcontextprotocol/server-filesystem /path)"
                                     value={s.args}
                                     onChange={(v) => model.state.update((st) => { st.args = v; })}
@@ -180,6 +186,7 @@ function McpInspectorView({ model }: McpInspectorViewProps) {
                     )}
 
                     <Button
+                        name="mcp-connect"
                         variant="default"
                         size="sm"
                         onClick={handleConnect}
@@ -212,6 +219,7 @@ function McpInspectorView({ model }: McpInspectorViewProps) {
                     {s.serverVersion && <Text size="sm" color="light">v{s.serverVersion}</Text>}
                     <Divider orientation="vertical" />
                     <SegmentedControl
+                        name="mcp-panel-switch"
                         items={panelSegments}
                         value={s.activePanel}
                         onChange={(v) => model.setActivePanel(v as McpPanelId)}
@@ -221,7 +229,7 @@ function McpInspectorView({ model }: McpInspectorViewProps) {
             )}
 
             {/* Body: panel content */}
-            <Panel direction="row" flex={1} overflow="hidden" height={0}>
+            <Panel name="mcp-body" direction="row" flex={1} overflow="hidden" height={0}>
                 {isConnected && s.activePanel === "info" && (
                     <ServerInfoPanel state={s} />
                 )}

@@ -34,9 +34,9 @@ export function ResourcesPanel({ model }: ResourcesPanelProps) {
     const totalCount = rs.resources.length + rs.templates.length;
 
     return (
-        <Panel direction="row" flex={1} overflow="hidden">
+        <Panel name="mcp-resources-panel" direction="row" flex={1} overflow="hidden">
             {/* Sidebar */}
-            <Panel direction="column" overflow="hidden" shrink={false} width={sidebarWidth}>
+            <Panel name="mcp-resources-sidebar" direction="column" overflow="hidden" shrink={false} width={sidebarWidth}>
                 <Panel
                     direction="row"
                     align="center"
@@ -107,6 +107,7 @@ export function ResourcesPanel({ model }: ResourcesPanelProps) {
             </Panel>
 
             <Splitter
+                name="mcp-resources-splitter"
                 orientation="vertical"
                 value={sidebarWidth}
                 onChange={setSidebarWidth}
@@ -131,6 +132,7 @@ export function ResourcesPanel({ model }: ResourcesPanelProps) {
                         )}
                         <Panel direction="row">
                             <Button
+                                name="mcp-read-resource"
                                 variant="primary"
                                 size="sm"
                                 onClick={handleRead}
@@ -197,6 +199,7 @@ export function ResourcesPanel({ model }: ResourcesPanelProps) {
 
                         <Panel direction="row">
                             <Button
+                                name="mcp-read-template"
                                 variant="primary"
                                 size="sm"
                                 onClick={handleReadTemplate}

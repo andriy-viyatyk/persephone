@@ -34,6 +34,7 @@ export function TextEditorView({ model }: TextEditorViewProps) {
 
     return (
         <Panel
+            name="text-editor-root"
             ref={rootRef}
             direction="column"
             flex={1}

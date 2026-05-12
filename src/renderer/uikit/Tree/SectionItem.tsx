@@ -7,6 +7,9 @@ import { spacing } from "../tokens";
 
 export interface SectionItemProps
     extends Omit<React.HTMLAttributes<HTMLDivElement>, "style" | "className"> {
+    /** Optional debug label emitted as `data-name` on the root element. Use to disambiguate
+     *  multiple instances of this primitive in DOM inspector output. Never used for styling. */
+    name?: string;
     /** Stable id (forwarded so callers using aria can wire labelling). */
     id?: string;
     /** Depth — used to align the section header with sibling tree-items. */
@@ -53,7 +56,7 @@ const Indent = styled.div<{ size: number; first: boolean }>(
 const defaultIndentSize = 16;
 
 export const SectionItem = forwardRef<HTMLDivElement, SectionItemProps>(function SectionItem(
-    { id, level, label, indentSize = defaultIndentSize, ...rest },
+    { name, id, level, label, indentSize = defaultIndentSize, ...rest },
     ref,
 ) {
     return (
@@ -61,6 +64,7 @@ export const SectionItem = forwardRef<HTMLDivElement, SectionItemProps>(function
             ref={ref}
             id={id}
             data-type="tree-section"
+            data-name={name}
             role="presentation"
             {...rest}
         >

@@ -459,6 +459,7 @@ export function MenuBar(props: MenuBarProps) {
                 style={{ width: state.contentWidth }}
             >
                 <Panel
+                    name="menubar-categories"
                     direction="column"
                     flex={"1 1 40%"}
                     minWidth={0}
@@ -466,18 +467,21 @@ export function MenuBar(props: MenuBarProps) {
                     borderRight
                 >
                     <Panel
+                        name="menubar-toolbar"
                         direction="row"
                         align="center"
                         gap="sm"
                         paddingBottom="sm"
                     >
                         <IconButton
+                            name="menubar-open-file"
                             size="md"
                             icon={<OpenFileIcon />}
                             title="Open File (Ctrl+O)"
                             onClick={model.openFile}
                         />
                         <IconButton
+                            name="menubar-new-window"
                             size="md"
                             icon={<NewWindowIcon />}
                             title="New Window (Ctrl+Shift+N)"
@@ -485,12 +489,14 @@ export function MenuBar(props: MenuBarProps) {
                         />
                         <Spacer />
                         <IconButton
+                            name="menubar-about"
                             size="md"
                             icon={<InfoIcon />}
                             title="About"
                             onClick={model.openAbout}
                         />
                         <IconButton
+                            name="menubar-settings"
                             size="md"
                             icon={<SettingsIcon />}
                             title="Settings"
@@ -498,6 +504,7 @@ export function MenuBar(props: MenuBarProps) {
                         />
                     </Panel>
                     <ListBox<MenuFolder>
+                        name="menubar-folders"
                         items={tFolders}
                         rowHeight={22}
                         isSelected={(folder) => folder.id === state.leftItemId}
@@ -511,6 +518,7 @@ export function MenuBar(props: MenuBarProps) {
                     />
                 </Panel>
                 <Panel
+                    name="menubar-content"
                     direction="column"
                     flex={"1 1 60%"}
                     minWidth={0}
@@ -519,6 +527,7 @@ export function MenuBar(props: MenuBarProps) {
                     {renderRightList()}
                 </Panel>
                 <Splitter
+                    name="menubar-splitter"
                     orientation="vertical"
                     side="before"
                     value={state.contentWidth}

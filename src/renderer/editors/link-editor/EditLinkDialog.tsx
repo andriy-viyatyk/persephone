@@ -156,7 +156,7 @@ function EditLinkDialog({ model }: ViewPropsRO<EditLinkDialogModel>) {
     const selectedTarget = targetEditorOptions.find((o) => o.value === state.target) ?? targetEditorOptions[0];
 
     return (
-        <Dialog onKeyDown={model.handleKeyDown} autoFocus={false}>
+        <Dialog name="edit-link-dialog" onKeyDown={model.handleKeyDown} autoFocus={false}>
             <DialogContent
                 title={state.dialogTitle}
                 icon={<RenameIcon />}
@@ -167,6 +167,7 @@ function EditLinkDialog({ model }: ViewPropsRO<EditLinkDialogModel>) {
                 <Panel direction="column" gap="sm" paddingX="xl" paddingY="md">
                     <FormRow label="Title">
                         <Textarea
+                            name="edit-link-title"
                             singleLine
                             value={state.linkTitle}
                             onChange={model.setTitle}
@@ -178,6 +179,7 @@ function EditLinkDialog({ model }: ViewPropsRO<EditLinkDialogModel>) {
 
                     <FormRow label="URL">
                         <Input
+                            name="edit-link-href"
                             value={state.href}
                             onChange={model.setHref}
                             placeholder="https://..."
@@ -186,6 +188,7 @@ function EditLinkDialog({ model }: ViewPropsRO<EditLinkDialogModel>) {
 
                     <FormRow label="Category">
                         <PathInput
+                            name="edit-link-category"
                             value={state.category}
                             onChange={model.setCategory}
                             onBlur={model.setCategoryFromBlur}
@@ -197,6 +200,7 @@ function EditLinkDialog({ model }: ViewPropsRO<EditLinkDialogModel>) {
 
                     <FormRow label="Target">
                         <Select
+                            name="edit-link-target"
                             items={targetEditorOptions}
                             value={selectedTarget}
                             onChange={model.setTarget}
@@ -205,6 +209,7 @@ function EditLinkDialog({ model }: ViewPropsRO<EditLinkDialogModel>) {
 
                     <FormRow label="Tags">
                         <TagsInput
+                            name="edit-link-tags"
                             value={state.tags}
                             onChange={model.setTags}
                             items={state.availableTags}
@@ -216,11 +221,13 @@ function EditLinkDialog({ model }: ViewPropsRO<EditLinkDialogModel>) {
 
                     <FormRow label="Image URL">
                         <Input
+                            name="edit-link-img-src"
                             value={state.imgSrc}
                             onChange={model.setImgSrc}
                             placeholder="https://... (optional)"
                             endSlot={state.imgSrc ? (
                                 <IconButton
+                                    name="edit-link-img-clear"
                                     size="sm"
                                     icon={<CloseIcon />}
                                     title="Clear Image URL"
@@ -283,8 +290,8 @@ function EditLinkDialog({ model }: ViewPropsRO<EditLinkDialogModel>) {
                 </Panel>
 
                 <Panel direction="row" justify="end" gap="sm" padding="md">
-                    <Button onClick={() => model.close(undefined)}>Cancel</Button>
-                    <Button variant="primary" onClick={model.save}>Save</Button>
+                    <Button name="edit-link-cancel" onClick={() => model.close(undefined)}>Cancel</Button>
+                    <Button name="edit-link-save" variant="primary" onClick={model.save}>Save</Button>
                 </Panel>
             </DialogContent>
         </Dialog>

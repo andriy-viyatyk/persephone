@@ -285,6 +285,7 @@ export function TreeProviderView(
             onContextMenu={model.onBackgroundContextMenu}
         >
             <Tree<TreeProviderNode>
+                name="tree-provider"
                 key={state.searchKey}
                 ref={treeRef}
                 items={tNodes}
@@ -305,8 +306,9 @@ export function TreeProviderView(
                 renderItem={renderItem}
             />
             {state.searchVisible && (
-                <Panel direction="row" padding="xs" borderTop data-type="tpv-search">
+                <Panel name="tree-provider-search" direction="row" padding="xs" borderTop data-type="tpv-search">
                     <Input
+                        name="tree-provider-search-input"
                         ref={searchInputRef}
                         size="sm"
                         value={state.searchText}
@@ -316,6 +318,7 @@ export function TreeProviderView(
                         onBlur={handleSearchBlur}
                         endSlot={state.searchText ? (
                             <IconButton
+                                name="tree-provider-search-close"
                                 size="sm"
                                 title="Close Search"
                                 icon={<CloseIcon />}

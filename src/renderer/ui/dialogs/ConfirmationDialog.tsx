@@ -35,7 +35,7 @@ function ConfirmationDialog({ model }: ViewPropsRO<ConfirmationDialogModel>) {
     const state = model.state.use();
 
     return (
-        <Dialog onKeyDown={model.handleKeyDown}>
+        <Dialog name="confirmation-dialog" onKeyDown={model.handleKeyDown}>
             <DialogContent
                 title={state.title}
                 icon={<ConfirmIcon />}

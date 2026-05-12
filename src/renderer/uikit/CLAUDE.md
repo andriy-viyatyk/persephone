@@ -52,6 +52,7 @@ Pass `undefined` (not `false`) when a boolean attribute is inactive — `data-di
 | Attribute | Values | When to use |
 |-----------|--------|-------------|
 | `data-type` | kebab-case name | **Always** — every component's root element |
+| `data-name` | free-form string | optional caller-supplied debug label (`name` prop). Never used for styling. |
 | `data-disabled` | present / absent | component is disabled |
 | `data-selected` | present / absent | item is selected |
 | `data-active` | present / absent | item is focused / highlighted |
@@ -60,6 +61,32 @@ Pass `undefined` (not `false`) when a boolean attribute is inactive — `data-di
 | `data-orientation` | `"horizontal"` / `"vertical"` | layout direction |
 | `data-variant` | e.g. `"ghost"` / `"danger"` | visual variant |
 | `data-size` | `"sm"` / `"md"` / `"lg"` | size variant |
+
+### Debug naming via `data-name`
+
+Every primitive accepts an optional `name?: string` prop. When set, the value is
+emitted as `data-name="…"` on the same element that carries `data-type`. This is a
+debug-inspection aid — it never affects styling, state, or behavior.
+
+```tsx
+<Panel name="url-bar-wrapper" flex={1}>…</Panel>
+// → <div data-type="panel" data-name="url-bar-wrapper">
+```
+
+**When to set `name`** (in call sites):
+- Multiple instances of the same primitive in one tree (especially `Panel`,
+  `IconButton`, `Splitter`, `Divider`).
+- Any `IconButton` — the `<svg>` child doesn't reveal the action.
+- Any element that participates in cross-component selectors (`closest`,
+  `querySelector`) — name doubles as a stable hook.
+
+**When to skip:** purely structural one-off Panels where the surrounding
+`data-type` chain already identifies the element.
+
+**Authoring requirement:** every new UIKit primitive MUST accept `name?: string`
+and emit `data-name={name}` on the same element as its `data-type`. Pass
+`undefined` (not `""`) when unset — React then omits the attribute. Destructure
+`name` before the rest spread so the attribute is emitted only once.
 
 ### Style state via Emotion attribute selectors
 
@@ -401,6 +428,7 @@ Use predictable, self-documenting names. An AI agent reading the prop should und
 | Click handler | `onClick` | `onPress`, `handleClick` |
 | Icon element | `icon` | `iconLeft`, `startIcon`, `leftAdornment` |
 | Placeholder text | `placeholder` | `hint`, `hintText` |
+| Debug identifier | `name` (→ `data-name`) | `id`, `debugId`, `label` |
 
 ### Boolean props
 
@@ -458,6 +486,9 @@ import { fontSize, height, spacing } from "../tokens";
 // --- Types ---
 
 export interface ButtonProps {
+    /** Optional debug label emitted as `data-name` on the root element. Use to disambiguate
+     *  multiple instances of this primitive in DOM inspector output. Never used for styling. */
+    name?: string;
     label: string;
     onClick: () => void;
     disabled?: boolean;
@@ -498,6 +529,7 @@ const Root = styled.button({
 // --- Component ---
 
 export function Button({
+    name,
     label,
     onClick,
     disabled,
@@ -508,6 +540,7 @@ export function Button({
     return (
         <Root
             data-type="button"
+            data-name={name}
             data-disabled={disabled || undefined}
             data-variant={variant}
             data-size={size}

@@ -53,6 +53,7 @@ export function ArchiveEditorView({ model }: { model: ArchiveEditorModel }) {
 
     return (
         <Panel
+            name="archive-root"
             direction="column"
             flex={1}
             overflow="hidden"
@@ -60,6 +61,7 @@ export function ArchiveEditorView({ model }: { model: ArchiveEditorModel }) {
         >
             <PageToolbar borderBottom>
                 <IconButton
+                    name="archive-toggle-navigator"
                     size="sm"
                     title="File Explorer"
                     icon={<NavPanelIcon />}
@@ -67,12 +69,14 @@ export function ArchiveEditorView({ model }: { model: ArchiveEditorModel }) {
                 />
                 <Spacer />
                 <IconButton
+                    name="archive-collapse-all"
                     size="sm"
                     title="Collapse All"
                     icon={<CollapseAllIcon />}
                     onClick={handleCollapseAll}
                 />
                 <IconButton
+                    name="archive-refresh"
                     size="sm"
                     title="Refresh"
                     icon={<RefreshIcon />}

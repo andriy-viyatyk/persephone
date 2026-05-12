@@ -5,6 +5,9 @@ import color from "../../theme/color";
 // --- Types ---
 
 export interface DividerProps extends React.HTMLAttributes<HTMLDivElement> {
+    /** Optional debug label emitted as `data-name` on the root element. Use to disambiguate
+     *  multiple instances of this primitive in DOM inspector output. Never used for styling. */
+    name?: string;
     /** Line direction. Default: "horizontal". */
     orientation?: "horizontal" | "vertical";
 }
@@ -31,10 +34,11 @@ const Root = styled.div(
 
 // --- Component ---
 
-export function Divider({ orientation = "horizontal", ...rest }: DividerProps) {
+export function Divider({ name, orientation = "horizontal", ...rest }: DividerProps) {
     return (
         <Root
             data-type="divider"
+            data-name={name}
             data-orientation={orientation}
             role="separator"
             aria-orientation={orientation}

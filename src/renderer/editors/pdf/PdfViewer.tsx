@@ -118,6 +118,7 @@ function PdfViewer({ model }: PdfViewerProps) {
             <PageToolbar borderBottom>
                 {(model.page?.canOpenNavigator(model.pipe, filePath) || filePath) && (
                     <IconButton
+                        name="pdf-nav-panel"
                         size="sm"
                         title="File Explorer"
                         icon={<NavPanelIcon />}
@@ -128,7 +129,7 @@ function PdfViewer({ model }: PdfViewerProps) {
                 )}
                 <Spacer />
             </PageToolbar>
-            <Panel direction="column" flex={1} overflow="hidden">
+            <Panel name="pdf-viewer-root" direction="column" flex={1} overflow="hidden">
                 {viewerUrl && (
                     <object
                         data={viewerUrl}

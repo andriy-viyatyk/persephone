@@ -149,7 +149,7 @@ export function AudioPlayer({ src, muted, sourceUrl, onStateChangeRef, onMutedCh
     };
 
     return (
-        <Panel position="absolute" top={0} right={0} bottom={0} left={0}>
+        <Panel name="audio-player" position="absolute" top={0} right={0} bottom={0} left={0}>
             <div style={visualizerAreaStyle} onClick={togglePlayOnClick}>
                 <AudioVisualizer mediaRef={audioRef} playing={playing} sourceUrl={sourceUrl} />
             </div>

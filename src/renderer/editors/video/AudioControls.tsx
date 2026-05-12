@@ -93,8 +93,9 @@ export function AudioControls({ audioRef, playing, hasNext, shuffle, onNext, onT
     };
 
     return (
-        <Panel height={44} shrink={false} align="center" gap="xs" paddingX="sm">
+        <Panel name="audio-controls" height={44} shrink={false} align="center" gap="xs" paddingX="sm">
             <IconButton
+                name="audio-play-pause"
                 size="sm"
                 icon={playing ? <PauseIcon /> : <PlayIcon />}
                 title={playing ? "Pause" : "Play"}
@@ -104,6 +105,7 @@ export function AudioControls({ audioRef, playing, hasNext, shuffle, onNext, onT
 
             {hasNext && (
                 <IconButton
+                    name="audio-next"
                     size="sm"
                     icon={<NextTrackIcon />}
                     title="Next Track"
@@ -115,6 +117,7 @@ export function AudioControls({ audioRef, playing, hasNext, shuffle, onNext, onT
             <span style={timeLabelStyle} data-visibility="parent-hover">{formatTime(currentTime)}</span>
 
             <Slider
+                name="audio-seek"
                 value={currentTime}
                 onChange={onSeekChange}
                 min={0}
@@ -129,6 +132,7 @@ export function AudioControls({ audioRef, playing, hasNext, shuffle, onNext, onT
             <span style={timeLabelStyle} data-visibility="parent-hover">{formatTime(duration)}</span>
 
             <IconButton
+                name="audio-mute"
                 size="sm"
                 icon={muted ? <VolumeMutedIcon /> : <VolumeIcon />}
                 title={muted ? "Unmute" : "Mute"}
@@ -138,6 +142,7 @@ export function AudioControls({ audioRef, playing, hasNext, shuffle, onNext, onT
 
             {hasNext && (
                 <IconButton
+                    name="audio-shuffle"
                     size="sm"
                     icon={<ShuffleIcon />}
                     title={shuffle ? "Shuffle: On" : "Shuffle: Off"}

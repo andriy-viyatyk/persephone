@@ -62,6 +62,7 @@ export function GridEditor({ model }: GridEditorProps) {
             {Boolean(model.editorToolbarRefLast) &&
                 createPortal(
                     <Input
+                        name="grid-search"
                         size="sm"
                         value={gridState.search}
                         onChange={vm.setSearch}
@@ -69,6 +70,7 @@ export function GridEditor({ model }: GridEditorProps) {
                         endSlot={
                             gridState.search ? (
                                 <IconButton
+                                    name="grid-search-clear"
                                     size="sm"
                                     title="Clear Search"
                                     icon={<CloseIcon />}
@@ -83,6 +85,7 @@ export function GridEditor({ model }: GridEditorProps) {
                 createPortal(
                     <>
                         <IconButton
+                            name="grid-columns"
                             size="sm"
                             title="Edit Columns"
                             icon={<ColumnsIcon />}
@@ -99,6 +102,7 @@ export function GridEditor({ model }: GridEditorProps) {
                         />
                         {editorId === "grid-csv" && (
                             <Button
+                                name="grid-csv-options"
                                 size="sm"
                                 variant="ghost"
                                 title="Csv Options"
@@ -111,6 +115,7 @@ export function GridEditor({ model }: GridEditorProps) {
                     model.editorToolbarRefFirst
                 )}
             <Panel
+                name="grid-editor-root"
                 direction="column"
                 flex={1}
                 position="relative"

@@ -9,6 +9,9 @@ import { CloseIcon } from "../../theme/icons";
 
 export interface DialogContentProps
     extends Omit<React.HTMLAttributes<HTMLDivElement>, "style" | "className" | "title"> {
+    /** Optional debug label emitted as `data-name` on the root element. Use to disambiguate
+     *  multiple instances of this primitive in DOM inspector output. Never used for styling. */
+    name?: string;
     /** Title text or rich node. */
     title?: React.ReactNode;
     /** Optional leading icon in the header. */
@@ -70,6 +73,7 @@ const TitleBox = styled.span({
 // --- Component ---
 
 export function DialogContent({
+    name,
     title,
     icon,
     onClose,
@@ -96,6 +100,7 @@ export function DialogContent({
     return (
         <Root
             data-type="dialog-content"
+            data-name={name}
             data-has-header={hasHeader || undefined}
             style={sizing}
             {...rest}

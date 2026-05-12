@@ -88,9 +88,9 @@ export function ToolsPanel({ model }: ToolsPanelProps) {
         : { flex: "3 1 0" as const, minHeight: 0 };
 
     return (
-        <Panel direction="row" flex={1} overflow="hidden" onKeyDown={handleKeyDown}>
+        <Panel name="mcp-tools-panel" direction="row" flex={1} overflow="hidden" onKeyDown={handleKeyDown}>
             {/* Sidebar */}
-            <Panel direction="column" overflow="hidden" shrink={false} width={sidebarWidth}>
+            <Panel name="mcp-tools-sidebar" direction="column" overflow="hidden" shrink={false} width={sidebarWidth}>
                 <Panel
                     direction="row"
                     align="center"
@@ -105,6 +105,7 @@ export function ToolsPanel({ model }: ToolsPanelProps) {
                 </Panel>
                 <Panel direction="column" flex={1} overflow="hidden">
                     <ListBox<IListBoxItem>
+                        name="mcp-tools-list"
                         items={items}
                         value={selectedItem}
                         onChange={(it) => model.selectTool(String(it.value))}
@@ -117,6 +118,7 @@ export function ToolsPanel({ model }: ToolsPanelProps) {
             </Panel>
 
             <Splitter
+                name="mcp-tools-splitter"
                 orientation="vertical"
                 value={sidebarWidth}
                 onChange={setSidebarWidth}
@@ -125,7 +127,7 @@ export function ToolsPanel({ model }: ToolsPanelProps) {
 
             {/* Detail panel */}
             {selectedTool ? (
-                <Panel direction="column" flex={1} overflow="hidden" ref={detailRef}>
+                <Panel name="mcp-tools-detail" direction="column" flex={1} overflow="hidden" ref={detailRef}>
                     {/* Top: tool name + args (scrollable) */}
                     <Panel
                         direction="column"
@@ -183,6 +185,7 @@ export function ToolsPanel({ model }: ToolsPanelProps) {
 
                     {/* Horizontal splitter */}
                     <Splitter
+                        name="mcp-tools-result-splitter"
                         orientation="horizontal"
                         value={currentResultHeight}
                         onChange={handleResultHeightChange}
@@ -218,6 +221,7 @@ export function ToolsPanel({ model }: ToolsPanelProps) {
                             )}
                             <Spacer />
                             <Button
+                                name="mcp-call-tool"
                                 variant="primary"
                                 size="sm"
                                 onClick={handleCallTool}

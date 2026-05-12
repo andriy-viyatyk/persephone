@@ -8,6 +8,9 @@ import { Text, TextStyleProps } from "../Text/Text";
 export interface LabelProps extends
     Omit<React.LabelHTMLAttributes<HTMLLabelElement>, "style" | "className" | "color">,
     TextStyleProps {
+    /** Optional debug label emitted as `data-name` on the root element. Use to disambiguate
+     *  multiple instances of this primitive in DOM inspector output. Never used for styling. */
+    name?: string;
     /** Shows a red asterisk after the label text. */
     required?: boolean;
     /** Dims the label. */
@@ -32,6 +35,7 @@ const Root = styled.label(
 // --- Component ---
 
 export function Label({
+    name,
     variant = "default",
     color: colorProp = "default",
     size = "sm",
@@ -47,6 +51,7 @@ export function Label({
     return (
         <Root
             data-type="label"
+            data-name={name}
             data-disabled={disabled || undefined}
             {...rest}
         >

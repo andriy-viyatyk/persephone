@@ -1,13 +1,12 @@
-import styled from "@emotion/styled";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 const { ipcRenderer } = require("electron");
+import styled from "@emotion/styled";
 import { IEditorState, EditorType } from "../../../shared/types";
 import { EditorModel, PageToolbar } from "../base";
 import { TComponentState } from "../../core/state/state";
 import { EditorModule } from "../types";
 import color from "../../theme/color";
-import { Button } from "../../components/basic/Button";
-import { TextField } from "../../components/basic/TextField";
+import { Panel, Input, Button, IconButton, Spinner, Text, Dot, Splitter, WithMenu } from "../../uikit";
 import {
     ArrowLeftIcon,
     ArrowRightIcon,
@@ -22,7 +21,6 @@ import {
     StopIcon,
 } from "../../theme/icons";
 import { IncognitoIcon, TorIcon } from "../../theme/language-icons";
-import { CircularProgress } from "../../components/basic/CircularProgress";
 import { TorStatusOverlay } from "./TorStatusOverlay";
 import {
     BrowserEditorModel,
@@ -34,9 +32,7 @@ import {
     BrowserChannel,
     BrowserRegisterRequest,
 } from "../../../ipc/browser-ipc";
-import { Splitter } from "../../components/layout/Splitter";
 import { BrowserTabsPanel } from "./BrowserTabsPanel";
-import { WithPopupMenu } from "../../components/overlay/WithPopupMenu";
 import { UrlSuggestionsDropdown } from "./UrlSuggestionsDropdown";
 import { BookmarksDrawer } from "./BookmarksDrawer";
 import { LinkEditor } from "../link-editor/LinkEditor";
@@ -49,28 +45,21 @@ import { PageManager } from "../../components/page-manager/PageManager";
 const WEBVIEW_PRELOAD_URL = (window as any).webviewPreloadUrl as string;
 
 // ============================================================================
-// Styled Component
+// Styled — single styled(Panel) wrapper holding chrome quirks (Rule 7 exception)
 // ============================================================================
 
-const BrowserEditorViewRoot = styled.div({
-    flex: "1 1 auto",
-    display: "flex",
-    flexDirection: "column",
-    outline: "none",
-    overflow: "hidden",
-
-    "& .browser-toolbar-content": {
-        display: "flex",
-        alignItems: "center",
-        flex: 1,
-        gap: 4,
+const BrowserRoot = styled(Panel)({
+    "@keyframes browser-loading-pulse": {
+        "0%":   { opacity: 0.3 },
+        "50%":  { opacity: 1 },
+        "100%": { opacity: 0.3 },
     },
-
-    "& .url-bar": {
-        flex: 1,
+    "[data-browser-loading-bar]": {
+        height: 2,
+        backgroundColor: color.border.active,
+        animation: "browser-loading-pulse 1.5s ease-in-out infinite",
     },
-
-    "& .search-engine-btn": {
+    "[data-search-engine-chip]": {
         cursor: "pointer",
         fontSize: 11,
         color: color.text.light,
@@ -79,153 +68,43 @@ const BrowserEditorViewRoot = styled.div({
         whiteSpace: "nowrap",
         userSelect: "none",
         lineHeight: "20px",
+        background: "transparent",
+        border: "none",
         "&:hover": {
             color: color.text.default,
             backgroundColor: color.background.light,
         },
     },
-
-    "& .tor-indicator": {
+    "[data-tor-indicator]": {
         cursor: "pointer",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         padding: "0 2px",
         position: "relative",
-        "& svg": {
-            width: 14,
-            height: 14,
-        },
+        "& svg": { width: 14, height: 14 },
     },
-
-    "& .tor-status-dot": {
+    "[data-tor-status-dot]": {
         position: "absolute",
         bottom: 0,
         right: 0,
-        width: 6,
-        height: 6,
-        borderRadius: "50%",
-        "&.connected": { backgroundColor: color.misc.green },
-        "&.error": { backgroundColor: color.misc.red },
-        "&.disconnected": { backgroundColor: color.misc.yellow },
     },
-
-    "& .loading-bar": {
-        height: 2,
-        backgroundColor: color.border.active,
-        animation: "loading-pulse 1.5s ease-in-out infinite",
-    },
-
-    "& .loading-bar-placeholder": {
-        height: 2,
-    },
-
-    "& .browser-body": {
-        flex: "1 1 auto",
-        display: "flex",
-        flexDirection: "row",
-        overflow: "hidden",
-        position: "relative",
-    },
-
-    "& .webview-area": {
-        flex: "1 1 auto",
-        display: "flex",
-        position: "relative",
-        overflow: "hidden",
-    },
-
-    "& .webview-tabs-host": {
+    "[data-webview-wrapper]": {
         position: "absolute",
-        inset: 0,
-    },
-
-    "& .webview-wrapper": {
-        position: "absolute",
-        inset: 0,
+        top: 0, right: 0, bottom: 0, left: 0,
         display: "flex",
         "& webview": {
             flex: "1 1 auto",
             border: "none",
         },
     },
-
-    "& .webview-click-overlay": {
+    "[data-webview-click-overlay]": {
         position: "absolute",
-        inset: 0,
+        top: 0, right: 0, bottom: 0, left: 0,
         zIndex: 1,
     },
-
-    "& .blank-page-links": {
-        position: "absolute",
-        inset: 0,
-        zIndex: 3,
-        display: "flex",
-        flexDirection: "column",
-        backgroundColor: color.background.default,
-    },
-    "& .blank-page-toolbar": {
-        display: "flex",
-        alignItems: "center",
-        gap: 4,
-        padding: "4px 8px",
-        borderBottom: `1px solid ${color.border.default}`,
-        backgroundColor: color.background.dark,
-        minHeight: 32,
-        flexShrink: 0,
-        // Portal placeholder divs need flex layout for horizontal items
-        "& > div": {
-            display: "flex",
-            alignItems: "center",
-            gap: 4,
-        },
-        // Hide "Add Link" and browser selector buttons on the empty page toolbar
-        "& .link-btn-add": { display: "none" },
-        "& .link-btn-browser-selector": { display: "none" },
-    },
-    "& .blank-page-editor": {
-        flex: "1 1 auto",
-        display: "flex",
-        overflow: "hidden",
-    },
-
-    "& .tabs-panel": {
-        flexShrink: 0,
-        overflow: "hidden",
-        borderRight: `1px solid ${color.border.default}`,
-    },
-
-    "& .browser-body > .splitter": {
-        position: "absolute",
-        top: 0,
-        bottom: 0,
-        zIndex: 2,
-        backgroundColor: "transparent",
-        borderRight: "none",
-        "&:hover": {
-            backgroundColor: color.background.light,
-        },
-    },
-
-    "& .popup-blocked-bar": {
-        display: "flex",
-        alignItems: "center",
-        gap: 8,
-        padding: "3px 8px",
-        fontSize: 13,
-        color: color.text.default,
-        backgroundColor: color.background.light,
-        borderBottom: `1px solid ${color.border.default}`,
-        "& .popup-blocked-message": {
-            flex: 1,
-        },
-    },
-
-    "@keyframes loading-pulse": {
-        "0%": { opacity: 0.3 },
-        "50%": { opacity: 1 },
-        "100%": { opacity: 0.3 },
-    },
+    "[data-blank-toolbar] .link-btn-add": { display: "none" },
+    "[data-blank-toolbar] .link-btn-browser-selector": { display: "none" },
 });
 
 // ============================================================================
@@ -250,12 +129,8 @@ function BrowserWebviewItem({
     const tabId = model.id;
     const internalTabId = tab.id;
 
-    // Track initial src — we only set src on mount, not on re-render
     const initialUrl = useRef(tab.url);
 
-    // Store webview ref for parent access immediately (not waiting for dom-ready).
-    // about:blank may not fire dom-ready, so toolbar operations (loadURL, devtools)
-    // need the ref available right away.
     useEffect(() => {
         const webview = webviewRef.current;
         if (!webview) return;
@@ -265,10 +140,6 @@ function BrowserWebviewItem({
         };
     }, [model, internalTabId]);
 
-    // Close host-page popups when the webview gains focus.
-    // Clicks inside a <webview> don't bubble to the host document, so Popper's
-    // click-outside detection never fires. Dispatching a synthetic mousedown
-    // on document.body bridges that gap.
     useEffect(() => {
         const webview = webviewRef.current;
         if (!webview) return;
@@ -279,7 +150,6 @@ function BrowserWebviewItem({
         return () => webview.removeEventListener("focus", handleFocus);
     }, []);
 
-    // Register with main process on dom-ready and listen for preload messages
     useEffect(() => {
         const webview = webviewRef.current;
         if (!webview) return;
@@ -287,8 +157,6 @@ function BrowserWebviewItem({
         let registered = false;
 
         const onDomReady = () => {
-            // Capture URL from the initial src-based load so navigateWebview
-            // doesn't try to reload the page on the first tab switch.
             const currentUrl = webview.getURL();
             if (currentUrl && currentUrl !== "about:blank") {
                 model.currentUrls.set(internalTabId, currentUrl);
@@ -304,7 +172,6 @@ function BrowserWebviewItem({
             ipcRenderer.send(BrowserChannel.register, request);
             registered = true;
 
-            // If the page is muted, mute this new webview immediately
             if (model.state.get().pageMuted) {
                 const key = `${tabId}/${internalTabId}`;
                 ipcRenderer.send(BrowserChannel.setAudioMuted, key, true);
@@ -313,7 +180,6 @@ function BrowserWebviewItem({
 
         webview.addEventListener("dom-ready", onDomReady);
 
-        // Handle messages from the webview preload script (title, favicon)
         const onIpcMessage = (event: Electron.IpcMessageEvent) => {
             const { channel, args } = event;
             if (channel === "page-title") {
@@ -328,17 +194,14 @@ function BrowserWebviewItem({
                         webview.getURL() || model.currentUrls.get(internalTabId) || "";
                     model.cacheFavicon(currentUrl, faviconUrl);
                     model.updateTab(internalTabId, { favicon: faviconUrl });
-                    // Save favicon to disk cache when not incognito/tor
                     if (!model.state.get().isIncognito && !model.state.get().isTor) {
                         import("../../components/tree-provider/favicon-cache").then(({ getHostname, saveFavicon, consumeFaviconSaveRequest }) => {
                             const hostname = getHostname(currentUrl);
                             if (!hostname) return;
-                            // Save if explicitly requested (e.g. "Open in Internal Browser" from Link Editor)
                             if (consumeFaviconSaveRequest(hostname)) {
                                 saveFavicon(hostname, faviconUrl);
                                 return;
                             }
-                            // Save if bookmarks contain a link with this hostname
                             if (model.bookmarks) {
                                 const links = model.bookmarks!.linkModel.state.get().data.links;
                                 const hasLink = links.some((l: { href: string }) => getHostname(l.href) === hostname);
@@ -380,13 +243,10 @@ function BrowserWebviewItem({
                 ipcRenderer.send(BrowserChannel.unregister, key);
             }
         };
-        // Note: tab.url is intentionally excluded — this effect manages IPC
-        // registration which doesn't depend on URL changes. Including it would
-        // cause webviewReady to be cleared on every navigation, breaking loadURL.
     }, [model, tabId, internalTabId]);
 
     return (
-        <div className="webview-wrapper">
+        <div data-webview-wrapper>
             <webview
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 ref={webviewRef as any}
@@ -399,9 +259,6 @@ function BrowserWebviewItem({
                 }}
                 partition={partition}
                 preload={WEBVIEW_PRELOAD_URL}
-                // Allow popups so setWindowOpenHandler fires for target="_blank" links.
-                // The main process handler denies the popup and relays the URL as a
-                // "new-window" event, which opens it in a new internal tab.
                 // @ts-expect-error -- webview boolean attribute not in React types
                 allowpopups="true"
             />
@@ -422,20 +279,115 @@ function BlankPageLinks({ bookmarks }: BlankPageLinksProps) {
     const [toolbarLastRef, setToolbarLastRef] = useState<HTMLDivElement | null>(null);
 
     return (
-        <div className="blank-page-links">
-            <div className="blank-page-toolbar">
-                <div ref={setToolbarFirstRef} />
-                <div style={{ flex: 1 }} />
-                <div ref={setToolbarLastRef} />
-            </div>
-            <div className="blank-page-editor">
+        <Panel
+            name="blank-page"
+            position="absolute" top={0} right={0} bottom={0} left={0} zIndex={3}
+            direction="column" background="default"
+        >
+            <Panel
+                name="blank-page-toolbar"
+                direction="row" align="center" gap="xs"
+                paddingX="md" paddingY="xs" background="dark" borderBottom
+                shrink={false} minHeight={32}
+                data-blank-toolbar=""
+            >
+                <Panel
+                    name="blank-toolbar-first"
+                    ref={setToolbarFirstRef}
+                    direction="row" align="center" gap="xs"
+                />
+                <Panel flex={1} />
+                <Panel
+                    name="blank-toolbar-last"
+                    ref={setToolbarLastRef}
+                    direction="row" align="center" gap="xs"
+                />
+            </Panel>
+            <Panel flex={1} overflow="hidden">
                 <LinkEditor
                     model={bookmarks.textModel}
                     toolbarRefFirst={toolbarFirstRef}
                     toolbarRefLast={toolbarLastRef}
                 />
-            </div>
-        </div>
+            </Panel>
+        </Panel>
+    );
+}
+
+// ============================================================================
+// URL bar slot helpers
+// ============================================================================
+
+function renderUrlStartSlot(
+    isTor: boolean,
+    torStatus: string,
+    isIncognito: boolean,
+    showSearchEngineSelector: boolean,
+    currentEngineName: string,
+    openEngineMenu: (anchor: Element | null) => void,
+    model: BrowserEditorModel,
+): React.ReactNode {
+    const out: React.ReactNode[] = [];
+    if (isTor) {
+        const dotColor: "success" | "error" | "warning" =
+            torStatus === "connected" ? "success" :
+            torStatus === "error" ? "error" : "warning";
+        out.push(
+            <span
+                key="tor"
+                data-tor-indicator
+                onClick={(e) => { e.stopPropagation(); model.toggleTorOverlay(); }}
+                title="Tor status"
+            >
+                {torStatus === "connecting" ? <Spinner size={14} /> : <TorIcon />}
+                {torStatus !== "connecting" && (
+                    <span data-tor-status-dot><Dot size={6} color={dotColor} /></span>
+                )}
+            </span>,
+        );
+    }
+    if (isIncognito) {
+        out.push(<IncognitoIcon key="incognito" color={color.icon.light} />);
+    }
+    if (showSearchEngineSelector) {
+        out.push(
+            <button
+                key="se"
+                type="button"
+                data-search-engine-chip
+                onClick={(e) => { e.stopPropagation(); openEngineMenu(e.currentTarget); }}
+                title="Change search engine"
+            >
+                {currentEngineName} ▾
+            </button>,
+        );
+    }
+    return out.length ? <>{out}</> : undefined;
+}
+
+function renderUrlEndSlot(
+    onNavigate: () => void,
+    isBookmarked: boolean,
+    onStar: () => void,
+): React.ReactNode {
+    return (
+        <>
+            <IconButton
+                name="url-navigate"
+                size="sm"
+                icon={<ArrowRightIcon />}
+                title="Navigate"
+                onClick={onNavigate}
+            />
+            <IconButton
+                name="url-bookmark-toggle"
+                size="sm"
+                icon={isBookmarked ? <StarFilledIcon /> : <StarIcon />}
+                title={isBookmarked ? "Edit Bookmark" : "Add Bookmark"}
+                active={isBookmarked}
+                onClick={onStar}
+            />
+        </>
     );
 }
 
@@ -472,7 +424,6 @@ function BrowserEditorView({ model }: BrowserEditorViewProps) {
             torStatus: s.torStatus,
             torLog: s.torLog,
             torOverlayVisible: s.torOverlayVisible,
-            // Ephemeral state from sub-models
             urlInput: s.urlInput,
             suggestionsOpen: s.suggestionsOpen,
             hoveredIndex: s.hoveredIndex,
@@ -486,7 +437,6 @@ function BrowserEditorView({ model }: BrowserEditorViewProps) {
             findText: s.findText,
             findActiveMatch: s.findActiveMatch,
             findTotalMatches: s.findTotalMatches,
-            // Included for re-render triggers (used by sub-model computed getters)
             searchEngineId: s.searchEngineId,
             userHasTyped: s.userHasTyped,
             searchEntries: s.searchEntries,
@@ -495,18 +445,15 @@ function BrowserEditorView({ model }: BrowserEditorViewProps) {
 
     const isInitialLoad = useRef(true);
 
-    // IPC event handler lifecycle
     useEffect(() => {
         model.webview.initIpcHandler();
         return () => model.webview.disposeIpcHandler();
     }, [model]);
 
-    // Sync URL input when URL changes externally (navigation, tab switch)
     useEffect(() => {
         model.urlBar.syncFromUrl(url);
     }, [url, model]);
 
-    // Focus URL bar on initial load when URL is blank
     useEffect(() => {
         if (isInitialLoad.current) {
             isInitialLoad.current = false;
@@ -516,7 +463,6 @@ function BrowserEditorView({ model }: BrowserEditorViewProps) {
         }
     }, [url, model]);
 
-    // Navigate active tab's webview when URL changes
     const activeTab = tabs.find((t) => t.id === activeTabId);
     useEffect(() => {
         if (activeTab) {
@@ -524,7 +470,6 @@ function BrowserEditorView({ model }: BrowserEditorViewProps) {
         }
     }, [activeTab?.url, activeTabId, model]);
 
-    // Read computed values from sub-models (re-computed on each render)
     const { urlBar, bookmarksUI, webview } = model;
     const showSearchEngineSelector = urlBar.showSearchEngineSelector;
     const currentEngineName = urlBar.currentEngineName;
@@ -533,181 +478,153 @@ function BrowserEditorView({ model }: BrowserEditorViewProps) {
     const suggestionsItems = urlBar.suggestionsItems;
 
     return (
-        <BrowserEditorViewRoot onKeyDown={webview.handleKeyDown} tabIndex={-1}>
+        <BrowserRoot
+            name="browser-root"
+            direction="column" flex={1} overflow="hidden"
+            onKeyDown={webview.handleKeyDown}
+            tabIndex={-1}
+        >
             <PageToolbar borderBottom>
-                <div className="browser-toolbar-content">
-                    <Button
-                        type="icon"
-                        size="small"
+                <Panel name="browser-toolbar-content" direction="row" align="center" flex={1} gap="xs">
+                    <IconButton
+                        name="toolbar-home"
+                        size="sm"
+                        icon={<HomeIcon />}
                         title={homeUrl ? `Go to ${homeUrl}` : "Home"}
                         onClick={model.goHome}
                         disabled={!homeUrl}
-                    >
-                        <HomeIcon />
-                    </Button>
-                    <Button
-                        type="icon"
-                        size="small"
+                    />
+                    <IconButton
+                        name="toolbar-back"
+                        size="sm"
+                        icon={<ArrowLeftIcon />}
                         title="Back (Alt+Left)"
                         onClick={webview.goBack}
                         disabled={!canGoBack}
-                    >
-                        <ArrowLeftIcon />
-                    </Button>
-                    <Button
-                        type="icon"
-                        size="small"
+                    />
+                    <IconButton
+                        name="toolbar-forward"
+                        size="sm"
+                        icon={<ArrowRightIcon />}
                         title="Forward (Alt+Right)"
                         onClick={webview.goForward}
                         disabled={!canGoForward}
-                    >
-                        <ArrowRightIcon />
-                    </Button>
-                    <Button
-                        type="icon"
-                        size="small"
+                    />
+                    <IconButton
+                        name="toolbar-reload"
+                        size="sm"
+                        icon={loading ? <StopIcon /> : <RefreshIcon />}
                         title={loading ? "Stop" : "Reload"}
                         onClick={webview.reloadOrStop}
-                    >
-                        {loading ? <StopIcon /> : <RefreshIcon />}
-                    </Button>
-                    <WithPopupMenu items={searchEngineMenuItems} offset={[-4, 4]}>
-                    {(openEngineMenu) => (
-                    <TextField
-                        ref={urlBar.setUrlInputRef}
-                        className="url-bar"
-                        value={urlInput}
-                        onChange={urlBar.handleUrlChange}
-                        onKeyDown={urlBar.handleUrlKeyDown}
-                        onFocus={urlBar.handleUrlFocus}
-                        onBlur={urlBar.handleUrlBlur}
-                        onContextMenu={urlBar.handleUrlContextMenu}
-                        placeholder="Enter URL or search term..."
-                        startButtons={(() => {
-                            const btns = [
-                                ...(isTor ? [
-                                    <span
-                                        key="tor"
-                                        className="tor-indicator"
-                                        onClick={(e) => { e.stopPropagation(); model.toggleTorOverlay(); }}
-                                        title="Tor status"
-                                    >
-                                        {torStatus === "connecting" ? (
-                                            <CircularProgress size={14} />
-                                        ) : (
-                                            <TorIcon />
-                                        )}
-                                        {torStatus !== "connecting" && (
-                                            <span className={`tor-status-dot ${torStatus}`} />
-                                        )}
-                                    </span>,
-                                ] : []),
-                                ...(isIncognito ? [
-                                    <IncognitoIcon key="incognito" color={color.icon.light} />,
-                                ] : []),
-                                ...(showSearchEngineSelector ? [
-                                    <span
-                                        key="search-engine"
-                                        className="search-engine-btn"
-                                        onClick={(e) => { e.stopPropagation(); openEngineMenu(e.currentTarget); }}
-                                        title="Change search engine"
-                                    >{currentEngineName} ▾</span>,
-                                ] : []),
-                            ];
-                            return btns.length ? btns : undefined;
-                        })()}
-                        startButtonsWidth={
-                            showSearchEngineSelector
-                                ? (currentEngineName.length * 7 + 20) + (isIncognito ? 20 : 0) + (isTor ? 22 : 0)
-                                : (isTor ? 22 : undefined)
-                        }
-                        endButtons={[
-                            <Button
-                                key="go"
-                                size="small"
-                                type="icon"
-                                title="Navigate"
-                                onClick={urlBar.handleNavigate}
-                            >
-                                <ArrowRightIcon />
-                            </Button>,
-                            <Button
-                                key="star"
-                                size="small"
-                                type="icon"
-                                title={isBookmarked ? "Edit Bookmark" : "Add Bookmark"}
-                                onClick={bookmarksUI.handleStarClick}
-                                style={isBookmarked ? { color: color.misc.blue } : undefined}
-                            >
-                                {isBookmarked ? <StarFilledIcon /> : <StarIcon />}
-                            </Button>,
-                        ]}
                     />
-                    )}
-                    </WithPopupMenu>
-                    <Button
-                        type="icon"
-                        size="small"
+                    <WithMenu name="search-engine-menu" items={searchEngineMenuItems}>
+                        {(openEngineMenu) => (
+                            <Panel name="url-bar" flex={1} data-url-bar="">
+                                <Input
+                                    name="url-input"
+                                    ref={urlBar.setUrlInputRef}
+                                    size="sm"
+                                    value={urlInput}
+                                    onChange={urlBar.handleUrlChange}
+                                    onKeyDown={urlBar.handleUrlKeyDown}
+                                    onFocus={urlBar.handleUrlFocus}
+                                    onBlur={urlBar.handleUrlBlur}
+                                    onContextMenu={urlBar.handleUrlContextMenu}
+                                    placeholder="Enter URL or search term..."
+                                    autoComplete="off"
+                                    startSlot={renderUrlStartSlot(
+                                        isTor, torStatus, isIncognito,
+                                        showSearchEngineSelector, currentEngineName,
+                                        openEngineMenu, model,
+                                    )}
+                                    endSlot={renderUrlEndSlot(
+                                        urlBar.handleNavigate,
+                                        isBookmarked,
+                                        bookmarksUI.handleStarClick,
+                                    )}
+                                />
+                            </Panel>
+                        )}
+                    </WithMenu>
+                    <IconButton
+                        name="toolbar-bookmarks"
+                        size="sm"
+                        icon={<BookmarkIcon />}
                         title="Open Bookmarks"
                         onClick={bookmarksUI.handleOpenBookmarks}
-                    >
-                        <BookmarkIcon />
-                    </Button>
+                    />
                     <DownloadButton />
-                    <WithPopupMenu items={webview.getPageMenuItems()}>
+                    <WithMenu name="page-menu" items={webview.getPageMenuItems()}>
                         {(openMenu) => (
-                            <Button
-                                type="icon"
-                                size="small"
+                            <IconButton
+                                name="toolbar-more"
+                                size="sm"
+                                icon={<MoreVertIcon />}
                                 title="Page Menu"
                                 onClick={(e) => openMenu(e.currentTarget)}
-                            >
-                                <MoreVertIcon />
-                            </Button>
+                            />
                         )}
-                    </WithPopupMenu>
-                    <Button
-                        type="icon"
-                        size="small"
+                    </WithMenu>
+                    <IconButton
+                        name="toolbar-devtools"
+                        size="sm"
+                        icon={<SettingsIcon />}
                         title="Open DevTools"
                         onClick={webview.openDevTools}
-                    >
-                        <SettingsIcon />
-                    </Button>
-                    <Button
-                        type="icon"
-                        size="small"
+                    />
+                    <IconButton
+                        name="toolbar-close"
+                        size="sm"
+                        icon={<CloseIcon />}
                         title="Close Tab"
                         onClick={() => model.closeTab(activeTabId)}
-                    >
-                        <CloseIcon />
-                    </Button>
-                </div>
+                    />
+                </Panel>
             </PageToolbar>
             {loading ? (
-                <div className="loading-bar" />
+                <div data-browser-loading-bar />
             ) : (
-                <div className="loading-bar-placeholder" />
+                <div style={{ height: 2 }} />
             )}
             {blockedPopupCount > 0 && (
-                <div className="popup-blocked-bar">
-                    <span className="popup-blocked-message">
-                        {blockedPopupCount === 1
-                            ? "A popup was blocked on this page"
-                            : `${blockedPopupCount} popups were blocked on this page`}
-                    </span>
-                    <Button size="small" type="flat" onClick={model.allowPopups}>
+                <Panel
+                    name="popup-blocked-bar"
+                    direction="row" align="center" gap="md"
+                    paddingX="md" paddingY="xs"
+                    background="light" borderBottom shrink={false}
+                >
+                    <Panel flex={1}>
+                        <Text size="sm">
+                            {blockedPopupCount === 1
+                                ? "A popup was blocked on this page"
+                                : `${blockedPopupCount} popups were blocked on this page`}
+                        </Text>
+                    </Panel>
+                    <Button
+                        name="popup-allow"
+                        size="sm"
+                        variant="ghost"
+                        onClick={model.allowPopups}
+                    >
                         Allow
                     </Button>
-                    <Button size="small" type="icon" onClick={model.dismissBlockedPopups}>
-                        <CloseIcon />
-                    </Button>
-                </div>
+                    <IconButton
+                        name="popup-dismiss"
+                        size="sm"
+                        icon={<CloseIcon />}
+                        title="Dismiss"
+                        onClick={model.dismissBlockedPopups}
+                    />
+                </Panel>
             )}
-            <div className="browser-body">
-                <div
-                    className="tabs-panel"
-                    style={{ width: tabsPanelWidth }}
+            <Panel
+                name="browser-body"
+                direction="row" flex={1} overflow="hidden" position="relative"
+            >
+                <Panel
+                    name="tabs-panel-host"
+                    shrink={false} overflow="hidden" borderRight
+                    width={tabsPanelWidth}
                 >
                     <BrowserTabsPanel
                         model={model}
@@ -715,17 +632,23 @@ function BrowserEditorView({ model }: BrowserEditorViewProps) {
                         activeTabId={activeTabId}
                         width={tabsPanelWidth}
                     />
-                </div>
+                </Panel>
                 <Splitter
-                    type="vertical"
-                    initialWidth={tabsPanelWidth}
-                    onChangeWidth={model.setTabsPanelWidth}
-                    borderSized="right"
-                    style={{ left: tabsPanelWidth }}
+                    name="tabs-webview-splitter"
+                    orientation="vertical"
+                    value={tabsPanelWidth}
+                    onChange={model.setTabsPanelWidth}
+                    side="before"
+                    min={32}
+                    background="default"
+                    hoverBackground="light"
+                    border="none"
                 />
-                <div className="webview-area">
+                <Panel
+                    name="webview-area"
+                    flex={1} position="relative" overflow="hidden"
+                >
                     <PageManager
-                        className="webview-tabs-host"
                         pageIds={tabs.map((t) => t.id)}
                         activeId={activeTabId}
                         renderPage={(tabId) => {
@@ -753,7 +676,7 @@ function BrowserEditorView({ model }: BrowserEditorViewProps) {
                             torLog={torLog}
                         />
                     )}
-                    {popupOpen && <div className="webview-click-overlay" />}
+                    {popupOpen && <div data-webview-click-overlay />}
                     {findBarVisible && (
                         <FindBar
                             text={findText}
@@ -766,7 +689,7 @@ function BrowserEditorView({ model }: BrowserEditorViewProps) {
                             placeholder="Find in page..."
                         />
                     )}
-                </div>
+                </Panel>
                 {bookmarksReady && model.bookmarks && (
                     <BookmarksDrawer
                         open={bookmarksOpen}
@@ -776,9 +699,9 @@ function BrowserEditorView({ model }: BrowserEditorViewProps) {
                         onClose={bookmarksUI.handleCloseBookmarks}
                     />
                 )}
-            </div>
+            </Panel>
             <UrlSuggestionsDropdown
-                anchorEl={urlBar.urlInputRef?.closest('.url-bar') ?? null}
+                anchorEl={urlBar.urlInputRef?.closest('[data-url-bar]') ?? null}
                 open={suggestionsOpen}
                 items={suggestionsItems}
                 mode={suggestionsMode}
@@ -788,7 +711,7 @@ function BrowserEditorView({ model }: BrowserEditorViewProps) {
                 onSelect={urlBar.handleSuggestionSelect}
                 onClearVisible={suggestionsMode === "search" ? urlBar.handleClearVisible : undefined}
             />
-        </BrowserEditorViewRoot>
+        </BrowserRoot>
     );
 }
 

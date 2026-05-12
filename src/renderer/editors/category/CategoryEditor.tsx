@@ -115,9 +115,10 @@ export function CategoryEditor({ model }: { model: CategoryEditorModel }) {
 
     if (!provider) {
         return (
-            <Panel direction="column" flex={1} overflow="hidden" background="default">
+            <Panel name="category-editor-root" direction="column" flex={1} overflow="hidden" background="default">
                 <PageToolbar borderBottom>
                     <IconButton
+                        name="category-nav-panel"
                         size="sm"
                         title="Navigation Panel"
                         icon={<NavPanelIcon />}
@@ -133,16 +134,17 @@ export function CategoryEditor({ model }: { model: CategoryEditorModel }) {
     }
 
     return (
-        <Panel direction="column" flex={1} overflow="hidden" background="default">
+        <Panel name="category-editor-root" direction="column" flex={1} overflow="hidden" background="default">
             <PageToolbar borderBottom>
                 <IconButton
+                    name="category-nav-panel"
                     size="sm"
                     title="Navigation Panel"
                     icon={<NavPanelIcon />}
                     onClick={handleToggleNavigator}
                 />
                 <Spacer />
-                <Panel direction="row" align="center" gap="xs" ref={setSearchPortal} />
+                <Panel name="category-search-portal" direction="row" align="center" gap="xs" ref={setSearchPortal} />
             </PageToolbar>
             <CategoryView
                 provider={provider}

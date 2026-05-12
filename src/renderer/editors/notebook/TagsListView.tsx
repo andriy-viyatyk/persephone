@@ -257,8 +257,9 @@ export function TagsListView(props: TagsListViewProps) {
     };
 
     return (
-        <Panel direction="column" flex={1} overflow="hidden" width="100%">
+        <Panel name="notebook-tags-list" direction="column" flex={1} overflow="hidden" width="100%">
             <ListBox<TagItem>
+                name="notebook-tags-listbox"
                 items={items}
                 isSelected={isSelected}
                 onChange={(item) => onChange(item.value)}

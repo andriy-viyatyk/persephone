@@ -56,6 +56,7 @@ function SelectInner<T = IListBoxItem>(
     );
 
     const {
+        name,
         placeholder,
         disabled,
         readOnly,
@@ -102,6 +103,7 @@ function SelectInner<T = IListBoxItem>(
         <Root
             ref={model.setRootRef}
             data-type="select"
+            data-name={name}
             data-id={model.selectId}
             data-state={open ? "open" : "closed"}
             data-disabled={disabled || undefined}

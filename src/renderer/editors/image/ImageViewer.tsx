@@ -264,6 +264,7 @@ function ImageViewer({ model }: ImageViewerProps) {
             <Toolbar borderBottom>
                 {(model.page?.canOpenNavigator(model.pipe, filePath) || filePath) && (
                     <IconButton
+                        name="image-nav-panel"
                         size="sm"
                         title="File Explorer"
                         onClick={model.toggleNavigator}
@@ -273,6 +274,7 @@ function ImageViewer({ model }: ImageViewerProps) {
                 <Spacer />
                 {!filePath && url && (
                     <IconButton
+                        name="image-save"
                         size="sm"
                         title="Save Image to File"
                         onClick={model.saveImage}
@@ -280,12 +282,14 @@ function ImageViewer({ model }: ImageViewerProps) {
                     />
                 )}
                 <IconButton
+                    name="image-open-draw"
                     size="sm"
                     title="Open in Drawing Editor"
                     onClick={model.openInDrawingEditor}
                     icon={<DrawIcon />}
                 />
                 <IconButton
+                    name="image-copy"
                     size="sm"
                     title="Copy Image to Clipboard (Ctrl+C)"
                     onClick={model.copyImageToClipboard}

@@ -11,6 +11,9 @@ export interface TagProps
         React.HTMLAttributes<HTMLSpanElement>,
         "style" | "className" | "onClick"
     > {
+    /** Optional debug label emitted as `data-name` on the root element. Use to disambiguate
+     *  multiple instances of this primitive in DOM inspector output. Never used for styling. */
+    name?: string;
     /** Tag label — rendered as the primary content. */
     label: React.ReactNode;
     /** Optional leading element (e.g. a colored dot). */
@@ -122,6 +125,7 @@ const RemoveButton = styled.button(
 // --- Component ---
 
 export function Tag({
+    name,
     label,
     icon,
     onRemove,
@@ -146,6 +150,7 @@ export function Tag({
     return (
         <Root
             data-type="tag"
+            data-name={name}
             data-variant={variant}
             data-size={size}
             data-disabled={disabled || undefined}

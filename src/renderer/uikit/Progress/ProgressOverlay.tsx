@@ -51,7 +51,13 @@ const PillSlot = styled.div<{ topPx: number; clickable?: boolean }>(
 
 type Mode = "notification" | "progress" | "locked";
 
-export function ProgressOverlay() {
+export interface ProgressOverlayProps {
+    /** Optional debug label emitted as `data-name` on the root element. Use to disambiguate
+     *  multiple instances of this primitive in DOM inspector output. Never used for styling. */
+    name?: string;
+}
+
+export function ProgressOverlay({ name }: ProgressOverlayProps = {}) {
     const state = progressState.use();
     const hasNotifications = state.notifications.length > 0;
     const hasProgress = state.items.length > 0;
@@ -60,7 +66,7 @@ export function ProgressOverlay() {
     if (hasNotifications) {
         const item = state.notifications[0];
         return (
-            <Root key={item.id} data-type="progress-overlay" data-mode="notification">
+            <Root key={item.id} data-type="progress-overlay" data-name={name} data-mode="notification">
                 <PillSlot topPx={HEADER_HEIGHT + 20}>
                     <Panel
                         align="center"
@@ -81,7 +87,7 @@ export function ProgressOverlay() {
         const mode: Mode = hasProgress ? "progress" : "locked";
         const item = hasProgress ? state.items[0] : null;
         return (
-            <Root data-type="progress-overlay" data-mode={mode}>
+            <Root data-type="progress-overlay" data-name={name} data-mode={mode}>
                 <HeaderBlock />
                 <ContentBlock />
                 {item && (

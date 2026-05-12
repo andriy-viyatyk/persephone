@@ -113,6 +113,7 @@ export function PropertyEditor({ model }: { model: StorybookEditorModel }) {
     if (!story || visibleProps.length === 0) {
         return (
             <Panel
+                name="storybook-property-editor"
                 data-type="property-editor"
                 direction="column"
                 width={rightPanelWidth}
@@ -129,6 +130,7 @@ export function PropertyEditor({ model }: { model: StorybookEditorModel }) {
 
     return (
         <Panel
+            name="storybook-property-editor"
             data-type="property-editor"
             direction="column"
             width={rightPanelWidth}
@@ -147,6 +149,7 @@ export function PropertyEditor({ model }: { model: StorybookEditorModel }) {
             ))}
             <Panel align="start">
                 <Button
+                    name="storybook-reset-props"
                     variant="ghost"
                     size="sm"
                     onClick={model.resetProps}

@@ -18,6 +18,10 @@ type WordBreak = "normal" | "break-all" | "keep-all" | "break-word";
 
 export interface PanelProps
     extends Omit<React.HTMLAttributes<HTMLDivElement>, "style" | "className"> {
+    /** Optional debug label emitted as `data-name` on the root element. Use to disambiguate
+     *  multiple instances of this primitive in DOM inspector output. Never used for styling. */
+    name?: string;
+
     /** Flex direction. Default: "row" (CSS default). */
     direction?: Direction;
     /** Allow children to wrap. Default: false. */
@@ -228,6 +232,7 @@ export const Panel = React.forwardRef<HTMLDivElement, PanelProps>(function Panel
     ref,
 ) {
     const {
+        name,
         direction = "row",
         wrap,
         flex,
@@ -328,6 +333,7 @@ export const Panel = React.forwardRef<HTMLDivElement, PanelProps>(function Panel
         <Root
             ref={ref}
             data-type="panel"
+            data-name={name}
             data-direction={direction}
             data-bg={background || undefined}
             data-border={border || undefined}

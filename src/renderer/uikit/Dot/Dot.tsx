@@ -18,6 +18,9 @@ export interface DotProps
         React.HTMLAttributes<HTMLSpanElement>,
         "style" | "className" | "color" | "children"
     > {
+    /** Optional debug label emitted as `data-name` on the root element. Use to disambiguate
+     *  multiple instances of this primitive in DOM inspector output. Never used for styling. */
+    name?: string;
     /**
      * Diameter. Named sizes map to common dot sizes used across the app:
      * xs = 6, sm = 8, md = 12, lg = 18. Pass a number for an exact pixel
@@ -100,7 +103,7 @@ const Root = styled.span(
 // --- Component ---
 
 export function Dot(props: DotProps) {
-    const { size = "sm", color: colorProp, bordered, selected, hideUntilParentHover, onClick, ...rest } = props;
+    const { name, size = "sm", color: colorProp, bordered, selected, hideUntilParentHover, onClick, ...rest } = props;
     const d = diameter(size);
     const fill = resolveFill(colorProp);
     const clickable = onClick !== undefined;
@@ -123,6 +126,7 @@ export function Dot(props: DotProps) {
         <Root
             {...rest}
             data-type="dot"
+            data-name={name}
             data-clickable={clickable || undefined}
             data-selected={selected || undefined}
             data-bordered={bordered || undefined}

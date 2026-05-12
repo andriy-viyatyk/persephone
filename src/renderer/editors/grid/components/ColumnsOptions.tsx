@@ -299,6 +299,7 @@ export function ColumnsOptions({ model }: ViewPropsRO<ColumnsOptionsModel>) {
             resizable
         >
             <Panel
+                name="columns-options"
                 direction="column"
                 flex={1}
                 position="relative"
@@ -340,10 +341,10 @@ export function ColumnsOptions({ model }: ViewPropsRO<ColumnsOptionsModel>) {
                             <Text color="error">{state.error}</Text>
                         )}
                         <Spacer />
-                        <Button onClick={() => model.close(undefined)}>
+                        <Button name="columns-options-cancel" onClick={() => model.close(undefined)}>
                             Cancel
                         </Button>
-                        <Button variant="primary" onClick={() => model.applyChanges()}>
+                        <Button name="columns-options-apply" variant="primary" onClick={() => model.applyChanges()}>
                             Apply
                         </Button>
                     </Panel>

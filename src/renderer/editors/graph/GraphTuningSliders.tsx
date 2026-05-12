@@ -56,11 +56,12 @@ function GraphTuningSliders({ vm }: GraphTuningSlidersProps) {
     }, [vm]);
 
     return (
-        <Panel direction="column" gap="xs" paddingX="md" paddingY="sm" borderTop>
+        <Panel name="graph-tuning" direction="column" gap="xs" paddingX="md" paddingY="sm" borderTop>
             {sliders.map((s) => (
                 <Panel key={s.key} direction="row" align="center" gap="md">
                     <span style={labelStyle}>{s.label}</span>
                     <Slider
+                        name={`tuning-${s.key.replace(/([A-Z])/g, "-$1").toLowerCase()}`}
                         size="sm"
                         min={s.min}
                         max={s.max}
@@ -72,7 +73,7 @@ function GraphTuningSliders({ vm }: GraphTuningSlidersProps) {
                 </Panel>
             ))}
             <Panel direction="row" justify="end" paddingTop="xs">
-                <Button size="sm" variant="ghost" onClick={onReset}>Reset</Button>
+                <Button name="tuning-reset" size="sm" variant="ghost" onClick={onReset}>Reset</Button>
             </Panel>
         </Panel>
     );

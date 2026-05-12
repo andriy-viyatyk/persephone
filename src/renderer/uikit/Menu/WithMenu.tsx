@@ -4,6 +4,9 @@ import { Menu } from "./Menu";
 import type { MenuItem } from "./types";
 
 export interface WithMenuProps {
+    /** Optional debug label forwarded to the inner Menu's `data-name`. Use to disambiguate
+     *  multiple menus in DOM inspector output. Never used for styling. */
+    name?: string;
     items: MenuItem[];
     /** Floating-ui placement. Default: "bottom-start". */
     placement?: Placement;
@@ -16,7 +19,7 @@ export interface WithMenuProps {
 
 const DEFAULT_OFFSET: [number, number] = [-4, 4];
 
-export function WithMenu({ items, placement = "bottom-start", offset = DEFAULT_OFFSET, children }: WithMenuProps) {
+export function WithMenu({ name, items, placement = "bottom-start", offset = DEFAULT_OFFSET, children }: WithMenuProps) {
     const [anchor, setAnchor] = useState<Element | null>(null);
     const previousFocusRef = useRef<Element | null>(null);
 
@@ -39,6 +42,7 @@ export function WithMenu({ items, placement = "bottom-start", offset = DEFAULT_O
         <>
             {children(setOpen)}
             <Menu
+                name={name}
                 items={items}
                 open={Boolean(anchor)}
                 elementRef={anchor}

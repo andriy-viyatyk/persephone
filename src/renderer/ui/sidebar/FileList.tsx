@@ -112,8 +112,9 @@ export const FileList = forwardRef<FileListRef, FileListProps>(
         return (
             <FileListWrapper ref={rootRef} tabIndex={0} onKeyDown={onKeyDown}>
                 {searchVisible && (
-                    <Panel padding="sm">
+                    <Panel name="file-list-search" padding="sm">
                         <Input
+                            name="file-list-search-input"
                             ref={searchInputRef}
                             value={searchText}
                             onChange={setSearchText}
@@ -123,6 +124,7 @@ export const FileList = forwardRef<FileListRef, FileListProps>(
                             endSlot={
                                 searchText ? (
                                     <IconButton
+                                        name="file-list-search-clear"
                                         icon={<CloseIcon />}
                                         title="Clear Search"
                                         size="sm"
@@ -134,6 +136,7 @@ export const FileList = forwardRef<FileListRef, FileListProps>(
                     </Panel>
                 )}
                 <ListBox<FileListItem>
+                    name="file-list"
                     items={tItems}
                     searchText={searchText || undefined}
                     rowHeight={22}

@@ -31,6 +31,9 @@ type GapSize = "xs" | "sm" | "md" | "lg" | "xl";
 type Orientation = "horizontal" | "vertical";
 
 export interface RadioGroupProps {
+    /** Optional debug label emitted as `data-name` on the root element. Use to disambiguate
+     *  multiple instances of this primitive in DOM inspector output. Never used for styling. */
+    name?: string;
     items: IRadio[] | Traited<unknown[]>;
     value: string;
     onChange: (value: string) => void;
@@ -114,6 +117,7 @@ const Item = styled.button(
 // --- Component ---
 
 export function RadioGroup({
+    name,
     items,
     value,
     onChange,
@@ -208,6 +212,7 @@ export function RadioGroup({
             ref={rootRef}
             role="radiogroup"
             data-type="radio-group"
+            data-name={name}
             data-orientation={orientation}
             data-disabled={disabled || undefined}
             data-roving-host=""

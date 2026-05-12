@@ -185,6 +185,7 @@ export function PageTabs(props: object) {
         <PageTabsRoot data-type="page-tabs" className="page-tabs">
             {tabsState.showScrollButtons && (
                 <IconButton
+                    name="page-tabs-scroll-left"
                     size="sm"
                     onClick={model.scrollLeft}
                     icon={<ArrowLeftIcon />}
@@ -212,6 +213,7 @@ export function PageTabs(props: object) {
             </div>
             {tabsState.showScrollButtons && (
                 <IconButton
+                    name="page-tabs-scroll-right"
                     size="sm"
                     onClick={model.scrollRight}
                     icon={<ArrowRightIcon />}
@@ -219,6 +221,7 @@ export function PageTabs(props: object) {
             )}
             <div className="add-page-split">
                 <IconButton
+                    name="page-tabs-add"
                     data-part="add-page-main"
                     size="md"
                     title="Add Page (Ctrl+N)"
@@ -229,6 +232,7 @@ export function PageTabs(props: object) {
                 <WithMenu items={addPageMenuItems}>
                     {(setOpen) => (
                         <IconButton
+                            name="page-tabs-add-menu"
                             data-part="add-page-dropdown"
                             size="sm"
                             title="New editor page"

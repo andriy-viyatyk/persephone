@@ -41,8 +41,9 @@ export function DownloadButton() {
     };
 
     return (
-        <Panel position="relative" align="center" justify="center" data-downloads-button>
+        <Panel name="downloads-button" position="relative" align="center" justify="center" data-downloads-button>
             <IconButton
+                name="toolbar-downloads"
                 ref={buttonRef}
                 size="sm"
                 title="Downloads"

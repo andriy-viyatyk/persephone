@@ -1,93 +1,26 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import styled from "@emotion/styled";
-import clsx from "clsx";
-import color from "../../theme/color";
-import { Splitter } from "../../components/layout/Splitter";
+import { Panel, Splitter } from "../../uikit";
 import { LinkEditor } from "../link-editor/LinkEditor";
 import { BrowserBookmarks } from "./BrowserBookmarks";
 
 // =============================================================================
-// Styles
+// Styled — single styled(Panel) wrapper for drawer backdrop + slide-in animation
+// (Rule 7 exception)
 // =============================================================================
 
-const BookmarksDrawerRoot = styled.div({
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 6,
-    display: "none",
-    "&.doDisplay": {
-        display: "flex",
-    },
-
-    // Backdrop
-    "& .bookmarks-backdrop": {
+const BookmarksDrawerRoot = styled(Panel)({
+    "[data-bookmarks-backdrop]": {
         flex: "1 1 auto",
         backgroundColor: "rgba(0, 0, 0, 0.3)",
     },
-
-    // Drawer panel (slides in from right)
-    "& .bookmarks-panel": {
-        display: "flex",
-        flexDirection: "column",
+    "[data-bookmarks-panel-wrap]": {
         height: "100%",
-        backgroundColor: color.background.default,
-        borderLeft: `1px solid ${color.border.default}`,
         transform: "translateX(100%)",
         transition: "transform 80ms ease-in-out",
-        overflow: "hidden",
     },
-    "&.open .bookmarks-panel": {
+    "&[data-open] [data-bookmarks-panel-wrap]": {
         transform: "translateX(0)",
-    },
-
-    // Toolbar area with portal placeholders
-    "& .bookmarks-toolbar": {
-        display: "flex",
-        alignItems: "center",
-        gap: 4,
-        padding: "4px 8px",
-        borderBottom: `1px solid ${color.border.default}`,
-        backgroundColor: color.background.dark,
-        minHeight: 32,
-        flexShrink: 0,
-    },
-    "& .bookmarks-toolbar-placeholder": {
-        display: "flex",
-        alignItems: "center",
-        gap: 4,
-    },
-
-    "& .bookmarks-editor-container": {
-        flex: "1 1 auto",
-        display: "flex",
-        overflow: "hidden",
-    },
-
-    // Footer area with portal placeholder
-    "& .bookmarks-footer": {
-        display: "flex",
-        alignItems: "center",
-        gap: 4,
-        padding: "2px 8px",
-        borderTop: `1px solid ${color.border.default}`,
-        backgroundColor: color.background.dark,
-        minHeight: 22,
-        flexShrink: 0,
-        fontSize: 11,
-        color: color.text.light,
-    },
-    "& .bookmarks-footer-placeholder": {
-        display: "flex",
-        alignItems: "center",
-        gap: 4,
-    },
-
-    // Splitter between backdrop and drawer panel
-    "& > .splitter": {
-        flexShrink: 0,
     },
 });
 
@@ -114,7 +47,6 @@ export function BookmarksDrawer({
     const rootRef = useRef<HTMLDivElement>(null);
     const panelRef = useRef<HTMLDivElement>(null);
 
-    // Compute initial width (60% of container) on first open
     useEffect(() => {
         if (open && width === 0 && rootRef.current) {
             const containerWidth = rootRef.current.offsetWidth;
@@ -122,7 +54,6 @@ export function BookmarksDrawer({
         }
     }, [open, width, onChangeWidth]);
 
-    // Trigger slide-in animation after mount
     useEffect(() => {
         if (open) {
             const timer = setTimeout(() => setIsAnimating(true), 10);
@@ -133,12 +64,10 @@ export function BookmarksDrawer({
         }
     }, [open]);
 
-    // Portal placeholder refs — passed directly to LinkEditor via props
     const [toolbarFirstRef, setToolbarFirstRef] = useState<HTMLDivElement | null>(null);
     const [toolbarLastRef, setToolbarLastRef] = useState<HTMLDivElement | null>(null);
     const [footerLastRef, setFooterLastRef] = useState<HTMLDivElement | null>(null);
 
-    // Close on Escape key
     const handleKeyDown = useCallback(
         (e: React.KeyboardEvent) => {
             if (e.key === "Escape") {
@@ -152,40 +81,74 @@ export function BookmarksDrawer({
 
     return (
         <BookmarksDrawerRoot
+            name="bookmarks-drawer-root"
             ref={rootRef}
-            className={clsx({ open: isAnimating, doDisplay: open })}
+            position="absolute" top={0} right={0} bottom={0} left={0} zIndex={6}
+            direction="row"
+            data-open={isAnimating || undefined}
             onKeyDown={handleKeyDown}
             tabIndex={-1}
         >
-            <div className="bookmarks-backdrop" onClick={onClose} />
+            <div data-bookmarks-backdrop onClick={onClose} />
             <Splitter
-                type="vertical"
-                initialWidth={width}
-                onChangeWidth={onChangeWidth}
-                borderSized="left"
+                name="bookmarks-splitter"
+                orientation="vertical"
+                value={width}
+                onChange={onChangeWidth}
+                side="after"
+                background="default"
+                hoverBackground="light"
+                border="none"
             />
-            <div
-                ref={panelRef}
-                className="bookmarks-panel"
-                style={{ width, maxWidth: "90%" }}
-            >
-                <div className="bookmarks-toolbar">
-                    <div className="bookmarks-toolbar-placeholder" ref={setToolbarFirstRef} />
-                    <div style={{ flex: 1 }} />
-                    <div className="bookmarks-toolbar-placeholder" ref={setToolbarLastRef} />
-                </div>
-                <div className="bookmarks-editor-container">
-                    <LinkEditor
-                        model={bookmarks.textModel}
-                        swapLayout
-                        toolbarRefFirst={toolbarFirstRef}
-                        toolbarRefLast={toolbarLastRef}
-                        footerRefLast={footerLastRef}
-                    />
-                </div>
-                <div className="bookmarks-footer">
-                    <div className="bookmarks-footer-placeholder" ref={setFooterLastRef} />
-                </div>
+            <div data-bookmarks-panel-wrap style={{ width, maxWidth: "90%" }}>
+                <Panel
+                    name="bookmarks-panel"
+                    ref={panelRef}
+                    direction="column" background="default" borderLeft
+                    height="100%" overflow="hidden"
+                >
+                    <Panel
+                        name="bookmarks-toolbar"
+                        direction="row" align="center" gap="xs"
+                        paddingX="md" paddingY="xs"
+                        background="dark" borderBottom
+                        shrink={false} minHeight={32}
+                    >
+                        <Panel
+                            name="bookmarks-toolbar-first"
+                            ref={setToolbarFirstRef}
+                            direction="row" align="center" gap="xs"
+                        />
+                        <Panel flex={1} />
+                        <Panel
+                            name="bookmarks-toolbar-last"
+                            ref={setToolbarLastRef}
+                            direction="row" align="center" gap="xs"
+                        />
+                    </Panel>
+                    <Panel name="bookmarks-editor-host" flex={1} overflow="hidden">
+                        <LinkEditor
+                            model={bookmarks.textModel}
+                            swapLayout
+                            toolbarRefFirst={toolbarFirstRef}
+                            toolbarRefLast={toolbarLastRef}
+                            footerRefLast={footerLastRef}
+                        />
+                    </Panel>
+                    <Panel
+                        name="bookmarks-footer"
+                        direction="row" align="center" gap="xs"
+                        paddingX="md" paddingY="xs"
+                        background="dark" borderTop
+                        shrink={false} minHeight={22}
+                    >
+                        <Panel
+                            name="bookmarks-footer-last"
+                            ref={setFooterLastRef}
+                            direction="row" align="center" gap="xs"
+                        />
+                    </Panel>
+                </Panel>
             </div>
         </BookmarksDrawerRoot>
     );

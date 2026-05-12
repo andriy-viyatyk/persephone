@@ -61,6 +61,7 @@ export function CsvOptions({ model }: ViewPropsRO<CsvOptionsModel>) {
             placement="bottom-end"
         >
             <Panel
+                name="csv-options"
                 direction="column"
                 align="start"
                 gap="sm"

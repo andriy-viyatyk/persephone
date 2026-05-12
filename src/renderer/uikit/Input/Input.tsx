@@ -7,6 +7,9 @@ import { fontSize, height, spacing, radius } from "../tokens";
 
 export interface InputProps
     extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "onChange" | "size"> {
+    /** Optional debug label emitted as `data-name` on the root element. Use to disambiguate
+     *  multiple instances of this primitive in DOM inspector output. Never used for styling. */
+    name?: string;
     /** Change handler — receives the string value directly, not the event. */
     onChange?: (value: string) => void;
     /** Control height. Default: "md". */
@@ -138,7 +141,7 @@ const Slot = styled.div(
 export const Input = React.forwardRef<HTMLInputElement, InputProps>(
     function Input(
         {
-            onChange, size = "md", variant = "default", disabled, readOnly, startSlot, endSlot,
+            name, onChange, size = "md", variant = "default", disabled, readOnly, startSlot, endSlot,
             width, minWidth, maxWidth,
             ...rest
         },
@@ -159,6 +162,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
         return (
             <Wrapper
                 data-type="input"
+                data-name={name}
                 data-size={size}
                 data-variant={variant}
                 data-disabled={disabled || undefined}

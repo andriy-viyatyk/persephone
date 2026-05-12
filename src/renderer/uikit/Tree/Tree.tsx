@@ -76,6 +76,7 @@ function TreeView<T = ITreeItem>(
     );
 
     const {
+        name,
         searchText,
         renderItem,
         keyboardNav = false,
@@ -243,6 +244,7 @@ function TreeView<T = ITreeItem>(
             <Root
                 id={rootId}
                 data-type="tree"
+                data-name={name}
                 data-loading=""
                 onContextMenu={model.onRootContextMenu}
                 {...rest}
@@ -259,6 +261,7 @@ function TreeView<T = ITreeItem>(
             <Root
                 id={rootId}
                 data-type="tree"
+                data-name={name}
                 data-empty=""
                 onContextMenu={model.onRootContextMenu}
                 {...rest}
@@ -277,6 +280,7 @@ function TreeView<T = ITreeItem>(
         <Root
             id={rootId}
             data-type="tree"
+            data-name={name}
             role="tree"
             tabIndex={keyboardNav ? 0 : -1}
             aria-activedescendant={activeId}

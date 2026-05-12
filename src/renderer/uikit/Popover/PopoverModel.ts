@@ -31,6 +31,9 @@ export interface PopoverPosition {
 export interface PopoverProps
     extends Omit<React.HTMLAttributes<HTMLDivElement>, "style" | "className">,
         PopoverPosition {
+    /** Optional debug label emitted as `data-name` on the popover's floating root.
+     *  Use to disambiguate multiple instances in DOM inspector output. Never used for styling. */
+    name?: string;
     /** Whether the popover is rendered. When false, no DOM is mounted. */
     open: boolean;
     /** Called on click-outside or Escape. */

@@ -436,10 +436,11 @@ function VideoPlayerEditor({ model }: VideoPlayerEditorProps) {
     const showVlcButton = url && !["loading", "playing", "stopped"].includes(playerState);
 
     return (
-        <Panel direction="column" height="100%" background="dark" overflow="hidden">
+        <Panel name="video-player" direction="column" height="100%" background="dark" overflow="hidden">
             <PageToolbar borderBottom>
                 {(model.page?.canOpenNavigator(null, filePath) || filePath) && (
                     <IconButton
+                        name="video-nav-panel"
                         size="sm"
                         icon={<NavPanelIcon />}
                         title="File Explorer"
@@ -457,6 +458,7 @@ function VideoPlayerEditor({ model }: VideoPlayerEditorProps) {
                     }}
                 >
                     <Textarea
+                        name="video-url-input"
                         value={inputText}
                         onChange={model.setInputText}
                         placeholder="Enter video URL or paste cURL command... (Ctrl+Enter to play)"
@@ -466,7 +468,7 @@ function VideoPlayerEditor({ model }: VideoPlayerEditorProps) {
                     />
                 </Panel>
             </PageToolbar>
-            <Panel direction="column" flex={1} align="center" justify="center" position="relative" overflow="hidden">
+            <Panel name="video-player-area" direction="column" flex={1} align="center" justify="center" position="relative" overflow="hidden">
                 {url && (
                     <VPlayer
                         src={streamUrl}
@@ -491,7 +493,7 @@ function VideoPlayerEditor({ model }: VideoPlayerEditorProps) {
                 )}
                 {showVlcButton && (
                     <div style={vlcButtonContainerStyle}>
-                        <Button variant="link" icon={<VlcIcon />} onClick={model.openInVlc}>
+                        <Button name="video-open-vlc" variant="link" icon={<VlcIcon />} onClick={model.openInVlc}>
                             Open in VLC
                         </Button>
                     </div>

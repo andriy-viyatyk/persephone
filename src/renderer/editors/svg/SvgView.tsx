@@ -49,6 +49,7 @@ function SvgView({ model }: SvgViewProps) {
                 createPortal(
                     <>
                         <IconButton
+                            name="svg-open-draw"
                             size="sm"
                             title="Open in Drawing Editor"
                             onClick={async () => {
@@ -63,6 +64,7 @@ function SvgView({ model }: SvgViewProps) {
                             icon={<DrawIcon />}
                         />
                         <IconButton
+                            name="svg-copy"
                             size="sm"
                             title="Copy Image to Clipboard (Ctrl+C)"
                             onClick={() => imageRef.current?.copyToClipboard()}

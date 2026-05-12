@@ -59,7 +59,7 @@ function OpenUrlDialog({ model }: ViewPropsRO<OpenUrlDialogModel>) {
     const isEmpty = !state.value?.trim();
 
     return (
-        <Dialog onKeyDown={model.handleKeyDown} autoFocus={false}>
+        <Dialog name="open-url-dialog" onKeyDown={model.handleKeyDown} autoFocus={false}>
             <DialogContent
                 title="Open"
                 icon={<OpenFileIcon />}
@@ -69,6 +69,7 @@ function OpenUrlDialog({ model }: ViewPropsRO<OpenUrlDialogModel>) {
             >
                 <Panel direction="column" paddingX="xxl" paddingTop="xl" paddingBottom="sm">
                     <Textarea
+                        name="open-url-input"
                         ref={textRef}
                         value={state.value}
                         onChange={model.setValue}
@@ -79,14 +80,14 @@ function OpenUrlDialog({ model }: ViewPropsRO<OpenUrlDialogModel>) {
                     />
                 </Panel>
                 <Panel direction="row" align="center" justify="between" padding="md">
-                    <Button icon={<OpenFileIcon />} onClick={model.openFile}>
+                    <Button name="open-url-file" icon={<OpenFileIcon />} onClick={model.openFile}>
                         Open File
                     </Button>
                     <Panel direction="row" gap="sm">
-                        <Button onClick={() => model.close(undefined)}>
+                        <Button name="open-url-cancel" onClick={() => model.close(undefined)}>
                             Cancel
                         </Button>
-                        <Button onClick={model.submit} disabled={isEmpty}>
+                        <Button name="open-url-submit" onClick={model.submit} disabled={isEmpty}>
                             Open
                         </Button>
                     </Panel>

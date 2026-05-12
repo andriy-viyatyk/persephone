@@ -6,6 +6,9 @@ import color from "../../theme/color";
 
 export interface SplitterProps
     extends Omit<React.HTMLAttributes<HTMLDivElement>, "style" | "className" | "onChange"> {
+    /** Optional debug label emitted as `data-name` on the root element. Use to disambiguate
+     *  multiple instances of this primitive in DOM inspector output. Never used for styling. */
+    name?: string;
     /** Bar direction. "vertical" = vertical bar (resizes width); "horizontal" = horizontal bar (resizes height). Default: "vertical". */
     orientation?: "vertical" | "horizontal";
 
@@ -105,6 +108,7 @@ const Root = styled.div(
 // --- Component ---
 
 export function Splitter({
+    name,
     orientation = "vertical",
     value,
     onChange,
@@ -148,6 +152,7 @@ export function Splitter({
     return (
         <Root
             data-type="splitter"
+            data-name={name}
             data-orientation={orientation}
             data-side={side}
             data-border={border}

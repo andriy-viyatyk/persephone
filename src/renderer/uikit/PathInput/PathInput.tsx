@@ -74,6 +74,7 @@ export const PathInput = forwardRef<HTMLInputElement, PathInputProps>(function P
     );
 
     const {
+        name,
         value,
         separator,
         placeholder,
@@ -100,6 +101,7 @@ export const PathInput = forwardRef<HTMLInputElement, PathInputProps>(function P
     return (
         <Root
             data-type="path-input"
+            data-name={name}
             data-state={open ? "open" : "closed"}
             data-disabled={disabled || undefined}
             data-readonly={readOnly || undefined}

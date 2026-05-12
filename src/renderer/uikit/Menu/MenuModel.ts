@@ -17,6 +17,9 @@ export const MAX_HEIGHT = 500;
 // =============================================================================
 
 export interface MenuProps extends PopoverPosition {
+    /** Optional debug label emitted as `data-name` on the menu's floating root.
+     *  Use to disambiguate multiple instances in DOM inspector output. Never used for styling. */
+    name?: string;
     items: MenuItem[];
     open: boolean;
     /** Called after the user clicks a leaf item OR after Escape / click-outside.

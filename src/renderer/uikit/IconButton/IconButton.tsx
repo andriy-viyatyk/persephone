@@ -7,6 +7,10 @@ import { Tooltip } from "../Tooltip/Tooltip";
 // --- Types ---
 
 export interface IconButtonProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "title"> {
+    /** Optional debug label emitted as `data-name` on the root element. Use to disambiguate
+     *  multiple instances of this primitive in DOM inspector output. Never used for styling.
+     *  Recommended on every IconButton — the `<svg>` child gives no clue about the action. */
+    name?: string;
     /**
      * When set, the IconButton is wrapped in a UIKit `<Tooltip>` displaying this content on
      * hover/focus. Especially valuable for IconButtons since they have no visible label to
@@ -135,11 +139,12 @@ const Root = styled.button(
 // --- Component ---
 
 export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
-    function IconButton({ icon, size = "md", variant = "default", active, disabled, title, hideUntilParentHover, strikethrough, ...rest }, ref) {
+    function IconButton({ name, icon, size = "md", variant = "default", active, disabled, title, hideUntilParentHover, strikethrough, ...rest }, ref) {
         const button = (
             <Root
                 ref={ref}
                 data-type="icon-button"
+                data-name={name}
                 data-size={size}
                 data-variant={variant}
                 data-active={active || undefined}

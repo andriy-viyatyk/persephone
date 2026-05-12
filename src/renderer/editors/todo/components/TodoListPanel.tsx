@@ -199,8 +199,9 @@ export function TodoListPanel({ pageModel, lists, selectedList, listCounts, tags
     };
 
     return (
-        <Panel direction="column" overflow="hidden" flex={1}>
+        <Panel name="todo-list-panel" direction="column" overflow="hidden" flex={1}>
             <Panel
+                name="todo-new-list-row"
                 direction="row"
                 gap="xs"
                 paddingX="sm"
@@ -210,12 +211,14 @@ export function TodoListPanel({ pageModel, lists, selectedList, listCounts, tags
                 background="default"
             >
                 <Input
+                    name="todo-new-list"
                     value={newListName}
                     onChange={setNewListName}
                     onKeyDown={handleAddListKeyDown}
                     placeholder="New list..."
                 />
                 <IconButton
+                    name="todo-add-list"
                     size="sm"
                     icon={<PlusIcon />}
                     title="Add list"
@@ -224,7 +227,7 @@ export function TodoListPanel({ pageModel, lists, selectedList, listCounts, tags
                 />
             </Panel>
 
-            <Panel direction="column" flex={1} overflowY="auto" overflowX="hidden">
+            <Panel name="todo-lists-body" direction="column" flex={1} overflowY="auto" overflowX="hidden">
                 <div style={SECTION_LABEL_STYLE}>Lists</div>
 
                 <RowShell
@@ -346,6 +349,7 @@ export function TodoListPanel({ pageModel, lists, selectedList, listCounts, tags
             </Panel>
 
             <Panel
+                name="todo-new-tag-row"
                 direction="row"
                 gap="xs"
                 paddingX="sm"
@@ -355,12 +359,14 @@ export function TodoListPanel({ pageModel, lists, selectedList, listCounts, tags
                 background="default"
             >
                 <Input
+                    name="todo-new-tag"
                     value={newTagName}
                     onChange={setNewTagName}
                     onKeyDown={handleAddTagKeyDown}
                     placeholder="New tag..."
                 />
                 <IconButton
+                    name="todo-add-tag"
                     size="sm"
                     icon={<PlusIcon />}
                     title="Add tag"

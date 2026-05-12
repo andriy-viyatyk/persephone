@@ -233,7 +233,7 @@ export function VPlayer({
     const isAudio = format === "audio";
 
     return (
-        <VideoRoot position="absolute" top={0} right={0} bottom={0} left={0} data-empty={src ? undefined : ""}>
+        <VideoRoot name="vplayer-root" position="absolute" top={0} right={0} bottom={0} left={0} data-empty={src ? undefined : ""}>
             {src && isHls && (
                 <HlsPlayer
                     src={src}

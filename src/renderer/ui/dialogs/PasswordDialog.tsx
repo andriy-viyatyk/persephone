@@ -66,7 +66,7 @@ function PasswordDialog({ model }: ViewPropsRO<PasswordDialogModel>) {
     );
 
     return (
-        <Dialog onKeyDown={model.handleKeyDown} autoFocus={false}>
+        <Dialog name="password-dialog" onKeyDown={model.handleKeyDown} autoFocus={false}>
             <DialogContent
                 title={isDecrypt ? "Decrypt File" : "Encrypt File"}
                 icon={<LockIcon />}
@@ -78,6 +78,7 @@ function PasswordDialog({ model }: ViewPropsRO<PasswordDialogModel>) {
                     <Panel direction="column" gap="xs">
                         <Label>Password</Label>
                         <Input
+                            name="password-dialog-password"
                             type="password"
                             value={password}
                             onChange={setPassword}
@@ -89,6 +90,7 @@ function PasswordDialog({ model }: ViewPropsRO<PasswordDialogModel>) {
                         <Panel direction="column" gap="xs">
                             <Label>Confirm Password</Label>
                             <Input
+                                name="password-dialog-confirm"
                                 type="password"
                                 value={confirm}
                                 onChange={setConfirm}
@@ -101,10 +103,10 @@ function PasswordDialog({ model }: ViewPropsRO<PasswordDialogModel>) {
                     )}
                 </Panel>
                 <Panel direction="row" justify="end" gap="sm" padding="md">
-                    <Button onClick={doSubmit}>
+                    <Button name="password-submit" onClick={doSubmit}>
                         {isDecrypt ? "Decrypt" : "Encrypt"}
                     </Button>
-                    <Button onClick={() => model.close(undefined)}>
+                    <Button name="password-cancel" onClick={() => model.close(undefined)}>
                         Cancel
                     </Button>
                 </Panel>

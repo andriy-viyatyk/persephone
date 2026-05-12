@@ -34,6 +34,7 @@ export default function SearchSecondaryEditor({ model: rawModel, headerRef }: Se
             </Text>
             <Spacer />
             <IconButton
+                name="search-secondary-close"
                 size="sm"
                 title="Close Search"
                 icon={<CloseIcon />}

@@ -1114,8 +1114,9 @@ function SettingsPage(_props: SettingsEditorProps) {
     );
 
     return (
-        <Panel direction="column" align="center" padding="xxxl">
+        <Panel name="settings-root" direction="column" align="center" padding="xxxl">
             <Panel
+                name="settings-content"
                 direction="column"
                 width="100%"
                 maxWidth={560}
@@ -1193,7 +1194,7 @@ function SettingsPage(_props: SettingsEditorProps) {
 
                     <Panel paddingY="xl"><Divider /></Panel>
 
-                    <Button variant="link" size="sm" background="light" onClick={handleOpenSettingsFile}>
+                    <Button name="settings-view-file" variant="link" size="sm" background="light" onClick={handleOpenSettingsFile}>
                     View Settings File
                 </Button>
             </Panel>

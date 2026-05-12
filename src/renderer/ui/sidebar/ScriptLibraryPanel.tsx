@@ -34,11 +34,13 @@ export function ScriptLibraryPanel(props: ScriptLibraryPanelProps) {
     if (!libraryPath || !provider) {
         return (
             <Panel
+                name="sidebar-script-library"
                 direction="column"
                 height="100%"
                 data-type="script-library-panel"
             >
                 <Panel
+                    name="script-library-setup-pane"
                     direction="column"
                     align="center"
                     justify="center"
@@ -47,6 +49,7 @@ export function ScriptLibraryPanel(props: ScriptLibraryPanelProps) {
                     flex
                 >
                     <Button
+                        name="script-library-setup"
                         background="dark"
                         icon={<FolderOpenIcon />}
                         onClick={handleSelectFolder}
@@ -62,7 +65,7 @@ export function ScriptLibraryPanel(props: ScriptLibraryPanelProps) {
     }
 
     return (
-        <Panel direction="column" height="100%" data-type="script-library-panel">
+        <Panel name="sidebar-script-library" direction="column" height="100%" data-type="script-library-panel">
             <TreeProviderView
                 ref={props.explorerRef}
                 key={libraryPath}

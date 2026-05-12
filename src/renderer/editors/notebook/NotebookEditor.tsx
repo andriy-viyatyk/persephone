@@ -135,6 +135,7 @@ export function NotebookEditor({ model }: NotebookEditorProps) {
                 createPortal(
                     pageState.expandedPanel === "tags" ? (
                         <Breadcrumb
+                            name="notebook-breadcrumb"
                             rootLabel="Tags"
                             value={pageState.selectedTag}
                             onChange={vm.setSelectedTag}
@@ -144,6 +145,7 @@ export function NotebookEditor({ model }: NotebookEditorProps) {
                         />
                     ) : (
                         <Breadcrumb
+                            name="notebook-breadcrumb"
                             rootLabel="Categories"
                             value={pageState.selectedCategory}
                             onChange={vm.setSelectedCategory}
@@ -156,6 +158,7 @@ export function NotebookEditor({ model }: NotebookEditorProps) {
                 createPortal(
                     <>
                         <Button
+                            name="notebook-add-note"
                             variant="primary"
                             size="sm"
                             icon={<PlusIcon />}
@@ -165,6 +168,7 @@ export function NotebookEditor({ model }: NotebookEditorProps) {
                             Add Note
                         </Button>
                         <Input
+                            name="notebook-search"
                             size="sm"
                             value={pageState.searchText}
                             onChange={vm.setSearchText}
@@ -172,6 +176,7 @@ export function NotebookEditor({ model }: NotebookEditorProps) {
                             endSlot={
                                 pageState.searchText ? (
                                     <IconButton
+                                        name="notebook-search-clear"
                                         size="sm"
                                         icon={<CloseIcon />}
                                         title="Clear search"
@@ -183,8 +188,9 @@ export function NotebookEditor({ model }: NotebookEditorProps) {
                     </>,
                     model.editorToolbarRefLast
                 )}
-            <Panel direction="row" flex={1} overflow="hidden">
+            <Panel name="notebook-body" direction="row" flex={1} overflow="hidden">
                 <CollapsiblePanelStack
+                    name="notebook-left-panel"
                     activePanel={pageState.expandedPanel}
                     setActivePanel={vm.setExpandedPanel}
                     width={pageState.leftPanelWidth}
@@ -200,8 +206,9 @@ export function NotebookEditor({ model }: NotebookEditorProps) {
                         />
                     </CollapsiblePanel>
                     <CollapsiblePanel id="categories" title="Categories">
-                        <Panel direction="column" flex={1} overflow="hidden" paddingLeft="sm">
+                        <Panel name="notebook-categories-pane" direction="column" flex={1} overflow="hidden" paddingLeft="sm">
                             <Tree<CategoryItem>
+                                name="notebook-categories-tree"
                                 items={categoryTreeItems}
                                 isSelected={isCategorySelected}
                                 onChange={(item) => vm.categoryItemClick(item)}
@@ -220,6 +227,7 @@ export function NotebookEditor({ model }: NotebookEditorProps) {
                     </CollapsiblePanel>
                 </CollapsiblePanelStack>
                 <Splitter
+                    name="notebook-splitter"
                     orientation="vertical"
                     value={pageState.leftPanelWidth}
                     onChange={vm.setLeftPanelWidth}
@@ -228,6 +236,7 @@ export function NotebookEditor({ model }: NotebookEditorProps) {
                 />
                 <HighlightedTextProvider value={pageState.searchText}>
                     <Panel
+                        name="notebook-notes-list"
                         direction="column"
                         flex={1}
                         overflow="hidden"

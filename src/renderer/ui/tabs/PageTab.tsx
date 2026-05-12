@@ -642,6 +642,7 @@ export function PageTab(props: PageTabProps) {
                 <WithMenu items={languageMenuItems}>
                     {(setOpen) => (
                         <IconButton
+                            name="tab-language"
                             size="sm"
                             title={language}
                             icon={<LanguageIcon language={language} fileName={title} />}
@@ -679,6 +680,7 @@ export function PageTab(props: PageTabProps) {
             </Tooltip>
             {showSoundButton && (
                 <IconButton
+                    name="tab-sound"
                     size="sm"
                     data-part="sound-button"
                     active={(_anyTabAudible || _pageMuted) || undefined}
@@ -692,6 +694,7 @@ export function PageTab(props: PageTabProps) {
                 />
             )}
             <IconButton
+                name="tab-close"
                 size="sm"
                 data-part="close-button"
                 title={tabModel.isGrouped ? "Ungroup" : "Close Page"}

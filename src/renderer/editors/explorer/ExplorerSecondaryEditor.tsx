@@ -95,6 +95,7 @@ export default function ExplorerSecondaryEditor({ model: rawModel, headerRef }: 
             <Spacer />
             {provider?.navigable && (
                 <IconButton
+                    name="explorer-up"
                     size="sm"
                     title={canNavigateUp ? `Up to ${fpBasename(parentPath)}` : "Already at root"}
                     disabled={!canNavigateUp}
@@ -103,24 +104,28 @@ export default function ExplorerSecondaryEditor({ model: rawModel, headerRef }: 
                 />
             )}
             <IconButton
+                name="explorer-search"
                 size="sm"
                 title="Search"
                 icon={<SearchIcon />}
                 onClick={(e) => { e.stopPropagation(); model.openSearch(); }}
             />
             <IconButton
+                name="explorer-collapse-all"
                 size="sm"
                 title="Collapse All"
                 icon={<CollapseAllIcon />}
                 onClick={(e) => { e.stopPropagation(); treeProviderRef.current?.collapseAll(); }}
             />
             <IconButton
+                name="explorer-refresh"
                 size="sm"
                 title="Refresh"
                 icon={<RefreshIcon />}
                 onClick={(e) => { e.stopPropagation(); treeProviderRef.current?.refresh(); }}
             />
             <IconButton
+                name="explorer-close"
                 size="sm"
                 title="Close Panel"
                 icon={<CloseIcon />}

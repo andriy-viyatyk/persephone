@@ -61,6 +61,7 @@ export function FindBar(props: FindBarProps) {
 
     return (
         <Panel
+            name="find-bar"
             position="absolute"
             top={4}
             right={20}
@@ -77,6 +78,7 @@ export function FindBar(props: FindBarProps) {
         >
             <Panel width={180}>
                 <Input
+                    name="find-input"
                     ref={inputRef}
                     size="sm"
                     value={text}
@@ -85,22 +87,25 @@ export function FindBar(props: FindBarProps) {
                     placeholder={placeholder}
                 />
             </Panel>
-            <Panel minWidth={50} align="center" justify="center">
+            <Panel name="find-match-counter" minWidth={50} align="center" justify="center">
                 <Text size="sm" color="light" nowrap>{matchLabel}</Text>
             </Panel>
             <IconButton
+                name="find-prev"
                 size="sm"
                 title="Previous Match (Shift+F3)"
                 onClick={onPrev}
                 icon={<ChevronUpIcon />}
             />
             <IconButton
+                name="find-next"
                 size="sm"
                 title="Next Match (F3)"
                 onClick={onNext}
                 icon={<ChevronDownIcon />}
             />
             <IconButton
+                name="find-close"
                 size="sm"
                 title="Close (Esc)"
                 onClick={onClose}

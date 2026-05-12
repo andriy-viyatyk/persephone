@@ -11,6 +11,9 @@ export interface TagsInputProps
         React.HTMLAttributes<HTMLDivElement>,
         "style" | "className" | "onChange"
     > {
+    /** Optional debug label emitted as `data-name` on the root element. Use to disambiguate
+     *  multiple instances of this primitive in DOM inspector output. Never used for styling. */
+    name?: string;
     /** Current tags (the primary value). */
     value: string[];
     /** Called with the next tags array after add or remove. */
@@ -57,6 +60,7 @@ const InputSlot = styled.div({
 // --- Component ---
 
 export function TagsInput({
+    name,
     value,
     onChange,
     items,
@@ -96,6 +100,7 @@ export function TagsInput({
     return (
         <Root
             data-type="tags-input"
+            data-name={name}
             data-disabled={disabled || undefined}
             data-readonly={readOnly || undefined}
             aria-label={ariaLabel}

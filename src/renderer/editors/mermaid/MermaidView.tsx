@@ -37,17 +37,19 @@ function MermaidView({ model }: MermaidViewProps) {
     const { svgUrl, error, loading, lightMode } = pageState;
 
     return (
-        <Panel direction="column" flex overflow="hidden" position="relative" height={0}>
+        <Panel name="mermaid-root" direction="column" flex overflow="hidden" position="relative" height={0}>
             {Boolean(model.editorToolbarRefLast) &&
                 createPortal(
                     <>
                         <IconButton
+                            name="mermaid-theme"
                             size="sm"
                             title={lightMode ? "Switch to Dark Theme" : "Switch to Light Theme"}
                             onClick={vm.toggleLightMode}
                             icon={lightMode ? <MoonIcon /> : <SunIcon />}
                         />
                         <IconButton
+                            name="mermaid-open-draw"
                             size="sm"
                             title="Open in Drawing Editor"
                             disabled={!svgUrl}
@@ -64,6 +66,7 @@ function MermaidView({ model }: MermaidViewProps) {
                             icon={<DrawIcon />}
                         />
                         <IconButton
+                            name="mermaid-copy"
                             size="sm"
                             title="Copy Image to Clipboard (Ctrl+C)"
                             onClick={() => imageRef.current?.copyToClipboard()}
