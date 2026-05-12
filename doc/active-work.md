@@ -92,6 +92,7 @@ Overview of all active and planned epics and tasks.
   - [ ] US-493: Fix Explorer panel not refreshing on `navigateUp` / `makeRoot` — subscribe `ExplorerSecondaryEditor` to `model.state.use()` so `rootPath` is reactive
   - [ ] US-494: Fix Open Tabs list — clicking a current-window document page does not activate it. `OpenTabsList` was passing `mainEditor.state.id` (editor UUID) instead of `page.id` (page UUID), so `pagesModel.showPage()` lookup silently failed for any page with a `mainEditor`
   - [ ] US-510: Fix TreeProviderView chevron click also triggering row navigation — custom `renderItem` wired `onChevronClick={ctx.toggleExpanded}` directly, but `ctx.toggleExpanded` has signature `() => void` and never stops propagation, so the click bubbled up to Tree's row `onClick` and fired `onItemClick`. Wrapped to call `e.stopPropagation()` first.
+  - [ ] US-526: Fix external https link ignoring active browser-page profile — two bugs combined. (1) `resolvers.ts` `browserMode === "internal"` branch called `openUrlInBrowserTab` with `{ profileName: "" }`, hardcoding the search to profile-less pages instead of signalling "external reuse". Now passes `{ external: true }`. (2) `PagesLifecycleModel.openUrlInBrowserTab` matcher for `external === true` still constrained the reuse search to `browser-default-profile`; matcher now reuses any non-incognito/non-tor browser regardless of profile. New-page fall-through still uses `browser-default-profile`.
 
 ## Planned
 - **EPIC-022** — [LinkEditor Embedded Scripts](epics/EPIC-022.md)

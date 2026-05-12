@@ -223,7 +223,9 @@ export function registerResolvers(): void {
                 await pagesModel.lifecycle.openUrlInBrowserTab(data.url, { profileName });
             } else if (browserMode === "internal") {
                 const { pagesModel } = await import("../api/pages");
-                await pagesModel.lifecycle.openUrlInBrowserTab(data.url, { profileName: "" });
+                // External URL — reuse any non-incognito/non-tor browser page regardless
+                // of profile; fall back to a new page using `browser-default-profile`.
+                await pagesModel.lifecycle.openUrlInBrowserTab(data.url, { external: true });
             } else {
                 // No browserMode — use link-open-behavior setting (existing fallback)
                 const { settings } = await import("../api/settings");

@@ -855,12 +855,15 @@ export class PagesLifecycleModel {
             const pageState = editor.state.get() as any; // eslint-disable-line @typescript-eslint/no-explicit-any
             if (pageState.type !== "browserPage") return false;
             if (options?.incognito) return !!pageState.isIncognito;
+            // External links reuse any non-incognito/non-tor browser page regardless of
+            // profile — profile only constrains where a new page is created (line below).
+            if (options?.external) {
+                return !pageState.isIncognito && !pageState.isTor;
+            }
             const targetProfile =
                 options?.profileName !== undefined
                     ? options.profileName || ""
-                    : options?.external
-                      ? settings.get("browser-default-profile") || ""
-                      : undefined;
+                    : undefined;
             return (
                 !pageState.isIncognito &&
                 !pageState.isTor &&
