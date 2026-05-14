@@ -771,11 +771,9 @@ export class BrowserEditorModel extends EditorModel<BrowserEditorState, void> {
         let normalizedUrl = url.trim();
         if (!normalizedUrl) return;
 
-        if (
-            !normalizedUrl.startsWith("http://") &&
-            !normalizedUrl.startsWith("https://") &&
-            !normalizedUrl.startsWith("about:")
-        ) {
+        const hasScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(normalizedUrl);
+
+        if (!hasScheme && !normalizedUrl.startsWith("about:")) {
             if (
                 normalizedUrl.includes(".") &&
                 !normalizedUrl.includes(" ")

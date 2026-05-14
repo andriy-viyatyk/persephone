@@ -130,13 +130,22 @@ export class OpenWindow {
         this.window.webContents.on("will-navigate", (event, url) => {
             console.log("Navigating to:", url);
 
-            if (url.startsWith("http://localhost")) {
-                const uri = new URL(url);
-                if (uri.pathname === "/" || uri.pathname === "") {
-                    return;
+            if (url.startsWith("http://localhost") || url.startsWith("http://127.0.0.1")) {
+                // Allow only the Vite dev server's own initial load (dev mode).
+                // Any other http://localhost:<port> link is an external app —
+                // route it through eOpenUrl so it doesn't replace the Persephone UI.
+                if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
+                    const uri = new URL(url);
+                    const devUri = new URL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
+                    if (
+                        uri.origin === devUri.origin &&
+                        (uri.pathname === "/" || uri.pathname === "")
+                    ) {
+                        return;
+                    }
                 }
-                // todo: handle relative file to active page and open it
                 event.preventDefault();
+                this.send(EventEndpoint.eOpenUrl, url);
                 return;
             }
 
