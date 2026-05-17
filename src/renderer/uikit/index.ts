@@ -20,6 +20,8 @@ export { Toolbar } from "./Toolbar";
 export type { ToolbarProps } from "./Toolbar";
 
 // Bootstrap components (US-440)
+export { Autocomplete } from "./Autocomplete";
+export type { AutocompleteProps } from "./Autocomplete";
 export { Breadcrumb } from "./Breadcrumb";
 export type { BreadcrumbProps } from "./Breadcrumb";
 export { Button } from "./Button";
