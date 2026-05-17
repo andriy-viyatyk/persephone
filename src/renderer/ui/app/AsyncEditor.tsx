@@ -1,17 +1,9 @@
-import styled from "@emotion/styled";
 import { EditorViewModule } from "../../editors/types";
 import { EditorModel } from "../../editors/base";
 import type { IContentHost } from "../../editors/base/IContentHost";
 import { useEffect, useState } from "react";
-import { CircularProgress } from "../../components/basic/CircularProgress";
-import { EditorErrorBoundary } from "../../components/basic/EditorErrorBoundary";
-
-const ProgressRoot = styled.div({
-    flex: "1 1 auto",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-});
+import { Panel, Spinner } from "../../uikit";
+import { EditorErrorBoundary } from "./EditorErrorBoundary";
 
 // Module cache to avoid reloading and prevent height jumps during editor switches
 const moduleCache = new Map<string, EditorViewModule>();
@@ -52,9 +44,9 @@ export function AsyncEditor({ getEditorModule, model, cacheKey }: AsyncEditorPro
 
     if (!EditorModule) {
         return (
-            <ProgressRoot>
-                <CircularProgress size={16}/>
-            </ProgressRoot>
+            <Panel name="async-editor-loading" flex={1} align="center" justify="center">
+                <Spinner name="async-editor" size={16} />
+            </Panel>
         );
     }
 

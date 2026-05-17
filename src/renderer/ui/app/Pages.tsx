@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import { useEffect } from "react";
-import { Splitter } from "../../components/layout/Splitter";
+import { Panel, Splitter } from "../../uikit";
 import { pagesModel } from "../../api/pages";
 import { RenderEditor } from "./RenderEditor";
 import { CompareEditor } from "../../editors/compare";
@@ -56,13 +56,26 @@ function NavigationContent({ page }: { page: PageModel }) {
 
     return (
         <>
-            <div className="nav-panel-container" style={{ width, flexShrink: 0, overflow: "hidden", height: "100%" }}>
+            <Panel
+                name="page-navigator-container"
+                direction="column"
+                width={width}
+                shrink={false}
+                overflow="hidden"
+                height="100%"
+            >
                 <PageNavigator page={page} />
-            </div>
+            </Panel>
             <Splitter
-                type="vertical"
-                initialWidth={width}
-                onChangeWidth={navModel.setWidth}
+                name="page-navigator-splitter"
+                orientation="vertical"
+                value={width}
+                onChange={navModel.setWidth}
+                side="before"
+                min={120}
+                border="after"
+                background="default"
+                hoverBackground="light"
             />
         </>
     );

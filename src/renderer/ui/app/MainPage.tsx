@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 import color from "../../theme/color";
-import { FlexSpace } from "../../components/layout/Elements";
-import { Button } from "../../components/basic/Button";
+import { IconButton, Panel } from "../../uikit";
 import {
     CloseIcon,
     PersephoneIcon,
@@ -43,18 +42,29 @@ const AppRoot = styled.div({
             alignSelf: "flex-end",
             padding: 0,
             marginBottom: 3,
+            border: "none",
+            background: "transparent",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
         },
         "& .system-button": {
             alignSelf: "flex-start",
+            padding: 0,
             paddingTop: 0,
             marginTop: -4,
             height: 28,
             width: 40,
+            border: "none",
             borderRadius: 0,
+            display: "flex",
             alignItems: "center",
             justifyContent: "center",
             flexShrink: 0,
             cursor: "default",
+            backgroundColor: color.background.dark,
+            color: color.text.light,
             "&.darkBackground:hover": {
                 backgroundColor: color.background.light,
             },
@@ -80,7 +90,7 @@ const AppRoot = styled.div({
             position: "relative",
         },
     },
-    "& button.autoload-reload": {
+    "& .autoload-reload button": {
         padding: "2px 4px",
         color: color.warning.text,
         "& svg": {
@@ -98,8 +108,11 @@ const AppRoot = styled.div({
     "& button.zoom-indicator": {
         fontSize: 12,
         padding: "2px 6px",
+        border: "none",
         borderRadius: 4,
         backgroundColor: color.background.light,
+        color: color.text.default,
+        cursor: "pointer",
         display: "none",
         "&.visible": {
             display: "flex",
@@ -142,19 +155,21 @@ export function MainPage() {
     return (
         <AppRoot>
             <div className="app-header">
-                <Button
-                    onClick={() => app.window.toggleMenuBar()}
-                    type="icon"
+                <button
+                    type="button"
+                    data-name="persephone-menu"
                     className="app-button"
+                    title="Menu"
+                    onClick={() => app.window.toggleMenuBar()}
                 >
                     <PersephoneIcon />
-                </Button>
+                </button>
                 <PageTabs />
-                <FlexSpace style={{ minWidth: 40 }} />
+                <Panel name="app-header-spacer" flex={1} minWidth={40} />
                 <AutoloadReloadButton />
-                <Button
-                    size="small"
-                    type="icon"
+                <button
+                    type="button"
+                    data-name="zoom-indicator"
                     className={clsx("zoom-indicator", {
                         visible: state.zoomLevel,
                     })}
@@ -162,32 +177,35 @@ export function MainPage() {
                     title="Reset Zoom"
                 >
                     {Math.round(Math.pow(1.2, state.zoomLevel) * 100)}%
-                </Button>
-                <Button
+                </button>
+                <button
+                    type="button"
+                    data-name="window-minimize"
+                    className="system-button darkBackground"
                     onClick={() => app.window.minimize()}
-                    className="system-button"
-                    background="dark"
                 >
                     <WindowMinimizeIcon />
-                </Button>
-                <Button
+                </button>
+                <button
+                    type="button"
+                    data-name="window-toggle"
+                    className="system-button darkBackground"
                     onClick={() => app.window.toggleWindow()}
-                    className="system-button"
-                    background="dark"
                 >
                     {state.isMaximized ? (
                         <WindowRestoreIcon />
                     ) : (
                         <WindowMaximizeIcon />
                     )}
-                </Button>
-                <Button
+                </button>
+                <button
+                    type="button"
+                    data-name="window-close"
+                    className="system-button darkBackground close-button"
                     onClick={() => app.window.close()}
-                    className="system-button close-button"
-                    background="dark"
                 >
                     <CloseIcon />
-                </Button>
+                </button>
                 {state.mcpRunning && (
                     <span
                         className="mcp-indicator"
@@ -223,14 +241,14 @@ function AutoloadReloadButton() {
     if (!autoloadState.needsReload) return null;
 
     return (
-        <Button
-            size="small"
-            type="icon"
-            className="autoload-reload"
-            title="Application scripts need to be reloaded. Click to reload."
-            onClick={() => autoloadService.loadScripts()}
-        >
-            <RefreshIcon />
-        </Button>
+        <span className="autoload-reload">
+            <IconButton
+                name="autoload-reload"
+                size="sm"
+                icon={<RefreshIcon />}
+                title="Application scripts need to be reloaded. Click to reload."
+                onClick={() => autoloadService.loadScripts()}
+            />
+        </span>
     );
 }

@@ -1,22 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import styled from "@emotion/styled";
-import { CollapsiblePanelStack, CollapsiblePanel } from "../../components/layout/CollapsiblePanelStack";
-import color from "../../theme/color";
+import { CollapsiblePanel, CollapsiblePanelStack, Panel } from "../../uikit";
 import type { PageModel } from "../../api/pages/PageModel";
 import { secondaryEditorRegistry } from "./secondary-editor-registry";
 import { LazySecondaryEditor } from "./LazySecondaryEditor";
-
-// =============================================================================
-// Styles
-// =============================================================================
-
-const PageNavigatorRoot = styled.div({
-    display: "flex",
-    flexDirection: "column",
-    height: "100%",
-    overflow: "hidden",
-    backgroundColor: color.background.default,
-});
 
 // =============================================================================
 // Component
@@ -55,11 +41,18 @@ export function PageNavigator({ page }: PageNavigatorProps) {
     }, [page, activePanel]);
 
     return (
-        <PageNavigatorRoot>
+        <Panel
+            name="page-navigator-root"
+            direction="column"
+            height="100%"
+            overflow="hidden"
+            background="default"
+        >
             <CollapsiblePanelStack
+                name="page-navigator-stack"
                 activePanel={activePanel}
                 setActivePanel={handleSetActivePanel}
-                style={{ flex: "1 1 auto" }}
+                height="100%"
             >
                 {secondaryEditors.flatMap((model) => {
                     const panelIds = model.state.get().secondaryEditor;
@@ -72,6 +65,7 @@ export function PageNavigator({ page }: PageNavigatorProps) {
                             <CollapsiblePanel
                                 key={refKey}
                                 id={panelId}
+                                name={panelId}
                                 headerRef={(el) => setHeaderRef(refKey, el)}
                                 alwaysRenderContent
                             >
@@ -85,6 +79,6 @@ export function PageNavigator({ page }: PageNavigatorProps) {
                     });
                 })}
             </CollapsiblePanelStack>
-        </PageNavigatorRoot>
+        </Panel>
     );
 }
