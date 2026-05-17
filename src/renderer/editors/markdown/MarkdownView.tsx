@@ -1,44 +1,17 @@
-import styled from "@emotion/styled";
-import { TextFileModel } from "../text";
-import { CompactViewIcon, NormalViewIcon } from "../../theme/icons";
 import { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
-import { Minimap } from "../../components/layout/Minimap";
+import { TextFileModel } from "../text";
+import { CompactViewIcon, NormalViewIcon } from "../../theme/icons";
+import { IconButton, Minimap, Panel } from "../../uikit";
 import { useEditorConfig } from "../base";
-import { Button } from "../../components/basic/Button";
 import { FindBar } from "../shared/FindBar";
-import { MarkdownViewModel, MarkdownViewState, defaultMarkdownViewState } from "./MarkdownViewModel";
+import {
+    MarkdownViewModel,
+    MarkdownViewState,
+    defaultMarkdownViewState,
+} from "./MarkdownViewModel";
 import { useContentViewModel } from "../base/useContentViewModel";
 import { MarkdownBlock, MarkdownBlockHandle } from "./MarkdownBlock";
-
-const MdViewRoot = styled.div({
-    flex: "1 1 auto",
-    display: "flex",
-    flexDirection: "row",
-    overflow: "hidden",
-    outline: "none",
-    "& .md-scroll-container": {
-        flex: "1 1 auto",
-        display: "flex",
-        flexDirection: "column",
-        position: "relative",
-        padding: "0 24px",
-        overflowY: "auto",
-        overflowX: "hidden",
-        "&::-webkit-scrollbar": {
-            display: "none",
-        },
-    },
-    // Show scrollbar when minimap is hidden
-    "&.show-scrollbar .md-scroll-container::-webkit-scrollbar": {
-        display: "block",
-        width: 8,
-    },
-    // Compact mode — reduced padding for scroll container
-    "&.compact .md-scroll-container": {
-        padding: "0 8px",
-    },
-});
 
 export interface MarkdownViewProps {
     model: TextFileModel;
@@ -76,7 +49,6 @@ export function MarkdownView({ model }: MarkdownViewProps) {
                 s.totalMatches = count;
                 s.currentMatchIndex = newIndex;
             });
-            // Navigate to current match after count update
             if (count > 0) {
                 blockRef.current?.scrollToMatch(newIndex);
             }
@@ -107,11 +79,6 @@ export function MarkdownView({ model }: MarkdownViewProps) {
         }
     }, [vm, pageState.searchVisible]);
 
-    // Apply max height constraint from context (e.g., when embedded in notebook)
-    const rootStyle = editorConfig.maxEditorHeight
-        ? { maxHeight: editorConfig.maxEditorHeight }
-        : undefined;
-
     const showMinimap = !editorConfig.hideMinimap;
     const compact = editorConfig.compact || pageState.compactMode;
 
@@ -124,54 +91,72 @@ export function MarkdownView({ model }: MarkdownViewProps) {
         <>
             {Boolean(model.editorToolbarRefLast) &&
                 createPortal(
-                    <Button
-                        size="small"
-                        type="icon"
+                    <IconButton
+                        name="markdown-compact-toggle"
+                        size="sm"
+                        active={pageState.compactMode}
                         title={pageState.compactMode ? "Normal View" : "Compact View"}
+                        icon={pageState.compactMode ? <NormalViewIcon /> : <CompactViewIcon />}
                         onClick={vm.toggleCompact}
-                    >
-                        {pageState.compactMode ? <NormalViewIcon /> : <CompactViewIcon />}
-                    </Button>,
+                    />,
                     model.editorToolbarRefLast,
                 )}
-            <MdViewRoot
-                style={rootStyle}
-                className={`${showMinimap ? "" : "show-scrollbar"} ${compact ? "compact" : ""}`}
-                onKeyDown={onKeyDown}
+            <Panel
+                name="markdown-view-root"
+                direction="row"
+                flex={1}
+                height={0}
+                overflow="hidden"
+                maxHeight={editorConfig.maxEditorHeight}
                 tabIndex={-1}
+                onKeyDown={onKeyDown}
             >
-                {showSearchBar && (
-                    <FindBar
-                        text={pageState.searchText}
-                        currentMatch={pageState.currentMatchIndex}
-                        totalMatches={pageState.totalMatches}
-                        onTextChange={vm.setSearchText}
-                        onNext={vm.nextMatch}
-                        onPrev={vm.prevMatch}
-                        onClose={vm.closeSearch}
-                    />
-                )}
-                <div
-                    className="md-scroll-container"
-                    ref={vm.setContainer}
-                    onScroll={vm.containerScroll}
+                <Panel
+                    name="markdown-find-column"
+                    direction="column"
+                    flex={1}
+                    width={0}
                 >
-                    <MarkdownBlock
-                        ref={blockRef}
-                        content={content}
-                        highlightText={highlightText}
-                        compact={compact}
-                        filePath={filePath}
-                        onMatchCountChange={onMatchCountChange}
-                    />
-                </div>
+                    {showSearchBar && (
+                        <FindBar
+                            text={pageState.searchText}
+                            currentMatch={pageState.currentMatchIndex}
+                            totalMatches={pageState.totalMatches}
+                            onTextChange={vm.setSearchText}
+                            onNext={vm.nextMatch}
+                            onPrev={vm.prevMatch}
+                            onClose={vm.closeSearch}
+                        />
+                    )}
+                    <Panel
+                        name="markdown-scroll"
+                        direction="column"
+                        flex={1}
+                        height={0}
+                        overflowY="auto"
+                        overflowX="hidden"
+                        scrollbar={showMinimap ? "hidden" : "auto"}
+                        paddingX={compact ? "md" : "xxl"}
+                        ref={vm.setContainer}
+                        onScroll={vm.containerScroll}
+                    >
+                        <MarkdownBlock
+                            ref={blockRef}
+                            content={content}
+                            highlightText={highlightText}
+                            compact={compact}
+                            filePath={filePath}
+                            onMatchCountChange={onMatchCountChange}
+                        />
+                    </Panel>
+                </Panel>
                 {showMinimap && (
                     <Minimap
+                        name="markdown-minimap"
                         scrollContainer={pageState.container}
-                        className="md-minimap"
                     />
                 )}
-            </MdViewRoot>
+            </Panel>
         </>
     );
 }
@@ -181,7 +166,3 @@ const moduleExport = {
 };
 
 export default moduleExport;
-
-// Re-export with old names for backward compatibility
-export { MarkdownView as MdView };
-export type { MarkdownViewProps as MdViewProps };

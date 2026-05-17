@@ -126,6 +126,18 @@ function buildGlobalStyles() {
             scrollbar-color: ${color.background.scrollBarThumb} transparent;
         }
 
+        /* Suppress all scrollbar rendering for surfaces paired with an
+         * external indicator (e.g. minimap). Set via Panel scrollbar="hidden". */
+        [data-scrollbar="hidden"] {
+            scrollbar-color: transparent transparent;
+            scrollbar-width: none;
+        }
+        [data-scrollbar="hidden"]::-webkit-scrollbar {
+            display: none;
+            width: 0;
+            height: 0;
+        }
+
         /* Portal mount target inside TextEditorView for full-area overlays
          * (e.g. NotebookEditor's expanded note view). Hidden when no portal
          * content is present so the bg color does not blanket the editor. */

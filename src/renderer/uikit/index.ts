@@ -8,6 +8,8 @@ export type {
     CollapsiblePanelProps,
     CollapsiblePanelStackProps,
 } from "./CollapsiblePanelStack";
+export { Minimap } from "./Minimap";
+export type { MinimapProps } from "./Minimap";
 export { Panel } from "./Panel";
 export type { PanelProps } from "./Panel";
 export { Spacer } from "./Spacer";

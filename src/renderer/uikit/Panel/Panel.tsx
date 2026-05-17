@@ -67,6 +67,17 @@ export interface PanelProps
     overflowX?: Overflow;
     overflowY?: Overflow;
 
+    /**
+     * Scrollbar visibility for scrollable panels.
+     * - `"auto"` (default) — global VSCode-style fade-in scrollbar via the
+     *   `.scroll-container` class.
+     * - `"hidden"` — no scrollbar at all. Use when another visual indicator
+     *   (minimap, custom thumb) replaces it. Emits `data-scrollbar="hidden"`
+     *   and suppresses the `.scroll-container` class so the hover-reveal rule
+     *   cannot fight the override.
+     */
+    scrollbar?: "auto" | "hidden";
+
     /** Controls whitespace handling for descendants. Use "pre-wrap" for log/code panes that contain real `\n` characters. */
     whiteSpace?: WhiteSpace;
 
@@ -280,6 +291,7 @@ export const Panel = React.forwardRef<HTMLDivElement, PanelProps>(function Panel
         overflow,
         overflowX,
         overflowY,
+        scrollbar,
         whiteSpace,
         wordBreak,
         position,
@@ -353,6 +365,7 @@ export const Panel = React.forwardRef<HTMLDivElement, PanelProps>(function Panel
 
     const scrollable =
         isScrollable(overflow) || isScrollable(overflowX) || isScrollable(overflowY);
+    const hideScrollbar = scrollbar === "hidden";
 
     return (
         <Root
@@ -372,7 +385,8 @@ export const Panel = React.forwardRef<HTMLDivElement, PanelProps>(function Panel
             data-hide-when-empty={hideWhenEmpty || undefined}
             data-reveal-on-hover={revealChildrenOnHover || undefined}
             data-accent={accent || undefined}
-            className={scrollable ? "scroll-container" : undefined}
+            data-scrollbar={hideScrollbar ? "hidden" : undefined}
+            className={scrollable && !hideScrollbar ? "scroll-container" : undefined}
             {...rest}
             style={inlineStyle}
         >

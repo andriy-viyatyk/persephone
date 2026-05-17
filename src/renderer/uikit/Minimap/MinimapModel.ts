@@ -1,67 +1,16 @@
-import styled from "@emotion/styled";
-import clsx from "clsx";
-import React, { useEffect } from "react";
-import color from "../../theme/color";
-import { TComponentModel, useComponentModel } from "../../core/state/model";
+import React from "react";
+import { TComponentModel } from "../../core/state/model";
+import type { MinimapProps } from "./Minimap";
 
-export const MinimapRoot = styled.div({
-    "&.minimap-wrapper": {
-        position: "relative",
-        width: 120,
-        height: "100%",
-        overflowY: "auto",
-        overflowX: "hidden",
-        msOverflowStyle: "none",
-        scrollbarWidth: "none",
-        "&::-webkit-scrollbar": {
-            display: "none",
-        },
-
-        flexShrink: 0,
-    },
-    "& .minimap-content-container": {
-        position: "relative",
-        pointerEvents: "none",
-        userSelect: "none",
-    },
-    "& .minimap-content": {
-        transform: "scale(0.15)",
-        transformOrigin: "top left",
-        opacity: 0.7,
-        width: "666%", // 1 / 0.15 = 6.66 - compensates for scale
-        position: "absolute",
-        top: 0,
-        left: 0,
-    },
-    "& .minimap-viewport-indicator": {
-        position: "absolute",
-        left: 0,
-        width: "100%",
-        background: color.minimapSlider.background,
-        boxSizing: "border-box",
-        zIndex: 10,
-        "&:hover": {
-            background: color.minimapSlider.hoverBackground,
-        },
-        "&.isDragging": {
-            background: color.minimapSlider.activeBackground,
-        },
-    },
-});
-
-interface MinimapProps extends React.HTMLAttributes<HTMLDivElement> {
-    scrollContainer: HTMLElement | null;
-}
-
-const defaultMinimapState = {
+export const defaultMinimapState = {
     indicatorTop: 0,
     indicatorHeight: 0,
     isDragging: false,
 };
 
-type MinimapState = typeof defaultMinimapState;
+export type MinimapState = typeof defaultMinimapState;
 
-class MinimapModel extends TComponentModel<MinimapState, MinimapProps> {
+export class MinimapModel extends TComponentModel<MinimapState, MinimapProps> {
     BASE_SCALE = 0.15;
     scrollContainer: HTMLElement | null = null;
     contentMirror: HTMLDivElement | null = null;
@@ -223,7 +172,7 @@ class MinimapModel extends TComponentModel<MinimapState, MinimapProps> {
         if (!this.scrollContainer || !this.wrapper) return;
 
         // Ignore clicks on the viewport indicator (it has its own drag logic)
-        if ((e.target as HTMLElement).classList.contains("minimap-viewport-indicator")) return;
+        if ((e.target as HTMLElement).closest('[data-part="indicator"]')) return;
 
         const wrapperRect = this.wrapper.getBoundingClientRect();
         const clickY = e.clientY - wrapperRect.top + this.wrapper.scrollTop;
@@ -253,57 +202,4 @@ class MinimapModel extends TComponentModel<MinimapState, MinimapProps> {
         );
         window.removeEventListener("resize", this.syncEverything);
     };
-}
-
-export function Minimap({
-    scrollContainer,
-    className,
-    ...props
-}: MinimapProps) {
-    const model = useComponentModel(
-        { scrollContainer },
-        MinimapModel,
-        defaultMinimapState,
-    );
-    const state = model.state.use();
-
-    useEffect(() => {
-        model.setScrollContainer(scrollContainer);
-    }, [scrollContainer]);
-
-    useEffect(() => {
-        model.init();
-        return () => {
-            model.dispose();
-        };
-    }, []);
-
-    return (
-        <MinimapRoot
-            ref={model.setWrapper}
-            className={clsx("minimap-wrapper", className)}
-            onClick={model.handleBackgroundClick}
-            onMouseEnter={model.mouseEnter}
-            {...props}
-        >
-            <div
-                className="minimap-content-container"
-                ref={model.setContentContainer}
-            >
-                <div className="minimap-content" ref={model.setContentMirror} />
-            </div>
-            <div
-                className={clsx("minimap-viewport-indicator", {
-                    isDragging: state.isDragging,
-                })}
-                style={{
-                    top: state.indicatorTop,
-                    height: state.indicatorHeight,
-                }}
-                onPointerDown={model.handlePointerDown}
-                onPointerMove={model.handlePointerMove}
-                onPointerUp={model.handlePointerUp}
-            />
-        </MinimapRoot>
-    );
 }

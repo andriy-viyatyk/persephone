@@ -58,7 +58,7 @@ Overview of all active and planned epics and tasks.
   - [ ] [US-496: ToolsEditorsPanel — UIKit migration](tasks/US-496-toolseditorspanel-migration/README.md) *(Phase 4 — per-screen migration; blocks US-492)*
   - [ ] [US-497: TreeProviderView — UIKit Tree migration](tasks/US-497-treeproviderview-migration/README.md) *(Phase 4 — shared component; touches 6 consumers; plan ready for review)*
   - [ ] [US-492: Sidebar — final integration testing and cleanup](tasks/US-492-sidebar-integration-testing/README.md) *(Phase 4 — per-screen migration; plan ready for review)*
-  - [ ] [US-480: MarkdownView — UIKit migration](tasks/US-480-markdown-view-migration/README.md) *(Phase 4 — per-screen migration)*
+  - [ ] [US-480: MarkdownView — UIKit migration](tasks/US-480-markdown-view-migration/README.md) *(Phase 4 — per-screen migration; plan ready for review; bundles Minimap relocation to `uikit/Minimap/` per US-532 delegation)*
   - [ ] [US-503: UIKit `Dot` primitive — colored circle for status / swatch / palette](tasks/US-503-uikit-dot/README.md) *(Phase 4 — UIKit primitive infrastructure; plan ready for review; primitive only — per-screen retrofits live in US-498/US-499/US-502; unblocks US-498)*
   - [ ] [US-498: Settings page — UIKit migration](tasks/US-498-settings-page-migration/README.md) *(Phase 4 — per-screen migration; plan ready for implementation; US-503 Dot primitive in place)*
   - [ ] [US-504: UIKit ghost variants + hover-reveal pattern](tasks/US-504-uikit-ghost-and-hover-reveal/README.md) *(Phase 4 — UIKit primitive infrastructure; plan ready for review; primitive only — per-screen retrofits live in US-499; unblocks US-499)*
