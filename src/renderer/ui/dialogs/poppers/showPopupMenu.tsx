@@ -1,11 +1,10 @@
-import ReactDOM from "react-dom";
-import { useEffect, useMemo, useRef } from "react";
+import { useCallback, useMemo, useRef } from "react";
 
 import { TPopperModel } from "./types";
 import { closePopper, showPopper } from "./Poppers";
 import { VirtualElement } from "@floating-ui/react";
-import { MenuItem, PopupMenu } from "../../../components/overlay/PopupMenu";
-import { PopperProps } from "../../../components/overlay/Popper";
+import { Menu } from "../../../uikit/Menu";
+import type { MenuItem } from "../../../uikit/Menu";
 import { CopyIcon, CursorIcon, EmptyIcon } from "../../../theme/icons";
 import { DefaultView, ViewPropsRO, Views } from "../../../core/state/view";
 import { TComponentState } from "../../../core/state/state";
@@ -16,7 +15,6 @@ const defaultAppPopupMenuState = {
     x: 0,
     y: 0,
     items: [] as MenuItem[],
-    poperProps: undefined as PopperProps | undefined,
     skipInspect: false,
 };
 
@@ -133,21 +131,23 @@ const defaultOffset = [8, 0] as [number, number];
 const showAppPopupMenuId = Symbol("AppPopupMenu");
 
 function AppPopupMenu({ model }: ViewPropsRO<AppPopupMenuModel>) {
-    const { items, x, y, poperProps } = model.state.use();
-    const overlayRef = useRef<HTMLDivElement>(null);
+    const { items, x, y } = model.state.use();
+    const registeredRef = useRef<HTMLDivElement | null>(null);
 
-    // Register the menu's DOM root with the overlay registry so page-level Tooltips
-    // are suppressed while the menu is open. Tooltips inside this subtree (e.g. on
-    // menu items themselves) remain allowed via the registry's auto opt-out.
-    useEffect(() => {
-        const el = overlayRef.current;
-        if (!el) return;
-        overlayRegistry.register(el);
-        return () => overlayRegistry.unregister(el);
+    // Callback ref: register the Popover's floated root with overlayRegistry so
+    // page-level Tooltips are suppressed while the menu is open. Tooltips inside
+    // this subtree (e.g. on menu items themselves) remain allowed via
+    // overlayRegistry.isSuppressed's `contains()` check.
+    const setMenuRef = useCallback((el: HTMLDivElement | null) => {
+        if (registeredRef.current) {
+            overlayRegistry.unregister(registeredRef.current);
+        }
+        registeredRef.current = el;
+        if (el) overlayRegistry.register(el);
     }, []);
 
-    const el = useMemo<VirtualElement | Element>(() => {
-        const res: VirtualElement = {
+    const elementRef = useMemo<VirtualElement>(
+        () => ({
             getBoundingClientRect() {
                 return {
                     x,
@@ -160,29 +160,26 @@ function AppPopupMenu({ model }: ViewPropsRO<AppPopupMenuModel>) {
                     height: 0,
                 };
             },
-        };
-        return res;
-    }, [x, y]);
+        }),
+        [x, y],
+    );
 
-    return ReactDOM.createPortal(
-        <div ref={overlayRef}>
-            <PopupMenu
-                open
-                items={items}
-                elementRef={el}
-                onClose={() => model.close()}
-                offset={defaultOffset}
-                {...poperProps}
-            />
-        </div>,
-        document.body
+    return (
+        <Menu
+            ref={setMenuRef}
+            name="app-popup-menu"
+            open
+            items={items}
+            elementRef={elementRef}
+            offset={defaultOffset}
+            onClose={() => model.close()}
+        />
     );
 }
 
 Views.registerView(showAppPopupMenuId, AppPopupMenu as DefaultView);
 
 export interface ShowAppPopupMenuOptions {
-    popperProps?: PopperProps;
     /** Skip the default "Inspect" menu item (e.g. when the caller provides its own). */
     skipInspect?: boolean;
 }
@@ -196,7 +193,7 @@ export const showAppPopupMenu = async (
     x: number,
     y: number,
     items: MenuItem[],
-    options?: ShowAppPopupMenuOptions | PopperProps
+    options?: ShowAppPopupMenuOptions,
 ) => {
     // Close any existing popup menu before showing a new one.
     // This handles cases where the close-on-click-outside doesn't fire
@@ -206,19 +203,12 @@ export const showAppPopupMenu = async (
     // Save focused element to restore after menu closes
     const previouslyFocused = document.activeElement as HTMLElement | null;
 
-    // Support both legacy PopperProps and new options object
-    const opts: ShowAppPopupMenuOptions =
-        options && "skipInspect" in options
-            ? options
-            : { popperProps: options as PopperProps | undefined };
-
     const state = new TComponentState(defaultAppPopupMenuState);
     state.update((s) => {
         s.x = x;
         s.y = y;
         s.items = [...items];
-        s.poperProps = opts.popperProps;
-        s.skipInspect = opts.skipInspect || false;
+        s.skipInspect = options?.skipInspect || false;
     });
     const model = new AppPopupMenuModel(state);
     await model.addDefaultMenus();

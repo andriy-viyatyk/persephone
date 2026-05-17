@@ -1,10 +1,10 @@
 import { TDialogModel } from "../../../core/state/model";
 import { IDialogViewData } from "../../../core/state/view";
-import { PopperPosition } from "../../../components/overlay/Popper";
+import { PopoverPosition } from "../../../uikit/Popover/Popover";
 
 
 export class TPopperModel<T = any, R = any> extends TDialogModel<T, R> {
-    position: PopperPosition = {};
+    position: PopoverPosition = {};
 }
 
 // eslint-disable-next-line @typescript-eslint/no-empty-interface

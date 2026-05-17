@@ -144,7 +144,9 @@ const SelectedCheck = styled.span(
 
 // --- Component ---
 
-export function Menu(props: MenuProps) {
+export const Menu: React.ForwardRefExoticComponent<
+    MenuProps & React.RefAttributes<HTMLDivElement>
+> = React.forwardRef<HTMLDivElement, MenuProps>(function MenuComponent(props, ref) {
     const model = useComponentModel(props, MenuModel, defaultMenuState);
     const { search, hoveredId, subMenuItem, subMenuAnchor } = model.state.use((s) => ({
         search: s.search,
@@ -165,6 +167,7 @@ export function Menu(props: MenuProps) {
     return (
         <>
             <Popover
+                ref={ref}
                 {...rest}
                 open={open}
                 onClose={model.onPopoverClose}
@@ -232,7 +235,7 @@ export function Menu(props: MenuProps) {
             )}
         </>
     );
-}
+});
 
 // Re-export public types from canonical locations.
 export type { MenuProps } from "./MenuModel";
