@@ -1,25 +1,25 @@
-import styled from "@emotion/styled";
-import { useCallback, useMemo, useRef, useState } from "react";
+import React, { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Editor } from "@monaco-editor/react";
-import { Button } from "../../components/basic/Button";
-import { TextAreaField } from "../../components/basic/TextAreaField";
-import { FlexSpace } from "../../components/layout/Elements";
-import { Splitter } from "../../components/layout/Splitter";
+import {
+    Button,
+    IconButton,
+    Panel,
+    SegmentedControl,
+    Spacer,
+    Splitter,
+    Text,
+    Textarea,
+    WithMenu,
+    Checkbox,
+} from "../../uikit";
+import type { MenuItem } from "../../uikit";
 import { LanguageIcon } from "../../components/icons/LanguageIcon";
-import { WithPopupMenu } from "../../components/overlay/WithPopupMenu";
-import type { MenuItem } from "../../components/overlay/PopupMenu";
 import { CloseIcon, CopyIcon, FolderOpenIcon } from "../../theme/icons";
-import { Checkbox } from "../../components/basic/Checkbox";
 import { app } from "../../api/app";
-import color from "../../theme/color";
 import { RestClientViewModel, RestClientEditorState } from "./RestClientViewModel";
 import { BodyType, RAW_LANGUAGES, RestRequest } from "./restClientTypes";
 import { HTTP_METHODS, COMMON_HEADERS, METHOD_COLORS } from "./httpConstants";
 import { KeyValueEditor } from "./KeyValueEditor";
-
-// =============================================================================
-// Constants
-// =============================================================================
 
 const BODY_TYPES: { type: BodyType; label: string }[] = [
     { type: "none", label: "none" },
@@ -42,237 +42,6 @@ const BODY_EDITOR_OPTIONS: any = {
     scrollbar: { alwaysConsumeMouseWheel: false },
 };
 
-// =============================================================================
-// Styles
-// =============================================================================
-
-const RequestBuilderRoot = styled.div({
-    display: "flex",
-    flexDirection: "column",
-    overflow: "hidden",
-    flex: "1 1 auto",
-
-    // ── URL bar (fixed at top) ──
-    "& .url-bar": {
-        display: "flex",
-        flexDirection: "row",
-        alignItems: "flex-start",
-        gap: 4,
-        padding: "4px 8px",
-        backgroundColor: color.background.dark,
-        flexShrink: 0,
-    },
-    "& .method-label": {
-        flexShrink: 0,
-        padding: "3px 8px",
-        fontSize: 13,
-        fontWeight: 700,
-        fontFamily: "monospace",
-        cursor: "pointer",
-        borderRadius: 3,
-        userSelect: "none",
-        "&:hover": {
-            backgroundColor: color.background.light,
-        },
-    },
-    "& .url-input": {
-        flex: "1 1 auto",
-        minHeight: 24,
-        maxHeight: 54,
-        overflowY: "auto",
-        padding: "2px 6px",
-        fontSize: 13,
-        fontFamily: "monospace",
-        color: color.text.default,
-        backgroundColor: color.background.dark,
-        border: `1px solid ${color.border.default}`,
-        borderRadius: 3,
-        wordBreak: "break-all",
-    },
-    "& .send-button": {
-        flexShrink: 0,
-        height: 24,
-        padding: "0 16px",
-        fontSize: 13,
-        fontWeight: 600,
-    },
-
-    // ── Split area (headers top / body bottom) ──
-    "& .split-container": {
-        flex: "1 1 auto",
-        display: "flex",
-        flexDirection: "column",
-        overflow: "hidden",
-        "& > .splitter": {
-            borderTop: "none",
-        },
-    },
-
-    // ── Headers panel ──
-    "& .headers-panel": {
-        overflow: "hidden",
-        display: "flex",
-        flexDirection: "column",
-        "& .section-header": {
-            height: "auto",
-            padding: "0 8px",
-            background: "none",
-        },
-    },
-    "& .section-header": {
-        display: "flex",
-        flexDirection: "row",
-        alignItems: "center",
-        padding: "4px 8px",
-        gap: 4,
-        flexShrink: 0,
-        height: 29,
-        boxSizing: "border-box",
-        background: color.background.dark,
-        cursor: "default",
-        userSelect: "none",
-    },
-    "& .section-title": {
-        fontSize: 12,
-        fontWeight: 600,
-        color: color.text.light,
-        textTransform: "uppercase",
-        letterSpacing: "0.5px",
-    },
-    "& .view-toggle": {
-        fontSize: 11,
-        color: color.text.light,
-        cursor: "pointer",
-        padding: "1px 6px",
-        borderRadius: 3,
-        userSelect: "none",
-        "&:hover": {
-            color: color.text.default,
-        },
-    },
-    "& .view-toggle.active": {
-        color: color.text.default,
-        backgroundColor: color.background.light,
-    },
-    "& .headers-scroll": {
-        flex: "1 1 auto",
-        overflow: "auto",
-        padding: "4px 8px 8px 8px",
-    },
-
-    // ── Body panel ──
-    "& .body-panel": {
-        overflow: "hidden",
-        display: "flex",
-        flexDirection: "column",
-    },
-    "& .body-type-tabs": {
-        display: "flex",
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 0,
-        marginLeft: 8,
-        flex: "1 1 auto",
-    },
-    "& .body-type-tab": {
-        padding: "2px 8px",
-        fontSize: 11,
-        color: color.text.light,
-        cursor: "pointer",
-        borderRadius: 3,
-        "&:hover": {
-            color: color.text.default,
-        },
-    },
-    "& .body-type-tab.active": {
-        color: color.text.default,
-        backgroundColor: color.background.light,
-    },
-    "& .language-label": {
-        display: "flex",
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 4,
-        flexShrink: 0,
-        padding: "2px 8px",
-        fontSize: 11,
-        color: color.text.light,
-        cursor: "pointer",
-        borderRadius: 3,
-        userSelect: "none",
-        "&:hover": {
-            color: color.text.default,
-            backgroundColor: color.background.light,
-        },
-    },
-    "& .body-content": {
-        flex: "1 1 auto",
-        overflow: "hidden",
-        display: "flex",
-        flexDirection: "column",
-    },
-    "& .body-content-scroll": {
-        flex: "1 1 auto",
-        overflow: "auto",
-        padding: "4px 8px 8px 8px",
-    },
-    "& .body-none-message": {
-        padding: 12,
-        fontSize: 13,
-        color: color.text.light,
-        fontStyle: "italic",
-    },
-    "& .binary-body": {
-        padding: "8px 12px",
-        display: "flex",
-        flexDirection: "column",
-        gap: 8,
-    },
-    "& .binary-file-row": {
-        display: "flex",
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 8,
-    },
-    "& .binary-file-path": {
-        flex: "1 1 auto",
-        fontSize: 13,
-        fontFamily: "monospace",
-        color: color.text.default,
-        overflow: "hidden",
-        textOverflow: "ellipsis",
-        whiteSpace: "nowrap",
-    },
-    "& .binary-no-file": {
-        color: color.text.light,
-        fontStyle: "italic",
-    },
-    "& .form-data-row": {
-        display: "flex",
-        flexDirection: "row",
-        alignItems: "flex-start",
-        gap: 4,
-        paddingTop: 2,
-    },
-    "& .form-data-type-toggle": {
-        flexShrink: 0,
-        fontSize: 11,
-        padding: "3px 6px",
-        cursor: "pointer",
-        borderRadius: 3,
-        color: color.text.light,
-        userSelect: "none",
-        "&:hover": {
-            color: color.text.default,
-            backgroundColor: color.background.light,
-        },
-    },
-}, { label: "RequestBuilderRoot" });
-
-// =============================================================================
-// Component
-// =============================================================================
-
 interface RequestBuilderProps {
     vm: RestClientViewModel;
     request: RestRequest;
@@ -281,11 +50,20 @@ interface RequestBuilderProps {
 
 export function RequestBuilder({ vm, request, state }: RequestBuilderProps) {
     const splitRef = useRef<HTMLDivElement>(null);
+    const bodyPanelRef = useRef<HTMLDivElement>(null);
     const [bodyHeight, setBodyHeight] = useState<number | null>(null);
     const [headersView, setHeadersView] = useState<"table" | "json">("table");
     const [headersJson, setHeadersJson] = useState("");
 
-    // Convert headers to JSON when switching to JSON view
+    // Pin bodyHeight to the actually-rendered pixel size after first layout. Until this
+    // runs, the splitter would capture a stale fallback (150) as its startValue and the
+    // body would jump on first drag.
+    useLayoutEffect(() => {
+        if (bodyHeight === null && bodyPanelRef.current) {
+            setBodyHeight(bodyPanelRef.current.offsetHeight);
+        }
+    }, [bodyHeight]);
+
     const switchToJsonView = useCallback(() => {
         const obj: Record<string, string> = {};
         for (const h of request.headers) {
@@ -296,7 +74,6 @@ export function RequestBuilder({ vm, request, state }: RequestBuilderProps) {
         setHeadersView("json");
     }, [request.headers, vm]);
 
-    // Switch back to table view — validate first
     const switchToTableView = useCallback(() => {
         try {
             const obj = JSON.parse(headersJson);
@@ -312,7 +89,6 @@ export function RequestBuilder({ vm, request, state }: RequestBuilderProps) {
         }
     }, [headersJson, vm, request.id]);
 
-    // Live sync: on every JSON change, try to parse and update headers
     const handleHeadersJsonChange = useCallback((value: string | undefined) => {
         const json = value ?? "";
         setHeadersJson(json);
@@ -368,7 +144,6 @@ export function RequestBuilder({ vm, request, state }: RequestBuilderProps) {
         [vm],
     );
 
-    // Body panel height management
     const getClampedBodyHeight = useCallback((h: number) => {
         const container = splitRef.current;
         if (!container) return h;
@@ -399,20 +174,8 @@ export function RequestBuilder({ vm, request, state }: RequestBuilderProps) {
         toggleBodyHeight(0.7);
     }, [toggleBodyHeight]);
 
-    const getInitialBodyHeight = useMemo(() => {
-        if (bodyHeight !== null) return bodyHeight;
-        const container = splitRef.current;
-        if (!container) return 150;
-        return container.clientHeight * 0.4;
-    }, [bodyHeight]);
+    const currentBodyHeight = bodyHeight ?? (splitRef.current?.clientHeight ?? 0) * 0.4;
 
-    const currentBodyHeight = bodyHeight ?? getInitialBodyHeight;
-    const headersFlex = bodyHeight !== null ? "1 1 auto" : "6 1 0";
-    const bodyStyle = bodyHeight !== null
-        ? { height: currentBodyHeight, flexShrink: 0, flexGrow: 0 }
-        : { flex: "4 1 0", minHeight: 0 };
-
-    // Body type tab click
     const handleBodyTypeChange = useCallback(
         (type: BodyType) => {
             vm.updateBodyType(request.id, type);
@@ -420,7 +183,6 @@ export function RequestBuilder({ vm, request, state }: RequestBuilderProps) {
         [vm, request.id],
     );
 
-    // Raw body language menu items
     const languageMenuItems: MenuItem[] = useMemo(
         () => RAW_LANGUAGES.map((l) => ({
             label: l,
@@ -431,7 +193,6 @@ export function RequestBuilder({ vm, request, state }: RequestBuilderProps) {
         [vm, request.id, request.bodyLanguage],
     );
 
-    // Monaco body change
     const handleMonacoBodyChange = useCallback(
         (value: string | undefined) => {
             vm.updateRequest(request.id, { body: value ?? "" });
@@ -439,73 +200,142 @@ export function RequestBuilder({ vm, request, state }: RequestBuilderProps) {
         [vm, request.id],
     );
 
+    const handleCopyHeaders = useCallback(async () => {
+        const obj: Record<string, string> = {};
+        for (const h of request.headers) {
+            if (h.enabled && h.key.trim()) obj[h.key.trim()] = h.value;
+        }
+        navigator.clipboard.writeText(JSON.stringify(obj, null, 2));
+        return new Promise((resolve) => setTimeout(resolve, 200));
+    }, [request.headers]);
+
+    const headersFlexProps: { flex?: number | string; height?: number; shrink?: boolean } =
+        bodyHeight !== null
+            ? { flex: "1 1 auto" }
+            : { flex: "6 1 0" };
+
+    const bodyFlexProps: { flex?: number | string; height?: number; shrink?: boolean } =
+        bodyHeight !== null
+            ? { flex: "0 0 auto", height: currentBodyHeight, shrink: false }
+            : { flex: "4 1 0" };
+
+    const headersViewItems = [
+        { value: "table", label: "Table" },
+        { value: "json", label: "JSON" },
+    ];
+
+    const bodyTypeItems = BODY_TYPES.map(({ type, label }) => ({ value: type, label }));
+
     return (
-        <RequestBuilderRoot>
-            {/* URL Bar */}
-            <div className="url-bar">
-                <WithPopupMenu items={methodMenuItems}>
+        <Panel
+            name="request-builder"
+            direction="column"
+            flex={1}
+            overflow="hidden"
+            minHeight={0}
+        >
+            {/* URL bar */}
+            <Panel
+                name="url-bar"
+                direction="row"
+                align="start"
+                gap="xs"
+                paddingX="md"
+                paddingY="xs"
+                background="dark"
+                shrink={false}
+            >
+                <WithMenu items={methodMenuItems}>
                     {(setOpen) => (
-                        <div
-                            className="method-label"
-                            style={{ color: METHOD_COLORS[request.method] || color.text.default }}
+                        <Button
+                            name="method-label"
+                            size="sm"
+                            variant="ghost"
+                            background="dark"
                             onClick={(e) => setOpen(e.currentTarget)}
                         >
-                            {request.method}
-                        </div>
+                            <Text bold color={METHOD_COLORS[request.method]}>{request.method}</Text>
+                        </Button>
                     )}
-                </WithPopupMenu>
-                <TextAreaField
-                    className="url-input"
+                </WithMenu>
+                <Textarea
+                    name="url-input"
                     value={request.url}
                     onChange={handleUrlChange}
                     onKeyDown={handleUrlKeyDown}
                     onPaste={handleUrlPaste}
                     placeholder="Enter URL or paste cURL/fetch..."
+                    flex={1}
+                    minHeight={24}
+                    maxHeight={54}
                 />
                 <Button
-                    className="send-button"
+                    name="rest-send"
+                    variant="primary"
                     onClick={vm.sendRequest}
                     disabled={state.executing || !request.url}
                 >
                     {state.executing ? "Sending..." : "Send"}
                 </Button>
-            </div>
+            </Panel>
 
             {/* Split area: headers (top) / body (bottom) */}
-            <div className="split-container" ref={splitRef}>
+            <Panel
+                name="request-split"
+                direction="column"
+                flex={1}
+                overflow="hidden"
+                minHeight={0}
+                ref={splitRef}
+            >
                 {/* Headers panel */}
-                <div className="headers-panel" style={{ flex: headersFlex, overflow: "hidden", minHeight: 0 }}>
-                    <div className="section-header" onDoubleClick={handleHeadersDblClick}>
-                        <span className="section-title">Headers</span>
-                        <FlexSpace />
-                        <span
-                            className={`view-toggle ${headersView === "table" ? "active" : ""}`}
-                            onClick={() => headersView === "json" ? switchToTableView() : undefined}
-                        >Table</span>
-                        <span
-                            className={`view-toggle ${headersView === "json" ? "active" : ""}`}
-                            style={{ marginRight: 32 }}
-                            onClick={() => headersView === "table" ? switchToJsonView() : undefined}
-                        >JSON</span>
-                        <Button
-                            size="small"
-                            type="icon"
+                <Panel
+                    name="headers-panel"
+                    direction="column"
+                    overflow="hidden"
+                    minHeight={0}
+                    {...headersFlexProps}
+                >
+                    <Panel
+                        name="headers-section-header"
+                        direction="row"
+                        align="center"
+                        gap="xs"
+                        paddingX="md"
+                        paddingY="xs"
+                        background="dark"
+                        shrink={false}
+                        onDoubleClick={handleHeadersDblClick}
+                    >
+                        <Text size="xs" variant="uppercased" color="light" bold>Headers</Text>
+                        <Spacer />
+                        <SegmentedControl
+                            name="headers-view"
+                            size="sm"
+                            value={headersView}
+                            onChange={(v) =>
+                                v === "json" ? switchToJsonView() : switchToTableView()
+                            }
+                            items={headersViewItems}
+                        />
+                        <IconButton
+                            name="headers-copy"
+                            size="sm"
+                            icon={<CopyIcon />}
                             title="Copy headers as JSON"
-                            style={{ opacity: 0.5 }}
-                            onClick={async () => {
-                                const obj: Record<string, string> = {};
-                                for (const h of request.headers) {
-                                    if (h.enabled && h.key.trim()) obj[h.key.trim()] = h.value;
-                                }
-                                navigator.clipboard.writeText(JSON.stringify(obj, null, 2));
-                                return new Promise((resolve) => setTimeout(resolve, 200));
-                            }}
-                        >
-                            <CopyIcon />
-                        </Button>
-                    </div>
+                            onClick={handleCopyHeaders}
+                        />
+                    </Panel>
                     {headersView === "table" ? (
-                        <div className="headers-scroll">
+                        <Panel
+                            name="headers-scroll"
+                            direction="column"
+                            flex={1}
+                            overflowY="auto"
+                            minHeight={0}
+                            paddingX="md"
+                            paddingBottom="sm"
+                        >
                             <KeyValueEditor
                                 items={request.headers}
                                 onUpdate={(i, changes) => vm.updateHeader(request.id, i, changes)}
@@ -515,9 +345,14 @@ export function RequestBuilder({ vm, request, state }: RequestBuilderProps) {
                                 keyPlaceholder="Header name"
                                 valuePlaceholder="Value"
                             />
-                        </div>
+                        </Panel>
                     ) : (
-                        <div style={{ flex: "1 1 auto", overflow: "hidden" }}>
+                        <Panel
+                            name="headers-json"
+                            flex={1}
+                            overflow="hidden"
+                            minHeight={0}
+                        >
                             <Editor
                                 value={headersJson}
                                 language="json"
@@ -525,59 +360,75 @@ export function RequestBuilder({ vm, request, state }: RequestBuilderProps) {
                                 options={BODY_EDITOR_OPTIONS}
                                 onChange={handleHeadersJsonChange}
                             />
-                        </div>
+                        </Panel>
                     )}
-                </div>
+                </Panel>
+
+                <Splitter
+                    name="request-body-splitter"
+                    orientation="horizontal"
+                    value={currentBodyHeight}
+                    onChange={handleBodyHeightChange}
+                    side="after"
+                    border="before"
+                />
 
                 {/* Body panel */}
-                <Splitter
-                    type="horizontal"
-                    initialHeight={currentBodyHeight}
-                    onChangeHeight={handleBodyHeightChange}
-                />
-                <div className="body-panel" style={bodyStyle as any}>
-                    <div className="section-header" onDoubleClick={handleBodyDblClick}>
-                        <span className="section-title">Body</span>
-                        <div className="body-type-tabs">
-                            {BODY_TYPES.map(({ type, label }) => (
-                                <div
-                                    key={type}
-                                    className={`body-type-tab ${request.bodyType === type ? "active" : ""}`}
-                                    onClick={() => handleBodyTypeChange(type)}
-                                >
-                                    {label}
-                                </div>
-                            ))}
-                        </div>
+                <Panel
+                    name="body-panel"
+                    direction="column"
+                    overflow="hidden"
+                    minHeight={0}
+                    ref={bodyPanelRef}
+                    {...bodyFlexProps}
+                >
+                    <Panel
+                        name="body-section-header"
+                        direction="row"
+                        align="center"
+                        gap="xs"
+                        paddingX="md"
+                        paddingY="xs"
+                        background="dark"
+                        shrink={false}
+                        onDoubleClick={handleBodyDblClick}
+                    >
+                        <Text size="xs" variant="uppercased" color="light" bold>Body</Text>
+                        <SegmentedControl
+                            name="body-type-select"
+                            size="sm"
+                            value={request.bodyType}
+                            onChange={(v) => handleBodyTypeChange(v as BodyType)}
+                            items={bodyTypeItems}
+                        />
                         {request.bodyType === "raw" && (
-                            <WithPopupMenu items={languageMenuItems}>
+                            <WithMenu items={languageMenuItems}>
                                 {(setOpen) => (
-                                    <div
-                                        className="language-label"
+                                    <Button
+                                        name="body-language"
+                                        size="sm"
+                                        variant="ghost"
+                                        background="dark"
+                                        icon={<LanguageIcon language={request.bodyLanguage} width={16} height={16} />}
                                         title="Change body language"
                                         onClick={(e) => setOpen(e.currentTarget)}
                                     >
-                                        <LanguageIcon language={request.bodyLanguage} width={16} height={16} />
                                         {request.bodyLanguage}
-                                    </div>
+                                    </Button>
                                 )}
-                            </WithPopupMenu>
+                            </WithMenu>
                         )}
-                    </div>
+                    </Panel>
                     <BodyContent
                         vm={vm}
                         request={request}
                         onMonacoChange={handleMonacoBodyChange}
                     />
-                </div>
-            </div>
-        </RequestBuilderRoot>
+                </Panel>
+            </Panel>
+        </Panel>
     );
 }
-
-// =============================================================================
-// BodyContent sub-component
-// =============================================================================
 
 function BodyContent({ vm, request, onMonacoChange }: {
     vm: RestClientViewModel;
@@ -593,43 +444,74 @@ function BodyContent({ vm, request, onMonacoChange }: {
 
     if (request.bodyType === "none") {
         return (
-            <div className="body-content">
-                <div className="body-none-message">This request has no body.</div>
-            </div>
+            <Panel name="body-content" direction="column" flex={1} overflow="hidden" minHeight={0}>
+                <Panel paddingX="md" paddingY="sm">
+                    <Text color="light" italic>This request has no body.</Text>
+                </Panel>
+            </Panel>
         );
     }
 
     if (request.bodyType === "binary") {
         return (
-            <div className="body-content">
-                <div className="binary-body">
-                    <div className="binary-file-row">
-                        <Button size="small" title="Select file" onClick={handleSelectFile}>
-                            <FolderOpenIcon /> Select File
+            <Panel name="body-content" direction="column" flex={1} overflow="hidden" minHeight={0}>
+                <Panel
+                    name="binary-body"
+                    direction="column"
+                    gap="sm"
+                    paddingX="md"
+                    paddingY="sm"
+                >
+                    <Panel direction="row" align="center" gap="sm">
+                        <Button size="sm" title="Select file" onClick={handleSelectFile} icon={<FolderOpenIcon />}>
+                            Select File
                         </Button>
-                        <span className={`binary-file-path ${!request.binaryFilePath ? "binary-no-file" : ""}`}>
-                            {request.binaryFilePath || "No file selected"}
-                        </span>
-                    </div>
-                </div>
-            </div>
+                        <Panel flex={1} minWidth={0}>
+                            <Text
+                                size="sm"
+                                truncate
+                                color={request.binaryFilePath ? "default" : "light"}
+                                italic={!request.binaryFilePath}
+                            >
+                                {request.binaryFilePath || "No file selected"}
+                            </Text>
+                        </Panel>
+                    </Panel>
+                </Panel>
+            </Panel>
         );
     }
 
     if (request.bodyType === "form-data") {
         return (
-            <div className="body-content">
-                <div className="body-content-scroll">
+            <Panel name="body-content" direction="column" flex={1} overflow="hidden" minHeight={0}>
+                <Panel
+                    name="body-content-scroll"
+                    direction="column"
+                    flex={1}
+                    overflowY="auto"
+                    minHeight={0}
+                    paddingX="md"
+                    paddingBottom="sm"
+                >
                     <FormDataEditor vm={vm} request={request} />
-                </div>
-            </div>
+                </Panel>
+            </Panel>
         );
     }
 
     if (request.bodyType === "form-urlencoded") {
         return (
-            <div className="body-content">
-                <div className="body-content-scroll">
+            <Panel name="body-content" direction="column" flex={1} overflow="hidden" minHeight={0}>
+                <Panel
+                    name="body-content-scroll"
+                    direction="column"
+                    flex={1}
+                    overflowY="auto"
+                    minHeight={0}
+                    paddingX="md"
+                    paddingBottom="sm"
+                >
                     <KeyValueEditor
                         items={request.formData}
                         onUpdate={(i, changes) => vm.updateFormData(request.id, i, changes)}
@@ -638,14 +520,14 @@ function BodyContent({ vm, request, onMonacoChange }: {
                         keyPlaceholder="Key"
                         valuePlaceholder="Value"
                     />
-                </div>
-            </div>
+                </Panel>
+            </Panel>
         );
     }
 
     // raw
     return (
-        <div className="body-content">
+        <Panel name="body-content" direction="column" flex={1} overflow="hidden" minHeight={0}>
             <Editor
                 value={request.body}
                 language={request.bodyLanguage}
@@ -653,13 +535,9 @@ function BodyContent({ vm, request, onMonacoChange }: {
                 options={BODY_EDITOR_OPTIONS}
                 onChange={onMonacoChange}
             />
-        </div>
+        </Panel>
     );
 }
-
-// =============================================================================
-// FormDataEditor sub-component (multipart/form-data)
-// =============================================================================
 
 function FormDataEditor({ vm, request }: { vm: RestClientViewModel; request: RestRequest }) {
     const handleBrowse = useCallback(async (index: number) => {
@@ -670,21 +548,30 @@ function FormDataEditor({ vm, request }: { vm: RestClientViewModel; request: Res
     }, [vm, request.id]);
 
     return (
-        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        <Panel name="form-data-editor" direction="column" gap="xs">
             {request.formDataEntries.map((entry, index) => {
                 const isEmpty = !entry.key && !entry.value;
                 const isLast = index === request.formDataEntries.length - 1;
                 return (
-                    <div key={index} className={`form-data-row ${!entry.enabled ? "kv-row-disabled" : ""}`}
-                        style={{ opacity: entry.enabled ? 1 : 0.5 }}
+                    <Panel
+                        key={index}
+                        name="form-data-row"
+                        direction="row"
+                        align="start"
+                        gap="xs"
+                        paddingTop="xs"
+                        dimmed={!entry.enabled}
                     >
-                        <Checkbox
-                            className="kv-checkbox"
-                            checked={entry.enabled}
-                            onChange={() => vm.toggleFormDataEntry(request.id, index)}
-                        />
-                        <span
-                            className="form-data-type-toggle"
+                        <Panel name="form-data-check-slot" paddingTop="sm" shrink={false}>
+                            <Checkbox
+                                checked={entry.enabled}
+                                onChange={() => vm.toggleFormDataEntry(request.id, index)}
+                            />
+                        </Panel>
+                        <Button
+                            name="form-data-type-toggle"
+                            size="sm"
+                            variant="ghost"
                             title="Toggle text/file"
                             onClick={() => vm.updateFormDataEntry(request.id, index, {
                                 type: entry.type === "text" ? "file" : "text",
@@ -692,53 +579,76 @@ function FormDataEditor({ vm, request }: { vm: RestClientViewModel; request: Res
                             })}
                         >
                             {entry.type === "file" ? "File" : "Text"}
-                        </span>
-                        <TextAreaField
-                            style={{ width: "30%", minWidth: 80, flexShrink: 0, minHeight: 24, padding: "2px 6px", fontSize: 14, fontFamily: "monospace" }}
-                            value={entry.key}
-                            onChange={(v) => vm.updateFormDataEntry(request.id, index, { key: v || "" })}
-                            placeholder="Key"
-                            singleLine
-                        />
-                        {entry.type === "file" ? (
-                            <div style={{ flex: "1 1 auto", display: "flex", alignItems: "center", gap: 4, minWidth: 0 }}>
-                                <Button size="small" type="icon" title="Browse" onClick={() => handleBrowse(index)}>
-                                    <FolderOpenIcon />
-                                </Button>
-                                <span style={{
-                                    fontSize: 13, fontFamily: "monospace", color: entry.value ? color.text.default : color.text.light,
-                                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontStyle: entry.value ? "normal" : "italic",
-                                }}>
-                                    {entry.value || "No file selected"}
-                                </span>
-                            </div>
-                        ) : (
-                            <TextAreaField
-                                style={{ flex: "1 1 auto", minHeight: 24, minWidth: 0, padding: "2px 6px", fontSize: 14, fontFamily: "monospace" }}
-                                value={entry.value}
-                                onChange={(v) => vm.updateFormDataEntry(request.id, index, { value: v || "" })}
-                                placeholder="Value"
+                        </Button>
+                        <Panel
+                            name="form-data-key-slot"
+                            width="30%"
+                            minWidth={80}
+                            shrink={false}
+                        >
+                            <Textarea
+                                name="form-data-key"
+                                variant="ghost"
                                 singleLine
+                                value={entry.key}
+                                onChange={(v) =>
+                                    vm.updateFormDataEntry(request.id, index, { key: v })
+                                }
+                                placeholder="Key"
+                                flex="1 1 0"
+                                minWidth={0}
+                                minHeight={24}
+                            />
+                        </Panel>
+                        {entry.type === "file" ? (
+                            <Panel direction="row" align="center" gap="xs" flex="1 1 0" minWidth={0}>
+                                <IconButton
+                                    name="form-data-browse"
+                                    size="sm"
+                                    icon={<FolderOpenIcon />}
+                                    title="Browse"
+                                    onClick={() => handleBrowse(index)}
+                                />
+                                <Panel flex="1 1 0" minWidth={0}>
+                                    <Text
+                                        size="sm"
+                                        truncate
+                                        color={entry.value ? "default" : "light"}
+                                        italic={!entry.value}
+                                    >
+                                        {entry.value || "No file selected"}
+                                    </Text>
+                                </Panel>
+                            </Panel>
+                        ) : (
+                            <Textarea
+                                name="form-data-value"
+                                variant="ghost"
+                                singleLine
+                                value={entry.value}
+                                onChange={(v) =>
+                                    vm.updateFormDataEntry(request.id, index, { value: v })
+                                }
+                                placeholder="Value"
+                                flex="1 1 0"
+                                minWidth={0}
+                                minHeight={24}
                             />
                         )}
                         {isLast && isEmpty ? (
-                            <Button size="small" type="icon" style={{ visibility: "hidden" }}>
-                                <CloseIcon />
-                            </Button>
+                            <Panel width={24} shrink={false} />
                         ) : (
-                            <Button
-                                size="small"
-                                type="icon"
-                                style={{ opacity: 0.5 }}
+                            <IconButton
+                                name="form-data-delete"
+                                size="sm"
+                                icon={<CloseIcon />}
                                 title="Delete"
                                 onClick={() => vm.deleteFormDataEntry(request.id, index)}
-                            >
-                                <CloseIcon />
-                            </Button>
+                            />
                         )}
-                    </div>
+                    </Panel>
                 );
             })}
-        </div>
+        </Panel>
     );
 }

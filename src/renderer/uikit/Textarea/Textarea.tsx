@@ -12,7 +12,7 @@ export interface TextareaProps
         | "style" | "className"
         // Reimplemented with a string-value API instead of an event API.
         | "onChange" | "onInput"
-        // Owned by the component (single-line stripping, paste handling, contentEditable).
+        // Composed with internal handlers — see `onKeyDown` / `onPaste` prop docs below.
         | "onPaste" | "onKeyDown"
         | "contentEditable"
         // The component's content comes from `value`, not `children`.
@@ -58,6 +58,20 @@ export interface TextareaProps
     variant?: "default" | "ghost";
     /** Auto-focus on mount. Default: false. */
     autoFocus?: boolean;
+    /**
+     * Caller-supplied keydown hook. Runs BEFORE the internal handler. If the caller calls
+     * `e.preventDefault()`, the internal `singleLine` Enter-suppression is skipped (the caller
+     * has taken ownership of the event). Use this for URL-bar style flows where Enter must
+     * trigger a submit instead of inserting a newline.
+     */
+    onKeyDown?: React.KeyboardEventHandler<HTMLDivElement>;
+    /**
+     * Caller-supplied paste hook. Runs BEFORE the internal handler. If the caller calls
+     * `e.preventDefault()`, the internal paste-insertion is skipped (the caller has fully
+     * handled the paste — typically by replacing the value through some other route).
+     * Use this for paste-detection flows (e.g. cURL/fetch parsing in a URL bar).
+     */
+    onPaste?: React.ClipboardEventHandler<HTMLDivElement>;
 }
 
 /** Imperative handle exposed via `ref`. */
@@ -87,6 +101,9 @@ const Root = styled.div(
         outline: "none",
         boxSizing: "border-box",
         whiteSpace: "pre-wrap",
+        // Wrap long unbreakable strings (URLs, cookies, tokens) at any character so the
+        // control grows vertically instead of overflowing its width-constrained box.
+        overflowWrap: "anywhere",
         overflowY: "auto",
 
         '&[data-size="sm"]': { fontSize: fontSize.sm },
@@ -145,6 +162,8 @@ export const Textarea = React.forwardRef<TextareaRef, TextareaProps>(
             size = "md",
             variant = "default",
             autoFocus,
+            onKeyDown,
+            onPaste,
             ...rest
         } = props;
         const divRef = React.useRef<HTMLDivElement>(null);
@@ -187,6 +206,8 @@ export const Textarea = React.forwardRef<TextareaRef, TextareaProps>(
         };
 
         const handlePaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
+            onPaste?.(e);
+            if (e.defaultPrevented) return;
             e.preventDefault();
             let text = e.clipboardData.getData("text/plain");
             if (singleLine) text = text.replace(/\n/g, "");
@@ -206,6 +227,8 @@ export const Textarea = React.forwardRef<TextareaRef, TextareaProps>(
         };
 
         const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+            onKeyDown?.(e);
+            if (e.defaultPrevented) return;
             if (singleLine && e.key === "Enter") e.preventDefault();
         };
 

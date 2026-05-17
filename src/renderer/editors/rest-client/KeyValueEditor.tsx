@@ -1,81 +1,13 @@
-import styled from "@emotion/styled";
 import { useCallback } from "react";
-import { Button } from "../../components/basic/Button";
-import { Checkbox } from "../../components/basic/Checkbox";
-import { TextAreaField } from "../../components/basic/TextAreaField";
-import { ComboSelect } from "../../components/form/ComboSelect";
-import color from "../../theme/color";
+import {
+    Autocomplete,
+    Checkbox,
+    IconButton,
+    Panel,
+    Textarea,
+} from "../../uikit";
 import { CloseIcon } from "../../theme/icons";
 import { RestHeader } from "./restClientTypes";
-
-// =============================================================================
-// Styles
-// =============================================================================
-
-const KeyValueEditorRoot = styled.div({
-    display: "flex",
-    flexDirection: "column",
-    gap: 4,
-
-    "& .kv-row": {
-        display: "flex",
-        flexDirection: "row",
-        alignItems: "flex-start",
-        gap: 4,
-        paddingTop: 2,
-    },
-    "& .kv-row-disabled": {
-        opacity: 0.5,
-    },
-    "& .kv-checkbox": {
-        flexShrink: 0,
-        marginTop: 4,
-    },
-    "& .kv-key": {
-        width: "35%",
-        minWidth: 100,
-        flexShrink: 0,
-        "& input": {
-            backgroundColor: color.background.default,
-        },
-    },
-    "& .kv-key-text": {
-        minHeight: 24,
-        minWidth: 0,
-        padding: "2px 6px",
-        fontSize: 14,
-        fontFamily: "monospace",
-        color: color.text.default,
-        backgroundColor: color.background.default,
-        border: `1px solid ${color.border.default}`,
-        borderRadius: 3,
-        wordBreak: "break-all",
-    },
-    "& .kv-value": {
-        flex: "1 1 auto",
-        minHeight: 24,
-        minWidth: 0,
-        padding: "2px 6px",
-        fontSize: 14,
-        fontFamily: "monospace",
-        color: color.text.default,
-        backgroundColor: color.background.default,
-        border: `1px solid ${color.border.default}`,
-        borderRadius: 3,
-        wordBreak: "break-all",
-    },
-    "& .kv-delete": {
-        flexShrink: 0,
-        opacity: 0.5,
-        "&:hover": {
-            opacity: 1,
-        },
-    },
-}, { label: "KeyValueEditorRoot" });
-
-// =============================================================================
-// Component
-// =============================================================================
 
 interface KeyValueEditorProps {
     items: RestHeader[];
@@ -97,7 +29,7 @@ export function KeyValueEditor({
     valuePlaceholder = "Value",
 }: KeyValueEditorProps) {
     return (
-        <KeyValueEditorRoot>
+        <Panel name="kv-editor" direction="column" gap="xs">
             {items.map((item, index) => (
                 <KeyValueRow
                     key={index}
@@ -112,13 +44,9 @@ export function KeyValueEditor({
                     valuePlaceholder={valuePlaceholder}
                 />
             ))}
-        </KeyValueEditorRoot>
+        </Panel>
     );
 }
-
-// =============================================================================
-// Row sub-component
-// =============================================================================
 
 interface KeyValueRowProps {
     item: RestHeader;
@@ -146,8 +74,8 @@ function KeyValueRow({
     const isEmpty = !item.key && !item.value;
 
     const handleKeyChange = useCallback(
-        (value?: string) => {
-            onUpdate(index, { key: value || "" });
+        (value: string) => {
+            onUpdate(index, { key: value });
         },
         [onUpdate, index],
     );
@@ -159,69 +87,73 @@ function KeyValueRow({
         [onUpdate, index],
     );
 
-    const handleToggle = useCallback(
-        () => onToggle(index),
-        [onToggle, index],
-    );
-
-    const handleDelete = useCallback(
-        () => onDelete(index),
-        [onDelete, index],
-    );
+    const handleToggle = useCallback(() => onToggle(index), [onToggle, index]);
+    const handleDelete = useCallback(() => onDelete(index), [onDelete, index]);
 
     return (
-        <div className={`kv-row ${!item.enabled ? "kv-row-disabled" : ""}`}>
-            <Checkbox
-                className="kv-checkbox"
-                checked={item.enabled}
-                onChange={handleToggle}
-            />
-            {keyOptions ? (
-                <div className="kv-key">
-                    <ComboSelect
-                        selectFrom={keyOptions}
+        <Panel
+            name="kv-row"
+            direction="row"
+            align="start"
+            gap="xs"
+            paddingTop="xs"
+            dimmed={!item.enabled}
+        >
+            <Panel name="kv-row-check-slot" paddingTop="sm" shrink={false}>
+                <Checkbox checked={item.enabled} onChange={handleToggle} />
+            </Panel>
+            <Panel
+                name="kv-row-key-slot"
+                width="35%"
+                minWidth={100}
+                shrink={false}
+            >
+                {keyOptions ? (
+                    <Autocomplete
+                        name="kv-row-key"
+                        items={keyOptions}
                         value={item.key}
                         onChange={handleKeyChange}
-                        getLabel={(h: any) => h}
-                        freeText
+                        placeholder={keyPlaceholder}
+                        filterMode="contains"
+                        size="sm"
                     />
-                </div>
-            ) : (
-                <TextAreaField
-                    className="kv-key kv-key-text"
-                    value={item.key}
-                    onChange={handleKeyChange}
-                    placeholder={keyPlaceholder}
-                    singleLine
-                />
-            )}
-            <TextAreaField
-                className="kv-value"
+                ) : (
+                    <Textarea
+                        name="kv-row-key"
+                        variant="ghost"
+                        singleLine
+                        value={item.key}
+                        onChange={handleKeyChange}
+                        placeholder={keyPlaceholder}
+                        flex="1 1 0"
+                        minWidth={0}
+                        minHeight={24}
+                    />
+                )}
+            </Panel>
+            <Textarea
+                name="kv-row-value"
+                variant="ghost"
+                singleLine
                 value={item.value}
                 onChange={handleValueChange}
                 placeholder={valuePlaceholder}
-                singleLine
+                flex="1 1 0"
+                minWidth={0}
+                minHeight={24}
             />
             {isLast && isEmpty ? (
-                <Button
-                    size="small"
-                    type="icon"
-                    className="kv-delete"
-                    style={{ visibility: "hidden" }}
-                >
-                    <CloseIcon />
-                </Button>
+                <Panel width={24} shrink={false} />
             ) : (
-                <Button
-                    size="small"
-                    type="icon"
-                    className="kv-delete"
+                <IconButton
+                    name="kv-row-delete"
+                    size="sm"
+                    icon={<CloseIcon />}
                     title="Delete"
                     onClick={handleDelete}
-                >
-                    <CloseIcon />
-                </Button>
+                />
             )}
-        </div>
+        </Panel>
     );
 }

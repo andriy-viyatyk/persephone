@@ -1,14 +1,19 @@
-import React, { useCallback, useMemo, useState } from "react";
-import styled from "@emotion/styled";
+import { useCallback, useMemo, useState } from "react";
 import { Editor } from "@monaco-editor/react";
 import { LanguageIcon } from "../../components/icons/LanguageIcon";
-import { Button } from "../../components/basic/Button";
-import { WithPopupMenu } from "../../components/overlay/WithPopupMenu";
-import type { MenuItem } from "../../components/overlay/PopupMenu";
+import {
+    Button,
+    IconButton,
+    Panel,
+    SegmentedControl,
+    Spacer,
+    Text,
+    WithMenu,
+} from "../../uikit";
+import type { MenuItem } from "../../uikit";
 import { CopyIcon, NewWindowIcon, SaveIcon } from "../../theme/icons";
 import { app } from "../../api/app";
 import { pagesModel } from "../../api/pages";
-import color from "../../theme/color";
 import { RestResponse } from "./restClientTypes";
 
 const RESPONSE_LANGUAGES = [
@@ -20,153 +25,6 @@ const RESPONSE_LANGUAGES = [
     "yaml",
     "plaintext",
 ];
-
-// =============================================================================
-// Styles
-// =============================================================================
-
-const ResponseViewerRoot = styled.div({
-    display: "flex",
-    flexDirection: "column",
-    flex: "1 1 auto",
-    overflow: "hidden",
-    minHeight: 0,
-
-    "& .response-tabs": {
-        display: "flex",
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 0,
-        flexShrink: 0,
-    },
-    "& .response-tab": {
-        padding: "4px 12px",
-        fontSize: 12,
-        color: color.text.light,
-        cursor: "pointer",
-        userSelect: "none",
-        borderBottom: "2px solid transparent",
-        "&:hover": {
-            color: color.text.default,
-        },
-    },
-    "& .response-tab.active": {
-        color: color.text.default,
-        borderBottomColor: color.border.active,
-    },
-    "& .tab-bar-spacer": {
-        flex: "1 1 auto",
-    },
-    "& .tab-bar-button": {
-        flexShrink: 0,
-        opacity: 0.5,
-        "&:hover": {
-            opacity: 1,
-        },
-    },
-    "& .language-label": {
-        display: "flex",
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 4,
-        flexShrink: 0,
-        padding: "2px 8px",
-        fontSize: 12,
-        color: color.text.light,
-        cursor: "pointer",
-        borderRadius: 3,
-        userSelect: "none",
-        "&:hover": {
-            color: color.text.default,
-            backgroundColor: color.background.light,
-        },
-    },
-    "& .view-toggle": {
-        fontSize: 11,
-        color: color.text.light,
-        cursor: "pointer",
-        padding: "1px 6px",
-        borderRadius: 3,
-        userSelect: "none",
-        "&:hover": {
-            color: color.text.default,
-        },
-    },
-    "& .view-toggle.active": {
-        color: color.text.default,
-        backgroundColor: color.background.light,
-    },
-    "& .response-tab-body": {
-        flex: "1 1 auto",
-        overflow: "hidden",
-        display: "flex",
-        flexDirection: "column",
-    },
-    "& .response-headers-list": {
-        overflow: "auto",
-        flex: "1 1 auto",
-        minHeight: 0,
-    },
-    "& .headers-table": {
-        width: "100%",
-        borderCollapse: "collapse",
-        fontSize: 13,
-        fontFamily: "monospace",
-    },
-    "& .headers-table td": {
-        padding: "3px 8px",
-        verticalAlign: "top",
-        borderBottom: `1px solid ${color.border.default}`,
-    },
-    "& .headers-table .header-key-cell": {
-        color: color.text.light,
-        whiteSpace: "nowrap",
-        width: 1,
-        fontWeight: 500,
-    },
-    "& .headers-table .header-value-cell": {
-        color: color.text.default,
-        wordBreak: "break-all",
-    },
-    "& .sending-message": {
-        padding: 12,
-        fontSize: 13,
-        color: color.text.light,
-        fontStyle: "italic",
-    },
-    "& .binary-response": {
-        flex: "1 1 auto",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 12,
-        padding: 16,
-        overflow: "auto",
-    },
-    "& .binary-info": {
-        fontSize: 13,
-        color: color.text.light,
-        textAlign: "center",
-        fontStyle: "italic",
-    },
-    "& .binary-actions": {
-        display: "flex",
-        flexDirection: "row",
-        gap: 8,
-    },
-    "& .binary-image-preview": {
-        maxWidth: "100%",
-        maxHeight: 300,
-        objectFit: "contain",
-        borderRadius: 4,
-        border: `1px solid ${color.border.default}`,
-    },
-}, { label: "ResponseViewerRoot" });
-
-// =============================================================================
-// Helpers
-// =============================================================================
 
 const EDITOR_OPTIONS: any = {
     automaticLayout: true,
@@ -226,10 +84,6 @@ function getExtensionFromContentType(ct: string): string {
     return ".bin";
 }
 
-// =============================================================================
-// Component
-// =============================================================================
-
 type ResponseTab = "body" | "headers";
 
 interface ResponseViewerProps {
@@ -265,7 +119,6 @@ export function ResponseViewer({ response, responseTime, executing }: ResponseVi
     const bodySize = useMemo(() => {
         if (!response) return "";
         if (response.isBinary) {
-            // base64 string → actual binary size
             return formatSize(Math.floor(response.body.length * 3 / 4));
         }
         return formatSize(new Blob([response.body]).size);
@@ -324,107 +177,140 @@ export function ResponseViewer({ response, responseTime, executing }: ResponseVi
         return new Promise((resolve) => setTimeout(resolve, 200));
     }, [response]);
 
+    void responseTime;
+
     if (executing) {
         return (
-            <ResponseViewerRoot>
-                <div className="sending-message">Sending request...</div>
-            </ResponseViewerRoot>
+            <Panel name="response-viewer" direction="column" flex={1} overflow="hidden">
+                <Panel paddingX="md" paddingY="sm">
+                    <Text color="light" italic>Sending request...</Text>
+                </Panel>
+            </Panel>
         );
     }
 
     if (!response) {
         return (
-            <ResponseViewerRoot>
-                <div className="sending-message">Send a request to see the response.</div>
-            </ResponseViewerRoot>
+            <Panel name="response-viewer" direction="column" flex={1} overflow="hidden">
+                <Panel paddingX="md" paddingY="sm">
+                    <Text color="light" italic>Send a request to see the response.</Text>
+                </Panel>
+            </Panel>
         );
     }
 
+    const tabItems = [
+        { value: "body", label: `Body${bodySize ? ` (${bodySize})` : ""}` },
+        { value: "headers", label: `Headers (${response.headers.length})` },
+    ];
+
+    const headersViewItems = [
+        { value: "table", label: "Table" },
+        { value: "json", label: "JSON" },
+    ];
+
     return (
-        <ResponseViewerRoot>
-            <div className="response-tabs">
-                <div
-                    className={`response-tab ${activeTab === "body" ? "active" : ""}`}
-                    onClick={() => setActiveTab("body")}
-                >
-                    Body {bodySize && `(${bodySize})`}
-                </div>
-                <div
-                    className={`response-tab ${activeTab === "headers" ? "active" : ""}`}
-                    onClick={() => setActiveTab("headers")}
-                >
-                    Headers ({response.headers.length})
-                </div>
-                <div className="tab-bar-spacer" />
+        <Panel name="response-viewer" direction="column" flex="1 1 0" overflow="hidden" minHeight={0}>
+            <Panel
+                name="response-tabs"
+                direction="row"
+                align="center"
+                gap="xs"
+                paddingX="sm"
+                paddingY="xs"
+                shrink={false}
+            >
+                <SegmentedControl
+                    name="response-tab-select"
+                    size="sm"
+                    value={activeTab}
+                    onChange={(v) => setActiveTab(v as ResponseTab)}
+                    items={tabItems}
+                />
+                <Spacer />
                 {activeTab === "body" && !response.isBinary && (
                     <>
-                        <Button
-                            size="small"
-                            type="icon"
-                            className="tab-bar-button"
+                        <IconButton
+                            name="response-open-in-tab"
+                            size="sm"
+                            icon={<NewWindowIcon />}
                             title="Open in new tab"
                             onClick={handleOpenInTab}
-                        >
-                            <NewWindowIcon />
-                        </Button>
-                        <WithPopupMenu items={languageMenuItems}>
+                        />
+                        <WithMenu items={languageMenuItems}>
                             {(setOpen) => (
-                                <div
-                                    className="language-label"
+                                <Button
+                                    name="response-language"
+                                    size="sm"
+                                    variant="ghost"
+                                    icon={<LanguageIcon language={language} width={16} height={16} />}
                                     title="Change response language"
                                     onClick={(e) => setOpen(e.currentTarget)}
                                 >
-                                    <LanguageIcon language={language} width={16} height={16} />
                                     {language}
-                                </div>
+                                </Button>
                             )}
-                        </WithPopupMenu>
+                        </WithMenu>
                     </>
                 )}
                 {activeTab === "headers" && (
                     <>
-                        <span
-                            className={`view-toggle ${headersView === "table" ? "active" : ""}`}
-                            onClick={() => setHeadersView("table")}
-                        >Table</span>
-                        <span
-                            className={`view-toggle ${headersView === "json" ? "active" : ""}`}
-                            style={{ marginRight: 32 }}
-                            onClick={() => setHeadersView("json")}
-                        >JSON</span>
-                        <Button
-                            size="small"
-                            type="icon"
-                            className="tab-bar-button"
+                        <SegmentedControl
+                            name="response-headers-view"
+                            size="sm"
+                            value={headersView}
+                            onChange={(v) => setHeadersView(v as "table" | "json")}
+                            items={headersViewItems}
+                        />
+                        <IconButton
+                            name="response-copy-headers"
+                            size="sm"
+                            icon={<CopyIcon />}
                             title="Copy headers as JSON"
                             onClick={handleCopyHeaders}
-                        >
-                            <CopyIcon />
-                        </Button>
+                        />
                     </>
                 )}
-            </div>
-            <div className="response-tab-body">
+            </Panel>
+            <Panel
+                name="response-tab-body"
+                direction="column"
+                flex="1 1 0"
+                overflowX="hidden"
+                overflowY="auto"
+                minHeight={0}
+            >
                 {activeTab === "body" ? (
                     response.isBinary ? (
-                        <div className="binary-response">
-                            <div className="binary-info">
+                        <Panel
+                            name="response-binary"
+                            direction="column"
+                            align="center"
+                            justify="center"
+                            gap="md"
+                            padding="lg"
+                            flex={1}
+                            overflowY="auto"
+                        >
+                            <Text color="light" italic align="center">
                                 Binary response — {response.contentType || "unknown type"} ({bodySize})
-                            </div>
+                            </Text>
                             {isImage && blobUrl && (
-                                <img className="binary-image-preview" src={blobUrl} alt="Response" />
+                                <img
+                                    src={blobUrl}
+                                    alt="Response"
+                                    style={{ maxWidth: "100%", maxHeight: 300, objectFit: "contain" }}
+                                />
                             )}
-                            <div className="binary-actions">
-                                <Button onClick={handleSaveBinary}>
-                                    <SaveIcon /> Save to File
-                                </Button>
+                            <Panel name="response-binary-actions" direction="row" gap="sm">
+                                <Button icon={<SaveIcon />} onClick={handleSaveBinary}>Save to File</Button>
                                 {isImage && (
-                                    <Button onClick={handleOpenImage}>
-                                        <NewWindowIcon /> Open in Image Viewer
+                                    <Button icon={<NewWindowIcon />} onClick={handleOpenImage}>
+                                        Open in Image Viewer
                                     </Button>
                                 )}
-                            </div>
-                        </div>
+                            </Panel>
+                        </Panel>
                     ) : (
                         <Editor
                             value={formattedBody}
@@ -434,18 +320,22 @@ export function ResponseViewer({ response, responseTime, executing }: ResponseVi
                         />
                     )
                 ) : headersView === "table" ? (
-                    <div className="response-headers-list">
-                        <table className="headers-table">
-                            <tbody>
-                                {response.headers.map((h, i) => (
-                                    <tr key={i}>
-                                        <td className="header-key-cell">{h.key}</td>
-                                        <td className="header-value-cell">{h.value}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                    <Panel
+                        name="response-headers-list"
+                        direction="column"
+                        paddingX="md"
+                        paddingY="xs"
+                        gap="xs"
+                    >
+                        {response.headers.map((h, i) => (
+                            <Panel key={i} direction="row" gap="md" align="start" shrink={false}>
+                                <Text color="light" size="sm" nowrap>{h.key}</Text>
+                                <Panel flex="1 1 0" minWidth={0} wordBreak="break-all">
+                                    <Text color="default" size="sm">{h.value}</Text>
+                                </Panel>
+                            </Panel>
+                        ))}
+                    </Panel>
                 ) : (
                     <Editor
                         value={headersAsJson}
@@ -454,8 +344,8 @@ export function ResponseViewer({ response, responseTime, executing }: ResponseVi
                         options={{ ...EDITOR_OPTIONS, readOnly: true }}
                     />
                 )}
-            </div>
-        </ResponseViewerRoot>
+            </Panel>
+        </Panel>
     );
 }
 

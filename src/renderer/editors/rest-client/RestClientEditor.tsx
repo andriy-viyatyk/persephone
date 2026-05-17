@@ -1,14 +1,17 @@
-import styled from "@emotion/styled";
-import React, { useCallback, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { Splitter } from "../../components/layout/Splitter";
+import React, { useCallback, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { TreeView, TreeItem } from "../../components/TreeView";
-import { TextAreaField } from "../../components/basic/TextAreaField";
-import color from "../../theme/color";
+import {
+    IconButton,
+    Panel,
+    Spacer,
+    Splitter,
+    Text,
+    Textarea,
+    WithMenu,
+} from "../../uikit";
+import type { MenuItem } from "../../uikit";
 import universalColors from "../../theme/universal-colors";
 import { CopyIcon, DeleteIcon, PlusIcon } from "../../theme/icons";
-import { Button } from "../../components/basic/Button";
-import { WithPopupMenu } from "../../components/overlay/WithPopupMenu";
-import type { MenuItem } from "../../components/overlay/PopupMenu";
 import { app } from "../../api/app";
 import { EditorError } from "../base/EditorError";
 import { useContentViewModel } from "../base/useContentViewModel";
@@ -20,10 +23,6 @@ import { METHOD_COLORS } from "./httpConstants";
 import { IContentHost } from "../base/IContentHost";
 import { TraitTypeId, type TraitDragPayload, resolveTraits } from "../../core/traits";
 import { LINK } from "../link-editor/linkTraits";
-
-// =============================================================================
-// Tree item type
-// =============================================================================
 
 interface RequestTreeItem extends TreeItem {
     id: string;
@@ -56,226 +55,6 @@ function buildGroupedTree(requests: RestRequest[]): RequestTreeItem[] {
     }));
 }
 
-// =============================================================================
-// Styles
-// =============================================================================
-
-const RestClientRoot = styled.div({
-    flex: "1 1 auto",
-    display: "flex",
-    flexDirection: "row",
-    overflow: "hidden",
-
-    // ── Left panel ──
-    "& .left-panel": {
-        display: "flex",
-        flexDirection: "column",
-        overflow: "hidden",
-        backgroundColor: color.background.default,
-        minWidth: 150,
-        maxWidth: "80%",
-        flexShrink: 0,
-    },
-    // Reduce indentation for leaf request items (no expand button needed)
-    "& .left-panel .empty-button": {
-        width: 4,
-    },
-    "& .left-panel .level-shift": {
-        width: 10,
-    },
-    "& .left-panel-tree": {
-        flex: "1 1 auto",
-        overflow: "auto",
-    },
-    "& .method-badge": {
-        display: "inline-block",
-        fontSize: 9,
-        fontWeight: 700,
-        fontFamily: "monospace",
-        padding: "1px 4px",
-        borderRadius: 2,
-        marginRight: 6,
-        minWidth: 32,
-        textAlign: "center",
-    },
-    "& .request-name": {
-        fontSize: 13,
-        color: color.text.default,
-        overflow: "hidden",
-        textOverflow: "ellipsis",
-        whiteSpace: "nowrap",
-    },
-    "& .root-label": {
-        display: "flex",
-        flexDirection: "row",
-        alignItems: "center",
-        flex: "1 1 auto",
-        paddingLeft: 4,
-        fontSize: 12,
-        fontWeight: 600,
-        color: color.text.light,
-        textTransform: "uppercase",
-        letterSpacing: "0.5px",
-    },
-    "& .root-label-spacer": {
-        flex: "1 1 auto",
-    },
-    "& .root-add-button": {
-        opacity: 0.5,
-        "&:hover": {
-            opacity: 1,
-        },
-    },
-    "& .collection-name": {
-        fontSize: 13,
-        fontWeight: 600,
-        color: color.text.default,
-    },
-    "& .empty-label": {
-        fontStyle: "italic",
-        color: color.text.light,
-    },
-
-    // ── Right panel (detail area with top/bottom split) ──
-    "& .right-panel": {
-        flex: "1 1 auto",
-        display: "flex",
-        flexDirection: "column",
-        overflow: "hidden",
-        "& .splitter": {
-            borderTop: "none",
-        },
-    },
-    "& .empty-message": {
-        color: color.text.light,
-        fontSize: 13,
-        textAlign: "center",
-        padding: 24,
-        flex: "1 1 auto",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        fontStyle: "italic",
-    },
-
-    // ── Split panel headers (double-click to toggle) ──
-    "& .panel-header": {
-        display: "flex",
-        alignItems: "center",
-        gap: 4,
-        padding: "4px 8px",
-        fontSize: 12,
-        fontWeight: 600,
-        color: color.text.light,
-        background: color.background.dark,
-        borderBottom: `1px solid ${color.border.default}`,
-        flexShrink: 0,
-        cursor: "default",
-        userSelect: "none",
-        letterSpacing: "0.5px",
-    },
-    "& .panel-header-spacer": {
-        flex: "1 1 auto",
-    },
-    "& .request-header-input": {
-        minHeight: 18,
-        padding: "1px 4px",
-        fontSize: 12,
-        fontFamily: "monospace",
-        color: color.text.default,
-        backgroundColor: "transparent",
-        border: `1px solid transparent`,
-        borderRadius: 3,
-        "&:focus[contenteditable='plaintext-only']": {
-            backgroundColor: color.background.default,
-            borderColor: color.border.default,
-        },
-    },
-    "& .request-header-collection": {
-        maxWidth: "40%",
-        flexShrink: 1,
-    },
-    "& .request-header-name": {
-        flex: "1 1 auto",
-        minWidth: 50,
-    },
-    "& .request-header-separator": {
-        fontSize: 12,
-        color: color.text.light,
-        flexShrink: 0,
-    },
-    "& .delete-button": {
-        flexShrink: 0,
-        opacity: 0.5,
-        "&:hover": {
-            opacity: 1,
-        },
-    },
-
-    // ── Top panel (request) ──
-    "& .request-panel": {
-        overflow: "hidden",
-        display: "flex",
-        flexDirection: "column",
-        "& .panel-header": {
-            borderBottom: "none",
-        },
-    },
-    "& .request-panel-body": {
-        flex: "1 1 auto",
-        overflow: "auto",
-        display: "flex",
-        flexDirection: "column",
-    },
-
-    // ── Bottom panel (response) ──
-    "& .response-panel": {
-        overflow: "hidden",
-        display: "flex",
-        flexDirection: "column",
-        "& .panel-header": {
-            borderBottom: "none",
-            borderTop: `1px solid ${color.border.default}`,
-        },
-    },
-    "& .response-panel-body": {
-        flex: "1 1 auto",
-        overflow: "hidden",
-        display: "flex",
-        flexDirection: "column",
-    },
-    "& .response-status": {
-        fontWeight: 600,
-        fontFamily: "monospace",
-        fontSize: 12,
-        marginRight: 4,
-    },
-    "& .response-time": {
-        fontSize: 11,
-        color: color.text.light,
-        marginRight: 4,
-    },
-    "& .response-body": {
-        flex: "1 1 auto",
-        padding: 8,
-        fontSize: 13,
-        fontFamily: "monospace",
-        color: color.text.default,
-        whiteSpace: "pre-wrap",
-        wordBreak: "break-all",
-    },
-    "& .sending-message": {
-        padding: 12,
-        fontSize: 13,
-        color: color.text.light,
-        fontStyle: "italic",
-    },
-}, { label: "RestClientRoot" });
-
-// =============================================================================
-// Component
-// =============================================================================
-
 const noopUnsubscribe = () => () => {};
 const getDefaultState = () => defaultRestClientEditorState;
 
@@ -297,11 +76,7 @@ export function RestClientEditor({ model }: { model: IContentHost }) {
     if (!vm) return null;
 
     if (state.error) {
-        return (
-            <RestClientRoot>
-                <EditorError>{state.error}</EditorError>
-            </RestClientRoot>
-        );
+        return <EditorError>{state.error}</EditorError>;
     }
 
     const selectedRequest = vm.selectedRequest;
@@ -313,37 +88,70 @@ export function RestClientEditor({ model }: { model: IContentHost }) {
     };
 
     return (
-        <RestClientRoot>
-            <div className="left-panel" style={{ width: leftPanelWidth }}>
-                <div className="left-panel-tree">
+        <Panel
+            name="rest-client-root"
+            direction="row"
+            flex={1}
+            height={0}
+            overflow="hidden"
+        >
+            <Panel
+                name="rest-left-panel"
+                direction="column"
+                overflow="hidden"
+                background="default"
+                width={leftPanelWidth}
+                minWidth={150}
+                maxWidth="80%"
+                shrink={false}
+            >
+                <Panel
+                    name="rest-left-tree"
+                    flex={1}
+                    overflow="auto"
+                    minHeight={0}
+                >
                     <RequestTree vm={vm} root={rootItem} selectedId={state.selectedRequestId} />
-                </div>
-            </div>
+                </Panel>
+            </Panel>
             <Splitter
-                type="vertical"
-                initialWidth={leftPanelWidth}
-                onChangeWidth={handleLeftPanelWidthChange}
-                borderSized="right"
+                name="rest-left-splitter"
+                orientation="vertical"
+                value={leftPanelWidth}
+                onChange={handleLeftPanelWidthChange}
+                side="before"
+                border="after"
+                min={150}
+                max={500}
             />
-            <div className="right-panel">
+            <Panel
+                name="rest-right-panel"
+                direction="column"
+                flex={1}
+                width={0}
+                overflow="hidden"
+            >
                 {selectedRequest ? (
                     <SplitDetailPanel vm={vm} request={selectedRequest} state={state} />
                 ) : (
-                    <div className="empty-message">
-                        {state.data.requests.length === 0
-                            ? "No requests yet. Click + to add one."
-                            : "Select a request from the list."
-                        }
-                    </div>
+                    <Panel
+                        name="rest-empty"
+                        flex={1}
+                        align="center"
+                        justify="center"
+                        padding="lg"
+                    >
+                        <Text color="light" italic align="center">
+                            {state.data.requests.length === 0
+                                ? "No requests yet. Click + to add one."
+                                : "Select a request from the list."}
+                        </Text>
+                    </Panel>
                 )}
-            </div>
-        </RestClientRoot>
+            </Panel>
+        </Panel>
     );
 }
-
-// =============================================================================
-// SplitDetailPanel — request (top) + response (bottom)
-// =============================================================================
 
 function SplitDetailPanel({ vm, request, state }: {
     vm: RestClientViewModel;
@@ -351,7 +159,17 @@ function SplitDetailPanel({ vm, request, state }: {
     state: RestClientEditorState;
 }) {
     const detailRef = useRef<HTMLDivElement>(null);
+    const responsePaneRef = useRef<HTMLDivElement>(null);
     const [resultHeight, setResultHeight] = useState<number | null>(null);
+
+    // Pin resultHeight to the actually-rendered pixel size after first layout — same
+    // reason as `RequestBuilder.bodyHeight` (splitter startValue must match what the
+    // user sees on screen, otherwise the panel jumps on first drag).
+    useLayoutEffect(() => {
+        if (resultHeight === null && responsePaneRef.current) {
+            setResultHeight(responsePaneRef.current.offsetHeight);
+        }
+    }, [resultHeight]);
 
     const getClampedHeight = useCallback((h: number) => {
         const container = detailRef.current;
@@ -383,18 +201,17 @@ function SplitDetailPanel({ vm, request, state }: {
         togglePanelHeight(0.7);
     }, [togglePanelHeight]);
 
-    const getInitialResultHeight = useCallback(() => {
-        if (resultHeight !== null) return resultHeight;
-        const container = detailRef.current;
-        if (!container) return 200;
-        return container.clientHeight * 0.3;
-    }, [resultHeight]);
+    const currentResultHeight = resultHeight ?? (detailRef.current?.clientHeight ?? 0) * 0.3;
 
-    const currentResultHeight = resultHeight ?? getInitialResultHeight();
-    const topFlex = resultHeight !== null ? "1 1 auto" : "7 1 0";
-    const bottomStyle = resultHeight !== null
-        ? { height: currentResultHeight, flexShrink: 0, flexGrow: 0 }
-        : { flex: "3 1 0", minHeight: 0 };
+    const topFlexProps: { flex?: number | string; height?: number; shrink?: boolean } =
+        resultHeight !== null
+            ? { flex: "1 1 auto" }
+            : { flex: "7 1 0" };
+
+    const bottomFlexProps: { flex?: number | string; height?: number; shrink?: boolean } =
+        resultHeight !== null
+            ? { flex: "0 0 auto", height: currentResultHeight, shrink: false }
+            : { flex: "3 1 0" };
 
     const handleCollectionChange = useCallback(
         (value: string) => vm.updateRequestCollection(request.id, value),
@@ -444,88 +261,148 @@ function SplitDetailPanel({ vm, request, state }: {
     ], [request]);
 
     return (
-        <div ref={detailRef} style={{ display: "flex", flexDirection: "column", flex: "1 1 auto", overflow: "hidden" }}>
+        <Panel
+            name="rest-detail"
+            direction="column"
+            flex={1}
+            height={0}
+            overflow="hidden"
+            ref={detailRef}
+        >
             {/* Top: Request */}
-            <div className="request-panel" style={{ flex: topFlex, overflow: "hidden", minHeight: 0 }}>
-                <div className="panel-header" onDoubleClick={handleTopHeaderDblClick}>
-                    <TextAreaField
-                        className="request-header-input request-header-collection"
+            <Panel
+                name="request-pane"
+                direction="column"
+                overflow="hidden"
+                minHeight={0}
+                {...topFlexProps}
+            >
+                <Panel
+                    name="request-pane-header"
+                    direction="row"
+                    align="center"
+                    gap="xs"
+                    paddingX="md"
+                    paddingY="xs"
+                    background="dark"
+                    shrink={false}
+                    onDoubleClick={handleTopHeaderDblClick}
+                >
+                    <Textarea
+                        name="request-header-collection"
+                        variant="ghost"
+                        singleLine
                         value={request.collection}
                         onChange={handleCollectionChange}
                         placeholder="Collection"
-                        singleLine
+                        size="sm"
+                        maxWidth="40%"
+                        minHeight={20}
                     />
-                    <span className="request-header-separator">/</span>
-                    <TextAreaField
-                        className="request-header-input request-header-name"
+                    <Text color="light" size="sm">/</Text>
+                    <Textarea
+                        name="request-header-name"
+                        variant="ghost"
+                        singleLine
                         value={request.name}
                         onChange={handleNameChange}
                         placeholder="Request name"
-                        singleLine
+                        size="sm"
+                        flex={1}
+                        minWidth={50}
+                        minHeight={20}
                     />
-                    <div className="panel-header-spacer" />
-                    <WithPopupMenu items={copyMenuItems}>
+                    <Spacer />
+                    <WithMenu items={copyMenuItems}>
                         {(setOpen) => (
-                            <Button
-                                size="small"
-                                type="icon"
-                                className="delete-button"
+                            <IconButton
+                                name="request-copy-as"
+                                size="sm"
+                                icon={<CopyIcon />}
                                 title="Copy request as..."
                                 onClick={(e) => setOpen(e.currentTarget)}
-                            >
-                                <CopyIcon />
-                            </Button>
+                            />
                         )}
-                    </WithPopupMenu>
-                    <Button
-                        size="small"
-                        type="icon"
-                        className="delete-button"
+                    </WithMenu>
+                    <IconButton
+                        name="request-delete"
+                        size="sm"
+                        icon={<DeleteIcon />}
                         title="Delete request"
                         onClick={handleDelete}
-                    >
-                        <DeleteIcon />
-                    </Button>
-                </div>
-                <div className="request-panel-body">
+                    />
+                </Panel>
+                <Panel
+                    name="request-pane-body"
+                    direction="column"
+                    flex="1 1 0"
+                    overflow="auto"
+                    minHeight={0}
+                >
                     <RequestBuilder vm={vm} request={request} state={state} />
-                </div>
-            </div>
+                </Panel>
+            </Panel>
 
-            {/* Horizontal splitter */}
             <Splitter
-                type="horizontal"
-                initialHeight={currentResultHeight}
-                onChangeHeight={handleResultHeightChange}
-                borderSized="top"
+                name="rest-detail-splitter"
+                orientation="horizontal"
+                value={currentResultHeight}
+                onChange={handleResultHeightChange}
+                side="after"
+                border="before"
             />
 
             {/* Bottom: Response */}
-            <div className="response-panel" style={bottomStyle as any}>
-                <div className="panel-header" onDoubleClick={handleBottomHeaderDblClick}>
-                    <span>Response</span>
-                    <div className="panel-header-spacer" />
+            <Panel
+                name="response-pane"
+                direction="column"
+                overflow="hidden"
+                minHeight={0}
+                ref={responsePaneRef}
+                {...bottomFlexProps}
+            >
+                <Panel
+                    name="response-pane-header"
+                    direction="row"
+                    align="center"
+                    gap="sm"
+                    paddingX="md"
+                    paddingY="xs"
+                    background="dark"
+                    shrink={false}
+                    onDoubleClick={handleBottomHeaderDblClick}
+                >
+                    <Text size="xs" variant="uppercased" color="light" bold>Response</Text>
+                    <Spacer />
                     {state.response && (
                         <>
-                            <span className="response-status" style={{ color: getStatusColor(state.response.status) }}>
-                                {state.response.status === 0 ? "Error" : `${state.response.status} ${state.response.statusText}`}
-                            </span>
-                            <span className="response-time">{state.responseTime}ms</span>
-                            <span className="response-time">{getResponseSize(state.response)}</span>
+                            <Text size="sm" bold color={getStatusColor(state.response.status)}>
+                                {state.response.status === 0
+                                    ? "Error"
+                                    : `${state.response.status} ${state.response.statusText}`}
+                            </Text>
+                            <Text size="xs" color="light">{state.responseTime}ms</Text>
+                            <Text size="xs" color="light">{getResponseSize(state.response)}</Text>
                         </>
                     )}
-                </div>
-                <div className="response-panel-body">
-                    <ResponseViewer response={state.response} responseTime={state.responseTime} executing={state.executing} />
-                </div>
-            </div>
-        </div>
+                </Panel>
+                <Panel
+                    name="response-pane-body"
+                    direction="column"
+                    flex="1 1 0"
+                    overflow="hidden"
+                    minHeight={0}
+                >
+                    <ResponseViewer
+                        response={state.response}
+                        responseTime={state.responseTime}
+                        executing={state.executing}
+                    />
+                </Panel>
+            </Panel>
+        </Panel>
     );
 }
-
-// =============================================================================
-// Helpers
-// =============================================================================
 
 function getStatusColor(status: number): string {
     if (status === 0) return universalColors.http.serverError;
@@ -535,53 +412,66 @@ function getStatusColor(status: number): string {
     return universalColors.http.serverError;
 }
 
-// =============================================================================
-// RequestTree sub-component
-// =============================================================================
-
 function RequestTree({ vm, root, selectedId }: {
     vm: RestClientViewModel;
     root: RequestTreeItem;
     selectedId: string;
 }) {
     const getLabel = useCallback((item: RequestTreeItem) => {
-        if (item.isRoot) return (
-            <span className="root-label">
-                Requests
-                <span className="root-label-spacer" />
-                <Button
-                    size="small"
-                    type="icon"
-                    className="root-add-button"
-                    title="Add request"
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        vm.addRequest();
-                    }}
+        if (item.isRoot) {
+            return (
+                <Panel
+                    name="rest-tree-root-label"
+                    direction="row"
+                    align="center"
+                    flex={1}
+                    paddingLeft="sm"
+                    gap="xs"
                 >
-                    <PlusIcon />
-                </Button>
-            </span>
-        );
+                    <Text size="xs" variant="uppercased" color="light" bold>Requests</Text>
+                    <Spacer />
+                    <IconButton
+                        name="rest-tree-add"
+                        size="sm"
+                        icon={<PlusIcon />}
+                        title="Add request"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            vm.addRequest();
+                        }}
+                    />
+                </Panel>
+            );
+        }
         if (item.isCollection) {
             const name = item.collectionName;
             return (
-                <span className={`collection-name ${!name ? "empty-label" : ""}`}>
+                <Text
+                    size="md"
+                    bold={!!name}
+                    italic={!name}
+                    color={name ? "default" : "light"}
+                >
                     {name || EMPTY_LABEL}
-                </span>
+                </Text>
             );
         }
         const req = item.request!;
-        const badgeColor = METHOD_COLORS[req.method] || color.text.light;
+        const badgeColor = METHOD_COLORS[req.method];
         return (
-            <>
-                <span className="method-badge" style={{ color: badgeColor }}>
-                    {req.method}
-                </span>
-                <span className={`request-name ${!req.name ? "empty-label" : ""}`}>
+            <Panel direction="row" align="center" gap="sm">
+                <Panel minWidth={32} justify="center">
+                    <Text size="xs" bold color={badgeColor} align="center">{req.method}</Text>
+                </Panel>
+                <Text
+                    size="md"
+                    truncate
+                    italic={!req.name}
+                    color={req.name ? "default" : "light"}
+                >
                     {req.name || EMPTY_LABEL}
-                </span>
-            </>
+                </Text>
+            </Panel>
         );
     }, [vm]);
 
@@ -754,3 +644,4 @@ async function showContextMenu(e: React.MouseEvent, items: MenuItem[]) {
     const { showAppPopupMenu } = await import("../../ui/dialogs/poppers/showPopupMenu");
     showAppPopupMenu(e.clientX, e.clientY, items);
 }
+

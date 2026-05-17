@@ -2,17 +2,19 @@
 
 ## Status
 
-**Plan ready for review** — part of [EPIC-025](../../epics/EPIC-025.md) Phase 4
-per-screen migration. **Blocked on two precursors:**
+**Implemented — awaiting user testing + epic-close review.** Part of
+[EPIC-025](../../epics/EPIC-025.md) Phase 4 per-screen migration. Both
+precursors landed first:
 
-- [US-533](../US-533-uikit-autocomplete/README.md) — UIKit `Autocomplete`
-  primitive (replaces the legacy `ComboSelect freeText` pattern used by
-  `KeyValueEditor`'s header-name field). Implemented; awaiting user
-  smoke-test.
-- [US-534](../US-534-uikit-primitive-extensions/README.md) — UIKit
-  primitive extensions (`Text.color` free-form, `Textarea`
-  `width`/`flex` props, `Panel.dimmed`). Plan-ready. Resolves concerns
-  B / C / F below.
+- [US-533](../US-533-uikit-autocomplete/README.md) — UIKit `Autocomplete`.
+- [US-534](../US-534-uikit-primitive-extensions/README.md) — UIKit primitive
+  extensions.
+
+Additional retrofit shipped with this task (per
+`feedback_uikit_primitive_with_retrofit.md`): UIKit `Textarea` now accepts
+caller-supplied `onKeyDown` / `onPaste` hooks that run before the internal
+handlers and yield ownership when the caller calls `e.preventDefault()`.
+Required by the RestClient URL bar (Enter → send, paste → cURL/fetch parse).
 
 ## Goal
 
