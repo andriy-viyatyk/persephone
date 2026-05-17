@@ -1,30 +1,10 @@
-import styled from "@emotion/styled";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { SelectEntry } from "../logTypes";
 import { useLogViewModel } from "../LogViewContext";
 import { DialogContainer } from "./DialogContainer";
 import { DialogHeader } from "./DialogHeader";
 import { ButtonsPanel } from "./ButtonsPanel";
-import { ComboSelect } from "../../../components/form/ComboSelect";
-
-// =============================================================================
-// Constants
-// =============================================================================
-
-const CHAR_WIDTH = 8;
-
-// =============================================================================
-// Styled Components
-// =============================================================================
-
-const SelectRoot = styled.div({
-    minWidth: 200,
-
-    "& .select-control": {
-        padding: "4px 8px",
-        maxWidth: "100%",
-    },
-});
+import { Panel, Select, IListBoxItem } from "../../../uikit";
 
 // =============================================================================
 // Component
@@ -42,10 +22,20 @@ export function SelectDialogView({ entry, updateEntry }: SelectDialogViewProps) 
     const resolved = entry.button !== undefined;
     const buttons = entry.buttons ?? DEFAULT_BUTTONS;
 
+    const selectItems = useMemo<IListBoxItem[]>(
+        () => entry.items.map((label) => ({ value: label, label })),
+        [entry.items],
+    );
+
+    const selectedItem = useMemo<IListBoxItem | null>(
+        () => entry.selected != null ? { value: entry.selected, label: entry.selected } : null,
+        [entry.selected],
+    );
+
     const handleSelect = useCallback(
-        (value?: string) => {
+        (item: IListBoxItem) => {
             updateEntry((draft) => {
-                draft.selected = value;
+                draft.selected = typeof item.value === "string" ? item.value : String(item.value);
             });
         },
         [updateEntry],
@@ -62,25 +52,25 @@ export function SelectDialogView({ entry, updateEntry }: SelectDialogViewProps) 
 
     return (
         <DialogContainer resolved={resolved}>
-            <SelectRoot>
+            <Panel name="log-select-dialog" direction="column" minWidth={200}>
                 <DialogHeader title={entry.title} />
-                <div className="select-control">
-                    <ComboSelect
-                        selectFrom={entry.items}
-                        value={entry.selected}
+                <Panel name="log-select-control" paddingX="md" paddingY="sm">
+                    <Select<IListBoxItem>
+                        name="log-select"
+                        items={selectItems}
+                        value={selectedItem}
                         onChange={handleSelect}
                         placeholder={entry.placeholder}
                         disabled={resolved}
-                        adjustWithCharWidth={CHAR_WIDTH}
                     />
-                </div>
+                </Panel>
                 <ButtonsPanel
                     buttons={buttons}
                     button={entry.button}
                     requirementNotMet={requirementNotMet}
                     onClickButton={handleClick}
                 />
-            </SelectRoot>
+            </Panel>
         </DialogContainer>
     );
 }

@@ -1,22 +1,10 @@
-import styled from "@emotion/styled";
 import { useCallback } from "react";
 import { ConfirmEntry } from "../logTypes";
 import { useLogViewModel } from "../LogViewContext";
 import { StyledTextView } from "../StyledTextView";
 import { DialogContainer } from "./DialogContainer";
 import { ButtonsPanel } from "./ButtonsPanel";
-
-// =============================================================================
-// Styled Components
-// =============================================================================
-
-const ConfirmRoot = styled.div({
-    "& .confirm-message": {
-        padding: "4px 8px",
-        fontSize: 14,
-        lineHeight: "18px",
-    },
-});
+import { Panel, Text } from "../../../uikit";
 
 // =============================================================================
 // Component
@@ -42,16 +30,16 @@ export function ConfirmDialogView({ entry }: ConfirmDialogViewProps) {
 
     return (
         <DialogContainer resolved={resolved}>
-            <ConfirmRoot>
-                <div className="confirm-message">
+            <Panel name="log-confirm-message" paddingX="md" paddingY="sm">
+                <Text size="base">
                     <StyledTextView text={entry.message} />
-                </div>
-                <ButtonsPanel
-                    buttons={buttons}
-                    button={entry.button}
-                    onClickButton={handleClick}
-                />
-            </ConfirmRoot>
+                </Text>
+            </Panel>
+            <ButtonsPanel
+                buttons={buttons}
+                button={entry.button}
+                onClickButton={handleClick}
+            />
         </DialogContainer>
     );
 }

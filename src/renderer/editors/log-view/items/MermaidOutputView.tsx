@@ -1,14 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import styled from "@emotion/styled";
 import { MermaidOutputEntry } from "../logTypes";
 import { DialogHeader } from "./DialogHeader";
-import { Button } from "../../../components/basic/Button";
+import { IconButton, Panel, Text } from "../../../uikit";
 import { CopyIcon, OpenLinkIcon } from "../../../theme/icons";
 import { pagesModel } from "../../../api/pages";
 import { renderMermaidSvg, svgToDataUrl } from "../../mermaid/render-mermaid";
 import { settings } from "../../../api/settings";
 import { isCurrentThemeDark } from "../../../theme/themes";
-import color from "../../../theme/color";
 
 // =============================================================================
 // Helpers
@@ -31,51 +29,6 @@ async function copyImageToClipboard(img: HTMLImageElement) {
 }
 
 // =============================================================================
-// Styled Components
-// =============================================================================
-
-const MermaidOutputRoot = styled.div({
-    position: "relative",
-    width: "100%",
-
-    "& .mermaid-content": {
-        padding: "4px 0",
-        textAlign: "center",
-        "& img": {
-            maxWidth: "100%",
-            height: "auto",
-        },
-    },
-
-    "& .mermaid-loading": {
-        padding: "2em",
-        color: color.text.light,
-        fontSize: 13,
-    },
-
-    "& .mermaid-error": {
-        padding: "1em",
-        color: color.misc.red,
-        fontSize: 13,
-    },
-
-    "& .mermaid-hover-actions": {
-        position: "absolute",
-        top: 4,
-        right: 4,
-        display: "flex",
-        gap: 4,
-        opacity: 0,
-        transition: "opacity 0.15s",
-        zIndex: 1,
-    },
-
-    "&:hover .mermaid-hover-actions": {
-        opacity: 1,
-    },
-});
-
-// =============================================================================
 // Component
 // =============================================================================
 
@@ -87,9 +40,7 @@ export function MermaidOutputView({ entry }: MermaidOutputViewProps) {
     const imgRef = useRef<HTMLImageElement>(null);
     const [svgUrl, setSvgUrl] = useState<string | null>(null);
     const [error, setError] = useState("");
-    const [copied, setCopied] = useState(false);
 
-    // Subscribe to theme changes for mermaid rendering
     settings.use("theme");
     const lightMode = !isCurrentThemeDark();
 
@@ -118,8 +69,6 @@ export function MermaidOutputView({ entry }: MermaidOutputViewProps) {
     const handleCopy = useCallback(() => {
         if (!imgRef.current) return;
         copyImageToClipboard(imgRef.current);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 750);
     }, []);
 
     const handleOpenInEditor = useCallback(() => {
@@ -128,31 +77,64 @@ export function MermaidOutputView({ entry }: MermaidOutputViewProps) {
     }, [entry.text, entry.title]);
 
     return (
-        <MermaidOutputRoot>
+        <Panel
+            name="log-mermaid-output"
+            direction="column"
+            position="relative"
+            width="100%"
+            revealChildrenOnHover
+        >
             <DialogHeader title={entry.title} />
-            <div className="mermaid-content">
+            <Panel
+                name="log-mermaid-content"
+                paddingY="sm"
+                justify="center"
+                align="center"
+            >
                 {error ? (
-                    <div className="mermaid-error">{error}</div>
+                    <Panel paddingX="xl" paddingY="xl">
+                        <Text size="md" color="error">{error}</Text>
+                    </Panel>
                 ) : !svgUrl ? (
-                    <div className="mermaid-loading">Rendering...</div>
+                    <Panel paddingX="xxl" paddingY="xxl">
+                        <Text size="md" color="light">Rendering...</Text>
+                    </Panel>
                 ) : (
-                    <img ref={imgRef} src={svgUrl} alt="Mermaid Diagram" />
+                    <img
+                        ref={imgRef}
+                        src={svgUrl}
+                        alt="Mermaid Diagram"
+                        style={{ maxWidth: "100%", height: "auto" }}
+                    />
                 )}
-            </div>
-            <div className="mermaid-hover-actions">
-                <Button size="small" type="icon" onClick={handleOpenInEditor} title="Open in Mermaid editor">
-                    <OpenLinkIcon />
-                </Button>
-                <Button
-                    size="small"
-                    type="icon"
-                    onClick={handleCopy}
+            </Panel>
+            <Panel
+                name="log-mermaid-hover-actions"
+                position="absolute"
+                top={4}
+                right={4}
+                direction="row"
+                gap="sm"
+                zIndex={1}
+            >
+                <IconButton
+                    name="log-mermaid-open-in-editor"
+                    hideUntilParentHover
+                    size="sm"
+                    icon={<OpenLinkIcon />}
+                    title="Open in Mermaid editor"
+                    onClick={handleOpenInEditor}
+                />
+                <IconButton
+                    name="log-mermaid-copy"
+                    hideUntilParentHover
+                    size="sm"
+                    icon={<CopyIcon />}
                     title="Copy image to clipboard"
                     disabled={!svgUrl}
-                >
-                    <CopyIcon />
-                </Button>
-            </div>
-        </MermaidOutputRoot>
+                    onClick={handleCopy}
+                />
+            </Panel>
+        </Panel>
     );
 }

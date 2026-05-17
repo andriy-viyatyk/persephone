@@ -1,37 +1,10 @@
 import { useCallback } from "react";
-import styled from "@emotion/styled";
 import { MarkdownOutputEntry } from "../logTypes";
 import { DialogHeader } from "./DialogHeader";
 import { MarkdownBlock } from "../../markdown/MarkdownBlock";
-import { Button } from "../../../components/basic/Button";
+import { IconButton, Panel } from "../../../uikit";
 import { OpenLinkIcon } from "../../../theme/icons";
 import { pagesModel } from "../../../api/pages";
-
-// =============================================================================
-// Styled Components
-// =============================================================================
-
-const MarkdownOutputRoot = styled.div({
-    position: "relative",
-    width: "100%",
-
-    "& .markdown-content": {
-        padding: "4px 0",
-    },
-
-    "& .markdown-hover-actions": {
-        position: "absolute",
-        top: 4,
-        right: 4,
-        opacity: 0,
-        transition: "opacity 0.15s",
-        zIndex: 1,
-    },
-
-    "&:hover .markdown-hover-actions": {
-        opacity: 1,
-    },
-});
 
 // =============================================================================
 // Component
@@ -48,16 +21,33 @@ export function MarkdownOutputView({ entry }: MarkdownOutputViewProps) {
     }, [entry.text, entry.title]);
 
     return (
-        <MarkdownOutputRoot>
+        <Panel
+            name="log-markdown-output"
+            direction="column"
+            position="relative"
+            width="100%"
+            revealChildrenOnHover
+        >
             <DialogHeader title={entry.title} />
-            <div className="markdown-content">
+            <Panel name="log-markdown-content" paddingY="sm">
                 <MarkdownBlock content={entry.text} compact />
-            </div>
-            <div className="markdown-hover-actions">
-                <Button size="small" type="icon" onClick={handleOpenInEditor} title="Open in Markdown editor">
-                    <OpenLinkIcon />
-                </Button>
-            </div>
-        </MarkdownOutputRoot>
+            </Panel>
+            <Panel
+                name="log-markdown-hover-actions"
+                position="absolute"
+                top={4}
+                right={4}
+                zIndex={1}
+            >
+                <IconButton
+                    name="log-markdown-open-in-editor"
+                    hideUntilParentHover
+                    size="sm"
+                    icon={<OpenLinkIcon />}
+                    title="Open in Markdown editor"
+                    onClick={handleOpenInEditor}
+                />
+            </Panel>
+        </Panel>
     );
 }

@@ -116,6 +116,14 @@ export interface PanelProps
      */
     revealChildrenOnHover?: boolean;
 
+    /**
+     * Paints a 3 px left stripe in the corresponding accent colour, used to flag
+     * status-tinted rows (log levels, alerts, validation severities). The stripe replaces
+     * the regular `borderLeft` for the duration the accent is set — combine with `border`
+     * only if you also want the other three sides bordered.
+     */
+    accent?: "info" | "warn" | "error" | "success";
+
     children?: React.ReactNode;
 }
 
@@ -156,6 +164,12 @@ const Root = styled.div(
         '&[data-border-color="active"][data-border-right]':       { borderRightColor: color.border.active },
 
         "&[data-shadow]": { boxShadow: `0 2px 8px ${color.shadow.default}` },
+
+        // --- Accent stripe (3 px left border) ---
+        '&[data-accent="info"]':    { borderLeft: `3px solid ${color.misc.blue}` },
+        '&[data-accent="warn"]':    { borderLeft: `3px solid ${color.misc.yellow}` },
+        '&[data-accent="error"]':   { borderLeft: `3px solid ${color.misc.red}` },
+        '&[data-accent="success"]': { borderLeft: `3px solid ${color.misc.green}` },
 
         "&[data-disabled]": {
             opacity: 0.6,
@@ -277,6 +291,7 @@ export const Panel = React.forwardRef<HTMLDivElement, PanelProps>(function Panel
         background,
         disabled,
         revealChildrenOnHover,
+        accent,
         children,
         ...rest
     } = props;
@@ -345,6 +360,7 @@ export const Panel = React.forwardRef<HTMLDivElement, PanelProps>(function Panel
             data-shadow={shadow || undefined}
             data-disabled={disabled || undefined}
             data-reveal-on-hover={revealChildrenOnHover || undefined}
+            data-accent={accent || undefined}
             className={scrollable ? "scroll-container" : undefined}
             {...rest}
             style={inlineStyle}

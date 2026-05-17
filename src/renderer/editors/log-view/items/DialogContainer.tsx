@@ -1,26 +1,5 @@
-import styled from "@emotion/styled";
 import { ReactNode } from "react";
-import color from "../../../theme/color";
-
-// =============================================================================
-// Styled Components
-// =============================================================================
-
-const ContainerRoot = styled.div({
-    border: "1px solid",
-    borderRadius: 4,
-    margin: "2px 0",
-    overflow: "hidden",
-    width: "fit-content",
-    maxWidth: "100%",
-
-    "&.active": {
-        borderColor: color.border.active,
-    },
-    "&.resolved": {
-        borderColor: color.border.default,
-    },
-});
+import { Panel } from "../../../uikit";
 
 // =============================================================================
 // Component
@@ -33,8 +12,17 @@ interface DialogContainerProps {
 
 export function DialogContainer({ resolved, children }: DialogContainerProps) {
     return (
-        <ContainerRoot className={resolved ? "resolved" : "active"}>
+        <Panel
+            name="log-dialog-container"
+            direction="column"
+            border
+            borderColor={resolved ? "default" : "active"}
+            rounded="md"
+            overflow="hidden"
+            width="fit-content"
+            maxWidth="100%"
+        >
             {children}
-        </ContainerRoot>
+        </Panel>
     );
 }

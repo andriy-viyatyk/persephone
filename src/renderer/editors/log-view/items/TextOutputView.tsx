@@ -1,50 +1,17 @@
 import { useRef, useEffect, useCallback } from "react";
 import * as monaco from "monaco-editor";
-import styled from "@emotion/styled";
 import { TextOutputEntry } from "../logTypes";
 import { DialogHeader } from "./DialogHeader";
-import { Button } from "../../../components/basic/Button";
+import { IconButton, Panel } from "../../../uikit";
 import { OpenLinkIcon } from "../../../theme/icons";
 import { pagesModel } from "../../../api/pages";
 import { DIALOG_CONTENT_MAX_HEIGHT } from "../logConstants";
-import color from "../../../theme/color";
 
 // =============================================================================
 // Constants
 // =============================================================================
 
 const PADDING_VERTICAL = 4;
-
-// =============================================================================
-// Styled Components
-// =============================================================================
-
-const TextOutputRoot = styled.div({
-    position: "relative",
-    border: "1px solid",
-    borderColor: color.border.default,
-    borderRadius: 4,
-    margin: "2px 0",
-    overflow: "hidden",
-    width: "100%",
-
-    "& .text-editor-container": {
-        overflow: "hidden",
-    },
-
-    "& .text-hover-actions": {
-        position: "absolute",
-        top: 4,
-        right: 4,
-        opacity: 0,
-        transition: "opacity 0.15s",
-        zIndex: 1,
-    },
-
-    "&:hover .text-hover-actions": {
-        opacity: 1,
-    },
-});
 
 // =============================================================================
 // Component
@@ -86,7 +53,6 @@ export function TextOutputView({ entry }: TextOutputViewProps) {
 
         editorRef.current = editor;
 
-        // Use onDidContentSizeChange to get correct height including wrapped lines
         const sizeDisposable = editor.onDidContentSizeChange(() => {
             const contentHeight = editor.getContentHeight();
             const height = Math.min(contentHeight, DIALOG_CONTENT_MAX_HEIGHT);
@@ -99,9 +65,8 @@ export function TextOutputView({ entry }: TextOutputViewProps) {
             editorRef.current = null;
             editor.dispose();
         };
-    }, []); // mount/unmount only — updates handled by separate effect
+    }, []);
 
-    // Update content and options when entry changes
     useEffect(() => {
         const editor = editorRef.current;
         if (!editor) return;
@@ -124,8 +89,6 @@ export function TextOutputView({ entry }: TextOutputViewProps) {
             lineNumbers: entry.lineNumbers ? "on" : "off",
             minimap: { enabled: entry.minimap === true },
         });
-
-        // Height is recalculated automatically via onDidContentSizeChange
     }, [entry.text, entry.language, entry.wordWrap, entry.lineNumbers, entry.minimap]);
 
     const handleOpenInEditor = useCallback(() => {
@@ -134,14 +97,34 @@ export function TextOutputView({ entry }: TextOutputViewProps) {
     }, [entry.text, entry.language, entry.title]);
 
     return (
-        <TextOutputRoot>
+        <Panel
+            name="log-text-output"
+            direction="column"
+            position="relative"
+            border
+            rounded="md"
+            overflow="hidden"
+            width="100%"
+            revealChildrenOnHover
+        >
             <DialogHeader title={entry.title} />
-            <div className="text-editor-container" ref={containerRef} />
-            <div className="text-hover-actions">
-                <Button size="small" type="icon" onClick={handleOpenInEditor} title="Open in Text editor">
-                    <OpenLinkIcon />
-                </Button>
-            </div>
-        </TextOutputRoot>
+            <div ref={containerRef} style={{ overflow: "hidden" }} />
+            <Panel
+                name="log-text-hover-actions"
+                position="absolute"
+                top={4}
+                right={4}
+                zIndex={1}
+            >
+                <IconButton
+                    name="log-text-open-in-editor"
+                    hideUntilParentHover
+                    size="sm"
+                    icon={<OpenLinkIcon />}
+                    title="Open in Text editor"
+                    onClick={handleOpenInEditor}
+                />
+            </Panel>
+        </Panel>
     );
 }

@@ -48,6 +48,7 @@ export const panelStory: Story = {
         { name: "left",        type: "string", default: "" },
         { name: "disabled",    type: "boolean", default: false },
         { name: "revealChildrenOnHover", type: "boolean", default: false, label: "Reveal hover-tagged children on hover" },
+        { name: "accent",      type: "enum",    options: ["", "info", "warn", "error", "success"], default: "" },
     ],
     previewChildren: () => React.createElement(React.Fragment, null,
         React.createElement("span", { key: "a" }, "Child A"),

@@ -1,23 +1,10 @@
-import styled from "@emotion/styled";
 import { useCallback } from "react";
 import { TextInputEntry } from "../logTypes";
 import { useLogViewModel } from "../LogViewContext";
 import { DialogContainer } from "./DialogContainer";
 import { DialogHeader } from "./DialogHeader";
 import { ButtonsPanel } from "./ButtonsPanel";
-import { TextField } from "../../../components/basic/TextField";
-
-// =============================================================================
-// Styled Components
-// =============================================================================
-
-const TextInputRoot = styled.div({
-    minWidth: 300,
-
-    "& .text-input-field": {
-        padding: "4px 8px",
-    },
-});
+import { Input, Panel } from "../../../uikit";
 
 // =============================================================================
 // Component
@@ -55,10 +42,8 @@ export function TextInputDialogView({ entry, updateEntry }: TextInputDialogViewP
     const handleKeyDown = useCallback(
         (e: React.KeyboardEvent) => {
             if (e.key === "Enter" && !resolved) {
-                // Find the first non-required button, or just the first button
                 const defaultBtn = buttons[buttons.length - 1];
                 const label = defaultBtn.startsWith("!") ? defaultBtn.slice(1) : defaultBtn;
-                // Only submit if no required button blocks it or field is not empty
                 const hasRequired = buttons.some((b) => b.startsWith("!"));
                 if (!hasRequired || currentValue.trim()) {
                     vm.resolveDialog(entry.id, label);
@@ -72,24 +57,25 @@ export function TextInputDialogView({ entry, updateEntry }: TextInputDialogViewP
 
     return (
         <DialogContainer resolved={resolved}>
-            <TextInputRoot>
+            <Panel name="log-text-input-dialog" direction="column" minWidth={300}>
                 <DialogHeader title={entry.title} />
-                <div className="text-input-field">
-                    <TextField
+                <Panel name="log-text-input-field" paddingX="md" paddingY="sm">
+                    <Input
+                        name="log-text-input"
                         value={currentValue}
                         onChange={handleTextChange}
                         placeholder={entry.placeholder}
                         disabled={resolved}
                         onKeyDown={handleKeyDown}
                     />
-                </div>
+                </Panel>
                 <ButtonsPanel
                     buttons={buttons}
                     button={entry.button}
                     requirementNotMet={requirementNotMet}
                     onClickButton={handleClick}
                 />
-            </TextInputRoot>
+            </Panel>
         </DialogContainer>
     );
 }

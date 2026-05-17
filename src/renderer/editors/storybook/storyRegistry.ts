@@ -20,6 +20,7 @@ import { textStory }             from "../../uikit/Text/Text.story";
 import { segmentedControlStory } from "../../uikit/SegmentedControl/SegmentedControl.story";
 import { radioGroupStory }       from "../../uikit/RadioGroup/RadioGroup.story";
 import { sliderStory }           from "../../uikit/Slider/Slider.story";
+import { progressBarStory }      from "../../uikit/ProgressBar/ProgressBar.story";
 import { spinnerStory }          from "../../uikit/Spinner/Spinner.story";
 import { textareaStory }         from "../../uikit/Textarea/Textarea.story";
 import { pathInputStory }        from "../../uikit/PathInput/PathInput.story";
@@ -43,7 +44,7 @@ export const ALL_STORIES: Story[] = [
     collapsiblePanelStackStory, panelStory, spacerStory, splitterStory, toolbarStory,
     breadcrumbStory,
     buttonStory, iconButtonStory, inputStory, labelStory, checkboxStory, dividerStory, dotStory, textStory,
-    segmentedControlStory, radioGroupStory, sliderStory, spinnerStory, textareaStory, pathInputStory,
+    segmentedControlStory, radioGroupStory, sliderStory, progressBarStory, spinnerStory, textareaStory, pathInputStory,
     tagStory, tagsInputStory,
     popoverStory, tooltipStory, dialogStory, notificationStory, menuStory,
     categoryListStory, listBoxStory, selectStory, treeStory,

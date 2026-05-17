@@ -1,63 +1,22 @@
 import { RefObject, useCallback } from "react";
-import styled from "@emotion/styled";
 import { LogEntry } from "./logTypes";
 import { LogEntryContent } from "./LogEntryContent";
 import { LogViewModel } from "./LogViewModel";
-import color from "../../theme/color";
-
-// =============================================================================
-// Styled Components
-// =============================================================================
-
-const WrapperRoot = styled.div({
-    width: "100%",
-    height: "fit-content",
-    boxSizing: "border-box",
-    display: "flex",
-    flexDirection: "row",
-    alignItems: "flex-start",
-    padding: "0 12px",
-    borderLeft: "3px solid transparent",
-
-    "&.accent-info": {
-        borderLeftColor: color.misc.blue,
-    },
-    "&.accent-warn": {
-        borderLeftColor: color.misc.yellow,
-    },
-    "&.accent-error": {
-        borderLeftColor: color.misc.red,
-    },
-    "&.accent-success": {
-        borderLeftColor: color.misc.green,
-    },
-
-    "& .entry-timestamp": {
-        flexShrink: 0,
-        marginRight: 10,
-        fontSize: 12,
-        lineHeight: "18px",
-        color: color.text.light,
-        fontFamily: "Consolas, 'Courier New', monospace",
-        userSelect: "none",
-    },
-
-    "& .entry-content": {
-        flex: "1 1 auto",
-        minWidth: 0,
-    },
-});
+import { Panel, Text } from "../../uikit";
 
 // =============================================================================
 // Helpers
 // =============================================================================
 
-const accentClassMap: Record<string, string> = {
-    "log.info": "accent-info",
-    "log.warn": "accent-warn",
-    "log.error": "accent-error",
-    "log.success": "accent-success",
-};
+function accentForEntryType(type: string): "info" | "warn" | "error" | "success" | undefined {
+    switch (type) {
+        case "log.info":    return "info";
+        case "log.warn":    return "warn";
+        case "log.error":   return "error";
+        case "log.success": return "success";
+        default: return undefined;
+    }
+}
 
 function formatTimestamp(ts: number): string {
     const d = new Date(ts);
@@ -91,16 +50,31 @@ export function LogEntryWrapper({ vm, index, cellRef, showTimestamp }: LogEntryW
 
     if (!entry) return null;
 
-    const accentClass = accentClassMap[entry.type] || "";
-
     return (
-        <WrapperRoot ref={cellRef as any} className={accentClass}>
+        <Panel
+            name="log-entry-wrapper"
+            ref={cellRef}
+            direction="row"
+            align="start"
+            paddingX="lg"
+            gap="md"
+            accent={accentForEntryType(entry.type)}
+            width="100%"
+            height="fit-content"
+        >
             {showTimestamp && entry.timestamp != null && (
-                <div className="entry-timestamp">{formatTimestamp(entry.timestamp)}</div>
+                <Text
+                    name="entry-timestamp"
+                    size="md"
+                    color="light"
+                    nowrap
+                >
+                    {formatTimestamp(entry.timestamp)}
+                </Text>
             )}
-            <div className="entry-content">
+            <Panel name="entry-content" flex={1} minWidth={0} direction="column">
                 <LogEntryContent entry={entry} updateEntry={updateEntry} />
-            </div>
-        </WrapperRoot>
+            </Panel>
+        </Panel>
     );
 }

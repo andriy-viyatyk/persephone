@@ -1,5 +1,5 @@
 import { Component, ReactNode } from "react";
-import { LogEntry, ConfirmEntry, TextInputEntry, ButtonsEntry, CheckboxesEntry, RadioboxesEntry, SelectEntry, ProgressOutputEntry, GridOutputEntry, TextOutputEntry, MarkdownOutputEntry, MermaidOutputEntry, McpRequestEntry, isLogEntry, isOutputEntry } from "./logTypes";
+import { LogEntry, ConfirmEntry, TextInputEntry, ButtonsEntry, CheckboxesEntry, RadioboxesEntry, SelectEntry, ProgressOutputEntry, GridOutputEntry, TextOutputEntry, MarkdownOutputEntry, MermaidOutputEntry, McpRequestEntry, isLogEntry, isDialogEntry, isOutputEntry } from "./logTypes";
 import { LogMessageView } from "./LogMessageView";
 import { ConfirmDialogView } from "./items/ConfirmDialogView";
 import { TextInputDialogView } from "./items/TextInputDialogView";
@@ -13,18 +13,11 @@ import { TextOutputView } from "./items/TextOutputView";
 import { MarkdownOutputView } from "./items/MarkdownOutputView";
 import { MermaidOutputView } from "./items/MermaidOutputView";
 import { McpRequestView } from "./items/McpRequestView";
-import color from "../../theme/color";
+import { Panel, Text } from "../../uikit";
 
 // =============================================================================
 // Entry Error Boundary
 // =============================================================================
-
-const errorStyle: React.CSSProperties = {
-    color: color.misc.red,
-    fontSize: 13,
-    lineHeight: "18px",
-    fontFamily: "Consolas, 'Courier New', monospace",
-};
 
 interface EntryErrorBoundaryState {
     error: Error | null;
@@ -42,9 +35,9 @@ class EntryErrorBoundary extends Component<{ entry: LogEntry; children: ReactNod
         if (!error) return this.props.children;
         const { entry } = this.props;
         return (
-            <div style={errorStyle}>
+            <Text size="md" color="error">
                 [{entry.type}] render error: {error.message}
-            </div>
+            </Text>
         );
     }
 }
@@ -53,30 +46,23 @@ class EntryErrorBoundary extends Component<{ entry: LogEntry; children: ReactNod
 // Stubs for unimplemented entry types
 // =============================================================================
 
-const stubStyle: React.CSSProperties = {
-    color: color.text.light,
-    fontSize: 14,
-    lineHeight: "18px",
-    fontFamily: "Consolas, 'Courier New', monospace",
-};
-
 function DialogEntryStub({ entry }: { entry: LogEntry }) {
     const label = entry.title || entry.message || "";
     const resolved = entry.button !== undefined;
     return (
-        <div style={stubStyle}>
+        <Text size="base" color="light">
             [{entry.type}] {typeof label === "string" ? label : ""}
-            {resolved && <span style={{ color: color.text.dark }}> — answered: {entry.button}</span>}
-        </div>
+            {resolved && <Text size="base" color="dark"> — answered: {entry.button}</Text>}
+        </Text>
     );
 }
 
 function OutputEntryStub({ entry }: { entry: LogEntry }) {
     const label = entry.label || entry.title || "";
     return (
-        <div style={stubStyle}>
+        <Text size="base" color="light">
             [{entry.type}] {typeof label === "string" ? label : ""}
-        </div>
+        </Text>
     );
 }
 
@@ -89,34 +75,17 @@ function UnknownEntryView({ entry }: { entry: LogEntry }) {
         preview = String(fields);
     }
     return (
-        <div style={stubStyle}>
+        <Text size="base" color="light">
             [{entry.type}] {preview}
-        </div>
+        </Text>
     );
 }
 
 // =============================================================================
-// Router
+// Dispatcher
 // =============================================================================
 
-interface LogEntryContentProps {
-    entry: LogEntry;
-    updateEntry: (updater: (draft: LogEntry) => void) => void;
-}
-
-export function LogEntryContent({ entry, updateEntry }: LogEntryContentProps) {
-    return (
-        <EntryErrorBoundary entry={entry}>
-            <LogEntryContentInner entry={entry} updateEntry={updateEntry} />
-        </EntryErrorBoundary>
-    );
-}
-
-function LogEntryContentInner({ entry, updateEntry }: LogEntryContentProps) {
-    if (isLogEntry(entry)) {
-        return <LogMessageView entry={entry} />;
-    }
-
+function dispatchedView(entry: LogEntry, updateEntry: (updater: (draft: LogEntry) => void) => void) {
     switch (entry.type) {
         case "input.confirm":
             return <ConfirmDialogView entry={entry as ConfirmEntry} />;
@@ -150,9 +119,6 @@ function LogEntryContentInner({ entry, updateEntry }: LogEntryContentProps) {
                     updateEntry={updateEntry as any}
                 />
             );
-    }
-
-    switch (entry.type) {
         case "output.progress":
             return <ProgressOutputView entry={entry as ProgressOutputEntry} />;
         case "output.grid":
@@ -174,4 +140,32 @@ function LogEntryContentInner({ entry, updateEntry }: LogEntryContentProps) {
         return <OutputEntryStub entry={entry} />;
     }
     return <UnknownEntryView entry={entry} />;
+}
+
+// =============================================================================
+// Router
+// =============================================================================
+
+interface LogEntryContentProps {
+    entry: LogEntry;
+    updateEntry: (updater: (draft: LogEntry) => void) => void;
+}
+
+export function LogEntryContent({ entry, updateEntry }: LogEntryContentProps) {
+    return (
+        <EntryErrorBoundary entry={entry}>
+            <LogEntryContentInner entry={entry} updateEntry={updateEntry} />
+        </EntryErrorBoundary>
+    );
+}
+
+function LogEntryContentInner({ entry, updateEntry }: LogEntryContentProps) {
+    if (isLogEntry(entry)) {
+        return <LogMessageView entry={entry} />;
+    }
+    const view = dispatchedView(entry, updateEntry);
+    if (isDialogEntry(entry) || isOutputEntry(entry)) {
+        return <Panel name="log-item-wrapper" paddingY="xs">{view}</Panel>;
+    }
+    return view;
 }

@@ -1,42 +1,11 @@
-import styled from "@emotion/styled";
 import { useCallback } from "react";
 import { CheckboxesEntry } from "../logTypes";
 import { useLogViewModel } from "../LogViewContext";
 import { DialogContainer } from "./DialogContainer";
 import { DialogHeader } from "./DialogHeader";
 import { ButtonsPanel } from "./ButtonsPanel";
-import { Checkbox } from "../../../components/basic/Checkbox";
+import { Checkbox, Panel } from "../../../uikit";
 import { DIALOG_CONTENT_MAX_HEIGHT } from "../logConstants";
-
-// =============================================================================
-// Styled Components
-// =============================================================================
-
-const CheckboxesRoot = styled.div({
-    minWidth: 200,
-
-    "& .checkbox-list": {
-        display: "flex",
-        padding: "4px 8px",
-        gap: 2,
-        maxHeight: DIALOG_CONTENT_MAX_HEIGHT,
-        overflowY: "auto",
-
-        "&.vertical": {
-            flexDirection: "column",
-        },
-        "&.flex": {
-            flexDirection: "row",
-            flexWrap: "wrap",
-            gap: 8,
-        },
-    },
-
-    "& .checkbox-item": {
-        fontSize: 14,
-        lineHeight: "22px",
-    },
-});
 
 // =============================================================================
 // Component
@@ -75,28 +44,37 @@ export function CheckboxesDialogView({ entry, updateEntry }: CheckboxesDialogVie
 
     return (
         <DialogContainer resolved={resolved}>
-            <CheckboxesRoot>
+            <Panel name="log-checkboxes-dialog" direction="column" minWidth={200}>
                 <DialogHeader title={entry.title} />
-                <div className={`checkbox-list ${layout}`}>
+                <Panel
+                    name="log-checkbox-list"
+                    direction={layout === "flex" ? "row" : "column"}
+                    wrap={layout === "flex"}
+                    gap={layout === "flex" ? "md" : "xs"}
+                    paddingX="md"
+                    paddingY="sm"
+                    maxHeight={DIALOG_CONTENT_MAX_HEIGHT}
+                    overflowY="auto"
+                >
                     {entry.items.map((item, i) => (
                         <Checkbox
+                            name={`log-checkbox-${i}`}
                             key={i}
-                            className="checkbox-item"
-                            checked={item.checked}
+                            checked={item.checked ?? false}
                             disabled={resolved}
                             onChange={() => handleToggle(i)}
                         >
                             {item.label}
                         </Checkbox>
                     ))}
-                </div>
+                </Panel>
                 <ButtonsPanel
                     buttons={buttons}
                     button={entry.button}
                     requirementNotMet={requirementNotMet}
                     onClickButton={handleClick}
                 />
-            </CheckboxesRoot>
+            </Panel>
         </DialogContainer>
     );
 }

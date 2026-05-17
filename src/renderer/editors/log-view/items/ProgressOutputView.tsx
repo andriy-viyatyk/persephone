@@ -1,56 +1,6 @@
-import styled from "@emotion/styled";
 import { ProgressOutputEntry } from "../logTypes";
 import { StyledTextView } from "../StyledTextView";
-import { CircularProgress } from "../../../components/basic/CircularProgress";
-import color from "../../../theme/color";
-
-// =============================================================================
-// Constants
-// =============================================================================
-
-const SPINNER_SIZE = 16;
-
-// =============================================================================
-// Styled Components
-// =============================================================================
-
-const ProgressRoot = styled.div({
-    padding: "2px 0",
-
-    "& .progress-label-row": {
-        display: "flex",
-        alignItems: "center",
-        gap: 6,
-        fontSize: 13,
-        lineHeight: "18px",
-        marginBottom: 2,
-    },
-
-    "& .progress-track": {
-        width: 160,
-        height: 6,
-        borderRadius: 3,
-        background: color.background.dark,
-        overflow: "hidden",
-    },
-
-    "& .progress-fill": {
-        height: "100%",
-        borderRadius: 3,
-        background: color.misc.blue,
-        transition: "width 0.2s ease",
-    },
-
-    "& .progress-fill.completed": {
-        background: color.misc.green,
-    },
-
-    "& .progress-info": {
-        fontSize: 11,
-        color: color.text.light,
-        marginTop: 1,
-    },
-});
+import { Panel, ProgressBar, Text } from "../../../uikit";
 
 // =============================================================================
 // Component
@@ -62,28 +12,24 @@ interface ProgressOutputViewProps {
 
 export function ProgressOutputView({ entry }: ProgressOutputViewProps) {
     const { label, value, max = 100, completed } = entry;
-    const indeterminate = value == null && !completed;
-    const percent = completed ? 100 : (value != null ? Math.min(100, (value / max) * 100) : 0);
 
     return (
-        <ProgressRoot>
-            {(label || indeterminate) && (
-                <div className="progress-label-row">
-                    {indeterminate && <CircularProgress size={SPINNER_SIZE} />}
-                    {label && <StyledTextView text={label} />}
-                </div>
+        <Panel name="log-progress" direction="column" gap="xs">
+            {label && (
+                <Panel name="log-progress-label-row" direction="row" align="center" gap="md">
+                    <Text size="md"><StyledTextView text={label} /></Text>
+                </Panel>
             )}
-            {!indeterminate && (
-                <div className="progress-track">
-                    <div
-                        className={`progress-fill${completed ? " completed" : ""}`}
-                        style={{ width: `${percent}%` }}
-                    />
-                </div>
-            )}
+            <ProgressBar
+                name="log-progress-bar"
+                value={value}
+                max={max}
+                completed={completed}
+                width={160}
+            />
             {value != null && !completed && (
-                <div className="progress-info">{value} / {max}</div>
+                <Text size="xs" color="light" name="log-progress-info">{value} / {max}</Text>
             )}
-        </ProgressRoot>
+        </Panel>
     );
 }

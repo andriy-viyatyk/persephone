@@ -1,5 +1,4 @@
 import { useMemo, useCallback, SetStateAction } from "react";
-import styled from "@emotion/styled";
 import { GridOutputEntry } from "../logTypes";
 import { useLogViewModel } from "../LogViewContext";
 import { DialogHeader } from "./DialogHeader";
@@ -7,12 +6,11 @@ import { getGridDataWithColumns, getRowKey } from "../../grid/utils/grid-utils";
 import type { GridColumn } from "../../grid/utils/grid-utils";
 import { Column, CellFocus } from "../../../components/data-grid/AVGrid/avGridTypes";
 import AVGrid from "../../../components/data-grid/AVGrid/AVGrid";
-import { Button } from "../../../components/basic/Button";
+import { IconButton, Panel } from "../../../uikit";
 import { OpenLinkIcon } from "../../../theme/icons";
 import { pagesModel } from "../../../api/pages";
 import { DIALOG_CONTENT_MAX_HEIGHT } from "../logConstants";
 import { resolveState } from "../../../core/utils/utils";
-import color from "../../../theme/color";
 
 // =============================================================================
 // Helpers
@@ -27,13 +25,11 @@ function normalizeColumns(columns?: (string | GridColumn)[]): GridColumn[] | und
 function mergeColumnsWithSaved(detected: Column[], saved?: any[]): Column[] {
     if (!saved || saved.length === 0) return detected;
 
-    // Build a map of saved column data by key
     const savedMap = new Map<string, any>();
     for (const sc of saved) {
         if (sc && sc.key) savedMap.set(sc.key as string, sc);
     }
 
-    // Reorder: put saved columns first (in saved order), then any new detected ones
     const result: Column[] = [];
     for (const sc of saved) {
         const det = detected.find(c => c.key === sc.key);
@@ -50,34 +46,6 @@ function mergeColumnsWithSaved(detected: Column[], saved?: any[]): Column[] {
 }
 
 // =============================================================================
-// Styled Components
-// =============================================================================
-
-const GridOutputRoot = styled.div({
-    position: "relative",
-    border: "1px solid",
-    borderColor: color.border.default,
-    borderRadius: 4,
-    margin: "2px 0",
-    overflow: "hidden",
-    width: "fit-content",
-    maxWidth: "100%",
-
-    "& .grid-hover-actions": {
-        position: "absolute",
-        top: 4,
-        right: 4,
-        opacity: 0,
-        transition: "opacity 0.15s",
-        zIndex: 1,
-    },
-
-    "&:hover .grid-hover-actions": {
-        opacity: 1,
-    },
-});
-
-// =============================================================================
 // Component
 // =============================================================================
 
@@ -89,13 +57,11 @@ export function GridOutputView({ entry }: GridOutputViewProps) {
     const vm = useLogViewModel();
     const itemState = vm.state.use(s => s.itemsState[entry.id] ?? {});
 
-    // Detect columns from data + entry.columns overrides
     const baseGridData = useMemo(
         () => getGridDataWithColumns(entry.data, normalizeColumns(entry.columns)),
         [entry.data, entry.columns],
     );
 
-    // Merge with saved column state (widths, order)
     const columns = useMemo(
         () => mergeColumnsWithSaved(baseGridData.columns, itemState.columns),
         [baseGridData.columns, itemState.columns],
@@ -126,7 +92,17 @@ export function GridOutputView({ entry }: GridOutputViewProps) {
     }, [entry.data, entry.title]);
 
     return (
-        <GridOutputRoot>
+        <Panel
+            name="log-grid-output"
+            direction="column"
+            position="relative"
+            border
+            rounded="md"
+            overflow="hidden"
+            width="fit-content"
+            maxWidth="100%"
+            revealChildrenOnHover
+        >
             <DialogHeader title={entry.title} />
             <AVGrid
                 columns={columns}
@@ -140,11 +116,22 @@ export function GridOutputView({ entry }: GridOutputViewProps) {
                 readonly
                 disableFiltering
             />
-            <div className="grid-hover-actions">
-                <Button size="small" type="icon" onClick={handleOpenInGrid} title="Open in Grid editor">
-                    <OpenLinkIcon />
-                </Button>
-            </div>
-        </GridOutputRoot>
+            <Panel
+                name="log-grid-hover-actions"
+                position="absolute"
+                top={4}
+                right={4}
+                zIndex={1}
+            >
+                <IconButton
+                    name="log-grid-open-in-editor"
+                    hideUntilParentHover
+                    size="sm"
+                    icon={<OpenLinkIcon />}
+                    title="Open in Grid editor"
+                    onClick={handleOpenInGrid}
+                />
+            </Panel>
+        </Panel>
     );
 }

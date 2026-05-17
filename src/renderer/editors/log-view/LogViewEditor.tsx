@@ -1,4 +1,3 @@
-import styled from "@emotion/styled";
 import { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { TextFileModel } from "../text/TextEditorModel";
@@ -9,29 +8,9 @@ import { LogEntryWrapper } from "./LogEntryWrapper";
 import { RenderFlexGrid, RenderFlexCellParams } from "../../components/virtualization/RenderGrid/RenderFlexGrid";
 import RenderGridModel from "../../components/virtualization/RenderGrid/RenderGridModel";
 import { Percent } from "../../components/virtualization/RenderGrid/types";
-import { Button } from "../../components/basic/Button";
+import { IconButton, Panel, Text } from "../../uikit";
 import { EditorError } from "../base/EditorError";
-import color from "../../theme/color";
 import { showConfirmationDialog } from "../../ui/dialogs/ConfirmationDialog";
-
-// =============================================================================
-// Styled Components
-// =============================================================================
-
-const LogViewRoot = styled.div({
-    display: "flex",
-    flexDirection: "column",
-    flex: "1 1 auto",
-    overflow: "hidden",
-    "& .log-view-placeholder": {
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        flex: "1 1 auto",
-        color: color.text.light,
-        fontSize: 14,
-    },
-});
 
 // =============================================================================
 // Constants
@@ -85,7 +64,6 @@ export function LogViewEditor({ model }: { model: TextFileModel }) {
         gridModelRef.current = m;
     }, []);
 
-    // Track scroll position to know if user is at bottom
     const handleScroll = useCallback(() => {
         const container = gridModelRef.current?.containerRef?.current;
         if (!container) return;
@@ -93,7 +71,6 @@ export function LogViewEditor({ model }: { model: TextFileModel }) {
             container.scrollTop + container.clientHeight >= container.scrollHeight - AUTO_SCROLL_THRESHOLD;
     }, []);
 
-    // Attach scroll listener when grid mounts (depends on entryCount for mount/unmount transitions)
     useEffect(() => {
         const container = gridModelRef.current?.containerRef?.current;
         if (!container) return;
@@ -106,8 +83,6 @@ export function LogViewEditor({ model }: { model: TextFileModel }) {
     // grows rows asynchronously. A single scroll-to-bottom fires before these height
     // adjustments settle, so the last row ends up partially hidden. We scroll multiple
     // times with increasing delays to compensate for each measurement pass.
-    // Three follow-ups (50/150/300ms) reliably cover multi-row batches where each
-    // row's ResizeObserver fires at slightly different times.
     const scheduleScrollToBottom = useCallback(() => {
         for (const t of scrollTimers.current) clearTimeout(t);
         const count = prevEntryCount.current;
@@ -120,12 +95,10 @@ export function LogViewEditor({ model }: { model: TextFileModel }) {
         scrollTimers.current = [t1, t2, t3];
     }, []);
 
-    // Grid update + auto-scroll on entry count change
     useEffect(() => {
         if (!vm) return;
         const count = state.entryCount;
 
-        // Clear any pending scroll timers from previous update
         for (const t of scrollTimers.current) clearTimeout(t);
         scrollTimers.current = [];
 
@@ -144,18 +117,15 @@ export function LogViewEditor({ model }: { model: TextFileModel }) {
         };
     }, [vm, state.entryCount, scheduleScrollToBottom]);
 
-    // Force scroll-to-bottom when a dialog entry is added (user must see it to respond)
     useEffect(() => {
         if (!vm || state.forceScrollVersion === 0) return;
         scheduleScrollToBottom();
     }, [vm, state.forceScrollVersion, scheduleScrollToBottom]);
 
-    // Re-render grid when timestamps toggled (row heights change)
     useEffect(() => {
         gridModelRef.current?.update({ all: true });
     }, [state.showTimestamps]);
 
-    // Render cell callback
     const renderLogEntry = useCallback(
         (p: RenderFlexCellParams) => {
             if (!vm || p.col === 1) return null;
@@ -171,7 +141,6 @@ export function LogViewEditor({ model }: { model: TextFileModel }) {
         [vm, state.showTimestamps],
     );
 
-    // Initial row height from cache
     const getInitialRowHeight = useCallback(
         (row: number) => {
             if (!vm) return undefined;
@@ -190,9 +159,10 @@ export function LogViewEditor({ model }: { model: TextFileModel }) {
             {Boolean(model.editorToolbarRefLast) &&
                 createPortal(
                     <>
-                        <Button
-                            size="small"
-                            type="icon"
+                        <IconButton
+                            name="log-clear"
+                            size="sm"
+                            icon={<ClearIcon />}
                             title="Clear log"
                             onClick={async () => {
                                 const result = await showConfirmationDialog({
@@ -200,26 +170,25 @@ export function LogViewEditor({ model }: { model: TextFileModel }) {
                                 });
                                 if (result === "Yes") vm.clear();
                             }}
-                        >
-                            <ClearIcon />
-                        </Button>
-                        <Button
-                            size="small"
-                            type="icon"
+                        />
+                        <IconButton
+                            name="log-toggle-timestamps"
+                            size="sm"
+                            icon={<TimestampIcon active={state.showTimestamps} />}
                             title={state.showTimestamps ? "Hide timestamps" : "Show timestamps"}
                             onClick={vm.toggleTimestamps}
-                        >
-                            <TimestampIcon active={state.showTimestamps} />
-                        </Button>
+                        />
                     </>,
                     model.editorToolbarRefLast!,
                 )}
             <LogViewProvider value={vm}>
-                <LogViewRoot>
+                <Panel name="log-view-root" direction="column" flex={1} overflow="hidden">
                     {state.error ? (
                         <EditorError>{state.error}</EditorError>
                     ) : state.entryCount === 0 ? (
-                        <div className="log-view-placeholder">No log entries</div>
+                        <Panel name="log-view-placeholder" flex={1} align="center" justify="center">
+                            <Text size="base" color="light">No log entries</Text>
+                        </Panel>
                     ) : (
                         <RenderFlexGrid
                             ref={setGridModel}
@@ -233,7 +202,7 @@ export function LogViewEditor({ model }: { model: TextFileModel }) {
                             preferMinHeightForNewRows
                         />
                     )}
-                </LogViewRoot>
+                </Panel>
             </LogViewProvider>
         </>
     );

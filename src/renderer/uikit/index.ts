@@ -42,6 +42,8 @@ export { RadioGroup, RADIO_KEY } from "./RadioGroup";
 export type { RadioGroupProps, IRadio } from "./RadioGroup";
 export { Slider } from "./Slider";
 export type { SliderProps } from "./Slider";
+export { ProgressBar } from "./ProgressBar";
+export type { ProgressBarProps } from "./ProgressBar";
 export { Spinner } from "./Spinner";
 export type { SpinnerProps } from "./Spinner";
 export { Textarea } from "./Textarea";

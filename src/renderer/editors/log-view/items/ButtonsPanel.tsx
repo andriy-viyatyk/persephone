@@ -1,32 +1,6 @@
-import styled from "@emotion/styled";
 import { useCallback } from "react";
-import { Button } from "../../../components/basic/Button";
+import { Button, Panel } from "../../../uikit";
 import { CheckIcon } from "../../../theme/icons";
-import color from "../../../theme/color";
-
-// =============================================================================
-// Styled Components
-// =============================================================================
-
-const PanelRoot = styled.div({
-    display: "flex",
-    flexDirection: "row",
-    gap: 6,
-    padding: "4px 8px",
-    flexWrap: "wrap",
-
-    "& button.small": {
-        paddingLeft: 8,
-        paddingRight: 8,
-    },
-
-    "& .btn-check": {
-        display: "inline-flex",
-        alignItems: "center",
-        marginRight: 2,
-        color: color.misc.green,
-    },
-});
 
 // =============================================================================
 // Helpers
@@ -69,25 +43,30 @@ export function ButtonsPanel({ buttons, button, requirementNotMet, onClickButton
     );
 
     return (
-        <PanelRoot>
+        <Panel
+            name="log-buttons-panel"
+            direction="row"
+            gap="md"
+            paddingX="md"
+            paddingY="sm"
+            wrap
+        >
             {parsed.map((btn) => {
                 const isResult = resolved && button === btn.label;
                 const disabled = resolved || (btn.required && requirementNotMet);
                 return (
                     <Button
+                        name={`log-button-${btn.label}`}
                         key={btn.label}
-                        size="small"
-                        type="raised"
+                        size="sm"
                         disabled={disabled}
                         onClick={() => handleClick(btn.label)}
+                        icon={isResult ? <CheckIcon /> : undefined}
                     >
-                        {isResult && (
-                            <span className="btn-check"><CheckIcon /></span>
-                        )}
                         {btn.label}
                     </Button>
                 );
             })}
-        </PanelRoot>
+        </Panel>
     );
 }

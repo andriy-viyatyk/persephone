@@ -1,19 +1,6 @@
-import styled from "@emotion/styled";
 import { StyledText } from "../logTypes";
 import { StyledTextView } from "../StyledTextView";
-import color from "../../../theme/color";
-
-// =============================================================================
-// Styled Components
-// =============================================================================
-
-const HeaderRoot = styled.div({
-    backgroundColor: color.background.dark,
-    padding: "3px 8px",
-    fontSize: 13,
-    lineHeight: "18px",
-    color: color.text.light,
-});
+import { Panel, Text } from "../../../uikit";
 
 // =============================================================================
 // Component
@@ -26,8 +13,10 @@ interface DialogHeaderProps {
 export function DialogHeader({ title }: DialogHeaderProps) {
     if (!title) return null;
     return (
-        <HeaderRoot>
-            <StyledTextView text={title} />
-        </HeaderRoot>
+        <Panel name="log-dialog-header" background="dark" rounded="md" paddingX="md" paddingY="xs">
+            <Text size="md" color="light">
+                <StyledTextView text={title} />
+            </Text>
+        </Panel>
     );
 }
