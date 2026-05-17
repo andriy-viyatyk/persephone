@@ -1,50 +1,38 @@
-import clsx from "clsx";
+import React from "react";
+import { Panel } from "../../uikit/Panel";
 
-import styled from "@emotion/styled";
-import color from "../../theme/color";
-
-export interface EditorToolbarProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface EditorToolbarProps {
+    name?: string;
     borderTop?: boolean;
     borderBottom?: boolean;
+    children?: React.ReactNode;
 }
 
-const EditorToolbarRoot = styled.div({
-    display: "flex",
-    alignItems: "center",
-    columnGap: 4,
-    flexWrap: "nowrap",
-    overflow: "hidden",
-    backgroundColor: color.background.dark,
-    padding: "2px 4px",
-    flexShrink: 0,
-    "&.borderTop": {
-        borderTop: `1px solid ${color.border.light}`,
-    },
-    "&.borderBottom": {
-        borderBottom: `1px solid ${color.border.light}`,
-    },
-    "&:empty": {
-        display: "none",
-    },
-});
-
 export function EditorToolbar({
-    children,
+    name,
     borderTop,
     borderBottom,
-    className,
-    ...rest
+    children,
 }: EditorToolbarProps) {
     return (
-        <EditorToolbarRoot
-            {...rest}
-            className={clsx("editor-toolbar", className, { borderTop, borderBottom })}
+        <Panel
+            name={name ?? "editor-toolbar"}
+            direction="row"
+            align="center"
+            gap="sm"
+            overflow="hidden"
+            background="dark"
+            paddingX="sm"
+            paddingY="xs"
+            shrink={false}
+            borderTop={borderTop}
+            borderBottom={borderBottom}
+            hideWhenEmpty
         >
             {children}
-        </EditorToolbarRoot>
+        </Panel>
     );
 }
 
-// Re-export with old name for backward compatibility
 export { EditorToolbar as PageToolbar };
 export type { EditorToolbarProps as PageToolbarProps };

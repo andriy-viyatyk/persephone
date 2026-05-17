@@ -1,11 +1,23 @@
-import styled from "@emotion/styled";
-import color from "../../theme/color";
+import React from "react";
+import { Panel } from "../../uikit/Panel";
+import { Text } from "../../uikit/Text";
 
-const EditorError = styled.div({
-    whiteSpace: "pre-wrap",
-    margin: "auto",
-    padding: 24,
-    color: color.misc.yellow,
-});
+export interface EditorErrorProps {
+    children?: React.ReactNode;
+}
 
-export { EditorError };
+export function EditorError({ children }: EditorErrorProps) {
+    return (
+        <Panel
+            name="editor-error"
+            flex
+            justify="center"
+            align="center"
+            padding="xxl"
+        >
+            <Text color="warning" preWrap>
+                {children}
+            </Text>
+        </Panel>
+    );
+}

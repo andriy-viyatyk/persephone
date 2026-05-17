@@ -108,6 +108,13 @@ export interface PanelProps
     disabled?: boolean;
 
     /**
+     * Collapse to `display: none` when the panel has no DOM children.
+     * Mirrors the legacy `:empty { display: none }` toolbar rule and
+     * works with conditional children (`{flag && <Btn/>}` rendering nothing).
+     */
+    hideWhenEmpty?: boolean;
+
+    /**
      * When `true`, descendant elements with `data-visibility="parent-hover"` start hidden
      * (`opacity: 0`, `pointer-events: none`) and fade in when this Panel is hovered or contains
      * keyboard focus. UIKit primitives expose a typed `hideUntilParentHover` prop that emits
@@ -175,6 +182,8 @@ const Root = styled.div(
             opacity: 0.6,
             pointerEvents: "none",
         },
+
+        "&[data-hide-when-empty]:empty": { display: "none" },
 
         // Hover-reveal pattern: descendants tagged with data-visibility="parent-hover"
         // are hidden by default and fade in when this Panel is hovered or contains focus.
@@ -290,6 +299,7 @@ export const Panel = React.forwardRef<HTMLDivElement, PanelProps>(function Panel
         shadow,
         background,
         disabled,
+        hideWhenEmpty,
         revealChildrenOnHover,
         accent,
         children,
@@ -359,6 +369,7 @@ export const Panel = React.forwardRef<HTMLDivElement, PanelProps>(function Panel
             data-border-color={borderColor || undefined}
             data-shadow={shadow || undefined}
             data-disabled={disabled || undefined}
+            data-hide-when-empty={hideWhenEmpty || undefined}
             data-reveal-on-hover={revealChildrenOnHover || undefined}
             data-accent={accent || undefined}
             className={scrollable ? "scroll-container" : undefined}
