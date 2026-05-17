@@ -39,6 +39,14 @@ export interface TextareaProps
     minHeight?: number;
     /** Maximum height in px before vertical scrolling kicks in. */
     maxHeight?: number;
+    /** Fixed width — number → px, string passes through (e.g. "30%"). */
+    width?: number | string;
+    /** Min width — number → px, string passes through. */
+    minWidth?: number | string;
+    /** Max width — number → px, string passes through. */
+    maxWidth?: number | string;
+    /** Flex shorthand on self. `true` → "1 1 auto"; number → "<n> 1 auto"; string passes through. Mirrors `Panel.flex`. */
+    flex?: boolean | number | string;
     /** Size variant — controls font size. Default: "md". */
     size?: "sm" | "md";
     /**
@@ -130,6 +138,10 @@ export const Textarea = React.forwardRef<TextareaRef, TextareaProps>(
             singleLine,
             minHeight,
             maxHeight,
+            width,
+            minWidth,
+            maxWidth,
+            flex,
             size = "md",
             variant = "default",
             autoFocus,
@@ -200,6 +212,16 @@ export const Textarea = React.forwardRef<TextareaRef, TextareaProps>(
         const style: React.CSSProperties = {};
         if (minHeight !== undefined) style.minHeight = minHeight;
         if (maxHeight !== undefined) style.maxHeight = maxHeight;
+        if (width      !== undefined) style.width    = width;
+        if (minWidth   !== undefined) style.minWidth = minWidth;
+        if (maxWidth   !== undefined) style.maxWidth = maxWidth;
+        if (flex !== undefined && flex !== false) {
+            style.flex = flex === true
+                ? "1 1 auto"
+                : typeof flex === "number"
+                ? `${flex} 1 auto`
+                : flex;
+        }
 
         return (
             <Root

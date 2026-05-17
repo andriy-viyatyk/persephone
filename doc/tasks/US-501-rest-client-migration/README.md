@@ -3,15 +3,16 @@
 ## Status
 
 **Plan ready for review** — part of [EPIC-025](../../epics/EPIC-025.md) Phase 4
-per-screen migration. **Blocked on [US-533](../US-533-uikit-autocomplete/README.md)**
-— the new UIKit `Autocomplete` primitive replaces the legacy
-`ComboSelect freeText` pattern used by `KeyValueEditor`'s header-name field.
+per-screen migration. **Blocked on two precursors:**
 
-Two further small UIKit primitive extensions ship inline with this task
-(see Concern B / C below):
-
-- `Textarea` — `width` / `minWidth` / `maxWidth` / `flex` props.
-- `Panel` — `dimmed?: boolean` prop.
+- [US-533](../US-533-uikit-autocomplete/README.md) — UIKit `Autocomplete`
+  primitive (replaces the legacy `ComboSelect freeText` pattern used by
+  `KeyValueEditor`'s header-name field). Implemented; awaiting user
+  smoke-test.
+- [US-534](../US-534-uikit-primitive-extensions/README.md) — UIKit
+  primitive extensions (`Text.color` free-form, `Textarea`
+  `width`/`flex` props, `Panel.dimmed`). Plan-ready. Resolves concerns
+  B / C / F below.
 
 ## Goal
 
@@ -99,22 +100,10 @@ Pattern verified against migrated callers
 
 ## Implementation plan
 
-### Step 0 — UIKit primitive extensions (precursors inside this task)
-
-Two small extensions ship with this task. The Autocomplete primitive itself
-ships separately in US-533 (precursor — blocking).
-
-**0.1 — Add width/flex props to UIKit Textarea**
-`src/renderer/uikit/Textarea/Textarea.tsx`:
-- Add `width?: number | string`, `minWidth?: number | string`, `maxWidth?: number | string`, `flex?: boolean | number | string` to `TextareaProps`.
-- Map to inline `style` on the Root `styled.div` (Textarea is single-element, so the same style object that carries `minHeight`/`maxHeight` carries these too).
-- `flex={true}` → `"1 1 auto"`; `flex={n}` → `"${n} 1 auto"`; string passes through. Same resolver as `Panel.flex`.
-
-**0.2 — Add `dimmed` prop to UIKit Panel**
-`src/renderer/uikit/Panel/Panel.tsx`:
-- Add `dimmed?: boolean` to `PanelProps`.
-- Emits `data-dimmed="true"`; styled rule `&[data-dimmed] { opacity: 0.5 }`. No `pointerEvents` change — interactive children (checkbox to re-enable) remain clickable.
-- Distinct from `disabled` (which adds `pointer-events: none`).
+All UIKit primitive extensions previously planned as Step 0 have moved to
+[US-534](../US-534-uikit-primitive-extensions/README.md) — `Text.color`
+free-form, `Textarea` width/flex props, and `Panel.dimmed`. US-501 is now
+pure editor migration; US-534 must land before Step 1 begins.
 
 ### Step 1 — `KeyValueEditor.tsx`
 
@@ -261,9 +250,9 @@ Outline (showing structural skeleton — handlers/state unchanged):
            paddingX="md" paddingY="xs" background="dark">
         <WithMenu items={methodMenuItems}>
             {(setOpen) => (
-                <Text name="method-label"
-                      onClick={(e) => setOpen(e.currentTarget)}
-                      style={/* method color stays inline via Text.color? — see Concern F */}>
+                <Text name="method-label" bold
+                      color={METHOD_COLORS[request.method]}
+                      onClick={(e) => setOpen(e.currentTarget)}>
                     {request.method}
                 </Text>
             )}
@@ -424,8 +413,8 @@ return (
             <Spacer />
             {state.response && (
                 <>
-                    <Text size="xs" weight="semibold" mono
-                          style={/* status color — see Concern F */}>
+                    <Text size="xs" bold
+                          color={getStatusColor(state.response.status)}>
                         {state.response.status === 0 ? "Error" : `${state.response.status} ${state.response.statusText}`}
                     </Text>
                     <Text size="xs" color="light">{state.responseTime}ms</Text>
@@ -459,17 +448,17 @@ The legacy `<ComboSelect freeText selectFrom={COMMON_HEADERS} value={item.key} o
 
 Rationale for a new primitive (not a `Select` extension): the contract is fundamentally different (string-valued, accepts arbitrary text, no commit-by-default). See US-533 Q5 for details. Future migration of the Browser URL bar to `Autocomplete` becomes natural after this primitive exists — a follow-up per-screen task can collapse `UrlSuggestionsDropdown.tsx` and most of `BrowserUrlBarModel.ts` into a thin wrapper around `Autocomplete`.
 
-### Concern B — Textarea width/flex props — **RESOLVED**
+### Concern B — Textarea width/flex props — **RESOLVED (via US-534)**
 
 The legacy RestClient has many `<TextAreaField style={{ width: "30%", flex: "1 1 auto", minWidth: 80, ... }}>` call sites. UIKit `Textarea` currently exposes only `minHeight` / `maxHeight`. Adding `width` / `minWidth` / `maxWidth` / `flex` (mirroring `Input`'s pattern) keeps callers in props-only mode without `style=` (Rule 7).
 
-**Resolution:** Step 0.2 adds the four props. ~10 lines in `Textarea.tsx`. No story change.
+**Resolution:** [US-534](../US-534-uikit-primitive-extensions/README.md) Step 2 adds the four props. US-501 consumes them as-is.
 
-### Concern C — Disabled-row dim without disabling interaction — **RESOLVED**
+### Concern C — Disabled-row dim without disabling interaction — **RESOLVED (via US-534)**
 
 `kv-row-disabled` and `form-data-row[!enabled]` show the row at `opacity: 0.5` but the checkbox inside must remain clickable to re-enable the row. UIKit `Panel.disabled` adds `pointer-events: none`, which breaks the re-enable. Need a separate dim prop.
 
-**Resolution:** Step 0.3 adds `Panel.dimmed?: boolean` — opacity only, no pointer-events change. ~5 lines in `Panel.tsx`.
+**Resolution:** [US-534](../US-534-uikit-primitive-extensions/README.md) Step 3 adds `Panel.dimmed?: boolean` — opacity only, no pointer-events change. US-501 consumes it as `<Panel dimmed={!item.enabled}>`.
 
 ### Concern D — Tabs become SegmentedControl — **RESOLVED**
 
@@ -491,19 +480,22 @@ UIKit `Button` and `IconButton` automatically wrap themselves in `<Tooltip>` whe
 
 **Resolution:** Accept. Every migrated editor in EPIC-025 has the same behaviour change. Use `title` for all destination buttons.
 
-### Concern F — Inline-only style needs: HTTP-method colour and response-status colour
+### Concern F — Inline-only style needs: HTTP-method colour and response-status colour — **RESOLVED (via US-534)**
 
 Two places paint text in a colour derived from runtime data:
 1. `RequestBuilder` URL bar `method-label` — `style={{ color: METHOD_COLORS[request.method] }}`.
 2. `RestClientEditor` response-status — `style={{ color: getStatusColor(state.response.status) }}`.
 
-UIKit `Text` accepts a fixed set of named colours (`default | light | strong | warning | ...`) — not arbitrary CSS color strings. The colour values themselves (METHOD_COLORS, http codes) live in `universalColors.ts` and are theme tokens, not arbitrary hex.
+UIKit `Text` accepts a fixed set of named colours (`default | light | strong | warning | ...`) — not arbitrary CSS colour strings. The colour values themselves (METHOD_COLORS, http codes) live in `universalColors.ts` and are theme tokens, not arbitrary hex.
 
-**Resolution options (recommend F1):**
-- **F1 — Add `Text` accent-color prop sourced from `universalColors`.** Extend `Text` with `accentColor?: keyof typeof universalColors.http | keyof typeof universalColors.method` (or a more generic `tokenColor` mapping). Most flexible and reusable.
-- F2 — Render a plain `<span style={{ color: ... }}>` next to the UIKit chrome. Rule 7 forbids `style=` on UIKit components but allows it on plain HTML elements. This is the path-of-least-effort fallback. (Same pattern already used for the binary image preview.)
+**Resolution:** [US-534](../US-534-uikit-primitive-extensions/README.md) Step 1 widens `Text.color` to `TextColor | (string & {})` — a named token hits the theme-aware `data-color` rule, a free-form CSS colour string (theme token reference) is applied as inline `style.color`. US-501 consumes:
 
-For an editor with two colour-keyed labels, F2 (plain `<span>`) is acceptable — keeps the change scoped to RestClient. **Recommendation: F2 unless the user prefers Text extension.**
+```tsx
+<Text color={METHOD_COLORS[req.method]} bold>{req.method}</Text>
+<Text color={getStatusColor(res.status)}>{res.status} {res.statusText}</Text>
+```
+
+No `<span style={…}>` escape hatch and no enum extension every time a new semantic colour appears. The "No hardcoded colors" rule still applies — callers must pass theme tokens, never literal hex.
 
 ### Concern G — Multi-line URL textarea overlapping monospace style
 
@@ -551,9 +543,11 @@ EPIC-025 close per the epic's deferred review model.
 | `src/renderer/editors/rest-client/RequestBuilder.tsx` | Rewritten — UIKit Panel/Splitter/SegmentedControl/Textarea/IconButton/Button/WithMenu/Spacer/Text | 744 → ~520 |
 | `src/renderer/editors/rest-client/ResponseViewer.tsx` | Rewritten — UIKit Panel/SegmentedControl/Button/IconButton/WithMenu/Spacer/Text | 466 → ~290 |
 | `src/renderer/editors/rest-client/KeyValueEditor.tsx` | Rewritten — UIKit Panel/Checkbox/Autocomplete/Textarea/IconButton | 227 → ~110 |
-| `src/renderer/uikit/Textarea/Textarea.tsx` | Add `width` / `minWidth` / `maxWidth` / `flex` props | +~10 |
-| `src/renderer/uikit/Panel/Panel.tsx` | Add `dimmed?: boolean` prop + styled rule | +~5 |
-| `doc/active-work.md` | US-501 entry — status "placeholder" → "plan ready for review" | 1 |
+| `doc/active-work.md` | US-501 entry — status updated as the task progresses | 1 |
+
+UIKit primitive extensions (`Text.color` free-form, `Textarea` width/flex,
+`Panel.dimmed`) live in [US-534](../US-534-uikit-primitive-extensions/README.md)
+and are not duplicated here.
 
 ## Files NOT Changed
 
@@ -574,5 +568,7 @@ EPIC-025 close per the epic's deferred review model.
   - `src/renderer/editors/mcp-inspector/McpInspectorView.tsx:221` (SegmentedControl panel-switch)
   - `src/renderer/editors/mcp-inspector/ToolsPanel.tsx:191` (horizontal Splitter side=after / border=before)
   - `src/renderer/editors/link-editor/panels/LinkTagsSecondaryEditor.tsx:146` (same pattern)
-- Blocked on: [US-533](../US-533-uikit-autocomplete/README.md) — UIKit `Autocomplete` primitive
+- Blocked on:
+  - [US-533](../US-533-uikit-autocomplete/README.md) — UIKit `Autocomplete` primitive
+  - [US-534](../US-534-uikit-primitive-extensions/README.md) — `Text.color` free-form, `Textarea` width/flex, `Panel.dimmed`
 - Related: US-497 (TreeView migration), US-531 (showPopupMenu migration), US-532 (legacy folder removal)

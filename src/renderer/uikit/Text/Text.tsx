@@ -20,8 +20,19 @@ export type TextSize = "xs" | "sm" | "md" | "base" | "lg" | "xl" | "xxl";
 export interface TextStyleProps {
     /** Visual variant. "uppercased" applies uppercase + letter-spacing. Default: "default". */
     variant?: TextVariant;
-    /** Text color. Default: "default" (color.text.default). */
-    color?: TextColor;
+    /**
+     * Text colour. A named token (`"error"`, `"primary"`, …) hits the
+     * theme-aware `data-color` style rule. A free-form CSS colour string
+     * (a theme reference like `color.misc.blue` or
+     * `universalColors.http.method.get`) is applied as inline `style.color`,
+     * which then wins over `variant="link"`'s primary colour.
+     *
+     * Pass theme token references only — never literal hex/rgb values.
+     * The "No hardcoded colors" CLAUDE.md rule still applies.
+     * Default: `"default"`.
+     */
+    // eslint-disable-next-line @typescript-eslint/ban-types -- `string & {}` preserves IntelliSense for the named TextColor literals without collapsing the union to plain `string`.
+    color?: TextColor | (string & {});
     /** Font size from the fontSize token scale. Default: "base". */
     size?: TextSize;
     /** Render text in italic. */
@@ -111,6 +122,15 @@ const Root = styled.span(
     { label: "Text" },
 );
 
+const NAMED_COLORS: ReadonlySet<string> = new Set<TextColor>([
+    "inherit", "default", "light", "dark",
+    "error", "warning", "success", "primary",
+]);
+
+function isNamedColor(c: string): c is TextColor {
+    return NAMED_COLORS.has(c);
+}
+
 // --- Component ---
 
 export function Text({
@@ -127,12 +147,14 @@ export function Text({
     children,
     ...rest
 }: TextProps) {
+    const isNamed = isNamedColor(colorProp);
+    const style = isNamed ? undefined : { color: colorProp };
     return (
         <Root
             data-type="text"
             data-name={name}
             data-variant={variant}
-            data-color={colorProp}
+            data-color={isNamed ? colorProp : undefined}
             data-size={size}
             data-bold={bold || undefined}
             data-italic={italic || undefined}
@@ -140,6 +162,7 @@ export function Text({
             data-pre-wrap={preWrap || undefined}
             data-truncate={truncate || undefined}
             data-align={align || undefined}
+            style={style}
             {...rest}
         >
             {children}

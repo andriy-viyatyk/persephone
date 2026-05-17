@@ -117,6 +117,14 @@ export interface PanelProps
 
     /** Dim + disable pointer events on the whole panel. */
     disabled?: boolean;
+    /**
+     * Dim the panel visually (opacity only) without disabling pointer events.
+     * Use when a row is in a "disabled but still re-enableable" state — the
+     * dim is the visual cue, but a child control (typically a checkbox) must
+     * remain clickable. Distinct from `disabled`, which also adds
+     * `pointer-events: none`. The two props may coexist.
+     */
+    dimmed?: boolean;
 
     /**
      * Collapse to `display: none` when the panel has no DOM children.
@@ -192,6 +200,10 @@ const Root = styled.div(
         "&[data-disabled]": {
             opacity: 0.6,
             pointerEvents: "none",
+        },
+
+        "&[data-dimmed]": {
+            opacity: 0.5,
         },
 
         "&[data-hide-when-empty]:empty": { display: "none" },
@@ -311,6 +323,7 @@ export const Panel = React.forwardRef<HTMLDivElement, PanelProps>(function Panel
         shadow,
         background,
         disabled,
+        dimmed,
         hideWhenEmpty,
         revealChildrenOnHover,
         accent,
@@ -382,6 +395,7 @@ export const Panel = React.forwardRef<HTMLDivElement, PanelProps>(function Panel
             data-border-color={borderColor || undefined}
             data-shadow={shadow || undefined}
             data-disabled={disabled || undefined}
+            data-dimmed={dimmed || undefined}
             data-hide-when-empty={hideWhenEmpty || undefined}
             data-reveal-on-hover={revealChildrenOnHover || undefined}
             data-accent={accent || undefined}
