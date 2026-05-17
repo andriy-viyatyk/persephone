@@ -12,6 +12,7 @@ interface DemoProps {
     placeholder?: string;
     size?: "sm" | "md";
     variant?: "default" | "ghost";
+    tone?: "default" | "accent";
     disabled?: boolean;
     readOnly?: boolean;
     slotPreset?: "none" | "chevron" | "search" | "unit";
@@ -22,6 +23,7 @@ function InputDemo({
     placeholder = "Placeholder text",
     size = "md",
     variant = "default",
+    tone = "default",
     disabled = false,
     readOnly = false,
     slotPreset = "none",
@@ -62,6 +64,7 @@ function InputDemo({
                 placeholder={placeholder}
                 size={size}
                 variant={variant}
+                tone={tone}
                 disabled={disabled}
                 readOnly={readOnly}
                 startSlot={startSlot}
@@ -87,6 +90,7 @@ export const inputStory: Story = {
         { name: "placeholder",  type: "string", default: "Placeholder text" },
         { name: "size",         type: "enum",   options: ["sm", "md"], default: "md" },
         { name: "variant",      type: "enum",   options: ["default", "ghost"], default: "default" },
+        { name: "tone",         type: "enum",   options: ["default", "accent"], default: "default", label: "Text tone" },
         { name: "disabled",     type: "boolean", default: false },
         { name: "readOnly",     type: "boolean", default: false },
         {

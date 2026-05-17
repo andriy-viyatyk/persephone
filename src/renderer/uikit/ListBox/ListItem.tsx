@@ -32,6 +32,11 @@ export interface ListItemProps
      * or empty string, no tooltip is rendered.
      */
     tooltip?: React.ReactNode;
+    /**
+     * Override the Tooltip's `delayShow` (ms) for this row. Only meaningful when `tooltip`
+     * is set. Leave undefined to use the global Tooltip default.
+     */
+    tooltipDelayShow?: number;
     /** Trailing slot — defaults to a check icon when `selected`. */
     trailing?: React.ReactNode;
     /**
@@ -51,6 +56,14 @@ export interface ListItemProps
      *     state and the selected row's details are shown to the right.
      */
     selectionStyle?: "check" | "accent";
+    /**
+     * Controls whether the default trailing selection icon (check / chevron-right per
+     * `selectionStyle`) renders when `selected` is true. Set to `false` to keep the
+     * background fill of `selectionStyle="accent"` while suppressing the chevron — use
+     * this when the row is pure selection feedback rather than navigation into a detail
+     * pane. Ignored when a custom `trailing` is provided. Default: `true`.
+     */
+    showSelectionIcon?: boolean;
 }
 
 // --- Styled ---
@@ -111,16 +124,18 @@ export const ListItem = forwardRef<HTMLDivElement, ListItemProps>(function ListI
         active,
         disabled,
         tooltip,
+        tooltipDelayShow,
         trailing,
         variant = "select",
         selectionStyle = "check",
+        showSelectionIcon = true,
         ...rest
     },
     ref,
 ) {
     const labelNode =
         typeof label === "string" && searchText ? highlight(label, searchText) : label;
-    const defaultTrailing = selected
+    const defaultTrailing = selected && showSelectionIcon
         ? selectionStyle === "accent"
             ? <ChevronRightIcon />
             : <CheckIcon />
@@ -147,5 +162,5 @@ export const ListItem = forwardRef<HTMLDivElement, ListItemProps>(function ListI
         </Root>
     );
     if (tooltip == null || tooltip === false || tooltip === "") return row;
-    return <Tooltip content={tooltip}>{row}</Tooltip>;
+    return <Tooltip content={tooltip} delayShow={tooltipDelayShow}>{row}</Tooltip>;
 });

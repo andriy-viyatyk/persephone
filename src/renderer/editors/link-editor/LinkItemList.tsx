@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
 import RenderGridModel from "../../components/virtualization/RenderGrid/RenderGridModel";
-import { useHighlightedText } from "../../components/basic/useHighlightedText";
+import { useHighlightedText } from "../../uikit/shared/highlight";
 import { CopyIcon, DeleteIcon, OpenFileIcon, PinFilledIcon, PinIcon, RenameIcon } from "../../theme/icons";
 import { ContextMenuEvent } from "../../api/events/events";
 import { app } from "../../api/app";
@@ -140,7 +140,7 @@ export function LinkItemList({ links, model, selectedLinkId, pinnedLinkIds }: Li
     }, [model]);
 
     const getAdditionalIcon = useCallback((link: ILink) => {
-        return pinnedLinkIds.has(link.id!) ? <PinFilledIcon /> : null;
+        return pinnedLinkIds.has(link.id!) ? <PinFilledIcon width={16} height={16} /> : null;
     }, [pinnedLinkIds]);
 
     return (

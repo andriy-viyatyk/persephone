@@ -53,7 +53,7 @@ tooltip surfaces.
 |--------|-------------------|--------------------|
 | `components/basic/Breadcrumb` | `uikit/Breadcrumb` | `className` prop removed (no styled wrap; replace `SearchField` colour via Input variant). |
 | `components/basic/Button` (`type="raised"`/`"flat"`/`"icon"`, `size="small"`) | `uikit/Button` + `uikit/IconButton` | `type="raised"` → `variant="link"` (bordered); `type="flat"` → `variant="ghost"`; `type="icon"` → switch to `IconButton`; `size="small"` → `size="sm"`; `style={{borderColor}}` (raised Add Link) drops (link variant already shows blue border). |
-| `components/basic/TextField` (with `endButtons` + `width`) | `uikit/Input` (with `endSlot` + `width`) | `endButtons` (array) → `endSlot` (ReactNode); custom blue input colour drops (UIKit Input uses theme `text.dark`). |
+| `components/basic/TextField` (with `endButtons` + `width`) | `uikit/Input` (with `endSlot` + `width` + new `tone="accent"`) | `endButtons` (array) → `endSlot` (ReactNode); the legacy custom blue input colour is preserved via a new `tone="accent"` prop on UIKit Input (see step 1.5). |
 | `components/basic/useHighlightedText` (`highlightText`, `HighlightedTextProvider`, `useHighlightedText`) | `uikit/shared/highlight` (`highlight`, `HighlightedTextProvider`, `useHighlightedText`) | **Function rename + arg-order swap**: `highlightText(substring, text)` → `highlight(text, searchText)`. Context provider/consumer names match. |
 | `components/layout/CollapsiblePanelStack` / `CollapsiblePanel` | `uikit/CollapsiblePanelStack` / `CollapsiblePanel` | Drop `className`; replace `style={{ width }}` with the `width` prop. Adopt `name?` debug attribute. |
 | `components/layout/Splitter` | `uikit/Splitter` | `type="vertical"` → `orientation="vertical"`; `initialWidth`/`initialHeight` + `onChangeWidth`/`onChangeHeight` → controlled `value` + `onChange`; `borderSized="right"` → `border="after"`; `borderSized="left"` → `border="before"` with `side="after"`. **The legacy splitter is uncontrolled** — UIKit splitter is controlled, so we pass `pageState.leftPanelWidth` / `pinnedPanelWidth` / `bottomHeight` as `value` and the existing `setX` callbacks as `onChange`. Behaviour is identical because the legacy splitter already round-tripped its initial size through the same callback. |
@@ -83,6 +83,7 @@ tooltip surfaces.
 | `Tooltip` (US-467) | landed (per-trigger wrapper only) |
 | `Button` / `IconButton` (Phase 4 baseline) | landed |
 | `Input` (`endSlot`, `width`) (Phase 4 baseline) | landed |
+| `Input` `tone="default" \| "accent"` prop | **NEW — to add in this task** |
 | `Panel` (`revealChildrenOnHover`, `border*`, etc.) | landed |
 | `Text` (Phase 4 baseline) | landed |
 | `ListItem` (`variant="browse"`, `selected`, `tooltip`, `trailing`) | landed |
@@ -169,7 +170,64 @@ strip `className`, rename to `CategoryList`, swap class names for
 end (no other consumers — verified by grep: only
 `LinkTagsPanel.tsx` + `LinkHostnamesPanel.tsx` import it).
 
-### 2. No enhancement needed elsewhere
+### 2. Enhancement: `uikit/Input` — `tone` prop
+
+Add a `tone?: "default" | "accent"` prop to `uikit/Input/Input.tsx`.
+When `tone="accent"`, the input text colour becomes
+`color.misc.blue`. The prop also surfaces as `data-tone="accent"` on
+the wrapper so other primitives can react to it later if needed.
+
+This preserves the legacy "search slot has blue text" affordance that
+signals an active filter — without it, the search Input is hard to
+spot when unfocused.
+
+**Shape:**
+
+```ts
+export interface InputProps extends … {
+    …
+    /**
+     * Text tone. `"default"` uses the theme text colour. `"accent"` paints the
+     * input text in `color.misc.blue` — use for inputs whose value carries
+     * "filter is active" semantics (search boxes, etc.).
+     * Default: `"default"`.
+     */
+    tone?: "default" | "accent";
+}
+```
+
+**Implementation:** one block in the existing `Field` styled
+declaration:
+
+```ts
+'&[data-tone="accent"]': { color: color.misc.blue },
+```
+
+Wrapper renders `data-tone={tone}`; Field renders `data-tone={tone}`.
+
+### 3. Enhancement: `uikit/ListItem` — `showSelectionIcon` prop
+
+Add `showSelectionIcon?: boolean` (default `true`) to
+`uikit/ListBox/ListItem.tsx`. When `false`, the default trailing
+selection marker (check or chevron-right per `selectionStyle`) is
+suppressed even when `selected` is true. Callers can still keep the
+`selectionStyle="accent"` background fill but opt out of the chevron
+for pure-selection feedback (rows that don't navigate into a detail
+pane).
+
+Used by LinksList and PinnedLinksPanel — both have selected-row
+visual feedback but no associated right pane, so the chevron is
+out of place.
+
+**Implementation:** destructure the new prop; gate `defaultTrailing`:
+
+```tsx
+const defaultTrailing = selected && showSelectionIcon
+    ? selectionStyle === "accent" ? <ChevronRightIcon /> : <CheckIcon />
+    : null;
+```
+
+### 4. No enhancement needed elsewhere
 
 - **`Tooltip`** — anchor-mode (one tooltip with many anchors via
   `data-tooltip-id`) is intentionally not supported in UIKit. The
@@ -178,8 +236,9 @@ end (no other consumers — verified by grep: only
 - **`ListItem`** — `variant="browse"` already provides the row-hover
   background. Hover-reveal of trailing IconButtons is achieved by
   wrapping each row in `<Panel revealChildrenOnHover>` and tagging
-  the action `IconButton`s with `hideUntilParentHover`. No prop
-  addition required.
+  the action `IconButton`s with `hideUntilParentHover`. Folder-row
+  bold + highlight is composed at the call site via a pre-built
+  ReactNode label (see step 4 / concern 6).
 - **`Splitter`** — controlled API is fine for our persisted-width
   contract; legacy `borderSized` translates to `border` + `side`.
 
@@ -205,6 +264,18 @@ step 5 verifies no other consumer remains.
 
 Acceptance: `npm run lint` + `npx tsc --noEmit` baseline-relative
 unchanged; story renders.
+
+### Step 1.5 — Add `tone` prop to `uikit/Input`
+
+- Extend `InputProps` with `tone?: "default" | "accent"` (default
+  `"default"`).
+- Destructure `tone` in the component, emit `data-tone={tone}` on the
+  `Wrapper` AND on the `Field`.
+- In `Field` styled block, add `'&[data-tone="accent"]': { color: color.misc.blue }`.
+- Extend `Input.story.tsx` with an `accent`-tone example.
+
+Acceptance: `npm run lint` + `npx tsc --noEmit` baseline-relative
+unchanged; story renders both tones.
 
 ### Step 2 — `LinkEditor.tsx` root chrome
 
@@ -303,9 +374,10 @@ with:
 inline) — UIKit Panel + Text covers it; no need for a styled.div.
 
 Replace `SearchField` (`styled(TextField)` with blue input colour) with
-`<Input variant="default" name="link-editor-search" width={180} value={…} onChange={…} placeholder="Search..." endSlot={searchText ? <IconButton size="sm" name="link-editor-search-clear" title="Clear search" icon={<CloseIcon />} onClick={vm.clearSearch} /> : undefined} />`.
-The misc-blue tint of the legacy `SearchField` is dropped (visual
-regression accepted; matches every other UIKit Input).
+`<Input variant="default" tone="accent" name="link-editor-search" width={180} value={…} onChange={…} placeholder="Search..." endSlot={searchText ? <IconButton size="sm" name="link-editor-search-clear" title="Clear search" icon={<CloseIcon />} onClick={vm.clearSearch} /> : undefined} />`.
+The misc-blue tint of the legacy `SearchField` is preserved via the
+new `tone="accent"` prop (step 1.5) so an active search remains
+visually obvious when unfocused.
 
 Toolbar portals: the Add Link / View Mode / search Input cluster
 becomes a `<>` fragment of UIKit `Button` / `IconButton` / `Input` —
@@ -377,7 +449,24 @@ with:
   banned).
 - Inside the `renderCell`, render a plain `<div style={{ padding: '0 4px', boxSizing: 'border-box', display: 'flex', alignItems: 'stretch', width: '100%', height: '100%' }}>` containing one `Panel revealChildrenOnHover position="relative" flex={1} minWidth={0}` per row.
 - Inside the Panel, render `<ListItem variant="browse" name="link-row" icon={<TreeProviderItemIcon item={link} />} label={…} tooltip={<LinkTooltipContent link={link} allTags={allTags} onToggleTag={onToggleTag} />} selected={isSelected} trailing={<… edit/delete IconButtons …>} … forwards drag handlers via {...rest} />`. ListItem accepts `...rest`, so `draggable`, `onDragStart`, `onDragEnd`, `onClick`, `onDoubleClick`, `onContextMenu` pass through to the row root.
-- Label content: `searchText ? highlight(link.title || "Untitled", searchText) : (link.title || "Untitled")` — but ListItem already accepts `searchText` and runs `highlight` itself when `label` is a string. So pass `label={link.title || "Untitled"} searchText={searchText}` and let ListItem do it. Folder rows (`link.isDirectory`) keep the bold weight via a per-row inline style on the label parent — or, more simply, pass `label={<strong>{link.title}</strong>}` for folders and forgo highlighting on them (folders are not search targets in this list anyway).
+- Label content: `ListItem` accepts `searchText` and runs `highlight` itself when `label` is a string. **For non-folder rows** pass `label={link.title || "Untitled"} searchText={searchText}` and let ListItem do it. **For folder rows** (`link.isDirectory`), build the label as a pre-highlighted ReactNode wrapped in a bold span (folders ARE search targets per `LinkViewModel.applyFilters` — see concern 6):
+
+    ```tsx
+    const labelText = link.title || "Untitled";
+    const label = link.isDirectory ? (
+        <span style={{ fontWeight: 500 }}>
+            {searchText ? highlight(labelText, searchText) : labelText}
+        </span>
+    ) : labelText;
+
+    <ListItem
+        label={label}
+        searchText={link.isDirectory ? undefined : searchText}
+        …
+    />
+    ```
+
+  The `searchText` prop is passed `undefined` for folders because the pre-built span has already run `highlight`; otherwise ListItem would try to highlight a ReactNode (no-op) or re-run on a string after we promoted it to JSX. Plain HTML `<span>` with inline style is allowed by Rule 7 (inline styles on non-UIKit elements are fine).
 - `additionalIcon` (pin indicator) sits in `trailing` alongside the action buttons. The trailing slot is one ReactNode — wrap edit/delete/pin into a `<span style={{ display: 'flex', gap: 2, alignItems: 'center' }}>`.
 - Edit / delete `Button` → `IconButton size="sm" name="link-row-edit" title="Edit" hideUntilParentHover icon={<RenameIcon />} onClick={…}` (and similarly for delete).
 - Drop the `LinksListRoot` styled wrap and inline the per-grid cell padding into the renderCell wrapper div.
@@ -545,13 +634,14 @@ final epic-close sweep.
    prop to UIKit Panel (deferred until requested).
 
 3. **Search-Input blue text colour.** Legacy `SearchField` overrides
-   the input text colour to `color.misc.blue` to signal the toolbar
-   slot belongs to the editor. UIKit `Input` has no per-instance text
-   colour prop.
-   **Proposed default:** drop the override; rely on UIKit's standard
-   text colour. (Internal pattern: UIKit primitives don't expose
-   per-instance colour tweaks; if needed, escalate to a future
-   `tone="accent"` prop — out of scope.)
+   the input text colour to `color.misc.blue` to signal that a search
+   filter is active — without it the unfocused search input looks
+   identical to any other field, and the user can miss the fact that
+   items are being filtered out.
+   **Resolution:** add a `tone?: "default" | "accent"` prop to
+   `uikit/Input` (step 1.5). LinkEditor's search Input renders with
+   `tone="accent"`. The accent value is also surfaced as
+   `data-tone="accent"` for future cross-primitive use.
 
 4. **`LinkCategoryPanel` per-row tooltip cost.** The legacy code uses a
    single shared `Tooltip` portal with `render({ activeAnchor })`; the
@@ -561,16 +651,32 @@ final epic-close sweep.
    Acceptable for a virtualized tree with ~30 visible rows. **No
    action; monitor during smoke.**
 
-5. **`LinkViewModel.ts` `MenuItem` type import.** Both legacy and
-   UIKit `MenuItem` re-export from `api/types/events`, so the swap is
-   purely cosmetic. Confirm via grep that no other consumers depend on
-   the legacy export.
+5. **`LinkViewModel.ts` `MenuItem` type import.** **Resolved.**
+   Verified both ends re-export from the same source:
+   `src/renderer/components/overlay/PopupMenu.tsx:18-19` →
+   `export type { MenuItem } from "../../api/types/events";` and
+   `src/renderer/uikit/Menu/types.ts:1` →
+   `export type { MenuItem } from "../../api/types/events";`.
+   They are aliases of the same type. Step 0's swap to
+   `uikit/Menu/types` is the only required change — no plan delta.
 
-6. **Folder rows under search.** The legacy `LinksListRow` skips
-   `highlightText` for folder rows (`link.isDirectory`) because the
-   folder title uses a different class. The migration must preserve
-   the same behaviour — flag during code review that folder rows do
-   not receive `searchText` highlighting in the migrated `ListItem`.
+6. **Folder rows under search.** **Investigated and fixed in plan.**
+   Folders ARE search targets:
+   - `LinkViewModel.applyFilters` (LinkViewModel.ts:427-438) filters by
+     `title`/`href`/`category`/`tags` with no `isDirectory` exclusion —
+     folders whose title matches the query stay visible; folders that
+     don't match are filtered out.
+   - Legacy `LinksList.tsx:161` runs `highlightText` for BOTH folder
+     and non-folder rows. The only folder-specific bit is the CSS
+     class (`link-title-folder` → `fontWeight: 500`).
+
+   The migration must therefore highlight matched text on folder rows
+   AND keep them bold. Step 4 now builds the folder label as a
+   pre-highlighted ReactNode wrapped in `<span style={{ fontWeight: 500 }}>`,
+   and passes `searchText={undefined}` to ListItem for folder rows so
+   it doesn't try to re-highlight the ReactNode. Non-folder rows pass
+   `label={string} searchText={searchText}` and let ListItem run
+   `highlight` internally.
 
 ## Acceptance criteria
 
@@ -582,6 +688,9 @@ final epic-close sweep.
   not apply; LinkEditor is an editor surface, not chrome).
 - `uikit/CategoryList` added with story + index export; legacy
   `components/basic/TagsList.tsx` deleted.
+- `uikit/Input` gains `tone="default" | "accent"` prop; LinkEditor's
+  search Input uses `tone="accent"` (preserves the legacy
+  active-filter signal).
 - All migrated UIKit primitives carry meaningful `name` debug
   attributes per US-521 conventions (call-site names listed in steps
   above are normative).
@@ -591,7 +700,8 @@ final epic-close sweep.
 - `PinnedLinksPanel` reorder drag-and-drop preserves drop-position
   indicators and module-level `draggingPinIndex` tracking.
 - Search highlighting (`highlight`) renders inside both list rows and
-  tree-cell category labels.
+  tree-cell category labels — and for folder rows the bold weight is
+  preserved alongside the highlight.
 - `LinkTooltip` content renders for list rows, tile rows, pinned rows,
   and tree-cell category leaves; the inline-edit tag-add input remains
   Enter-committed.
@@ -610,6 +720,9 @@ run at EPIC-025 close per the deferred-review model.
 | `src/renderer/uikit/CategoryList/CategoryList.story.tsx` | **new** — story |
 | `src/renderer/uikit/CategoryList/index.ts` | **new** — barrel |
 | `src/renderer/uikit/index.ts` | export `CategoryList`, `CategoryListProps` |
+| `src/renderer/uikit/Input/Input.tsx` | add `tone?: "default" \| "accent"` prop |
+| `src/renderer/uikit/Input/Input.story.tsx` | add accent-tone example |
+| `src/renderer/uikit/ListBox/ListItem.tsx` | add `showSelectionIcon?: boolean` prop (default true) — suppresses the default trailing check/chevron icon while keeping the `selectionStyle="accent"` background fill |
 | `src/renderer/editors/link-editor/LinkEditor.tsx` | replace styled root + toolbar primitives + Splitters |
 | `src/renderer/editors/link-editor/LinksList.tsx` | drop styled `RenderGrid`; rewrite row via UIKit `ListItem` + `IconButton` |
 | `src/renderer/editors/link-editor/LinksTiles.tsx` | drop styled `RenderGrid`; rewrite tile via UIKit `Panel` + `IconButton` |

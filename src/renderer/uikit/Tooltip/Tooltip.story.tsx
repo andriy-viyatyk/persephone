@@ -24,7 +24,7 @@ interface DemoProps {
 
 const TooltipDemo = ({
     placement = "top",
-    delayShow = 600,
+    delayShow = 800,
     delayHide = 100,
     offsetX = 0,
     offsetY = 8,
@@ -48,7 +48,7 @@ const TooltipDemo = ({
     return (
         <Panel direction="column" gap="lg" padding="xl" align="start">
             <Text size="sm" color="light">
-                Hover the button. Default delays: 600 ms show, 100 ms hide.
+                Hover the button. Default delays: 800 ms show, 100 ms hide.
             </Text>
             <Tooltip
                 content={content}
@@ -71,7 +71,7 @@ export const tooltipStory: Story = {
     component: TooltipDemo as any,
     props: [
         { name: "placement",   type: "enum",    options: PLACEMENTS, default: "top" },
-        { name: "delayShow",   type: "number",  default: 600 },
+        { name: "delayShow",   type: "number",  default: 800 },
         { name: "delayHide",   type: "number",  default: 100 },
         { name: "offsetX",     type: "number",  default: 0 },
         { name: "offsetY",     type: "number",  default: 8 },

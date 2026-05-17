@@ -1,8 +1,8 @@
-import styled from "@emotion/styled";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import RenderGrid from "../../components/virtualization/RenderGrid/RenderGrid";
 import RenderGridModel from "../../components/virtualization/RenderGrid/RenderGridModel";
 import { RenderCellParams, RenderSizeOptional } from "../../components/virtualization/RenderGrid/types";
+import { IconButton, Panel } from "../../uikit";
 import color from "../../theme/color";
 import { DeleteIcon, GlobeIcon, RenameIcon } from "../../theme/icons";
 import type { ILink } from "../../api/types/io.tree";
@@ -30,129 +30,6 @@ const TILE_DIMENSIONS: Record<Exclude<LinkViewMode, "list">, TileDimensions> = {
 const defaultGetId = (link: ILink) => link.id ?? link.href;
 
 // =============================================================================
-// Styles
-// =============================================================================
-
-const LinksTilesRoot = styled(RenderGrid)({
-    flex: 1,
-    "& .tile-cell": {
-        boxSizing: "border-box",
-        padding: 4,
-    },
-    "& .tile-inner": {
-        width: "100%",
-        height: "100%",
-        display: "flex",
-        flexDirection: "column",
-        borderRadius: 8,
-        overflow: "hidden",
-        cursor: "default",
-        position: "relative",
-        border: `1px solid ${color.border.default}`,
-        "&.selected": {
-            borderColor: color.border.active,
-            "&::before": {
-                content: "''",
-                position: "absolute",
-                top: 0,
-                left: 0,
-                bottom: 0,
-                right: 0,
-                backgroundColor: color.background.selection,
-                opacity: 0.3,
-                pointerEvents: "none",
-            },
-        },
-        "&:hover": {
-            "& .tile-actions": {
-                opacity: 1,
-            },
-        },
-    },
-    "& .tile-image": {
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        overflow: "hidden",
-        "& img": {
-            maxWidth: "calc(100% - 8px)",
-            maxHeight: "calc(100% - 8px)",
-            objectFit: "contain",
-            margin: 4,
-        },
-    },
-    "& .tile-no-image": {
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        color: color.text.light,
-        fontSize: 12,
-        "& svg": {
-            width: 32,
-            height: 32,
-            opacity: 0.3,
-        },
-    },
-    "& .tile-title": {
-        flex: 1,
-        display: "flex",
-        alignItems: "center",
-        padding: "4px 4px 4px 8px",
-        fontSize: 12,
-        color: color.text.default,
-        overflow: "hidden",
-        "& span": {
-            flex: 1,
-            overflow: "hidden",
-            display: "-webkit-box",
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: "vertical",
-            textOverflow: "ellipsis",
-            minWidth: 0,
-            wordBreak: "break-word",
-        },
-    },
-    "& .tile-additional-icon": {
-        position: "absolute",
-        top: 4,
-        left: 4,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 2,
-        backgroundColor: color.background.overlay,
-        border: `1px solid ${color.border.default}`,
-        borderRadius: 6,
-        opacity: 0.8,
-        "& svg": { width: 14, height: 14 },
-    },
-    "& .tile-actions": {
-        position: "absolute",
-        top: 4,
-        right: 4,
-        display: "flex",
-        gap: 2,
-        opacity: 0,
-        transition: "opacity 0.15s ease",
-        "& button": {
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 3,
-            backgroundColor: color.background.overlay,
-            border: `1px solid ${color.border.default}`,
-            borderRadius: 6,
-            cursor: "pointer",
-            color: color.icon.default,
-            opacity: 0.7,
-            "&:hover": {
-                opacity: 1,
-            },
-        },
-    },
-});
-
-// =============================================================================
 // Tile Cell
 // =============================================================================
 
@@ -178,7 +55,7 @@ function LinksTileCell({
 
     const handleDragStart = useCallback((e: React.DragEvent) => {
         if (!dragSourceId) { e.preventDefault(); return; }
-        e.stopPropagation(); // Prevent parent elements from interfering with this drag
+        e.stopPropagation();
         setTraitDragData(e.dataTransfer, TraitTypeId.ILink, { items: [link], sourceId: dragSourceId });
         setIsDragging(true);
     }, [link, dragSourceId]);
@@ -196,62 +73,154 @@ function LinksTileCell({
             draggable={!!dragSourceId}
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
-            className={isSelected ? "tile-inner selected" : "tile-inner"}
-            style={isDragging ? { opacity: 0.4 } : undefined}
-            title={link.href || link.title}
             onClick={() => onSelect?.(link)}
             onDoubleClick={handleDoubleClick}
             onContextMenu={(e) => onContextMenu?.(e, link)}
+            title={link.href || link.title}
+            style={{
+                width: "100%",
+                height: "100%",
+                display: "flex",
+                opacity: isDragging ? 0.4 : undefined,
+                cursor: "default",
+            }}
         >
-            <div
-                className={link.imgSrc ? "tile-image" : "tile-image tile-no-image"}
-                style={{ height: imageHeight }}
+            <Panel
+                name="link-tile"
+                revealChildrenOnHover
+                direction="column"
+                flex={1}
+                overflow="hidden"
+                position="relative"
+                rounded="lg"
+                border
+                borderColor={isSelected ? "active" : "subtle"}
             >
-                {link.imgSrc ? (
-                    <img src={link.imgSrc} alt={link.title} loading="lazy" />
-                ) : (() => {
-                    const fp = getFaviconPathSync(getHostname(link.href));
-                    return fp
-                        ? <img src={`file://${fp}`} alt="" />
-                        : <GlobeIcon />;
-                })()}
-            </div>
-            <div className="tile-title">
-                <span>{link.title || "Untitled"}</span>
-            </div>
-            {additionalIcon && (
-                <span className="tile-additional-icon">
-                    {additionalIcon}
-                </span>
-            )}
-            {(onEdit || onDelete) && (
-                <div className="tile-actions">
-                    {onEdit && (
-                        <button
-                            title="Edit"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onSelect?.(link);
-                                onEdit(link);
+                <div
+                    style={{
+                        height: imageHeight,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        overflow: "hidden",
+                        ...(link.imgSrc ? {} : { color: color.text.light, fontSize: 12 }),
+                    }}
+                >
+                    {link.imgSrc ? (
+                        <img
+                            src={link.imgSrc}
+                            alt={link.title}
+                            loading="lazy"
+                            style={{
+                                maxWidth: "calc(100% - 8px)",
+                                maxHeight: "calc(100% - 8px)",
+                                objectFit: "contain",
+                                margin: 4,
                             }}
-                        >
-                            <RenameIcon />
-                        </button>
-                    )}
-                    {onDelete && (
-                        <button
-                            title="Delete"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onSelect?.(link);
-                                onDelete(link, e.ctrlKey);
-                            }}
-                        >
-                            <DeleteIcon />
-                        </button>
-                    )}
+                        />
+                    ) : (() => {
+                        const fp = getFaviconPathSync(getHostname(link.href));
+                        return fp
+                            ? <img src={`file://${fp}`} alt="" />
+                            : <GlobeIcon style={{ width: 32, height: 32, opacity: 0.3 }} />;
+                    })()}
                 </div>
-            )}
+                <div
+                    style={{
+                        flex: 1,
+                        display: "flex",
+                        alignItems: "center",
+                        padding: "4px 4px 4px 8px",
+                        fontSize: 12,
+                        color: color.text.default,
+                        overflow: "hidden",
+                    }}
+                >
+                    <span
+                        style={{
+                            flex: 1,
+                            overflow: "hidden",
+                            display: "-webkit-box",
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: "vertical",
+                            textOverflow: "ellipsis",
+                            minWidth: 0,
+                            wordBreak: "break-word",
+                        }}
+                    >
+                        {link.title || "Untitled"}
+                    </span>
+                </div>
+                {additionalIcon && (
+                    <span
+                        style={{
+                            position: "absolute",
+                            top: 4,
+                            left: 4,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            padding: 2,
+                            backgroundColor: color.background.overlay,
+                            border: `1px solid ${color.border.default}`,
+                            borderRadius: 6,
+                            opacity: 0.8,
+                            pointerEvents: "none",
+                        }}
+                    >
+                        {additionalIcon}
+                    </span>
+                )}
+                {(onEdit || onDelete) && (
+                    <Panel
+                        name="link-tile-actions"
+                        position="absolute"
+                        top={4}
+                        right={4}
+                        gap="xs"
+                    >
+                        {onEdit && (
+                            <IconButton
+                                name="link-tile-edit"
+                                size="sm"
+                                title="Edit"
+                                icon={<RenameIcon />}
+                                hideUntilParentHover
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onSelect?.(link);
+                                    onEdit(link);
+                                }}
+                            />
+                        )}
+                        {onDelete && (
+                            <IconButton
+                                name="link-tile-delete"
+                                size="sm"
+                                title="Delete"
+                                icon={<DeleteIcon />}
+                                hideUntilParentHover
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onSelect?.(link);
+                                    onDelete(link, e.ctrlKey);
+                                }}
+                            />
+                        )}
+                    </Panel>
+                )}
+                {isSelected && (
+                    <div
+                        style={{
+                            position: "absolute",
+                            inset: 0,
+                            backgroundColor: color.background.selection,
+                            opacity: 0.3,
+                            pointerEvents: "none",
+                        }}
+                    />
+                )}
+            </Panel>
         </div>
     );
 }
@@ -332,7 +301,14 @@ export function LinksTiles({
             if (!link) return <div key={p.key} style={p.style} />;
 
             return (
-                <div key={p.key} style={p.style} className="tile-cell">
+                <div
+                    key={p.key}
+                    style={{
+                        ...p.style,
+                        boxSizing: "border-box",
+                        padding: 4,
+                    }}
+                >
                     <LinksTileCell
                         link={link}
                         isSelected={getId(link) === selectedId}
@@ -353,7 +329,7 @@ export function LinksTiles({
     );
 
     return (
-        <LinksTilesRoot
+        <RenderGrid
             ref={gridRef}
             rowCount={counts.rowCount}
             columnCount={counts.colCount}

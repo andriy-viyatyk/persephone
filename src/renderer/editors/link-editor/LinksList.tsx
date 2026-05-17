@@ -1,102 +1,19 @@
-import styled from "@emotion/styled";
-import React, { useCallback, useImperativeHandle, useMemo, useRef, useState } from "react";
+import React, { useCallback, useImperativeHandle, useRef, useState } from "react";
 import RenderGrid from "../../components/virtualization/RenderGrid/RenderGrid";
 import RenderGridModel from "../../components/virtualization/RenderGrid/RenderGridModel";
 import { RenderCellParams, RenderSizeOptional } from "../../components/virtualization/RenderGrid/types";
-import { highlightText } from "../../components/basic/useHighlightedText";
-import { Button } from "../../components/basic/Button";
-import color from "../../theme/color";
+import { IconButton, ListItem, Panel } from "../../uikit";
+import { highlight } from "../../uikit/shared/highlight";
 import { DeleteIcon, RenameIcon } from "../../theme/icons";
 import type { ILink } from "../../api/types/io.tree";
 import { TreeProviderItemIcon } from "../../components/tree-provider/TreeProviderItemIcon";
-import { LinkTooltip } from "./LinkTooltip";
+import { LinkTooltipContent } from "./LinkTooltip";
 import { useFavicons } from "../../components/tree-provider/favicon-cache";
 import { TraitTypeId, setTraitDragData } from "../../core/traits";
 
-const ROW_HEIGHT = 28;
+const ROW_HEIGHT = 24;
 
 const defaultGetId = (link: ILink) => link.id ?? link.href;
-
-// =============================================================================
-// Styles
-// =============================================================================
-
-const LinksListRoot = styled(RenderGrid)({
-    flex: 1,
-    "& .link-row-cell": {
-        boxSizing: "border-box",
-        padding: "0 4px",
-        display: "flex",
-        alignItems: "stretch",
-    },
-    "& .link-row": {
-        display: "flex",
-        alignItems: "center",
-        gap: 6,
-        padding: "0 8px",
-        borderRadius: 6,
-        fontSize: 13,
-        cursor: "default",
-        boxSizing: "border-box",
-        flex: 1,
-        minWidth: 0,
-        position: "relative",
-        "&:hover": {
-            backgroundColor: color.background.dark,
-        },
-        "&.selected::after": {
-            content: "''",
-            position: "absolute",
-            top: 0,
-            left: 0,
-            bottom: 0,
-            right: 0,
-            backgroundColor: color.background.selection,
-            opacity: 0.3,
-            pointerEvents: "none",
-            borderRadius: "inherit",
-        },
-        "& .link-icon": {
-            flexShrink: 0,
-            display: "flex",
-            alignItems: "center",
-        },
-        "& .link-title": {
-            flex: "1 1 auto",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-            color: color.text.strong,
-            minWidth: 0,
-        },
-        "& .link-title-folder": {
-            flex: "1 1 auto",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-            color: color.text.strong,
-            fontWeight: 500,
-            minWidth: 0,
-        },
-        "& .link-additional-icon": {
-            flexShrink: 0,
-            display: "flex",
-            alignItems: "center",
-            "& svg": { width: 16, height: 16 },
-        },
-        "& .link-actions": {
-            display: "flex",
-            alignItems: "center",
-            gap: 2,
-            flexShrink: 0,
-            opacity: 0,
-            transition: "opacity 0.15s ease",
-        },
-        "&:hover .link-actions": {
-            opacity: 1,
-        },
-    },
-});
 
 // =============================================================================
 // Link Row
@@ -122,7 +39,6 @@ function LinksListRow({
     link, isSelected, searchText, additionalIcon,
     dragSourceId, allTags, onSelect, onEdit, onDelete, onDoubleClick, onContextMenu, onToggleTag,
 }: LinksListRowProps) {
-    const tooltipId = useMemo(() => crypto.randomUUID(), []);
     const [isDragging, setIsDragging] = useState(false);
 
     const handleDragStart = useCallback((e: React.DragEvent) => {
@@ -140,64 +56,84 @@ function LinksListRow({
         ? () => onDoubleClick(link)
         : onEdit ? () => onEdit(link) : undefined;
 
-    return (
-        <div
-            draggable={!!dragSourceId}
-            onDragStart={handleDragStart}
-            onDragEnd={handleDragEnd}
-            className={isSelected ? "link-row selected" : "link-row"}
-            style={isDragging ? { opacity: 0.4 } : undefined}
-            onClick={() => onSelect?.(link)}
-            onDoubleClick={handleDoubleClick}
-            onContextMenu={(e) => onContextMenu?.(e, link)}
-        >
-            <span className="link-icon">
-                <TreeProviderItemIcon item={link} />
-            </span>
-            <span
-                className={link.isDirectory ? "link-title-folder" : "link-title"}
-                data-tooltip-id={tooltipId}
-            >
-                {searchText ? highlightText(searchText, link.title || "Untitled") : (link.title || "Untitled")}
-            </span>
+    // Folder rows are search targets in LinkViewModel.applyFilters — preserve highlighting AND
+    // the legacy bold weight via a pre-built ReactNode label. Pass searchText={undefined} to
+    // ListItem for folders so it doesn't try to re-highlight the ReactNode.
+    const labelText = link.title || "Untitled";
+    const label: React.ReactNode = link.isDirectory ? (
+        <span style={{ fontWeight: 500 }}>
+            {searchText ? highlight(labelText, searchText) : labelText}
+        </span>
+    ) : labelText;
+
+    const trailing = (onEdit || onDelete || additionalIcon) ? (
+        <span style={{ display: "flex", gap: 2, alignItems: "center", flexShrink: 0 }}>
             {additionalIcon && (
-                <span className="link-additional-icon">
+                <span style={{ display: "flex", alignItems: "center", flexShrink: 0 }}>
                     {additionalIcon}
                 </span>
             )}
-            {(onEdit || onDelete) && (
-                <span className="link-actions">
-                    {onEdit && (
-                        <Button
-                            size="small"
-                            type="flat"
-                            title="Edit"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onSelect?.(link);
-                                onEdit(link);
-                            }}
-                        >
-                            <RenameIcon />
-                        </Button>
-                    )}
-                    {onDelete && (
-                        <Button
-                            size="small"
-                            type="flat"
-                            title="Delete"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onSelect?.(link);
-                                onDelete(link, e.ctrlKey);
-                            }}
-                        >
-                            <DeleteIcon />
-                        </Button>
-                    )}
-                </span>
+            {onEdit && (
+                <IconButton
+                    name="link-row-edit"
+                    size="sm"
+                    title="Edit"
+                    icon={<RenameIcon />}
+                    hideUntilParentHover
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onSelect?.(link);
+                        onEdit(link);
+                    }}
+                />
             )}
-            <LinkTooltip id={tooltipId} link={link} allTags={allTags} onToggleTag={onToggleTag} />
+            {onDelete && (
+                <IconButton
+                    name="link-row-delete"
+                    size="sm"
+                    title="Delete"
+                    icon={<DeleteIcon />}
+                    hideUntilParentHover
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onSelect?.(link);
+                        onDelete(link, e.ctrlKey);
+                    }}
+                />
+            )}
+        </span>
+    ) : undefined;
+
+    return (
+        <div style={{ flex: 1, minWidth: 0, display: "flex", opacity: isDragging ? 0.4 : undefined }}>
+            <Panel
+                name="link-row-wrapper"
+                revealChildrenOnHover
+                flex={1}
+                minWidth={0}
+                overflow="hidden"
+                position="relative"
+            >
+                <ListItem
+                    name="link-row"
+                    variant="browse"
+                    selectionStyle="accent"
+                    showSelectionIcon={false}
+                    selected={isSelected}
+                    searchText={link.isDirectory ? undefined : searchText}
+                    icon={<TreeProviderItemIcon item={link} />}
+                    label={label}
+                    tooltip={<LinkTooltipContent link={link} allTags={allTags} onToggleTag={onToggleTag} />}
+                    tooltipDelayShow={1200}
+                    trailing={trailing}
+                    draggable={!!dragSourceId}
+                    onDragStart={handleDragStart}
+                    onDragEnd={handleDragEnd}
+                    onClick={() => onSelect?.(link)}
+                    onDoubleClick={handleDoubleClick}
+                    onContextMenu={(e) => onContextMenu?.(e, link)}
+                />
+            </Panel>
         </div>
     );
 }
@@ -259,7 +195,16 @@ export const LinksList = React.forwardRef<RenderGridModel, LinksListProps>(funct
             const link = links[p.row];
             if (!link) return null;
             return (
-                <div key={p.key} style={p.style} className="link-row-cell">
+                <div
+                    key={p.key}
+                    style={{
+                        ...p.style,
+                        boxSizing: "border-box",
+                        padding: "0 4px",
+                        display: "flex",
+                        alignItems: "stretch",
+                    }}
+                >
                     <LinksListRow
                         link={link}
                         isSelected={getId(link) === selectedId}
@@ -282,7 +227,7 @@ export const LinksList = React.forwardRef<RenderGridModel, LinksListProps>(funct
     );
 
     return (
-        <LinksListRoot
+        <RenderGrid
             ref={gridRef}
             rowCount={links.length}
             columnCount={1}

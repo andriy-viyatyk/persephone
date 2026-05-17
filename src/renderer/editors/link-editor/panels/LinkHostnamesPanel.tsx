@@ -1,18 +1,6 @@
-import styled from "@emotion/styled";
 import { useSyncExternalStore } from "react";
-import { TagsList } from "../../../components/basic/TagsList";
+import { CategoryList, Panel } from "../../../uikit";
 import type { LinkViewModel } from "../LinkViewModel";
-
-// =============================================================================
-// Styles
-// =============================================================================
-
-const LinkHostnamesPanelRoot = styled.div({
-    flex: 1,
-    display: "flex",
-    overflow: "hidden",
-    width: "100%",
-});
 
 // =============================================================================
 // Component
@@ -29,15 +17,22 @@ export function LinkHostnamesPanel({ vm }: LinkHostnamesPanelProps) {
     );
 
     return (
-        <LinkHostnamesPanelRoot>
-            <TagsList
-                tags={pageState.hostnames}
+        <Panel
+            name="link-hostnames-panel"
+            direction="row"
+            flex={1}
+            overflow="hidden"
+            width="100%"
+        >
+            <CategoryList
+                name="link-hostnames"
+                items={pageState.hostnames}
                 value={pageState.selectedHostname}
                 onChange={vm.setSelectedHostname}
                 getCount={vm.getHostnameCount}
                 separator={"\0"}
                 rootLabel="All"
             />
-        </LinkHostnamesPanelRoot>
+        </Panel>
     );
 }

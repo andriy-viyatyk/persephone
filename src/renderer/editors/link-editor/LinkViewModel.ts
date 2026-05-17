@@ -1,7 +1,7 @@
 import { debounce } from "../../../shared/utils";
 import { ContentViewModel } from "../base/ContentViewModel";
 import { IContentHost } from "../base/IContentHost";
-import { MenuItem } from "../../components/overlay/PopupMenu";
+import { MenuItem } from "../../uikit/Menu/types";
 import RenderGridModel from "../../components/virtualization/RenderGrid/RenderGridModel";
 
 import { splitWithSeparators } from "../../core/utils/utils";

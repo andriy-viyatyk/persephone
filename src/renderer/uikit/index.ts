@@ -54,6 +54,7 @@ export { TagsInput } from "./TagsInput";
 export type { TagsInputProps } from "./TagsInput";
 
 // Overlay
+export { overlayRegistry } from "./shared/overlayRegistry";
 export { Popover } from "./Popover";
 export type { PopoverProps, PopoverPosition } from "./Popover";
 export { Tooltip } from "./Tooltip";
@@ -70,6 +71,8 @@ export { Menu, WithMenu } from "./Menu";
 export type { MenuProps, WithMenuProps, MenuItem } from "./Menu";
 
 // Lists
+export { CategoryList } from "./CategoryList";
+export type { CategoryListProps } from "./CategoryList";
 export { ListBox, LIST_ITEM_KEY } from "./ListBox";
 export type { ListBoxProps, ListBoxRef, IListBoxItem, ListItemRenderContext } from "./ListBox";
 export { ListItem, SectionItem } from "./ListBox";

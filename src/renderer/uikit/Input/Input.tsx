@@ -21,6 +21,12 @@ export interface InputProps
      * `"default"`.
      */
     variant?: "default" | "ghost";
+    /**
+     * Text tone. `"default"` uses the theme text colour. `"accent"` paints the input text in
+     * `color.misc.blue` — use for inputs whose value carries "filter is active" semantics
+     * (search boxes, etc.). Default: `"default"`.
+     */
+    tone?: "default" | "accent";
     /** Content rendered inside the input chrome, before the text. */
     startSlot?: React.ReactNode;
     /** Content rendered inside the input chrome, after the text. */
@@ -99,6 +105,10 @@ const Field = styled.input(
             fontSize: fontSize.base,
         },
 
+        '&[data-tone="accent"]': {
+            color: color.misc.blue,
+        },
+
         "&[data-has-start]": {
             paddingLeft: 0,
         },
@@ -141,7 +151,8 @@ const Slot = styled.div(
 export const Input = React.forwardRef<HTMLInputElement, InputProps>(
     function Input(
         {
-            name, onChange, size = "md", variant = "default", disabled, readOnly, startSlot, endSlot,
+            name, onChange, size = "md", variant = "default", tone = "default",
+            disabled, readOnly, startSlot, endSlot,
             width, minWidth, maxWidth,
             ...rest
         },
@@ -165,6 +176,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
                 data-name={name}
                 data-size={size}
                 data-variant={variant}
+                data-tone={tone}
                 data-disabled={disabled || undefined}
                 data-readonly={readOnly || undefined}
                 style={wrapperStyle}
@@ -173,6 +185,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
                 <Field
                     ref={ref}
                     data-size={size}
+                    data-tone={tone}
                     data-has-start={hasStart || undefined}
                     data-has-end={hasEnd || undefined}
                     disabled={disabled}

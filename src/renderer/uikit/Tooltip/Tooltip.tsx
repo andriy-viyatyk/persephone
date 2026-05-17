@@ -1,4 +1,4 @@
-import React, { cloneElement, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { cloneElement, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import ReactDOM from "react-dom";
 import {
     Placement,
@@ -11,6 +11,7 @@ import {
 import styled from "@emotion/styled";
 import color from "../../theme/color";
 import { fontSize, radius, spacing } from "../tokens";
+import { overlayRegistry } from "../shared/overlayRegistry";
 
 // --- Types ---
 
@@ -33,7 +34,7 @@ export interface TooltipProps {
     placement?: Placement;
     /** [skidding, distance] — skidding shifts perpendicular to the main axis. Default: [0, 8]. */
     offset?: [number, number];
-    /** Milliseconds to wait after pointer enter before opening. Default: 600. */
+    /** Milliseconds to wait after pointer enter before opening. Default: 800. */
     delayShow?: number;
     /** Milliseconds to wait after pointer leave before closing. Default: 100. */
     delayHide?: number;
@@ -68,13 +69,18 @@ export function Tooltip({
     children,
     placement = "top",
     offset = [0, 8],
-    delayShow = 600,
+    delayShow = 800,
     delayHide = 100,
     disabled,
 }: TooltipProps) {
     const [open, setOpen] = useState(false);
     const showTimerRef = useRef<number | null>(null);
     const hideTimerRef = useRef<number | null>(null);
+    const triggerElRef = useRef<Element | null>(null);
+
+    // Re-render when the overlay registry changes so suppression state updates live.
+    useSyncExternalStore(overlayRegistry.subscribe, overlayRegistry.getVersion);
+    const suppressedByOverlay = overlayRegistry.isSuppressed(triggerElRef.current);
 
     const middleware = useMemo(
         () => [
@@ -109,8 +115,11 @@ export function Tooltip({
 
     const scheduleShow = useCallback(() => {
         clearTimers();
+        if (overlayRegistry.isSuppressed(triggerElRef.current)) return;
         showTimerRef.current = window.setTimeout(() => {
             showTimerRef.current = null;
+            // Re-check at fire time — an overlay may have opened during the delay.
+            if (overlayRegistry.isSuppressed(triggerElRef.current)) return;
             setOpen(true);
         }, delayShow);
     }, [clearTimers, delayShow]);
@@ -123,11 +132,20 @@ export function Tooltip({
         }, delayHide);
     }, [clearTimers, delayHide]);
 
-    const suppressed = disabled || content === null || content === undefined || content === false;
+    const suppressed = disabled || content === null || content === undefined || content === false || suppressedByOverlay;
+
+    // Close an already-open tooltip the moment an overlay covers it.
+    useEffect(() => {
+        if (open && suppressedByOverlay) {
+            clearTimers();
+            setOpen(false);
+        }
+    }, [open, suppressedByOverlay, clearTimers]);
 
     const childRef = (children as any).ref as React.Ref<unknown> | undefined;
     const mergedRef = useCallback(
         (node: Element | null) => {
+            triggerElRef.current = node;
             refs.setReference(node);
             if (typeof childRef === "function") childRef(node);
             else if (childRef && typeof childRef === "object")

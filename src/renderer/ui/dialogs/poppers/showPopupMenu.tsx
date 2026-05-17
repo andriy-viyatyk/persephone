@@ -1,5 +1,5 @@
 import ReactDOM from "react-dom";
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 import { TPopperModel } from "./types";
 import { closePopper, showPopper } from "./Poppers";
@@ -9,6 +9,7 @@ import { PopperProps } from "../../../components/overlay/Popper";
 import { CopyIcon, CursorIcon, EmptyIcon } from "../../../theme/icons";
 import { DefaultView, ViewPropsRO, Views } from "../../../core/state/view";
 import { TComponentState } from "../../../core/state/state";
+import { overlayRegistry } from "../../../uikit/shared/overlayRegistry";
 import { api } from "../../../../ipc/renderer/api";
 
 const defaultAppPopupMenuState = {
@@ -133,6 +134,18 @@ const showAppPopupMenuId = Symbol("AppPopupMenu");
 
 function AppPopupMenu({ model }: ViewPropsRO<AppPopupMenuModel>) {
     const { items, x, y, poperProps } = model.state.use();
+    const overlayRef = useRef<HTMLDivElement>(null);
+
+    // Register the menu's DOM root with the overlay registry so page-level Tooltips
+    // are suppressed while the menu is open. Tooltips inside this subtree (e.g. on
+    // menu items themselves) remain allowed via the registry's auto opt-out.
+    useEffect(() => {
+        const el = overlayRef.current;
+        if (!el) return;
+        overlayRegistry.register(el);
+        return () => overlayRegistry.unregister(el);
+    }, []);
+
     const el = useMemo<VirtualElement | Element>(() => {
         const res: VirtualElement = {
             getBoundingClientRect() {
@@ -152,14 +165,16 @@ function AppPopupMenu({ model }: ViewPropsRO<AppPopupMenuModel>) {
     }, [x, y]);
 
     return ReactDOM.createPortal(
-        <PopupMenu
-            open
-            items={items}
-            elementRef={el}
-            onClose={() => model.close()}
-            offset={defaultOffset}
-            {...poperProps}
-        />,
+        <div ref={overlayRef}>
+            <PopupMenu
+                open
+                items={items}
+                elementRef={el}
+                onClose={() => model.close()}
+                offset={defaultOffset}
+                {...poperProps}
+            />
+        </div>,
         document.body
     );
 }

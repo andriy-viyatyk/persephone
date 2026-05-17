@@ -1,4 +1,3 @@
-import styled from "@emotion/styled";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import type { SecondaryEditorProps } from "../../../ui/navigation/secondary-editor-registry";
@@ -10,35 +9,9 @@ import type { ILink } from "../../../api/types/io.tree";
 import { LinkTagsPanel } from "./LinkTagsPanel";
 import { LinksList } from "../LinksList";
 import RenderGridModel from "../../../components/virtualization/RenderGrid/RenderGridModel";
-import { Splitter } from "../../../components/layout/Splitter";
+import { Panel, Splitter } from "../../../uikit";
 import { app } from "../../../api/app";
 import { createLinkData } from "../../../../shared/link-data";
-
-// =============================================================================
-// Styles
-// =============================================================================
-
-const NavigationPanelRoot = styled.div({
-    display: "flex",
-    flexDirection: "column",
-    flex: 1,
-    overflow: "hidden",
-    width: "100%",
-
-    "& .tags-top": {
-        flex: "1 1 auto",
-        display: "flex",
-        overflow: "hidden",
-        minHeight: 40,
-    },
-
-    "& .tags-bottom": {
-        flexShrink: 0,
-        display: "flex",
-        flexDirection: "column",
-        overflow: "hidden",
-    },
-});
 
 // =============================================================================
 // LinkTagsNavigationPanel — Tags panel with resizable bottom links list
@@ -147,19 +120,40 @@ function LinkTagsNavigationPanel({ vm, pageId }: LinkTagsNavigationPanelProps) {
     }, [selectedLinkId, tagItems]);
 
     return (
-        <NavigationPanelRoot ref={rootRef}>
-            <div className="tags-top">
+        <Panel
+            name="link-tags-navigation"
+            ref={rootRef}
+            direction="column"
+            flex={1}
+            overflow="hidden"
+            width="100%"
+        >
+            <Panel
+                name="link-tags-navigation-top"
+                direction="row"
+                flex={1}
+                overflow="hidden"
+                minHeight={40}
+            >
                 <LinkTagsPanel vm={vm} />
-            </div>
+            </Panel>
             {tagItems.length > 0 && (
                 <>
                     <Splitter
-                        type="horizontal"
-                        initialHeight={bottomHeight ?? 150}
-                        onChangeHeight={handleChangeHeight}
-                        borderSized="top"
+                        name="link-tags-bottom-splitter"
+                        orientation="horizontal"
+                        value={bottomHeight ?? 150}
+                        onChange={handleChangeHeight}
+                        side="after"
+                        border="before"
                     />
-                    <div className="tags-bottom" style={{ height: bottomHeight ?? 150 }}>
+                    <Panel
+                        name="link-tags-navigation-bottom"
+                        direction="column"
+                        overflow="hidden"
+                        shrink={false}
+                        height={bottomHeight ?? 150}
+                    >
                         <LinksList
                             ref={gridRef}
                             links={tagItems}
@@ -169,10 +163,10 @@ function LinkTagsNavigationPanel({ vm, pageId }: LinkTagsNavigationPanelProps) {
                             allTags={allTags}
                             onToggleTag={handleToggleTag}
                         />
-                    </div>
+                    </Panel>
                 </>
             )}
-        </NavigationPanelRoot>
+        </Panel>
     );
 }
 

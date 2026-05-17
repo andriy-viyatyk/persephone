@@ -1,16 +1,19 @@
-import styled from "@emotion/styled";
-import clsx from "clsx";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
-import { Breadcrumb } from "../../components/basic/Breadcrumb";
-import { Button } from "../../components/basic/Button";
-import { TextField } from "../../components/basic/TextField";
-import { HighlightedTextProvider } from "../../components/basic/useHighlightedText";
-import { CollapsiblePanel, CollapsiblePanelStack } from "../../components/layout/CollapsiblePanelStack";
-import { Splitter } from "../../components/layout/Splitter";
+import {
+    Breadcrumb,
+    Button,
+    CollapsiblePanel,
+    CollapsiblePanelStack,
+    IconButton,
+    Input,
+    Panel,
+    Splitter,
+    Text,
+} from "../../uikit";
+import { HighlightedTextProvider } from "../../uikit/shared/highlight";
 import { showAppPopupMenu } from "../../ui/dialogs";
 import { pageNavigatorToggled, panelExpanded } from "../../core/state/events";
-import color from "../../theme/color";
 import {
     CloseIcon, PlusIcon,
     ViewLandscapeBigIcon, ViewLandscapeIcon, ViewListIcon, ViewPortraitBigIcon, ViewPortraitIcon,
@@ -27,63 +30,6 @@ import { hasTraitDragData, getTraitDragData, resolveTraits } from "../../core/tr
 import { LINK } from "./linkTraits";
 import { EditorError } from "../base/EditorError";
 import { useContentViewModel } from "../base/useContentViewModel";
-
-// =============================================================================
-// Styles
-// =============================================================================
-
-const LinkEditorRoot = styled.div({
-    flex: "1 1 auto",
-    display: "flex",
-    flexDirection: "row",
-    overflow: "hidden",
-    "&.swap-layout": {
-        flexDirection: "row-reverse",
-    },
-    "& .left-panel": {
-        display: "flex",
-        flexDirection: "column",
-        overflow: "hidden",
-        backgroundColor: color.background.dark,
-        minWidth: 100,
-        maxWidth: "80%",
-    },
-    "& .center-panel": {
-        flex: 1,
-        display: "flex",
-        flexDirection: "column",
-        overflow: "hidden",
-        position: "relative",
-    },
-    "& .center-panel.drag-over": {
-        outline: `2px dashed ${color.border.active}`,
-        outlineOffset: -2,
-    },
-    "& .empty-state": {
-        flex: 1,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 16,
-        padding: 16,
-        color: color.text.light,
-        fontSize: 14,
-    },
-    "& .title": {
-        fontSize: 24,
-        color: color.text.default,
-    },
-    "& .subtitle": {
-        color: color.text.light,
-    },
-});
-
-const SearchField = styled(TextField)({
-    "& input": {
-        color: color.misc.blue,
-    },
-});
 
 // =============================================================================
 // View mode labels
@@ -281,9 +227,9 @@ export function LinkEditor(props: LinkEditorProps) {
 
     if (pageState.error) {
         return (
-            <LinkEditorRoot>
+            <Panel name="link-editor-error-root" flex={1} overflow="hidden">
                 <EditorError>{pageState.error}</EditorError>
-            </LinkEditorRoot>
+            </Panel>
         );
     }
 
@@ -298,6 +244,7 @@ export function LinkEditor(props: LinkEditorProps) {
                 createPortal(
                     pageState.expandedPanel === "tags" ? (
                         <Breadcrumb
+                            name="link-editor-breadcrumb-tags"
                             rootLabel="Tags"
                             value={pageState.selectedTag}
                             onChange={vm.setSelectedTag}
@@ -306,12 +253,14 @@ export function LinkEditor(props: LinkEditorProps) {
                         />
                     ) : pageState.expandedPanel === "hostnames" ? (
                         <Breadcrumb
+                            name="link-editor-breadcrumb-hostnames"
                             rootLabel="Hostnames"
                             value={pageState.selectedHostname}
                             onChange={vm.setSelectedHostname}
                         />
                     ) : (
                         <Breadcrumb
+                            name="link-editor-breadcrumb-categories"
                             rootLabel="Categories"
                             value={pageState.selectedCategory}
                             onChange={vm.setSelectedCategory}
@@ -323,92 +272,126 @@ export function LinkEditor(props: LinkEditorProps) {
                 createPortal(
                     <>
                         <Button
-                            className="link-btn-add"
-                            size="small"
-                            type="raised"
+                            name="link-editor-add"
+                            size="sm"
+                            variant="link"
                             title="Add Link"
+                            icon={<PlusIcon />}
                             onClick={() => vm.showLinkDialog()}
-                            style={{ borderColor: color.border.active }}
                         >
-                            <PlusIcon /> Add Link&nbsp;
+                            Add Link
                         </Button>
                         <Button
-                            size="small"
-                            type="flat"
+                            name="link-editor-view-mode"
+                            size="sm"
+                            variant="ghost"
                             title="View Mode"
+                            icon={VIEW_MODE_ICONS[viewMode]}
                             onClick={showViewModeMenu}
                         >
-                            {VIEW_MODE_ICONS[viewMode]} {VIEW_MODE_LABELS[viewMode]}
+                            {VIEW_MODE_LABELS[viewMode]}
                         </Button>
-                        <SearchField
+                        <Input
+                            name="link-editor-search"
+                            tone="accent"
+                            width={180}
                             value={pageState.searchText}
                             onChange={vm.setSearchText}
                             placeholder="Search..."
-                            width={180}
-                            endButtons={
-                                pageState.searchText ? [
-                                    <Button
-                                        key="clear"
-                                        size="small"
-                                        type="icon"
+                            endSlot={
+                                pageState.searchText ? (
+                                    <IconButton
+                                        name="link-editor-search-clear"
+                                        size="sm"
                                         title="Clear search"
+                                        icon={<CloseIcon />}
                                         onClick={vm.clearSearch}
-                                    >
-                                        <CloseIcon />
-                                    </Button>,
-                                ] : undefined
+                                    />
+                                ) : undefined
                             }
                         />
                     </>,
                     toolbarLast!,
                 )}
-            <LinkEditorRoot ref={(el) => { vm.containerElement = el; }} tabIndex={-1} className={clsx({ "swap-layout": swapLayout })}>
+            <Panel
+                name="link-editor-root"
+                ref={(el) => { vm.containerElement = el; }}
+                tabIndex={-1}
+                direction={swapLayout ? "row-reverse" : "row"}
+                overflow="hidden"
+                flex={1}
+            >
                 {!showPanelsInSidebar && (
                     <>
                         <CollapsiblePanelStack
-                            className="left-panel"
-                            style={{ width: pageState.leftPanelWidth }}
+                            name="link-editor-left-panels"
+                            width={pageState.leftPanelWidth}
+                            minWidth={100}
+                            maxWidth="80%"
                             activePanel={pageState.expandedPanel}
                             setActivePanel={vm.setExpandedPanel}
                         >
-                            <CollapsiblePanel id="categories" title="Categories">
+                            <CollapsiblePanel id="categories" name="categories" title="Categories">
                                 <LinkCategoryPanel vm={vm} useOpenRawLink={false} />
                             </CollapsiblePanel>
-                            <CollapsiblePanel id="tags" title="Tags">
+                            <CollapsiblePanel id="tags" name="tags" title="Tags">
                                 <LinkTagsPanel vm={vm} />
                             </CollapsiblePanel>
-                            <CollapsiblePanel id="hostnames" title="Hostnames">
+                            <CollapsiblePanel id="hostnames" name="hostnames" title="Hostnames">
                                 <LinkHostnamesPanel vm={vm} />
                             </CollapsiblePanel>
                         </CollapsiblePanelStack>
                         <Splitter
-                            type="vertical"
-                            initialWidth={pageState.leftPanelWidth}
-                            onChangeWidth={vm.setLeftPanelWidth}
-                            borderSized={swapLayout ? "left" : "right"}
+                            name="link-editor-left-splitter"
+                            orientation="vertical"
+                            value={pageState.leftPanelWidth}
+                            onChange={vm.setLeftPanelWidth}
+                            side={swapLayout ? "after" : "before"}
+                            border={swapLayout ? "before" : "after"}
                         />
                     </>
                 )}
                 <HighlightedTextProvider value={pageState.searchText}>
-                    <div
-                        className={clsx("center-panel", centerDragOver && "drag-over")}
+                    <Panel
+                        name="link-editor-center"
+                        direction="column"
+                        flex={1}
+                        minWidth={0}
+                        overflow="hidden"
+                        position="relative"
+                        border={centerDragOver || undefined}
+                        borderColor={centerDragOver ? "active" : undefined}
                         onDragEnter={handleCenterDragEnter}
                         onDragOver={handleCenterDragOver}
                         onDragLeave={handleCenterDragLeave}
                         onDrop={handleCenterDrop}
                     >
                         {allLinks.length === 0 ? (
-                            <div className="empty-state">
-                                <div className="title">Links</div>
-                                <div className="subtitle">No links yet</div>
-                                <div className="subtitle">
-                                    Click "Add Link" to create your first link
-                                </div>
-                            </div>
+                            <Panel
+                                name="link-editor-empty"
+                                direction="column"
+                                flex={1}
+                                align="center"
+                                justify="center"
+                                gap="xl"
+                                padding="xl"
+                            >
+                                <Text size="xxl" color="default">Links</Text>
+                                <Text color="light">No links yet</Text>
+                                <Text color="light">Click "Add Link" to create your first link</Text>
+                            </Panel>
                         ) : links.length === 0 ? (
-                            <div className="empty-state">
-                                <div className="subtitle">No links match the current filter</div>
-                            </div>
+                            <Panel
+                                name="link-editor-empty-filtered"
+                                direction="column"
+                                flex={1}
+                                align="center"
+                                justify="center"
+                                gap="xl"
+                                padding="xl"
+                            >
+                                <Text color="light">No links match the current filter</Text>
+                            </Panel>
                         ) : viewMode === "list" ? (
                             <LinkItemList
                                 links={links}
@@ -425,25 +408,27 @@ export function LinkEditor(props: LinkEditorProps) {
                                 pinnedLinkIds={pinnedLinkIds}
                             />
                         )}
-                    </div>
+                    </Panel>
                 </HighlightedTextProvider>
                 {pinnedLinks.length > 0 && (
                     <>
                         <Splitter
-                            type="vertical"
-                            initialWidth={pinnedPanelWidth}
-                            onChangeWidth={vm.setPinnedPanelWidth}
-                            borderSized={swapLayout ? "right" : "left"}
+                            name="link-editor-pinned-splitter"
+                            orientation="vertical"
+                            value={pinnedPanelWidth}
+                            onChange={vm.setPinnedPanelWidth}
+                            side={swapLayout ? "before" : "after"}
+                            border={swapLayout ? "after" : "before"}
                         />
                         <PinnedLinksPanel
                             pinnedLinks={pinnedLinks}
                             model={vm}
                             selectedLinkId={pageState.selectedLinkId}
-                            style={{ width: pinnedPanelWidth }}
+                            width={pinnedPanelWidth}
                         />
                     </>
                 )}
-            </LinkEditorRoot>
+            </Panel>
             {Boolean(footerLast) &&
                 createPortal(
                     <span>

@@ -125,7 +125,7 @@ export function LinkItemTiles({ links, model, viewMode, selectedLinkId, pinnedLi
     }, [model]);
 
     const getAdditionalIcon = useCallback((link: ILink) => {
-        return pinnedLinkIds.has(link.id!) ? <PinFilledIcon /> : null;
+        return pinnedLinkIds.has(link.id!) ? <PinFilledIcon width={14} height={14} /> : null;
     }, [pinnedLinkIds]);
 
     return (

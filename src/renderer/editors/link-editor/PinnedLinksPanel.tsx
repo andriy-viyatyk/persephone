@@ -1,5 +1,5 @@
-import styled from "@emotion/styled";
 import { useCallback, useRef, useState } from "react";
+import { ListItem, Panel, Text } from "../../uikit";
 import color from "../../theme/color";
 import { TraitTypeId, setTraitDragData, getTraitDragData, hasTraitDragData } from "../../core/traits";
 import { CopyIcon, DeleteIcon, OpenFileIcon, PinFilledIcon, RenameIcon } from "../../theme/icons";
@@ -7,104 +7,11 @@ import { appendLinkOpenMenuItems } from "../shared/link-open-menu";
 import { ContextMenuEvent } from "../../api/events/events";
 import { LinkItem } from "./linkTypes";
 import { LinkViewModel } from "./LinkViewModel";
-import { LinkTooltip } from "./LinkTooltip";
+import { LinkTooltipContent } from "./LinkTooltip";
 import { TreeProviderItemIcon } from "../../components/tree-provider/TreeProviderItemIcon";
 import { getHostname, requestFaviconSave, useFavicons } from "../../components/tree-provider/favicon-cache";
 
 const { clipboard } = require("electron");
-
-// =============================================================================
-// Styles
-// =============================================================================
-
-const PinnedLinksPanelRoot = styled.div({
-    display: "flex",
-    flexDirection: "column",
-    overflow: "hidden",
-    minWidth: 100,
-    maxWidth: "40%",
-    "& .pinned-header": {
-        display: "flex",
-        alignItems: "center",
-        gap: 4,
-        padding: "6px 8px",
-        fontSize: 12,
-        color: color.text.light,
-        borderBottom: `1px solid ${color.border.default}`,
-        flexShrink: 0,
-        "& svg": { width: 14, height: 14, color: color.misc.blue },
-    },
-    "& .pinned-list": {
-        flex: 1,
-        overflowY: "auto",
-        overflowX: "hidden",
-        padding: "4px 0",
-    },
-    "& .pinned-item": {
-        display: "flex",
-        alignItems: "center",
-        gap: 6,
-        padding: "0 8px",
-        height: 28,
-        fontSize: 13,
-        cursor: "default",
-        boxSizing: "border-box",
-        borderRadius: 6,
-        margin: "0 4px",
-        position: "relative",
-        "&:hover": {
-            backgroundColor: color.background.dark,
-        },
-        "&.selected::after": {
-            content: "''",
-            position: "absolute",
-            top: 0,
-            left: 0,
-            bottom: 0,
-            right: 0,
-            backgroundColor: color.background.selection,
-            opacity: 0.3,
-            pointerEvents: "none",
-            borderRadius: "inherit",
-        },
-        "&.drop-above::before": {
-            content: "''",
-            position: "absolute",
-            top: 0,
-            left: 4,
-            right: 4,
-            height: 2,
-            backgroundColor: color.misc.blue,
-            borderRadius: 1,
-        },
-        "&.drop-below::after": {
-            content: "''",
-            position: "absolute",
-            bottom: 0,
-            left: 4,
-            right: 4,
-            height: 2,
-            backgroundColor: color.misc.blue,
-            borderRadius: 1,
-        },
-        "&.dragging": {
-            opacity: 0.4,
-        },
-        "& .pinned-icon": {
-            flexShrink: 0,
-            display: "flex",
-            alignItems: "center",
-        },
-        "& .pinned-title": {
-            flex: 1,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-            color: color.text.strong,
-            minWidth: 0,
-        },
-    },
-});
 
 // =============================================================================
 // Pinned Item Row (native HTML5 drag-and-drop)
@@ -176,40 +83,70 @@ function PinnedItem({ link, index, isSelected, model, onOpenLink, onContextMenu 
         }
     }, [index, model]);
 
-    // dropPosition from module-level draggingPinIndex
     const dropPosition = isOver && draggingPinIndex >= 0 && draggingPinIndex !== index
         ? (draggingPinIndex < index ? "below" : "above")
         : "";
 
-    let className = "pinned-item";
-    if (isSelected) className += " selected";
-    if (isDragging) className += " dragging";
-    if (isOver && dropPosition === "above") className += " drop-above";
-    if (isOver && dropPosition === "below") className += " drop-below";
-
-    const tooltipId = `pinned-${link.id}`;
-
     return (
         <div
-            draggable
-            onDragStart={handleDragStart}
-            onDragEnd={handleDragEnd}
-            onDragEnter={handleDragEnter}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-            className={className}
-            onClick={() => model.selectLink(link.id)}
-            onDoubleClick={() => { if (link.href) onOpenLink(link); }}
-            onContextMenu={(e) => onContextMenu(e, link)}
+            style={{
+                position: "relative",
+                margin: "0 4px",
+                display: "flex",
+                alignItems: "stretch",
+                height: 24,
+                opacity: isDragging ? 0.4 : undefined,
+            }}
         >
-            <span className="pinned-icon">
-                <TreeProviderItemIcon item={link} />
-            </span>
-            <span className="pinned-title" data-tooltip-id={tooltipId}>
-                {link.title || "Untitled"}
-            </span>
-            <LinkTooltip id={tooltipId} link={link} />
+            <ListItem
+                name="pinned-item"
+                variant="browse"
+                selectionStyle="accent"
+                showSelectionIcon={false}
+                selected={isSelected}
+                icon={<TreeProviderItemIcon item={link} />}
+                label={link.title || "Untitled"}
+                tooltip={<LinkTooltipContent link={link} />}
+                tooltipDelayShow={1200}
+                draggable
+                onDragStart={handleDragStart}
+                onDragEnd={handleDragEnd}
+                onDragEnter={handleDragEnter}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                onClick={() => model.selectLink(link.id)}
+                onDoubleClick={() => { if (link.href) onOpenLink(link); }}
+                onContextMenu={(e) => onContextMenu(e, link)}
+            />
+            {dropPosition === "above" && (
+                <div
+                    style={{
+                        position: "absolute",
+                        top: 0,
+                        left: 4,
+                        right: 4,
+                        height: 2,
+                        backgroundColor: color.misc.blue,
+                        borderRadius: 1,
+                        pointerEvents: "none",
+                    }}
+                />
+            )}
+            {dropPosition === "below" && (
+                <div
+                    style={{
+                        position: "absolute",
+                        bottom: 0,
+                        left: 4,
+                        right: 4,
+                        height: 2,
+                        backgroundColor: color.misc.blue,
+                        borderRadius: 1,
+                        pointerEvents: "none",
+                    }}
+                />
+            )}
         </div>
     );
 }
@@ -222,10 +159,11 @@ interface PinnedLinksPanelProps {
     pinnedLinks: LinkItem[];
     model: LinkViewModel;
     selectedLinkId?: string;
-    style?: React.CSSProperties;
+    /** Fixed pixel width applied to the panel root. */
+    width?: number;
 }
 
-export function PinnedLinksPanel({ pinnedLinks, model, selectedLinkId, style }: PinnedLinksPanelProps) {
+export function PinnedLinksPanel({ pinnedLinks, model, selectedLinkId, width }: PinnedLinksPanelProps) {
     useFavicons(pinnedLinks);
 
     const handleOpenLink = useCallback((link: LinkItem) => {
@@ -296,11 +234,34 @@ export function PinnedLinksPanel({ pinnedLinks, model, selectedLinkId, style }: 
     }, [model]);
 
     return (
-        <PinnedLinksPanelRoot style={style}>
-            <div className="pinned-header">
-                <PinFilledIcon /> Pinned
-            </div>
-            <div className="pinned-list">
+        <Panel
+            name="pinned-links-panel"
+            direction="column"
+            overflow="hidden"
+            minWidth={100}
+            maxWidth="40%"
+            width={width}
+        >
+            <Panel
+                name="pinned-links-header"
+                align="center"
+                gap="xs"
+                paddingX="md"
+                paddingY="sm"
+                borderBottom
+                shrink={false}
+            >
+                <PinFilledIcon style={{ width: 14, height: 14, color: color.misc.blue }} />
+                <Text size="xs" color="light">Pinned</Text>
+            </Panel>
+            <Panel
+                name="pinned-links-list"
+                direction="column"
+                overflowY="auto"
+                overflowX="hidden"
+                paddingY="xs"
+                flex={1}
+            >
                 {pinnedLinks.map((link, i) => (
                     <PinnedItem
                         key={link.id}
@@ -312,7 +273,7 @@ export function PinnedLinksPanel({ pinnedLinks, model, selectedLinkId, style }: 
                         onContextMenu={handleContextMenu}
                     />
                 ))}
-            </div>
-        </PinnedLinksPanelRoot>
+            </Panel>
+        </Panel>
     );
 }

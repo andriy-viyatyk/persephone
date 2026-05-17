@@ -34,6 +34,7 @@ import { notificationStory }     from "../../uikit/Notification/Notification.sto
 import { menuStory }             from "../../uikit/Menu/Menu.story";
 
 // Lists
+import { categoryListStory }     from "../../uikit/CategoryList/CategoryList.story";
 import { listBoxStory }          from "../../uikit/ListBox/ListBox.story";
 import { selectStory }           from "../../uikit/Select/Select.story";
 import { treeStory }             from "../../uikit/Tree/Tree.story";
@@ -45,7 +46,7 @@ export const ALL_STORIES: Story[] = [
     segmentedControlStory, radioGroupStory, sliderStory, spinnerStory, textareaStory, pathInputStory,
     tagStory, tagsInputStory,
     popoverStory, tooltipStory, dialogStory, notificationStory, menuStory,
-    listBoxStory, selectStory, treeStory,
+    categoryListStory, listBoxStory, selectStory, treeStory,
 ];
 
 export function findStory(id: string): Story | undefined {

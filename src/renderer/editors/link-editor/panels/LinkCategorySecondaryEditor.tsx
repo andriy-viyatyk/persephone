@@ -7,7 +7,7 @@ import type { LinkViewModel } from "../LinkViewModel";
 import { LinkCategoryPanel } from "./LinkCategoryPanel";
 import { TOneState, useOptionalState } from "../../../core/state/state";
 import type { NavigationState } from "../../../api/pages/PageModel";
-import { Button } from "../../../components/basic/Button";
+import { IconButton } from "../../../uikit";
 import { SaveIcon, SwapIcon } from "../../../theme/icons";
 
 export default function LinkCategorySecondaryEditor({ model, headerRef }: SecondaryEditorProps) {
@@ -77,19 +77,21 @@ export default function LinkCategorySecondaryEditor({ model, headerRef }: Second
             {isMainEditor ? "Categories" : "Links"}
             <span className="panel-spacer" />
             {!isMainEditor && modified && (
-                <Button type="icon" size="small"
+                <IconButton
+                    name="link-category-secondary-save"
+                    size="sm"
                     title="Save"
+                    icon={<SaveIcon width={14} height={14} />}
                     onClick={handleSave}
-                >
-                    <SaveIcon width={14} height={14} />
-                </Button>
+                />
             )}
-            <Button type="icon" size="small"
+            <IconButton
+                name="link-category-secondary-toggle-main"
+                size="sm"
                 title={isMainEditor ? "Demote to sidebar only" : "Open as main editor"}
+                icon={<SwapIcon width={14} height={14} />}
                 onClick={handleToggleMainEditor}
-            >
-                <SwapIcon width={14} height={14} />
-            </Button>
+            />
         </>
     );
 

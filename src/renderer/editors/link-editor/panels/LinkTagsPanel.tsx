@@ -1,18 +1,6 @@
-import styled from "@emotion/styled";
 import { useSyncExternalStore } from "react";
-import { TagsList } from "../../../components/basic/TagsList";
+import { CategoryList, Panel } from "../../../uikit";
 import type { LinkViewModel } from "../LinkViewModel";
-
-// =============================================================================
-// Styles
-// =============================================================================
-
-const LinkTagsPanelRoot = styled.div({
-    flex: 1,
-    display: "flex",
-    overflow: "hidden",
-    width: "100%",
-});
 
 // =============================================================================
 // Component
@@ -29,13 +17,20 @@ export function LinkTagsPanel({ vm }: LinkTagsPanelProps) {
     );
 
     return (
-        <LinkTagsPanelRoot>
-            <TagsList
-                tags={pageState.tags}
+        <Panel
+            name="link-tags-panel"
+            direction="row"
+            flex={1}
+            overflow="hidden"
+            width="100%"
+        >
+            <CategoryList
+                name="link-tags"
+                items={pageState.tags}
                 value={pageState.selectedTag}
                 onChange={vm.setSelectedTag}
                 getCount={vm.getTagCount}
             />
-        </LinkTagsPanelRoot>
+        </Panel>
     );
 }
