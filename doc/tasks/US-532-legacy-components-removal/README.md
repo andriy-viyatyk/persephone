@@ -169,8 +169,9 @@ before the epic closes, so the epic-close review immediately follows.
   - [US-530](../US-530-editor-base-chrome-migration/README.md) — Editor base chrome
   - [US-531](../US-531-show-popup-menu-migration/README.md) — showPopupMenu
   - [US-535](../US-535-menuitem-import-flips/README.md) — MenuItem caller flips
-  - [US-536](../US-536-uikit-datagrid/README.md) — UIKit DataGrid
+  - [US-536](../US-536-uikit-datagrid/README.md) — `components/data-grid/` → `uikit/AVGrid/`
   - [US-537](../US-537-treeview-flip-restclient/README.md) — TreeView flip
   - [US-538](../US-538-uikit-rendergrid/README.md) — UIKit RenderGrid
+  - [US-539](../US-539-uikit-multiselect/README.md) — UIKit MultiSelect (unblocks US-536)
   - User review of remaining folders (icons / page-manager /
     file-search / tree-provider) once everything above lands
