@@ -4,7 +4,7 @@ import {
     SEARCH_ENGINES,
 } from "./BrowserEditorModel";
 import { searchHistoryManager } from "./browser-search-history";
-import type { MenuItem } from "../../components/overlay/PopupMenu";
+import type { MenuItem } from "../../uikit";
 import { ContextMenuEvent } from "../../api/events/events";
 import type { BrowserEditorModel } from "./BrowserEditorModel";
 

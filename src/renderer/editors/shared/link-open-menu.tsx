@@ -1,5 +1,5 @@
 import React from "react";
-import { MenuItem } from "../../components/overlay/PopupMenu";
+import type { MenuItem } from "../../uikit";
 import { GlobeIcon, OpenFileIcon } from "../../theme/icons";
 import { IncognitoIcon } from "../../theme/language-icons";
 import { DEFAULT_BROWSER_COLOR } from "../../theme/palette-colors";

@@ -5,7 +5,7 @@ import {
     BrowserEvent,
 } from "../../../ipc/browser-ipc";
 import { showAppPopupMenu } from "../../ui/dialogs/poppers/showPopupMenu";
-import { MenuItem } from "../../components/overlay/PopupMenu";
+import type { MenuItem } from "../../uikit";
 import { pagesModel } from "../../api/pages";
 import { newTextFileModel } from "../text/TextEditorModel";
 import { EditorModel } from "../base";
