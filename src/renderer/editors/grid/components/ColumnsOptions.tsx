@@ -9,7 +9,7 @@ import {
     type Column,
     type TDataType,
 } from "../../../uikit";
-import { Popper } from "../../../components/overlay/Popper";
+import { Popover } from "../../../uikit/Popover";
 import { TComponentState } from "../../../core/state/state";
 import { TPopperModel } from "../../../ui/dialogs/poppers/types";
 import { resolveState } from "../../../core/utils/utils";
@@ -285,7 +285,7 @@ export function ColumnsOptions({ model }: ViewPropsRO<ColumnsOptionsModel>) {
     const columns = useMemo(() => getColumns(model.isCsv), [model.isCsv]);
 
     return ReactDOM.createPortal(
-        <Popper
+        <Popover
             key="avgrid-columns-options"
             elementRef={model.el}
             offset={defaultOffset}
@@ -350,7 +350,7 @@ export function ColumnsOptions({ model }: ViewPropsRO<ColumnsOptionsModel>) {
                     </Panel>
                 )}
             </Panel>
-        </Popper>,
+        </Popover>,
         document.body
     );
 }

@@ -1,4 +1,4 @@
-import { Popper } from "../../../components/overlay/Popper";
+import { Popover } from "../../../uikit/Popover";
 import ReactDOM from "react-dom";
 import { DefaultView, ViewPropsRO, Views } from "../../../core/state/view";
 import { useCallback, useEffect, useState } from "react";
@@ -53,12 +53,12 @@ export function CsvOptions({ model }: ViewPropsRO<CsvOptionsModel>) {
     }, [gridViewState.csvDelimiter]);
 
     return ReactDOM.createPortal(
-        <Popper
+        <Popover
             elementRef={model.el}
             offset={defaultOffset}
             open
             onClose={model.close}
-            placement="bottom-end"
+            placement="bottom-start"
         >
             <Panel
                 name="csv-options"
@@ -91,7 +91,7 @@ export function CsvOptions({ model }: ViewPropsRO<CsvOptionsModel>) {
                     />
                 </Panel>
             </Panel>
-        </Popper>,
+        </Popover>,
         document.body
     );
 }

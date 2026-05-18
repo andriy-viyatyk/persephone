@@ -2,176 +2,289 @@
 
 ## Status
 
-**Placeholder.** Final EPIC-025 close-out cleanup. Part of
-[EPIC-025](../../epics/EPIC-025.md) Phase 4. **Blocked on** every
-per-screen migration in the dashboard PLUS the UIKit-primitive and
-overlay infrastructure tasks listed under "Blocked on" below.
+**Plan ready for review.** Final EPIC-025 close-out cleanup. Part of
+[EPIC-025](../../epics/EPIC-025.md) Phase 4. **Blocked on** the
+remaining per-screen migrations + overlay-infrastructure tasks
+listed under "Blocked on" below.
 
 ## Goal
 
-Empty `src/renderer/components/` entirely. After this task, the
-`src/renderer/components/` folder no longer exists — every subfolder
-has either been migrated to UIKit (basic / form / layout / overlay /
-TreeView / data-grid / virtualization) or relocated under user
-review (icons / page-manager / file-search / tree-provider). No file
-in the repository imports from `components/` paths.
+Empty `src/renderer/components/` of every folder that was either
+already migrated to UIKit or whose contents are general-purpose
+primitives that belong in UIKit. After this task, the only folders
+remaining under `src/renderer/components/` are the four
+**persephone-coupled** folders that the user has decided to keep
+there permanently (see Background).
 
 This task does NOT migrate any new code — it is a final
-verification + delete sweep. The migration of every subfolder is
-tracked by its own per-folder task (see "Blocked on"). If a
-non-trivial usage surfaces during prep, the migration of that usage
-spawns a follow-up task; this task does not absorb implementation
-work.
+verification + delete sweep. The migration of every primitive
+subfolder is tracked by its own per-folder task (see "Blocked on").
+If a non-trivial usage surfaces during prep, the migration of that
+usage spawns a follow-up task; this task does not absorb
+implementation work.
 
-The scope expanded from the original "delete the four primitive
-folders" after the audit in 2026-05 surfaced that the surrounding
-folders (data-grid, virtualization, TreeView, icons, page-manager,
-file-search, tree-provider) would either migrate into UIKit or get
-reviewed individually by the user. Per that audit, US-532 became
-the single end-of-epic sweep rather than a four-folder delete.
+**Documentation is explicitly out of scope.** The entire EPIC-025
+documentation update — including any `uikit/` vs `components/`
+standards write-up, folder-structure refresh, and stale-reference
+sweep across `doc/`, `docs/`, `qa/`, `assets/`, and `src/main/` —
+is a separate, post-epic effort that will be tracked by its own
+task(s).
 
-## Scope
+## Background
 
-### Primitive folders — delete (zero callers post-Phase 4)
+### `uikit/` vs `components/` — the agreed split
 
-After all per-screen migrations land and the UIKit primitives below
-exist, these folders should be callerless and ready to delete in
-this task:
+By user decision (2026-05-18), the two folders now have distinct
+purposes that will outlive EPIC-025:
 
-- `src/renderer/components/basic/` (Button, Checkbox, Chip, Input,
-  InputBase, OverflowTooltipText, PathInput, Radio, TextAreaField,
-  TextField, Tooltip, CircularProgress, Breadcrumb,
-  useHighlightedText, types) — already zero external callers as of
-  the 2026-05 audit; can be deleted as soon as US-532 runs.
-- `src/renderer/components/form/` (ComboSelect, ComboTemplate,
-  List, ListMultiselect, SwitchButtons) — already zero external
-  callers.
-- `src/renderer/components/layout/` (CollapsiblePanelStack,
-  Elements, Minimap, Splitter) — already zero external callers.
-- `src/renderer/components/overlay/` (Popper, PopupMenu,
-  WithPopupMenu) — callerless after US-535 (MenuItem flips) +
-  US-509 (Grid editor chrome) + US-531 (showPopupMenu) all land.
+- **`src/renderer/uikit/`** — Persephone's standalone reusable
+  component library. Components here do NOT depend on
+  persephone-specific code (no `api/`, no `services/`, no editor
+  models). They are general-purpose UI primitives that could ship
+  as a separate package in principle. Governance: `uikit/CLAUDE.md`.
+- **`src/renderer/components/`** — Persephone-coupled components.
+  Components here MAY use persephone services (`api/`, settings,
+  page model, events, etc.) and SHOULD be implemented on top of
+  UIKit primitives where possible (no rolling new low-level
+  styled chrome when a UIKit primitive exists).
 
-### Composite folders — migrated to UIKit by their own tasks
+Documenting this split is part of the post-epic documentation
+effort, NOT this task. US-532 ships code-only changes.
 
-- `src/renderer/components/data-grid/` — migrated to `uikit/DataGrid/`
-  by [US-536](../US-536-uikit-datagrid/README.md). Delete the
-  source folder here.
-- `src/renderer/components/virtualization/` — migrated to
-  `uikit/RenderGrid/` by
-  [US-538](../US-538-uikit-rendergrid/README.md). Delete here.
-- `src/renderer/components/TreeView/` — callerless after
-  [US-537](../US-537-treeview-flip-restclient/README.md). Delete
-  here.
+### Current state of each subfolder
 
-### Remaining folders — user-reviewed individually
+Folder caller counts grep'd against `src/` on the
+`upcoming-v3.0.10` branch (2026-05-18):
 
-The following four folders are NOT addressed by any pre-US-532
-migration task; the user will review each individually after the
-migration set above completes, then either decide on a destination
-(UIKit / `ui/` / `editors/*` / a new `shared/` home) or accept
-keeping them in `components/` permanently:
+| Folder | External callers | Disposition |
+|---|---|---|
+| `components/basic/` | 0 | DELETE |
+| `components/form/` | 0 | DELETE |
+| `components/layout/` | 0 | DELETE |
+| `components/overlay/` | 2 (grid editor — `ColumnsOptions.tsx`, `CsvOptions.tsx`) | DELETE — after [US-542](../US-542-grid-options-popover-flip/README.md) lands |
+| `components/TreeView/` | 0 | DELETE |
+| `components/data-grid/` | — | already gone (US-536) |
+| `components/virtualization/` | — | already gone (US-538) |
+| `components/icons/` | many | KEEP — persephone-coupled |
+| `components/page-manager/` | many | KEEP — persephone-coupled |
+| `components/file-search/` | many | KEEP — persephone-coupled |
+| `components/tree-provider/` | many | KEEP — persephone-coupled |
 
-- `src/renderer/components/icons/` (FileIcon, FolderIcon,
-  LanguageIcon) — 12 callers
-- `src/renderer/components/page-manager/` (AppPageManager,
-  PageManager, GroupContainer, ImperativeSplitter) — 2 callers
-- `src/renderer/components/file-search/` (FileSearch,
-  FileSearchModel) — 2 callers
-- `src/renderer/components/tree-provider/` (CategoryView,
-  CategoryViewModel, TreeProviderItemIcon, TreeProviderView,
-  TreeProviderViewModel, favicon-cache) — 18 callers; US-497
-  migrates the `TreeProviderView` component itself, the rest stays
-  for the user review
+The five "DELETE" folders are the entire scope of US-532's
+deletions. The four "KEEP" folders stay in `components/` untouched
+by this task.
 
-If the user keeps any of these folders in `components/` after
-review, US-532 simply skips them. The task succeeds when every
-folder listed under "Primitive" and "Composite" above is deletable
-and deleted.
+### `components/index.ts` today
 
-### Files to update (zero-or-tiny)
+```ts
+// Basic components
+export * from './basic';
 
-- `src/renderer/components/index.ts` — drop the sub-barrel exports
-  for every folder this task deletes.
-- Any straggler import that surfaces during the grep sweep — either
-  fixed inline if trivial, or spun out as a follow-up task.
+// Form components
+export * from './form';
 
-## Preconditions (must be true before this task starts)
+// Layout components
+export * from './layout';
 
-For each folder to be deleted, verified via grep that no file in
-`src/renderer/` (outside that folder itself) matches:
-
-```
-from "[^"]*components/<folder-name>
+// Overlay components
+export * from './overlay';
 ```
 
-If any match remains, the corresponding per-screen / per-folder
-task is reopened (or a new ad-hoc task is filed) and US-532 is
-paused for that folder.
+After US-532, all four sub-barrels are gone and the file is empty.
+The four KEEP folders are NOT exposed through `components/index.ts`
+(callers already import via direct paths like
+`components/icons/FileIcon` or `components/tree-provider/CategoryView`).
 
-## Notes
+## Implementation Plan
 
-- The Minimap component (in `components/layout/Minimap.tsx`) is used
-  by MarkdownView — [US-480](../US-480-markdown-view-migration/README.md)
-  must either migrate it or move it to UIKit (Storybook lighthouse
-  pattern). Tracked there, not here.
-- After deletion, run a full repo-wide grep one more time for any
-  reference to the deleted module paths in:
-  - `src/main/` (Electron main — shouldn't reference renderer
-    components but worth grepping)
-  - `assets/mcp-res-*.md` documentation
-  - `doc/` and `docs/`
-  - `qa/` and tests
+### Step 1 — Verify preconditions
 
-## Test surface
+Re-run callerless verification for each folder slated for deletion.
+For each `<folder>` in `basic`, `form`, `layout`, `overlay`,
+`TreeView`, grep `src/` for any import path matching
+`components/<folder>` (outside the folder itself). All five must
+return zero matches before deletion begins.
 
-- `npm start` — application boots, every menu / dialog / editor
-  renders normally.
-- `npm run lint` — clean (no new warnings, no new errors).
-- `npx tsc --noEmit` — no new errors.
+For `overlay/` specifically: this requires
+[US-542](../US-542-grid-options-popover-flip/README.md) to land so
+its two remaining callers (`ColumnsOptions.tsx`, `CsvOptions.tsx`)
+stop importing `Popper`. (US-509 — Grid editor chrome — already
+landed in `e506c81` but deliberately scoped to chrome and left
+these popovers for US-542.)
+
+### Step 2 — Delete the five primitive folders
+
+```
+git rm -r src/renderer/components/basic
+git rm -r src/renderer/components/form
+git rm -r src/renderer/components/layout
+git rm -r src/renderer/components/overlay
+git rm -r src/renderer/components/TreeView
+```
+
+Use `git rm -r` so history shows the directory removals.
+
+### Step 3 — Delete `components/index.ts`
+
+After Step 2, `src/renderer/components/index.ts` references four
+non-existent sub-barrels. Delete the file. The four KEEP folders
+are accessed via direct paths, so no consumer breaks.
+
+Verify with grep for `from "[^"]*renderer/components"` (the bare
+folder import) — the result must be empty.
+
+### Step 4 — Build & smoke test
+
+- `npm run lint` — clean (no NEW warnings vs the pre-US-532 baseline)
+- `npx tsc --noEmit` — no NEW errors vs the pre-US-532 baseline
 - `npm run dist` — production build succeeds (catches any stragglers
-  the dev bundler tolerated).
-- Quick UI smoke across high-traffic surfaces: open a Text page, a
-  Grid page, a Notebook, the Browser editor, the LinkEditor, the
-  Rest Client, the Settings page. All must render and respond to
-  primary interactions.
+  the dev bundler tolerated)
+- `npm start` — manual smoke across high-traffic surfaces: Text page,
+  Grid page, Notebook, Browser editor, LinkEditor, Rest Client,
+  Settings page, Sidebar (Files / Open Tabs / Script Library /
+  Tools Editors), Explorer secondary editor
+
+### Step 5 — Dashboard
+
+- Mark US-532 `[x]` in `doc/active-work.md`.
+- Do NOT move EPIC-025 to `epics/completed.md` yet. EPIC-025 close
+  requires the post-epic documentation effort (separate task(s)) to
+  land first — that's where `/review` and any documentation
+  refreshes run. US-532 is the last *code* task; the epic closes
+  after its documentation tasks complete.
+
+## Concerns
+
+### A. Components/index.ts — delete or keep as empty file?
+
+**Resolution:** Delete the file. An empty barrel is a footgun (a
+future contributor wonders what's missing). The four KEEP folders
+already work via direct paths and don't need re-exporting.
+
+### B. Inner cross-references between KEEP folders
+
+The four KEEP folders may currently reference each other or
+reference primitives from soon-to-be-deleted folders.
+
+**Verified (2026-05-18):** `components/tree-provider/` does NOT
+import from `components/TreeView/` — confirmed via grep. The other
+three KEEP folders are smaller and unlikely to cross-reference
+deleted primitives, but Step 1's per-folder grep covers this
+because it greps the entire `src/` tree (including each KEEP
+folder's own files). Any straggler surfaces in Step 1 and is
+either fixed inline or spun out as a follow-up.
+
+### C. `components/tree-provider/` and the `components/TreeView/` deletion
+
+`components/tree-provider/TreeProviderView.tsx` was historically
+the last consumer of `components/TreeView/`. US-497 already flipped
+it to UIKit `Tree` + `TREE_ITEM_KEY` (commit `082f974`, bundled
+with the sidebar migration). `components/TreeView/` is now fully
+callerless — verified via grep on 2026-05-18 (zero matches for
+`from "[^"]*components/TreeView` across `src/`).
+
+**Resolution:** No remaining concern. The `tree-provider/` folder
+stays in `components/` as a persephone-coupled UIKit-consumer
+(matching the Background contract), and `components/TreeView/` is
+safe to delete in Step 2 because nothing imports it anymore.
+
+### D. What if a tsc / lint regression surfaces after deletion?
+
+**Resolution:** Investigate immediately. Any new error is by
+definition coming from a stale import that the per-folder grep
+missed (most likely a non-relative path or a typo). Fix inline. Do
+NOT restore deleted folders to make a regression go away — the
+right answer is always to fix the caller.
+
+### E. Production build (`npm run dist`) catching stragglers
+
+The dev bundler (Vite + Electron Forge) is more permissive than
+the production build (electron-builder + Vite production). Some
+import errors only surface during `npm run dist`.
+
+**Resolution:** Step 4 explicitly includes `npm run dist`. If it
+fails, fix the cited file and re-run. Do not declare US-532 done
+until `npm run dist` is green.
+
+### F. Stale references in docs and assets
+
+Several `doc/`, `docs/`, `assets/mcp-res-*.md`, `qa/`, and
+potentially `src/main/` references may still cite the deleted
+folder paths after US-532 lands.
+
+**Resolution:** Out of scope. These references are addressed by
+the post-epic documentation effort, NOT here. US-532 leaves them
+as-is; downstream doc tasks pick them up. If a `src/main/`
+reference turns out to be runtime code (not a comment / doc
+string), Step 4's `npm run dist` will catch it and it gets fixed
+inline as a Step 4 regression.
 
 ## Acceptance criteria
 
-- [ ] Every folder listed under "Primitive folders — delete" and
-      "Composite folders — migrated to UIKit" above is deleted from
-      the working tree.
-- [ ] `src/renderer/components/index.ts` no longer references the
-      deleted sub-barrels (or the file itself is deleted if empty).
-- [ ] Repo-wide grep `from "[^"]*components/(basic|form|layout|overlay|TreeView|data-grid|virtualization)`
-      returns zero matches (outside this task's own README).
-- [ ] For folders the user opts to keep in `components/` after
-      individual review (icons / page-manager / file-search /
-      tree-provider): their callers continue to work; no other
-      changes required.
-- [ ] `npm run lint` clean; `npx tsc --noEmit` reports no new errors.
+- [ ] `src/renderer/components/basic/` is deleted.
+- [ ] `src/renderer/components/form/` is deleted.
+- [ ] `src/renderer/components/layout/` is deleted.
+- [ ] `src/renderer/components/overlay/` is deleted.
+- [ ] `src/renderer/components/TreeView/` is deleted.
+- [ ] `src/renderer/components/index.ts` is deleted (no consumers
+      remain — verified via grep for `from ".*renderer/components"`).
+- [ ] `src/renderer/components/icons/`,
+      `src/renderer/components/page-manager/`,
+      `src/renderer/components/file-search/`,
+      `src/renderer/components/tree-provider/` remain in place and
+      their callers continue to work.
+- [ ] Repo-wide grep
+      `from "[^"]*components/(basic|form|layout|overlay|TreeView)`
+      returns zero matches (outside this README itself).
+- [ ] `npm run lint` clean — no NEW warnings or errors vs the
+      pre-US-532 baseline.
+- [ ] `npx tsc --noEmit` reports no NEW errors vs the pre-US-532
+      baseline.
 - [ ] `npm run dist` succeeds.
-- [ ] Smoke test (see above) passes.
-- [ ] No reference to deleted module paths in `assets/mcp-res-*.md`,
-      `doc/standards/`, `docs/`, `qa/`, or `src/main/`.
+- [ ] Smoke test (Step 4) passes.
 
-This task does NOT run `/review`, `/document`, or `/userdoc` —
-those run at EPIC-025 close. Practically: this IS the last task
-before the epic closes, so the epic-close review immediately follows.
+This task does NOT run `/review`, `/document`, or `/userdoc`.
+Per-epic documentation is a separate, post-epic effort tracked by
+its own task(s).
+
+## Files Changed (expected)
+
+| Path | Change |
+|---|---|
+| `src/renderer/components/basic/` | deleted (folder + all files) |
+| `src/renderer/components/form/` | deleted (folder + all files) |
+| `src/renderer/components/layout/` | deleted (folder + all files) |
+| `src/renderer/components/overlay/` | deleted (folder + all files) |
+| `src/renderer/components/TreeView/` | deleted (folder + all files) |
+| `src/renderer/components/index.ts` | deleted |
+| `doc/active-work.md` | US-532 marked `[x]` |
+
+## Files NOT changed
+
+- `src/renderer/components/icons/` (FileIcon, FolderIcon,
+  LanguageIcon — 12+ callers, persephone-coupled, KEEP)
+- `src/renderer/components/page-manager/` (AppPageManager,
+  PageManager, GroupContainer, ImperativeSplitter — persephone-coupled, KEEP)
+- `src/renderer/components/file-search/` (FileSearch,
+  FileSearchModel — persephone-coupled, KEEP)
+- `src/renderer/components/tree-provider/` (CategoryView,
+  CategoryViewModel, TreeProviderItemIcon, TreeProviderView,
+  TreeProviderViewModel, favicon-cache — persephone-coupled, KEEP;
+  US-497 flips `TreeProviderView`'s internal Tree dependency to
+  UIKit but the folder stays put)
+- All `doc/`, `docs/`, `assets/mcp-res-*.md`, `qa/`, and `src/main/`
+  files — documentation sweep is the post-epic effort, not this task
 
 ## Links
 
 - Epic: [EPIC-025](../../epics/EPIC-025.md)
 - Phase: 4 close-out — final `components/` sweep
 - Blocked on:
-  - Every per-screen migration in the dashboard
-  - [US-481](../US-481-uikit-menu-with-menu/README.md) — UIKit Menu
-  - [US-530](../US-530-editor-base-chrome-migration/README.md) — Editor base chrome
-  - [US-531](../US-531-show-popup-menu-migration/README.md) — showPopupMenu
-  - [US-535](../US-535-menuitem-import-flips/README.md) — MenuItem caller flips
-  - [US-536](../US-536-uikit-datagrid/README.md) — `components/data-grid/` → `uikit/AVGrid/`
-  - [US-537](../US-537-treeview-flip-restclient/README.md) — TreeView flip
-  - [US-538](../US-538-uikit-rendergrid/README.md) — UIKit RenderGrid
-  - [US-539](../US-539-uikit-multiselect/README.md) — UIKit MultiSelect (unblocks US-536)
-  - User review of remaining folders (icons / page-manager /
-    file-search / tree-provider) once everything above lands
+  - [US-542](../US-542-grid-options-popover-flip/README.md) — Grid options popovers `Popper`→`Popover` flip (the sole remaining `components/overlay/` callers)
+- Previously listed blockers, now confirmed COMPLETE (no longer relevant):
+  - US-481 (UIKit Menu) — primitive in place and widely consumed
+  - US-509 (Grid editor chrome) — committed `e506c81`; scoped to chrome only, sub-component popovers tracked by US-542
+  - US-530 (Editor base chrome) — committed `7746de8`
+  - US-531 (`showPopupMenu`) — committed `6e3f332`
+  - US-535 (MenuItem flips) — committed `f7aa6a6`
+  - US-497 (TreeProviderView) — committed `082f974`
