@@ -220,7 +220,7 @@ export function CategoryList({
         const parentCount = getCount?.(parentValue);
 
         return (
-            <Root data-type="category-list" data-name={name} {...rest}>
+            <Root data-type="category-list" data-name={name} className="scroll-container" {...rest}>
                 <div
                     data-part="row"
                     data-state="open"
@@ -259,7 +259,7 @@ export function CategoryList({
     const totalCount = getCount?.("");
 
     return (
-        <Root data-type="category-list" data-name={name} {...rest}>
+        <Root data-type="category-list" data-name={name} className="scroll-container" {...rest}>
             <div
                 data-part="row"
                 data-selected={value === "" || undefined}

@@ -21,6 +21,7 @@ export function LinkHostnamesPanel({ vm }: LinkHostnamesPanelProps) {
             name="link-hostnames-panel"
             direction="row"
             flex={1}
+            height={0}
             overflow="hidden"
             width="100%"
         >

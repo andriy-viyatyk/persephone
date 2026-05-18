@@ -120,6 +120,7 @@ export function LinkCategoryPanel({ vm, useOpenRawLink, categoriesOnly = true, p
             name="link-category-panel"
             direction="column"
             flex={1}
+            height={0}
             overflow="hidden"
         >
             <TreeProviderView

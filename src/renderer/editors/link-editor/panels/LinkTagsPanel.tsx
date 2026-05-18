@@ -21,6 +21,7 @@ export function LinkTagsPanel({ vm }: LinkTagsPanelProps) {
             name="link-tags-panel"
             direction="row"
             flex={1}
+            height={0}
             overflow="hidden"
             width="100%"
         >

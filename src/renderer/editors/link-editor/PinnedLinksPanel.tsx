@@ -95,6 +95,7 @@ function PinnedItem({ link, index, isSelected, model, onOpenLink, onContextMenu 
                 display: "flex",
                 alignItems: "stretch",
                 height: 24,
+                flexShrink: 0,
                 opacity: isDragging ? 0.4 : undefined,
             }}
         >
@@ -261,6 +262,7 @@ export function PinnedLinksPanel({ pinnedLinks, model, selectedLinkId, width }: 
                 overflowX="hidden"
                 paddingY="xs"
                 flex={1}
+                height={0}
             >
                 {pinnedLinks.map((link, i) => (
                     <PinnedItem
