@@ -1,5 +1,4 @@
 import React, { useCallback, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { TreeView, TreeItem } from "../../components/TreeView";
 import {
     IconButton,
     Panel,
@@ -7,9 +6,12 @@ import {
     Splitter,
     Text,
     Textarea,
+    Tree,
+    TreeItem,
+    TREE_ITEM_KEY,
     WithMenu,
 } from "../../uikit";
-import type { MenuItem } from "../../uikit";
+import type { MenuItem, TreeItemRenderContext } from "../../uikit";
 import universalColors from "../../theme/universal-colors";
 import { CopyIcon, DeleteIcon, PlusIcon } from "../../theme/icons";
 import { app } from "../../api/app";
@@ -22,10 +24,12 @@ import { ResponseViewer, getResponseSize } from "./ResponseViewer";
 import { METHOD_COLORS } from "./httpConstants";
 import { IContentHost } from "../base/IContentHost";
 import { TraitTypeId, type TraitDragPayload, resolveTraits } from "../../core/traits";
+import { TraitSet, traited, type Traited } from "../../core/traits/traits";
 import { LINK } from "../link-editor/linkTraits";
 
-interface RequestTreeItem extends TreeItem {
+interface RequestTreeItem {
     id: string;
+    items?: RequestTreeItem[];
     request?: RestRequest;
     isRoot?: boolean;
     isCollection?: boolean;
@@ -33,6 +37,18 @@ interface RequestTreeItem extends TreeItem {
 }
 
 const EMPTY_LABEL = "(empty)";
+
+const requestTreeItemTraits = new TraitSet().add(TREE_ITEM_KEY, {
+    value: (item: unknown) => (item as RequestTreeItem).id,
+    label: (item: unknown) => {
+        const r = item as RequestTreeItem;
+        if (r.isRoot) return "";
+        if (r.isCollection) return r.collectionName ?? "";
+        return r.request?.name ?? "";
+    },
+});
+
+const getRequestTreeChildren = (item: RequestTreeItem) => item.items;
 
 function buildGroupedTree(requests: RestRequest[]): RequestTreeItem[] {
     const collectionOrder: string[] = [];
@@ -73,6 +89,20 @@ export function RestClientEditor({ model }: { model: IContentHost }) {
         vm?.setLeftPanelWidth(clamped);
     }, [vm]);
 
+    const rootItem = useMemo<RequestTreeItem>(
+        () => ({
+            id: "__root__",
+            isRoot: true,
+            items: buildGroupedTree(state.data.requests),
+        }),
+        [state.data.requests],
+    );
+
+    const tItems = useMemo(
+        () => traited([rootItem], requestTreeItemTraits),
+        [rootItem],
+    );
+
     if (!vm) return null;
 
     if (state.error) {
@@ -80,12 +110,6 @@ export function RestClientEditor({ model }: { model: IContentHost }) {
     }
 
     const selectedRequest = vm.selectedRequest;
-
-    const rootItem: RequestTreeItem = {
-        id: "__root__",
-        isRoot: true,
-        items: buildGroupedTree(state.data.requests),
-    };
 
     return (
         <Panel
@@ -111,7 +135,7 @@ export function RestClientEditor({ model }: { model: IContentHost }) {
                     overflow="auto"
                     minHeight={0}
                 >
-                    <RequestTree vm={vm} root={rootItem} selectedId={state.selectedRequestId} />
+                    <RequestTree vm={vm} items={tItems} selectedId={state.selectedRequestId} />
                 </Panel>
             </Panel>
             <Splitter
@@ -412,87 +436,27 @@ function getStatusColor(status: number): string {
     return universalColors.http.serverError;
 }
 
-function RequestTree({ vm, root, selectedId }: {
+function RequestTree({ vm, items, selectedId }: {
     vm: RestClientViewModel;
-    root: RequestTreeItem;
+    items: Traited<unknown[]>;
     selectedId: string;
 }) {
-    const getLabel = useCallback((item: RequestTreeItem) => {
-        if (item.isRoot) {
-            return (
-                <Panel
-                    name="rest-tree-root-label"
-                    direction="row"
-                    align="center"
-                    flex={1}
-                    paddingLeft="sm"
-                    gap="xs"
-                >
-                    <Text size="xs" variant="uppercased" color="light" bold>Requests</Text>
-                    <Spacer />
-                    <IconButton
-                        name="rest-tree-add"
-                        size="sm"
-                        icon={<PlusIcon />}
-                        title="Add request"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            vm.addRequest();
-                        }}
-                    />
-                </Panel>
-            );
-        }
-        if (item.isCollection) {
-            const name = item.collectionName;
-            return (
-                <Text
-                    size="md"
-                    bold={!!name}
-                    italic={!name}
-                    color={name ? "default" : "light"}
-                >
-                    {name || EMPTY_LABEL}
-                </Text>
-            );
-        }
-        const req = item.request!;
-        const badgeColor = METHOD_COLORS[req.method];
-        return (
-            <Panel direction="row" align="center" gap="sm">
-                <Panel minWidth={32} justify="center">
-                    <Text size="xs" bold color={badgeColor} align="center">{req.method}</Text>
-                </Panel>
-                <Text
-                    size="md"
-                    truncate
-                    italic={!req.name}
-                    color={req.name ? "default" : "light"}
-                >
-                    {req.name || EMPTY_LABEL}
-                </Text>
-            </Panel>
-        );
-    }, [vm]);
-
-    const getId = useCallback((item: RequestTreeItem) => item.id, []);
-
-    const getSelected = useCallback(
+    const isSelected = useCallback(
         (item: RequestTreeItem) => item.id === selectedId,
         [selectedId],
     );
 
-    const onItemClick = useCallback(
+    const onChange = useCallback(
         (item: RequestTreeItem) => {
             if (item.request) vm.selectRequest(item.id);
         },
         [vm],
     );
 
-    const onItemContextMenu = useCallback(
+    const handleItemContextMenu = useCallback(
         (item: RequestTreeItem, e: React.MouseEvent) => {
-            if (item.isRoot) return;
             e.preventDefault();
+            e.stopPropagation();
 
             if (item.request) vm.selectRequest(item.id);
 
@@ -581,8 +545,8 @@ function RequestTree({ vm, root, selectedId }: {
     );
 
     const canTraitDrop = useCallback(
-        (_dropItem: RequestTreeItem, payload: TraitDragPayload) => {
-            if (_dropItem.isRoot) return false;
+        (dropItem: RequestTreeItem, payload: TraitDragPayload) => {
+            if (dropItem.isRoot) return false;
             if (payload.typeId === TraitTypeId.RestRequest) return true;
             const traits = resolveTraits(payload.typeId);
             return !!traits?.get(LINK);
@@ -607,34 +571,131 @@ function RequestTree({ vm, root, selectedId }: {
             const traits = resolveTraits(payload.typeId);
             const linkTrait = traits?.get(LINK);
             if (!linkTrait) return;
-            const items = linkTrait.getItems(payload.data);
+            const dropped = linkTrait.getItems(payload.data);
             const collection = dropItem.isCollection
                 ? (dropItem.collectionName ?? "")
                 : (dropItem.request?.collection ?? "");
-            for (const item of items) {
-                if (!item.href) continue;
-                const req = vm.addRequest(item.title || item.href, collection);
-                vm.updateRequest(req.id, { url: item.href });
+            for (const link of dropped) {
+                if (!link.href) continue;
+                const req = vm.addRequest(link.title || link.href, collection);
+                vm.updateRequest(req.id, { url: link.href });
             }
         },
         [vm],
     );
 
+    const renderItem = useCallback(
+        (ctx: TreeItemRenderContext<RequestTreeItem>) => {
+            const item = ctx.source;
+
+            if (item.isRoot) {
+                return (
+                    <TreeItem
+                        id={ctx.id}
+                        level={ctx.level}
+                        expanded={ctx.expanded}
+                        hasChildren={ctx.hasChildren}
+                        hideChevron
+                        selected={false}
+                        active={ctx.active}
+                        label={
+                            <Panel
+                                name="rest-tree-root-label"
+                                direction="row"
+                                align="center"
+                                flex={1}
+                                paddingLeft="sm"
+                                gap="xs"
+                            >
+                                <Text size="xs" variant="uppercased" color="light" bold>
+                                    Requests
+                                </Text>
+                                <Spacer />
+                                <IconButton
+                                    name="rest-tree-add"
+                                    size="sm"
+                                    icon={<PlusIcon />}
+                                    title="Add request"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        vm.addRequest();
+                                    }}
+                                />
+                            </Panel>
+                        }
+                    />
+                );
+            }
+
+            const labelNode = item.isCollection
+                ? (
+                    <Text
+                        size="md"
+                        bold={!!item.collectionName}
+                        italic={!item.collectionName}
+                        color={item.collectionName ? "default" : "light"}
+                    >
+                        {item.collectionName || EMPTY_LABEL}
+                    </Text>
+                )
+                : (() => {
+                    const req = item.request!;
+                    const badgeColor = METHOD_COLORS[req.method];
+                    return (
+                        <Panel direction="row" align="center" gap="sm">
+                            <Panel minWidth={32} justify="center">
+                                <Text size="xs" bold color={badgeColor} align="center">
+                                    {req.method}
+                                </Text>
+                            </Panel>
+                            <Text
+                                size="md"
+                                truncate
+                                italic={!req.name}
+                                color={req.name ? "default" : "light"}
+                            >
+                                {req.name || EMPTY_LABEL}
+                            </Text>
+                        </Panel>
+                    );
+                })();
+
+            return (
+                <TreeItem
+                    id={ctx.id}
+                    level={ctx.level}
+                    expanded={ctx.expanded}
+                    hasChildren={ctx.hasChildren}
+                    label={labelNode}
+                    selected={ctx.selected}
+                    active={ctx.active}
+                    dragging={ctx.dragging}
+                    dropActive={ctx.dropActive}
+                    onChevronClick={(e) => {
+                        e.stopPropagation();
+                        ctx.toggleExpanded();
+                    }}
+                    onContextMenu={(e) => handleItemContextMenu(item, e)}
+                />
+            );
+        },
+        [vm, handleItemContextMenu],
+    );
+
     return (
-        <TreeView<RequestTreeItem>
-            root={root}
-            getLabel={getLabel}
-            getId={getId}
-            getSelected={getSelected}
-            onItemClick={onItemClick}
-            onItemContextMenu={onItemContextMenu}
+        <Tree<RequestTreeItem>
+            name="rest-client-tree"
+            items={items}
+            getChildren={getRequestTreeChildren}
+            isSelected={isSelected}
+            onChange={onChange}
+            renderItem={renderItem}
             traitTypeId={TraitTypeId.RestRequest}
             getDragData={getDragData}
             acceptsDrop
             canTraitDrop={canTraitDrop}
             onTraitDrop={onTraitDrop}
             defaultExpandAll
-            refreshKey={selectedId}
         />
     );
 }
