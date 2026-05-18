@@ -328,14 +328,17 @@ export default function MySecondaryEditor({ model, headerRef }: SecondaryEditorP
     const headerContent = (
         <>
             My Panel Title
-            <span className="panel-spacer" />
-            <Button type="icon" size="small" title="Close Panel"
+            <Spacer />
+            <IconButton
+                name="my-secondary-close"
+                size="sm"
+                title="Close Panel"
+                icon={<CloseIcon />}
                 onClick={(e) => {
                     e.stopPropagation();
                     myModel.secondaryEditor = undefined; // or remove specific panel
-                }}>
-                <CloseIcon width={14} height={14} />
-            </Button>
+                }}
+            />
         </>
     );
     

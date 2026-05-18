@@ -7,7 +7,7 @@ import type { LinkViewModel } from "../LinkViewModel";
 import { LinkCategoryPanel } from "./LinkCategoryPanel";
 import { TOneState, useOptionalState } from "../../../core/state/state";
 import type { NavigationState } from "../../../api/pages/PageModel";
-import { IconButton } from "../../../uikit";
+import { IconButton, Spacer } from "../../../uikit";
 import { SaveIcon, SwapIcon } from "../../../theme/icons";
 
 export default function LinkCategorySecondaryEditor({ model, headerRef }: SecondaryEditorProps) {
@@ -75,7 +75,7 @@ export default function LinkCategorySecondaryEditor({ model, headerRef }: Second
     const headerContent = (
         <>
             {isMainEditor ? "Categories" : "Links"}
-            <span className="panel-spacer" />
+            <Spacer />
             {!isMainEditor && modified && (
                 <IconButton
                     name="link-category-secondary-save"

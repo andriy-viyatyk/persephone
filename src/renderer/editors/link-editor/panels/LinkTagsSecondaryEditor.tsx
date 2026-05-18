@@ -130,7 +130,7 @@ function LinkTagsNavigationPanel({ vm, pageId }: LinkTagsNavigationPanelProps) {
         >
             <Panel
                 name="link-tags-navigation-top"
-                direction="row"
+                direction="column"
                 flex={1}
                 overflow="hidden"
                 minHeight={40}
