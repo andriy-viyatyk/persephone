@@ -1,269 +1,47 @@
 # Component Creation Guide
 
-> Read this before creating new UI components.
+> Read this before creating a new UI component. For the full set of UIKit authoring rules (data-attribute state model, controlled-component contract, trait-based data binding, naming conventions, design tokens, file template), see [`src/renderer/uikit/CLAUDE.md`](../../src/renderer/uikit/CLAUDE.md) — that file is the canonical reference.
 
-## Where to Put Your Component
+## Where to put your component
 
-| Component Type | Location | Example |
-|---------------|----------|---------|
-| Reusable, no app state | `/components/[category]/` | Button, Tooltip |
-| App-specific feature | `/features/[feature]/` | PageTab, TreeProviderView |
-| Editor-specific | `/editors/[editor]/components/` | CsvOptions |
+Walk the decision tree from the top. Stop at the first match.
 
-## Component Categories
+| Question | Answer | Location |
+|----------|--------|----------|
+| Does only this editor use it? | Yes | `src/renderer/editors/<editor-name>/components/` *(private to that editor)* |
+| Is it part of the app shell — page tabs, sidebar, navigation bar, dialog — and unique to Persephone? | Yes | `src/renderer/ui/<feature>/` *(not a reusable component — owned by the screen)* |
+| Does it depend on `app.*` APIs, the page model, file system, or the scripting system? | Yes | `src/renderer/components/<existing-keep-folder>/` *(only `icons/`, `page-manager/`, `file-search/`, `tree-provider/` are valid)* |
+| Otherwise — reusable primitive with no app coupling | | `src/renderer/uikit/<ComponentName>/` *(canonical home for new reusable components)* |
 
-### /components/basic/
-Atomic, context-free components.
-- Button, Input, Chip, Tooltip
-- No knowledge of app state
-- Purely props-driven
+See [/doc/standards/uikit-vs-components-split.md](./uikit-vs-components-split.md) for the permanent contract that defines what belongs in `uikit/` vs `components/`.
 
-### /components/form/
-Form controls and inputs.
-- ComboSelect, SwitchButtons
-- Handle user input
-- May have internal state
+## Authoring rules
 
-### /components/layout/
-Layout primitives.
-- Splitter, FlexSpace
-- Control arrangement/sizing
+**UIKit primitives** follow the rules in [`src/renderer/uikit/CLAUDE.md`](../../src/renderer/uikit/CLAUDE.md). Briefly:
 
-### /components/overlay/
-Floating UI elements.
-- Popper, PopupMenu
-- Portal-based rendering
+- **Rule 1** — `data-type` (required) + `data-*` state attributes on the root element; style state via Emotion attribute selectors, never via class names.
+- **Rule 2** — controlled components only; never `useState` for the component's primary value.
+- **Rule 3** — list/collection props accept `T[] | Traited<T[]>`; resolve with `resolveTraited(items, KEY)` at the top.
+- **Rule 4** — roving tabindex inside keyboard-navigable widgets (Toolbar, Tree, ListBox, SegmentedControl, Tab bar).
+- **Rule 5** — focus trap inside modal dialogs.
+- **Rule 6** — `ComponentSet` descriptor pattern for runtime-built UIs.
+- **Rule 7** — no Emotion / `style=` / `className=` outside `uikit/` in app code (exception: `src/renderer/ui/` chrome).
+- **Rule 8** — model-view pattern (`TComponentModel`) once a component exceeds the small-and-readable threshold.
 
-### /components/virtualization/
-Performance-critical scrolling.
-- RenderGrid (base)
-- Handles large datasets
+**Persephone-coupled components** (the four KEEP folders inside `components/`) may import `api/`, `core/`, and `theme/` directly — that's the criterion for living in `components/` at all. They should still use UIKit primitives (`Button`, `Tooltip`, `IconButton`, `Panel`, …) for primitive rendering rather than re-implementing them.
 
-### /components/data-grid/
-High-level data display.
-- AVGrid
-- Built on virtualization
+## Naming conventions
 
-## Creating a Basic Component
+- Component name — PascalCase (`Button`, `MultiSelect`).
+- File name — `<ComponentName>.tsx` inside the component's own subfolder.
+- `data-type` attribute — kebab-case matching the component name (`data-type="multi-select"`).
+- `name?: string` debug prop — every UIKit primitive accepts it and emits it as `data-name="…"` on the same root element that carries `data-type` (see [US-521](../tasks/US-521-uikit-name-debug-attribute/README.md) and [US-522](../tasks/US-522-uikit-debug-naming-rollout/README.md) for the rationale and rollout).
+- For the canonical naming table (old name → new name) and prop-naming guidelines, see the **Naming conventions** section in [`uikit/CLAUDE.md`](../../src/renderer/uikit/CLAUDE.md).
 
-### 1. Create the File
+## Component file template
 
-```
-/components/basic/MyComponent.tsx
-```
+Use the template at the bottom of [`uikit/CLAUDE.md`](../../src/renderer/uikit/CLAUDE.md) — single styled root, `data-type` + `data-*` state, `name?: string` debug prop, `Omit<HTMLAttributes<…>, "style" | "className">` for the props interface.
 
-### 2. Define Props Interface
+## Migration history
 
-```typescript
-export interface MyComponentProps {
-  /** Primary content */
-  children: React.ReactNode;
-  /** Called when clicked */
-  onClick?: () => void;
-  /** Visual style variant */
-  variant?: 'primary' | 'secondary';
-  /** Additional CSS class */
-  className?: string;
-}
-```
-
-### 3. Create Styled Components
-
-```typescript
-import styled from '@emotion/styled';
-import color from '../../theme/color';
-
-const Root = styled.div<{ variant: 'primary' | 'secondary' }>(({ variant }) => ({
-  padding: '8px 16px',
-  borderRadius: 4,
-  backgroundColor: variant === 'primary'
-    ? color.primary.main
-    : color.background.default,
-  color: variant === 'primary'
-    ? color.primary.contrastText
-    : color.text.default,
-  cursor: 'pointer',
-  '&:hover': {
-    opacity: 0.9,
-  },
-}));
-```
-
-### 4. Implement Component
-
-```typescript
-export function MyComponent({
-  children,
-  onClick,
-  variant = 'primary',
-  className,
-}: MyComponentProps) {
-  return (
-    <Root
-      variant={variant}
-      onClick={onClick}
-      className={className}
-    >
-      {children}
-    </Root>
-  );
-}
-```
-
-### 5. Export from Index
-
-```typescript
-// /components/basic/index.ts
-export { MyComponent } from './MyComponent';
-export type { MyComponentProps } from './MyComponent';
-```
-
-## Creating a Feature Component
-
-Feature components can use app state and other features.
-
-### Example: Feature in /features/
-
-```typescript
-// /features/sidebar/MyFeature.tsx
-import { pagesModel } from '../../store';
-import { Button } from '../../components/basic/Button';
-
-interface MyFeatureProps {
-  onClose: () => void;
-}
-
-export function MyFeature({ onClose }: MyFeatureProps) {
-  const pages = pagesModel.state.use((s) => s.pages);
-
-  const handleClick = (pageId: string) => {
-    pagesModel.showPage(pageId);
-    onClose();
-  };
-
-  return (
-    <div>
-      {pages.map(page => (
-        <Button key={page.id} onClick={() => handleClick(page.id)}>
-          {page.title}
-        </Button>
-      ))}
-    </div>
-  );
-}
-```
-
-## Component Patterns
-
-### Forwarding Refs
-
-When wrapping native elements:
-
-```typescript
-import { forwardRef } from 'react';
-
-export const Input = forwardRef<HTMLInputElement, InputProps>(
-  function Input({ value, onChange, ...props }, ref) {
-    return (
-      <StyledInput
-        ref={ref}
-        value={value}
-        onChange={onChange}
-        {...props}
-      />
-    );
-  }
-);
-```
-
-### Composition with Children
-
-```typescript
-interface CardProps {
-  children: React.ReactNode;
-  title?: string;
-}
-
-export function Card({ children, title }: CardProps) {
-  return (
-    <CardRoot>
-      {title && <CardTitle>{title}</CardTitle>}
-      <CardContent>{children}</CardContent>
-    </CardRoot>
-  );
-}
-```
-
-### Render Props (when needed)
-
-```typescript
-interface ListProps<T> {
-  items: T[];
-  renderItem: (item: T, index: number) => React.ReactNode;
-}
-
-export function List<T>({ items, renderItem }: ListProps<T>) {
-  return (
-    <ListRoot>
-      {items.map((item, index) => renderItem(item, index))}
-    </ListRoot>
-  );
-}
-```
-
-## Testing Checklist
-
-Before committing a new component:
-
-- [ ] Works with different prop combinations
-- [ ] Handles edge cases (empty, loading, error)
-- [ ] Keyboard accessible (if interactive)
-- [ ] Looks correct in both themes (if applicable)
-- [ ] No console errors/warnings
-- [ ] Exported from index.ts
-
-## Anti-Patterns
-
-### Don't Access Store in /components/
-
-```typescript
-// BAD - component depends on app state
-// /components/basic/PageButton.tsx
-import { pagesModel } from '../../store';
-
-// GOOD - pass as props, put in /features/ if needs state
-// /features/tabs/PageButton.tsx
-```
-
-### Don't Create Mega-Components
-
-Split large components:
-
-```typescript
-// BAD - 500 lines
-function MegaForm() { ... }
-
-// GOOD - composed from smaller pieces
-function UserForm() {
-  return (
-    <Form>
-      <PersonalInfoSection />
-      <ContactSection />
-      <PreferencesSection />
-      <FormActions />
-    </Form>
-  );
-}
-```
-
-### Don't Duplicate Styles
-
-Use theme values and shared styled components:
-
-```typescript
-// BAD - hardcoded colors
-const Box = styled.div({ backgroundColor: '#1e1e1e' });
-
-// GOOD - theme reference
-const Box = styled.div({ backgroundColor: color.background.default });
-```
+The legacy `src/renderer/components/{basic,form,layout,overlay,TreeView,virtualization,data-grid}/` split was retired in [EPIC-025](../epics/EPIC-025.md). Reusable primitives now live in `src/renderer/uikit/`; the four folders that remain in `components/` (`icons/`, `page-manager/`, `file-search/`, `tree-provider/`) are persephone-coupled and do not receive new pure primitives. The canonical rename table (e.g. `Chip → Tag`, `PopupMenu → Menu`, `TreeView → Tree`, `ComboSelect → Select`) lives in [`uikit/CLAUDE.md`](../../src/renderer/uikit/CLAUDE.md).

@@ -118,7 +118,8 @@ The user may say "review done tasks" or "run review for completed tasks" at any 
 | Learn folder structure        | [/doc/architecture/folder-structure.md](doc/architecture/folder-structure.md) |
 | Add a new editor              | [/doc/standards/editor-guide.md](doc/standards/editor-guide.md) |
 | Modify the browser editor     | [/doc/architecture/browser-editor.md](doc/architecture/browser-editor.md) |
-| Add a UI component            | [/doc/standards/component-guide.md](doc/standards/component-guide.md) |
+| Add a UI component            | [/doc/standards/component-guide.md](doc/standards/component-guide.md) — see also [`src/renderer/uikit/CLAUDE.md`](src/renderer/uikit/CLAUDE.md) |
+| UIKit vs components/ split    | [/doc/standards/uikit-vs-components-split.md](doc/standards/uikit-vs-components-split.md) |
 | Work with context menus       | [/doc/architecture/context-menu.md](doc/architecture/context-menu.md) |
 | Work with drag-and-drop       | [/doc/architecture/trait-system.md](doc/architecture/trait-system.md) |
 | Build complex components      | [/doc/standards/model-view-pattern.md](doc/standards/model-view-pattern.md) |
@@ -181,7 +182,8 @@ npm run lint        # Run ESLint
     /content         # Content delivery — providers, transformers, pipes (EPIC-012)
     /scripting       # Script execution, wrappers, editor facades, worker
     /automation      # Browser automation — Playwright-compatible MCP tools, CDP, snapshots
-    /components      # Reusable UI components
+    /uikit           # Standalone component library (canonical home for reusable primitives)
+    /components      # Persephone-coupled components only (icons, page-manager, file-search, tree-provider)
     /core            # State primitives, utilities
     /theme           # Styling
   /ipc               # Inter-process communication
@@ -191,6 +193,8 @@ npm run lint        # Run ESLint
 /.claude
   /skills            # Skills: /review (forked), /document, /userdoc (forked), /mcp-test-agent (forked)
 ```
+
+New reusable UI primitives go in `uikit/`. The four folders inside `components/` are persephone-coupled and never receive new pure primitives — see [/doc/standards/uikit-vs-components-split.md](doc/standards/uikit-vs-components-split.md) for the contract and [`src/renderer/uikit/CLAUDE.md`](src/renderer/uikit/CLAUDE.md) for UIKit authoring rules.
 
 See [/doc/architecture/folder-structure.md](doc/architecture/folder-structure.md) for complete details.
 
@@ -323,8 +327,10 @@ See [/doc/standards/coding-style.md](doc/standards/coding-style.md) for complete
 | Draw editor model        | `/src/renderer/editors/draw/DrawViewModel.ts`     |
 | Rest Client editor       | `/src/renderer/editors/rest-client/RestClientViewModel.ts` |
 | MCP Inspector model      | `/src/renderer/editors/mcp-inspector/McpInspectorEditorModel.ts` |
-| Base virtualization      | `/src/renderer/components/virtualization/RenderGrid.tsx` |
-| Advanced grid            | `/src/renderer/components/data-grid/AVGrid.tsx`   |
+| Base virtualization      | `/src/renderer/uikit/RenderGrid/RenderGrid.tsx`   |
+| Advanced grid            | `/src/renderer/uikit/AVGrid/AVGrid.tsx`           |
+| UIKit library            | `/src/renderer/uikit/`                            |
+| UIKit authoring rules    | `/src/renderer/uikit/CLAUDE.md`                   |
 | Color tokens             | `/src/renderer/theme/color.ts`                    |
 | Theme definitions        | `/src/renderer/theme/themes/`                     |
 | Tor service              | `/src/main/tor-service.ts`                        |

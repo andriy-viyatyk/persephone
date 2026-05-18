@@ -106,6 +106,8 @@ return <Button onClick={() => doSomething()} />;
 
 ## Styling with Emotion
 
+> **Where Emotion is allowed:** Emotion is the styling tool for `src/renderer/uikit/` (the standalone component library) and for the chrome surfaces inside `src/renderer/ui/` (page tab strip, sidebar, navigation bar — one-of-a-kind app chrome). Application code outside those scopes — including `editors/`, `components/` (KEEP folders), and feature code — **must not** use `styled.*`, `import { css }`, or pass `style=` / `className=` to UIKit components. Compose UIKit primitives by props instead. For the full set of UIKit authoring rules (data-attribute state model, controlled-component contract, trait-based data binding, naming, etc.), see [`src/renderer/uikit/CLAUDE.md`](../../src/renderer/uikit/CLAUDE.md) — that file is the canonical authoring reference; this section is the project-wide rule.
+
 ### Single Styled Root with Nested Class-Based Styles
 
 For components with multiple child elements, create **one styled component** for the root element and style all children using nested class selectors. This keeps styles organized and easier to read.
@@ -263,8 +265,8 @@ import styled from '@emotion/styled';
 // 2. Internal absolute imports (if configured)
 
 // 3. Relative imports - parents first
-import { Button } from '../../components/basic/Button';
-import { pagesModel } from '../../store';
+import { Button } from '../../uikit/Button/Button';
+import { pagesModel } from '../../api/pages';
 
 // 4. Relative imports - siblings/children
 import { MyHelper } from './MyHelper';

@@ -30,7 +30,7 @@ GlobalEventService.handleContextMenu()
     v
 AppPopupMenuModel
     -> Adds default items (Copy, Paste, Inspect)
-    -> Shows PopupMenu component via portal
+    -> Shows Menu component via portal
 ```
 
 ## ContextMenuEvent on the Native Event
@@ -142,7 +142,7 @@ The EventChannel system allows scripts to subscribe to context menu events and m
 ### Example: TreeProviderView
 
 ```
-TreeView cell onContextMenu
+Tree cell onContextMenu
     -> onItemContextMenu: sets target, pushes file/folder items (Layer 1)
     -> Fires linkContextMenu.sendAsync (Layer 2)
        -> tree-context-menus handler adds "Open in New Tab", etc.
@@ -198,12 +198,12 @@ interface MenuItem {
 }
 ```
 
-## PopupMenu Component
+## Menu Component
 
-`PopupMenu` (`/src/renderer/components/overlay/PopupMenu.tsx`) renders the actual menu:
+`Menu` (`/src/renderer/uikit/Menu/Menu.tsx`) renders the actual menu:
 
 - **Portal-based** — renders to `document.body` via React portal
-- **Virtualized** — uses `<List>` component for performance with many items
+- **Virtualized** — uses the `ListBox` primitive for performance with many items
 - **Search filtering** — shows search field when items > 20
 - **Submenu support** — items with `items[]` property render a submenu on hover
 - **Keyboard navigation** — arrow keys, Enter, Escape, Page Up/Down
@@ -247,6 +247,6 @@ interface MenuItem {
 | Event type definitions | `/src/renderer/api/types/events.d.ts` |
 | Native event augmentation | `/src/renderer/types/events.d.ts` |
 | Global event handler | `/src/renderer/api/internal/GlobalEventService.ts` |
-| PopupMenu component | `/src/renderer/components/overlay/PopupMenu.tsx` |
+| Menu component | `/src/renderer/uikit/Menu/Menu.tsx` |
 | showAppPopupMenu | `/src/renderer/ui/dialogs/poppers/showPopupMenu.tsx` |
 | MenuItem type | `/src/renderer/api/types/events.d.ts` |

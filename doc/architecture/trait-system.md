@@ -367,12 +367,12 @@ const handleDragEnd = useCallback(() => {
 
 ---
 
-## Pattern: TreeView Trait Integration
+## Pattern: Tree Trait Integration
 
-`TreeView` has built-in trait drag-and-drop support via props — no custom handlers needed in the consumer:
+`Tree` has built-in trait drag-and-drop support via props — no custom handlers needed in the consumer:
 
 ```typescript
-<TreeView
+<Tree
     // ... standard tree props ...
     traitTypeId={TraitTypeId.NotebookCategory}  // Makes cells draggable
     getDragData={(item) => ({ category: item.category })}  // Payload for drag
@@ -387,7 +387,7 @@ const handleDragEnd = useCallback(() => {
 />
 ```
 
-The `TreeView` internally uses the same native HTML5 handlers (`onDragStart`, `onDragEnter`, etc.) with `dragEnterCount` for visual feedback. Return `null` from `getDragData` to prevent dragging a specific node.
+The `Tree` internally uses the same native HTML5 handlers (`onDragStart`, `onDragEnter`, etc.) with `dragEnterCount` for visual feedback. Return `null` from `getDragData` to prevent dragging a specific node.
 
 ---
 
@@ -398,7 +398,7 @@ The `TreeView` internally uses the same native HTML5 handlers (`onDragStart`, `o
 | `ILink` | `LinksList`, `LinksTiles`, `TreeProviderView` | `TreeProviderView` (link editor), `NotebookEditor` | Yes — `LINK` trait |
 | `TodoItem` | `TodoItemView` | `TodoItemView` (reorder) | No |
 | `Note` | `NoteItemView` | `NotebookEditor` category tree | No |
-| `NotebookCategory` | `NotebookEditor` category tree (via TreeView) | `NotebookEditor` category tree | No |
+| `NotebookCategory` | `NotebookEditor` category tree (via Tree) | `NotebookEditor` category tree | No |
 | `RestRequest` | `RestClientEditor` | `RestClientEditor` (reorder) | No |
 | `BrowserTab` | `BrowserTabsPanel` | `BrowserTabsPanel` (reorder) | No |
 | `PinnedLink` | `PinnedLinksPanel` | `PinnedLinksPanel` (reorder) | No |
@@ -418,4 +418,4 @@ The `TreeView` internally uses the same native HTML5 handlers (`onDragStart`, `o
 | Drag-and-drop utilities | `/src/renderer/core/traits/dnd.ts` |
 | Public exports | `/src/renderer/core/traits/index.ts` |
 | ILink trait definition + registration | `/src/renderer/editors/link-editor/linkTraits.ts` |
-| TreeView trait props | `/src/renderer/components/TreeView/TreeView.model.ts` |
+| Tree trait props | `/src/renderer/uikit/Tree/TreeModel.ts` |

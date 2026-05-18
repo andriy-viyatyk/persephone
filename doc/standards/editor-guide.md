@@ -104,7 +104,7 @@ export function newMyEditorModel(filePath?: string): MyEditorModel {
 // MyEditor.tsx
 import styled from '@emotion/styled';
 import { MyEditorModel } from './MyEditorModel';
-import { CircularProgress } from '../../components/basic/CircularProgress';
+import { Spinner } from '../../uikit/Spinner/Spinner';
 
 const EditorRoot = styled.div({
   flex: '1 1 auto',
@@ -126,7 +126,7 @@ export function MyEditor({ model }: MyEditorProps) {
   if (isLoading) {
     return (
       <EditorRoot style={{ alignItems: 'center', justifyContent: 'center' }}>
-        <CircularProgress size={24} />
+        <Spinner size={24} />
       </EditorRoot>
     );
   }
@@ -281,7 +281,7 @@ editorRegistry.register({
 
 ```typescript
 // MyToolbar.tsx
-import { Button } from '../../components/basic/Button';
+import { Button } from '../../uikit/Button/Button';
 import { MyEditorModel } from './MyEditorModel';
 
 interface MyToolbarProps {

@@ -2,8 +2,9 @@
 
 ## Status
 
-**Status:** Active
+**Status:** Completed
 **Created:** 2026-04-17
+**Completed:** 2026-05-19
 
 ## Overview
 
@@ -23,7 +24,8 @@ The HTML prototype work (US-437) is closed as a primary deliverable. Design deci
 - **Consistent styling** across the entire application through shared design tokens and layout primitives
 - **Better code reuse** — eliminate redundancy without breaking the existing design language
 - **Built-in Storybook editor** — interactive component browser with property editor for testing and documentation
-- **Script-accessible UI** — scripts can build custom editor UIs using the component library
+
+> Script-accessible UI and script-registered custom editors were originally Phase 6 of this epic. They are now tracked in [EPIC-027](EPIC-027.md) — split out so this epic can close on the UIKit catalog and per-screen migration without being held open by the script-integration design surface.
 
 ## Dependencies
 
@@ -89,14 +91,7 @@ A new built-in Persephone editor type (registered like grid, markdown, mermaid) 
 
 The storybook editor dogfoods the component library — building it validates that the components compose correctly.
 
-### 4. Script UI API
-
-Expose the consolidated component library through the scripting engine:
-- Scripts use the same components as the app
-- A script can build a custom editor UI from layout primitives and form elements
-- Trait system (from EPIC-026) available to scripts for data binding
-
-### 5. UI Descriptor Pattern — ComponentSet
+### 4. UI Descriptor Pattern — ComponentSet
 
 A **UI descriptor** is a plain object (JSON-like, may carry function references) that describes a component without instantiating it. Rather than embedding descriptor logic inside each container component, a single utility component — **`ComponentSet`** — handles descriptor-to-component resolution and renders the result as a flat React fragment (no wrapper element).
 
@@ -163,7 +158,7 @@ Current approach: `TextEditorView` passes DOM refs (`setEditorToolbarRefFirst/La
 
 Proposed approach: child components declare a `ComponentItem[]` array (via prop or context); the parent renders `<ComponentSet descriptors={items} />` inside `<Toolbar>`. Ordering is explicit. No DOM hacks. Items can be merged, filtered, or sorted before rendering.
 
-### 6. Data Attributes for Interactive State and Component Identity
+### 5. Data Attributes for Interactive State and Component Identity
 
 Every new library component uses `data-*` attributes for interactive state rather than CSS class names.
 
@@ -194,7 +189,7 @@ Every library component sets `data-type` on its root element with a stable kebab
 
 **Convention:** Replace `clsx` + className at point of conversion. No need to run both approaches in parallel on the same component.
 
-### 7. Roving Tabindex for Keyboard Navigation
+### 6. Roving Tabindex for Keyboard Navigation
 
 Keyboard-navigable widgets (toolbars, lists, trees, tab bars, button groups) implement **roving tabindex** as an internal behavior:
 
@@ -216,7 +211,7 @@ This is the correct behavior per ARIA spec for composite widgets. Without it, Ta
 
 **Wrap vs clamp:** Toolbar and tab bar wrap (after last item → first); List and Tree clamp (stop at ends).
 
-### 8. Focus Trap for Modal Dialogs
+### 7. Focus Trap for Modal Dialogs
 
 Modal overlay components implement **focus trapping** as an internal behavior:
 
@@ -230,7 +225,7 @@ This is required behavior per ARIA spec for all modal dialogs. Without it, Tab e
 
 **Applies to:** All components in `src/renderer/ui/dialogs/` and any component that renders a blocking overlay. Does **not** apply to non-modal side panels that don't block background interaction.
 
-### 9. Trait-based Data Binding for List and Data Components
+### 8. Trait-based Data Binding for List and Data Components
 
 Any component that accepts a list of data items (`Select`, `MultiSelect`, `ListBox`, `Tree`, `SegmentedControl`, etc.) accepts `T[] | Traited<T[]>` for its items/options prop and calls `resolveTraited(items, KEY)` once at the top of the component to resolve the data into the component's native shape.
 
@@ -271,10 +266,10 @@ function Select<T>({ items, value, onChange }: SelectProps<T>) {
 | [US-451](../tasks/US-451-uikit-panel-refactor/README.md) | UIKit layout refactor — unified Panel + Storybook lighthouse | Phase 3 polish / Active |
 | [US-432](../tasks/US-432-dialog-component/README.md) | Dialog component — new implementation + migration | Phase 4 / Planned |
 | — | **Per-screen migration tasks** — tracked individually in [active-work.md](../active-work.md), not enumerated here | Phase 4 / Active |
-| US-436 | Script UI API — expose new component library to scripting engine | Phase 6 / Planned |
-| US-435 | Storybook — script tab for building and testing UI via scripts | Phase 6 / Planned |
 
 > US-433 (Editor migration) is superseded — migration is now per-screen during Phase 4. Per-screen tasks (`US-452+`) are tracked on the dashboard rather than listed here, to keep this document stable as the migration progresses.
+>
+> US-436 (Script UI API) and US-435 (Storybook script tab) moved to [EPIC-027](EPIC-027.md) along with a new task for the script-registered custom-editor framework — see the note at the top of *Goals*.
 
 ## Phase Plan
 
@@ -291,7 +286,7 @@ Three parallel workstreams, all new code — no changes to existing components:
 Implement the minimal set of components that the Storybook editor UI itself needs (e.g. Button, Input, Label, and whatever else the Storybook shell requires). Pure implementation — no Storybook testing yet, no replacement of old components. This is a short, focused phase to unblock Phase 3.
 
 **Phase 3 — Storybook Editor (US-434, US-450)**
-Build the Storybook editor as a built-in Persephone editor type, using the Phase 2 bootstrap components. As a side effect, this validates and tweaks the bootstrap components — they become the first components tested in Storybook. Storybook is the testing tool for all phases that follow. **US-450** adds a Toolbar to UIKit (with roving tabindex and `role="toolbar"`) and adopts it inside the Storybook editor only — full per-editor migration of `PageToolbar` is deferred. The Storybook script tab (US-435) is intentionally deferred to Phase 6 — script integration is meaningful only after the component library is settled and screens are migrated.
+Build the Storybook editor as a built-in Persephone editor type, using the Phase 2 bootstrap components. As a side effect, this validates and tweaks the bootstrap components — they become the first components tested in Storybook. Storybook is the testing tool for all phases that follow. **US-450** adds a Toolbar to UIKit (with roving tabindex and `role="toolbar"`) and adopts it inside the Storybook editor only — full per-editor migration of `PageToolbar` is deferred. The Storybook script tab is intentionally deferred to [EPIC-027](EPIC-027.md) — script integration is meaningful only after the component library is settled and screens are migrated, and the surface is large enough to plan as its own epic.
 
 **Phase 4 — Per-Screen Migration (iterative, one screen at a time)**
 For each screen in Persephone:
@@ -301,7 +296,7 @@ For each screen in Persephone:
 4. **Rewrite the screen** — replace all old components with their UIKit equivalents in one focused pass. The screen ends up using only `uikit/` components, no `styled.*`, `style=`, or `className=` (Rule 7).
 5. **Test the rewritten screen** — manual smoke test of the screen's golden path and edge cases; run any existing automated coverage.
 
-The old `src/renderer/components/` folder stays in place during the migration as a behavioral reference — useful for comparing old vs. new behavior when investigating regressions. It is dropped in **Phase 7 — Final Cleanup**, once Phase 5 has moved every remaining adopt-in-place complex component into `uikit/` and no consumer references the legacy folder.
+The old `src/renderer/components/` folder stays in place during the migration as a behavioral reference — useful for comparing old vs. new behavior when investigating regressions. It is dropped in **Phase 6 — Final Cleanup**, once Phase 5 has moved every remaining adopt-in-place complex component into `uikit/` and no consumer references the legacy folder.
 
 Per-screen tasks are created individually as each screen is reached. Ordering is driven by:
 - **Component dependency** — a screen waits if it needs UIKit components that haven't been built yet (those get built when the first screen needing them comes up).
@@ -319,14 +314,7 @@ These virtualized and internally complex components are too risky to rewrite fro
 
 No full rewrite of the engine logic — incremental improvement only — but the final destination is UIKit either way. Other complex components flagged during Phase 4 (e.g. `PopupMenu` if its rewrite cost is too high at the time) are handled by the same Phase 5 procedure.
 
-**Phase 6 — Script Integration (US-436, US-435)**
-After the component library is stable and per-screen migration (Phase 4) is complete. Two pieces:
-- **US-436** — expose the new component library to the scripting engine so scripts can build UIs from the same primitives the app uses.
-- **US-435** — add a Storybook "script" tab where users can write scripts that build / test UI from components, validating the script API end-to-end against the same components Storybook is already exercising.
-
-Deferred until the component surface is settled. Driving it earlier would mean reworking the script API every time a UIKit prop changes during migration. EPIC-026 trait interfaces are already available.
-
-**Phase 7 — Final Cleanup**
+**Phase 6 — Final Cleanup**
 Final phase. Once Phase 5 has moved every adopt-in-place complex component into `uikit/`:
 
 1. Grep for remaining imports from `src/renderer/components/` across `src/`. Any matches indicate a screen still using a legacy component — that screen has not been fully migrated and must be revisited (Phase 4) or its complex component must be migrated (Phase 5).
@@ -336,18 +324,26 @@ The end state of EPIC-025 is a single component folder — `src/renderer/uikit/`
 
 ## Concerns / Open Questions
 
-1. **Migration scope** — Resolved by iterative per-screen migration in Phase 4. Each screen is rewritten in one focused pass after any missing UIKit components are built and tested in Storybook. The old `src/renderer/components/` folder is preserved during the migration as a behavioral reference for investigating regressions; it is removed in **Phase 7** once **Phase 5** has moved the adopt-in-place complex components (`AVGrid`, `RenderGrid`, `CollapsiblePanelStack`) into `uikit/`. End state: a single `uikit/` folder containing every reusable component. No big-bang migration; screens that haven't been reached yet keep using the old components.
+1. **Migration scope** — Resolved by iterative per-screen migration in Phase 4. Each screen is rewritten in one focused pass after any missing UIKit components are built and tested in Storybook. The old `src/renderer/components/` folder is preserved during the migration as a behavioral reference for investigating regressions; it is removed in **Phase 6** once **Phase 5** has moved the adopt-in-place complex components (`AVGrid`, `RenderGrid`, `CollapsiblePanelStack`) into `uikit/`. End state: a single `uikit/` folder containing every reusable component. No big-bang migration; screens that haven't been reached yet keep using the old components.
 2. **Storybook editor architecture** — Should it be a single editor that renders any component, or should each component define its own storybook configuration file? Need to decide on the component metadata format. To be resolved in US-434 task planning.
-3. **Script UI security** — Scripts building arbitrary UIs could create confusing interfaces. Should there be sandboxing or capability limits? To be resolved in US-436 task planning.
-4. **Trait integration** — Resolved. See Design Decision #9 for the full pattern.
-5. **UI descriptor scope** — Resolved. Narrow scope: only container/contribution-point components (Toolbar, ContextMenu, StatusBar, etc.) expose a `descriptors` prop. Leaf components (Button, Input, etc.) are used via plain JSX and appear as variants inside a parent union. See Design Decision #5.
+3. **Trait integration** — Resolved. See Design Decision #8 for the full pattern.
+4. **UI descriptor scope** — Resolved. Narrow scope: only container/contribution-point components (Toolbar, ContextMenu, StatusBar, etc.) expose a `descriptors` prop. Leaf components (Button, Input, etc.) are used via plain JSX and appear as variants inside a parent union. See Design Decision #4.
+
+> The original Concern #3 ("Script UI security — sandboxing or capability limits") moved to [EPIC-027](EPIC-027.md) along with US-436 / US-435.
 
 ## Notes
+
+### 2026-05-19 (script integration carved out to EPIC-027)
+- Phase 6 — Script Integration removed. US-436 (Script UI API) and US-435 (Storybook script tab) moved to the new [EPIC-027](EPIC-027.md), which also picks up a new piece — script-registered custom editor framework — that was previously only implicit in the long-term vision.
+- Reason: this epic was already large (80+ Phase 4 tasks across per-screen migrations and UIKit primitive additions). Script integration is a substantial design surface of its own — better planned independently after the UIKit catalog settles.
+- Renumbering: old "Phase 7 — Final Cleanup" → "Phase 6 — Final Cleanup". Design Decisions also renumbered (old #5–#9 → #4–#8) after removing the obsolete "Script UI API" decision (was #4). Cross-references updated in Concerns (formerly #4/#5, now #3/#4) and the 2026-04-19 pattern-decisions note.
+- The "Script-accessible UI" line was removed from Goals; a pointer to EPIC-027 is added at the bottom of Goals.
+- Earlier historical notes (2026-04-17, 2026-04-18, 2026-04-19) still reference US-436 / "Script Integration" — left intact as historical record; current state is this note.
 
 ### 2026-05-03 (single-folder end state for components)
 - The end state of EPIC-025 is a **single component folder** — `src/renderer/uikit/` — containing every reusable UI component, including engine-level building blocks (`RenderGrid`) and complex composites (`AVGrid`, `CollapsiblePanelStack`). The old `src/renderer/components/` folder is dropped entirely.
 - Phase 5 retitled and clarified: complex components are reviewed and patterns are applied where they fit, but the component is **moved into `uikit/` either way**. Components that don't fit every UIKit authoring rule (no `data-type`, no design tokens) still live in `uikit/` — the deviation is documented in the component's header comment rather than driving a folder split (e.g. `RenderGrid` has no `data-type` because it's a virtualization engine, not a visually identifiable component; that's noted in its file header, not a reason to keep it elsewhere).
-- New **Phase 7 — Final Cleanup** added after Phase 6: drops `src/renderer/components/` once Phase 5 has emptied it.
+- New **Phase 6 — Final Cleanup** added after Phase 5: drops `src/renderer/components/` once Phase 5 has emptied it. *(Originally numbered Phase 7 when an earlier Phase 6 — Script Integration — sat between them; renumbered to 6 on 2026-05-19 when script integration was carved out into [EPIC-027](EPIC-027.md).)*
 - Supersedes the 2026-04-19 note bullet that originally read "Complex components excluded from new library (adopt in place)" — that framing led to a permanent split between `uikit/` and `components/`, which is not the project's end state.
 
 ### 2026-04-26 (migration strategy: per-component → per-screen)
@@ -372,10 +368,10 @@ The end state of EPIC-025 is a single component folder — `src/renderer/uikit/`
 
 ### 2026-04-19 (pattern decisions)
 - **TraitType<T> and PartialTraitType<T>** added to `src/renderer/core/traits/traits.ts`. These are mapped utility types that derive an accessor-map shape from a component interface — used as the type parameter of `TraitKey` so trait registrations are compiler-checked against the target interface. `resolveTraited<T>(items, key)` added as the companion utility.
-- **UI Descriptor pattern** (Design Decision #5) documented. Declarative plain-object UI descriptions (JSON-like, may carry functions) rendered via a component registry. Primary motivation: scripting (no JSX available) and toolbar contribution (replaces current portal/ref approach). Uses discriminated union typing, not generics, for array element types. Scope (all components vs. specialized containers only) is an open question for US-438.
-- **Data attributes pattern** (Design Decision #6) adopted (US-438 Pattern 1 ✅). All new library components use `data-*` attributes for interactive state instead of CSS class names. Every component also sets `data-type` on its root element — both for DevTools readability and to enable reliable DOM querying by AI agent scripts (which have full `document` access in the renderer).
-- **Roving tabindex** (Design Decision #7) adopted as internal behavior (US-438 Pattern 2 ✅). Keyboard-navigable widgets (Toolbar, TreeView, List, Tab bar, SwitchButtons, AVGrid) implement a single Tab stop + arrow-key navigation internally. Not a public API pattern; callers are unaware of it.
-- **Focus trap** (Design Decision #8) adopted as internal behavior (US-438 Pattern 7 ✅). All modal dialogs and blocking overlays trap Tab focus within the modal and restore focus to the opener on close. Applies to `src/renderer/ui/dialogs/`; not applied to non-modal side panels.
+- **UI Descriptor pattern** (Design Decision #4 — was #5 before the 2026-05-19 renumber) documented. Declarative plain-object UI descriptions (JSON-like, may carry functions) rendered via a component registry. Primary motivation: scripting (no JSX available) and toolbar contribution (replaces current portal/ref approach). Uses discriminated union typing, not generics, for array element types. Scope (all components vs. specialized containers only) is an open question for US-438.
+- **Data attributes pattern** (Design Decision #5 — was #6) adopted (US-438 Pattern 1 ✅). All new library components use `data-*` attributes for interactive state instead of CSS class names. Every component also sets `data-type` on its root element — both for DevTools readability and to enable reliable DOM querying by AI agent scripts (which have full `document` access in the renderer).
+- **Roving tabindex** (Design Decision #6 — was #7) adopted as internal behavior (US-438 Pattern 2 ✅). Keyboard-navigable widgets (Toolbar, TreeView, List, Tab bar, SwitchButtons, AVGrid) implement a single Tab stop + arrow-key navigation internally. Not a public API pattern; callers are unaware of it.
+- **Focus trap** (Design Decision #7 — was #8) adopted as internal behavior (US-438 Pattern 7 ✅). All modal dialogs and blocking overlays trap Tab focus within the modal and restore focus to the opener on close. Applies to `src/renderer/ui/dialogs/`; not applied to non-modal side panels.
 
 ### 2026-04-19 (direction change — consolidation-first)
 - After several iterations of HTML design mockups, concluded that the current Persephone design (VSCode-inspired) is solid and we cannot easily improve on it by designing from scratch.

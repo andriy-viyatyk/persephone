@@ -100,7 +100,8 @@ Steps 1-3 run in parallel. Steps 4-7 are sequential (each depends on the previou
 ├── content/          # Content delivery — providers, transformers, pipes
 ├── scripting/        # Script execution engine and API wrappers
 ├── automation/       # Browser automation — Playwright-compatible MCP tools
-├── components/       # Reusable UI components
+├── uikit/            # Standalone component library (canonical home for primitives)
+├── components/       # Persephone-coupled components (icons, page-manager, file-search, tree-provider)
 ├── core/             # State primitives and utilities
 ├── theme/            # Colors, icons, theme definitions
 └── types/            # Global type declarations
@@ -116,21 +117,23 @@ Steps 1-3 run in parallel. Steps 4-7 are sequential (each depends on the previou
 | **content/** | Content I/O pipeline — providers, transformers, pipes | `ContentPipe.ts`, `parsers.ts`, `resolvers.ts`, `providers/`, `transformers/` |
 | **scripting/** | Script sandbox, API wrappers, facades | `ScriptRunner.ts`, `ScriptContext.ts`, `api-wrapper/` |
 | **automation/** | Playwright-compatible browser MCP tools, CDP, input, refs | `commands.ts`, `input.ts`, `ref.ts`, `snapshot.ts` |
-| **components/** | Reusable UI building blocks | `basic/`, `data-grid/`, `overlay/`, `virtualization/` |
+| **uikit/** | Standalone reusable component library (EPIC-025) | `Button/`, `Menu/`, `Tree/`, `ListBox/`, `Select/`, `RenderGrid/`, `AVGrid/`, … — see `uikit/index.ts` |
+| **components/** | Persephone-coupled components only (KEEP-only) | `icons/`, `page-manager/`, `file-search/`, `tree-provider/` |
 | **core/** | State primitives, utilities | `state/` (TOneState, TModel), `utils/` |
 | **theme/** | Design tokens, themes | `color.ts`, `themes/` |
 
 ### Dependency Rules
 
 1. **`core/`** is the foundation — no imports from other renderer layers
-2. **`components/`** is reusable — imports only `core/` and `theme/`
-3. **`api/`** implements the Object Model — imports `core/`, uses IPC
-4. **`content/`** implements the I/O pipeline — imports `core/`, `api/types/`
-5. **`editors/`** implement page types — import `core/`, `components/`, `api/`, `content/`
-6. **`scripting/`** wraps `api/`, `editors/`, and `content/` for safe script access
-7. **`automation/`** implements browser MCP tools — imports `api/`, `editors/`, `ipc/`; loaded via dynamic import from `mcp-handler.ts`
-8. **`ui/`** orchestrates everything — imports all layers
-8. Lower layers must NOT import from higher layers
+2. **`uikit/`** is the standalone library — imports only `core/` and `theme/`. No imports from `api/`, `ui/`, `editors/`, or app-specific code (the contract that lets `uikit/` be split into a separate package later)
+3. **`components/`** is persephone-coupled by definition — each remaining folder (`icons/`, `page-manager/`, `file-search/`, `tree-provider/`) uses `api/`, the page model, file system, or scripting. New pure primitives do NOT go here — they go in `uikit/`
+4. **`api/`** implements the Object Model — imports `core/`, uses IPC
+5. **`content/`** implements the I/O pipeline — imports `core/`, `api/types/`
+6. **`editors/`** implement page types — import `core/`, `uikit/`, `components/`, `api/`, `content/`
+7. **`scripting/`** wraps `api/`, `editors/`, and `content/` for safe script access
+8. **`automation/`** implements browser MCP tools — imports `api/`, `editors/`, `ipc/`; loaded via dynamic import from `mcp-handler.ts`
+9. **`ui/`** orchestrates everything — imports all layers
+10. Lower layers must NOT import from higher layers
 
 ## Key Subsystems
 

@@ -472,16 +472,62 @@ persephone/
 │   ├── ref.ts              # Ref resolution (parseRef, resolveRef, callOnRef)
 │   └── commands.ts         # browser_* MCP command handlers
 │
-├── components/             # Reusable UI Components
-│   ├── basic/              # Atomic: Button, Input, TextField, Chip, Tooltip, etc.
-│   ├── form/               # Form controls: ComboSelect, SwitchButtons, ListMultiselect
-│   ├── layout/             # Layout: Splitter, CollapsiblePanelStack, Minimap
-│   ├── overlay/            # Floating UI: Popper, PopupMenu, WithPopupMenu
-│   ├── TreeView/           # Virtualized tree component
-│   ├── data-grid/          # Advanced data grid (AVGrid)
-│   ├── virtualization/     # Base virtualization (RenderGrid)
+├── uikit/                  # UIKit — Standalone Component Library (EPIC-025)
+│   │                       # Canonical home for reusable primitives. Must not import from
+│   │                       # api/, ui/, editors/, or app-specific code. Authoring rules
+│   │                       # live in uikit/CLAUDE.md. See uikit-vs-components-split.md
+│   │                       # for the permanent contract.
+│   ├── CLAUDE.md           # UIKit authoring rules (canonical reference)
+│   ├── tokens.ts           # Design tokens (spacing, sizing, radius, fontSize, gap, height)
+│   ├── index.ts            # Public exports (one entry per primitive)
+│   ├── Button/             # Button
+│   ├── IconButton/         # Icon-only button (also: chip variant)
+│   ├── Input/              # Text input
+│   ├── Textarea/           # Multi-line text input (contentEditable, auto-grow)
+│   ├── Checkbox/           # Checkbox
+│   ├── RadioGroup/         # Radio group
+│   ├── Select/             # Single-select dropdown (replaces ComboSelect)
+│   ├── MultiSelect/        # Multi-select dropdown (replaces ListMultiselect)
+│   ├── Autocomplete/       # Autocomplete combobox
+│   ├── PathInput/          # File/folder path input with picker
+│   ├── SegmentedControl/   # Segmented switch (replaces SwitchButtons)
+│   ├── Slider/             # Range slider
+│   ├── ProgressBar/        # Linear progress
+│   ├── Spinner/            # Indeterminate circular progress (replaces CircularProgress)
+│   ├── Tag/                # Tag/chip pill (replaces Chip)
+│   ├── TagsInput/          # Tag-editing input
+│   ├── Label/              # Form label
+│   ├── Text/               # Text element with theme styling
+│   ├── TruncatedText/      # Overflow-ellipsis with hover title (replaces OverflowTooltipText)
+│   ├── Breadcrumb/         # Breadcrumb path navigation
+│   ├── Panel/              # Flex container (props-driven layout)
+│   ├── Spacer/             # Flex spacer (replaces FlexSpace)
+│   ├── Divider/            # Horizontal or vertical divider
+│   ├── Dot/                # Status dot indicator
+│   ├── CollapsiblePanelStack/ # Stacked collapsible panels
+│   ├── Splitter/           # Resizable splitter
+│   ├── Toolbar/            # Toolbar container (roving tabindex internally)
+│   ├── Minimap/            # Mini map navigation overlay
+│   ├── CategoryList/       # Category-style list
+│   ├── ListBox/            # Virtualized list with selection + traits (replaces List)
+│   ├── MultiListBox/       # Two-pane multi-select list
+│   ├── Tree/               # Virtualized tree with trait drag-drop (replaces TreeView)
+│   ├── Menu/               # Portal menu + WithMenu wrapper (replaces PopupMenu)
+│   ├── Popover/            # Portal-based floating element (replaces Popper)
+│   ├── Tooltip/            # Hover tooltip
+│   ├── Dialog/             # Modal dialog
+│   ├── Notification/       # Alert / toast notification + AlertsBar
+│   ├── Progress/           # Progress overlay + screen lock
+│   ├── RenderGrid/         # Foundational virtualization (sticky regions, RenderFlexGrid)
+│   ├── AVGrid/             # Composite data grid (uses RenderGrid; filters, sorting, edit)
+│   └── shared/             # Internal helpers (overlayRegistry, etc.)
+│
+├── components/             # Persephone-Coupled Components (KEEP-only)
+│   │                       # Each remaining folder uses app.* APIs, page model, file
+│   │                       # system, or scripting — that's the criterion. No new pure
+│   │                       # primitives go here.
 │   ├── tree-provider/      # TreeProviderView — generic tree viewer for any ITreeProvider (EPIC-015)
-│   │   ├── favicon-cache.ts # Favicon download/cache for HTTP links (shared by link-editor, browser, tree icons)
+│   │   └── favicon-cache.ts # Favicon download/cache for HTTP links (shared by link-editor, browser, tree icons)
 │   ├── file-search/        # FileSearch — standalone file content search with virtualized results (EPIC-015)
 │   ├── icons/              # FileIcon, LanguageIcon
 │   └── page-manager/       # Portal-based page/tab host (prevents iframe/webview reload on reorder)
@@ -586,7 +632,8 @@ persephone/
 | New Object Model interface | `/api/[name].ts` + `/api/types/[name].d.ts` |
 | New composed API (multiple files) | `/api/[name]/` subfolder |
 | New internal service | `/api/internal/` |
-| Reusable UI component | `/components/[category]/` |
+| New reusable UIKit primitive | `/uikit/<ComponentName>/` |
+| New persephone-coupled component | `/components/<existing-keep-folder>/` (only `icons/`, `page-manager/`, `file-search/`, `tree-provider/`) |
 | New utility | `/core/utils/` |
 | New scripting facade | `/scripting/api-wrapper/[Name]Facade.ts` |
 
@@ -597,8 +644,8 @@ persephone/
 import { pagesModel } from "../../api/pages";
 import { app } from "../../api/app";
 
-// Specific component imports
-import { Button } from "../../components/basic/Button";
+// Specific component imports — UIKit primitives
+import { Button } from "../../uikit/Button/Button";
 
 // Type-only imports for code splitting (erased at compile time)
 import type { BrowserEditorModel } from "../../editors/browser/BrowserEditorModel";

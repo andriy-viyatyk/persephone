@@ -83,7 +83,7 @@ RenderEditor
                          └── EditorOverlay (portal target for expanded note)
 ```
 
-**Error protection:** `EditorErrorBoundary` (`/src/renderer/components/basic/EditorErrorBoundary.tsx`) wraps every editor inside `AsyncEditor`. If the editor component throws during render, the boundary catches the error and displays the error message + stack trace in the tab instead of crashing the application. This is a React class component (required for `getDerivedStateFromError`).
+**Error protection:** `EditorErrorBoundary` (`/src/renderer/ui/app/EditorErrorBoundary.tsx`) wraps every editor inside `AsyncEditor`. If the editor component throws during render, the boundary catches the error and displays the error message + stack trace in the tab instead of crashing the application. This is a React class component (required for `getDerivedStateFromError`).
 
 ## Content Host + ViewModel Architecture
 

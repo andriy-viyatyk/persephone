@@ -397,7 +397,7 @@ Monaco provides IntelliSense (autocomplete, type checking) for library modules. 
 
 ### Script Panel Library Integration
 
-The script panel toolbar includes a **script selector dropdown** (ComboSelect) and a **save button** for loading/saving scripts from the `script-panel/` folder in the library.
+The script panel toolbar includes a **script selector dropdown** (Select) and a **save button** for loading/saving scripts from the `script-panel/` folder in the library.
 
 **Script selector dropdown:**
 - Lists scripts from `script-panel/{pageLanguage}/` and `script-panel/all/` (prefixed with `all/` to distinguish)
