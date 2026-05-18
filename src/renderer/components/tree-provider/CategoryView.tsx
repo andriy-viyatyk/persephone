@@ -3,8 +3,8 @@ import { createPortal } from "react-dom";
 import styled from "@emotion/styled";
 import { useComponentModel } from "../../core/state/model";
 import { RenderGridModel } from "../../uikit/RenderGrid";
-import { TextField } from "../basic/TextField";
-import { Button } from "../basic/Button";
+import { Input } from "../../uikit/Input";
+import { IconButton } from "../../uikit/IconButton";
 import {
     CloseIcon,
     ViewListIcon, ViewLandscapeIcon, ViewLandscapeBigIcon,
@@ -187,29 +187,28 @@ export function CategoryView(props: CategoryViewProps) {
 
     const toolbarElement = (
         <>
-            <TextField
+            <Input
                 ref={searchInputRef}
                 value={state.searchText}
                 onChange={model.setSearchText}
                 placeholder="Search..."
                 onKeyDown={handleSearchKeyDown}
-                endButtons={[
-                    <Button
-                        size="small"
-                        type="icon"
-                        key="close-search"
-                        title="Clear"
-                        onClick={handleSearchClose}
-                        invisible={!state.searchText}
-                    >
-                        <CloseIcon />
-                    </Button>,
-                ]}
+                endSlot={state.searchText
+                    ? <IconButton
+                          size="sm"
+                          title="Clear"
+                          onClick={handleSearchClose}
+                          icon={<CloseIcon />}
+                      />
+                    : undefined}
             />
             {props.onViewModeChange && (
-                <Button type="icon" size="small" title="View Mode" onClick={handleViewModeMenu}>
-                    {VIEW_MODE_ICONS[viewMode]}
-                </Button>
+                <IconButton
+                    size="sm"
+                    title="View Mode"
+                    onClick={handleViewModeMenu}
+                    icon={VIEW_MODE_ICONS[viewMode]}
+                />
             )}
         </>
     );

@@ -2,7 +2,7 @@ import type React from "react";
 import { TComponentModel } from "../../core/state/model";
 import type { ITreeProvider, ITreeProviderItem, ILink } from "../../api/types/io.tree";
 import type { TreeRef } from "../../uikit/Tree";
-import type { MenuItem } from "../overlay/PopupMenu";
+import type { MenuItem } from "../../uikit/Menu";
 import { ContextMenuEvent } from "../../api/events/events";
 import { app } from "../../api/app";
 import { ui } from "../../api/ui";

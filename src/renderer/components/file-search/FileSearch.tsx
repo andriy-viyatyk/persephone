@@ -3,8 +3,8 @@ import styled from "@emotion/styled";
 import color from "../../theme/color";
 import { ChevronDownIcon, ChevronRightIcon, FilterArrowDownIcon, FilterArrowUpIcon } from "../../theme/icons";
 // Note: match highlighting uses global "highlighted-text" class (from useHighlightedText)
-import { TextField } from "../basic/TextField";
-import { Button } from "../basic/Button";
+import { Input } from "../../uikit/Input";
+import { IconButton } from "../../uikit/IconButton";
 import { FileIcon } from "../icons/FileIcon";
 import { RenderGrid, RenderGridModel } from "../../uikit/RenderGrid";
 import type { RenderCellParams } from "../../uikit/RenderGrid";
@@ -55,11 +55,8 @@ const FileSearchRoot = styled.div({
             display: "flex",
             alignItems: "center",
             gap: 2,
-            "& .text-field": {
+            '& [data-type="input"]': {
                 flex: "1 1 auto",
-                "& input": {
-                    color: color.misc.blue,
-                },
             },
         },
     },
@@ -263,32 +260,31 @@ export function FileSearch({ folder, state: savedState, onStateChange, onResultC
         <FileSearchRoot>
             <div className="fs-input-area">
                 <div className="fs-query-row">
-                    <TextField
+                    <Input
                         ref={searchInputRef}
                         value={searchState.query}
                         onChange={model.setQuery}
                         placeholder="Search..."
                         onKeyDown={handleKeyDown}
+                        tone="accent"
                     />
-                    <Button
-                        type="icon"
-                        size="small"
+                    <IconButton
+                        size="sm"
                         title="Toggle Filters"
                         onClick={model.toggleFilters}
-                    >
-                        {searchState.showFilters
+                        icon={searchState.showFilters
                             ? <FilterArrowUpIcon width={14} height={14} />
                             : <FilterArrowDownIcon width={14} height={14} />}
-                    </Button>
+                    />
                 </div>
                 {searchState.showFilters && (
                     <>
-                        <TextField
+                        <Input
                             value={searchState.includePattern}
                             onChange={model.setIncludePattern}
                             placeholder="Include (e.g. *.ts, *.tsx)"
                         />
-                        <TextField
+                        <Input
                             value={searchState.excludePattern}
                             onChange={model.setExcludePattern}
                             placeholder="Exclude (e.g. node_modules)"

@@ -99,18 +99,27 @@ The four KEEP folders are NOT exposed through `components/index.ts`
 
 ### Step 1 — Verify preconditions
 
-Re-run callerless verification for each folder slated for deletion.
-For each `<folder>` in `basic`, `form`, `layout`, `overlay`,
-`TreeView`, grep `src/` for any import path matching
-`components/<folder>` (outside the folder itself). All five must
-return zero matches before deletion begins.
+Re-run callerless verification for each folder slated for deletion
+using a grep pattern that catches BOTH `components/<folder>` AND
+relative-path `../<folder>/` styles (the relative-path miss caused
+the first implementation attempt to fail with broken imports —
+see Concern B):
 
-For `overlay/` specifically: this requires
-[US-542](../US-542-grid-options-popover-flip/README.md) to land so
-its two remaining callers (`ColumnsOptions.tsx`, `CsvOptions.tsx`)
-stop importing `Popper`. (US-509 — Grid editor chrome — already
-landed in `e506c81` but deliberately scoped to chrome and left
-these popovers for US-542.)
+```
+grep -rE 'from "[^"]*(components/|\.\./)(basic|form|layout|overlay|TreeView)/' src/
+```
+
+All five folders must return zero matches before deletion begins.
+
+For `overlay/` specifically: cleared by
+[US-542](../US-542-grid-options-popover-flip/README.md) (grid
+sub-popovers) plus the `MenuItem` type-flips in
+[US-543](../US-543-keep-folders-uikit-migration/README.md).
+
+For `basic/` specifically: cleared by
+[US-543](../US-543-keep-folders-uikit-migration/README.md) which
+migrates `FileSearch.tsx` and `CategoryView.tsx` off `TextField`
+and `Button`.
 
 ### Step 2 — Delete the five primitive folders
 
@@ -163,16 +172,34 @@ already work via direct paths and don't need re-exporting.
 
 ### B. Inner cross-references between KEEP folders
 
-The four KEEP folders may currently reference each other or
-reference primitives from soon-to-be-deleted folders.
+The four KEEP folders may reference primitives from
+soon-to-be-deleted folders via **relative imports** (e.g.
+`../basic/TextField`, `../overlay/PopupMenu`) that don't appear
+in the standard `from "[^"]*components/<folder>` grep.
 
-**Verified (2026-05-18):** `components/tree-provider/` does NOT
-import from `components/TreeView/` — confirmed via grep. The other
-three KEEP folders are smaller and unlikely to cross-reference
-deleted primitives, but Step 1's per-folder grep covers this
-because it greps the entire `src/` tree (including each KEEP
-folder's own files). Any straggler surfaces in Step 1 and is
-either fixed inline or spun out as a follow-up.
+**First-pass verification (2026-05-18) was INCOMPLETE.** The
+original grep only checked `components/`-prefixed paths and
+declared the KEEP folders clean. When this task's first
+implementation attempt deleted the primitive folders,
+`npx tsc --noEmit` surfaced 6 broken imports in
+`components/file-search/FileSearch.tsx`,
+`components/tree-provider/CategoryView.tsx`,
+`components/tree-provider/CategoryViewModel.tsx`, and
+`components/tree-provider/TreeProviderViewModel.tsx`. Deletions
+were rolled back.
+
+**Resolution:** Spawned [US-543](../US-543-keep-folders-uikit-migration/README.md)
+to migrate the four affected files off `../basic/` and
+`../overlay/` and onto UIKit primitives. US-543 is now US-532's
+sole remaining blocker. After US-543 lands, re-run Step 1's
+verification with a deeper grep pattern that catches both
+`components/<folder>` AND `../<folder>/` styles:
+
+```
+grep -rE 'from "[^"]*(components/|\.\./)(basic|form|layout|overlay|TreeView)/' src/
+```
+
+This must return zero matches before the deletion sweep runs.
 
 ### C. `components/tree-provider/` and the `components/TreeView/` deletion
 
@@ -280,11 +307,12 @@ its own task(s).
 - Epic: [EPIC-025](../../epics/EPIC-025.md)
 - Phase: 4 close-out — final `components/` sweep
 - Blocked on:
-  - [US-542](../US-542-grid-options-popover-flip/README.md) — Grid options popovers `Popper`→`Popover` flip (the sole remaining `components/overlay/` callers)
+  - [US-543](../US-543-keep-folders-uikit-migration/README.md) — KEEP folders' UIKit migration (clears `../basic/` and `../overlay/` relative imports in `file-search/` and `tree-provider/`); also includes the 2 trivial `MenuItem` type-flips
 - Previously listed blockers, now confirmed COMPLETE (no longer relevant):
   - US-481 (UIKit Menu) — primitive in place and widely consumed
   - US-509 (Grid editor chrome) — committed `e506c81`; scoped to chrome only, sub-component popovers tracked by US-542
   - US-530 (Editor base chrome) — committed `7746de8`
   - US-531 (`showPopupMenu`) — committed `6e3f332`
   - US-535 (MenuItem flips) — committed `f7aa6a6`
+  - US-542 (Grid sub-popovers) — committed `785e85c`
   - US-497 (TreeProviderView) — committed `082f974`

@@ -1,6 +1,6 @@
 import { TComponentModel } from "../../core/state/model";
 import type { ITreeProvider, ITreeProviderItem } from "../../api/types/io.tree";
-import type { MenuItem } from "../overlay/PopupMenu";
+import type { MenuItem } from "../../uikit/Menu";
 import { ContextMenuEvent } from "../../api/events/events";
 import { ui } from "../../api/ui";
 import {
