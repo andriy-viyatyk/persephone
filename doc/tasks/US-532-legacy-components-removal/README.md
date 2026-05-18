@@ -2,10 +2,67 @@
 
 ## Status
 
-**Plan ready for review.** Final EPIC-025 close-out cleanup. Part of
-[EPIC-025](../../epics/EPIC-025.md) Phase 4. **Blocked on** the
-remaining per-screen migrations + overlay-infrastructure tasks
-listed under "Blocked on" below.
+**Implemented — awaiting user testing + epic-close review.** Final
+EPIC-025 close-out code task. Part of
+[EPIC-025](../../epics/EPIC-025.md) Phase 4.
+
+### Implementation summary
+
+- **Step 1 (preconditions)** — Re-ran the deeper Concern-B grep
+  `from "[^"]*(components/|\.\./)(basic|form|layout|overlay|TreeView)/`
+  across `src/`. All matches were intra-legacy references inside
+  the five folders slated for deletion. The four KEEP folders
+  (`icons/`, `page-manager/`, `file-search/`, `tree-provider/`)
+  returned zero matches — US-543 fully cleared them.
+- **Step 2 (folder deletions)** — `git rm -r` removed all five
+  primitive folders (35 files):
+  - `components/basic/` (16 files: Breadcrumb, Button, Checkbox,
+    Chip, CircularProgress, Input, InputBase, OverflowTooltipText,
+    PathInput, Radio, TextAreaField, TextField, Tooltip, index,
+    types, useHighlightedText)
+  - `components/form/` (7 files: ComboSelect, ComboTemplate, List,
+    ListMultiselect, SwitchButtons, index, utils)
+  - `components/layout/` (4 files: CollapsiblePanelStack, Elements,
+    Splitter, index)
+  - `components/overlay/` (4 files: Popper, PopupMenu,
+    WithPopupMenu, index)
+  - `components/TreeView/` (4 files: CategoryTree, TreeView.model,
+    TreeView, index)
+- **Step 3 (index barrel)** — `git rm src/renderer/components/index.ts`.
+  Verified zero `from "[^"]*renderer/components"` consumers
+  remained before deletion.
+- **Step 4 (verification)** —
+  - `npx tsc --noEmit` reports 20 errors — exact baseline match.
+  - `npm run lint` reports 20 errors / 853 warnings — exact
+    baseline match (no new lint issues introduced).
+  - `npm run dist` succeeded — Vite production build completed
+    in 56.49s, electron-builder produced both
+    `release/persephone-3.0.10-win.zip` and
+    `release/persephone-setup-3.0.10.exe` with signtool signing
+    on launcher/snip/main executables and uninstaller.
+- **Step 5 (dashboard)** — Marked entry in `doc/active-work.md`
+  with implementation summary. Entry remains `[ ]` per epic-close
+  deferred-review model; will be marked `[x]` when EPIC-025 closes.
+
+### Files removed (final tally)
+
+| Path | Files removed |
+|---|---|
+| `src/renderer/components/basic/` | 16 |
+| `src/renderer/components/form/` | 7 |
+| `src/renderer/components/layout/` | 4 |
+| `src/renderer/components/overlay/` | 4 |
+| `src/renderer/components/TreeView/` | 4 |
+| `src/renderer/components/index.ts` | 1 |
+| **Total** | **36** |
+
+The four KEEP folders (`icons/`, `page-manager/`, `file-search/`,
+`tree-provider/`) remain untouched as agreed.
+
+Documentation refresh, `doc/`/`docs/`/`qa/`/`assets/` stale-reference
+sweep, and any `uikit/` vs `components/` standards write-up are
+out-of-scope per the plan and tracked separately as the post-epic
+documentation effort.
 
 ## Goal
 
