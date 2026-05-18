@@ -1,13 +1,13 @@
 import { forwardRef, ReactNode, useCallback, useEffect, useRef } from "react";
-import { TComponentModel, useComponentModel } from "../../../core/state/model";
+import { TComponentModel, useComponentModel } from "../../core/state/model";
 import RenderGridModel, {
     defaultRowHeight,
     RenderGridProps,
 } from "./RenderGridModel";
 import { RenderCellParams } from "./types";
 import RenderGrid from "./RenderGrid";
-import { debounce } from "../../../../shared/utils";
-import { memorize } from "../../../core/utils/memorize";
+import { debounce } from "../../../shared/utils";
+import { memorize } from "../../core/utils/memorize";
 
 export interface RenderFlexCellParams extends RenderCellParams {
     maxRowHeight?: number;

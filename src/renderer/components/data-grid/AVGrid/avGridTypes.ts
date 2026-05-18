@@ -1,5 +1,5 @@
 import React, { ComponentType, ReactNode, SetStateAction } from 'react';
-import { Percent, RenderCellParams, RerenderInfo } from '../../virtualization/RenderGrid/types';
+import type { Percent, RenderCellParams, RerenderInfo } from '../../../uikit/RenderGrid';
 import { IState } from '../../../core/state/state';
 import { AVGridModel } from './model/AVGridModel';
 

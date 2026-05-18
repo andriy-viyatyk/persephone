@@ -2,7 +2,7 @@ import { debounce } from "../../../shared/utils";
 import { ContentViewModel } from "../base/ContentViewModel";
 import { IContentHost } from "../base/IContentHost";
 import { MenuItem } from "../../uikit/Menu/types";
-import RenderGridModel from "../../components/virtualization/RenderGrid/RenderGridModel";
+import { RenderGridModel } from "../../uikit/RenderGrid";
 
 import { splitWithSeparators } from "../../core/utils/utils";
 import { getHostname } from "../../components/tree-provider/favicon-cache";

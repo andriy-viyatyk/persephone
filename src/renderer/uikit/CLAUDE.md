@@ -328,6 +328,24 @@ This exception does **not** apply to anything that could plausibly be reused (fo
 dialogs, settings panels, list rows). For those, the strict rule still holds — extend a
 UIKit primitive instead of styling around it.
 
+**Foundational compositional primitive exception (`RenderGrid` / `RenderFlexGrid`)**
+
+`uikit/RenderGrid/` and `uikit/RenderFlexGrid` expose `className`, `contentProps`,
+`renderAreaProps`, and `blockStyles` as part of their public API. These are not
+violations of Rule 7 — they are the API. RenderGrid is a multi-region composition
+(sticky-top, sticky-bottom, sticky-left, sticky-right, sticky-corners, render area)
+whose entire purpose is to host caller-styled regions. AVGrid and editor lists rely
+on these slots to paint region backgrounds and wire region-level event handlers.
+
+The Omit-style enforcement (`extends Omit<HTMLAttributes<…>, "style" | "className">`)
+applies to primitives that wrap a single HTML element (Button → button, Input →
+input). RenderGrid does not extend `HTMLAttributes`, so the type-level guard is
+not applicable in the first place — its props are an explicit, hand-crafted surface.
+
+When in doubt: this exemption is for **foundational compositional primitives with
+multiple styleable regions**, not a general escape hatch. New UIKit primitives that
+wrap one HTML element follow the strict Rule 7 contract.
+
 ---
 
 ## Rule 8 — Model-view architecture for complex components

@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import RenderGrid from "../../components/virtualization/RenderGrid/RenderGrid";
-import RenderGridModel from "../../components/virtualization/RenderGrid/RenderGridModel";
-import { RenderCellParams, RenderSizeOptional } from "../../components/virtualization/RenderGrid/types";
+import { RenderGrid, RenderGridModel } from "../../uikit/RenderGrid";
+import type { RenderCellParams, RenderSizeOptional } from "../../uikit/RenderGrid";
 import { IconButton, Panel } from "../../uikit";
 import color from "../../theme/color";
 import { DeleteIcon, GlobeIcon, RenameIcon } from "../../theme/icons";

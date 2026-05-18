@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
-import RenderGridModel from "../../components/virtualization/RenderGrid/RenderGridModel";
+import { RenderGridModel } from "../../uikit/RenderGrid";
 import { useHighlightedText } from "../../uikit/shared/highlight";
 import { CopyIcon, DeleteIcon, OpenFileIcon, PinFilledIcon, PinIcon, RenameIcon } from "../../theme/icons";
 import { ContextMenuEvent } from "../../api/events/events";

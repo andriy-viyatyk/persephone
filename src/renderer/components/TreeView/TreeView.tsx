@@ -4,8 +4,8 @@ import clsx from "clsx";
 
 import { useComponentModel } from "../../core/state/model";
 import { setTraitDragData, getTraitDragData, hasTraitDragData } from "../../core/traits";
-import RenderGrid from "../virtualization/RenderGrid/RenderGrid";
-import { Percent, RenderCellParams } from "../virtualization/RenderGrid/types";
+import { RenderGrid } from "../../uikit/RenderGrid";
+import type { Percent, RenderCellParams } from "../../uikit/RenderGrid";
 import {
     defaultTreeViewState,
     TreeItem,

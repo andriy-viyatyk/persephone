@@ -7,8 +7,8 @@ import {
     TSortColumn,
 } from "../avGridTypes";
 import { TComponentModel } from "../../../../core/state/model";
-import RenderGridModel from "../../../virtualization/RenderGrid/RenderGridModel";
-import { RerenderInfo } from "../../../virtualization/RenderGrid/types";
+import { RenderGridModel } from "../../../../uikit/RenderGrid";
+import type { RerenderInfo } from "../../../../uikit/RenderGrid";
 import { IState } from "../../../../core/state/state";
 import { ColumnsModel } from "./ColumnsModel";
 import { AVGridData } from "./AVGridData";

@@ -13,9 +13,8 @@ import {
 import clsx from "clsx";
 import styled from "@emotion/styled";
 
-import RenderGrid from "../virtualization/RenderGrid/RenderGrid";
-import RenderGridModel from "../virtualization/RenderGrid/RenderGridModel";
-import { Percent, RenderCellFunc } from "../virtualization/RenderGrid/types";
+import { RenderGrid, RenderGridModel } from "../../uikit/RenderGrid";
+import type { Percent, RenderCellFunc } from "../../uikit/RenderGrid";
 import { defaultOptionGetLabel } from "./utils";
 import { CheckIcon } from "../../theme/icons";
 import { CircularProgress } from "../basic/CircularProgress";

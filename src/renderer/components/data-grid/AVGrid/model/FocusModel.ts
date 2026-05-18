@@ -3,7 +3,7 @@ import { range } from "../../../../core/utils/utils";
 import { CellFocus, Column } from "../avGridTypes";
 import { AVGridDataChangeEvent } from "./AVGridData";
 import { AVGridModel } from "./AVGridModel";
-import { RenderCell } from "../../../virtualization/RenderGrid/types";
+import type { RenderCell } from "../../../../uikit/RenderGrid";
 
 type SelType = "click" | "shiftClick" | "rightClick" | "startDrag" | "drag";
 

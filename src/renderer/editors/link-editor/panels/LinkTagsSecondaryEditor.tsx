@@ -8,7 +8,7 @@ import type { LinkViewModel } from "../LinkViewModel";
 import type { ILink } from "../../../api/types/io.tree";
 import { LinkTagsPanel } from "./LinkTagsPanel";
 import { LinksList } from "../LinksList";
-import RenderGridModel from "../../../components/virtualization/RenderGrid/RenderGridModel";
+import { RenderGridModel } from "../../../uikit/RenderGrid";
 import { Panel, Splitter } from "../../../uikit";
 import { app } from "../../../api/app";
 import { createLinkData } from "../../../../shared/link-data";

@@ -6,9 +6,8 @@ import { ChevronDownIcon, ChevronRightIcon, FilterArrowDownIcon, FilterArrowUpIc
 import { TextField } from "../basic/TextField";
 import { Button } from "../basic/Button";
 import { FileIcon } from "../icons/FileIcon";
-import RenderGrid from "../virtualization/RenderGrid/RenderGrid";
-import RenderGridModel from "../virtualization/RenderGrid/RenderGridModel";
-import type { RenderCellParams } from "../virtualization/RenderGrid/types";
+import { RenderGrid, RenderGridModel } from "../../uikit/RenderGrid";
+import type { RenderCellParams } from "../../uikit/RenderGrid";
 import {
     FileSearchModel,
     type FileSearchState,

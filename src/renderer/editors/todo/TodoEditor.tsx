@@ -5,12 +5,8 @@ import { Input } from "../../uikit/Input/Input";
 import { Textarea } from "../../uikit/Textarea/Textarea";
 import { IconButton } from "../../uikit/IconButton/IconButton";
 import { Splitter } from "../../uikit/Splitter/Splitter";
-import {
-    RenderFlexCellParams,
-    RenderFlexGrid,
-} from "../../components/virtualization/RenderGrid/RenderFlexGrid";
-import RenderGridModel from "../../components/virtualization/RenderGrid/RenderGridModel";
-import { Percent } from "../../components/virtualization/RenderGrid/types";
+import { RenderFlexGrid, RenderGridModel } from "../../uikit/RenderGrid";
+import type { RenderFlexCellParams, Percent } from "../../uikit/RenderGrid";
 import color from "../../theme/color";
 import { CloseIcon, PlusIcon } from "../../theme/icons";
 import { TodoViewModel, defaultTodoEditorState, TodoEditorState } from "./TodoViewModel";

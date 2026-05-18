@@ -1,5 +1,5 @@
 import { TComponentModel } from "../../core/state/model";
-import RenderGridModel from "../virtualization/RenderGrid/RenderGridModel";
+import { RenderGridModel } from "../../uikit/RenderGrid";
 import type { TraitTypeId, TraitDragPayload } from "../../core/traits";
 
 export interface TreeItem<T extends TreeItem<T> = any> {

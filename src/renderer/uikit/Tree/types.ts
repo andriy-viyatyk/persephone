@@ -6,7 +6,7 @@ import {
 } from "../../core/traits/traits";
 import type { TraitDragPayload } from "../../core/traits/dnd";
 import type { TraitTypeId } from "../../core/traits/TraitRegistry";
-import { RowAlign } from "../../components/virtualization/RenderGrid/types";
+import type { RowAlign } from "../RenderGrid";
 import type { MenuItem } from "../Menu";
 
 // =============================================================================

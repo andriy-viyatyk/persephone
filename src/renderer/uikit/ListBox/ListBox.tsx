@@ -3,12 +3,12 @@ import styled from "@emotion/styled";
 import color from "../../theme/color";
 import { spacing } from "../tokens";
 import { useComponentModel } from "../../core/state/model";
-import RenderGrid from "../../components/virtualization/RenderGrid/RenderGrid";
-import {
+import { RenderGrid } from "../RenderGrid";
+import type {
     ElementLength,
     Percent,
     RenderCellFunc,
-} from "../../components/virtualization/RenderGrid/types";
+} from "../RenderGrid";
 import { Spinner } from "../Spinner/Spinner";
 import { ListItem } from "./ListItem";
 import { SectionItem } from "./SectionItem";

@@ -38,6 +38,8 @@ import { menuStory }             from "../../uikit/Menu/Menu.story";
 import { autocompleteStory }     from "../../uikit/Autocomplete/Autocomplete.story";
 import { categoryListStory }     from "../../uikit/CategoryList/CategoryList.story";
 import { listBoxStory }          from "../../uikit/ListBox/ListBox.story";
+import { multiListBoxStory }     from "../../uikit/MultiListBox/MultiListBox.story";
+import { multiSelectStory }      from "../../uikit/MultiSelect/MultiSelect.story";
 import { selectStory }           from "../../uikit/Select/Select.story";
 import { treeStory }             from "../../uikit/Tree/Tree.story";
 
@@ -48,7 +50,7 @@ export const ALL_STORIES: Story[] = [
     segmentedControlStory, radioGroupStory, sliderStory, progressBarStory, spinnerStory, textareaStory, pathInputStory,
     tagStory, tagsInputStory,
     popoverStory, tooltipStory, dialogStory, notificationStory, menuStory,
-    autocompleteStory, categoryListStory, listBoxStory, selectStory, treeStory,
+    autocompleteStory, categoryListStory, listBoxStory, multiListBoxStory, multiSelectStory, selectStory, treeStory,
 ];
 
 export function findStory(id: string): Story | undefined {

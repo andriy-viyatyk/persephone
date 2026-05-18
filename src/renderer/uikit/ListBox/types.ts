@@ -4,7 +4,7 @@ import {
     Traited,
     TraitType,
 } from "../../core/traits/traits";
-import { RowAlign } from "../../components/virtualization/RenderGrid/types";
+import type { RowAlign } from "../RenderGrid";
 import type { MenuItem } from "../Menu";
 
 // =============================================================================

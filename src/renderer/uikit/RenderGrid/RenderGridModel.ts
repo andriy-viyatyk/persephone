@@ -18,7 +18,7 @@ import {
     calcScrollOffsetY,
     calcScrollOffsetX,
 } from './renderInfo';
-import { TComponentModel } from '../../../core/state/model';
+import { TComponentModel } from '../../core/state/model';
 
 export const defaultRowHeight = 24;
 const defaultOverscanColumns = 0;
@@ -57,6 +57,10 @@ export interface BlockStyles {
 }
 
 export interface RenderGridProps {
+    /** Optional debug label emitted as `data-name` on the root element.
+     *  Use to disambiguate multiple `RenderGrid` instances in DOM inspector
+     *  output. Never used for styling. */
+    name?: string;
     rowCount: number | (() => number);
     columnCount: number | (() => number);
     rowHeight?: ElementLength;
@@ -70,6 +74,10 @@ export interface RenderGridProps {
     overscanRow?: number;
     fitToWidth?: boolean;
     onRender?: () => void;
+    // Rule-7 exemption: RenderGrid is a multi-region compositional primitive.
+    // `className` / `contentProps` / `renderAreaProps` / `blockStyles` are
+    // load-bearing escape hatches for region-level styling (consumed by AVGrid
+    // and editor lists). See doc/tasks/US-538-uikit-rendergrid/README.md.
     className?: string;
     contentProps?: HTMLAttributes<HTMLDivElement>;
     renderAreaProps?: HTMLAttributes<HTMLDivElement>;
@@ -139,6 +147,7 @@ export default class RenderGridModel extends TComponentModel<
 
     mapProps = (props: RenderGridProps) => {
         const {
+            name,
             rowCount = 0,
             columnCount = 0,
             renderCell,
@@ -166,6 +175,7 @@ export default class RenderGridModel extends TComponentModel<
         this.blockStyles = prepareBlockStyles(blockStyles);
 
         return {
+            name,
             rowCount,
             columnCount,
             renderCell,

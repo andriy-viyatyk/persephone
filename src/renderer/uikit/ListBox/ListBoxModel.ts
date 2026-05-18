@@ -1,8 +1,8 @@
 import React from "react";
 import { TComponentModel } from "../../core/state/model";
 import { isTraited, resolveTraited, Traited, TraitType } from "../../core/traits/traits";
-import RenderGridModel from "../../components/virtualization/RenderGrid/RenderGridModel";
-import { RowAlign } from "../../components/virtualization/RenderGrid/types";
+import { RenderGridModel } from "../RenderGrid";
+import type { RowAlign } from "../RenderGrid";
 import { ContextMenuEvent } from "../../api/events/events";
 import {
     IListBoxItem,

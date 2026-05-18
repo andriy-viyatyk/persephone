@@ -6,7 +6,7 @@ import RenderGridModel, {
     RenderGridProps,
 } from './RenderGridModel';
 import { RefType } from './types';
-import { useComponentModel } from '../../../core/state/model';
+import { useComponentModel } from '../../core/state/model';
 import { whiteSpace } from './renderInfo';
 
 const RenderGridRoot = styled.div(
@@ -82,6 +82,8 @@ const RenderGrid = React.forwardRef<RenderGridModel, RenderGridProps>(function R
 
     return (
         <RenderGridRoot
+            data-type="render-grid"
+            data-name={model.props.name}
             id="avg-root"
             ref={model.gridRef.ref as RefType<HTMLDivElement>}
             className={model.props.className}

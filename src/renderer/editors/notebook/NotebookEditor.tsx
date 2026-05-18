@@ -10,12 +10,8 @@ import { Splitter } from "../../uikit/Splitter";
 import { Text } from "../../uikit/Text";
 import { Tree } from "../../uikit/Tree";
 import { HighlightedTextProvider } from "../../uikit/shared/highlight";
-import {
-    RenderFlexCellParams,
-    RenderFlexGrid,
-} from "../../components/virtualization/RenderGrid/RenderFlexGrid";
-import RenderGridModel from "../../components/virtualization/RenderGrid/RenderGridModel";
-import { Percent } from "../../components/virtualization/RenderGrid/types";
+import { RenderFlexGrid, RenderGridModel } from "../../uikit/RenderGrid";
+import type { RenderFlexCellParams, Percent } from "../../uikit/RenderGrid";
 import { CloseIcon, PlusIcon } from "../../theme/icons";
 import { NotebookViewModel, defaultNotebookViewState, NotebookViewState } from "./NotebookViewModel";
 import { NoteItemView } from "./NoteItemView";

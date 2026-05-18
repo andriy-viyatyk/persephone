@@ -10,9 +10,9 @@ import styled from "@emotion/styled";
 import clsx from "clsx";
 
 import { TCellRenderer, TCellRendererProps } from "./avGridTypes";
-import { RefType, RenderCellFunc } from "../../virtualization/RenderGrid/types";
+import { RenderGrid } from "../../../uikit/RenderGrid";
+import type { RefType, RenderCellFunc } from "../../../uikit/RenderGrid";
 import { AVGridProvider } from "./useAVGridContext";
-import RenderGrid from "../../virtualization/RenderGrid/RenderGrid";
 import color from "../../../theme/color";
 import { CircularProgress } from "../../basic/CircularProgress";
 import { HeaderCell } from "./HeaderCell";

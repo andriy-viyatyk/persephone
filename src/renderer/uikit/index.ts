@@ -83,6 +83,10 @@ export { ListBox, LIST_ITEM_KEY } from "./ListBox";
 export type { ListBoxProps, ListBoxRef, IListBoxItem, ListItemRenderContext } from "./ListBox";
 export { ListItem, SectionItem } from "./ListBox";
 export type { ListItemProps, SectionItemProps } from "./ListBox";
+export { MultiListBox } from "./MultiListBox";
+export type { MultiListBoxProps } from "./MultiListBox";
+export { MultiSelect } from "./MultiSelect";
+export type { MultiSelectProps } from "./MultiSelect";
 export { Select } from "./Select";
 export type { SelectProps, ItemsSource, SelectItemsResult } from "./Select";
 export { Tree, TREE_ITEM_KEY } from "./Tree";
@@ -95,3 +99,15 @@ export type {
 } from "./Tree";
 export { TreeItem, TreeSectionItem } from "./Tree";
 export type { TreeItemProps, TreeSectionItemProps } from "./Tree";
+
+// Virtualization (foundational primitive — consumed by ListBox, Tree, AVGrid, editor lists)
+export { RenderGrid, RenderGridModel, RenderFlexGrid } from "./RenderGrid";
+export type {
+    RenderGridProps,
+    RenderFlexGridProps,
+    RenderFlexCellParams,
+    RenderCellParams,
+    RenderCellFunc,
+    Percent,
+    RowAlign,
+} from "./RenderGrid";

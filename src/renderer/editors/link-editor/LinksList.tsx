@@ -1,7 +1,6 @@
 import React, { useCallback, useImperativeHandle, useRef, useState } from "react";
-import RenderGrid from "../../components/virtualization/RenderGrid/RenderGrid";
-import RenderGridModel from "../../components/virtualization/RenderGrid/RenderGridModel";
-import { RenderCellParams, RenderSizeOptional } from "../../components/virtualization/RenderGrid/types";
+import { RenderGrid, RenderGridModel } from "../../uikit/RenderGrid";
+import type { RenderCellParams, RenderSizeOptional } from "../../uikit/RenderGrid";
 import { IconButton, ListItem, Panel } from "../../uikit";
 import { highlight } from "../../uikit/shared/highlight";
 import { DeleteIcon, RenameIcon } from "../../theme/icons";

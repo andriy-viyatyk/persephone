@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import styled from "@emotion/styled";
 import { useComponentModel } from "../../core/state/model";
-import RenderGridModel from "../virtualization/RenderGrid/RenderGridModel";
+import { RenderGridModel } from "../../uikit/RenderGrid";
 import { TextField } from "../basic/TextField";
 import { Button } from "../basic/Button";
 import {
