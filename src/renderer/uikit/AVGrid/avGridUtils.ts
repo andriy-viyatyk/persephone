@@ -1,7 +1,7 @@
-import { isNullOrUndefined } from "../../../core/utils/utils";
+import { isNullOrUndefined } from "../../core/utils/utils";
 import { Column, TDisplayFormat, TFilter, TOptionsFilter } from "./avGridTypes";
-import { recordsToCsv } from "../../../core/utils/csv-utils";
-import { memorize } from "../../../core/utils/memorize";
+import { recordsToCsv } from "../../core/utils/csv-utils";
+import { memorize } from "../../core/utils/memorize";
 
 export const defaultCompare = memorize(
     (propertyKey?: string) =>

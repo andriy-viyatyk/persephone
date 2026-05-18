@@ -10,45 +10,38 @@ import {
     ChevronUpIcon,
     CloseIcon,
     RefreshIcon,
-} from "../../../../theme/icons";
-import { Chip } from "../../../basic/Chip";
-import { Button } from "../../../basic/Button";
-import color from "../../../../theme/color";
+} from "../../../theme/icons";
+import { Tag } from "../../Tag";
+import { IconButton } from "../../IconButton";
+import color from "../../../theme/color";
 import { AVGridModel } from "../model/AVGridModel";
 
-const ChipRoot = styled(Chip)({
-    cursor: "pointer",
-    border: `solid 1px ${color.border.default}`,
-    borderRadius: 4,
-    color: color.text.light,
-    padding: "2px 0 2px 4px",
-    "& .filter-chip-label": {
-        display: "flex",
-        alignItems: "center",
-        "& .filter-chip-labels": {
-            flex: "1 1 auto",
-            marginLeft: 4,
-            textOverflow: "ellipsis",
-            overflow: "hidden",
-            paddingRight: 2,
-            color: color.text.default,
-        },
-        "& .filter-chip-open-icon": {
-            display: "inline-block",
-            padding: "0 4px",
-            borderRight: `solid 1px ${color.border.default}`,
-            width: 16,
-            height: 16,
-        },
-        "&.disabled": {
-            color: color.icon.disabled,
-        },
-        "& .empty-label": {
-            fontStyle: "italic",
-        },
+const FilterChipLabel = styled.span({
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 2,
+    "& .filter-chip-name": {
+        color: color.text.light,
     },
-    "&.filter-open": {
-        outline: `solid 1px ${color.border.active}`,
+    "& .filter-chip-values": {
+        marginLeft: 4,
+        textOverflow: "ellipsis",
+        overflow: "hidden",
+        paddingRight: 2,
+        color: color.text.default,
+    },
+    "& .filter-chip-open-icon": {
+        display: "inline-block",
+        padding: "0 4px",
+        borderRight: `solid 1px ${color.border.default}`,
+        width: 16,
+        height: 16,
+    },
+    "&.disabled": {
+        color: color.icon.disabled,
+    },
+    "& .empty-label": {
+        fontStyle: "italic",
     },
 });
 
@@ -129,7 +122,7 @@ interface FilterChipProps {
 export function FilterChip(props: FilterChipProps) {
     const { filter, showFilterPoper, onDelete, disabled } = props;
     const [open, setOpen] = useState(false);
-    const chipRef = useRef<HTMLElement>(undefined);
+    const chipRef = useRef<HTMLSpanElement>(null);
     const liveRef = useRef(false);
 
     useEffect(() => {
@@ -144,16 +137,19 @@ export function FilterChip(props: FilterChipProps) {
     }, [filter, onDelete]);
 
     const handleClick = useCallback(
-        async (e: React.MouseEvent<HTMLDivElement>) => {
+        async (e: React.MouseEvent) => {
             setOpen(true);
             await showFilterPoper(
                 filter,
-                chipRef.current,
+                chipRef.current ?? undefined,
                 {
                     x: e.clientX,
                     y: e.clientY,
                 },
-                { x: 0, y: 2 }
+                // y=4 (was 2): the chip ref points to the inner FilterChipLabel,
+                // which sits inside the Tag's padding+border. The extra 2px clears
+                // the Tag chrome so the popover doesn't overlap the chip edge.
+                { x: 0, y: 4 }
             );
             if (liveRef.current) {
                 setOpen(false);
@@ -162,10 +158,20 @@ export function FilterChip(props: FilterChipProps) {
         [filter, showFilterPoper]
     );
 
+    // Tag's body click does not give us a MouseEvent, so we attach the
+    // chip-anchor positioning data via a wrapping span ref + ambient handler.
     const label = (
-        <span className={clsx("filter-chip-label", { disabled: disabled })}>
-            {filter.columnName}:
-            <span className="filter-chip-labels">
+        <FilterChipLabel
+            ref={chipRef}
+            className={clsx({ disabled: disabled })}
+            onClick={(e) => {
+                if (disabled) return;
+                e.stopPropagation();
+                handleClick(e);
+            }}
+        >
+            <span className="filter-chip-name">{filter.columnName}:</span>
+            <span className="filter-chip-values">
                 {filterValues(filter, maxFilterLabelCharCount)}
             </span>
             {open ? (
@@ -173,44 +179,33 @@ export function FilterChip(props: FilterChipProps) {
             ) : (
                 <ChevronDownIcon className="filter-chip-open-icon" />
             )}
-            {Boolean(props.onDelete) && (
-                <Button
-                    size="small"
-                    type="icon"
-                    className="filter-chip-delete-button"
-                    onClick={handleDelete}
-                    disabled={disabled}
-                    title="Remove filter"
-                >
-                    <CloseIcon />
-                </Button>
-            )}
-        </span>
+        </FilterChipLabel>
     );
 
     return (
-        <ChipRoot
-            ref={(ref) => {
-                chipRef.current = ref as HTMLElement;
-            }}
+        <Tag
+            name="avgrid-filter-chip"
             label={label}
-            className={clsx({ "filter-open": open })}
-            onDelete={handleDelete}
-            onClick={handleClick}
+            size="sm"
+            onRemove={handleDelete}
             disabled={disabled}
+            selected={open}
+            removeAriaLabel="Remove filter"
         />
     );
 }
 
 export interface FilterBarProps {
+    /** Optional debug label emitted as `data-name` on the FilterBar root. */
+    name?: string;
     disabled?: boolean;
-    className?: string;
     gridModel?: AVGridModel<any>;
 }
 
 export function FilterBar(props: FilterBarProps) {
-    const { disabled, className, gridModel } = props;
-    const { filters, setFilters, showFilterPoper } = useFilters();
+    const { name, disabled, gridModel } = props;
+    const { filters, setFilters } = useFilters();
+    const { showFilterPoper } = useFilters();
     const [frozen, setFrozen] = useState(false);
 
     useEffect(() => {
@@ -233,7 +228,9 @@ export function FilterBar(props: FilterBarProps) {
 
     return (
         <FilterBarRoot
-            className={clsx(className, {
+            data-type="filter-bar"
+            data-name={name}
+            className={clsx({
                 "no-filters": filters.length === 0,
             })}
         >
@@ -248,26 +245,24 @@ export function FilterBar(props: FilterBarProps) {
                     />
                 ))}
                 {frozen && (
-                    <Button
-                        size="small"
-                        type="icon"
+                    <IconButton
+                        name="avgrid-unfreeze-rows"
+                        icon={<RefreshIcon />}
+                        size="sm"
                         onClick={() => { gridModel?.models.rows.unfreezeRows(); }}
                         title="Rows are frozen while editing. Click to unfreeze."
-                    >
-                        <RefreshIcon />
-                    </Button>
+                    />
                 )}
             </div>
-            <Button
-                size="small"
-                type="icon"
+            <IconButton
+                name="avgrid-clear-filters"
+                icon={<CloseIcon />}
+                size="sm"
                 className="clear-filters-button"
                 onClick={() => setFilters([])}
                 disabled={disabled}
                 title="Remove all filters"
-            >
-                <CloseIcon />
-            </Button>
+            />
         </FilterBarRoot>
     );
 }

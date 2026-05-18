@@ -6,10 +6,10 @@ import {
     TFilter,
     TSortColumn,
 } from "../avGridTypes";
-import { TComponentModel } from "../../../../core/state/model";
-import { RenderGridModel } from "../../../../uikit/RenderGrid";
-import type { RerenderInfo } from "../../../../uikit/RenderGrid";
-import { IState } from "../../../../core/state/state";
+import { TComponentModel } from "../../../core/state/model";
+import { RenderGridModel } from "../../RenderGrid";
+import type { RerenderInfo } from "../../RenderGrid";
+import { IState } from "../../../core/state/state";
 import { ColumnsModel } from "./ColumnsModel";
 import { AVGridData } from "./AVGridData";
 import { SortColumnModel } from "./SortColumnModel";
@@ -24,7 +24,9 @@ import { EffectsModel } from "./EffectsModel";
 import { AVGridActions } from "./AVGridActions";
 
 export interface AVGridProps<R> {
-    className?: string;
+    /** Optional debug label emitted as `data-name` on the rendered RenderGrid root.
+     *  Use to disambiguate multiple AVGrid instances in DOM inspector output. */
+    name?: string;
     columns: Column<R>[];
     rows: R[];
     getRowKey: (row: R) => string;

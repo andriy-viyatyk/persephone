@@ -2,16 +2,94 @@
 
 ## Status
 
-**Plan ready for implementation.** Part of
+**Implemented (review deferred).** Part of
 [EPIC-025](../../epics/EPIC-025.md) Phase 4 — UIKit composite-primitive
 migration. Deferred-review model: this task does NOT run `/review`,
 `/document`, or `/userdoc` — those run at epic close.
 
-**Blocked on** [US-538](../US-538-uikit-rendergrid/README.md) (UIKit
-RenderGrid promotion) AND [US-539](../US-539-uikit-multiselect/README.md)
-(UIKit MultiSelect primitive) landing first.
+### Implementation summary (2026-05-18)
 
-All open concerns resolved by user review on 2026-05-17.
+- Moved 29 files from `components/data-grid/` to `uikit/AVGrid/` via
+  `git mv` (history preserved). `FilterPoper.tsx` → `FilterPopover.tsx`
+  rename applied during the move.
+- Added `name?: string` to `AVGridProps` + propagated to RenderGrid's
+  `data-name` (Rule 1 / US-521). Dropped the dead `className?: string`
+  from `AVGridProps`.
+- Built `uikit/TruncatedText/` (~50 LOC + story) replacing
+  `basic/OverflowTooltipText`.
+- Built `uikit/AVGrid/CellInput.tsx` + `uikit/AVGrid/CellSelect.tsx`
+  thin wrappers over `uikit/Input` and `uikit/Select`. `CellAutocomplete`
+  not created — legacy `DefaultOptionsEdit` never used free-text mode.
+- Extended `uikit/Select` with `onEscape?: () => void` callback so the
+  grid's EditingModel can receive Esc-cancel even though Select stops
+  Esc propagation. Phase 2 audit's lone gap.
+- Rewrote `DefaultEditFormater` to use `CellInput` / `CellSelect`.
+- Rewrote `FilterBar` to use `uikit/Tag` + `uikit/IconButton`.
+- Rewrote `FilterPopover` to use `uikit/Popover` (dropped legacy
+  `styled(Popper)` wrapper).
+- Rewrote `OptionsFilterContent` to use `uikit/MultiListBox` (with
+  built-in search + select-all) + `uikit/Button`. Dropped the external
+  TextField + `useFilteredOptions`. Inlined `emptyLabel` locally.
+- Retargeted internal legacy imports inside `uikit/AVGrid/`:
+  `basic/Button` → `uikit/IconButton`, `basic/CircularProgress` →
+  `uikit/Spinner`, `basic/useHighlightedText` → `uikit/shared/highlight`
+  (`highlightText` → `highlight`), `basic/OverflowTooltipText` →
+  `uikit/TruncatedText`, `overlay/PopupMenu MenuItem` → `uikit/Menu`,
+  `form/utils beep` → new `core/utils/audio.ts`.
+- Updated `uikit/index.ts` top-level barrel with AVGrid public surface +
+  TruncatedText. Removed `export * from './data-grid'` from
+  `components/index.ts`.
+- Flipped all 6 callers (`editors/grid/{GridEditor,GridViewModel,
+  components/ColumnsOptions,utils/grid-utils}`, `editors/graph/
+  GraphDetailPanel`, `editors/log-view/items/GridOutputView`) to
+  `../../../uikit` barrel.
+- Registered `TruncatedText` story in storybook registry.
+- `npm run lint` and `npx tsc --noEmit` both at baseline (20 errors / 896
+  warnings in the same 4 pre-existing files — no new tsc errors, no new
+  lint errors).
+- Grep verifies: zero `components/data-grid` imports remaining; zero
+  legacy `components/{basic,form,overlay,virtualization}/` imports
+  inside `uikit/AVGrid/`.
+
+### Minor behaviour deltas (documented for testing)
+
+- **FilterChip selected state**: legacy used an `outline` (1px blue
+  ring) when the filter popover was open; UIKit Tag's `selected` flag
+  applies a filled background + colored border instead. Same intent,
+  slightly different surface.
+- **Filter popover italic options**: legacy `OptionsFilterContent`
+  italicized `(empty)` / `italic: true` rows via `getOptionClass`. UIKit
+  MultiListBox has no per-item class hook; italic styling is dropped.
+  The `(empty)` label is still rendered. Can be added back via a custom
+  `renderItem` if desired.
+- **Filter popover resized state**: legacy stretched the list to fill
+  the resized popover. New version uses MultiListBox `height="100%"`
+  inside a `flex: 1` wrapper — equivalent visual result.
+
+**Precursors landed** in commit `2322213` (2026-05-18):
+- [US-538](../US-538-uikit-rendergrid/README.md) — UIKit `RenderGrid`
+  promotion. `src/renderer/uikit/RenderGrid/` exists; folder barrel
+  exports `RenderGrid`, `RenderGridModel`, `RenderFlexGrid`, plus
+  types `RefType`, `RerenderInfo`, `RenderCell`, `RenderCellFunc`,
+  `RenderCellParams`, `Percent`, `RowAlign`. Top-level `uikit/index.ts`
+  re-exports the curated subset (`RenderGrid`, `RenderGridModel`,
+  `RenderFlexGrid`, `RenderCellFunc`, `RenderCellParams`, `Percent`,
+  `RowAlign`); AVGrid imports `RefType`/`RerenderInfo`/`RenderCell`
+  from the folder barrel directly.
+- [US-539](../US-539-uikit-multiselect/README.md) — UIKit `MultiSelect`
+  + `MultiListBox`. `src/renderer/uikit/MultiSelect/` and
+  `uikit/MultiListBox/` exist; both exported from `uikit/index.ts`.
+
+**AVGrid → RenderGrid imports already flipped** in commit `2322213`:
+during US-538's caller-flip sweep, four AVGrid files
+(`AVGrid.tsx`, `avGridTypes.ts`, `model/AVGridModel.ts`,
+`model/FocusModel.ts`) had their `components/virtualization/RenderGrid`
+imports retargeted to `uikit/RenderGrid` in-place. When this task
+moves AVGrid to `uikit/AVGrid/`, those imports become `../RenderGrid`
+(sibling UIKit folder).
+
+All open concerns resolved by user review on 2026-05-17. Residual
+concerns E and L resolved post-US-538 (see Concerns section).
 
 ## Goal
 
@@ -83,7 +161,7 @@ The six external callers see only import-path changes plus optional
 
 | Source file in data-grid | Imports today | Resolution |
 |---|---|---|
-| AVGrid.tsx | `components/virtualization/RenderGrid` | `uikit/RenderGrid` — **US-538 lands first** |
+| AVGrid.tsx, avGridTypes.ts, model/AVGridModel.ts, model/FocusModel.ts | `uikit/RenderGrid` (already flipped by US-538 in commit `2322213`) | Becomes `../RenderGrid` after AVGrid relocates to `uikit/AVGrid/` |
 | AVGrid.tsx | `components/basic/CircularProgress` | `uikit/Spinner` |
 | AVGrid.tsx | `components/basic/useHighlightedText` (`HighlightedTextProvider`) | `uikit/shared/highlight` (already exists with identical API) |
 | AVGrid.tsx | `theme/color` (grid colors) | keep (legitimate token consumer) |
@@ -162,14 +240,20 @@ default is fine. **Drop the `overflow: visible` override.**
 
 ### Phase 1 — Precursor verification (DO NOT START US-536 until met)
 
-- [ ] [US-538](../US-538-uikit-rendergrid/README.md) — UIKit
-  RenderGrid promotion **landed**. `src/renderer/uikit/RenderGrid/`
-  exists and `uikit/index.ts` exports `RenderGrid`,
-  `RenderGridModel`, `RenderFlexGrid`, `Percent`, `RefType`,
-  `RerenderInfo`, `RenderCellFunc`.
-- [ ] [US-539](../US-539-uikit-multiselect/README.md) — UIKit
-  MultiSelect **landed**. `src/renderer/uikit/MultiSelect/` exists
-  and `uikit/index.ts` exports `MultiSelect`, `MultiSelectProps`.
+- [x] [US-538](../US-538-uikit-rendergrid/README.md) — UIKit
+  RenderGrid promotion **landed in commit `2322213`** (2026-05-18).
+  `src/renderer/uikit/RenderGrid/` exists. Folder barrel exports
+  `RenderGrid`, `RenderGridModel`, `RenderFlexGrid`, plus types
+  `RefType`, `RerenderInfo`, `RenderCell`, `RenderCellFunc`,
+  `RenderCellParams`, `Percent`, `RowAlign`. AVGrid imports
+  `RefType`/`RerenderInfo`/`RenderCell` from this folder barrel
+  (not the top-level `uikit/index.ts` curated subset).
+- [x] [US-539](../US-539-uikit-multiselect/README.md) — UIKit
+  MultiSelect **landed in commit `2322213`** (2026-05-18).
+  `src/renderer/uikit/MultiSelect/` exists; `uikit/index.ts` exports
+  `MultiSelect` and `MultiSelectProps`. US-539 also delivered
+  `uikit/MultiListBox/` as a sibling primitive — AVGrid consumes the
+  popover-wrapped `MultiSelect`, not `MultiListBox` directly.
 
 ### Phase 2 — Audit UIKit Select for inline cell-edit gaps
 
@@ -425,7 +509,7 @@ All concerns resolved by user review on 2026-05-17.
 | B — MultiSelect | **Promote to UIKit as a new primitive** ([US-539](../US-539-uikit-multiselect/README.md)). US-539 lands first; US-536 consumes it. |
 | C — `beep()` location | **`src/renderer/core/utils/audio.ts`** (new file). |
 | D — naming-table renames | Apply: `Popper` → `Popover` (FilterPoper → FilterPopover), `Chip` → `Tag` (FilterBar internal), `OverflowTooltipText` → `TruncatedText` (new UIKit primitive), `ListMultiselect` → `MultiSelect` (US-539), `PopupMenu MenuItem` → `Menu MenuItem` (type flip). **NOT applied:** `AVGrid` (kept by user request). |
-| E — RenderGrid dependency | **US-538 lands first.** US-536 blocked on US-538. Cross-folder import to `components/virtualization/` is rejected. |
+| E — RenderGrid dependency | **Resolved (post-US-538).** US-538 landed in commit `2322213` on 2026-05-18. AVGrid's RenderGrid imports were already retargeted to `uikit/RenderGrid` during the US-538 caller-flip sweep — when AVGrid relocates here, those imports become `../RenderGrid`. |
 | F — `model/` reorganisation | **Keep verbatim.** No reorganisation. |
 | G — rename AVGrid | **Do not rename.** Component name, file name (`AVGrid.tsx`), type names (`AVGridProps`, `AVGridModel`), folder name (`uikit/AVGrid/`), and helper names (`avGridTypes.ts`, `avGridUtils.ts`, `useAVGridContext.ts`) all preserved. |
 | H — Storybook story | **No story.** AVGrid is tested via the Grid editor directly. |
@@ -459,18 +543,23 @@ exports.
 
 #### L. AVGrid's internal `RenderGridStyled` `styled(RenderGrid)` wrapping
 
-`AVGrid.tsx` currently wraps `RenderGrid` in
-`styled(RenderGrid)({...})` to layer grid-specific CSS
-(header-cell, data-cell, selection borders) on top of RenderGrid's
-generic chrome. After the move, this remains internal Emotion
-usage inside `uikit/AVGrid/` — Rule 7 applies to consumers, not
-to UIKit's internal composition. **Keep the `styled(RenderGrid)`
-wrapper.** RenderGrid must accept `className` for `styled()` to
-work (verify in US-538 — RenderGrid is internal infrastructure and
-can keep `className` if needed by AVGrid's wrapping). If
-US-538's promoted RenderGrid forbids `className`, AVGrid needs a
-different composition (e.g. global selectors on `[data-type="render-grid"]`
-within AVGrid's Root). Flag for US-538 review.
+**Resolved (post-US-538).** `uikit/RenderGrid/RenderGrid.tsx:89`
+applies `className={model.props.className}` to its root, and
+`uikit/CLAUDE.md` documents the "Foundational compositional primitive
+exception" that explicitly admits `className` (and `blockStyles`,
+`contentProps`, `renderAreaProps`) as part of RenderGrid's public API.
+The `styled(RenderGrid)` wrapping in `AVGrid.tsx` therefore continues
+to work verbatim after the move. After AVGrid relocates into
+`uikit/AVGrid/`, this remains internal Emotion usage inside UIKit's
+own folder — Rule 7 applies to consumers, not to UIKit's internal
+composition. **Keep the `styled(RenderGrid)` wrapper as-is.**
+
+Note: RenderGrid sets `id="avg-root"`, `id="avg-container"`, and
+`id="avg-render-area"` on its own elements (now inside `uikit/RenderGrid/`).
+`closest("#avg-container")` selectors in app code (e.g.
+`NoteItemViewModel.ts:247,280`) continue to resolve correctly — no
+AVGrid change required. Filed as future cleanup (descendant-walks
+rather than duplicate ids).
 
 ## Acceptance criteria
 

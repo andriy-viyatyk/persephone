@@ -1,6 +1,6 @@
 import React, { ComponentType, ReactNode, SetStateAction } from 'react';
-import type { Percent, RenderCellParams, RerenderInfo } from '../../../uikit/RenderGrid';
-import { IState } from '../../../core/state/state';
+import type { Percent, RenderCellParams, RerenderInfo } from '../RenderGrid';
+import { IState } from '../../core/state/state';
 import { AVGridModel } from './model/AVGridModel';
 
 export type CellClickEvent = (row: any, col: Column, rowIndex: number, colIndex: number) => void;

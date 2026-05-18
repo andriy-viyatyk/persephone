@@ -1,4 +1,4 @@
-import { Subscription } from "../../../../core/state/events";
+import { Subscription } from "../../../core/state/events";
 import { Column } from "../avGridTypes";
 import { AVGridModel } from "./AVGridModel";
 

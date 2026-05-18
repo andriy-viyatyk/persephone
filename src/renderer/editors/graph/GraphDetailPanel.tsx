@@ -1,10 +1,7 @@
 import styled from "@emotion/styled";
 import { SetStateAction, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Button, Input, Panel } from "../../uikit";
+import { AVGrid, Button, Input, Panel, detectColumnWidth, type CellFocus, type Column } from "../../uikit";
 import { GraphNode, NodeShape, nodeLabel, isReservedPropertyKey } from "./types";
-import AVGrid from "../../components/data-grid/AVGrid/AVGrid";
-import type { CellFocus, Column } from "../../components/data-grid/AVGrid/avGridTypes";
-import { detectColumnWidth } from "../../components/data-grid/column-width";
 import color from "../../theme/color";
 import { ChevronDownIcon, ChevronUpIcon } from "../../theme/icons";
 import { ShapeIcon, LevelIcon } from "./GraphIcons";

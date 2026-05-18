@@ -85,6 +85,8 @@ function SelectInner<T = IListBoxItem>(
         maxVisibleItems: _maxVisibleItems,
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         rowHeight: _rowHeight,
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        onEscape: _onEscape,
         ...rest
     } = props;
 

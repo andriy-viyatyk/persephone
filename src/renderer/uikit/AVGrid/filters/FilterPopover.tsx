@@ -5,16 +5,13 @@ import { TOnGetFilterOptions, useFilters } from "./useFilters";
 import { TFilter, TOptionsFilter } from "../avGridTypes";
 import { useAVGridContext } from "../useAVGridContext";
 import { OptionsFilterContent } from "./OptionsFilterContent";
-import { Popper } from "../../../overlay/Popper";
+import { Popover } from "../../Popover";
 
-const PopperRoot = styled(Popper)({
+const ContentRoot = styled.div({
     display: "flex",
     flexDirection: "column",
-    overflow: "visible",
-    borderRadius: 6,
-    "& .filter-poper-content": {
-        flex: "1 1 auto",
-    },
+    flex: "1 1 auto",
+    minHeight: 0,
 });
 
 const minWidth = 184;
@@ -24,13 +21,11 @@ interface FilterContentProps {
     onApplyFilter: (filter: TFilter) => void;
     onGetOptions: TOnGetFilterOptions;
     width?: number;
-    className?: string;
     resized?: boolean;
 }
 
 function FilterContent(props: FilterContentProps) {
-    const { filter, onApplyFilter, onGetOptions, width, className, resized } =
-        props;
+    const { filter, onApplyFilter, onGetOptions, width, resized } = props;
     const model = useAVGridContext();
     const filterType =
         model.data.columns.find((c) => c.key === filter.columnKey)?.filterType ??
@@ -45,7 +40,6 @@ function FilterContent(props: FilterContentProps) {
                     onGetOptions={onGetOptions}
                     width={width}
                     columnFilterType={filterType}
-                    className={className}
                     resized={resized}
                 />
             );
@@ -54,7 +48,7 @@ function FilterContent(props: FilterContentProps) {
     }
 }
 
-export function FilterPoper() {
+export function FilterPopover() {
     const { poperData, onGetOptions } = useFilters();
     const [resized, setResized] = useState(false);
 
@@ -70,15 +64,6 @@ export function FilterPoper() {
         [poperData]
     );
 
-    const handleKeyDown = useCallback(
-        (e: React.KeyboardEvent) => {
-            if (e.key === "Escape") {
-                poperData?.closeFilterPoper();
-            }
-        },
-        [poperData]
-    );
-
     if (!poperData) {
         return null;
     }
@@ -86,7 +71,8 @@ export function FilterPoper() {
         poperData;
 
     return (
-        <PopperRoot
+        <Popover
+            name="avgrid-filter-popover"
             open
             elementRef={anchorEl}
             x={position?.x}
@@ -98,20 +84,20 @@ export function FilterPoper() {
                     ? [adjustPosition.x, adjustPosition.y]
                     : undefined
             }
-            onKeyDown={handleKeyDown}
             resizable
             onResize={() => {
                 setResized(true);
             }}
         >
-            <FilterContent
-                filter={filter}
-                onApplyFilter={onApplyFilter}
-                onGetOptions={onGetOptions}
-                width={Math.max(minWidth, anchorEl?.clientWidth ?? 0)}
-                className="filter-poper-content"
-                resized={resized}
-            />
-        </PopperRoot>
+            <ContentRoot>
+                <FilterContent
+                    filter={filter}
+                    onApplyFilter={onApplyFilter}
+                    onGetOptions={onGetOptions}
+                    width={Math.max(minWidth, anchorEl?.clientWidth ?? 0)}
+                    resized={resized}
+                />
+            </ContentRoot>
+        </Popover>
     );
 }

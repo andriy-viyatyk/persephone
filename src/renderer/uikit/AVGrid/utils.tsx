@@ -1,6 +1,6 @@
 import ReactDOMServer from "react-dom/server";
 import { Column } from "./avGridTypes";
-import { recordsToCsv } from "../../../core/utils/csv-utils";
+import { recordsToCsv } from "../../core/utils/csv-utils";
 
 const charWidth = 8;
 const maxColumnWidth = 300;

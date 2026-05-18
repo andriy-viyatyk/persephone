@@ -24,6 +24,7 @@ import { progressBarStory }      from "../../uikit/ProgressBar/ProgressBar.story
 import { spinnerStory }          from "../../uikit/Spinner/Spinner.story";
 import { textareaStory }         from "../../uikit/Textarea/Textarea.story";
 import { pathInputStory }        from "../../uikit/PathInput/PathInput.story";
+import { truncatedTextStory }    from "../../uikit/TruncatedText/TruncatedText.story";
 import { tagStory }              from "../../uikit/Tag/Tag.story";
 import { tagsInputStory }        from "../../uikit/TagsInput/TagsInput.story";
 
@@ -48,6 +49,7 @@ export const ALL_STORIES: Story[] = [
     breadcrumbStory,
     buttonStory, iconButtonStory, inputStory, labelStory, checkboxStory, dividerStory, dotStory, textStory,
     segmentedControlStory, radioGroupStory, sliderStory, progressBarStory, spinnerStory, textareaStory, pathInputStory,
+    truncatedTextStory,
     tagStory, tagsInputStory,
     popoverStory, tooltipStory, dialogStory, notificationStory, menuStory,
     autocompleteStory, categoryListStory, listBoxStory, multiListBoxStory, multiSelectStory, selectStory, treeStory,

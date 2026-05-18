@@ -1,5 +1,4 @@
-import { Column } from "../../../components/data-grid/AVGrid/avGridTypes";
-import { detectColumnWidth } from "../../../components/data-grid/column-width";
+import { detectColumnWidth, type Column } from "../../../uikit";
 
 export interface GridData {
     columns: Column[];

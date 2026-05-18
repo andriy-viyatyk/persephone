@@ -1,5 +1,5 @@
-import { csvToRecords } from "../../../../core/utils/csv-utils";
-import { toClipboard } from "../../../../core/utils/utils";
+import { csvToRecords } from "../../../core/utils/csv-utils";
+import { toClipboard } from "../../../core/utils/utils";
 import { Column } from "../avGridTypes";
 import { columnDisplayValue, rowsToCsvText } from "../avGridUtils";
 import { recordsToClipboardFormatted } from "../utils";

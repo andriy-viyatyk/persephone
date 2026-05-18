@@ -111,3 +111,40 @@ export type {
     Percent,
     RowAlign,
 } from "./RenderGrid";
+
+// Truncated text (overflow-ellipsis with hover title)
+export { TruncatedText } from "./TruncatedText";
+export type { TruncatedTextProps } from "./TruncatedText";
+
+// Data grid (composite primitive — AVGrid + filters + 13-file model namespace)
+export { AVGrid, AVGridModel, FilterBar, FiltersProvider, useFilters,
+    detectColumnWidth, useResolveOptions,
+    defaultCompare, formatDispayValue, filterRows, defaultValidate,
+    columnDisplayValue, gridBoolean,
+    recordsToTableHTML, recordsToClipboardFormatted, rowsToCsvText,
+} from "./AVGrid";
+export type {
+    AVGridProps,
+    Column,
+    CellFocus,
+    CellEdit,
+    TFilter,
+    TAnyFilter,
+    TOptionsFilter,
+    TOptionsFilterValue,
+    TDisplayOption,
+    TSortColumn,
+    TSortDirection,
+    TDataType,
+    TDisplayFormat,
+    TAlignment,
+    TFilterType,
+    TOnColumnResize,
+    TOnColumnsReorder,
+    TOnGetFilterOptions,
+    TCellRenderer,
+    TCellRendererProps,
+    TCellFormater,
+    TRowCompare,
+    ColumnWidthOptions,
+} from "./AVGrid";

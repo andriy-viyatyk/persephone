@@ -1,8 +1,6 @@
 import { getRowKey } from "./utils/grid-utils";
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
-import AVGrid from "../../components/data-grid/AVGrid/AVGrid";
-import { FiltersProvider } from "../../components/data-grid/AVGrid/filters/useFilters";
-import { FilterBar } from "../../components/data-grid/AVGrid/filters/FilterBar";
+import { AVGrid, FiltersProvider, FilterBar } from "../../uikit";
 import { createPortal } from "react-dom";
 import { Panel } from "../../uikit/Panel";
 import { Input } from "../../uikit/Input";
@@ -126,10 +124,7 @@ export function GridEditor({ model }: GridEditorProps) {
                     setFilters={vm.setFilters}
                     onGetOptions={vm.onGetOptions}
                 >
-                    <FilterBar
-                        className="filter-bar"
-                        gridModel={vm.gridRef}
-                    />
+                    <FilterBar gridModel={vm.gridRef} />
                     <AVGrid
                         ref={vm.setGridRef}
                         columns={gridState.columns}

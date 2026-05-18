@@ -64,6 +64,14 @@ export interface SelectProps<T = IListBoxItem>
     filter?: (item: IListBoxItem, query: string) => boolean;
     /** Renders inside the popover when filtered list is empty. Default: "no results". */
     emptyMessage?: React.ReactNode;
+    /**
+     * Fires when the user presses Escape while the popover is open. Select also
+     * closes the popover (without firing `onChange`) — the callback exists for
+     * cancel-style flows where the caller needs to react to the cancel beyond
+     * the implicit close (e.g. inline cell edit needs to also abandon the
+     * pending text and exit edit mode).
+     */
+    onEscape?: () => void;
     /** Maximum number of visible rows in the popover before scrolling. Default: 10. */
     maxVisibleItems?: number;
     /** Pixel height of each row. Forwarded to the inner ListBox. Default: 24. */
@@ -429,6 +437,7 @@ export class SelectModel<T = IListBoxItem> extends TComponentModel<SelectState, 
                     this.state.update((s) => {
                         s.open = false;
                     });
+                    this.props.onEscape?.();
                 }
                 break;
         }

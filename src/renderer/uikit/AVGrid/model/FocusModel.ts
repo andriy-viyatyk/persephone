@@ -1,9 +1,9 @@
 import clsx from "clsx";
-import { range } from "../../../../core/utils/utils";
+import { range } from "../../../core/utils/utils";
 import { CellFocus, Column } from "../avGridTypes";
 import { AVGridDataChangeEvent } from "./AVGridData";
 import { AVGridModel } from "./AVGridModel";
-import type { RenderCell } from "../../../../uikit/RenderGrid";
+import type { RenderCell } from "../../RenderGrid";
 
 type SelType = "click" | "shiftClick" | "rightClick" | "startDrag" | "drag";
 

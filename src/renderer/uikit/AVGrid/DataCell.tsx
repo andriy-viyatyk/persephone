@@ -2,14 +2,14 @@ import styled from "@emotion/styled";
 import clsx from "clsx";
 
 import { TCellRendererProps } from "./avGridTypes";
-import { highlightText, useHighlightedText } from "../../basic/useHighlightedText";
-import { CheckedIcon, CheckIcon, UncheckedIcon } from "../../../theme/icons";
+import { highlight, useHighlightedText } from "../shared/highlight";
+import { CheckedIcon, CheckIcon, UncheckedIcon } from "../../theme/icons";
 import { columnDisplayValue, gridBoolean } from "./avGridUtils";
-import { OverflowTooltipText } from "../../basic/OverflowTooltipText";
-import color from "../../../theme/color";
+import { TruncatedText } from "../TruncatedText";
+import color from "../../theme/color";
 import { DefaultEditFormater } from "./DefaultEditFormater";
 import { useCallback } from "react";
-import { Button } from "../../basic/Button";
+import { IconButton } from "../IconButton";
 import React from "react";
 
 const DataCellRoot = styled.div(
@@ -51,17 +51,16 @@ export function DefaultCellBoolean(props: TCellRendererProps) {
 
     if (isHovered && isEditable) {
         return (
-            <Button
-                size="small"
-                type="icon"
+            <IconButton
+                name="avgrid-cell-boolean"
+                icon={value ? <CheckedIcon /> : <UncheckedIcon />}
+                size="sm"
                 onClick={() => {
                     model.models.editing.editCell(col, row, !value);
                     model.dataChanged();
                     model.focusGrid();
                 }}
-            >
-                {value ? <CheckedIcon /> : <UncheckedIcon />}
-            </Button>
+            />
         );
     }
 
@@ -87,7 +86,7 @@ export function DefaultCellFormater(props: TCellRendererProps) {
             value = columnDisplayValue(column, row);
 
             if (highlightedText && typeof value === "string") {
-                value = highlightText(highlightedText, value);
+                value = highlight(value, highlightedText);
                 isHighlighted = true;
             }
         } else if (column.dataType === "boolean") {
@@ -98,7 +97,7 @@ export function DefaultCellFormater(props: TCellRendererProps) {
     }
 
     if (typeof value === "string" || isHighlighted) {
-        value = <OverflowTooltipText>{value}</OverflowTooltipText>;
+        value = <TruncatedText>{value}</TruncatedText>;
     }
 
     if (

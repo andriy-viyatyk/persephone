@@ -1,17 +1,17 @@
 import React, { useCallback, useRef, useState } from "react";
 import styled from "@emotion/styled";
 import clsx from "clsx";
-import { TraitTypeId, setTraitDragData, getTraitDragData, hasTraitDragData } from "../../../core/traits";
+import { TraitTypeId, setTraitDragData, getTraitDragData, hasTraitDragData } from "../../core/traits";
 
-import color from "../../../theme/color";
+import color from "../../theme/color";
 import { TCellRendererProps, TSortDirection } from "./avGridTypes";
 import {
     FilterArrowDownIcon,
     FilterArrowUpIcon,
     FilterTableIcon,
     QuestionIcon,
-} from "../../../theme/icons";
-import { Button } from "../../basic/Button";
+} from "../../theme/icons";
+import { IconButton } from "../IconButton";
 import { useFilters } from "./filters/useFilters";
 
 const HeaderCellRoot = styled.div(
@@ -276,14 +276,13 @@ export function HeaderCell({ key, col, style, model }: TCellRendererProps) {
             <span className="header-cell-title">{column?.name}</span>
             <span className="flex-space" />
             {Boolean(column.filterType) && !model.props.disableFiltering && (
-                <Button
-                    size="small"
-                    type="icon"
+                <IconButton
+                    name="avgrid-column-filter"
+                    icon={<FilterTableIcon />}
+                    size="sm"
                     className={clsx("column-filter-button", {columnFiltered})}
                     onClick={filterClick}
-                >
-                    <FilterTableIcon />
-                </Button>
+                />
             )}
         </HeaderCellRoot>
     );

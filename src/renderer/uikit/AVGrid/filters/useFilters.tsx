@@ -7,7 +7,7 @@ import {
     useState,
 } from "react";
 import { Column, TAnyFilter, TDisplayOption, TFilter, TPoint } from "../avGridTypes";
-import { isNullOrUndefined } from "../../../../core/utils/utils";
+import { isNullOrUndefined } from "../../../core/utils/utils";
 
 export type TOnGetFilterOptions = (
     columns: Column[],

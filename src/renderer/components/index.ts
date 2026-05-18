@@ -9,6 +9,3 @@ export * from './layout';
 
 // Overlay components
 export * from './overlay';
-
-// Data Grid components
-export * from './data-grid';

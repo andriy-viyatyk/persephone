@@ -1,8 +1,16 @@
 import { SetStateAction } from "react";
 import { debounce } from "../../../shared/utils";
 import { parseObject } from "../../core/utils/parse-utils";
-import { CellFocus, Column, TFilter } from "../../components/data-grid/AVGrid/avGridTypes";
-import { AVGridModel } from "../../components/data-grid/AVGrid/model/AVGridModel";
+import {
+    AVGridModel,
+    defaultCompare,
+    filterRows,
+    rowsToCsvText,
+    type CellFocus,
+    type Column,
+    type TFilter,
+    type TOnGetFilterOptions,
+} from "../../uikit";
 import { pagesModel } from "../../api/pages";
 import { resolveState } from "../../core/utils/utils";
 import {
@@ -14,12 +22,6 @@ import {
     removeIdColumn,
 } from "./utils/grid-utils";
 import { csvToRecords } from "../../core/utils/csv-utils";
-import {
-    defaultCompare,
-    filterRows,
-    rowsToCsvText,
-} from "../../components/data-grid/AVGrid/avGridUtils";
-import { TOnGetFilterOptions } from "../../components/data-grid/AVGrid/filters/useFilters";
 import { ContentViewModel } from "../base/ContentViewModel";
 import type { IContentHost } from "../base/IContentHost";
 

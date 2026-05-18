@@ -10,21 +10,21 @@ import styled from "@emotion/styled";
 import clsx from "clsx";
 
 import { TCellRenderer, TCellRendererProps } from "./avGridTypes";
-import { RenderGrid } from "../../../uikit/RenderGrid";
-import type { RefType, RenderCellFunc } from "../../../uikit/RenderGrid";
+import { RenderGrid } from "../RenderGrid";
+import type { RefType, RenderCellFunc } from "../RenderGrid";
 import { AVGridProvider } from "./useAVGridContext";
-import color from "../../../theme/color";
-import { CircularProgress } from "../../basic/CircularProgress";
+import color from "../../theme/color";
+import { Spinner } from "../Spinner";
 import { HeaderCell } from "./HeaderCell";
 import { DataCell } from "./DataCell";
-import { HighlightedTextProvider } from "../../basic/useHighlightedText";
-import { FilterPoper } from "./filters/FilterPoper";
+import { HighlightedTextProvider } from "../shared/highlight";
+import { FilterPopover } from "./filters/FilterPopover";
 import {
     AVGridModel,
     AVGridProps,
     defaultAVGridState,
 } from "./model/AVGridModel";
-import { useComponentModel } from "../../../core/state/model";
+import { useComponentModel } from "../../core/state/model";
 
 const RenderGridStyled = styled(RenderGrid)(
     {
@@ -248,7 +248,7 @@ function AVGridComponent<R = any>(
     if (model.props.loading) {
         return (
             <LoadingContainerRoot>
-                <CircularProgress />
+                <Spinner />
             </LoadingContainerRoot>
         );
     }
@@ -287,7 +287,7 @@ function AVGridComponent<R = any>(
             <AVGridProvider value={model}>
                 <RenderGridStyled
                     ref={model.setRenderModel}
-                    className={model.props.className}
+                    name={model.props.name}
                     columnCount={model.models.columns.columnCount}
                     rowCount={model.models.rows.rowCount}
                     columnWidth={model.models.columns.getColumnWidth}
@@ -302,7 +302,7 @@ function AVGridComponent<R = any>(
                     growToHeight={model.props.growToHeight}
                     growToWidth={model.props.growToWidth}
                 />
-                <FilterPoper />
+                <FilterPopover />
             </AVGridProvider>
         </HighlightedTextProvider>
     );

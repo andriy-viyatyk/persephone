@@ -1,6 +1,6 @@
-import { showAppPopupMenu } from "../../../../ui/dialogs/poppers/showPopupMenu";
-import { CopyIcon, DeleteIcon, PasteIcon, PlusIcon } from "../../../../theme/icons";
-import { MenuItem } from "../../../overlay/PopupMenu";
+import { showAppPopupMenu } from "../../../ui/dialogs/poppers/showPopupMenu";
+import { CopyIcon, DeleteIcon, PasteIcon, PlusIcon } from "../../../theme/icons";
+import { MenuItem } from "../../Menu";
 import { AVGridModel } from "./AVGridModel";
 
 export class ContextMenuModel<R> {
@@ -48,7 +48,6 @@ export class ContextMenuModel<R> {
                 {
                     label: "Copy as...",
                     icon: <CopyIcon />,
-                    hotKey: ">",
                     items: [
                         {
                             label: "With Headers",

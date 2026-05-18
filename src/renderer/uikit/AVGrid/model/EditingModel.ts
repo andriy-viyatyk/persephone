@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { CellFocus, Column } from "../avGridTypes";
 import { AVGridModel } from "./AVGridModel";
 import { defaultValidate, gridBoolean } from "../avGridUtils";
-import { beep } from "../../../form/utils";
+import { beep } from "../../../core/utils/audio";
 
 export class EditingModel<R> {
     readonly model: AVGridModel<R>;

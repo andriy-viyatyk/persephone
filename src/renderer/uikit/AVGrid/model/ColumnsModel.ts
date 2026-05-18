@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { range } from "../../../../core/utils/utils";
+import { range } from "../../../core/utils/utils";
 import { Column } from "../avGridTypes";
 import { AVGridModel } from "./AVGridModel";
 

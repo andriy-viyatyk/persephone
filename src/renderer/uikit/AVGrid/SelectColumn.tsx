@@ -1,12 +1,12 @@
 import styled from "@emotion/styled";
 import clsx from "clsx";
 import { Column, TCellRendererProps } from "./avGridTypes";
-import { Button } from "../../basic/Button";
+import { IconButton } from "../IconButton";
 import {
     CheckedIcon,
     IndeterminateIcon,
     UncheckedIcon,
-} from "../../../theme/icons";
+} from "../../theme/icons";
 import { ReactElement, useCallback } from "react";
 
 const HeaderCellRoot = styled.div({
@@ -56,14 +56,13 @@ function HeaderCell(props: Readonly<TCellRendererProps>) {
 
     return (
         <HeaderCellRoot key={key} style={style} className="header-cell">
-            <Button
-                size="small"
-                type="icon"
+            <IconButton
+                name="avgrid-select-all"
+                icon={icon}
+                size="sm"
                 onClick={togleSelection}
                 disabled={model.props.readonly}
-            >
-                {icon}
-            </Button>
+            />
         </HeaderCellRoot>
     );
 }
@@ -95,14 +94,13 @@ function DataCell(props: Readonly<TCellRendererProps>) {
                 model.models.effects.setHovered({row: -1, col: -1});
             }}
         >
-            <Button
-                size="small"
-                type="icon"
+            <IconButton
+                name="avgrid-select-row"
+                icon={selected ? <CheckedIcon /> : <UncheckedIcon />}
+                size="sm"
                 onClick={togleSelection}
                 disabled={model.props.readonly}
-            >
-                {selected ? <CheckedIcon /> : <UncheckedIcon />}
-            </Button>
+            />
         </DataCellRoot>
     );
 }

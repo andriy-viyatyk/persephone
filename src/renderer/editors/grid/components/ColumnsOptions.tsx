@@ -3,14 +3,14 @@ import { SetStateAction, useMemo, useRef } from "react";
 
 import { DefaultView, ViewPropsRO, Views } from "../../../core/state/view";
 import {
-    CellFocus,
-    Column,
-    TDataType,
-} from "../../../components/data-grid/AVGrid/avGridTypes";
+    AVGrid,
+    AVGridModel,
+    type CellFocus,
+    type Column,
+    type TDataType,
+} from "../../../uikit";
 import { Popper } from "../../../components/overlay/Popper";
 import { TComponentState } from "../../../core/state/state";
-import { AVGridModel } from "../../../components/data-grid/AVGrid/model/AVGridModel";
-import AVGrid from "../../../components/data-grid/AVGrid/AVGrid";
 import { TPopperModel } from "../../../ui/dialogs/poppers/types";
 import { resolveState } from "../../../core/utils/utils";
 import { parseBoolean, parseNumber, parseString } from "../../../core/utils/parse-utils";
