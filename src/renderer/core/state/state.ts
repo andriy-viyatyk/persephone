@@ -17,7 +17,18 @@ export type IState<T> = {
     use: IUse<T>;
     update: (updateDraft: (state: T) => void) => void;
     clear: () => void;
-    subscribe: (listener: () => void) => () => void;
+    /**
+     * Two forms:
+     *   - `subscribe(listener)` fires on every state mutation.
+     *   - `subscribe(listener, selector)` fires only when the selected slice
+     *      differs by `compareSelection` (the same equality the `use` hook
+     *      applies). Lets pure models subscribe with the same precision as
+     *      components — see EPIC-028 walkthrough 03 / N1.
+     */
+    subscribe: {
+        (listener: () => void): () => void;
+        <R>(listener: (value: R) => void, selector: (state: T) => R): () => void;
+    };
 };
 
 const isObject = (value: any) => value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -90,12 +101,29 @@ export class TOneState<T> implements IState<T> {
         this.set(this.defaultState);
     };
 
-    subscribe = (listener: () => void) => {
+    subscribe = ((...args: unknown[]) => {
+        if (args.length >= 2) {
+            const listener = args[0] as (value: unknown) => void;
+            const selector = args[1] as (state: T) => unknown;
+            let last = selector(this.store.getState());
+            const wrapped = () => {
+                const next = selector(this.store.getState());
+                if (!compareSelection(last, next)) {
+                    last = next;
+                    listener(next);
+                }
+            };
+            this.listeners.push(wrapped);
+            return () => {
+                this.listeners = this.listeners.filter((l) => l !== wrapped);
+            };
+        }
+        const listener = args[0] as () => void;
         this.listeners.push(listener);
         return () => {
             this.listeners = this.listeners.filter((l) => l !== listener);
-        }
-    };
+        };
+    }) as IState<T>["subscribe"];
 }
 
 export class TGlobalState<T> extends TOneState<T> {}

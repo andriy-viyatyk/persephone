@@ -10,7 +10,7 @@ Overview of all active and planned epics and tasks.
 
 - **EPIC-028** — [Unified Editor Architecture — Editors as Standalone Models](epics/EPIC-028.md) *(Implementation phase planned 2026-05-20 — strangler fig migration with risk-first editor order; 13 tasks queued. Each task gets a deep-investigation pass with full task document immediately before implementation. See [`EPIC-028.md`](epics/EPIC-028.md) for the implementation plan)*
   - **Phase A — Foundation**
-  - [ ] US-547: Foundation primitives — `EditorModel`, `IContentHost`, `ComponentQueue`, `TOneState` selector subscribe, new `editorRegistry`, `PageDescriptor` v4 types, `CONTENT_HOST_TRAIT` (inert; no consumers)
+  - [ ] [US-547: Foundation primitives](tasks/US-547-foundation-primitives/README.md) — `EditorModel`, `IContentHost`, `ComponentQueue`, `TOneState` selector subscribe, new `editorRegistry`, `PageDescriptor` v4 types, `CONTENT_HOST_TRAIT` (inert; no consumers)
   - [ ] US-548: PageModel adapter layer — `editors[]` / `mainEditorId` / `secondaryEditorIds[]`; `LegacyEditorAdapter` wraps existing editors; persistence dual-reads (old or v4) writes v4; `compareGroups` moves to `PagesModel.state`
   - [ ] US-549: Shared chrome (PageToolbar + TextChrome) — walkthroughs 09 / 10; NavPanel button auto-renders for 6 sidebar editors; portal refs retire
   - **Phase B — Cross-cutting**
