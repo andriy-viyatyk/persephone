@@ -8,7 +8,22 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ## Version 3.0.10 (Upcoming)
 
-*No changes yet.*
+### New Features
+
+- **Markdown Preview — Azure DevOps wiki Mermaid syntax** — The Markdown viewer now recognizes the Azure DevOps wiki fenced container block syntax for Mermaid diagrams:
+
+  ```
+  ::: mermaid
+  graph TD
+      A[Start] --> B[End]
+  :::
+  ```
+
+  These blocks are automatically converted to the standard ` ```mermaid ``` ` form before rendering, so diagrams display as SVG just like regular mermaid code blocks (hover toolbar with copy/open controls included). Files authored on Azure DevOps wikis or with Pandoc fenced divs now render diagrams without any changes to the source.
+
+### Bug Fixes
+
+- **Explorer panel: scroll position preserved on file changes** — Previously, when files in the project folder changed (e.g., while an AI agent was editing them, or during a build), the Explorer file tree jumped back to the top, forcing you to scroll back down to find your place. Scroll position is now retained across automatic tree refreshes — added, removed, and renamed files animate in place without disturbing the viewport.
 
 ---
 

@@ -176,7 +176,7 @@ export class TreeProviderViewModel extends TComponentModel<
 
         try {
             const items = filterTreeItems(await provider.list(provider.rootPath));
-            const rootNode: TreeProviderNode = {
+            let workingTree: TreeProviderNode = {
                 data: {
                     title: this.props.rootLabel ?? provider.displayName,
                     href: provider.rootPath,
@@ -187,29 +187,50 @@ export class TreeProviderViewModel extends TComponentModel<
                 items: items.map(toNode),
             };
 
+            // Refresh children for every expanded directory INLINE, before publishing the
+            // new tree. Doing this atomically avoids an intermediate render where the tree
+            // is shrunk to root-only entries (all child folders' `items` momentarily
+            // undefined). That shrink causes RenderGridModel.updateRenderInfo to reset
+            // scrollOffset.y to 0 (innerSize < size branch in RenderGridModel.ts), wiping
+            // the user's scroll position on every FS watch tick — exactly what an AI agent
+            // editing files in the project folder triggers repeatedly.
+            //
+            // Sorted by length so parent paths are populated before child paths — needed
+            // for findNode/updateNodeChildren to locate the deeper expanded entries.
+            // Sequential await is fine: FileTreeProvider.watch is debounced 500ms, and the
+            // OLD tree remains visible the entire time (no intermediate state.update).
+            const sorted = [...expandedPaths].sort((a, b) => a.length - b.length);
+            for (const href of sorted) {
+                if (href === provider.rootPath) continue;
+                const node = findNode(workingTree, href);
+                if (!node || !node.data.isDirectory) continue;
+                const listPath = this.getListPath(node);
+                try {
+                    const childItems = filterTreeItems(await provider.list(listPath));
+                    workingTree = updateNodeChildren(workingTree, href, childItems.map(toNode));
+                } catch {
+                    workingTree = updateNodeChildren(workingTree, href, []);
+                }
+            }
+
             // Seed `initialExpandMap` BEFORE the state update so the very first render with
             // `state.displayTree` reads `defaultExpandedValues={ rootPath: true, ... }` and
             // expands the root (whose chevron is hidden — only this default keeps it open).
             // Subsequent builds skip the seed: once the root is in the map, user state in
             // Tree's own `state.expanded` overrides the hint anyway.
             if (!this.initialExpandMap || !(provider.rootPath in this.initialExpandMap)) {
-                const collapsedMap = this.buildAllCollapsedMap(rootNode);
+                const collapsedMap = this.buildAllCollapsedMap(workingTree);
                 this.initialExpandMap = { ...collapsedMap, ...this.initialExpandMap };
             }
 
             const { searchText } = this.state.get();
-            const displayTree = this.computeDisplayTree(rootNode, searchText);
+            const displayTree = this.computeDisplayTree(workingTree, searchText);
 
             this.state.update((s) => {
-                s.tree = rootNode;
+                s.tree = workingTree;
                 s.displayTree = displayTree;
                 s.error = null;
             });
-
-            // Reload children for previously expanded paths
-            if (expandedPaths.length) {
-                await this.loadChildrenForPaths(expandedPaths);
-            }
         } catch (err: any) {
             this.state.update((s) => {
                 s.tree = null;

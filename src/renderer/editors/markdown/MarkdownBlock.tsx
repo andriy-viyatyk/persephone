@@ -358,6 +358,21 @@ const MarkdownBlockRoot = styled.div({
 });
 
 // =============================================================================
+// Azure DevOps wiki container syntax → standard fenced code block
+// =============================================================================
+
+// Rewrite `::: mermaid ... :::` fenced containers (Azure DevOps wiki, Pandoc
+// fenced divs) into ```mermaid``` fences so the existing mermaid renderer
+// picks them up. Only the `mermaid` container is converted — other names
+// are left as-is.
+const MERMAID_CONTAINER_RE = /^:::[ \t]+mermaid[ \t]*\r?\n([\s\S]*?)\r?\n:::[ \t]*(?=\r?\n|$)/gm;
+
+function preprocessFencedContainers(content: string): string {
+    if (!content.includes(":::")) return content;
+    return content.replace(MERMAID_CONTAINER_RE, (_, body) => `\`\`\`mermaid\n${body}\n\`\`\``);
+}
+
+// =============================================================================
 // Components for ReactMarkdown
 // =============================================================================
 
@@ -396,7 +411,12 @@ export const MarkdownBlock = forwardRef<MarkdownBlockHandle, MarkdownBlockProps>
         // Subscribe to theme changes — only affects mermaid diagram rendering
         settings.use("theme");
         const mermaidLightMode = !isCurrentThemeDark();
-        const hasMermaid = content.includes("```mermaid");
+
+        const processedContent = useMemo(
+            () => preprocessFencedContainers(content),
+            [content],
+        );
+        const hasMermaid = processedContent.includes("```mermaid");
 
         const components = useMemo(
             () => getComponents(filePath || "", mermaidLightMode),
@@ -491,7 +511,7 @@ export const MarkdownBlock = forwardRef<MarkdownBlockHandle, MarkdownBlockProps>
                         try { return decodeURIComponent(url); } catch { return url; }
                     }}
                 >
-                    {content}
+                    {processedContent}
                 </ReactMarkdown>
             </MarkdownBlockRoot>
         );
