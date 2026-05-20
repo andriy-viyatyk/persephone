@@ -23,6 +23,31 @@
 //      `PagesQueryModel.getTextFileHost`, the switch widget (walkthrough 09),
 //      and TextChrome (walkthrough 10) all consume.
 //
+// Updated by walkthrough 09 (PT5 / B3):
+//   - `getNavigatorTarget(): { pipe?, filePath? } | null` accessor on the
+//      base class. Returns null by default (no NavPanel button); editors
+//      that participate in file-explorer navigation override. Consumed by
+//      the `<PageToolbar>` mockup's NavPanel slot — a page-level uniform
+//      affordance auto-rendered alongside the switch widget. Replaces
+//      today's six per-editor IconButton blocks (Text, PDF, Image, Video,
+//      Archive, Category) with a single declarative read.
+//
+// Updated by walkthrough 09 (PT7 / B2):
+//   - `hasTextSelection?(): boolean` optional method. Default undefined
+//      (no selection capability). Monaco overrides to expose its TextViewModel's
+//      `hasSelection` state. Consumed by `<TextChrome>`'s Run-all-script
+//      button visibility (only renders when host is a script language AND
+//      the editor surfaces a selection). Other editors (Grid, Markdown, …)
+//      leave it unimplemented so Run-all auto-hides even when the language
+//      qualifies — matches today's "Run-all is Monaco-only" UX.
+//
+// Updated by walkthrough 20 (MO7):
+//   - `focus(): void` no-op base method. Called by `<TextChrome>` after its
+//      200ms root-focus subscription fires (TC8) so the inner editor view
+//      can grab focus too. Text-bearing editors override to fire a `focus`
+//      event onto their `queue`; non-text-bearing editors (PDF, Image,
+//      Browser, …) inherit the no-op default and handle focus internally.
+//
 // Updated by walkthrough 04 (P1, P6 / B1, C3):
 //   - `abstract readonly editorId: string` — registry key (S10/B1). Each
 //      subclass sets it to its registry id ("monaco", "grid-json", …).
@@ -44,6 +69,7 @@ import { Subscription } from "../../../src/renderer/core/state/events";
 import type { PageModel } from "../../../src/renderer/api/pages/PageModel";
 import { TDialogModel } from "../../../src/renderer/core/state/model";
 import { fs as appFs } from "../../../src/renderer/api/fs";
+import type { IContentPipe } from "../../../src/renderer/api/types/io.pipe";
 import { ComponentQueue, ComponentQueueEvent } from "./ComponentQueue";
 import type { EditorDescriptor, HostDescriptor } from "./PersistenceTypes";
 
@@ -392,6 +418,84 @@ export class EditorModel<
     get contentHost(): import("./IContentHost").IContentHost | null {
         return null;
     }
+
+    // -------------------------------------------------------------------------
+    // Navigator-target accessor (walkthrough 09 / PT5 / B3)
+    //
+    // What the page-level NavPanel button should toggle when clicked. Read
+    // by the `<PageToolbar>` mockup's NavPanel slot to decide whether to
+    // render the button and what to pass to `page.toggleNavigator(...)`.
+    //
+    //   - Returning `null` (default): no NavPanel button. Editors with no
+    //     notion of opening a file-explorer panel (Settings, About, MCP-
+    //     Inspector, Browser, Storybook, Compare, Explorer-as-panel) inherit
+    //     this default.
+    //   - Returning `{}` (empty target object): NavPanel button renders
+    //     whenever `page.canOpenNavigator()` accepts no-args. Used by
+    //     editors that always have a panel/sidebar attached and just toggle
+    //     visibility (Archive — has its own archive-tree secondary editor;
+    //     Category — creates a sidebar at construction).
+    //   - Returning `{ pipe?, filePath? }`: the page predicate gates
+    //     rendering on `page.canOpenNavigator(pipe, filePath)`. The button
+    //     calls `page.toggleNavigator(pipe, filePath)` so the page can
+    //     initialize an Explorer panel from the file's containing folder
+    //     when no panel/sidebar yet exists. Text-bearing editors read
+    //     pipe/filePath from their `_host`; PDF / Image / Video read from
+    //     their own editor state.
+    //
+    // Replaces today's six per-editor inline NavPanel IconButton blocks
+    // (TextToolbar.tsx, PdfViewer.tsx, ImageViewer.tsx, VideoPlayerEditor.tsx,
+    // ArchiveEditorView.tsx, CategoryEditor.tsx) with a single declarative
+    // read at the toolbar.
+    // -------------------------------------------------------------------------
+
+    getNavigatorTarget(): { pipe?: IContentPipe | null; filePath?: string | null } | null {
+        return null;
+    }
+
+    // -------------------------------------------------------------------------
+    // View-side selection probe (walkthrough 09 / PT7 / B2)
+    //
+    // Optional. Returns true when the editor surfaces a non-empty text
+    // selection. Consumed by `<TextChrome>`'s Run-all-script button
+    // visibility (renders only when the host language is a script language
+    // AND the editor exposes a selection).
+    //
+    // Default: undefined (no selection capability). Monaco overrides to
+    // read `textVm?.state.get().hasSelection ?? false` — walkthrough 20
+    // finalizes the exact accessor. Other editors (Grid, Markdown,
+    // Mermaid, …) leave it unimplemented; Run-all auto-hides for them
+    // regardless of language — matches today's UX where Run-all is
+    // Monaco-only.
+    //
+    // If a second selection-aware editor ever lands, promote to a
+    // SELECTION_TRAIT on `traits` (current single-consumer / single-provider
+    // shape doesn't justify a trait yet — YAGNI).
+    // -------------------------------------------------------------------------
+
+    hasTextSelection?(): boolean;
+
+    // -------------------------------------------------------------------------
+    // View focus signal (walkthrough 20 / MO7)
+    //
+    // Called by `<TextChrome>` after its 200ms root-focus subscription fires
+    // (TC8) so the inner editor view can grab focus too. Base implementation
+    // is a no-op; text-bearing editors with a focusable inner widget override:
+    //
+    //     focus(): void { this.queue.send({ type: "focus" }); }
+    //
+    // The view's `queue.use` handler calls `monacoRef.current?.focus()` (or
+    // equivalent for Grid, Notebook embedded editors, …). Reproduces today's
+    // two-tier focus chain (TextEditorView's 200ms root focus + TextViewModel's
+    // 0ms editor focus on `pagesModel.onFocus`) — chrome owns the outer 200ms
+    // path, this method covers the inner editor focus.
+    //
+    // Non-text-bearing editors (PDF, Image, Browser, …) inherit the no-op
+    // default; their views handle focus internally via Monaco's PDF.js /
+    // browser-view / image-view internal focus.
+    // -------------------------------------------------------------------------
+
+    focus(): void { /* override */ }
 
     // -------------------------------------------------------------------------
     // Persistence (each editor implements its own get/set; restore in A7)

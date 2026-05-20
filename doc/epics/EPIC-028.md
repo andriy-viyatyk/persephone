@@ -2,14 +2,14 @@
 
 ## Status
 
-**Status:** Active (Design phase)
+**Status:** Design phase complete (2026-05-20). Ready for implementation planning.
 **Created:** 2026-05-19
 
 ## Overview
 
 Collapse the current two-tier editor system — content-views over `TextFileModel` versus standalone editors — into a single uniform architecture where every editor is a top-level `EditorModel`. Text-bearing editors compose an `IContentHost` and expose a `CONTENT_HOST_TRAIT` so any owner (the page, a notebook note, a future container) can switch editors by transferring the host. The dual-meaning `state.editor` field, the `category: "content-view" | "standalone"` registry flag, and the entire `ContentViewModel` / `ContentViewModelHost` / `useContentViewModel` subsystem are removed.
 
-This epic enters its **design phase first**. Implementation tasks are not planned until per-editor mockups and walkthroughs stabilize.
+This epic ran a **design phase first**. The design phase completed 2026-05-20 — 28 walkthroughs resolved, 2 deferred (Graph and Draw, documented skip-rationale: structurally similar to walked Tier-5 editors; investigated first-principles during implementation). All architectural concerns logged in [`concerns.md`](EPIC-028-editor-architecture/concerns.md) are resolved. Mockups stabilized (last eight walkthroughs in a row produced zero mockup changes). Implementation planning is the next phase.
 
 ## Goals
 
@@ -107,31 +107,37 @@ Called by `PageModel.switchMainEditor` for top-level switching and by a notebook
 
 ## Design Phase
 
-This epic is in design first. Implementation tasks are not enumerated until the mockups stabilize.
+**Complete.** 2026-05-19 → 2026-05-20. The progress dashboard with full per-walkthrough resolution notes lives at [`EPIC-028-editor-architecture/progress.md`](EPIC-028-editor-architecture/progress.md). The concerns log lives at [`EPIC-028-editor-architecture/concerns.md`](EPIC-028-editor-architecture/concerns.md). The README + walkthrough template at [`EPIC-028-editor-architecture/README.md`](EPIC-028-editor-architecture/README.md).
 
-### Approach
+### Approach (followed)
 
-1. **Foundation mockups** — sketch the architectural primitives (`EditorModel`, `IContentHost`, traits, `editorRegistry`, `PageModel` switch, `TextFileModel`). Non-compiling TypeScript under [`EPIC-028-editor-architecture/mockups/`](EPIC-028-editor-architecture/mockups/). Done.
-2. **Page-core walkthroughs** — validate the foundation against existing page-level functionality (lifecycle, swap, secondaries, persistence, multi-window, compare, grouping) **before** touching any editor. If the architecture doesn't hold up at the page level, fix the mockups first.
-3. **UI-surface walkthroughs** — tabs, page toolbar, `TextChrome`.
-4. **Special pages and cross-cutting** — empty / well-known pages, scripting facades, MCP integration.
-5. **Per-editor walkthroughs** — easy → hard, each grounded in the contracts established by prior tiers.
-6. **Concerns logged in [`concerns.md`](EPIC-028-editor-architecture/concerns.md)** — resolution captured in the same row.
-7. **Iterate** until the last 2–3 walkthroughs produce zero mockup changes. That's the stability signal for moving to task planning.
+1. **Foundation mockups** — sketched the architectural primitives (`EditorModel`, `IContentHost`, traits, `editorRegistry`, `PageModel` switch, `TextFileModel`, `ComponentQueue`, `TOneState`, `PersistenceTypes`). Non-compiling TypeScript under [`EPIC-028-editor-architecture/mockups/`](EPIC-028-editor-architecture/mockups/). All nine foundation mockups landed before Tier-1 walkthroughs began.
+2. **Page-core walkthroughs (Tier 1, 01–07)** — validated the foundation against page-level functionality. Tier-1 second pass at the end confirmed zero decision drift across walkthroughs 01–07.
+3. **UI-surface walkthroughs (Tier 2, 08–10)** — page tabs, page toolbar, TextChrome.
+4. **Special pages and cross-cutting (Tier 3 + Tier 4, 11–13)** — empty / well-known pages, scripting facades, MCP integration.
+5. **Per-editor walkthroughs (Tier 5, 20–30)** — Monaco → Grid → Preview group → LogView → Link → Todo → RestClient → (Graph + Draw skipped) → Notebook → no-host group (Browser + Compare + Explorer in depth; other nine no-host editors deferred to implementation).
+6. **Concerns logged in [`concerns.md`](EPIC-028-editor-architecture/concerns.md)** — resolutions captured in the same row. Initial C1–C9 set grew to ~25 concern blocks (L1–L7, S1–S10, N1–N7, P1–P10, M1–M10, CK1–CK10, GK1–GK10, B1–B3, T1–T10, PT1–PT10, TC1–TC11, EW1–EW10, SF1–SF10, MI1–MI10, MO1–MO10, GR1–GR10, PV1–PV10, LV1–LV10, LK1–LK10, TD1–TD10, RC1–RC10, NB1–NB10, NH1–NH10, CP1–CP5, EX1–EX10). All resolved or explicitly deferred.
+7. **Iterated** until the last eight walkthroughs in a row (Grid → Preview group → LogView → Link → Todo → RestClient → Notebook → No-host group) produced zero mockup changes — the stability signal for moving to task planning.
 
-### Walkthrough order
+### Walkthrough order (final)
 
-Full list and template live in [`EPIC-028-editor-architecture/README.md`](EPIC-028-editor-architecture/README.md). Five tiers, evaluated in order:
+Five tiers, evaluated in order:
 
-| Tier | Topic | Files |
-|------|-------|-------|
-| 1 | Page core | lifecycle, main-editor swap, secondary editors, persistence, multi-window transfer, compare mode, grouped pages |
-| 2 | UI surfaces | page tabs, page toolbar, TextChrome |
-| 3 | Special page shapes | empty pages, well-known pages |
-| 4 | Cross-cutting | scripting facades, MCP integration |
-| 5 | Editors | Monaco → Grid → previews → Log → Link → Todo → RestClient → Graph → Draw → Notebook → no-host editors |
+| Tier | Topic | Walkthroughs | Status |
+|------|-------|--------------|--------|
+| 1 | Page core | 01 lifecycle, 02 main-editor swap, 03 secondary editors, 04 persistence, 05 multi-window, 06 compare, 07 grouped pages | All `[x]` |
+| 2 | UI surfaces | 08 page tabs, 09 page toolbar, 10 TextChrome | All `[x]` |
+| 3 | Special page shapes | 11 empty & well-known pages | `[x]` |
+| 4 | Cross-cutting | 12 scripting facades, 13 MCP integration | All `[x]` |
+| 5 | Editors | 20 Monaco, 21 Grid, 22 Preview group, 23 Log View, 24 Link, 25 Todo, 26 Rest Client, 29 Notebook, 30 No-host group (Browser + Compare + Explorer) | 9 `[x]` |
+| 5 | Editors (skipped for design) | 27 Graph, 28 Draw | `[~]` SKIPPED — structurally similar to walked Tier-5 editors; investigated first-principles during implementation |
 
-Tiers 1–4 must produce a stable design before Tier 5 begins. Editor walkthroughs that surface foundation issues bounce back to the relevant Tier-1 walkthrough.
+### Outcome
+
+- **30 walkthroughs total:** 28 resolved (`[x]`), 2 deferred (`[~]`) with documented skip-rationale.
+- **Foundation mockups stable** — last eight walkthroughs produced zero mockup edits. The Tier 5 template (state slice + queue unions + view + accepts + lifecycle overrides + persistence + optional overrides + CONTENT_HOST_TRAIT) carries cleanly across nine text-bearing editors, two host implementations (TextFileModel + NoteItemEditModel), two switch scopes (page-level + per-note), three sidebar topologies (sidebar-owning Link / non-sidebar-owning Grid-Todo-RC-Notebook / secondary-only Explorer), and three no-host shapes (page-mainEditor Browser / not-an-EditorModel Compare / secondary-only Explorer).
+- **Five Tier-5 patterns standardized** — (1) per-editor cache file → descriptor.state consolidation (six instances); (2) self-write-guard flag (five instances); (3) three-site lifecycle split (five instances); (4) `leftPanelWidth`-equivalent silent-today-bug incidental fix (five instances); (5) `acquireViewModel` quartet retired across the entire codebase.
+- **Two architectural reframings** — (a) walkthrough 24's "LK7 + LK8 recipe" reframed as two separable hooks by walkthrough 30 / EX5; (b) `EditorConstructorArgs.initialHost` reframed by walkthrough 29 / NB7 as canonical injection mechanism (supersedes C4's tentative `setContentHost()` separate-call shape), confirmed across two distinct embedding patterns by walkthrough 30 / NH4.
 
 ## Implementation Phases (rough sketch — to be detailed after design stable)
 
@@ -143,29 +149,27 @@ Tiers 1–4 must produce a stable design before Tier 5 begins. Editor walkthroug
 6. **Scripting** — rewrite facades; update `.d.ts`.
 7. **Persistence breaking-change handling** — detect-and-skip old session data; per-page try/catch with `console.warn` on individual failures. No migration. Bump major version. Document in release notes.
 
-## Open Concerns
+## Concerns
 
-Live concerns log lives at [`EPIC-028-editor-architecture/concerns.md`](EPIC-028-editor-architecture/concerns.md). The epic README links the active set; concerns close out as they're resolved during the design phase.
+The full concerns log — every architectural concern surfaced during the design phase with the resolution captured in the same row — lives at [`EPIC-028-editor-architecture/concerns.md`](EPIC-028-editor-architecture/concerns.md).
 
-Initial set (will grow):
+**State as of 2026-05-20:** Open section is empty. Resolved section contains all concern rows raised during the design phase, including the initial C1–C9 set (which formerly lived inline in this epic doc) and the larger set of per-walkthrough concerns (L1–L7, S1–S10, N1–N7, P1–P10, M1–M10, CK1–CK10, GK1–GK10, B1–B3, T1–T10, PT1–PT10, TC1–TC11, EW1–EW10, SF1–SF10, MI1–MI10, MO1–MO10, GR1–GR10, PV1–PV10, LV1–LV10, LK1–LK10, TD1–TD10, RC1–RC10, NB1–NB10, NH1–NH10, CP1–CP5, EX1–EX10). All rows resolved.
 
-| # | Concern | Status |
-|---|---------|--------|
-| C1 | `TextChrome` host-capability discovery — `instanceof TextFileModel` vs. capability sub-traits like `IFileBacked`, `IEncryptable`, `IScriptable` on the host | **Resolved 2026-05-19** — instanceof; sub-traits rejected as YAGNI |
-| C2 | Persistence migration for existing sessions (`type: "textFile" + editor: "link-view"` → new shape) | **Resolved 2026-05-19** — no migration; detect-and-skip + major-version bump |
-| C3 | Monaco's `monaco.editor.ITextModel` (undo history) on switch — accept loss as today, or attach to `IContentHost` for survival across switches | **Resolved 2026-05-19** — keep current behavior (loss on switch); cross-editor undo deferred to future epic |
-| C4 | `NoteItemEditModel` today implements `IContentHost` AND owns embedded view models — exactly how does it decompose in the new architecture | **Resolved 2026-05-19** — transient IContentHost; embedded editor is a standalone `EditorModel` wrapping it; initial host injection via `setContentHost(host)` (walkthrough 29 codifies the exact shape) |
-| C5 | Where the embedded-editor switch widget renders inside a Notebook (per-note toolbar? floating?) | **Resolved 2026-05-19** — per-note; each NoteItem React component renders its own switch widget |
-| C6 | Compare mode — currently a flag on `TextFileModel`. Where does it live now? | **Deferred to walkthrough 06** — host-level compare, valid only for grouped pages with two `TextFileModel` hosts; flag likely moves to page-pair / groupings level |
-| C7 | `TextFileModel`'s `temp`, `restored`, `_pendingRevealLine`, `_pendingHighlightText`, `compareMode`, `detectedContentEditor` — which stay on the host, which move to specific editors, which go away | **Deferred 2026-05-19** — tentative: `temp` + `restored` stay; `_pendingRevealLine` + `_pendingHighlightText` → MonacoEditor (walkthrough 20); `compareMode` → walkthrough 06; `detectedContentEditor` deleted |
-| C8 | The current `TextEditorView` hosts toolbar, script panel, footer, encryption padlock together. After split, which editors get which subset? | **Resolved 2026-05-19 (high-level)** — no refs / no portals / no wrapper; each editor view composes shared chrome components directly (`EditorPageView`, `PageToolbar`, `ScriptPanel`, `PageFooter`, `EditorOverlay`) which read `model`/`model.host` to decide what to render; layout details to walkthrough 10 |
-| C9 | `IContentHost.stateStorage` placement — host or editor? | **Resolved 2026-05-19** — moved to `EditorModel`, keyed by `editor.id`; host receives via `setStorage()` on adoption; on switch the new editor copies the old's id so cache survives; cache cleanup is page-driven at "id release" moments (setMainEditor without id transfer, reconcileVisibility, PageModel.dispose) |
+The initial C1–C9 entries moved to concerns.md during their walkthroughs and are no longer duplicated here; see concerns.md for the resolution text on each.
 
 ## Linked Tasks
 
 *(none yet — to be planned after design phase)*
 
 ## Notes
+
+### 2026-05-20 — design phase complete
+- All 30 walkthroughs landed (`[x]` for 28; `[~]` SKIPPED for walkthroughs 27 Graph and 28 Draw with documented skip-rationale — structurally similar to walked Tier-5 editors; investigated first-principles during implementation).
+- Last eight walkthroughs in a row (Grid → Preview group → LogView → Link → Todo → RestClient → Notebook → No-host group) produced **zero mockup changes** — stability signal for moving to task planning.
+- Concerns log fully resolved — no open concerns at end of design phase.
+- Foundation mockups stabilized at nine files (`IContentHost`, `traits`, `EditorModel`, `TextFileModel`, `editorRegistry`, `PageModel`, `ComponentQueue`, `TOneState`, `PersistenceTypes`).
+- Tier 5 template proven across nine text-bearing editors + two host implementations + two switch scopes (page-level + per-note) + three sidebar topologies + three no-host shapes.
+- Implementation planning is the next phase.
 
 ### 2026-05-19 — epic created
 - Triggered by a duplicate-secondary-editor bug in `LinkEditor` that exposed the lack of lifecycle hooks on structured editors using plain `TextFileModel`.

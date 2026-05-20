@@ -3,6 +3,10 @@
 //
 // EPIC-028 design phase. Non-compiling sketch — for reading, not building.
 //
+// Updated by walkthrough 10 (TC9 / B2) — added optional `handleKeyDown?` so
+// `<TextChrome>` can delegate root-level keystrokes (Ctrl+S, F5, F2, …) to
+// the host without an instanceof cast.
+//
 // Replaces today's `IContentHost` at /src/renderer/editors/base/IContentHost.ts.
 // Strips out the content-view-model ref-counting (acquireViewModel,
 // releaseViewModel, prepareViewModel, acquireViewModelSync) and the `editor`
@@ -97,6 +101,19 @@ export interface IContentHost {
      *
      *  Walkthrough 04 / P4, C4. */
     getDescriptor(): HostDescriptor;
+
+    /** Optional root-level keystroke handler. Called by `<TextChrome>`'s
+     *  outer panel `onKeyDown` (walkthrough 10 / TC9). Hosts implement what
+     *  they care about; the chrome doesn't know the host class.
+     *
+     *  TextFileModel implements (delegates to TextFileActionsModel.handleKeyDown):
+     *    - Ctrl+S       → saveFile
+     *    - Ctrl+Shift+S → saveFileAs
+     *    - F5           → runScript
+     *    - F2           → renameFile
+     *
+     *  NoteItemEditModel may implement its own subset (walkthrough 29). */
+    handleKeyDown?(e: React.KeyboardEvent): void;
 }
 
 // -----------------------------------------------------------------------------

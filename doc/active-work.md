@@ -8,7 +8,7 @@ Overview of all active and planned epics and tasks.
 
 ## Active
 
-- **EPIC-028** — [Unified Editor Architecture — Editors as Standalone Models](epics/EPIC-028.md) *(Design phase — building mockups and per-editor walkthroughs in [`EPIC-028-editor-architecture/`](epics/EPIC-028-editor-architecture/) before task planning)*
+- **EPIC-028** — [Unified Editor Architecture — Editors as Standalone Models](epics/EPIC-028.md) *(Design phase complete 2026-05-20 — 28/30 walkthroughs resolved, 2 deferred per documented skip-rationale; all concerns resolved; foundation mockups stable. Implementation planning is the next phase. See [`EPIC-028-editor-architecture/progress.md`](epics/EPIC-028-editor-architecture/progress.md))*
 - *(no epic)*
   - [ ] US-493: Fix Explorer panel not refreshing on `navigateUp` / `makeRoot` — subscribe `ExplorerSecondaryEditor` to `model.state.use()` so `rootPath` is reactive
   - [ ] US-494: Fix Open Tabs list — clicking a current-window document page does not activate it. `OpenTabsList` was passing `mainEditor.state.id` (editor UUID) instead of `page.id` (page UUID), so `pagesModel.showPage()` lookup silently failed for any page with a `mainEditor`
