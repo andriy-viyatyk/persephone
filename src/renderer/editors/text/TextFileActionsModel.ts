@@ -2,7 +2,6 @@ import { ui } from "../../api/ui";
 import { pagesModel } from "../../api/pages";
 import { scriptRunner } from "../../scripting/ScriptRunner";
 import { isScriptLanguage } from "../../scripting/transpile";
-import { compareModeChanged } from "../../core/state/events";
 
 import type { TextFileModel } from "./TextEditorModel";
 
@@ -62,13 +61,6 @@ export class TextFileActionsModel {
             script = this.model.script.getSelectedText() || script;
         }
         await scriptRunner.runWithResult(this.model.id, script, this.model, "typescript");
-    };
-
-    setCompareMode = (compareMode: boolean) => {
-        this.model.state.update((s) => {
-            s.compareMode = compareMode;
-        });
-        compareModeChanged.send();
     };
 
     confirmRelease = async (): Promise<boolean> => {

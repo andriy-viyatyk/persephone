@@ -258,6 +258,7 @@ class PageTabModel extends TComponentModel<null, PageTabProps> {
     handleContextMenu = (e: React.MouseEvent) => {
         const page = this.props.model;
         const editor = page.mainEditor;
+        const textHost = pagesModel.getTextFileHost(page.id);
         const ctxEvent = ContextMenuEvent.fromNativeEvent(e, "page-tab");
         const isPinned = page.pinned;
         const pinUnpinItem: MenuItem = {
@@ -328,89 +329,69 @@ class PageTabModel extends TComponentModel<null, PageTabProps> {
                 label: "Save",
                 icon: <SaveIcon />,
                 onClick: () => {
-                    if (editor instanceof TextFileModel) {
-                        editor.saveFile(false);
-                    }
+                    textHost?.saveFile(false);
                 },
-                disabled: !(editor instanceof TextFileModel),
+                disabled: !textHost,
             },
             {
                 label: "Save As...",
                 icon: <SaveIcon />,
                 onClick: () => {
-                    if (editor instanceof TextFileModel) {
-                        editor.saveFile(true);
-                    }
+                    textHost?.saveFile(true);
                 },
-                disabled: !(editor instanceof TextFileModel),
+                disabled: !textHost,
             },
             {
                 label: "Rename",
                 icon: <RenameIcon />,
                 onClick: this.renameTab,
-                disabled: !editor || !isTextFileModel(editor),
+                disabled: !textHost,
             },
             {
                 label: "Show in File Explorer",
                 icon: <FolderOpenIcon />,
                 onClick: () => {
-                    api.showItemInFolder(
-                        (editor?.state.get() as any).filePath
-                    );
+                    const fp = (editor?.state.get() as { filePath?: string })?.filePath;
+                    if (fp) api.showItemInFolder(fp);
                 },
-                disabled: !(editor?.state.get() as any)?.filePath,
+                disabled: !(editor?.state.get() as { filePath?: string })?.filePath,
             },
             {
                 label: "Copy File Path",
                 icon: <CopyIcon />,
                 onClick: () => {
-                    navigator.clipboard.writeText(
-                        (editor?.state.get() as any).filePath
-                    );
+                    const fp = (editor?.state.get() as { filePath?: string })?.filePath;
+                    if (fp) navigator.clipboard.writeText(fp);
                 },
-                disabled: !(editor?.state.get() as any)?.filePath,
+                disabled: !(editor?.state.get() as { filePath?: string })?.filePath,
             },
             {
                 label: "Decrypt",
                 icon: <UnlockIcon />,
                 onClick: () => {
-                    if (editor && isTextFileModel(editor)) {
-                        editor.showEncryptionDialog();
-                    }
+                    textHost?.showEncryptionDialog();
                 },
-                disabled: !(
-                    editor && isTextFileModel(editor) &&
-                    editor.encrypted
-                ),
+                disabled: !(textHost?.encrypted),
                 startGroup: true,
             },
             {
                 label:
-                    editor && isTextFileModel(editor) &&
-                    !editor.withEncryption
+                    textHost && !textHost.withEncryption
                         ? "Encrypt"
                         : "Change Password",
                 icon: <LockIcon />,
                 onClick: () => {
-                    if (editor && isTextFileModel(editor)) {
-                        editor.showEncryptionDialog();
-                    }
+                    textHost?.showEncryptionDialog();
                 },
-                disabled:
-                    !editor || !isTextFileModel(editor) ||
-                    editor.encrypted,
+                disabled: !textHost || textHost.encrypted,
             },
             {
                 label: "Make Unencrypted",
                 icon: <KeyOffIcon />,
                 onClick: () => {
-                    if (editor && isTextFileModel(editor)) {
-                        editor.makeUnencrypted();
-                    }
+                    textHost?.makeUnencrypted();
                 },
-                disabled:
-                    !editor || !isTextFileModel(editor) ||
-                    !editor.decrypted,
+                disabled: !textHost?.decrypted,
             },
         );
         ctxEvent.items.push(...menuItems);
@@ -418,24 +399,18 @@ class PageTabModel extends TComponentModel<null, PageTabProps> {
 
     private getDragData = (drop = false): PageDragData => {
         const page = this.props.model;
-        const editor = page.mainEditor;
         return {
             sourceWindowIndex: drop ? undefined : appWindow.windowIndex,
             targetWindowIndex: drop ? appWindow.windowIndex : undefined,
-            page: {
-                id: page.id,
-                pinned: page.pinned,
-                modified: page.modified,
-                hasSidebar: page.hasSidebar,
-                editor: editor?.getRestoreData() ?? {},
-            },
+            // Walkthrough 05 / M1: IPC payload is the new v4 PageDescriptor.
+            page: page.getDescriptor(),
         };
     };
 
     private renameTab = async () => {
-        const editor = this.props.model.mainEditor;
-        if (editor && isTextFileModel(editor)) {
-            const pageTitle = editor.state.get().title;
+        const textHost = pagesModel.getTextFileHost(this.props.model.id);
+        if (textHost) {
+            const pageTitle = textHost.state.get().title;
             const inputResult = await ui.input("Enter new file name:", {
                 title: "Rename File",
                 value: pageTitle,
@@ -444,7 +419,7 @@ class PageTabModel extends TComponentModel<null, PageTabProps> {
             });
             if (inputResult?.button === "Rename" && inputResult.value) {
                 const newName = inputResult.value;
-                await editor.renameFile(newName);
+                await textHost.renameFile(newName);
             }
         }
     }
@@ -506,8 +481,9 @@ class PageTabModel extends TComponentModel<null, PageTabProps> {
     closeClick = () => {
         const page = this.props.model;
         if (this.isGrouped) {
+            // Walkthrough 07 / GK4: ungroup carries compare-cleanup obligation
+            // now (CK7); the explicit fixCompareMode call is redundant.
             pagesModel.ungroup(page.id);
-            pagesModel.fixCompareMode();
             pagesModel.showPage(page.id);
         } else {
             page.close();
@@ -527,12 +503,12 @@ class PageTabModel extends TComponentModel<null, PageTabProps> {
     };
 
     encryptionClick = () => {
-        const editor = this.props.model.mainEditor;
-        if (editor && isTextFileModel(editor)) {
-            if (editor.encrypted) {
-                editor.showEncryptionDialog();
-            } else if (editor.decrypted) {
-                editor.encryptWithCurrentPassword();
+        const textHost = pagesModel.getTextFileHost(this.props.model.id);
+        if (textHost) {
+            if (textHost.encrypted) {
+                textHost.showEncryptionDialog();
+            } else if (textHost.decrypted) {
+                textHost.encryptWithCurrentPassword();
             }
         }
     };
@@ -563,7 +539,7 @@ export function PageTab(props: PageTabProps) {
             _iconHint: s.favicon ?? "",
             _anyTabAudible: s._anyTabAudible ?? false,
             _pageMuted: s.pageMuted ?? false,
-        }), { title: "Empty", modified: false, language: "", filePath: "", deleted: false, temp: false, _anyTabAudible: false, _pageMuted: false });
+        }), { title: "Empty", modified: false, language: "", filePath: "", deleted: false, password: undefined, encrypted: false, temp: false, _iconHint: "", _anyTabAudible: false, _pageMuted: false });
 
     const [isOver, setIsOver] = useState(false);
     const dragEnterCount = useRef(0);
@@ -598,8 +574,9 @@ export function PageTab(props: PageTabProps) {
         [language, activeLanguages]
     );
 
-    const encrypted = editor && isTextFileModel(editor) && editor.encrypted;
-    const decrypted = editor && isTextFileModel(editor) && editor.decrypted;
+    const textHost = pagesModel.getTextFileHost(page.id);
+    const encrypted = textHost?.encrypted;
+    const decrypted = textHost?.decrypted;
     const hasEncryption = Boolean(encrypted || decrypted);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const showSoundButton = _anyTabAudible || _pageMuted || (editor as any)?.toggleMuteAll;

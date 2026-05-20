@@ -242,16 +242,21 @@ function createMcpServer(): InstanceType<typeof McpServer> {
                     status: w.window ? "open" : "closed",
                     pageCount: wState?.pages?.length ?? 0,
                     activePageId: wState?.activePageId,
-                    pages: (wState?.pages || []).map(p => ({
-                        id: p.id,
-                        title: p.editor?.title ?? "Empty",
-                        type: p.editor?.type,
-                        editor: p.editor?.editor,
-                        language: p.editor?.language,
-                        filePath: p.editor?.filePath,
-                        modified: p.modified,
-                        pinned: p.pinned,
-                    })),
+                    pages: (wState?.pages || []).map(p => {
+                        // v4 PageDescriptor: read main editor's state from editors[mainEditorId].
+                        const main = p.editors.find(e => e.id === p.mainEditorId);
+                        const state = (main?.state ?? {}) as { title?: string; type?: string; editor?: string; language?: string; filePath?: string };
+                        return {
+                            id: p.id,
+                            title: state.title ?? "Empty",
+                            type: state.type,
+                            editor: state.editor,
+                            language: state.language,
+                            filePath: state.filePath,
+                            modified: p.modified,
+                            pinned: p.pinned,
+                        };
+                    }),
                 };
             });
             const text = JSON.stringify(result, null, 2);

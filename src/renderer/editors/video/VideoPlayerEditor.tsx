@@ -382,7 +382,7 @@ export class VideoEditorModel extends EditorModel<VideoEditorState, void> {
         this.state.update((s) => {
             for (const key of fields) {
                 if (key in data) {
-                    (s as Record<string, unknown>)[key] = data[key as keyof VideoEditorState];
+                    (s as unknown as Record<string, unknown>)[key] = data[key as keyof VideoEditorState];
                 }
             }
             // Don't restore transient states — reset to stopped

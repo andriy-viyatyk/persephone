@@ -19,22 +19,33 @@ export interface IEditorState {
     secondaryEditor?: string[],
 }
 
-/** Serialized page descriptor for persistence (new format since v3.0.1). */
-export interface PageDescriptor {
-    /** Stable page UUID. */
+// Re-export v4 persistence types as the canonical PageDescriptor / WindowState
+// after EPIC-028 US-548. The dual-read path in PagesPersistenceModel uses
+// LegacyPageDescriptor / LegacyWindowState below to consume v3 session files;
+// every other caller (main process, IPC, renderer drag) sees the v4 shape.
+export type {
+    PageDescriptor,
+    WindowState,
+    EditorDescriptor,
+    HostDescriptor,
+    PipeDescriptor,
+} from "./persistence-v4";
+
+import type { PageDescriptor } from "./persistence-v4";
+
+/** Pre-EPIC-028 (v3.x) page descriptor. Retained for one-shot dual-read in
+ *  US-548; deleted with the rest of the legacy in US-559. */
+export interface LegacyPageDescriptor {
     id: string;
-    /** Page-level pinned flag. */
     pinned: boolean;
-    /** Aggregate modified (mainEditor OR secondaryEditors). */
     modified: boolean;
-    /** Whether sidebar exists (for restore). */
     hasSidebar: boolean;
-    /** Main editor state. */
     editor: Partial<IEditorState>;
 }
 
-export interface WindowState {
-    pages: PageDescriptor[];
+/** Pre-EPIC-028 (v3.x) window state. Retained for one-shot dual-read. */
+export interface LegacyWindowState {
+    pages: LegacyPageDescriptor[];
     groupings?: [string, string][];
     activePageId?: string;
 }

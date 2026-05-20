@@ -98,9 +98,12 @@ export function TextToolbar({ model, setEditorToolbarRefFirst, setEditorToolbarR
     }
 
     if (isTextFileModel(model)) {
+        // Resolve the page that owns this text editor — its id is what
+        // enterCompareMode wants. If no leftGroupedPage, no compare possible.
+        const ownerPage = pagesModel.findPage(model.id);
         const leftGroupedPage = pagesModel.getLeftGroupedPage(model.id);
-        const leftGroupedEditor = leftGroupedPage?.mainEditor;
-        if (leftGroupedEditor && isTextFileModel(leftGroupedEditor)) {
+        if (ownerPage && leftGroupedPage
+            && pagesModel.canCompare(leftGroupedPage.id, ownerPage.id)) {
             actions.push(
                 <IconButton
                     key="compare-with-left"
@@ -109,8 +112,7 @@ export function TextToolbar({ model, setEditorToolbarRefFirst, setEditorToolbarR
                     title="Compare with Left Page"
                     icon={<CompareIcon />}
                     onClick={() => {
-                        model.setCompareMode(true);
-                        leftGroupedEditor.setCompareMode(true);
+                        pagesModel.enterCompareMode(ownerPage.id);
                     }}
                 />
             );

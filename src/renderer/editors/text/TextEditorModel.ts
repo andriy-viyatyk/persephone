@@ -21,7 +21,6 @@ export interface TextFileEditorModelState extends IEditorState {
     password?: string;
     encrypted?: boolean;
     restored: boolean;
-    compareMode: boolean;
     temp: boolean;
     /** Editor detected from content (e.g., "notebook-view" when JSON has "type": "note-editor") */
     detectedContentEditor?: EditorView;
@@ -32,7 +31,6 @@ export const getDefaultTextFileEditorModelState = (): TextFileEditorModelState =
     type: "textFile" as const,
     language: "plaintext",
     encoding: undefined,
-    compareMode: false,
     temp: true,
     // no stored state props
     content: "",
@@ -251,7 +249,6 @@ export class TextFileModel extends EditorModel<TextFileEditorModelState, void> i
             s.language = data.language || s.language;
             s.encoding = data.encoding || s.encoding;
             s.editor = data.editor || s.editor;
-            s.compareMode = data.compareMode || s.compareMode;
             s.temp =
                 !s.filePath && (data.temp !== undefined ? data.temp : s.temp);
         });
@@ -306,7 +303,6 @@ export class TextFileModel extends EditorModel<TextFileEditorModelState, void> i
     openSearchInNavPanel = () => this.actions.openSearchInNavPanel();
     runScript = (all?: boolean) => this.actions.runScript(all);
     runRelatedScript = (all?: boolean) => this.actions.runRelatedScript(all);
-    setCompareMode = (compareMode: boolean) => this.actions.setCompareMode(compareMode);
     confirmRelease = async (closing?: boolean) => {
         const baseOk = await super.confirmRelease(closing);
         if (!baseOk) return false;

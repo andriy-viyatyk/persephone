@@ -9,7 +9,8 @@ import type { EditorDescriptor, HostDescriptor } from "../../../../shared/persis
 import type { IContentHost } from "./IContentHost";
 import type { IContentPipe } from "../../../api/types/io.pipe";
 import type { EditorStateStorage } from "./EditorStateStorage";
-import type { IPageHost } from "./IPageHost";
+import type { PageModel } from "../../../api/pages/PageModel";
+import type { IEditorState } from "../../../../shared/types";
 
 /**
  * v4 editor base class. Coexists with the legacy [`../EditorModel.ts`](../EditorModel.ts)
@@ -19,9 +20,16 @@ import type { IPageHost } from "./IPageHost";
  * Design rationale: [`doc/epics/EPIC-028-editor-architecture/mockups/EditorModel.ts`](../../../../../doc/epics/EPIC-028-editor-architecture/mockups/EditorModel.ts).
  */
 
-/** Minimal in-memory state shape every editor implements. Subclasses widen.
- *  Replaces the legacy shared `IEditorState` (which mixed editor + host fields). */
-export interface EditorStateBase {
+/**
+ * Minimal in-memory state shape every editor implements. During EPIC-028's
+ * strangler period (US-548 through US-559), this widens to include all
+ * legacy `IEditorState` fields as optional so adapter-wrapped editors expose
+ * a single state surface that satisfies both v4-native callers and existing
+ * legacy callers. Per-editor migrations (US-551+) move to subclass-specific
+ * state shapes; US-559 trims this back to the v4-native minimum (id, title,
+ * modified, secondaryEditor).
+ */
+export interface EditorStateBase extends Omit<Partial<IEditorState>, "id" | "title" | "modified"> {
     /** Editor instance UUID — cache-file prefix. On switchFrom, the new
      *  editor copies this from the old editor so cache files survive. */
     id: string;
@@ -74,8 +82,9 @@ export abstract class EditorModel<
         setState: (name: string, state: string) => appFs.saveCacheFile(this.id, state, name),
     };
 
-    /** Set when attached to a `PageModel` (US-548 widens `IPageHost`). */
-    page: IPageHost | null = null;
+    /** Set when attached to a `PageModel`. Type imported as type-only to
+     *  avoid a runtime circular dep. */
+    page: PageModel | null = null;
 
     /** Active content pipe (provider + transformers). Host-owned in v4; this
      *  field is kept on the base class for the inert phase so the
@@ -99,7 +108,7 @@ export abstract class EditorModel<
         this.state.subscribe(() => this.descriptorChanged.send(undefined));
     }
 
-    setPage(page: IPageHost | null): void {
+    setPage(page: PageModel | null): void {
         this.page = page;
     }
 
@@ -189,6 +198,30 @@ export abstract class EditorModel<
     get id(): string { return this.state.get().id; }
     get title(): string { return this.state.get().title; }
     get modified(): boolean { return this.state.get().modified; }
+
+    // ── Legacy-compat getters (read fields from state if present) ─────────
+    // These shim onto whatever the legacy editor stores in its state.
+    // Per-editor migrations US-551+ replace adapter-backed editors with
+    // native v4 implementations that override these as needed; US-559 may
+    // retire the getters entirely.
+
+    get filePath(): string | undefined {
+        return (this.state.get() as { filePath?: string }).filePath;
+    }
+
+    get language(): string | undefined {
+        return (this.state.get() as { language?: string }).language;
+    }
+
+    get type(): string | undefined {
+        return (this.state.get() as { type?: string }).type;
+    }
+
+    /** Optional language change — base no-op; LegacyEditorAdapter forwards to
+     *  the wrapped legacy editor; per-editor migrations override. */
+    changeLanguage(_language: string | undefined): void {
+        // Override in subclasses.
+    }
 
     // ── Content-host accessor (walkthrough 08 / T2 / B2) ──────────────────
 

@@ -1,8 +1,12 @@
 import type { PagesModel } from "./PagesModel";
-import { isTextFileModel, TextFileModel } from "../../editors/text";
 
 /**
  * PagesLayoutModel — Tab reordering, pinning, and grouping.
+ *
+ * EPIC-028 / US-548: `fixCompareMode` deleted (CK7). Compare-mode cleanup
+ * is folded into `ungroup` (drops the compareGroups entry for the pair).
+ * `PagesModel.removePage` and `PageModel.setMainEditor` carry the other two
+ * cleanup hooks.
  */
 export class PagesLayoutModel {
     constructor(private model: PagesModel) {}
@@ -17,7 +21,6 @@ export class PagesLayoutModel {
     moveTabByIndex = (fromIndex: number, toIndex: number) => {
         if (fromIndex === -1 || toIndex === -1) return;
         const { pages } = this.model.state.get();
-        // Enforce pinned/unpinned boundary — cannot drag across sections
         const fromPinned = pages[fromIndex].pinned;
         const toPinned = pages[toIndex].pinned;
         if (fromPinned !== toPinned) return;
@@ -39,7 +42,6 @@ export class PagesLayoutModel {
         const page = pages[pageIndex];
         if (page.pinned) return;
 
-        // Calculate target BEFORE changing state (insert after existing pinned tabs)
         const pinnedCount = pages.filter((p) => p.pinned).length;
 
         page.pinned = true;
@@ -63,7 +65,6 @@ export class PagesLayoutModel {
         const page = pages[pageIndex];
         if (!page.pinned) return;
 
-        // Calculate target BEFORE changing state (insert after remaining pinned tabs)
         const remainingPinned = pages.filter(
             (p) => p.pinned && p !== page
         ).length;
@@ -97,27 +98,38 @@ export class PagesLayoutModel {
         this.model.persistence.saveStateDebounced();
     };
 
+    /**
+     * Ungroup the pair containing `pageId`. Walkthrough 06 / CK7: also drops
+     * any `compareGroups` entry for the pair so compare-mode exits when the
+     * grouping ends.
+     */
     ungroup = (pageId: string) => {
         const state = this.model.state.get();
-        if (state.leftRight.has(pageId) || state.rightLeft.has(pageId)) {
-            const newLeftRight = new Map(state.leftRight);
-            const newRightLeft = new Map(state.rightLeft);
-            const rightId = newLeftRight.get(pageId);
-            const leftId = newRightLeft.get(pageId);
-            newLeftRight.delete(pageId);
-            newRightLeft.delete(pageId);
-            if (leftId) {
-                newLeftRight.delete(leftId);
-            }
-            if (rightId) {
-                newRightLeft.delete(rightId);
-            }
-            this.model.state.update((s) => {
-                s.leftRight = newLeftRight;
-                s.rightLeft = newRightLeft;
-            });
-            this.model.persistence.saveStateDebounced();
+        if (!state.leftRight.has(pageId) && !state.rightLeft.has(pageId)) return;
+
+        const newLeftRight = new Map(state.leftRight);
+        const newRightLeft = new Map(state.rightLeft);
+        const rightId = newLeftRight.get(pageId);
+        const leftId = newRightLeft.get(pageId);
+        newLeftRight.delete(pageId);
+        newRightLeft.delete(pageId);
+        if (leftId) {
+            newLeftRight.delete(leftId);
         }
+        if (rightId) {
+            newRightLeft.delete(rightId);
+        }
+        // Identify the leftId of the pair (whichever direction `pageId` was in).
+        const pairLeftId = state.leftRight.has(pageId) ? pageId : leftId;
+        const nextCompareGroups = new Set(state.compareGroups);
+        if (pairLeftId) nextCompareGroups.delete(pairLeftId);
+
+        this.model.state.update((s) => {
+            s.leftRight = newLeftRight;
+            s.rightLeft = newRightLeft;
+            s.compareGroups = nextCompareGroups;
+        });
+        this.model.persistence.saveStateDebounced();
     };
 
     groupTabs = (
@@ -126,7 +138,6 @@ export class PagesLayoutModel {
         enforceAdjacency = false
     ) => {
         const state = this.model.state.get();
-        // Resolve to page IDs if editor IDs were passed
         const pageId1 = this.model.query.findPage(id1)?.id ?? id1;
         const pageId2 = this.model.query.findPage(id2)?.id ?? id2;
         const idx1 = state.pages.findIndex((p) => p.id === pageId1);
@@ -138,7 +149,6 @@ export class PagesLayoutModel {
         const isPinned1 = state.pages[idx1].pinned;
         const isPinned2 = state.pages[idx2].pinned;
 
-        // Only enforce adjacency for unpinned-unpinned if explicitly requested
         if (enforceAdjacency && !isPinned1 && !isPinned2) {
             const doMove = Math.abs(idx1 - idx2) !== 1;
             if (idx1 < idx2) {
@@ -149,7 +159,6 @@ export class PagesLayoutModel {
                 this.group(pageId2, pageId1);
             }
         } else {
-            // Non-adjacent grouping: just create the relationship
             if (idx1 < idx2) {
                 this.group(pageId1, pageId2);
             } else {
@@ -158,13 +167,19 @@ export class PagesLayoutModel {
         }
     };
 
+    /**
+     * Sanity sweep — fix swapped pairs and drop dangling groups. Called from
+     * `removePage` and `moveTabByIndex`.
+     *
+     * Walkthrough 07 / GK3: kept as single sweep. CK7: no trailing
+     * `fixCompareMode()` call — `ungroup`'s own compareGroups cleanup covers it.
+     */
     fixGrouping = () => {
         const state = this.model.state.get();
         const toSwap: Array<[string, string]> = [];
         const toRemove = new Set<string>();
         const allIds = new Set<string>(state.pages.map((p) => p.id));
 
-        // Check for swapped adjacent pairs (left/right reversed)
         for (let i = 0; i < state.pages.length - 1; i++) {
             const leftPageId = state.pages[i].id;
             const rightPageId = state.pages[i + 1].id;
@@ -174,7 +189,6 @@ export class PagesLayoutModel {
             }
         }
 
-        // Remove groupings where one or both pages no longer exist
         for (const leftId of state.leftRight.keys()) {
             if (!allIds.has(leftId)) {
                 toRemove.add(leftId);
@@ -194,24 +208,56 @@ export class PagesLayoutModel {
             this.ungroup(rightPageId);
             this.group(leftPageId, rightPageId);
         });
-
-        this.fixCompareMode();
     };
 
-    fixCompareMode = () => {
-        // Access mainEditor for TextFileModel-specific compareMode
-        const pages = this.model.state.get().pages;
-        for (const page of pages) {
-            const editor = page.mainEditor;
-            if (editor && isTextFileModel(editor)) {
-                const textEditor = editor as unknown as TextFileModel;
-                if (
-                    textEditor.state.get().compareMode &&
-                    !this.model.query.isGrouped(page.id)
-                ) {
-                    textEditor.setCompareMode(false);
-                }
-            }
+    // ── Compare mode (walkthrough 06 / CK4) ────────────────────────────
+
+    /**
+     * Activate compare mode for the pair containing `pageId`. Accepts either
+     * the left or right page id; resolves the leftId via `leftRight`/`rightLeft`.
+     * Returns true if compare mode was entered (precondition satisfied),
+     * false otherwise.
+     */
+    enterCompareMode = (pageId: string): boolean => {
+        const state = this.model.state.get();
+        const resolvedPageId = this.model.query.findPage(pageId)?.id ?? pageId;
+
+        // Resolve leftId.
+        let leftId: string | undefined;
+        let rightId: string | undefined;
+        if (state.leftRight.has(resolvedPageId)) {
+            leftId = resolvedPageId;
+            rightId = state.leftRight.get(resolvedPageId);
+        } else if (state.rightLeft.has(resolvedPageId)) {
+            leftId = state.rightLeft.get(resolvedPageId);
+            rightId = resolvedPageId;
         }
+
+        if (!leftId || !rightId) return false;
+        if (!this.model.query.canCompare(leftId, rightId)) return false;
+
+        const nextCompareGroups = new Set(state.compareGroups);
+        nextCompareGroups.add(leftId);
+        this.model.state.update((s) => { s.compareGroups = nextCompareGroups; });
+        return true;
+    };
+
+    /**
+     * Exit compare mode for the pair containing `pageId`. Accepts either side.
+     */
+    exitCompareMode = (pageId: string): void => {
+        const state = this.model.state.get();
+        const resolvedPageId = this.model.query.findPage(pageId)?.id ?? pageId;
+        let leftId: string | undefined;
+        if (state.leftRight.has(resolvedPageId)) {
+            leftId = resolvedPageId;
+        } else if (state.rightLeft.has(resolvedPageId)) {
+            leftId = state.rightLeft.get(resolvedPageId);
+        }
+        if (!leftId) return;
+        if (!state.compareGroups.has(leftId)) return;
+        const nextCompareGroups = new Set(state.compareGroups);
+        nextCompareGroups.delete(leftId);
+        this.model.state.update((s) => { s.compareGroups = nextCompareGroups; });
     };
 }

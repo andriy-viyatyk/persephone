@@ -1,54 +1,78 @@
 import { TOneState } from "../../core/state/state";
-import type { EditorModel } from "../../editors/base";
-import type { IEditorState } from "../../../shared/types";
+import { LegacyEditorAdapter, type EditorModel as V4EditorModel } from "../../editors/base/v4";
+import type { EditorModel as LegacyEditorModel } from "../../editors/base/EditorModel";
+import type { PageDescriptor } from "../../../shared/persistence-v4";
 import { PageNavigatorModel } from "../../ui/navigation/PageNavigatorModel";
 import type { IContentPipe } from "../types/io.pipe";
 import { fs } from "../fs";
-import { parseObject } from "../../core/utils/parse-utils";
-import { debounce } from "../../../shared/utils";
 import { pageNavigatorToggled, panelExpanded } from "../../core/state/events";
 import { fpDirname } from "../../core/utils/file-path";
+
+/**
+ * Surface returned by `PageModel.mainEditor`. During the strangler-fig period
+ * (US-548 through US-559), `mainEditor` unwraps the LegacyEditorAdapter and
+ * returns the underlying legacy `EditorModel` so existing call sites that do
+ * `editor instanceof TextFileModel` / `instanceof BrowserEditorModel` / etc.
+ * keep working at runtime. v4-aware callers (PageModel internals, PagesModel
+ * persistence) iterate `page.editors[]` directly to access adapters.
+ */
+type EditorModel = LegacyEditorModel;
+
+function unwrapAdapter(editor: V4EditorModel | null): LegacyEditorModel | null {
+    if (!editor) return null;
+    if (editor instanceof LegacyEditorAdapter) return editor.legacy;
+    // Future v4-native editors aren't a LegacyEditorModel — return as if for
+    // legacy callers. Per-editor migrations US-551+ should retire those callers
+    // before introducing native editors.
+    return editor as unknown as LegacyEditorModel;
+}
 
 export interface NavigationState {
     /** Currently selected item href (shared between PageNavigator and secondary editors). */
     selectedHref: string | null;
 }
 
-/** Serialized descriptor for a secondary editor model (for persistence). */
-export interface SecondaryModelDescriptor {
-    /** Serialized editor state (from model.getRestoreData()). */
-    pageState: Partial<IEditorState>;
-}
-
-/** Persisted sidebar state (cache file). */
-interface PageSidebarSavedState {
-    open: boolean;
-    width: number;
-    activePanel?: string;
-    secondaryModelDescriptors?: SecondaryModelDescriptor[];
-}
-
 /** Reactive page-level state — UI subscribes to this for re-render on page changes. */
 export interface IPageState {
     /** Page-level pinned flag. */
     pinned: boolean;
-    /** Whether the sidebar (PageNavigatorModel) exists. */
-    hasSidebar: boolean;
-    /** Current main editor ID — changes on navigation. UI subscribes to detect editor swaps. */
+    /** Current main editor ID — changes on navigation, triggers re-render for editor swap. */
     mainEditorId: string | null;
+    /** Bumped whenever `editors[]` changes (attach/detach) or an editor's panel-list
+     *  flips. Drives PageNavigator re-render and the per-page persistence
+     *  subscription's editor-membership reconciliation. */
+    version: number;
+    /** Whether the sidebar (PageNavigatorModel) exists. Kept for backward compat
+     *  with existing UI; equivalent to `hasSidebar` getter. */
+    hasSidebar: boolean;
 }
 
 const defaultPageState: IPageState = {
     pinned: false,
-    hasSidebar: false,
     mainEditorId: null,
+    version: 0,
+    hasSidebar: false,
 };
 
 /**
  * PageModel — one per tab. Stable identity that survives navigation.
  *
- * Owns the browsing context (sidebar, tree, search, secondary editors)
- * and contains a mainEditor (EditorModel) as its content.
+ * Unified-array shape (EPIC-028 / US-548). Replaces the legacy
+ * `_mainEditor: EditorModel | null` + `secondaryEditors: EditorModel[]`
+ * dual-field design. An editor's role is now described by two derived flags:
+ *
+ *   - "is main" — `editor.id === _mainEditorId`
+ *   - "contributes panels" — `editor.contributesPanels()` (read from
+ *     `editor.state.secondaryEditor.length > 0`)
+ *
+ * Visibility criterion (walkthrough 01 / A8): an editor is kept in `editors[]`
+ * iff `(editor.id === _mainEditorId) || editor.contributesPanels()`. The slice
+ * subscription wired in `attach()` (walkthrough 03 / N1) enforces this on
+ * every panel-list change.
+ *
+ * Pattern B (same model as both main and secondary, historically used by
+ * ArchiveFileModel during demote) is inexpressible — a model has exactly one
+ * membership in `editors[]`, with separate role flags.
  */
 export class PageModel {
     /** Stable page UUID — tab identity, React key, cache key. Never changes. */
@@ -57,8 +81,18 @@ export class PageModel {
     /** Reactive page-level state. UI uses `page.state.use()` for re-render. */
     readonly state = new TOneState<IPageState>({ ...defaultPageState });
 
-    /** The primary editor (content). Null = empty page with Explorer only. */
-    private _mainEditor: EditorModel | null = null;
+    /**
+     * All editors attached to this page. Order matches sidebar panel order.
+     * One of these may also be the main editor (flagged by `_mainEditorId`).
+     * Holds v4 EditorModel instances (LegacyEditorAdapter or future natives).
+     */
+    readonly editors: V4EditorModel[] = [];
+
+    /**
+     * Which editor in `editors[]` is the main (content area). Null = no main;
+     * page is sidebar-only (explorer-only, archive-root, link-collection).
+     */
+    private _mainEditorId: string | null = null;
 
     /** Close callback — set by PagesModel.attachPage(). */
     onClose?: () => void;
@@ -69,18 +103,11 @@ export class PageModel {
     pageNavigatorModel: PageNavigatorModel | null = null;
     /** Which panel is currently active/expanded.
      *  Values: "explorer", "search", or a secondary panel ID. */
-    activePanel: string = "explorer";
+    activePanel = "explorer";
 
-    // ── Secondary editors ────────────────────────────────────────────
+    // ── Per-editor slice subscriptions (walkthrough 03 / N1) ───────────
 
-    /** Editor models that act as secondary editors in the sidebar (survive navigation). */
-    secondaryEditors: EditorModel[] = [];
-    /** Reactive version counter — UI subscribes via .use() for re-render on add/remove. */
-    readonly secondaryEditorsVersion = new TOneState({ version: 0 });
-    /** Pending descriptors from restore — actual model creation deferred until restoreSecondaryEditors(). */
-    pendingSecondaryDescriptors: SecondaryModelDescriptor[] | undefined = undefined;
-    /** Deferred activePanel — set during restore, applied after restoreSecondaryEditors(). */
-    private _pendingActivePanel: string | undefined = undefined;
+    private _editorSubs = new Map<string, () => void>();
 
     // ── Transient state (not persisted) ────────────────────────────
 
@@ -101,81 +128,57 @@ export class PageModel {
         }
     }
 
-    // ── Internal ─────────────────────────────────────────────────────
-
-    private _cacheName = "nav-panel";
-    private _skipSave = false;
-    private _unsubscribe: (() => void) | undefined = undefined;
-
     constructor(id?: string) {
         this.id = id ?? crypto.randomUUID();
     }
 
-    // ── Main editor ────────────────────────────────────────────────
+    // ── Derived getters ───────────────────────────────────────────────
 
+    /** Returns the unwrapped legacy editor (auto-unwraps LegacyEditorAdapter)
+     *  so existing `editor instanceof X` call sites keep working. v4-aware
+     *  callers access the adapter via `mainEditorV4` or by iterating `editors[]`. */
     get mainEditor(): EditorModel | null {
-        return this._mainEditor;
+        return unwrapAdapter(this.mainEditorV4);
     }
 
-    /** Low-level setter — updates reference and bumps version for UI re-render.
-     *  Does NOT handle lifecycle (dispose, beforeNavigateAway, notifications).
-     *  Use setMainEditor() for navigation. */
-    set mainEditor(editor: EditorModel | null) {
-        this._mainEditor = editor;
-        this.state.update((s) => { s.mainEditorId = editor?.id ?? null; });
+    /** v4 surface of the main editor. Returns the adapter (or future v4-native). */
+    get mainEditorV4(): V4EditorModel | null {
+        if (!this._mainEditorId) return null;
+        return this.editors.find((e) => e.id === this._mainEditorId) ?? null;
     }
 
-    /**
-     * Replace the main editor with full lifecycle handling.
-     * Used by navigatePageTo — consolidates the editor swap logic:
-     * - Calls beforeNavigateAway on old editor
-     * - Disposes old editor (unless it survived as secondary)
-     * - Sets new editor's page reference
-     * - Bumps version for UI re-render
-     * - Notifies secondary editors
-     * - Registers new editor's secondary panel if any
-     */
-    async setMainEditor(newEditor: EditorModel | null): Promise<void> {
-        const oldEditor = this._mainEditor;
-        let editorToDispose: EditorModel | null = null;
-
-        if (oldEditor && newEditor) {
-            // Give old editor a chance to keep/clear its secondary editor status
-            oldEditor.beforeNavigateAway(newEditor);
-            // If old editor survived as secondary, detach from main role but don't dispose
-            const survivesAsSecondary = this.secondaryEditors.includes(oldEditor);
-            if (!survivesAsSecondary) {
-                oldEditor.setPage(null);
-                editorToDispose = oldEditor;
-            }
-        } else if (oldEditor) {
-            oldEditor.setPage(null);
-            editorToDispose = oldEditor;
+    /** Legacy setter retained for backward compat. Prefer `setMainEditor`.
+     *  Direct assignment skips lifecycle; used during restore. */
+    set mainEditor(editor: V4EditorModel | EditorModel | null) {
+        const v4 = editor && !(editor as V4EditorModel).editorId
+            // Bare legacy editor — caller should wrap. Best-effort: reject.
+            ? null
+            : (editor as V4EditorModel | null);
+        if (v4 && !this.editors.includes(v4)) {
+            this.attach(v4);
         }
+        this._mainEditorId = v4?.id ?? null;
+        this.state.update((s) => { s.mainEditorId = v4?.id ?? null; });
+    }
 
-        this._mainEditor = newEditor;
-        if (newEditor) {
-            newEditor.setPage(this);
-        }
-        this.state.update((s) => { s.mainEditorId = newEditor?.id ?? null; });
+    /** Editors that currently contribute panels (subset of `editors[]`).
+     *  Returns unwrapped legacy editors for backward compat. */
+    get panelEditors(): EditorModel[] {
+        return this.editors
+            .filter((e) => e.contributesPanels())
+            .map((e) => unwrapAdapter(e))
+            .filter((e): e is EditorModel => e !== null);
+    }
 
-        // Notify secondary editors of the change
-        this.notifyMainEditorChanged();
+    /** v4 surface of the panel editors. */
+    get panelEditorsV4(): V4EditorModel[] {
+        return this.editors.filter((e) => e.contributesPanels());
+    }
 
-        // Register new editor's secondary panel if it has one
-        if (newEditor) {
-            const se = newEditor.state.get().secondaryEditor;
-            if (se?.length) {
-                this.addSecondaryEditor(newEditor);
-            }
-        }
-
-        // Defer old editor disposal — let React unmount the old editor view first
-        // (avoids Monaco's internal Delayer "Canceled" rejection)
-        if (editorToDispose) {
-            const editor = editorToDispose;
-            setTimeout(() => { editor.dispose(); }, 0);
-        }
+    /** Compat shim — legacy code reads `page.secondaryEditors`. Returns the
+     *  same set as `panelEditors` (unwrapped). Retired in US-559. */
+    get secondaryEditors(): EditorModel[] {
+        return this.panelEditors;
     }
 
     // ── Pinned (reactive) ────────────────────────────────────────────
@@ -192,72 +195,282 @@ export class PageModel {
 
     /** Display title — delegates to mainEditor, or "Empty" for empty pages. */
     get title(): string {
-        return this._mainEditor?.title ?? "Empty";
+        return this.mainEditorV4?.title ?? "Empty";
     }
 
-    /** Aggregate modified flag: true if mainEditor OR any secondary editor is modified. */
+    /** Aggregate modified flag: true if any editor in `editors[]` is modified. */
     get modified(): boolean {
-        if (this._mainEditor?.modified) return true;
-        return this.secondaryEditors.some((m) => m.modified);
+        return this.editors.some((e) => e.modified);
     }
 
     /** Whether this page has an active sidebar. */
     get hasSidebar(): boolean {
-        return this.secondaryEditors.length > 0 || this.pageNavigatorModel !== null;
+        return this.editors.some((e) => e.contributesPanels()) || this.pageNavigatorModel !== null;
     }
 
-    // ── Close ────────────────────────────────────────────────────────
+    // ── Membership primitives ─────────────────────────────────────────
 
-    /** Close this page (tab). Checks for unsaved changes in main + secondary editors. */
-    async close(): Promise<boolean> {
-        if (this._mainEditor) {
-            // Check secondary editors first
-            const secondaryReleased = await this.confirmSecondaryRelease();
-            if (!secondaryReleased) return false;
-            // Then check main editor (may prompt save dialog)
-            const released = await this._mainEditor.confirmRelease();
-            if (!released) return false;
+    /** Add an editor to `editors[]`. No-op if already present.
+     *
+     *  Walkthrough 03 / N1: subscribes to the editor's `secondaryEditor` slice
+     *  via the TOneState selector overload. The handler fires only when the
+     *  panel list reference changes; visibility criterion enforced in
+     *  `onEditorPanelsChanged`. */
+    attach(editor: V4EditorModel): void {
+        if (this.editors.includes(editor)) return;
+        this.editors.push(editor);
+        editor.setPage(this);
+        const unsub = editor.state.subscribe(
+            () => this.onEditorPanelsChanged(editor),
+            (s) => (s as { secondaryEditor?: string[] }).secondaryEditor,
+        );
+        this._editorSubs.set(editor.id, unsub);
+        this.state.update((s) => {
+            s.version++;
+            s.hasSidebar = this.hasSidebar;
+        });
+    }
+
+    /** Remove an editor from `editors[]`. Does NOT dispose — caller decides.
+     *  Used by visibility-criterion auto-detach and explicit user actions. */
+    detach(editor: V4EditorModel): void {
+        const idx = this.editors.indexOf(editor);
+        if (idx < 0) return;
+        this.editors.splice(idx, 1);
+        this._editorSubs.get(editor.id)?.();
+        this._editorSubs.delete(editor.id);
+        editor.setPage(null);
+        if (this._mainEditorId === editor.id) {
+            this._mainEditorId = null;
+            this.state.update((s) => { s.mainEditorId = null; });
         }
-        this.onClose?.();
-        return true;
+        // Adjust activePanel if it pointed to a panel this editor owned.
+        const panels = editor.secondaryEditor;
+        if (panels?.includes(this.activePanel) || this.activePanel === editor.id) {
+            this.activePanel = "explorer";
+        }
+        this.state.update((s) => {
+            s.version++;
+            s.hasSidebar = this.hasSidebar;
+        });
     }
 
-    /** Set the active panel. Notifies the owning secondary editor via onPanelExpanded(). */
+    /** Compat shim for legacy EditorModel.secondaryEditor setter side-effect.
+     *  Accepts ANY editor (legacy or v4) — the legacy editor's setter passes
+     *  itself, and we look up an existing adapter by id. Retired in US-559. */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    addSecondaryEditor(editor: any): void {
+        // Legacy editors pass themselves; resolve to their adapter via id.
+        const id = editor?.state?.get?.()?.id ?? editor?.id;
+        if (id) {
+            const existing = this.editors.find((e) => e.id === id);
+            if (existing) {
+                this.state.update((s) => { s.version++; });
+                return;
+            }
+        }
+        if (editor && this.editors.includes(editor)) {
+            this.state.update((s) => { s.version++; });
+            return;
+        }
+        if (editor) this.attach(editor as V4EditorModel);
+    }
+
+    /** Compat shim — detach without disposing. Retired in US-559. */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    removeSecondaryEditorWithoutDispose(editor: any): void {
+        const id = editor?.state?.get?.()?.id ?? editor?.id;
+        const target = id ? this.editors.find((e) => e.id === id) : undefined;
+        if (target) this.detach(target);
+        else if (editor) this.detach(editor as V4EditorModel);
+    }
+
+    /** Compat shim — detach + dispose. Used when the user explicitly closes a panel. */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    async removeSecondaryEditor(editor: any): Promise<void> {
+        const id = editor?.state?.get?.()?.id ?? editor?.id;
+        const target = id ? this.editors.find((e) => e.id === id) : undefined;
+        if (target) {
+            this.detach(target);
+            await target.dispose();
+        } else if (editor) {
+            this.detach(editor as V4EditorModel);
+            await (editor as V4EditorModel).dispose();
+        }
+    }
+
+    /** Compat shim — find a secondary editor by its id. Retired in US-559. */
+    findSecondaryEditor(editorId: string): EditorModel | undefined {
+        return this.panelEditors.find((e) => e.id === editorId);
+    }
+
+    /**
+     * Slice-subscription handler from `attach()`. Fires when the editor's
+     * `secondaryEditor` slice changes (panel list flips). Bumps version and
+     * enforces the visibility criterion.
+     */
+    onEditorPanelsChanged(editor: V4EditorModel): void {
+        this.state.update((s) => {
+            s.version++;
+            s.hasSidebar = this.hasSidebar;
+        });
+        if (!this.editors.includes(editor)) return;
+        if (editor.id !== this._mainEditorId && !editor.contributesPanels()) {
+            this.detach(editor);
+            setTimeout(async () => {
+                await editor.dispose();
+            }, 0);
+        }
+    }
+
+    // ── Main editor swap ───────────────────────────────────────────────
+
+    /**
+     * Replace (or clear) the main editor. Handles lifecycle:
+     *  - calls beforeNavigateAway on the old main
+     *  - attaches new editor if not already present
+     *  - sets _mainEditorId
+     *  - fires notifyMainEditorChanged
+     *  - applies visibility criterion to the old main (detach + dispose if no panels)
+     *  - compare-mode cleanup (CK7): exits compare for the pair if new main's host
+     *    isn't TextFileModel.
+     */
+    async setMainEditor(newEditor: V4EditorModel | null): Promise<void> {
+        const oldMain = this.mainEditorV4;
+        if (oldMain && newEditor && oldMain !== newEditor) {
+            oldMain.beforeNavigateAway(newEditor);
+        }
+        if (newEditor && !this.editors.includes(newEditor)) {
+            this.attach(newEditor);
+        }
+        this._mainEditorId = newEditor?.id ?? null;
+        this.state.update((s) => { s.mainEditorId = this._mainEditorId; });
+
+        let editorToDispose: V4EditorModel | null = null;
+        const idTransferred = !!(oldMain && newEditor && oldMain.id === newEditor.id);
+        if (oldMain && oldMain !== newEditor && !oldMain.contributesPanels()) {
+            this.detach(oldMain);
+            editorToDispose = oldMain;
+        }
+
+        this.notifyMainEditorChanged();
+
+        // CK7: compare-mode cleanup. If this page is in a compare pair and
+        // the new main's host isn't TextFileModel, exit compare.
+        if (newEditor) {
+            try {
+                const { pagesModel } = await import("../pages");
+                const inPair = pagesModel.query.isInCompareMode(this.id);
+                if (inPair.active && !pagesModel.query.getTextFileHost(this.id)) {
+                    pagesModel.layout.exitCompareMode(this.id);
+                }
+            } catch {
+                // PagesModel not yet ready; ignore.
+            }
+        }
+
+        if (editorToDispose) {
+            const editor = editorToDispose;
+            setTimeout(async () => {
+                await editor.dispose();
+                if (!idTransferred) {
+                    await fs.deleteCacheFiles(editor.id);
+                }
+            }, 0);
+        }
+    }
+
+    /**
+     * Switch the main editor to a different editor type.
+     *
+     * For US-548, adapter-wrapped editors throw on `switchFrom`. Real
+     * view-switching for adapter-wrapped Monaco/Grid still goes through the
+     * legacy `model.changeEditor(view)` path on the underlying TextFileModel
+     * (host-preserving in-place mutation). Per-editor migrations US-551+
+     * replace this with `createEditor → switchFrom → restore`.
+     */
+    async switchMainEditor(newEditorId: string): Promise<void> {
+        const oldEditor = this.mainEditorV4;
+        if (!oldEditor) return;
+        if (oldEditor.editorId === newEditorId) return;
+        const { editorRegistry } = await import("../../editors/base/v4");
+        const def = editorRegistry.getById(newEditorId);
+        if (!def) {
+            throw new Error(`No editor registered for id: ${newEditorId}`);
+        }
+        const newEditor = await editorRegistry.createEditor(newEditorId);
+        newEditor.switchFrom(oldEditor);
+        await newEditor.restore();
+        await this.setMainEditor(newEditor);
+    }
+
+    /**
+     * Notify every editor (except the new main) that the main editor changed.
+     * Editors may react — e.g., ArchiveEditor self-evicts when the new main
+     * wasn't opened from its archive.
+     */
+    notifyMainEditorChanged(): void {
+        const main = this.mainEditorV4;
+        for (const editor of [...this.editors]) {
+            if (editor === main) continue;
+            editor.onMainEditorChanged(main);
+        }
+        // Some editors may have cleared their secondaryEditor during the
+        // notification — their slice subscriptions will fire detach via
+        // onEditorPanelsChanged.
+    }
+
+    /** Compat alias kept for legacy code that called `promoteSecondaryToMain`.
+     *  Just delegates to `setMainEditor` (Pattern B inexpressible). */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    async promoteSecondaryToMain(model: any): Promise<void> {
+        const id = model?.id ?? model?.state?.get?.()?.id;
+        const target = id ? this.editors.find((e) => e.id === id) : null;
+        if (this._mainEditorId === id) {
+            await this.setMainEditor(null);
+        } else if (target) {
+            await this.setMainEditor(target);
+        }
+    }
+
+    // ── Sidebar / PageNavigator ────────────────────────────────────────
+
+    /** Set the active panel. Notifies the owning editor via onPanelExpanded(). */
     setActivePanel(panel: string): void {
         this.activePanel = panel;
-        this.secondaryEditorsVersion.update((s) => { s.version++; });
-        this._saveStateDebounced();
-        // Notify the secondary editor that owns this panel
-        const owner = this.secondaryEditors.find((m) => m.secondaryEditor?.includes(panel));
+        this.state.update((s) => { s.version++; });
+        const owner = this.editors.find((e) => e.secondaryEditor?.includes(panel));
         if (owner) {
             owner.onPanelExpanded(panel);
         }
-        // Broadcast global event for components that subscribe (e.g., LinkEditor)
         panelExpanded.send({ pageId: this.id, panelId: panel });
     }
 
     /** Expand a secondary panel by its panel ID. Called by secondary editors directly. */
     expandPanel(panelId: string): void {
         if (!panelId) return;
-        if (!this.secondaryEditors.some((m) => m.secondaryEditor?.includes(panelId))) return;
+        if (!this.editors.some((e) => e.secondaryEditor?.includes(panelId))) return;
         this.setActivePanel(panelId);
     }
 
     // ── Explorer helpers ─────────────────────────────────────────────
 
-    /** Find the ExplorerEditorModel in secondaryEditors, if any. */
+    /** Find the ExplorerEditorModel in editors[] (unwrapped legacy), if any. */
     findExplorer(): EditorModel | undefined {
-        return this.secondaryEditors.find(
-            (m) => m.state.get().type === "fileExplorer"
+        const adapter = this.editors.find(
+            (m) => (m.state.get() as { type?: string }).type === "fileExplorer",
         );
+        return unwrapAdapter(adapter ?? null) ?? undefined;
     }
 
     /** Create and add an ExplorerEditorModel with the given rootPath. */
     async createExplorer(rootPath: string): Promise<EditorModel> {
         const { ExplorerEditorModel } = await import("../../editors/explorer");
-        const explorer = new ExplorerEditorModel(rootPath);
-        this.addSecondaryEditor(explorer);
-        return explorer;
+        const { deriveEditorId } = await import("../../editors/base/v4");
+        const legacy = new ExplorerEditorModel(rootPath);
+        const adapter = new LegacyEditorAdapter(legacy, deriveEditorId(legacy.state.get()));
+        this.attach(adapter);
+        return legacy as unknown as EditorModel;
     }
 
     // ── PageNavigatorModel ───────────────────────────────────────────
@@ -266,13 +479,12 @@ export class PageModel {
     ensurePageNavigatorModel(): PageNavigatorModel {
         if (!this.pageNavigatorModel) {
             this.pageNavigatorModel = new PageNavigatorModel(this.id);
-            // Subscribe to model state changes for auto-save
-            this._unsubscribe = this.pageNavigatorModel.state.subscribe(() => {
-                if (!this._skipSave) {
-                    this._saveStateDebounced();
-                }
+            // Bump version so UI knows sidebar exists. Persistence subscription
+            // is in PagesModel.attachPage — it watches page.state for save
+            // triggers, so navigator mutations ride the same channel.
+            this.pageNavigatorModel.state.subscribe(() => {
+                this.state.update((s) => { s.version++; });
             });
-            // Update reactive state so UI knows sidebar exists
             this.state.update((s) => { s.hasSidebar = true; });
         }
         return this.pageNavigatorModel;
@@ -280,18 +492,14 @@ export class PageModel {
 
     // ── Navigator toggle ─────────────────────────────────────────────
 
-    /**
-     * Toggle the PageNavigator panel. Creates ExplorerEditorModel if needed.
-     */
+    /** Toggle the PageNavigator panel. Creates ExplorerEditorModel if needed. */
     async toggleNavigator(pipe?: IContentPipe | null, filePath?: string): Promise<void> {
         const existing = this.findExplorer();
         if (existing || this.pageNavigatorModel) {
-            // Explorer or sidebar exists — just toggle visibility
             this.ensurePageNavigatorModel().toggle();
             return;
         }
 
-        // Derive root path
         let rootPath = "";
         if (pipe?.provider.type === "file" && pipe.provider.sourceUrl) {
             rootPath = fpDirname(pipe.provider.sourceUrl);
@@ -300,12 +508,8 @@ export class PageModel {
         }
         if (!rootPath) return;
 
-        // Create Explorer + ensure sidebar is visible
         await this.createExplorer(rootPath);
         this.ensurePageNavigatorModel();
-        // Fire toggle event so editors (e.g. LinkEditor) know the sidebar opened.
-        // ensurePageNavigatorModel() creates the model with open: true but doesn't
-        // fire the event (unlike toggle()/close()), so subscribers wouldn't know.
         pageNavigatorToggled.send({ pageId: this.id, isOpen: true });
     }
 
@@ -318,302 +522,86 @@ export class PageModel {
         return false;
     }
 
-    // ── Secondary editor lifecycle ───────────────────────────────────
-
-    /** Add an editor model as a secondary editor in the sidebar. */
-    addSecondaryEditor(model: EditorModel): void {
-        if (this.secondaryEditors.includes(model)) {
-            // Already registered — bump version so PageNavigator re-renders
-            // to pick up panel list changes (model.state.secondaryEditor may differ).
-            this.secondaryEditorsVersion.update((s) => { s.version++; });
-            return;
-        }
-        this.secondaryEditors.push(model);
-        model.setPage(this);
-        this.secondaryEditorsVersion.update((s) => { s.version++; });
-        this._notifyMainEditorOfSecondaryChange();
-        this._saveStateDebounced();
-    }
-
-    /** Remove and dispose a secondary editor (panel closed by user). */
-    removeSecondaryEditor(model: EditorModel): void {
-        const idx = this.secondaryEditors.indexOf(model);
-        if (idx < 0) return;
-        this.secondaryEditors.splice(idx, 1);
-        if (model.secondaryEditor?.includes(this.activePanel) || this.activePanel === model.id) {
-            this.activePanel = "explorer";
-        }
-        model.setPage(null);
-        model.dispose();
-        this.secondaryEditorsVersion.update((s) => { s.version++; });
-        this._notifyMainEditorOfSecondaryChange();
-        this._saveStateDebounced();
-    }
-
-    /** Remove a secondary editor WITHOUT disposing (model cleared its secondaryEditor). */
-    removeSecondaryEditorWithoutDispose(model: EditorModel): void {
-        const idx = this.secondaryEditors.indexOf(model);
-        if (idx < 0) return;
-        this.secondaryEditors.splice(idx, 1);
-        if (model.secondaryEditor?.includes(this.activePanel) || this.activePanel === model.id) {
-            this.activePanel = "explorer";
-        }
-        // Don't clear page if this model is also the mainEditor (Pattern B)
-        if (this._mainEditor !== model) {
-            model.setPage(null);
-        }
-        this.secondaryEditorsVersion.update((s) => { s.version++; });
-        this._notifyMainEditorOfSecondaryChange();
-        this._saveStateDebounced();
-    }
+    // ── Close ────────────────────────────────────────────────────────
 
     /**
-     * Toggle a secondary editor as the page's main editor.
-     * - If the model is a secondary but NOT the current mainEditor → promote it (old mainEditor
-     *   goes through normal navigation-away lifecycle and may be disposed).
-     * - If the model IS the current mainEditor → demote it (mainEditor becomes null, model
-     *   stays as secondary editor in the sidebar).
-     *
-     * Saves/restores the model's secondary panel list across the toggle so that panels
-     * added by the main editor component (e.g., Tags, Hostnames) are removed on demote.
+     * Close this page (tab). Iterates panel-contributing editors first, then
+     * the main editor (walkthrough 03 / N7). Cancellation on any modified
+     * editor aborts the close while leaving the page visible.
      */
-    async promoteSecondaryToMain(model: EditorModel): Promise<void> {
-        if (this._mainEditor === model) {
-            // Demote: clear main editor, keep model as secondary.
-            // Restore panels to the pre-promote snapshot (removes main-editor-only panels).
-            const savedPanels = (model as any)._prePromotePanels as string[] | undefined; // eslint-disable-line @typescript-eslint/no-explicit-any
-            delete (model as any)._prePromotePanels; // eslint-disable-line @typescript-eslint/no-explicit-any
-
-            this._mainEditor = null;
-            this.state.update((s) => { s.mainEditorId = null; });
-            this.notifyMainEditorChanged();
-
-            // Restore after React unmount cleanup (which may try to clear panels)
-            queueMicrotask(() => {
-                if (model.page !== this) return;
-                if (savedPanels?.length) {
-                    // Was promoted from secondary — restore the pre-promote panel list.
-                    model.secondaryEditor = savedPanels;
-                }
-                // Pattern B (originally main editor): don't strip panels here —
-                // the secondary editor component manages its own panel list via useEffect.
-
-                // Model is already in secondaryEditors[] — bump version
-                // so PageNavigator re-renders with the reduced panel list.
-                this.secondaryEditorsVersion.update((s) => { s.version++; });
-            });
-        } else if (this.secondaryEditors.includes(model)) {
-            // Save current panels before promote — the main editor component may add more
-            (model as any)._prePromotePanels = model.secondaryEditor ? [...model.secondaryEditor] : undefined; // eslint-disable-line @typescript-eslint/no-explicit-any
-            // Promote: make secondary the main editor
-            await this.setMainEditor(model);
-        } else {
-            return; // not a secondary editor on this page
-        }
-        // Re-subscribe persistence tracking to the (possibly null) main editor
-        const { pagesModel } = await import("../pages");
-        pagesModel.resubscribeEditor(this);
-    }
-
-    /** Notify mainEditor if it implements onSecondaryEditorsChanged (e.g., CategoryEditor). */
-    private _notifyMainEditorOfSecondaryChange(): void {
-        const me = this._mainEditor;
-        if (me && "onSecondaryEditorsChanged" in me) {
-            (me as any).onSecondaryEditorsChanged(); // eslint-disable-line @typescript-eslint/no-explicit-any
-        }
-    }
-
-    /** Find a secondary editor by its editor ID. */
-    findSecondaryEditor(editorId: string): EditorModel | undefined {
-        return this.secondaryEditors.find((m) => m.id === editorId);
-    }
-
-    /** Check secondary editors for unsaved changes. Returns false if user cancels. */
-    async confirmSecondaryRelease(): Promise<boolean> {
-        for (const model of this.secondaryEditors) {
-            if (!model.modified) continue;
-            const released = await model.confirmRelease();
+    async close(): Promise<boolean> {
+        // Panel-contributing editors first.
+        for (const editor of this.editors) {
+            if (editor.id === this._mainEditorId) continue;
+            if (!editor.modified) continue;
+            const released = await editor.confirmRelease();
             if (!released) return false;
         }
+        // Main editor last — closing it commits to closing the page tab.
+        const main = this.mainEditor;
+        if (main && main.modified) {
+            const released = await main.confirmRelease();
+            if (!released) return false;
+        }
+        this.onClose?.();
         return true;
-    }
-
-    /**
-     * Notify secondary editors that the main editor changed (after navigation).
-     * Calls onMainEditorChanged() on each secondary editor.
-     * Secondary editors may clear their secondaryEditor to opt out of survival.
-     */
-    notifyMainEditorChanged(): void {
-        // Notify secondary editors — they may clear their secondaryEditor
-        for (const m of [...this.secondaryEditors]) {
-            m.onMainEditorChanged(this.mainEditor);
-        }
-        // Clean up models that cleared their secondaryEditor during notification
-        const removed = this.secondaryEditors.filter((m) => !m.secondaryEditor?.length);
-        if (removed.length > 0) {
-            for (const m of removed) {
-                const idx = this.secondaryEditors.indexOf(m);
-                if (idx >= 0) this.secondaryEditors.splice(idx, 1);
-                if (m.secondaryEditor?.includes(this.activePanel) || this.activePanel === m.id) {
-                    this.activePanel = "explorer";
-                }
-                m.dispose();
-            }
-            this.secondaryEditorsVersion.update((s) => { s.version++; });
-        }
-    }
-
-    /**
-     * Restore secondary editor models from pending descriptors.
-     * @param ownerEditor — the main editor, if any. If a descriptor has the same ID,
-     *   reuse it (deduplication for self-referencing archives). Pass null for pages
-     *   with no mainEditor (Pattern A standalone secondary editors).
-     */
-    async restoreSecondaryEditors(ownerEditor: EditorModel | null): Promise<void> {
-        const descriptors = this.pendingSecondaryDescriptors;
-        if (!descriptors?.length) {
-            this._pendingActivePanel = undefined;
-            return;
-        }
-        this.pendingSecondaryDescriptors = undefined;
-
-        const { pagesModel } = await import("../pages");
-
-        for (const desc of descriptors) {
-            // Deduplicate: if this descriptor matches the owner editor, reuse it
-            if (ownerEditor && desc.pageState.id === ownerEditor.id) {
-                this.secondaryEditors.push(ownerEditor);
-                ownerEditor.setPage(this);
-                continue;
-            }
-
-            try {
-                const model = await pagesModel.lifecycle.newEditorModelFromState(desc.pageState);
-                model.applyRestoreData(desc.pageState as any); // eslint-disable-line @typescript-eslint/no-explicit-any
-                await model.restore();
-                this.secondaryEditors.push(model);
-                model.setPage(this);
-            } catch (err) {
-                console.warn("[PageModel] Failed to restore secondary editor:", err);
-            }
-        }
-
-        // Re-check the deferred activePanel now that models are restored
-        if (this._pendingActivePanel) {
-            const panelExists = this.secondaryEditors.some(
-                (m) => m.secondaryEditor?.includes(this._pendingActivePanel!)
-            );
-            if (panelExists) {
-                this.activePanel = this._pendingActivePanel;
-            }
-            this._pendingActivePanel = undefined;
-        }
-
-        this.secondaryEditorsVersion.update((s) => { s.version++; });
     }
 
     // ── Persistence ──────────────────────────────────────────────────
 
-    /** Restore sidebar state from cache (on app restart or page creation). */
-    async restoreSidebar(): Promise<void> {
-        const data = await fs.getCacheFile(this.id, this._cacheName);
-        const saved = parseObject(data) as PageSidebarSavedState | undefined;
-        if (!saved) return;
-
-        // Restore sidebar layout
-        this._skipSave = true;
-        const navModel = this.ensurePageNavigatorModel();
-        navModel.setStateQuiet({
-            open: saved.open ?? true,
-            width: saved.width ?? 240,
-        });
-        this._skipSave = false;
-
-        // Migrate old format: rootPath at top level → create ExplorerEditorModel descriptor
-        const oldRootPath = (saved as any).rootPath as string | undefined; // eslint-disable-line @typescript-eslint/no-explicit-any
-        if (oldRootPath && !saved.secondaryModelDescriptors?.some(
-            (d) => d.pageState.type === "fileExplorer"
-        )) {
-            const explorerDesc: SecondaryModelDescriptor = {
-                pageState: {
-                    id: crypto.randomUUID(),
-                    type: "fileExplorer",
-                    title: "Explorer",
-                    modified: false,
-                    rootPath: oldRootPath,
-                } as any, // eslint-disable-line @typescript-eslint/no-explicit-any
-            };
-            saved.secondaryModelDescriptors = [
-                explorerDesc,
-                ...(saved.secondaryModelDescriptors ?? []),
-            ];
-        }
-
-        // Restore secondary editor model descriptors (actual creation deferred)
-        if (saved.secondaryModelDescriptors?.length) {
-            this.pendingSecondaryDescriptors = saved.secondaryModelDescriptors;
-        }
-
-        // Restore activePanel — defer non-builtin panels until models are restored
-        const restoredPanel = saved.activePanel ?? "explorer";
-        if (restoredPanel === "explorer" || restoredPanel === "search") {
-            this.activePanel = restoredPanel;
-        } else {
-            this.activePanel = "explorer";
-            this._pendingActivePanel = restoredPanel;
-        }
-    }
-
-    /** Save sidebar state to cache. */
-    private _saveState = async (): Promise<void> => {
-        for (const model of this.secondaryEditors) {
-            await model.saveState?.();
-        }
+    /**
+     * Build the page's serialized descriptor (walkthrough 04 / C7 +
+     * walkthrough 08 / T3). Consumed by PagesPersistenceModel.saveState,
+     * PageTab.getDragData, and PagesLifecycleModel.duplicatePage.
+     */
+    getDescriptor(): PageDescriptor {
         const navState = this.pageNavigatorModel?.state.get();
-        const saved: PageSidebarSavedState = {
-            open: navState?.open ?? true,
-            width: navState?.width ?? 240,
-            activePanel: this.activePanel,
-            secondaryModelDescriptors: this.secondaryEditors.length > 0
-                ? this.secondaryEditors.map((m) => ({ pageState: m.getRestoreData() }))
+        return {
+            id: this.id,
+            pinned: this.pinned,
+            modified: this.modified,
+            mainEditorId: this._mainEditorId,
+            editors: this.editors.map((e) => e.getRestoreData()),
+            sidebar: this.pageNavigatorModel
+                ? {
+                    open: navState?.open ?? true,
+                    width: navState?.width ?? 240,
+                    activePanel: this.activePanel,
+                }
                 : undefined,
         };
-        await fs.saveCacheFile(this.id, JSON.stringify(saved), this._cacheName);
-    };
-
-    private _saveStateDebounced = debounce(this._saveState, 300);
-
-    /** Flush pending saves immediately. */
-    async flushSave(): Promise<void> {
-        await this._saveState();
     }
 
-    /** Save all state (sidebar + editor caches). Called before app quit. */
+    /** Compat shim used by PagesPersistenceModel's v3 restore path. */
+    setMainEditorId(id: string | null): void {
+        this._mainEditorId = id;
+        this.state.update((s) => { s.mainEditorId = id; });
+    }
+
+    /** Flush per-editor caches. Awaitable. Window-level descriptor is
+     *  written by PagesPersistenceModel.saveState separately. */
     async saveState(): Promise<void> {
-        await this._saveState();
-        await this.mainEditor?.saveState();
+        await Promise.all(this.editors.map((e) => e.saveState?.()));
     }
 
     // ── Cleanup ──────────────────────────────────────────────────────
 
     async dispose(): Promise<void> {
-        this._unsubscribe?.();
-        this._unsubscribe = undefined;
-        // Dispose all secondary editors (includes ExplorerEditorModel)
-        for (const model of this.secondaryEditors) {
-            model.setPage(null);
-            model.dispose();
+        // Defensively drain slice subscriptions.
+        for (const unsub of this._editorSubs.values()) unsub();
+        this._editorSubs.clear();
+
+        for (const editor of this.editors) {
+            editor.setPage(null);
+            await editor.dispose();
+            await fs.deleteCacheFiles(editor.id);
         }
-        this.secondaryEditors = [];
+        this.editors.length = 0;
+        this._mainEditorId = null;
+
         this.pageNavigatorModel?.dispose();
         this.pageNavigatorModel = null;
-        // Dispose main editor
-        if (this.mainEditor) {
-            this.mainEditor.setPage(null);
-            await this.mainEditor.dispose();
-            this.mainEditor = null;
-        }
-        // Delete page-level cache files (nav-panel, etc.)
-        await fs.deleteCacheFiles(this.id);
+        // No page-level cache file in v4 (walkthrough 04 / P3); per-editor
+        // caches were cleaned in the loop above.
     }
 }

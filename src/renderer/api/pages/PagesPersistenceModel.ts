@@ -1,111 +1,215 @@
 import type { PagesModel } from "./PagesModel";
-import { IEditorState, PageDescriptor, WindowState } from "../../../shared/types";
+import { IEditorState, LegacyPageDescriptor, LegacyWindowState } from "../../../shared/types";
+import type {
+    EditorDescriptor,
+    PageDescriptor,
+    WindowState,
+} from "../../../shared/persistence-v4";
 import { openFilesNameTemplate } from "../../../shared/constants";
 import { parseObject } from "../../core/utils/parse-utils";
 import { debounce } from "../../../shared/utils";
-import { EditorModel } from "../../editors/base";
+import { LegacyEditorAdapter, deriveEditorId } from "../../editors/base/v4";
+import type { EditorModel as LegacyEditorModel } from "../../editors/base/EditorModel";
 import { api } from "../../../ipc/renderer/api";
 import { fs as appFs } from "../fs";
-import { editorRegistry } from "../../editors/registry";
 import { app } from "../app";
 import { createLinkData } from "../../../shared/link-data";
 import { PageModel } from "./PageModel";
 
+/** Per-page sidebar cache file shape (pre-EPIC-028, v3.x). */
+interface PageSidebarSavedState {
+    open: boolean;
+    width: number;
+    activePanel?: string;
+    secondaryModelDescriptors?: { pageState: Partial<IEditorState> }[];
+}
+
 /**
  * PagesPersistenceModel — Load/save window state to storage.
+ *
+ * EPIC-028 / US-548: writes v4 (`schemaVersion: 4` + unified `editors[]` +
+ * folded sidebar metadata). Reads v4 directly OR falls back to the v3 dual-read
+ * path for one-shot upgrade of existing user data. US-559 deletes the v3 path.
  */
 export class PagesPersistenceModel {
     constructor(private model: PagesModel) {}
 
     saveState = async (): Promise<void> => {
         const { pages, leftRight } = this.model.state.get();
-        const pageDescriptors: PageDescriptor[] = pages.map((page) => ({
-            id: page.id,
-            pinned: page.pinned,
-            modified: page.modified,
-            hasSidebar: page.hasSidebar,
-            editor: page.mainEditor?.getRestoreData() ?? {},
-        }));
-        const groupings = Array.from(leftRight.entries());
-
-        const activePageId = this.model.query.activePage?.id;
+        const pageDescriptors: PageDescriptor[] = pages.map((p) => p.getDescriptor());
         const storedState: WindowState = {
+            schemaVersion: 4,
             pages: pageDescriptors,
-            groupings: groupings,
-            activePageId,
+            groupings: Array.from(leftRight.entries()),
+            activePageId: this.model.query.activePage?.id,
         };
 
         await appFs.saveDataFile(
             openFilesNameTemplate,
-            JSON.stringify(storedState, null, 4)
+            JSON.stringify(storedState, null, 4),
         );
     };
 
     saveStateDebounced = debounce(this.saveState, 500);
 
-    restoreModel = async (data: Partial<IEditorState>): Promise<EditorModel | null> => {
-        const editors = editorRegistry.getAll();
-        const editorDef = editors.find((e) => e.editorType === data.type);
-        let model: EditorModel | null = null;
-
-        if (editorDef) {
-            const module = await editorDef.loadModule();
-            model = await module.newEmptyEditorModel(data.type);
-        }
-
-        if (model) {
-            model.applyRestoreData(data);
-            await model.restore();
-        }
-        return model;
-    };
-
     restoreState = async () => {
         const data = parseObject(
-            await appFs.getDataFile(openFilesNameTemplate)
+            await appFs.getDataFile(openFilesNameTemplate),
         );
-        if (!data || !data.pages || !Array.isArray(data.pages)) {
-            return;
+        if (!data || !Array.isArray(data.pages)) return;
+
+        if (data.schemaVersion === 4) {
+            await this.restoreV4(data as WindowState);
+        } else {
+            await this.restoreV3(data);
+        }
+    };
+
+    /**
+     * Restore a single page from a v4 PageDescriptor. Shared between bootstrap
+     * restore (`restoreV4`), IPC `movePageIn`, and `duplicatePage` (walkthrough
+     * 05 / M2 + walkthrough 04 / C5 / P5).
+     */
+    restorePage = async (desc: PageDescriptor): Promise<PageModel | null> => {
+        const page = new PageModel(desc.id);
+        page.pinned = desc.pinned;
+
+        const editors = await Promise.all(
+            desc.editors.map(async (d) => {
+                try {
+                    const legacyState = {
+                        ...(d.state as Partial<IEditorState>),
+                        id: d.id,
+                    };
+                    const legacy = await this.model.lifecycle.newEditorModelFromState(legacyState);
+                    legacy.applyRestoreData(legacyState);
+                    await legacy.restore();
+                    return new LegacyEditorAdapter(legacy, d.editorId);
+                } catch (err) {
+                    console.warn(
+                        `[restore] editor ${d.editorId} in page ${desc.id}:`,
+                        err,
+                    );
+                    return null;
+                }
+            }),
+        );
+
+        for (const editor of editors) {
+            if (editor) page.attach(editor);
         }
 
-        // Detect old format: old pages have "type" at top level (flat IEditorState)
-        // New format has PageDescriptor with "editor" object containing the editor state
-        const isOldFormat = data.pages.length > 0
-            && data.pages[0]?.type && typeof data.pages[0]?.type === "string"
-            && !data.pages[0]?.editor?.type;
-
-        if (isOldFormat) {
-            // Old format — skip. App starts with empty window.
-            // User's first interaction saves new format.
-            return;
+        if (
+            desc.mainEditorId &&
+            page.editors.some((e) => e.id === desc.mainEditorId)
+        ) {
+            page.setMainEditorId(desc.mainEditorId);
         }
+
+        if (desc.sidebar) {
+            const nav = page.ensurePageNavigatorModel();
+            nav.setStateQuiet({
+                open: desc.sidebar.open,
+                width: desc.sidebar.width,
+            });
+            const panel = desc.sidebar.activePanel;
+            const valid =
+                panel === "explorer" ||
+                panel === "search" ||
+                page.editors.some((e) => e.secondaryEditor?.includes(panel));
+            page.activePanel = valid ? panel : "explorer";
+        }
+
+        if (page.editors.length === 0 && !desc.sidebar) return null;
+        return page;
+    };
+
+    private restoreV4 = async (data: WindowState): Promise<void> => {
+        const results = await Promise.all(
+            data.pages.map(async (d) => {
+                try {
+                    return await this.restorePage(d);
+                } catch (err) {
+                    console.warn(`[restore] page ${d.id}:`, err);
+                    return null;
+                }
+            }),
+        );
+
+        const models: PageModel[] = results.filter(
+            (p): p is PageModel => p !== null,
+        );
+        for (const p of models) this.model.attachPage(p);
+
+        const activeModel = models.find((m) => m.id === data.activePageId);
+        const orderedModels = activeModel
+            ? [...models.filter((m) => m !== activeModel), activeModel]
+            : models;
+        this.model.state.update((s) => {
+            s.pages = models;
+            s.ordered = orderedModels;
+        });
+
+        if (data.groupings && Array.isArray(data.groupings)) {
+            data.groupings.forEach((el) => {
+                if (Array.isArray(el) && el.length === 2) {
+                    this.model.layout.group(el[0], el[1]);
+                }
+            });
+            this.model.layout.fixGrouping();
+        }
+    };
+
+    /**
+     * Pre-EPIC-028 (v3.x) restore path. Reads the flat `PageDescriptor.editor:
+     * Partial<IEditorState>` shape AND the per-page sidebar cache files
+     * (`<pageId>-nav-panel.txt`). Wraps every legacy editor in
+     * `LegacyEditorAdapter` before attaching to the v4 PageModel.
+     *
+     * On first save after upgrade, persistence writes v4; existing sidebar
+     * cache files orphan harmlessly (walkthrough 04 / P9 — accepted).
+     * Retired in US-559.
+     */
+    private restoreV3 = async (
+        data: { pages: LegacyPageDescriptor[]; groupings?: [string, string][]; activePageId?: string },
+    ): Promise<void> => {
+        // Detect pre-v3.0.1 flat format and skip.
+        const isPreV3 =
+            data.pages.length > 0 &&
+            (data.pages[0] as unknown as { type?: string })?.type !== undefined &&
+            !data.pages[0]?.editor?.type;
+
+        if (isPreV3) return;
 
         const models: PageModel[] = [];
 
-        for (const desc of data.pages as PageDescriptor[]) {
+        for (const desc of data.pages) {
             const editorData = desc.editor;
 
             const page = new PageModel(desc.id);
             page.pinned = desc.pinned ?? false;
 
-            // Restore editor if present (empty pages have no editor)
-            if (editorData && Object.keys(editorData).length > 0) {
-                const editor = await this.restoreModel(editorData);
-                if (!editor) continue;
-                page.mainEditor = editor;
-                editor.setPage(page);
+            try {
+                if (editorData && Object.keys(editorData).length > 0) {
+                    const legacy = await this.restoreLegacyEditor(editorData);
+                    if (!legacy) continue;
+                    const adapter = new LegacyEditorAdapter(
+                        legacy,
+                        deriveEditorId(legacy.state.get()),
+                    );
+                    page.attach(adapter);
+                    page.setMainEditorId(adapter.id);
 
-                // Restore sidebar from cache if page had one
-                if (desc.hasSidebar) {
-                    await page.restoreSidebar();
-                    await page.restoreSecondaryEditors(editor);
+                    if (desc.hasSidebar) {
+                        await this.restoreSidebarLegacy(page, legacy);
+                    }
+                } else if (desc.hasSidebar) {
+                    await this.restoreSidebarLegacy(page, null);
+                } else {
+                    continue;
                 }
-            } else if (desc.hasSidebar) {
-                // Empty page with sidebar only (folder explorer, link collection)
-                await page.restoreSidebar();
-                await page.restoreSecondaryEditors(null);
-            } else {
-                // No editor and no sidebar — skip this descriptor
+            } catch (err) {
+                console.warn(`[restore-v3] page ${desc.id}:`, err);
                 continue;
             }
 
@@ -113,25 +217,112 @@ export class PagesPersistenceModel {
             models.push(page);
         }
 
-        const activeModel = models.find(
-            (m) => m.id === data.activePageId
-        );
+        const activeModel = models.find((m) => m.id === data.activePageId);
         const orderedModels = activeModel
             ? [...models.filter((m) => m !== activeModel), activeModel]
             : models;
-
         this.model.state.update((s) => {
             s.pages = models;
             s.ordered = orderedModels;
         });
 
         if (data.groupings && Array.isArray(data.groupings)) {
-            data.groupings.forEach((el: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+            data.groupings.forEach((el) => {
                 if (Array.isArray(el) && el.length === 2) {
                     this.model.layout.group(el[0], el[1]);
                 }
             });
             this.model.layout.fixGrouping();
+        }
+    };
+
+    /** Build a single legacy editor from a v3 partial-IEditorState blob. */
+    private restoreLegacyEditor = async (
+        data: Partial<IEditorState>,
+    ): Promise<LegacyEditorModel | null> => {
+        try {
+            const legacy = await this.model.lifecycle.newEditorModelFromState(data);
+            legacy.applyRestoreData(data);
+            await legacy.restore();
+            return legacy;
+        } catch (err) {
+            console.warn(`[restore-v3] editor ${data.type ?? "?"}:`, err);
+            return null;
+        }
+    };
+
+    /** Restore sidebar state from `<pageId>-nav-panel.txt` cache file. */
+    private restoreSidebarLegacy = async (
+        page: PageModel,
+        ownerLegacy: LegacyEditorModel | null,
+    ): Promise<void> => {
+        const data = await appFs.getCacheFile(page.id, "nav-panel");
+        const saved = parseObject(data) as PageSidebarSavedState | undefined;
+        if (!saved) return;
+
+        const navModel = page.ensurePageNavigatorModel();
+        navModel.setStateQuiet({
+            open: saved.open ?? true,
+            width: saved.width ?? 240,
+        });
+
+        // Migrate pre-v3 rootPath shape into an ExplorerEditorModel descriptor.
+        const rawSaved = saved as PageSidebarSavedState & { rootPath?: string };
+        const oldRootPath = rawSaved.rootPath;
+        const descriptors: { pageState: Partial<IEditorState> }[] = [];
+        if (
+            oldRootPath &&
+            !saved.secondaryModelDescriptors?.some(
+                (d) => d.pageState.type === "fileExplorer",
+            )
+        ) {
+            descriptors.push({
+                pageState: {
+                    id: crypto.randomUUID(),
+                    type: "fileExplorer",
+                    title: "Explorer",
+                    modified: false,
+                    rootPath: oldRootPath,
+                } as Partial<IEditorState> & { rootPath?: string },
+            });
+        }
+        if (saved.secondaryModelDescriptors?.length) {
+            descriptors.push(...saved.secondaryModelDescriptors);
+        }
+
+        // Restore each secondary editor, wrapping in adapter.
+        const restored: LegacyEditorAdapter[] = [];
+        for (const desc of descriptors) {
+            // Dedupe against the owner editor (Pattern B in v3 — same model
+            // in both main and secondary).
+            if (ownerLegacy && desc.pageState.id === ownerLegacy.state.get().id) {
+                // Already attached as main; skip.
+                continue;
+            }
+            try {
+                const legacy = await this.restoreLegacyEditor(desc.pageState);
+                if (!legacy) continue;
+                const adapter = new LegacyEditorAdapter(
+                    legacy,
+                    deriveEditorId(legacy.state.get()),
+                );
+                page.attach(adapter);
+                restored.push(adapter);
+            } catch (err) {
+                console.warn(`[restore-v3] secondary editor:`, err);
+            }
+        }
+
+        // Resolve activePanel. Built-ins apply immediately; non-builtin panels
+        // are valid only if some adapter contributes them.
+        const restoredPanel = saved.activePanel ?? "explorer";
+        if (restoredPanel === "explorer" || restoredPanel === "search") {
+            page.activePanel = restoredPanel;
+        } else {
+            const valid = restored.some((a) =>
+                a.secondaryEditor?.includes(restoredPanel),
+            );
+            page.activePanel = valid ? restoredPanel : "explorer";
         }
     };
 
@@ -157,9 +348,18 @@ export class PagesPersistenceModel {
 
     onAppQuit = async () => {
         await Promise.all(
-            this.model.state.get().pages.map((page) => page.saveState())
+            this.model.state.get().pages.map((page) => page.saveState()),
         );
         await this.saveState();
         api.setCanQuit(true);
     };
+}
+
+/**
+ * Build a fresh `EditorDescriptor` with a new instance id. Used by
+ * `duplicatePage` (walkthrough 05 / M2's rewrite) — each duplicated editor
+ * needs its own cache-file keyspace.
+ */
+export function withFreshEditorId(desc: EditorDescriptor): EditorDescriptor {
+    return { ...desc, id: crypto.randomUUID() };
 }

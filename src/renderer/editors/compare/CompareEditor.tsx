@@ -5,10 +5,13 @@ import { TextFileModel } from "../text";
 import { Panel, Toolbar, Text, IconButton } from "../../uikit";
 import { CompareIcon } from "../../theme/icons";
 import { TComponentModel, useComponentModel } from "../../core/state/model";
+import { pagesModel } from "../../api/pages";
 
 interface CompareEditorProps {
     model: TextFileModel;
     groupedModel: TextFileModel;
+    /** The left page's id — needed to exit compare mode on the pair. CK10. */
+    leftPageId: string;
 }
 
 class CompareEditorModel extends TComponentModel<null, CompareEditorProps> {
@@ -34,7 +37,7 @@ class CompareEditorModel extends TComponentModel<null, CompareEditorProps> {
 }
 
 export function CompareEditor(props: CompareEditorProps) {
-    const { model, groupedModel } = props;
+    const { model, groupedModel, leftPageId } = props;
     const editorModel = useComponentModel(props, CompareEditorModel, null);
 
     const { language, content, filePath, title } = model.state.use((s) => ({
@@ -88,8 +91,7 @@ export function CompareEditor(props: CompareEditorProps) {
                     size="sm"
                     title="Exit Compare Mode"
                     onClick={() => {
-                        model.setCompareMode(false);
-                        groupedModel.setCompareMode(false);
+                        pagesModel.exitCompareMode(leftPageId);
                     }}
                     icon={<CompareIcon />}
                 />

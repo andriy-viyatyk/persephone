@@ -80,12 +80,15 @@ export function OpenTabsList(props: OpenTabsListProps) {
         );
         otherWindowsPages.forEach((wp) => {
             resItems.push({ windowIndex: wp.windowIndex });
-            const pages = wp.pages.map((desc) => ({
-                windowIndex: wp.windowIndex,
-                // Unwrap PageDescriptor: editor state has title/language/filePath,
-                // but override id with page id (needed for showWindowPage)
-                page: { ...(desc.editor || {}), id: desc.id } as Partial<IEditorState>,
-            }));
+            const pages = wp.pages.map((desc) => {
+                // v4 PageDescriptor: pick the main editor's state slice.
+                const main = desc.editors.find(e => e.id === desc.mainEditorId);
+                const state = (main?.state ?? {}) as Partial<IEditorState>;
+                return {
+                    windowIndex: wp.windowIndex,
+                    page: { ...state, id: desc.id } as Partial<IEditorState>,
+                };
+            });
             resItems.push(pages);
         });
 

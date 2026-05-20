@@ -1,5 +1,7 @@
 import type { PagesModel } from "./PagesModel";
 import type { PageModel } from "./PageModel";
+import type { TextFileModel } from "../../editors/text";
+import { LegacyEditorAdapter } from "../../editors/base/v4";
 
 /**
  * PagesQueryModel — Read-only queries on the page collection.
@@ -8,15 +10,13 @@ export class PagesQueryModel {
     constructor(private model: PagesModel) {}
 
     /**
-     * Find a page by any associated ID: page ID, mainEditor ID, or secondaryEditor ID.
+     * Find a page by any associated ID: page ID OR any of its editor IDs.
      * All IDs are unique, so this is safe and prevents page/editor ID confusion bugs.
      */
     findPage = (id?: string): PageModel | undefined => {
         if (!id) return undefined;
         return this.model.state.get().pages.find((p) =>
-            p.id === id
-            || p.mainEditor?.id === id
-            || p.secondaryEditors.some((se) => se.id === id)
+            p.id === id || p.editors.some((e) => e.id === id),
         );
     };
 
@@ -33,7 +33,6 @@ export class PagesQueryModel {
 
     getGroupedPage = (withId: string): PageModel | undefined => {
         const state = this.model.state.get();
-        // Resolve to page ID if an editor ID was passed
         const pageId = this.findPage(withId)?.id ?? withId;
         const groupedWithId =
             state.leftRight.get(pageId) || state.rightLeft.get(pageId);
@@ -45,7 +44,6 @@ export class PagesQueryModel {
 
     getLeftGroupedPage = (withId: string): PageModel | undefined => {
         const state = this.model.state.get();
-        // Resolve to page ID if an editor ID was passed
         const pageId = this.findPage(withId)?.id ?? withId;
         const groupedWithId = state.rightLeft.get(pageId);
         if (groupedWithId) {
@@ -70,4 +68,66 @@ export class PagesQueryModel {
     get pages(): PageModel[] {
         return this.model.state.get().pages;
     }
+
+    // ── Compare-mode helpers (walkthrough 06 / CK3, CK5, GK2) ──────────
+
+    /**
+     * Returns the page's TextFileModel host (the actual content-bearing model
+     * for text editors), or null. For adapter-wrapped editors, unwraps to the
+     * legacy TextFileModel instance. Per-editor migrations (US-551+) replace
+     * this with `editor.contentHost instanceof TextFileModel`.
+     */
+    getTextFileHost = (pageId: string): TextFileModel | null => {
+        const page = this.findPage(pageId);
+        // Use the v4 surface so we can recognize adapters; `mainEditor` auto-
+        // unwraps and would lose the adapter signal.
+        const main = page?.mainEditorV4;
+        if (!main) return null;
+        if (main instanceof LegacyEditorAdapter) {
+            const legacy = main.legacy as unknown as { type?: string };
+            // Legacy TextFileModel sets type === "textFile".
+            if (legacy.type === "textFile") {
+                return main.legacy as unknown as TextFileModel;
+            }
+        }
+        // Future native v4 text editors expose contentHost; not in US-548.
+        return null;
+    };
+
+    /** True if both pages exist, are grouped together, and both have a TextFileModel host. */
+    canCompare = (leftId: string, rightId: string): boolean => {
+        const left = this.findPage(leftId);
+        const right = this.findPage(rightId);
+        if (!left || !right) return false;
+        const state = this.model.state.get();
+        const groupedRight = state.leftRight.get(left.id);
+        if (groupedRight !== right.id) return false;
+        return this.getTextFileHost(left.id) !== null
+            && this.getTextFileHost(right.id) !== null;
+    };
+
+    /**
+     * Compare-mode lookup. Accepts either left or right page id; resolves the
+     * leftId via leftRight/rightLeft. Returns { active, leftId, rightId } when
+     * the pair is in compareGroups; { active: false } otherwise.
+     */
+    isInCompareMode = (pageId: string): {
+        active: boolean;
+        leftId?: string;
+        rightId?: string;
+    } => {
+        const state = this.model.state.get();
+        const resolvedPageId = this.findPage(pageId)?.id ?? pageId;
+        // Is this the left side?
+        const right = state.leftRight.get(resolvedPageId);
+        if (right && state.compareGroups.has(resolvedPageId)) {
+            return { active: true, leftId: resolvedPageId, rightId: right };
+        }
+        // Is this the right side?
+        const left = state.rightLeft.get(resolvedPageId);
+        if (left && state.compareGroups.has(left)) {
+            return { active: true, leftId: left, rightId: resolvedPageId };
+        }
+        return { active: false };
+    };
 }

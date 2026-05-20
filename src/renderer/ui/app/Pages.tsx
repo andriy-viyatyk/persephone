@@ -1,15 +1,11 @@
 import styled from "@emotion/styled";
-import { useEffect } from "react";
 import { Panel, Splitter } from "../../uikit";
 import { pagesModel } from "../../api/pages";
 import { RenderEditor } from "./RenderEditor";
 import { CompareEditor } from "../../editors/compare";
-import { isTextFileModel } from "../../editors/text";
 import { PageNavigator } from "../navigation/PageNavigator";
 import { AppPageManager } from "../../components/page-manager/AppPageManager";
 import type { PageModel } from "../../api/pages/PageModel";
-import { useOptionalState } from "../../core/state/state";
-import { compareModeChanged } from "../../core/state/events";
 import { Ornament } from "../../theme/Ornament";
 import color from "../../theme/color";
 
@@ -83,32 +79,34 @@ function NavigationContent({ page }: { page: PageModel }) {
 
 /** Renders a single page's content (Navigator + Editor), or CompareEditor if in compare mode */
 function PageContent({ pageId }: { pageId: string }) {
+    // Subscribe to pagesModel.state so re-renders happen when compareGroups
+    // changes (CK5).
+    pagesModel.state.use();
     const page = pagesModel.query.findPage(pageId);
     if (!page) return null;
 
-    // Subscribe to mainEditorId — changes on navigation, triggers re-render for editor swap
     page.state.use((s) => s.mainEditorId);
     const editor = page.mainEditor;
 
-    // Subscribe to compareMode — unconditional hook, safe across editor type changes
-    const textEditor = editor && isTextFileModel(editor) ? editor : null;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const compareMode = useOptionalState(textEditor?.state as any, (s: any) => s.compareMode, false);
+    const compareInfo = pagesModel.query.isInCompareMode(pageId);
 
-    if (compareMode) {
-        // Check if this page is the LEFT side of a group — render CompareEditor
-        const { leftRight } = pagesModel.state.get();
-        const rightId = leftRight.get(pageId);
-        if (rightId) {
-            const rightPage = pagesModel.query.findPage(rightId);
-            const rightEditor = rightPage?.mainEditor;
-            if (editor && rightEditor && isTextFileModel(editor) && isTextFileModel(rightEditor)) {
-                return <CompareEditor model={editor} groupedModel={rightEditor} />;
+    if (compareInfo.active) {
+        // Render CompareEditor only on the LEFT side; right side renders null
+        // (the left side's portal paints the diff editor).
+        if (compareInfo.leftId === pageId && compareInfo.rightId) {
+            const leftHost = pagesModel.query.getTextFileHost(compareInfo.leftId);
+            const rightHost = pagesModel.query.getTextFileHost(compareInfo.rightId);
+            if (leftHost && rightHost) {
+                return (
+                    <CompareEditor
+                        model={leftHost}
+                        groupedModel={rightHost}
+                        leftPageId={compareInfo.leftId}
+                    />
+                );
             }
         }
-
-        // This page is the RIGHT side of a compare-mode group — render nothing
-        // (CompareEditor is rendered in the left page's portal)
+        // Right side or missing host — render nothing.
         return null;
     }
 
@@ -131,24 +129,9 @@ function PageContent({ pageId }: { pageId: string }) {
 }
 
 export function Pages() {
-    const { pages, leftRight } = pagesModel.state.use();
+    const { pages, leftRight, compareGroups } = pagesModel.state.use();
     const activePage = pagesModel.activePage;
     const groupedPage = pagesModel.groupedPage;
-
-    useEffect(() => {
-        const sub = compareModeChanged.subscribe(() => pagesModel.rerender());
-        return () => sub.unsubscribe();
-    }, []);
-
-    const compareModeIds = new Set<string>();
-    for (const [leftId] of leftRight) {
-        const page = pages.find((p) => p.id === leftId);
-        const editor = page?.mainEditor;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        if (editor && isTextFileModel(editor) && (editor.state.get() as any).compareMode) {
-            compareModeIds.add(leftId);
-        }
-    }
 
     return (
         <AppPageManager
@@ -156,7 +139,7 @@ export function Pages() {
             activeId={activePage?.id ?? ""}
             groupedActiveId={groupedPage?.id}
             grouping={leftRight}
-            compareModeIds={compareModeIds}
+            compareModeIds={compareGroups}
             renderPage={(id) => <PageContent pageId={id} />}
         />
     );

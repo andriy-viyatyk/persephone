@@ -1,7 +1,7 @@
 import { Subscription } from "../../core/state/events";
 import { TModel } from "../../core/state/model";
 import { TGlobalState } from "../../core/state/state";
-import { EditorModel } from "../../editors/base";
+import type { EditorModel } from "../../editors/base/v4";
 import { EditorView, PageDescriptor } from "../../../shared/types";
 import { createLinkData } from "../../../shared/link-data";
 import type { ILink } from "../types/io.tree";
@@ -20,8 +20,8 @@ const defaultOpenFilesState = {
     ordered: [] as PageModel[],
     leftRight: new Map<string, string>(),
     rightLeft: new Map<string, string>(),
-    /** Bumped to force a Pages re-render when off-state changes (e.g. compareMode) need to flow into the layout. */
-    rerender: 0,
+    /** Compare-mode flag set keyed by left page id (walkthrough 06 / CK1). */
+    compareGroups: new Set<string>(),
 };
 
 export type OpenFilesState = typeof defaultOpenFilesState;
@@ -31,10 +31,11 @@ export type OpenFilesState = typeof defaultOpenFilesState;
 /**
  * PagesModel — Base model for the page collection.
  *
- * Holds shared state (pages, ordering, groupings) and composes
+ * Holds shared state (pages, ordering, groupings, compareGroups) and composes
  * five submodels that each handle one concern.
  *
- * Public methods delegate to submodels for organized, testable code.
+ * EPIC-028 / US-548: `rerender` field and `compareModeChanged` bridge are
+ * deleted (CK6). compareGroups lives here, keyed by left page id.
  */
 export class PagesModel extends TModel<OpenFilesState> {
     onShow = new Subscription<PageModel>();
@@ -60,20 +61,45 @@ export class PagesModel extends TModel<OpenFilesState> {
 
     // ── Internal methods (shared across submodels) ───────────────────
 
+    /**
+     * Subscribe to a page's editors[] and reconcile per-editor descriptorChanged
+     * subscriptions so any editor mutation triggers debounced save. EPIC-028 /
+     * US-548: replaces today's `editor.state.subscribe` with `editor.descriptorChanged`;
+     * the per-editor map is reconciled when `page.editors[]` changes.
+     */
     attachPage = (page: PageModel) => {
         const pageId = page.id;
-        // Subscribe to mainEditor state changes for persistence debounce
-        const editorUnsub = page.mainEditor?.state.subscribe(() => {
-            this.persistence.saveStateDebounced();
-        });
-        // Subscribe to page-level state changes (pinned, version)
+        const editorSubs = new Map<string, () => void>();
+
+        const reconcileEditorSubs = () => {
+            const present = new Set(page.editors.map((e) => e.id));
+            for (const [id, unsub] of editorSubs) {
+                if (!present.has(id)) {
+                    unsub();
+                    editorSubs.delete(id);
+                }
+            }
+            for (const editor of page.editors) {
+                if (editorSubs.has(editor.id)) continue;
+                const sub = editor.descriptorChanged.subscribe(() => {
+                    this.persistence.saveStateDebounced();
+                });
+                editorSubs.set(editor.id, () => sub.unsubscribe());
+            }
+        };
+
+        reconcileEditorSubs();
         const pageUnsub = page.state.subscribe(() => {
+            reconcileEditorSubs();
             this.persistence.saveStateDebounced();
         });
+
         this.pageSubscriptions.set(pageId, () => {
-            editorUnsub?.();
+            for (const unsub of editorSubs.values()) unsub();
+            editorSubs.clear();
             pageUnsub();
         });
+
         page.onClose = () => {
             this.detachPage(page);
             this.removePage(page);
@@ -81,20 +107,10 @@ export class PagesModel extends TModel<OpenFilesState> {
         };
     };
 
-    /** Re-subscribe to a page's mainEditor after navigation swap. */
-    resubscribeEditor = (page: PageModel) => {
-        const old = this.pageSubscriptions.get(page.id);
-        old?.();
-        const editorUnsub = page.mainEditor?.state.subscribe(() => {
-            this.persistence.saveStateDebounced();
-        });
-        const pageUnsub = page.state.subscribe(() => {
-            this.persistence.saveStateDebounced();
-        });
-        this.pageSubscriptions.set(page.id, () => {
-            editorUnsub?.();
-            pageUnsub();
-        });
+    /** Kept as a no-op for callers from before US-548. The new attachPage
+     *  reconciles editor subscriptions automatically when `editors[]` changes. */
+    resubscribeEditor = (_page: PageModel) => {
+        // No-op — see attachPage.
     };
 
     detachPage = (page: PageModel) => {
@@ -107,11 +123,28 @@ export class PagesModel extends TModel<OpenFilesState> {
         page.onClose = undefined;
     };
 
+    /**
+     * Remove a page from `pages[]` / `ordered[]`. Does NOT dispose the page —
+     * `detachPage` cleared `onClose`, and the cross-window transfer path
+     * (walkthrough 05 / M4) relies on this. CK7: drops compareGroups entry
+     * for the pair.
+     */
     removePage = (page: PageModel) => {
         const isActivePage = this.query.activePage === page;
+        // Identify the leftId of the pair (if any) before removal.
+        const state = this.state.get();
+        const pairLeftId = state.leftRight.has(page.id)
+            ? page.id
+            : state.rightLeft.get(page.id);
+
         this.state.update((s) => {
             s.pages = s.pages.filter((p) => p !== page);
             s.ordered = s.ordered.filter((p) => p !== page);
+            if (pairLeftId && s.compareGroups.has(pairLeftId)) {
+                const next = new Set(s.compareGroups);
+                next.delete(pairLeftId);
+                s.compareGroups = next;
+            }
         });
         this.layout.fixGrouping();
         this.persistence.saveState();
@@ -133,35 +166,23 @@ export class PagesModel extends TModel<OpenFilesState> {
         }, 0);
     };
 
-    /** Bump the `rerender` field so subscribers of `state.use()` re-render. Use when off-state changes (e.g. compareMode) must flow into the layout. */
-    rerender = () => {
-        this.state.update((s) => {
-            s.rerender = s.rerender + 1;
-        });
-    };
-
+    /**
+     * Close the first page if it's a fresh empty Monaco page and there are
+     * exactly two pages total. Walkthrough 01 / L3 + A3: delegate to the
+     * editor's `isFreshEmpty()` instead of hardcoding state-field checks.
+     */
     closeFirstPageIfEmpty = () => {
         const pages = this.state.get().pages;
-        if (pages.length === 2) {
-            const firstPage = pages[0];
-            const editor = firstPage.mainEditor;
-            if (!editor) return;
-            const editorState = editor.state.get();
-            if (
-                !firstPage.pinned &&
-                !editorState.modified &&
-                !(editorState as any).content && // eslint-disable-line @typescript-eslint/no-explicit-any
-                !editorState.filePath &&
-                editorState.type === "textFile"
-            ) {
-                firstPage.close();
-            }
+        if (pages.length !== 2) return;
+        const firstPage = pages[0];
+        if (firstPage.pinned) return;
+        // Check the v4 surface so adapter's isFreshEmpty() resolves correctly.
+        if (firstPage.mainEditorV4?.isFreshEmpty?.() === true) {
+            firstPage.close();
         }
     };
 
     // ── Public API delegates ─────────────────────────────────────────
-    // These provide a flat API surface for consumers so they can call
-    // pages.openFile() instead of pages.lifecycle.openFile().
 
     // Query delegates
     get activePage() {
@@ -177,6 +198,10 @@ export class PagesModel extends TModel<OpenFilesState> {
         this.query.getLeftGroupedPage(withPageId);
     isLastPage = (pageId?: string) => this.query.isLastPage(pageId);
     isGrouped = (pageId: string) => this.query.isGrouped(pageId);
+    canCompare = (leftId: string, rightId: string) =>
+        this.query.canCompare(leftId, rightId);
+    isInCompareMode = (pageId: string) => this.query.isInCompareMode(pageId);
+    getTextFileHost = (pageId: string) => this.query.getTextFileHost(pageId);
     get pages() {
         return this.query.pages;
     }
@@ -188,7 +213,8 @@ export class PagesModel extends TModel<OpenFilesState> {
     focusPage = (page: PageModel) => this.navigation.focusPage(page);
 
     // Lifecycle delegates
-    addPage = (editor: EditorModel, existingPage?: PageModel) => this.lifecycle.addPage(editor, existingPage);
+    addPage = (editor: EditorModel | null, existingPage?: PageModel) =>
+        this.lifecycle.addPage(editor, existingPage);
     addEmptyPage = () => this.lifecycle.addEmptyPage();
     addEmptyPageWithNavPanel = (folderPath: string) =>
         this.lifecycle.addEmptyPageWithNavPanel(folderPath);
@@ -200,11 +226,12 @@ export class PagesModel extends TModel<OpenFilesState> {
         this.lifecycle.openLinks(links, title);
     openFile = async (filePath?: string) => {
         if (!filePath) return undefined;
-        // Route through the link pipeline (Layer 1 → 2 → 3)
         const { app } = await import("../app");
         await app.events.openRawLink.sendAsync(createLinkData(filePath));
-        // Return the page if it was opened (for backward compatibility)
-        return this.state.get().pages.find((p) => p.mainEditor?.filePath === filePath);
+        return this.state.get().pages.find((p) => {
+            const main = p.mainEditor as { filePath?: string } | null;
+            return main?.filePath === filePath;
+        });
     };
     openFileAsArchive = (filePath: string) =>
         this.lifecycle.openFileAsArchive(filePath);
@@ -279,7 +306,8 @@ export class PagesModel extends TModel<OpenFilesState> {
         enforceAdjacency = false
     ) => this.layout.groupTabs(pageId1, pageId2, enforceAdjacency);
     fixGrouping = () => this.layout.fixGrouping();
-    fixCompareMode = () => this.layout.fixCompareMode();
+    enterCompareMode = (pageId: string) => this.layout.enterCompareMode(pageId);
+    exitCompareMode = (pageId: string) => this.layout.exitCompareMode(pageId);
 
     // Persistence delegates
     saveState = () => this.persistence.saveState();

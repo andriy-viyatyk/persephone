@@ -711,3 +711,49 @@ secondaryEditorRegistry.register({
     label: "Hostnames",
     loadComponent: () => import("./link-editor/panels/LinkHostnamesSecondaryEditor"),
 });
+
+// =============================================================================
+// EPIC-028 / US-548 strangler-fig bridge
+// =============================================================================
+// Mirror every legacy EditorDefinition into the v4 editorRegistry so v4
+// consumers (switch widget — US-549; per-editor migrations US-551+) can query
+// `getById`, `getAll`, `findEditorsAccepting`, `resolveForFile`. The
+// `loadModule`/`createEditor` factory is a stub during US-548 — PagesLifecycleModel
+// still constructs editors via legacy factories and wraps them in
+// LegacyEditorAdapter at the call site (Q2 / approved approach).
+//
+// US-551+ replaces each entry with a native v4 EditorDefinition that ships its
+// own factory. US-559 deletes the bridge.
+
+import { editorRegistry as v4EditorRegistry } from "./base/v4/editorRegistry";
+
+for (const legacyDef of editorRegistry.getAll()) {
+    v4EditorRegistry.register({
+        id: legacyDef.id,
+        name: legacyDef.name,
+        hasContentHost: legacyDef.editorType === "textFile",
+        accepts: (input) => {
+            // File-first match.
+            if (input.fileName) {
+                const p = legacyDef.acceptFile?.(input.fileName) ?? -1;
+                if (p >= 0) return p;
+            }
+            // Language-based switch options.
+            if (input.language) {
+                const p = legacyDef.switchOption?.(input.language, input.fileName) ?? -1;
+                if (p >= 0) return p;
+            }
+            return -1;
+        },
+        loadModule: async () => {
+            // US-548: v4 createEditor isn't called by any in-app consumer —
+            // PagesLifecycleModel uses legacy factories directly. Throw if a
+            // future consumer reaches here before per-editor migration lands.
+            throw new Error(
+                `v4 createEditor not yet wired for legacy editor "${legacyDef.id}". ` +
+                "PagesLifecycleModel still constructs via legacy factories during US-548; " +
+                "per-editor migration (US-551+) populates this slot.",
+            );
+        },
+    });
+}

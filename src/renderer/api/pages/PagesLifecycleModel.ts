@@ -1,5 +1,7 @@
 import type { PagesModel } from "./PagesModel";
-import { EditorModel } from "../../editors/base";
+import type { EditorModel as V4EditorModel } from "../../editors/base/v4";
+import { LegacyEditorAdapter, deriveEditorId } from "../../editors/base/v4";
+import type { EditorModel as LegacyEditorModel } from "../../editors/base/EditorModel";
 import { IEditorState, EditorView, EditorType, PageDescriptor } from "../../../shared/types";
 import { createLinkData } from "../../../shared/link-data";
 import type { ILinkData } from "../../../shared/link-data";
@@ -33,15 +35,25 @@ function normalizeLinksTitle(title?: string): string {
     return title + ".link.json";
 }
 
+/** Wrap a legacy EditorModel in the v4 LegacyEditorAdapter. Resolves the
+ *  v4 editorId from the legacy editor's state. */
+function wrap(legacy: LegacyEditorModel): V4EditorModel {
+    return new LegacyEditorAdapter(legacy, deriveEditorId(legacy.state.get()));
+}
+
 /**
  * PagesLifecycleModel — Page creation, opening, closing, and navigation.
+ *
+ * EPIC-028 / US-548: every legacy editor is wrapped in `LegacyEditorAdapter`
+ * before being attached to the v4 PageModel. The legacy factories
+ * (`newTextFileModel`, `newEditorModelFromState`, etc.) survive — wrapping
+ * happens at the boundary just before `addPage` / `setMainEditor`.
  */
 export class PagesLifecycleModel {
     constructor(private model: PagesModel) {}
 
     // ── Pipe helpers ──────────────────────────────────────────────────
 
-    /** Create a content pipe from a path string (file, archive, or HTTP). */
     private createPipeFromPath(path: string): IContentPipe {
         if (path.startsWith("http://") || path.startsWith("https://")) {
             return new ContentPipe(new HttpProvider(path));
@@ -58,9 +70,9 @@ export class PagesLifecycleModel {
         return new ContentPipe(new FileProvider(path));
     }
 
-    // ── Editor factory helpers ───────────────────────────────────────
+    // ── Editor factory helpers (legacy — produce LegacyEditorModel) ────
 
-    private newEditorModel = async (filePath?: string): Promise<EditorModel> => {
+    private newEditorModel = async (filePath?: string): Promise<LegacyEditorModel> => {
         const editorDef = editorRegistry.resolve(filePath);
         if (editorDef) {
             const module = await editorDef.loadModule();
@@ -78,12 +90,11 @@ export class PagesLifecycleModel {
     };
 
     newEditorModelFromState = async (
-        state: Partial<IEditorState>
-    ): Promise<EditorModel> => {
+        state: Partial<IEditorState>,
+    ): Promise<LegacyEditorModel> => {
         if (state.type && PagesLifecycleModel.PAGE_TYPE_MIGRATIONS[state.type]) {
             state = { ...state, type: PagesLifecycleModel.PAGE_TYPE_MIGRATIONS[state.type] };
         }
-        // ExplorerEditorModel — not in editor registry (secondary-only)
         if (state.type === "fileExplorer") {
             const { ExplorerEditorModel } = await import("../../editors/explorer");
             return new ExplorerEditorModel();
@@ -102,7 +113,12 @@ export class PagesLifecycleModel {
 
     // ── Core page operations ─────────────────────────────────────────
 
-    createEditorFromFile = async (filePath: string, pipe?: IContentPipe, target?: string, title?: string): Promise<EditorModel> => {
+    createEditorFromFile = async (
+        filePath: string,
+        pipe?: IContentPipe,
+        target?: string,
+        title?: string,
+    ): Promise<LegacyEditorModel> => {
         const editor = target
             ? await this.newEditorModelByTarget(filePath, target)
             : await this.newEditorModel(filePath);
@@ -117,8 +133,10 @@ export class PagesLifecycleModel {
         return editor;
     };
 
-    /** Create an editor by target ID (e.g., "image-view"), falling back to path-based resolution. */
-    private newEditorModelByTarget = async (filePath: string, target: string): Promise<EditorModel> => {
+    private newEditorModelByTarget = async (
+        filePath: string,
+        target: string,
+    ): Promise<LegacyEditorModel> => {
         const editorDef = editorRegistry.getById(target as EditorView);
         if (editorDef) {
             const module = await editorDef.loadModule();
@@ -128,19 +146,21 @@ export class PagesLifecycleModel {
     };
 
     /**
-     * Add an editor to the page collection, wrapping it in a PageModel.
-     * @param editor — the EditorModel to add (null for empty pages with sidebar only)
-     * @param existingPage — optional pre-created PageModel (for sidebar pages, archives, etc.)
-     * @returns The PageModel wrapping the editor
+     * Add an editor (already wrapped in v4 adapter) to the page collection.
+     *
+     * @param editor — the v4 EditorModel to add (null for empty pages with sidebar only)
+     * @param existingPage — optional pre-created PageModel
      */
-    addPage = (editor: EditorModel | null, existingPage?: PageModel): PageModel => {
+    addPage = (
+        editor: V4EditorModel | null,
+        existingPage?: PageModel,
+    ): PageModel => {
         const page = existingPage ?? new PageModel();
         if (editor && !page.mainEditor) {
-            page.mainEditor = editor;
-            editor.setPage(page);
+            page.attach(editor);
+            page.setMainEditorId(editor.id);
         }
 
-        // Check duplicate by page ID
         const existingById = this.model.query.findPage(page.id);
         if (existingById) {
             this.model.navigation.showPage(existingById.id);
@@ -161,7 +181,7 @@ export class PagesLifecycleModel {
     addEmptyPage = (): PageModel => {
         const emptyFile = newTextFileModel("");
         emptyFile.restore();
-        return this.addPage(emptyFile as unknown as EditorModel);
+        return this.addPage(wrap(emptyFile));
     };
 
     addEmptyPageWithNavPanel = async (folderPath: string): Promise<PageModel> => {
@@ -179,18 +199,18 @@ export class PagesLifecycleModel {
     ): PageModel => {
         if (typeof editor !== "string") {
             throw new Error(
-                `addEditorPage() expects positional arguments: (editor, language, title, content?). Got ${typeof editor} for editor. Example: addEditorPage("monaco", "plaintext", "My Page", "content")`
+                `addEditorPage() expects positional arguments: (editor, language, title, content?). Got ${typeof editor} for editor. Example: addEditorPage("monaco", "plaintext", "My Page", "content")`,
             );
         }
         const editorDef = editorRegistry.getById(editor);
         if (!editorDef && editor !== "monaco") {
             throw new Error(
-                `Editor '${editor}' is not registered. Available editors: ${editorRegistry.getAll().map((e) => e.id).join(", ")}`
+                `Editor '${editor}' is not registered. Available editors: ${editorRegistry.getAll().map((e) => e.id).join(", ")}`,
             );
         }
         if (editorDef?.category === "standalone") {
             throw new Error(
-                `Cannot create '${editor}' with addEditorPage() — it is a standalone editor that requires a specialized model. Use the dedicated method instead (e.g., showBrowserPage(), showAboutPage(), openFile()).`
+                `Cannot create '${editor}' with addEditorPage() — it is a standalone editor that requires a specialized model. Use the dedicated method instead (e.g., showBrowserPage(), showAboutPage(), openFile()).`,
             );
         }
         const editorModel = newTextFileModel("");
@@ -203,7 +223,7 @@ export class PagesLifecycleModel {
             editorModel.changeContent(content);
         }
         editorModel.restore();
-        return this.addPage(editorModel as unknown as EditorModel);
+        return this.addPage(wrap(editorModel));
     };
 
     requireWellKnownPage = async (id: string): Promise<PageModel> => {
@@ -228,9 +248,8 @@ export class PagesLifecycleModel {
             );
         });
         editorModel.restore();
-        // Use the well-known ID as both page ID and editor ID
         const page = new PageModel(id);
-        return this.addPage(editorModel as unknown as EditorModel, page);
+        return this.addPage(wrap(editorModel), page);
     };
 
     addDrawPage = async (dataUrl: string, title?: string): Promise<PageModel> => {
@@ -247,7 +266,6 @@ export class PagesLifecycleModel {
     ): PageModel => {
         const normalizedTitle = normalizeLinksTitle(title);
 
-        // Convert input to LinkItem[]
         const linkItems: LinkItem[] = links.map((item) => {
             if (typeof item === "string") {
                 return {
@@ -268,11 +286,9 @@ export class PagesLifecycleModel {
             };
         });
 
-        // Build content JSON
         const data: LinkEditorData = { links: linkItems, state: {} };
         const content = JSON.stringify({ type: "link-editor", ...data }, null, 4);
 
-        // Create TextFileModel with link-view content
         const editorModel = newTextFileModel("");
         editorModel.state.update((s) => {
             s.title = normalizedTitle;
@@ -283,9 +299,9 @@ export class PagesLifecycleModel {
         editorModel.restore();
         editorModel.changeContent(content);
 
-        // Create page with the model as secondary editor (not mainEditor)
         const page = new PageModel();
-        page.addSecondaryEditor(editorModel as unknown as EditorModel);
+        const adapter = wrap(editorModel);
+        page.addSecondaryEditor(adapter);
         page.ensurePageNavigatorModel();
         page.expandPanel("link-category");
 
@@ -304,7 +320,10 @@ export class PagesLifecycleModel {
         if (!filePath) return undefined;
         const existingPage = this.model.state
             .get()
-            .pages.find((p) => p.mainEditor?.filePath === filePath);
+            .pages.find((p) => {
+                const main = p.mainEditor as { filePath?: string } | null;
+                return main?.filePath === filePath;
+            });
         if (existingPage) {
             pipe?.dispose();
             this.model.navigation.showPage(existingPage.id);
@@ -315,7 +334,7 @@ export class PagesLifecycleModel {
         if (options?.sourceLink) {
             editor.state.update((s) => { s.sourceLink = options.sourceLink; });
         }
-        const page = this.addPage(editor);
+        const page = this.addPage(wrap(editor));
         recent.add(filePath);
 
         this.model.closeFirstPageIfEmpty();
@@ -331,10 +350,12 @@ export class PagesLifecycleModel {
 
     private async _openAsarArchive(filePath: string): Promise<PageModel> {
         const archiveRoot = filePath;
-        const existing = this.model.state.get().pages.find(
-            (p) => p.findExplorer()?.state.get().type === "fileExplorer"
-                && (p.findExplorer()?.state.get() as any)?.rootPath === archiveRoot // eslint-disable-line @typescript-eslint/no-explicit-any
-        );
+        const existing = this.model.state.get().pages.find((p) => {
+            const explorer = p.findExplorer();
+            if (!explorer) return false;
+            const s = explorer.state.get() as { type?: string; rootPath?: string };
+            return s.type === "fileExplorer" && s.rootPath === archiveRoot;
+        });
         if (existing) {
             this.model.navigation.showPage(existing.id);
             return existing;
@@ -345,10 +366,12 @@ export class PagesLifecycleModel {
     }
 
     private async _openZipArchive(filePath: string): Promise<PageModel> {
-        const existing = this.model.state.get().pages.find(
-            (p) => p.mainEditor?.state.get().type === "archiveFile"
-                && (p.mainEditor?.state.get() as any).archiveUrl === filePath // eslint-disable-line @typescript-eslint/no-explicit-any
-        );
+        const existing = this.model.state.get().pages.find((p) => {
+            const main = p.mainEditor;
+            if (!main) return false;
+            const s = main.state.get() as { type?: string; archiveUrl?: string };
+            return s.type === "archiveFile" && s.archiveUrl === filePath;
+        });
         if (existing) {
             this.model.navigation.showPage(existing.id);
             return existing;
@@ -357,19 +380,19 @@ export class PagesLifecycleModel {
         const editorDef = editorRegistry.getById("archive-view");
         if (!editorDef) throw new Error("archive-view editor not registered");
         const module = await editorDef.loadModule();
-        const editor = await module.newEditorModel(filePath);
+        const legacy = await module.newEditorModel(filePath);
 
-        // Create PageModel with sidebar for archive browsing
         const page = new PageModel();
-        page.mainEditor = editor;
-        editor.setPage(page);
+        const adapter = wrap(legacy);
+        page.attach(adapter);
+        page.setMainEditorId(adapter.id);
         page.ensurePageNavigatorModel();
 
-        // Set secondaryEditor after page is set up
-        // (the setter calls page.addSecondaryEditor)
-        (editor as any).secondaryEditor = ["archive-tree"]; // eslint-disable-line @typescript-eslint/no-explicit-any
+        // Trigger the legacy editor's secondaryEditor setter so it registers
+        // its panel via the compat shim on PageModel.
+        (legacy as unknown as { secondaryEditor: string[] }).secondaryEditor = ["archive-tree"];
 
-        this.addPage(editor, page);
+        this.addPage(adapter, page);
         this.model.closeFirstPageIfEmpty();
         return page;
     }
@@ -400,45 +423,43 @@ export class PagesLifecycleModel {
         }
     };
 
+    /**
+     * Open two files side-by-side in compare mode. Walkthrough 06 / CK8:
+     * compose `groupTabs + enterCompareMode` instead of mutating
+     * `compareMode` state field directly.
+     */
     openDiff = async (
-        params: { firstPath: string; secondPath: string } | undefined
+        params: { firstPath: string; secondPath: string } | undefined,
     ) => {
         if (!params) return;
         const { firstPath, secondPath } = params;
         if (!firstPath || !secondPath) return;
         let existingFirst = this.model.state
             .get()
-            .pages.find((p) => p.mainEditor?.filePath === firstPath);
+            .pages.find((p) => {
+                const main = p.mainEditor as { filePath?: string } | null;
+                return main?.filePath === firstPath;
+            });
         let existingSecond = this.model.state
             .get()
-            .pages.find((p) => p.mainEditor?.filePath === secondPath);
+            .pages.find((p) => {
+                const main = p.mainEditor as { filePath?: string } | null;
+                return main?.filePath === secondPath;
+            });
 
         if (!existingFirst) {
             const pipe = this.createPipeFromPath(firstPath);
             const editor = await this.createEditorFromFile(firstPath, pipe);
-            existingFirst = this.addPage(editor);
+            existingFirst = this.addPage(wrap(editor));
         }
         if (!existingSecond) {
             const pipe = this.createPipeFromPath(secondPath);
             const editor = await this.createEditorFromFile(secondPath, pipe);
-            existingSecond = this.addPage(editor);
+            existingSecond = this.addPage(wrap(editor));
         }
 
         this.model.layout.groupTabs(existingFirst.id, existingSecond.id, true);
-        this.model.layout.fixCompareMode();
-        const firstEditor = existingFirst.mainEditor;
-        const secondEditor = existingSecond.mainEditor;
-        if (
-            firstEditor && isTextFileModel(firstEditor) &&
-            secondEditor && isTextFileModel(secondEditor)
-        ) {
-            firstEditor.state.update((s) => {
-                (s as any).compareMode = true;
-            });
-            secondEditor.state.update((s) => {
-                (s as any).compareMode = true;
-            });
-        }
+        this.model.layout.enterCompareMode(existingFirst.id);
         this.model.navigation.showPage(existingFirst.id);
     };
 
@@ -453,11 +474,9 @@ export class PagesLifecycleModel {
             forceTextEditor?: boolean;
             sourceLink?: ILinkData;
             pipe?: IContentPipe;
-            /** Editor target from the link pipeline (e.g., "image-view", "monaco"). */
             target?: string;
-            /** Page title override (from link metadata). */
             title?: string;
-        }
+        },
     ): Promise<boolean> => {
         const page = this.model.query.findPage(pageId);
         if (!page) return false;
@@ -468,62 +487,61 @@ export class PagesLifecycleModel {
             if (!released) return false;
         }
 
-        // Create new editor
-        let newEditor: EditorModel;
+        // Build legacy editor (with adapter wrap deferred until after the
+        // post-restore mutations that need the underlying TextFileModel API).
+        let legacy: LegacyEditorModel;
         const isVirtualPath = newFilePath.includes("://") || newFilePath.startsWith("data:");
         if (!isVirtualPath && !(await appFs.exists(newFilePath))) {
             ui.notify(
                 `File not found: ${fpBasename(newFilePath)}`,
-                "error"
+                "error",
             );
-            newEditor = newTextFileModel("") as unknown as EditorModel;
-            newEditor.state.update((s) => {
+            legacy = newTextFileModel("");
+            legacy.state.update((s) => {
                 s.title = fpBasename(newFilePath);
             });
-            await newEditor.restore();
+            await legacy.restore();
         } else {
             try {
-                newEditor = await this.createEditorFromFile(newFilePath, options?.pipe, options?.target, options?.title);
+                legacy = await this.createEditorFromFile(
+                    newFilePath,
+                    options?.pipe,
+                    options?.target,
+                    options?.title,
+                );
             } catch (err) {
                 ui.notify(
                     `Failed to open ${fpBasename(newFilePath)}: ${(err as Error).message}`,
-                    "error"
+                    "error",
                 );
-                newEditor = newTextFileModel("") as unknown as EditorModel;
-                await newEditor.restore();
+                legacy = newTextFileModel("");
+                await legacy.restore();
             }
         }
 
-        // Set sourceLink and title on new editor early — beforeNavigateAway inspects sourceLink
         if (options?.sourceLink || options?.title) {
-            newEditor.state.update((s) => {
+            legacy.state.update((s) => {
                 if (options.sourceLink) s.sourceLink = options.sourceLink;
                 if (options.title) s.title = options.title;
             });
         }
 
-        // Swap main editor — handles beforeNavigateAway, dispose, notifications
-        await page.setMainEditor(newEditor);
+        const adapter = wrap(legacy);
+        await page.setMainEditor(adapter);
 
-        // Re-subscribe to new editor's state changes
-        this.model.resubscribeEditor(page);
-
-        // Auto-select preview editor for navigated files
-        if (newEditor.state.get().type === "textFile") {
+        // Auto-select preview editor for navigated files (text-bearing only).
+        if (legacy.state.get().type === "textFile") {
             if (
                 options?.forceTextEditor ||
                 options?.revealLine ||
                 options?.highlightText
             ) {
+                const tfm = legacy as unknown as TextFileModel;
                 if (options.revealLine) {
-                    (newEditor as unknown as TextFileModel).revealLine(
-                        options.revealLine
-                    );
+                    tfm.revealLine(options.revealLine);
                 }
                 if (options.highlightText) {
-                    (newEditor as unknown as TextFileModel).setHighlightText(
-                        options.highlightText
-                    );
+                    tfm.setHighlightText(options.highlightText);
                 }
             } else {
                 const ext = fpExtname(newFilePath).toLowerCase();
@@ -531,10 +549,10 @@ export class PagesLifecycleModel {
                 const languageId = lang?.id || "plaintext";
                 const previewEditor = editorRegistry.getPreviewEditor(
                     languageId,
-                    newFilePath
+                    newFilePath,
                 );
                 if (previewEditor) {
-                    newEditor.state.update((s) => {
+                    legacy.state.update((s) => {
                         s.editor = previewEditor;
                     });
                 }
@@ -586,37 +604,26 @@ export class PagesLifecycleModel {
 
     // ── Multi-window operations ──────────────────────────────────────
 
+    /**
+     * Receive a page transferred from another window. Walkthrough 05 / M2:
+     * delegates to `PagesPersistenceModel.restorePage` for the shared restore
+     * pathway; this method only does the target-window-side splice + activate.
+     */
     movePageIn = async (data?: {
         page: PageDescriptor;
         targetPageId: string | undefined;
     }) => {
         if (!data?.page) return;
 
-        const desc = data.page;
-        const page = new PageModel(desc.id);
-        page.pinned = desc.pinned ?? false;
-
-        // Restore editor if present
-        if (desc.editor && Object.keys(desc.editor).length > 0) {
-            const editor = await this.newEditorModelFromState(desc.editor);
-            editor.applyRestoreData(desc.editor);
-            await editor.restore();
-            page.mainEditor = editor;
-            editor.setPage(page);
-        }
-
-        // Restore sidebar from cache (keyed by page ID — saved before movePageOut)
-        if (desc.hasSidebar) {
-            await page.restoreSidebar();
-            await page.restoreSecondaryEditors(page.mainEditor ?? null);
-        }
+        const page = await this.model.persistence.restorePage(data.page);
+        if (!page) return;
 
         const targetIndex = data.targetPageId
             ? this.model.state.get().pages.findIndex((p) => p.id === data.targetPageId)
             : -1;
 
         if (targetIndex === -1) {
-            this.addPage(page.mainEditor, page);
+            this.addPage(page.mainEditorV4, page);
             this.model.closeFirstPageIfEmpty();
         } else {
             this.model.attachPage(page);
@@ -651,15 +658,43 @@ export class PagesLifecycleModel {
 
     // ── Duplication ──────────────────────────────────────────────────
 
+    /**
+     * Walkthrough 05 / M2: build a fresh-id descriptor, then route through
+     * `restorePage` for symmetric construction.
+     */
     duplicatePage = async (pageId: string) => {
         const page = this.model.query.findPage(pageId);
         if (!page?.mainEditor) return;
 
-        const editorData: Partial<IEditorState> = page.mainEditor.getRestoreData();
-        editorData.id = crypto.randomUUID();
-        const newEditor = await this.model.persistence.restoreModel(editorData);
-        if (newEditor) {
-            const newPage = this.addPage(newEditor);
+        const sourceDesc = page.getDescriptor();
+        // Fresh ids: page + each editor. Re-point mainEditorId to the new editor id.
+        const editorsWithFreshIds = sourceDesc.editors.map((e) => ({
+            ...e,
+            id: crypto.randomUUID(),
+        }));
+        const oldMainIndex = sourceDesc.editors.findIndex(
+            (e) => e.id === sourceDesc.mainEditorId,
+        );
+        const newMainEditorId = oldMainIndex >= 0
+            ? editorsWithFreshIds[oldMainIndex].id
+            : null;
+
+        const desc: PageDescriptor = {
+            id: crypto.randomUUID(),
+            pinned: false,
+            modified: sourceDesc.modified,
+            mainEditorId: newMainEditorId,
+            editors: editorsWithFreshIds,
+            sidebar: undefined,
+        };
+
+        const newPage = await this.model.persistence.restorePage(desc);
+        if (newPage) {
+            this.model.attachPage(newPage);
+            this.model.state.update((s) => {
+                s.pages.push(newPage);
+                s.ordered.push(newPage);
+            });
             this.model.layout.groupTabs(pageId, newPage.id, false);
         }
     };
@@ -683,12 +718,14 @@ export class PagesLifecycleModel {
 
     // ── Grouped text helper ──────────────────────────────────────────
 
+    /** Walkthrough 07 / GK2 (signature refined 08 / T2): use `getTextFileHost`
+     *  to discriminate text-bearing partner pages. */
     requireGroupedText = (
         pageId: string,
-        suggestedLanguage?: string
+        suggestedLanguage?: string,
     ): TextFileModel => {
         let groupedPage = this.model.query.getGroupedPage(pageId);
-        if (groupedPage && groupedPage.mainEditor?.type !== "textFile") {
+        if (groupedPage && !this.model.query.getTextFileHost(groupedPage.id)) {
             this.model.layout.ungroup(pageId);
             groupedPage = undefined;
         }
@@ -698,12 +735,17 @@ export class PagesLifecycleModel {
             this.model.layout.groupTabs(
                 pageId,
                 groupedPage.id,
-                false
+                false,
             );
-            groupedPage.mainEditor?.changeLanguage(suggestedLanguage);
+            const host = this.model.query.getTextFileHost(groupedPage.id);
+            host?.changeLanguage(suggestedLanguage);
         }
 
-        return groupedPage.mainEditor as unknown as TextFileModel;
+        const host = this.model.query.getTextFileHost(groupedPage.id);
+        if (!host) {
+            throw new Error("requireGroupedText: failed to materialize text host");
+        }
+        return host;
     };
 
     // ── Page-actions (from old page-actions.ts) ──────────────────────
@@ -713,7 +755,7 @@ export class PagesLifecycleModel {
         const model = await aboutModule.default.newEmptyEditorModel("aboutPage");
         if (model) {
             const page = new PageModel(aboutModule.ABOUT_PAGE_ID);
-            this.addPage(model, page);
+            this.addPage(wrap(model), page);
         }
     };
 
@@ -725,7 +767,7 @@ export class PagesLifecycleModel {
             await settingsModule.default.newEmptyEditorModel("settingsPage");
         if (model) {
             const page = new PageModel(settingsModule.SETTINGS_PAGE_ID);
-            this.addPage(model, page);
+            this.addPage(wrap(model), page);
         }
     };
 
@@ -757,16 +799,18 @@ export class PagesLifecycleModel {
             await browserModule.default.newEmptyEditorModel("browserPage");
         if (model) {
             if (options?.profileName || options?.incognito || options?.tor) {
-                model.state.update((s: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
-                    if (options.profileName) s.profileName = options.profileName;
-                    if (options.incognito) s.isIncognito = true;
-                    if (options.tor) s.isTor = true;
+                model.state.update((s) => {
+                    const ms = s as unknown as { profileName?: string; isIncognito?: boolean; isTor?: boolean };
+                    if (options.profileName) ms.profileName = options.profileName;
+                    if (options.incognito) ms.isIncognito = true;
+                    if (options.tor) ms.isTor = true;
                 });
             }
             if (options?.url) {
-                model.state.update((s: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
-                    s.url = options.url;
-                    const tab = s.tabs?.[0];
+                model.state.update((s) => {
+                    const ms = s as unknown as { url?: string; tabs?: { url?: string; homeUrl?: string }[] };
+                    ms.url = options.url;
+                    const tab = ms.tabs?.[0];
                     if (tab) {
                         tab.url = options.url;
                         tab.homeUrl = options.url;
@@ -774,10 +818,10 @@ export class PagesLifecycleModel {
                 });
             }
             await model.restore();
-            this.addPage(model);
+            this.addPage(wrap(model));
 
             if (options?.tor) {
-                (model as any).initTorProxy(); // eslint-disable-line @typescript-eslint/no-explicit-any
+                (model as unknown as { initTorProxy: () => void }).initTorProxy();
             }
         }
     };
@@ -790,9 +834,9 @@ export class PagesLifecycleModel {
             await mcpModule.default.newEmptyEditorModel("mcpInspectorPage");
         if (model) {
             if (options?.url) {
-                model.state.update((s: any) => { s.url = options.url; }); // eslint-disable-line @typescript-eslint/no-explicit-any
+                model.state.update((s) => { (s as unknown as { url?: string }).url = options.url; });
             }
-            this.addPage(model);
+            this.addPage(wrap(model));
         }
     };
 
@@ -801,7 +845,7 @@ export class PagesLifecycleModel {
         const model = await storybookModule.default.newEmptyEditorModel("storybookPage");
         if (model) {
             const page = new PageModel(storybookModule.STORYBOOK_PAGE_ID);
-            this.addPage(model, page);
+            this.addPage(wrap(model), page);
         }
     };
 
@@ -809,7 +853,7 @@ export class PagesLifecycleModel {
         const videoModule = await import("../../editors/video/VideoPlayerEditor");
         const model = await videoModule.default.newEmptyEditorModel("videoPage");
         if (model) {
-            this.addPage(model);
+            this.addPage(wrap(model));
         }
     };
 
@@ -823,13 +867,13 @@ export class PagesLifecycleModel {
                     s.title =
                         imageUrl.split("/").pop()?.split("?")[0] || "Image";
                     s.url = imageUrl;
-                }
+                },
             );
             if (/^https?:\/\//i.test(imageUrl)) {
                 imgModel.pipe = new ContentPipe(new HttpProvider(imageUrl));
             }
             await imgModel.restore();
-            this.addPage(imgModel);
+            this.addPage(wrap(imgModel));
 
             if (imageUrl.startsWith("blob:") && imgModel instanceof imgModule.ImageEditorModel) {
                 imgModel.cacheBlobUrl(imageUrl);
@@ -843,7 +887,7 @@ export class PagesLifecycleModel {
             incognito?: boolean;
             profileName?: string;
             external?: boolean;
-        }
+        },
     ): Promise<void> => {
         const pages = this.model.state.get().pages;
         const activePage = this.model.query.activePage;
@@ -852,11 +896,14 @@ export class PagesLifecycleModel {
         const matchesBrowser = (page: PageModel) => {
             const editor = page.mainEditor;
             if (!editor) return false;
-            const pageState = editor.state.get() as any; // eslint-disable-line @typescript-eslint/no-explicit-any
+            const pageState = editor.state.get() as {
+                type?: string;
+                isIncognito?: boolean;
+                isTor?: boolean;
+                profileName?: string;
+            };
             if (pageState.type !== "browserPage") return false;
             if (options?.incognito) return !!pageState.isIncognito;
-            // External links reuse any non-incognito/non-tor browser page regardless of
-            // profile — profile only constrains where a new page is created (line below).
             if (options?.external) {
                 return !pageState.isIncognito && !pageState.isTor;
             }
@@ -874,12 +921,17 @@ export class PagesLifecycleModel {
 
         const addTabToPage = (index: number) => {
             const page = pages[index];
-            const editor = page.mainEditor as any; // eslint-disable-line @typescript-eslint/no-explicit-any
+            const adapter = page.mainEditor as LegacyEditorAdapter | null;
+            const editor = adapter?.legacy as unknown as {
+                state: { get(): { tabs?: { url?: string }[] } };
+                navigate: (u: string) => void;
+                addTab: (u: string) => void;
+            } | undefined;
             const tabs = editor?.state.get().tabs;
             if (tabs?.length === 1 && tabs[0].url === "about:blank") {
-                editor.navigate(url);
+                editor!.navigate(url);
             } else {
-                editor.addTab(url);
+                editor?.addTab(url);
             }
             this.model.navigation.showPage(page.id);
         };
@@ -929,3 +981,7 @@ export class PagesLifecycleModel {
         await this.showBrowserPage(showOptions);
     };
 }
+
+// Avoid unused-import warning when isTextFileModel isn't used directly here
+// after the GK2 migration. Re-export for callers that still import it.
+export { isTextFileModel };

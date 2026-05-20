@@ -9,6 +9,7 @@ import type { MenuItem } from "../../uikit";
 import { pagesModel } from "../../api/pages";
 import { newTextFileModel } from "../text/TextEditorModel";
 import { EditorModel } from "../base";
+import { LegacyEditorAdapter, deriveEditorId } from "../base/v4";
 import { ui } from "../../api/ui";
 
 import { globalPopupRateLimiter } from "../../../ipc/popup-rate-limiter";
@@ -465,7 +466,7 @@ export class BrowserWebviewModel {
                     s.content = resp;
                 });
                 page.restore();
-                pagesModel.addPage(page as unknown as EditorModel);
+                pagesModel.addPage(new LegacyEditorAdapter(page as unknown as EditorModel, deriveEditorId(page.state.get())));
             },
         });
 
@@ -485,7 +486,7 @@ export class BrowserWebviewModel {
                     s.content = html;
                 });
                 page.restore();
-                pagesModel.addPage(page as unknown as EditorModel);
+                pagesModel.addPage(new LegacyEditorAdapter(page as unknown as EditorModel, deriveEditorId(page.state.get())));
             },
         });
 
@@ -507,7 +508,7 @@ export class BrowserWebviewModel {
                         s.content = svgSource;
                     });
                     page.restore();
-                    pagesModel.addPage(page as unknown as EditorModel);
+                    pagesModel.addPage(new LegacyEditorAdapter(page as unknown as EditorModel, deriveEditorId(page.state.get())));
                 },
             });
         }
@@ -560,7 +561,7 @@ export class BrowserWebviewModel {
                         s.content = resp;
                     });
                     page.restore();
-                    pagesModel.addPage(page as unknown as EditorModel);
+                    pagesModel.addPage(new LegacyEditorAdapter(page as unknown as EditorModel, deriveEditorId(page.state.get())));
                 },
             },
             {
@@ -578,7 +579,7 @@ export class BrowserWebviewModel {
                         s.content = html;
                     });
                     page.restore();
-                    pagesModel.addPage(page as unknown as EditorModel);
+                    pagesModel.addPage(new LegacyEditorAdapter(page as unknown as EditorModel, deriveEditorId(page.state.get())));
                 },
             },
             {
