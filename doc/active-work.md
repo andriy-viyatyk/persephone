@@ -8,7 +8,24 @@ Overview of all active and planned epics and tasks.
 
 ## Active
 
-- **EPIC-028** — [Unified Editor Architecture — Editors as Standalone Models](epics/EPIC-028.md) *(Design phase complete 2026-05-20 — 28/30 walkthroughs resolved, 2 deferred per documented skip-rationale; all concerns resolved; foundation mockups stable. Implementation planning is the next phase. See [`EPIC-028-editor-architecture/progress.md`](epics/EPIC-028-editor-architecture/progress.md))*
+- **EPIC-028** — [Unified Editor Architecture — Editors as Standalone Models](epics/EPIC-028.md) *(Implementation phase planned 2026-05-20 — strangler fig migration with risk-first editor order; 13 tasks queued. Each task gets a deep-investigation pass with full task document immediately before implementation. See [`EPIC-028.md`](epics/EPIC-028.md) for the implementation plan)*
+  - **Phase A — Foundation**
+  - [ ] US-547: Foundation primitives — `EditorModel`, `IContentHost`, `ComponentQueue`, `TOneState` selector subscribe, new `editorRegistry`, `PageDescriptor` v4 types, `CONTENT_HOST_TRAIT` (inert; no consumers)
+  - [ ] US-548: PageModel adapter layer — `editors[]` / `mainEditorId` / `secondaryEditorIds[]`; `LegacyEditorAdapter` wraps existing editors; persistence dual-reads (old or v4) writes v4; `compareGroups` moves to `PagesModel.state`
+  - [ ] US-549: Shared chrome (PageToolbar + TextChrome) — walkthroughs 09 / 10; NavPanel button auto-renders for 6 sidebar editors; portal refs retire
+  - **Phase B — Cross-cutting**
+  - [ ] US-550: MCP + scripting facades partial — `mcp-handler.ts` MI1–MI5; `page.asX()` gains `force?: boolean`; `PageWrapper.type` retires
+  - **Phase C — Per-editor migrations (risk-first)**
+  - [ ] US-551: Monaco / Text editor — walkthrough 20 (sets the Tier-5 template)
+  - [ ] US-552: Grid editor — walkthrough 21 (3 registry ids → 1 class with `format`)
+  - [ ] US-553: LogView editor — walkthrough 23 (final `acquireViewModelSync` retirement)
+  - [ ] US-554: Preview group — Markdown / SVG / HTML / Mermaid — walkthrough 22
+  - [ ] US-555: Link editor — walkthrough 24 (first sidebar-owning; `beforeNavigateAway` + `onMainEditorChanged`)
+  - [ ] US-556: Todo + RestClient editors — walkthroughs 25, 26
+  - [ ] US-557: Notebook editor — walkthrough 29 (embedded editors with note-level switching)
+  - [ ] US-558: No-host group — Browser + Compare + Explorer + 9 misc no-host editors — walkthrough 30
+  - **Phase D — Cleanup**
+  - [ ] US-559: Strangler-fig retirement — delete `LegacyEditorAdapter`; drop dual-read persistence (v4-only — detect-and-skip old session data); delete remaining legacy types; bump major version
 ## Planned
 - **EPIC-027** — [Script-Driven UI and Custom Editors](epics/EPIC-027.md) *(carved out of EPIC-025 Phase 6; blocked on EPIC-025 close)*
   - [ ] US-436: Script UI API — expose new component library to scripting engine

@@ -2,7 +2,7 @@
 
 ## Status
 
-**Status:** Design phase complete (2026-05-20). Ready for implementation planning.
+**Status:** Implementation phase planned (2026-05-20). Strangler fig migration; 13 tasks queued (US-547–US-559).
 **Created:** 2026-05-19
 
 ## Overview
@@ -139,15 +139,54 @@ Five tiers, evaluated in order:
 - **Five Tier-5 patterns standardized** — (1) per-editor cache file → descriptor.state consolidation (six instances); (2) self-write-guard flag (five instances); (3) three-site lifecycle split (five instances); (4) `leftPanelWidth`-equivalent silent-today-bug incidental fix (five instances); (5) `acquireViewModel` quartet retired across the entire codebase.
 - **Two architectural reframings** — (a) walkthrough 24's "LK7 + LK8 recipe" reframed as two separable hooks by walkthrough 30 / EX5; (b) `EditorConstructorArgs.initialHost` reframed by walkthrough 29 / NB7 as canonical injection mechanism (supersedes C4's tentative `setContentHost()` separate-call shape), confirmed across two distinct embedding patterns by walkthrough 30 / NH4.
 
-## Implementation Phases (rough sketch — to be detailed after design stable)
+## Implementation Plan
 
-1. **Foundation** — add `traits` to `EditorModel` base, simplify `IContentHost`, register `CONTENT_HOST_TRAIT`, write `editorRegistry.createEditor` and `findEditorsAccepting`, write `switchEditorViaContentHost` helper.
-2. **PageModel switch** — add `switchMainEditor`; render switch widget driven by trait presence.
-3. **Editors, easiest first** — Monaco → Grid → previews → Log → Link → Todo → RestClient → Graph → Draw → Notebook (with embedded-editor refactor) → PDF → … each in its own task.
-4. **`TextChrome` component** — refactored out of `TextEditorView`, consumed by all text-bearing editors.
-5. **Cleanup** — delete `ContentViewModel`, `ContentViewModelHost`, `useContentViewModel`, `createViewModel`, `category` flag, `detectedContentEditor`, etc.
-6. **Scripting** — rewrite facades; update `.d.ts`.
-7. **Persistence breaking-change handling** — detect-and-skip old session data; per-page try/catch with `console.warn` on individual failures. No migration. Bump major version. Document in release notes.
+### Approach — strangler fig with risk-first editor ordering
+
+The implementation runs in **four phases across 13 tasks**. Each task ends with Persephone fully functional and testable — every editor type still opens, edits, persists, and round-trips across restart.
+
+**Strangler fig** means the new architecture is added *alongside* the old one. A `LegacyEditorAdapter` wraps each existing editor as an `EditorModel` so `PageModel` sees a uniform shape from the start. Persistence dual-reads (old format or v4 `PageDescriptor`) and writes v4. Per-editor migrations remove the adapter for that editor incrementally. Final cleanup deletes the adapter and the entire legacy path.
+
+**Risk-first editor ordering** runs Monaco first (the most complex text-bearing editor, sets the template), then progressively simpler/specialized editors. Any template rework discovered in Monaco is cheap because no other editor has migrated yet.
+
+**Persistence breaking-change deferred to cleanup** — during phases A–C, persistence still dual-reads to keep app behavior identical across restarts. The "detect-and-skip old session data, bump major version" cut-over happens in T13 (US-559) when the strangler is retired.
+
+### Phase A — Foundation (no user-visible change)
+
+| Task | Title | Scope |
+|------|-------|-------|
+| **US-547** | Foundation primitives | Add `EditorModel` base, `IContentHost` interface, `ComponentQueue` (with request/reply per SF6), `TOneState` selector-subscribe overload, new `editorRegistry`, `EditorDescriptor` / `HostDescriptor` / `PageDescriptor` v4 types, `CONTENT_HOST_TRAIT`. All inert — no consumers yet. |
+| **US-548** | PageModel adapter layer | `PageModel.editors[]` / `mainEditorId` / `secondaryEditorIds[]`; `LegacyEditorAdapter` wraps every existing editor; persistence dual-reads (old format or v4) and writes v4; unified switch widget path; `compareGroups` moves to `PagesModel.state` (CK1); `fixCompareMode` inlined per CK7. |
+| **US-549** | Shared chrome (PageToolbar + TextChrome) | Add `<PageToolbar>` and `<TextChrome>` shared components per walkthroughs 09 / 10. `TextEditorView` delegates internally. NavPanel button auto-renders for 6 sidebar editors via `getNavigatorTarget()` (PT5). Portal refs `editorToolbarRefFirst/Last` retire. |
+
+### Phase B — Cross-cutting (1 task)
+
+| Task | Title | Scope |
+|------|-------|-------|
+| **US-550** | MCP + scripting facades partial | `mcp-handler.ts` adopts MI1–MI5 (drop `type`, route through `getTextFileHost`). `page.asX()` gains `force?: boolean` per SF1. `PageWrapper.type` retires per SF5. `acquireViewModel*` partial retirement (full retirement falls out as editors migrate). |
+
+### Phase C — Per-editor migrations, risk-first (8 tasks)
+
+| Task | Title | Walkthrough | Notes |
+|------|-------|-------------|-------|
+| **US-551** | Monaco / Text | 20 | Sets the template. Most complex text-bearing editor. `TextFileModel` relocates to content-host folder. Deletes `TextEditorView`, `TextToolbar`, `TextFooter`, `ActiveEditor`, `ContentViewModel*`. |
+| **US-552** | Grid | 21 | Three registry ids (`grid-json` / `grid-csv` / `grid-jsonl`) collapse to one `GridEditor` class with `format` discriminator. Per-editor cache file folds into `EditorDescriptor.state`. |
+| **US-553** | LogView | 23 | Final `acquireViewModelSync` machinery retirement across codebase. `LogViewEditor` IS the page mainEditor with TextFileModel content host. |
+| **US-554** | Preview group — Markdown / SVG / HTML / Mermaid | 22 | Four sibling content-views as four `EditorModel` subclasses. Stresses Tier 5 template on near-empty state slices. |
+| **US-555** | Link | 24 | First sidebar-owning Tier-5 editor. Exercises `beforeNavigateAway` + `onMainEditorChanged` hooks deferred from walkthrough 03. CategoryEditor view rewire lands here. |
+| **US-556** | Todo + RestClient | 25 + 26 | Two non-sidebar-owning editors. RestClient introduces "split-cache-file consolidation by scale" pattern (RC7). |
+| **US-557** | Notebook | 29 | Most complex editor — embedded editors with note-level switching. Second consumer of `EditorConstructorArgs.initialHost` (NB7). |
+| **US-558** | No-host group — Browser + Compare + Explorer + 9 misc | 30 | Browser (page-mainEditor with embedded LinkEditor), Compare (React component, not an EditorModel — CK2), Explorer (secondary-only EditorModel), plus umbrella migration of 9 deferred no-host editors (PDF, image, archive, video, settings, about, mcp-inspector, storybook, category). |
+
+### Phase D — Cleanup (1 task)
+
+| Task | Title | Scope |
+|------|-------|-------|
+| **US-559** | Strangler-fig retirement | Delete `LegacyEditorAdapter`; drop dual-read persistence (v4-only — detect-and-skip old session data on first launch); delete `ContentViewModel` / `ContentViewModelHost` / `useContentViewModel` (whatever's left after editor migrations); delete `compareModeChanged` Subscription, `pagesModel.rerender`, dead `fixCompareMode`; delete `EditorView` union from `src/shared/types.ts`; architecture docs refresh; bump major version; release notes for breaking change. |
+
+### Per-task investigation
+
+Tasks above are **placeholders** — title + scope only. Each task gets its own deep-investigation pass immediately before implementation per the project's standard task-creation workflow: read all relevant source, write detailed implementation plan with file paths and step-by-step checklist, resolve concerns, then implement. The walkthrough documents under [`EPIC-028-editor-architecture/walkthroughs/`](EPIC-028-editor-architecture/walkthroughs/) and [`concerns.md`](EPIC-028-editor-architecture/concerns.md) are the input material; the design phase pre-resolved the architectural decisions so the per-task investigation focuses on mechanical migration mapping.
 
 ## Concerns
 
@@ -159,9 +198,33 @@ The initial C1–C9 entries moved to concerns.md during their walkthroughs and a
 
 ## Linked Tasks
 
-*(none yet — to be planned after design phase)*
+Listed in implementation order. Each is a placeholder until its own deep-investigation pass produces a full task document.
+
+| ID | Title | Phase | Walkthrough(s) |
+|----|-------|-------|----------------|
+| US-547 | Foundation primitives | A | foundation mockups |
+| US-548 | PageModel adapter layer | A | 01–07 |
+| US-549 | Shared chrome (PageToolbar + TextChrome) | A | 09, 10 |
+| US-550 | MCP + scripting facades partial | B | 12, 13 |
+| US-551 | Monaco / Text editor | C | 20 |
+| US-552 | Grid editor | C | 21 |
+| US-553 | LogView editor | C | 23 |
+| US-554 | Preview group (Markdown / SVG / HTML / Mermaid) | C | 22 |
+| US-555 | Link editor | C | 24 |
+| US-556 | Todo + RestClient editors | C | 25, 26 |
+| US-557 | Notebook editor | C | 29 |
+| US-558 | No-host group (Browser + Compare + Explorer + 9 misc) | C | 30 |
+| US-559 | Strangler-fig retirement | D | cleanup |
 
 ## Notes
+
+### 2026-05-20 — implementation plan landed
+- Migration style chosen: **strangler fig** (new architecture coexists with legacy via `LegacyEditorAdapter`; per-editor migrations remove adapter incrementally; final cleanup deletes legacy code path).
+- Editor migration order chosen: **risk-first** — Monaco (template-setter) → Grid → LogView → Preview group → Link → Todo + RestClient → Notebook → No-host group.
+- 13 placeholder tasks queued (US-547–US-559) across four phases: A (foundation, 3 tasks) → B (cross-cutting, 1 task) → C (per-editor, 8 tasks) → D (cleanup, 1 task).
+- Each task gets a deep-investigation pass with full task document immediately before implementation — the walkthrough + concerns docs are the input material; per-task investigation focuses on mechanical migration mapping.
+- Each task ends with Persephone fully functional and testable across every editor type.
+- Persistence breaking-change cut-over deferred to T13 cleanup — dual-read persistence keeps app behavior identical across restarts during phases A–C.
 
 ### 2026-05-20 — design phase complete
 - All 30 walkthroughs landed (`[x]` for 28; `[~]` SKIPPED for walkthroughs 27 Graph and 28 Draw with documented skip-rationale — structurally similar to walked Tier-5 editors; investigated first-principles during implementation).
