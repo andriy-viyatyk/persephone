@@ -1,7 +1,5 @@
 // Main components
 export { TextEditorView } from './TextEditorView';
-export { TextToolbar } from './TextToolbar';
-export { TextFooter } from './TextFooter';
 export { TextEditor, TextViewModel, createTextViewModel } from './TextEditor';
 export { ActiveEditor } from './ActiveEditor';
 export { ScriptPanel, ScriptPanelModel, defaultScriptPanelState } from './ScriptPanel';

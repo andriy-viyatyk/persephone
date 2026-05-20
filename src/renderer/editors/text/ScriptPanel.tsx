@@ -9,7 +9,7 @@ import { IconButton } from "../../uikit/IconButton/IconButton";
 import { Spacer } from "../../uikit/Spacer/Spacer";
 import { Select } from "../../uikit/Select/Select";
 import { IListBoxItem } from "../../uikit/ListBox";
-import { PageToolbar } from "../base/EditorToolbar";
+import { EditorToolbar } from "../base/EditorToolbar";
 import { CloseIcon, OpenFileIcon, RunAllIcon, RunIcon, SaveIcon } from "../../theme/icons";
 import { TComponentState } from "../../core/state/state";
 import { fs } from "../../api/fs";
@@ -366,7 +366,7 @@ export function ScriptPanel({ model }: ScriptPanelProps) {
                 side="after"
                 min={60}
             />
-            <PageToolbar>
+            <EditorToolbar>
                 <IconButton
                     name="script-run"
                     title={state.hasSelection ? "Run Selected Script (F5)" : "Run Script (F5)"}
@@ -416,7 +416,7 @@ export function ScriptPanel({ model }: ScriptPanelProps) {
                     icon={<CloseIcon />}
                     onClick={scriptModel.toggleOpen}
                 />
-            </PageToolbar>
+            </EditorToolbar>
             <Panel name="script-monaco-host" flex={1} minHeight={0}>
                 <Editor
                     value={state.content}

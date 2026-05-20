@@ -1,13 +1,12 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { CategoryView } from "../../components/tree-provider/CategoryView";
 import type { CategoryViewMode } from "../../components/tree-provider/CategoryViewModel";
-import { PageToolbar } from "../base/EditorToolbar";
+import { PageToolbar } from "../base/v4";
+import { EditorToolbar } from "../base/EditorToolbar";
 import { Panel } from "../../uikit/Panel";
-import { IconButton } from "../../uikit/IconButton";
-import { Spacer } from "../../uikit/Spacer";
 import { Text } from "../../uikit/Text";
-import { NavPanelIcon } from "../../theme/icons";
 import { app } from "../../api/app";
+import { pagesModel } from "../../api/pages";
 import { createLinkData } from "../../../shared/link-data";
 import type { ITreeProvider, ITreeProviderItem } from "../../api/types/io.tree";
 import type { TOneState } from "../../core/state/state";
@@ -109,23 +108,23 @@ export function CategoryEditor({ model }: { model: CategoryEditorModel }) {
         app.events.openRawLink.sendAsync(createLinkData(url, { pageId, sourceId: hostId }));
     }, [provider, pageId, hostId]);
 
-    const handleToggleNavigator = useCallback(() => {
-        page?.toggleNavigator();
-    }, [page]);
+    const v4Main = pagesModel.findPage(model.id)?.mainEditorV4 ?? null;
+    const renderToolbar = (children?: ReactNode) =>
+        v4Main ? (
+            <PageToolbar
+                name="category-toolbar"
+                model={v4Main}
+                borderBottom
+                rightContributions={children}
+            />
+        ) : (
+            <EditorToolbar borderBottom>{children}</EditorToolbar>
+        );
 
     if (!provider) {
         return (
             <Panel name="category-editor-root" direction="column" flex={1} overflow="hidden" background="default">
-                <PageToolbar borderBottom>
-                    <IconButton
-                        name="category-nav-panel"
-                        size="sm"
-                        title="Navigation Panel"
-                        icon={<NavPanelIcon />}
-                        onClick={handleToggleNavigator}
-                    />
-                    <Spacer />
-                </PageToolbar>
+                {renderToolbar()}
                 <Panel padding="xl">
                     <Text color="light">Please select a category in the Navigation Panel.</Text>
                 </Panel>
@@ -135,17 +134,9 @@ export function CategoryEditor({ model }: { model: CategoryEditorModel }) {
 
     return (
         <Panel name="category-editor-root" direction="column" flex={1} overflow="hidden" background="default">
-            <PageToolbar borderBottom>
-                <IconButton
-                    name="category-nav-panel"
-                    size="sm"
-                    title="Navigation Panel"
-                    icon={<NavPanelIcon />}
-                    onClick={handleToggleNavigator}
-                />
-                <Spacer />
-                <Panel name="category-search-portal" direction="row" align="center" gap="xs" ref={setSearchPortal} />
-            </PageToolbar>
+            {renderToolbar(
+                <Panel name="category-search-portal" direction="row" align="center" gap="xs" ref={setSearchPortal} />,
+            )}
             <CategoryView
                 provider={provider}
                 category={categoryPath}

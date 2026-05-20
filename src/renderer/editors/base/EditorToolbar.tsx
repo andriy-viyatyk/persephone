@@ -34,5 +34,3 @@ export function EditorToolbar({
     );
 }
 
-export { EditorToolbar as PageToolbar };
-export type { EditorToolbarProps as PageToolbarProps };

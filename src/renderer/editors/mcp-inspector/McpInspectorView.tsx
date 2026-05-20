@@ -11,7 +11,7 @@ import { IListBoxItem } from "../../uikit/ListBox";
 import { Divider } from "../../uikit/Divider";
 import { SegmentedControl, ISegment } from "../../uikit/SegmentedControl";
 import { CloseIcon } from "../../theme/icons";
-import { PageToolbar } from "../base";
+import { EditorToolbar } from "../base/EditorToolbar";
 import { IEditorState, EditorType } from "../../../shared/types";
 import { TComponentState } from "../../core/state/state";
 import { EditorModule } from "../types";
@@ -109,7 +109,7 @@ function McpInspectorView({ model }: McpInspectorViewProps) {
     return (
         <Panel name="mcp-inspector-root" direction="column" flex={1} overflow="hidden" tabIndex={-1}>
             {/* Connection bar */}
-            <PageToolbar borderBottom>
+            <EditorToolbar borderBottom>
                 <Panel
                     name="mcp-connection-bar"
                     direction="row"
@@ -195,7 +195,7 @@ function McpInspectorView({ model }: McpInspectorViewProps) {
                         {isConnecting ? "Connecting…" : isConnected ? "Disconnect" : "Connect"}
                     </Button>
                 </Panel>
-            </PageToolbar>
+            </EditorToolbar>
 
             {/* Error message */}
             {s.connectionStatus === "error" && s.errorMessage && (

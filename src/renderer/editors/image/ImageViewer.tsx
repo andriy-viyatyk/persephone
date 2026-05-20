@@ -1,10 +1,12 @@
 import { IEditorState, EditorType } from "../../../shared/types";
 import { getDefaultEditorModelState, EditorModel } from "../base";
+import { PageToolbar } from "../base/v4";
+import { EditorToolbar } from "../base/EditorToolbar";
 import { TComponentState } from "../../core/state/state";
 import { EditorModule } from "../types";
 import { FileIcon } from "../../components/icons/FileIcon";
-import { Toolbar, IconButton, Spacer } from "../../uikit";
-import { CopyIcon, NavPanelIcon, SaveIcon } from "../../theme/icons";
+import { IconButton } from "../../uikit";
+import { CopyIcon, SaveIcon } from "../../theme/icons";
 import { DrawIcon } from "../../theme/language-icons";
 import { fs } from "../../api/fs";
 import { ui } from "../../api/ui";
@@ -258,44 +260,48 @@ function ImageViewer({ model }: ImageViewerProps) {
     const url = model.state.use((s) => s.url);
     const src = url || "";
     const alt = filePath ? fpBasename(filePath) : "Image";
+    const v4Main = pagesModel.findPage(model.id)?.mainEditorV4 ?? null;
+
+    const rightActions = (
+        <>
+            {!filePath && url && (
+                <IconButton
+                    name="image-save"
+                    size="sm"
+                    title="Save Image to File"
+                    onClick={model.saveImage}
+                    icon={<SaveIcon />}
+                />
+            )}
+            <IconButton
+                name="image-open-draw"
+                size="sm"
+                title="Open in Drawing Editor"
+                onClick={model.openInDrawingEditor}
+                icon={<DrawIcon />}
+            />
+            <IconButton
+                name="image-copy"
+                size="sm"
+                title="Copy Image to Clipboard (Ctrl+C)"
+                onClick={model.copyImageToClipboard}
+                icon={<CopyIcon />}
+            />
+        </>
+    );
 
     return (
         <>
-            <Toolbar borderBottom>
-                {(model.page?.canOpenNavigator(model.pipe, filePath) || filePath) && (
-                    <IconButton
-                        name="image-nav-panel"
-                        size="sm"
-                        title="File Explorer"
-                        onClick={model.toggleNavigator}
-                        icon={<NavPanelIcon />}
-                    />
-                )}
-                <Spacer />
-                {!filePath && url && (
-                    <IconButton
-                        name="image-save"
-                        size="sm"
-                        title="Save Image to File"
-                        onClick={model.saveImage}
-                        icon={<SaveIcon />}
-                    />
-                )}
-                <IconButton
-                    name="image-open-draw"
-                    size="sm"
-                    title="Open in Drawing Editor"
-                    onClick={model.openInDrawingEditor}
-                    icon={<DrawIcon />}
+            {v4Main ? (
+                <PageToolbar
+                    name="image-toolbar"
+                    model={v4Main}
+                    borderBottom
+                    rightContributions={rightActions}
                 />
-                <IconButton
-                    name="image-copy"
-                    size="sm"
-                    title="Copy Image to Clipboard (Ctrl+C)"
-                    onClick={model.copyImageToClipboard}
-                    icon={<CopyIcon />}
-                />
-            </Toolbar>
+            ) : (
+                <EditorToolbar borderBottom>{rightActions}</EditorToolbar>
+            )}
             <BaseImageView ref={model.setImageRef} src={src} alt={alt} />
         </>
     );

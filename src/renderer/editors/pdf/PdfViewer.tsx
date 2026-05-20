@@ -1,13 +1,12 @@
 import { IEditorState, EditorType } from "../../../shared/types";
 import { getDefaultEditorModelState, EditorModel } from "../base";
-import { PageToolbar } from "../base/EditorToolbar";
+import { PageToolbar } from "../base/v4";
+import { EditorToolbar } from "../base/EditorToolbar";
 import { TComponentState } from "../../core/state/state";
 import { EditorModule } from "../types";
 import { FileIcon } from "../../components/icons/FileIcon";
 import { Panel } from "../../uikit/Panel";
-import { IconButton } from "../../uikit/IconButton";
-import { Spacer } from "../../uikit/Spacer";
-import { NavPanelIcon } from "../../theme/icons";
+import { pagesModel } from "../../api/pages";
 
 import { fpBasename } from "../../core/utils/file-path";
 import { fs as appFs } from "../../api/fs";
@@ -105,8 +104,8 @@ interface PdfViewerProps {
 }
 
 function PdfViewer({ model }: PdfViewerProps) {
-    const filePath = model.state.use((s) => s.filePath);
     const localPdfPath = model.state.use((s) => s.localPdfPath);
+    const v4Main = pagesModel.findPage(model.id)?.mainEditorV4 ?? null;
 
     const fileUrl = localPdfPath ? `safe-file://${localPdfPath.replace(/\\/g, "/")}` : "";
     const viewerUrl = fileUrl
@@ -115,20 +114,11 @@ function PdfViewer({ model }: PdfViewerProps) {
 
     return (
         <>
-            <PageToolbar borderBottom>
-                {(model.page?.canOpenNavigator(model.pipe, filePath) || filePath) && (
-                    <IconButton
-                        name="pdf-nav-panel"
-                        size="sm"
-                        title="File Explorer"
-                        icon={<NavPanelIcon />}
-                        onClick={() => {
-                            model.page?.toggleNavigator(model.pipe, filePath);
-                        }}
-                    />
-                )}
-                <Spacer />
-            </PageToolbar>
+            {v4Main ? (
+                <PageToolbar name="pdf-toolbar" model={v4Main} borderBottom />
+            ) : (
+                <EditorToolbar borderBottom />
+            )}
             <Panel name="pdf-viewer-root" direction="column" flex={1} overflow="hidden">
                 {viewerUrl && (
                     <object

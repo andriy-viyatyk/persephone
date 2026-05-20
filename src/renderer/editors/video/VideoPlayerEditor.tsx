@@ -1,6 +1,7 @@
 import React, { createElement, ReactNode } from "react";
 import { IEditorState, EditorType } from "../../../shared/types";
-import { getDefaultEditorModelState, EditorModel, PageToolbar } from "../base";
+import { getDefaultEditorModelState, EditorModel } from "../base";
+import { EditorToolbar } from "../base/EditorToolbar";
 import { TComponentState } from "../../core/state/state";
 import { EditorModule } from "../types";
 import { Button, IconButton, Panel, Text, Textarea } from "../../uikit";
@@ -437,7 +438,7 @@ function VideoPlayerEditor({ model }: VideoPlayerEditorProps) {
 
     return (
         <Panel name="video-player" direction="column" height="100%" background="dark" overflow="hidden">
-            <PageToolbar borderBottom>
+            <EditorToolbar borderBottom>
                 {(model.page?.canOpenNavigator(null, filePath) || filePath) && (
                     <IconButton
                         name="video-nav-panel"
@@ -467,7 +468,7 @@ function VideoPlayerEditor({ model }: VideoPlayerEditorProps) {
                         size="sm"
                     />
                 </Panel>
-            </PageToolbar>
+            </EditorToolbar>
             <Panel name="video-player-area" direction="column" flex={1} align="center" justify="center" position="relative" overflow="hidden">
                 {url && (
                     <VPlayer

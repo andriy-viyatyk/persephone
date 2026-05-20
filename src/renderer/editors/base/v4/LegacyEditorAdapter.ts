@@ -3,10 +3,12 @@ import {
     type EditorStateBase,
     type RestoreData,
 } from "./EditorModel";
+import type { IContentHost } from "./IContentHost";
 import type { EditorDescriptor } from "../../../../shared/persistence-v4";
 import type { IEditorState } from "../../../../shared/types";
 import type { EditorModel as LegacyEditorModel } from "../EditorModel";
 import type { PageModel } from "../../../api/pages/PageModel";
+import type { IContentPipe } from "../../../api/types/io.pipe";
 import { editorRegistry as legacyRegistry } from "../../registry";
 
 /**
@@ -22,16 +24,20 @@ import { editorRegistry as legacyRegistry } from "../../registry";
 export type LegacyEditorState = EditorStateBase & IEditorState;
 
 export class LegacyEditorAdapter extends V4EditorModel<LegacyEditorState> {
-    readonly editorId: string;
     readonly legacy: LegacyEditorModel;
 
-    constructor(legacy: LegacyEditorModel, editorId: string) {
+    constructor(legacy: LegacyEditorModel, _editorId?: string) {
         // Pass legacy.state directly — single source of truth. The v4 base
         // ctor wires this.state.subscribe to fire descriptorChanged on every
         // mutation, which covers every legacy mutation path.
         super(legacy.state as unknown as import("../../../core/state/state").IState<LegacyEditorState>);
         this.legacy = legacy;
-        this.editorId = editorId;
+        // The optional `_editorId` constructor arg is preserved for binary
+        // compatibility with US-548 callers (PagesPersistenceModel,
+        // BrowserWebviewModel) but ignored — `editorId` is now a getter
+        // that re-derives from current state so view switches stay
+        // reflected in `<SwitchWidget>`'s selected segment.
+        void _editorId;
         // Mirror legacy editor fields onto this adapter so v4-shaped reads
         // see them. The legacy editor mutates these directly (e.g.,
         // `editor.pipe = X`); the adapter mirrors via getters/setters below.
@@ -40,6 +46,13 @@ export class LegacyEditorAdapter extends V4EditorModel<LegacyEditorState> {
         this.noLanguage = legacy.noLanguage;
         this.getIcon = legacy.getIcon;
         this.skipSave = legacy.skipSave;
+    }
+
+    /** Re-derived on every read so view switches (legacy
+     *  `model.changeEditor(view)` mutates `state.editor`) immediately
+     *  reflect in the switch widget's selected segment. */
+    get editorId(): string {
+        return deriveEditorId(this.legacy.state.get());
     }
 
     /** Forward v4 setPage to legacy.setPage so legacy editor setter side
@@ -129,6 +142,62 @@ export class LegacyEditorAdapter extends V4EditorModel<LegacyEditorState> {
         const s = this.legacy.state.get() as IEditorState;
         const opts = legacyRegistry.getSwitchOptions(s.language ?? "", s.filePath);
         return opts.options;
+    }
+
+    // ── Content-host accessor (US-549) ────────────────────────────────
+
+    /** Duck-typed cast: TextFileModel exposes everything `<TextChrome>` reads
+     *  (state, script, runScript, handleKeyDown, encoding, language,
+     *  setEditorToolbarRefFirst/Last, setFooterRefLast, setEditorOverlayRef).
+     *  Per-editor migration US-551 turns this into a real
+     *  `TextFileModel implements IContentHost`. */
+    get contentHost(): IContentHost | null {
+        const type = (this.legacy.state.get() as { type?: string }).type;
+        if (type === "textFile") {
+            return this.legacy as unknown as IContentHost;
+        }
+        return null;
+    }
+
+    // ── Navigator-target accessor (US-549 / PT5 / B3) ─────────────────
+
+    getNavigatorTarget(): { pipe?: IContentPipe | null; filePath?: string | null } | null {
+        const legacyState = this.legacy.state.get() as {
+            filePath?: string;
+            type?: string;
+        };
+        const filePath = legacyState.filePath ?? null;
+        const pipe = (this.legacy.pipe as IContentPipe | null | undefined) ?? null;
+        const type = legacyState.type;
+
+        switch (type) {
+            case "textFile":
+                if (!pipe && !filePath) return {};
+                return { pipe, filePath };
+            case "pdf":
+            case "image":
+                return { pipe, filePath };
+            case "video":
+                return { pipe: null, filePath };
+            case "archive":
+            case "category":
+                return {};
+            default:
+                return null;
+        }
+    }
+
+    // ── Selection probe (US-549 / PT7 / B2) ───────────────────────────
+
+    /** True if the wrapped legacy editor surfaces a non-empty selection.
+     *  Monaco's TextViewModel exposes `hasSelection` on its state; non-Monaco
+     *  views don't have one — `getTextViewModel()` returns null. */
+    hasTextSelection(): boolean {
+        const legacy = this.legacy as unknown as {
+            getTextViewModel?: () => { state: { get(): { hasSelection?: boolean } } } | null | undefined;
+        };
+        const vm = legacy.getTextViewModel?.();
+        return vm?.state.get().hasSelection === true;
     }
 
     // ── Legacy-method delegation ──────────────────────────────────────

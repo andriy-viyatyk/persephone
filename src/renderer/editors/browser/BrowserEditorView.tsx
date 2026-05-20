@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from "react";
 const { ipcRenderer } = require("electron");
 import styled from "@emotion/styled";
 import { IEditorState, EditorType } from "../../../shared/types";
-import { EditorModel, PageToolbar } from "../base";
+import { EditorModel } from "../base";
+import { EditorToolbar } from "../base/EditorToolbar";
 import { TComponentState } from "../../core/state/state";
 import { EditorModule } from "../types";
 import color from "../../theme/color";
@@ -484,7 +485,7 @@ function BrowserEditorView({ model }: BrowserEditorViewProps) {
             onKeyDown={webview.handleKeyDown}
             tabIndex={-1}
         >
-            <PageToolbar borderBottom>
+            <EditorToolbar borderBottom>
                 <Panel name="browser-toolbar-content" direction="row" align="center" flex={1} gap="xs">
                     <IconButton
                         name="toolbar-home"
@@ -580,7 +581,7 @@ function BrowserEditorView({ model }: BrowserEditorViewProps) {
                         onClick={() => model.closeTab(activeTabId)}
                     />
                 </Panel>
-            </PageToolbar>
+            </EditorToolbar>
             {loading ? (
                 <div data-browser-loading-bar />
             ) : (

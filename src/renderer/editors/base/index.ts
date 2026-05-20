@@ -1,6 +1,6 @@
 export { EditorModel, getDefaultEditorModelState } from './EditorModel';
-export { EditorToolbar, PageToolbar } from './EditorToolbar';
-export type { EditorToolbarProps, PageToolbarProps } from './EditorToolbar';
+export { EditorToolbar } from './EditorToolbar';
+export type { EditorToolbarProps } from './EditorToolbar';
 export { LanguageIcon } from '../../components/icons/LanguageIcon';
 export type { LanguageIconProps } from '../../components/icons/LanguageIcon';
 export { EditorConfigProvider, useEditorConfig } from './EditorConfigContext';
