@@ -21,9 +21,18 @@ type EditorModel = LegacyEditorModel;
 function unwrapAdapter(editor: V4EditorModel | null): LegacyEditorModel | null {
     if (!editor) return null;
     if (editor instanceof LegacyEditorAdapter) return editor.legacy;
-    // Future v4-native editors aren't a LegacyEditorModel — return as if for
-    // legacy callers. Per-editor migrations US-551+ should retire those callers
-    // before introducing native editors.
+    // US-551 — v4-native editors (e.g., MonacoEditor) expose `contentHost`.
+    // For text-bearing editors the host IS a legacy TextFileModel, so legacy
+    // consumers (tab strip, OpenTabsList, PageTabs) read its state directly
+    // and see filePath / language / encrypted / etc.
+    const host = (editor as { contentHost?: { type?: string } | null }).contentHost;
+    if (host && host.type === "textFile") {
+        return host as unknown as LegacyEditorModel;
+    }
+    // No content host (or non-textFile host) — fall back to the v4 editor
+    // itself cast as a legacy editor. Consumers reading legacy fields will
+    // see undefined; per-editor migrations US-552+ retire those readers
+    // before introducing non-text-bearing native editors.
     return editor as unknown as LegacyEditorModel;
 }
 
@@ -141,12 +150,6 @@ export class PageModel {
         return unwrapAdapter(this.mainEditorV4);
     }
 
-    /** v4 surface of the main editor. Returns the adapter (or future v4-native). */
-    get mainEditorV4(): V4EditorModel | null {
-        if (!this._mainEditorId) return null;
-        return this.editors.find((e) => e.id === this._mainEditorId) ?? null;
-    }
-
     /** Legacy setter retained for backward compat. Prefer `setMainEditor`.
      *  Direct assignment skips lifecycle; used during restore. */
     set mainEditor(editor: V4EditorModel | EditorModel | null) {
@@ -159,6 +162,12 @@ export class PageModel {
         }
         this._mainEditorId = v4?.id ?? null;
         this.state.update((s) => { s.mainEditorId = v4?.id ?? null; });
+    }
+
+    /** v4 surface of the main editor. Returns the adapter (or future v4-native). */
+    get mainEditorV4(): V4EditorModel | null {
+        if (!this._mainEditorId) return null;
+        return this.editors.find((e) => e.id === this._mainEditorId) ?? null;
     }
 
     /** Editors that currently contribute panels (subset of `editors[]`).
@@ -220,6 +229,12 @@ export class PageModel {
         if (this.editors.includes(editor)) return;
         this.editors.push(editor);
         editor.setPage(this);
+        // EPIC-028 / US-551 — when a host transfers between editors (e.g.,
+        // monaco ↔ md-view), the successor's id equals the predecessor's id.
+        // Clean up any prior slice subscription for this id before our set()
+        // would silently drop it.
+        const prior = this._editorSubs.get(editor.id);
+        prior?.();
         const unsub = editor.state.subscribe(
             () => this.onEditorPanelsChanged(editor),
             (s) => (s as { secondaryEditor?: string[] }).secondaryEditor,
@@ -237,10 +252,18 @@ export class PageModel {
         const idx = this.editors.indexOf(editor);
         if (idx < 0) return;
         this.editors.splice(idx, 1);
-        this._editorSubs.get(editor.id)?.();
-        this._editorSubs.delete(editor.id);
+        // EPIC-028 / US-551 — when a host transfers between editors (e.g.,
+        // monaco ↔ md-view), the successor's id equals the predecessor's id.
+        // If another editor in editors[] still holds this id, skip the
+        // _editorSubs cleanup and the _mainEditorId clear so we don't clobber
+        // the successor's wiring.
+        const idStillInUse = this.editors.some((e) => e.id === editor.id);
+        if (!idStillInUse) {
+            this._editorSubs.get(editor.id)?.();
+            this._editorSubs.delete(editor.id);
+        }
         editor.setPage(null);
-        if (this._mainEditorId === editor.id) {
+        if (this._mainEditorId === editor.id && !idStillInUse) {
             this._mainEditorId = null;
             this.state.update((s) => { s.mainEditorId = null; });
         }

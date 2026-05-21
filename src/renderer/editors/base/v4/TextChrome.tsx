@@ -55,6 +55,10 @@ export function TextChrome({ model, children, toolbarContributions, footerContri
             setTimeout(() => {
                 const root = rootRef.current;
                 if (root && !root.contains(document.activeElement)) root.focus();
+                // US-551 / MO7 — let the inner editor view grab focus. Base
+                // EditorModel.focus is a no-op; MonacoEditor overrides to
+                // `queue.send({type:"focus"})` so MonacoBody.focus() fires.
+                model.focus();
             }, 200);
         });
         return () => subscription.unsubscribe();
@@ -72,6 +76,22 @@ export function TextChrome({ model, children, toolbarContributions, footerContri
     const isTextFile = isTextFileHost(host);
     const textHost = isTextFile ? (host as unknown as TextFileModel) : null;
 
+    const handleRootKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+        // US-551 / MO6 — F5 routes to model.runScript when the script panel
+        // is closed AND the editor exposes a `runScript` method (MonacoEditor).
+        // Otherwise fall through to host.handleKeyDown (legacy path — handles
+        // F5, Ctrl+S, Ctrl+Shift+S, Ctrl+Shift+F).
+        if (e.code === "F5" && !textHost?.script.state.get().open) {
+            const runner = (model as unknown as { runScript?: (all?: boolean) => Promise<void> }).runScript;
+            if (typeof runner === "function") {
+                e.preventDefault();
+                void runner.call(model);
+                return;
+            }
+        }
+        host.handleKeyDown?.(e);
+    };
+
     return (
         <Panel
             name="text-chrome-root"
@@ -82,7 +102,7 @@ export function TextChrome({ model, children, toolbarContributions, footerContri
             position="relative"
             gap="xs"
             tabIndex={0}
-            onKeyDown={(e: React.KeyboardEvent<HTMLDivElement>) => host.handleKeyDown?.(e)}
+            onKeyDown={handleRootKeyDown}
         >
             <PageToolbar name="text-chrome-top" model={model} borderBottom>
                 {textHost && <CompareButton model={model} />}
@@ -144,6 +164,15 @@ function RunButtons({ model, host }: { model: EditorModel; host: TextFileModel }
     const language = host.state.use((s) => s.language);
     if (!isScriptLanguage(language)) return null;
     const hasSelection = model.hasTextSelection?.() ?? false;
+    // US-551 / MO6 — when the editor exposes a queue-backed `runScript`
+    // (MonacoEditor), use it so selection is materialized through the
+    // ComponentQueue. Otherwise fall back to host.runScript (legacy path —
+    // selection-aware via TextViewModel.getSelectedText).
+    const editorRunner = (model as unknown as { runScript?: (all?: boolean) => Promise<void> }).runScript;
+    const runScript = (all?: boolean) =>
+        typeof editorRunner === "function"
+            ? editorRunner.call(model, all)
+            : host.runScript(all);
     return (
         <>
             <IconButton
@@ -151,7 +180,7 @@ function RunButtons({ model, host }: { model: EditorModel; host: TextFileModel }
                 size="sm"
                 title={hasSelection ? "Run Selected Script (F5)" : "Run Script (F5)"}
                 icon={<RunIcon />}
-                onClick={() => host.runScript()}
+                onClick={() => void runScript()}
             />
             {hasSelection && (
                 <IconButton
@@ -159,7 +188,7 @@ function RunButtons({ model, host }: { model: EditorModel; host: TextFileModel }
                     size="sm"
                     title="Run All Script"
                     icon={<RunAllIcon />}
-                    onClick={() => host.runScript(true)}
+                    onClick={() => void runScript(true)}
                 />
             )}
         </>

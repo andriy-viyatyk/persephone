@@ -99,13 +99,18 @@ export abstract class EditorModel<
     noLanguage = false;
     skipSave = false;
 
+    /** Captures the auto-sub set up in the constructor so subclasses that
+     *  swap `this.state` (LegacyEditorAdapter.switchFrom — US-551) can
+     *  unsubscribe and re-attach on the new state. */
+    protected _stateAutoUnsub: (() => void) | null = null;
+
     constructor(
         modelState: IState<T> | (new (defaultState: T) => IState<T>),
         defaultState?: T,
     ) {
         super(modelState, defaultState);
         // Any state mutation is a persistence-worthy change by default.
-        this.state.subscribe(() => this.descriptorChanged.send(undefined));
+        this._stateAutoUnsub = this.state.subscribe(() => this.descriptorChanged.send(undefined));
     }
 
     setPage(page: PageModel | null): void {

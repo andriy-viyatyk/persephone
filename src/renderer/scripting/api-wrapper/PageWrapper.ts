@@ -1,8 +1,12 @@
 import { EditorModel } from "../../editors/base";
 import { isTextFileModel } from "../../editors/text/TextEditorModel";
 import { pagesModel } from "../../api/pages";
+import { app } from "../../api/app";
 import { EditorView } from "../../../shared/types";
-import type { TextViewModel } from "../../editors/text/TextEditor";
+import type { EditorModel as V4EditorModel } from "../../editors/base/v4/EditorModel";
+import { deriveEditorId } from "../../editors/base/v4/LegacyEditorAdapter";
+import { editorRegistry as legacyRegistry } from "../../editors/registry";
+import { MonacoEditor } from "../../editors/monaco/MonacoEditor";
 import type { GridViewModel } from "../../editors/grid/GridViewModel";
 import type { NotebookViewModel } from "../../editors/notebook/NotebookViewModel";
 import type { TodoViewModel } from "../../editors/todo/TodoViewModel";
@@ -36,6 +40,23 @@ import type { ScriptOutputFlags } from "../ScriptContext";
  *
  * - Exposes only script-safe properties and methods
  * - Shares a releaseList for auto-releasing ViewModels on script completion
+ *
+ * EPIC-028 / US-550 strangler-period notes:
+ * - `page.type` retired (SF5).
+ * - `set editor(v)` routes through `page.switchMainEditor(v).catch(ui.notify)` per SF4;
+ *   PageModel handles the LegacyEditorAdapter case internally.
+ * - `asX(force?: boolean)` (SF1): when `force = true`, the facade consults the
+ *   page's compatible-editors list (same source as the UI switch widget) and
+ *   switches the page if compatible. Without `force`, throws when the page
+ *   isn't already the target editor.
+ * - `asBrowser` / `asMcpInspector` gates use `editorId === "..."` (Q7);
+ *   switches to `instanceof` during US-558.
+ * - `acquireViewModel*` remains in use for the 11 ViewModel-backed facades;
+ *   full retirement (SF2) happens per-editor in Phase C migrations.
+ *
+ * `this.model` is the unwrapped legacy editor (what `PagesModel.findPage(...).mainEditor`
+ * returns). v4-only fields (`editorId`, `contentHost`, `findCompatibleEditors`) are
+ * read through `this.v4` which resolves the adapter via the owning page.
  */
 export class PageWrapper {
     constructor(
@@ -44,14 +65,25 @@ export class PageWrapper {
         private readonly outputFlags?: ScriptOutputFlags,
     ) {}
 
+    /**
+     * Resolve the v4 surface (LegacyEditorAdapter or future v4-native editor)
+     * for the page that owns `this.model`. Returns null when the page can't
+     * be resolved (detached editor); callers fall back to legacy state reads.
+     */
+    private get v4(): V4EditorModel | null {
+        const pageId = this.model.page?.id;
+        if (!pageId) return null;
+        return pagesModel.findPage(pageId)?.mainEditorV4 ?? null;
+    }
+
+    private currentEditorId(): string {
+        return this.v4?.editorId ?? deriveEditorId(this.model.state.get());
+    }
+
     // ── IPageInfo readonly properties ─────────────────────────────────
 
     get id() {
         return this.model.page?.id ?? this.model.id;
-    }
-
-    get type() {
-        return this.model.state.get().type;
     }
 
     get title() {
@@ -96,13 +128,20 @@ export class PageWrapper {
     }
 
     get editor(): EditorView {
-        return this.model.state.get().editor ?? "monaco";
+        return (this.currentEditorId() as EditorView) ?? "monaco";
     }
 
     set editor(value: EditorView) {
-        if (isTextFileModel(this.model)) {
-            this.model.changeEditor(value);
-        }
+        const page = this.model.page;
+        if (!page) return;
+        // SF4: fire-and-forget switch with `.catch(ui.notify)`. PageModel.switchMainEditor
+        // internally handles the LegacyEditorAdapter case (legacy `model.changeEditor(view)`
+        // path on the wrapped TextFileModel). Once per-editor migrations land, the catch
+        // surfaces real `switchFrom` rejections.
+        page.switchMainEditor(value).catch((err: unknown) => {
+            const message = err instanceof Error ? err.message : String(err);
+            app.ui?.notify?.(message, "error");
+        });
     }
 
     get data(): Record<string, any> {
@@ -119,156 +158,199 @@ export class PageWrapper {
 
     // ── Editor facades ────────────────────────────────────────────────
 
-    async asText(): Promise<TextEditorFacade> {
-        const model = this.model;
-        if (!isTextFileModel(model)) {
-            throw new Error("asText() is only available for text pages");
+    async asText(force = false): Promise<TextEditorFacade> {
+        await this.ensureEditor("monaco", "Monaco", "asText", force);
+        // EPIC-028 / US-551 — Monaco is v4-native. After ensureEditor, the
+        // page's mainEditorV4 IS a MonacoEditor; the facade wraps it directly
+        // and routes view-context queries through its ComponentQueue.
+        const v4 = this.v4;
+        if (!(v4 instanceof MonacoEditor)) {
+            throw new Error("asText(): page is not a MonacoEditor after switch");
         }
-
-        const vm = await model.acquireViewModel("monaco") as TextViewModel;
-        this.releaseList.push(() => model.releaseViewModel("monaco"));
-        return new TextEditorFacade(vm);
+        return new TextEditorFacade(v4);
     }
 
-    async asGrid(): Promise<GridEditorFacade> {
+    async asGrid(force = false): Promise<GridEditorFacade> {
+        const targetId = this.resolveGridEditorId();
+        await this.ensureEditor(targetId, "Grid", "asGrid", force);
         const model = this.model;
         if (!isTextFileModel(model)) {
-            throw new Error("asGrid() is only available for text pages");
+            throw new Error("asGrid(): page lost its text host during switch");
         }
-
-        const editorId = this.resolveGridEditorId();
-        const vm = await model.acquireViewModel(editorId) as GridViewModel;
-        this.releaseList.push(() => model.releaseViewModel(editorId));
+        const vm = await model.acquireViewModel(targetId) as GridViewModel;
+        this.releaseList.push(() => model.releaseViewModel(targetId));
         return new GridEditorFacade(vm);
     }
 
     private resolveGridEditorId(): EditorView {
-        const currentEditor = this.model.state.get().editor;
-        if (currentEditor === "grid-json" || currentEditor === "grid-csv" || currentEditor === "grid-jsonl") {
-            return currentEditor;
+        const id = this.currentEditorId();
+        if (id === "grid-json" || id === "grid-csv" || id === "grid-jsonl") {
+            return id as EditorView;
         }
-
-        const language = this.model.state.get().language;
+        const language = this.v4?.contentHost?.state.get().language
+            ?? (this.model.state.get() as { language?: string }).language;
         if (language === "json") return "grid-json";
         if (language === "csv") return "grid-csv";
         if (language === "jsonl") return "grid-jsonl";
-
         throw new Error("asGrid(): content is not JSON, CSV, or JSONL");
     }
 
-    async asNotebook(): Promise<NotebookEditorFacade> {
+    async asNotebook(force = false): Promise<NotebookEditorFacade> {
+        await this.ensureEditor("notebook-view", "Notebook", "asNotebook", force);
         const model = this.model;
         if (!isTextFileModel(model)) {
-            throw new Error("asNotebook() is only available for text pages");
+            throw new Error("asNotebook(): page lost its text host during switch");
         }
-
         const vm = await model.acquireViewModel("notebook-view") as NotebookViewModel;
         this.releaseList.push(() => model.releaseViewModel("notebook-view"));
         return new NotebookEditorFacade(vm);
     }
 
-    async asTodo(): Promise<TodoEditorFacade> {
+    async asTodo(force = false): Promise<TodoEditorFacade> {
+        await this.ensureEditor("todo-view", "Todo", "asTodo", force);
         const model = this.model;
         if (!isTextFileModel(model)) {
-            throw new Error("asTodo() is only available for text pages");
+            throw new Error("asTodo(): page lost its text host during switch");
         }
-
         const vm = await model.acquireViewModel("todo-view") as TodoViewModel;
         this.releaseList.push(() => model.releaseViewModel("todo-view"));
         return new TodoEditorFacade(vm);
     }
 
-    async asLink(): Promise<LinkEditorFacade> {
+    async asLink(force = false): Promise<LinkEditorFacade> {
+        await this.ensureEditor("link-view", "Link", "asLink", force);
         const model = this.model;
         if (!isTextFileModel(model)) {
-            throw new Error("asLink() is only available for text pages");
+            throw new Error("asLink(): page lost its text host during switch");
         }
-
         const vm = await model.acquireViewModel("link-view") as LinkViewModel;
         this.releaseList.push(() => model.releaseViewModel("link-view"));
         return new LinkEditorFacade(vm);
     }
 
-    async asMarkdown(): Promise<MarkdownEditorFacade> {
+    async asMarkdown(force = false): Promise<MarkdownEditorFacade> {
+        await this.ensureEditor("md-view", "Markdown", "asMarkdown", force);
         const model = this.model;
         if (!isTextFileModel(model)) {
-            throw new Error("asMarkdown() is only available for text pages");
+            throw new Error("asMarkdown(): page lost its text host during switch");
         }
-
         const vm = await model.acquireViewModel("md-view") as MarkdownViewModel;
         this.releaseList.push(() => model.releaseViewModel("md-view"));
         return new MarkdownEditorFacade(vm);
     }
 
-    async asSvg(): Promise<SvgEditorFacade> {
+    async asSvg(force = false): Promise<SvgEditorFacade> {
+        await this.ensureEditor("svg-view", "SVG", "asSvg", force);
         const model = this.model;
         if (!isTextFileModel(model)) {
-            throw new Error("asSvg() is only available for text pages");
+            throw new Error("asSvg(): page lost its text host during switch");
         }
-
         const vm = await model.acquireViewModel("svg-view") as SvgViewModel;
         this.releaseList.push(() => model.releaseViewModel("svg-view"));
         return new SvgEditorFacade(vm);
     }
 
-    async asHtml(): Promise<HtmlEditorFacade> {
+    async asHtml(force = false): Promise<HtmlEditorFacade> {
+        await this.ensureEditor("html-view", "HTML", "asHtml", force);
         const model = this.model;
         if (!isTextFileModel(model)) {
-            throw new Error("asHtml() is only available for text pages");
+            throw new Error("asHtml(): page lost its text host during switch");
         }
-
         const vm = await model.acquireViewModel("html-view") as HtmlViewModel;
         this.releaseList.push(() => model.releaseViewModel("html-view"));
         return new HtmlEditorFacade(vm);
     }
 
-    async asMermaid(): Promise<MermaidEditorFacade> {
+    async asMermaid(force = false): Promise<MermaidEditorFacade> {
+        await this.ensureEditor("mermaid-view", "Mermaid", "asMermaid", force);
         const model = this.model;
         if (!isTextFileModel(model)) {
-            throw new Error("asMermaid() is only available for text pages");
+            throw new Error("asMermaid(): page lost its text host during switch");
         }
-
         const vm = await model.acquireViewModel("mermaid-view") as MermaidViewModel;
         this.releaseList.push(() => model.releaseViewModel("mermaid-view"));
         return new MermaidEditorFacade(vm);
     }
 
-    async asGraph(): Promise<GraphEditorFacade> {
+    async asGraph(force = false): Promise<GraphEditorFacade> {
+        await this.ensureEditor("graph-view", "Graph", "asGraph", force);
         const model = this.model;
         if (!isTextFileModel(model)) {
-            throw new Error("asGraph() is only available for text pages");
+            throw new Error("asGraph(): page lost its text host during switch");
         }
-
         const vm = await model.acquireViewModel("graph-view") as GraphViewModel;
         this.releaseList.push(() => model.releaseViewModel("graph-view"));
         return new GraphEditorFacade(vm);
     }
 
-    async asDraw(): Promise<DrawEditorFacade> {
+    async asDraw(force = false): Promise<DrawEditorFacade> {
+        await this.ensureEditor("draw-view", "Draw", "asDraw", force);
         const model = this.model;
         if (!isTextFileModel(model)) {
-            throw new Error("asDraw() is only available for text pages");
+            throw new Error("asDraw(): page lost its text host during switch");
         }
-
         const vm = await model.acquireViewModel("draw-view") as DrawViewModel;
         this.releaseList.push(() => model.releaseViewModel("draw-view"));
         return new DrawEditorFacade(vm);
     }
 
     async asBrowser(): Promise<BrowserEditorFacade> {
-        if (this.model.state.get().type !== "browserPage") {
+        if (this.currentEditorId() !== "browser-view") {
             throw new Error("asBrowser() is only available for browser pages");
         }
-
         return new BrowserEditorFacade(this.model as unknown as BrowserEditorModel);
     }
 
     async asMcpInspector(): Promise<McpInspectorFacade> {
-        if (this.model.state.get().type !== "mcpInspectorPage") {
+        if (this.currentEditorId() !== "mcp-view") {
             throw new Error("asMcpInspector() is only available for MCP Inspector pages");
         }
-
         return new McpInspectorFacade(this.model as unknown as McpInspectorEditorModel);
+    }
+
+    /**
+     * SF1 — If the page is already at `targetId`, return. If not and `force` is true,
+     * check compatibility against the same source as the UI switch widget
+     * (`findCompatibleEditors()` per US-549's switch widget) and switch the page.
+     * Throws on incompatible or detached page.
+     */
+    private async ensureEditor(
+        targetId: string,
+        expectedClassName: string,
+        methodName: string,
+        force: boolean,
+    ): Promise<void> {
+        if (this.currentEditorId() === targetId) return;
+        if (!force) {
+            throw new Error(
+                `${methodName}() requires the page to already be a ${expectedClassName} editor. `
+                + `Pass true to attempt a switch.`,
+            );
+        }
+        const page = this.model.page;
+        if (!page) {
+            throw new Error(`${methodName}(true): editor is not attached to a page`);
+        }
+        const compatible = this.compatibleEditorIds();
+        if (!compatible.includes(targetId)) {
+            throw new Error(
+                `${methodName}(true): cannot switch to '${targetId}' — `
+                + `not in the page's compatible editors list`,
+            );
+        }
+        await page.switchMainEditor(targetId);
+    }
+
+    /**
+     * Same source as the UI switch widget (US-549 `<SwitchWidget>`): the v4
+     * adapter's `findCompatibleEditors()`. Falls back to a direct legacy registry
+     * query if the v4 surface isn't available (detached editor edge case).
+     */
+    private compatibleEditorIds(): string[] {
+        const v4 = this.v4;
+        if (v4) return v4.findCompatibleEditors();
+        const s = this.model.state.get() as { language?: string; filePath?: string };
+        return legacyRegistry.getSwitchOptions(s.language ?? "", s.filePath).options;
     }
 
     async runScript(): Promise<string> {

@@ -10,6 +10,7 @@ import { parseObject } from "../../core/utils/parse-utils";
 import { debounce } from "../../../shared/utils";
 import { LegacyEditorAdapter, deriveEditorId } from "../../editors/base/v4";
 import type { EditorModel as LegacyEditorModel } from "../../editors/base/EditorModel";
+import { wrapLegacyForPage } from "./PagesLifecycleModel";
 import { api } from "../../../ipc/renderer/api";
 import { fs as appFs } from "../fs";
 import { app } from "../app";
@@ -69,6 +70,13 @@ export class PagesPersistenceModel {
      * Restore a single page from a v4 PageDescriptor. Shared between bootstrap
      * restore (`restoreV4`), IPC `movePageIn`, and `duplicatePage` (walkthrough
      * 05 / M2 + walkthrough 04 / C5 / P5).
+     *
+     * EPIC-028 / US-551: descriptors with `editorId === "monaco" && host !== undefined`
+     * restore through the native v4 path (editorRegistry.createEditor →
+     * applyRestoreData → restore). Legacy-shaped descriptors (no host field,
+     * or non-monaco editorId) still take the LegacyEditorAdapter path. Pre-
+     * US-551 sessions with state.editor === "monaco" but no host field
+     * restore as legacy adapter and rewrite as v4-native on the next save.
      */
     restorePage = async (desc: PageDescriptor): Promise<PageModel | null> => {
         const page = new PageModel(desc.id);
@@ -77,6 +85,15 @@ export class PagesPersistenceModel {
         const editors = await Promise.all(
             desc.editors.map(async (d) => {
                 try {
+                    if (d.editorId === "monaco" && d.host) {
+                        const { editorRegistry: v4Registry } = await import(
+                            "../../editors/base/v4"
+                        );
+                        const editor = await v4Registry.createEditor(d.editorId, d.id);
+                        editor.applyRestoreData(d as unknown as Parameters<typeof editor.applyRestoreData>[0]);
+                        await editor.restore();
+                        return editor;
+                    }
                     const legacyState = {
                         ...(d.state as Partial<IEditorState>),
                         id: d.id,
@@ -193,12 +210,11 @@ export class PagesPersistenceModel {
                 if (editorData && Object.keys(editorData).length > 0) {
                     const legacy = await this.restoreLegacyEditor(editorData);
                     if (!legacy) continue;
-                    const adapter = new LegacyEditorAdapter(
-                        legacy,
-                        deriveEditorId(legacy.state.get()),
-                    );
-                    page.attach(adapter);
-                    page.setMainEditorId(adapter.id);
+                    // US-551 — auto-promote Monaco-targeted entries to native
+                    // MonacoEditor so the next save writes the v4-native shape.
+                    const editor = wrapLegacyForPage(legacy);
+                    page.attach(editor);
+                    page.setMainEditorId(editor.id);
 
                     if (desc.hasSidebar) {
                         await this.restoreSidebarLegacy(page, legacy);

@@ -74,8 +74,9 @@ export class PagesQueryModel {
     /**
      * Returns the page's TextFileModel host (the actual content-bearing model
      * for text editors), or null. For adapter-wrapped editors, unwraps to the
-     * legacy TextFileModel instance. Per-editor migrations (US-551+) replace
-     * this with `editor.contentHost instanceof TextFileModel`.
+     * legacy TextFileModel instance. For v4-native editors (US-551+ MonacoEditor),
+     * reads `contentHost` and returns it when the host is structurally a
+     * TextFileModel.
      */
     getTextFileHost = (pageId: string): TextFileModel | null => {
         const page = this.findPage(pageId);
@@ -85,12 +86,16 @@ export class PagesQueryModel {
         if (!main) return null;
         if (main instanceof LegacyEditorAdapter) {
             const legacy = main.legacy as unknown as { type?: string };
-            // Legacy TextFileModel sets type === "textFile".
             if (legacy.type === "textFile") {
                 return main.legacy as unknown as TextFileModel;
             }
+            return null;
         }
-        // Future native v4 text editors expose contentHost; not in US-548.
+        // US-551 — v4-native editor (e.g., MonacoEditor). Read contentHost.
+        const host = main.contentHost as unknown as { type?: string } | null;
+        if (host && host.type === "textFile") {
+            return host as unknown as TextFileModel;
+        }
         return null;
     };
 

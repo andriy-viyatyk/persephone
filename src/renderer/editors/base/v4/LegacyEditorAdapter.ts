@@ -4,8 +4,9 @@ import {
     type RestoreData,
 } from "./EditorModel";
 import type { IContentHost } from "./IContentHost";
+import { CONTENT_HOST_TRAIT } from "./editor-traits";
 import type { EditorDescriptor } from "../../../../shared/persistence-v4";
-import type { IEditorState } from "../../../../shared/types";
+import type { IEditorState, EditorView } from "../../../../shared/types";
 import type { EditorModel as LegacyEditorModel } from "../EditorModel";
 import type { PageModel } from "../../../api/pages/PageModel";
 import type { IContentPipe } from "../../../api/types/io.pipe";
@@ -24,20 +25,27 @@ import { editorRegistry as legacyRegistry } from "../../registry";
 export type LegacyEditorState = EditorStateBase & IEditorState;
 
 export class LegacyEditorAdapter extends V4EditorModel<LegacyEditorState> {
-    readonly legacy: LegacyEditorModel;
+    legacy: LegacyEditorModel;
 
-    constructor(legacy: LegacyEditorModel, _editorId?: string) {
+    /** US-551 — target editorId passed to the constructor. Consumed by
+     *  `switchFrom` to mutate the adopted host's `state.editor` discriminator
+     *  so the legacy `<ActiveEditor>` renders the correct content-view
+     *  (grid-json / md-view / etc.) after a cross-camp swap from a v4-native
+     *  editor (e.g., MonacoEditor). */
+    private readonly _pendingEditorId: string | null;
+
+    /** US-551 — set to true once `CONTENT_HOST_TRAIT.extractContentHost` runs.
+     *  `dispose()` checks this flag and skips `legacy.dispose()` because the
+     *  new editor now owns the host. */
+    private _hostExtracted = false;
+
+    constructor(legacy: LegacyEditorModel, editorId?: string) {
         // Pass legacy.state directly — single source of truth. The v4 base
         // ctor wires this.state.subscribe to fire descriptorChanged on every
         // mutation, which covers every legacy mutation path.
         super(legacy.state as unknown as import("../../../core/state/state").IState<LegacyEditorState>);
         this.legacy = legacy;
-        // The optional `_editorId` constructor arg is preserved for binary
-        // compatibility with US-548 callers (PagesPersistenceModel,
-        // BrowserWebviewModel) but ignored — `editorId` is now a getter
-        // that re-derives from current state so view switches stay
-        // reflected in `<SwitchWidget>`'s selected segment.
-        void _editorId;
+        this._pendingEditorId = editorId ?? null;
         // Mirror legacy editor fields onto this adapter so v4-shaped reads
         // see them. The legacy editor mutates these directly (e.g.,
         // `editor.pipe = X`); the adapter mirrors via getters/setters below.
@@ -46,6 +54,20 @@ export class LegacyEditorAdapter extends V4EditorModel<LegacyEditorState> {
         this.noLanguage = legacy.noLanguage;
         this.getIcon = legacy.getIcon;
         this.skipSave = legacy.skipSave;
+
+        // US-551 — register CONTENT_HOST_TRAIT when the wrapped legacy editor
+        // is a TextFileModel. The legacy class already exposes the v4
+        // IContentHost contract (content/language/changeContent/etc.); we
+        // cast through unknown to satisfy the type system without forcing a
+        // structural import here.
+        if ((legacy as unknown as { type?: string }).type === "textFile") {
+            this.traits.add(CONTENT_HOST_TRAIT, {
+                extractContentHost: (): IContentHost => {
+                    this._hostExtracted = true;
+                    return this.legacy as unknown as IContentHost;
+                },
+            });
+        }
     }
 
     /** Re-derived on every read so view switches (legacy
@@ -57,10 +79,17 @@ export class LegacyEditorAdapter extends V4EditorModel<LegacyEditorState> {
 
     /** Forward v4 setPage to legacy.setPage so legacy editor setter side
      *  effects (`secondaryEditor` setter → `page.addSecondaryEditor(this)`)
-     *  still flow into the page. PageModel keeps compat shims to receive these. */
+     *  still flow into the page. PageModel keeps compat shims to receive these.
+     *
+     *  EPIC-028 / US-551 — once `CONTENT_HOST_TRAIT.extractContentHost` ran,
+     *  the host's page reference is owned by its new wrapping editor. Don't
+     *  forward setPage here or we'd clobber the new editor's page wiring when
+     *  PageModel.detach calls setPage(null) on us during the swap. */
     setPage(page: PageModel | null): void {
         super.setPage(page);
-        this.legacy.setPage(page);
+        if (!this._hostExtracted) {
+            this.legacy.setPage(page);
+        }
     }
 
     // ── Three-phase lifecycle ─────────────────────────────────────────
@@ -77,17 +106,78 @@ export class LegacyEditorAdapter extends V4EditorModel<LegacyEditorState> {
         this.legacy.applyRestoreData(rest as Partial<IEditorState>);
     }
 
-    switchFrom(_oldEditor: V4EditorModel): void {
-        // Legacy editors don't support host-preserving switch via switchFrom.
-        // The page-level switch widget calls legacy `model.changeEditor(view)`
-        // directly (host stays the same TextFileModel instance). Per-editor
-        // migrations US-551+ replace this throw with a real host extraction.
-        throw new Error(
-            "LegacyEditorAdapter does not implement switchFrom — view-switch uses legacy model.changeEditor() until per-editor migrations (US-551+).",
+    /**
+     * EPIC-028 / US-551 — host adoption for cross-camp switches from a
+     * v4-native editor (e.g., MonacoEditor → Grid). The bridge factory in
+     * register-editors.ts constructed us with a placeholder legacy
+     * TextFileModel; here we extract the real host from `oldEditor` via
+     * CONTENT_HOST_TRAIT, swap `this.legacy` to point at it, rewire the
+     * state pointer + descriptorChanged auto-sub onto the host's state, and
+     * mutate `state.editor` so the legacy `<ActiveEditor>` renders the
+     * target content-view.
+     */
+    switchFrom(oldEditor: V4EditorModel): void {
+        const trait = oldEditor.traits.get(CONTENT_HOST_TRAIT);
+        if (!trait) {
+            throw new Error(
+                `LegacyEditorAdapter.switchFrom: ${oldEditor.editorId} has no CONTENT_HOST_TRAIT`,
+            );
+        }
+        const host = trait.extractContentHost() as unknown as LegacyEditorModel;
+        if ((host as unknown as { type?: string }).type !== "textFile") {
+            throw new Error(
+                "LegacyEditorAdapter.switchFrom: extracted host is not a TextFileModel",
+            );
+        }
+
+        // Dispose the placeholder legacy we were constructed with. The host
+        // we just adopted is the real, restored TextFileModel.
+        const placeholder = this.legacy;
+
+        // Swap legacy and state pointers. `state` is declared `readonly` on
+        // TModel; cast through unknown to mutate.
+        this.legacy = host;
+        (this as unknown as {
+            state: import("../../../core/state/state").IState<LegacyEditorState>;
+        }).state = host.state as unknown as import("../../../core/state/state").IState<LegacyEditorState>;
+
+        // Rewire descriptorChanged auto-sub from placeholder.state → host.state.
+        this._stateAutoUnsub?.();
+        this._stateAutoUnsub = host.state.subscribe(() =>
+            this.descriptorChanged.send(undefined),
         );
+
+        // Mutate host.state.editor so legacy <ActiveEditor> picks the right
+        // content-view (grid-json / md-view / mermaid-view / etc.). editorId
+        // getter (re-derives on every read) automatically reflects this.
+        if (this._pendingEditorId) {
+            host.state.update((s) => {
+                s.editor = this._pendingEditorId as EditorView;
+            });
+        }
+
+        // Mirror page reference + carry pipe over. The host's `page` was set
+        // by its previous v4 owner; PageModel.setMainEditor will call setPage
+        // on us next, which forwards to legacy.setPage — keeping the
+        // back-reference current.
+        this.pipe = host.pipe;
+
+        // Discard the placeholder. It was never wired to a page or pipe; its
+        // dispose() drains the IO submodel (no-op since no pipe) and clears
+        // the ScriptPanel debounce timer.
+        void placeholder.dispose().catch((): void => undefined);
     }
 
     async restore(): Promise<void> {
+        // EPIC-028 / US-551 — when this adapter adopted a host via switchFrom
+        // (cross-camp swap from v4-native MonacoEditor → legacy content-view),
+        // the host is already restored. Re-running legacy.restore() would
+        // re-read pipe content + recreate cachePipe + reset ScriptPanel state,
+        // which silently breaks the swap (the markdown view ends up blank).
+        // Skip when restored=true. Per-editor migrations (US-552+) replace
+        // this whole adapter; US-559 deletes it.
+        const alreadyRestored = (this.legacy.state.get() as { restored?: boolean }).restored === true;
+        if (alreadyRestored) return;
         await this.legacy.restore();
     }
 
@@ -228,9 +318,13 @@ export class LegacyEditorAdapter extends V4EditorModel<LegacyEditorState> {
 
     async dispose(): Promise<void> {
         // Dispose v4 base first so the queue drains; then dispose legacy
-        // (which handles pipe disposal + fs.deleteCacheFiles).
+        // (which handles pipe disposal + fs.deleteCacheFiles). Skip the
+        // legacy dispose when CONTENT_HOST_TRAIT.extractContentHost ran —
+        // the new editor (e.g., MonacoEditor) now owns the host.
         await super.dispose();
-        await this.legacy.dispose();
+        if (!this._hostExtracted) {
+            await this.legacy.dispose();
+        }
     }
 }
 

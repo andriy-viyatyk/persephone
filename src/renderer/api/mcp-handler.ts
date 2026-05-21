@@ -2,7 +2,6 @@
 const { ipcRenderer } = require("electron");
 import { scriptRunner } from "../scripting/ScriptRunner";
 import { pagesModel } from "./pages";
-import { isTextFileModel } from "../editors/text/TextEditorModel";
 import { editorRegistry } from "../editors/registry";
 import { MCP_EXECUTE, MCP_RESULT } from "../../shared/constants";
 import { app } from "./app";
@@ -79,16 +78,17 @@ async function executeScript(params: any): Promise<McpResponse> {
 function getPages(): any[] {
     const pages = pagesModel.state.get().pages;
     return pages.map((p) => {
-        const s = p.mainEditor?.state.get() as
-            | { type?: string; editor?: string; language?: string; filePath?: string }
+        const editorV4 = p.mainEditorV4;
+        const editorState = p.mainEditor?.state.get() as
+            | { language?: string; filePath?: string }
             | undefined;
+        const textHost = pagesModel.getTextFileHost(p.id);
         return {
             id: p.id,
             title: p.title,
-            type: s?.type,
-            editor: s?.editor,
-            language: s?.language,
-            filePath: s?.filePath,
+            editor: editorV4?.editorId,
+            language: textHost?.state.get().language ?? editorState?.language,
+            filePath: textHost?.state.get().filePath ?? editorState?.filePath,
             modified: p.modified,
             pinned: p.pinned,
             active: p === pagesModel.activePage,
@@ -123,9 +123,9 @@ function getActivePage(): any {
     const page = pagesModel.activePage;
     if (!page) return null;
 
-    const editor = page.mainEditor;
-    const s = editor?.state.get() as
-        | { type?: string; editor?: string; language?: string; filePath?: string }
+    const editorV4 = page.mainEditorV4;
+    const editorState = page.mainEditor?.state.get() as
+        | { language?: string; filePath?: string }
         | undefined;
     const textHost = pagesModel.getTextFileHost(page.id);
     const content = textHost ? textHost.state.get().content : "";
@@ -133,10 +133,9 @@ function getActivePage(): any {
     return {
         id: page.id,
         title: page.title,
-        type: s?.type,
-        editor: s?.editor,
-        language: s?.language,
-        filePath: s?.filePath,
+        editor: editorV4?.editorId,
+        language: textHost?.state.get().language ?? editorState?.language,
+        filePath: textHost?.state.get().filePath ?? editorState?.filePath,
         modified: page.modified,
         content,
     };
@@ -163,6 +162,8 @@ function createPage(params: any): McpResponse {
                 + "or await app.pages.showMcpInspectorPage({ url: \"http://host:port/mcp\" })",
             "about-view": "Use execute_script with: await app.pages.showAboutPage()",
             "settings-view": "Use execute_script with: await app.pages.showSettingsPage()",
+            "log-view": 'Use ui_push to write entries to the MCP log page, or execute_script with: '
+                + 'await app.pages.requireWellKnownPage("mcp-ui-log")',
         };
         const hint = hints[editor]
             ?? `Read resource 'notepad://guides/pages' for details on editor types.`;
@@ -177,13 +178,15 @@ function createPage(params: any): McpResponse {
 
     const page = pagesModel.addEditorPage(editor, language, title, content || undefined);
 
-    const s = page.mainEditor?.state.get() as { editor?: string; language?: string } | undefined;
+    const editorV4 = page.mainEditorV4;
+    const editorState = page.mainEditor?.state.get() as { language?: string } | undefined;
+    const textHost = pagesModel.getTextFileHost(page.id);
     return {
         result: {
             id: page.id,
             title: page.title,
-            editor: s?.editor,
-            language: s?.language,
+            editor: editorV4?.editorId,
+            language: textHost?.state.get().language ?? editorState?.language,
         },
     };
 }
@@ -226,6 +229,7 @@ async function getOrCreateMcpLogViewModel(): Promise<LogViewModel> {
     const page = await pagesModel.requireWellKnownPage(MCP_UI_LOG_ID);
     const textHost = pagesModel.getTextFileHost(page.id);
     if (!textHost) throw new Error("MCP log page is not a TextFileModel");
+    // US-553: replace with `instanceof LogViewEditorModel` (MI4) once LogView migrates to v4.
     const vm = textHost.acquireViewModelSync("log-view") as LogViewModel | undefined;
     if (!vm) throw new Error("Log view module not loaded");
     return vm;
@@ -261,6 +265,7 @@ function logIncomingRequest(
     const logPage = pagesModel.findPage("mcp-server-log");
     const logHost = logPage ? pagesModel.getTextFileHost(logPage.id) : null;
     if (logHost) {
+        // US-553: replace with `instanceof LogViewEditorModel` (MI4) once LogView migrates to v4.
         const vm = logHost.acquireViewModelSync("log-view") as LogViewModel | undefined;
         if (vm) vm.addEntry("output.mcp-request", requestHistory[requestHistory.length - 1]);
     }
@@ -272,6 +277,7 @@ export async function showMcpRequestLog(): Promise<void> {
     const textHost = pagesModel.getTextFileHost(page.id);
     if (!textHost) return;
 
+    // US-553: replace with `instanceof LogViewEditorModel` (MI4) once LogView migrates to v4.
     const vm = textHost.acquireViewModelSync("log-view") as LogViewModel | undefined;
     if (!vm) return;
 

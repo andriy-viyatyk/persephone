@@ -31,9 +31,6 @@ export interface IPage {
     /** Unique page identifier. */
     readonly id: string;
 
-    /** Page type (e.g., "textFile", "browserPage"). */
-    readonly type: string;
-
     /** Display title. */
     readonly title: string;
 
@@ -69,38 +66,75 @@ export interface IPage {
 
     // ── Editor Facades ─────────────────────────────────────────────
 
-    /** Get text editor interface (Monaco-specific features). Only for text pages. */
-    asText(): Promise<ITextEditor>;
+    /**
+     * Get text editor interface (Monaco-specific features). Only for text pages.
+     * @param force - If true and the page isn't currently a Monaco editor, attempt to
+     *                switch using the same compatibility source as the UI switch widget.
+     *                Throws if the page can't switch. Default false (throws if not already Monaco).
+     */
+    asText(force?: boolean): Promise<ITextEditor>;
 
-    /** Get grid editor interface (data manipulation). Only for text pages with JSON/CSV content. */
-    asGrid(): Promise<IGridEditor>;
+    /**
+     * Get grid editor interface (data manipulation). Only for text pages with JSON/CSV content.
+     * @param force - If true and the page isn't currently a Grid editor, attempt to switch
+     *                using the same compatibility source as the UI switch widget. Throws if
+     *                the page can't switch. Default false (throws if not already a Grid editor).
+     */
+    asGrid(force?: boolean): Promise<IGridEditor>;
 
-    /** Get notebook editor interface. Only for text pages with `.note.json` content. */
-    asNotebook(): Promise<INotebookEditor>;
+    /**
+     * Get notebook editor interface. Only for text pages with `.note.json` content.
+     * @param force - If true and the page isn't currently a Notebook editor, attempt to switch.
+     */
+    asNotebook(force?: boolean): Promise<INotebookEditor>;
 
-    /** Get todo editor interface. Only for text pages with `.todo.json` content. */
-    asTodo(): Promise<ITodoEditor>;
+    /**
+     * Get todo editor interface. Only for text pages with `.todo.json` content.
+     * @param force - If true and the page isn't currently a Todo editor, attempt to switch.
+     */
+    asTodo(force?: boolean): Promise<ITodoEditor>;
 
-    /** Get link editor interface. Only for text pages with `.link.json` content. */
-    asLink(): Promise<ILinkEditor>;
+    /**
+     * Get link editor interface. Only for text pages with `.link.json` content.
+     * @param force - If true and the page isn't currently a Link editor, attempt to switch.
+     */
+    asLink(force?: boolean): Promise<ILinkEditor>;
 
-    /** Get markdown preview interface. Only for text pages with markdown content. */
-    asMarkdown(): Promise<IMarkdownEditor>;
+    /**
+     * Get markdown preview interface. Only for text pages with markdown content.
+     * @param force - If true and the page isn't currently a Markdown editor, attempt to switch.
+     */
+    asMarkdown(force?: boolean): Promise<IMarkdownEditor>;
 
-    /** Get SVG preview interface. Only for text pages with SVG content. */
-    asSvg(): Promise<ISvgEditor>;
+    /**
+     * Get SVG preview interface. Only for text pages with SVG content.
+     * @param force - If true and the page isn't currently an SVG editor, attempt to switch.
+     */
+    asSvg(force?: boolean): Promise<ISvgEditor>;
 
-    /** Get HTML preview interface. Only for text pages with HTML content. */
-    asHtml(): Promise<IHtmlEditor>;
+    /**
+     * Get HTML preview interface. Only for text pages with HTML content.
+     * @param force - If true and the page isn't currently an HTML editor, attempt to switch.
+     */
+    asHtml(force?: boolean): Promise<IHtmlEditor>;
 
-    /** Get Mermaid diagram preview interface. Only for text pages with mermaid content. */
-    asMermaid(): Promise<IMermaidEditor>;
+    /**
+     * Get Mermaid diagram preview interface. Only for text pages with mermaid content.
+     * @param force - If true and the page isn't currently a Mermaid editor, attempt to switch.
+     */
+    asMermaid(force?: boolean): Promise<IMermaidEditor>;
 
-    /** Get graph editor interface. Only for text pages with force-graph JSON content. */
-    asGraph(): Promise<IGraphEditor>;
+    /**
+     * Get graph editor interface. Only for text pages with force-graph JSON content.
+     * @param force - If true and the page isn't currently a Graph editor, attempt to switch.
+     */
+    asGraph(force?: boolean): Promise<IGraphEditor>;
 
-    /** Get drawing editor interface. Only for text pages with `.excalidraw` content. */
-    asDraw(): Promise<IDrawEditor>;
+    /**
+     * Get drawing editor interface. Only for text pages with `.excalidraw` content.
+     * @param force - If true and the page isn't currently a Draw editor, attempt to switch.
+     */
+    asDraw(force?: boolean): Promise<IDrawEditor>;
 
     /** Get browser editor interface. Only for browser pages. */
     asBrowser(): Promise<IBrowserEditor>;

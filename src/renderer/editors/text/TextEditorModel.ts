@@ -10,6 +10,8 @@ import { TextFileIOModel } from "./TextFileIOModel";
 import { TextFileActionsModel } from "./TextFileActionsModel";
 import type { IContentHost } from "../base/IContentHost";
 import type { EditorStateStorage } from "../base/EditorStateStorageContext";
+import type { EditorStateStorage as V4EditorStateStorage } from "../base/v4/EditorStateStorage";
+import type { HostDescriptor } from "../../../shared/persistence-v4";
 import { ContentViewModelHost } from "../base/ContentViewModelHost";
 import type { TextViewModel } from "./TextEditor";
 import { createPipeFromDescriptor } from "../../content/registry";
@@ -253,6 +255,56 @@ export class TextFileModel extends EditorModel<TextFileEditorModelState, void> i
                 !s.filePath && (data.temp !== undefined ? data.temp : s.temp);
         });
     };
+
+    // =========================================================================
+    // EPIC-028 host primitives (US-551) — consumed by native MonacoEditor.
+    // =========================================================================
+
+    /** v4 IContentHost serialization. Wraps the legacy flat shape into a
+     *  HostDescriptor so MonacoEditor.getRestoreData can attach it as `host`.
+     *  Strips runtime-only / security-sensitive fields (content lives in
+     *  cache file; password never persists; encrypted/restored/deleted are
+     *  reconstructed at restore time). */
+    getDescriptor(): HostDescriptor {
+        const s = this.state.get();
+        const metadata: Record<string, unknown> = {
+            id: s.id,
+            type: s.type,
+            title: s.title,
+            modified: s.modified,
+            language: s.language,
+            filePath: s.filePath,
+            encoding: s.encoding,
+            temp: s.temp,
+        };
+        if (s.secondaryEditor !== undefined) metadata.secondaryEditor = s.secondaryEditor;
+        if (s.sourceLink !== undefined) metadata.sourceLink = s.sourceLink;
+        return {
+            kind: "textFile",
+            state: metadata,
+            pipe: this.pipe?.toDescriptor(),
+        };
+    }
+
+    /** v4 IContentHost storage hookup. Stub for US-551 — submodels still write
+     *  via appFs.getCacheFile / saveCacheFile keyed by `state.id`. Real
+     *  consumption arrives in US-559 when submodels accept the storage handle. */
+    setStorage(_storage: V4EditorStateStorage): void {
+        void _storage;
+    }
+
+    /** Static factory: rebuild a TextFileModel from a HostDescriptor.
+     *  Construct via newTextFileModelFromState (sync) and re-apply pipe via
+     *  applyRestoreData; restore() is the caller's job. */
+    static async fromDescriptor(desc: HostDescriptor): Promise<TextFileModel> {
+        if (desc.kind !== "textFile") {
+            throw new Error(`TextFileModel.fromDescriptor: unsupported kind "${desc.kind}"`);
+        }
+        const baseState = desc.state as Partial<IEditorState>;
+        const model = newTextFileModelFromState(baseState);
+        model.applyRestoreData({ ...baseState, pipe: desc.pipe });
+        return model;
+    }
 
     // =========================================================================
     // Lifecycle

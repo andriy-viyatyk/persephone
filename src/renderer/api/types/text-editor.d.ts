@@ -3,23 +3,25 @@
  *
  * Obtained via `await page.asText()`. Only available for text pages.
  *
- * Methods that interact with the Monaco editor instance (insertText, replaceSelection,
- * getCursorPosition, getSelectedText) require the editor to be visible. Check
- * `editorMounted` before calling them.
+ * EPIC-028 / US-551: view-context query methods (getSelectedText, getCursorPosition,
+ * insertText, replaceSelection) are async — they go through the editor's
+ * ComponentQueue and may queue briefly if Monaco hasn't mounted yet. Fire-and-forget
+ * commands (revealLine, setHighlightText) stay sync — they queue if the view
+ * isn't ready and drain on mount.
  *
  * @example
  * const text = await page.asText();
- * if (text.editorMounted) {
- *     const selected = text.getSelectedText();
- *     text.replaceSelection(selected.toUpperCase());
- * }
+ * const selected = await text.getSelectedText();
+ * await text.replaceSelection(selected.toUpperCase());
  */
 export interface ITextEditor {
-    /** True when the Monaco editor is visible and mounted. */
+    /** True when the Monaco editor is visible and mounted. Under EPIC-028, the
+     *  queue layer defers commands until mount, so this is informational —
+     *  consumers no longer need to gate calls on it. */
     readonly editorMounted: boolean;
 
     /** Get currently selected text, or empty string if no selection. */
-    getSelectedText(): string;
+    getSelectedText(): Promise<string>;
 
     /** Scroll to reveal a specific line in the center of the editor. */
     revealLine(lineNumber: number): void;
@@ -28,11 +30,11 @@ export interface ITextEditor {
     setHighlightText(text: string): void;
 
     /** Get current cursor position. Returns {lineNumber: 1, column: 1} if editor is not mounted. */
-    getCursorPosition(): { lineNumber: number; column: number };
+    getCursorPosition(): Promise<{ lineNumber: number; column: number }>;
 
-    /** Insert text at current cursor position. No-op if editor is not mounted. */
-    insertText(text: string): void;
+    /** Insert text at current cursor position. */
+    insertText(text: string): Promise<void>;
 
-    /** Replace current selection with text. No-op if editor is not mounted. */
-    replaceSelection(text: string): void;
+    /** Replace current selection with text. */
+    replaceSelection(text: string): Promise<void>;
 }

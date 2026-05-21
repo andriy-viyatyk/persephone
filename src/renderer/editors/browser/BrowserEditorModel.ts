@@ -771,6 +771,20 @@ export class BrowserEditorModel extends EditorModel<BrowserEditorState, void> {
         let normalizedUrl = url.trim();
         if (!normalizedUrl) return;
 
+        // Convert a Windows file path (drive or UNC) pasted into the URL bar
+        // into a file:// URL so the webview can load it.
+        if (
+            /^[a-zA-Z]:[\\/]/.test(normalizedUrl) ||
+            normalizedUrl.startsWith("\\\\")
+        ) {
+            try {
+                const { pathToFileURL } = require("url") as typeof import("url");
+                normalizedUrl = pathToFileURL(normalizedUrl).href;
+            } catch {
+                // Fall through to the existing search/scheme heuristic.
+            }
+        }
+
         const hasScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(normalizedUrl);
 
         if (!hasScheme && !normalizedUrl.startsWith("about:")) {

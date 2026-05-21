@@ -14,9 +14,9 @@ Overview of all active and planned epics and tasks.
   - [ ] [US-548: PageModel adapter layer](tasks/US-548-pagemodel-adapter-layer/README.md) — unified `editors[]` + `_mainEditorId`; `LegacyEditorAdapter` wraps existing editors; persistence dual-reads (v3 or v4) and writes v4; `compareGroups` moves to `PagesModel.state` (CK1/CK6/CK7)
   - [ ] [US-549: Shared chrome (PageToolbar + TextChrome)](tasks/US-549-shared-chrome/README.md) — walkthroughs 09 / 10; NavPanel button auto-renders for 6 sidebar editors; portal refs retire
   - **Phase B — Cross-cutting**
-  - [ ] US-550: MCP + scripting facades partial — `mcp-handler.ts` MI1–MI5; `page.asX()` gains `force?: boolean`; `PageWrapper.type` retires
+  - [ ] [US-550: MCP + scripting facades partial](tasks/US-550-mcp-and-scripting-facades/README.md) — `mcp-handler.ts` MI1–MI5; `page.asX()` gains `force?: boolean`; `PageWrapper.type` retires
   - **Phase C — Per-editor migrations (risk-first)**
-  - [ ] US-551: Monaco / Text editor — walkthrough 20 (sets the Tier-5 template)
+  - [ ] [US-551: Monaco / Text editor migration](tasks/US-551-monaco-editor-migration/README.md) — walkthrough 20; native `MonacoEditor` v4 class + `<MonacoBody>`; `CONTENT_HOST_TRAIT` on adapter + cross-camp switch; `TextEditorFacade` queue-backed (async)
   - [ ] US-552: Grid editor — walkthrough 21 (3 registry ids → 1 class with `format`)
   - [ ] US-553: LogView editor — walkthrough 23 (final `acquireViewModelSync` retirement)
   - [ ] US-554: Preview group — Markdown / SVG / HTML / Mermaid — walkthrough 22

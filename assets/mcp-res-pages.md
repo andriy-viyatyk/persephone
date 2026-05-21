@@ -1,6 +1,6 @@
 # Pages & Windows
 
-Persephone uses tabbed pages (like browser tabs). Each page has a type and editor.
+Persephone uses tabbed pages (like browser tabs). Each page has an editor and (when file-backed) a language.
 
 ## Multi-Window Support
 
@@ -55,7 +55,6 @@ The current page (tab). Available as a global in scripts.
 | `editor` | `string` | Editor type, e.g. `"monaco"`, `"grid-json"` (**read/write**) |
 | `filePath` | `string?` | File path if backed by a file (read-only) |
 | `modified` | `boolean` | Has unsaved changes (read-only) |
-| `type` | `string` | Page type, e.g. `"textFile"`, `"browserPage"` (read-only) |
 | `data` | `object` | In-memory storage, persists across script runs |
 | `grouped` | `IPage` | Grouped (side-by-side) partner page — auto-creates if none exists |
 

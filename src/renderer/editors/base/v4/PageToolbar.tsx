@@ -92,12 +92,21 @@ function SwitchWidget({ model }: { model: EditorModel }) {
 }
 
 function onSwitch(model: EditorModel, newEditorId: string) {
-    // Q5 fallback: LegacyEditorAdapter.switchFrom throws — go through the
-    // legacy `model.changeEditor` path on the wrapped TextFileModel directly.
-    // Per-editor migrations (US-551+) replace the adapter with native v4
-    // editors that implement switchFrom properly; switchMainEditor then
-    // becomes the canonical entry point.
+    // EPIC-028 / US-551 switch routing:
+    //   - legacy adapter → monaco (native v4): page.switchMainEditor creates
+    //     a MonacoEditor and extracts the legacy TextFileModel as its host.
+    //   - legacy adapter → other content-view (still legacy): keep today's
+    //     host-preserving in-place `legacy.changeEditor(view)` path — no
+    //     editor swap, just `state.editor` mutation.
+    //   - v4-native (MonacoEditor) → any target: always route through
+    //     page.switchMainEditor. The bare-adapter factory in
+    //     register-editors.ts wraps the extracted host in a LegacyEditorAdapter
+    //     when the target is still a legacy content-view.
     if (model instanceof LegacyEditorAdapter) {
+        if (newEditorId === "monaco") {
+            void model.page?.switchMainEditor(newEditorId);
+            return;
+        }
         const legacy = model.legacy as unknown as { changeEditor?: (v: string) => void };
         legacy.changeEditor?.(newEditorId);
         return;

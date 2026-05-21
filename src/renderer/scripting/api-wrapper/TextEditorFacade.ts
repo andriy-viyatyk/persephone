@@ -1,37 +1,48 @@
-import type { TextViewModel } from "../../editors/text/TextEditor";
+import type { MonacoEditor } from "../../editors/monaco/MonacoEditor";
 
 /**
- * Safe facade around TextViewModel for script access.
+ * Safe facade around MonacoEditor for script access.
  * Implements the ITextEditor interface from api/types/text-editor.d.ts.
+ *
+ * EPIC-028 / US-551 (SF6) — view-context query methods are async and route
+ * through the editor's ComponentQueue. Fire-and-forget commands stay sync;
+ * the queue drains them once Monaco mounts. Script authors must `await` the
+ * query methods (breaking change vs. the legacy sync TextViewModel facade).
  */
 export class TextEditorFacade {
-    constructor(private readonly vm: TextViewModel) {}
+    constructor(private readonly editor: MonacoEditor) {}
 
+    /** True once the editor model exists. Queue-backed commands no longer
+     *  require gating on this — the queue defers commands until mount. */
     get editorMounted(): boolean {
-        return this.vm.editorRef !== null;
+        return true;
     }
 
-    getSelectedText(): string {
-        return this.vm.getSelectedText();
-    }
+    // ── Fire-and-forget commands (sync — queued until view mounts) ──────
 
     revealLine(lineNumber: number): void {
-        this.vm.revealLine(lineNumber);
+        this.editor.revealLine(lineNumber);
     }
 
-    setHighlightText(text: string): void {
-        this.vm.setHighlightText(text);
+    setHighlightText(text?: string): void {
+        this.editor.setHighlightText(text);
     }
 
-    getCursorPosition(): { lineNumber: number; column: number } {
-        return this.vm.getCursorPosition();
+    // ── View-context queries (async — queue.execute returns a Promise) ──
+
+    async getSelectedText(): Promise<string> {
+        return this.editor.getSelectedText();
     }
 
-    insertText(text: string): void {
-        this.vm.insertText(text);
+    async getCursorPosition(): Promise<{ lineNumber: number; column: number }> {
+        return this.editor.getCursorPosition();
     }
 
-    replaceSelection(text: string): void {
-        this.vm.replaceSelection(text);
+    async insertText(text: string): Promise<void> {
+        await this.editor.insertText(text);
+    }
+
+    async replaceSelection(text: string): Promise<void> {
+        await this.editor.replaceSelection(text);
     }
 }

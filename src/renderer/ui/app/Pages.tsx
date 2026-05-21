@@ -85,8 +85,17 @@ function PageContent({ pageId }: { pageId: string }) {
     const page = pagesModel.query.findPage(pageId);
     if (!page) return null;
 
-    page.state.use((s) => s.mainEditorId);
-    const editor = page.mainEditor;
+    // EPIC-028 / US-551 — subscribe to version (bumped by attach/detach) in
+    // addition to mainEditorId. Host-transfer swaps preserve the editor id
+    // (the new editor inherits the host's id from the old), so subscribing
+    // to mainEditorId alone misses the swap — `compareSelection` sees the
+    // same string and skips the re-render, leaving Pages.tsx referencing
+    // the detached old editor.
+    page.state.use((s) => ({ mainEditorId: s.mainEditorId, version: s.version }));
+    // US-551 — pass the v4 surface so RenderEditor can distinguish
+    // LegacyEditorAdapter from v4-native editors (MonacoEditor). The auto-
+    // unwrapping `mainEditor` getter loses the adapter signal.
+    const editor = page.mainEditorV4;
 
     const compareInfo = pagesModel.query.isInCompareMode(pageId);
 

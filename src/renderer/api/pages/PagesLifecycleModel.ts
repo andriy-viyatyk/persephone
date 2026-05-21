@@ -10,6 +10,8 @@ import {
     newTextFileModel,
     TextFileModel,
 } from "../../editors/text";
+import { MonacoEditor, defaultMonacoEditorState } from "../../editors/monaco/MonacoEditor";
+import { TComponentState } from "../../core/state/state";
 import { api } from "../../../ipc/renderer/api";
 import { recent } from "../recent";
 import { ui } from "../ui";
@@ -35,11 +37,34 @@ function normalizeLinksTitle(title?: string): string {
     return title + ".link.json";
 }
 
-/** Wrap a legacy EditorModel in the v4 LegacyEditorAdapter. Resolves the
- *  v4 editorId from the legacy editor's state. */
-function wrap(legacy: LegacyEditorModel): V4EditorModel {
-    return new LegacyEditorAdapter(legacy, deriveEditorId(legacy.state.get()));
+/** Wrap a legacy EditorModel for attachment to a `PageModel`.
+ *
+ *  EPIC-028 / US-551: text-bearing editors whose target view is "monaco"
+ *  get wrapped in a native `MonacoEditor`; the legacy `TextFileModel` becomes
+ *  the editor's `IContentHost`. Every other legacy editor (other content-views,
+ *  standalone editors) keeps the `LegacyEditorAdapter` path until its own
+ *  per-editor migration (US-552+).
+ *
+ *  Exported as `PagesLifecycleModel.wrapForPage` so the v3 restore path
+ *  (PagesPersistenceModel.restoreV3) can auto-promote pre-US-551 sessions to
+ *  native Monaco — the next save then writes the v4-native shape.
+ */
+export function wrapLegacyForPage(legacy: LegacyEditorModel): V4EditorModel {
+    const targetEditorId = deriveEditorId(legacy.state.get());
+    const isTextFile = (legacy as unknown as { type?: string }).type === "textFile";
+    if (targetEditorId === "monaco" && isTextFile) {
+        const id = legacy.state.get().id || crypto.randomUUID();
+        const monaco = new MonacoEditor(
+            new TComponentState({ ...defaultMonacoEditorState, id }),
+        );
+        monaco.adoptHost(legacy as TextFileModel);
+        return monaco;
+    }
+    return new LegacyEditorAdapter(legacy, targetEditorId);
 }
+
+/** Module-private alias preserved for the existing call sites below. */
+const wrap = wrapLegacyForPage;
 
 /**
  * PagesLifecycleModel — Page creation, opening, closing, and navigation.
@@ -526,36 +551,42 @@ export class PagesLifecycleModel {
             });
         }
 
+        // EPIC-028 / US-551 — auto-select preview editor BEFORE wrap so the
+        // wrap helper picks the right v4 editor class. Previously this ran
+        // after setMainEditor, which locked Monaco-defaulted files (e.g., .md)
+        // into MonacoEditor before the previewEditor mutation could take effect.
+        const isTextFile = legacy.state.get().type === "textFile";
+        const skipPreview = !!(
+            options?.forceTextEditor ||
+            options?.revealLine ||
+            options?.highlightText
+        );
+        if (isTextFile && !skipPreview) {
+            const ext = fpExtname(newFilePath).toLowerCase();
+            const lang = getLanguageByExtension(ext);
+            const languageId = lang?.id || "plaintext";
+            const previewEditor = editorRegistry.getPreviewEditor(
+                languageId,
+                newFilePath,
+            );
+            if (previewEditor) {
+                legacy.state.update((s) => {
+                    s.editor = previewEditor;
+                });
+            }
+        }
+
         const adapter = wrap(legacy);
         await page.setMainEditor(adapter);
 
-        // Auto-select preview editor for navigated files (text-bearing only).
-        if (legacy.state.get().type === "textFile") {
-            if (
-                options?.forceTextEditor ||
-                options?.revealLine ||
-                options?.highlightText
-            ) {
-                const tfm = legacy as unknown as TextFileModel;
-                if (options.revealLine) {
-                    tfm.revealLine(options.revealLine);
-                }
-                if (options.highlightText) {
-                    tfm.setHighlightText(options.highlightText);
-                }
-            } else {
-                const ext = fpExtname(newFilePath).toLowerCase();
-                const lang = getLanguageByExtension(ext);
-                const languageId = lang?.id || "plaintext";
-                const previewEditor = editorRegistry.getPreviewEditor(
-                    languageId,
-                    newFilePath,
-                );
-                if (previewEditor) {
-                    legacy.state.update((s) => {
-                        s.editor = previewEditor;
-                    });
-                }
+        // revealLine / highlightText apply after the editor has mounted.
+        if (isTextFile && skipPreview) {
+            const tfm = legacy as unknown as TextFileModel;
+            if (options?.revealLine) {
+                tfm.revealLine(options.revealLine);
+            }
+            if (options?.highlightText) {
+                tfm.setHighlightText(options.highlightText);
             }
         }
 

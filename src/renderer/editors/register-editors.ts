@@ -713,21 +713,50 @@ secondaryEditorRegistry.register({
 });
 
 // =============================================================================
-// EPIC-028 / US-548 strangler-fig bridge
+// EPIC-028 / US-548 + US-551 strangler-fig bridge
 // =============================================================================
 // Mirror every legacy EditorDefinition into the v4 editorRegistry so v4
 // consumers (switch widget — US-549; per-editor migrations US-551+) can query
-// `getById`, `getAll`, `findEditorsAccepting`, `resolveForFile`. The
-// `loadModule`/`createEditor` factory is a stub during US-548 — PagesLifecycleModel
-// still constructs editors via legacy factories and wraps them in
-// LegacyEditorAdapter at the call site (Q2 / approved approach).
+// `getById`, `getAll`, `findEditorsAccepting`, `resolveForFile`.
 //
-// US-551+ replaces each entry with a native v4 EditorDefinition that ships its
-// own factory. US-559 deletes the bridge.
+// US-551 wires:
+//   - "monaco" → real native v4 module (createEditor → MonacoEditor; Component →
+//     <TextChrome><MonacoBody/></TextChrome>).
+//   - text-bearing content-view editors (grid-* / md-view / mermaid-view /
+//     svg-view / html-view / notebook-view / todo-view / link-view / log-view /
+//     rest-client / graph-view / draw-view) → bare-adapter factory: createEditor
+//     returns a `LegacyEditorAdapter` wrapping a placeholder TextFileModel; the
+//     real host arrives via `adapter.switchFrom(oldEditor)` (CONTENT_HOST_TRAIT
+//     extraction). The placeholder is discarded inside switchFrom.
+//   - standalone editors (pdf-view, image-view, archive-view, video-view,
+//     etc.) → throwing stub; open-file flow still constructs them via legacy
+//     factories during US-558.
+//
+// US-552+ replaces each text-bearing entry with its own native v4 module.
+// US-559 deletes the bridge.
 
 import { editorRegistry as v4EditorRegistry } from "./base/v4/editorRegistry";
+import { LegacyEditorAdapter } from "./base/v4/LegacyEditorAdapter";
+
+const TEXT_CONTENT_VIEW_BRIDGE_IDS = new Set([
+    "grid-json",
+    "grid-csv",
+    "grid-jsonl",
+    "md-view",
+    "mermaid-view",
+    "svg-view",
+    "html-view",
+    "notebook-view",
+    "todo-view",
+    "link-view",
+    "log-view",
+    "rest-client",
+    "graph-view",
+    "draw-view",
+]);
 
 for (const legacyDef of editorRegistry.getAll()) {
+    const isTextContentView = TEXT_CONTENT_VIEW_BRIDGE_IDS.has(legacyDef.id);
     v4EditorRegistry.register({
         id: legacyDef.id,
         name: legacyDef.name,
@@ -746,14 +775,52 @@ for (const legacyDef of editorRegistry.getAll()) {
             return -1;
         },
         loadModule: async () => {
-            // US-548: v4 createEditor isn't called by any in-app consumer —
-            // PagesLifecycleModel uses legacy factories directly. Throw if a
-            // future consumer reaches here before per-editor migration lands.
+            if (isTextContentView) {
+                // US-551 bare-adapter factory. createEditor returns an adapter
+                // wrapping a placeholder TextFileModel; switchFrom replaces
+                // the placeholder with the real extracted host.
+                const { newTextFileModel } = await import("./text/TextEditorModel");
+                return {
+                    createEditor: () => {
+                        const placeholder = newTextFileModel("");
+                        return new LegacyEditorAdapter(placeholder, legacyDef.id);
+                    },
+                    // Component is never mounted — adapter-wrapped editors are
+                    // routed through legacy <TextEditorView> by RenderEditor.
+                    // This slot is required by the EditorModule type contract.
+                    Component: AdapterPlaceholderComponent,
+                };
+            }
             throw new Error(
                 `v4 createEditor not yet wired for legacy editor "${legacyDef.id}". ` +
                 "PagesLifecycleModel still constructs via legacy factories during US-548; " +
-                "per-editor migration (US-551+) populates this slot.",
+                "per-editor migration (US-552+) populates this slot.",
             );
         },
     });
 }
+
+// Stub component referenced by bare-adapter loadModule factories. Never mounted
+// by RenderEditor (adapter-wrapped editors take the LegacyEditorAdapter branch).
+function AdapterPlaceholderComponent(): null {
+    return null;
+}
+
+// US-551 — replace the legacy "monaco" mirror with the real native v4 module.
+// register() overwrites by id, so this entry supersedes the bare-adapter stub
+// the mirror loop above wrote.
+v4EditorRegistry.register({
+    id: "monaco",
+    name: "Text Editor",
+    hasContentHost: true,
+    accepts: (input) => {
+        // Universal text fallback — walkthrough 20 §accepts. Monaco's number is
+        // the floor; specific viewers outrank it in view mode.
+        if (input.mode === "view") return 10;
+        return 50;
+    },
+    loadModule: async () => {
+        const { monacoModule } = await import("./monaco");
+        return monacoModule;
+    },
+});

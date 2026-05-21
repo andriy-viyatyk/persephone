@@ -44,15 +44,22 @@ export class TextFileActionsModel {
         }
     };
 
+    /** EPIC-028 / US-551 — chrome-materialized dispatch. Called by MonacoEditor.runScript
+     *  after it has resolved selection via the ComponentQueue (no legacy
+     *  TextViewModel sync read involved). Pre-fetched script text + language. */
+    runScriptWith = async (scriptText: string, language: string): Promise<void> => {
+        if (isScriptLanguage(language)) {
+            await scriptRunner.runWithResult(this.model.id, scriptText, this.model, language);
+        }
+    };
+
     runScript = async (all?: boolean) => {
         const { language, content } = this.model.state.get();
         let script = content;
         if (!all) {
             script = this.model.getSelectedText() || content;
         }
-        if (isScriptLanguage(language)) {
-            await scriptRunner.runWithResult(this.model.id, script, this.model, language);
-        }
+        await this.runScriptWith(script, language ?? "");
     };
 
     runRelatedScript = async (all?: boolean) => {
