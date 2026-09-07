@@ -198,6 +198,7 @@ interface ICallEnvelope {
     attention?: { text: string };
     truncated?: boolean;
     totalLength?: number;
+    warning?: string;
     error?: string;
     resolvedUpTo?: string;
     hint?: { kind: string; text: string };
@@ -240,7 +241,7 @@ function toCallResult(response: McpResponse): IMcpToolResult {
     if (response.error) return toToolResult(response);
     const envelope = response.result as ICallEnvelope | undefined;
     if (!envelope) return toToolResult(response);
-    const { hint, attention, ...rest } = envelope;
+    const { hint, attention, warning, ...rest } = envelope;
     const content: IMcpToolResult["content"] = [];
     if (rest.pending) {
         content.push({ type: "text", text: "Pending: the action is waiting on a dialog. Answer it, then re-read state." });
@@ -261,6 +262,7 @@ function toCallResult(response: McpResponse): IMcpToolResult {
         }
         if (rest.truncated) content.push({ type: "text", text: `[truncated: showing ${(rest.result as string).length} of ${rest.totalLength} chars — raise maxLength or read a narrower path]` });
     }
+    if (warning) content.push({ type: "text", text: `Warning: ${warning}` });
     if (hint) content.push({ type: "text", text: `--- hint (${hint.kind}) ---\n${hint.text}` });
     return { content, isError: !rest.pending && rest.error !== undefined };
 }

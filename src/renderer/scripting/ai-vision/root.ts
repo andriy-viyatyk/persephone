@@ -8,7 +8,8 @@ import type { PageCollectionWrapper } from "../api-wrapper/PageCollectionWrapper
 import type { PageWrapper } from "../api-wrapper/PageWrapper";
 import { scriptRunner } from "../ScriptRunner";
 import { resolveRendererScriptEditor } from "../renderer-script-target";
-import { helpSearch, IHelpSearchHit } from "../../../shared/ai-vision/help-search";
+import { helpSearch as searchHelp, IHelpSearchHit } from "../../../shared/ai-vision/help-search";
+import { numberRule, stringRule, validateCallArguments } from "../../../shared/ai-vision/argument-validation";
 import { IAiChild, IAiMember, IAiVisible, IAiVisionDescriptor } from "../../../shared/ai-vision/types";
 
 export interface AiRootOptions {
@@ -62,6 +63,11 @@ const ROOT_MEMBERS: IAiVisionDescriptor["members"] = [
 ];
 
 const SCRIPT_EXECUTION_CAUTION = "runs arbitrary renderer code with the user's privileges; it can read and write files, spawn processes, access the network, and affect the app";
+
+const HELP_SEARCH_ARGUMENTS = [
+    stringRule("query", 'helpSearch("grid")'),
+    numberRule("limit", 'helpSearch("grid", 20)', { required: false }),
+] as const;
 
 const SCRIPT_MEMBERS: readonly IAiMember[] = [
     { name: "execute", kind: "method", signature: "execute(code, pageId?, language?)", summary: "Execute JavaScript or TypeScript in the renderer and return the result with captured console logs.", caution: SCRIPT_EXECUTION_CAUTION },
@@ -170,8 +176,9 @@ export class AiRoot implements IAiVisible {
         return this.options.page ?? this.app.pages.activePage;
     }
 
-    helpSearch(query: string, limit?: number): Promise<IHelpSearchHit[]> {
-        return helpSearch(this, String(query ?? ""), limit);
+    helpSearch(...args: unknown[]): Promise<IHelpSearchHit[]> {
+        const [query, limit] = validateCallArguments("helpSearch", args, HELP_SEARCH_ARGUMENTS, { maxArgs: 2 });
+        return searchHelp(this, query, limit);
     }
 
     get version() { return this.app.version; }

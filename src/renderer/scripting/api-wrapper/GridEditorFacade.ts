@@ -8,6 +8,14 @@ import type { IAiMember, IAiVisible, IAiVisionDescriptor } from "../../../shared
 import { ui } from "../../api/ui";
 import { createElements } from "../ai-vision/elements";
 import { activatePageAndWaitForLayout, pageScopeSelector } from "../ai-vision/page-elements";
+import {
+    arrayOfChoicesRule,
+    choiceRule,
+    numberRule,
+    validateCallArguments,
+    valueRule,
+} from "../../../shared/ai-vision/argument-validation";
+import { getRowKey } from "../../editors/grid/utils/grid-utils";
 
 const GRID_ELEMENTS = [
     { name: "grid-search", purpose: "Enter search text for the grid rows." },
@@ -51,6 +59,10 @@ Use rows/columns and the read-only state properties for safe reads. The curated 
 The CSV controls are declared for every grid but report visible: false for JSON and JSONL; the search-clear control appears only with active search text, and popup controls are visible only while their owning popup is open. Popup elements are page-scoped even though the popups are portaled outside the page.
 Selection reports a cell range, not row-checkbox selection. Detached grids report undefined for host-backed optional state; attached zero-row grids report their real search, filters, and visible row count, including "", [], and 0. Array and object getter results are copies. Sort exposes one column only; sort/filter writes, focus actions, clipboard actions, and column-schema edits are not part of this facade.
 Use editCell/addRows/addColumns and the delete operations for grid-data changes. setCsvDelimiter and setCsvWithColumns change CSV output and are cautioned writes; CSV-only actions are unavailable for JSON and JSONL.`;
+
+const GRID_ADD_ROWS_ARGUMENTS = [
+    numberRule("count", "grid.addRows(1)", { minimum: 1 }),
+] as const;
 
 function copyValue(value: unknown): unknown {
     if (Array.isArray(value)) return value.map(copyValue);
@@ -174,16 +186,29 @@ export class GridEditorFacade implements IAiVisible {
             : undefined;
     }
 
-    editCell(columnKey: string, rowKey: string, value: unknown): void {
-        this.editor.editRow(columnKey, rowKey, value);
+    editCell(columnKey: unknown, rowKey: unknown, value: unknown): void {
+        const rows = this.editor.getRows();
+        const validColumnKeys = this.columns.map(column => column.key);
+        const validRowKeys = rows.map(row => getRowKey(row));
+        validateCallArguments("grid.editCell", [columnKey, rowKey, value], [
+            choiceRule("columnKey", validColumnKeys, 'grid.editCell("<column-key>", "<row-key>", value)', { expectedType: "string" }),
+            choiceRule("rowKey", validRowKeys, 'grid.editCell("<column-key>", "<row-key>", value)', { expectedType: "string" }),
+            valueRule("value", 'grid.editCell("<column-key>", "<row-key>", value)'),
+        ]);
+        this.editor.editRow(columnKey as string, rowKey as string, value);
     }
 
-    addRows(count = 1, insertIndex?: number): unknown[] {
-        return this.editor.addRows(count, insertIndex);
+    addRows(count: unknown = 1, insertIndex?: unknown): unknown[] {
+        const [validCount] = validateCallArguments("grid.addRows", [count], GRID_ADD_ROWS_ARGUMENTS);
+        return this.editor.addRows(validCount, insertIndex as number | undefined);
     }
 
-    deleteRows(rowKeys: string[]): void {
-        this.editor.deleteRows(rowKeys);
+    deleteRows(rowKeys: unknown): void {
+        const validKeys = this.editor.getRows().map(row => getRowKey(row));
+        const [keys] = validateCallArguments("grid.deleteRows", [rowKeys], [
+            arrayOfChoicesRule("rowKeys", validKeys, 'grid.deleteRows(["<row-key>"])', { expectedType: "string" }),
+        ]);
+        this.editor.deleteRows(keys);
     }
 
     addColumns(

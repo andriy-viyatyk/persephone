@@ -1,5 +1,7 @@
 # US-1356: Extract the argument validator and end the silent no-op class
 
+**Status:** Implemented (unreviewed — epic close runs the completion skills)
+
 Epic: [EPIC-091](../../epics/EPIC-091.md), report section 2 (all twelve rows) plus the missed
 deleteRows site.
 

@@ -3,6 +3,7 @@ import { findMemberSuggestions, formatSuggestions } from "./member-suggestion";
 import { formatPath, parsePath, PathSegment, PathSyntaxError } from "./path-parser";
 import { DEFAULT_MAX_LENGTH, shapeResult } from "./result-shaper";
 import { getAiVision, IAiVisionDescriptor } from "./types";
+import { noArgumentsWarning } from "./argument-validation";
 import { errMessage } from "../utils";
 
 /**
@@ -43,6 +44,7 @@ export interface ICallResult {
     truncated?: boolean;
     totalLength?: number;
     hint?: IHint;
+    warning?: string;
     error?: string;
     /** On error: the longest prefix of the path that did resolve. */
     resolvedUpTo?: string;
@@ -76,6 +78,7 @@ export async function resolveCall(root: unknown, request: ICallRequest, seenKind
 
     let current: unknown = root;
     const walked: PathSegment[] = [];
+    let argumentWarning: string | undefined;
 
     for (let i = 0; i < segments.length; i++) {
         const segment = segments[i];
@@ -141,6 +144,9 @@ export async function resolveCall(root: unknown, request: ICallRequest, seenKind
                 const target = current;
                 const provided = descriptor?.provide?.(name);
                 let value: unknown = provided ? provided.value : (target as Record<string, unknown>)[name];
+                if (isLast && request.args && member?.kind === "property") {
+                    argumentWarning = noArgumentsWarning(name, request.args, name);
+                }
                 if (segment.type === "call") {
                     if (typeof value !== "function") {
                         return errorAt(path, walked, current, seenKinds, hintMode, `"${name}" is a property, not a method — drop the "()".`, { forceMembers: true });
@@ -176,7 +182,12 @@ export async function resolveCall(root: unknown, request: ICallRequest, seenKind
 
     const shaped = shapeResult(current, maxLength);
     const hint = nodeHint(formatPath(walked), current, seenKinds, hintMode);
-    return { path, ...shaped, ...(hint ? { hint } : {}) };
+    return {
+        path,
+        ...shaped,
+        ...(argumentWarning ? { warning: argumentWarning } : {}),
+        ...(hint ? { hint } : {}),
+    };
 }
 
 // ── helpers ─────────────────────────────────────────────────────────────────────────────────────

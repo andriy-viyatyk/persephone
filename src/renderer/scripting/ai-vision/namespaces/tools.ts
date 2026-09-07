@@ -10,8 +10,13 @@ import {
 } from "../../../api/mcp/tool-commands";
 import type { McpResponse } from "../../../api/mcp/types";
 import type { IAiChild, IAiMember, IAiVisionDescriptor } from "../../../../shared/ai-vision/types";
+import { stringRule, validateCallArguments } from "../../../../shared/ai-vision/argument-validation";
 
 const REGISTRY_NOT_INITIALIZED = "Agent Tools registry is not initialized.";
+
+const TOOLS_SEARCH_ARGUMENTS = [
+    stringRule("query", 'tools.search("grid")', { required: false }),
+] as const;
 
 const TOOLS_MEMBERS: readonly IAiMember[] = [
     { name: "search", kind: "method", signature: "search(query?: string, maxResults?: number)", summary: "Search registered tools by keyword or select an exact tool id." },
@@ -181,9 +186,10 @@ export class ToolsNode {
         return this.toolsetsNode;
     }
 
-    async search(query?: string, maxResults?: number): Promise<unknown> {
+    async search(query?: unknown, maxResults?: unknown): Promise<unknown> {
+        const [validQuery] = validateCallArguments("tools.search", [query], TOOLS_SEARCH_ARGUMENTS);
         requireInitialized();
-        const normalizedQuery = typeof query === "string" ? query.trim() : "";
+        const normalizedQuery = validQuery?.trim() ?? "";
         if (normalizedQuery.toLowerCase().startsWith("select:")) {
             const wanted = normalizedQuery.slice("select:".length).trim();
             const match = registeredTools.tools.some((tool) => tool.id.toLowerCase() === wanted.toLowerCase());
@@ -194,7 +200,7 @@ export class ToolsNode {
         }
 
         const params: Record<string, unknown> = {};
-        if (query !== undefined) params.query = query;
+        if (validQuery !== undefined) params.query = validQuery;
         if (maxResults !== undefined) params.maxResults = maxResults;
         return cloneWithoutUndefined(unwrapResponse(await handleSearchTools(params))) as unknown;
     }

@@ -12,6 +12,7 @@ import {
     validateBrowserOpenInput,
     validatePipelineOpenInput,
 } from "../../api/pages/open-url-validation";
+import { choiceRule, validateCallArguments } from "../../../shared/ai-vision/argument-validation";
 
 // AiVision (EPIC-083): the kind-level description of this wrapper. Kept next to the members it
 // describes so a new method and its descriptor entry land in the same diff.
@@ -188,8 +189,12 @@ export class PageCollectionWrapper implements IAiVisible {
         return this.wrap(page);
     }
 
-    closePage(pageId: string): Promise<boolean> {
-        return this.pages.closePage(pageId);
+    closePage(pageId: unknown): Promise<boolean> {
+        const openPageIds = this.all.map(page => page.id);
+        validateCallArguments("pages.closePage", [pageId], [
+            choiceRule("pageId", openPageIds, 'pages.closePage("<open-page-id>")', { expectedType: "string" }),
+        ]);
+        return this.pages.closePage(pageId as string);
     }
 
     openFileWithDialog(): Promise<void> {
