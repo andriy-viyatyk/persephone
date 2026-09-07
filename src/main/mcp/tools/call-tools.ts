@@ -4,8 +4,9 @@ import { IMcpToolDef, IMcpToolResult, McpResponse, ToolArgs } from "../types";
 import { IToolContext } from "./params";
 import { openWindows } from "../../open-windows";
 import { MainAiRoot, WINDOW_MEMBER_NAMES } from "../ai-vision/main-root";
-import { formatPath, parsePath, PathSegment } from "../../../shared/ai-vision/path-parser";
+import { formatPath, parsePath, PathSegment, PathSyntaxError } from "../../../shared/ai-vision/path-parser";
 import { HintMode, ICallResult, resolveCall } from "../../../shared/ai-vision/resolver";
+import { errMessage } from "../../../shared/utils";
 import { getNativeDialogAttention } from "../../native-dialog-tracker";
 
 /**
@@ -28,16 +29,19 @@ interface IRoute {
     local?: true;
     /** Forward this path to this window's renderer. */
     forward?: { path: string; windowIndex?: number };
+    /** Parser error to use if the renderer cannot answer the forwarded request. */
+    parseError?: string;
     error?: string;
 }
 
-/** Decide where a path is answered. Parse errors are left to the renderer, which reports them with the root hint. */
+/** Decide where a path is answered. Parse errors still go to the renderer when one is available. */
 export function routeCallPath(path: string, explicitWindow: number | undefined): IRoute {
     let segments: PathSegment[];
     try {
         segments = parsePath(path);
-    } catch {
-        return { forward: { path, windowIndex: explicitWindow } };
+    } catch (error) {
+        const parseError = error instanceof PathSyntaxError ? error.message : errMessage(error);
+        return { forward: { path, windowIndex: explicitWindow }, parseError };
     }
     const first = segments[0];
     if (!first || first.type !== "member") {
@@ -153,6 +157,9 @@ export function callTools(ctx: IToolContext): IMcpToolDef[] {
                 } else {
                     const forward = route.forward!;
                     response = await sendToRenderer("call", { ...params, path: forward.path, seenKinds: [...seenKinds] }, forward.windowIndex);
+                    if (route.parseError && response.error) {
+                        response = { result: { path, error: `Invalid path: ${route.parseError}` } };
+                    }
                     const targetWindowData = forward.windowIndex !== undefined
                         ? openWindows.windows.find(windowData => windowData.index === forward.windowIndex)
                         : openWindows.windows.find(windowData => windowData.window);

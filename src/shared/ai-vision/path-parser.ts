@@ -20,14 +20,32 @@ export type PathSegment =
     | { readonly type: "help" };
 
 export class PathSyntaxError extends Error {
-    constructor(message: string, readonly offset: number) {
-        super(`${message} (at offset ${offset})`);
+    constructor(message: string, readonly offset: number, suggestion?: string) {
+        super(`${message} (at offset ${offset})${suggestion ? `. ${suggestion}` : ""}`);
         this.name = "PathSyntaxError";
     }
 }
 
 const IDENTIFIER_START = /[A-Za-z_$]/;
 const IDENTIFIER_PART = /[A-Za-z0-9_$]/;
+const BRACKETABLE_MEMBER_CHAR = /[-/@\s]/;
+
+function bracketHintForInvalidMember(
+    source: string,
+    memberStart: number,
+    precedingSegments: readonly PathSegment[],
+): string | undefined {
+    if (precedingSegments.length === 0) return undefined;
+    const dot = source.indexOf(".", memberStart);
+    const memberEnd = dot === -1 ? source.length : dot;
+    const member = source.slice(memberStart, memberEnd);
+    if (!member || [...member].some(char => !IDENTIFIER_PART.test(char) && !BRACKETABLE_MEMBER_CHAR.test(char))) {
+        return undefined;
+    }
+    const prefix = formatPath(precedingSegments);
+    if (!prefix) return undefined;
+    return `If this was intended as one member name, use ${prefix}[${JSON.stringify(member)}]${source.slice(memberEnd)}.`;
+}
 
 export function parsePath(path: string): PathSegment[] {
     const source = path.trim();
@@ -93,7 +111,15 @@ class PathParser {
             segments.push({ type: "help" });
             return;
         }
-        const name = this.readIdentifier();
+        const name = this.readIdentifier(segments);
+        const found = this.source[this.position];
+        if (found !== undefined && found !== "." && found !== "(" && found !== "[") {
+            throw new PathSyntaxError(
+                `Expected "." or end of path, found "${found}"`,
+                this.position,
+                bracketHintForInvalidMember(this.source, start, segments),
+            );
+        }
         let consumedName = false;
         for (;;) {
             const char = this.source[this.position];
@@ -114,10 +140,14 @@ class PathParser {
         if (!consumedName) segments.push({ type: "member", name });
     }
 
-    private readIdentifier(): string {
+    private readIdentifier(segments: readonly PathSegment[]): string {
         const start = this.position;
         if (this.position >= this.source.length || !IDENTIFIER_START.test(this.source[this.position])) {
-            throw new PathSyntaxError("Expected a member name", this.position);
+            throw new PathSyntaxError(
+                "Expected a member name",
+                this.position,
+                bracketHintForInvalidMember(this.source, start, segments),
+            );
         }
         while (this.position < this.source.length && IDENTIFIER_PART.test(this.source[this.position])) this.position++;
         return this.source.slice(start, this.position);
