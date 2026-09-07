@@ -7,4 +7,4 @@ records. Write assigns the JSON-formatted records back to the grouped content.
 To verify page affinity, open the Board beside a text page, group another page, run once, activate
 the other tab, and run again. The source must remain the grouped content of the Board's host page.
 Revoke trust while it is mounted and confirm both Run and Write reject. The canonical bridge guide
-is available through `read_guide("boards")`.
+is available through the `guides.agents.boards` call path; the `persephone://guides/boards` MCP resource is an alternative.

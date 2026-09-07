@@ -161,7 +161,11 @@ See [/doc/standards/component-guide.md](doc/standards/component-guide.md) for gu
 ## Documentation
 
 - **Developer docs** are in `/doc/` - architecture, standards, tasks
-- **User docs** are in `/docs/` - guides for end users
+- **User-facing guides** are in `/assets/guides/` - guides for end users, shipped inside the app
+
+The guides in `/assets/guides/` are the canonical copy: the app serves them from its own
+installed copy, and users read them in the About page or with `F1`. Editing them on GitHub and
+editing what ships are the same act.
 - Update relevant docs when making changes
 
 ## Questions?

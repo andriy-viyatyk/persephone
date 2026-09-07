@@ -12,7 +12,9 @@ This folder contains developer documentation for Persephone.
 
 ## For Users
 
-User documentation is in [/docs](../docs/) (separate from dev docs).
+User-facing guides are in [/assets/guides](../assets/guides/) - guides for end users, shipped inside the app (separate from developer docs).
+
+The in-app copy in `/assets/guides/` is canonical: users read these guides in the About page or with `F1`.
 
 ## Quick Links
 

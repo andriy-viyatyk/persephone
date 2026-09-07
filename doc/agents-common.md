@@ -94,7 +94,7 @@ structure — the crate's own `README.md` is its primary documentation.
 1. Verify acceptance criteria
 2. Run `/review` — validate against architecture docs
 3. Run `/document` — update developer docs in `/doc/`
-4. Run `/userdoc` — update user docs in `/docs/`
+4. Run `/userdoc` — update the user-facing guides in `/assets/guides/`
 5. Update dashboard: mark `[x]`, move to [tasks/completed.md](tasks/completed.md), remove from dashboard
 6. Task folder cleanup (if any): **ask user before deleting**
 
@@ -194,13 +194,15 @@ npm run lint        # ESLint
 /assets              # Static assets (board-template/, demo-board/, agent/, guides/, editor-types/, …)
 /doc                 # Developer documentation
   /epics             # Epic tracking
-/docs                # User documentation
 /.agents
   /skills            # Canonical shared skills: review, document, userdoc (native Codex skills)
 /.claude
   /skills            # Claude-only skills (codex-dev, mcp-test-agent, …) + thin pointer wrappers
                      # for the three shared skills above
 ```
+
+The `/assets/guides/` corpus is the canonical in-app copy shipped inside the app; users read it in
+the About page or with `F1`.
 
 New reusable UI primitives go in `uikit/`; the four `components/` folders are persephone-coupled and
 never receive new pure primitives — see

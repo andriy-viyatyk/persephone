@@ -29,7 +29,7 @@ persephone/
 │   ├── icons/              # App icons
 │   ├── excalidraw/fonts/   # Self-hosted Excalidraw fonts (woff2, OFL-1.1 licensed)
 │   ├── script-library/     # Bundled example scripts (copied to user library on setup)
-│   ├── guides/             # Shared user and agent guide corpus
+│   ├── guides/             # Shared user and agent guide corpus, shipped inside the app
 │   │   ├── agents/         # Agent-facing application and automation guides
 │   │   ├── editors/        # User-facing editor guides
 │   │   ├── screens/        # User-facing per-screen chrome and layout guides
@@ -85,8 +85,10 @@ persephone/
 │   ├── standards/          # Coding standards and guides
 │   ├── tasks/              # Task tracking
 │   └── future-architecture/ # Migration design docs (historical)
-└── docs/                   # User documentation (published)
 ```
+
+The user-facing pages in `/assets/guides/` are the canonical in-app copy; users read them in the
+About page or with `F1`.
 
 ## Renderer Structure
 
