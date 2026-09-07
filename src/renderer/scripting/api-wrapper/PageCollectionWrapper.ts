@@ -25,11 +25,11 @@ const PAGES_MEMBERS: readonly IAiMember[] = [
     { name: "isGrouped", kind: "method", signature: "isGrouped(pageId: string)", summary: "Whether the page is part of a side-by-side group." },
     { name: "isLastPage", kind: "method", signature: "isLastPage(pageId?: string)", summary: "Whether the page is the only one open." },
     { name: "openFile", kind: "method", signature: "openFile(filePath: string)", summary: "Open a file from disk in a new page (or focus it if already open); returns the page." },
-    { name: "closePage", kind: "method", signature: "closePage(pageId: string)", summary: "Close a page.", caution: "unsaved changes prompt the user; a discarded page is gone" },
+    { name: "closePage", kind: "method", signature: "closePage(pageId: string)", summary: "Close a page; returns true when closed and false when closing is refused, such as cancelling an unsaved-changes prompt.", caution: "unsaved changes prompt the user; a discarded page is gone" },
     { name: "openFileWithDialog", kind: "method", signature: "openFileWithDialog()", summary: "Show the OS open-file dialog to the user." },
     { name: "navigatePageTo", kind: "method", signature: "navigatePageTo(pageId, newFilePath, options?: { revealLine?, highlightText?, forceTextEditor? })", summary: "Point an existing page at another file." },
     { name: "addEmptyPage", kind: "method", signature: "addEmptyPage()", summary: "New empty text page; returns it." },
-    { name: "addEditorPage", kind: "method", signature: "addEditorPage(editor, language, title)", summary: "New page with a given editor id (monaco, grid-json, md-view, …) and language; returns it." },
+    { name: "addEditorPage", kind: "method", signature: "addEditorPage(editor, language, title, content?)", summary: "New page with a given editor id (monaco, grid-json, md-view, …) and language; optionally initializes its content; returns it." },
     { name: "addDrawPage", kind: "method", signature: "addDrawPage(dataUrl: string, title?)", summary: "New drawing page from an image data URL." },
     { name: "openLinks", kind: "method", signature: "openLinks(links: (string | ILink)[], title?)", summary: "New links page listing the given URLs/paths." },
     { name: "openDiff", kind: "method", signature: "openDiff({ firstPath, secondPath })", summary: "Open a file compare page." },
@@ -222,8 +222,9 @@ export class PageCollectionWrapper implements IAiVisible {
         editor: EditorView,
         language: string,
         title: string,
+        content?: string,
     ): PageWrapper {
-        const page = this.pages.addEditorPage(editor, language, title);
+        const page = this.pages.addEditorPage(editor, language, title, content);
         return this.wrap(page);
     }
 

@@ -6,7 +6,7 @@ const MEMBERS = [
     { name: "title", kind: "property", summary: "The dialog title." },
     { name: "message", kind: "property", summary: "The confirmation message." },
     { name: "buttons", kind: "property", summary: "Visible response buttons." },
-    { name: "click", kind: "method", signature: "click(button: string)", summary: "Click an exact visible response button." },
+    { name: "click", kind: "method", signature: "click(button: string)", summary: "Click an exact visible response button; returns the boolean close result." },
     { name: "cancel", kind: "method", signature: "cancel()", summary: "Dismiss the dialog without selecting a response." },
 ] as const;
 const AI_VISION = descriptor("ConfirmationDialog", "A confirmation dialog awaiting a response.", MEMBERS);

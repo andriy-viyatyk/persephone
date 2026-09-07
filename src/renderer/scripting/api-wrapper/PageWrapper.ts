@@ -122,7 +122,7 @@ const PAGE_MEMBERS: readonly IAiMember[] = [
     { name: "modified", kind: "property", summary: "Whether there are unsaved changes." },
     { name: "pinned", kind: "property", summary: "Whether the tab is pinned." },
     { name: "content", kind: "property", writable: true, summary: "The page's text (text-based editors only; empty for browser/image pages). Assign with \"value\"." },
-    { name: "language", kind: "property", writable: true, summary: "Language id. Assigning changes it; use page.tab.highlight(\"tab-language\") when the user asks where it is changed." },
+    { name: "language", kind: "property", writable: true, summary: "Language id. Assigning changes it and returns { ok: true }; use page.tab.highlight(\"tab-language\") when the user asks where it is changed." },
     { name: "tab", kind: "property", node: true, summary: "This page's tab-strip entry and its visible controls." },
     { name: "editor", kind: "property", node: true, summary: "Current editor facade; inspect its id to discover the available operations." },
     { name: "editorSwitches", kind: "property", node: true, summary: "The current editor, toolbar-identical switch options, and unrestricted editor switching." },

@@ -1,3 +1,46 @@
+const RENDERER_INTERNAL_STACK_PATHS = [
+    "src/renderer/scripting/ScriptRunnerBase.ts",
+    "src/renderer/scripting/ScriptRunner.ts",
+    "src/shared/ai-vision/resolver.ts",
+] as const;
+
+/**
+ * A frame from the submitted script, e.g.
+ * `at failHere (eval at executeInternal (http://…/ScriptRunnerBase.ts:74:14), <anonymous>:3:29)`.
+ *
+ * These must be **kept**, not dropped: the `<anonymous>:line:column` is the caller's own script
+ * location and the only debuggable thing in the whole trace. They are only recognisable as script
+ * frames *because* they name a Persephone file, so a plain "drop every internal path" filter
+ * removes exactly the frames worth keeping — which is what the first cut of this did.
+ */
+const SCRIPT_FRAME = /^(\s*)at\s+(?:(.+?)\s+\()?(?:eval at .*?,\s*)?<anonymous>:(\d+:\d+)\)?\s*$/;
+
+function filterRendererInternalFrames(stack: string | undefined): string {
+    if (!stack) return "";
+
+    const [errorHeader, ...frameLines] = stack.split(/\r?\n/);
+    const userFrameLines: string[] = [];
+
+    for (const line of frameLines) {
+        const scriptFrame = SCRIPT_FRAME.exec(line);
+        if (scriptFrame) {
+            // Rewrite the eval-origin noise away but keep the name and the script position.
+            const [, indent, functionName, position] = scriptFrame;
+            userFrameLines.push(functionName
+                ? `${indent}at ${functionName} (script:${position})`
+                : `${indent}at script:${position}`);
+            continue;
+        }
+        const normalizedLine = line.replace(/\\/g, "/");
+        const isInternal = RENDERER_INTERNAL_STACK_PATHS.some((sourcePath) =>
+            normalizedLine.includes("/" + sourcePath) || normalizedLine.startsWith(sourcePath));
+        if (!isInternal) userFrameLines.push(line);
+    }
+
+    if (!userFrameLines.some((line) => line.trim())) return "";
+    return [errorHeader, ...userFrameLines].join("\n");
+}
+
 /**
  * Convert any script result value to a text + language pair for display.
  */
@@ -5,8 +48,9 @@ export function convertToText(value: unknown): { text: string; language: string 
     // Handle Error objects (including exceptions)
     if (value instanceof Error) {
         let errorText = `Error: ${value.message}\n`;
-        if (value.stack) {
-            errorText += `\nStack trace:\n${value.stack}`;
+        const userStack = filterRendererInternalFrames(value.stack);
+        if (userStack) {
+            errorText += `\nStack trace:\n${userStack}`;
         }
         return { text: errorText, language: "plaintext" };
     }

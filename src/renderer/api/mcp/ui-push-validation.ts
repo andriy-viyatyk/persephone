@@ -172,12 +172,12 @@ export function normalizeUiPushEntry(
     if (type === "output.grid") {
         if (!fields.content) {
             throw new UiPushValidationError(
-                `output.grid requires 'content' field (JSON string or CSV string). Example: { type: "output.grid", content: "[{\"name\":\"A\",\"value\":1}]", title: "My Table" }`,
+                `output.grid requires 'content' field (JSON string or CSV string). Example: { type: "output.grid", content: "[{\\\"name\\\":\\\"A\\\",\\\"value\\\":1}]", title: "My Table" }`,
             );
         }
         if (typeof fields.content !== "string") {
             throw new UiPushValidationError(
-                `output.grid 'content' must be a string (JSON array or CSV text), not ${typeof fields.content}. Stringify your data: content: JSON.stringify(data). Example: { type: "output.grid", content: "[{\"name\":\"A\",\"value\":1}]", contentType: "json", title: "My Table" }`,
+                `output.grid 'content' must be a string (JSON array or CSV text), not ${typeof fields.content}. Stringify your data: content: JSON.stringify(data). Example: { type: "output.grid", content: "[{\\\"name\\\":\\\"A\\\",\\\"value\\\":1}]", contentType: "json", title: "My Table" }`,
             );
         }
         const contentType = fields.contentType ?? "json";
@@ -189,12 +189,12 @@ export function normalizeUiPushEntry(
                 data = JSON.parse(fields.content);
             } catch {
                 throw new UiPushValidationError(
-                    `output.grid 'content' is not valid JSON. Content must be a JSON array string, e.g.: "[{\"name\":\"A\",\"value\":1}]"`,
+                    `output.grid 'content' is not valid JSON. Content must be a JSON array string, e.g.: "[{\\\"name\\\":\\\"A\\\",\\\"value\\\":1}]"`,
                 );
             }
             if (!Array.isArray(data)) {
                 throw new UiPushValidationError(
-                    `output.grid 'content' must be a JSON array, got ${typeof data}. Example: "[{\"name\":\"A\",\"value\":1}]"`,
+                    `output.grid 'content' must be a JSON array, got ${typeof data}. Example: "[{\\\"name\\\":\\\"A\\\",\\\"value\\\":1}]"`,
                 );
             }
         }

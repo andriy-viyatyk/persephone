@@ -9,7 +9,7 @@ const MEMBERS = [
     { name: "toolsetRoot", kind: "property", summary: "The toolset root folder." },
     { name: "tools", kind: "property", summary: "Tools proposed for registration." },
     { name: "buttons", kind: "property", summary: "Visible response buttons." },
-    { name: "click", kind: "method", signature: "click(button: string)", summary: "Click an exact visible response button." },
+    { name: "click", kind: "method", signature: "click(button: string)", summary: "Click an exact visible response button; returns the boolean close result." },
     { name: "cancel", kind: "method", signature: "cancel()", summary: "Dismiss the dialog without registering." },
 ] as const;
 const AI_VISION = descriptor("RegisterToolsetDialog", "A toolset registration confirmation dialog.", MEMBERS);

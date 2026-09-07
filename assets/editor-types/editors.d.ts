@@ -42,6 +42,9 @@ export interface ISwitchOptions {
  * console.log(best?.name); // "JSON Grid"
  */
 export interface IEditorRegistry {
+    /** All language IDs known to Monaco and the built-in language-aware editors. */
+    readonly languages: readonly string[];
+
     /** Get all registered editors. */
     getAll(): IEditorInfo[];
 

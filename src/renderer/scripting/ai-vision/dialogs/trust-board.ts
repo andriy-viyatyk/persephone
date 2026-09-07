@@ -7,7 +7,7 @@ const MEMBERS = [
     { name: "message", kind: "property", summary: "The trust warning." },
     { name: "boardPath", kind: "property", summary: "The board root folder." },
     { name: "buttons", kind: "property", summary: "Visible response buttons." },
-    { name: "click", kind: "method", signature: "click(button: string)", summary: "Click an exact visible response button." },
+    { name: "click", kind: "method", signature: "click(button: string)", summary: "Click an exact visible response button; returns the boolean close result." },
     { name: "cancel", kind: "method", signature: "cancel()", summary: "Dismiss the dialog without trusting it." },
 ] as const;
 const AI_VISION = descriptor("TrustBoardDialog", "A board trust confirmation dialog.", MEMBERS);

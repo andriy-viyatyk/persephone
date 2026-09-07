@@ -11,7 +11,7 @@ const MEMBERS = [
     { name: "options", kind: "property", summary: "Editor display options." },
     { name: "width", kind: "property", summary: "Dialog width, if specified." },
     { name: "height", kind: "property", summary: "Dialog height, if specified." },
-    { name: "click", kind: "method", signature: "click(button: string)", summary: "Click an exact visible response button." },
+    { name: "click", kind: "method", signature: "click(button: string)", summary: "Click an exact visible response button; returns the boolean close result." },
     { name: "cancel", kind: "method", signature: "cancel()", summary: "Dismiss the dialog without selecting a response." },
 ] as const;
 const AI_VISION = descriptor("TextDialog", "A text dialog awaiting a response.", MEMBERS);

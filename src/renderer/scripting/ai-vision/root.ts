@@ -70,7 +70,7 @@ const HELP_SEARCH_ARGUMENTS = [
 ] as const;
 
 const SCRIPT_MEMBERS: readonly IAiMember[] = [
-    { name: "execute", kind: "method", signature: "execute(code, pageId?, language?)", summary: "Execute JavaScript or TypeScript in the renderer and return the result with captured console logs.", caution: SCRIPT_EXECUTION_CAUTION },
+    { name: "execute", kind: "method", signature: "execute(code, pageId?, language?)", summary: "Execute JavaScript or TypeScript in the renderer and return text with captured console logs; failures inside code set isError: true.", caution: SCRIPT_EXECUTION_CAUTION },
 ];
 
 const SCRIPT_HELP = `
@@ -82,8 +82,11 @@ is transpiled without type checking.
 
 The last expression is returned as text. The result always contains text, language, isError, and
 consoleLogs. console.log, console.info, console.warn, and console.error are captured in consoleLogs.
-Errors return isError: true and include the error message and stack text. Side effects performed
-before an error or timeout remain performed.
+The \`code\` argument must be a string: a wrong code-parameter type is an MCP/tool error. A syntax
+or runtime error thrown by a string of code is not an MCP/tool error; the call succeeds with
+isError: true, error text, and any consoleLogs captured before the failure. Renderer failures include
+the error message and submitted-script stack frames after Persephone's internal frames are removed.
+Side effects performed before an error or timeout remain performed.
 
 This is full-privilege renderer/Node.js execution with no sandbox. Code can read and write files,
 spawn processes, access the network, and change the application. require() is context-bound, but
@@ -107,7 +110,7 @@ pages - open pages/tabs and the agent output channel; e.g. pages.logView.push([.
 page - the active page and its editor; e.g. page.content
 script - execute renderer JavaScript or TypeScript; e.g. script.execute("1 + 1")
 helpSearch - find matching hint/help lines and paths; e.g. helpSearch("add rows")
-settings - read or persist application configuration; e.g. settings.theme
+settings - read or persist application configuration; e.g. settings.set("theme", "monokai")
 fs - read/write files, directories, and OS file integration; e.g. fs.read("path")
 ui - dialogs, notifications, progress, locks, and curated controls; e.g. ui.elements
 dialogs - inspect and answer open renderer dialogs; e.g. dialogs[0].buttons

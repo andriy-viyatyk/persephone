@@ -15,6 +15,9 @@ export interface IGridEditor {
     /** All rows as plain objects. */
     readonly rows: unknown[];
 
+    /** Row keys in the same order as rows; pass rowKeys to editCell and deleteRows. */
+    readonly rowKeys: string[];
+
     /** Column definitions (key and display name). */
     readonly columns: IColumnInfo[];
 

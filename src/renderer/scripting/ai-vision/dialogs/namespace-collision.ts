@@ -8,7 +8,7 @@ const MEMBERS = [
     { name: "namespace", kind: "property", summary: "The colliding namespace." },
     { name: "collidingRoot", kind: "property", summary: "The already-registered board root." },
     { name: "buttons", kind: "property", summary: "Visible response buttons." },
-    { name: "click", kind: "method", signature: "click(button: string)", summary: "Click an exact visible response button." },
+    { name: "click", kind: "method", signature: "click(button: string)", summary: "Click an exact visible response button; returns the boolean close result." },
     { name: "cancel", kind: "method", signature: "cancel()", summary: "Dismiss the dialog without registering." },
 ] as const;
 const AI_VISION = descriptor("NamespaceCollisionDialog", "A namespace collision confirmation dialog.", MEMBERS);

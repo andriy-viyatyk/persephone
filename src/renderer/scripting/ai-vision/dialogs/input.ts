@@ -9,7 +9,7 @@ const MEMBERS = [
     { name: "buttons", kind: "property", summary: "Visible response buttons." },
     { name: "options", kind: "property", summary: "Visible radio options, if any." },
     { name: "selectedOption", kind: "property", summary: "The selected radio option, if any." },
-    { name: "click", kind: "method", signature: "click(button: string)", summary: "Click an exact visible response button." },
+    { name: "click", kind: "method", signature: "click(button: string)", summary: "Click an exact visible response button; returns the boolean close result." },
     { name: "cancel", kind: "method", signature: "cancel()", summary: "Dismiss the dialog without selecting a response." },
 ] as const;
 const AI_VISION = descriptor("InputDialog", "An input dialog awaiting a response.", MEMBERS);

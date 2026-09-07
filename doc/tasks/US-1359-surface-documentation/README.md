@@ -1,5 +1,7 @@
 # US-1359 — Surface documentation and consistency
 
+**Status:** Implemented (unreviewed — epic close runs the completion skills)
+
 ## Goal
 
 Plan the documentation and narrowly scoped runtime fixes for report items 3.1, 3.3, 3.4, 3.5, 3.6,
@@ -465,3 +467,29 @@ so filtering in `convertToText` is safe; moving the filter to the MCP boundary i
 | `src/renderer/scripting/ai-vision/dialogs/text.ts` | Document the boolean close result for text-dialog `click()`. |
 | `src/renderer/scripting/ai-vision/dialogs/trust-board.ts` | Document the boolean close result for trust-board `click()`. |
 | `src/renderer/scripting/script-utils.ts` | Filter only renderer-internal stack frames in every build and preserve user frames. |
+
+## Live-verification correction (2026-09-07)
+
+Item 3.7's first implementation dropped **every** frame, including the caller's own. The filter
+removed any line naming `ScriptRunnerBase.ts`, `ScriptRunner.ts` or `resolver.ts` — but a frame
+from the submitted script looks like
+
+```
+at failHere (eval at executeInternal (http://localhost:5273/src/renderer/scripting/ScriptRunnerBase.ts:74:14), <anonymous>:3:29)
+```
+
+so it names an internal file *in its eval origin* while carrying the script's real position in
+`<anonymous>:3:29`. A plain path filter therefore removes exactly the frames worth keeping, and
+`script.execute` returned a bare `Error: deep` with no location at all — worse for debugging a real
+script than the noisy trace it replaced.
+
+`filterRendererInternalFrames` now recognises a script frame, keeps it, and rewrites the eval-origin
+noise away: `at failHere (script:7:29)`. Non-script internal frames are still dropped.
+
+Verified live: a four-line script throwing from a named function returns three `script:line:column`
+frames and none of Persephone's eight internal ones.
+
+**Known and not fixed here:** the reported line numbers carry a constant offset from the submitted
+source (a function on line 3 reports as `script:7`), because the runner wraps the script in a
+preamble. That is pre-existing behaviour, unrelated to EPIC-091's report, and recorded in the epic's
+"Report items not acted on" table rather than fixed inside a documentation task.
