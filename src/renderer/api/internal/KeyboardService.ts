@@ -2,10 +2,24 @@ import { globalKeyDown } from "../../core/state/events";
 import { pagesModel } from "../pages";
 import { api } from "../../../ipc/renderer/api";
 import { cycleAppTheme } from "../cycle-app-theme";
+import { getGuideIndex, type GuideTreeNode } from "../../guides";
+import { errMessage } from "../../../shared/utils";
+import { guard } from "../../core/utils/guard";
+
+function findGuidePath(nodes: readonly GuideTreeNode[], editorId: string): string | undefined {
+    for (const node of nodes) {
+        if (node.kind === "page" && node.editorId === editorId) return node.path;
+        if (node.kind !== "folder") continue;
+
+        const path = findGuidePath(node.children, editorId);
+        if (path) return path;
+    }
+    return undefined;
+}
 
 /**
  * Global keyboard service for application-wide shortcuts.
- * Handles: Ctrl+Tab, Ctrl+W, Ctrl+N, Ctrl+O, theme cycling.
+ * Handles: F1, Ctrl+Tab, Ctrl+W, Ctrl+N, Ctrl+O, theme cycling.
  */
 export class KeyboardService {
     async init(): Promise<void> {
@@ -20,6 +34,13 @@ export class KeyboardService {
 
         // Handle specific shortcuts
         switch (e.code) {
+            case "F1":
+                if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.isComposing || e.defaultPrevented) break;
+                if (e.target instanceof Element && e.target.closest(".monaco-editor")) break;
+                e.preventDefault();
+                void guard("Failed to open User Guide", () => this.openActiveGuideOrContents());
+                break;
+
             case "Tab":
                 if (e.ctrlKey) {
                     e.preventDefault();
@@ -66,4 +87,31 @@ export class KeyboardService {
                 break;
         }
     };
+
+    private async openActiveGuideOrContents(): Promise<void> {
+        const editorId = pagesModel.activePage?.mainEditorInstance?.editorId;
+        let guidePath: string | undefined;
+
+        if (editorId) {
+            try {
+                const guideTree = await getGuideIndex().getTree("user");
+                guidePath = findGuidePath(guideTree, editorId);
+            } catch (error) {
+                console.error("Failed to resolve active guide:", errMessage(error));
+            }
+        }
+
+        if (!guidePath) {
+            await pagesModel.showAboutPage({ atContents: true });
+            return;
+        }
+
+        await pagesModel.showAboutPage();
+        const { AboutEditor } = await import("../../editors/about");
+        const editor = pagesModel.activePage?.mainEditorInstance;
+        if (!(editor instanceof AboutEditor)) {
+            throw new Error("About page did not expose an AboutEditor after opening.");
+        }
+        editor.guideBrowser.openGuide({ kind: "guide", path: guidePath });
+    }
 }

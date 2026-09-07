@@ -108,6 +108,13 @@ export class MenuBarView extends VanillaView<MenuBarProps> {
         title: "About",
         onClick: () => this.openAbout(),
     });
+    private readonly userGuideButton = new IconButtonView({
+        name: "menubar-user-guide",
+        size: "md",
+        icon: "question",
+        title: "User Guide",
+        onClick: () => this.openUserGuide(),
+    });
     private readonly settingsButton = new IconButtonView({
         name: "menubar-settings",
         size: "md",
@@ -181,6 +188,7 @@ export class MenuBarView extends VanillaView<MenuBarProps> {
             this.newWindowButton.root,
             this.spacer.root,
             this.aboutButton.root,
+            this.userGuideButton.root,
             this.settingsButton.root,
         );
         this.addFolderPanel.append(this.addFolderButton.root);
@@ -190,6 +198,7 @@ export class MenuBarView extends VanillaView<MenuBarProps> {
         this.child(this.newWindowButton).mount();
         this.child(this.spacer).mount();
         this.child(this.aboutButton).mount();
+        this.child(this.userGuideButton).mount();
         this.child(this.settingsButton).mount();
         this.child(this.addFolderButton).mount();
         this.child(this.folderList).mount();
@@ -572,6 +581,11 @@ export class MenuBarView extends VanillaView<MenuBarProps> {
     private openAbout(): void {
         this.props.onClose?.();
         pagesModel.showAboutPage();
+    }
+
+    private openUserGuide(): void {
+        this.props.onClose?.();
+        pagesModel.showAboutPage({ atContents: true });
     }
 
     private onContentKeyDown(event: KeyboardEvent): void {

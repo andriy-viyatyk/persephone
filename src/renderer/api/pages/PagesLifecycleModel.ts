@@ -779,8 +779,13 @@ export class PagesLifecycleModel {
             return this.addPage(model, resolvedId ? new PageModel(resolvedId) : undefined);
         });
 
-    showAboutPage = async (): Promise<void> => {
-        await this.showEditorPage("about-view", async () => (await import("../../editors/about")).ABOUT_PAGE_ID);
+    showAboutPage = async (options?: { atContents?: boolean }): Promise<void> => {
+        const page = await this.showEditorPage("about-view", async () => (await import("../../editors/about")).ABOUT_PAGE_ID);
+        if (!options?.atContents || !page) return;
+
+        const { AboutEditor } = await import("../../editors/about");
+        const editor = page.mainEditorInstance;
+        if (editor instanceof AboutEditor) editor.resetGuideBrowser();
     };
 
     showSettingsPage = async (): Promise<void> => {

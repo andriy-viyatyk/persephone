@@ -1,6 +1,8 @@
 import { app } from "../../api/app";
 import { publishedBoards } from "../../api/published-boards";
 import { shell } from "../../api/shell";
+import { guard } from "../../core/utils/guard";
+import { createLinkData } from "../../../shared/link-data";
 import type { IRuntimeVersions, IUpdateInfo } from "../../api/types/shell";
 import rendererEvents from "../../../ipc/renderer/renderer-events";
 import { EventEndpoint } from "../../../ipc/api-types";
@@ -318,7 +320,11 @@ export class AboutEditorView extends VanillaView<AboutEditorProps> {
                 variant: "link",
                 size: "sm",
                 onClick: () => {
-                    void shell.openExternal("https://github.com/andriy-viyatyk/persephone/blob/main/assets/guides/whats-new.md");
+                    void guard("Failed to open What's New", () =>
+                        app.events.openRawLink.sendAsync(
+                            createLinkData("persephone-guide://whats-new"),
+                        ),
+                    );
                 },
                 children: "What's New",
             }));

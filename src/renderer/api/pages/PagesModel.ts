@@ -265,7 +265,7 @@ export class PagesModel extends TModel<OpenFilesState> {
     requireGroupedText = (pageId: string, suggestedLanguage?: string) =>
         this.lifecycle.requireGroupedText(pageId, suggestedLanguage);
     requireWellKnownPage = (id: string) => this.lifecycle.requireWellKnownPage(id);
-    showAboutPage = () => this.lifecycle.showAboutPage();
+    showAboutPage = (options?: { atContents?: boolean }) => this.lifecycle.showAboutPage(options);
     showSettingsPage = () => this.lifecycle.showSettingsPage();
     showBrowserPage = (options?: {
         profileName?: string;
