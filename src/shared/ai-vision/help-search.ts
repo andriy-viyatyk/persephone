@@ -51,7 +51,7 @@ export async function helpSearch(root: unknown, query: string, limit = 20): Prom
                 queue.push({ node: childNode, path: joinChildPath(path, `.${member.name}`), depth: depth + 1 });
             }
         }
-        for (const child of descriptor.children?.() ?? []) {
+        for (const child of await descriptor.children?.() ?? []) {
             const childPath = joinChildPath(path, child.segment);
             const childLine = `${childPath} — ${child.kind}: ${child.summary}`;
             if (matches(childLine, tokens)) hits.push({ path: childPath, kind: child.kind, matchedLine: childLine });

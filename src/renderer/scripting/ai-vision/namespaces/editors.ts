@@ -16,7 +16,7 @@ export function describeEditorRegistry(instance: unknown): IAiVisionDescriptor {
         kind: "EditorRegistry",
         summary: "The registry of available editors and their file-language matches.",
         members: EDITOR_REGISTRY_MEMBERS,
-        help: "Use languages to inspect valid language IDs, then use getAll, getById, resolve, and getSwitchOptions to inspect editor capabilities without opening or changing a page.",
+        help: "Use languages to inspect valid language IDs, then use getAll, getById, resolve, and getSwitchOptions to inspect editor capabilities without opening or changing a page. Use `guides.editors.index` for the editor catalog and `guides.editors.<editor>` for a specific editor's guide.",
         summarize: () => ({ kind: "EditorRegistry", editorCount: editors.getAll().length }),
     };
 }

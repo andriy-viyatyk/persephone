@@ -48,16 +48,16 @@ export function formatMembers(members: readonly IAiMember[]): string {
  * Build the hint returned alongside a result.
  * @param includeMembers false once the session has already seen this kind's member list.
  */
-export function buildHint(
+export async function buildHint(
     path: string,
     descriptor: IAiVisionDescriptor,
     includeMembers: boolean,
     relativeChildren = false,
-): IHint {
+): Promise<IHint> {
     const parts: string[] = [`${descriptor.kind} — ${descriptor.summary}`];
     const restricted = descriptor.restricted?.();
     if (restricted) parts.push(`restricted: ${restricted}`);
-    const children = descriptor.children?.() ?? [];
+    const children = await descriptor.children?.() ?? [];
     const childrenText = relativeChildren
         ? formatRelativeChildren(children)
         : formatChildren(path, children);
@@ -74,15 +74,15 @@ export function buildHint(
 }
 
 /** Build the compact hint used when a forced resolver error has already emitted this kind's members. */
-export function buildErrorHint(
+export async function buildErrorHint(
     path: string,
     descriptor: IAiVisionDescriptor,
     includeMembers: boolean,
     relativeChildren = false,
-): IHint {
+): Promise<IHint> {
     if (includeMembers) return buildHint(path, descriptor, true, relativeChildren);
     if (relativeChildren) {
-        const childrenText = formatRelativeChildren(descriptor.children?.() ?? []);
+        const childrenText = formatRelativeChildren(await descriptor.children?.() ?? []);
         return {
             kind: descriptor.kind,
             text: [
@@ -98,14 +98,14 @@ export function buildErrorHint(
 }
 
 /** The full `$help` rendering: long-form help, then members, then live children. */
-export function buildHelp(path: string, descriptor: IAiVisionDescriptor): string {
+export async function buildHelp(path: string, descriptor: IAiVisionDescriptor): Promise<string> {
     const parts: string[] = [`${descriptor.kind} — ${descriptor.summary}`];
     if (descriptor.overview) parts.push(descriptor.overview);
     const help = typeof descriptor.help === "function" ? descriptor.help() : descriptor.help;
     if (help) parts.push(help.trim());
     const membersText = formatMembers(descriptor.members);
     if (membersText) parts.push(membersText);
-    const childrenText = formatChildren(path, descriptor.children?.() ?? []);
+    const childrenText = formatChildren(path, await descriptor.children?.() ?? []);
     if (childrenText) parts.push(childrenText);
     return parts.join("\n\n");
 }

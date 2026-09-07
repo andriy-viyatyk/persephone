@@ -68,7 +68,7 @@ export interface IAiVisionDescriptor {
     /** Canonical renderer-relative path for a returned node, when it is addressable. */
     readonly identity?: () => string | undefined;
     /** Dynamic children that exist right now. Must be cheap and side-effect free. */
-    children?(): readonly IAiChild[];
+    children?(): readonly IAiChild[] | Promise<readonly IAiChild[]>;
     /**
      * When this returns text the node is listed and summarised, and `$help` works, but nothing
      * under it resolves — the resolver answers with the text. Instance-level by design: the
@@ -86,7 +86,7 @@ export interface IAiVisionDescriptor {
      */
     readonly elements?: readonly IAiElementDeclaration[];
     /** JSON-able summary of the instance for result shaping. Default: `{ kind }`. */
-    summarize?(): unknown;
+    summarize?(): unknown | Promise<unknown>;
 }
 
 export interface IAiVisible {

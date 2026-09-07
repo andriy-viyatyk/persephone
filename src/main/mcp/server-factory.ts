@@ -1,8 +1,11 @@
 import { getServerInfo, readGuideFile, resourceFiles, SERVER_INSTRUCTIONS } from "./manifest";
+import { MainGuideSource } from "./ai-vision/guide-source";
 import { registerTools } from "./register-tools";
 import { McpServerInstance, requireSdk } from "./sdk";
 import { callTools } from "./tools/call-tools";
 import { createToolContext } from "./tools/params";
+import { createGuideIndex } from "../../shared/guides";
+import type { GuideTreeNode } from "../../shared/guides";
 
 /**
  * Creates a new McpServer — one per session, as the SDK requires one transport per
@@ -18,6 +21,7 @@ export function createMcpServer(): McpServerInstance {
 
     const ctx = createToolContext(z);
     registerTools(server, callTools(ctx));
+    const guideIndex = createGuideIndex(new MainGuideSource());
 
     // ── MCP Resources (focused guides) ─────────────────────────────────
     for (const res of resourceFiles) {
@@ -47,10 +51,29 @@ export function createMcpServer(): McpServerInstance {
             contents: [{
                 uri: uri.href,
                 mimeType: "text/markdown",
-                text: resourceFiles.map((r) => readGuideFile(r.file)).join("\n\n---\n\n"),
+                text: (await getAgentGuidePages(guideIndex)).join("\n\n---\n\n"),
             }],
         }),
     );
 
     return server;
+}
+
+async function getAgentGuidePages(guideIndex: ReturnType<typeof createGuideIndex>): Promise<string[]> {
+    const pages = flattenGuidePages(await guideIndex.getTree("agent"));
+    const contents = await Promise.all(pages.map(async page => {
+        const guide = await guideIndex.getPage(page.path, "agent");
+        if (!guide) throw new Error(`Guide page "${page.path}" disappeared while building the full resource.`);
+        return guide.content;
+    }));
+    return contents;
+}
+
+function flattenGuidePages(nodes: readonly GuideTreeNode[]): Array<Extract<GuideTreeNode, { readonly kind: "page" }>> {
+    const pages: Array<Extract<GuideTreeNode, { readonly kind: "page" }>> = [];
+    for (const node of nodes) {
+        if (node.kind === "folder") pages.push(...flattenGuidePages(node.children));
+        else pages.push(node);
+    }
+    return pages;
 }

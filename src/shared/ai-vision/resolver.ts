@@ -68,7 +68,7 @@ export async function resolveCall(root: unknown, request: ICallRequest, seenKind
         segments = parsePath(path);
     } catch (error) {
         const message = error instanceof PathSyntaxError ? error.message : errMessage(error);
-        const hint = nodeHint("", root, seenKinds, hintMode);
+        const hint = await nodeHint("", root, seenKinds, hintMode);
         return { path, error: `Invalid path: ${message}`, resolvedUpTo: "", ...(hint ? { hint } : {}) };
     }
 
@@ -92,12 +92,12 @@ export async function resolveCall(root: unknown, request: ICallRequest, seenKind
             if (!descriptor) {
                 return { path, error: `"${formatPath(walked) || "(root)"}" has no AiVision descriptor; nothing to explain. Its value is shown instead.`, ...shapeResult(current, maxLength) };
             }
-            return { path, result: buildHelp(formatPath(walked), descriptor) };
+            return { path, result: await buildHelp(formatPath(walked), descriptor) };
         }
 
         const restricted = descriptor?.restricted?.();
         if (restricted) {
-            return { path, error: restricted, resolvedUpTo: formatPath(walked), hint: nodeHint(formatPath(walked), current, seenKinds, hintMode, walkedContainsCall) };
+            return { path, error: restricted, resolvedUpTo: formatPath(walked), hint: await nodeHint(formatPath(walked), current, seenKinds, hintMode, walkedContainsCall) };
         }
 
         let invokedCall = false;
@@ -105,22 +105,22 @@ export async function resolveCall(root: unknown, request: ICallRequest, seenKind
             if (segment.type === "index") {
                 const next = indexInto(current, descriptor, segment.key);
                 if (next === undefined) {
-                    return errorAt(path, walked, current, seenKinds, hintMode, `No item ${JSON.stringify(segment.key)} in "${formatPath(walked) || "(root)"}".`, {}, walkedContainsCall);
+                    return await errorAt(path, walked, current, seenKinds, hintMode, `No item ${JSON.stringify(segment.key)} in "${formatPath(walked) || "(root)"}".`, {}, walkedContainsCall);
                 }
                 current = await next;
             } else {
                 const name = segment.name;
                 if (current === null || current === undefined || (typeof current !== "object" && typeof current !== "function")) {
-                    return errorAt(path, walked, current, seenKinds, hintMode, `"${formatPath(walked)}" is a primitive value; it has no member "${name}".`, {}, walkedContainsCall);
+                    return await errorAt(path, walked, current, seenKinds, hintMode, `"${formatPath(walked)}" is a primitive value; it has no member "${name}".`, {}, walkedContainsCall);
                 }
                 const member = descriptor?.members.find(m => m.name === name);
-                if (descriptor && !member && !isLiveChildMember(descriptor, name)) {
-                    return errorAt(path, walked, current, seenKinds, hintMode, `"${name}" is not a member of ${descriptor.kind}.`, { forceMembers: true, unknownMember: name }, walkedContainsCall);
+                if (descriptor && !member && !await isLiveChildMember(descriptor, name)) {
+                    return await errorAt(path, walked, current, seenKinds, hintMode, `"${name}" is not a member of ${descriptor.kind}.`, { forceMembers: true, unknownMember: name }, walkedContainsCall);
                 }
 
                 if (isLast && hasValue && segment.type === "member") {
                     if (descriptor && !member?.writable) {
-                        return errorAt(path, walked, current, seenKinds, hintMode, `"${name}" is not writable on ${descriptor.kind}.`, { forceMembers: true }, walkedContainsCall);
+                        return await errorAt(path, walked, current, seenKinds, hintMode, `"${name}" is not writable on ${descriptor.kind}.`, { forceMembers: true }, walkedContainsCall);
                     }
                     // MCP clients parse `value` as JSON, so an agent that means to write *text* that
                     // happens to be JSON cannot get a string through: whatever it sends arrives here
@@ -138,7 +138,7 @@ export async function resolveCall(root: unknown, request: ICallRequest, seenKind
                         (current as Record<string, unknown>)[name] = valueToAssign;
                     } catch (error) {
                         const valueType = Array.isArray(request.value) ? "array" : typeof request.value;
-                        return errorAt(path, walked, current, seenKinds, hintMode,
+                        return await errorAt(path, walked, current, seenKinds, hintMode,
                             `Assigning ${valueType} to "${name}" failed: ${errMessage(error)}. If the property holds text, pass "value" as a string (JSON.stringify structured data first).`, {}, walkedContainsCall);
                     }
                     walked.push(segment);
@@ -153,7 +153,7 @@ export async function resolveCall(root: unknown, request: ICallRequest, seenKind
                 }
                 if (segment.type === "call") {
                     if (typeof value !== "function") {
-                        return errorAt(path, walked, current, seenKinds, hintMode, `"${name}" is a property, not a method — drop the "()".`, { forceMembers: true }, walkedContainsCall);
+                        return await errorAt(path, walked, current, seenKinds, hintMode, `"${name}" is a property, not a method — drop the "()".`, { forceMembers: true }, walkedContainsCall);
                     }
                     const args = isLast && request.args ? request.args : segment.args;
                     value = (value as (...a: unknown[]) => unknown).apply(target, args);
@@ -162,6 +162,9 @@ export async function resolveCall(root: unknown, request: ICallRequest, seenKind
                     if (isLast && request.args) {
                         value = (value as (...a: unknown[]) => unknown).apply(target, request.args);
                         invokedCall = true;
+                    } else if (!isLast && segments[i + 1].type === "help" && getAiVision(value)) {
+                        // A method may expose its own descriptor for a traversable `$help` path;
+                        // ordinary methods retain the existing uncalled-method description.
                     } else {
                         // Naming a method without calling it: describe it rather than invoking it.
                         walked.push(segment);
@@ -174,7 +177,7 @@ export async function resolveCall(root: unknown, request: ICallRequest, seenKind
                 current = await value;
             }
         } catch (error) {
-            return errorAt(path, walked, current, seenKinds, hintMode, errMessage(error), {}, walkedContainsCall);
+            return await errorAt(path, walked, current, seenKinds, hintMode, errMessage(error), {}, walkedContainsCall);
         }
         walkedContainsCall ||= invokedCall;
         walked.push(segment);
@@ -187,8 +190,8 @@ export async function resolveCall(root: unknown, request: ICallRequest, seenKind
         return { path, error: "\"args\" needs a path ending in a method." };
     }
 
-    const shaped = shapeResult(current, maxLength);
-    const hint = nodeHint(formatPath(walked), current, seenKinds, hintMode, walkedContainsCall);
+    const shaped = await shapeResolvedResult(current, maxLength);
+    const hint = await nodeHint(formatPath(walked), current, seenKinds, hintMode, walkedContainsCall);
     return {
         path,
         ...shaped,
@@ -207,18 +210,18 @@ function indexInto(current: unknown, descriptor: IAiVisionDescriptor | undefined
 }
 
 /** `children()` may list `.grouped` or `.editor` — those names are valid even if not in `members`. */
-function isLiveChildMember(descriptor: IAiVisionDescriptor, name: string): boolean {
-    const children = descriptor.children?.() ?? [];
+async function isLiveChildMember(descriptor: IAiVisionDescriptor, name: string): Promise<boolean> {
+    const children = await descriptor.children?.() ?? [];
     return children.some(child => child.segment === `.${name}` || child.segment.startsWith(`.${name}(`));
 }
 
-function nodeHint(
+async function nodeHint(
     path: string,
     node: unknown,
     seenKinds: SeenKinds,
     mode: HintMode,
     walkedContainsCall = false,
-): IHint | undefined {
+): Promise<IHint | undefined> {
     if (mode === "never") return undefined;
     const descriptor = getAiVision(node);
     if (!descriptor) return undefined;
@@ -229,7 +232,7 @@ function nodeHint(
     return buildHint(hintPath, descriptor, includeMembers, walkedContainsCall && !identity);
 }
 
-function errorAt(
+async function errorAt(
     path: string,
     walked: readonly PathSegment[],
     node: unknown,
@@ -238,7 +241,7 @@ function errorAt(
     message: string,
     options: ErrorAtOptions = {},
     walkedContainsCall = false,
-): ICallResult {
+): Promise<ICallResult> {
     const resolvedUpTo = formatPath(walked);
     const descriptor = getAiVision(node);
     const suggestions = descriptor && options.unknownMember
@@ -252,8 +255,8 @@ function errorAt(
     }
 
     const hint = options.forceMembers
-        ? errorNodeHint(resolvedUpTo, node, seenKinds, mode, walkedContainsCall)
-        : nodeHint(resolvedUpTo, node, seenKinds, mode, walkedContainsCall);
+        ? await errorNodeHint(resolvedUpTo, node, seenKinds, mode, walkedContainsCall)
+        : await nodeHint(resolvedUpTo, node, seenKinds, mode, walkedContainsCall);
     return { path, error, resolvedUpTo, ...(hint ? { hint } : {}) };
 }
 
@@ -263,7 +266,7 @@ function errorNodeHint(
     seenKinds: SeenKinds,
     mode: HintMode,
     walkedContainsCall = false,
-): IHint | undefined {
+): Promise<IHint | undefined> {
     if (mode === "never") return undefined;
     const descriptor = getAiVision(node);
     if (!descriptor) return undefined;
@@ -272,4 +275,10 @@ function errorNodeHint(
     const identity = descriptor.identity?.();
     const hintPath = identity ?? (walkedContainsCall ? "" : path);
     return buildErrorHint(hintPath, descriptor, includeMembers, walkedContainsCall && !identity);
+}
+
+async function shapeResolvedResult(value: unknown, maxLength: number): Promise<ReturnType<typeof shapeResult>> {
+    const descriptor = getAiVision(value);
+    if (descriptor?.summarize) return shapeResult(await descriptor.summarize(), maxLength);
+    return shapeResult(value, maxLength);
 }

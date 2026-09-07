@@ -38,7 +38,7 @@ export const RESERVED_ROOT_NAMES: readonly string[] = ["windows", "main", "guide
 const ROOT_MEMBERS: IAiVisionDescriptor["members"] = [
     { name: "pages", kind: "property", summary: "All open pages (tabs) in this window; index by position or page id. Also holds pages.logView — the channel for showing the user output or asking them a question." },
     { name: "page", kind: "property", summary: "The active page (same as the `page` global in scripts)." },
-    { name: "helpSearch", kind: "method", signature: "helpSearch(query: string, limit = 20)", summary: "Search every hint/help text in the tree; returns paths with the matching line. Use when you know what you want but not where it lives." },
+    { name: "helpSearch", kind: "method", signature: "helpSearch(query: string, limit = 20)", summary: "Search the live descriptor graph for object-model paths; use guides.search for documentation text." },
     { name: "version", kind: "property", summary: "Persephone version string." },
     { name: "settings", kind: "property", node: true, summary: "Application settings (read/write)." },
     { name: "fs", kind: "property", node: true, summary: "File system access (read/write files, list folders).", caution: "writes touch the user's disk" },
@@ -59,6 +59,7 @@ const ROOT_MEMBERS: IAiVisionDescriptor["members"] = [
     // hint is complete. See RESERVED_ROOT_NAMES.
     { name: "windows", kind: "property", summary: "All Persephone windows (open and closed). windows[i] is one window; prefix any path with windows[i]. to target it — without the prefix you are talking to the main window." },
     { name: "main", kind: "property", summary: "Main-process diagnostics and settings-gated scripting; process-wide, never windows[i].main." },
+    { name: "guides", kind: "property", node: true, summary: "Documentation tree and text search for how to do something or where it is; use guides paths before resources." },
     { name: "script", kind: "property", node: true, summary: "Execute JavaScript or TypeScript in the renderer with the user's privileges." },
 ];
 
@@ -109,7 +110,7 @@ const ROOT_OVERVIEW = `
 pages - open pages/tabs and the agent output channel; e.g. pages.logView.push([...])
 page - the active page and its editor; e.g. page.content
 script - execute renderer JavaScript or TypeScript; e.g. script.execute("1 + 1")
-helpSearch - find matching hint/help lines and paths; e.g. helpSearch("add rows")
+helpSearch - search the live descriptor graph for object-model paths; use guides.search for documentation text; e.g. helpSearch("add rows")
 settings - read or persist application configuration; e.g. settings.set("theme", "monokai")
 fs - read/write files, directories, and OS file integration; e.g. fs.read("path")
 ui - dialogs, notifications, progress, locks, and curated controls; e.g. ui.elements
@@ -127,6 +128,7 @@ downloads - inspect and manage download entries; e.g. downloads.downloads
 menuFolders - inspect configured sidebar folders; e.g. menuFolders.folders
 windows - inspect open/closed application windows; e.g. windows[0].status
 main - process-wide diagnostics and gated scripting; e.g. main.runtime
+guides - documentation tree and text search for how to do something or where it is; e.g. guides.editors.grid
 `.trim();
 
 const ROOT_HELP = `

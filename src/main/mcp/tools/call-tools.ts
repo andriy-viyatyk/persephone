@@ -43,7 +43,7 @@ export function routeCallPath(path: string, explicitWindow: number | undefined):
     if (!first || first.type !== "member") {
         return { forward: { path, windowIndex: explicitWindow } };
     }
-    if (first.name === "main") return { local: true };
+    if (first.name === "main" || first.name === "guides") return { local: true };
     if (first.name !== "windows") return { forward: { path, windowIndex: explicitWindow } };
     // windows | windows.$help | windows.count | windows[i] | windows[i].$help | windows[i].<own member>
     const index = segments[1];

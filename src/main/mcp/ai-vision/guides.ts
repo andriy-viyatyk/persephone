@@ -1,0 +1,242 @@
+import { app as electronApp } from "electron";
+
+import { ArgumentValidationError, numberRule, stringRule, validateCallArguments } from "../../../shared/ai-vision/argument-validation";
+import type { GuideIndex, GuideTreeFolder, GuideTreeNode, GuideTreePage } from "../../../shared/guides";
+import { IAiChild, IAiMember, IAiVisible, IAiVisionDescriptor } from "../../../shared/ai-vision/types";
+import { MainGuideSource } from "./guide-source";
+
+const NO_LAYOUT_MESSAGE = "No layout schema is available for this guide yet; layout schemas arrive per screen in a later task.";
+const GUIDE_NOT_FOUND_EXAMPLE = 'guides["editors/grid"]';
+
+const GUIDES_MEMBERS: readonly IAiMember[] = [
+    { name: "search", kind: "method", signature: "search(query: string, limit = 10)", summary: "Search documentation text across the guide corpus; use helpSearch for the live descriptor graph." },
+    { name: "whatsNew", kind: "property", summary: "The selected release-notes section for the running version; use guides[\"whats-new\"] for the complete release-notes history." },
+];
+
+const GUIDE_PAGE_MEMBERS: readonly IAiMember[] = [
+    { name: "layout", kind: "property", summary: "The page's ## Layout schema, or the later-task message when no schema exists." },
+];
+
+const GUIDE_SEARCH_DESCRIPTOR: IAiVisionDescriptor = {
+    kind: "GuideSearch",
+    summary: "Text search over documentation pages.",
+    members: [],
+    help: "guides.search(query, limit = 10) searches documentation text across all indexed Markdown pages; use helpSearch for the live descriptor graph and object-model paths.",
+};
+
+const SEARCH_ARGUMENTS = [
+    stringRule("query", 'guides.search("grid")'),
+    numberRule("limit", 'guides.search("grid", 10)', { required: false, minimum: 1 }),
+] as const;
+
+export class GuidesNode implements IAiVisible {
+    constructor(
+        private readonly index: GuideIndex,
+        private readonly source: MainGuideSource,
+    ) {}
+
+    search(...args: unknown[]) {
+        const [query, requestedLimit] = validateCallArguments("guides.search", args, SEARCH_ARGUMENTS, { maxArgs: 2 });
+        if (!query.trim()) {
+            throw new ArgumentValidationError(
+                `Invalid argument "query" for guides.search: received ${formatArgument(query)} (string); expected a non-blank string. Example: guides.search("grid")`,
+            );
+        }
+        const limit = requestedLimit ?? 10;
+        if (!Number.isFinite(limit) || !Number.isInteger(limit)) {
+            throw new ArgumentValidationError(
+                `Invalid argument "limit" for guides.search: received ${formatArgument(limit)} (number); expected a finite integer at least 1. Example: guides.search("grid", 10)`,
+            );
+        }
+        return this.index.search(query, limit);
+    }
+
+    get whatsNew(): Promise<string> {
+        return this.readWhatsNew();
+    }
+
+    get aiVision(): IAiVisionDescriptor {
+        return {
+            kind: "Guides",
+            summary: "Documentation tree and text search for how to do something or where it is.",
+            members: GUIDES_MEMBERS,
+            help: "guides.search searches documentation text; helpSearch searches the live descriptor graph for object-model paths. Start with guides, then use the returned call fields.",
+            children: async () => toChildren(await this.index.getTree()),
+            index: key => typeof key === "string" ? this.createNode(key) : undefined,
+            provide: name => GUIDES_MEMBERS.some(member => member.name === name)
+                ? undefined
+                : { value: this.createNode(name) },
+            summarize: async () => projectTree(await this.index.getTree()),
+        };
+    }
+
+    private createNode(path: string): IAiVisible {
+        return this.source.getEntryKind(path) === "directory"
+            ? new GuideFolderNode(this.index, this.source, path)
+            : new GuidePageNode(this.index, path);
+    }
+
+    private async readWhatsNew(): Promise<string> {
+        const page = await this.index.getPage("whats-new");
+        if (!page) return `No release notes are available for Persephone ${electronApp.getVersion()}.`;
+        const version = electronApp.getVersion();
+        return selectReleaseNotes(page.content, version);
+    }
+}
+
+Object.defineProperty(GuidesNode.prototype.search, "aiVision", { value: GUIDE_SEARCH_DESCRIPTOR });
+
+class GuideFolderNode implements IAiVisible {
+    constructor(
+        private readonly index: GuideIndex,
+        private readonly source: MainGuideSource,
+        private readonly path: string,
+    ) {}
+
+    get aiVision(): IAiVisionDescriptor {
+        return {
+            kind: "GuideFolder",
+            summary: `Guide folder "${this.path}".`,
+            members: [],
+            children: async () => toChildren(await this.getChildren()),
+            index: key => typeof key === "string" ? this.createNode(joinPath(this.path, key)) : undefined,
+            provide: name => ({ value: this.createNode(joinPath(this.path, name)) }),
+            summarize: async () => projectNodes(await this.getChildren()),
+        };
+    }
+
+    private async getChildren(): Promise<readonly GuideTreeNode[]> {
+        const tree = await this.index.getTree();
+        const folder = findFolder(tree, this.path);
+        if (!folder) throw guideNotFound(this.path);
+        return folder.children;
+    }
+
+    private createNode(path: string): IAiVisible {
+        return this.source.getEntryKind(path) === "directory"
+            ? new GuideFolderNode(this.index, this.source, path)
+            : new GuidePageNode(this.index, path);
+    }
+}
+
+class GuidePageNode implements IAiVisible {
+    constructor(
+        private readonly index: GuideIndex,
+        private readonly path: string,
+    ) {}
+
+    get layout(): Promise<string> {
+        return this.readLayout();
+    }
+
+    get aiVision(): IAiVisionDescriptor {
+        return {
+            kind: "GuidePage",
+            summary: `Guide page "${this.path}"; its terminal value is front-matter-stripped text.`,
+            members: GUIDE_PAGE_MEMBERS,
+            summarize: async () => {
+                const page = await this.index.getPage(this.path);
+                if (!page) throw guideNotFound(this.path);
+                return page.content;
+            },
+        };
+    }
+
+    private async readLayout(): Promise<string> {
+        const page = await this.index.getPage(this.path);
+        if (!page) throw guideNotFound(this.path);
+        const layout = await this.index.getLayout(this.path);
+        return layout ?? NO_LAYOUT_MESSAGE;
+    }
+}
+
+function toChildren(nodes: readonly GuideTreeNode[]): readonly IAiChild[] {
+    return nodes.map(node => ({
+        segment: childSegment(node),
+        kind: node.kind === "folder" ? "GuideFolder" : "GuidePage",
+        summary: node.kind === "folder" ? `folder: ${node.path}` : `${node.title}: ${node.summary}`,
+    }));
+}
+
+function projectTree(nodes: readonly GuideTreeNode[]): readonly GuideTreeNode[] {
+    return nodes.map(projectNode);
+}
+
+function projectNodes(nodes: readonly GuideTreeNode[]): readonly GuideTreeNode[] {
+    return nodes.map(projectNode);
+}
+
+function projectNode(node: GuideTreeNode): GuideTreeNode {
+    if (node.kind === "folder") {
+        return {
+            ...node,
+            call: callPath(node.path),
+            children: projectTree(node.children),
+        } as GuideTreeFolder & { readonly call: string };
+    }
+    return { ...node, call: callPath(node.path) } as GuideTreePage & { readonly call: string };
+}
+
+function findFolder(nodes: readonly GuideTreeNode[], path: string): GuideTreeFolder | undefined {
+    for (const node of nodes) {
+        if (node.kind === "folder") {
+            if (node.path === path) return node;
+            const nested = findFolder(node.children, path);
+            if (nested) return nested;
+        }
+    }
+    return undefined;
+}
+
+function childSegment(node: GuideTreeNode): string {
+    return isIdentifier(node.name) ? `.${node.name}` : `[${JSON.stringify(node.name)}]`;
+}
+
+function callPath(path: string): string {
+    return path.split("/").every(isIdentifier)
+        ? `guides.${path.split("/").join(".")}`
+        : `guides[${JSON.stringify(path)}]`;
+}
+
+function isIdentifier(value: string): boolean {
+    return /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(value);
+}
+
+function joinPath(parent: string, child: string): string {
+    return `${parent}/${child}`;
+}
+
+function guideNotFound(path: string): Error {
+    return new Error(`Guide path "${path}" was not found in the current Markdown corpus. Use "guides" to inspect available guides or "${GUIDE_NOT_FOUND_EXAMPLE}".`);
+}
+
+function selectReleaseNotes(content: string, version: string): string {
+    const upcoming = findReleaseSection(content, `## Version ${version} (Upcoming)`);
+    if (upcoming !== undefined) return upcoming;
+    const released = findReleaseSection(content, `## Version ${version}`);
+    return released ?? `No release notes are available for Persephone ${version}.`;
+}
+
+function findReleaseSection(content: string, heading: string): string | undefined {
+    const headingPattern = new RegExp(`^${escapeRegExp(heading)}\\s*$`, "m");
+    const match = headingPattern.exec(content);
+    if (!match || match.index === undefined) return undefined;
+    const bodyStart = match.index + match[0].length;
+    const nextHeading = /^## Version .+$/m.exec(content.slice(bodyStart));
+    const bodyEnd = nextHeading?.index === undefined ? content.length : bodyStart + nextHeading.index;
+    return `${heading}\n\n${content.slice(bodyStart, bodyEnd).trim()}`.trim();
+}
+
+function escapeRegExp(value: string): string {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function formatArgument(value: unknown): string {
+    if (typeof value === "string") return JSON.stringify(value);
+    if (typeof value === "number") return String(value);
+    try {
+        return JSON.stringify(value) ?? String(value);
+    } catch {
+        return String(value);
+    }
+}

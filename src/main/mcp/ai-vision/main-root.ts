@@ -1,6 +1,9 @@
 import { openWindows } from "../../open-windows";
 import { windowStates } from "../../window-states";
 import { IAiChild, IAiMember, IAiVisible, IAiVisionDescriptor } from "../../../shared/ai-vision/types";
+import { createGuideIndex } from "../../../shared/guides";
+import { GuidesNode } from "./guides";
+import { MainGuideSource } from "./guide-source";
 import { MainNode } from "./main-services";
 
 /**
@@ -15,6 +18,12 @@ import { MainNode } from "./main-services";
 
 /** Members of one window that the main process answers itself; anything else is forwarded. */
 export const WINDOW_MEMBER_NAMES: readonly string[] = ["index", "status", "pageCount", "activePageId", "pages", "open", "focus"];
+
+const MAIN_ROOT_MEMBERS: readonly IAiMember[] = [
+    { name: "windows", kind: "property", node: true, summary: "All windows; windows[i] addresses one." },
+    { name: "main", kind: "property", node: true, summary: "Main-process diagnostics and gated scripting." },
+    { name: "guides", kind: "property", node: true, summary: "Documentation tree, page text, layouts, and text search; served by the main process." },
+];
 
 const WINDOW_MEMBERS: readonly IAiMember[] = [
     { name: "index", kind: "property", summary: "Window index — the value other tools take as windowIndex." },
@@ -158,15 +167,18 @@ export class WindowsNode implements IAiVisible {
 export class MainAiRoot implements IAiVisible {
     readonly windows = new WindowsNode();
     readonly main = new MainNode(this.windows);
+    readonly guides: GuidesNode;
+
+    constructor() {
+        const source = new MainGuideSource();
+        this.guides = new GuidesNode(createGuideIndex(source), source);
+    }
 
     get aiVision(): IAiVisionDescriptor {
         return {
             kind: "PersephoneMain",
             summary: "Main-process part of the object model.",
-            members: [
-                { name: "windows", kind: "property", node: true, summary: "All windows; windows[i] addresses one." },
-                { name: "main", kind: "property", node: true, summary: "Main-process diagnostics and gated scripting." },
-            ],
+            members: MAIN_ROOT_MEMBERS,
         };
     }
 }
