@@ -1,3 +1,4 @@
+import { withEditorGuideHelp } from "./editor-guide-help";
 import type { MarkdownEditor } from "../../editors/markdown";
 import type { IAiMember, IAiVisible, IAiVisionDescriptor } from "../../../shared/ai-vision/types";
 import { ui } from "../../api/ui";
@@ -71,7 +72,7 @@ export class MarkdownEditorFacade implements IAiVisible {
             kind: "MarkdownEditor",
             summary: "Markdown preview facade.",
             members: [...MARKDOWN_EDITOR_MEMBERS, ...elements.members],
-            help: MARKDOWN_EDITOR_HELP,
+            help: withEditorGuideHelp(this.id, MARKDOWN_EDITOR_HELP),
             elements: MARKDOWN_ELEMENTS,
             provide: elements.provide,
             summarize: () => ({

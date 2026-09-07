@@ -1,3 +1,4 @@
+import { withEditorGuideHelp } from "./editor-guide-help";
 import type { IAiMember, IAiVisible, IAiVisionDescriptor } from "../../../shared/ai-vision/types";
 import { ui } from "../../api/ui";
 import type { VideoEditor } from "../../editors/video/VideoEditor";
@@ -86,7 +87,7 @@ export class VideoEditorFacade implements IAiVisible {
             kind: "VideoEditor",
             summary: "Read-mostly video and audio facade with live playback properties when media is mounted.",
             members: [...VIDEO_EDITOR_MEMBERS, ...elements.members],
-            help: VIDEO_EDITOR_HELP,
+            help: withEditorGuideHelp(this.id, VIDEO_EDITOR_HELP),
             elements: VIDEO_ELEMENTS,
             provide: elements.provide,
             summarize: () => ({

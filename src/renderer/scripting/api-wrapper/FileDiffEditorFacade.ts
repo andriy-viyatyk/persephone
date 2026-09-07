@@ -1,3 +1,4 @@
+import { withEditorGuideHelp } from "./editor-guide-help";
 import type { IAiMember, IAiVisible, IAiVisionDescriptor } from "../../../shared/ai-vision/types";
 import { ui } from "../../api/ui";
 import type { FileDiffEditor } from "../../editors/file-diff/FileDiffEditor";
@@ -46,7 +47,7 @@ export class FileDiffEditorFacade implements IAiVisible {
             kind: "FileDiffEditor",
             summary: "File Diff facade with revision identity and shared text controls.",
             members: [...FILE_DIFF_EDITOR_MEMBERS, ...elements.members],
-            help: FILE_DIFF_EDITOR_HELP,
+            help: withEditorGuideHelp(this.id, FILE_DIFF_EDITOR_HELP),
             elements: FILE_DIFF_ELEMENTS,
             provide: elements.provide,
             summarize: () => ({

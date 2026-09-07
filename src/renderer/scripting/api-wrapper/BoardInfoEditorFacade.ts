@@ -1,3 +1,4 @@
+import { withEditorGuideHelp } from "./editor-guide-help";
 import type {
     BoardInfoInstallState,
     IBoardInfoCatalogMatch,
@@ -104,7 +105,7 @@ export class BoardInfoEditorFacade implements IAiVisible, IBoardInfoEditor {
             kind: "BoardInfoEditor",
             summary: "Model-backed Board Info catalog, install, properties, and version facade.",
             members: [...BOARD_INFO_MEMBERS, ...elements.members],
-            help: BOARD_INFO_HELP,
+            help: withEditorGuideHelp(this.id, BOARD_INFO_HELP),
             elements: BOARD_INFO_ELEMENTS,
             provide: elements.provide,
             summarize: () => this.aiSummary(),

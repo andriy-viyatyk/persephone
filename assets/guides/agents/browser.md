@@ -2,10 +2,12 @@
 title: "Browser automation through call"
 audience: agent
 summary: "Browser automation reference: page targeting, snapshots, ref lifecycle, waiting, profiles, boards, and the app window."
-editorId: "browser-view"
 ---
 
 # Browser automation through `call`
+The user-facing [Browser editor guide](../editors/browser.md) owns the `browser-view` editor mapping;
+this page remains the detailed automation reference.
+
 Use the `call` paths below for browser pages, trusted boards, and Persephone's own window. The
 browser member and wait contract is already discoverable from `pages[i].editor.$help`; this
 resource keeps the detailed host, ref, and error reference.

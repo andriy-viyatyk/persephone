@@ -2,10 +2,12 @@
 title: "Notebook Editor Format (notebook-view)"
 audience: agent
 summary: "Notebook editor reference: NoteItem JSON format and text, markdown, code, mermaid, and grid content types."
-editorId: "notebook-view"
 ---
 
 # Notebook Editor Format (`notebook-view`)
+The user-facing [Notebook editor guide](../editors/notebook.md) owns the `notebook-view` editor
+mapping; this page remains the detailed JSON format reference.
+
 **IMPORTANT: Read this guide BEFORE creating or updating notebook pages. Incorrect JSON structure will crash the editor.**
 
 ## Creating a Notebook Page

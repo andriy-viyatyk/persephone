@@ -1,3 +1,4 @@
+import { withEditorGuideHelp } from "./editor-guide-help";
 import type { MermaidEditor } from "../../editors/mermaid";
 import { writePngToFile } from "../../editors/shared/image-export";
 import type { IAiMember, IAiVisible, IAiVisionDescriptor } from "../../../shared/ai-vision/types";
@@ -66,7 +67,7 @@ export class MermaidEditorFacade implements IAiVisible {
             kind: "MermaidEditor",
             summary: "Mermaid diagram preview facade.",
             members: [...MERMAID_EDITOR_MEMBERS, ...elements.members],
-            help: MERMAID_EDITOR_HELP,
+            help: withEditorGuideHelp(this.id, MERMAID_EDITOR_HELP),
             elements: MERMAID_ELEMENTS,
             provide: elements.provide,
             summarize: () => ({

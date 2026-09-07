@@ -1,3 +1,4 @@
+import { withEditorGuideHelp } from "./editor-guide-help";
 import type {
     BoardRenderState,
     IBoardEditor,
@@ -123,7 +124,7 @@ export class BoardEditorFacade implements IAiVisible, IBoardEditor {
                 ...BOARD_MEMBERS,
                 ...elements.members,
             ],
-            help: BOARD_HELP,
+            help: withEditorGuideHelp(this.id, BOARD_HELP),
             elements: BOARD_ELEMENTS,
             provide: elements.provide,
             restricted: () => this.restricted(),

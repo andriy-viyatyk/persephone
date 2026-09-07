@@ -122,6 +122,7 @@ secondaryViewRegistry.registerPrefix(BOARD_SECONDARY_PREFIX, {
 interface EditorRow {
     id: string;
     name: string;
+    guidePath?: string;
     hasContentHost?: boolean;
     mcpHint?: string;
     /** Explicit acceptance override (monaco, file-diff). */
@@ -133,6 +134,7 @@ const EDITORS: EditorRow[] = [
     {
         id: "monaco",
         name: "Text Editor",
+        guidePath: "editors/monaco",
         hasContentHost: true,
         // Explicit accepts (NOT makeAccepts): monaco is the universal text fallback
         // and the page-switch floor — walkthrough 20 §accepts. Its number outranks
@@ -146,41 +148,42 @@ const EDITORS: EditorRow[] = [
         },
         load: async () => (await import("./monaco")).monacoModule,
     },
-    { id: "grid-json", name: "Grid (JSON)", hasContentHost: true, load: async () => (await import("./grid")).gridJsonModule },
-    { id: "grid-csv", name: "Grid (CSV)", hasContentHost: true, load: async () => (await import("./grid")).gridCsvModule },
-    { id: "grid-jsonl", name: "Grid (JSONL)", hasContentHost: true, load: async () => (await import("./grid")).gridJsonlModule },
-    { id: "log-view", name: "Log View", hasContentHost: true, mcpHint: 'Use pages.logView.push(entries) to write entries to the MCP Log View; use pages.logView.dialogResult(id) to read an answer.', load: async () => (await import("./log-view")).logViewModule },
-    { id: "md-view", name: "Preview", hasContentHost: true, load: async () => (await import("./markdown")).markdownModule },
-    { id: "svg-view", name: "Preview", hasContentHost: true, load: async () => (await import("./svg")).svgModule },
-    { id: "html-view", name: "Preview", hasContentHost: true, load: async () => (await import("./html")).htmlModule },
-    { id: "mermaid-view", name: "Mermaid", hasContentHost: true, load: async () => (await import("./mermaid")).mermaidModule },
-    { id: "graph-view", name: "Graph", hasContentHost: true, load: async () => (await import("./graph")).graphModule },
-    { id: "draw-view", name: "Drawing", hasContentHost: true, load: async () => (await import("./draw")).drawModule },
-    { id: "link-view", name: "Links", hasContentHost: true, load: async () => (await import("./link-editor")).linkModule },
-    { id: "rest-client", name: "Rest Client", hasContentHost: true, load: async () => (await import("./rest-client")).restClientModule },
-    { id: "notebook-view", name: "Notebook", hasContentHost: true, load: async () => (await import("./notebook")).notebookModule },
-    { id: "env-vars-view", name: "Env Vars", hasContentHost: true, load: async () => (await import("./env-vars")).envVarsModule },
-    { id: "browser-view", name: "Browser", mcpHint: "Use pages.openUrlInBrowserTab(url, options) to open or reuse a URL in the built-in browser, then use pages[i].editor after narrowing editor.id to \"browser-view\".", load: async () => (await import("./browser")).browserModule },
-    { id: "image-view", name: "Image Viewer", mcpHint: 'Use script.execute with: await app.pages.openFile("/path/to/image.png")', load: async () => (await import("./image")).imageModule },
-    { id: "archive-view", name: "Archive", mcpHint: 'Use script.execute with: await app.pages.openFile("/path/to/archive.zip")', load: async () => (await import("./archive")).archiveModule },
-    { id: "video-view", name: "Video Player", mcpHint: 'Use script.execute with: await app.pages.openFile("/path/to/video.mp4")', load: async () => (await import("./video")).videoModule },
-    { id: "settings-view", name: "Settings", mcpHint: "Use script.execute with: await app.pages.showSettingsPage()", load: async () => (await import("./settings")).settingsModule },
-    { id: "about-view", name: "About", mcpHint: "Use script.execute with: await app.pages.showAboutPage()", load: async () => (await import("./about")).aboutModule },
+    { id: "grid-json", name: "Grid (JSON)", guidePath: "editors/grid", hasContentHost: true, load: async () => (await import("./grid")).gridJsonModule },
+    { id: "grid-csv", name: "Grid (CSV)", guidePath: "editors/grid", hasContentHost: true, load: async () => (await import("./grid")).gridCsvModule },
+    { id: "grid-jsonl", name: "Grid (JSONL)", guidePath: "editors/grid", hasContentHost: true, load: async () => (await import("./grid")).gridJsonlModule },
+    { id: "log-view", name: "Log View", guidePath: "editors/log-view", hasContentHost: true, mcpHint: 'Use pages.logView.push(entries) to write entries to the MCP Log View; use pages.logView.dialogResult(id) to read an answer.', load: async () => (await import("./log-view")).logViewModule },
+    { id: "md-view", name: "Preview", guidePath: "editors/markdown", hasContentHost: true, load: async () => (await import("./markdown")).markdownModule },
+    { id: "svg-view", name: "Preview", guidePath: "editors/svg", hasContentHost: true, load: async () => (await import("./svg")).svgModule },
+    { id: "html-view", name: "Preview", guidePath: "editors/html", hasContentHost: true, load: async () => (await import("./html")).htmlModule },
+    { id: "mermaid-view", name: "Mermaid", guidePath: "editors/mermaid", hasContentHost: true, load: async () => (await import("./mermaid")).mermaidModule },
+    { id: "graph-view", name: "Graph", guidePath: "editors/graph", hasContentHost: true, load: async () => (await import("./graph")).graphModule },
+    { id: "draw-view", name: "Drawing", guidePath: "editors/draw", hasContentHost: true, load: async () => (await import("./draw")).drawModule },
+    { id: "link-view", name: "Links", guidePath: "editors/links", hasContentHost: true, load: async () => (await import("./link-editor")).linkModule },
+    { id: "rest-client", name: "Rest Client", guidePath: "editors/rest-client", hasContentHost: true, load: async () => (await import("./rest-client")).restClientModule },
+    { id: "notebook-view", name: "Notebook", guidePath: "editors/notebook", hasContentHost: true, load: async () => (await import("./notebook")).notebookModule },
+    { id: "env-vars-view", name: "Env Vars", guidePath: "editors/env-vars", hasContentHost: true, load: async () => (await import("./env-vars")).envVarsModule },
+    { id: "browser-view", name: "Browser", guidePath: "editors/browser", mcpHint: "Use pages.openUrlInBrowserTab(url, options) to open or reuse a URL in the built-in browser, then use pages[i].editor after narrowing editor.id to \"browser-view\".", load: async () => (await import("./browser")).browserModule },
+    { id: "image-view", name: "Image Viewer", guidePath: "editors/image", mcpHint: 'Use script.execute with: await app.pages.openFile("/path/to/image.png")', load: async () => (await import("./image")).imageModule },
+    { id: "archive-view", name: "Archive", guidePath: "editors/archive", mcpHint: 'Use script.execute with: await app.pages.openFile("/path/to/archive.zip")', load: async () => (await import("./archive")).archiveModule },
+    { id: "video-view", name: "Video Player", guidePath: "editors/video", mcpHint: 'Use script.execute with: await app.pages.openFile("/path/to/video.mp4")', load: async () => (await import("./video")).videoModule },
+    { id: "settings-view", name: "Settings", guidePath: "screens/settings", mcpHint: "Use script.execute with: await app.pages.showSettingsPage()", load: async () => (await import("./settings")).settingsModule },
+    { id: "about-view", name: "About", guidePath: "screens/index", mcpHint: "Use script.execute with: await app.pages.showAboutPage()", load: async () => (await import("./about")).aboutModule },
     // Reached only via showToolsHubPage (the AppBar panel's "Open in new tab" button) —
     // never a file-open target.
-    { id: "tools-hub-view", name: "Tools & Editors", load: async () => (await import("./tools-hub")).toolsHubModule },
-    { id: "mcp-view", name: "MCP Inspector", mcpHint: 'Open with pages.showMcpInspectorPage() or pages.showMcpInspectorPage({ url: "http://host:port/mcp" }) using a credential-free URL, then use pages[i].editor after narrowing editor.id to "mcp-view" to inspect connection and panel state.', load: async () => (await import("./mcp-inspector")).mcpModule },
-    { id: "mneme-config", name: "Mneme", mcpHint: 'Use pages.showMnemeConfigPage(), then the "mneme-config" editor facade for configuration and status; use the Mneme MCP server for document contents and document operations. This facade does not expose transport credentials.', load: async () => (await import("./mneme-config")).mnemeConfigModule },
+    { id: "tools-hub-view", name: "Tools & Editors", guidePath: "screens/index", load: async () => (await import("./tools-hub")).toolsHubModule },
+    { id: "mcp-view", name: "MCP Inspector", guidePath: "screens/mcp-inspector", mcpHint: 'Open with pages.showMcpInspectorPage() or pages.showMcpInspectorPage({ url: "http://host:port/mcp" }) using a credential-free URL, then use pages[i].editor after narrowing editor.id to "mcp-view" to inspect connection and panel state.', load: async () => (await import("./mcp-inspector")).mcpModule },
+    { id: "mneme-config", name: "Mneme", guidePath: "mneme", mcpHint: 'Use pages.showMnemeConfigPage(), then the "mneme-config" editor facade for configuration and status; use the Mneme MCP server for document contents and document operations. This facade does not expose transport credentials.', load: async () => (await import("./mneme-config")).mnemeConfigModule },
     // Importer touched for the Storybook editor's .tsx -> .ts native-view conversion.
     { id: "storybook-view", name: "Storybook", load: async () => (await import("./storybook")).storybookModule },
-    { id: "category-view", name: "Folder View", load: async () => (await import("./category")).categoryModule },
-    { id: "git-tree", name: "Git Tree", load: async () => (await import("./git-tree")).gitTreeModule },
-    { id: "mneme-root", name: "Mneme", mcpHint: 'Use the "mneme-root" editor facade for root and search state; use the Mneme MCP server for document contents and document operations. This facade does not expose transport credentials.', load: async () => (await import("./mneme-root")).mnemeRootModule },
-    { id: "board-view", name: "Boards", load: async () => (await import("./board")).boardModule },
-    { id: "toolset-view", name: "Agent Tool", load: async () => (await import("./toolset")).toolsetModule },
+    { id: "category-view", name: "Folder View", guidePath: "editors/folder", load: async () => (await import("./category")).categoryModule },
+    { id: "git-tree", name: "Git Tree", guidePath: "editors/git-tree", load: async () => (await import("./git-tree")).gitTreeModule },
+    { id: "mneme-root", name: "Mneme", guidePath: "mneme", mcpHint: 'Use the "mneme-root" editor facade for root and search state; use the Mneme MCP server for document contents and document operations. This facade does not expose transport credentials.', load: async () => (await import("./mneme-root")).mnemeRootModule },
+    { id: "board-view", name: "Boards", guidePath: "editors/board", load: async () => (await import("./board")).boardModule },
+    { id: "toolset-view", name: "Agent Tool", guidePath: "agent-tools", load: async () => (await import("./toolset")).toolsetModule },
     {
         id: "board-info",
         name: "Board Info",
+        guidePath: "boards",
         // Host-capable holder (EPIC-045): adopts/yields the shared content host WITHOUT rendering
         // it, so `Text ↔ + ↔ installed board` switches transfer the same host with no reload.
         hasContentHost: true,
@@ -191,6 +194,7 @@ const EDITORS: EditorRow[] = [
     {
         id: "file-diff",
         name: "Git Diff",
+        guidePath: "editors/file-diff",
         hasContentHost: true,
         // Host-aware (EPIC-030 / US-613): offered for any file detected in a git
         // repo, regardless of changes (Concern 2A). No host (file-open resolution)
@@ -207,6 +211,7 @@ for (const e of EDITORS) {
     editorRegistry.register({
         id: e.id,
         name: e.name,
+        guidePath: e.guidePath,
         hasContentHost: e.hasContentHost ?? false,
         mcpHint: e.mcpHint,
         accepts: e.accepts ?? (match ? makeAccepts(match) : () => -1),

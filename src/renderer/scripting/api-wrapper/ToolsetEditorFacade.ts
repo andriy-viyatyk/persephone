@@ -1,3 +1,4 @@
+import { withEditorGuideHelp } from "./editor-guide-help";
 import type { IToolsetEditor } from "../../api/types/toolset-editor";
 import type { IAiElementDeclaration, IAiMember, IAiVisible, IAiVisionDescriptor } from "../../../shared/ai-vision/types";
 import { fpNormalizeForCompare } from "../../core/utils/file-path";
@@ -64,7 +65,7 @@ export class ToolsetEditorFacade implements IAiVisible, IToolsetEditor {
             kind: "ToolsetEditor",
             summary: "Model-backed toolset identity, validation status, actions, and curated controls.",
             members: [...TOOLSET_MEMBERS, ...elements.members],
-            help: TOOLSET_HELP,
+            help: withEditorGuideHelp(this.id, TOOLSET_HELP),
             elements: TOOLSET_ELEMENTS,
             provide: elements.provide,
             summarize: () => this.aiSummary(),

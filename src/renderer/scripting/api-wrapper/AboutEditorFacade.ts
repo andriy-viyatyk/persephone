@@ -1,3 +1,4 @@
+import { withEditorGuideHelp } from "./editor-guide-help";
 import type { AboutEditor, AboutGuideLocation } from "../../editors/about/AboutEditor";
 import { getGuideIndex } from "../../guides";
 import type { IAiElementDeclaration, IAiMember, IAiVisible, IAiVisionDescriptor } from "../../../shared/ai-vision/types";
@@ -44,7 +45,7 @@ const ABOUT_MEMBERS: readonly IAiMember[] = [
 ];
 
 const GUIDE_OPEN_EXAMPLE = 'pages[i].editor.open("editors/grid")';
-const GUIDE_INPUT_FORMS = 'Accepted forms are "editors/grid", "editors/grid#filtering", and "persephone-guide://editors/grid#filtering".';
+const GUIDE_INPUT_FORMS = 'Accepted forms are "editors/grid", "editors/grid#filtering", or a canonical guide URL with an optional fragment.';
 const GUIDE_DISCOVERY = "Use guides to discover valid guide identities.";
 const GUIDE_EXAMPLE = `Example: ${GUIDE_OPEN_EXAMPLE}.`;
 
@@ -130,7 +131,7 @@ export class AboutEditorFacade implements IAiVisible {
             kind: "AboutEditor",
             summary: "About page guide-browser facade.",
             members: [...ABOUT_MEMBERS, ...elements.members],
-            help: ABOUT_HELP,
+            help: withEditorGuideHelp(this.id, ABOUT_HELP),
             elements: ABOUT_ELEMENTS,
             provide: elements.provide,
             summarize: () => ({

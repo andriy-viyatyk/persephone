@@ -1,3 +1,4 @@
+import { withEditorGuideHelp } from "./editor-guide-help";
 import type { GraphEditor } from "../../editors/graph";
 import type { GraphNode } from "../../editors/graph/types";
 import { linkIds } from "../../editors/graph/types";
@@ -147,7 +148,7 @@ export class GraphEditorFacade implements IAiVisible {
             kind: "GraphEditor",
             summary: "Graph query, analysis, and rendered-surface facade.",
             members: [...GRAPH_EDITOR_MEMBERS, ...elements.members],
-            help: GRAPH_EDITOR_HELP,
+            help: withEditorGuideHelp(this.id, GRAPH_EDITOR_HELP),
             elements: GRAPH_ELEMENTS,
             provide: elements.provide,
             summarize: () => ({

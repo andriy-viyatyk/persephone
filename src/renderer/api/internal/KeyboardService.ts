@@ -7,17 +7,30 @@ import { errMessage } from "../../../shared/utils";
 import { guard } from "../../core/utils/guard";
 
 function findGuidePath(nodes: readonly GuideTreeNode[], editorId: string): string | undefined {
-    for (const node of nodes) {
-        if (node.kind === "page" && (
-            node.editorId === editorId
-            || (Array.isArray(node.editorId) && node.editorId.includes(editorId))
-        )) return node.path;
-        if (node.kind !== "folder") continue;
+    const matches: Array<{ path: string; rank: number }> = [];
+    collectGuideMatches(nodes, editorId, matches);
+    matches.sort((left, right) => left.rank - right.rank);
+    return matches[0]?.path;
+}
 
-        const path = findGuidePath(node.children, editorId);
-        if (path) return path;
+function collectGuideMatches(
+    nodes: readonly GuideTreeNode[],
+    editorId: string,
+    matches: Array<{ path: string; rank: number }>,
+): void {
+    for (const node of nodes) {
+        if (node.kind === "page") {
+            const matchesEditorId = node.editorId === editorId
+                || (Array.isArray(node.editorId) && node.editorId.includes(editorId));
+            if (matchesEditorId) {
+                const rank = node.audience === "user" ? 0 : 1;
+                matches.push({ path: node.path, rank });
+            }
+            continue;
+        }
+
+        collectGuideMatches(node.children, editorId, matches);
     }
-    return undefined;
 }
 
 /**
@@ -41,7 +54,7 @@ export class KeyboardService {
                 if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.isComposing || e.defaultPrevented) break;
                 if (e.target instanceof Element && e.target.closest(".monaco-editor")) break;
                 e.preventDefault();
-                void guard("Failed to open User Guide", () => this.openActiveGuideOrContents());
+                void guard("Failed to open User Guide", () => openActiveGuideOrContents());
                 break;
 
             case "Tab":
@@ -90,31 +103,31 @@ export class KeyboardService {
                 break;
         }
     };
+}
 
-    private async openActiveGuideOrContents(): Promise<void> {
-        const editorId = pagesModel.activePage?.mainEditorInstance?.editorId;
-        let guidePath: string | undefined;
+export async function openActiveGuideOrContents(): Promise<void> {
+    const editorId = pagesModel.activePage?.mainEditorInstance?.editorId;
+    let guidePath: string | undefined;
 
-        if (editorId) {
-            try {
-                const guideTree = await getGuideIndex().getTree("user");
-                guidePath = findGuidePath(guideTree, editorId);
-            } catch (error) {
-                console.error("Failed to resolve active guide:", errMessage(error));
-            }
+    if (editorId) {
+        try {
+            const guideTree = await getGuideIndex().getTree("user");
+            guidePath = findGuidePath(guideTree, editorId);
+        } catch (error) {
+            console.error("Failed to resolve active guide:", errMessage(error));
         }
-
-        if (!guidePath) {
-            await pagesModel.showAboutPage({ atContents: true });
-            return;
-        }
-
-        await pagesModel.showAboutPage();
-        const { AboutEditor } = await import("../../editors/about");
-        const editor = pagesModel.activePage?.mainEditorInstance;
-        if (!(editor instanceof AboutEditor)) {
-            throw new Error("About page did not expose an AboutEditor after opening.");
-        }
-        editor.guideBrowser.openGuide({ kind: "guide", path: guidePath });
     }
+
+    if (!guidePath) {
+        await pagesModel.showAboutPage({ atContents: true });
+        return;
+    }
+
+    await pagesModel.showAboutPage();
+    const { AboutEditor } = await import("../../editors/about");
+    const editor = pagesModel.activePage?.mainEditorInstance;
+    if (!(editor instanceof AboutEditor)) {
+        throw new Error("About page did not expose an AboutEditor after opening.");
+    }
+    editor.guideBrowser.openGuide({ kind: "guide", path: guidePath });
 }

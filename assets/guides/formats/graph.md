@@ -2,10 +2,12 @@
 title: "Force-Graph Editor — Data Format & Scripting API"
 audience: agent
 summary: "Force-graph editor reference: JSON data format, editor paths, editing graph data, and grouping nodes."
-editorId: "graph-view"
 ---
 
 # Force-Graph Editor — Data Format & Scripting API
+The user-facing [Graph editor guide](../editors/graph.md) owns the `graph-view` editor mapping;
+this page remains the detailed JSON and scripting reference.
+
 Force-graph pages (`.fg.json`) visualize node-link data as an interactive graph with drag, zoom, grouping, search, and BFS expansion.
 
 ## JSON Data Format

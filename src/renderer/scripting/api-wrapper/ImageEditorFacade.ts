@@ -1,3 +1,4 @@
+import { withEditorGuideHelp } from "./editor-guide-help";
 import type { ImageEditor } from "../../editors/image/ImageEditor";
 import { copyImageToClipboard, writePngToFile } from "../../editors/shared/image-export";
 import type { IAiMember, IAiVisible, IAiVisionDescriptor } from "../../../shared/ai-vision/types";
@@ -52,7 +53,7 @@ export class ImageEditorFacade implements IAiVisible {
             kind: "ImageEditor",
             summary: "Image viewer facade.",
             members: [...IMAGE_EDITOR_MEMBERS, ...elements.members],
-            help: IMAGE_EDITOR_HELP,
+            help: withEditorGuideHelp(this.id, IMAGE_EDITOR_HELP),
             elements: IMAGE_ELEMENTS,
             provide: elements.provide,
             summarize: () => ({ kind: "ImageEditor", id: this.id, name: this.name }),

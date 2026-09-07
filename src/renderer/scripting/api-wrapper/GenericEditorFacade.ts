@@ -5,7 +5,7 @@ const GENERIC_EDITOR_MEMBERS: readonly IAiMember[] = [
     { name: "name", kind: "property", summary: "The editor's registry display name." },
 ];
 
-const GENERIC_EDITOR_HELP = "The current editor exposes no scripting operations yet. Its id and name identify the editor so a later editor facade can be selected when available.";
+const GENERIC_EDITOR_HELP = "The current editor exposes no scripting operations or shipped guide mapping yet. Its id and name identify the editor so a later editor facade can be selected when available.";
 
 export class GenericEditorFacade implements IAiVisible {
     constructor(

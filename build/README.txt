@@ -27,8 +27,8 @@ you need is on this machine.
 
        resources\assets\guides\agents\index.md       <- START HERE. The mental model plus a
                                                           task -> tool -> guide routing table.
-       resources\assets\guides\agents\ui.md          <- The interface: visible elements and selectors.
-       resources\assets\guides\agents\ui-editors.md  <- The editor catalog and how users open editors.
+       resources\assets\guides\screens\index.md      <- The screen catalogue, layout, and stable selectors.
+       resources\assets\guides\editors\index.md      <- The editor catalog and how users open editors.
        resources\assets\guides\agents\pages.md      <- Pages, editor ids, and required languages.
        resources\assets\guides\agents\scripting.md  <- The scripting API (app, page, io, ai).
        resources\assets\guides\agents\boards.md     <- Boards: custom mini web-apps you build.

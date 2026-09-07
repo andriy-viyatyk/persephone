@@ -1,3 +1,4 @@
+import { withEditorGuideHelp } from "./editor-guide-help";
 import type { IMnemeRootEditor, IMnemeSearchHit, MnemeSearchMode } from "../../api/types/mneme-root-editor";
 import type { IAiElementDeclaration, IAiMember, IAiVisible, IAiVisionDescriptor } from "../../../shared/ai-vision/types";
 import { ui } from "../../api/ui";
@@ -84,7 +85,7 @@ export class MnemeRootEditorFacade implements IAiVisible, IMnemeRootEditor {
             kind: "MnemeRootEditor",
             summary: "Model-backed Mneme root search and browsing-state facade.",
             members: [...MNEME_ROOT_MEMBERS, ...elements.members],
-            help: MNEME_ROOT_HELP,
+            help: withEditorGuideHelp(this.id, MNEME_ROOT_HELP),
             elements: MNEME_ROOT_ELEMENTS,
             provide: elements.provide,
             summarize: () => ({

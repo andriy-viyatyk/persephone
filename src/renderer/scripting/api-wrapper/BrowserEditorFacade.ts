@@ -1,3 +1,4 @@
+import { withEditorGuideHelp } from "./editor-guide-help";
 import type { BrowserEditorModel } from "../../editors/browser/BrowserEditorModel";
 import {
     clickElement,
@@ -114,7 +115,7 @@ export class BrowserEditorFacade implements IAiVisible {
             kind: "BrowserEditor",
             summary: "Browser navigation, inspection, and interaction facade.",
             members: [...BROWSER_AUTOMATION_MEMBERS, ...BROWSER_EDITOR_MEMBERS, ...elements.members],
-            help: BROWSER_EDITOR_HELP,
+            help: withEditorGuideHelp(this.id, BROWSER_EDITOR_HELP),
             elements: BROWSER_ELEMENTS,
             provide: elements.provide,
             summarize: () => {

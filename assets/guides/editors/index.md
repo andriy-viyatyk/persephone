@@ -2,13 +2,15 @@
 title: "Editors"
 audience: both
 summary: "An overview of Persephone's editors and the file types and features they support."
-editorId: "tools-hub-view"
 ---
 
 # Editors
 
 Every file page uses one editor, and some files offer toolbar switches. Use this catalogue to find
 the screen, its script-facing `editorId`, and the detailed guide.
+
+The [screen catalogue](../screens/index.md) owns the `tools-hub-view` mapping because the Tools &
+Editors hub is an application screen; this page remains the editor catalogue.
 
 The catalogue families are **Text and code**, **Structured data**, **Viewers and previews**,
 **Drawing**, and **Web and custom apps**.

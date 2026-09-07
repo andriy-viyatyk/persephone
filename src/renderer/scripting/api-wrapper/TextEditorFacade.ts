@@ -1,3 +1,4 @@
+import { withEditorGuideHelp } from "./editor-guide-help";
 import type { MonacoEditor } from "../../editors/monaco/MonacoEditor";
 import { isTextFileModel, type TextFileModel } from "../../editors/text/TextEditorModel";
 import type { IAiMember, IAiVisible, IAiVisionDescriptor } from "../../../shared/ai-vision/types";
@@ -91,7 +92,7 @@ export class TextEditorFacade implements IAiVisible {
             kind: "TextEditor",
             summary: "Monaco text editor facade.",
             members: [...TEXT_EDITOR_MEMBERS, ...elements.members],
-            help: TEXT_EDITOR_HELP,
+            help: withEditorGuideHelp(this.id, TEXT_EDITOR_HELP),
             elements: TEXT_ELEMENTS,
             provide: elements.provide,
             summarize: () => ({ kind: "TextEditor", id: this.id, name: this.name, editorMounted: this.editorMounted }),

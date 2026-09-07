@@ -1,3 +1,4 @@
+import { withEditorGuideHelp } from "./editor-guide-help";
 import type { IFolderItem, IFolderViewEditor, IFolderViewMode } from "../../api/types/folder-view-editor";
 import type { IAiMember, IAiVisible, IAiVisionDescriptor } from "../../../shared/ai-vision/types";
 import { ui } from "../../api/ui";
@@ -57,7 +58,7 @@ export class FolderViewEditorFacade implements IAiVisible, IFolderViewEditor {
             kind: "FolderViewEditor",
             summary: "Folder View provider-backed navigation facade.",
             members: [...FOLDER_VIEW_MEMBERS, ...elements.members],
-            help: FOLDER_VIEW_HELP,
+            help: withEditorGuideHelp(this.id, FOLDER_VIEW_HELP),
             elements: FOLDER_VIEW_ELEMENTS,
             provide: elements.provide,
             summarize: () => ({

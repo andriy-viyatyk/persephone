@@ -1,3 +1,4 @@
+import { withEditorGuideHelp } from "./editor-guide-help";
 import type {
     IGitAheadBehindSnapshot,
     IGitChangeList,
@@ -89,7 +90,7 @@ export class GitTreeEditorFacade implements IAiVisible, IGitTreeEditor {
             kind: "GitTreeEditor",
             summary: "Git Tree read-mostly history, status, refs, and navigation facade.",
             members: [...GIT_TREE_MEMBERS, ...elements.members],
-            help: GIT_TREE_HELP,
+            help: withEditorGuideHelp(this.id, GIT_TREE_HELP),
             elements: GIT_TREE_ELEMENTS,
             provide: elements.provide,
             summarize: () => ({

@@ -1,5 +1,6 @@
 import { api } from "../../../ipc/renderer/api";
 import { pagesModel } from "../../api/pages";
+import { openActiveGuideOrContents } from "../../api/internal/KeyboardService";
 import { menuFolders, type MenuFolder } from "../../api/menu-folders";
 import {
     getMenuBarSourceFolders,
@@ -31,6 +32,7 @@ import type { ListBoxProps } from "../../uikit/ListBox/types";
 import type { IconRef } from "../../uikit/shared/slots";
 import { createIconElement } from "../../uikit/shared/slots";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
+import { guard } from "../../core/utils/guard";
 import { createFolderIconElement } from "../../components/icons/icon-elements";
 import {
     createFolderItemRecord,
@@ -115,6 +117,13 @@ export class MenuBarView extends VanillaView<MenuBarProps> {
         title: "User Guide",
         onClick: () => this.openUserGuide(),
     });
+    private readonly guideForPageButton = new IconButtonView({
+        name: "menubar-guide-for-page",
+        size: "md",
+        icon: "question",
+        title: "Guide for this page",
+        onClick: () => { void this.openGuideForPage(); },
+    });
     private readonly settingsButton = new IconButtonView({
         name: "menubar-settings",
         size: "md",
@@ -189,6 +198,7 @@ export class MenuBarView extends VanillaView<MenuBarProps> {
             this.spacer.root,
             this.aboutButton.root,
             this.userGuideButton.root,
+            this.guideForPageButton.root,
             this.settingsButton.root,
         );
         this.addFolderPanel.append(this.addFolderButton.root);
@@ -199,6 +209,7 @@ export class MenuBarView extends VanillaView<MenuBarProps> {
         this.child(this.spacer).mount();
         this.child(this.aboutButton).mount();
         this.child(this.userGuideButton).mount();
+        this.child(this.guideForPageButton).mount();
         this.child(this.settingsButton).mount();
         this.child(this.addFolderButton).mount();
         this.child(this.folderList).mount();
@@ -586,6 +597,11 @@ export class MenuBarView extends VanillaView<MenuBarProps> {
     private openUserGuide(): void {
         this.props.onClose?.();
         pagesModel.showAboutPage({ atContents: true });
+    }
+
+    private async openGuideForPage(): Promise<void> {
+        this.props.onClose?.();
+        await guard("Failed to open guide for this page", () => openActiveGuideOrContents());
     }
 
     private onContentKeyDown(event: KeyboardEvent): void {

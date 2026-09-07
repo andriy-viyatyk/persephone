@@ -1,3 +1,4 @@
+import { withEditorGuideHelp } from "./editor-guide-help";
 import type {
     IEnvVarSnapshot,
     IEnvVarsEditor,
@@ -82,7 +83,7 @@ export class EnvVarsEditorFacade implements IAiVisible, IEnvVarsEditor {
             kind: "EnvVarsEditor",
             summary: "Environment variables page facade with parsed state and model-backed actions.",
             members: [...ENV_VARS_MEMBERS, ...elements.members],
-            help: ENV_VARS_HELP,
+            help: withEditorGuideHelp(this.id, ENV_VARS_HELP),
             elements: ENV_VARS_ELEMENTS,
             provide: elements.provide,
             summarize: () => ({

@@ -1,3 +1,4 @@
+import { withEditorGuideHelp } from "./editor-guide-help";
 import type { DrawEditor } from "../../editors/draw";
 import type { MIME_TYPES } from "@excalidraw/excalidraw";
 import type { DataURL } from "@excalidraw/excalidraw/dist/types/excalidraw/types";
@@ -33,7 +34,7 @@ export class DrawEditorFacade implements IAiVisible {
             kind: "DrawEditor",
             summary: "Drawing (Excalidraw) facade.",
             members: DRAW_EDITOR_MEMBERS,
-            help: DRAW_EDITOR_HELP,
+            help: withEditorGuideHelp(this.id, DRAW_EDITOR_HELP),
             summarize: () => ({
                 kind: "DrawEditor", id: this.id, name: this.name,
                 elementCount: this.elementCount,

@@ -1,3 +1,4 @@
+import { withEditorGuideHelp } from "./editor-guide-help";
 import type { LinkEditor } from "../../editors/link-editor";
 import type { LinkItem } from "../../editors/link-editor/linkTypes";
 import type { IAiMember, IAiVisible, IAiVisionDescriptor } from "../../../shared/ai-vision/types";
@@ -35,7 +36,7 @@ export class LinkEditorFacade implements IAiVisible {
             kind: "LinkEditor",
             summary: "Links management facade.",
             members: LINK_EDITOR_MEMBERS,
-            help: LINK_EDITOR_HELP,
+            help: withEditorGuideHelp(this.id, LINK_EDITOR_HELP),
             summarize: () => ({
                 kind: "LinkEditor", id: this.id, name: this.name,
                 linksCount: this.linksCount,

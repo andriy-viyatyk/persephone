@@ -1,3 +1,4 @@
+import { withEditorGuideHelp } from "./editor-guide-help";
 import type {
     ILogDialogResult,
     ILogEntrySnapshot,
@@ -88,7 +89,7 @@ export class LogViewEditorFacade implements IAiVisible {
             kind: "LogViewEditor",
             summary: "Log View entries, inline dialog read-back, and cautious model-backed actions.",
             members: [...LOG_VIEW_MEMBERS, ...elements.members],
-            help: LOG_VIEW_HELP,
+            help: withEditorGuideHelp(this.id, LOG_VIEW_HELP),
             elements: LOG_VIEW_ELEMENTS,
             provide: elements.provide,
             summarize: () => ({

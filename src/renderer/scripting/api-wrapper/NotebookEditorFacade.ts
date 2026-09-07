@@ -1,3 +1,4 @@
+import { withEditorGuideHelp } from "./editor-guide-help";
 import type { NotebookEditor } from "../../editors/notebook";
 import type { NoteItem } from "../../editors/notebook/notebookTypes";
 import type { INote } from "../../api/types/notebook-editor";
@@ -101,7 +102,7 @@ export class NotebookEditorFacade implements IAiVisible {
             kind: "NotebookEditor",
             summary: "Notebook notes management facade.",
             members: [...NOTEBOOK_EDITOR_MEMBERS, ...elements.members],
-            help: NOTEBOOK_EDITOR_HELP,
+            help: withEditorGuideHelp(this.id, NOTEBOOK_EDITOR_HELP),
             summarize: () => ({
                 kind: "NotebookEditor", id: this.id, name: this.name,
                 notesCount: this.notesCount,

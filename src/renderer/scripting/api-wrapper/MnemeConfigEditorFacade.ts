@@ -1,3 +1,4 @@
+import { withEditorGuideHelp } from "./editor-guide-help";
 import type {
     IMnemeConfigEditor,
     IMnemeModelDownload,
@@ -92,7 +93,7 @@ export class MnemeConfigEditorFacade implements IAiVisible, IMnemeConfigEditor {
             kind: "MnemeConfigEditor",
             summary: "Model-backed Mneme configuration and service-status facade.",
             members: [...MNEME_CONFIG_MEMBERS, ...elements.members],
-            help: MNEME_CONFIG_HELP,
+            help: withEditorGuideHelp(this.id, MNEME_CONFIG_HELP),
             elements: MNEME_CONFIG_ELEMENTS,
             provide: elements.provide,
             summarize: () => ({

@@ -35,6 +35,7 @@ export interface GuideTreePage {
     readonly summary: string;
     readonly screen?: string;
     readonly editorId?: string | readonly string[];
+    readonly editorIdDiagnostics?: readonly string[];
 }
 
 export interface GuideTreeFolder {
@@ -161,7 +162,7 @@ export function createGuideIndex(source: GuideSource): GuideIndex {
     }
 
     async function getTree(audience: GuideAudienceFilter = "all"): Promise<readonly GuideTreeNode[]> {
-        const pages = await loadPages(await scan());
+        const pages = annotateEditorIdDiagnostics(await loadPages(await scan()));
         return buildTree(pages.filter(page => audienceIncludes(page.audience, audience)));
     }
 
@@ -240,6 +241,38 @@ export function createGuideIndex(source: GuideSource): GuideIndex {
     async function loadPages(files: readonly GuideFileEntry[]): Promise<readonly GuidePage[]> {
         return Promise.all(files.map(loadPage));
     }
+}
+
+function annotateEditorIdDiagnostics(pages: readonly GuidePage[]): readonly GuidePage[] {
+    const claims = new Map<string, string[]>();
+    for (const page of pages) {
+        for (const editorId of normalizeEditorIds(page.editorId)) {
+            const paths = claims.get(editorId) ?? [];
+            paths.push(page.path);
+            claims.set(editorId, paths);
+        }
+    }
+
+    const diagnosticsByPath = new Map<string, string[]>();
+    for (const [editorId, paths] of claims) {
+        if (paths.length < 2) continue;
+        const diagnostic = `Duplicate editorId "${editorId}" claimed by guide pages: ${paths.join(", ")}.`;
+        for (const path of paths) {
+            const diagnostics = diagnosticsByPath.get(path) ?? [];
+            diagnostics.push(diagnostic);
+            diagnosticsByPath.set(path, diagnostics);
+        }
+    }
+
+    return pages.map(page => {
+        const diagnostics = diagnosticsByPath.get(page.path);
+        return diagnostics === undefined ? page : { ...page, editorIdDiagnostics: diagnostics };
+    });
+}
+
+function normalizeEditorIds(editorId: GuideTreePage["editorId"]): readonly string[] {
+    if (editorId === undefined) return [];
+    return typeof editorId === "string" ? [editorId] : editorId;
 }
 
 function buildTree(pages: readonly GuidePage[]): readonly GuideTreeNode[] {

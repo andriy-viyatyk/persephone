@@ -14,6 +14,8 @@ organized. The focused guides cover the [header strip](./header.md), [Menu Bar](
 [Settings](./settings.md), [page area and sidebar](./sidebar.md), [page tabs](./tabs.md),
 [dialogs and transient surfaces](./dialogs.md), and the [MCP Inspector](./mcp-inspector.md).
 
+This page is also the Tools & Editors screen guide and owns the `tools-hub-view` editor mapping.
+
 For editor capabilities, see the [Editors catalogue](../editors/index.md). For creating and
 reading pages as an agent, see [Pages & Windows](../agents/pages.md); for driving the application
 window, see [Browser automation](../agents/browser.md). When the MCP `call` tool is available,

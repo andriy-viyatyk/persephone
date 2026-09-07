@@ -1,3 +1,4 @@
+import { withEditorGuideHelp } from "./editor-guide-help";
 import type { HtmlEditor } from "../../editors/html";
 import { writePngToFile } from "../../editors/shared/image-export";
 import type { IAiMember, IAiVisible, IAiVisionDescriptor } from "../../../shared/ai-vision/types";
@@ -57,7 +58,7 @@ export class HtmlEditorFacade implements IAiVisible {
             kind: "HtmlEditor",
             summary: "HTML preview facade.",
             members: [...HTML_EDITOR_MEMBERS, ...elements.members],
-            help: HTML_EDITOR_HELP,
+            help: withEditorGuideHelp(this.id, HTML_EDITOR_HELP),
             elements: HTML_ELEMENTS,
             provide: elements.provide,
             summarize: () => ({

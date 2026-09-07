@@ -54,6 +54,8 @@ export interface EditorMatcher {
 export interface EditorDefinition {
     id: string;
     name: string;
+    /** Canonical user guide path for synchronous facade help. */
+    readonly guidePath?: string;
 
     /** Single acceptance predicate. Returns priority (higher wins) or -1 if
      *  not applicable. The page evaluates this against the current host (for

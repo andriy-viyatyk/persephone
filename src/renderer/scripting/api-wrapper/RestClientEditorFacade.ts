@@ -1,3 +1,4 @@
+import { withEditorGuideHelp } from "./editor-guide-help";
 import type {
     IRestBodyType,
     IRestClientEditor,
@@ -152,7 +153,7 @@ export class RestClientEditorFacade implements IAiVisible, IRestClientEditor {
             kind: "RestClientEditor",
             summary: "REST client request and response facade.",
             members: [...REST_CLIENT_MEMBERS, ...elements.members],
-            help: REST_CLIENT_HELP,
+            help: withEditorGuideHelp(this.id, REST_CLIENT_HELP),
             elements: REST_CLIENT_ELEMENTS,
             provide: elements.provide,
             summarize: () => ({

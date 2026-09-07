@@ -224,7 +224,7 @@ export class McpInspectorFacade implements IAiVisible {
             kind: "McpInspector",
             summary: "MCP Inspector connection, panel state, and troubleshooting facade.",
             members: [...MCP_INSPECTOR_MEMBERS, ...elements.members],
-            help: MCP_INSPECTOR_HELP,
+            help: withEditorGuideHelp(this.id, MCP_INSPECTOR_HELP),
             elements: MCP_INSPECTOR_ELEMENTS,
             provide: elements.provide,
             summarize: () => this.aiSummary(),
@@ -464,3 +464,4 @@ function assertCredentialFreeUrl(value: string): void {
         }
     }
 }
+import { withEditorGuideHelp } from "./editor-guide-help";

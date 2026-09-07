@@ -27,7 +27,7 @@ export const SERVER_INSTRUCTIONS = [
     "For editor choices, start with `guides.editors.index` or `guides.editors.<editor>`; reading returns text for your use, while showing a guide means opening it — not copying its text into a new page — with `pages.openUrl(\"persephone-guide://editors/<editor>\")` for an ordinary Markdown tab or `pages[\"about-page\"].editor.open(\"editors/<editor>\")` for the About guide browser next to the version card; for notebook, links, or graph JSON use `guides.formats.<page>` (the matching resources remain available as an alternative).",
     "For boards, use `boards.*` and `guides.agents.boards`; the `persephone://guides/boards` resource is an alternative.",
     "For Agent Tools, find registered tools with `tools.search()` and run one with `tools.execute(id, args)`.",
-    "For Persephone controls, start with `guides.agents.ui`; for browser automation use `guides.agents.browser`. The focused `persephone://guides/*` resources remain available as an alternative.",
+    "For Persephone controls, start with `guides.screens` or `guides.screens.index`; for browser automation use `guides.agents.browser`. The focused `persephone://guides/*` resources remain available as an alternative.",
 ].join("\n");
 
 // ——— Guides ————————————————————————————————————————————————————————————————
@@ -97,13 +97,13 @@ export const resourceFiles: IGuideResource[] = [
     {
         name: "ui-guide",
         uri: "persephone://guides/ui",
-        file: "guides/agents/ui.md",
-        description: "Persephone UI reference: the application chrome, stable selectors, and highlighting an element for the user.",
+        file: "guides/screens/index.md",
+        description: "Persephone screen catalogue and layout entry point: application chrome, stable selector guidance, and highlighting an element for the user.",
     },
     {
         name: "ui-editors-guide",
         uri: "persephone://guides/ui-editors",
-        file: "guides/agents/ui-editors.md",
+        file: "guides/editors/index.md",
         description: "Editor catalog: what each Persephone editor is for, how to open it, and what it can do.",
     },
     {

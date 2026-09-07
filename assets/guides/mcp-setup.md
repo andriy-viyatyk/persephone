@@ -217,7 +217,7 @@ MCP resources are read-only documents that AI clients can discover and read to g
 | **Boards Guide** | `persephone://guides/boards` | Board authoring/automation reference — bridge API, theme contract, local vendoring, `pages[pageId].editor` testing. Read before building or opening a board. |
 | **Tools Guide** | `persephone://guides/tools` | Agent Tools registry — `tools.search`/`tools.execute`, the stdin-JSON + result-marker contract, `.env` secrets. Read before using them. |
 | **Browser Guide** | `persephone://guides/browser` | Browser automation in depth — `call` paths, snapshot format, ref lifecycle, waiting strategies, errors, and older-tool equivalents. |
-| **UI Guide** | `persephone://guides/ui` | Persephone's own interface — what each always-visible element is for, its stable selector, where Settings lives, and how to highlight an element on screen. Read when helping the user with the app itself. |
+| **UI Guide** | `persephone://guides/ui` | Persephone screen catalogue and layout entry point — application chrome, stable selector guidance, where Settings lives, and how to highlight an element on screen. Read when helping the user with the app itself. |
 | **UI Editors Guide** | `persephone://guides/ui-editors` | The editor catalog — what each editor is for, how the user opens it, what it can do. Read when explaining Persephone's capabilities to the user. |
 | **Full Guide** | `persephone://guides/full` | All guides combined into one document. Only read if you need the complete reference. |
 

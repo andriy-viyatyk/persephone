@@ -1,3 +1,4 @@
+import { withEditorGuideHelp } from "./editor-guide-help";
 import type { SvgEditor } from "../../editors/svg";
 import { writePngToFile } from "../../editors/shared/image-export";
 import type { IAiMember, IAiVisible, IAiVisionDescriptor } from "../../../shared/ai-vision/types";
@@ -54,7 +55,7 @@ export class SvgEditorFacade implements IAiVisible {
             kind: "SvgEditor",
             summary: "SVG preview facade.",
             members: [...SVG_EDITOR_MEMBERS, ...elements.members],
-            help: SVG_EDITOR_HELP,
+            help: withEditorGuideHelp(this.id, SVG_EDITOR_HELP),
             elements: SVG_ELEMENTS,
             provide: elements.provide,
             summarize: () => ({ kind: "SvgEditor", id: this.id, name: this.name, svgLength: this.svg?.length }),

@@ -2,10 +2,12 @@
 title: "pages.logView.push — Log View Output Channel"
 audience: agent
 summary: "Log View reference: messages, dialogs, entry types, and examples for pages.logView.push and the script ui object."
-editorId: "log-view"
 ---
 
 # `pages.logView.push` — Log View Output Channel
+The user-facing [Log View editor guide](../editors/log-view.md) owns the `log-view` editor
+mapping; this page remains the detailed output-channel reference.
+
 Use `pages.logView.push(entries)` to show information to the user. It pushes entries to a Log View
 page — a scrollable, styled log with support for interactive dialogs. The live call, return, pending,
 and window contract is in `pages.logView.$help`; this resource keeps the entry schema and examples.

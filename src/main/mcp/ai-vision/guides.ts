@@ -6,7 +6,7 @@ import { selectReleaseNotes } from "../../../shared/guides/release-notes";
 import { IAiChild, IAiMember, IAiVisible, IAiVisionDescriptor } from "../../../shared/ai-vision/types";
 import { MainGuideSource } from "./guide-source";
 
-const NO_LAYOUT_MESSAGE = "No layout schema is available for this guide yet; layout schemas arrive per screen in a later task.";
+const NO_LAYOUT_MESSAGE = "This page is a catalogue or API/format reference rather than a screen layout, so it has no ## Layout schema. Screen and editor schemas live in the corresponding pages under guides/screens, guides/editors, or the top-level screen guides.";
 const GUIDE_NOT_FOUND_EXAMPLE = 'guides["editors/grid"]';
 
 const GUIDES_MEMBERS: readonly IAiMember[] = [
@@ -15,7 +15,7 @@ const GUIDES_MEMBERS: readonly IAiMember[] = [
 ];
 
 const GUIDE_PAGE_MEMBERS: readonly IAiMember[] = [
-    { name: "layout", kind: "property", summary: "The page's ## Layout schema, or the later-task message when no schema exists." },
+    { name: "layout", kind: "property", summary: "The page's ## Layout schema; catalogue and API/format reference pages may legitimately have none." },
 ];
 
 const GUIDE_SEARCH_DESCRIPTOR: IAiVisionDescriptor = {
@@ -160,8 +160,21 @@ function toChildren(nodes: readonly GuideTreeNode[]): readonly IAiChild[] {
     return nodes.map(node => ({
         segment: childSegment(node),
         kind: node.kind === "folder" ? "GuideFolder" : "GuidePage",
-        summary: node.kind === "folder" ? `folder: ${node.path}` : `${node.title}: ${node.summary}`,
+        summary: `${node.kind === "folder" ? `folder: ${node.path}` : `${node.title}: ${node.summary}`}${formatDiagnostics(node)}`,
     }));
+}
+
+function formatDiagnostics(node: GuideTreeNode): string {
+    const diagnostics = node.kind === "page"
+        ? node.editorIdDiagnostics ?? []
+        : collectDiagnostics(node.children);
+    return diagnostics.length ? ` [${diagnostics.join(" ")}]` : "";
+}
+
+function collectDiagnostics(nodes: readonly GuideTreeNode[]): readonly string[] {
+    return nodes.flatMap(node => node.kind === "page"
+        ? node.editorIdDiagnostics ?? []
+        : collectDiagnostics(node.children));
 }
 
 function projectTree(nodes: readonly GuideTreeNode[]): readonly GuideTreeNode[] {

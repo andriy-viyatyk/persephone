@@ -1,3 +1,4 @@
+import { withEditorGuideHelp } from "./editor-guide-help";
 import type { GridEditor } from "../../editors/grid/GridEditor";
 import type {
     IGridCellSelection,
@@ -132,7 +133,7 @@ export class GridEditorFacade implements IAiVisible {
             kind: "GridEditor",
             summary: "Grid data manipulation facade.",
             members: [...GRID_EDITOR_MEMBERS, ...elements.members],
-            help: GRID_EDITOR_HELP,
+            help: withEditorGuideHelp(this.id, GRID_EDITOR_HELP),
             elements: GRID_ELEMENTS,
             provide: elements.provide,
             summarize: () => ({

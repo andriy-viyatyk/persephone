@@ -1,3 +1,4 @@
+import { withEditorGuideHelp } from "./editor-guide-help";
 import type { IArchiveEditor, IArchiveEntry } from "../../api/types/archive-editor";
 import type { ArchiveEditor } from "../../editors/archive/ArchiveEditor";
 import { ui } from "../../api/ui";
@@ -58,7 +59,7 @@ export class ArchiveEditorFacade implements IAiVisible, IArchiveEditor {
             kind: "ArchiveEditor",
             summary: "Archive metadata and model-backed navigation/extraction facade.",
             members: [...ARCHIVE_MEMBERS, ...elements.members],
-            help: ARCHIVE_HELP,
+            help: withEditorGuideHelp(this.id, ARCHIVE_HELP),
             elements: ARCHIVE_ELEMENTS,
             provide: elements.provide,
             summarize: () => ({

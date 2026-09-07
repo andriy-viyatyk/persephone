@@ -1,3 +1,4 @@
+import { withEditorGuideHelp } from "./editor-guide-help";
 import type { HubTab, IToolsHubEditor } from "../../api/types/tools-hub-editor";
 import type { IAiElementDeclaration, IAiMember, IAiVisible, IAiVisionDescriptor } from "../../../shared/ai-vision/types";
 import { ui } from "../../api/ui";
@@ -53,7 +54,7 @@ export class ToolsHubEditorFacade implements IAiVisible, IToolsHubEditor {
             kind: "ToolsHubEditor",
             summary: "Model-backed Tools & Editors hub tab state and curated controls.",
             members: [...TOOLS_HUB_MEMBERS, ...elements.members],
-            help: TOOLS_HUB_HELP,
+            help: withEditorGuideHelp(this.id, TOOLS_HUB_HELP),
             elements: TOOLS_HUB_ELEMENTS,
             provide: elements.provide,
             summarize: () => ({

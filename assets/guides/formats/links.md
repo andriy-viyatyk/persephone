@@ -2,10 +2,12 @@
 title: "Links Editor Format (link-view)"
 audience: agent
 summary: "Links editor reference: LinkItem JSON format, categories, and tags."
-editorId: "link-view"
 ---
 
 # Links Editor Format (`link-view`)
+The user-facing [Links editor guide](../editors/links.md) owns the `link-view` editor mapping;
+this page remains the detailed JSON format reference.
+
 The live creation and mutation paths are `pages.addEditorPage("link-view", "json", title)`,
 `pages[i].content = value`, and the `link-view` editor facade. This resource is the LinkItem format
 reference; inspect `pages[i].$help` for the live projection and mutation contract.
