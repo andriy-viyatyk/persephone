@@ -7,213 +7,47 @@ editorId: "notebook-view"
 
 # Notebook Editor
 
-The Notebook Editor is a structured notes interface for `.note.json` files. Each note contains its own code editor, and notes are organized with categories, tags, and full-text search.
+Notebook stores notes in a structured JSON document. Each note has its own editor, while categories,
+tags, comments, and full-text search organize the collection.
 
 ## Getting Started
 
-1. Create a new file and save it with the `.note.json` extension
-2. The Notebook Editor opens automatically
-3. Click **Add Note** in the toolbar to create your first note
-
-Alternatively, open a new tab, change the language to JSON, and rename the tab to a name ending with `.note.json` (e.g., "my.note.json"). The "Notebook" switch becomes available in the toolbar only when the page title ends with `.note.json`.
+1. Create or save a file with the `.note.json` suffix; Notebook opens automatically.
+2. A JSON page with `"type": "note-editor"` and `"notes"` can also expose the Notebook switch.
+3. Choose **Add Note** to create a note in the current category or tag context.
 
 ## Layout
 
-```
-+--------------------+-------------------------------------------+
-| Sidebar            | [Categories / Tags breadcrumb]            |
-|                    | [Add Note] [Search...]                    |
-| [Categories]       +-------------------------------------------+
-|  All               |                                           |
-|  work/             |  Notes List (virtualized)                 |
-|    projects        |                                           |
-|  personal          |  +---------------------------------------+|
-|                    |  | * [category] [tags] [date] [expand]  ||
-| [Tags]             |  |   [lang] [title]  [editor switch]    ||
-|  env:dev           |  |   +-----------------------------------+||
-|  env:prod          |  |   | Editor content (Monaco/Grid/etc.)||
-|                    |  |   +-----------------------------------+||
-|                    |  |   [+ Add comment]                     ||
-|                    |  +---------------------------------------+|
-+--------------------+-------------------------------------------+
-| [X notes] or [X of Y notes]                                    |
-+----------------------------------------------------------------+
-```
-
-The notes list stays responsive as a notebook grows. Moving notes in and out of
-view does not discard their current editor content or editing state.
-
 ## Notes
 
-### Creating a Note
+Each note has a title, content editor, language, category, tags, and optional comment. JSON and CSV
+notes can use Monaco or Grid; Markdown and SVG notes can use their preview; JavaScript and TypeScript
+notes have script run actions. Search covers title, category, tags, comments, and note content.
 
-Click **Add Note** in the toolbar. A new note appears at the top of the list with:
-- The currently selected category (if filtering by category)
-- The currently selected tag (if filtering by tag)
-- The search text as the title (if searching)
+Click the expand action to edit a note at full size; **Escape** or the collapse action returns to the
+list without losing its editor state. Delete asks for confirmation. Drag a note to a category, drag
+categories to change their hierarchy, and drag a file or link onto a category to create a note.
 
-### Editing a Note
+## Categories, tags, and navigation
 
-Each note has:
+Categories use `/` paths and appear in the **Categories** sidebar with counts. Tags are flat or
+`prefix:value` labels such as `env:dev` and appear in the **Tags** sidebar. The toolbar breadcrumb
+shows the active category or tag; click a segment to move upward or the root to clear the filter.
+Autocomplete assists category and tag editing, and the search filter combines with category/tag
+filters.
 
-- **Title** — Click the title field to edit. Appears next to the language icon.
-- **Content** — Click inside the editor area to start editing. Supports all Monaco features (syntax highlighting, IntelliSense, multi-cursor).
-- **Language** — Click the language icon to change. This determines syntax highlighting and available editor switches.
-- **Comment** — Hover over a note and click "+ Add comment" to add an optional comment. Comments are useful for documenting JSON content that doesn't support inline comments.
+## Agent API
 
-### Editor Types
+Use `pages.addEditorPage("notebook-view", "json", title, content)` for a notebook page. After
+narrowing `page.editor.id`, the `NotebookEditor` facade exposes note snapshots and note operations.
+Verified page elements include `notebook-breadcrumb`, `notebook-search`, `notebook-search-clear`,
+`notebook-add-note`, `notebook-expanded-collapse`, `note-delete`, `note-expand`, `note-language`,
+`note-editor-switch`, `note-run-script`, and `note-run-all-script`. The detailed format is in
+[Notebook format](../formats/notebook.md).
 
-Each note can use different editors depending on its language:
+## Errors and limits
 
-| Language | Available Editors |
-|----------|-------------------|
-| JSON | Monaco text editor, Grid view |
-| CSV | Monaco text editor, Grid view |
-| Markdown | Monaco text editor, Preview |
-| SVG | Monaco text editor, Preview |
-| JavaScript | Monaco text editor (with Run button) |
-| TypeScript | Monaco text editor (with Run button) |
-| Other | Monaco text editor |
-
-Use the editor switch buttons (visible on hover) to change the view.
-
-### Running Scripts
-
-Notes with JavaScript or TypeScript language have a Run button (visible on hover). Click it to execute the script. If you have text selected, only the selected portion runs. The script output goes to a grouped page, same as the main script panel.
-
-### Deleting a Note
-
-Hover over a note and click the delete icon. A confirmation dialog appears before deletion.
-
-## Categories
-
-Categories organize notes in a hierarchical tree using "/" as a separator.
-
-### Assigning a Category
-
-Click the category badge on a note (shows "No category" by default). A path input appears where you can:
-- Type a new category path (e.g., "work/projects/alpha")
-- Select from existing categories via autocomplete; after choosing a suggestion, click the field
-  again to reopen the suggestions while continuing to edit
-- Press Enter to confirm, Escape to cancel
-
-### Category Tree (Sidebar Panel)
-
-The **Categories** panel in the sidebar shows the category tree:
-- **All** — Shows all notes (root)
-- Categories are auto-created from note paths
-- Note counts appear next to each category
-- Click a category to filter the notes list
-- Parent categories include counts from all children
-
-### Drag-and-Drop
-
-- **Drag a note** by its indicator dot (left side) and drop onto a category to change the note's category
-- **Drag a category** in the tree and drop onto another to make it a subcategory
-  - Dragging onto "All" makes it a root-level category
-  - A confirmation dialog shows how many notes will be affected
-- **Drag links or files** from the Links editor or File Explorer onto a category in the tree to create notes from them — each item becomes a note with the link title as its title and the URL/path as the note body
-
-### Breadcrumb Navigation
-
-The toolbar shows a breadcrumb trail of the current category path. Click any segment to navigate up the hierarchy. Click the root label to clear the filter.
-
-## Tags
-
-Tags provide a flat or two-level labeling system using ":" as a separator.
-
-### Tag Formats
-
-- **Simple tags**: `important`, `done`, `todo`
-- **Categorized tags**: `env:dev`, `env:prod`, `release:1.0.1`
-
-Categorized tags group under their prefix in the Tags panel (e.g., all `env:*` tags group under "env:").
-
-### Adding Tags
-
-Hover over a note and click the **+** button in the tags area. A path input appears for entering the tag. Autocomplete suggests existing tags. After selecting a suggestion, click the field again to reopen the suggestions and add another tag without clicking away first. Typed text after a selection is committed normally when you leave the field.
-
-### Editing and Removing Tags
-
-- Click a tag to edit it inline
-- Hover over a tag and click the **x** button to remove it
-
-### Tags Panel (Sidebar)
-
-The **Tags** panel in the sidebar shows:
-- All tags with note counts
-- Categorized tags are grouped — click a category to drill down
-- Select a tag to filter the notes list
-- Breadcrumb in the toolbar shows the current tag filter
-
-## Search
-
-The search field in the toolbar filters notes across all fields:
-
-- Title
-- Category
-- Tags
-- Comment
-- Content (including grid cell values)
-
-### Search Behavior
-
-- Multiple words use AND condition — all words must match
-- Search highlights appear in:
-  - Category and tag badges (blue highlighted text)
-  - Title and comment fields (blue text color)
-  - Monaco editor (find-match decorations)
-  - Grid editor (cell text highlighting)
-  - Markdown preview (highlighted spans)
-- Search works additively with category/tag filters
-
-## Expanding a Note
-
-Click the expand icon (visible on hover, top-right of note) to open a note in full-screen mode:
-
-- The note covers the entire editor area including toolbars
-- A blue indicator dot on the left signals expanded mode
-- Full-size editor with no height constraint and minimap visible
-- Edit category, tags, title, content, and comment as normal
-- Click the collapse button (top-right) or press **Escape** to return to the list
-
-Expanding is useful when you need more space to work with a note's content, especially for large code files or data.
-
-When you collapse the note, you return to the list without losing the note's
-editor state.
-
-## File Format
-
-Notebook files are standard JSON with the `.note.json` extension:
-
-```json
-{
-  "notes": [
-    {
-      "id": "unique-id",
-      "title": "My Note",
-      "category": "work/projects",
-      "tags": ["important", "env:dev"],
-      "content": {
-        "language": "json",
-        "content": "{ \"key\": \"value\" }",
-        "editor": "monaco"
-      },
-      "comment": "Optional comment",
-      "createdDate": "2026-02-07T10:30:00Z",
-      "updatedDate": "2026-02-07T10:30:00Z"
-    }
-  ],
-  "state": {}
-}
-```
-
-Since the file is plain JSON, you can also edit it directly in the Text editor (switch using the toolbar button).
-
-## Tips
-
-- **Quick category assignment**: Drag notes onto categories instead of editing the category field
-- **Keyboard workflow**: Use Escape to collapse an expanded note, or to cancel category/tag editing
-- **Content search**: Search finds text inside note editors too, not just metadata
-- **New note context**: When you have a category selected and add a note, the new note inherits that category
-- **Comment for JSON**: Use comments on JSON notes to document what the data represents, since JSON doesn't support inline comments
+Notebook expects valid JSON with a `notes` collection and note content in the documented shape. A
+`.note.json` suffix alone selects the editor by filename; content detection additionally requires
+both the `note-editor` type marker and `notes` property. Invalid JSON or an incompatible note shape
+can leave the page in an error state.
