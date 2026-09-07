@@ -11,7 +11,8 @@ Persephone manages the Log View page automatically:
 
 ## Entry Format
 
-Entries are **flat objects** with `type` and type-specific fields directly on the object (no `data` wrapper):
+`push` accepts one plain string, one flat entry object, or an array of either. Entries are **flat
+objects** with `type` and type-specific fields directly on the object (no `data` wrapper):
 
 ```json
 { "type": "log.info", "text": "Hello world" }
@@ -68,11 +69,19 @@ Examples:
 
 No separate `columns` parameter — columns are always derived from the data itself.
 
-**String shorthand:** Plain strings in the entries array are treated as `log.info`.
+**String shorthand:** Plain strings are treated as `log.info`, whether passed alone or in the entries array.
 
 ## Examples
 
 ```
+// Simple log messages (string shorthand)
+pages.logView.push("Analysis complete.")
+→ returns immediately: { entryIds: [...], dialogIds: [] }
+
+// One typed log entry (flat format)
+pages.logView.push({ type: "log.info", text: "Analysis complete." })
+→ returns immediately: { entryIds: [...], dialogIds: [] }
+
 // Simple log messages (string shorthand)
 pages.logView.push(["Analyzing code...", "Found 3 files to process"])
 → returns immediately: { entryIds: [...], dialogIds: [] }

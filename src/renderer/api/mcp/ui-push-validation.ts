@@ -60,6 +60,43 @@ function knownEntryTypes(): string {
     return [...KNOWN_LOG_TYPES, ...KNOWN_OUTPUT_TYPES, ...Object.keys(DIALOG_SPECS)].join(", ");
 }
 
+function formatRawEntry(raw: unknown): string {
+    if (raw === null) return "null";
+    if (typeof raw !== "object") {
+        try {
+            return typeof raw === "string" ? JSON.stringify(raw) : String(raw);
+        } catch {
+            return "<unformattable value>";
+        }
+    }
+    try {
+        const serialized = JSON.stringify(raw);
+        if (serialized !== undefined) return serialized;
+    } catch {
+        // Fall through to String for values that JSON cannot serialize.
+    }
+    try {
+        return String(raw);
+    } catch {
+        return "<unformattable value>";
+    }
+}
+
+function rawEntryType(raw: unknown): string {
+    return raw === null ? "null" : typeof raw;
+}
+
+export function invalidUiPushEntryError(raw: unknown): UiPushValidationError {
+    const typeDetail = raw && typeof raw === "object" && !Array.isArray(raw)
+        ? ` Its \"type\" field must be a string; received ${formatRawEntry((raw as Record<string, unknown>).type)}.`
+        : "";
+    return new UiPushValidationError(
+        `Invalid Log View entry ${formatRawEntry(raw)} (runtime type ${rawEntryType(raw)}).${typeDetail} `
+        + "Expected a plain string or flat object with a type. "
+        + 'Example: { type: "log.info", text: "done" }',
+    );
+}
+
 /**
  * Normalize one Log View-compatible entry, preserving its established validation rules.
  *
@@ -82,10 +119,17 @@ export function normalizeUiPushEntry(
         : raw && typeof raw === "object" && !Array.isArray(raw)
             ? raw as Record<string, unknown>
             : undefined;
-    if (!entry || !entry.type) return undefined;
+    if (!entry) {
+        if (options.strictTypes) throw invalidUiPushEntryError(raw);
+        return undefined;
+    }
 
     const { type, ...fields } = entry;
-    if (typeof type !== "string") return undefined;
+    if (typeof type !== "string") {
+        if (options.strictTypes) throw invalidUiPushEntryError(raw);
+        return undefined;
+    }
+    if (!type && !options.strictTypes) return undefined;
 
     if (options.strictTypes
         && !KNOWN_LOG_TYPES.has(type)

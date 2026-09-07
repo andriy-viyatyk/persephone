@@ -33,7 +33,7 @@ const PAGES_MEMBERS: readonly IAiMember[] = [
     { name: "openLinks", kind: "method", signature: "openLinks(links: (string | ILink)[], title?)", summary: "New links page listing the given URLs/paths." },
     { name: "openDiff", kind: "method", signature: "openDiff({ firstPath, secondPath })", summary: "Open a file compare page." },
     { name: "compare", kind: "property", node: true, summary: "Inspect active compare pairs and enter or exit compare mode for a grouped pair." },
-    { name: "logView", kind: "property", node: true, summary: "SHOW THE USER SOMETHING, or ASK THEM A QUESTION: the agent's output channel. push() renders log lines, markdown, mermaid diagrams, grids, code and progress bars into a Log View page, and raises the six interactive dialog types. Use it instead of building a page by hand." },
+    { name: "logView", kind: "property", node: true, summary: "SHOW THE USER SOMETHING, or ASK THEM A QUESTION: the agent's output channel. push() accepts one string or flat entry object, or an array of either; a string is one log.info line. It renders log lines, markdown, mermaid diagrams, grids, code and progress bars into a Log View page, and raises the six interactive dialog types. Use it instead of building a page by hand." },
     { name: "showAboutPage", kind: "method", signature: "showAboutPage()", summary: "Show the About page." },
     { name: "showSettingsPage", kind: "method", signature: "showSettingsPage()", summary: "Show Settings." },
     { name: "showMcpInspectorPage", kind: "method", signature: "showMcpInspectorPage(options?: { url? })", summary: "Show the MCP inspector page." },
@@ -72,10 +72,11 @@ page identity, use pages.compare.enter(pageId) or exit(pageId) for compare mode,
 compare-root or compare-exit through pages.compare.elements. Compare elements live in the active
 pair's left page slot.
 To SHOW the user something or ASK them a question, use pages.logView — not a hand-built page. One
+pages.logView.push("message"), pages.logView.push({ type: "log.info", text: "message" }), or
 pages.logView.push([...]) call renders log lines, markdown, mermaid diagrams, grids (JSON or CSV),
-code blocks and progress bars, and raises the six input.* dialog types. push() returns immediately
-with the ids of any dialogs it created; the user answers them in the page and you read the answer
-with pages.logView.dialogResult(id). Reading pages.logView never opens a page: its state
+code blocks and progress bars, and raises the six input.* dialog types. A plain string is one
+log.info line. push() returns immediately with the ids of any dialogs it created; the user answers
+them in the page and you read the answer with pages.logView.dialogResult(id). Reading pages.logView never opens a page: its state
 reads as undefined until one exists, and push() creates and focuses it. Scripts also have the
 global ui facade for the same channel.
 For opening a plain web page or search query, use pages.openUrlInBrowserTab(url, options); it accepts

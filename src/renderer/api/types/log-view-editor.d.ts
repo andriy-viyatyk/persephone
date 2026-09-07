@@ -27,7 +27,7 @@ export interface ILogViewEditor {
     readonly error: string | undefined;
     readonly showTimestamps: boolean | undefined;
 
-    push(entries: ILogPushEntry[]): ILogPushResult;
+    push(entries: ILogPushEntry | ILogPushEntry[]): ILogPushResult;
     dialogResult(id: string): ILogDialogResult | undefined;
     clear(): void;
     toggleTimestamps(): void;

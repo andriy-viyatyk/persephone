@@ -7,7 +7,8 @@ import type {
 import type { LogViewEditor } from "../../editors/log-view/LogViewEditor";
 import type { IAiElementDeclaration, IAiMember, IAiVisible, IAiVisionDescriptor } from "../../../shared/ai-vision/types";
 import { ui } from "../../api/ui";
-import { normalizeUiPushEntry } from "../../api/mcp/ui-push-validation";
+import { invalidUiPushEntryError, normalizeUiPushEntry } from "../../api/mcp/ui-push-validation";
+import type { NormalizedUiPushEntry } from "../../api/mcp/ui-push-validation";
 import { createElements } from "../ai-vision/elements";
 import { activatePageAndWaitForLayout, pageScopeSelector } from "../ai-vision/page-elements";
 
@@ -33,7 +34,7 @@ const LOG_VIEW_MEMBERS: readonly IAiMember[] = [
     { name: "entryCount", kind: "property", summary: "The number of parsed entries, including zero, or undefined when detached." },
     { name: "error", kind: "property", summary: "The actual JSONL parse error, or undefined for a valid parse or detached editor." },
     { name: "showTimestamps", kind: "property", summary: "The real timestamp visibility boolean, or undefined when detached." },
-    { name: "push", kind: "method", signature: "push(entries): ILogPushResult", summary: "Append or upsert Log View entries and return their ids immediately.", caution: "writes Log View JSONL content; inline dialogs wait for the user in the Log View page" },
+    { name: "push", kind: "method", signature: "push(entries): ILogPushResult", summary: "Append one string or flat entry object, or an array of them, and return ids immediately.", caution: "writes Log View JSONL content; inline dialogs wait for the user in the Log View page" },
     { name: "dialogResult", kind: "method", signature: "dialogResult(id: string): ILogDialogResult | undefined", summary: "Read a copied resolved or unresolved inline dialog entry." },
     { name: "clear", kind: "method", signature: "clear(): void", summary: "Remove all Log View entries.", caution: "deletes the page's JSONL content" },
     { name: "toggleTimestamps", kind: "method", signature: "toggleTimestamps(): void", summary: "Toggle persisted Log View timestamps.", caution: "changes persisted Log View settings" },
@@ -42,7 +43,7 @@ const LOG_VIEW_MEMBERS: readonly IAiMember[] = [
 const LOG_VIEW_HELP = `Access via pages[i].editor after narrowing editor.id to "log-view", or read pages.logView for the fixed MCP Log View writer.
 The facade is model-backed: entries are fresh deep-copied snapshots, actions do not inspect views, DOM controls, clipboard state, or live model arrays, and pages[i].content remains the raw JSONL content because Log View has a content host.
 When attached, entries is [] for a valid empty Log View, entryCount is its real count including 0, error is the actual parse error or undefined for a valid parse, and showTimestamps is the real boolean including false. Detached host-backed state is undefined; false, 0, "", null, and [] are never used as absence markers.
-push validates and normalizes the documented flat entries, returns immediately with fresh entryIds and dialogIds arrays (including [] for empty input), and supports string shorthand, log levels, text/Markdown/Mermaid, JSON/CSV grids, progress, and all six input dialog types. A grid's content is always a STRING: JSON by default, or CSV text with contentType: "csv" beside it — without that discriminator CSV text is parsed as JSON and rejected. These exact entry and dialog examples remain in the ui-push resource.
+push accepts one plain string, one valid flat entry object, or an array of either. A plain string is shorthand for one log.info line. It validates and normalizes the documented flat entries, returns immediately with fresh entryIds and dialogIds arrays (including [] for empty input), and supports string shorthand, log levels, text/Markdown/Mermaid, JSON/CSV grids, progress, and all six input dialog types. A grid's content is always a STRING: JSON by default, or CSV text with contentType: "csv" beside it — without that discriminator CSV text is parsed as JSON and rejected. These exact entry and dialog examples remain in the ui-push resource.
 Log View dialogs are inline entries, not renderer dialogs: they do not appear in dialogs[0], the agent cannot answer them, and the user must answer them in the Log View page. Read dialogResult(id): it is undefined only when that entry no longer exists, { id, status: "unresolved" } while button is undefined, or { id, status: "resolved", entry } once button exists, including falsy button and answer fields.
 pages.logView.push() is non-blocking, including when it creates input dialogs: it returns entryIds
 and dialogIds, and an unresolved dialog raises call attention until the user answers it in Log View.
@@ -117,16 +118,22 @@ export class LogViewEditorFacade implements IAiVisible {
         return this.isAttached() ? this.editor.state.get().showTimestamps : undefined;
     }
 
-    push(entries: ILogPushEntry[]): ILogPushResult {
+    push(entries: ILogPushEntry | ILogPushEntry[]): ILogPushResult {
         this.requireAttached("push");
         const entryIds: string[] = [];
         const dialogIds: string[] = [];
 
-        for (const raw of entries) {
+        const rawEntries = Array.isArray(entries) ? entries : [entries];
+        const normalizedEntries: NormalizedUiPushEntry[] = [];
+        for (const raw of rawEntries) {
             // strictTypes: reject a guessed entry type instead of rendering a blank entry and
             // reporting success. The legacy output route keeps its lenient behaviour unchanged.
             const normalized = normalizeUiPushEntry(raw, { strictTypes: true });
-            if (!normalized) continue;
+            if (!normalized) throw invalidUiPushEntryError(raw);
+            normalizedEntries.push(normalized);
+        }
+
+        for (const normalized of normalizedEntries) {
             if (normalized.isDialog) {
                 const entryId = this.editor.addDialogEntryNonBlocking(
                     normalized.type,
