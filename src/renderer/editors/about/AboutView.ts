@@ -11,8 +11,11 @@ import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { createTextElement } from "../../uikit/Text/text-style";
 import { ButtonView, type ButtonViewProps } from "../../uikit/Button/ButtonView";
 import { DividerView } from "../../uikit/Divider/DividerView";
+import { SplitterView, type SplitterProps } from "../../uikit/Splitter/SplitterView";
 import { createIconElement } from "../../uikit/shared/slots";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
+import { AboutGuideBrowserView } from "./AboutGuideBrowserView";
+import "./AboutView.css";
 import "../../uikit/Button/Button.css";
 import "../../uikit/Divider/Divider.css";
 
@@ -41,6 +44,10 @@ function mapUpdateResult(result: UpdateCheckResult): IUpdateInfo {
     };
 }
 
+const DEFAULT_LEFT_PANE_WIDTH = 400;
+const MIN_LEFT_PANE_WIDTH = 280;
+const MAX_LEFT_PANE_WIDTH = 600;
+
 export class AboutEditorView extends VanillaView<AboutEditorProps> {
     private model: AboutEditor;
     private runtimeVersions: IRuntimeVersions | null = null;
@@ -56,17 +63,19 @@ export class AboutEditorView extends VanillaView<AboutEditorProps> {
     private checkButton: ButtonView | undefined;
     private readonly statusNodes: Node[] = [];
     private readonly statusButtons: ButtonView[] = [];
+    private leftPaneWidth = DEFAULT_LEFT_PANE_WIDTH;
+    private leftPane: HTMLDivElement | undefined;
+    private splitter: SplitterView | undefined;
+    private guideBrowser: AboutGuideBrowserView | undefined;
 
     public constructor(props: AboutEditorProps) {
         const root = createPanelElement({
             name: "about-root",
-            direction: "column",
-            align: "center",
-            justify: "center",
-            padding: "xxxl",
+            direction: "row",
             flex: true,
-            overflow: "auto",
+            overflow: "hidden",
         });
+        root.classList.add("about-root");
         super(props, root);
         this.model = requireAboutModel(props.model);
     }
@@ -116,6 +125,9 @@ export class AboutEditorView extends VanillaView<AboutEditorProps> {
         this.availableBoardsText = undefined;
         this.checkButton = undefined;
         this.statusHost = undefined;
+        this.leftPane = undefined;
+        this.splitter = undefined;
+        this.guideBrowser = undefined;
     }
 
     private mountContent(): void {
@@ -130,6 +142,7 @@ export class AboutEditorView extends VanillaView<AboutEditorProps> {
             maxWidth: 400,
             gap: "xl",
         });
+        content.classList.add("about-card-content");
 
         content.append(createPanelElement(
             { width: 64, height: 64, align: "center", justify: "center" },
@@ -194,7 +207,54 @@ export class AboutEditorView extends VanillaView<AboutEditorProps> {
         github.mount();
         reportIssue.mount();
         content.append(links);
-        this.root.append(content);
+
+        this.leftPane = createPanelElement({
+            name: "about-card",
+            direction: "column",
+            align: "center",
+            justify: "start",
+            padding: "xxl",
+            minWidth: MIN_LEFT_PANE_WIDTH,
+            overflow: "auto",
+            shrink: false,
+        });
+        this.leftPane.classList.add("about-card-pane");
+        this.setLeftPaneWidth(this.leftPaneWidth);
+        this.leftPane.append(content);
+
+        this.root.append(this.leftPane);
+
+        this.splitter = this.child(new SplitterView(this.splitterProps()));
+        this.splitter.root.classList.add("about-splitter");
+        this.root.append(this.splitter.root);
+        this.splitter.mount();
+
+        this.guideBrowser = this.child(new AboutGuideBrowserView({ model: this.model }));
+        this.guideBrowser.root.classList.add("about-guide-pane");
+        this.root.append(this.guideBrowser.root);
+        this.guideBrowser.mount();
+    }
+
+    private splitterProps(): SplitterProps {
+        return {
+            name: "about-splitter",
+            orientation: "vertical",
+            side: "before",
+            value: this.leftPaneWidth,
+            min: MIN_LEFT_PANE_WIDTH,
+            max: MAX_LEFT_PANE_WIDTH,
+            onChange: this.handleLeftPaneWidthChange,
+        };
+    }
+
+    private readonly handleLeftPaneWidthChange = (width: number): void => {
+        this.leftPaneWidth = width;
+        this.setLeftPaneWidth(width);
+        this.splitter?.update(this.splitterProps());
+    };
+
+    private setLeftPaneWidth(width: number): void {
+        this.leftPane?.style.setProperty("--about-card-width", `${width}px`);
     }
 
     private statusHost: HTMLDivElement | undefined;

@@ -1,7 +1,18 @@
-/** Select the current release-notes section, preferring an upcoming section. */
-export function selectReleaseNotes(content: string, version: string): string {
-    const upcoming = findReleaseSection(content, `## Version ${version} (Upcoming)`);
-    if (upcoming !== undefined) return upcoming;
+export interface ReleaseNotesOptions {
+    /** Include the development-only upcoming section when it exists. */
+    includeUpcoming?: boolean;
+}
+
+/** Select the current release-notes section, preferring an upcoming section by default. */
+export function selectReleaseNotes(
+    content: string,
+    version: string,
+    options: ReleaseNotesOptions = {},
+): string {
+    if (options.includeUpcoming !== false) {
+        const upcoming = findReleaseSection(content, `## Version ${version} (Upcoming)`);
+        if (upcoming !== undefined) return upcoming;
+    }
     const released = findReleaseSection(content, `## Version ${version}`);
     return released ?? `No release notes are available for Persephone ${version}.`;
 }

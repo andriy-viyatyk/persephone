@@ -1,0 +1,96 @@
+@layer editor {
+    .about-root {
+        min-width: 0;
+        min-height: 0;
+    }
+
+    .about-card-pane {
+        flex: 0 0 var(--about-card-width, 400px);
+        width: var(--about-card-width, 400px);
+        min-height: 0;
+    }
+
+    .about-card-content {
+        flex: 0 0 auto;
+    }
+
+    .about-guide-pane {
+        flex: 1 1 auto;
+        min-width: 0;
+        min-height: 0;
+    }
+
+    .about-guide-browser-root {
+        min-width: 0;
+        min-height: 0;
+    }
+
+    .about-guide-contents {
+        min-width: 0;
+        min-height: 0;
+    }
+
+    .about-release-notes {
+        display: flex;
+        flex-direction: column;
+        gap: var(--gap-sm, 4px);
+    }
+
+    .about-release-bullet {
+        display: -webkit-box;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        overflow-wrap: anywhere;
+    }
+
+    .about-guide-contents [data-type="tree-item"] > .tree-trailing {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    .about-guide-contents [data-type="tree-item"] > .label {
+        flex: 0 1 auto;
+    }
+
+    /* The summary shares the title's row, so it needs its own gap: without one the
+       two strings collide into "Agent ToolsThe Agent Tools registry is …". */
+    .about-guide-summary {
+        display: block;
+        flex: 1 1 auto;
+        margin-left: 12px;
+        max-width: none;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .about-guide-page[hidden],
+    .about-guide-contents[hidden] {
+        display: none;
+    }
+
+    @media (max-width: 760px) {
+        .about-root {
+            flex-direction: column;
+            overflow: auto;
+        }
+
+        .about-card-pane {
+            flex-basis: auto;
+            width: 100%;
+            max-width: none;
+        }
+
+        .about-splitter {
+            display: none;
+        }
+
+        .about-guide-pane {
+            flex: 1 1 auto;
+            border-top: 1px solid var(--color-border-default, currentColor);
+        }
+    }
+}

@@ -117,8 +117,17 @@ used by both, not copied.
 
 Roadmap rule, taken as written. The toggle is browser state on the About editor, not a new
 `app.settings` entry: it is a browsing mode a user flips while reading, not a preference about how the
-app behaves, and the About page is re-created on each open anyway. If the user wants it sticky that
-is a one-line setting later — recorded under Needs user check rather than guessed at.
+app behaves. If the user wants it sticky across restarts that is a one-line setting later — recorded
+under Needs user check rather than guessed at.
+
+**Corrected 2026-09-07, during US-1367's plan review.** This decision was first written on the
+reasoning that "the About page is re-created on each open anyway". That is false:
+`showAboutPage()` passes a fixed `ABOUT_PAGE_ID` (`PagesLifecycleModel.ts:782-784`), so About is a
+**deduplicated singleton** — re-opening it focuses the existing page and its editor model, and the
+toggle therefore persists for the session. The choice stands and is in fact better served by the real
+behaviour; only the reason was wrong. Whether it survives a **restart** depends on the About
+editor's `skipSave`/`restore()` handling, which US-1367 states explicitly rather than leaving to
+chance.
 
 ### 7. `F1` is free, and its mapping is mostly empty until EPIC-094
 
@@ -209,6 +218,17 @@ Order is dependency order. US-1371 is independent and runs alongside US-1366. US
 both touch the About view and are separated only because the split plus the contents view is
 reviewable on its own, while the reuse of `MarkdownBodyView` is the risk that deserves its own plan
 review. US-1372 is the gate and closes the epic.
+
+### 11. What's New shows the *released* section in a packaged build
+
+Found in US-1367's plan review. The shared selector US-1366 moved into
+`src/shared/guides/release-notes.ts` always **prefers** the `## Version X (Upcoming)` section when
+one exists, because that is what `guides.whatsNew` wants: an agent asking what changed in a dev
+build should see the section being written. The About page's *What's New* is the user's release
+notes, so in a packaged build it must show the **released** section even while an upcoming one sits
+above it in the file. The selector therefore gains an explicit, additive mode rather than a second
+copy — `guides.whatsNew`'s current behaviour must not change — and the dev/packaged distinction
+comes from whatever the app already uses to tell them apart, not a new flag.
 
 ## Risks
 
