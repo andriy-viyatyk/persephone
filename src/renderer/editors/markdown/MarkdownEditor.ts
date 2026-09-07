@@ -3,14 +3,13 @@ import type { EditorStateBase } from "../base/EditorModel";
 import { TextHostEditorModel } from "../base/TextHostEditorModel";
 import { ComponentQueue } from "../../core/state/ComponentQueue";
 import { TextFileModel } from "../text/TextEditorModel";
+import type {
+    MarkdownBodyState,
+    MarkdownQueueEvent,
+    MarkdownQueueRequest,
+} from "./MarkdownBodyModel";
 
-export type MarkdownQueueEvent =
-    | { type: "focus" }
-    | { type: "anchor"; fragment: string };
-
-export type MarkdownQueueRequest =
-    | { type: "scrollToMatch"; index: number }
-    | { type: "scrollToAnchor"; fragment: string };
+export type { MarkdownQueueEvent, MarkdownQueueRequest } from "./MarkdownBodyModel";
 
 /**
  * HS1 host-slot shape — `compactMode` rides `host.editorSettings["md-view"]`
@@ -21,7 +20,7 @@ interface MarkdownViewSettings {
     compactMode?: boolean;
 }
 
-export interface MarkdownEditorState extends EditorStateBase {
+export interface MarkdownEditorState extends EditorStateBase, MarkdownBodyState {
     // HS1 — rides host.editorSettings["md-view"]. Bounded boolean.
     compactMode: boolean;
     // View-derived — present on state for in-session reactivity, stripped

@@ -72,6 +72,43 @@
         display: none;
     }
 
+    .about-guide-page {
+        min-width: 0;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    .about-guide-page-view {
+        min-width: 0;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    .about-guide-header {
+        flex: 0 0 auto;
+        min-width: 0;
+    }
+
+    .about-guide-breadcrumbs {
+        min-width: 0;
+        overflow: hidden;
+        white-space: nowrap;
+    }
+
+    .about-guide-breadcrumbs [data-type="button"] {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .about-guide-body {
+        flex: 1 1 auto;
+        min-width: 0;
+        min-height: 0;
+        overflow: hidden;
+    }
+
     @media (max-width: 760px) {
         .about-root {
             flex-direction: column;

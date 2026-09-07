@@ -200,7 +200,13 @@ export const markdownModule: EditorModule = {
     createEditor: () =>
         new MarkdownEditor(new TComponentState({ ...defaultMarkdownEditorState })),
     View: MarkdownEditorView,
-    BodyView: MarkdownBodyView,
+    // This cast declares a type-system gap, not a model mismatch: the only runtime consumer,
+    // NoteItemActiveEditorView, mounts module.BodyView with the editor produced by that same
+    // module's createEditor(). For this module that editor is always MarkdownEditor, which
+    // satisfies MarkdownBodyModel. A body view can now require more than EditorModel, but the
+    // registry type cannot express per-module body models without a generic refactor; the
+    // same-module factory invariant is what makes this cast sound.
+    BodyView: MarkdownBodyView as unknown as NonNullable<EditorModule["BodyView"]>,
 };
 
 export { MarkdownEditor, defaultMarkdownEditorState };

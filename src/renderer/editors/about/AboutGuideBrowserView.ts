@@ -12,6 +12,7 @@ import { TreeView } from "../../uikit/Tree/TreeView";
 import type { ITreeItem, TreeProps } from "../../uikit/Tree/types";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { AboutEditor, type AboutGuideLocation } from "./AboutEditor";
+import { AboutGuidePageView } from "./AboutGuidePageView";
 import "../../uikit/Button/Button.css";
 import "../../uikit/Checkbox/Checkbox.css";
 import "./AboutView.css";
@@ -118,6 +119,7 @@ export class AboutGuideBrowserView extends VanillaView<AboutGuideBrowserProps> {
     private releaseNotesText: HTMLDivElement | undefined;
     private tree: TreeView<AboutGuideTreeItem> | undefined;
     private showAgentGuidesToggle: CheckboxView | undefined;
+    private guidePage: AboutGuidePageView | undefined;
 
     public constructor(props: AboutGuideBrowserProps) {
         super(props, createPanelElement({
@@ -174,6 +176,13 @@ export class AboutGuideBrowserView extends VanillaView<AboutGuideBrowserProps> {
         });
         this.guidePageMount.classList.add("about-guide-page");
         this.root.append(this.guidePageMount);
+        this.guidePage = this.child(new AboutGuidePageView({
+            browser: this.model.guideBrowser,
+            openGuide: (path, fragment) => this.openGuide(path, fragment),
+            back: () => this.back(),
+        }));
+        this.guidePageMount.append(this.guidePage.root);
+        this.guidePage.mount();
 
         this.ownSubscription(this.model.guideBrowser.subscribe(this.handleBrowserStateChange));
         this.applyLocation();
@@ -189,6 +198,7 @@ export class AboutGuideBrowserView extends VanillaView<AboutGuideBrowserProps> {
         this.releaseNotesText = undefined;
         this.tree = undefined;
         this.showAgentGuidesToggle = undefined;
+        this.guidePage = undefined;
     }
 
     private mountContents(): void {

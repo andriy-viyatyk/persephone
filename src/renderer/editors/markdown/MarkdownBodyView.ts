@@ -14,30 +14,32 @@ import type { Cleanup } from "../../core/utils/DisposableStore";
 import type { EditorConfig } from "../base/EditorConfig";
 import { FindBarView, type FindBarProps } from "../shared/FindBarView";
 import { MarkdownBlockView, type MarkdownBlockProps } from "./MarkdownBlockView";
-import type { MarkdownEditor, MarkdownEditorState, MarkdownQueueEvent } from "./MarkdownEditor";
+import type {
+    MarkdownBodyHostState,
+    MarkdownBodyModel,
+    MarkdownBodyState,
+    MarkdownQueueEvent,
+} from "./MarkdownBodyModel";
 import { isGuideHref, isLocalMarkdownHref } from "./markdown-nav";
 
 export interface MarkdownBodyViewProps {
-    model: MarkdownEditor;
+    model: MarkdownBodyModel;
     editorConfig?: EditorConfig;
 }
 
 interface MarkdownProjection {
-    compactMode: MarkdownEditorState["compactMode"];
-    searchVisible: MarkdownEditorState["searchVisible"];
-    searchText: MarkdownEditorState["searchText"];
-    currentMatchIndex: MarkdownEditorState["currentMatchIndex"];
-    totalMatches: MarkdownEditorState["totalMatches"];
+    compactMode: MarkdownBodyState["compactMode"];
+    searchVisible: MarkdownBodyState["searchVisible"];
+    searchText: MarkdownBodyState["searchText"];
+    currentMatchIndex: MarkdownBodyState["currentMatchIndex"];
+    totalMatches: MarkdownBodyState["totalMatches"];
 }
 
-interface HostProjection {
-    content: string;
-    filePath: string | undefined;
-}
+type HostProjection = Pick<MarkdownBodyHostState, "content" | "filePath" | "title">;
 
-const EMPTY_HOST: HostProjection = { content: "", filePath: undefined };
+const EMPTY_HOST: HostProjection = { content: "", filePath: undefined, title: "" };
 
-function selectProjection(state: MarkdownEditorState): MarkdownProjection {
+function selectProjection(state: MarkdownBodyState): MarkdownProjection {
     return {
         compactMode: state.compactMode,
         searchVisible: state.searchVisible,
@@ -47,8 +49,8 @@ function selectProjection(state: MarkdownEditorState): MarkdownProjection {
     };
 }
 
-function selectHostProjection(state: { content: string; filePath?: string }): HostProjection {
-    return { content: state.content, filePath: state.filePath };
+function selectHostProjection(state: MarkdownBodyHostState): HostProjection {
+    return { content: state.content, filePath: state.filePath, title: state.title };
 }
 
 function rootPanelProps(editorConfig?: EditorConfig): PanelStyleProps {
@@ -104,7 +106,7 @@ function sameBlockProps(a: MarkdownBlockProps | undefined, b: MarkdownBlockProps
 }
 
 export class MarkdownBodyView extends VanillaView<MarkdownBodyViewProps> {
-    private model: MarkdownEditor;
+    private model: MarkdownBodyModel;
     private findColumn!: HTMLDivElement;
     private scrollPanel!: HTMLDivElement;
     private markdownBlock!: MarkdownBlockView;
@@ -115,8 +117,8 @@ export class MarkdownBodyView extends VanillaView<MarkdownBodyViewProps> {
     private hostSubscription: (() => void) | undefined;
     private queueSubscription: (() => void) | undefined;
     private pageFocusSubscription: (() => void) | undefined;
-    private boundModel: MarkdownEditor | undefined;
-    private boundHost: MarkdownEditor["host"] = null;
+    private boundModel: MarkdownBodyModel | undefined;
+    private boundHost: MarkdownBodyModel["host"] = null;
 
     private hostProjection: HostProjection;
     private lastProjection: MarkdownProjection | undefined;
@@ -192,6 +194,12 @@ export class MarkdownBodyView extends VanillaView<MarkdownBodyViewProps> {
         }
         if (!isLocalMarkdownHref(href) && !isGuideHref(href)) return;
 
+        if (this.model.navigateLink?.(href)) {
+            event.preventDefault();
+            event.stopPropagation();
+            return;
+        }
+
         const page = this.model.page;
         const pageId = page?.id;
         if (!pageId) return;
@@ -259,7 +267,7 @@ export class MarkdownBodyView extends VanillaView<MarkdownBodyViewProps> {
         this.markdownBlock.mount();
         this.lastBlockProps = this.blockProps();
         this.reconcileMinimap();
-        this.model.setContainer(this.scrollPanel);
+        this.model.setContainer?.(this.scrollPanel);
         this.bindToHostIfNeeded();
         this.bindModel();
         this.bindPageFocus();
@@ -298,10 +306,10 @@ export class MarkdownBodyView extends VanillaView<MarkdownBodyViewProps> {
         this.hostSubscription = undefined;
         this.pageFocusSubscription?.();
         this.pageFocusSubscription = undefined;
-        this.model.setContainer(null);
+        this.model.setContainer?.(null);
     }
 
-    private replaceModel(nextModel: MarkdownEditor): void {
+    private replaceModel(nextModel: MarkdownBodyModel): void {
         const oldModel = this.model;
         this.cancelAnchorRetry();
         this.lifecycleGeneration += 1;
@@ -313,7 +321,7 @@ export class MarkdownBodyView extends VanillaView<MarkdownBodyViewProps> {
         this.hostSubscription = undefined;
         this.pageFocusSubscription?.();
         this.pageFocusSubscription = undefined;
-        oldModel.setContainer(null);
+        oldModel.setContainer?.(null);
 
         this.model = nextModel;
         this.boundModel = undefined;
@@ -323,7 +331,7 @@ export class MarkdownBodyView extends VanillaView<MarkdownBodyViewProps> {
             : EMPTY_HOST;
         this.lastProjection = undefined;
         this.lastBlockProps = undefined;
-        this.model.setContainer(this.scrollPanel);
+        this.model.setContainer?.(this.scrollPanel);
         this.reconcileMinimap();
         this.bindToHostIfNeeded();
         this.bindModel();
@@ -371,6 +379,7 @@ export class MarkdownBodyView extends VanillaView<MarkdownBodyViewProps> {
 
     private bindPageFocus(): void {
         const model = this.model;
+        if (!model.page) return;
         const generation = this.lifecycleGeneration;
         this.pageFocusSubscription = this.ownSubscription(pagesModel.onFocus.subscribe((page) => {
             if (!this.isCurrent(model, generation) || page !== model.page) return;
@@ -550,7 +559,7 @@ export class MarkdownBodyView extends VanillaView<MarkdownBodyViewProps> {
         attempt();
     }
 
-    private isCurrent(model: MarkdownEditor, generation: number): boolean {
+    private isCurrent(model: MarkdownBodyModel, generation: number): boolean {
         return this.active && this.model === model && this.lifecycleGeneration === generation;
     }
 }

@@ -10,7 +10,8 @@ import { themeState } from "../../theme/theme-state";
 import { CopyIcon, OpenFileIcon } from "../../theme/icons";
 import { appendLinkOpenMenuItems } from "../shared/link-open-menu";
 import { detectGitRoot } from "./detect-git-root";
-import type { MarkdownEditor, MarkdownQueueRequest } from "./MarkdownEditor";
+import type { MarkdownBodyQueue, MarkdownQueueRequest } from "./MarkdownBodyModel";
+import { PERSEPHONE_GUIDE_PREFIX } from "../../../shared/guides/guide-links";
 import { rehypeHeadingIds, slugifyHeading } from "./rehypeHeadingIds";
 import { createRehypeHighlight } from "./rehypeHighlight";
 import { rehypeMarkdownOverrides } from "./rehypeMarkdownOverrides";
@@ -40,7 +41,7 @@ export interface MarkdownBlockProps {
     style?: NativeCSSProperties;
     /** Called when the number of search highlight matches changes. */
     onMatchCountChange?: (count: number) => void;
-    commandQueue?: MarkdownEditor["typedQueue"];
+    commandQueue?: MarkdownBodyQueue;
 }
 
 export interface MarkdownRenderContext {
@@ -161,7 +162,7 @@ function stylePropertyName(name: string): string {
 
 export class MarkdownBlockView extends VanillaView<MarkdownBlockProps> {
     private transientViews: Array<IOwnedView & { mount(): HTMLElement }> = [];
-    private registeredQueue: MarkdownEditor["typedQueue"] | undefined;
+    private registeredQueue: MarkdownBodyQueue | undefined;
     private unregisterQueue: (() => void) | undefined;
     private wikiRoot: string | undefined;
     private lookupFilePath: string | undefined;
@@ -224,7 +225,7 @@ export class MarkdownBlockView extends VanillaView<MarkdownBlockProps> {
         }
     }
 
-    private registerQueue(queue: MarkdownEditor["typedQueue"] | undefined): void {
+    private registerQueue(queue: MarkdownBodyQueue | undefined): void {
         this.unregisterQueue?.();
         this.registeredQueue = queue;
         if (!queue) {
@@ -292,7 +293,10 @@ export class MarkdownBlockView extends VanillaView<MarkdownBlockProps> {
         const filePath = this.props.filePath;
         this.lookupFilePath = filePath;
         const generation = ++this.lookupGeneration;
-        if (!filePath || filePath.toLowerCase().startsWith("mneme://")) {
+        if (!filePath
+            || filePath.toLowerCase().startsWith("mneme://")
+            || filePath.toLowerCase().startsWith(PERSEPHONE_GUIDE_PREFIX)
+        ) {
             this.wikiRoot = undefined;
             return;
         }
