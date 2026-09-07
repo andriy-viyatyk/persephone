@@ -23,6 +23,7 @@ Two things these files are for:
 | [gate.md](gate.md) | EPIC-090 compact deletion gate | EPIC-090 |
 | [malformed-input.md](malformed-input.md) | Error quality: what `call` says when the caller gets it wrong | EPIC-091 (US-1354 to US-1360) |
 | [guide-questions.md](guide-questions.md) | The documentation surface: answering a user's question from the `guides` corpus | EPIC-092 (US-1364) |
+| [about-guide-browser.md](about-guide-browser.md) | The About page's two panes and the `about-view` facade: putting a guide on the user's screen | EPIC-093 (US-1372) |
 | [dialogs.md](dialogs.md) | Blocking dialogs, the `dialogs` node, attention and pending results | EPIC-084 (US-1297, US-1298, US-1301) |
 | [shell.md](shell.md) | The application shell: header strip, tabs, curated elements and highlight | EPIC-084 (US-1300) |
 | [page.md](page.md) | Page-scoped elements, activation, tab ownership, and page identity | EPIC-086 (US-1311) |

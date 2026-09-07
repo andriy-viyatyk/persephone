@@ -138,7 +138,7 @@ downloads - inspect and manage download entries; e.g. downloads.downloads
 menuFolders - inspect configured sidebar folders; e.g. menuFolders.folders
 windows - inspect open/closed application windows; e.g. windows[0].status
 main - process-wide diagnostics and gated scripting; e.g. main.runtime
-guides - documentation tree and text search for how to do something or where it is; e.g. guides.editors.grid
+guides - documentation tree and text search for how to do something or where it is; show a guide by opening it with pages.openUrl("persephone-guide://<path>") or pages["about-page"].editor.open("<path>"); e.g. guides.editors.grid
 `.trim();
 
 const ROOT_HELP = `
