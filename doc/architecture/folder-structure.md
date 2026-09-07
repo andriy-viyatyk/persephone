@@ -32,6 +32,7 @@ persephone/
 │   ├── guides/             # Shared user and agent guide corpus
 │   │   ├── agents/         # Agent-facing application and automation guides
 │   │   ├── editors/        # User-facing editor guides
+│   │   ├── screens/        # User-facing per-screen chrome and layout guides
 │   │   ├── formats/        # Structured editor formats
 │   │   └── scripting/      # Scripting guide and API reference
 │   ├── agent/              # Standalone modules injected into a page by an agent (not part of the renderer bundle)

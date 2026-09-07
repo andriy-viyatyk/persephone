@@ -67,7 +67,7 @@ App and tool pages are not editor pages in this catalogue. Open their dedicated 
 the Tools & Editors menu, and the Mneme screens with details in [Mneme Knowledge Base](../mneme.md).
 The Git Integration Setting is part of [Settings](../screens/settings.md); MCP Inspector can also be
 opened with `app.pages.showMcpInspectorPage({ url })`. Most of these ids are deliberately outside
-the 23 editor guides; `board-info` is the content-host exception to the usual app-page
+this editor catalogue; `board-info` is the content-host exception to the usual app-page
 `pages.addEditorPage` restriction and remains screen-owned.
 
 ## Things that are no longer built in
@@ -91,10 +91,9 @@ the editor's format; the detailed page and the linked format guide are the next 
 is missing, verify the filename suffix and the content marker listed above. Git and Mneme are both
 off by default; enable them in Settings when their pages are absent.
 
-The following duplicate claims are intentionally handed to US-1378: `browser-view` also appears in
-`../agents/browser.md`, `notebook-view` in `../formats/notebook.md`, `graph-view` in
-`../formats/graph.md`, `link-view` in `../formats/links.md`, and `log-view` in
-`../formats/ui-push.md`. This task does not change those competing guides.
+The editor pages own the `editorId` mappings. The detailed agent and format references link back to
+their user-facing editor pages without claiming those IDs, so F1 and the guide browser have one
+unambiguous destination for each editor.
 
 ## Where to go next
 

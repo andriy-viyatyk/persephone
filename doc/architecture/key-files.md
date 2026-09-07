@@ -54,6 +54,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Framework-free virtualization engine (render-window calculation, pooled cells, sticky regions, scroll/resize handling, and scheduled repaint) | `av-grid` via `/src/renderer/uikit/DataGrid/index.ts` |
 | Markdown link resolution (relative → `file://`; Azure DevOps wiki root-relative pages + `.attachments`) | `/src/renderer/core/utils/path-utils.ts` |
 | Guide link resolution (`persephone-guide://` validation and relative guide href resolution) | `/src/shared/guides/guide-links.ts`, `/src/renderer/editors/markdown/markdown-nav.ts` |
+| Shared guide corpus index (front matter, tree, search, and `## Layout` extraction) | `/src/shared/guides/` |
 | Git-root detection for Markdown wiki links (walk up to nearest `.git`, cached) | `/src/renderer/editors/markdown/detect-git-root.ts` |
 | Markdown heading anchors (GitHub-style slug ids + `-1`/`-2` dedupe; exports `slugifyHeading`, reused by `MarkdownBlock.scrollToAnchor` to match a `#fragment` against heading text so Azure-DevOps and GitHub dialects meet) | `/src/renderer/editors/markdown/rehypeHeadingIds.ts` |
 | File / directory watchers (`FileWatcher`, `DirectoryWatcher`) | `/src/renderer/core/utils/file-watcher.ts` |
@@ -93,7 +94,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Shared AiVision contracts, registry, path parser/resolver, hints, help search, and result shaping | `/src/shared/ai-vision/` |
 | Shared AiVision argument validation and member suggestions | `/src/shared/ai-vision/argument-validation.ts`, `/src/shared/ai-vision/member-suggestion.ts` |
 | Renderer AiVision root and namespace descriptors (the renderer side of path calls) | `/src/renderer/scripting/ai-vision/` |
-| AiVision descriptor extensions (descriptor-owned `provide` for computed members, returned-node identity, and curated UI-element declarations) | `/src/shared/ai-vision/types.ts`, `/src/shared/ai-vision/resolver.ts`, `/src/shared/ai-vision/help-search.ts` |
+| AiVision descriptor extensions (descriptor-owned `provide` for computed members, returned-node identity, and curated UI-element declarations with optional spatial phrases) | `/src/shared/ai-vision/types.ts`, `/src/shared/ai-vision/resolver.ts`, `/src/shared/ai-vision/help-search.ts` |
 | Renderer dialog AiVision adapters (safe fields, button actions, cancellation, password privacy) | `/src/renderer/scripting/ai-vision/dialogs/` |
 | Renderer popup-menu AiVision adapter (`menus[0]`, nested item paths, click/close) | `/src/renderer/scripting/ai-vision/menus/` |
 | Menu Bar AiVision descriptor (live folders/selection, strict ID-based open, and curated Menu Bar elements) | `/src/renderer/scripting/ai-vision/namespaces/menu-bar.ts` |
@@ -286,7 +287,8 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | VLC launcher             | `/src/main/vlc-launcher.ts`                       |
 | Terminal launcher (main; `detectTerminal` via `where`, `openTerminalAt` via `cmd /c start` so a console shell gets a visible window; supports pwsh/powershell/cmd/wt) | `/src/main/terminal-launcher.ts` |
 | Terminal open helper (renderer; reads `terminal.command`, auto-detects pwsh→powershell→cmd on first use and saves it, then launches — drives the "Open Terminal here" folder menu item) | `/src/renderer/api/terminal.ts` |
-| MCP resource guides      | `/assets/guides/agents/` and `/assets/guides/formats/` |
+| Guide AiVision node (guide tree, page reads, layout extraction, and text search) | `/src/main/mcp/ai-vision/guides.ts` |
+| Packaged guide corpus and MCP resource aliases | `/assets/guides/`, `/src/main/mcp/manifest.ts` |
 | Agent highlight overlay (the ring + explanation card an agent draws on an element; dependency-free IIFE exposing `window.__persephoneHighlight`. Three constraints that are not guessable: it must live under a **directory** host because `app-asset://` maps the URL's *host* to a folder, so a top-level `assets/*.js` has no reachable URL; removal is **visibility-based**, since the Menu Bar is hidden with `display: none` rather than unmounted and a detach-only check left a ring floating over empty space the moment the user closed the menu; and the file is kept strictly ASCII because it is pasted between contexts and served by handlers that do not always declare a charset) | `/assets/agent/ui-highlight.js` |
 | Highlight API (`app.ui.highlightElement` / `clearHighlights`; fetches the overlay once via `app-asset://` and caches the loader promise, resetting it on failure so a failed load can retry) | `/src/renderer/api/ui.ts` |
 | Renderer MCP IPC shell (receives main-process commands, dispatches, times, logs, and returns results) | `/src/renderer/api/mcp-handler.ts` |

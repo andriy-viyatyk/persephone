@@ -212,7 +212,7 @@ quickly). The default is no images in the first pass; record the decision in EPI
 |---|---|---|---|
 | 1 | ✅ **EPIC-092** — Guide corpus and the `guides` node | `assets/guides/` with front matter; a shared guide index module (`src/shared/guides/`) used by main and renderer; `docs/*.md` **and** the twelve `assets/mcp-res-*.md` moved verbatim into the tree (API reference included, unchanged); `guides`, `guides.<path>`, `guides.search`, `guides.whatsNew` served by main; `persephone://guides/*` re-pointed at the tree with unchanged URIs; overview, server instructions and node help pointers; QA guide-question set re-run through `call` only | `assets/mcp-res-*.md` as separate files (their content lives on in the tree). `docs/` stays until EPIC-095 |
 | 2 | ✅ **EPIC-093** — About page as guide browser | Left/right split; contents view with What's New and Resources; in-pane markdown rendering with breadcrumbs, back, *Open in tab*; the guide link scheme through the content pipeline; Menu Bar *User Guide* item and `F1`; update toast opens in-app What's New; `about-view` agent facade | The external GitHub *What's New* URL in About |
-| 3 | **EPIC-094** — Per-screen guides and layout schemas | `editors/index.md` (ex `docs/editors.md`) and the ex-`ui-editors` page merged and split into one page per editor; `screens/` pages for header, Menu Bar, Settings, sidebar panels (absorbing the ex-`ui` page); `## Layout` schema on every screen page; `where` on `elements`; screen → guide mapping (`editorId` front matter) behind `F1` and the "?" affordance; `mcp-test-agent-call` run on "where is X?" questions | The standalone `ui` and `ui-editors` pages (their URIs now alias the merged pages) |
+| 3 | ✅ **EPIC-094** — Per-screen guides and layout schemas | `editors/index.md` (ex `docs/editors.md`) and the ex-`ui-editors` page merged and split into one page per editor; `screens/` pages for header, Menu Bar, Settings, sidebar panels (absorbing the ex-`ui` page); `## Layout` schema on every screen page; `where` on `elements`; screen → guide mapping (`editorId` front matter) behind `F1` and the "?" affordance; `mcp-test-agent-call` run on "where is X?" questions | The standalone `ui` and `ui-editors` pages (their URIs now alias the merged pages) |
 | 4 | **EPIC-095** — Retire `docs/` | Delete `docs/`; README *Documentation* block points at `assets/guides/index.md` (and says the in-app copy is canonical); `CONTRIBUTING.md:164`, `build/README.txt` (already stale — describes `read_guide`), `assets/board-template/CLAUDE.md:724`, `assets/script-library/autoload/register-all.ts:11` re-pointed; release process step 3 rewritten for `assets/guides/whats-new.md`; `/userdoc` and `/document` skills rewritten for the new location and the layout-schema step | `docs/` (31 files, ~11k lines) |
 
 **EPIC-092 completed 2026-09-07** ([epic document](epics/completed.md),
@@ -242,6 +242,35 @@ it also turns *Show agent guides* on rather than refusing an `audience: agent` p
 **search box was deliberately left out** so it lands on a proven pane. And `F1`'s screen-to-guide
 mapping resolves for very few pages until EPIC-094 writes the per-screen guides, so its fallback to
 the contents view is the normal path rather than an error path.
+
+**EPIC-094 completed 2026-09-07** ([epic document](epics/completed.md),
+[gate run](../qa/runs/2026-09-07-epic-094-where-is-x.md)). Deviations from this document, all
+recorded in the epic: **screenshots stayed out**, as defaulted here. The editor split produced
+**21** pages, not one per registered id — eight of the 32 registered "editors" are app screens
+(Settings, About, the Tools hub, the MCP Inspector, Mneme, Board Info, toolsets) and took their
+`editorId` on the page that documents that screen, while `storybook-view` is development-only and
+got none; `grid-json`/`grid-csv`/`grid-jsonl` are one screen, so front matter had to learn a
+**list-valued `editorId`**. Front matter also needed a **`screen` key** and, more urgently, needed to
+**tolerate an unknown key**: the parser treated any unrecognised field as a whole-file failure, so
+adding `screen:` to a page would have silently dropped its title, audience and summary and rendered
+the raw YAML as body text. `where` could not go where this document implies — `hint.ts` never
+rendered `elements` at all — so it surfaces on the resolved `elements` value and the `helpSearch`
+hit instead. Six `editorId` values were **claimed twice**, so `F1` was already resolving by tree
+order rather than by ownership. The grid's row filter, the control the gate question is about, had
+no `data-name` and lives in the published `av-grid` package; it is addressed through the
+declaration's existing `selector` field rather than a dependency release, since the element contract
+deliberately excludes editor internals. The per-toolbar "?" affordance stayed **deferred** in favour
+of a Menu Bar *Guide for this page* item, and `screens/mcp-inspector.md` was added because mapping
+the Inspector to the header strip would have answered `F1` with a guide about a different screen.
+
+Two lessons worth carrying into EPIC-095. **A schema derived from view code is not a schema.** Every
+diagram was first drawn as a vertical list — one control per row — which carries position in prose
+the `where` phrases already carry, and the Menu Bar was drawn wrong twice from the views and settled
+only by opening it and measuring. Position has to be read off the running window. And **the epic
+broke its own artifact in its last task**: adding the Menu Bar item shifted every icon in that row,
+leaving `menubar-settings`' phrase claiming it sat immediately right of *User Guide* — the answer to
+one of the gate's own questions. That is exactly the drift `/userdoc`'s new re-check step exists to
+catch, found by opening the menu rather than by reading the diff.
 
 Epics 2 and 3 are independent once EPIC-092 lands and can run in either order; EPIC-095 waits for
 all three. EPIC-092 is deliberately a move, not a rewrite (principle 2): the diff must show the

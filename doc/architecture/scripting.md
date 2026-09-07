@@ -693,12 +693,22 @@ not replaced merely to make all validation implementations share a module.
 Descriptors may provide computed members through `provide(name)` when the advertised value is not
 a property on the target object. They may also declare curated screen controls separately from
 the live value: `elements` is indexed by help search, while the shared element helper supplies
-live `visible` state and the `highlight(name, message?)` action. `provide` is descriptor-owned:
+live `visible` state and the `highlight(name, message?)` action. An element declaration may also
+carry an optional free-text `where` phrase. The phrase is included in the resolved `elements`
+value and in matching `helpSearch` hits, so an agent can discover both the purpose and the screen
+region from either path. `provide` is descriptor-owned:
 the resolver asks it for the named member before reading `target[name]`, so a descriptor can expose
 these computed controls without threading renderer runtime state through every `resolveCall`
 caller. Visibility is measured from the renderer DOM; declarations do not attempt to infer an
 exhaustive element inventory. `highlight` delegates to the existing overlay and resolves once the
 overlay is drawn; the user dismisses it afterward.
+
+The `guides` root is backed by the shared guide index in `/src/shared/guides/`. A page read through
+`guides.<path>` returns Markdown with valid front matter removed; `guides.<path>.layout` returns
+the body of its `## Layout` section or an explicit no-schema message. `guides.search()` searches
+the same corpus independently of descriptor help search. Guide front matter accepts `title`,
+`audience`, `summary`, optional `screen`, and either one `editorId` or a list of editor IDs. The
+editor mapping is used by the active-page guide entry points, while `screen` remains page metadata.
 
 The renderer root includes live transient-surface nodes: `dialogs` adapts the registered dialog
 view entries by `viewId`, exposing safe fields plus `click(button)` and `cancel()`, while

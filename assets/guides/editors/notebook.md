@@ -22,9 +22,14 @@ tags, comments, and full-text search organize the collection.
 +---------------------------------------------------------------------+
 | [Page nav] [Breadcrumb]                [Search] [Add Note] [Switch] |  Notebook toolbar: breadcrumb at left, actions and switch at right
 +---------------------------------------------------------------------+
-| [Note cards] [Categories and Tags panels]                           |  notebook body below the toolbar
+| [Categories]  | [Note card: title  tags…       [Expand] [Delete]]   |  sidebar panels on the left; note cards fill the body to their
+| [Tags]        | [Note card: title  tags…       [Expand] [Delete]]   |  right, each card's tag chips on its title row after the title
 +---------------------------------------------------------------------+
 ```
+
+A note's **tags** are the chips on its own title row, between the title and the Expand and Delete
+buttons at the card's right edge; click there to add or edit one. The **Tags** panel in the left
+sidebar *filters* the collection by tag — it does not assign tags to a note.
 
 ### User-facing label → `elements` name
 
@@ -94,7 +99,12 @@ categories to change their hierarchy, and drag a file or link onto a category to
 ## Categories, tags, and navigation
 
 Categories use `/` paths and appear in the **Categories** sidebar with counts. Tags are flat or
-`prefix:value` labels such as `env:dev` and appear in the **Tags** sidebar. The toolbar breadcrumb
+`prefix:value` labels such as `env:dev`.
+
+**To tag a note, click the tag area on that note's title row** — the chips sit after the title and
+before the Expand and Delete buttons at the card's right edge — and type the tag; autocomplete
+offers existing ones. The **Tags** sidebar panel lists every tag in the collection and filters by
+it; it is not where a tag is assigned. The toolbar breadcrumb
 shows the active category or tag; click a segment to move upward or the root to clear the filter.
 Autocomplete assists category and tag editing, and the search filter combines with category/tag
 filters.

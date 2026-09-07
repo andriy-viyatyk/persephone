@@ -129,7 +129,7 @@ sidebar; their editor-specific panel bodies and controls are not shell layout an
 
 ### Drawn controls without `elements`
 
-- Browser Home, Back, Forward, Reload, address bar, Navigate, Bookmarks, Downloads, More, DevTools, and Close — no entry in this sidebar list: Browser owns its custom toolbar; its editor facade is owned by US-1376.
+- Browser Home, Back, Forward, Reload, address bar, Navigate, Bookmarks, Downloads, More, DevTools, and Close — no entry in this sidebar list: Browser owns its custom toolbar; see the [Browser editor guide](../editors/browser.md) for its editor facade.
 - Board-specific toolbar controls — no entry: custom board content; the embedded switch is the supported anchor.
 - File, board, tool, ref, and changed-file rows — no entry: repeated data rows are addressed through panel state/actions; the dynamic declarations cover stable roots and actions.
 

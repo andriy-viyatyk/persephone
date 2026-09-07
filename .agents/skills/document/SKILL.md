@@ -63,51 +63,53 @@ shared document:
 - **Critical Patterns** — Any new patterns to document?
 - **Documentation Map** — Any new docs to link?
 
-### 4. UI guides (`assets/guides/agents/ui*.md` — agent-facing)
+### 4. Screen guides (`assets/guides/screens/*`, `assets/guides/editors/*`)
 
-Two guides describe Persephone to an agent that is helping the user with the app itself:
+EPIC-094 replaced the two standalone agent guides this section used to describe. `agents/ui.md` and
+`agents/ui-editors.md` are **deleted**; their content lives in `assets/guides/screens/` (the chrome,
+one page per screen) and `assets/guides/editors/` (one page per editor, each declaring its
+`editorId`). The `persephone://guides/ui` and `ui-editors` URIs still work and alias
+`screens/index.md` and `editors/index.md`.
 
-- **`assets/guides/agents/ui.md`** — the chrome: what each always-visible element is *for*, its
-  `data-name` selector, and the `app.ui.highlightElement` recipe.
-- **`assets/guides/agents/ui-editors.md`** — the editor catalog: what each editor is for, how the user
-  opens it, what it can do. Its source material is the user doc `assets/guides/editors/index.md`, which stays
-  authoritative for humans; the guide is a condensation, not a second copy.
+These pages serve **both** audiences — the user reads them in the About guide browser, the agent
+reads the same text through `guides.<path>` — so there is no longer a condensation to keep in sync
+with a user doc. There is one page, and it is authoritative.
 
-Both describe a moving target, so they are the guides most likely to rot silently — nothing
-fails when they go stale, an agent just tells the user something untrue.
+They describe a moving target and nothing fails when they rot: an agent simply tells the user
+something untrue. Check them whenever a change touched:
 
-Check **`agents/ui.md`** whenever a change touched:
-
-- **The app shell** — `src/renderer/ui/app/MainPage.tsx`, `ui/tabs/`, `ui/sidebar/MenuBar.tsx`,
-  `ui/app/Pages.tsx`, `ui/secondary-views/`. Verify every selector the guide names still
-  resolves, and that new always-visible chrome is described.
+- **The app shell** — `src/renderer/ui/` (header strip, tab strip, Menu Bar, sidebar, secondary
+  views). Verify every `data-name` the page names still resolves, and that new always-visible chrome
+  is described.
 - **The selector contract** — [`doc/architecture/ui-element-contract.md`](../../../doc/architecture/ui-element-contract.md).
-  A `data-name` quoted in the guide is agent-facing API: renaming one is a documentation change,
-  and the guide and the contract doc must be updated in the same commit.
-- **`app.ui.highlightElement` / `clearHighlights`** — `src/renderer/api/ui.ts`,
-  `src/renderer/api/types/ui.d.ts`, `assets/agent/ui-highlight.js`. Options and return fields
-  are quoted in the guide.
+  A `data-name` quoted in a guide is agent-facing API: renaming one is a documentation change, and
+  the guide and the contract must be updated in the same commit.
+- **The editor set** — `src/renderer/editors/register-editors.ts` (an editor added, removed or
+  renamed) or `editor-matchers.ts` (which files open in which editor, which switch buttons appear).
+  A new editor needs its own page under `editors/`, with an `editorId` — which is **unique across
+  the corpus**, since `F1` and the guide pointer resolve through it.
+- **A feature moving out of the app into a board** — `editors/index.md` carries the *"Things that
+  are no longer built in"* note so an agent never promises a removed feature.
 
-Check **`agents/ui-editors.md`** whenever a change touched:
+**Layout is now documented deliberately, and this is a reversal of the old rule here.** This
+section used to say "keep both thin on layout, thick on purpose" and to prefer "opens the Menu Bar"
+over "third button from the left". That advice was right when position was undocumented and would
+only rot. It is now wrong: EPIC-094 exists because an agent asked *"where is the control that
+filters rows?"* answered with a CSS class, which is what "thick on purpose, thin on layout"
+produces. Every screen and editor page carries a `## Layout` schema and every `elements` entry a
+`where` phrase, on purpose, and they must be kept correct rather than removed.
 
-- **The editor set** — `src/renderer/editors/register-editors.ts` (an editor added, removed, or
-  renamed), or `editor-matchers.ts` (which files open in which editor, and which switch buttons
-  appear).
-- **`assets/guides/editors/index.md`** — if the user doc gained or lost a capability, the condensation is stale
-  too. Reconcile the two rather than editing one.
-- **A feature moving out of the app into a board** — the guide's *"Things that are no longer
-  built in"* section exists so an agent never promises a removed feature (Todo, PDF). Anything
-  that follows them belongs there.
+Purpose still comes first — a `purpose` says what a control is *for* and survives a refactor. But
+position is now part of the contract, so when a screen changes, re-check its schema and phrases
+rather than deleting them. `/userdoc` owns that step and describes the method
+(`.agents/skills/userdoc/SKILL.md`); this skill's job is only to notice that a shell or registry
+change makes it necessary.
 
-Keep both **thin on layout, thick on purpose**. An element's purpose survives a refactor; its
-position does not. Prefer "opens the Menu Bar" over "third button from the left".
-
-Keep `agents/ui-editors.md` free of the required-`language` and title-suffix tables — those live
-in `agents/pages.md`, and duplicating them means two copies drifting apart on the one detail
-that silently produces a broken page.
-
-The fastest verification is live, not by reading source: `browser_snapshot({ pageId: "app" })`
-and `app.ui.highlightElement(selector)` — `found: false` names the stale selector for you.
+The fastest verification is live, not by reading source. `call` is the only MCP tool, so:
+`window.screen.snapshot()` for the shell, `pages[i].editor.elements` for a page's curated controls
+(each entry carries `purpose`, `where`, `selector` and `visible`), and `ui.highlight(name)` or
+`pages[i].editor.highlight(name)` to confirm a name still resolves — a name that highlights nothing
+is the stale one.
 
 ### 5. Board documentation (`assets/` — consumer-facing)
 

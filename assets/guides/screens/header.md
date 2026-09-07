@@ -20,9 +20,9 @@ every state.
 
 ```
 +---------------------------------------------------------------------+
-| [P] [tab] [tab] [tab] … [+ ▾]                          [–] [□] [×]  |  header strip: Persephone menu at the far left, then the tab
-|                                                  [Snip][Mneme][MCP] |  strip and the + button; window controls top-right, status
-+---------------------------------------------------------------------+  indicators bottom-right
+| [P] [tab] [tab] [tab] … [+ ▾]                          [–] [□] [×]  |  header strip: Persephone menu far left, then the tab strip
+|                                                  [Snip][Mneme][MCP] |  and + button; window controls top-right, status bottom-right
++---------------------------------------------------------------------+
 | Page area                                                           |  everything below the header strip
 +---------------------------------------------------------------------+
 ```

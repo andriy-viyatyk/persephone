@@ -283,6 +283,10 @@ Registration is a **table** in `/src/renderer/editors/register-editors.ts` — a
 { id: "my-editor", name: "My Editor", hasContentHost: true, load: async () => (await import("./myeditor")).myEditorModule },
 ```
 
+For a user-facing editor, add `guidePath` with the guide-corpus path without `.md` (for example,
+`"editors/my-editor"`). Screen-like editors may point at a page under `screens/` or another
+top-level guide. Development-only editors may omit it.
+
 The `load` closure MUST keep a literal `import("./…")` so Vite code splitting is preserved.
 The loop derives the rest: `match` comes from `EDITOR_MATCHERS["my-editor"]` (add your
 matcher in `/src/renderer/editors/base/editor-matchers.ts`), and `accepts` defaults to
@@ -297,6 +301,7 @@ explicit `accepts` on their row. Row order matters — it breaks priority ties i
 |----------|-------|-------------|
 | `id` | row | Unique editor ID (must be in `EditorView` type) |
 | `name` | row | Display name shown in UI |
+| `guidePath` | row | Canonical packaged guide path used by facade help and the active-page guide entry points; omit only for development-only editors |
 | `hasContentHost` | row | `true` for text-bearing editors (extend `TextHostEditorModel`) |
 | `accepts(input)` | row (override) | Returns priority ≥ 0 if this editor accepts the input, -1 otherwise; default derived from the matcher |
 | `load()` | row | Module importer (literal dynamic `import`) |
@@ -380,6 +385,7 @@ views. Do not register a replaced record view with `this.child()`.
 - [ ] For text-bearing editors: `displayName` set; host content writes go through `writeToHost`; view settings ride `mirrorHostSettings`
 - [ ] `EditorModule` exports `createEditor` + required native `View` (plus `newEditorModel` for standalone file-open editors, `BodyView` for embeddable ones)
 - [ ] Row added to the `EDITORS` table in `register-editors.ts`; matcher added to `EDITOR_MATCHERS` in `editor-matchers.ts` if the editor matches files/languages
+- [ ] User-facing editor has a guide page under `assets/guides/editors/` or the appropriate screen guide and the row's `guidePath` points to its canonical path; development-only editors may omit the mapping
 - [ ] The row's `load` keeps a literal `import("./…")` — preserves code splitting
 - [ ] Error states and loading states are handled in the native `View` (`AsyncEditorView` supplies the shared loading and native error host)
 - [ ] File-open failures are covered at the correct boundary: guard standalone `newEditorModel(filePath)` calls and dispose any abandoned transient pipe; handle synchronous content-host attach failures and rely on the native error host for the later `View` module load

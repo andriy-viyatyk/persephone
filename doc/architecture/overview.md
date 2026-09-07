@@ -174,7 +174,7 @@ See [state-management.md](./state-management.md).
 
 See [editors.md](./editors.md).
 
-- All editors in `/editors/` — every editor is an `EditorModel` subclass (31 editor IDs as of current catalog)
+- All editors in `/editors/` — every editor is an `EditorModel` subclass (32 editor IDs as of current catalog)
 - Text-bearing editors compose an `IContentHost` (`TextFileModel` for file-backed, `NoteItemEditModel` for notebook notes) and expose `CONTENT_HOST_TRAIT` for owner-orchestrated switching
 - Dynamic loading via `import()` for code splitting
 - Scripting facades expose the current editor API through `page.editor`; `page.editorSwitches` mirrors
@@ -197,7 +197,7 @@ See [scripting.md](./scripting.md).
 
 - External AI agents (Claude Desktop, Claude Code) control persephone via a Streamable HTTP MCP server
 - Protocol: MCP over HTTP at `http://127.0.0.1:{port}/mcp` (default port 7865)
-- Main process: `mcp-http-server.ts` accepts connections using `@modelcontextprotocol/sdk`; the client instructions, 13 guide resources, and the single advertised tool live under `main/mcp/` as data plus one generic registrar.
+- Main process: `mcp-http-server.ts` accepts connections using `@modelcontextprotocol/sdk`; the client instructions, 12 guide resources, and the single advertised tool live under `main/mcp/` as data plus one generic registrar.
 - Renderer process: the thin MCP IPC shell delegates through `api/mcp/command-registry.ts` to the `call` handler; the generic transport also serves the internal `board_call` bridge.
 - The manifest advertises exactly one tool, `call`. Agent Tools are reached through the root-only
   `tools` node like every other capability: `tools.search` discovers tools, `tools.execute` runs
@@ -214,6 +214,7 @@ See [scripting.md](./scripting.md).
 - App-window automation: `window.screen.*` drives Persephone's own UI, including the tab strip, sidebar, dialogs, and active editor; `windows[i].window.screen` selects another window.
 - Log View integration: `pages.logView.push()` is the non-blocking MCP output path over the managed `mcp-ui-log` page; it returns dialog IDs for later `dialogResult()` reads, while script `ui` output shares the same page.
 - MCP resources: all 12 focused guides under `assets/guides/agents/` and `assets/guides/formats/` are exposed at `persephone://guides/*`, along with `persephone://guides/full`. Resources are documents; operational discovery comes from `call` hints and `$help`.
+- The shipped guide corpus lives under `assets/guides/` and is indexed by the shared code in `src/shared/guides/`, used by both the main-process `guides` node and the About guide browser. Pages carry `title`, `audience`, and `summary` metadata, with optional `screen` and single- or list-valued `editorId` mappings. `guides.<path>.layout` extracts a page's `## Layout` section for screen-oriented guidance; pages without that section return the explicit no-schema result.
 - MCP validation: `api/mcp/ui-push-validation.ts` validates Log View dialog entries and output content for the shared `pages.logView.push` path.
 - Opt-in via `mcp.enabled` setting — server starts/stops dynamically based on setting changes
 - Port is configurable via `mcp.port` setting (default `7865`)

@@ -59,8 +59,9 @@ slot or tab. The page slot itself is `[data-page-id="<page id>"][data-name="page
 
 ## The public-contract rule
 
-A `data-name` **quoted in an MCP guide** (`assets/guides/agents/*.md`) is part of Persephone's
-agent-facing API, not an internal label. The values listed in the table below are quoted there.
+A shell `data-name` **quoted in an agent-facing guide** (for example,
+`assets/guides/agents/*.md` or `assets/guides/screens/*.md`) is part of Persephone's agent-facing
+API, not an internal label. The values listed in the table below are quoted there.
 
 - **Renaming one is a documentation change.** Update the guide in the same commit, or an agent
   will confidently point a user at an element that no longer exists.
@@ -131,9 +132,11 @@ Two tab shapes do not match the common case, and both occur in ordinary use:
 | Sliding panel | `[data-name="menu-bar-content"]` |
 | Open File / New Window / About / Settings | `[data-name="menubar-open-file"]`, `[data-name="menubar-new-window"]`, `[data-name="menubar-about"]`, `[data-name="menubar-settings"]` |
 | User Guide | `[data-name="menubar-user-guide"]` |
+| Guide for this page | `[data-name="menubar-guide-for-page"]` |
+| Category column / action row | `[data-name="menubar-categories"]`, `[data-name="menubar-toolbar"]` |
 | Category list (Open Tabs, Recent Files, Tools & Editors, Script Library, user folders) | `[data-name="menubar-folders"]` |
 | Right-hand content pane | `[data-name="menubar-content"]` |
-| Add Folder button | `[data-name="menubar-add-folder-button"]` |
+| Add Folder region / button | `[data-name="menubar-add-folder"]`, `[data-name="menubar-add-folder-button"]` |
 | Width splitter | `[data-name="menubar-splitter"]` |
 
 ### Settings page

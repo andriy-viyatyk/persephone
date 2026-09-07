@@ -364,10 +364,13 @@ interface EditorModule {
 returns the native constructor as-is; it has no React arm and no normalization shim. All chrome
 callers use native views, and `AsyncEditorView` mounts the module's `View` directly.
 
-The eagerly-registered half is the `EditorDefinition` (`id`, `name`, `accepts`,
-`hasContentHost`, `match?`, `loadModule`). Registration lives in
+The eagerly-registered half is the `EditorDefinition` (`id`, `name`, optional `guidePath`,
+`accepts`, `hasContentHost`, `match?`, `loadModule`). `guidePath` is the canonical path in the
+packaged guide corpus, without `.md`; it is used by editor-facade help and the active-page guide
+entry points. User-facing editors should point to their editor or screen guide, while development-
+only editors may omit it. Registration lives in
 `/src/renderer/editors/register-editors.ts` as a **table + loop**: one row per editor
-(`{ id, name, hasContentHost?, accepts?, load }`), with `match` derived from
+(`{ id, name, guidePath?, hasContentHost?, accepts?, load }`), with `match` derived from
 `EDITOR_MATCHERS[id]` and `accepts` defaulting to `makeAccepts(match)` (or `() => -1` for
 standalone editors with no matcher). Monaco and `file-diff` carry explicit `accepts`
 overrides. Each row's `load` keeps a literal `import("./…")` so Vite code splitting is
@@ -629,6 +632,5 @@ The registry is the single resolution surface — it owns extension/language/con
 ## Adding a New Editor
 
 See [Editor Creation Guide](../standards/editor-guide.md) for the full recipe with code samples.
-
 
 
