@@ -7,12 +7,12 @@ import { activatePageAndWaitForLayout, pageScopeSelector } from "../ai-vision/pa
 import { errMessage } from "../../../shared/utils";
 
 const MERMAID_ELEMENTS = [
-    { name: "text-compare-left", purpose: "Compare this page with the left grouped page." },
-    { name: "mermaid-theme", purpose: "Toggle the Mermaid preview's light/dark rendering mode." },
-    { name: "mermaid-open-draw", purpose: "Open the rendered diagram in the Drawing Editor." },
-    { name: "mermaid-convert-excalidraw", purpose: "Convert the Mermaid source to editable Excalidraw shapes." },
-    { name: "mermaid-save", purpose: "Save the rendered diagram as a PNG." },
-    { name: "mermaid-copy", purpose: "Copy the rendered diagram as a PNG to the clipboard." },
+    { name: "text-compare-left", purpose: "Compare this page with the left grouped page.", where: "left side of the Mermaid text toolbar, when comparison is available" },
+    { name: "mermaid-theme", purpose: "Toggle the Mermaid preview's light/dark rendering mode.", where: "right side of the Mermaid toolbar" },
+    { name: "mermaid-open-draw", purpose: "Open the rendered diagram in the Drawing Editor.", where: "right side of the Mermaid toolbar, after Theme" },
+    { name: "mermaid-convert-excalidraw", purpose: "Convert the Mermaid source to editable Excalidraw shapes.", where: "right side of the Mermaid toolbar, after Open in Drawing" },
+    { name: "mermaid-save", purpose: "Save the rendered diagram as a PNG.", where: "right side of the Mermaid toolbar, after Convert" },
+    { name: "mermaid-copy", purpose: "Copy the rendered diagram as a PNG to the clipboard.", where: "right edge of the Mermaid toolbar" },
 ] as const;
 
 const MERMAID_EDITOR_MEMBERS: readonly IAiMember[] = [

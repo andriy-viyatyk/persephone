@@ -15,10 +15,10 @@ import { activatePageAndWaitForLayout, pageScopeSelector } from "../ai-vision/pa
 import type { GitTreeEditorModel } from "../../editors/git-tree/GitTreeEditorModel";
 
 const GIT_TREE_ELEMENTS = [
-    { name: "git-tree-refresh", purpose: "Refresh the Git Tree history, status, and ref projections." },
-    { name: "git-tree-bottom-tab-select", purpose: "Select the visible Commit or Diff detail tab." },
-    { name: "git-tree-pull", purpose: "Locate the Git Pull/Fetch controls; repository mutation remains element-only." },
-    { name: "git-tree-push", purpose: "Locate the Git Push control; repository mutation remains element-only." },
+    { name: "git-tree-refresh", purpose: "Refresh the Git Tree history, status, and ref projections.", where: "right side of the Git toolbar" },
+    { name: "git-tree-bottom-tab-select", purpose: "Select the visible Commit or Diff detail tab.", where: "top of the bottom Git panel" },
+    { name: "git-tree-pull", purpose: "Locate the Git Pull/Fetch controls; repository mutation remains element-only.", where: "left side of the Git toolbar, after the repository tag" },
+    { name: "git-tree-push", purpose: "Locate the Git Push control; repository mutation remains element-only.", where: "left side of the Git toolbar, after Pull" },
 ] as const;
 
 const GIT_TREE_MEMBERS: readonly IAiMember[] = [

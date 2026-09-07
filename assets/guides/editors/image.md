@@ -17,6 +17,34 @@ general `pages.addEditorPage` target.
 
 ## Layout
 
+```
++---------------------------------------------------------------------+
+| [Save] [Open] [Copy]                                                |  image actions grouped on the right side of the toolbar
++---------------------------------------------------------------------+
+| [Image viewport]                                                    |  rendered image below the toolbar
++---------------------------------------------------------------------+
+```
+
+### User-facing label → `elements` name
+
+- Save → `image-save`
+- Open in Drawing → `image-open-draw`
+- Copy → `image-copy`
+- Image viewport and native image controls → no entry: rendered content and OS-owned surfaces
+
+### When the image save popup is open
+
+```
++---------------------------------------------------------------------+
+| [Save as PNG] [Save original]                                       |  image save popup beside the toolbar
++---------------------------------------------------------------------+
+```
+
+### Drawn controls without `elements`
+
+- Image save destination controls — no entry: native save dialog controls.
+- Image viewport — no entry: rendered content rather than a facade control.
+
 ## Viewing and transfer
 
 Zoom with the mouse wheel or zoom actions, pan while zoomed, and reset to fit-to-window. Copy uses

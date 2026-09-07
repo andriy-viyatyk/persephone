@@ -7,10 +7,10 @@ import { activatePageAndWaitForLayout, pageScopeSelector } from "../ai-vision/pa
 import { errMessage } from "../../../shared/utils";
 
 const SVG_ELEMENTS = [
-    { name: "text-compare-left", purpose: "Compare this page with the left grouped page." },
-    { name: "svg-open-draw", purpose: "Open the SVG as an image in the Drawing Editor." },
-    { name: "svg-save", purpose: "Save a rasterised PNG of the SVG." },
-    { name: "svg-copy", purpose: "Copy a rasterised PNG of the SVG to the clipboard." },
+    { name: "text-compare-left", purpose: "Compare this page with the left grouped page.", where: "left side of the SVG text toolbar, when comparison is available" },
+    { name: "svg-open-draw", purpose: "Open the SVG as an image in the Drawing Editor.", where: "right side of the SVG toolbar" },
+    { name: "svg-save", purpose: "Save a rasterised PNG of the SVG.", where: "right side of the SVG toolbar, after Open in Drawing" },
+    { name: "svg-copy", purpose: "Copy a rasterised PNG of the SVG to the clipboard.", where: "right edge of the SVG toolbar" },
 ] as const;
 
 const SVG_EDITOR_MEMBERS: readonly IAiMember[] = [

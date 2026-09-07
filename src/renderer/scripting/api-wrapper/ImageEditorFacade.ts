@@ -6,9 +6,9 @@ import { createElements } from "../ai-vision/elements";
 import { activatePageAndWaitForLayout, pageScopeSelector } from "../ai-vision/page-elements";
 
 const IMAGE_ELEMENTS = [
-    { name: "image-save", purpose: "Open the image save menu." },
-    { name: "image-open-draw", purpose: "Open the current image in the Drawing Editor." },
-    { name: "image-copy", purpose: "Copy the rendered image to the clipboard as PNG." },
+    { name: "image-save", purpose: "Open the image save menu.", where: "right side of the image toolbar" },
+    { name: "image-open-draw", purpose: "Open the current image in the Drawing Editor.", where: "right side of the image toolbar, after Save" },
+    { name: "image-copy", purpose: "Copy the rendered image to the clipboard as PNG.", where: "right side of the image toolbar, after Open in Drawing" },
 ] as const;
 
 const IMAGE_EDITOR_MEMBERS: readonly IAiMember[] = [

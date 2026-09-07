@@ -20,6 +20,54 @@ with `pages.addEditorPage("monaco", language, title, content)`.
 
 ## Layout
 
+```
++---------------------------------------------------------------------+
+| [Nav] [Compare] [Run] [Run all]          [Resources] [Switch]       |  toolbar: script actions at left; resources and switch at right
++---------------------------------------------------------------------+
+| [Monaco editor]                                                     |  Monaco editing surface below the toolbar
++---------------------------------------------------------------------+
+| [Script panel toggle]                                               |  footer: related script panel control when a script exists
++---------------------------------------------------------------------+
+```
+
+### User-facing label → `elements` name
+
+- Compare → `text-compare-left`
+- Run → `text-run-script`
+- Run all → `text-run-all-script`
+- Show Resources → `text-show-resources`
+- Script panel toggle → `text-toggle-script`
+- Script panel splitter → `script-panel-splitter`
+- Run script → `script-run`
+- Run all → `script-run-all`
+- Script selection → `script-select`
+- Save → `script-save`
+- Open in tab → `script-open-tab`
+- Close → `script-close`
+- Page navigation and Editor switch → no entry: shell-owned controls
+- Monaco find/replace controls → no entry: generated Monaco editor internals
+
+### When the related script panel is open
+
+```
++---------------------------------------------------------------------+
+| [Monaco editor] [Splitter]                         [Script panel]   |  open related-script surface beside the editor
++---------------------------------------------------------------------+
+```
+
+### When the Monaco find bar is open
+
+```
++---------------------------------------------------------------------+
+| [Monaco editor] [Find/replace widget]                               |  Monaco editor surface with its generated find/replace widget
++---------------------------------------------------------------------+
+```
+
+### Drawn controls without `elements`
+
+- Page navigation and Editor switch — no entry: shell-owned controls are addressed by the shared chrome.
+- Monaco find/replace widget and minimap — no entry: generated editor-internal controls.
+
 ## Compare Mode
 
 Compare is a grouped-page mode, not a separate registry editor id. Open two files, `Ctrl`-click the

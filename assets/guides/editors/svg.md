@@ -18,6 +18,36 @@ so source edits can be made before switching to the preview. A script-created pa
 
 ## Layout
 
+```
++---------------------------------------------------------------------+
+| [Nav] [Compare]                 [Open] [Save] [Copy] [Switch]       |  toolbar: compare at left; SVG actions and switch at right
++---------------------------------------------------------------------+
+| [SVG preview]                                                       |  rendered SVG preview below the toolbar
++---------------------------------------------------------------------+
+```
+
+### User-facing label → `elements` name
+
+- Compare → `text-compare-left`
+- Open in Drawing → `svg-open-draw`
+- Save → `svg-save`
+- Copy → `svg-copy`
+- Page navigation and Editor switch → no entry: shell-owned controls
+- Rendered SVG internals → no entry: generated preview content
+
+### When the rendered SVG preview is visible
+
+```
++---------------------------------------------------------------------+
+| [SVG preview]                                                       |  rendered SVG preview below the toolbar
++---------------------------------------------------------------------+
+```
+
+### Drawn controls without `elements`
+
+- Page navigation and Editor switch — no entry: shell-owned controls are addressed by the shared chrome.
+- Rendered SVG internals — no entry: generated preview content.
+
 ## Preview actions
 
 The preview reflects unsaved SVG edits. Use zoom and pan, **Save as PNG**, **Copy**, or **Open in

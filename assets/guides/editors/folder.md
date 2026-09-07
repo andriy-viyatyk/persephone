@@ -17,6 +17,41 @@ local folders provide the writable operations and selection behavior.
 
 ## Layout
 
+```
++---------------------------------------------------------------------+
+| [Page nav] [Breadcrumb]                         [Switch]            |  toolbar: breadcrumb at left and switch at right
++---------------------------------------------------------------------+
+| [Category tree] [folder items]                                      |  folder content below the toolbar
++---------------------------------------------------------------------+
+```
+
+### User-facing label → `elements` name
+
+- Breadcrumb → `category-breadcrumb`
+- Page navigation and Editor switch → no entry: shell-owned controls
+- Category tree rows, file rows, and transient selection actions → no entry: repeated content
+
+### When the category tree is visible
+
+```
++---------------------------------------------------------------------+
+| [Category tree] [folder items]                                      |  category and item regions in the folder body
++---------------------------------------------------------------------+
+```
+
+### When the category is empty or unavailable
+
+```
++---------------------------------------------------------------------+
+| [Empty or folder error message]                                     |  empty or error state in the folder body
++---------------------------------------------------------------------+
+```
+
+### Drawn controls without `elements`
+
+- Page navigation and Editor switch — no entry: shell-owned controls are addressed by the shared chrome.
+- Tree rows, file rows, and context-menu actions — no entry: repeated content or transient actions; the breadcrumb is the stable facade control.
+
 ## Browsing and file operations
 
 Each folder remembers its list or tile layout. Breadcrumb navigation and image thumbnails also work

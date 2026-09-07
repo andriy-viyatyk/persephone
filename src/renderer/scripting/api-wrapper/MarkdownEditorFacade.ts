@@ -5,13 +5,13 @@ import { createElements } from "../ai-vision/elements";
 import { activatePageAndWaitForLayout, pageScopeSelector } from "../ai-vision/page-elements";
 
 const MARKDOWN_ELEMENTS = [
-    { name: "text-compare-left", purpose: "Compare this page with the left grouped page." },
-    { name: "markdown-compact-toggle", purpose: "Toggle compact spacing and typography in the rendered Markdown." },
-    { name: "markdown-back", purpose: "Return to the previous Markdown document in the page's navigation history." },
-    { name: "find-input", purpose: "Enter the text to find in the rendered Markdown." },
-    { name: "find-prev", purpose: "Move to the previous Markdown match." },
-    { name: "find-next", purpose: "Move to the next Markdown match." },
-    { name: "find-close", purpose: "Close the Markdown find bar." },
+    { name: "text-compare-left", purpose: "Compare this page with the left grouped page.", where: "left side of the Markdown text toolbar, when comparison is available" },
+    { name: "markdown-compact-toggle", purpose: "Toggle compact spacing and typography in the rendered Markdown.", where: "right side of the Markdown toolbar, before the editor switch" },
+    { name: "markdown-back", purpose: "Return to the previous Markdown document in the page's navigation history.", where: "left side of the Markdown toolbar, after shared text actions" },
+    { name: "find-input", purpose: "Enter the text to find in the rendered Markdown.", where: "in the Markdown find bar, left side, when the find bar is open" },
+    { name: "find-prev", purpose: "Move to the previous Markdown match.", where: "in the Markdown find bar, after the find field, when the find bar is open" },
+    { name: "find-next", purpose: "Move to the next Markdown match.", where: "in the Markdown find bar, after Previous, when the find bar is open" },
+    { name: "find-close", purpose: "Close the Markdown find bar.", where: "right edge of the Markdown find bar, when the find bar is open" },
 ] as const;
 
 const MARKDOWN_EDITOR_MEMBERS: readonly IAiMember[] = [

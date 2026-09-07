@@ -7,17 +7,17 @@ import { activatePageAndWaitForLayout, pageScopeSelector } from "../ai-vision/pa
 import type { IAiElementDeclaration, IAiMember, IAiVisible, IAiVisionDescriptor } from "../../../shared/ai-vision/types";
 
 const NOTEBOOK_ELEMENTS: readonly IAiElementDeclaration[] = [
-    { name: "notebook-breadcrumb", purpose: "Select the current notebook category or tag filter." },
-    { name: "notebook-search", purpose: "Enter search text for the notebook notes." },
-    { name: "notebook-search-clear", purpose: "Clear the notebook search; this conditional control is mounted only while search text is non-empty." },
-    { name: "notebook-add-note", purpose: "Add a note using the current notebook filter context." },
-    { name: "notebook-expanded-collapse", purpose: "Collapse the expanded note overlay; this conditional control is visible only when a valid expanded note has a mounted host overlay." },
-    { name: "note-delete", purpose: "Delete the owning note; this control occurs once per mounted note, and visible means at least one instance is mounted." },
-    { name: "note-expand", purpose: "Expand the owning note; this control occurs once per mounted note, and visible means at least one instance is mounted." },
-    { name: "note-language", purpose: "Open the language chooser for the owning note; this control occurs once per mounted note, and visible means at least one instance is mounted." },
-    { name: "note-editor-switch", purpose: "Select an embedded editor for the owning note; this conditional control occurs once per eligible mounted note, and visible means at least one instance has switch options." },
-    { name: "note-run-script", purpose: "Run the owning script note or its selection; this conditional control occurs once per eligible mounted note, and visible means at least one script instance is mounted." },
-    { name: "note-run-all-script", purpose: "Run all content for the owning script note; this conditional control occurs once per mounted script note with a live selection, and visible means at least one instance is mounted." },
+    { name: "notebook-breadcrumb", purpose: "Select the current notebook category or tag filter.", where: "left side of the Notebook toolbar" },
+    { name: "notebook-search", purpose: "Enter search text for the notebook notes.", where: "right side of the Notebook toolbar" },
+    { name: "notebook-search-clear", purpose: "Clear the notebook search; this conditional control is mounted only while search text is non-empty.", where: "right edge of the Notebook search field, when search text is present" },
+    { name: "notebook-add-note", purpose: "Add a note using the current notebook filter context.", where: "right side of the Notebook toolbar, after Search" },
+    { name: "notebook-expanded-collapse", purpose: "Collapse the expanded note overlay; this conditional control is visible only when a valid expanded note has a mounted host overlay.", where: "top-right of the expanded note overlay, when a note is expanded" },
+    { name: "note-delete", purpose: "Delete the owning note; this control occurs once per mounted note, and visible means at least one instance is mounted.", where: "top-right of each note card" },
+    { name: "note-expand", purpose: "Expand the owning note; this control occurs once per mounted note, and visible means at least one instance is mounted.", where: "top-right of each note card, beside Delete" },
+    { name: "note-language", purpose: "Open the language chooser for the owning note; this control occurs once per mounted note, and visible means at least one instance is mounted.", where: "top-left of each note editor" },
+    { name: "note-editor-switch", purpose: "Select an embedded editor for the owning note; this conditional control occurs once per eligible mounted note, and visible means at least one instance has switch options.", where: "top-left of each note editor, after Language" },
+    { name: "note-run-script", purpose: "Run the owning script note or its selection; this conditional control occurs once per eligible mounted note, and visible means at least one script instance is mounted.", where: "top-left of each script note editor" },
+    { name: "note-run-all-script", purpose: "Run all content for the owning script note; this conditional control occurs once per mounted script note with a live selection, and visible means at least one instance is mounted.", where: "top-left of each script note editor, when text is selected" },
 ];
 
 const NOTEBOOK_EDITOR_MEMBERS: readonly IAiMember[] = [

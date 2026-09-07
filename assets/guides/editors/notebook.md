@@ -18,6 +18,69 @@ tags, comments, and full-text search organize the collection.
 
 ## Layout
 
+```
++---------------------------------------------------------------------+
+| [Page nav] [Breadcrumb]                [Search] [Add Note] [Switch] |  Notebook toolbar: breadcrumb at left, actions and switch at right
++---------------------------------------------------------------------+
+| [Note cards] [Categories and Tags panels]                           |  notebook body below the toolbar
++---------------------------------------------------------------------+
+```
+
+### User-facing label → `elements` name
+
+- Breadcrumb → `notebook-breadcrumb`
+- Search → `notebook-search`
+- Clear search → `notebook-search-clear`
+- Add Note → `notebook-add-note`
+- Expanded note collapse → `notebook-expanded-collapse`
+- Delete → `note-delete`
+- Expand → `note-expand`
+- Language → `note-language`
+- Note editor switch → `note-editor-switch`
+- Run script → `note-run-script`
+- Run all → `note-run-all-script`
+- Page navigation and Editor switch → no entry: shared shell controls
+- Note text and embedded editor internals → no entry: repeated editor content
+
+### When search is active
+
+```
++---------------------------------------------------------------------+
+| [Search]                                             [Clear]        |  active Notebook search row with clear at the right edge
++---------------------------------------------------------------------+
+```
+
+### When a note is expanded
+
+```
++---------------------------------------------------------------------+
+| [Note editor]                                     [Collapse]        |  expanded note overlay with collapse at top-right
+| [Language] [Note editor switch] [script actions]                    |  embedded note editor controls at top-left
++---------------------------------------------------------------------+
+```
+
+### When a note card is mounted
+
+```
++---------------------------------------------------------------------+
+| [Note card]                                    [Delete] [Expand]    |  note-card actions grouped at the top-right
+| [Language] [Note editor switch]                                     |  note-editor controls at the top-left
++---------------------------------------------------------------------+
+```
+
+### When a script note has a selection
+
+```
++---------------------------------------------------------------------+
+| [Language] [Note editor switch] [Run script] [Run all]              |  script note editor actions grouped at the top-left
++---------------------------------------------------------------------+
+```
+
+### Drawn controls without `elements`
+
+- Page navigation and Editor switch — no entry: shared shell controls are owned by the common chrome.
+- Note text, embedded editor internals, and category/tag panel nodes — no entry: repeated or panel-owned content.
+
 ## Notes
 
 Each note has a title, content editor, language, category, tags, and optional comment. JSON and CSV

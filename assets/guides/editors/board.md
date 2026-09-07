@@ -18,6 +18,56 @@ declaring `fileMasks` can appear in the editor switch for matching files.
 
 ## Layout
 
+```
++---------------------------------------------------------------------+
+| [Explorer] [Path] [Reload] [Log] [Properties] [Switch]              |  Board toolbar: navigation and actions left, switch at right
++---------------------------------------------------------------------+
+| [Board]                                  [Script panel]             |  board content and optional script panel
++---------------------------------------------------------------------+
+| [Board status footer]                                               |  board status footer
++---------------------------------------------------------------------+
+```
+
+### User-facing label → `elements` name
+
+- File Explorer → `board-toolbar-explorer`
+- Reload → `board-toolbar-reload`
+- Show log → `board-toolbar-log`
+- Properties → `board-toolbar-properties`
+- Trust board → `board-trust`
+- Editor switch and generic Page navigation → no entry: Board owns its toolbar and draws no generic shell switch
+- Board webview controls → no entry: embedded board content
+
+### When the board is untrusted
+
+```
++---------------------------------------------------------------------+
+| [Trust board]                                                       |  center of the untrusted board placeholder
++---------------------------------------------------------------------+
+```
+
+### When the board script panel is mounted
+
+```
++---------------------------------------------------------------------+
+| [Board]                                  [Script panel]             |  board webview with script panel mounted
++---------------------------------------------------------------------+
+```
+
+### When the board toolbar switch menu is open
+
+```
++---------------------------------------------------------------------+
+| [Board switch choices]                                              |  transient board toolbar switch menu
++---------------------------------------------------------------------+
+```
+
+### Drawn controls without `elements`
+
+- Board toolbar switch menu — no entry: transient switch choices are not a static facade control.
+- Board webview controls — no entry: embedded board content is addressed through the board frame automation surface.
+- Generic Page navigation and Editor switch — no entry: Board uses its own toolbar and switcher.
+
 ## Board capabilities
 
 Boards own their HTML, CSS, and JavaScript UI and can call backend scripts through the

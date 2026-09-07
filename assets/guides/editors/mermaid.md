@@ -17,6 +17,46 @@ Open a `.mmd` or `.mermaid` file and choose **Mermaid** in the toolbar. A conten
 
 ## Layout
 
+```
++---------------------------------------------------------------------+
+| [Nav] [Compare] [Theme] [Open] [Convert] [Save] [Copy] [Switch]     |  toolbar: compare at left; Mermaid actions and switch at right
++---------------------------------------------------------------------+
+| [Mermaid diagram]                                                   |  rendered Mermaid preview below the toolbar
++---------------------------------------------------------------------+
+```
+
+### User-facing label → `elements` name
+
+- Compare → `text-compare-left`
+- Theme → `mermaid-theme`
+- Open in Drawing → `mermaid-open-draw`
+- Convert to Excalidraw → `mermaid-convert-excalidraw`
+- Save → `mermaid-save`
+- Copy → `mermaid-copy`
+- Page navigation and Editor switch → no entry: shell-owned controls
+- Generated Mermaid SVG/image internals → no entry: generated preview content
+
+### When Mermaid rendering is loading or has an error
+
+```
++---------------------------------------------------------------------+
+| [Loading or render error]                                           |  rendered Mermaid preview state
++---------------------------------------------------------------------+
+```
+
+### When an image action is requested
+
+```
++---------------------------------------------------------------------+
+| [Mermaid diagram]                                                   |  generated Mermaid preview content
++---------------------------------------------------------------------+
+```
+
+### Drawn controls without `elements`
+
+- Page navigation and Editor switch — no entry: shell-owned controls are addressed by the shared chrome.
+- Generated Mermaid SVG/image internals — no entry: generated preview content.
+
 ## Rendering and export
 
 All Mermaid diagram types render with live, debounced updates. The light/dark diagram theme is

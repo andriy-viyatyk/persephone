@@ -19,6 +19,63 @@ ids share one surface: `grid-json`, `grid-csv`, and `grid-jsonl`.
 
 ## Layout
 
+```
++---------------------------------------------------------------------+
+| [Edit Columns] [CSV Options]             [Search ⌕] [Editor switch] |  toolbar: columns at the left, search and switch at the right
++---------------------------------------------------------------------+
+| Column headers — click to sort, drag to reorder. A filter button    |  each column header carries a filter button at its right edge,
+| appears at the right edge of a header when you hover it.            |  shown on hover or while that column is filtered
+| Cells — double-click to edit, Ctrl+C / Ctrl+V to paste from Excel.  |  grid body, below the toolbar
++---------------------------------------------------------------------+
+```
+
+### User-facing label → `elements` name
+
+- Search → `grid-search`
+- Clear search → `grid-search-clear`
+- Edit Columns → `grid-columns`
+- CSV Options → `grid-csv-options`
+- Column filter → `grid-column-filter`
+- Apply → `columns-options-apply`
+- Cancel → `columns-options-cancel`
+- Header checkbox → `csv-options-header`
+- Delimiter → `csv-options-delimiter`
+- Custom delimiter → `csv-options-other`
+- Page navigation and Editor switch → no entry: shell-owned controls
+- Grid cells and cell editors → no entry: editor-internal data-grid controls
+
+### When the Columns popup is open
+
+```
++---------------------------------------------------------------------+
+| [Column options]                                                    |  Columns popup options
+| [Cancel] [Apply]                                                    |  Columns popup answer buttons at bottom-right
++---------------------------------------------------------------------+
+```
+
+### When the CSV Options popup is open
+
+```
++---------------------------------------------------------------------+
+| [x] First row is a header                                           |  CSV Options popup, top
+| Delimiter:  ( ) comma  ( ) semicolon  ( ) tab  ( ) other            |  below the header checkbox
+| Custom delimiter: [    ]                                            |  bottom of the CSV Options popup
++---------------------------------------------------------------------+
+```
+
+### When a column filter is visible
+
+```
++---------------------------------------------------------------------+
+| [Column header]                                             [Filter]|  column filter remains at each header's right edge
++---------------------------------------------------------------------+
+```
+
+### Drawn controls without `elements`
+
+- Page navigation and Editor switch — no entry: shell-owned controls are addressed by the shared chrome.
+- Grid cells and transient cell editors — no entry: editor-internal data-grid controls.
+
 ## Data and editing
 
 JSON arrays of objects become rows and their properties become columns. A single JSON object is also
@@ -47,9 +104,10 @@ The same workflow works with Excel.
 Use `pages.addEditorPage("grid-json", "json", title, content)`, or the corresponding `grid-csv`
 and `grid-jsonl` id, for a new content page. After narrowing `page.editor.id` to one of the three
 ids, the `GridEditor` facade exposes the grid state and row/cell operations. The verified page
-elements include `grid-search`, `grid-search-clear`, `grid-columns`, `grid-csv-options`,
-`columns-options-apply`, `columns-options-cancel`, `csv-options-header`, `csv-options-delimiter`,
-and `csv-options-other`; filtering and transient cell controls are not currently facade elements.
+elements include `grid-search`, `grid-search-clear`, `grid-column-filter`, `grid-columns`,
+`grid-csv-options`, `columns-options-apply`, `columns-options-cancel`, `csv-options-header`,
+`csv-options-delimiter`, and `csv-options-other`; transient cell controls are not currently facade
+elements.
 
 ## Errors and limits
 

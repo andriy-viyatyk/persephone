@@ -19,6 +19,47 @@ page can use `pages.addEditorPage("md-view", "markdown", title, content)`.
 
 ## Layout
 
+```
++---------------------------------------------------------------------+
+| [Nav] [Compare] [Back]                     [Compact] [Switch]       |  toolbar: shared actions at left, compact and switch at right
++---------------------------------------------------------------------+
+| [Markdown preview] [scroll]                                         |  Markdown preview and scroll region below the toolbar
++---------------------------------------------------------------------+
+```
+
+### User-facing label → `elements` name
+
+- Compare → `text-compare-left`
+- Back → `markdown-back`
+- Compact → `markdown-compact-toggle`
+- Find field → `find-input`
+- Previous → `find-prev`
+- Next → `find-next`
+- Close → `find-close`
+- Editor switch and Page navigation → no entry: shell-owned controls
+- Rendered document, code blocks, and minimap → no entry: generated document content
+
+### When the Markdown find bar is open
+
+```
++---------------------------------------------------------------------+
+| [Find field] [Previous] [Next]                              [Close] |  Markdown find bar: search controls at left and close at right
++---------------------------------------------------------------------+
+```
+
+### When the Markdown minimap is visible
+
+```
++---------------------------------------------------------------------+
+| [Markdown preview]                              [Minimap]           |  preview region with the generated minimap at the right
++---------------------------------------------------------------------+
+```
+
+### Drawn controls without `elements`
+
+- Page navigation and Editor switch — no entry: shell-owned controls are addressed by the shared chrome.
+- Rendered Markdown controls, code-block controls, and minimap — no entry: generated document content.
+
 ## Reading and navigation
 
 Use `Ctrl+F`, `F3`, and `Shift+F3` to search. Code blocks have Monaco highlighting and copy buttons;

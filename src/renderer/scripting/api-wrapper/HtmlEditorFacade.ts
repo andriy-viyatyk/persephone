@@ -7,10 +7,10 @@ import { activatePageAndWaitForLayout, pageScopeSelector } from "../ai-vision/pa
 import { errMessage } from "../../../shared/utils";
 
 const HTML_ELEMENTS = [
-    { name: "text-compare-left", purpose: "Compare this page with the left grouped page." },
-    { name: "text-show-resources", purpose: "Show extracted HTML resources associated with the text host." },
-    { name: "html-copy", purpose: "Copy the captured HTML preview image to the clipboard." },
-    { name: "html-more", purpose: "Open the HTML preview's additional image actions." },
+    { name: "text-compare-left", purpose: "Compare this page with the left grouped page.", where: "left side of the HTML text toolbar, when comparison is available" },
+    { name: "text-show-resources", purpose: "Show extracted HTML resources associated with the text host.", where: "right side of the HTML text toolbar, before preview actions" },
+    { name: "html-copy", purpose: "Copy the captured HTML preview image to the clipboard.", where: "right side of the HTML toolbar, after Show Resources" },
+    { name: "html-more", purpose: "Open the HTML preview's additional image actions.", where: "right edge of the HTML toolbar" },
 ] as const;
 
 const HTML_EDITOR_MEMBERS: readonly IAiMember[] = [

@@ -18,6 +18,62 @@ the action opens Git Tree. Git integration is off by default.
 
 ## Layout
 
+```
++---------------------------------------------------------------------+
+| [Page nav] [Repository tag] [Pull] [Push] [Refresh] [Switch]        |  Git toolbar: repository actions left, refresh and switch right
++---------------------------------------------------------------------+
+| [Commit history] [Changes]                                          |  Git content below the toolbar
+| [Commit] [Diff]                                                     |  bottom Git panel tabs
++---------------------------------------------------------------------+
+```
+
+### User-facing label → `elements` name
+
+- Pull → `git-tree-pull`
+- Push → `git-tree-push`
+- Refresh → `git-tree-refresh`
+- Commit/Diff → `git-tree-bottom-tab-select`
+- Page navigation and Editor switch → no entry: shell-owned controls
+- Repository rows, commits, refs, and changed-file rows → no entry: repeated Git content
+
+### When no repository is loaded
+
+```
++---------------------------------------------------------------------+
+| [No repository message]                                             |  no-repository state below the toolbar
++---------------------------------------------------------------------+
+```
+
+### When a commit is selected
+
+```
++---------------------------------------------------------------------+
+| [Commit history] [Commit details]                                   |  history and selected-commit regions in the body
++---------------------------------------------------------------------+
+```
+
+### When the bottom Diff tab is selected
+
+```
++---------------------------------------------------------------------+
+| [Commit] [Diff]                                                     |  bottom Git panel tabs at the top of the panel
+| [Selected commit diff]                                              |  selected commit diff below the tabs
++---------------------------------------------------------------------+
+```
+
+### When the Pull or Push menu is open
+
+```
++---------------------------------------------------------------------+
+| [Pull or Push menu]                                                 |  transient Git action menu beside the toolbar
++---------------------------------------------------------------------+
+```
+
+### Drawn controls without `elements`
+
+- Page navigation and Editor switch — no entry: shell-owned controls are addressed by the shared chrome.
+- Repository rows, commits, refs, changed-file rows, and Pull/Push menu items — no entry: repeated content or transient actions.
+
 ## History and changes
 
 Inspect commits, branches, and tags; switch branches or commits; fetch, pull, and push; and stage,

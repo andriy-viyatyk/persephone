@@ -10,14 +10,14 @@ import { activatePageAndWaitForLayout, pageScopeSelector } from "../ai-vision/pa
 import type { IAiElementDeclaration, IAiMember, IAiVisible, IAiVisionDescriptor } from "../../../shared/ai-vision/types";
 
 const ENV_VARS_ELEMENTS: readonly IAiElementDeclaration[] = [
-    { name: "env-vars-grid", purpose: "Locate the editable variable grid for the selected namespace and profile." },
-    { name: "env-vars-profile-tabs", purpose: "Select the visible environment profile." },
-    { name: "env-vars-add-profile", purpose: "Add a profile by name in the selected namespace." },
-    { name: "env-vars-delete-profile", purpose: "Delete the selected profile through the model-owned confirmation." },
-    { name: "env-vars-namespace-row", purpose: "Select a namespace; this control occurs once per namespace row." },
-    { name: "env-vars-add-namespace", purpose: "Add a namespace by name." },
-    { name: "env-vars-delete-namespace", purpose: "Delete a namespace and its profiles through the model-owned confirmation." },
-    { name: "env-vars-unlock", purpose: "Locate the unlock control for a locked encrypted environment variables file." },
+    { name: "env-vars-grid", purpose: "Locate the editable variable grid for the selected namespace and profile.", where: "center of the selected profile pane, below the profile controls" },
+    { name: "env-vars-profile-tabs", purpose: "Select the visible environment profile.", where: "top of the selected namespace pane" },
+    { name: "env-vars-add-profile", purpose: "Add a profile by name in the selected namespace.", where: "right side of the profile tabs" },
+    { name: "env-vars-delete-profile", purpose: "Delete the selected profile through the model-owned confirmation.", where: "right edge of the active profile row" },
+    { name: "env-vars-namespace-row", purpose: "Select a namespace; this control occurs once per namespace row.", where: "left namespace column, one row per namespace" },
+    { name: "env-vars-add-namespace", purpose: "Add a namespace by name.", where: "bottom of the namespace column" },
+    { name: "env-vars-delete-namespace", purpose: "Delete a namespace and its profiles through the model-owned confirmation.", where: "right edge of the active namespace row" },
+    { name: "env-vars-unlock", purpose: "Locate the unlock control for a locked encrypted environment variables file.", where: "center of the locked environment panel, when the file is locked" },
 ];
 
 const ENV_VARS_MEMBERS: readonly IAiMember[] = [

@@ -18,6 +18,36 @@ remains available in Text Editor; agents can create an HTML content page with
 
 ## Layout
 
+```
++---------------------------------------------------------------------+
+| [Nav] [Compare]             [Resources] [Copy] [More] [Switch]      |  toolbar: compare at left; resources, preview actions, and switch at right
++---------------------------------------------------------------------+
+| [HTML preview]                                                      |  sandboxed HTML preview below the toolbar
++---------------------------------------------------------------------+
+```
+
+### User-facing label → `elements` name
+
+- Compare → `text-compare-left`
+- Show Resources → `text-show-resources`
+- Copy → `html-copy`
+- More → `html-more`
+- Page navigation and Editor switch → no entry: shell-owned controls
+- HTML preview content and its embedded controls → no entry: sandboxed preview content
+
+### When the HTML image-actions popup is open
+
+```
++---------------------------------------------------------------------+
+| [Save as PNG] [Open in Image View] [Edit Image]                     |  transient HTML image-actions popup
++---------------------------------------------------------------------+
+```
+
+### Drawn controls without `elements`
+
+- HTML image-actions popup items — no entry: transient popup actions have no stable facade handles.
+- Page navigation and Editor switch — no entry: shell-owned controls are addressed by the shared chrome.
+
 ## Preview and capture
 
 JavaScript runs inside the isolated preview and updates as the source changes. **Show Resources**

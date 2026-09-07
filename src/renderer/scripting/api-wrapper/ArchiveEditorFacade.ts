@@ -6,8 +6,8 @@ import { activatePageAndWaitForLayout, pageScopeSelector } from "../ai-vision/pa
 import type { IAiElementDeclaration, IAiMember, IAiVisible, IAiVisionDescriptor } from "../../../shared/ai-vision/types";
 
 const ARCHIVE_ELEMENTS: readonly IAiElementDeclaration[] = [
-    { name: "archive-refresh", purpose: "Locate the visible archive refresh control; refresh remains a view-owned operation." },
-    { name: "archive-collapse-all", purpose: "Locate the visible archive collapse-all control; collapse remains a view-owned operation." },
+    { name: "archive-refresh", purpose: "Locate the visible archive refresh control; refresh remains a view-owned operation.", where: "left side of the archive toolbar, after Collapse all" },
+    { name: "archive-collapse-all", purpose: "Locate the visible archive collapse-all control; collapse remains a view-owned operation.", where: "left side of the archive toolbar" },
 ];
 
 const ARCHIVE_MEMBERS: readonly IAiMember[] = [

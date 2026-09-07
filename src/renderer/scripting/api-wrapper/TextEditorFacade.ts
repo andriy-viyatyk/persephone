@@ -6,18 +6,18 @@ import { createElements } from "../ai-vision/elements";
 import { activatePageAndWaitForLayout, pageScopeSelector } from "../ai-vision/page-elements";
 
 const TEXT_ELEMENTS = [
-    { name: "text-compare-left", purpose: "Compare this text page with the left grouped page when the compare action is available." },
-    { name: "text-run-script", purpose: "Run the current script, when this text page uses a script language." },
-    { name: "text-run-all-script", purpose: "Run all script content when a selection is present." },
-    { name: "text-show-resources", purpose: "Show extracted HTML resources when this text page uses the html language." },
-    { name: "text-toggle-script", purpose: "Open or close the related script panel." },
-    { name: "script-panel-splitter", purpose: "Resize the open related script panel." },
-    { name: "script-run", purpose: "Run the related script or its selection." },
-    { name: "script-run-all", purpose: "Run all related-script content when selected text exists." },
-    { name: "script-select", purpose: "Select an ad-hoc or library script." },
-    { name: "script-save", purpose: "Save the current script to the library." },
-    { name: "script-open-tab", purpose: "Open the selected script, or a library-rooted empty page, in a new tab." },
-    { name: "script-close", purpose: "Close the related script panel." },
+    { name: "text-compare-left", purpose: "Compare this text page with the left grouped page when the compare action is available.", where: "left side of the text toolbar, when comparison is available" },
+    { name: "text-run-script", purpose: "Run the current script, when this text page uses a script language.", where: "left side of the text toolbar, after Compare, for script languages" },
+    { name: "text-run-all-script", purpose: "Run all script content when a selection is present.", where: "left side of the text toolbar, after Run, when text is selected" },
+    { name: "text-show-resources", purpose: "Show extracted HTML resources when this text page uses the html language.", where: "right side of the text toolbar, for HTML language" },
+    { name: "text-toggle-script", purpose: "Open or close the related script panel.", where: "right side of the text footer, when a related script exists" },
+    { name: "script-panel-splitter", purpose: "Resize the open related script panel.", where: "between the editor and the open script panel" },
+    { name: "script-run", purpose: "Run the related script or its selection.", where: "top-left of the open script panel" },
+    { name: "script-run-all", purpose: "Run all related-script content when selected text exists.", where: "top-left of the open script panel, when script text is selected" },
+    { name: "script-select", purpose: "Select an ad-hoc or library script.", where: "top of the open script panel" },
+    { name: "script-save", purpose: "Save the current script to the library.", where: "top of the open script panel, after Script selection" },
+    { name: "script-open-tab", purpose: "Open the selected script, or a library-rooted empty page, in a new tab.", where: "top of the open script panel, after Save" },
+    { name: "script-close", purpose: "Close the related script panel.", where: "top-right of the open script panel" },
 ] as const;
 
 const TEXT_EDITOR_MEMBERS: readonly IAiMember[] = [

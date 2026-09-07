@@ -17,6 +17,42 @@ archive tree appears in the sidebar and an entry opens in the main area.
 
 ## Layout
 
+```
++---------------------------------------------------------------------+
+| [Nav] [Collapse all] [Refresh]                 [Switch]             |  archive toolbar: navigation and actions at left, switch at right
++---------------------------------------------------------------------+
+| [Archive tree] [selected entry preview]                             |  archive content below the toolbar
++---------------------------------------------------------------------+
+```
+
+### User-facing label → `elements` name
+
+- Collapse all → `archive-collapse-all`
+- Refresh → `archive-refresh`
+- Page navigation and Editor switch → no entry: shell-owned controls
+- Archive tree rows → no entry: repeated archive content
+
+### When an archive is loaded
+
+```
++---------------------------------------------------------------------+
+| [Archive tree] [selected entry preview]                             |  loaded archive content below the toolbar
++---------------------------------------------------------------------+
+```
+
+### When no archive is loaded
+
+```
++---------------------------------------------------------------------+
+| [No archive loaded]                                                 |  empty archive-editor state below the toolbar
++---------------------------------------------------------------------+
+```
+
+### Drawn controls without `elements`
+
+- Page navigation and Editor switch — no entry: shell-owned controls are addressed by the shared chrome.
+- Archive tree rows — no entry: repeated content; the stable toolbar actions are addressable.
+
 ## Browse and extract
 
 Tree navigation lists archive entries. Text entries open in Monaco and images in Image Viewer, so

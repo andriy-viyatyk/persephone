@@ -6,7 +6,7 @@ import { activatePageAndWaitForLayout, pageScopeSelector } from "../ai-vision/pa
 import type { CategoryEditorModel } from "../../editors/category/CategoryEditorModel";
 
 const FOLDER_VIEW_ELEMENTS = [
-    { name: "category-breadcrumb", purpose: "Navigate to a category in the Folder View breadcrumb." },
+    { name: "category-breadcrumb", purpose: "Navigate to a category in the Folder View breadcrumb.", where: "left side of the folder toolbar" },
 ] as const;
 
 const FOLDER_VIEW_MEMBERS: readonly IAiMember[] = [

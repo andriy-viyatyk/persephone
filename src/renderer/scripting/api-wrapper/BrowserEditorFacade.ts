@@ -59,20 +59,21 @@ const BROWSER_EDITOR_MEMBERS: readonly IAiMember[] = [
 ];
 
 const BROWSER_ELEMENTS: readonly IAiElementDeclaration[] = [
-    { name: "url-input", purpose: "Browser address bar input" },
-    { name: "url-navigate", purpose: "Navigate to the address-bar URL" },
-    { name: "url-bookmark-toggle", purpose: "Toggle a bookmark for the current URL" },
-    { name: "toolbar-back", purpose: "Go back in browser history" },
-    { name: "toolbar-forward", purpose: "Go forward in browser history" },
-    { name: "toolbar-reload", purpose: "Reload or stop the current page" },
-    { name: "toolbar-home", purpose: "Open the browser home page" },
-    { name: "toolbar-bookmarks", purpose: "Open the bookmarks drawer" },
-    { name: "toolbar-more", purpose: "Open the browser page menu" },
-    { name: "toolbar-devtools", purpose: "Open browser developer tools" },
-    { name: "toolbar-close", purpose: "Close the browser editor" },
-    { name: "toolbar-tor-info", purpose: "Open Tor information (Tor mode only)" },
-    { name: "tabs-panel-host", purpose: "Browser tab strip host" },
-    { name: "popup-blocked-bar", purpose: "Blocked-popup notification bar" },
+    { name: "url-input", purpose: "Browser address bar input", where: "middle of the browser toolbar" },
+    { name: "url-navigate", purpose: "Navigate to the address-bar URL", where: "right edge of the browser address field" },
+    { name: "url-bookmark-toggle", purpose: "Toggle a bookmark for the current URL", where: "right edge of the browser address field, after Navigate" },
+    { name: "toolbar-back", purpose: "Go back in browser history", where: "left side of the browser toolbar, after Home" },
+    { name: "toolbar-forward", purpose: "Go forward in browser history", where: "left side of the browser toolbar, after Back" },
+    { name: "toolbar-reload", purpose: "Reload or stop the current page", where: "left side of the browser toolbar, after Forward" },
+    { name: "toolbar-home", purpose: "Open the browser home page", where: "left edge of the browser toolbar" },
+    { name: "toolbar-bookmarks", purpose: "Open the bookmarks drawer", where: "right side of the browser toolbar, after the bookmark toggle" },
+    { name: "toolbar-downloads", purpose: "Open browser downloads", where: "right side of the browser toolbar, after Bookmarks and Tor info when Tor mode is active" },
+    { name: "toolbar-more", purpose: "Open the browser page menu", where: "right side of the browser toolbar, after Downloads" },
+    { name: "toolbar-devtools", purpose: "Open browser developer tools", where: "right side of the browser toolbar, after More" },
+    { name: "toolbar-close", purpose: "Close the browser editor", where: "right edge of the browser toolbar" },
+    { name: "toolbar-tor-info", purpose: "Open Tor information (Tor mode only)", where: "right side of the browser toolbar, after Bookmarks, when Tor mode is active" },
+    { name: "tabs-panel-host", purpose: "Browser tab strip host", where: "left side of the browser content below the toolbar" },
+    { name: "popup-blocked-bar", purpose: "Blocked-popup notification bar", where: "top of the browser content below the toolbar, when popups are blocked" },
 ];
 
 const BROWSER_EDITOR_HELP = `Access via pages[i].editor after narrowing editor.id to "browser-view".
@@ -82,7 +83,7 @@ returned refs as { ref: "e52" } to supported target methods. Plain strings are a
 snapshot() may begin with # <overlay> when a modal covers the page. The editor's tabs map to
 tabs/addTab/closeTab/switchTab, closeTab closes the active browser tab, and screenshot() returns
 metadata plus an inline image block through call. Transient menus, drawers, dialogs, suggestions,
-downloads, and popup actions are not part of the default curated elements list; use the chrome control
+the downloads popup, and popup actions are not part of the default curated elements list; use the chrome control
 that opens them first. snapshot() reports a field's role, accessible name and ref but never its
 value — verified for password and ordinary text inputs alike — so read a value with getValue() or
 evaluate() when you actually need it.

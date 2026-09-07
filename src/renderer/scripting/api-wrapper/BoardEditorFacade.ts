@@ -39,11 +39,11 @@ import type { BoardManifest, SecondaryViewDecl } from "../../editors/board/board
 import { BROWSER_AUTOMATION_MEMBERS } from "../ai-vision/browser-automation-members";
 
 const BOARD_ELEMENTS: readonly IAiElementDeclaration[] = [
-    { name: "board-toolbar-explorer", purpose: "Locate the toolbar control that toggles the board's Explorer navigator." },
-    { name: "board-toolbar-reload", purpose: "Locate the toolbar Reload board control; the facade action is reload()." },
-    { name: "board-toolbar-log", purpose: "Locate the control that opens the board's ui.log." },
-    { name: "board-toolbar-properties", purpose: "Locate the control that opens Board Info/properties." },
-    { name: "board-trust", purpose: "Locate the Trust board action in the untrusted placeholder." },
+    { name: "board-toolbar-explorer", purpose: "Locate the toolbar control that toggles the board's Explorer navigator.", where: "left edge of the board toolbar" },
+    { name: "board-toolbar-reload", purpose: "Locate the toolbar Reload board control; the facade action is reload().", where: "left side of the board toolbar, after File Explorer" },
+    { name: "board-toolbar-log", purpose: "Locate the control that opens the board's ui.log.", where: "left side of the board toolbar, after Reload" },
+    { name: "board-toolbar-properties", purpose: "Locate the control that opens Board Info/properties.", where: "right side of the board toolbar, before the editor switch" },
+    { name: "board-trust", purpose: "Locate the Trust board action in the untrusted placeholder.", where: "center of the untrusted board placeholder, when the board is untrusted" },
 ];
 
 const BOARD_MEMBERS: readonly IAiMember[] = [

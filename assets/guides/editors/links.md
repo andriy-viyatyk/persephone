@@ -18,6 +18,47 @@ Links switch. Agents can use `pages.addEditorPage("link-view", "json", title, co
 
 ## Layout
 
+```
++---------------------------------------------------------------------+
+| [Nav] [Breadcrumb]                     [Add] [View] [Search]        |  shared links toolbar: breadcrumb left, actions right
++---------------------------------------------------------------------+
+| [Links body]                                                        |  links body below the toolbar
++---------------------------------------------------------------------+
+| [Links footer]                                                      |  links footer
++---------------------------------------------------------------------+
+```
+
+### User-facing label → `elements` name
+
+- Breadcrumb, Add, View, and Search → no entry: Link Editor has no static `elements` list by design
+- Page navigation and Editor switch → no entry: shared shell controls are not link-view facade elements
+- Link rows, previews, and panel controls → no entry: repeated content or panel-owned controls
+
+### When Search is active
+
+```
++---------------------------------------------------------------------+
+| [Breadcrumb] [Add] [View] [Search field]                            |  links toolbar with search active
++---------------------------------------------------------------------+
+| [Filtered links body]                                               |  filtered links body below the toolbar
++---------------------------------------------------------------------+
+```
+
+### When the view mode changes
+
+```
++---------------------------------------------------------------------+
+| [Breadcrumb] [Add] [View] [Search]                                  |  links toolbar with the selected view mode
++---------------------------------------------------------------------+
+| [List or tile links]                                                |  list or tile links body below the toolbar
++---------------------------------------------------------------------+
+```
+
+### Drawn controls without `elements`
+
+- Breadcrumb, Add, View, Search, and all link-view controls — no entry: `LinkEditorFacade` publishes no static elements inventory.
+- Link rows, previews, and panel controls — no entry: repeated content or panel-owned controls.
+
 ## Collections and actions
 
 Filter by collection, tag, or hostname from the corresponding sidebar panels. Switch between list

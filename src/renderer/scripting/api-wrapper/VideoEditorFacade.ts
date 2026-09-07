@@ -6,16 +6,16 @@ import { createElements } from "../ai-vision/elements";
 import { activatePageAndWaitForLayout, pageScopeSelector } from "../ai-vision/page-elements";
 
 const VIDEO_ELEMENTS = [
-    { name: "video-url-input", purpose: "Enter a video URL, local source, or cURL request." },
-    { name: "video-open-vlc", purpose: "Open the current source in VLC when browser playback is unavailable." },
-    { name: "audio-play-pause", purpose: "Toggle audio playback." },
-    { name: "audio-next", purpose: "Navigate to the next discovered sibling audio track." },
-    { name: "audio-mute", purpose: "Toggle audio mute." },
-    { name: "audio-shuffle", purpose: "Toggle the shared audio playlist shuffle setting." },
-    { name: "audio-seek", purpose: "Seek within the audio track." },
-    { name: "visualizer-bars", purpose: "Select the Bars audio visualizer." },
-    { name: "visualizer-circular", purpose: "Select the Circular audio visualizer." },
-    { name: "visualizer-none", purpose: "Disable the audio visualizer." },
+    { name: "video-url-input", purpose: "Enter a video URL, local source, or cURL request.", where: "top of the Video toolbar" },
+    { name: "video-open-vlc", purpose: "Open the current source in VLC when browser playback is unavailable.", where: "below the video player, when VLC fallback is available" },
+    { name: "audio-play-pause", purpose: "Toggle audio playback.", where: "bottom overlay of the audio player" },
+    { name: "audio-next", purpose: "Navigate to the next discovered sibling audio track.", where: "bottom overlay of the audio player, after Play/Pause" },
+    { name: "audio-mute", purpose: "Toggle audio mute.", where: "bottom overlay of the audio player, after Next" },
+    { name: "audio-shuffle", purpose: "Toggle the shared audio playlist shuffle setting.", where: "bottom overlay of the audio player, after Mute" },
+    { name: "audio-seek", purpose: "Seek within the audio track.", where: "bottom overlay of the audio player" },
+    { name: "visualizer-bars", purpose: "Select the Bars audio visualizer.", where: "audio visualizer selector, right side of the visualizer" },
+    { name: "visualizer-circular", purpose: "Select the Circular audio visualizer.", where: "audio visualizer selector, after Bars" },
+    { name: "visualizer-none", purpose: "Disable the audio visualizer.", where: "audio visualizer selector, after Circular" },
 ] as const;
 
 const VIDEO_EDITOR_MEMBERS: readonly IAiMember[] = [

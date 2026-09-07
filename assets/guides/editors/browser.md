@@ -17,6 +17,98 @@ Browser (Tor), and browser profiles are separate choices in the hub.
 
 ## Layout
 
+```
++---------------------------------------------------------------------+
+| [⌂][←][→][⟳]  [ address box            ] [→]        [★][⋮][</>][×]  |  toolbar: navigation at left, address box across middle,
+|                                                                     |  Go at its right edge, bookmarks/more/devtools/close at the right
++---------------------------------------------------------------------+
+| [Browser tabs] [Webview content]                                    |  browser content fills the page below the toolbar
+| [Blocked popups]                                  [Allow] [Dismiss] |  blocked-popup bar at the top of browser content when present
++---------------------------------------------------------------------+
+```
+
+### User-facing label → `elements` name
+
+- Home → `toolbar-home`
+- Back → `toolbar-back`
+- Forward → `toolbar-forward`
+- Reload → `toolbar-reload`
+- Address box → `url-input`
+- Go → `url-navigate`
+- Bookmark → `url-bookmark-toggle`
+- Bookmarks → `toolbar-bookmarks`
+- Tor info → `toolbar-tor-info`
+- Downloads → `toolbar-downloads`
+- More → `toolbar-more`
+- DevTools → `toolbar-devtools`
+- Close → `toolbar-close`
+- Browser tabs → `tabs-panel-host`
+- Blocked popups → `popup-blocked-bar`
+- Page navigation and Editor switch → no entry: this custom browser toolbar draws neither control
+- Webview page controls → no entry: third-party browser content
+
+### When URL suggestions are open
+
+```
++---------------------------------------------------------------------+
+| [Address box] [URL suggestions]                                     |  address field with its transient suggestion surface
++---------------------------------------------------------------------+
+```
+
+### When the search-engine menu is open
+
+```
++---------------------------------------------------------------------+
+| [Address box] [Search engine choices]                               |  search-engine menu anchored to the address field
++---------------------------------------------------------------------+
+```
+
+### When the page menu is open
+
+```
++---------------------------------------------------------------------+
+| [More] [Page menu]                                                  |  page menu opened from the toolbar's More control
++---------------------------------------------------------------------+
+```
+
+### When the downloads popup is open
+
+```
++---------------------------------------------------------------------+
+| [Downloads] [Downloads popup]                                       |  downloads popup anchored to the toolbar control
++---------------------------------------------------------------------+
+```
+
+### When the bookmarks drawer is open
+
+```
++---------------------------------------------------------------------+
+| [Browser tabs] [Bookmarks drawer] [Webview content]                 |  browser content with the bookmarks drawer at the left
++---------------------------------------------------------------------+
+```
+
+### When popups are blocked
+
+```
++---------------------------------------------------------------------+
+| [Blocked popups]                                  [Allow] [Dismiss] |  blocked-popup bar with actions at the right
++---------------------------------------------------------------------+
+```
+
+### When the Tor overlay is open
+
+```
++---------------------------------------------------------------------+
+| [Tor status] [Reconnect]                                  [Close]   |  Tor overlay: status and reconnect left, close at top-right
++---------------------------------------------------------------------+
+```
+
+### Drawn controls without `elements`
+
+- Page navigation and Editor switch — no entry: the measured browser toolbar draws neither generic control.
+- URL suggestion, search-engine, page, downloads-popup, bookmarks-drawer, and Tor popup contents — no entry: transient surfaces; the stable toolbar controls are listed above.
+- Webview page controls — no entry: third-party browser content.
+
 ## URL Bar
 
 Type a URL and press `Enter`, or type a search term and use the selected search engine. The navigate
@@ -38,8 +130,8 @@ After narrowing `pages[i].editor.id` to `browser-view`, the `BrowserEditor` faca
 tabs and the automation surface: snapshots, clicks, typing, key presses, evaluation, waiting,
 screenshots, network requests, and tab selection. The verified chrome elements include `url-input`,
 `url-navigate`, `url-bookmark-toggle`, `toolbar-back`, `toolbar-forward`, `toolbar-reload`,
-`toolbar-home`, `toolbar-bookmarks`, `toolbar-more`, `toolbar-devtools`, `toolbar-close`,
-`toolbar-tor-info`, `tabs-panel-host`, and `popup-blocked-bar`.
+`toolbar-home`, `toolbar-bookmarks`, `toolbar-tor-info`, `toolbar-downloads`, `toolbar-more`,
+`toolbar-devtools`, `toolbar-close`, `tabs-panel-host`, and `popup-blocked-bar`.
 
 ## Errors and limits
 

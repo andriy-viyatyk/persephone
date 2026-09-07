@@ -5,10 +5,10 @@ import { createElements } from "../ai-vision/elements";
 import { activatePageAndWaitForLayout, pageScopeSelector } from "../ai-vision/page-elements";
 
 const FILE_DIFF_ELEMENTS = [
-    { name: "file-diff-picker-from", purpose: "Open the popover for selecting the original revision." },
-    { name: "file-diff-picker-to", purpose: "Open the popover for selecting the modified revision." },
-    { name: "text-compare-left", purpose: "Enter compare mode with the current file as the right page when a comparable left page exists." },
-    { name: "text-show-resources", purpose: "Extract and open resources from an HTML host." },
+    { name: "file-diff-picker-from", purpose: "Open the popover for selecting the original revision.", where: "left side of the diff toolbar" },
+    { name: "file-diff-picker-to", purpose: "Open the popover for selecting the modified revision.", where: "left side of the diff toolbar, after From" },
+    { name: "text-compare-left", purpose: "Enter compare mode with the current file as the right page when a comparable left page exists.", where: "left side of the text toolbar, after the diff selectors, when comparison is available" },
+    { name: "text-show-resources", purpose: "Extract and open resources from an HTML host.", where: "right side of the text toolbar, when the host language is HTML" },
 ] as const;
 
 const FILE_DIFF_EDITOR_MEMBERS: readonly IAiMember[] = [

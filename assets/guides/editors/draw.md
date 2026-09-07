@@ -18,6 +18,35 @@ Drawing Editor. Agents can create a drawing content page with
 
 ## Layout
 
+```
++---------------------------------------------------------------------+
+| [Nav]                  [Theme] [Copy] [Save] [Open] [Snip] [Switch] |  shared toolbar: page navigation left, Draw actions and switch right
++---------------------------------------------------------------------+
+| [Excalidraw canvas]                                                 |  Excalidraw canvas below the toolbar
++---------------------------------------------------------------------+
+```
+
+### User-facing label → `elements` name
+
+- Theme, Copy image, Save, Open in new tab, and Screen Snip → no entry: Draw has no static `elements` list by design
+- Page navigation and Editor switch → no entry: shell-owned controls
+- Excalidraw tools and canvas → no entry: editor-internal/third-party content
+
+### When the Excalidraw canvas and toolbar are mounted
+
+```
++---------------------------------------------------------------------+
+| [Theme] [Copy] [Save] [Open] [Snip]                                 |  visible Draw toolbar content, not addressable facade controls
++---------------------------------------------------------------------+
+| [Excalidraw canvas]                                                 |  Excalidraw canvas below the toolbar
++---------------------------------------------------------------------+
+```
+
+### Drawn controls without `elements`
+
+- Draw toolbar controls — no entry: `DrawEditorFacade` publishes no static elements inventory.
+- Excalidraw tools and canvas — no entry: editor-internal/third-party content.
+
 ## Drawing and export
 
 The canvas supports the normal Excalidraw drawing workflow, custom shape libraries, and a Screen Snip
