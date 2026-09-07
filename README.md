@@ -14,7 +14,7 @@ Any file a developer meets during the day opens in place — in three tiers:
 
 ## A workspace shared with AI agents
 
-Persephone ships a built-in [MCP](https://modelcontextprotocol.io/) server — enabled with one checkbox in Settings ([setup guide](docs/mcp-setup.md)). Through it the whole app is transparent to an agent, and the agent works in the same UI you are looking at:
+Persephone ships a built-in [MCP](https://modelcontextprotocol.io/) server — enabled with one checkbox in Settings ([setup guide](assets/guides/mcp-setup.md)). Through it the whole app is transparent to an agent, and the agent works in the same UI you are looking at:
 
 - **It shows you things.** An agent opens pages with rendered Markdown, diagrams, sortable grids, and highlighted code — instead of dumping walls of text into a chat.
 - **It sees what you see.** Snapshot, click, and type — browser-style MCP tools work on the app itself and on the built-in web browser, so an agent can find something online for you or summarize the page you have open.
@@ -26,14 +26,14 @@ Content lives in one place and both of you operate on it: the agent drafts, you 
 
 Boards turn Persephone into a platform for small personal applications: dashboards, data browsers, deployment helpers, tools specific to one project. A board runs locally in a sandboxed webview with **no remote network access**, is trusted per board, and pins to the sidebar next to the built-in editors.
 
-The practical loop: describe the tool you need to your agent — it scaffolds the board, builds it, opens it, and iterates while you watch. Tools that used to stay on a "someday" list become things you get within a coffee break. See the [Boards guide](docs/boards.md).
+The practical loop: describe the tool you need to your agent — it scaffolds the board, builds it, opens it, and iterates while you watch. Tools that used to stay on a "someday" list become things you get within a coffee break. See the [Boards guide](assets/guides/boards.md).
 
 ## Also inside
 
 - **Web browser** — tabs with profiles, incognito mode, Tor routing, bookmarks, and DRM video support. Links from Markdown and code open in the nearest browser tab.
 - **Git integration** *(off by default)* — a commit-graph editor across all branches, staging and committing, push/pull, and revision diffs for any tracked file.
-- **Mneme — vector memory** *(off by default)* — turns any folder of Markdown notes into a locally indexed knowledge base with hybrid full-text + semantic search, exposed over MCP so agents remember across sessions. See the [Mneme guide](docs/mneme.md).
-- **Scripting** — the same `app.*` API agents use is available to you in a JavaScript/TypeScript tab with full Node.js access. See the [Scripting guide](docs/scripting.md).
+- **Mneme — vector memory** *(off by default)* — turns any folder of Markdown notes into a locally indexed knowledge base with hybrid full-text + semantic search, exposed over MCP so agents remember across sessions. See the [Mneme guide](assets/guides/mneme.md).
+- **Scripting** — the same `app.*` API agents use is available to you in a JavaScript/TypeScript tab with full Node.js access. See the [Scripting guide](assets/guides/scripting/index.md).
 
 ## Download (Windows)
 
@@ -69,18 +69,18 @@ The practical loop: describe the tool you need to your agent — it scaffolds th
 | **Git Diff** | — | Side-by-side revision comparison for any tracked file *(Git integration)* |
 | **Compare** | any two files | Side-by-side diff view |
 
-More viewers and editors — PDF, Word, Excel, PowerPoint, draw.io, SQLite, and others — install on demand from the **[persephone-boards](https://github.com/andriy-viyatyk/persephone-boards)** catalog: browse it from the **Search boards** tab of the Tools & Editors hub, or just open a matching file. See the [Boards guide](docs/boards.md#published-boards-catalog--discover-install-update).
+More viewers and editors — PDF, Word, Excel, PowerPoint, draw.io, SQLite, and others — install on demand from the **[persephone-boards](https://github.com/andriy-viyatyk/persephone-boards)** catalog: browse it from the **Search boards** tab of the Tools & Editors hub, or just open a matching file. See the [Boards guide](assets/guides/boards.md#published-boards-catalog--discover-install-update).
 
 ---
 
 ## Documentation
 
-* **[User Guide](docs/index.md)** — Getting started, editors, keyboard shortcuts
-* **[MCP Setup](docs/mcp-setup.md)** — Connect AI agents to Persephone
-* **[Boards Guide](docs/boards.md)** — Custom viewers, editors, and mini apps
-* **[Mneme Guide](docs/mneme.md)** — Vector memory / Markdown knowledge base for AI agents
-* **[Scripting Guide](docs/scripting.md)** — Script execution, `page`/`app` API, autoload scripts
-* **[API Reference](docs/api/index.md)** — `app.pages`, `app.fs`, `app.settings`, `app.ui`, `app.fetch`
+* **[User Guide](assets/guides/index.md)** — Getting started, editors, keyboard shortcuts
+* **[MCP Setup](assets/guides/mcp-setup.md)** — Connect AI agents to Persephone
+* **[Boards Guide](assets/guides/boards.md)** — Custom viewers, editors, and mini apps
+* **[Mneme Guide](assets/guides/mneme.md)** — Vector memory / Markdown knowledge base for AI agents
+* **[Scripting Guide](assets/guides/scripting/index.md)** — Script execution, `page`/`app` API, autoload scripts
+* **[API Reference](assets/guides/scripting/api/index.md)** — `app.pages`, `app.fs`, `app.settings`, `app.ui`, `app.fetch`
 
 ---
 

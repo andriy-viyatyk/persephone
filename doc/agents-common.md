@@ -141,7 +141,7 @@ epic closes.
 | See future ideas              | [tasks/backlog.md](tasks/backlog.md) |
 | Publish a new build           | [standards/release-process.md](standards/release-process.md) |
 | Test MCP documentation        | [qa/README.md](../qa/README.md) (including [surface QA](../qa/surfaces/README.md)) |
-| User documentation            | [docs/index.md](../docs/index.md) |
+| User documentation            | [assets/guides/index.md](../assets/guides/index.md) |
 
 ## Project Overview
 
@@ -191,7 +191,7 @@ npm run lint        # ESLint
     /theme           # Styling
   /ipc               # Inter-process communication
 /boards-assets       # Recommended-components catalog for Boards (manifest + 11 components, 10 skins)
-/assets              # Static assets (board-template/, demo-board/, agent/, mcp-res-*.md, editor-types/, …)
+/assets              # Static assets (board-template/, demo-board/, agent/, guides/, editor-types/, …)
 /doc                 # Developer documentation
   /epics             # Epic tracking
 /docs                # User documentation

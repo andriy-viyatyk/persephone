@@ -11,7 +11,7 @@ You are updating the developer documentation in `/doc/` to reflect recent code c
 
 ## Scope
 
-This command covers **developer docs** (the `/doc/` folder) **and the Board documentation in `assets/`** (the board authoring guide + the Demo board — consumer-facing references for the AI agents that build boards). User-facing app docs in `/docs/` are handled by the `/userdoc` skill separately.
+This command covers **developer docs** (the `/doc/` folder) **and the Board documentation in `assets/`** (the board authoring guide + the Demo board — consumer-facing references for the AI agents that build boards). User-facing app docs in `/assets/guides/` are handled by the `/userdoc` skill separately.
 
 ## What to check and update
 
@@ -63,20 +63,20 @@ shared document:
 - **Critical Patterns** — Any new patterns to document?
 - **Documentation Map** — Any new docs to link?
 
-### 4. UI guides (`assets/mcp-res-ui*.md` — agent-facing)
+### 4. UI guides (`assets/guides/agents/ui*.md` — agent-facing)
 
 Two guides describe Persephone to an agent that is helping the user with the app itself:
 
-- **`assets/mcp-res-ui.md`** — the chrome: what each always-visible element is *for*, its
+- **`assets/guides/agents/ui.md`** — the chrome: what each always-visible element is *for*, its
   `data-name` selector, and the `app.ui.highlightElement` recipe.
-- **`assets/mcp-res-ui-editors.md`** — the editor catalog: what each editor is for, how the user
-  opens it, what it can do. Its source material is the user doc `docs/editors.md`, which stays
+- **`assets/guides/agents/ui-editors.md`** — the editor catalog: what each editor is for, how the user
+  opens it, what it can do. Its source material is the user doc `assets/guides/editors/index.md`, which stays
   authoritative for humans; the guide is a condensation, not a second copy.
 
 Both describe a moving target, so they are the guides most likely to rot silently — nothing
 fails when they go stale, an agent just tells the user something untrue.
 
-Check **`mcp-res-ui.md`** whenever a change touched:
+Check **`agents/ui.md`** whenever a change touched:
 
 - **The app shell** — `src/renderer/ui/app/MainPage.tsx`, `ui/tabs/`, `ui/sidebar/MenuBar.tsx`,
   `ui/app/Pages.tsx`, `ui/secondary-views/`. Verify every selector the guide names still
@@ -88,12 +88,12 @@ Check **`mcp-res-ui.md`** whenever a change touched:
   `src/renderer/api/types/ui.d.ts`, `assets/agent/ui-highlight.js`. Options and return fields
   are quoted in the guide.
 
-Check **`mcp-res-ui-editors.md`** whenever a change touched:
+Check **`agents/ui-editors.md`** whenever a change touched:
 
 - **The editor set** — `src/renderer/editors/register-editors.ts` (an editor added, removed, or
   renamed), or `editor-matchers.ts` (which files open in which editor, and which switch buttons
   appear).
-- **`docs/editors.md`** — if the user doc gained or lost a capability, the condensation is stale
+- **`assets/guides/editors/index.md`** — if the user doc gained or lost a capability, the condensation is stale
   too. Reconcile the two rather than editing one.
 - **A feature moving out of the app into a board** — the guide's *"Things that are no longer
   built in"* section exists so an agent never promises a removed feature (Todo, PDF). Anything
@@ -102,8 +102,8 @@ Check **`mcp-res-ui-editors.md`** whenever a change touched:
 Keep both **thin on layout, thick on purpose**. An element's purpose survives a refactor; its
 position does not. Prefer "opens the Menu Bar" over "third button from the left".
 
-Keep `mcp-res-ui-editors.md` free of the required-`language` and title-suffix tables — those live
-in `mcp-res-pages.md`, and duplicating them means two copies drifting apart on the one detail
+Keep `agents/ui-editors.md` free of the required-`language` and title-suffix tables — those live
+in `agents/pages.md`, and duplicating them means two copies drifting apart on the one detail
 that silently produces a broken page.
 
 The fastest verification is live, not by reading source: `browser_snapshot({ pageId: "app" })`
@@ -117,11 +117,11 @@ Boards are built and debugged by AI agents, so their reference docs **are** docu
 |-----|--------|--------------|
 | `assets/board-template/CLAUDE.md` | The Board authoring guide — copied into every new board; the canonical reference a board-author agent reads. | The `persephone` bridge surface (`execute` handle, integration tier, theme/tokens), the `--p-*` contract list, `board-base.css`, the reload model, or the MCP debugging flow changes. |
 | `assets/demo-board/` (`index.html`, `app.js`, `style.css`) | The living, self-documenting Demo board — Overview / Theming / Capabilities / Build Guide / Debugging tabs demonstrating the same surface. | A capability the demo showcases changes, or a new one should be demonstrated. Keep its Build Guide + Debugging prose accurate and refresh the live examples (buttons/probes) when the API changes. |
-| `assets/mcp-res-boards.md` | The **agent-facing** boards guide served by `read_guide("boards")` / `notepad://guides/boards` — what a board is, the `execute_script` create→open lifecycle (`app.boards.createBoard`/`createDemoBoard` + `app.openRawLink`), develop & test. | The board lifecycle API (`app.boards`, `app.openRawLink`), the `persephone.*` bridge, the `--p-*` contract, or the `browser_*` testing flow changes. |
+| `assets/guides/agents/boards.md` | The **agent-facing** boards guide served as the `guides.agents.boards` call path and the `persephone://guides/boards` resource — what a board is, the `execute_script` create→open lifecycle (`app.boards.createBoard`/`createDemoBoard` + `app.openRawLink`), develop & test. | The board lifecycle API (`app.boards`, `app.openRawLink`), the `persephone.*` bridge, the `--p-*` contract, or the `browser_*` testing flow changes. |
 
 - `assets/demo-board/` is the **canonical** demo (edited directly; it is copied into a board on "Create Demo board") — there is no separate working copy to chase.
 - `assets/board-base.css` is shared by both boards; if the shared defaults (page bg, scrollbar, monospace font) change, the authoring guide's note about it must match.
-- **Reconcile drift across the three board docs each run.** They overlap on authoring content: `board-template/CLAUDE.md` is the canonical *authoring* reference; `mcp-res-boards.md` is the condensed agent-facing copy **plus** the create/open lifecycle; `demo-board/` is the living example. Cross-check them for discrepancies and fix the drift — bring the condensed copy back in line with the canonical guide and the current API.
+- **Reconcile drift across the three board docs each run.** They overlap on authoring content: `board-template/CLAUDE.md` is the canonical *authoring* reference; `agents/boards.md` is the condensed agent-facing copy **plus** the create/open lifecycle; `demo-board/` is the living example. Cross-check them for discrepancies and fix the drift — bring the condensed copy back in line with the canonical guide and the current API.
 - These docs are **consumer-facing** — keep them **ticket-free** too (no `US-XXX` / `EPIC-XXX`), same rule as the architecture docs below.
 
 ## How to work

@@ -59,7 +59,7 @@ slot or tab. The page slot itself is `[data-page-id="<page id>"][data-name="page
 
 ## The public-contract rule
 
-A `data-name` **quoted in an MCP guide** (`assets/mcp-res-*.md`) is part of Persephone's
+A `data-name` **quoted in an MCP guide** (`assets/guides/agents/*.md`) is part of Persephone's
 agent-facing API, not an internal label. The values listed in the table below are quoted there.
 
 - **Renaming one is a documentation change.** Update the guide in the same commit, or an agent

@@ -283,7 +283,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | VLC launcher             | `/src/main/vlc-launcher.ts`                       |
 | Terminal launcher (main; `detectTerminal` via `where`, `openTerminalAt` via `cmd /c start` so a console shell gets a visible window; supports pwsh/powershell/cmd/wt) | `/src/main/terminal-launcher.ts` |
 | Terminal open helper (renderer; reads `terminal.command`, auto-detects pwsh→powershell→cmd on first use and saves it, then launches — drives the "Open Terminal here" folder menu item) | `/src/renderer/api/terminal.ts` |
-| MCP resource guides      | `/assets/mcp-res-*.md`                            |
+| MCP resource guides      | `/assets/guides/agents/` and `/assets/guides/formats/` |
 | Agent highlight overlay (the ring + explanation card an agent draws on an element; dependency-free IIFE exposing `window.__persephoneHighlight`. Three constraints that are not guessable: it must live under a **directory** host because `app-asset://` maps the URL's *host* to a folder, so a top-level `assets/*.js` has no reachable URL; removal is **visibility-based**, since the Menu Bar is hidden with `display: none` rather than unmounted and a detach-only check left a ring floating over empty space the moment the user closed the menu; and the file is kept strictly ASCII because it is pasted between contexts and served by handlers that do not always declare a charset) | `/assets/agent/ui-highlight.js` |
 | Highlight API (`app.ui.highlightElement` / `clearHighlights`; fetches the overlay once via `app-asset://` and caches the loader promise, resetting it on failure so a failed load can retry) | `/src/renderer/api/ui.ts` |
 | Renderer MCP IPC shell (receives main-process commands, dispatches, times, logs, and returns results) | `/src/renderer/api/mcp-handler.ts` |
@@ -421,7 +421,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Human-readable byte size (`formatBytes`) | `/src/renderer/core/utils/format-bytes.ts` |
 | Unified pin model (`PinnedRef` over `pinned-editors`; editors + `board:<root>`) | `/src/renderer/ui/sidebar/pinned-items.ts` |
 | Board authoring guide (bridge surface, reload, MCP debugging, --p-* contract, chrome classes) | `/assets/board-template/CLAUDE.md` |
-| Agent-facing boards resource | `/assets/mcp-res-boards.md` |
+| Agent-facing boards resource | `/assets/guides/agents/boards.md` |
 | Shared board stylesheet, copied into every board at creation (theme defaults + the opt-in `.p-*` chrome layer) | `/assets/board-base.css` |
 | Recommended-components catalog (manifest + 11 components, 10 skins) | `/boards-assets/` |
 | Toolset manifest module (`tools-manifest.json` read/validate/write; `isToolsetFolder`; `defaultToolsManifest`) | `/src/renderer/api/tools/tools-manifest.ts` |
@@ -438,4 +438,4 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Toolset registration dialog (`showRegisterToolsetDialog`; RCE gate, MCP-initiated only) | `/src/renderer/ui/dialogs/RegisterToolsetDialog.ts` |
 | Trusted-toolsets sidebar tab (native list with open/remove actions) | `/src/renderer/ui/sidebar/TrustedToolsListView.ts` |
 | Toolset authoring guide (manifest, stdin/stdout contract, `.env`, requirements) | `/assets/tool-template/CLAUDE.md` |
-| Agent-facing tools resource | `/assets/mcp-res-tools.md` |
+| Agent-facing tools resource | `/assets/guides/agents/tools.md` |

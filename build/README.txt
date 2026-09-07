@@ -8,7 +8,7 @@ collections), a built-in browser, and a JavaScript/TypeScript runtime with full 
 access that can transform whatever is in the current tab.
 
 Project page:   https://github.com/andriy-viyatyk/persephone
-Documentation:  https://github.com/andriy-viyatyk/persephone/tree/main/docs
+Documentation:  https://github.com/andriy-viyatyk/persephone/tree/main/assets/guides
 
 
 -------------------------------------------------------------------------------
@@ -25,18 +25,16 @@ you need is on this machine.
    serves to connected agents. Read them directly as ordinary files — no network and no
    MCP connection required:
 
-       resources\assets\mcp-res-overview.md     <- START HERE. The mental model plus a
-                                                   task -> tool -> guide routing table.
-       resources\assets\mcp-res-ui.md           <- The interface: what every visible
-                                                   element is for, and its selector.
-       resources\assets\mcp-res-ui-editors.md   <- The editor catalog: what each editor
-                                                   is for and how the user opens it.
-       resources\assets\mcp-res-pages.md        <- Pages, editor ids, required languages.
-       resources\assets\mcp-res-scripting.md    <- The scripting API (app, page, io, ai).
-       resources\assets\mcp-res-boards.md       <- Boards: custom mini web-apps you build.
+       resources\assets\guides\agents\index.md       <- START HERE. The mental model plus a
+                                                          task -> tool -> guide routing table.
+       resources\assets\guides\agents\ui.md          <- The interface: visible elements and selectors.
+       resources\assets\guides\agents\ui-editors.md  <- The editor catalog and how users open editors.
+       resources\assets\guides\agents\pages.md      <- Pages, editor ids, and required languages.
+       resources\assets\guides\agents\scripting.md  <- The scripting API (app, page, io, ai).
+       resources\assets\guides\agents\boards.md     <- Boards: custom mini web-apps you build.
 
-   Other mcp-res-*.md files in that folder cover the browser, agent tools, and the
-   structured editor formats.
+   Other pages under resources\assets\guides\agents\ and resources\assets\guides\formats\
+   cover browser automation, Agent Tools, and the structured editor formats.
 
 2. TO CONTROL PERSEPHONE, TURN ON ITS MCP SERVER.
 
@@ -62,9 +60,8 @@ you need is on this machine.
        { "mcpServers": { "persephone": { "type": "http",
                                          "url": "http://127.0.0.1:7865/mcp" } } }
 
-   Reconnect afterwards. Once connected, call read_guide("overview") — the guides listed
-   above are then available through the read_guide tool, and you no longer need to read
-   them off disk.
+   Reconnect afterwards. Once connected, start with call("") and follow the guides paths; the same guides are available
+   under resources\assets\guides if you are working offline.
 
    The server listens on loopback only and is never reachable from another machine.
 

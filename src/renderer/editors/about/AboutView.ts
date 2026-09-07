@@ -258,7 +258,7 @@ export class AboutEditorView extends VanillaView<AboutEditorProps> {
                 variant: "link",
                 size: "sm",
                 onClick: () => {
-                    void shell.openExternal("https://github.com/andriy-viyatyk/persephone/blob/main/docs/whats-new.md");
+                    void shell.openExternal("https://github.com/andriy-viyatyk/persephone/blob/main/assets/guides/whats-new.md");
                 },
                 children: "What's New",
             }));

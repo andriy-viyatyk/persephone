@@ -213,7 +213,7 @@ See [scripting.md](./scripting.md).
 - Browser profile support: browser pages report `profileName` / `isIncognito` / `isTor` / active-tab `url`; `settings.browserProfiles` and `settings.defaultBrowserProfile` provide profile discovery, and `pages[i].editor.*` provides deterministic automation.
 - App-window automation: `window.screen.*` drives Persephone's own UI, including the tab strip, sidebar, dialogs, and active editor; `windows[i].window.screen` selects another window.
 - Log View integration: `pages.logView.push()` is the non-blocking MCP output path over the managed `mcp-ui-log` page; it returns dialog IDs for later `dialogResult()` reads, while script `ui` output shares the same page.
-- MCP resources: all 12 focused guides under `assets/mcp-res-*.md` are exposed at `persephone://guides/*`, along with `persephone://guides/full`. Resources are documents; operational discovery comes from `call` hints and `$help`.
+- MCP resources: all 12 focused guides under `assets/guides/agents/` and `assets/guides/formats/` are exposed at `persephone://guides/*`, along with `persephone://guides/full`. Resources are documents; operational discovery comes from `call` hints and `$help`.
 - MCP validation: `api/mcp/ui-push-validation.ts` validates Log View dialog entries and output content for the shared `pages.logView.push` path.
 - Opt-in via `mcp.enabled` setting — server starts/stops dynamically based on setting changes
 - Port is configurable via `mcp.port` setting (default `7865`)

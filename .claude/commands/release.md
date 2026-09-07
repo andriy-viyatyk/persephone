@@ -13,7 +13,7 @@ Execute all steps in order:
    git merge upcoming-vX.Y.Z
    ```
 
-3. **Review and clean up `docs/whats-new.md`** on `main`:
+3. **Review and clean up `assets/guides/whats-new.md`** on `main`:
 
    During development, tasks add entries incrementally — this often produces redundant or misleading entries. Before releasing, review and consolidate:
 
@@ -37,7 +37,7 @@ Execute all steps in order:
 
 4. **Commit and tag** on `main`:
    ```bash
-   git add docs/whats-new.md
+   git add assets/guides/whats-new.md
    git commit -m "Mark vX.Y.Z as released and add vX.Y.{Z+1} upcoming section"
    git tag vX.Y.Z
    ```

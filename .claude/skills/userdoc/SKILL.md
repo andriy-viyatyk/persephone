@@ -2,7 +2,7 @@
 name: userdoc
 model: sonnet
 context: fork
-description: Reviews and updates user-facing documentation in /docs/ after code changes. Use after implementation tasks to keep user guides current.
+description: Reviews and updates user-facing documentation in /assets/guides/ after code changes. Use after implementation tasks to keep user guides current.
 allowed-tools: Read, Glob, Grep, Edit, Write, Bash
 ---
 

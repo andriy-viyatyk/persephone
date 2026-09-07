@@ -8,7 +8,7 @@
 // To test: uncomment the code below, save the file, then click the yellow
 // reload indicator (↻) on the app toolbar to load the changes.
 //
-// Learn more: https://github.com/andriy-viyatyk/persephone/blob/main/docs/scripting.md
+// Learn more: https://github.com/andriy-viyatyk/persephone/blob/main/assets/guides/scripting/index.md
 
 // export function register() {
 //     // Add "Properties" to file context menu (right-click any file in File Explorer)

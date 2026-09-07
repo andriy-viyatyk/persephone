@@ -8,7 +8,11 @@ Overview of all active and planned epics and tasks.
 
 ## Active
 
-*(no active epic)*
+- **EPIC-092** — [Guide corpus and the `guides` node](epics/EPIC-092.md)
+  - [ ] [US-1361: Move the corpus into `assets/guides/` with front matter](tasks/US-1361-guides-corpus-move/README.md)
+  - [ ] [US-1362: `src/shared/guides/` — front-matter index, tree, lookup, search](tasks/US-1362-guides-index-module/README.md)
+  - [ ] [US-1363: The `guides` node, resource aliases, and the agent-facing pointers](tasks/US-1363-guides-node/README.md)
+  - [ ] [US-1364: Guide-question QA gate and live verification](tasks/US-1364-guides-qa-gate/README.md)
 
 ## Planned
 

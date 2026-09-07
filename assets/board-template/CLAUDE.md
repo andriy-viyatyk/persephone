@@ -721,7 +721,7 @@ read the Demo board's files (`index.html`, `app.js`, `style.css`, `board-base.cs
 ## Docs
 
 - Persephone on GitHub: https://github.com/andriy-viyatyk/persephone
-- Board guide (user docs): https://github.com/andriy-viyatyk/persephone/blob/main/docs/boards.md
+- Board guide (user docs): https://github.com/andriy-viyatyk/persephone/blob/main/assets/guides/boards.md
 - Recommended components + skins catalog:
   https://raw.githubusercontent.com/andriy-viyatyk/persephone/main/boards-assets/manifest.json
   (also returned by `get_app_info` as `boardsManifestUrl`). Fetch a skin as its `baseUrl + skin.file`.
