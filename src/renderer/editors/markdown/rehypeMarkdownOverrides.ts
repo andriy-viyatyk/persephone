@@ -1,5 +1,6 @@
 import type { Element, Root, RootContent } from "hast";
 import { resolveRelatedLink } from "../../core/utils/path-utils";
+import { parseGuideUrl, resolveGuideHref } from "../../../shared/guides/guide-links";
 
 interface RehypeMarkdownOverridesOptions {
     filePath?: string;
@@ -76,7 +77,10 @@ function rewriteLinkProperty(
     const decoded = decodeUrl(element.properties?.[property]);
     if (decoded === undefined) return;
     element.properties ??= {};
-    element.properties[property] = resolveRelatedLink(filePath, decoded, wikiRoot);
+    const guide = filePath ? parseGuideUrl(filePath) : undefined;
+    element.properties[property] = guide
+        ? resolveGuideHref(guide.path, decoded) ?? decoded
+        : resolveRelatedLink(filePath, decoded, wikiRoot);
 }
 
 function walk(node: Root | Element, options: RehypeMarkdownOverridesOptions): void {

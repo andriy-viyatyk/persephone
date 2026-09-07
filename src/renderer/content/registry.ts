@@ -7,7 +7,9 @@ import { CacheFileProvider } from "./providers/CacheFileProvider";
 import { HttpProvider } from "./providers/HttpProvider";
 import { DataUrlProvider } from "./providers/DataUrlProvider";
 import { MnemeProvider } from "./providers/MnemeProvider";
+import { GuideProvider } from "./providers/GuideProvider";
 import { ArchiveTransformer } from "./transformers/ArchiveTransformer";
+import { isCanonicalGuidePath } from "../../shared/guides/guide-links";
 
 type ProviderFactory = (config: Record<string, unknown>) => IProvider;
 type TransformerFactory = (config: Record<string, unknown>) => ITransformer;
@@ -59,6 +61,13 @@ registerProvider("http", (config) => new HttpProvider(
 ));
 registerProvider("data", (config) => new DataUrlProvider(config.url as string));
 registerProvider("mneme", (config) => new MnemeProvider(config.path as string));
+registerProvider("guide", (config) => {
+    const path = config && typeof config.path === "string" ? config.path : undefined;
+    if (!path || !isCanonicalGuidePath(path)) {
+        throw new Error("Invalid guide provider descriptor: expected a safe corpus-relative path.");
+    }
+    return new GuideProvider(path);
+});
 registerTransformer("archive", (config) => new ArchiveTransformer(config.archivePath as string, config.entryPath as string));
 registerTransformer("decrypt", () => {
     throw new Error("DecryptTransformer cannot be created from descriptor — use clone() instead");

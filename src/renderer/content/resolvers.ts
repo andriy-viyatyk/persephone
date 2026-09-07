@@ -6,6 +6,7 @@ import { createPipeFromDescriptor } from "./registry";
 import { resolveUrlToPipeDescriptor, isHttpUrl, toFileUrl } from "./link-utils";
 import type { ILinkData } from "../../shared/link-data";
 import { errMessage } from "../../shared/utils";
+import { parseGuideUrl, PERSEPHONE_GUIDE_PREFIX } from "../../shared/guides/guide-links";
 
 /**
  * Extract the effective path from a URL for editor resolution.
@@ -177,6 +178,53 @@ export function registerResolvers(): void {
         data.handled = false;
         await app.events.openContent.sendAsync(data);
         data.handled = true;
+    });
+
+    // Guide resolver — registered after the file fallback so LIFO intercepts the
+    // virtual scheme before the fallback can create a placeholder file pipe.
+    app.events.openLink.subscribe(async (data) => {
+        if (!data.url?.startsWith(PERSEPHONE_GUIDE_PREFIX)) return;
+
+        const parsed = parseGuideUrl(data.url);
+        if (!parsed) {
+            const { ui } = await import("../api/ui");
+            ui.notify(
+                `Invalid guide link: ${data.url}. Expected persephone-guide://<corpus-path>[#anchor].`,
+                "error",
+            );
+            data.handled = true;
+            return;
+        }
+
+        try {
+            const { getGuidePage } = await import("../guides");
+            const page = await getGuidePage(parsed.path);
+            if (!page) {
+                const { ui } = await import("../api/ui");
+                ui.notify(
+                    `Guide not found: ${parsed.path}. Use the guide index to inspect available pages.`,
+                    "error",
+                );
+                data.handled = true;
+                return;
+            }
+
+            data.url = parsed.url;
+            data.title ??= page.title;
+            data.target = "md-view";
+            data.pipeDescriptor = {
+                provider: { type: "guide", config: { path: parsed.path } },
+                transformers: [],
+            };
+            data.pipe = createPipeFromDescriptor(data.pipeDescriptor);
+            data.handled = false;
+            await app.events.openContent.sendAsync(data);
+            data.handled = true;
+        } catch (err) {
+            const { ui } = await import("../api/ui");
+            ui.notify(`Failed to open guide ${parsed.path}: ${errMessage(err)}`, "error");
+            data.handled = true;
+        }
     });
 
     // mneme:// resolver — route Mneme wiki documents to MnemeProvider (EPIC-032).

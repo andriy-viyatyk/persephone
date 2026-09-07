@@ -15,7 +15,7 @@ import type { EditorConfig } from "../base/EditorConfig";
 import { FindBarView, type FindBarProps } from "../shared/FindBarView";
 import { MarkdownBlockView, type MarkdownBlockProps } from "./MarkdownBlockView";
 import type { MarkdownEditor, MarkdownEditorState, MarkdownQueueEvent } from "./MarkdownEditor";
-import { isLocalMarkdownHref } from "./markdown-nav";
+import { isGuideHref, isLocalMarkdownHref } from "./markdown-nav";
 
 export interface MarkdownBodyViewProps {
     model: MarkdownEditor;
@@ -190,7 +190,7 @@ export class MarkdownBodyView extends VanillaView<MarkdownBodyViewProps> {
             this.scrollToAnchor(fragment);
             return;
         }
-        if (!isLocalMarkdownHref(href)) return;
+        if (!isLocalMarkdownHref(href) && !isGuideHref(href)) return;
 
         const page = this.model.page;
         const pageId = page?.id;

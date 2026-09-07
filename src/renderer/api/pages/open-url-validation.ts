@@ -4,6 +4,7 @@ const PIPELINE_SCHEMES = new Set([
     "mneme",
     "mneme-folder",
     "persephone-board",
+    "persephone-guide",
     "persephone-toolset",
     "tree-category",
 ]);

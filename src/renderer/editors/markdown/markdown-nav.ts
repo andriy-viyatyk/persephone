@@ -1,5 +1,6 @@
 import { isFileUrl, normalizeFileUrl } from "../../content/link-utils";
 import { fpExtname } from "../../core/utils/file-path";
+import { parseGuideUrl } from "../../../shared/guides/guide-links";
 
 // Extensions that count as a "local markdown document" for in-page navigation
 // (US-784). A clicked link to one of these — when it resolves to a local file —
@@ -21,4 +22,9 @@ export function isLocalMarkdownHref(href: string): boolean {
     const cut = path.search(/[?#]/);
     if (cut >= 0) path = path.slice(0, cut);
     return MARKDOWN_EXTENSIONS.has(fpExtname(path).toLowerCase());
+}
+
+/** Whether a resolved href points to a guide corpus page. */
+export function isGuideHref(href: string): boolean {
+    return parseGuideUrl(href) !== undefined;
 }

@@ -52,13 +52,19 @@ export function registerOpenHandler(): void {
             // Open file in new or existing tab — pass pipe through
             // On success the page owns the pipe; on error we must dispose it
             try {
-                await pagesModel.lifecycle.openFile(filePath, data.pipe, {
+                const page = await pagesModel.lifecycle.openFile(filePath, data.pipe, {
                     sourceLink,
                     fragment: data.fragment,
                     target: data.target,
                     diffFrom: data.diffFrom,
                     diffTo: data.diffTo,
                 });
+                const title = data.title;
+                if (page && title) {
+                    page.mainEditor?.state.update((state) => {
+                        state.title = title;
+                    });
+                }
             } catch (err) {
                 data.pipe.dispose();
                 throw err;

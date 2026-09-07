@@ -2,6 +2,7 @@ import { app as electronApp } from "electron";
 
 import { ArgumentValidationError, numberRule, stringRule, validateCallArguments } from "../../../shared/ai-vision/argument-validation";
 import type { GuideIndex, GuideTreeFolder, GuideTreeNode, GuideTreePage } from "../../../shared/guides";
+import { selectReleaseNotes } from "../../../shared/guides/release-notes";
 import { IAiChild, IAiMember, IAiVisible, IAiVisionDescriptor } from "../../../shared/ai-vision/types";
 import { MainGuideSource } from "./guide-source";
 
@@ -208,27 +209,6 @@ function joinPath(parent: string, child: string): string {
 
 function guideNotFound(path: string): Error {
     return new Error(`Guide path "${path}" was not found in the current Markdown corpus. Use "guides" to inspect available guides or "${GUIDE_NOT_FOUND_EXAMPLE}".`);
-}
-
-function selectReleaseNotes(content: string, version: string): string {
-    const upcoming = findReleaseSection(content, `## Version ${version} (Upcoming)`);
-    if (upcoming !== undefined) return upcoming;
-    const released = findReleaseSection(content, `## Version ${version}`);
-    return released ?? `No release notes are available for Persephone ${version}.`;
-}
-
-function findReleaseSection(content: string, heading: string): string | undefined {
-    const headingPattern = new RegExp(`^${escapeRegExp(heading)}\\s*$`, "m");
-    const match = headingPattern.exec(content);
-    if (!match || match.index === undefined) return undefined;
-    const bodyStart = match.index + match[0].length;
-    const nextHeading = /^## Version .+$/m.exec(content.slice(bodyStart));
-    const bodyEnd = nextHeading?.index === undefined ? content.length : bodyStart + nextHeading.index;
-    return `${heading}\n\n${content.slice(bodyStart, bodyEnd).trim()}`.trim();
-}
-
-function escapeRegExp(value: string): string {
-    return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function formatArgument(value: unknown): string {

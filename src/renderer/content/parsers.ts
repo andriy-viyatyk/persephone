@@ -6,6 +6,7 @@ import { GIT_TREE_PREFIX } from "./git-tree-link";
 import { MNEME_FOLDER_PREFIX } from "./mneme-folder-link";
 import { PERSEPHONE_BOARD_PREFIX } from "./persephone-board-link";
 import { PERSEPHONE_TOOLSET_PREFIX } from "./persephone-toolset-link";
+import { parseGuideUrl, PERSEPHONE_GUIDE_PREFIX } from "../../shared/guides/guide-links";
 import { normalizeFileUrl, isFileUrl, isPlausibleFilePath } from "./link-utils";
 
 /**
@@ -164,6 +165,28 @@ export function registerRawLinkParsers(): void {
         if (!data.href.startsWith(PERSEPHONE_TOOLSET_PREFIX)) return;
         data.url = data.href;
         data.target ??= "toolset-view";
+        data.handled = false;
+        await app.events.openLink.sendAsync(data);
+        data.handled = true;
+    });
+
+    // persephone-guide:// parser — guide identities are corpus-relative and must never
+    // reach the file fallback. Layer 2 validates membership in the shared guide index.
+    app.events.openRawLink.subscribe(async (data) => {
+        if (!data.href.startsWith(PERSEPHONE_GUIDE_PREFIX)) return;
+        const parsed = parseGuideUrl(data.href);
+        if (!parsed) {
+            const { ui } = await import("../api/ui");
+            ui.notify(
+                `Invalid guide link: ${data.href}. Expected persephone-guide://<corpus-path>[#anchor].`,
+                "warning",
+            );
+            data.handled = true;
+            return;
+        }
+        data.url = parsed.url;
+        if (parsed.fragment) data.fragment ??= parsed.fragment;
+        data.target ??= "md-view";
         data.handled = false;
         await app.events.openLink.sendAsync(data);
         data.handled = true;
