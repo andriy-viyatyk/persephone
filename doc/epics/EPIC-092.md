@@ -2,9 +2,9 @@
 
 ## Status
 
-**Status:** Active
+**Status:** Completed
 **Created:** 2026-09-07
-**Completed:** —
+**Completed:** 2026-09-07
 
 Epic 1 of 4 in [in-app-guides-roadmap.md](../in-app-guides-roadmap.md). EPIC-093 (About page as
 guide browser), EPIC-094 (per-screen guides and layout schemas) and EPIC-095 (retire `docs/`)
@@ -131,10 +131,10 @@ now; the QA gate and live verification.
 
 | Task | Title | Status |
 |------|-------|--------|
-| US-1361 | Move the corpus into `assets/guides/` with front matter | Planned |
-| US-1362 | `src/shared/guides/` — front-matter index, tree, lookup, search | Planned |
-| US-1363 | The `guides` node, resource aliases, and the agent-facing pointers | Planned |
-| US-1364 | Guide-question QA gate and live verification | Planned |
+| US-1361 | Move the corpus into `assets/guides/` with front matter | Done |
+| US-1362 | `src/shared/guides/` — front-matter index, tree, lookup, search | Done |
+| US-1363 | The `guides` node, resource aliases, and the agent-facing pointers | Done |
+| US-1364 | Guide-question QA gate and live verification | Done |
 
 **Sequencing.** US-1361 first: the module and the node need real files to read, and a move reviewed
 on its own is a diff a human can actually check. US-1362 next, because the node is a thin descriptor
@@ -189,3 +189,61 @@ Recorded rather than blocking; work proceeds on the defaults.
   absent from `ROOT_MEMBERS` — so the epic adds the member entry, it does not fight an existing one.
 - `qa/surfaces/gate.md` G.10 is the only existing documentation scenario and it tests the opposite
   case (answering with no guide tool). The guide-question set is new work in US-1364 (decision 9).
+
+### 2026-09-07 — outcomes
+
+**The gate passed.** Six guide questions, six answers from `guides.*`, and **no MCP resource read in
+either session** ([run log](../../qa/runs/2026-09-07-epic-092-guide-questions.md)). That was the whole
+point of the epic: the same corpus behind the same twelve URIs had already failed this test, because
+some models never take the resource-read step. Two scenarios reached the answer after wrong turns and
+produced the run's two real findings, both fixed and re-run.
+
+**The single-corpus decision (5) was the one most at risk, and it held.** Asked for a notebook's JSON
+shape, the agent went from the bare overview to `guides.formats.notebook` — an `audience: agent` page
+— in one hop and reported only one candidate. Asked a *user* question about boards, where a user page
+and an agent authoring page cover the same topic, it read `guides.boards` and never opened
+`guides.agents.boards`. One tree, two audiences, routed by the summaries alone. That was the argument
+against a separate `agentGuide` root and it survived contact with a weak model.
+
+**Three defects were found by running the thing, not by reading it.** Corpus page lookup shadowed the
+node's own members, so `guides.search` and `guides.whatsNew` — two of the four required paths —
+answered "not found in the current Markdown corpus" and could not be called at all; typecheck, lint
+and build were all green across that. `whatsNew` selected the right section and then discarded the
+`## Version 5.0.0 (Upcoming)` heading that names it. And `helpSearch`'s new empty-result pointer first
+shipped as a hit-shaped object with `path: "(none)"` — a non-callable value in the one field that
+always holds a callable path, which is the EPIC-091 failure class re-created while fixing something
+else. All three are the argument for live verification over a green build.
+
+**The QA run's own findings were routing, not retrieval.** Eight `helpSearch` calls across the two
+sessions returned empty before the agent tried `guides.search`, and in two of three questions it
+never tried it at all — it browsed the tree instead. Cross-referencing the two searches in their
+*summaries* had already shipped and was not enough, because an agent reads a member's **result**, not
+its summary, before deciding what to do next. An empty `helpSearch` now names `guides.search` with the
+caller's own query, and the `guides` hint advertises `search` and `whatsNew` where an agent browsing
+the tree is already looking. `guides.whatsNew` had been invisible for exactly that reason: the agent
+answered "what's new" from the complete 264,765-character page instead of the 14,878-character
+section built for the question.
+
+**Search quality took two rounds against the real corpus** and both are recorded in US-1362. Plain
+substring matching, inherited from `helpSearch`, matched `rows` inside **"browses"**; word-boundary
+matching with suffix continuation fixed it without losing row/rows or filter/filtering. Then ranking
+by occurrence count put four API listings and code fences above the grid guide, because a
+multi-kilobyte bullet list contains `rows` twenty times — passage length now outranks count, on the
+principle that in documentation a short passage holding every query word beats a long one that
+contains them incidentally.
+
+**One shared-code change carried real blast radius.** Descriptor `children()`/`summarize()` may now
+return a promise, which the hint builders, help search and resolver await — the path every node in
+seven epics resolves through, changed in the last task before the gate. It was required additively
+(no existing descriptor was converted) and `pages`, `boards` and `ui` were re-checked live for hint,
+`$help` and member-list regressions, with a synchronous-source fallback recorded had it not stayed
+additive.
+
+**Deferred, deliberately.** `guides.<page>.layout` ships and returns a clear no-schema message
+because no page has a `## Layout` section until EPIC-094 — the path exists first so EPIC-094 only
+writes markdown. The corpus does not answer "can I turn session restore off?", which the run exposed;
+that is prose, and editing it here would have broken this epic's own move-not-rewrite rule, so it
+goes to EPIC-094 with Q.7 left standing in the surface file. Improving `PathSyntaxError` to suggest
+bracket syntax when it meets a `-` inside an identifier would fix hyphenated paths at the root rather
+than per-tree; it touches the parser every surface shares and wants its own task. `docs/` keeps
+working through two stubs until EPIC-095 deletes it.

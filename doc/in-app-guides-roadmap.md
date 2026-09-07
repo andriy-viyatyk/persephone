@@ -210,10 +210,23 @@ quickly). The default is no images in the first pass; record the decision in EPI
 
 | # | Epic | Delivers | Retires (when its replacement passes the gate) |
 |---|---|---|---|
-| 1 | **EPIC-092** — Guide corpus and the `guides` node | `assets/guides/` with front matter; a shared guide index module (`src/shared/guides/`) used by main and renderer; `docs/*.md` **and** the twelve `assets/mcp-res-*.md` moved verbatim into the tree (API reference included, unchanged); `guides`, `guides.<path>`, `guides.search`, `guides.whatsNew` served by main; `persephone://guides/*` re-pointed at the tree with unchanged URIs; overview, server instructions and node help pointers; QA guide-question set re-run through `call` only | `assets/mcp-res-*.md` as separate files (their content lives on in the tree). `docs/` stays until EPIC-095 |
+| 1 | ✅ **EPIC-092** — Guide corpus and the `guides` node | `assets/guides/` with front matter; a shared guide index module (`src/shared/guides/`) used by main and renderer; `docs/*.md` **and** the twelve `assets/mcp-res-*.md` moved verbatim into the tree (API reference included, unchanged); `guides`, `guides.<path>`, `guides.search`, `guides.whatsNew` served by main; `persephone://guides/*` re-pointed at the tree with unchanged URIs; overview, server instructions and node help pointers; QA guide-question set re-run through `call` only | `assets/mcp-res-*.md` as separate files (their content lives on in the tree). `docs/` stays until EPIC-095 |
 | 2 | **EPIC-093** — About page as guide browser | Left/right split; contents view with What's New and Resources; in-pane markdown rendering with breadcrumbs, back, *Open in tab*; the guide link scheme through the content pipeline; Menu Bar *User Guide* item and `F1`; update toast opens in-app What's New; `about-view` agent facade | The external GitHub *What's New* URL in About |
 | 3 | **EPIC-094** — Per-screen guides and layout schemas | `editors/index.md` (ex `docs/editors.md`) and the ex-`ui-editors` page merged and split into one page per editor; `screens/` pages for header, Menu Bar, Settings, sidebar panels (absorbing the ex-`ui` page); `## Layout` schema on every screen page; `where` on `elements`; screen → guide mapping (`editorId` front matter) behind `F1` and the "?" affordance; `mcp-test-agent-call` run on "where is X?" questions | The standalone `ui` and `ui-editors` pages (their URIs now alias the merged pages) |
 | 4 | **EPIC-095** — Retire `docs/` | Delete `docs/`; README *Documentation* block points at `assets/guides/index.md` (and says the in-app copy is canonical); `CONTRIBUTING.md:164`, `build/README.txt` (already stale — describes `read_guide`), `assets/board-template/CLAUDE.md:724`, `assets/script-library/autoload/register-all.ts:11` re-pointed; release process step 3 rewritten for `assets/guides/whats-new.md`; `/userdoc` and `/document` skills rewritten for the new location and the layout-schema step | `docs/` (31 files, ~11k lines) |
+
+**EPIC-092 completed 2026-09-07** ([epic document](epics/completed.md),
+[gate run](../qa/runs/2026-09-07-epic-092-guide-questions.md)). Deviations from this document, all
+recorded in the epic: the root shipped as `guides` and front matter beat a manifest, as defaulted
+here; the corpus counts above were stale (43 pages — 15 root, 16 API, 12 ex-`mcp-res` — plus one
+fixture, not "31 files"/"17 API pages"); the non-editor topic pages stayed flat at the tree root
+rather than each taking a single-page folder; `docs/` keeps two stub index pages so nothing 404s
+before EPIC-095; and `guides.<page>.layout` shipped early, returning a clear no-schema message, so
+EPIC-094 only has to write markdown. The sketch above shows `mneme.md`, `mcp-setup.md` and the other
+topic pages where they actually landed. Two things the gate found are deferred: the corpus does not
+say whether session restore can be disabled (prose, EPIC-094, Q.7 still standing in the surface
+file), and `PathSyntaxError` still does not suggest bracket syntax for a hyphenated segment, which
+would fix hyphenated paths at the root instead of per-tree and wants its own task.
 
 Epics 2 and 3 are independent once EPIC-092 lands and can run in either order; EPIC-095 waits for
 all three. EPIC-092 is deliberately a move, not a rewrite (principle 2): the diff must show the

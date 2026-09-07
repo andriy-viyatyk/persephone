@@ -12,6 +12,16 @@ import { helpSearch as searchHelp, IHelpSearchHit } from "../../../shared/ai-vis
 import { numberRule, stringRule, validateCallArguments } from "../../../shared/ai-vision/argument-validation";
 import { IAiChild, IAiMember, IAiVisible, IAiVisionDescriptor } from "../../../shared/ai-vision/types";
 
+interface IHelpSearchEmptyResult {
+    kind: "HelpSearch";
+    query: string;
+    hits: 0;
+    message: string;
+    hint: string;
+}
+
+type HelpSearchResult = IHelpSearchHit[] | IHelpSearchEmptyResult;
+
 export interface AiRootOptions {
     /** Page supplied by a live script or by a Board owner lookup. */
     page?: PageWrapper;
@@ -181,9 +191,17 @@ export class AiRoot implements IAiVisible {
         return this.options.page ?? this.app.pages.activePage;
     }
 
-    helpSearch(...args: unknown[]): Promise<IHelpSearchHit[]> {
+    async helpSearch(...args: unknown[]): Promise<HelpSearchResult> {
         const [query, limit] = validateCallArguments("helpSearch", args, HELP_SEARCH_ARGUMENTS, { maxArgs: 2 });
-        return searchHelp(this, query, limit);
+        const hits = await searchHelp(this, query, limit);
+        if (hits.length > 0) return hits;
+        return {
+            kind: "HelpSearch",
+            query,
+            hits: 0,
+            message: `No object-model path matched ${JSON.stringify(query)}.`,
+            hint: `Search documentation text with guides.search(${JSON.stringify(query)}).`,
+        };
     }
 
     get version() { return this.app.version; }

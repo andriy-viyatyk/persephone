@@ -1,3 +1,80 @@
+## EPIC-092 — Guide corpus and the `guides` node
+
+Completed 2026-09-07. [Epic document](EPIC-092.md),
+[gate run](../../qa/runs/2026-09-07-epic-092-guide-questions.md). Epic 1 of 4 in the
+[in-app guides roadmap](../in-app-guides-roadmap.md).
+
+The application's documentation existed twice and in the wrong place: `docs/` was a GitHub folder
+the user had to leave the app to read, and `assets/mcp-res-*.md` was a parallel agent corpus
+reachable only as an MCP resource — a protocol step some models never take. This epic made them one
+corpus at one path and put it on the surface every agent already uses.
+
+**The gate is the result that matters.** Six user-phrased questions, six answers from `guides.*`,
+and **no MCP resource read in either session**. The same words behind the same twelve URIs had
+already failed that test; nothing about the prose changed, only where it could be reached from.
+
+**The riskiest decision was one corpus for two audiences, and it held.** Asked for a notebook's JSON
+shape, a Haiku agent went from the bare overview to `guides.formats.notebook` — an `audience: agent`
+page — in one hop, reporting only one candidate. Asked a *user* question about boards, where a user
+page and an agent authoring page cover the same topic, it read `guides.boards` and never opened
+`guides.agents.boards`. Routed by the summaries alone. A separate `agentGuide` root had been
+considered and declined; the decline survived contact with a weak model.
+
+**The move was verbatim, and mechanically checkable.** 44 files relocated with `git mv`, every one a
+pure rename, with exactly three permitted kinds of hunk per file: the new front matter, the deleted
+first-line breadcrumb the tree replaces, and relative hrefs repaired for the new depth. Merging the
+duplicate editor catalogues and splitting `editors.md` are EPIC-094's; both sides of every
+user/agent overlap survive as separate pages. `docs/` keeps two stub index pages so nothing 404s
+before EPIC-095 deletes it.
+
+**Three defects were found by running it, not by reading it — all three past a green build.** Corpus
+page lookup shadowed the node's own members, so `guides.search` and `guides.whatsNew`, two of the
+four required paths, answered "not found in the current Markdown corpus" and could not be called at
+all. `whatsNew` selected the right release section and then discarded the `## Version 5.0.0
+(Upcoming)` heading that names it. And the fix for the QA run's own finding first shipped as a
+hit-shaped object with `path: "(none)"` — a non-callable value in the one field that always holds a
+callable path, which is EPIC-091's failure class re-created while repairing something else.
+
+**Search quality took two rounds against the real corpus.** Plain substring matching, inherited from
+`helpSearch`, matched `rows` inside **"browses"**; word-boundary matching with suffix continuation
+fixed it without losing row/rows or filter/filtering. Then ranking by occurrence count put four API
+listings and code fences above the grid guide, because a multi-kilobyte bullet list contains `rows`
+twenty times — passage length now outranks count, on the principle that in documentation a short
+passage holding every query word beats a long one that contains them incidentally.
+
+**The run's findings were routing, not retrieval, and they repeat one lesson: an agent reads a
+result, not a summary.** Eight `helpSearch` calls returned empty before anyone tried `guides.search`,
+even though the two nodes already cross-referenced each other in their member summaries — so an empty
+`helpSearch` now names `guides.search` with the caller's own query, and the `guides` hint advertises
+both members where a browsing agent is already looking. `guides.whatsNew` had been invisible for the
+same reason: an agent answered "what's new" from the complete 264,765-character page rather than the
+14,878-character section built for the question, and it took a pointer on the page's own tree entry,
+not in a summary, to move it.
+
+**Hyphenated paths needed the tree to hand out a working string.** `IDENTIFIER_PART` excludes `-`,
+so an agent reading `path: "mcp-setup"` would type `guides.mcp-setup` and hit a `PathSyntaxError`
+raised before any node could hint at it. Every tree entry therefore carries a parser-valid `call`
+field — `guides.editors.grid` where the dotted form parses, `guides["agents/ui-editors"]` where it
+does not — and both agents used the bracket form correctly without being told.
+
+One shared-code change carried real blast radius: descriptor `children()`/`summarize()` may now
+return a promise, awaited by the hint builders, help search and resolver — the path every node in
+seven epics resolves through, changed in the last task before the gate. It was required additively,
+with `pages`, `boards` and `ui` re-checked live and a synchronous-source fallback held in reserve.
+
+`guides.<page>.layout` ships returning a clear no-schema message, so EPIC-094 only has to write
+markdown. Two things the gate exposed are deferred with reasons: the corpus does not say whether
+session restore can be disabled (prose, and editing it here would have broken this epic's own
+move-not-rewrite rule), and `PathSyntaxError` still does not suggest bracket syntax for a hyphenated
+segment, which would fix that class at the root instead of per-tree.
+
+| Task | Title |
+|------|-------|
+| US-1361 | Move the corpus into `assets/guides/` with front matter |
+| US-1362 | `src/shared/guides/` — front-matter index, tree, lookup, search |
+| US-1363 | The `guides` node, resource aliases, and the agent-facing pointers |
+| US-1364 | Guide-question QA gate and live verification |
+
 ## EPIC-091 — `call` surface hardening: acting on the external MCP evaluation
 
 Completed 2026-09-07. [Epic document](EPIC-091.md), [source report](EPIC-091-evaluation-report.md).

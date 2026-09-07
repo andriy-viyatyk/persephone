@@ -1,7 +1,7 @@
 ---
 title: "What's New"
 audience: both
-summary: "Release notes and changelog for Persephone (formerly js-notepad)."
+summary: "Every release's notes, newest first — the complete history; call guides.whatsNew instead for just the running version's section."
 ---
 
 # What's New

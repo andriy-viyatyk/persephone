@@ -58,7 +58,7 @@ export class GuidesNode implements IAiVisible {
     get aiVision(): IAiVisionDescriptor {
         return {
             kind: "Guides",
-            summary: "Documentation tree and text search for how to do something or where it is.",
+            summary: "Documentation tree and text search for how to do something or where it is; use guides.search(query) for what the documentation says about X and guides.whatsNew for what changed in this release without reading the whole history.",
             members: GUIDES_MEMBERS,
             help: "guides.search searches documentation text; helpSearch searches the live descriptor graph for object-model paths. Start with guides, then use the returned call fields.",
             children: async () => toChildren(await this.index.getTree()),

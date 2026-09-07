@@ -307,6 +307,18 @@ extraResources: [{ from: assets, to: assets }]
 It copies `assets` recursively outside the asar, so `assets/guides/**` is present in packaged
 builds. This task adds no tests or test harnesses; US-1364 owns the QA run and live verification.
 
+### QA findings applied
+
+The 2026-09-07 EPIC-092 guide-question run found that an empty `helpSearch` array was a discovery
+dead end for documentation questions, so the renderer root now returns a separate bounded plain
+object with `hits: 0` and names `guides.search("<same query>")`; this stays at the call site because
+the shared function's declared `IHelpSearchHit[]` contract and descriptor-graph search behavior
+remain unchanged. Successful searches keep their `IHelpSearchHit[]` shape, so zero results cannot
+be mistaken for a callable pseudo-hit or a non-empty search.
+The `guides` node summary now advertises `guides.search(query)` for documentation text and
+`guides.whatsNew` for the current release without loading the complete history, so both paths are
+visible alongside the tree result.
+
 ### Guide path matrix
 
 The tree's page `path` is always the canonical slash key. The bracket form in the second column is
