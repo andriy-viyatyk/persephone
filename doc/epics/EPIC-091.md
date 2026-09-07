@@ -350,6 +350,22 @@ Every numbered report item ends up either in the task table above or in this tab
 |---|---|---|
 | 3.5 — unify mutation return shapes | **Not unified.** Documented in `$help` instead (US-1359); `closePage` alone changes shape. | Decision 5: the blast radius is every void member across seven epics and ~60 QA scenarios; two of the five shapes carry information a uniform `{ ok: true }` would lose. |
 | §2 — "apply the existing validation helper" | **Premise corrected, recommendation kept.** US-1356 extracts the helper first. | No shared helper exists; the pattern is re-implemented ad hoc in at least eleven places, and the `deleteRows` message quoted as the standard is not in the codebase. See "The one place the report is wrong" above. |
+| §2 — convert the eight sites that already validate well to the new helper | **Not done, deliberately.** | Decision 2: they work, an outside evaluator praised them by name, and rewriting working error messages to share a base class is refactoring dressed as a fix. They are converted only where another task was already editing the function. |
+| 3.7 — the script line numbers themselves | **Not fixed.** The trace is trimmed to the caller's own frames (US-1359), but the reported line is offset by a constant — a function on source line 3 reports as `script:7`. | Pre-existing and unrelated to the report: the runner wraps a submitted script in a preamble, and the offset is that preamble's length. Fixing it means mapping positions back through the wrapper, which is a change to the script runner rather than to the `call` surface, and it was not worth folding into a documentation task. Worth a task if the offset bites. |
+
+### What the epic found that the report did not
+
+The report's twelve-row section 2 table was an undercount, and the two "documentation" findings were
+cheaper and broader than their framing suggested. Recorded here because it is the argument for
+planning an epic around a report rather than simply executing one:
+
+| Found | Where | Why the report missed it |
+|---|---|---|
+| **Silent no-op 13** — `logView.push(123)` returned `{ entryIds: [], dialogIds: [] }` | `LogViewEditorFacade`'s `if (!normalized) continue;` | It probed `push` with a *string* (bug 1.1) and never with a non-entry value. |
+| **Silent no-op 14** — `addEditorPage`'s fourth `content` argument was dropped by the scripting wrapper | `PageCollectionWrapper.addEditorPage` forwarded three of four | It found the signature *disagreement* (3.1) and read it as a documentation problem. Following the arity error's own copy-paste example created a page with the content discarded and reported success. |
+| **A partial mutation reported as a failure** — a bad entry mid-batch left earlier entries written and then threw | same facade, single-pass loop | Not reachable without passing a mixed batch. |
+| **A fourth hint leak** — the malformed-path branch hard-coded `hints: "always"` | `resolver.ts`'s parse-error return | It *counted* the leak — `pages..logView` and `pages[0` are two of its six dumps — but attributed all six to the `forceMembers` path. |
+| **`deleteRows` has no validation at all** | `GridEditorFacade` → `GridEditor` filters unknown keys away | It quoted `deleteRows` as the gold standard for validation messages. The message does not exist. |
 
 ## Abort criteria
 

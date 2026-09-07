@@ -21,6 +21,7 @@ Two things these files are for:
 | File | Surface | Landed by |
 |------|---------|-----------|
 | [gate.md](gate.md) | EPIC-090 compact deletion gate | EPIC-090 |
+| [malformed-input.md](malformed-input.md) | Error quality: what `call` says when the caller gets it wrong | EPIC-091 (US-1354 to US-1360) |
 | [dialogs.md](dialogs.md) | Blocking dialogs, the `dialogs` node, attention and pending results | EPIC-084 (US-1297, US-1298, US-1301) |
 | [shell.md](shell.md) | The application shell: header strip, tabs, curated elements and highlight | EPIC-084 (US-1300) |
 | [page.md](page.md) | Page-scoped elements, activation, tab ownership, and page identity | EPIC-086 (US-1311) |
@@ -42,7 +43,16 @@ Settings catalog (US-1306) are tests S.7 onward in that file, because they are a
 
 The `editors/` subfolder arrived with EPIC-086, which covered the text-and-preview family in five
 files, and grew with EPIC-087's data editors, EPIC-088's boards and EPIC-089's browser. With the
-browser file the surface epics are complete; this is now the active call-based suite for EPIC-090's
+browser file the surface epics are complete.
+
+`malformed-input.md` arrived with EPIC-091 and is the one file here whose surface is not a screen.
+Every other file asks *can an agent drive this?*; that one asks *when a call is wrong, does the
+caller learn what was wrong and what it cost to find out?* Its assertions are about the text of an
+error rather than about on-screen state, which is what makes it the suite's regression net for error
+quality — a message that quietly loses its valid-value list in a refactor is a defect no typecheck
+or build will catch.
+
+This is now the active call-based suite for EPIC-090's
 consolidated manifest.
 
 ## Running them

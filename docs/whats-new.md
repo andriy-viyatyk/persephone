@@ -40,6 +40,55 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### For agent integrations
 
+- **`call` now refuses bad arguments instead of quietly doing nothing.** An independent review of
+  the `call` surface found about a dozen calls that returned an empty list, `null` or `false` when
+  their arguments were wrong — a result an agent cannot tell apart from "there was nothing there",
+  so it would report a no-op as done. Those calls now fail with a message that names the value you
+  passed, says what type it actually was, and either lists the valid values or points at the path
+  that lists them. Affected: `helpSearch`, `tools.search`, `pages.closePage`, and the grid's
+  `addRows`, `editCell` and `deleteRows`. Passing arguments to a *property* such as `version` is
+  not an error — you get the value plus a warning.
+  - **Behaviour change worth knowing about:** `pages.closePage("<id that is not open>")` now
+    **throws**, listing the open page ids, where it used to return `false`. Its sibling
+    `pages.showPage` already behaved this way with the identical input. If you have a script or a
+    board that branches on the `false` return, wrap it in a `try`. Closing a page that really is
+    open is unchanged, including the unsaved-changes prompt.
+- **`pages.logView.push("some text")` writes one line, not one line per character.** A plain string
+  is documented shorthand for a `log.info` entry, and passing one directly to `push` used to iterate
+  it — twelve characters became twelve log entries. A single entry object works too. If any entry in
+  a batch is invalid, nothing is written at all, rather than part of the batch being applied and then
+  failing.
+- **A mistyped path costs one line instead of a page.** `call` used to ignore its own `hints`
+  setting whenever a call failed, and re-sent the full member list on every repeat failure. Now a
+  near-miss gets a suggestion — `"pagez" is not a member of Persephone. Did you mean "pages" or
+  "page"?` — the member list is sent once per kind per session, and `hints: "never"` is honoured on
+  errors as well as on successes. A genuinely unknown name still gets the full list the first time,
+  because that is what makes the surface learnable.
+- **`maxLength` now bounds large lists and objects, not just long strings.** The response reports
+  `showing N of M items` and is always valid JSON — whole entries are dropped, never cut mid-value.
+  `maxLength` must be at least 1 and `windowIndex` at least 0; both are rejected up front instead of
+  producing an empty result.
+- **`helpSearch` with a negative limit no longer silently drops results off the end.** A limit below
+  1 is treated as 1.
+- **An unknown `language` is now an error rather than a silent downgrade.**
+  `pages.addEditorPage("grid-json", "not-a-language", …)` used to hand back a plain Monaco page with
+  the bogus language stored on it, and report success — the mistake only surfaced later when the grid
+  operations were not there. Read `editors.languages` for the valid ids. A *real* language that the
+  editor you asked for cannot handle still falls back to Monaco, exactly as before.
+- **Grid row keys are readable.** `editCell` and `deleteRows` take row keys, and there was no way to
+  obtain one — they are held outside the row data, so reading `rows` never showed them. The new
+  `editor.rowKeys` returns them in the same order as `editor.rows`.
+- **`pages.addEditorPage` accepts initial content again.** The fourth `content` argument was
+  implemented and documented but dropped before it reached the page, so a call that supplied it got
+  an empty page and a success result.
+- **A hint for a returned object now uses a path you can actually follow.** Creating a page
+  advertised its editor as `pages.addEditorPage().editor`, which resolves to a description of the
+  method rather than the editor. It now names the new page's real id.
+- **Script errors no longer bury your stack trace in Persephone's own.** `script.execute` returned
+  eight frames of Persephone internals around one frame of your code; it now returns your frames
+  only, as `script:line:column`. As before, an error *inside* your script comes back as a successful
+  call carrying `isError: true` — so that `consoleLogs` arrives with it — which is now stated in the
+  contract rather than left to be discovered.
 - **The `PERSEPHONE_MCP_CALL_ONLY` migration flag was removed before release.** It existed only to
   hide `execute_tool`, the last tool still advertised alongside `call`. `execute_tool` is now
   retired in favour of the `tools.execute(toolId, args)` path, so the manifest is `call` alone
