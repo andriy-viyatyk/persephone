@@ -100,12 +100,29 @@ export class SecondaryViewsView extends VanillaView<SecondaryViewsProps> {
         const viewsChanged = !sameItems(this.lastViews, props.views);
         if (viewsChanged) {
             this.lastViews = props.views;
+        }
+        // A panel-contributing model can change its OWN `secondaryView` list while the
+        // models list stays identical — Explorer adding "search"/"boards" is the canonical
+        // case, since one ExplorerEditor owns all three panels. Guarding reconcile on the
+        // model list alone therefore dropped those panels: the state was written (and
+        // persisted) but nothing rendered until a later mount saw them already present,
+        // which is why the toggles only appeared to work on a restored page (US-1365).
+        if (viewsChanged || this.renderedPanelsChanged()) {
             this.reconcile();
         }
         if (props.nav !== this.boundNav) {
             this.releaseNav();
             this.bindNav(props.nav);
         }
+    }
+
+    /** Whether the panels `getRenderedPanels()` now yields differ from the ones
+     *  `records` holds — i.e. a model's panel-id list changed under a stable model list.
+     *  Compared by composite panel key, the same identity `reconcile()` diffs on. */
+    private renderedPanelsChanged(): boolean {
+        const rendered = this.getRenderedPanels();
+        if (rendered.length !== this.records.size) return true;
+        return rendered.some((panel) => !this.records.has(panel.key));
     }
 
     protected onDispose(): void {

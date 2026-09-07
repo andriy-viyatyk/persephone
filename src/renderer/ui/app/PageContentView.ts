@@ -10,7 +10,6 @@ import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { createOrnamentElement } from "../../theme/Ornament";
 import { RenderEditorView } from "./RenderEditorView";
 import "./Pages.css";
-import { sameItems } from "../../core/utils/utils";
 
 export interface PageContentProps { pageId: string; }
 
@@ -25,8 +24,6 @@ export class PageContentView extends VanillaView<PageContentProps> {
     private contentIdentity: string | undefined;
     private compareView: CompareEditor | undefined;
     private live = true;
-    private lastViews: EditorModel[] | undefined;
-    private lastSecondaryNav: PageModel["secondaryViewsModel"];
 
     public constructor(props: PageContentProps) {
         super(props);
@@ -117,8 +114,6 @@ export class PageContentView extends VanillaView<PageContentProps> {
             onActivatePanel: this.activatePanel,
             onResizeWidth: this.resizeWidth,
         };
-        const viewsChanged = !sameItems(this.lastViews, views);
-        const navChanged = this.lastSecondaryNav !== nav;
         if (!this.secondaryView) {
             this.secondaryView = this.child(new SecondaryViewsView(props));
             // The sidebar is a left-hand column, and its position here is pure DOM order —
@@ -128,17 +123,23 @@ export class PageContentView extends VanillaView<PageContentProps> {
             // only jump left on the next navigation, when the content is rebuilt after it.
             this.root.insertBefore(this.secondaryView.root, this.contentRoot ?? null);
             this.secondaryView.mount();
-        } else if (viewsChanged || navChanged) this.secondaryView.update(props);
-        this.lastViews = views;
-        this.lastSecondaryNav = nav;
+        } else {
+            // Hand the props down on every sync rather than guarding on the panel-editor
+            // list: one panel-contributing model can change its OWN `secondaryView` id list
+            // without `panelEditors` or the nav model changing at all — a single
+            // ExplorerEditor owns the explorer/search/boards panels. Guarding here meant
+            // clicking Search or Boards on a freshly created folder page wrote and persisted
+            // the state but rendered nothing, until a later mount happened to see the panels
+            // already present (US-1365). SecondaryViewsView does its own change detection,
+            // so an unconditional update costs a short array compare and a key check.
+            this.secondaryView.update(props);
+        }
     }
 
     private clearSecondary(): void {
         const view = this.secondaryView;
         if (!view) return;
         this.secondaryView = undefined;
-        this.lastViews = undefined;
-        this.lastSecondaryNav = undefined;
         void guard("Failed to dispose secondary views", () => this.releaseChild(view));
     }
 
