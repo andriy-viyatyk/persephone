@@ -1,7 +1,8 @@
 # EPIC-094 — Per-screen guides and layout schemas
 
-**Status:** Active
+**Status:** Completed
 **Started:** 2026-09-07
+**Completed:** 2026-09-07
 **Roadmap:** epic 3 of 4 in the [in-app guides roadmap](../in-app-guides-roadmap.md)
 **Builds on:** [EPIC-092](EPIC-092.md) — the corpus in `assets/guides/`, front matter with
 `editorId`, `src/shared/guides/`, the main-process `guides` node with `guides.<page>.layout` already
@@ -275,3 +276,102 @@ Recorded rather than blocking; work proceeds on the defaults above.
   restore can be disabled?) — folded into US-1375's `tabs.md`, since that is the page that owns it.
 - **`editors/index.md` shrinks from 935 lines to a table.** The removed prose is not lost — it lands
   on the per-editor pages — but anyone who bookmarked the long catalogue sees a different page.
+
+## Outcome
+
+Completed 2026-09-07. Seven tasks, seven commits, `315eaf26` … `0c87d572`, plus this document's
+opening commit `d5ef154c`. [Gate run](../../qa/runs/2026-09-07-epic-094-where-is-x.md).
+
+**What shipped:** 290 `where` phrases across every element list; the two duplicate editor catalogues
+merged and split into 21 per-editor pages behind a 102-line catalogue; eight `screens/` pages
+absorbing the 336-line shell guide; `## Layout` schemas on 33 pages in 125 diagram blocks; front
+matter extended with `screen`, list-valued `editorId` and unknown-key tolerance; `editorId` unique
+across the corpus with a contained duplicate diagnostic; a guide pointer derived from one table
+beside the editor registry; a Menu Bar *Guide for this page* item; and `persephone://guides/ui` and
+`ui-editors` re-pointed so their two source pages could be deleted.
+
+**The gate:** 3 PASS, 2 PARTIAL, 0 FAIL, and — the clause that matters — **no answer in any session
+sourced from the DOM, a CSS class or a selector string.** The A.2 baseline question, which a day
+earlier produced `.avg-filter-button`, now produces "the right edge of each column header, appearing
+when you hover it", quoted from the guide.
+
+### The lesson: a schema derived from view code is not a schema
+
+Every diagram was first drawn as a **vertical list, one control per row** — which carries position in
+prose the `where` phrases already carry, and so adds nothing that a bullet list would not. Both
+schema tasks did it independently from the same template, which means the template was at fault, not
+the agent. Redrawing them on the rule *a row is a region of the screen, not a control* is what made
+them diagrams.
+
+Then position itself resisted being read. The general rule handed to both tasks — the editor switch
+is the rightmost control on the toolbar row, measured on the grid — turned out to hold only for
+`TextChromeView` hosts; the browser supplies its own toolbar and has neither a switch nor a page-nav
+affordance, so a confident general rule would have been 21 wrong diagrams. The browser's navigation
+buttons run **home, back, forward, reload**, not the order anyone assumes. The notebook's sidebar
+panels were drawn to the *right* of the note cards and sit at x=2. And the Menu Bar was drawn wrong
+twice — once as a vertical list, once stacked further on a reviewer's instruction because its margin
+phrases said "top" and "below" — before opening it settled that it is a full-window overlay with two
+panes and a single horizontal row of five 26px icons. **The reviewer's correction was the wrong one
+and the original phrase was right**; only the measurement distinguished them.
+
+### The epic broke its own artifact in its last task
+
+US-1378 inserted *Guide for this page* into the Menu Bar's action row, which shifted every icon after
+it and left `menubar-settings`' `where` phrase claiming it sat immediately right of *User Guide* —
+while the schema's diagram did not draw the new control at all. That phrase is the answer to one of
+the gate's own five questions, and the gate scenario read it verbatim off
+`window.menuBar.elements`. Found by opening the menu, not by reading the diff. It is the clearest
+possible argument for `/userdoc`'s new re-check step, and the reason that step names a method rather
+than an intention.
+
+### Three defects the merge exposed in prose nobody had re-read
+
+EPIC-092 moved 44 files verbatim on purpose, and this epic was the first to read them against the
+code. Seven claims did not survive: archives documented read/write against an editor that only
+extracts; the grid documented as requiring an array when a single object renders as one row;
+`.grid.jsonl` missing entirely; Log View's detection described as any JSONL; boards said to always
+need explicit trust when `createBoard` auto-trusts; `addEditorPage` said to reject every app page
+when `board-info` is registered with a content host; and the notebook switch keyed on the filename
+when the matcher also reads content. Separately, the shell guide quoted `about-guide-open-tab` for a
+control the source calls `about-guide-open-in-tab`.
+
+### Two risk-shaped decisions were changed under review
+
+**`editorId` mapping followed the entry point instead of the screen.** Mapping `mcp-view` and the
+Mneme screens to `screens/header.md`, because the header is how a user reaches them, would have
+answered `F1` with a guide about a different screen — worse than the existing fallback to About
+contents, because a wrong page is confidently wrong. They now point at pages that document those
+screens, and a `screens/mcp-inspector.md` was written rather than cram the Inspector into the header.
+
+**The duplicate-`editorId` check was going to throw from `getTree()`.** That path serves the guides
+tree, the About browser and `F1`, so one duplicated value in Markdown front matter — editable by
+anyone, including a future `/userdoc` run — would have taken the whole corpus down for both readers.
+It reports instead, and resolution prefers the user-facing page, so behaviour stays correct while a
+duplicate exists. EPIC-092 shipped that failure class once already.
+
+### Deferred, with reasons
+
+- **The grid filter is addressable but not highlightable at rest.** It is `display: none` until its
+  header is hovered, its column is filtered, or its popup is open, so `highlight` correctly finds
+  nothing. Whether a highlight should be able to *reveal* a hover-gated control is a question about
+  `highlight`, not about the corpus. → EPIC-095 list.
+- **Note tag chips have no `elements` entry**, recorded as repeated per-note content. The grid
+  filter is the precedent for adding a repeated control with an explicit selector and
+  `highlightOptions: { all: true }`, so consistency argues for it; it needs a `data-name` in
+  `NoteItemView` and was outside the reviewed plans at close. → EPIC-095 list.
+- **The per-toolbar "?" button** stays deferred in favour of the Menu Bar item (decision 7).
+- **No screenshots** (decision 1), as defaulted by the roadmap.
+- **`.agents/` is read-only in Codex's MCP sandbox**, so both skill definitions this epic had to
+  change (`userdoc`, and `document`, whose UI-guides section described two now-deleted files and told
+  its reader to keep guides "thin on layout") were edited by hand. Worth knowing before the next epic
+  plans a skill change as delegated work.
+
+| Task | Title |
+|------|-------|
+| US-1373 | `where` on `elements` |
+| US-1374 | One guide page per editor |
+| US-1375 | `screens/` pages and the front-matter extension |
+| US-1376 | `## Layout` schemas for the editor pages |
+| US-1377 | `## Layout` schemas for the screen pages |
+| US-1378 | Screen → guide mapping, aliases, and the `/userdoc` step |
+| US-1379 | The "where is X?" gate run and its remediation |

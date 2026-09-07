@@ -1,3 +1,79 @@
+## EPIC-094 — Per-screen guides and layout schemas
+
+Completed 2026-09-07. [Epic document](EPIC-094.md),
+[gate run](../../qa/runs/2026-09-07-epic-094-where-is-x.md). Epic 3 of 4 in the
+[in-app guides roadmap](../in-app-guides-roadmap.md).
+
+EPIC-092 put the documentation in the app and EPIC-093 put a reader in front of the user. Both gates
+passed and both left the same hole: asked where a grid's row filter was, an agent read the DOM and
+answered **`.avg-filter-button`**, because no page in the corpus said where anything was. This epic
+wrote it down — a `## Layout` schema on every editor and screen page, 33 pages and 125 diagram
+blocks, and 290 `where` phrases on the element lists so the diagram, the `elements` name and the
+spatial phrase say the same thing in the same words. The same question now answers "the right edge of
+each column header, appearing when you hover it", from the guide.
+
+**A schema derived from view code is not a schema, and that took three rounds to learn.** Every
+diagram arrived first as a vertical list with one control per row — position carried in prose the
+`where` phrases already carried, which is precisely what an ASCII box diagram is for and a bullet
+list is not. Both schema tasks did it independently from one shared template, so the template was at
+fault. Then position itself resisted reading: the rule handed to both tasks (editor switch rightmost
+on the toolbar row, measured on the grid) holds only for `TextChromeView` hosts, and the browser
+supplies its own toolbar with neither a switch nor a page-nav affordance — a confident general rule
+would have been 21 wrong diagrams. The browser's navigation buttons run home, back, forward, reload,
+not the order anyone assumes. The notebook's sidebar panels were drawn right of the note cards and
+sit at x=2. And the Menu Bar was drawn wrong twice — once as a vertical list, once stacked *further*
+on the reviewer's instruction, because its margin phrases said "top" and "below" — before opening it
+settled that it is a full-window overlay with two panes and one horizontal row of five 26px icons.
+The reviewer's correction was the wrong one and the original phrase was right; only the measurement
+could tell them apart.
+
+**The epic broke its own artifact in its last task.** Inserting a *Guide for this page* item into the
+Menu Bar's action row shifted every icon after it, leaving `menubar-settings`' `where` phrase
+claiming it sat immediately right of *User Guide* while the schema did not draw the new control at
+all. That phrase is the answer to one of the gate's five questions, and the gate scenario read it
+verbatim off `window.menuBar.elements`. Found by opening the menu, not by reading the diff — which is
+the argument for `/userdoc`'s new re-check step, and why that step names a method rather than an
+intention.
+
+**Two risk-shaped decisions changed under review.** The `editorId` mapping first followed the *entry
+point* rather than the screen: `mcp-view` and the Mneme screens pointed at `screens/header.md`
+because the header is how a user reaches them, which would have answered `F1` with a guide about a
+different screen — worse than the existing fallback, because a wrong page is confidently wrong. And
+the duplicate-`editorId` check was going to **throw from `getTree()`**, the path that serves the
+guides tree, the About browser and `F1`, so one duplicated value in Markdown front matter would have
+taken the corpus down for both readers; it reports instead and resolution prefers the user-facing
+page. EPIC-092 shipped that failure class once already.
+
+**The merge was the first time EPIC-092's verbatim move was read against the code, and seven claims
+did not survive.** Archives documented read/write against an editor that only extracts; the grid
+documented as requiring an array when a single object renders as one row; `.grid.jsonl` missing;
+Log View's detection described as any JSONL; boards said to always need explicit trust when
+`createBoard` auto-trusts; `addEditorPage` said to reject every app page when `board-info` has a
+content host; the notebook switch keyed on filename when the matcher also reads content. The shell
+guide also quoted `about-guide-open-tab` for a control the source calls `about-guide-open-in-tab`.
+
+Six `editorId` values turned out to be claimed twice, so `F1` was resolving by tree order rather
+than ownership. Front matter needed a `screen` key, a list-valued `editorId` for the three grid
+modules, and — more urgently — **tolerance for an unknown key**: the parser treated any unrecognised
+field as whole-file failure, so adding `screen:` would have silently dropped a page's title, audience
+and summary and rendered its raw YAML as body text. And `where` could not surface where the roadmap
+implied, because `hint.ts` never rendered `elements` at all.
+
+The gate: 3 PASS, 2 PARTIAL, 0 FAIL, and no answer in any session sourced from the DOM, a CSS class
+or a selector string. Both partials are pointing gaps with recorded reasons — the grid filter is
+`display: none` until hovered, so `highlight` correctly finds nothing at rest, and note tag chips
+have no entry — and both go to EPIC-095 with the per-toolbar "?" button.
+
+| Task | Title |
+|------|-------|
+| US-1373 | `where` on `elements` |
+| US-1374 | One guide page per editor |
+| US-1375 | `screens/` pages and the front-matter extension |
+| US-1376 | `## Layout` schemas for the editor pages |
+| US-1377 | `## Layout` schemas for the screen pages |
+| US-1378 | Screen → guide mapping, aliases, and the `/userdoc` step |
+| US-1379 | The "where is X?" gate run and its remediation |
+
 ## EPIC-093 — About page as guide browser
 
 Completed 2026-09-07. [Epic document](EPIC-093.md),

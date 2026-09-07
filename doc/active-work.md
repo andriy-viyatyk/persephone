@@ -8,14 +8,7 @@ Overview of all active and planned epics and tasks.
 
 ## Active
 
-- **EPIC-094** — [Per-screen guides and layout schemas](epics/EPIC-094.md)
-  - [ ] US-1373: `where` on `elements`
-  - [ ] US-1374: Editor pages — merge the catalogues, one page per editor
-  - [ ] US-1375: `screens/` pages and the front-matter extension
-  - [ ] US-1376: `## Layout` schemas for the editor pages
-  - [ ] US-1377: `## Layout` schemas for the `screens/` pages
-  - [ ] US-1378: Screen → guide mapping, aliases, and the `/userdoc` step
-  - [ ] US-1379: The "where is X?" gate run
+*(no active epic)*
 
 ## Planned
 
