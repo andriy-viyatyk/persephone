@@ -119,6 +119,7 @@ export function createElements(
                 return {
                     name: declaration.name,
                     purpose: declaration.purpose,
+                    ...(declaration.where !== undefined ? { where: declaration.where } : {}),
                     selector,
                     visible: isVisible(selector),
                 };

@@ -35,12 +35,14 @@ export interface IAiMember {
 export interface IAiElementDeclaration {
     readonly name: string;
     readonly purpose: string;
+    readonly where?: string;
     readonly selector?: string;
 }
 
 export interface IAiElement {
     readonly name: string;
     readonly purpose: string;
+    readonly where?: string;
     readonly selector: string;
     readonly visible: boolean;
 }

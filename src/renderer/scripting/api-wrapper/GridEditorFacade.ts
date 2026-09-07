@@ -17,15 +17,57 @@ import {
 } from "../../../shared/ai-vision/argument-validation";
 
 const GRID_ELEMENTS = [
-    { name: "grid-search", purpose: "Enter search text for the grid rows." },
-    { name: "grid-search-clear", purpose: "Clear the active grid search." },
-    { name: "grid-columns", purpose: "Open the Edit Columns surface." },
-    { name: "grid-csv-options", purpose: "Open CSV Options for a CSV grid." },
-    { name: "columns-options-apply", purpose: "Apply validated column edits." },
-    { name: "columns-options-cancel", purpose: "Discard column edits and close the surface." },
-    { name: "csv-options-header", purpose: "Toggle whether the first CSV row is a header." },
-    { name: "csv-options-delimiter", purpose: "Choose the CSV delimiter." },
-    { name: "csv-options-other", purpose: "Enter a custom CSV delimiter." },
+    {
+        name: "grid-search",
+        purpose: "Enter search text for the grid rows.",
+        where: "search box at the right of the grid toolbar, left of the editor switcher",
+    },
+    {
+        name: "grid-search-clear",
+        purpose: "Clear the active grid search.",
+        where: "clear button at the right edge of the grid search box",
+    },
+    {
+        name: "grid-column-filter",
+        purpose: "Open the row filter for one grid column.",
+        where: "filter button at the right edge of each column header; appears when the header is hovered, the column is filtered, or its filter popup is open",
+        selector: '.avg-filter-button.avg-column-filtered, .avg-filter-button.avg-filter-open, .avg-header-cell:hover .avg-filter-button',
+    },
+    {
+        name: "grid-columns",
+        purpose: "Open the Edit Columns surface.",
+        where: "Edit Columns button on the left side of the grid toolbar",
+    },
+    {
+        name: "grid-csv-options",
+        purpose: "Open CSV Options for a CSV grid.",
+        where: "CSV Options button beside Edit Columns on the left side of the grid toolbar",
+    },
+    {
+        name: "columns-options-apply",
+        purpose: "Apply validated column edits.",
+        where: "in the Columns popup, bottom-right",
+    },
+    {
+        name: "columns-options-cancel",
+        purpose: "Discard column edits and close the surface.",
+        where: "in the Columns popup, bottom-right, left of Apply",
+    },
+    {
+        name: "csv-options-header",
+        purpose: "Toggle whether the first CSV row is a header.",
+        where: "in the CSV Options popup, at the top",
+    },
+    {
+        name: "csv-options-delimiter",
+        purpose: "Choose the CSV delimiter.",
+        where: "in the CSV Options popup, below the header checkbox",
+    },
+    {
+        name: "csv-options-other",
+        purpose: "Enter a custom CSV delimiter.",
+        where: "custom delimiter field in the CSV Options popup, at the bottom",
+    },
 ] as const;
 
 const GRID_EDITOR_MEMBERS: readonly IAiMember[] = [
@@ -84,6 +126,7 @@ export class GridEditorFacade implements IAiVisible {
         const elements = createElements(GRID_ELEMENTS, ui.highlightElement.bind(ui), {
             scopeSelector: pageId ? pageScopeSelector(pageId) : undefined,
             beforeHighlight: pageId ? () => activatePageAndWaitForLayout(pageId) : undefined,
+            highlightOptions: { all: true },
         });
         return {
             kind: "GridEditor",

@@ -80,8 +80,11 @@ function collectKindHits(path: string, descriptor: IAiVisionDescriptor, tokens: 
     // property that sets it. Without this, `helpSearch` answers only `page.language` and the agent
     // never finds the button it was asked to point at.
     for (const element of descriptor.elements ?? []) {
-        const line = `element "${element.name}" — ${element.purpose}`;
-        if (matches(`${element.name} ${element.purpose}`, tokens)) {
+        const matchedText = `${element.name} ${element.purpose}${element.where !== undefined ? ` ${element.where}` : ""}`;
+        const line = element.where === undefined
+            ? `element "${element.name}" — ${element.purpose}`
+            : `element "${element.name}" — ${element.purpose}; where: ${element.where}`;
+        if (matches(matchedText, tokens)) {
             hits.push({
                 path: joinChildPath(path, "elements"),
                 kind: descriptor.kind,
