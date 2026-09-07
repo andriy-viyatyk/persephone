@@ -1,5 +1,7 @@
 # US-1355: Hint economics — honour `hints` and dedupe on the error path
 
+**Status:** Implemented (unreviewed — epic close runs the completion skills)
+
 Epic: [EPIC-091](../../epics/EPIC-091.md), report items 1.2 and 3.8.
 
 ## Goal
@@ -314,3 +316,22 @@ Files deliberately requiring **no changes**: `src/main/mcp/tools/call-tools.ts`,
 `qa/surfaces/`. Their existing session transport, descriptor contracts, path grammar, error
 formatting, and QA expectations are the interfaces this task must preserve
 (`src/main/mcp/tools/call-tools.ts:95-98,150-188,239-252`; `src/renderer/api/mcp/call-command.ts:9-19`).
+
+## Live-verification correction (2026-09-07)
+
+The first implementation returned **no** suggestion for `pagez` — the report's flagship example —
+because the reviewed plan's "a tie means no suggestion" rule fired: `pagez` is Levenshtein distance
+1 from both `pages` (substitute) and `page` (delete). The rule was right about the risk (a
+confidently wrong single suggestion is worse than the member list it replaces) and wrong about the
+remedy, because suppressing the suggestion sent the full ~2,400-token dump for the single most
+likely typo on the whole surface.
+
+`findMemberSuggestion` was therefore replaced by `findMemberSuggestions`, which returns **every**
+equally-good candidate (at most three) ranked by distance, then the smaller absolute length
+difference — a substitution is a likelier typo than a deletion, which is what puts `pages` ahead of
+`page` — then declaration order. `formatSuggestions` renders them as one readable line. Two names
+on one line are still strictly cheaper and more actionable than the member list, and never wrong.
+
+Verified live: `pagez` → `Did you mean "pages" or "page"?`; `Pages` → `Did you mean "pages"?`; a
+first unknown member of a kind still returns the complete member list; a second returns the kind
+summary plus `Details: call with path "pages.$help"`.

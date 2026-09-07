@@ -59,6 +59,19 @@ export function buildHint(
     return { kind: descriptor.kind, text: parts.join("\n") };
 }
 
+/** Build the compact hint used when a forced resolver error has already emitted this kind's members. */
+export function buildErrorHint(
+    path: string,
+    descriptor: IAiVisionDescriptor,
+    includeMembers: boolean,
+): IHint {
+    if (includeMembers) return buildHint(path, descriptor, true);
+    return {
+        kind: descriptor.kind,
+        text: `${descriptor.kind} — ${descriptor.summary}\nDetails: call with path "${path ? `${path}.$help` : "$help"}".`,
+    };
+}
+
 /** The full `$help` rendering: long-form help, then members, then live children. */
 export function buildHelp(path: string, descriptor: IAiVisionDescriptor): string {
     const parts: string[] = [`${descriptor.kind} — ${descriptor.summary}`];

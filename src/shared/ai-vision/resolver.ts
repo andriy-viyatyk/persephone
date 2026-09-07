@@ -1,4 +1,5 @@
-import { buildHelp, buildHint, formatMembers, formatChildren, IHint } from "./hint";
+import { buildErrorHint, buildHelp, buildHint, IHint } from "./hint";
+import { findMemberSuggestions, formatSuggestions } from "./member-suggestion";
 import { formatPath, parsePath, PathSegment, PathSyntaxError } from "./path-parser";
 import { DEFAULT_MAX_LENGTH, shapeResult } from "./result-shaper";
 import { getAiVision, IAiVisionDescriptor } from "./types";
@@ -50,17 +51,23 @@ export interface ICallResult {
 /** Per-session memory of which kinds' member lists the agent has already received. */
 export type SeenKinds = Set<string>;
 
+interface ErrorAtOptions {
+    forceMembers?: boolean;
+    unknownMember?: string;
+}
+
 export async function resolveCall(root: unknown, request: ICallRequest, seenKinds: SeenKinds = new Set()): Promise<ICallResult> {
     const path = request.path ?? "";
+    const hintMode = request.hints ?? "auto";
     let segments: PathSegment[];
     try {
         segments = parsePath(path);
     } catch (error) {
         const message = error instanceof PathSyntaxError ? error.message : errMessage(error);
-        return { path, error: `Invalid path: ${message}`, resolvedUpTo: "", hint: nodeHint("", root, seenKinds, "always") };
+        const hint = nodeHint("", root, seenKinds, hintMode);
+        return { path, error: `Invalid path: ${message}`, resolvedUpTo: "", ...(hint ? { hint } : {}) };
     }
 
-    const hintMode = request.hints ?? "auto";
     const maxLength = request.maxLength ?? DEFAULT_MAX_LENGTH;
     const hasValue = Object.prototype.hasOwnProperty.call(request, "value") && request.value !== undefined;
     if (hasValue && request.args) {
@@ -101,12 +108,12 @@ export async function resolveCall(root: unknown, request: ICallRequest, seenKind
                 }
                 const member = descriptor?.members.find(m => m.name === name);
                 if (descriptor && !member && !isLiveChildMember(descriptor, name)) {
-                    return errorAt(path, walked, current, seenKinds, hintMode, `"${name}" is not a member of ${descriptor.kind}.`, true);
+                    return errorAt(path, walked, current, seenKinds, hintMode, `"${name}" is not a member of ${descriptor.kind}.`, { forceMembers: true, unknownMember: name });
                 }
 
                 if (isLast && hasValue && segment.type === "member") {
                     if (descriptor && !member?.writable) {
-                        return errorAt(path, walked, current, seenKinds, hintMode, `"${name}" is not writable on ${descriptor.kind}.`, true);
+                        return errorAt(path, walked, current, seenKinds, hintMode, `"${name}" is not writable on ${descriptor.kind}.`, { forceMembers: true });
                     }
                     // MCP clients parse `value` as JSON, so an agent that means to write *text* that
                     // happens to be JSON cannot get a string through: whatever it sends arrives here
@@ -136,7 +143,7 @@ export async function resolveCall(root: unknown, request: ICallRequest, seenKind
                 let value: unknown = provided ? provided.value : (target as Record<string, unknown>)[name];
                 if (segment.type === "call") {
                     if (typeof value !== "function") {
-                        return errorAt(path, walked, current, seenKinds, hintMode, `"${name}" is a property, not a method — drop the "()".`, true);
+                        return errorAt(path, walked, current, seenKinds, hintMode, `"${name}" is a property, not a method — drop the "()".`, { forceMembers: true });
                     }
                     const args = isLast && request.args ? request.args : segment.args;
                     value = (value as (...a: unknown[]) => unknown).apply(target, args);
@@ -203,17 +210,31 @@ function errorAt(
     seenKinds: SeenKinds,
     mode: HintMode,
     message: string,
-    forceMembers = false,
+    options: ErrorAtOptions = {},
 ): ICallResult {
     const resolvedUpTo = formatPath(walked);
     const descriptor = getAiVision(node);
-    let hint: IHint | undefined;
-    if (descriptor && forceMembers) {
-        // The self-correcting case: always show what *is* valid here, regardless of dedupe.
-        const parts = [`${descriptor.kind} — ${descriptor.summary}`, formatMembers(descriptor.members), formatChildren(resolvedUpTo, descriptor.children?.() ?? [])].filter(Boolean);
-        hint = { kind: descriptor.kind, text: parts.join("\n") };
-    } else {
-        hint = nodeHint(resolvedUpTo, node, seenKinds, mode);
+    const suggestions = descriptor && options.unknownMember
+        ? findMemberSuggestions(options.unknownMember, descriptor.members)
+        : [];
+    const error = suggestions.length
+        ? `${message} Did you mean ${formatSuggestions(suggestions)}?`
+        : message;
+    if (suggestions.length && mode !== "always") {
+        return { path, error, resolvedUpTo };
     }
-    return { path, error: message, resolvedUpTo, ...(hint ? { hint } : {}) };
+
+    const hint = options.forceMembers
+        ? errorNodeHint(resolvedUpTo, node, seenKinds, mode)
+        : nodeHint(resolvedUpTo, node, seenKinds, mode);
+    return { path, error, resolvedUpTo, ...(hint ? { hint } : {}) };
+}
+
+function errorNodeHint(path: string, node: unknown, seenKinds: SeenKinds, mode: HintMode): IHint | undefined {
+    if (mode === "never") return undefined;
+    const descriptor = getAiVision(node);
+    if (!descriptor) return undefined;
+    const includeMembers = mode === "always" || !seenKinds.has(descriptor.kind);
+    seenKinds.add(descriptor.kind);
+    return buildErrorHint(path, descriptor, includeMembers);
 }
