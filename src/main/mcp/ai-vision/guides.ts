@@ -11,7 +11,7 @@ const GUIDE_NOT_FOUND_EXAMPLE = 'guides["editors/grid"]';
 
 const GUIDES_MEMBERS: readonly IAiMember[] = [
     { name: "search", kind: "method", signature: "search(query: string, limit = 10)", summary: "Search documentation text across the guide corpus; use helpSearch for the live descriptor graph." },
-    { name: "whatsNew", kind: "property", summary: "The selected release-notes section for the running version; use guides[\"whats-new\"] for the complete release-notes history." },
+    { name: "whatsNew", kind: "property", summary: "What's new: the release notes / changelog section for the running version, and what changed since you last saw this app; use guides[\"whats-new\"] for the complete release notes history." },
 ];
 
 const GUIDE_PAGE_MEMBERS: readonly IAiMember[] = [

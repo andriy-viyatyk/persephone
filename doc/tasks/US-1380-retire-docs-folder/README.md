@@ -1,7 +1,7 @@
 # US-1380 — Delete `docs/` and re-point the last references
 
-**Status:** Planned  
-**Epic:** [EPIC-095 — Retire `docs/`](../../epics/EPIC-095.md)  
+**Status:** Planned
+**Epic:** [EPIC-095 — Retire `docs/`](../../epics/EPIC-095.md)
 **Dashboard:** Already listed under EPIC-095 in [`doc/active-work.md`](../../active-work.md); do not add a second entry.
 
 ## Goal

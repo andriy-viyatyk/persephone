@@ -1,6 +1,6 @@
 # EPIC-095 — Retire `docs/`
 
-**Status:** Active
+**Status:** Completed
 **Started:** 2026-09-07
 **Roadmap:** [in-app-guides-roadmap.md](../in-app-guides-roadmap.md) — epic 4 of 4, the last
 **Follows:** EPIC-092 (guide corpus and the `guides` node), EPIC-093 (About page as guide browser),
@@ -50,8 +50,9 @@ larger part of its value is the two EPIC-094 deferrals and the roadmap close-out
    `assets/guides/whats-new.md` and under `doc/epics/` are changelog and history and stay.
 4. `highlight` can reveal a hover-gated control, so the grid row filter — the subject of EPIC-094's
    gate question A.2 — can be pointed at as well as described.
-5. Notebook note tag chips get a `data-name` and an `elements` entry, following the grid filter's
-   precedent (explicit `selector`, `highlightOptions: { all: true }`).
+5. Notebook note cards expose a stable `note-tags` tag-area `data-name` and an `elements` entry,
+   following the grid filter's precedent (explicit `selector`, `highlightOptions: { all: true }`).
+   Individual tag chips remain deliberately unaddressed.
 6. The roadmap is marked complete, with a closing note carrying the consolidated Needs-user-check
    list for all four epics, and is pointed at from `doc/epics/completed.md` as the transparency
    roadmap once was.
@@ -116,8 +117,8 @@ larger part of its value is the two EPIC-094 deferrals and the roadmap close-out
 
 | Task | Title | State |
 |------|-------|-------|
-| US-1380 | [Delete `docs/` and re-point the last references](../tasks/US-1380-retire-docs-folder/README.md) | Planned |
-| US-1381 | [`highlight` reveals hover-gated controls; notebook tag chips get `data-name`](../tasks/US-1381-highlight-reveal-and-tag-chips/README.md) | Planned |
+| US-1380 | [Delete `docs/` and re-point the last references](../tasks/US-1380-retire-docs-folder/README.md) | Done |
+| US-1381 | [`highlight` reveals hover-gated controls; notebook note tag area gets a stable `data-name`](../tasks/US-1381-highlight-reveal-and-tag-chips/README.md) | Planned |
 
 Epic close is not a task: the gate run, the roadmap close-out and the completion skills are the
 epic's own closing steps.
@@ -148,10 +149,9 @@ Plus a live check in the running window that About, `F1`, `guides.whatsNew` and
   against the real DOM; a reveal that survives dismissal, or that fires on a control the user is
   interacting with, is a visible defect rather than a documentation gap. Decision 4's two clauses
   are the acceptance test.
-- **The notebook chip is repeated per-note content**, which is why EPIC-094 recorded it rather than
-  adding it. The grid filter established the pattern, so this is now a precedent-following change —
-  but if the chips turn out to need a `data-name` on a React-rendered node or on a node the note
-  editor recreates per keystroke, that is a reason to stop and record, not to force it.
+- **The notebook tag area is repeated per-note content**, and its stable container is the
+  addressable target. The individual chips are rebuilt during note updates and remain deliberately
+  unaddressed; the grid filter established the area-level precedent without changing that choice.
 - **The roadmap's own numbers are stale in three places** ("31 files, ~11k lines", "17 API pages",
   the `CONTRIBUTING.md:164` / `assets/board-template/CLAUDE.md:724` line cites). The close-out note
   says so rather than silently correcting the table, because the table is a record of what was
@@ -208,3 +208,60 @@ The roadmap's EPIC-095 row named six pointer sites. Five were already correct; t
 four prose sentences and two stale `read_guide` mentions. That is not a sign the row was wrong — it
 is what happens when each epic re-points what it touches instead of writing it down for later, and
 it is worth recording as the reason this epic is two tasks rather than six.
+
+## Outcome
+
+Completed 2026-09-07. Two tasks, four commits — `ddaffe27` (this document), `35b67f69` (US-1380),
+`f709681e` (US-1381) and the close-out. [Gate run](../../qa/runs/2026-09-07-epic-095-retirement.md).
+
+**What shipped.** `docs/` is deleted; the four surviving prose pointers name `assets/guides/` and say
+the shipped in-app copy is canonical; two references to `read_guide`, the tool deleted in US-1353,
+are gone. `highlight` can reveal a hover-gated control, so the grid's row filter rings at rest.
+Notebook note cards expose `note-tags` on the stable tag area. The roadmap is marked complete with a
+consolidated Needs-user-check list covering all four epics.
+
+**The gate:** 3 PASS, 0 PARTIAL, 0 FAIL, on a mixed set run after the deletion — a guide question, a
+where-is-X question, and a what's-new question — with no answer sourced from the DOM or a selector.
+Q2 is the one worth noting: it asked where a note's tags are, and a fresh agent answered with the
+tag *area* and the name `note-tags`, reproducing the guide/`where`/facade agreement US-1381 had just
+established without being told to look for it.
+
+### The lesson: when the plan and the documentation disagree about what a control is, check the screen
+
+EPIC-094's lesson was that a schema derived from view code is not a schema. This epic hit the same
+shape one level up. The plan for the notebook chip was derived correctly from the element contract
+and from a verified lifecycle finding — `syncTags()` rebuilds every chip through `replaceChildren()`
+on each note update, including per keystroke, so a chip is a target the overlay would drop — and
+concluded, reasonably, that the work should stop. The conclusion was right about the chips and wrong
+about the task, because a stable node was sitting one level up (`tagsContainer`, a field initializer
+appended once) and the guide had **already** named it: *"click the tag area on that note's title
+row"*. The corpus this roadmap spent four epics building was the thing that corrected the plan.
+
+The narrower lesson is about scope inventories. The roadmap's EPIC-095 row named six pointer sites
+and "31 files, ~11k lines"; five sites were already correct and the folder held two stubs. Nothing
+was wrong when it was written — each intervening epic re-pointed what it touched, which is the
+behaviour you want. But it means a roadmap row is a statement of intent with a decaying inventory
+attached, and the first act of an epic should be to re-derive the numbers rather than quote them.
+Doing so turned a six-site job into two tasks and moved the epic's weight onto the deferrals, which
+is where the value actually was.
+
+### Deferred, with reasons
+
+- **`helpSearch` does not descend into the `guides` node**, found by this epic's gate. The root's
+  `guides` member line is searchable but the node is never entered, so `guides.whatsNew` is not
+  discoverable through object-model search. It degrades gracefully — the no-match reply hints at
+  `guides.search`, which is how the agent recovered unprompted — so it is polish, not a defect. The
+  fix belongs at the shared search surface used by every root, not in the guides tree, which is why
+  it is a follow-up rather than a late task here. The `whatsNew` summary was reworded to use the
+  words an agent searches for, which helps the `$help` reader without pretending to fix the walk.
+- **A revealed candidate recycled by grid virtualization keeps its inline `display` until the
+  highlight is dismissed.** Bounded and accepted: `removeAt()` restores every recorded style and
+  every dismissal path reaches it, so nothing survives dismissal, and it cannot produce a false
+  positive. Recorded in US-1381's Concerns.
+- **The per-toolbar "?" button is declined** (decision 5) rather than deferred a fourth time.
+- **Per-chip `data-name` on notebook tags** stays out, for the lifecycle reason above.
+
+| Task | Title |
+|------|-------|
+| US-1380 | Delete `docs/` and re-point the last references |
+| US-1381 | `highlight` reveals hover-gated controls; the note tag area |

@@ -170,6 +170,10 @@ Release notes and changelog for Persephone (formerly js-notepad).
   `elements` and pointed out with `highlight(...)`; page sidebar panels are also addressable through
   `page.panels`.
 
+- **Agents can now point out Grid and Notebook controls** — An agent can highlight a Grid column's
+  row filter and a Notebook note's tag area, including controls that are normally shown only on
+  hover. Individual tag chips remain unaddressed.
+
 - **Scripts and agents share one MCP Log page** — A script's `ui.log(...)` output and an agent's
   log output now appear together in the same **MCP Log** page. Agents can use the non-blocking
   `pages.logView.push(...)` path and poll `dialogResult(...)` for inline answers; the retired

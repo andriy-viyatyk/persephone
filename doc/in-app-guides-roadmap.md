@@ -213,7 +213,7 @@ quickly). The default is no images in the first pass; record the decision in EPI
 | 1 | ✅ **EPIC-092** — Guide corpus and the `guides` node | `assets/guides/` with front matter; a shared guide index module (`src/shared/guides/`) used by main and renderer; `docs/*.md` **and** the twelve `assets/mcp-res-*.md` moved verbatim into the tree (API reference included, unchanged); `guides`, `guides.<path>`, `guides.search`, `guides.whatsNew` served by main; `persephone://guides/*` re-pointed at the tree with unchanged URIs; overview, server instructions and node help pointers; QA guide-question set re-run through `call` only | `assets/mcp-res-*.md` as separate files (their content lives on in the tree). `docs/` stays until EPIC-095 |
 | 2 | ✅ **EPIC-093** — About page as guide browser | Left/right split; contents view with What's New and Resources; in-pane markdown rendering with breadcrumbs, back, *Open in tab*; the guide link scheme through the content pipeline; Menu Bar *User Guide* item and `F1`; update toast opens in-app What's New; `about-view` agent facade | The external GitHub *What's New* URL in About |
 | 3 | ✅ **EPIC-094** — Per-screen guides and layout schemas | `editors/index.md` (ex `docs/editors.md`) and the ex-`ui-editors` page merged and split into one page per editor; `screens/` pages for header, Menu Bar, Settings, sidebar panels (absorbing the ex-`ui` page); `## Layout` schema on every screen page; `where` on `elements`; screen → guide mapping (`editorId` front matter) behind `F1` and the "?" affordance; `mcp-test-agent-call` run on "where is X?" questions | The standalone `ui` and `ui-editors` pages (their URIs now alias the merged pages) |
-| 4 | **EPIC-095** — Retire `docs/` | Delete `docs/`; README *Documentation* block points at `assets/guides/index.md` (and says the in-app copy is canonical); `CONTRIBUTING.md:164`, `build/README.txt` (already stale — describes `read_guide`), `assets/board-template/CLAUDE.md:724`, `assets/script-library/autoload/register-all.ts:11` re-pointed; release process step 3 rewritten for `assets/guides/whats-new.md`; `/userdoc` and `/document` skills rewritten for the new location and the layout-schema step | `docs/` (31 files, ~11k lines) |
+| 4 | ✅ **EPIC-095** — Retire `docs/` | Delete `docs/`; README *Documentation* block points at `assets/guides/index.md` (and says the in-app copy is canonical); `CONTRIBUTING.md:164`, `build/README.txt` (already stale — describes `read_guide`), `assets/board-template/CLAUDE.md:724`, `assets/script-library/autoload/register-all.ts:11` re-pointed; release process step 3 rewritten for `assets/guides/whats-new.md`; `/userdoc` and `/document` skills rewritten for the new location and the layout-schema step | `docs/` (31 files, ~11k lines) |
 
 **EPIC-092 completed 2026-09-07** ([epic document](epics/completed.md),
 [gate run](../qa/runs/2026-09-07-epic-092-guide-questions.md)). Deviations from this document, all
@@ -271,6 +271,91 @@ broke its own artifact in its last task**: adding the Menu Bar item shifted ever
 leaving `menubar-settings`' phrase claiming it sat immediately right of *User Guide* — the answer to
 one of the gate's own questions. That is exactly the drift `/userdoc`'s new re-check step exists to
 catch, found by opening the menu rather than by reading the diff.
+
+**EPIC-095 completed 2026-09-07** ([epic document](epics/completed.md),
+[gate run](../qa/runs/2026-09-07-epic-095-retirement.md)). Deviations from this document: the
+pointer job in the EPIC-095 row above was **already five-sixths done**. Each of EPIC-092..094
+re-pointed what it touched instead of deferring it, so the README block, `build/README.txt`, the
+board-template link, `register-all.ts`, the release process and both skill definitions were correct
+before this epic started; what survived was four prose sentences and two mentions of `read_guide`,
+the tool deleted in US-1353. The row's counts were stale too — `docs/` held **two stub files**, not
+"31 files, ~11k lines", because EPIC-092 had already moved the corpus. So the epic's real weight
+fell on the two EPIC-094 deferrals rather than on retirement, and it ran as two tasks instead of six.
+
+The deletion itself was unremarkable, which is the point: `docs/examples/` was verified empty and
+its fixture confirmed already moved before anything was removed, and the post-deletion `git grep`
+left only history, changelog, third-party URLs and two path-shaped example strings.
+
+**Both EPIC-094 deferrals landed, one of them somewhere other than where it was aimed.** `highlight`
+can now reveal a hover-gated control, closing gate question A.2: the grid's row filter rings at rest
+where it previously returned `found: false`, because a CSS `:hover` rule tracks the real pointer and
+no synthetic event can satisfy it, so the overlay temporarily sets inline `display` and restores it
+on every dismissal path. The notebook chip did **not** land on the chips. `syncTags()` rebuilds every
+chip through `replaceChildren()` on each note update — including per keystroke — so a chip is a
+target the overlay would drop; but `tagsContainer` is a field initializer appended once, and
+`notebook.md` already told the user to click *the tag area*. Naming the area was therefore both the
+stable choice and the one the corpus had already made. The per-toolbar "?" button is **declined**
+rather than deferred a fourth time, in favour of the Menu Bar item EPIC-094 shipped.
+
+**The lesson, and it is the roadmap's own lesson turned on itself.** EPIC-094 recorded that a schema
+derived from view code is not a schema — position has to be read off the running window. EPIC-095
+found the same shape one level up: the plan for the notebook chip was derived from the *element
+contract* and pointed at the wrong node, and what corrected it was the guide sentence already in the
+corpus. When the documentation and the plan disagree about what a control *is*, the documentation
+has usually been looking at the screen more recently.
+
+## Closing note — the roadmap is complete
+
+**2026-09-07.** All four epics are closed and the goal stated at the top holds: user documentation
+lives in the application. `docs/` no longer exists. The corpus is `assets/guides/` — one folder,
+two audiences, front matter saying which page serves whom — reachable by the user from the About
+browser, the Menu Bar and `F1`, and by an agent from `guides.*` paths, `guides.search`, and the
+twelve unchanged `persephone://guides/*` URIs. Every screen page carries a hand-drawn `## Layout`
+schema whose spatial phrases match the `where` strings on the same controls' `elements` entries, so
+both readers use the same words for the same things. Four epics, seventeen tasks, four gate runs,
+all four passed.
+
+What the roadmap got right was principle 5 — retire nothing until the replacement passes the same
+gate. Deletion was scheduled last and gated on three prior passes, which is why the final epic was
+small and dull. What it got wrong, repeatedly, was its own inventory: file counts, line numbers and
+page counts were stale in every epic that checked them. A roadmap is a sequence and a set of rules;
+its numbers are a snapshot and should be re-derived, never quoted.
+
+### Consolidated Needs user check
+
+Every open item from all four epics, collected so none stays buried in a completed epic document.
+None is blocking; each is one user sentence from being settled.
+
+- **Front matter in the GitHub preview** (EPIC-092). A `---` block renders as a table or as literal
+  text depending on the viewer. Accepted because the in-app copy is canonical — but it matters more
+  now that the README sends readers to `assets/guides/index.md`.
+- **The API reference's long-term fate** (EPIC-092, EPIC-095). Kept, audience `user`, 16 pages. No
+  usage evidence exists because the instrument the roadmap suggested — the About page counting
+  guide opens — was deliberately not built inside a deletion epic. It is a small feature with a
+  privacy shape and wants its own task if the question is to be settled.
+- **External links to `docs/` now 404** (EPIC-095). Accepted. If a published link into `docs/` is
+  known, two one-line redirect stubs can come back.
+- **Whether *Show agent guides* should be sticky** (EPIC-093). Browser state today; resets when
+  About is re-opened. A persisted `app.settings` entry is a small follow-up.
+- **Whether the guide browser needs its own search box** (EPIC-093). `guides.search` serves the
+  agent; the user-facing equivalent was deferred so the pane could prove itself first. It has.
+- **`pages` and `pages.closePage` do not see folder pages** (EPIC-093). A real gap, sized and
+  deliberately not fixed: `PageCollectionWrapper.all` filters on `mainEditor`, and admitting an
+  editor-less page raises what `pages[i].editor` should be for a folder tab. Unrelated to guides.
+- **`PathSyntaxError` does not suggest bracket syntax for a hyphenated segment** (EPIC-092 gate).
+  Fixing it at the parser fixes hyphenated paths at every root rather than per tree.
+- **`helpSearch` does not descend into the `guides` node** (EPIC-095 gate). The root's `guides`
+  member line is searchable, but the node is never entered, so `guides.whatsNew` and `guides.search`
+  are not discoverable through object-model search — an agent asking for "release notes" gets zero
+  hits and recovers only via the no-match reply's hint. Same shape as the `PathSyntaxError` item: a
+  fix at the shared search surface, not a guides change, and it wants its own task.
+- **Screenshots stay out of the guides** (EPIC-094). Additive over finished pages if wanted.
+- **`editors/index.md` shrank from 935 lines to a table** (EPIC-094). The prose moved to the
+  per-editor pages, but a bookmark to the long catalogue lands somewhere different.
+- **The per-toolbar "?" button is declined** (EPIC-095), reversing EPIC-094's "deferred". Additive
+  if the user wants it anyway.
+- **Root name `guides` vs `userGuide`** (EPIC-092) is effectively settled by shipping: the word is
+  now in the About browser, the resource URIs and the `persephone-guide://` scheme.
 
 Epics 2 and 3 are independent once EPIC-092 lands and can run in either order; EPIC-095 waits for
 all three. EPIC-092 is deliberately a move, not a rewrite (principle 2): the diff must show the

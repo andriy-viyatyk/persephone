@@ -113,6 +113,22 @@ three surfaces we already register — backed by a COM server (`code_explorer_co
 
 ---
 
+## Follow-ups from the in-app guides roadmap (complete)
+
+The [in-app guides roadmap](../in-app-guides-roadmap.md) closed 2026-09-07 with EPIC-092..095;
+`docs/` is gone and `assets/guides/` ships inside the app. The document is kept rather than retired
+to git history because its **closing note carries the consolidated Needs-user-check list for all
+four epics** — every open question the programme recorded, in one place. Two of those are shaped as
+their own tasks rather than user questions, and both are fixes at a shared surface rather than in
+the guides:
+
+- **`helpSearch` does not descend into the `guides` node** (EPIC-095 gate). The root's `guides`
+  member line is searchable but the node is never entered, so `guides.whatsNew` and `guides.search`
+  are undiscoverable through object-model search. Degrades gracefully via the no-match hint, so it
+  is polish, not a defect.
+- **`PathSyntaxError` does not suggest bracket syntax for a hyphenated segment** (EPIC-092 gate).
+  Fixing it at the parser fixes hyphenated paths at every root rather than per tree.
+
 ## Recorded Epics (not currently planned)
 
 Epics with a written design that are **not** scheduled work — recorded ideas kept out of the

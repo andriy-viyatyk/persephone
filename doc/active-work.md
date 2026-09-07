@@ -8,10 +8,7 @@ Overview of all active and planned epics and tasks.
 
 ## Active
 
-- **EPIC-095** — [Retire `docs/`](epics/EPIC-095.md) — the last epic of the
-  [in-app guides roadmap](in-app-guides-roadmap.md)
-  - [ ] [US-1380: Delete `docs/` and re-point the last references](tasks/US-1380-retire-docs-folder/README.md)
-  - [ ] [US-1381: `highlight` reveals hover-gated controls; notebook tag chips get `data-name`](tasks/US-1381-highlight-reveal-and-tag-chips/README.md)
+*(no active epic)*
 
 ## Planned
 

@@ -1,3 +1,53 @@
+## EPIC-095 — Retire `docs/`
+
+Completed 2026-09-07. [Epic document](EPIC-095.md),
+[gate run](../../qa/runs/2026-09-07-epic-095-retirement.md). Epic 4 of 4 — the last — in the
+[in-app guides roadmap](../in-app-guides-roadmap.md), **which is complete as of this epic**; its
+closing note carries the consolidated Needs-user-check list for all four epics.
+
+`docs/` is gone. It held two stub index pages that EPIC-092 left so nothing 404ed before the
+replacement passed its gates, and this epic closed that window. An external bookmark into the folder
+now 404s, accepted because README, `build/README.txt` and every documentation link already pointed at
+`assets/guides/`. Four surviving prose sentences — `CONTRIBUTING.md`, `doc/README.md`,
+`doc/agents-common.md`'s completion step and folder tree, and the folder-structure doc — now name
+`assets/guides/` and say the shipped in-app copy is canonical. Two references to `read_guide`, the
+tool deleted in US-1353, went with them.
+
+**The retirement was the small half.** The roadmap's EPIC-095 row named six pointer sites and "31
+files, ~11k lines"; re-deriving the inventory found five sites already correct and two stub files
+left. Nothing had gone wrong — each of EPIC-092..094 re-pointed what it touched rather than deferring
+it, which is the behaviour you want — but it means a roadmap row is intent with a decaying inventory
+attached. Re-deriving it turned six sites into two tasks and moved the epic's weight onto the two
+EPIC-094 deferrals, which is where the value was.
+
+**Both deferrals landed, one somewhere other than where it was aimed.** `highlight` can now reveal a
+hover-gated control: a CSS `:hover` rule tracks the real pointer, so no synthetic event can satisfy
+it, and the overlay instead sets inline `display` on opted-in candidates and restores it on every
+dismissal path. The grid's row filter now rings at rest where it previously returned `found: false` —
+EPIC-094 gate question A.2, closed. The notebook half did **not** land on the chips. `syncTags()`
+rebuilds every chip through `replaceChildren()` on each note update, including per keystroke, so a
+chip is a target the overlay would drop; but `tagsContainer` is a field initializer appended once,
+and `notebook.md` already told the user to click *the tag area*. So `note-tags` names the area, and
+individual chips stay deliberately unaddressed.
+
+**The lesson: when the plan and the documentation disagree about what a control is, check the
+screen.** EPIC-094 learned that a schema derived from view code is not a schema. The same shape
+recurred one level up here — the chip plan was derived correctly from the element contract and from a
+verified lifecycle finding, and was right about the chips and wrong about the task, because the guide
+had already named the stable thing. The corpus this roadmap spent four epics building is what
+corrected the plan.
+
+The gate: 3 PASS, 0 PARTIAL, 0 FAIL on a mixed set run **after** the deletion, no answer sourced from
+the DOM or a selector. Its one finding is recorded and not fixed: `helpSearch` never descends into
+the `guides` node, so `guides.whatsNew` is undiscoverable through object-model search. It degrades
+gracefully — the no-match reply hints at `guides.search`, which is how the agent recovered unprompted
+— and the fix belongs at the shared search surface every root uses, not in the guides tree.
+
+| Task | Title |
+|------|-------|
+| US-1380 | Delete `docs/` and re-point the last references |
+| US-1381 | `highlight` reveals hover-gated controls; the note tag area |
+
 ## EPIC-094 — Per-screen guides and layout schemas
 
 Completed 2026-09-07. [Epic document](EPIC-094.md),

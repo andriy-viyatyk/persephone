@@ -1,4 +1,4 @@
-# US-1381 — `highlight` reveal for hover-gated controls; notebook tag chips
+# US-1381 — `highlight` reveal for hover-gated controls; stable notebook note tag area
 
 This is an investigation and implementation plan only. It does not implement the reveal,
 change notebook rendering, run a test harness, update the dashboard, or commit.
@@ -280,6 +280,12 @@ already describes the area and should remain consistent with the diagram.
 - **Reveal cleanup is the primary correctness risk.** The saved inline display value must be tied
   to the overlay item, not global state, and restored on every removal path. Verify Escape, Close,
   `clearHighlights(id)`, `clearHighlights()`, same-id replacement, and target disappearance.
+- **Virtualized candidates may retain a temporary display while a highlight is active.** If grid
+  virtualization recycles a revealed candidate's node, its inline display can remain until the
+  active highlight is dismissed. Every dismissal path reaches `removeAt()`, which restores the
+  saved styles, so this does not violate either correctness clause: dismissal leaves no reveal
+  behind, and only a mounted candidate with a rendered rectangle becomes a target, so no false
+  positive is produced. The bounded, highlight-lifetime visibility is accepted rather than fixed.
 - **The normal selector must remain state-sensitive.** Replacing it with `.avg-filter-button` alone
   would make hidden controls count as ordinary matches and would undermine `elements.visible` and
   the absent-control guarantee. The declaration's reveal selector is a separate candidate query.
