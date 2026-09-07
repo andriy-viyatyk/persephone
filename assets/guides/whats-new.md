@@ -130,6 +130,11 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### Improvements
 
+- **In-app User Guide browser** — Open the guide collection from Menu Bar → **User Guide** or
+  press `F1` outside a Monaco editor. The About page shows guide contents, release highlights, and
+  resources; select a guide to read it in-pane, use **Back** to navigate, or choose **Open in tab**
+  to keep the guide as a normal Markdown tab. About's update flow now opens What's New in the app.
+
 - **Boards and Agent Tools are now available through `call`** — Board pages, Board Info, the toolset
   editor, the Tools & Editors hub, the MCP Inspector's Tools/Resources/Prompts panels, and the Mneme
   configuration and root pages all expose their state and actions through `page.editor`, with

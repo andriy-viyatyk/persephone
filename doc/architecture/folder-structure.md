@@ -238,12 +238,13 @@ vendor island under `editors/draw/`; native global styles are installed by `them
 │       └── io.tree.d.ts     # ITreeProvider, ILink (was ITreeProviderItem), ITreeStat, ITreeSearch*
 │
 ├── content/                # Content delivery layer — providers, transformers, pipes
+│   ├── guide-links.ts       # Shared persephone-guide:// parsing and resolution helpers
 │   ├── ContentPipe.ts      # IContentPipe implementation, createPipe() factory
 │   ├── PipePair.ts         # Paired TextFile source/cache pipe ownership and disposal
 │   ├── registry.ts         # Provider/transformer registries, createPipeFromDescriptor()
 │   ├── encoding.ts         # Text encoding detection (BOM, jschardet) and conversion (iconv-lite)
-│   ├── parsers.ts          # Layer 1: raw link parsers (file, HTTP/cURL, archive, data:) on openRawLink
-│   ├── resolvers.ts        # Layer 2: pipe resolvers (file, HTTP, archive) on openLink
+│   ├── parsers.ts          # Layer 1: raw link parsers (file, HTTP/cURL, archive, data:, guide:) on openRawLink
+│   ├── resolvers.ts        # Layer 2: pipe resolvers (file, HTTP, archive, guide) on openLink
 │   ├── link-utils.ts       # URL → pipe descriptor resolution (used by resolvers + tree providers)
 │   ├── rebuild-pipe.ts     # pipeFromSourcePath() — rebuild a pipe from a persisted source path (plain, archive-bang, http); shared by the Image editor, board file materialization and page restore
 │   ├── open-handler.ts     # Layer 3: open handler on openContent — creates/navigates pages
@@ -256,7 +257,8 @@ vendor island under `editors/draw/`; native global styles are installed by `them
 │   │   ├── CacheFileProvider.ts # IProvider for cache files by page ID (auto-save)
 │   │   ├── HttpProvider.ts      # IProvider for HTTP/HTTPS URLs (read-only)
 │   │   ├── DataUrlProvider.ts  # IProvider for data: URLs (inline content, read-only)
-│   │   └── MnemeProvider.ts    # IProvider over the shared Mneme connection — read/write/edit a document, live-refresh on resource updates
+│   │   ├── MnemeProvider.ts    # IProvider over the shared Mneme connection — read/write/edit a document, live-refresh on resource updates
+│   │   └── GuideProvider.ts     # IProvider for packaged Markdown guides (read-only)
 │   ├── transformers/
 │   │   ├── ArchiveTransformer.ts # ITransformer for archive entry extraction/replacement
 │   │   └── DecryptTransformer.ts # ITransformer for AES-GCM decrypt/encrypt (non-persistent)
@@ -368,6 +370,7 @@ vendor island under `editors/draw/`; native global styles are installed by `them
 │   │   └── index.ts
 │   ├── markdown/           # Markdown preview (text-bearing, IContentHost + TRAIT)
 │   │   ├── MarkdownEditor.ts         # EditorModel — search state, scroll, compact
+│   │   ├── MarkdownBodyModel.ts       # Narrow host/model contract shared with embedded guide rendering
 │   │   ├── MarkdownBodyView.ts        # Native body (search, minimap, scroll and host binding)
 │   │   ├── MarkdownBlockView.ts       # Reusable markdown rendering (HAST-to-DOM, search + anchors)
 │   │   ├── MarkdownBlock.css         # Scoped stylesheet for generated Markdown DOM
@@ -558,7 +561,10 @@ vendor island under `editors/draw/`; native global styles are installed by `them
 │   │   └── index.ts
 │   ├── about/              # About page (non-text, no trait)
 │   │   ├── AboutEditor.ts            # EditorModel
-│   │   ├── AboutView.ts
+│   │   ├── AboutView.ts               # Version card and split guide-browser layout
+│   │   ├── AboutGuideBrowserView.ts   # Guide contents tree and browser state projection
+│   │   ├── AboutGuidePageView.ts      # In-pane guide page with breadcrumbs and actions
+│   │   ├── AboutView.css
 │   │   └── index.ts
 │   ├── settings/           # Settings page (non-text, no trait)
 │   │   ├── SettingsEditor.ts         # EditorModel
@@ -703,6 +709,7 @@ vendor island under `editors/draw/`; native global styles are installed by `them
 │       ├── LinkEditorFacade.ts     # ILinkEditor facade
 │       ├── BrowserEditorFacade.ts  # IBrowserEditor facade + shared automation members
 │       ├── MarkdownEditorFacade.ts # IMarkdownEditor facade
+│       ├── AboutEditorFacade.ts     # IAboutEditor facade (guide-browser navigation and elements)
 │       ├── SvgEditorFacade.ts      # ISvgEditor facade
 │       ├── HtmlEditorFacade.ts     # IHtmlEditor facade
 │       ├── MermaidEditorFacade.ts  # IMermaidEditor facade

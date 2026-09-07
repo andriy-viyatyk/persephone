@@ -8,14 +8,7 @@ Overview of all active and planned epics and tasks.
 
 ## Active
 
-- **EPIC-093** — [About page as guide browser](epics/EPIC-093.md)
-  - [ ] [US-1371: `PathSyntaxError` suggests bracket syntax for a hyphenated segment](tasks/US-1371-path-syntax-bracket-hint/README.md)
-  - [ ] [US-1366: The `persephone-guide://` scheme, the guide pipe, and renderer guide access](tasks/US-1366-guide-link-scheme/README.md)
-  - [ ] [US-1367: About page split and the contents view](tasks/US-1367-about-split-contents/README.md)
-  - [ ] [US-1368: In-pane guide rendering — breadcrumbs, navigation, back, Open in tab](tasks/US-1368-in-pane-guide-rendering/README.md)
-  - [ ] [US-1369: Entry points — Menu Bar, F1, and the update flow's What's New](tasks/US-1369-guide-entry-points/README.md)
-  - [ ] [US-1370: `about-view` agent facade and `data-name` contract](tasks/US-1370-about-view-facade/README.md)
-  - [ ] [US-1372: About / guide-browser QA surface and gate run](tasks/US-1372-guide-browser-qa/README.md)
+*(no active epic)*
 
 ## Planned
 

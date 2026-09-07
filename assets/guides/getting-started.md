@@ -36,9 +36,13 @@ When you first open persephone, you'll see a clean, simple interface:
 - Tab bar at the top
 - An empty text editor
 
-The application looks like a simple notepad by default. To access additional features (recent files, folder bookmarks, settings, about), click the **persephone icon** at the top-left corner of the tab bar — a sidebar slides in from the left. Click anywhere outside the sidebar to dismiss it.
+The application looks like a simple notepad by default. To access additional features (recent files, folder bookmarks, settings, About, and the User Guide), click the **persephone icon** at the top-left corner of the tab bar — the Menu Bar slides in from the left. Click anywhere outside it to dismiss it.
 
 ## Basic Operations
+
+To browse the shipped guides in the About page, choose **User Guide** from the Menu Bar. You can
+also press `F1` when focus is outside a Monaco editor; it opens the matching guide for the active
+editor when available, or the guide contents otherwise.
 
 ### Creating a New File
 - Press `Ctrl+N` or click the + button in the tab bar
@@ -80,8 +84,8 @@ To manually change the language:
 persephone automatically checks for updates once every 24 hours. When a new version is available, you'll see a notification.
 
 To manually check for updates:
-1. Click the app button (persephone icon) in the top-left corner to open the sidebar menu
-2. Click the Info button (ℹ) to open the About page
+1. Click the app button (persephone icon) in the top-left corner to open the Menu Bar
+2. Click **About** (the info button) to open the About page
 3. Click "Check for Updates"
 
 "Check for Updates" also refreshes the catalog of [boards published by the project](./boards.md#published-boards-catalog--discover-install-update), so a newly published board or board update shows up immediately instead of waiting for the next automatic check.
@@ -91,12 +95,13 @@ The About page also shows:
 - Electron, Node.js, and Chromium versions
 - Available boards — the number of boards currently published in the catalog
 - Links to download the latest version and report issues
+- The in-app guide browser, with guide contents, release highlights, and resource links
 
 ## Changing the Theme
 
 persephone includes 9 color themes (6 dark, 3 light) inspired by VSCode:
 
-1. Click the app button (persephone icon) in the top-left corner to open the sidebar menu
+1. Click the app button (persephone icon) in the top-left corner to open the Menu Bar
 2. Click the Settings button (gear icon) to open the Settings page
 3. Click a theme card to switch instantly
 
@@ -115,7 +120,7 @@ Closing persephone's last window hides it into the notification tray by default,
 
 To make closing the last window quit the app instead:
 
-1. Click the app button (persephone icon) in the top-left corner to open the sidebar menu
+1. Click the app button (persephone icon) in the top-left corner to open the Menu Bar
 2. Click the Settings button (gear icon) to open the Settings page
 3. In the **Window Behavior** section, uncheck **"Keep running in the tray after closing the last window"**
 

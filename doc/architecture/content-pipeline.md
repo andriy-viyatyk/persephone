@@ -40,12 +40,13 @@ Registered in `parsers.ts` via `registerRawLinkParsers()`. Each parser receives 
 |--------|---------|---------------|
 | cURL/fetch | `curl ` or `fetch(` prefix | `curl -H "Auth: x" https://api.com/data.json` |
 | tree-category | `tree-category://` prefix | `tree-category://base64...` (folder navigation) |
+| Persephone guide | `persephone-guide://` prefix | `persephone-guide://editors/grid#sorting` |
 | data: URL | `data:` prefix | `data:text/javascript;base64,Y29uc3Q...` (inline content) |
 | HTTP | `http://` or `https://` prefix | `https://example.com/file.json` |
 | Archive | `!` separator (via `isArchivePath`) | `C:\docs.zip!data/report.json` |
 | File | Everything else (fallback) | `C:\Users\file.txt`, `file:///path` |
 
-**Fragment extraction.** A trailing `#fragment` on an incoming href is an in-document anchor, not part of the path, so the file, archive and `mneme://` parsers split it off into the ephemeral `data.fragment` hint (URL-decoded, without the `#`) before resolving. This is done **only for real URLs** (`file://`, `mneme://`), never for a bare filesystem path: in a URL a literal `#` must be percent-encoded as `%23`, which makes the split unambiguous, whereas `#` is a legal character in Windows file and folder names (`C:\notes\C#\readme.md`). The HTTP parser leaves fragments in the URL, where the browser handles them.
+**Fragment extraction.** A trailing `#fragment` on an incoming href is an in-document anchor, not part of the path, so the file, archive, `mneme://`, and `persephone-guide://` parsers split it off into the ephemeral `data.fragment` hint (URL-decoded, without the `#`) before resolving. This is done **only for real URLs** (`file://`, `mneme://`, `persephone-guide://`), never for a bare filesystem path: in a URL a literal `#` must be percent-encoded as `%23`, which makes the split unambiguous, whereas `#` is a legal character in Windows file and folder names (`C:\notes\C#\readme.md`). The HTTP parser leaves fragments in the URL, where the browser handles them.
 
 ### Layer 2 — Resolvers
 
@@ -55,6 +56,7 @@ Registered in `resolvers.ts` via `registerResolvers()`. Each resolver uses `reso
 - **HTTP resolver** -- resolves HTTP/HTTPS URLs to pipe descriptors. A content-extension set decides whether a URL is content or should open in the browser; once it is content, the normal editor registry resolves the built-in editor and the merged resolver may select an eligible board. URLs without recognized extensions (or explicit browser intent) open in the browser via `openLinkInBrowser()`, short-circuiting Layer 3 the same way. cURL/fetch requests with `Accept` headers use header-based editor resolution.
 
   The set is intentionally separate from editor matching. `.pdf` remains in it with a browser-fallback override: a qualifying board wins, and without one the browser tab renders it natively. Registered built-in editors and eligible boards otherwise follow the same resolution path as local files.
+- **Guide resolver** -- resolves `persephone-guide://<corpus-path>[#fragment]` to a read-only `GuideProvider` pipe targeting the Markdown editor. The corpus path is relative to the application-shipped guide index and omits the `.md` suffix; the fragment is carried as the ephemeral navigation hint. The provider's fragment-free `sourceUrl` is the stable scheme identity used in persisted source links.
 - **Drawing-image resolver** -- when `data.target === "draw-view"` and `data.url` is a `data:image/*` URL, imports the image as a **new untitled Excalidraw drawing** via `pagesModel.addDrawPage()` (which embeds it in a fresh scene) and marks `data.handled`, short-circuiting Layer 3. Registered last so it runs first (LIFO), intercepting before the file resolver would build a pipe. Import-only: the drawing is a new page, never bound to (so never overwriting) the image source. Accepts only data URLs -- a caller with an http/file image converts it to a data URL first.
 
 `openLinkInBrowser()` is the single browser-routing path shared by both resolvers, so `target: "browser"` / `browserMode` works identically for local files and remote URLs. It honors `browserPageId` (route to a specific browser page), `browserMode` (`os-default` → `shell.openExternal`; `internal` / `profile:<name>` / `incognito` → `pagesModel.lifecycle.openUrlInBrowserTab()`), and otherwise the `link-open-behavior` setting.
@@ -109,8 +111,9 @@ Transformers are walked in reverse order. Each receives the new data and a lazy 
 | `FileProvider` | `file` | Yes | Yes | Local file read/write via `fs`. Debounced watch (300ms). |
 | `HttpProvider` | `http` | No | No | HTTP/HTTPS fetch via `nodeFetch`. Supports method, headers, body. Re-fetches on each read (no internal caching). |
 | `CacheFileProvider` | `cache` | Yes | No | Cache directory file (`{userData}/cache/{pageId}.txt`). Used as provider for cache pipes. |
+| `GuideProvider` | `guide` | No | No | Read-only access to application-shipped Markdown guides through `persephone-guide://`; strips front matter and returns UTF-8 body bytes. |
 
-All providers implement `toDescriptor()` for serialization and `sourceUrl` for display/identity.
+All providers implement `toDescriptor()` for serialization and `sourceUrl` for display/identity. `GuideProvider` is the intentional encoding exception: its packaged corpus has a known UTF-8 encoding, so it decodes the source to remove front matter before returning body bytes.
 
 ## Built-in Transformers
 
@@ -207,6 +210,9 @@ Key rules:
 | `/src/renderer/content/providers/FileProvider.ts` | Local file provider |
 | `/src/renderer/content/providers/HttpProvider.ts` | HTTP/HTTPS provider |
 | `/src/renderer/content/providers/CacheFileProvider.ts` | Cache file provider |
+| `/src/renderer/content/providers/GuideProvider.ts` | Read-only application guide provider |
+| `/src/renderer/guides/guide-source.ts` | Renderer `GuideSource` over the packaged guide corpus |
+| `/src/renderer/guides/index.ts` | Shared renderer guide index and page/tree accessors |
 | `/src/renderer/content/transformers/ZipTransformer.ts` | ZIP archive entry transformer |
 | `/src/renderer/content/transformers/DecryptTransformer.ts` | AES-GCM encryption transformer |
 | `/src/renderer/api/types/io.pipe.d.ts` | `IContentPipe`, `IPipeDescriptor` type definitions |

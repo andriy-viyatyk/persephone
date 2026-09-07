@@ -1,3 +1,68 @@
+## EPIC-093 — About page as guide browser
+
+Completed 2026-09-07. [Epic document](EPIC-093.md),
+[gate run](../../qa/runs/2026-09-07-epic-093-about-guide-browser.md). Epic 2 of 4 in the
+[in-app guides roadmap](../in-app-guides-roadmap.md).
+
+EPIC-092 gave the agent a corpus it could reach by path. The user still had to leave the application
+to read the same words. This epic made the About page the guide browser: the version card on the
+left, and on the right the guide tree with summaries, What's New inline, a Resources group, and any
+guide rendered in place with breadcrumbs, working links, back, and *Open in tab*. It is reachable
+from the Menu Bar, from `F1`, from the update-available flow, and from `call`.
+
+**The gate failed first, and that was the epic's most useful output.** Asked to *show* the grid
+guide, a Haiku agent with `call` as its only tool found the right page, read it, and copy-pasted the
+whole text into a new page — a dead clone with no identity, no breadcrumbs, no working links, frozen
+at the moment it was copied — while the app had just gained the ability to open the real thing.
+Nothing the `guides` node handed out mentioned that a guide could be *shown*. This is EPIC-092's
+lesson arriving a second time: **an agent reads a result, not a summary.** Every page entry now
+carries an `open` field beside `path` and `call`; the re-run passed in one hop fewer than the failing
+run and named that field as how it knew. The re-run then found two more places the string was
+invisible — `guides.search` hits and a page's own `$help` — on paths an agent takes more often than
+folder browsing.
+
+**The riskiest decision was measured before it was made.** Reusing `MarkdownBodyView` rather than
+writing a second renderer began by enumerating every member it and its children actually read — a
+state projection, a host projection, the typed queue, four search commands, `page`, `setContainer` —
+which showed the coupling to be broad but shallow, only the queue reaching into `MarkdownBlockView`.
+That is what made extracting an interface safe rather than hopeful, and left the planned adapter
+fallback unused. The pane supplies a host with `page` absent; fabricating a `PageModel` would have
+made `pages` either list a page the user cannot see or hide one that exists, which is the failure
+class EPIC-091 spent an epic removing.
+
+**Install-independence decided the pipe shape.** A guide could have been an ordinary `file` pipe on
+an asset-resolved absolute path, and it would have worked on the machine that authored it. A `guide`
+provider keyed on the corpus path was chosen so a persisted guide page survives an update and so the
+user sees a guide's name rather than a path inside the install directory — verified the only way it
+can be, by reopening a guide tab after a full cold restart.
+
+**Nine defects were found by running it, none by reading it, and every one past a green build.**
+Front matter rendered as visible text above a guide's title, where the agent's copy strips it. What's
+New dumped raw Markdown source; its bullets were clipped mid-sentence; tree summaries sat flush
+right, then collided with their titles once moved; every folder was expanded, so sixteen API pages
+swamped the contents and pushed the main guides off-screen; the card floated in a tall empty pane;
+the unknown-guide error printed its example twice; `open("editors")` was refused though
+`guides.editors` answers for it; and a bare `#anchor` inside a guide had been turned into a
+navigation, so a table-of-contents click pushed a Back entry instead of scrolling — this epic's own
+regression, found by `/review` reading and confirmed by clicking it.
+
+**Two plan reviews changed the design rather than the prose.** `showAboutPage()` was going to reset
+the browser to contents for every caller, including the About button and the update notification,
+throwing away a reader's place; it became a typed `{ atContents }` option only the entry points that
+mean it ask for. And the stated reason for keeping the agent-guides toggle out of settings was simply
+false — About is a deduplicated singleton, not re-created per open — so the choice stands on the real
+behaviour instead.
+
+| Task | Title |
+|------|-------|
+| US-1371 | `PathSyntaxError` suggests bracket syntax for a hyphenated segment |
+| US-1366 | The `persephone-guide://` scheme, the guide pipe, and renderer guide access |
+| US-1367 | About page split and the contents view |
+| US-1368 | In-pane guide rendering: breadcrumbs, navigation, back, *Open in tab* |
+| US-1369 | Entry points: Menu Bar, `F1`, and the update flow's *What's New* |
+| US-1370 | `about-view` agent facade and `data-name` contract |
+| US-1372 | About / guide-browser QA surface, gate run, and its remediation |
+
 ## EPIC-092 — Guide corpus and the `guides` node
 
 Completed 2026-09-07. [Epic document](EPIC-092.md),

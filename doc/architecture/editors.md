@@ -410,6 +410,7 @@ operation facade use `GenericEditorFacade`, which exposes only identity metadata
 | `page.editor` | `NotebookEditorFacade` | `NotebookEditor` |
 | `page.editor` | `LinkEditorFacade` | `LinkEditor` |
 | `page.editor` | `MarkdownEditorFacade` | `MarkdownEditor` |
+| `page.editor` | `AboutEditorFacade` | `AboutEditor` |
 | `page.editor` | `SvgEditorFacade` | `SvgEditor` |
 | `page.editor` | `HtmlEditorFacade` | `HtmlEditor` |
 | `page.editor` | `MermaidEditorFacade` | `MermaidEditor` |
@@ -628,7 +629,6 @@ The registry is the single resolution surface — it owns extension/language/con
 ## Adding a New Editor
 
 See [Editor Creation Guide](../standards/editor-guide.md) for the full recipe with code samples.
-
 
 
 

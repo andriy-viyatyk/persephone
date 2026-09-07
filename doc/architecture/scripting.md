@@ -23,7 +23,7 @@ ScriptRunner.run(script, page?, language?)
     │       │     ├── PageCollectionWrapper  ← wraps `app.pages`
     │       │     └── Events proxy ← wraps `app.events` (auto-tracks subscriptions)
     │       ├── page = PageWrapper      ← wraps `page` global
-    │       │     └── Editor facades (27 operation + generic)  ← page.editor
+    │       │     └── Editor facades (28 operation + generic)  ← page.editor
     │       ├── io = IoNamespace        ← wraps `io` global (providers, pipes, events)
     │       ├── ai = AiNamespace        ← wraps `ai` global (ClaudeSession)
     │       ├── ui getter (lazy, stack-based on globalThis)
@@ -484,6 +484,7 @@ an operation facade still return a `GenericEditorFacade` with their `id` and dis
 | `page.editor` | `NotebookEditorFacade` | `NotebookEditor` | `notes`, `categories`, `tags`, `addNote()`, `deleteNote()`, `updateNoteTitle()` |
 | `page.editor` | `LinkEditorFacade` | `LinkEditor` | `links`, `categories`, `tags`, `addLink()`, `deleteLink()`, `updateLink()` |
 | `page.editor` | `MarkdownEditorFacade` | `MarkdownEditor` | `viewMounted`, `html` (read-only) |
+| `page.editor` | `AboutEditorFacade` | `AboutEditor` | `open()`, `back()`, `current`, `elements`, `highlight()` for the About guide browser |
 | `page.editor` | `SvgEditorFacade` | `SvgEditor` | `svg` (read-only), `savePngToFile()` |
 | `page.editor` | `HtmlEditorFacade` | `HtmlEditor` | `html` (read-only) |
 | `page.editor` | `MermaidEditorFacade` | `MermaidEditor` | `svgUrl`, `loading`, `error` (read-only), `savePngToFile()` |
@@ -979,6 +980,7 @@ These files serve dual purpose: TypeScript type checking **and** IDE IntelliSens
     ├── NotebookEditorFacade.ts  # Notebook operations
     ├── LinkEditorFacade.ts      # Link manager operations
     ├── MarkdownEditorFacade.ts  # Markdown preview (read-only)
+    ├── AboutEditorFacade.ts     # About guide-browser navigation and elements
     ├── SvgEditorFacade.ts       # SVG preview (read-only)
     ├── HtmlEditorFacade.ts      # HTML preview (read-only)
     ├── MermaidEditorFacade.ts   # Mermaid diagram (read-only + savePngToFile)

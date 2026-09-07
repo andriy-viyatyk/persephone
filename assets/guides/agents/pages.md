@@ -181,7 +181,7 @@ required `language` and title suffix):
 | `board-view` | A Board (your mini web-app) | `boards.openBoard(root)` |
 | `image-view` / `archive-view` / `video-view` | File viewers | `script.execute`: `await app.pages.openFile(path)` |
 | `mcp-view` | MCP Inspector | `script.execute`: `await app.pages.showMcpInspectorPage()` |
-| `about-view` / `settings-view` | App pages | `script.execute`: `showAboutPage()` / `showSettingsPage()` |
+| `about-view` / `settings-view` | App pages | `script.execute`: `app.pages.showAboutPage()` / `app.pages.showSettingsPage()`; pass `{ atContents: true }` to reset About to guide contents |
 | `category-view`, `tools-hub-view`, `toolset-view`, `board-info`, `file-diff`, `env-vars-view`, and other ids you may see in `pages` | Internal app views | Opened by the app itself — read them, don't create them |
 
 ### Creating Pages with Specialized Editors

@@ -387,7 +387,7 @@ resolved entry. Agents use this non-blocking path through `call`.
 
 About, Settings, Mneme Config, Storybook, and Tools & Editors pages use a similar pattern with
 hardcoded IDs directly in their modules:
-- `ABOUT_PAGE_ID = "about-page"` in `AboutPage.ts`
+- `ABOUT_PAGE_ID = "about-page"` in `AboutEditor.ts`
 - `SETTINGS_PAGE_ID = "settings-page"` in `SettingsPage.ts`
 
 These work as singletons through the same `addPage()` deduplication. Each `showXPage()` method
@@ -399,6 +399,14 @@ result is `undefined` in that case, so callers must check before using the page.
 
 The page-ID loader is intentional: the ID constant often lives in the same lazily loaded module as
 the editor, and importing it before entering the guard would leave that first failure unreported.
+
+The About singleton also owns a runtime guide-browser location. Its left version card remains
+stable while the right pane switches between the guide contents tree and a selected guide. Plain
+`showAboutPage()` reuses the existing About page and preserves that browser location; the explicit
+`showAboutPage({ atContents: true })` entry point resets it to the contents tree. The browser's
+guide history and agent-guide filter are runtime state rather than persisted page content. The
+`about-view` scripting facade exposes `open`, `back`, `current`, `elements`, and `highlight` for
+this fixed page; opening a guide in a tab uses the normal content pipeline.
 
 ### When to use well-known pages
 
@@ -499,6 +507,12 @@ Anchor resolution is deliberately tolerant, trying three passes in order: the ex
 Two timing details matter. The scroll is **synchronous and instant** (not the smooth, microtask-deferred scroll the search uses), because an anchor is a starting position rather than a movement, and because the caller needs the resulting `scrollTop` immediately. `MarkdownBodyView` records that value into its scroll-restore projection: every navigation sends `onFocus` right after `revealFragment`, and the view's scroll-restore would otherwise snap the reader straight back to the top. Since the queued event can also arrive before the native block has committed its DOM, a failed lookup is retried over a short `requestAnimationFrame` ladder before giving up silently.
 
 ---
+
+The About guide pane reuses `MarkdownBodyView` through the narrower `MarkdownBodyModel` host
+interface, with guide contents supplied by the shared renderer `GuideIndex`. It is not a
+`PageModel` or `MarkdownEditor`; its Back action is the guide-browser history, while **Open in
+tab** sends the guide's `persephone-guide://` identity through the ordinary Markdown content
+pipeline.
 
 ## 10. Secondary Editor System
 

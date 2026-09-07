@@ -125,7 +125,8 @@ category's content on the right.
 | Backdrop | Always in the DOM; `display: none` when closed — its presence tells you nothing about whether the Menu Bar is open. | `[data-name="menu-bar"]` |
 | Sliding panel | The visible panel. | `[data-name="menu-bar-content"]` |
 | Open File / New Window | `Ctrl+O` / `Ctrl+Shift+N`. | `[data-name="menubar-open-file"]`, `[data-name="menubar-new-window"]` |
-| About / **Settings** | **Where Settings lives.** Both open as ordinary pages in a tab. | `[data-name="menubar-about"]`, `[data-name="menubar-settings"]` |
+| About / **Settings** | **Where About and Settings live.** Both open as ordinary pages in a tab. | `[data-name="menubar-about"]`, `[data-name="menubar-settings"]` |
+| User Guide | Opens the About page at the guide contents. | `[data-name="menubar-user-guide"]` |
 | Category list | Four built-in categories plus the user's own folders. | `[data-name="menubar-folders"]` |
 | Content pane | Shows the selected category. | `[data-name="menubar-content"]` |
 | Add Folder | Pins any folder to the category list, so a project is one click away. Right-click a pinned folder for Open in New Tab / Show in File Explorer / Open Terminal here / Remove. | `[data-name="menubar-add-folder-button"]` |
@@ -140,6 +141,27 @@ The four built-in categories:
   else, open it in Explorer, or unlink it.
 
 `Esc` closes the Menu Bar. `Ctrl+F` searches inside a folder category.
+
+**User Guide entry points.** The Menu Bar's **User Guide** item and the global `F1` shortcut open
+the in-app guide browser. `F1` opens the guide matching the active editor when one is mapped; if
+there is no matching guide, it opens the About page at its contents. The ordinary About item
+preserves an existing guide-browser location, while User Guide explicitly returns to contents.
+
+### About guide browser
+
+About is a fixed page with the version card on the left and the guide browser on the right. The
+contents view provides the guide tree, summaries, an optional **Show agent guides** filter, inline
+What's New, and Resources. Selecting a guide renders it in the right pane with breadcrumbs, **Back**,
+and **Open in tab**; the latter opens a read-only `persephone-guide://...` Markdown tab.
+
+| Element | Selector |
+|---|---|
+| About root / version card | `[data-name="about-root"]`, `[data-name="about-card"]` |
+| Guide browser / contents tree | `[data-name="about-guide-browser"]`, `[data-name="about-guide-tree"]` |
+| Agent-guide filter | `[data-name="about-show-agent-guides"]` |
+| What's New / Resources | `[data-name="about-whats-new"]`, `[data-name="about-resources"]` |
+| Guide page / breadcrumbs / body | `[data-name="about-guide-page"]`, `[data-name="about-guide-breadcrumbs"]`, `[data-name="about-guide-body"]` |
+| Back / Open in tab | `[data-name="about-guide-back"]`, `[data-name="about-guide-open-tab"]` |
 
 When the MCP `call` tool is available, `window.menuBar` is the stateful companion to these
 controls: read `folders` to discover the current built-in and user-folder IDs, inspect `selected`,
@@ -310,6 +332,5 @@ in dialogs, in popup menus — carry no such promise; reach those through
   reading and updating pages as an agent.
 - `persephone://guides/browser` — snapshots, refs, clicking and typing, including the app window.
 - `persephone://guides/boards` — building a custom mini web-app for the user.
-
 
 

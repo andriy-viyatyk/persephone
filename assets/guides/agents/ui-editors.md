@@ -28,6 +28,10 @@ Four routes, worth knowing because "how do I open X?" is the most common questio
 4. **The editor-switch buttons** in the page toolbar — for files that support more than one
    editor (see *Switching editors* below).
 
+The About guide browser reuses the Markdown renderer for application-shipped guides. It shows
+guide pages in-pane with breadcrumbs and **Back**; **Open in tab** opens the same read-only guide
+through the `persephone-guide://...` identity in the ordinary `md-view` pipeline.
+
 ## Text and code
 
 ### Text Editor — `monaco`
@@ -224,7 +228,7 @@ These are ordinary tabs, not file editors. `pages.addEditorPage` rejects them; o
 | Page | What it is | How to open |
 |---|---|---|
 | `settings-view` | Settings | Menu Bar → gear icon, or `script.execute`: `app.pages.showSettingsPage()` |
-| `about-view` | About / version | Menu Bar → info icon |
+| `about-view` | About / version and the in-app guide browser | Menu Bar → info icon; Menu Bar → **User Guide**; `F1` |
 | `tools-hub-view` | Tools & Editors hub — every editor, board and tool, plus the published boards catalog | `+` arrow → *Show All…*, or the Menu Bar category |
 | `mcp-view` | MCP Inspector — connect to an MCP server using a credential-free URL and exercise its tools, resources and prompts, with request history | `+` arrow, or `app.pages.showMcpInspectorPage({ url })` |
 | `mneme-config` / `mneme-root` | Mneme knowledge base — config/monitoring, and the search + document-tree editor | Tools & Editors → Mneme; or the `.mneme` row's button in File Explorer |

@@ -53,6 +53,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Renderer event primitive (`Emitter<T>`, `Event<T>`, and disposable compatibility `Subscription<T>` broadcasts) | `/src/renderer/core/state/events.ts` |
 | Framework-free virtualization engine (render-window calculation, pooled cells, sticky regions, scroll/resize handling, and scheduled repaint) | `av-grid` via `/src/renderer/uikit/DataGrid/index.ts` |
 | Markdown link resolution (relative → `file://`; Azure DevOps wiki root-relative pages + `.attachments`) | `/src/renderer/core/utils/path-utils.ts` |
+| Guide link resolution (`persephone-guide://` validation and relative guide href resolution) | `/src/shared/guides/guide-links.ts`, `/src/renderer/editors/markdown/markdown-nav.ts` |
 | Git-root detection for Markdown wiki links (walk up to nearest `.git`, cached) | `/src/renderer/editors/markdown/detect-git-root.ts` |
 | Markdown heading anchors (GitHub-style slug ids + `-1`/`-2` dedupe; exports `slugifyHeading`, reused by `MarkdownBlock.scrollToAnchor` to match a `#fragment` against heading text so Azure-DevOps and GitHub dialects meet) | `/src/renderer/editors/markdown/rehypeHeadingIds.ts` |
 | File / directory watchers (`FileWatcher`, `DirectoryWatcher`) | `/src/renderer/core/utils/file-watcher.ts` |
@@ -72,6 +73,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Content pipe registry    | `/src/renderer/content/registry.ts`               |
 | File provider            | `/src/renderer/content/providers/FileProvider.ts` |
 | Cache file provider      | `/src/renderer/content/providers/CacheFileProvider.ts` |
+| Guide provider (read-only packaged guide content; scheme identity and front-matter stripping) | `/src/renderer/content/providers/GuideProvider.ts` |
 | Encoding detection       | `/src/renderer/content/encoding.ts`               |
 | Link parsers (Layer 1)   | `/src/renderer/content/parsers.ts`                |
 | Pipe rebuild from a persisted source path (`pipeFromSourcePath` — plain / `archive.zip!entry` / `http(s)`; shared by the Image editor, board file materialization and page restore) | `/src/renderer/content/rebuild-pipe.ts` |
@@ -175,6 +177,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Native HTML preview body (sandboxed iframe, guarded `srcdoc`, host-content binding) | `/src/renderer/editors/html/HtmlBodyView.ts` |
 | Native SVG preview body (host-content binding and `ImageViewportView`) | `/src/renderer/editors/svg/SvgBodyView.ts` |
 | Native Markdown body (find bar, minimap, scroll projection, and MarkdownBlock lifecycle) | `/src/renderer/editors/markdown/MarkdownBodyView.ts` |
+| Markdown body host/model contract reused by embedded guide rendering | `/src/renderer/editors/markdown/MarkdownBodyModel.ts` |
 | Native Markdown block renderer (unified/remark pipeline, HAST overrides, and owned interactive nodes) | `/src/renderer/editors/markdown/MarkdownBlockView.ts` |
 | Hand-written HAST-to-DOM property and namespace conversion | `/src/renderer/editors/markdown/hast-dom.ts` |
 | Log view editor (plain entry collection with versioned `renderChange` invalidation) | `/src/renderer/editors/log-view/LogViewEditor.ts` |
@@ -222,7 +225,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | MCP Inspector model      | `/src/renderer/editors/mcp-inspector/McpInspectorEditorModel.ts` |
 | Native MCP Inspector page and panels (connection, capability panels, result branches, and teardown) | `/src/renderer/editors/mcp-inspector/McpInspectorView.ts`, `/src/renderer/editors/mcp-inspector/*.ts` |
 | Native Mneme editor views (root search and configuration/progress branches) | `/src/renderer/editors/mneme-root/MnemeRootEditorView.ts`, `/src/renderer/editors/mneme-config/` |
-| Native About editor view and update-status branches | `/src/renderer/editors/about/AboutView.ts` |
+| About editor and guide browser (fixed page, split version card/contents layout, in-pane guide rendering, navigation, and update-status branches) | `/src/renderer/editors/about/AboutEditor.ts`, `/src/renderer/editors/about/AboutView.ts`, `/src/renderer/editors/about/AboutGuideBrowserView.ts`, `/src/renderer/editors/about/AboutGuidePageView.ts` |
 | Fixed-height framework-free virtualization view | `av-grid`'s `RenderGrid`, exposed by `/src/renderer/uikit/DataGrid/index.ts` |
 | Measured-height framework-free virtualization view | `av-grid`'s `MeasuredRowGrid`, exposed by `/src/renderer/uikit/DataGrid/index.ts` |
 | av-grid mounting boundary | `/src/renderer/uikit/DataGrid/index.ts`, `/src/renderer/uikit/DataGrid/DataGridView.ts` |

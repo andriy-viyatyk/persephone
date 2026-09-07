@@ -1,7 +1,8 @@
 # EPIC-093 — About page as guide browser
 
-**Status:** Active
+**Status:** Completed
 **Started:** 2026-09-07
+**Completed:** 2026-09-07
 **Roadmap:** epic 2 of 4 in the [in-app guides roadmap](../in-app-guides-roadmap.md)
 **Builds on:** [EPIC-092](EPIC-092.md) — the guide corpus in `assets/guides/`, front matter,
 `src/shared/guides/` (index, tree, lookup, search) and the main-process `guides` node
@@ -225,10 +226,18 @@ Found in US-1367's plan review. The shared selector US-1366 moved into
 `src/shared/guides/release-notes.ts` always **prefers** the `## Version X (Upcoming)` section when
 one exists, because that is what `guides.whatsNew` wants: an agent asking what changed in a dev
 build should see the section being written. The About page's *What's New* is the user's release
-notes, so in a packaged build it must show the **released** section even while an upcoming one sits
-above it in the file. The selector therefore gains an explicit, additive mode rather than a second
-copy — `guides.whatsNew`'s current behaviour must not change — and the dev/packaged distinction
-comes from whatever the app already uses to tell them apart, not a new flag.
+notes, so its **default** in a packaged build is the **released** section, even while an upcoming one
+sits above it in the file. The selector therefore gains an explicit, additive mode rather than a
+second copy — `guides.whatsNew`'s current behaviour must not change — and the dev/packaged
+distinction comes from whatever the app already uses to tell them apart, not a new flag.
+
+**Clarified 2026-09-07, after `/review` read this decision as stricter than it is.** "Default" is
+load-bearing: the roadmap's rule is that the upcoming section shows "only in dev builds **or** behind
+the same toggle", so a packaged build reveals it when the user has explicitly asked to see
+agent-facing material via *Show agent guides*. The shipped condition,
+`import.meta.env.DEV || showAgentGuides`, is therefore correct, and the section keeps its own
+`## Version X (Upcoming)` heading so it says what it is rather than passing as released notes. The
+review flagged this as a defect; the defect was this paragraph's first wording, not the code.
 
 ## Risks
 
@@ -258,9 +267,18 @@ Recorded rather than blocking; work proceeds on the stated default.
 3. **Whether the guide browser needs its own search box** (out of scope, above). `guides.search`
    already exists for the agent; the user-facing equivalent is deliberately deferred so it lands on a
    proven pane.
-4. **`pages` and `pages.closePage` do not see folder pages** — an EPIC-092 observation. Sized in this
-   epic rather than assumed small; see Notes. It is a `call`-surface correctness question about the
-   *page collection*, not about guides, and it is recorded here so it is not lost.
+4. **`pages` and `pages.closePage` do not see folder pages** — an EPIC-092 observation, **sized in
+   this epic and deliberately not fixed here.** It is a real gap, not a by-design omission: a folder
+   tab *is* an ordinary `PageModel` with a real id, it sits in `PagesModel`'s collection, and it
+   round-trips through session persistence (`PagesPersistenceModel` even special-cases
+   `editorId === "explorer"` on restore). What hides it is one line in the script wrapper —
+   `PageCollectionWrapper.all` filters `.filter((p) => p.mainEditor)`, and a folder page is attached
+   through `addPage(null, page)` so its main-editor slot is never set. `closePage` then inherits the
+   same filtered list for its argument validation and rejects the id before reaching the real close.
+   It is **not** a one-line fix, which is why it is here rather than in this epic: `PageWrapper` is
+   built *from* the main editor, so admitting an editor-less page raises a design question this epic
+   has no business answering — what `pages[i].editor` should be for a folder page. That is a
+   `call`-surface decision about the page collection, not about guides.
 5. **The root name `guides` vs `userGuide`** — carried forward from EPIC-092's Needs-user-check.
    This epic wires the About page to `guides`; the rename gets more expensive from here, so if it is
    wanted it is wanted now.
@@ -283,3 +301,65 @@ Recorded rather than blocking; work proceeds on the stated default.
   (*What's New*), which US-1369 re-points. `assets/board-template/CLAUDE.md:724` also points at
   `assets/guides/boards.md` on GitHub, but that file is authoring guidance read from the repo, and
   EPIC-095 owns the repo-side pointers.
+
+### 2026-09-07 — outcomes
+
+**The gate is the result that matters, and it failed first.** Asked to *show* the grid guide, a Haiku
+agent with `call` as its only tool found the right page, read it, and then copy-pasted the whole text
+into a new page — a dead clone with no guide identity, no breadcrumbs, no working links, frozen at
+the moment it was copied — while the application had just gained, in this very epic, the ability to
+open the real thing in two hosts. Nothing the `guides` node handed out mentioned that a guide could
+be *shown*, so the agent used the only tool it knew for putting something in front of a user. This is
+EPIC-092's lesson arriving a second time: **an agent reads a result, not a summary.** Every page
+entry now carries an `open` field beside `path` and `call`, and the re-run passed in one hop fewer
+than the failing run, naming that field as how it knew. The re-run then found two more places the
+string was invisible — `guides.search` hits and a page's own `$help` — on paths an agent takes more
+often than folder browsing.
+
+**The riskiest decision was measured before it was made.** Reusing `MarkdownBodyView` (decision 4)
+began with an enumeration of every member it and its children actually read — a state projection, a
+host projection, the typed queue, four search commands, `page`, `setContainer` — which showed the
+coupling to be broad but shallow, with only the queue reaching into `MarkdownBlockView`. That is what
+made extraction safe rather than hopeful, and it kept the fallback (an adapter) unnecessary. The pane
+supplies a host with `page` absent; fabricating a `PageModel` would have made `pages` either list a
+page the user cannot see or hide one that exists, which is the failure class EPIC-091 spent an epic
+removing.
+
+**Install-independence decided the pipe shape.** A guide could have been an ordinary `file` pipe on
+an asset-resolved absolute path, and it would have worked on the machine it was authored on. A `guide`
+provider keyed on the corpus path was chosen instead so a persisted guide page survives an update and
+so `sourceLink` shows the guide, not a path inside the install directory. Verified the way only a
+restart can verify it: a guide tab reopened after a full cold start with its scheme identity intact.
+
+**Nine defects were found by running it, none by reading it, and all past a green build.** Front
+matter rendered as visible body text above a guide's title in `md-view`, where the agent's copy of the
+same page strips it. What's New dumped raw Markdown source into the pane; its bullets were clipped
+mid-sentence at the pane edge; the tree summaries sat flush right, far from their titles, then
+collided with them once moved; every folder was expanded, so sixteen API pages swamped the contents
+and pushed the main guides off-screen; the card floated in the middle of a tall empty pane; the
+unknown-guide error printed its example twice; `open("editors")` was refused though `guides.editors`
+answers for it; and a bare `#anchor` inside a guide had been turned into a navigation, so a
+table-of-contents click pushed a Back entry instead of scrolling. The last one was this epic's own
+regression, caught by `/review` reading and confirmed by clicking it.
+
+**Two plan reviews changed the design rather than the prose.** `showAboutPage()` was going to reset
+the browser to contents for every caller — including the About button and the update notification —
+which would have thrown away a reader's place; it became a typed `{ atContents }` option that only
+the two entry points meaning "start at contents" ask for. And decision 6's stated reason was simply
+false: About is a deduplicated singleton, not re-created per open, so the toggle persists for the
+session by construction.
+
+**One consequence is recorded rather than hidden.** A body view may now require more than a bare
+`EditorModel`, which `EditorModule.BodyView`'s type cannot express, so the markdown registration
+carries a cast plus the invariant that makes it sound — its single consumer mounts it with the model
+the same module created. A generic refactor of `EditorModule` was out of scope.
+
+| Task | Title |
+|------|-------|
+| US-1371 | `PathSyntaxError` suggests bracket syntax for a hyphenated segment |
+| US-1366 | The `persephone-guide://` scheme, the guide pipe, and renderer guide access |
+| US-1367 | About page split and the contents view |
+| US-1368 | In-pane guide rendering: breadcrumbs, navigation, back, *Open in tab* |
+| US-1369 | Entry points: Menu Bar, `F1`, and the update flow's *What's New* |
+| US-1370 | `about-view` agent facade and `data-name` contract |
+| US-1372 | About / guide-browser QA surface, gate run, and its remediation |

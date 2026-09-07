@@ -144,9 +144,9 @@ When two text files are grouped, a **Compare** button appears in the toolbar. Cl
 - Additions, deletions, and modifications are highlighted
 - Navigate between changes
 
-## Sidebar
+## Menu Bar
 
-Click the **persephone icon** (top-left) to open the sidebar menu. The sidebar has a two-panel layout:
+Click the **persephone icon** (top-left) to open the Menu Bar. It has a two-panel layout:
 
 ### Left Panel — Folder List
 
@@ -191,16 +191,28 @@ The right panel shows the contents of the selected folder:
 - **Drag a file out to the OS** — drag a file from the tree onto Windows Explorer or into a Microsoft Teams chat to copy/attach it there. No modifier key needed. Dragging it into another folder in the tree instead asks whether to **Move** or **Copy** it there. Currently one file at a time.
 - **Drop files from Windows Explorer** — drag a file or folder from Windows Explorer (or another app) and drop it onto a folder in the tree; a **Move / Copy / Cancel** dialog asks which you want (folders are handled recursively), and dropping onto an existing name asks for confirmation before overwriting.
 
-### Sidebar Header Buttons
+### Menu Bar Buttons
 
 | Button | Action |
 |--------|--------|
 | Open File | Opens file dialog (`Ctrl+O`) |
 | New Window | Opens a new persephone window (`Ctrl+Shift+N`) |
 | About | Opens the About page (version info, update check) |
+| User Guide | Opens the About page at the guide contents |
 | Settings | Opens the Settings page (themes, preferences) |
 
 If a standalone page cannot be opened because its editor fails to load, Persephone reports the failure with an error notification instead of silently doing nothing.
+
+### About guide browser
+
+The About page keeps the application information card on the left and the guide browser on the
+right. The contents view lists the available guides with summaries, release highlights, and
+resources. Turn on **Show agent guides** to include guides intended for AI agents.
+
+Select a guide to read it in the right pane. Use **Back** to return to the previous guide location,
+or **Open in tab** to open the guide as a normal Markdown tab while leaving the About page available.
+The **User Guide** Menu Bar item returns to the guide contents; the ordinary **About** item preserves
+the current guide-browser location.
 
 ### Tools & Editors
 
