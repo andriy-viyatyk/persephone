@@ -120,14 +120,6 @@ dashboard so it only shows what is actually being worked on. Each doc keeps its 
 the task ids below are reserved. To pick one up, move its entry back to the **Planned** section
 of [`active-work.md`](../active-work.md) along with its task list.
 
-### Agent transparency roadmap, epics 2–7 (EPIC-085 … EPIC-090)
-
-Sequenced in [agent-transparency-roadmap.md](../agent-transparency-roadmap.md): shell, text
-family, data editors, boards and tools, browser (folds `browser_*` into page facades and deletes
-the `mcp.browser-tools.enabled` setting), and consolidation (call-only flag, QA re-run on Haiku
-and Codex, then deletion of every other tool). Epic documents are written as each one starts;
-EPIC-084 on the dashboard is the prerequisite for all of them.
-
 ### De-React package 8 — teardown-rebuild renders, `{state,setState}` props, ref drilling
 
 **No document, and deliberately not an epic** — package 8 of the De-React second-pass roadmap

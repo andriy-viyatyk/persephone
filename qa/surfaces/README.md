@@ -3,8 +3,8 @@
 Tests organised by **the part of Persephone they exercise** — one file per screen, dialog family,
 or editor — rather than by which MCP tool they use.
 
-The transparency roadmap ([doc/agent-transparency-roadmap.md](../../doc/agent-transparency-roadmap.md))
-collapses tool-specific workflows into one `call` path, so the interesting axis becomes the
+The agent transparency epics (EPIC-084 … EPIC-090, [doc/epics/completed.md](../../doc/epics/completed.md))
+collapsed tool-specific workflows into one `call` path, so the interesting axis becomes the
 surface: *can an agent see this screen, understand what its controls are for, and drive it?*
 
 Two things these files are for:
