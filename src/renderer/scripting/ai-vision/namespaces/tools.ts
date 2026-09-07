@@ -10,7 +10,7 @@ import {
 } from "../../../api/mcp/tool-commands";
 import type { McpResponse } from "../../../api/mcp/types";
 import type { IAiChild, IAiMember, IAiVisionDescriptor } from "../../../../shared/ai-vision/types";
-import { stringRule, validateCallArguments } from "../../../../shared/ai-vision/argument-validation";
+import { choiceRule, stringRule, validateCallArguments } from "../../../../shared/ai-vision/argument-validation";
 
 const REGISTRY_NOT_INITIALIZED = "Agent Tools registry is not initialized.";
 
@@ -18,11 +18,21 @@ const TOOLS_SEARCH_ARGUMENTS = [
     stringRule("query", 'tools.search("grid")', { required: false }),
 ] as const;
 
+const TOOLS_UNREGISTER_ARGUMENTS = (registeredRoots: readonly string[]) => [
+    choiceRule(
+        "root",
+        registeredRoots,
+        'tools.unregisterToolset("C:/path/to/toolset")',
+        { expectedType: "string" },
+    ),
+] as const;
+
 const TOOLS_MEMBERS: readonly IAiMember[] = [
     { name: "search", kind: "method", signature: "search(query?: string, maxResults?: number)", summary: "Search registered tools by keyword or select an exact tool id." },
     { name: "execute", kind: "method", signature: "execute(toolId: string, args?: Record<string, unknown>)", summary: "Run one registered tool and return its structured result.", caution: "runs the registered script with the user's privileges" },
     { name: "toolsets", kind: "property", node: true, summary: "Inspect registered toolsets, including invalid and shadowed entries." },
     { name: "createToolset", kind: "method", signature: "createToolset(name: string, dir: string)", summary: "Scaffold a toolset and offer registration through the user's confirmation dialog.", caution: "writes files and blocks for user consent before registration" },
+    { name: "unregisterToolset", kind: "method", signature: "unregisterToolset(root: string)", summary: "Remove toolset registration so its tools leave search and execution.", caution: "changes tool availability and persisted registration state" },
 ];
 
 const TOOLSETS_MEMBERS: readonly IAiMember[] = [
@@ -216,6 +226,19 @@ export class ToolsNode {
         return cloneWithoutUndefined(result) as ToolRunResult;
     }
 
+    async unregisterToolset(root: unknown): Promise<void> {
+        requireInitialized();
+        const registeredRoots = registeredTools.toolsets.map((toolset) => toolset.root);
+        const [validRoot] = validateCallArguments(
+            "tools.unregisterToolset",
+            [root],
+            TOOLS_UNREGISTER_ARGUMENTS(registeredRoots),
+        );
+        const { toolsTrust } = await import("../../../api/tools/tools-trust");
+        await toolsTrust.untrust(validRoot);
+        await registeredTools.refresh();
+    }
+
     async createToolset(name: string, dir: string): Promise<unknown> {
         return cloneWithoutUndefined(unwrapResponse(await handleCreateToolset({ name, dir }))) as unknown;
     }
@@ -223,7 +246,7 @@ export class ToolsNode {
     get aiVision(): IAiVisionDescriptor {
         return {
             kind: "Tools",
-            summary: "Registered Agent Tools search, execution, inspection, refresh, and user-mediated scaffolding.",
+            summary: "Registered Agent Tools search, execution, inspection, refresh, registration, and unregistration.",
             members: TOOLS_MEMBERS,
             children: () => {
                 requireInitialized();
@@ -241,7 +264,9 @@ execute() returns the existing structured ToolRunResult. A process failure is no
 
 inputSchema is descriptive and best-effort validation produces advisory argWarnings; warnings never reject the request, and the tool script is the authoritative input validator. Unknown tool ids and toolset indexes/names are request errors with valid choices. toolsets.refresh() refreshes the whole registry and no individual toolset has a refresh member.
 
-createToolset(name, dir) scaffolds through the existing flow and shows the registration confirmation. It never grants trust itself: registered:false means the user declined and the same call can re-offer it; registered:true means approval was obtained before trust and refresh.`,
+createToolset(name, dir) scaffolds through the existing flow and shows the registration confirmation. It never grants trust itself: registered:false means the user declined and the same call can re-offer it; registered:true means approval was obtained before trust and refresh.
+
+unregisterToolset(root) takes the toolset root folder path from tools.toolsets, requires a currently registered root, removes its tools from search and execution, and does not delete the folder. No confirmation dialog is shown because unregistration only reduces privilege; use the caller's own fs call if folder deletion is intended. The method rejects a non-string, empty, unknown, or already-unregistered root and lists the current registered roots in the shared validation error. It awaits the registry rebuild before returning, so its postcondition is true when it resolves.`,
             summarize: () => ({ kind: "Tools" }),
         };
     }

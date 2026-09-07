@@ -730,8 +730,10 @@ strings and structured arrays/objects; structured truncation keeps complete entr
 
 The renderer root includes `boards` for local board inventory/lifecycle and published-catalog
 operations, plus a root-only `tools` namespace for registered Agent Tool search, execution, toolset
-inspection, refresh, and user-mediated scaffolding. Tool results expose environment-variable names,
-never values; absent optional fields are omitted during shaping rather than emitted as `undefined`.
+inspection, refresh, user-mediated scaffolding, and unregistration. `unregisterToolset(root)` accepts
+only a root currently listed by `tools.toolsets`, removes its persisted trust, awaits the registry
+rebuild, and leaves the folder on disk. Tool results expose environment-variable names, never
+values; absent optional fields are omitted during shaping rather than emitted as `undefined`.
 
 ### PageCollectionWrapper
 
@@ -932,6 +934,7 @@ Script API types are defined in `/src/renderer/api/types/`:
 | `board-editor.d.ts` | `IBoardEditor` — board metadata, trust/render state, shared automation, secondary views, and reload |
 | `board-info-editor.d.ts` | `IBoardInfoEditor` — Board Info install/properties snapshots and safe screen-local actions |
 | `toolset-editor.d.ts` | `IToolsetEditor` — registered toolset state and open/refresh actions |
+| `tools.d.ts` | `ITools`, `IToolsets` — root-only Agent Tools call-tree contract (not an `app.tools` property) |
 | `tools-hub-editor.d.ts` | `IToolsHubEditor` — Tools & Editors hub tab state |
 | `mneme-config-editor.d.ts` | `IMnemeConfigEditor` — Mneme service, root, model, and reindex state/actions |
 | `mneme-root-editor.d.ts` | `IMnemeRootEditor` — Mneme root search state and actions |
@@ -1004,7 +1007,7 @@ These files serve dual purpose: TypeScript type checking **and** IDE IntelliSens
 ├── browser-automation-members.ts # Shared automation members for browser-like hosts
 ├── namespaces/                  # App namespace descriptors
 │   ├── boards.ts                # Local board inventory and published-catalog namespace
-│   ├── tools.ts                 # Registered Agent Tools search, execution, and toolsets
+│   ├── tools.ts                 # Registered Agent Tools search, execution, toolsets, and unregistration
 │   ├── window-screen.ts          # Descriptor for the complete app-window automation host
 │   └── index.ts                 # Namespace registration and descriptor wiring
 └── page-compare.ts              # pages.compare pair projection and controls
@@ -1014,6 +1017,7 @@ These files serve dual purpose: TypeScript type checking **and** IDE IntelliSens
 ├── app.d.ts                     # IApp
 ├── page.d.ts                    # IPage, IPageInfo
 ├── pages.d.ts                   # IPageCollection
+├── tools.d.ts                   # Root-only ITools call-tree contract (not app.tools)
 ├── ui.d.ts                      # IUserInterface, ITextDialogOptions, ITextDialogResult, IHighlightOptions, IHighlightResult
 ├── ui-log.d.ts                  # IUiLog, IUiDialog, IDialogResult
 ├── common.d.ts                  # IDisposable, IEvent, EditorView, Language

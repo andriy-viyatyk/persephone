@@ -13,11 +13,6 @@ Overview of all active and planned epics and tasks.
 ## Planned
 
 - *(no epic)*
-  - [ ] [US-1050: `tools.unregisterToolset(root)` on the object model](tasks/US-1050-unregister-toolset-tool/README.md)
-    — an enhancement, deferred by user decision (2026-08-29), **re-scoped 2026-09-07**: the manifest
-    is `call` alone since US-1353, so this is now an object-model member mirroring
-    `boards.unregisterBoard(boardRoot)` over the existing `toolsTrust.untrust(root)` — not a
-    thirty-fifth MCP tool. No confirmation dialog: it reduces privilege rather than granting it.
   - [ ] [US-1131: Close the remaining gaps in the VanillaView lifecycle lint rules](tasks/US-1131-vanillaview-lint-gaps/README.md)
     — tooling, not a defect: the guard itself shipped as US-1142 in EPIC-071 and this is the
     residue. Deferred by user decision (2026-08-29). It carries **five** clause candidates,

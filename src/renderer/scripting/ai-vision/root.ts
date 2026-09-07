@@ -49,7 +49,7 @@ const ROOT_MEMBERS: IAiVisionDescriptor["members"] = [
     { name: "window", kind: "property", node: true, summary: "This window: state, sidebar, zoom, and multi-window actions." },
     { name: "proc", kind: "property", node: true, summary: "Spawn and manage child processes.", caution: "runs processes with the user's privileges" },
     { name: "boards", kind: "property", node: true, summary: "Boards — sandboxed mini web-apps: create, open, trust, install, update, and remove." },
-    { name: "tools", kind: "property", node: true, summary: "Agent Tools: search and execute registered tool scripts, inspect or refresh toolsets, and request user registration.", caution: "execution runs registered scripts with the user's privileges and registration requires user consent" },
+    { name: "tools", kind: "property", node: true, summary: "Agent Tools: search and execute registered tool scripts, inspect or refresh toolsets, and request user registration or remove one.", caution: "execution runs registered scripts with the user's privileges and registration requires user consent" },
     { name: "boardVars", kind: "property", node: true, summary: "Administer board environment variables and secrets." },
     { name: "editors", kind: "property", node: true, summary: "The editor registry: which editors exist and which languages they take." },
     { name: "recent", kind: "property", node: true, summary: "Recently opened files." },
@@ -119,7 +119,7 @@ shell - URLs, screen capture, encryption, and runtime/update services; e.g. shel
 window - this window's state, sidebar, zoom, and multi-window actions; e.g. window.zoomLevel
 proc - spawn and manage child processes; no safe example - inspect its cautioned member below
 boards - local boards and their lifecycle/catalog operations; e.g. boards.list()
-tools - search/execute registered Agent Tools and inspect toolsets; e.g. tools.search()
+tools - search/execute registered Agent Tools, inspect toolsets, and unregister one; e.g. tools.search()
 boardVars - administer board environment variables and secrets; no safe example - inspect its cautioned members below
 editors - inspect available editors and file-language matches; e.g. editors.getAll()
 recent - access recently opened file paths; e.g. recent.files

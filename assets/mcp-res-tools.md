@@ -185,6 +185,17 @@ to enable it (e.g. they declined by mistake), just call `tools.createToolset` ag
 toolset that already exists never re-scaffolds (it re-offers registration, or no-ops if the toolset
 is already registered).
 
+## Unregistering a toolset
+
+Use `tools.unregisterToolset(root)` with the exact root folder path reported by `tools.toolsets`.
+It revokes the toolset's registration, waits until its tools have left search and execution, and
+does **not** delete the folder. No confirmation dialog is shown because this operation only reduces
+privilege. Delete the folder separately only when the user explicitly intends to remove its files.
+
+The root must still be registered when the call starts. An unknown, empty, non-string, or
+already-unregistered root is rejected with the current valid roots, so a repeated call is an error
+rather than a silent no-op.
+
 ## Self-repair — the core rule
 
 A registered tool that fails is a **bug to fix**, not an obstacle to route around. `tools.execute`
@@ -208,5 +219,8 @@ Failure shapes are part of this guide's contract already — the short version:
 - **`tools.createToolset` → `{ registered: false }`** means the user declined registration — the
   folder exists but tools won't run. Re-offer by calling `tools.createToolset` again with the same
   `name` + `dir` (it never overwrites your edits).
+- **`tools.unregisterToolset` rejects the root** → read the valid roots in the error or inspect
+  `tools.toolsets`, then use the exact currently registered folder path. A successful call leaves
+  the folder intact.
 - **Success isn't `ok: true` alone** — a tool that prints no marker returns its stdout as
   `resultText`; validate the payload shape you expect, not just the flag.

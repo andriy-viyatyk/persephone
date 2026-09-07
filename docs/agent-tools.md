@@ -74,19 +74,27 @@ Opening a toolset shows a read-only **toolset view** with:
 ## Using tools from an AI agent (MCP)
 
 The whole registry is reached through `call` object-model paths — discovery, execution, refresh,
-and toolset creation:
+toolset creation, and unregistration:
 
 | Call path | Purpose |
 |-----------|---------|
 | `tools.search` | Discover registered tools and return complete definitions, including input schemas and required environment-variable names. |
 | `tools.toolsets.refresh` | Re-read edited manifests and scripts. |
 | `tools.createToolset` | Scaffold a toolset and show the user registration confirmation. |
+| `tools.unregisterToolset` | Revoke registration for an exact toolset root without deleting its folder. |
 | `tools.execute` | Run a tool by id, with `args` matching its input schema. |
 
 Run a discovered tool with `tools.execute(toolId, args)`. Tool
 arguments arrive on stdin as JSON; failures include stderr, exit code, and the toolset folder path
 so the agent can repair the tool and refresh the registry. These operations still run with the
 user's privileges and never bypass the registration gate.
+
+To unregister a toolset, first inspect `tools.toolsets` and pass its exact `root` value to
+`tools.unregisterToolset(root)`. Persephone removes the toolset from search and execution before
+the call returns, without deleting or changing its folder. No confirmation dialog appears because
+unregistration only removes permission. An unknown, empty, non-string, or already-unregistered
+root is rejected and the error lists the currently registered roots.
+
 ### How a tool passes data back
 
 A tool script reads its `args` from stdin and returns its result on stdout using a sentinel marker:
@@ -104,7 +112,7 @@ A tool script reads its `args` from stdin and returns its result on stdout using
 
 The registry is not a direct `app.tools` property, but the same live object model is available to
 scripts through [`app.call()`](./api/app.md#callpath-options). A script can search and execute a
-registered tool, refresh the registry, or scaffold a toolset:
+registered tool, refresh the registry, scaffold a toolset, or unregister one:
 
 ```javascript
 const matches = await app.call("tools.search", { args: ["inbox", 5] });
@@ -112,6 +120,9 @@ const result = await app.call("tools.execute", {
     args: ["mail/get_inbox", { limit: 10 }],
 });
 await app.call("tools.toolsets.refresh");
+await app.call("tools.unregisterToolset", {
+    args: ["C:/path/from/tools.toolsets"],
+});
 ```
 
 Tool execution still runs with your user privileges. `tools.createToolset` writes the starter
@@ -119,6 +130,8 @@ files and shows the existing registration confirmation; it never registers or tr
 without your approval. Keep credentials in the toolset's `.env` file rather than in `args`, which
 may be recorded in local tool logs. See the [scripting API reference](./api/page.md#editor-facades) for the
 page editor surfaces that let agents inspect the Tools & Editors hub and an individual toolset.
+`tools.unregisterToolset` does not show a confirmation or delete files; only call it with a root
+you intend to remove from the registry.
 
 ---
 
@@ -127,5 +140,4 @@ page editor surfaces that let agents inspect the Tools & Editors hub and an indi
 - [MCP Server Setup](./mcp-setup.md) — enable the server so agents can use `tools.search` / `tools.execute`.
 - [Boards](./boards.md) — the sibling feature the tools registry mirrors (folder + manifest + trust gate), for building custom UIs instead of headless tools.
 - [Mneme Knowledge Base](./mneme.md) — the *knowledge* counterpart to the tools registry's *executable* memory.
-
 

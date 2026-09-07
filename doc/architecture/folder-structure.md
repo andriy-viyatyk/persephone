@@ -125,7 +125,7 @@ vendor island under `editors/draw/`; native global styles are installed by `them
 │   │   ├── command-registry.ts # Built-in call and board_call registry
 │   │   ├── call-command.ts  # Renderer-side MCP call command; creates a ScriptContext and resolves AiVision
 │   │   ├── board-call-command.ts # Page-scoped Board bridge calls; owner-page and trust checks
-│   │   ├── tool-commands.ts # Agent Tools handlers behind the tools.* call paths
+│   │   ├── tool-commands.ts # Shared Agent Tools search/execute/create handlers used by the tools node
 │   │   ├── request-log.ts   # Bounded MCP request history and server-log page integration
 │   │   └── types.ts         # Shared renderer MCP request/response types
 │   ├── mneme-connection.ts # Shared, persistent Mneme MCP client — one auto-reconnecting connection; refcounted resource subscriptions fanned out to per-document watchers
@@ -148,7 +148,7 @@ vendor island under `editors/draw/`; native global styles are installed by `them
 │   │   ├── types.ts            # BoardVarsFile schema, DEFAULT_PROFILE
 │   │   └── index.ts            # Barrel
 │   │
-│   ├── tools/              # Agent Tools registry — deliberately NOT on app or any script .d.ts
+│   ├── tools/              # Internal Agent Tools registry — deliberately not exposed as app.tools
 │   │   ├── tools-manifest.ts   # tools-manifest.json module — read/validate/write; isToolsetFolder; defaultToolsManifest
 │   │   ├── tools-trust.ts      # toolsTrust registry — registered toolset roots (trustedTools.txt), exact-match, reactive; registration ≡ trust
 │   │   ├── registered-tools.ts # registeredTools model — enumerate trusted roots → read manifests → flat tool list (id = <toolset>/<tool>); refresh(), reactive
@@ -212,6 +212,7 @@ vendor island under `editors/draw/`; native global styles are installed by `them
 │       ├── editors.d.ts    # IEditorRegistry
 │       ├── boards.d.ts     # IBoards (app.boards) — board lifecycle API
 │       ├── board-vars.d.ts # IBoardVars (app.boardVars) — env-vars/secrets admin API
+│       ├── tools.d.ts      # ITools/IToolsets root-only call-tree contract (not app.tools)
 │       ├── recent.d.ts     # IRecentFiles
 │       ├── fs.d.ts         # IFileSystem
 │       ├── window.d.ts     # IWindow and IWindowScreen
@@ -733,7 +734,7 @@ vendor island under `editors/draw/`; native global styles are installed by `them
 │       ├── menus/           # Popup-menu adapter and indexed menus node
 │       ├── namespaces/      # App namespace descriptors, including boards and Agent Tools
 │       │   ├── boards.ts    # Local board inventory and published-catalog namespace
-│       │   ├── tools.ts     # Registered Agent Tools search, execution, and toolsets
+│       │   ├── tools.ts     # Registered Agent Tools search, execution, toolsets, and unregistration
 │       │   └── index.ts     # Namespace registration and descriptor wiring
 │       ├── root.ts          # Renderer object-model root
 │       ├── page-compare.ts  # pages.compare pair projection and controls

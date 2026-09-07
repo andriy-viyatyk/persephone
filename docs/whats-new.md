@@ -40,6 +40,8 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### For agent integrations
 
+- **Toolset registration can now be revoked through `call`:** use `tools.unregisterToolset(root)` to
+  remove a registered toolset from search and execution without deleting its folder.
 - **`call` now refuses bad arguments instead of quietly doing nothing.** An independent review of
   the `call` surface found about a dozen calls that returned an empty list, `null` or `false` when
   their arguments were wrong — a result an agent cannot tell apart from "there was nothing there",

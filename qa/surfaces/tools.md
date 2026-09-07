@@ -139,3 +139,21 @@ remains the document API and that this facade describes the configuration screen
 `addRoot` is deliberately **not** a method — it needs a native folder picker and an input dialog,
 so the facade points the user at the control instead of offering a call that cannot honestly
 complete.
+
+## Test T.9: Unregister removes discovery and rejects stale roots
+
+**Preparation:** a user-registered scratch toolset outside the repo; record its exact root from
+`tools.toolsets[i].root`.
+
+**Start:** The runner's first operation is `call` with no `path`; the agent must use the returned overview before choosing a branch.
+
+**Call:** `tools.unregisterToolset("<scratch-root>")`, then `tools.search()` and
+`tools.toolsets.refresh()`. Finally call `tools.unregisterToolset("<scratch-root>")` again and
+`tools.unregisterToolset("<bogus-root>")`.
+
+**Overview route:** `PASS | PARTIAL | FAIL` — `overview → <paths in call order>`; wrong paths: `none` or `<every incorrect path, in order>`.
+
+**Verify:** The first call succeeds; the root is absent from the refreshed toolset list and none
+of its tools appear in search. Both later calls **throw** the shared validation error naming the
+value and type, listing the current registered roots (or `(none)`), and giving a copy-paste
+example. Do not execute any registered tool during this scenario.

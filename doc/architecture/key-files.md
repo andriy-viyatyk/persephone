@@ -289,7 +289,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Renderer MCP IPC shell (receives main-process commands, dispatches, times, logs, and returns results) | `/src/renderer/api/mcp-handler.ts` |
 | Renderer MCP command registry for `call` and the internal `board_call` | `/src/renderer/api/mcp/command-registry.ts` |
 | Renderer MCP `call` command and page-scoped Board call command | `/src/renderer/api/mcp/call-command.ts`, `/src/renderer/api/mcp/board-call-command.ts` |
-| Agent Tools handlers behind the `tools.*` call paths | `/src/renderer/api/mcp/tool-commands.ts` |
+| Agent Tools call-tree node and shared search/execute/create handlers | `/src/renderer/scripting/ai-vision/namespaces/tools.ts`, `/src/renderer/api/mcp/tool-commands.ts` |
 | Renderer MCP request history and server-log page integration | `/src/renderer/api/mcp/request-log.ts` |
 | Browser automation commands (target resolution, private browser-page refusal, and active-private-page refusal for the explicit app-window target) | `/src/renderer/automation/commands.ts`             |
 | Shared browser-like automation operations (target-neutral snapshot, navigation, locator/input, wait, screenshot, network, and inner-tab behaviors) | `/src/renderer/automation/operations.ts` |
@@ -431,7 +431,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Toolset `.env` loader (`loadDotEnv` via Node `util.parseEnv`) | `/src/renderer/api/tools/dotenv.ts` |
 | Per-toolset execution log (self-rotating; `TOOLS_EXECUTION_LOG_FILE`) | `/src/renderer/api/tools/tool-log.ts` |
 | Toolset scaffold (`createToolset` call path — copy `tool-template`; trust-gated) | `/src/renderer/api/tools/tool-scaffold.ts` |
-| Agent Tools handlers behind the `tools.*` call paths | `/src/renderer/api/mcp/tool-commands.ts` |
+| Agent Tools call-tree node (discovery, execution, toolsets, scaffold, unregistration) | `/src/renderer/scripting/ai-vision/namespaces/tools.ts` |
 | `persephone-toolset://` link scheme (encode/decode + `openToolset`; parsed in `parsers.ts` → `target: "toolset-view"`) | `/src/renderer/content/persephone-toolset-link.ts` |
 | Per-toolset editor model (`toolset-view`; manifest info + tool list + open-log) | `/src/renderer/editors/toolset/ToolsetEditorModel.ts` |
 | Shared registered-toolsets tree (native `ToolsTreeView` + `buildToolsTree`) | `/src/renderer/editors/tools/ToolsTreeView.ts` |
