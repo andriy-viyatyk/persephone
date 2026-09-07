@@ -75,6 +75,7 @@ export function resolveGuideHref(fromGuidePath: string, href: string): string | 
     const hashIndex = decodedHref.indexOf("#");
     const pathPart = hashIndex < 0 ? decodedHref : decodedHref.slice(0, hashIndex);
     const fragment = hashIndex < 0 ? "" : decodedHref.slice(hashIndex + 1);
+    if (pathPart === "" && hashIndex >= 0) return `#${fragment}`;
     if (pathPart === "" && hashIndex < 0) return undefined;
     if (isAbsoluteGuideHref(pathPart) || pathPart.includes("\\") || pathPart.includes("?")) return undefined;
 

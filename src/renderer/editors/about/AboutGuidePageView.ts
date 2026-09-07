@@ -99,6 +99,7 @@ export class AboutGuidePageView extends VanillaView<AboutGuidePageViewProps> {
             prevMatch: this.prevMatch,
             navigateLink: this.navigateLink,
         };
+        this.own(() => this.bodyQueue.dispose());
 
         const header = createPanelElement({
             direction: "row",

@@ -197,6 +197,21 @@ returned editor. For the Markdown module this is always `MarkdownEditor`, which 
 `MarkdownBodyModel`; no other repository call site reads `.BodyView`. A generic refactor of
 `EditorModule` could express the per-module body model, but is outside US-1368's scope.
 
+### Post-implementation fixes
+
+- `src/shared/guides/guide-links.ts` preserves a bare same-document fragment as `#fragment`
+  when rewriting a guide page. A cross-guide path with a fragment still becomes a full
+  `persephone-guide://<path>#fragment` URL. This keeps the existing `MarkdownBodyView` anchor
+  branch authoritative in both the ordinary `md-view` tab and the About pane. The About adapter's
+  same-guide-fragment `navigateLink` branch remains as a defensive guard for an explicitly
+  supplied full scheme URL; normal Markdown `](#fragment)` links no longer reach it.
+- `AboutGuidePageView` registers its real `ComponentQueue` with the view's disposal store, so
+  queued anchor/focus events and pending requests are cleared when the pane is torn down.
+- Live verification inspected the rendered DOM: a guide source link `](#screen-snip)` produced
+  `href="#screen-snip"`, while a cross-guide `./grid.md#sorting` link produced
+  `href="persephone-guide://editors/grid#sorting"`; clicking the former scrolled without adding
+  Markdown or About history.
+
 Anchor scrolling is honest in the pane because `MarkdownBodyView` creates `scrollPanel` with
 `overflowY: "auto"` at `76-93`, passes it to the block, and the block’s existing request handler
 calls `target.scrollIntoView()` at `252-256`. The new guide page layout must give the body root and
