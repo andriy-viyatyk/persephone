@@ -1,6 +1,6 @@
 # US-1359 — Surface documentation and consistency
 
-**Status:** Implemented (unreviewed — epic close runs the completion skills)
+**Status:** Completed 2026-09-07 (reviewed at epic close)
 
 ## Goal
 

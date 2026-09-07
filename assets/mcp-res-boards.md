@@ -270,7 +270,9 @@ srv.write(JSON.stringify({ id: 1, sql }) + "\n");   // per query — db stays op
   again when each call resolves, so revoking trust also blocks an already-mounted Board. The call
   always uses `hints: "never"` and returns only a JSON-safe plain value; it rejects an `Error` for
   resolver, transport, timeout, or serialization failures. `args` invokes the final method,
-  `value` assigns a writable property, and `maxLength` bounds shaped strings. `args` and `value`
+  `value` assigns a writable property, and `maxLength` bounds shaped strings or structured results
+  (structured truncation keeps whole values). `persephone.call()` returns the bounded value itself;
+  `shown`/`total` metadata is available in the external MCP `call` envelope. `args` and `value`
   cannot be combined.
   ```js
   const source = await persephone.call("page.grouped.content");

@@ -64,7 +64,9 @@ await app.pages.navigatePageTo(page.id, "C:/other-file.json", {
 
 ### closePage(pageId) → `Promise<boolean>`
 
-Close a page by ID. Returns `true` if closed, or `false` if the close was cancelled (e.g. the user declined to save unsaved changes).
+Close a page by ID. Returns `true` if closed, or `false` if the close was cancelled (e.g. the user
+declined to save unsaved changes). An ID that is not currently open throws an error listing the
+open page IDs; it does not return `false`.
 
 ```javascript
 const closed = await app.pages.closePage(page.id);
@@ -80,6 +82,9 @@ Add an empty text page. Returns the new page.
 ### addEditorPage(editor, language, title, content?) → `IPage`
 
 Add a page with a specific editor, language, and title. Optionally provide initial content.
+The language must be one of the IDs in [`app.editors.languages`](./editors.md#languages); a
+language that is known but unsupported by the requested editor may still use the editor's normal
+fallback behavior.
 
 ```javascript
 // Add an empty grid page

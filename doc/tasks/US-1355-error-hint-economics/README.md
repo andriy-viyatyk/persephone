@@ -1,6 +1,6 @@
 # US-1355: Hint economics — honour `hints` and dedupe on the error path
 
-**Status:** Implemented (unreviewed — epic close runs the completion skills)
+**Status:** Completed 2026-09-07 (reviewed at epic close)
 
 Epic: [EPIC-091](../../epics/EPIC-091.md), report items 1.2 and 3.8.
 

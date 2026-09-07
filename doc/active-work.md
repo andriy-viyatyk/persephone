@@ -8,17 +8,7 @@ Overview of all active and planned epics and tasks.
 
 ## Active
 
-- **EPIC-091** — [`call` surface hardening — acting on the external MCP evaluation](epics/EPIC-091.md)
-  — the first outside audit of what the transparency roadmap built. Its
-  [source report](epics/EPIC-091-evaluation-report.md) is preserved beside the epic; all sixteen of
-  its claims reproduced live before any fix.
-  - [ ] [US-1354: Guard `logView.push` against a non-array argument](tasks/US-1354-logview-push-guard/README.md)
-  - [ ] [US-1355: Hint economics — honour `hints` and dedupe on the error path](tasks/US-1355-error-hint-economics/README.md)
-  - [ ] [US-1356: Extract the argument validator and end the silent no-op class](tasks/US-1356-uniform-arg-validation/README.md)
-  - [ ] [US-1357: `call` parameter bounds — `limit`, `maxLength`, `windowIndex`](tasks/US-1357-call-parameter-bounds/README.md)
-  - [ ] [US-1358: Language validation, returned-object identity, and grid row keys](tasks/US-1358-language-and-identity/README.md)
-  - [ ] [US-1359: Surface documentation and consistency](tasks/US-1359-surface-documentation/README.md)
-  - [ ] [US-1360: Malformed-input acceptance run and regression suite](tasks/US-1360-malformed-input-acceptance/README.md)
+*(no active epic)*
 
 ## Planned
 

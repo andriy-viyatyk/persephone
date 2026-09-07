@@ -1,6 +1,6 @@
 # US-1356: Extract the argument validator and end the silent no-op class
 
-**Status:** Implemented (unreviewed — epic close runs the completion skills)
+**Status:** Completed 2026-09-07 (reviewed at epic close)
 
 Epic: [EPIC-091](../../epics/EPIC-091.md), report section 2 (all twelve rows) plus the missed
 deleteRows site.
@@ -50,6 +50,15 @@ helpSearch's core accepts a string and uses limit only at slice(0, limit)
 (src/shared/ai-vision/help-search.ts:24-26,63-65). This task validates limit's type but does not
 clamp or otherwise bound it; limit clamping belongs to US-1357 and must not edit that line in
 both tasks.
+
+## Review correction (2026-09-07)
+
+The independent review found that the first shared-validator implementation checked an
+`arrayOfChoicesRule` value against the choices as one array, so the valid call
+`grid.deleteRows(["0"])` was rejected. The validator now checks the array element type and compares
+each element with the live choices, naming the failing index in an error. Valid row-key arrays pass
+through to the existing grid mutation; the eight pre-existing validation sites remain outside this
+module by decision.
 
 ## Implementation Plan
 
@@ -518,7 +527,8 @@ scenarios only as an allowed discovery route, not as an assertion of its current
   fail or warn as specified; a valid query still reaches
   src/shared/ai-vision/help-search.ts:24 and limit is not clamped by this task.
 - Both grid.addRows probes fail before GridEditor.addRows; invalid editCell column/row keys and
-  unknown deleteRows keys fail before mutation and list live keys.
+  unknown deleteRows keys fail before mutation and list live keys, while valid row-key arrays such
+  as `["0"]` still reach the existing mutation.
 - tools.search(12345) fails before the raw value can become an empty catalogue query; valid
   empty/select/keyword behavior remains unchanged.
 - version with unexpected args returns the normal version plus a rendered warning and does not set

@@ -682,6 +682,13 @@ facades implement `IAiVisible` with descriptors beside their public members; dyn
 facades enumerate their own children so discovery does not probe side-effecting getters. Namespace
 objects that cannot carry a descriptor use the shared instance registry.
 
+Positional arguments for shared call-surface operations are checked by the process-neutral
+`argument-validation.ts` module. It reports the rejected value and runtime type, validates required
+and optional parameters, numeric bounds, and live choices, and supplies a copy-paste usage example.
+Array choice rules validate both the array itself and each element before a mutation is delegated.
+Domain-specific validators remain at boundaries where they carry richer local invariants; they are
+not replaced merely to make all validation implementations share a module.
+
 Descriptors may provide computed members through `provide(name)` when the advertised value is not
 a property on the target object. They may also declare curated screen controls separately from
 the live value: `elements` is indexed by help search, while the shared element helper supplies
@@ -714,6 +721,12 @@ results; it does not route `main.*` or `windows[i]`.
 The Board `persephone.call()` surface is similarly page-scoped to the Board's hosting page, checks
 trust for every request, and returns only shaped values. Use the MCP call path for main-process
 diagnostics or the settings-gated `main.script.execute(code)` branch.
+
+Returned AiVision nodes provide a live canonical identity when one exists, so hints for a newly
+created page address `pages["<id>"]` rather than the method that returned it. Identity-less nodes
+still expose their children with relative paths. Result shaping applies `maxLength` to top-level
+strings and structured arrays/objects; structured truncation keeps complete entries and reports
+`shown` and `total` alongside the bounded result.
 
 The renderer root includes `boards` for local board inventory/lifecycle and published-catalog
 operations, plus a root-only `tools` namespace for registered Agent Tool search, execution, toolset
@@ -777,7 +790,7 @@ Located in `/src/renderer/scripting/script-utils.ts`. Converts any JS value to d
 |-------------|--------|----------|
 | `string` | As-is | `"plaintext"` |
 | `object`, `array` | `JSON.stringify` formatted | `"json"` |
-| `Error` | Message + stack trace | `"plaintext"` |
+| `Error` | Message + user stack frames (renderer-internal frames are filtered) | `"plaintext"` |
 | `undefined` | `"undefined"` | `"plaintext"` |
 | `Date`, `RegExp`, `Map`, `Set` | Appropriate string representation | varies |
 
@@ -1102,4 +1115,3 @@ Scripts have full Node.js access. This is by design for power users, but means:
 - Scripts can execute any Node.js code
 
 This is appropriate for a developer tool where the user writes/controls the scripts.
-

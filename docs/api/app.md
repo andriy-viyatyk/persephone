@@ -37,7 +37,10 @@ app.pages.activePage.content;
 
 Resolve a path in the live application object model from a script. Paths use the same names as the
 scripting API and can read values, invoke the final method, or assign a writable property. Results
-are plain JSON-safe values, and long strings can be bounded with `maxLength`.
+are plain JSON-safe values. Use `maxLength` to bound long strings or structured arrays and
+objects; structured truncation keeps whole values. The MCP `call` envelope reports how many
+collection items or properties were shown and how many were available; `app.call()` returns the
+bounded value itself.
 
 ```javascript
 // Read the grouped output page for the current script
@@ -71,7 +74,7 @@ if (panels.length) {
 | `path` | `string` | Object-model path, such as `page.grouped.content`, `pages[0].content`, or `settings.theme`. |
 | `options.args` | `unknown[]` | Arguments for the final method. Cannot be combined with `value`. |
 | `options.value` | `unknown` | Value for the final writable property. Cannot be combined with `args`. |
-| `options.maxLength` | `number` | Maximum length for a shaped string result. |
+| `options.maxLength` | `number` | Maximum serialized length for a shaped string or structured result. |
 
 `app.call()` is rooted in the current script's window. It can address pages, editor
 facades, and application services exposed to scripts, including the local `boards` inventory and

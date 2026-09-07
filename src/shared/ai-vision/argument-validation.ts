@@ -184,12 +184,20 @@ export function validateCallArguments<const Rules extends readonly ArgumentRule<
         }
 
         const choices = rule.choices ? getChoices(rule.choices) : undefined;
-        if (choices && !choices.some(choice => choice === value)) {
+        const choiceValues = choices && Array.isArray(value) && rule.elementType ? value : [value];
+        const invalidChoiceIndex = choices?.length
+            ? choiceValues.findIndex(choiceValue => !choices.some(choice => choice === choiceValue))
+            : -1;
+        if (choices && invalidChoiceIndex !== -1) {
+            const invalidValue = choiceValues[invalidChoiceIndex];
+            const invalidRule = Array.isArray(value) && rule.elementType
+                ? { ...rule, name: `${rule.name}[${invalidChoiceIndex}]` }
+                : rule;
             const validValues = formatChoices(choices, rule.validValuesPath);
             throw invalidArgument(
                 callName,
-                rule,
-                value,
+                invalidRule,
+                invalidValue,
                 `expected one of the current ${rule.valueLabel ?? rule.name} values; valid values: ${validValues}`,
             );
         }

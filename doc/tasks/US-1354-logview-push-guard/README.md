@@ -1,6 +1,6 @@
 # US-1354 — Guard `logView.push` against a non-array argument
 
-**Status:** Implemented (unreviewed — epic close runs the completion skills) · **Epic:** [EPIC-091 — `call` surface hardening](../../epics/EPIC-091.md)
+**Status:** Completed 2026-09-07 (reviewed at epic close) · **Epic:** [EPIC-091 — `call` surface hardening](../../epics/EPIC-091.md)
 
 ## Goal
 

@@ -143,10 +143,12 @@ and [Mneme](../mneme.md) for the user workflows.
 ### Data editor facades
 
 The Grid facade is shared by JSON, CSV, and JSONL pages. It exposes copied `rows` and `columns`,
-row counts, search/filter/sort/selection state, hidden columns, and CSV options. Use `editCell`,
-`addRows`, `deleteRows`, `addColumns`, `deleteColumns`, `setSearch`, and `clearSearch`; CSV pages
-also support `setCsvDelimiter` and `setCsvWithColumns`. Data-changing methods are caution-marked
-in the `call` tree.
+`rowKeys` in the same order as `rows`, row counts, search/filter/sort/selection state, hidden
+columns, and CSV options. Use `rowKeys[i]` with `rows[i]` when calling `editCell` or
+`deleteRows`; row keys are not added to the row objects themselves. Also use `addRows`,
+`addColumns`, `deleteColumns`, `setSearch`, and `clearSearch`; CSV pages support
+`setCsvDelimiter` and `setCsvWithColumns`. Data-changing methods are caution-marked in the `call`
+tree.
 
 The Notebook facade exposes copied notes, categories, tags, counts, filters, expanded-note state,
 and parse errors. It supports adding, removing, and updating notes, comments, categories, tags,

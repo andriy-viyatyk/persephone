@@ -241,7 +241,9 @@ await persephone.call("page.grouped.content", { value: JSON.stringify(matches, n
 ```
 
 The method always suppresses hints and returns only a JSON-safe shaped value. `args` calls the final
-method, `value` assigns a writable property, and `maxLength` bounds strings; `args` and `value` are
+method, `value` assigns a writable property, and `maxLength` bounds strings or structured results;
+structured truncation keeps whole values. `persephone.call()` returns the bounded value itself;
+the `shown`/`total` metadata is part of the external MCP `call` envelope. `args` and `value` are
 mutually exclusive. Calls reject as `Error` on resolver, transport, timeout, or trust failures.
 Trust is checked at resolution time, and existing descriptor restrictions still apply. Calls remain
 anchored to the Board's hosting page even when another tab becomes active.
@@ -764,5 +766,3 @@ The Demo board (`"Create Demo board"`) is a full working example that demonstrat
 Read its `index.html`, `app.js`, and `style.css` for a rich authoring reference — they are extensively commented.
 
 The Demo board is created in the folder and with the name you specify in the **Create Demo board** dialog. The source template lives at `resources/assets/demo-board/` inside the Persephone installation folder (or at `assets/demo-board/` in the repository).
-
-

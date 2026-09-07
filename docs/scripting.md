@@ -103,7 +103,7 @@ the pair is missing, not comparable, or not currently in compare mode.
 When a script runs, the result is displayed in a grouped (side-by-side) output page:
 
 - **On success:** The return value is written to the output page
-- **On error:** The error message with stack trace is displayed
+- **On error:** The error message and submitted-script stack frames are displayed; renderer-internal frames are filtered
 - **No return value:** Shows "undefined"
 
 ```javascript

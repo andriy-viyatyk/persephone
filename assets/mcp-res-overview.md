@@ -44,7 +44,7 @@ guide to read for which task. It is intentionally short — read it once per ses
 |---|---|---|
 | Inspect main-process state or use gated main scripting | `call` (path `"main"`) | `main.$help` and `persephone://guides/scripting` |
 | Look around, read a page, activate a tab, simple edits — with no guide | `call` (path `""` first) | nothing — the hints are the guide |
-| Show results, logs, progress; ask the user something | `pages.logView.push([...])` | `pages.logView.$help` and `persephone://guides/ui-push` |
+| Show results, logs, progress; ask the user something | `pages.logView.push(entry)` or `pages.logView.push([...])` | `pages.logView.$help` and `persephone://guides/ui-push` |
 | Open text/code for the user | `pages.addEditorPage(...)` (editor `monaco`) | `pages.$help` |
 | Show a mermaid diagram | `pages.addEditorPage(...)` (`mermaid-view`, language `mermaid`) | `pages.$help` |
 | Show tabular data | `pages.addEditorPage(...)` (`grid-json` / `grid-csv`) | `pages.$help` and `persephone://guides/pages` |

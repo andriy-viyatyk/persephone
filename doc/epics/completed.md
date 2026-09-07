@@ -1,3 +1,80 @@
+## EPIC-091 — `call` surface hardening: acting on the external MCP evaluation
+
+Completed 2026-09-07. [Epic document](EPIC-091.md), [source report](EPIC-091-evaluation-report.md).
+Not part of the agent transparency roadmap — the **first outside audit of what that roadmap built**.
+
+An independent agent with no project context, no guide, and an intent to break things evaluated the
+single-tool `call` surface and reported 7 bugs, a systemic silent-no-op class, 8 consistency issues
+and 10 prioritised recommendations. **All sixteen of its claims were replayed live before any fix
+and every one reproduced.** That is the finding that set the epic's posture: the report was treated
+as evidence rather than as opinion.
+
+**What it did not say is the more important half.** It did not say the design is wrong — it said the
+opposite, at length. Discovery works, the error messages are better than most MCP servers ship, the
+unsaved-changes dialog interception is "better agent-safety design than I see in most MCP servers".
+The roadmap's central bet — one path-based tool plus live hints beats thirty-four tool descriptions
+— was taken up by a stranger and it held. What it found was that the surface was **half-finished in
+one specific way**: about half of it validated its arguments and the other half did not validate
+them at all, which produces the single worst failure mode an agent surface can have — a call that
+reports success and did nothing.
+
+**The report's central recommendation was wrong, and finding that out was the epic's main planning
+work.** It said "you already have an argument-validation helper — apply it uniformly", and named
+four sites. No such helper exists: the four do not share code, the pattern is re-implemented ad hoc
+in at least eleven places, and `deleteRows` — the site quoted as the gold standard — has **no
+validation at all**; the message attributed to it is nowhere in the codebase. US-1356 had to extract
+the validator before it could apply it, and the site the report praised turned out to be a
+thirteenth silent no-op it had missed.
+
+**Two of its "documentation" findings were single-line fixes with tree-wide effect.** The dead hint
+path (1.5) was not an `addEditorPage` wording problem but the resolver building hint paths from
+`walked`, which includes the call segment — affecting every method in the tree that returns a node.
+The hint leak (1.2) was three call sites passing one `forceMembers` flag that bypassed both the
+dedupe and the mode check; the report counted six dumps but attributed all of them to that path,
+when two came from a fourth leak it had not isolated — the malformed-path branch hard-coding
+`hints: "always"`.
+
+**And the epic found two silent no-ops the report did not.** `logView.push(123)` returned
+`{ entryIds: [], dialogIds: [] }` — a success-shaped result for input that did nothing — and
+`addEditorPage`'s fourth `content` argument was dropped by the scripting wrapper while the arity
+error advertised it, so an agent following the surface's own copy-paste example created a page with
+its content discarded and got success back. Fourteen in total, from a report that found twelve.
+
+**One recommendation was declined with reasons** (decision 5): the uniform `{ ok: true }` for
+mutations. It would have changed every void member across seven epics against sixteen QA surface
+files, and two of the five shapes carry information the envelope would lose. The shapes are
+documented in `$help` instead. The one return that *was* changed is `pages.closePage` on an unknown
+id, which now throws with the open page ids — deliberate, agent-visible, and in whats-new.
+
+**The measurable result** is hint economics. A first unknown member of a kind still returns the
+complete member list (~2,500 bytes); a second returns the kind summary plus a `$help` pointer
+(~200 bytes). Report item 1.2 asked for that ratio, and the member list survived — which was
+US-1355's abort criterion, because the same report listed it among the behaviours worth preserving.
+Near-match suggestions are what made the dedupe safe rather than a trade.
+
+**The acceptance run passed** ([run log](../../qa/runs/2026-09-07-epic-091-malformed-input.md)) and
+left `qa/surfaces/malformed-input.md` behind — the one file in that suite whose surface is not a
+screen. Nothing on the report's preserve list regressed; the unsaved-changes interception was
+checked twice, because `closePage` gained argument validation. The Haiku agent volunteered the
+epic's own thesis back: *"the tool validates arguments and suggests alternatives before execution"*
+— which across half this surface was untrue the day before.
+
+Live verification changed two shipped designs and `/review` caught a third. `pagez` ties between
+`pages` and `page`, so the reviewed plan's "a tie means no suggestion" rule sent the full dump for
+the most likely typo on the surface; the matcher now names every equally-good candidate. Trimming
+script stack traces dropped the caller's *own* frames too, because a script frame names an internal
+file in its eval origin while carrying the real position in `<anonymous>`. And `arrayOfChoicesRule`
+compared an array against the choices as a whole, so *every* `deleteRows` call with valid keys threw
+— caught at epic close, not by the per-task smoke tests, which had only exercised the error path.
+
+  - [x] US-1354: Guard `logView.push` against a non-array argument — plus the silent skip and the partial-batch write behind it
+  - [x] US-1355: Hint economics — `hints` honoured on errors, `forceMembers` dedupe, near-match suggestions, and a fourth leak in the parse-error branch
+  - [x] US-1356: Extract the argument validator and end the silent no-op class — thirteen sites, `closePage` brought to `showPage`'s standard
+  - [x] US-1357: `call` parameter bounds — `limit` clamp, schema minimums, `maxLength` for structured results
+  - [x] US-1358: Language validation at the argument boundary, returned-object identity in hints, grid row keys exposed
+  - [x] US-1359: Surface documentation and consistency — signature agreement, example quoting, return shapes in `$help`, stack-trace trimming
+  - [x] US-1360: Malformed-input acceptance run and the regression suite it leaves behind
+
 ## EPIC-090 - Consolidation: the call-only manifest, the two-model gate, and the deletion of thirty-two tools
 
 Completed 2026-09-06. [Epic document](EPIC-090.md). Epic 7 of 7 - the last - in the

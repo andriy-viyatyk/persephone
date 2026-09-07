@@ -10,6 +10,14 @@ const best = app.editors.resolve("data.json");
 console.log(best?.name); // "JSON Grid"
 ```
 
+## Properties
+
+### languages
+
+Read-only list of language IDs known to Monaco and the built-in language-aware editors. Use this
+inventory when supplying `language` to `app.pages.addEditorPage()` or assigning `page.language`.
+Unknown IDs are rejected instead of being silently stored or downgraded.
+
 ## Methods
 
 ### getAll() → `IEditorInfo[]`

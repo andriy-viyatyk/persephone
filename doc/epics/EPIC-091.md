@@ -2,10 +2,10 @@
 
 ## Status
 
-**Status:** Active
+**Status:** Completed
 **Created:** 2026-09-07
 **Started:** 2026-09-07
-**Completed:** —
+**Completed:** 2026-09-07
 **Source:** [EPIC-091-evaluation-report.md](EPIC-091-evaluation-report.md) — an independent agent
 with no project context evaluated Persephone 5.0.0's single-tool `call` surface.
 **Follows:** [agent-transparency-roadmap.md](../agent-transparency-roadmap.md), which is complete.
@@ -163,6 +163,11 @@ Converting the eight *already-good* sites (`addEditorPage`, `openUrl`, `highligh
 to the extracted helper is explicitly **out of scope**. They work, an outside agent praised them,
 and rewriting working error messages to share a base class is refactoring dressed as a fix. They
 are converted opportunistically only where a task is already editing the function.
+
+The review correction is part of this contract: `arrayOfChoicesRule` validates every element of an
+array after validating the array itself. Thus a valid call such as
+`grid.deleteRows(["0"])` reaches the editor, while an unknown element is rejected with the same
+live-choice guidance. The eight pre-existing validation sites remain intentionally unchanged.
 
 ### 3. Hints on the error path: gate and dedupe, but never at the cost of the member list
 

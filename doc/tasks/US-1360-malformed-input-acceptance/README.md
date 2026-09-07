@@ -1,6 +1,6 @@
 # US-1360 — Malformed-input acceptance run and regression suite
 
-**Status:** Implemented (unreviewed — epic close runs the completion skills) · **Epic:**
+**Status:** Completed 2026-09-07 (reviewed at epic close) · **Epic:**
 [EPIC-091 — `call` surface hardening](../../epics/EPIC-091.md)
 
 ## Goal

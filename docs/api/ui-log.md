@@ -670,8 +670,9 @@ rich output, and questions.
 
 ### Entry format
 
-The `entries` argument is an array. Each element is either a string (treated as `log.info`) or
-a flat object with `type` and type-specific fields directly on the object.
+The `entries` argument may be one string, one flat entry object, or an array of either. A string is
+treated as one `log.info` entry. Each object has `type` and type-specific fields directly on the
+object.
 
 **Log entry types:** `log.text`, `log.info`, `log.warn`, `log.error`, `log.success` use a
 `text` field.
@@ -698,6 +699,13 @@ const { dialogIds } = await app.call("pages.logView.push", {
     ]],
 });
 const answer = await app.call("pages.logView.dialogResult", { args: [dialogIds[0]] });
+```
+
+For a single message, the shorter scalar forms are also valid:
+
+```javascript
+await app.call("pages.logView.push", { args: ["Analysis complete"] });
+await app.call("pages.logView.push", { args: [{ type: "log.success", text: "Done" }] });
 ```
 
 See the [MCP Server Setup](../mcp-setup.md#available-tools) and the [scripting API](./app.md#callpath-options)
@@ -727,5 +735,4 @@ for (const item of data) {
 
 ui.success("Processing complete!");
 ```
-
 

@@ -38,6 +38,7 @@ ui.log("Hello");
     - `.setHighlightText(text)` — Highlight occurrences
   - **[.editor](./page.md#editor-facades)** when `.editor.id` is a grid ID — Grid data facade
     - `.rows` — All rows as objects
+    - `.rowKeys` — Row keys in the same order as `.rows`; use with `editCell` and `deleteRows`
     - `.columns` — Column definitions
     - `.rowCount` — Number of rows
     - `.editCell(columnKey, rowKey, value)` — Edit a cell
@@ -115,7 +116,7 @@ ui.log("Hello");
     - `.openFile(filePath)` — Open a file → `Promise<IPage | undefined>`
     - `.openFileWithDialog()` — Open file via native dialog
     - `.navigatePageTo(pageId, filePath, options?)` — Navigate page to different file
-    - `.closePage(pageId)` — Close a page by ID → `Promise<boolean>`
+    - `.closePage(pageId)` — Close a page by ID → `Promise<boolean>`; unknown IDs throw, while `false` means cancellation
     - `.addEmptyPage()` / `.addEditorPage(editor, language, title, content?)` / `.addDrawPage(dataUrl, title?)`
     - `.openLinks(links, title?)` — Create a standalone link collection page → `IPage`
     - `.openDiff(params)` — Diff view for two files
@@ -271,7 +272,7 @@ Script return values are written to the grouped (side-by-side) output page:
 | String | Written as-is |
 | Number/Boolean | Converted to string |
 | Object/Array | JSON formatted |
-| Error | Error message + stack trace |
+| Error | Error message + submitted-script stack frames (renderer-internal frames are filtered) |
 | `undefined` | "undefined" |
 
 See [Scripting Guide](../scripting.md) for full details on running scripts.

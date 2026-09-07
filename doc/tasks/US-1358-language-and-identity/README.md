@@ -1,6 +1,6 @@
 # US-1358 — Language validation, returned-object identity, and grid row keys
 
-**Status:** Implemented (unreviewed — epic close runs the completion skills)
+**Status:** Completed 2026-09-07 (reviewed at epic close)
 
 ## Goal
 

@@ -85,10 +85,10 @@ Use `settings.sections` to find the fixed-order Settings catalog (13 sections, 2
 app.pages.activePage              // Current active page (IPage)
 app.pages.all                     // All open pages (IPage[]) — e.g. all.find(p => p.title === "x")
 app.pages.findPage(pageId)        // Find page by ID
-await app.pages.closePage(pageId) // Close a page — true if closed, false if cancelled
+await app.pages.closePage(pageId) // Close a page — true if closed, false if cancelled; unknown IDs throw
 await app.pages.openFile(path)    // Open a file in a tab
 app.pages.addEmptyPage()          // Add empty text page
-app.pages.addEditorPage(editor, language, title)  // Add page with specific editor
+app.pages.addEditorPage(editor, language, title, content?) // Add page with optional initial content
 app.pages.showPage(pageId)        // Activate a tab
 app.pages.showNext()              // Next tab
 app.pages.showPrevious()          // Previous tab
@@ -253,6 +253,7 @@ text.getCursorPosition()    // { lineNumber, column }
 ```javascript
 const grid = page.editor;
 grid.rows                            // All rows as objects
+grid.rowKeys                         // Row keys in the same order as rows
 grid.columns                         // Column definitions [{ key, name }]
 grid.rowCount                        // Number of rows
 grid.editCell(columnKey, rowKey, value)
@@ -416,8 +417,7 @@ app.ui.notify(`Kept ${lines.length} lines`, "success");
 ### Create a page with content
 
 ```javascript
-const page = app.pages.addEditorPage("monaco", "json", "API Response");
-page.content = JSON.stringify({ users: [] }, null, 2);
+const page = app.pages.addEditorPage("monaco", "json", "API Response", JSON.stringify({ users: [] }, null, 2));
 ```
 
 ### Interactive script with dialog
@@ -437,8 +437,8 @@ if (name) {
 const grid = page.editor;
 grid.addColumns(1);  // Add a column
 const newCol = grid.columns[grid.columns.length - 1];
-grid.rows.forEach(row => {
-    grid.editCell(newCol.key, row.__rowKey, "calculated");
+grid.rowKeys.forEach(rowKey => {
+    grid.editCell(newCol.key, rowKey, "calculated");
 });
 ```
 
@@ -463,8 +463,8 @@ renderer `script.execute` 30-second request timeout described in `script.$help`.
 What failures actually look like in the `script.execute` result (verified against the app):
 
 - **A thrown exception** (or syntax error) returns `isError: true` with the error message and
-  the **full stack trace** in `text`, plus whatever `consoleLogs` were captured before the
-  throw. There is no partial return value — but side effects the script performed before
+  submitted-script stack frames in `text`; renderer-internal frames are filtered out. Any
+  `consoleLogs` captured before the throw are preserved. There is no partial return value — but side effects the script performed before
   throwing (files written, pages created) **have already happened**.
 - **Reserved globals.** `page` and `app` are injected into the script scope — declaring
   `const page = …` fails with `Identifier 'page' has already been declared`. Pick another name.

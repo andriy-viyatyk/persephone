@@ -6,6 +6,10 @@ syntax-highlighting mode** (`javascript`, `json`, `python`, …), never a UI loc
 language. Editors that are not text editors (grids, notebooks, browser, boards, app pages) have
 none, and `call` at `pages` reports theirs as empty or absent.
 
+Language arguments are validated against the IDs in `editors.languages`. An unknown ID is an
+error; a known language that a requested editor does not support may still use that editor's
+normal Monaco fallback.
+
 ## Reading Page Content
 
 `pages[i].content` and the page's editor facade adapt to the page type:
@@ -178,7 +182,8 @@ required `language` and title suffix):
 ### Creating Pages with Specialized Editors
 
 For the live creation language and title-suffix constraints, inspect `pages.$help`; the table below
-is the complete editor reference.
+is the complete editor reference. `pages.addEditorPage(editor, language, title, content?)` accepts
+optional initial content as its fourth positional argument.
 
 | Editor | Required `language` | Title suffix | Example |
 |--------|-------------------|------------------------|---------|

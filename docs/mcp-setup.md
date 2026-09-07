@@ -54,7 +54,7 @@ The manifest advertises exactly one tool:
 
 | Tool | Description |
 |------|-------------|
-| **call** | Read or act on the live object model with a path. Start with no path for the overview; use `args` for method arguments, `value` for assignments, and `maxLength` to bound long strings. |
+| **call** | Read or act on the live object model with a path. Start with no path for the overview; use `args` for method arguments, `value` for assignments, and `maxLength` to bound long strings or structured results. |
 
 Everything Persephone can do is a path under `call` — pages, editors, windows, boards, settings,
 browser automation, Agent Tools, and scripting. The thirteen guide resources are separate from the

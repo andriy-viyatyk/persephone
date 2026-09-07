@@ -89,8 +89,9 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Script execution (core)  | `/src/renderer/scripting/ScriptRunnerBase.ts`     |
 | Script execution         | `/src/renderer/scripting/ScriptRunner.ts`         |
 | Shared AiVision contracts, registry, path parser/resolver, hints, help search, and result shaping | `/src/shared/ai-vision/` |
+| Shared AiVision argument validation and member suggestions | `/src/shared/ai-vision/argument-validation.ts`, `/src/shared/ai-vision/member-suggestion.ts` |
 | Renderer AiVision root and namespace descriptors (the renderer side of path calls) | `/src/renderer/scripting/ai-vision/` |
-| AiVision descriptor extensions (descriptor-owned `provide` for computed members and curated UI-element declarations) | `/src/shared/ai-vision/types.ts`, `/src/shared/ai-vision/resolver.ts`, `/src/shared/ai-vision/help-search.ts` |
+| AiVision descriptor extensions (descriptor-owned `provide` for computed members, returned-node identity, and curated UI-element declarations) | `/src/shared/ai-vision/types.ts`, `/src/shared/ai-vision/resolver.ts`, `/src/shared/ai-vision/help-search.ts` |
 | Renderer dialog AiVision adapters (safe fields, button actions, cancellation, password privacy) | `/src/renderer/scripting/ai-vision/dialogs/` |
 | Renderer popup-menu AiVision adapter (`menus[0]`, nested item paths, click/close) | `/src/renderer/scripting/ai-vision/menus/` |
 | Menu Bar AiVision descriptor (live folders/selection, strict ID-based open, and curated Menu Bar elements) | `/src/renderer/scripting/ai-vision/namespaces/menu-bar.ts` |
