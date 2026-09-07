@@ -1,3 +1,4 @@
+about-editor.d.ts
 ai.d.ts
 app.d.ts
 archive-editor.d.ts

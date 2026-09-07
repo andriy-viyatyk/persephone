@@ -35,6 +35,7 @@ import { HtmlEditorFacade } from "./HtmlEditorFacade";
 import { ImageEditorFacade } from "./ImageEditorFacade";
 import { LinkEditorFacade } from "./LinkEditorFacade";
 import { MarkdownEditorFacade } from "./MarkdownEditorFacade";
+import { AboutEditorFacade } from "./AboutEditorFacade";
 import { McpInspectorFacade } from "./McpInspectorFacade";
 import { MermaidEditorFacade } from "./MermaidEditorFacade";
 import { NotebookEditorFacade } from "./NotebookEditorFacade";
@@ -64,11 +65,12 @@ import type { ToolsetEditorModel } from "../../editors/toolset/ToolsetEditorMode
 import type { ToolsHubEditor } from "../../editors/tools-hub/ToolsHubEditor";
 import type { MnemeConfigEditorModel } from "../../editors/mneme-config/MnemeConfigEditorModel";
 import type { MnemeRootEditorModel } from "../../editors/mneme-root/MnemeRootEditorModel";
+import type { AboutEditor } from "../../editors/about/AboutEditor";
 
 type EditorOrHost = EditorModel | TextFileModel;
 type EditorFacade =
     | TextEditorFacade | GridEditorFacade | NotebookEditorFacade | LinkEditorFacade
-    | MarkdownEditorFacade | SvgEditorFacade | HtmlEditorFacade | MermaidEditorFacade
+    | MarkdownEditorFacade | AboutEditorFacade | SvgEditorFacade | HtmlEditorFacade | MermaidEditorFacade
     | GraphEditorFacade | DrawEditorFacade | BrowserEditorFacade | McpInspectorFacade
     | ImageEditorFacade | VideoEditorFacade | FileDiffEditorFacade | RestClientEditorFacade
     | EnvVarsEditorFacade | ArchiveEditorFacade
@@ -94,6 +96,7 @@ const FACADE_FOR_EDITOR: Record<string, EditorFacadeFactory> = {
     "archive-view": (editor, id, name) => new ArchiveEditorFacade(editor as ArchiveEditor, id as "archive-view", name),
     "link-view": (editor, id, name) => new LinkEditorFacade(editor as LinkEditor, id, name),
     "md-view": (editor, id, name) => new MarkdownEditorFacade(editor as MarkdownEditor, id, name),
+    "about-view": (editor, id, name) => new AboutEditorFacade(editor as AboutEditor, id as "about-view", name),
     "svg-view": (editor, id, name) => new SvgEditorFacade(editor as SvgEditor, id, name),
     "html-view": (editor, id, name) => new HtmlEditorFacade(editor as HtmlEditor, id, name),
     "mermaid-view": (editor, id, name) => new MermaidEditorFacade(editor as MermaidEditor, id, name),

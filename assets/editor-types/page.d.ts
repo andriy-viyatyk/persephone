@@ -8,6 +8,7 @@ import type { IArchiveEditor } from "./archive-editor";
 import type { ILinkEditor } from "./link-editor";
 import type { IBrowserEditor } from "./browser-editor";
 import type { IMarkdownEditor } from "./markdown-editor";
+import type { IAboutEditor } from "./about-editor";
 import type { ISvgEditor } from "./svg-editor";
 import type { IHtmlEditor } from "./html-editor";
 import type { IMermaidEditor } from "./mermaid-editor";
@@ -39,7 +40,7 @@ export type IFacadeEditorId =
     | "mermaid-view" | "graph-view" | "draw-view" | "browser-view" | "mcp-view" | "image-view" | "video-view" | "file-diff" | "log-view"
     | "category-view" | "git-tree"
     | "board-view" | `board-editor:${string}` | "board-info" | "toolset-view" | "tools-hub-view"
-    | "mneme-config" | "mneme-root";
+    | "mneme-config" | "mneme-root" | "about-view";
 
 /** Built-in editors without an operation facade, plus runtime custom board ids. */
 export type IGenericEditorId = Exclude<EditorView, IFacadeEditorId>
@@ -51,7 +52,7 @@ export type IEditorFacade =
     | IDrawEditor | IMcpInspectorEditor | IImageEditor | IVideoEditor | IFileDiffEditor | ILogViewEditor
     | IFolderViewEditor | IGitTreeEditor | IGenericEditor
     | IBoardEditor | IBoardInfoEditor | IToolsetEditor | IToolsHubEditor
-    | IMnemeConfigEditor | IMnemeRootEditor;
+    | IMnemeConfigEditor | IMnemeRootEditor | IAboutEditor;
 
 /**
  * IPage — represents a page (tab) in the current window.

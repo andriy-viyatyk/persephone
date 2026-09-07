@@ -311,12 +311,14 @@ export class AboutEditorView extends VanillaView<AboutEditorProps> {
             });
             const actions = createPanelElement({ justify: "center", wrap: true, gap: "lg" });
             const download = this.child(new ButtonView({
+                name: "about-update-download",
                 variant: "link",
                 size: "sm",
                 onClick: () => { void shell.openExternal(releaseUrl); },
                 children: "Download",
             }));
             const whatsNew = this.child(new ButtonView({
+                name: "about-update-whats-new",
                 variant: "link",
                 size: "sm",
                 onClick: () => {
