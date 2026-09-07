@@ -33,6 +33,7 @@ const GRID_ELEMENTS = [
         purpose: "Open the row filter for one grid column.",
         where: "filter button at the right edge of each column header; appears when the header is hovered, the column is filtered, or its filter popup is open",
         selector: '.avg-filter-button.avg-column-filtered, .avg-filter-button.avg-filter-open, .avg-header-cell:hover .avg-filter-button',
+        reveal: { selector: ".avg-filter-button", display: "inline-flex" },
     },
     {
         name: "grid-columns",
@@ -100,6 +101,7 @@ const GRID_EDITOR_MEMBERS: readonly IAiMember[] = [
 const GRID_EDITOR_HELP = `Access via pages[i].editor after narrowing editor.id to "grid-json", "grid-csv", or "grid-jsonl"; all three IDs share this GridEditor surface.
 Use rows/columns and the read-only state properties for safe reads. The curated elements are grid-search (enter search text), grid-search-clear (clear search), grid-columns (open Edit Columns), grid-csv-options (open CSV Options), columns-options-apply (apply column edits), columns-options-cancel (discard column edits), csv-options-header (toggle the CSV header row), csv-options-delimiter (choose a delimiter), and csv-options-other (enter a custom delimiter).
 The CSV controls are declared for every grid but report visible: false for JSON and JSONL; the search-clear control appears only with active search text, and popup controls are visible only while their owning popup is open. Popup elements are page-scoped even though the popups are portaled outside the page.
+The grid-column-filter declaration can temporarily reveal its hover-gated button for highlighting; highlighting does not click, focus, open a popup, or change filter state.
 Selection reports a cell range, not row-checkbox selection. Detached grids report undefined for host-backed optional state; attached zero-row grids report their real search, filters, and visible row count, including "", [], and 0. Array and object getter results are copies. Sort exposes one column only; sort/filter writes, focus actions, clipboard actions, and column-schema edits are not part of this facade.
 Use rowKeys as the parallel read path for rows: rows remain the JSON data payload, and rowKeys[i] addresses rows[i]. Normal registered rows use index-string keys such as "0" and "1"; an unregistered object defensively receives an r<N> key. Pass these keys to editCell and deleteRows. Use editCell/addRows/addColumns and the delete operations for grid-data changes. setCsvDelimiter and setCsvWithColumns change CSV output and are cautioned writes; CSV-only actions are unavailable for JSON and JSONL.`;
 

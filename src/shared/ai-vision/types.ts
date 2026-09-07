@@ -37,6 +37,13 @@ export interface IAiElementDeclaration {
     readonly purpose: string;
     readonly where?: string;
     readonly selector?: string;
+    readonly reveal?: IAiElementReveal;
+}
+
+/** Renderer-only styling request for a curated element whose normal selector is hover-gated. */
+export interface IAiElementReveal {
+    readonly selector: string;
+    readonly display: string;
 }
 
 export interface IAiElement {

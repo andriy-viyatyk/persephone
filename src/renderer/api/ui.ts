@@ -12,10 +12,16 @@ import type {
 } from "./types/ui";
 import { alertsBarModel } from "../uikit";
 
+/** Internal renderer request for a declaration-scoped temporary reveal. */
+export interface IHighlightRevealRequest {
+    readonly selector: string;
+    readonly display: string;
+}
+
 /** Surface installed on `window` by `assets/ui-highlight.js`. */
 interface IHighlightApi {
     version: number;
-    show(options: IHighlightOptions & { selector: string }): IHighlightResult;
+    show(options: IHighlightOptions & { selector: string; reveal?: IHighlightRevealRequest }): IHighlightResult;
     clear(id?: string): number;
 }
 
@@ -122,9 +128,19 @@ class UserInterface implements IUserInterface {
         selector: string,
         text?: string,
         options?: IHighlightOptions,
+        reveal?: IHighlightRevealRequest,
     ): Promise<IHighlightResult> {
         const api = await this.loadHighlight();
-        return api.show({ ...options, selector, text: text ?? options?.text });
+        const highlightOptions = { ...options } as IHighlightOptions;
+        // `reveal` is declaration-owned; do not let an undeclared runtime property on a script's
+        // options object turn the public highlight method into a general-purpose style override.
+        delete (highlightOptions as IHighlightOptions & { reveal?: unknown }).reveal;
+        return api.show({
+            ...highlightOptions,
+            selector,
+            text: text ?? options?.text,
+            ...(reveal ? { reveal } : {}),
+        });
     }
 
     async clearHighlights(id?: string): Promise<number> {

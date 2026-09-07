@@ -185,6 +185,7 @@ export class NoteItemView extends VanillaView<NoteItemViewProps> {
         this.tagsContainer.style.minWidth = "0";
         this.tagsContainer.style.overflow = "hidden";
         this.tagsContainer.style.flexShrink = "1";
+        this.tagsContainer.dataset.name = "note-tags";
         const spacer = document.createElement("div");
         spacer.style.flex = "1";
         this.firstToolbar.append(this.categoryHost, this.tagsContainer, spacer, this.dateText);

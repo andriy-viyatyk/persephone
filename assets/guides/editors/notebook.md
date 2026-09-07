@@ -23,7 +23,7 @@ tags, comments, and full-text search organize the collection.
 | [Page nav] [Breadcrumb]                [Search] [Add Note] [Switch] |  Notebook toolbar: breadcrumb at left, actions and switch at right
 +---------------------------------------------------------------------+
 | [Categories]  | [Note card: title  tags…       [Expand] [Delete]]   |  sidebar panels on the left; note cards fill the body to their
-| [Tags]        | [Note card: title  tags…       [Expand] [Delete]]   |  right, each card's tag chips on its title row after the title
+| [Tags]        | [Note card: title  tags…       [Expand] [Delete]]   |  right, each card's tag area on its title row after the title
 +---------------------------------------------------------------------+
 ```
 
@@ -40,6 +40,7 @@ sidebar *filters* the collection by tag — it does not assign tags to a note.
 - Expanded note collapse → `notebook-expanded-collapse`
 - Delete → `note-delete`
 - Expand → `note-expand`
+- Tag area → `note-tags`
 - Language → `note-language`
 - Note editor switch → `note-editor-switch`
 - Run script → `note-run-script`
@@ -84,7 +85,8 @@ sidebar *filters* the collection by tag — it does not assign tags to a note.
 ### Drawn controls without `elements`
 
 - Page navigation and Editor switch — no entry: shared shell controls are owned by the common chrome.
-- Note text, embedded editor internals, and category/tag panel nodes — no entry: repeated or panel-owned content.
+- Note text and embedded editor internals → no entry: repeated editor content
+- Categories/Tags sidebar panel nodes → no entry: panel-owned content
 
 ## Notes
 
@@ -115,8 +117,9 @@ Use `pages.addEditorPage("notebook-view", "json", title, content)` for a noteboo
 narrowing `page.editor.id`, the `NotebookEditor` facade exposes note snapshots and note operations.
 Verified page elements include `notebook-breadcrumb`, `notebook-search`, `notebook-search-clear`,
 `notebook-add-note`, `notebook-expanded-collapse`, `note-delete`, `note-expand`, `note-language`,
-`note-editor-switch`, `note-run-script`, and `note-run-all-script`. The detailed format is in
-[Notebook format](../formats/notebook.md).
+`note-tags`, `note-editor-switch`, `note-run-script`, and `note-run-all-script`. The repeated
+`note-tags` target is the stable tag area; individual chips are not addressed. The detailed format
+is in [Notebook format](../formats/notebook.md).
 
 ## Errors and limits
 

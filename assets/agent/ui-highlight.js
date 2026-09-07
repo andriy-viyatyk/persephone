@@ -142,6 +142,47 @@
         return r.width > 0 || r.height > 0;
     }
 
+    function restoreInlineDisplay(record) {
+        if (record.restored) return;
+        if (record.value) {
+            record.element.style.setProperty("display", record.value, record.priority);
+        } else {
+            record.element.style.removeProperty("display");
+        }
+        record.restored = true;
+    }
+
+    /** Reveal only mounted candidates that actually render, restoring every non-rendering
+     * candidate immediately so an absent or virtualized control is never a false positive. */
+    function findRevealCandidates(reveal) {
+        var candidates;
+        try {
+            candidates = document.querySelectorAll(reveal.selector);
+        } catch (e) {
+            return { matches: [], styles: [], error: "invalid CSS selector: " + e.message };
+        }
+
+        var matches = [];
+        var styles = [];
+        for (var i = 0; i < candidates.length; i++) {
+            var candidate = candidates[i];
+            var record = {
+                element: candidate,
+                value: candidate.style.getPropertyValue("display"),
+                priority: candidate.style.getPropertyPriority("display"),
+                restored: false,
+            };
+            candidate.style.setProperty("display", reveal.display);
+            if (isVisible(candidate)) {
+                matches.push(candidate);
+                styles.push(record);
+            } else {
+                restoreInlineDisplay(record);
+            }
+        }
+        return { matches: matches, styles: styles };
+    }
+
     /** Position one item's ring(s) and card against their live target rects. Returns false when
      *  the item's primary target is gone, so the caller can drop it. */
     function place(item) {
@@ -233,6 +274,9 @@
 
     function removeAt(index) {
         var item = items[index];
+        for (var i = 0; i < item.revealStyles.length; i++) {
+            restoreInlineDisplay(item.revealStyles[i]);
+        }
         for (var i = 0; i < item.rings.length; i++) {
             if (item.rings[i].parentNode) item.rings[i].parentNode.removeChild(item.rings[i]);
         }
@@ -262,6 +306,9 @@
                 error: "selector must be a non-empty CSS selector string" };
         }
 
+        // Replace rather than stack when the caller reuses an id.
+        clear(id);
+
         var matches;
         try {
             matches = document.querySelectorAll(selector);
@@ -270,8 +317,15 @@
                 error: "invalid CSS selector: " + e.message };
         }
 
-        // Replace rather than stack when the caller reuses an id.
-        clear(id);
+        var revealStyles = [];
+        if (!matches.length && opts.reveal) {
+            var revealed = findRevealCandidates(opts.reveal);
+            if (revealed.error) {
+                return { id: id, found: false, count: 0, selector: selector, error: revealed.error };
+            }
+            matches = revealed.matches;
+            revealStyles = revealed.styles;
+        }
 
         if (!matches.length) {
             return { id: id, found: false, count: 0, selector: selector };
@@ -282,7 +336,7 @@
         for (var i = 0; i < limit; i++) targets.push(matches[i]);
 
         var container = ensureHost();
-        var item = { id: id, targets: targets, rings: [], card: null };
+        var item = { id: id, targets: targets, rings: [], card: null, revealStyles: revealStyles };
 
         for (var j = 0; j < targets.length; j++) {
             var ring = makeRing();

@@ -15,6 +15,7 @@ const NOTEBOOK_ELEMENTS: readonly IAiElementDeclaration[] = [
     { name: "notebook-expanded-collapse", purpose: "Collapse the expanded note overlay; this conditional control is visible only when a valid expanded note has a mounted host overlay.", where: "top-right of the expanded note overlay, when a note is expanded" },
     { name: "note-delete", purpose: "Delete the owning note; this control occurs once per mounted note, and visible means at least one instance is mounted.", where: "top-right of each note card" },
     { name: "note-expand", purpose: "Expand the owning note; this control occurs once per mounted note, and visible means at least one instance is mounted.", where: "top-right of each note card, beside Delete" },
+    { name: "note-tags", purpose: "Add or edit a tag on the owning note; this control occurs once per mounted note, and visible means at least one instance is mounted.", where: "each card's tag area on its title row after the title" },
     { name: "note-language", purpose: "Open the language chooser for the owning note; this control occurs once per mounted note, and visible means at least one instance is mounted.", where: "top-left of each note editor" },
     { name: "note-editor-switch", purpose: "Select an embedded editor for the owning note; this conditional control occurs once per eligible mounted note, and visible means at least one instance has switch options.", where: "top-left of each note editor, after Language" },
     { name: "note-run-script", purpose: "Run the owning script note or its selection; this conditional control occurs once per eligible mounted note, and visible means at least one script instance is mounted.", where: "top-left of each script note editor" },
@@ -60,11 +61,12 @@ const NOTEBOOK_EDITOR_MEMBERS: readonly IAiMember[] = [
 const NOTEBOOK_EDITOR_HELP = `Access via pages[i].editor after narrowing editor.id to "notebook-view".
 Notebook notes, categories, tags, filters, expansion, comments, and embedded note-editor metadata.
 The curated elements are notebook-breadcrumb, notebook-search, notebook-search-clear,
-notebook-add-note, notebook-expanded-collapse, note-delete, note-expand, note-language,
+notebook-add-note, notebook-expanded-collapse, note-delete, note-expand, note-tags, note-language,
 note-editor-switch, note-run-script, and note-run-all-script. Search-clear and expanded-collapse
-are conditional controls. The six note controls repeat once per mounted note instance; their
+are conditional controls. The repeated note-card controls occur once per mounted note instance; their
 visible value means at least one matching instance is mounted, highlight rings all matches, and
-its result count reports the number of rings. The editor-switch and both script controls are also
+its result count reports the number of rings. Note-tags names the stable tag area rather than an
+individual chip; chips are rebuilt during note updates and remain unaddressed. The editor-switch and both script controls are also
 conditional: they are visible only when a mounted note supplies the relevant options, script
 language, or live selection. They do not identify a particular note.
 

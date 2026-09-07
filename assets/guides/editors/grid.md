@@ -107,7 +107,8 @@ ids, the `GridEditor` facade exposes the grid state and row/cell operations. The
 elements include `grid-search`, `grid-search-clear`, `grid-column-filter`, `grid-columns`,
 `grid-csv-options`, `columns-options-apply`, `columns-options-cancel`, `csv-options-header`,
 `csv-options-delimiter`, and `csv-options-other`; transient cell controls are not currently facade
-elements.
+elements. `grid-column-filter` can temporarily reveal its hover-gated button for highlighting
+without clicking, focusing, opening the filter popup, or changing filter state.
 
 ## Errors and limits
 

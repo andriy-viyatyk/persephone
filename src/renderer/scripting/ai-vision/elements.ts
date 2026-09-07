@@ -1,4 +1,5 @@
 import type { IHighlightOptions, IHighlightResult } from "../../api/types/ui";
+import type { IHighlightRevealRequest } from "../../api/ui";
 import type { IAiElement, IAiElementDeclaration, IAiMember } from "../../../shared/ai-vision/types";
 
 interface IProvidedValue {
@@ -9,6 +10,7 @@ type HighlightElement = (
     selector: string,
     message?: string,
     options?: IHighlightOptions,
+    reveal?: IHighlightRevealRequest,
 ) => Promise<IHighlightResult>;
 
 export interface CreateElementsOptions {
@@ -61,17 +63,36 @@ function splitSelectorList(selector: string): string[] {
     return selectors.filter(Boolean);
 }
 
+function scopeSelector(
+    selector: string,
+    declarationName: string,
+    options: CreateElementsOptions,
+): string {
+    if (!options.scopeSelector) return selector;
+    const root = options.scopeRootNames?.includes(declarationName) ?? false;
+    const separator = root ? "" : " ";
+    return splitSelectorList(selector)
+        .map((branch) => `${options.scopeSelector}${separator}${branch}`)
+        .join(", ");
+}
+
 function resolvedSelector(
     declaration: IAiElementDeclaration,
     options: CreateElementsOptions,
 ): string {
     const selector = declaration.selector ?? `[data-name="${declaration.name}"]`;
-    if (!options.scopeSelector) return selector;
-    const root = options.scopeRootNames?.includes(declaration.name) ?? false;
-    const separator = root ? "" : " ";
-    return splitSelectorList(selector)
-        .map((branch) => `${options.scopeSelector}${separator}${branch}`)
-        .join(", ");
+    return scopeSelector(selector, declaration.name, options);
+}
+
+function resolvedReveal(
+    declaration: IAiElementDeclaration,
+    options: CreateElementsOptions,
+): IHighlightRevealRequest | undefined {
+    if (!declaration.reveal) return undefined;
+    return {
+        selector: scopeSelector(declaration.reveal.selector, declaration.name, options),
+        display: declaration.reveal.display,
+    };
 }
 
 function validateDeclarations(declarations: readonly IAiElementDeclaration[]): void {
@@ -140,8 +161,9 @@ export function createElements(
                         throw new Error(`Unknown ${itemLabel} ${JSON.stringify(elementName)}. ${validNamesLabel}: ${validNames}.`);
                     }
                     const selector = resolvedSelector(declaration, options);
+                    const reveal = resolvedReveal(declaration, options);
                     return Promise.resolve(options.beforeHighlight?.(selector))
-                        .then(() => highlightElement(selector, message, options.highlightOptions));
+                        .then(() => highlightElement(selector, message, options.highlightOptions, reveal));
                 },
             };
         }
