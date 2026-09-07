@@ -267,6 +267,7 @@ export class PagesLifecycleModel {
                 `addEditorPage() expects positional arguments: (editor, language, title, content?). Got ${typeof editor} for editor. Example: addEditorPage("monaco", "plaintext", "My Page", "content")`,
             );
         }
+        editorRegistry.assertKnownLanguage(language);
         const editorDef = editorRegistry.getById(editor);
         if (!editorDef && editor !== "monaco") {
             throw new Error(

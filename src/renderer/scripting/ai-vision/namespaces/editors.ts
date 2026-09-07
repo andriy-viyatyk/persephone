@@ -2,6 +2,7 @@ import type { IEditorRegistry } from "../../../api/types/editors";
 import type { IAiMember, IAiVisionDescriptor } from "../../../../shared/ai-vision/types";
 
 const EDITOR_REGISTRY_MEMBERS: readonly IAiMember[] = [
+    { name: "languages", kind: "property", summary: "All language IDs accepted by Monaco and the built-in language-aware editors." },
     { name: "getAll", kind: "method", signature: "getAll()", summary: "Return all registered editors." },
     { name: "getById", kind: "method", signature: "getById(id: EditorView)", summary: "Find editor information by id." },
     { name: "resolve", kind: "method", signature: "resolve(filePath: string)", summary: "Resolve the best editor for a file path." },
@@ -15,7 +16,7 @@ export function describeEditorRegistry(instance: unknown): IAiVisionDescriptor {
         kind: "EditorRegistry",
         summary: "The registry of available editors and their file-language matches.",
         members: EDITOR_REGISTRY_MEMBERS,
-        help: "Use getAll, getById, resolve, and getSwitchOptions to inspect editor capabilities without opening or changing a page.",
+        help: "Use languages to inspect valid language IDs, then use getAll, getById, resolve, and getSwitchOptions to inspect editor capabilities without opening or changing a page.",
         summarize: () => ({ kind: "EditorRegistry", editorCount: editors.getAll().length }),
     };
 }

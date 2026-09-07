@@ -65,6 +65,8 @@ export interface IAiVisionDescriptor {
     readonly overview?: string;
     /** Long-form guidance returned for `<path>.$help`. */
     readonly help?: string | (() => string);
+    /** Canonical renderer-relative path for a returned node, when it is addressable. */
+    readonly identity?: () => string | undefined;
     /** Dynamic children that exist right now. Must be cheap and side-effect free. */
     children?(): readonly IAiChild[];
     /**

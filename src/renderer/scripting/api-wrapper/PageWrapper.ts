@@ -190,6 +190,7 @@ export class PageWrapper implements IAiVisible {
     get language(): string { return this.model.state.get().language ?? ""; }
 
     set language(value: string) {
+        editorRegistry.assertKnownLanguage(value);
         if (!this.model.noLanguage) this.model.changeLanguage(value);
     }
 
@@ -228,6 +229,7 @@ export class PageWrapper implements IAiVisible {
             summary: "One open page (tab): its text, language, editor facade, editor switches, live sidebar panels, and grouped page.",
             members: PAGE_MEMBERS,
             help: PAGE_HELP,
+            identity: () => `pages[${JSON.stringify(this.id)}]`,
             children: () => this.aiChildren(),
             restricted: () => this.aiRestricted(),
             summarize: () => this.aiSummary(),

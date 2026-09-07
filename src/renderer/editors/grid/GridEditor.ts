@@ -236,6 +236,11 @@ export class GridEditor extends TextHostEditorModel<GridEditorState, void, GridQ
         return [...this.liveRows()];
     }
 
+    /** Row keys in the same live order as getRows(), for pairing data with mutations. */
+    getRowKeys(): string[] {
+        return this.liveRows().map((row) => getRowKey(row));
+    }
+
     /**
      * The rows as the view passes them back to the grid on every render.
      *

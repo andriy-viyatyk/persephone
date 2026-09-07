@@ -2,6 +2,7 @@ import type { EditorModel } from "./EditorModel";
 import type { IContentHost } from "./IContentHost";
 import type { EditorConfig } from "./EditorConfig";
 import type { VanillaViewCtor } from "../../uikit/shared/vanilla-view";
+import { monacoLanguages } from "../../core/utils/monaco-languages";
 
 export interface AcceptanceInput {
     fileName?: string;
@@ -96,6 +97,21 @@ class EditorRegistry {
 
     getAll(): EditorDefinition[] {
         return Array.from(this.definitions.values());
+    }
+
+    /** The language IDs accepted by Monaco and the built-in language-aware editors. */
+    getLanguages(): readonly string[] {
+        return monacoLanguages.map((language) => language.id);
+    }
+
+    /** Validate a public language argument without changing editor-resolution fallback behavior. */
+    assertKnownLanguage(language: string | undefined): void {
+        if (language !== undefined && !monacoLanguages.some((item) => item.id === language)) {
+            throw new Error(
+                'Unknown language "' + language + '". Read ' +
+                `editors.languages for the valid ids.`,
+            );
+        }
     }
 
     /** Resolve the best editor id for opening a file. Mode controls preference

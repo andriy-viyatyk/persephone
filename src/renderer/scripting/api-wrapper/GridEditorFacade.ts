@@ -15,7 +15,6 @@ import {
     validateCallArguments,
     valueRule,
 } from "../../../shared/ai-vision/argument-validation";
-import { getRowKey } from "../../editors/grid/utils/grid-utils";
 
 const GRID_ELEMENTS = [
     { name: "grid-search", purpose: "Enter search text for the grid rows." },
@@ -33,6 +32,7 @@ const GRID_EDITOR_MEMBERS: readonly IAiMember[] = [
     { name: "id", kind: "property", summary: "The concrete current editor id." },
     { name: "name", kind: "property", summary: "The editor's registry display name." },
     { name: "rows", kind: "property", summary: "All rows as plain objects." },
+    { name: "rowKeys", kind: "property", summary: "Row keys in the same order as rows; pass them to editCell and deleteRows." },
     { name: "columns", kind: "property", summary: "Column definitions (key and display name)." },
     { name: "rowCount", kind: "property", summary: "Number of rows." },
     { name: "searchText", kind: "property", summary: "Current search text, or undefined without an attached page." },
@@ -58,7 +58,7 @@ const GRID_EDITOR_HELP = `Access via pages[i].editor after narrowing editor.id t
 Use rows/columns and the read-only state properties for safe reads. The curated elements are grid-search (enter search text), grid-search-clear (clear search), grid-columns (open Edit Columns), grid-csv-options (open CSV Options), columns-options-apply (apply column edits), columns-options-cancel (discard column edits), csv-options-header (toggle the CSV header row), csv-options-delimiter (choose a delimiter), and csv-options-other (enter a custom delimiter).
 The CSV controls are declared for every grid but report visible: false for JSON and JSONL; the search-clear control appears only with active search text, and popup controls are visible only while their owning popup is open. Popup elements are page-scoped even though the popups are portaled outside the page.
 Selection reports a cell range, not row-checkbox selection. Detached grids report undefined for host-backed optional state; attached zero-row grids report their real search, filters, and visible row count, including "", [], and 0. Array and object getter results are copies. Sort exposes one column only; sort/filter writes, focus actions, clipboard actions, and column-schema edits are not part of this facade.
-Use editCell/addRows/addColumns and the delete operations for grid-data changes. setCsvDelimiter and setCsvWithColumns change CSV output and are cautioned writes; CSV-only actions are unavailable for JSON and JSONL.`;
+Use rowKeys as the parallel read path for rows: rows remain the JSON data payload, and rowKeys[i] addresses rows[i]. Normal registered rows use index-string keys such as "0" and "1"; an unregistered object defensively receives an r<N> key. Pass these keys to editCell and deleteRows. Use editCell/addRows/addColumns and the delete operations for grid-data changes. setCsvDelimiter and setCsvWithColumns change CSV output and are cautioned writes; CSV-only actions are unavailable for JSON and JSONL.`;
 
 const GRID_ADD_ROWS_ARGUMENTS = [
     numberRule("count", "grid.addRows(1)", { minimum: 1 }),
@@ -111,6 +111,10 @@ export class GridEditorFacade implements IAiVisible {
      */
     get rows(): unknown[] {
         return this.editor.getRows();
+    }
+
+    get rowKeys(): string[] {
+        return this.editor.getRowKeys();
     }
 
     get columns(): Array<{ readonly key: string; readonly name: string }> {
@@ -187,9 +191,8 @@ export class GridEditorFacade implements IAiVisible {
     }
 
     editCell(columnKey: unknown, rowKey: unknown, value: unknown): void {
-        const rows = this.editor.getRows();
         const validColumnKeys = this.columns.map(column => column.key);
-        const validRowKeys = rows.map(row => getRowKey(row));
+        const validRowKeys = this.editor.getRowKeys();
         validateCallArguments("grid.editCell", [columnKey, rowKey, value], [
             choiceRule("columnKey", validColumnKeys, 'grid.editCell("<column-key>", "<row-key>", value)', { expectedType: "string" }),
             choiceRule("rowKey", validRowKeys, 'grid.editCell("<column-key>", "<row-key>", value)', { expectedType: "string" }),
@@ -204,7 +207,7 @@ export class GridEditorFacade implements IAiVisible {
     }
 
     deleteRows(rowKeys: unknown): void {
-        const validKeys = this.editor.getRows().map(row => getRowKey(row));
+        const validKeys = this.editor.getRowKeys();
         const [keys] = validateCallArguments("grid.deleteRows", [rowKeys], [
             arrayOfChoicesRule("rowKeys", validKeys, 'grid.deleteRows(["<row-key>"])', { expectedType: "string" }),
         ]);

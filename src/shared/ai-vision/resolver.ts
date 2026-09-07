@@ -81,6 +81,7 @@ export async function resolveCall(root: unknown, request: ICallRequest, seenKind
     let current: unknown = root;
     const walked: PathSegment[] = [];
     let argumentWarning: string | undefined;
+    let walkedContainsCall = false;
 
     for (let i = 0; i < segments.length; i++) {
         const segment = segments[i];
@@ -96,29 +97,30 @@ export async function resolveCall(root: unknown, request: ICallRequest, seenKind
 
         const restricted = descriptor?.restricted?.();
         if (restricted) {
-            return { path, error: restricted, resolvedUpTo: formatPath(walked), hint: nodeHint(formatPath(walked), current, seenKinds, hintMode) };
+            return { path, error: restricted, resolvedUpTo: formatPath(walked), hint: nodeHint(formatPath(walked), current, seenKinds, hintMode, walkedContainsCall) };
         }
 
+        let invokedCall = false;
         try {
             if (segment.type === "index") {
                 const next = indexInto(current, descriptor, segment.key);
                 if (next === undefined) {
-                    return errorAt(path, walked, current, seenKinds, hintMode, `No item ${JSON.stringify(segment.key)} in "${formatPath(walked) || "(root)"}".`);
+                    return errorAt(path, walked, current, seenKinds, hintMode, `No item ${JSON.stringify(segment.key)} in "${formatPath(walked) || "(root)"}".`, {}, walkedContainsCall);
                 }
                 current = await next;
             } else {
                 const name = segment.name;
                 if (current === null || current === undefined || (typeof current !== "object" && typeof current !== "function")) {
-                    return errorAt(path, walked, current, seenKinds, hintMode, `"${formatPath(walked)}" is a primitive value; it has no member "${name}".`);
+                    return errorAt(path, walked, current, seenKinds, hintMode, `"${formatPath(walked)}" is a primitive value; it has no member "${name}".`, {}, walkedContainsCall);
                 }
                 const member = descriptor?.members.find(m => m.name === name);
                 if (descriptor && !member && !isLiveChildMember(descriptor, name)) {
-                    return errorAt(path, walked, current, seenKinds, hintMode, `"${name}" is not a member of ${descriptor.kind}.`, { forceMembers: true, unknownMember: name });
+                    return errorAt(path, walked, current, seenKinds, hintMode, `"${name}" is not a member of ${descriptor.kind}.`, { forceMembers: true, unknownMember: name }, walkedContainsCall);
                 }
 
                 if (isLast && hasValue && segment.type === "member") {
                     if (descriptor && !member?.writable) {
-                        return errorAt(path, walked, current, seenKinds, hintMode, `"${name}" is not writable on ${descriptor.kind}.`, { forceMembers: true });
+                        return errorAt(path, walked, current, seenKinds, hintMode, `"${name}" is not writable on ${descriptor.kind}.`, { forceMembers: true }, walkedContainsCall);
                     }
                     // MCP clients parse `value` as JSON, so an agent that means to write *text* that
                     // happens to be JSON cannot get a string through: whatever it sends arrives here
@@ -137,7 +139,7 @@ export async function resolveCall(root: unknown, request: ICallRequest, seenKind
                     } catch (error) {
                         const valueType = Array.isArray(request.value) ? "array" : typeof request.value;
                         return errorAt(path, walked, current, seenKinds, hintMode,
-                            `Assigning ${valueType} to "${name}" failed: ${errMessage(error)}. If the property holds text, pass "value" as a string (JSON.stringify structured data first).`);
+                            `Assigning ${valueType} to "${name}" failed: ${errMessage(error)}. If the property holds text, pass "value" as a string (JSON.stringify structured data first).`, {}, walkedContainsCall);
                     }
                     walked.push(segment);
                     return { path, result: { ok: true } };
@@ -151,13 +153,15 @@ export async function resolveCall(root: unknown, request: ICallRequest, seenKind
                 }
                 if (segment.type === "call") {
                     if (typeof value !== "function") {
-                        return errorAt(path, walked, current, seenKinds, hintMode, `"${name}" is a property, not a method — drop the "()".`, { forceMembers: true });
+                        return errorAt(path, walked, current, seenKinds, hintMode, `"${name}" is a property, not a method — drop the "()".`, { forceMembers: true }, walkedContainsCall);
                     }
                     const args = isLast && request.args ? request.args : segment.args;
                     value = (value as (...a: unknown[]) => unknown).apply(target, args);
+                    invokedCall = true;
                 } else if (typeof value === "function" && member?.kind === "method") {
                     if (isLast && request.args) {
                         value = (value as (...a: unknown[]) => unknown).apply(target, request.args);
+                        invokedCall = true;
                     } else {
                         // Naming a method without calling it: describe it rather than invoking it.
                         walked.push(segment);
@@ -170,8 +174,9 @@ export async function resolveCall(root: unknown, request: ICallRequest, seenKind
                 current = await value;
             }
         } catch (error) {
-            return errorAt(path, walked, current, seenKinds, hintMode, errMessage(error));
+            return errorAt(path, walked, current, seenKinds, hintMode, errMessage(error), {}, walkedContainsCall);
         }
+        walkedContainsCall ||= invokedCall;
         walked.push(segment);
     }
 
@@ -183,7 +188,7 @@ export async function resolveCall(root: unknown, request: ICallRequest, seenKind
     }
 
     const shaped = shapeResult(current, maxLength);
-    const hint = nodeHint(formatPath(walked), current, seenKinds, hintMode);
+    const hint = nodeHint(formatPath(walked), current, seenKinds, hintMode, walkedContainsCall);
     return {
         path,
         ...shaped,
@@ -207,13 +212,21 @@ function isLiveChildMember(descriptor: IAiVisionDescriptor, name: string): boole
     return children.some(child => child.segment === `.${name}` || child.segment.startsWith(`.${name}(`));
 }
 
-function nodeHint(path: string, node: unknown, seenKinds: SeenKinds, mode: HintMode): IHint | undefined {
+function nodeHint(
+    path: string,
+    node: unknown,
+    seenKinds: SeenKinds,
+    mode: HintMode,
+    walkedContainsCall = false,
+): IHint | undefined {
     if (mode === "never") return undefined;
     const descriptor = getAiVision(node);
     if (!descriptor) return undefined;
     const includeMembers = mode === "always" || !seenKinds.has(descriptor.kind);
     seenKinds.add(descriptor.kind);
-    return buildHint(path, descriptor, includeMembers);
+    const identity = descriptor.identity?.();
+    const hintPath = identity ?? (walkedContainsCall ? "" : path);
+    return buildHint(hintPath, descriptor, includeMembers, walkedContainsCall && !identity);
 }
 
 function errorAt(
@@ -224,6 +237,7 @@ function errorAt(
     mode: HintMode,
     message: string,
     options: ErrorAtOptions = {},
+    walkedContainsCall = false,
 ): ICallResult {
     const resolvedUpTo = formatPath(walked);
     const descriptor = getAiVision(node);
@@ -238,16 +252,24 @@ function errorAt(
     }
 
     const hint = options.forceMembers
-        ? errorNodeHint(resolvedUpTo, node, seenKinds, mode)
-        : nodeHint(resolvedUpTo, node, seenKinds, mode);
+        ? errorNodeHint(resolvedUpTo, node, seenKinds, mode, walkedContainsCall)
+        : nodeHint(resolvedUpTo, node, seenKinds, mode, walkedContainsCall);
     return { path, error, resolvedUpTo, ...(hint ? { hint } : {}) };
 }
 
-function errorNodeHint(path: string, node: unknown, seenKinds: SeenKinds, mode: HintMode): IHint | undefined {
+function errorNodeHint(
+    path: string,
+    node: unknown,
+    seenKinds: SeenKinds,
+    mode: HintMode,
+    walkedContainsCall = false,
+): IHint | undefined {
     if (mode === "never") return undefined;
     const descriptor = getAiVision(node);
     if (!descriptor) return undefined;
     const includeMembers = mode === "always" || !seenKinds.has(descriptor.kind);
     seenKinds.add(descriptor.kind);
-    return buildErrorHint(path, descriptor, includeMembers);
+    const identity = descriptor.identity?.();
+    const hintPath = identity ?? (walkedContainsCall ? "" : path);
+    return buildErrorHint(hintPath, descriptor, includeMembers, walkedContainsCall && !identity);
 }

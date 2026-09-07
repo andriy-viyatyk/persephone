@@ -21,6 +21,15 @@ export function formatChildren(path: string, children: readonly IAiChild[]): str
     return `children (live):\n${lines.join("\n")}`;
 }
 
+function formatRelativeChildren(children: readonly IAiChild[]): string {
+    if (children.length === 0) return "";
+    const lines = children.map(child => {
+        const line = `  ${child.segment} — ${child.kind}: ${child.summary}`;
+        return child.restricted ? `${line} [restricted: ${child.restricted}]` : line;
+    });
+    return `children (relative to this object):\n${lines.join("\n")}`;
+}
+
 export function formatMember(member: IAiMember): string {
     const name = member.kind === "method" ? (member.signature ?? `${member.name}()`) : member.name;
     const flags: string[] = [];
@@ -43,18 +52,23 @@ export function buildHint(
     path: string,
     descriptor: IAiVisionDescriptor,
     includeMembers: boolean,
+    relativeChildren = false,
 ): IHint {
     const parts: string[] = [`${descriptor.kind} — ${descriptor.summary}`];
     const restricted = descriptor.restricted?.();
     if (restricted) parts.push(`restricted: ${restricted}`);
     const children = descriptor.children?.() ?? [];
-    const childrenText = formatChildren(path, children);
+    const childrenText = relativeChildren
+        ? formatRelativeChildren(children)
+        : formatChildren(path, children);
     if (childrenText) parts.push(childrenText);
     if (path === "" && descriptor.overview) parts.push(descriptor.overview);
     if (includeMembers) {
         const membersText = formatMembers(descriptor.members);
         if (membersText) parts.push(membersText);
-        parts.push(`Details: call with path "${path ? `${path}.$help` : "$help"}".`);
+        if (!relativeChildren) {
+            parts.push(`Details: call with path "${path ? `${path}.$help` : "$help"}".`);
+        }
     }
     return { kind: descriptor.kind, text: parts.join("\n") };
 }
@@ -64,8 +78,19 @@ export function buildErrorHint(
     path: string,
     descriptor: IAiVisionDescriptor,
     includeMembers: boolean,
+    relativeChildren = false,
 ): IHint {
-    if (includeMembers) return buildHint(path, descriptor, true);
+    if (includeMembers) return buildHint(path, descriptor, true, relativeChildren);
+    if (relativeChildren) {
+        const childrenText = formatRelativeChildren(descriptor.children?.() ?? []);
+        return {
+            kind: descriptor.kind,
+            text: [
+                `${descriptor.kind} — ${descriptor.summary}`,
+                childrenText,
+            ].filter(Boolean).join("\n"),
+        };
+    }
     return {
         kind: descriptor.kind,
         text: `${descriptor.kind} — ${descriptor.summary}\nDetails: call with path "${path ? `${path}.$help` : "$help"}".`,

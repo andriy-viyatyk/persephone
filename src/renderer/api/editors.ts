@@ -11,6 +11,10 @@ function toEditorInfo(def: { id: string; name: string; hasContentHost: boolean }
 }
 
 class Editors implements IEditorRegistry {
+    get languages(): readonly string[] {
+        return editorRegistry.getLanguages();
+    }
+
     getAll(): IEditorInfo[] {
         return editorRegistry.getAll().map(toEditorInfo);
     }

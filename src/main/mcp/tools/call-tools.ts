@@ -78,7 +78,10 @@ function prefixHintPaths(text: string, relativeRoot: string, prefix: string): st
     return text.split("\n").map(line => {
         const trimmed = line.trimStart();
         if (trimmed.startsWith(relativeRoot)) return line.replace(relativeRoot, prefix + relativeRoot);
-        return line.replace(`path "${relativeRoot}`, `path "${prefix}${relativeRoot}`);
+        if (trimmed.startsWith("pages[")) return line.replace("pages[", prefix + "pages[");
+        return line
+            .replace(`path "${relativeRoot}`, `path "${prefix}${relativeRoot}`)
+            .replace('path "pages[', `path "${prefix}pages[`);
     }).join("\n");
 }
 
