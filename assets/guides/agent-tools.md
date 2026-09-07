@@ -13,6 +13,50 @@ The **Agent Tools registry** is Persephone's *executable memory* for AI agents. 
 
 It complements the [Mneme knowledge base](./mneme.md): Mneme is *knowledge* memory (searchable documents), the tools registry is *executable* memory (runnable tools).
 
+## Layout
+
+```
++---------------------------------------------------------------------+
+| [Toolset name] [status] [root] [description]               [Refresh]|  toolset identity at left, Refresh at the right of the header
++---------------------------------------------------------------------+
+| [Open Folder] [Open Log]                                            |  toolset action row below the identity
+| [manifest errors or tool cards]                                     |  scrollable toolset body
++---------------------------------------------------------------------+
+```
+
+### User-facing label → `elements` name
+
+- Refresh → `toolset-refresh`
+- Open Folder → `toolset-open-folder`
+- Open Log → `toolset-open-log`
+- Toolset identity and tool cards → no entry: stable root and actions are addressable; cards are repeated manifest content
+
+### When the manifest is valid and registered
+
+```
++---------------------------------------------------------------------+
+| [Toolset identity and status]                              [Refresh]|  valid registered toolset header
++---------------------------------------------------------------------+
+| [Open Folder] [Open Log]                                            |  toolset action row
+| [tool cards]                                                        |  valid toolset body
++---------------------------------------------------------------------+
+```
+
+### When the manifest is invalid or no execution log exists
+
+```
++---------------------------------------------------------------------+
+| [manifest errors]                                                   |  invalid-manifest body state
+| [no execution log]                                                  |  no-log body state
++---------------------------------------------------------------------+
+```
+
+### Drawn controls without `elements`
+
+- Individual manifest tool cards and error rows — no entry: repeated content; the toolset root and three stable actions are addressable.
+
+Evidence: `ToolsetEditorView.ts:57-130` and `ToolsetEditorFacade.ts:11-15`.
+
 ---
 
 ## Concepts

@@ -37,10 +37,10 @@ const PANEL_NODE_MEMBERS: readonly IAiMember[] = [
 ];
 
 const SIDEBAR_ELEMENTS: readonly IAiElementDeclaration[] = [
-    { name: "page-nav-panel", purpose: "The page toolbar control that opens the file Explorer sidebar." },
-    { name: "secondary-views-container", purpose: "The page's sidebar panel container; present while the sidebar is open." },
-    { name: "secondary-views-stack", purpose: "The collapsible stack of the page's sidebar panels." },
-    { name: "secondary-views-splitter", purpose: "Resizes the page's sidebar." },
+    { name: "page-nav-panel", purpose: "The page toolbar control that opens the file Explorer sidebar.", where: "far left of the page toolbar" },
+    { name: "secondary-views-container", purpose: "The page's sidebar panel container; present while the sidebar is open.", where: "left side of the page area, when the sidebar is open" },
+    { name: "secondary-views-stack", purpose: "The collapsible stack of the page's sidebar panels.", where: "inside the sidebar, below the panel headers" },
+    { name: "secondary-views-splitter", purpose: "Resizes the page's sidebar.", where: "right edge of the sidebar" },
 ];
 
 const ALIAS_TO_PANEL_ID: Readonly<Record<string, string>> = {
@@ -146,33 +146,33 @@ function panelKind(record: RenderedPanel): "explorer" | "search" | "boards" | "g
 }
 
 function panelElements(kind: ReturnType<typeof panelKind>): readonly IAiElementDeclaration[] {
-    const explorer = [
-        ["explorer-secondary-view", "The Explorer panel body."], ["explorer-header-actions", "The Explorer header action group."],
-        ["explorer-up", "Navigate the Explorer root upward."], ["explorer-search", "Open Search for the Explorer root."],
-        ["explorer-boards", "Open Boards for the Explorer root."], ["explorer-collapse-all", "Locate the view-owned collapse-all control; no facade action is attached."],
-        ["explorer-close", "Close the Explorer sidebar."], ["explorer-open-board", "Open a visible board manifest; this selector may repeat."],
-        ["explorer-open-toolset", "Open a visible toolset; this selector may repeat."], ["explorer-open-git", "Open a visible Git Tree entry; this selector may repeat."],
-        ["explorer-open-mneme", "Open a visible Mneme root; this selector may repeat."],
+    const explorer: readonly (readonly [string, string, string?, string?])[] = [
+        ["explorer-secondary-view", "The Explorer panel body.", undefined, "Explorer sidebar panel body"], ["explorer-header-actions", "The Explorer header action group.", undefined, "right side of the Explorer panel header"],
+        ["explorer-up", "Navigate the Explorer root upward.", undefined, "Explorer panel header actions, first"], ["explorer-search", "Open Search for the Explorer root.", undefined, "Explorer panel header actions, after Up"],
+        ["explorer-boards", "Open Boards for the Explorer root.", undefined, "Explorer panel header actions, after Search"], ["explorer-collapse-all", "Locate the view-owned collapse-all control; no facade action is attached.", undefined, "Explorer panel header actions, after Boards"],
+        ["explorer-close", "Close the Explorer sidebar.", undefined, "right edge of the Explorer panel header"], ["explorer-open-board", "Open a visible board manifest; this selector may repeat.", undefined, "on each matching board row in the Explorer body"],
+        ["explorer-open-toolset", "Open a visible toolset; this selector may repeat.", undefined, "on each matching toolset row in the Explorer body"], ["explorer-open-git", "Open a visible Git Tree entry; this selector may repeat.", undefined, "on each matching Git entry in the Explorer body"],
+        ["explorer-open-mneme", "Open a visible Mneme root; this selector may repeat.", undefined, "on each matching Mneme entry in the Explorer body"],
     ] as const;
-    const search = [["search-secondary-view", "The Search panel body."], ["search-secondary-close", "Close Search."]] as const;
-    const boards = [
-        ["boards-empty", "The Boards empty state."], ["boards-empty-actions", "The Boards empty-state action group."],
-        ["boards-create-empty", "Locate empty-state board creation; no facade creation action is attached."], ["boards-create-demo-empty", "Locate empty-state Demo board creation; no facade creation action is attached."],
-        ["boards-secondary-view", "The Boards panel body."], ["boards-tools-switch-bar", "The Boards/Tools switch bar."], ["boards-close", "Close Boards."],
-        ["boards-tools-switch", "Switch the model-owned Boards/Tools display."], ["boards-create", "Locate board creation; no facade creation action is attached."],
-        ["explorer-boards", "The data-driven Boards tree; inspect copied board state instead."], ["explorer-tools", "The data-driven Tools tree; inspect copied toolset state instead."],
+    const search: readonly (readonly [string, string, string?, string?])[] = [["search-secondary-view", "The Search panel body.", undefined, "Search sidebar panel body"], ["search-secondary-close", "Close Search.", undefined, "right edge of the Search panel header"]];
+    const boards: readonly (readonly [string, string, string?, string?])[] = [
+        ["boards-empty", "The Boards empty state.", undefined, "Boards panel body, when no boards are available"], ["boards-empty-actions", "The Boards empty-state action group.", undefined, "Boards empty state, below its message"],
+        ["boards-create-empty", "Locate empty-state board creation; no facade creation action is attached.", undefined, "Boards empty state, first action"], ["boards-create-demo-empty", "Locate empty-state Demo board creation; no facade creation action is attached.", undefined, "Boards empty state, after Create board"],
+        ["boards-secondary-view", "The Boards panel body.", undefined, "Boards sidebar panel body"], ["boards-tools-switch-bar", "The Boards/Tools switch bar.", undefined, "top of the Boards panel body"], ["boards-close", "Close Boards.", undefined, "right edge of the Boards panel header"],
+        ["boards-tools-switch", "Switch the model-owned Boards/Tools display.", undefined, "top of the Boards panel body, before its list"], ["boards-create", "Locate board creation; no facade creation action is attached.", undefined, "top of the Boards list, beside the Boards/Tools switch"],
+        ["explorer-boards", "The data-driven Boards tree; inspect copied board state instead.", undefined, "Boards panel body, on the repeated board list"], ["explorer-tools", "The data-driven Tools tree; inspect copied toolset state instead.", undefined, "Tools panel body, on the repeated toolset list"],
     ] as const;
-    const git = [
-        ["git-panel", "The merged Git panel body."], ["git-panel-toolbar", "The Git panel toolbar host."], ["git-panel-tabs", "Switch Git Changes/Branches/Tags."],
-        ["git-branches-sort-alpha", "Switch Git ref ordering."], ["git-panel-header-actions", "The Git panel header action host."], ["git-panel-refresh", "Refresh Git model projections."],
-        ["git-panel-close", "Close the Git panel/editor through its model lifecycle."], ["git-panel-repo-name", "The Git repository label."], ["git-changes", "The Changes view root."],
-        ["git-changes-unstaged", "The unstaged changes list."], ["git-changes-staged", "The staged changes list."], ["git-changes-toolbar", "The Changes toolbar."],
-        ["git-changes-file", "A repeated changed-file control; it does not identify a path or row.", '[data-name="git-changes-unstaged"], [data-name="git-changes-staged"]'], ["git-commit", "Locate Commit; no facade commit action is attached."],
-        ["git-stage", "Locate Stage; no facade stage action is attached."], ["git-unstage", "Locate Unstage; no facade unstage action is attached."], ["git-changes-splitter", "The Changes panel splitter."],
-        ["git-branches-tree", "The data-driven branch tree."], ["git-tags-tree", "The data-driven tag tree."],
+    const git: readonly (readonly [string, string, string?, string?])[] = [
+        ["git-panel", "The merged Git panel body.", undefined, "Git sidebar panel body"], ["git-panel-toolbar", "The Git panel toolbar host.", undefined, "top of the Git panel body"], ["git-panel-tabs", "Switch Git Changes/Branches/Tags.", undefined, "left side of the Git panel toolbar"],
+        ["git-branches-sort-alpha", "Switch Git ref ordering.", undefined, "right side of the Git panel toolbar, on Branches or Tags"], ["git-panel-header-actions", "The Git panel header action host.", undefined, "right side of the Git panel header"], ["git-panel-refresh", "Refresh Git model projections.", undefined, "Git panel header actions, first"],
+        ["git-panel-close", "Close the Git panel/editor through its model lifecycle.", undefined, "far-right of the Git panel header actions"], ["git-panel-repo-name", "The Git repository label.", undefined, "Git panel header, beside the Git title"], ["git-changes", "The Changes view root.", undefined, "Git Changes body"],
+        ["git-changes-unstaged", "The unstaged changes list.", undefined, "Git Changes body, unstaged list"], ["git-changes-staged", "The staged changes list.", undefined, "Git Changes body, staged list"], ["git-changes-toolbar", "The Changes toolbar.", undefined, "top of the Git Changes body"],
+        ["git-changes-file", "A repeated changed-file control; it does not identify a path or row.", '[data-name="git-changes-unstaged"], [data-name="git-changes-staged"]', "on each repeated changed-file row"], ["git-commit", "Locate Commit; no facade commit action is attached.", undefined, "Git Changes toolbar, commit action area"],
+        ["git-stage", "Locate Stage; no facade stage action is attached.", undefined, "on each unstaged changed-file row"], ["git-unstage", "Locate Unstage; no facade unstage action is attached.", undefined, "on each staged changed-file row"], ["git-changes-splitter", "The Changes panel splitter.", undefined, "between the Git changes lists"],
+        ["git-branches-tree", "The data-driven branch tree.", undefined, "Git Branches body"], ["git-tags-tree", "The data-driven tag tree.", undefined, "Git Tags body"],
     ] as const;
-    const source: readonly (readonly [string, string, string?])[] = kind === "explorer" ? explorer : kind === "search" ? search : kind === "boards" ? boards : kind === "git" ? git : [];
-    return source.map(([name, purpose, selector]) => ({ name, purpose, ...(selector ? { selector } : {}) }));
+    const source: readonly (readonly [string, string, string?, string?])[] = kind === "explorer" ? explorer : kind === "search" ? search : kind === "boards" ? boards : kind === "git" ? git : [];
+    return source.map(([name, purpose, selector, where]) => ({ name, purpose, ...(selector ? { selector } : {}), ...(where ? { where } : {}) }));
 }
 
 function panelSpecificMembers(kind: ReturnType<typeof panelKind>): readonly IAiMember[] {

@@ -14,6 +14,76 @@ panel, or with `app.pages.showMcpInspectorPage({ url })`. It supports HTTP and s
 
 ## Layout
 
+```
++---------------------------------------------------------------------+
+| [Saved] [HTTP/Stdio] [URL or command] [Args] [Connect]              |  connection bar, inputs left-to-right with Connect at the right
++---------------------------------------------------------------------+
+| [status/error] [server identity]                  [capability tabs] |  server status bar and capability switcher
++---------------------------------------------------------------------+
+| [active capability panel body]                                      |  selected capability panel below the status bar
++---------------------------------------------------------------------+
+```
+
+### User-facing label → `elements` name
+
+- Saved connections → `mcp-saved-connections`
+- HTTP/Stdio → `mcp-transport`
+- URL → `mcp-url`
+- Command → `mcp-command`
+- Args → `mcp-args`
+- Connect / Disconnect → `mcp-connect`
+- Capability panel switcher → `mcp-panel-switch`
+- Call tool → `mcp-call-tool`
+- Read resource → `mcp-read-resource`
+- Get prompt → `mcp-get-prompt`
+- Open history → `mcp-open-history`
+- Clear history → `mcp-clear-history`
+
+### When the connection is disconnected or connecting
+
+```
++---------------------------------------------------------------------+
+| [Saved connections] [HTTP/Stdio] [URL or command] [Args] [Connect]  |  disconnected or connecting connection bar
++---------------------------------------------------------------------+
+```
+
+### When a server is connected
+
+```
++---------------------------------------------------------------------+
+| [server identity]                           [capability tabs]       |  connected status and capability row
++---------------------------------------------------------------------+
+| [selected tool arguments] [Call tool]                               |  Tools panel body and action
+| [selected resource] [Read resource]                                 |  Resources panel body and action
+| [selected prompt arguments] [Get prompt]                            |  Prompts panel body and action
+| [request count] [Open history]                   [Clear history]    |  History panel body and actions
++---------------------------------------------------------------------+
+```
+
+### When the connection has an error
+
+```
++---------------------------------------------------------------------+
+| [connection error]                                      [Connect]   |  connection error state with action at the right
++---------------------------------------------------------------------+
+```
+
+### When a capability panel is selected
+
+```
++---------------------------------------------------------------------+
+| [Info] [Tools] [Resources] [Prompts] [History]                      |  capability switcher across the server status bar
++---------------------------------------------------------------------+
+| [selected capability panel body]                                    |  selected capability panel body below the switcher
++---------------------------------------------------------------------+
+```
+
+### Drawn controls without `elements`
+
+- Dynamic saved-connection rows, tool/resource/prompt selection rows, tool/resource/prompt argument fields, and server website links — no entry: dynamic/editor-content controls are not in the curated 12-entry facade; the stable connection Args field, panel, and action anchors remain addressable.
+
+Evidence: `McpInspectorView.ts:67-90,185-228` and `McpInspectorFacade.ts:33-46`.
+
 ## How to open and connect
 
 Choose **HTTP** and enter the server URL, commonly a loopback endpoint such as
@@ -73,4 +143,3 @@ known to bind there. Disconnecting removes the active server state but leaves sa
 entries available to fill again. A server that closes or becomes unreachable is a connection
 failure, not evidence that its tools or resources were absent; reconnect and inspect its Info and
 capability panels again.
-

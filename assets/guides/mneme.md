@@ -13,6 +13,98 @@ Mneme is **off by default** and runs as a separate local service (`mneme.exe`) t
 
 > **Privacy:** Mneme runs entirely on your machine over loopback (`127.0.0.1`). Indexing and search are local; enabling semantic search downloads an embedding model once, after which no document data leaves your computer.
 
+## Layout
+
+### Mneme Config
+
+```
++---------------------------------------------------------------------+
+| [connection status] [Restart]                    [MCP] [Log]        |  Mneme status bar: state at left, service actions at right
++---------------------------------------------------------------------+
+| [Embedding model]                                [Update/Load model]|  embedding model section header
+| [Roots] [Add root]                                [Reindex all]     |  roots section header above its body
++---------------------------------------------------------------------+
+```
+
+### Mneme Root
+
+```
++---------------------------------------------------------------------+
+| [Search query] [Text/Vector/Hybrid] [Filters]             [Search]  |  Mneme search toolbar, query and mode at left, Search at right
++---------------------------------------------------------------------+
+| [include tags]                                                      |  expanded Filters panel, first filter row
+| [exclude tags]                                                      |  expanded Filters panel, second filter row
+| [date from] [date to]                                               |  expanded Filters panel, date range left and right
+| [Clear]                                                             |  expanded Filters panel, bottom-right
+| [status] [ranked results or empty state]                            |  result area below the filters
++---------------------------------------------------------------------+
+```
+
+### User-facing label → `elements` name
+
+- Start Mneme → `mneme-start`
+- Open Mneme settings → `mneme-open-settings`
+- Open in MCP Inspector → `mneme-open-mcp-inspector`
+- Open Mneme log → `mneme-open-log`
+- Restart → `mneme-restart`
+- Add root → `mneme-add-root`
+- Reindex all → `mneme-reindex-all`
+- Update/Load model → `mneme-update-model`
+- Search query → `mneme-search-input`
+- Search mode → `mneme-search-mode`
+- Filters → `mneme-filters-toggle`
+- Search → `mneme-search-run`
+- Include tags → `mneme-filter-tags`
+- Exclude tags → `mneme-filter-exclude-tags`
+- Date from → `mneme-filter-date-from`
+- Date to → `mneme-filter-date-to`
+- Clear filters → `mneme-filters-clear`
+
+### When Mneme Config is stopped
+
+```
++---------------------------------------------------------------------+
+| [Start Mneme] [Open Mneme settings]                                 |  stopped Mneme page actions centered together
++---------------------------------------------------------------------+
+```
+
+### When Mneme Config is running or disconnected
+
+```
++---------------------------------------------------------------------+
+| [connected status] [Restart]                 [Open MCP] [Open Log]  |  running or disconnected status bar
++---------------------------------------------------------------------+
+| [Embedding model]                                [Update model]     |  embedding model section header
+| [Roots] [Add root]                                [Reindex all]     |  roots section header
++---------------------------------------------------------------------+
+```
+
+### When Mneme Root filters are open
+
+```
++---------------------------------------------------------------------+
+| [include tags]                                                      |  expanded Filters panel, first filter row
+| [exclude tags]                                                      |  expanded Filters panel, second filter row
+| [date from] [date to]                                               |  expanded Filters panel, date range left and right
+| [Clear]                                                             |  expanded Filters panel, bottom-right
++---------------------------------------------------------------------+
+```
+
+### When Mneme Root is resolving, searching, or showing results
+
+```
++---------------------------------------------------------------------+
+| [resolving/searching/error status]                                  |  search status row above the results
+| [ranked results or no-results state]                                |  result region below the search toolbar
++---------------------------------------------------------------------+
+```
+
+### Drawn controls without `elements`
+
+- Per-root dynamic reindex/remove/filter configuration controls and wiki tree rows — no entry: repeated data controls are owned by dynamic root/tree state; stable Mneme config/root facade anchors are the declared entries.
+
+Evidence: `MnemeConfigView.ts:54-87`, `ModelPanel.ts:87-113`, `RootsPanel.ts:46-68`, and `MnemeRootEditorView.ts:296-415`.
+
 ## Enabling Mneme
 
 1. Open **Settings** (sidebar button or the **Tools & Editors** panel).

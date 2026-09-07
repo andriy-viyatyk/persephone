@@ -16,6 +16,125 @@ sidebar; their editor-specific panel bodies and controls are not shell layout an
 
 ## Layout
 
+```
++---------------------------------------------------------------------+
+| [page-nav] [left-slot controls]              [right-slot] [switch]  |  shared TextChrome/PageToolbar row: navigation and left slot at left, switch at right
+| [Home] [Back] [Forward] [Reload] [url-input] … [Close]              |  Browser's own toolbar, with no generic navigation or switch
+| [board controls]                              [editor switch]       |  custom BoardToolbarView row
++---------------------------------------------------------------------+
+| [sidebar panel stack] [sidebar splitter] | [active page editor]     |  sidebar left of the page content; splitter at its right edge
++---------------------------------------------------------------------+
+```
+
+### User-facing label → `elements` name
+
+- Page navigation → `page-nav-panel`
+- Sidebar container → `secondary-views-container`
+- Sidebar stack → `secondary-views-stack`
+- Sidebar splitter → `secondary-views-splitter`
+
+### When the Explorer sidebar is open
+
+```
++---------------------------------------------------------------------+
+| [Explorer panel header actions]                             [Close] |  Explorer panel header above its body
+| [Explorer file/board/tool/ref rows]                                 |  Explorer panel body below the header
++---------------------------------------------------------------------+
+```
+
+### When Search is open
+
+```
++---------------------------------------------------------------------+
+| [Search panel body]                                  [Close]        |  Search sidebar panel body with close at the right edge
++---------------------------------------------------------------------+
+```
+
+### When Boards is open
+
+```
++---------------------------------------------------------------------+
+| [Boards/Tools switch]                              [Boards close]   |  Boards panel header and switch at the top of the panel body
+| [active Boards or Tools list]                                       |  repeated board or toolset list below the switch
+| [empty state: message]                                              |  Boards empty state message
+| [Create] [Create Demo]                                              |  Boards empty-state actions below the message
++---------------------------------------------------------------------+
+```
+
+### When Git is open
+
+```
++---------------------------------------------------------------------+
+| [Git tabs] [Git sort]                         [Refresh] [Close]     |  Git panel toolbar and header actions
+| [repository name]                                                   |  Git panel header beside its title
+| [Git Changes: unstaged]                                             |  upper Git Changes list
+| [changes splitter]                                                  |  between the Git Changes lists
+| [Commit] [Stage] [Unstage]                                          |  Git Changes toolbar above the staged list
+| [Git Changes: staged]                                               |  lower Git Changes list
+| [Branches tree] [Tags tree]                                         |  Git ref bodies below the changes view
++---------------------------------------------------------------------+
+```
+
+- Explorer panel body → `explorer-secondary-view`
+- Explorer header actions → `explorer-header-actions`
+- Up → `explorer-up`
+- Search → `explorer-search`
+- Boards → `explorer-boards`
+- Collapse all → `explorer-collapse-all`
+- Explorer close → `explorer-close`
+- Matching board → `explorer-open-board`
+- Matching toolset → `explorer-open-toolset`
+- Matching Git entry → `explorer-open-git`
+- Matching Mneme entry → `explorer-open-mneme`
+- Search panel body → `search-secondary-view`
+- Search close → `search-secondary-close`
+- Boards empty → `boards-empty`
+- Boards empty actions → `boards-empty-actions`
+- Create board in empty state → `boards-create-empty`
+- Create Demo board in empty state → `boards-create-demo-empty`
+- Boards panel body → `boards-secondary-view`
+- Boards/Tools switch bar → `boards-tools-switch-bar`
+- Boards close → `boards-close`
+- Boards/Tools switch → `boards-tools-switch`
+- Create board → `boards-create`
+- Boards list → `explorer-boards`
+- Tools list → `explorer-tools`
+- Git panel body → `git-panel`
+- Git toolbar → `git-panel-toolbar`
+- Git tabs → `git-panel-tabs`
+- Git ref sort → `git-branches-sort-alpha`
+- Git header actions → `git-panel-header-actions`
+- Git refresh → `git-panel-refresh`
+- Git close → `git-panel-close`
+- Repository name → `git-panel-repo-name`
+- Git Changes → `git-changes`
+- Unstaged list → `git-changes-unstaged`
+- Staged list → `git-changes-staged`
+- Changes toolbar → `git-changes-toolbar`
+- Changed file → `git-changes-file`
+- Commit → `git-commit`
+- Stage → `git-stage`
+- Unstage → `git-unstage`
+- Changes splitter → `git-changes-splitter`
+- Branches tree → `git-branches-tree`
+- Tags tree → `git-tags-tree`
+
+### When the sidebar is closed
+
+```
++---------------------------------------------------------------------+
+| [active page editor]                                                |  page area after the sidebar is closed
++---------------------------------------------------------------------+
+```
+
+### Drawn controls without `elements`
+
+- Browser Home, Back, Forward, Reload, address bar, Navigate, Bookmarks, Downloads, More, DevTools, and Close — no entry in this sidebar list: Browser owns its custom toolbar; its editor facade is owned by US-1376.
+- Board-specific toolbar controls — no entry: custom board content; the embedded switch is the supported anchor.
+- File, board, tool, ref, and changed-file rows — no entry: repeated data rows are addressed through panel state/actions; the dynamic declarations cover stable roots and actions.
+
+Evidence: `PageContentView.ts:91-125`, `SecondaryViewsView.ts:69-80`, `PageToolbarView.ts:180-205`, and the Explorer, Search, Boards, and Git panel views cited in the plan.
+
 ## Shared sidebar frame
 
 | Element | What it is for | Selector |

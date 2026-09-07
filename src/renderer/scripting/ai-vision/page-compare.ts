@@ -6,8 +6,8 @@ import { activatePageAndWaitForLayout, pageScopeSelector } from "./page-elements
 import type { IAiMember, IAiVisible, IAiVisionDescriptor } from "../../../shared/ai-vision/types";
 
 const COMPARE_ELEMENTS = [
-    { name: "compare-root", purpose: "The mounted compare surface containing the side-by-side diff and toolbar." },
-    { name: "compare-exit", purpose: "Leave compare mode for the active page pair." },
+    { name: "compare-root", purpose: "The mounted compare surface containing the side-by-side diff and toolbar.", where: "active page area, replacing the normal editor content" },
+    { name: "compare-exit", purpose: "Leave compare mode for the active page pair.", where: "compare surface toolbar, at the exit end" },
 ] as const;
 
 const COMPARE_MEMBERS: readonly IAiMember[] = [

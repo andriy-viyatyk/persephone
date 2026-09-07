@@ -16,17 +16,17 @@ import { activatePageAndWaitForLayout, pageScopeSelector } from "../ai-vision/pa
 import type { IAiElementDeclaration, IAiMember, IAiVisible, IAiVisionDescriptor } from "../../../shared/ai-vision/types";
 
 const BOARD_INFO_ELEMENTS: readonly IAiElementDeclaration[] = [
-    { name: "board-info-browse", purpose: "Locate the install-location folder picker." },
-    { name: "board-info-download", purpose: "Locate all matching catalog Download controls." },
-    { name: "board-info-cancel", purpose: "Locate the active archive download's Cancel control." },
-    { name: "board-info-retry", purpose: "Locate a failed catalog download's Retry control." },
-    { name: "board-info-register", purpose: "Locate the downloaded board Register board control." },
-    { name: "board-info-delete", purpose: "Locate Delete download for an unregistered archive." },
-    { name: "board-info-open", purpose: "Locate Open board in properties mode." },
-    { name: "board-info-uninstall", purpose: "Locate the catalog-install Uninstall control." },
-    { name: "board-info-unregister", purpose: "Locate the local-board Unregister control." },
-    { name: "board-info-versions-retry", purpose: "Locate Retry when published version history failed." },
-    { name: "board-info-version-install", purpose: "Locate repeated Update/Install version controls for update or rollback." },
+    { name: "board-info-browse", purpose: "Locate the install-location folder picker.", where: "install mode, beside the install-location field" },
+    { name: "board-info-download", purpose: "Locate all matching catalog Download controls.", where: "on each catalog board tile, beside its details" },
+    { name: "board-info-cancel", purpose: "Locate the active archive download's Cancel control.", where: "on the active downloading board tile" },
+    { name: "board-info-retry", purpose: "Locate a failed catalog download's Retry control.", where: "on a failed catalog board tile" },
+    { name: "board-info-register", purpose: "Locate the downloaded board Register board control.", where: "on a downloaded board tile" },
+    { name: "board-info-delete", purpose: "Locate Delete download for an unregistered archive.", where: "on a downloaded unregistered board tile, beside Register board" },
+    { name: "board-info-open", purpose: "Locate Open board in properties mode.", where: "properties mode, board action row" },
+    { name: "board-info-uninstall", purpose: "Locate the catalog-install Uninstall control.", where: "properties mode, board action row for a catalog install" },
+    { name: "board-info-unregister", purpose: "Locate the local-board Unregister control.", where: "properties mode, board action row for a local board" },
+    { name: "board-info-versions-retry", purpose: "Locate Retry when published version history failed.", where: "published versions section, when loading failed" },
+    { name: "board-info-version-install", purpose: "Locate repeated Update/Install version controls for update or rollback.", where: "on each published version row" },
 ];
 
 const BOARD_INFO_MEMBERS: readonly IAiMember[] = [

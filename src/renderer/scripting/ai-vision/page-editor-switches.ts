@@ -12,7 +12,7 @@ import type {
 import type { IEditorSwitchOption } from "../../api/types/page-editor-switches";
 
 const SWITCH_ELEMENTS: readonly IAiElementDeclaration[] = [
-    { name: "page-editor-switch", purpose: "The page toolbar's editor switch control.", selector: '[data-name="page-editor-switch"]' },
+    { name: "page-editor-switch", purpose: "The page toolbar's editor switch control.", selector: '[data-name="page-editor-switch"]', where: "last control on a TextChromeView/PageToolbarView toolbar; Board places its embedded switch after its custom controls" },
 ];
 
 const SWITCH_MEMBERS: readonly IAiMember[] = [

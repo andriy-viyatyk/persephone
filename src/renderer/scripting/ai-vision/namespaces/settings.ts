@@ -9,6 +9,7 @@ interface SettingsCatalogRow {
     readonly key: string;
     readonly label: string;
     readonly purpose: string;
+    readonly where?: string;
 }
 
 interface SettingsCatalogSection {
@@ -16,6 +17,7 @@ interface SettingsCatalogSection {
     readonly title: string;
     readonly description: string;
     readonly elementName: string;
+    readonly where: string;
     readonly rows: readonly SettingsCatalogRow[];
 }
 
@@ -25,6 +27,7 @@ const SETTINGS_CATALOG: readonly SettingsCatalogSection[] = [
         title: "Theme",
         description: "Application appearance and color theme.",
         elementName: "settings-section-theme",
+        where: "Settings content, Theme section",
         rows: [
             { key: "theme", label: "Theme", purpose: "Application color theme; the available dark and light themes are selected here." },
         ],
@@ -34,6 +37,7 @@ const SETTINGS_CATALOG: readonly SettingsCatalogSection[] = [
         title: "Window Behavior",
         description: "Controls what happens when the last Persephone window closes.",
         elementName: "settings-section-window-behavior",
+        where: "Settings content, Window Behavior section",
         rows: [
             { key: "window.close-to-tray", label: "Close to tray", purpose: "Whether closing the last window hides Persephone in the tray or quits it." },
         ],
@@ -43,6 +47,7 @@ const SETTINGS_CATALOG: readonly SettingsCatalogSection[] = [
         title: "Browser Profiles",
         description: "Manage isolated browser sessions, defaults, bookmarks, and Tor.",
         elementName: "settings-section-browser-profiles",
+        where: "Settings content, Browser Profiles section",
         rows: [
             { key: "browser-profiles", label: "Browser profiles", purpose: "Isolated browser profiles with their own cookies, storage, and cache." },
             { key: "browser-default-profile", label: "Default browser profile", purpose: "The profile used when opening a new browser tab; empty selects the built-in default." },
@@ -58,6 +63,7 @@ const SETTINGS_CATALOG: readonly SettingsCatalogSection[] = [
         title: "Links",
         description: "Choose where links opened from editors go.",
         elementName: "settings-section-link-behavior",
+        where: "Settings content, Links section",
         rows: [
             { key: "link-open-behavior", label: "Link opening behavior", purpose: "Whether external links open in the default OS browser or the nearest internal Browser tab." },
         ],
@@ -67,6 +73,7 @@ const SETTINGS_CATALOG: readonly SettingsCatalogSection[] = [
         title: "Default Browser",
         description: "Register Persephone as a Windows default browser and inspect registration status.",
         elementName: "settings-section-default-browser",
+        where: "Settings content, Default Browser section",
         rows: [],
     },
     {
@@ -74,6 +81,7 @@ const SETTINGS_CATALOG: readonly SettingsCatalogSection[] = [
         title: "File Search",
         description: "Choose which files content search includes and skips.",
         elementName: "settings-section-file-search",
+        where: "Settings content, File Search section",
         rows: [
             { key: "search-extensions", label: "Search extensions", purpose: "Comma-separated file extensions included in content search." },
             { key: "search-exclude", label: "Search exclusions", purpose: "Folders and globs skipped by content search." },
@@ -84,6 +92,7 @@ const SETTINGS_CATALOG: readonly SettingsCatalogSection[] = [
         title: "MCP Server / Mneme",
         description: "Configure MCP, main-process scripting, and Mneme services.",
         elementName: "settings-section-mcp",
+        where: "Settings content, MCP Server / Mneme section",
         rows: [
             { key: "mcp.enabled", label: "MCP server", purpose: "Whether the MCP HTTP server is enabled for AI agents to drive Persephone." },
             { key: "mcp.port", label: "MCP port", purpose: "The loopback port used by the MCP HTTP server." },
@@ -97,6 +106,7 @@ const SETTINGS_CATALOG: readonly SettingsCatalogSection[] = [
         title: "Git Integration",
         description: "Enable the Git Tree and Git Diff editors.",
         elementName: "settings-section-git-integration",
+        where: "Settings content, Git Integration section",
         rows: [
             { key: "git.enabled", label: "Git integration", purpose: "Whether Git Tree and Git Diff editors are enabled; Git must be on PATH." },
         ],
@@ -106,6 +116,7 @@ const SETTINGS_CATALOG: readonly SettingsCatalogSection[] = [
         title: "Board Environment Variables",
         description: "Choose the external file holding per-board variables and secrets.",
         elementName: "settings-section-board-vars",
+        where: "Settings content, Board Environment Variables section",
         rows: [
             { key: "board-vars.file", label: "Board environment variables file", purpose: "The external .env.json file holding per-board variables and secrets." },
         ],
@@ -115,6 +126,7 @@ const SETTINGS_CATALOG: readonly SettingsCatalogSection[] = [
         title: "Script Library",
         description: "Choose the folder for saved scripts and reusable modules.",
         elementName: "settings-section-script-library",
+        where: "Settings content, Script Library section",
         rows: [
             { key: "script-library.path", label: "Script library path", purpose: "The folder for saved scripts and reusable modules; empty means no library is linked." },
         ],
@@ -124,6 +136,7 @@ const SETTINGS_CATALOG: readonly SettingsCatalogSection[] = [
         title: "Drawing Library",
         description: "Choose the folder for reusable Excalidraw shapes.",
         elementName: "settings-section-drawing-library",
+        where: "Settings content, Drawing Library section",
         rows: [
             { key: "drawing.library-path", label: "Drawing library path", purpose: "The Excalidraw reusable-shapes folder; empty uses the automatic default." },
         ],
@@ -133,6 +146,7 @@ const SETTINGS_CATALOG: readonly SettingsCatalogSection[] = [
         title: "Video Player",
         description: "Configure external video decoding and the local video stream.",
         elementName: "settings-section-video-player",
+        where: "Settings content, Video Player section",
         rows: [
             { key: "vlc-path", label: "VLC path", purpose: "The vlc.exe path used for formats Chromium cannot decode; empty enables auto-detection." },
             { key: "video-stream.port", label: "Video stream port", purpose: "The local port used by the video streaming server." },
@@ -143,19 +157,24 @@ const SETTINGS_CATALOG: readonly SettingsCatalogSection[] = [
         title: "Terminal",
         description: "Choose the command used by Open Terminal here.",
         elementName: "settings-section-terminal",
+        where: "Settings content, Terminal section",
         rows: [
             { key: "terminal.command", label: "Terminal command", purpose: "The command used by Open Terminal here; empty auto-detects pwsh, powershell, or cmd." },
         ],
     },
 ];
 
-const SETTINGS_ELEMENTS: readonly IAiElementDeclaration[] = SETTINGS_CATALOG.flatMap((section) =>
-    section.rows.map((row) => ({
-        name: row.key,
-        purpose: `${row.label}: ${row.purpose}`,
-        selector: `[data-name="${section.elementName}"]`,
-    })),
-);
+const SETTINGS_ELEMENTS: readonly IAiElementDeclaration[] = [
+    ...SETTINGS_CATALOG.flatMap((section) =>
+        section.rows.map((row) => ({
+            name: row.key,
+            purpose: `${row.label}: ${row.purpose}`,
+            selector: `[data-name="${section.elementName}"]`,
+            where: row.where ?? section.where,
+        })),
+    ),
+    { name: "settings-view-file", purpose: "Open the Settings file in an editor.", where: "bottom of Settings content" },
+];
 
 const SETTINGS_NO_ROW_ERRORS: Readonly<Record<string, string>> = {
     "tab-recent-languages": "Setting \"tab-recent-languages\" is a real setting, but it has no row on the Settings page. Use settings.get(\"tab-recent-languages\") or settings.set(\"tab-recent-languages\", value); it is owned by each page tab's language menu.",

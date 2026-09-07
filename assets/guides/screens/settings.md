@@ -13,10 +13,65 @@ It is a fixed-order editor. The page shows the settings that have UI controls, w
 object and its file also contain a few values that are intentionally get/set-only.
 
 When connected over MCP, read `settings.sections` for the fixed-order catalogue of 13 sections and
-25 setting rows. Use `settings.highlight(key)` to open or activate Settings and point at the
+24 setting rows plus one page action. Use `settings.highlight(key)` to open or activate Settings and point at the
 containing section; `key` is a settings key, not a DOM selector.
 
 ## Layout
+
+```
++---------------------------------------------------------------------+
+| [Settings content]                                                  |  centered Settings content below the page toolbar
+| [Theme]                                                             |  Settings content, Theme section
+| [Window Behavior]                                                   |  Settings content, Window Behavior section
+| [Browser Profiles]                                                  |  Settings content, Browser Profiles section
+| [Links]                                                             |  Settings content, Links section
+| [Default Browser]                                                   |  Settings content, Default Browser section
+| [File Search]                                                       |  Settings content, File Search section
+| [MCP Server / Mneme]                                                |  Settings content, MCP Server / Mneme section
+| [Git Integration]                                                   |  Settings content, Git Integration section
+| [Board Environment Variables]                                       |  Settings content, Board Environment Variables section
+| [Script Library]                                                    |  Settings content, Script Library section
+| [Drawing Library]                                                   |  Settings content, Drawing Library section
+| [Video Player]                                                      |  Settings content, Video Player section
+| [Terminal]                                                          |  Settings content, Terminal section
+| [View Settings File]                                                |  bottom of Settings content
++---------------------------------------------------------------------+
+```
+
+### User-facing label → `elements` name
+
+- Settings root → no entry: region root; the content anchor is addressable
+- Settings content → no entry: region container; section anchors are addressable
+- Theme → `theme`
+- Window Behavior → `window.close-to-tray`
+- Browser Profiles → `browser-profiles`, `browser-default-profile`, `browser-default-bookmarks-file`, `browser-incognito-bookmarks-file`, `tor.exe-path`, `tor.socks-port`, `tor.bookmarks-file`
+- Links → `link-open-behavior`
+- Default Browser → no entry: section has no catalog setting row
+- File Search → `search-extensions`, `search-exclude`
+- MCP Server / Mneme → `mcp.enabled`, `mcp.port`, `main.scripting.enabled`, `mneme.enabled`, `mneme.port`
+- Git Integration → `git.enabled`
+- Board Environment Variables → `board-vars.file`
+- Script Library → `script-library.path`
+- Drawing Library → `drawing.library-path`
+- Video Player → `vlc-path`, `video-stream.port`
+- Terminal → `terminal.command`
+- View Settings File → `settings-view-file`
+
+### When Settings sections are expanded and visible
+
+```
++---------------------------------------------------------------------+
+| [fixed-order section scroll surface]                                |  Settings content scroll surface
+| [View Settings File]                                                |  bottom of Settings content
++---------------------------------------------------------------------+
+```
+
+### Drawn controls without `elements`
+
+- Settings root and content containers — no entry: structural regions; the Settings elements list exposes catalog keys and the page action.
+- Section roots — no entry as separate Settings elements: the 24 generated key entries use each section root's selector and inherit its section phrase.
+
+Evidence: `SettingsView.ts:48-106`, `settings.ts:22-176`, and `ui-element-contract.md:139-163`.
 
 ## Settings sections and stable targets
 
@@ -77,4 +132,3 @@ JSON5, so comments and trailing commas are allowed. Persephone watches it and re
 without a restart. It rewrites the file and its comments when a setting changes in the UI, so
 change values rather than relying on added commentary. Deleting a key restores its default, and
 deleting the whole file is safe because it is recreated.
-

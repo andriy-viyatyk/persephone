@@ -6,10 +6,10 @@ import { createElements } from "./elements";
 import { pageScopeSelector } from "./page-elements";
 
 const TAB_ELEMENTS: readonly IAiElementDeclaration[] = [
-    { name: "page-tab", purpose: "This page's tab-strip root." },
-    { name: "tab-language", purpose: "This page's language/editor-type button; absent for editors without a language control." },
-    { name: "tab-close", purpose: "This page's close or ungroup button." },
-    { name: "tab-sound", purpose: "This page's mute/unmute button; present only while its sound indicator is shown." },
+    { name: "page-tab", purpose: "This page's tab-strip root.", where: "in the header tab strip" },
+    { name: "tab-language", purpose: "This page's language/editor-type button; absent for editors without a language control.", where: "inside this page's tab, when a language control exists" },
+    { name: "tab-close", purpose: "This page's close or ungroup button.", where: "right edge of this page's tab" },
+    { name: "tab-sound", purpose: "This page's mute/unmute button; present only while its sound indicator is shown.", where: "inside this page's tab, when the sound indicator is shown" },
 ];
 
 const TAB_MEMBERS: readonly IAiMember[] = [

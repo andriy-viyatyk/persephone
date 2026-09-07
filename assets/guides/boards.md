@@ -11,6 +11,74 @@ Boards let you build fully custom HTML-page applications that can live anywhere 
 
 > **Target audience:** This guide is for users who want to create and use boards. For AI-agent builders, the per-board `CLAUDE.md` inside each board folder is the primary authoring reference.
 
+## Layout
+
+```
++---------------------------------------------------------------------+
+| [page nav] [Board Info toolbar]                            [switch] |  shared toolbar with Board Info content and switch at the right
++---------------------------------------------------------------------+
+| [Install location] [Browse]                                         |  install-mode location row
+| [catalog tiles: Download / Cancel / Retry / Register]               |  install-mode catalog body
+| [properties: Open / Uninstall / Unregister]                         |  properties-mode action row
+| [published versions: Retry / Update or Install]                     |  published versions body
++---------------------------------------------------------------------+
+```
+
+### User-facing label → `elements` name
+
+- Browse → `board-info-browse`
+- Download → `board-info-download`
+- Cancel → `board-info-cancel`
+- Retry download → `board-info-retry`
+- Register board → `board-info-register`
+- Delete download → `board-info-delete`
+- Open board → `board-info-open`
+- Uninstall → `board-info-uninstall`
+- Unregister → `board-info-unregister`
+- Retry published versions → `board-info-versions-retry`
+- Update or Install version → `board-info-version-install`
+
+### When Board Info is in install mode
+
+```
++---------------------------------------------------------------------+
+| [Install location] [Browse]                                         |  install mode location row
++---------------------------------------------------------------------+
+| [available] [downloading] [failed] [downloaded] [registered]        |  catalog board tiles with state-specific actions
++---------------------------------------------------------------------+
+```
+
+### When Board Info is in properties mode
+
+```
++---------------------------------------------------------------------+
+| [Open] [Uninstall or Unregister]                                    |  properties mode action row for the selected board
+| [published versions: loading/error/empty/available]                 |  published versions section below the properties
++---------------------------------------------------------------------+
+```
+
+### When a published-version list is loading, failed, empty, or available
+
+```
++---------------------------------------------------------------------+
+| [Retry] [published version rows]                [Update or Install] |  published-version list with its state-specific action
++---------------------------------------------------------------------+
+```
+
+### When Board Info asks for trust confirmation
+
+```
++---------------------------------------------------------------------+
+| [trust confirmation]                                                |  trust confirmation surface before an untrusted board action
++---------------------------------------------------------------------+
+```
+
+### Drawn controls without `elements`
+
+- Install progress, dynamic catalog/version rows, and the native install-location folder picker — no entry: progress and rows are repeated state; the picker is an OS dialog.
+
+Evidence: `BoardInfoEditorView.ts:83-90,188-309,316-429,455-470` and `BoardInfoEditorFacade.ts:18-30`.
+
 ---
 
 ## Concepts

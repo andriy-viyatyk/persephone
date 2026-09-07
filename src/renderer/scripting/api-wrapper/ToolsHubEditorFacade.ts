@@ -8,9 +8,9 @@ import type { ToolsHubEditor } from "../../editors/tools-hub/ToolsHubEditor";
 const VALID_HUB_TABS: readonly HubTab[] = ["builtin", "boards", "search", "tools"];
 
 const TOOLS_HUB_ELEMENTS: readonly IAiElementDeclaration[] = [
-    { name: "tools-hub-tabs", purpose: "Locate the hub's Built-in, Boards, Search, and Tools tab switcher." },
-    { name: "search-boards-filter", purpose: "Locate the Search boards query field." },
-    { name: "search-boards-refresh", purpose: "Locate the Search boards catalog refresh control." },
+    { name: "tools-hub-tabs", purpose: "Locate the hub's Built-in, Boards, Search, and Tools tab switcher.", where: "top of the Tools & Editors hub" },
+    { name: "search-boards-filter", purpose: "Locate the Search boards query field.", where: "Search boards tab, top of the search body" },
+    { name: "search-boards-refresh", purpose: "Locate the Search boards catalog refresh control.", where: "Search boards tab, beside the query field" },
 ];
 
 const TOOLS_HUB_MEMBERS: readonly IAiMember[] = [

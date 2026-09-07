@@ -22,14 +22,14 @@ import type {
 } from "../../editors/mneme-config/mnemeTypes";
 
 const MNEME_CONFIG_ELEMENTS: readonly IAiElementDeclaration[] = [
-    { name: "mneme-start", purpose: "Locate the visible control that starts the stopped Mneme service." },
-    { name: "mneme-open-settings", purpose: "Locate the visible control that opens Mneme settings." },
-    { name: "mneme-open-mcp-inspector", purpose: "Locate the visible control that opens the Mneme MCP Inspector." },
-    { name: "mneme-open-log", purpose: "Locate the visible control that opens the Mneme sidecar log." },
-    { name: "mneme-restart", purpose: "Locate the visible control that restarts the Mneme service." },
-    { name: "mneme-add-root", purpose: "Locate the visible user-driven add-root workflow." },
-    { name: "mneme-reindex-all", purpose: "Locate the visible all-roots Mneme reindex control." },
-    { name: "mneme-update-model", purpose: "Locate the visible embedding-model update control." },
+    { name: "mneme-start", purpose: "Locate the visible control that starts the stopped Mneme service.", where: "center of the stopped Mneme page" },
+    { name: "mneme-open-settings", purpose: "Locate the visible control that opens Mneme settings.", where: "center of the stopped Mneme page, beside Start Mneme" },
+    { name: "mneme-open-mcp-inspector", purpose: "Locate the visible control that opens the Mneme MCP Inspector.", where: "right side of the Mneme status bar" },
+    { name: "mneme-open-log", purpose: "Locate the visible control that opens the Mneme sidecar log.", where: "far-right of the Mneme status bar" },
+    { name: "mneme-restart", purpose: "Locate the visible control that restarts the Mneme service.", where: "left side of the Mneme status bar, when disconnected" },
+    { name: "mneme-add-root", purpose: "Locate the visible user-driven add-root workflow.", where: "Roots section header, right side" },
+    { name: "mneme-reindex-all", purpose: "Locate the visible all-roots Mneme reindex control.", where: "Roots section header, beside Add root" },
+    { name: "mneme-update-model", purpose: "Locate the visible embedding-model update control.", where: "Embedding model section header, right side" },
 ];
 
 const MNEME_CONFIG_MEMBERS: readonly IAiMember[] = [

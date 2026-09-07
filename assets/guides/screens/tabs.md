@@ -13,6 +13,59 @@ is visible below the header.
 
 ## Layout
 
+```
++---------------------------------------------------------------------+
+| [page-tab] [language] [title] [sound]               [close/ungroup] |  one tab in the header strip; conditional controls stay inside it
++---------------------------------------------------------------------+
+```
+
+### User-facing label → `elements` name
+
+- Page tab → `page-tab`
+- Language/editor type → `tab-language`
+- Close or ungroup → `tab-close`
+- Sound indicator → `tab-sound`
+- Tab title → no entry: content text, not an addressable control
+
+### When a tab is grouped or modified
+
+```
++---------------------------------------------------------------------+
+| [page-tab] [title]                                [close/ungroup]   |  grouped or modified tab, with its edge action on the right
++---------------------------------------------------------------------+
+```
+
+### When a tab is active, inactive, or pinned
+
+```
++---------------------------------------------------------------------+
+| [active tab] [inactive tab] [pinned icon-only tab]                  |  in the header tab strip
++---------------------------------------------------------------------+
+```
+
+### When a language control exists
+
+```
++---------------------------------------------------------------------+
+| [page-tab] [language/editor type] [title]                           |  language/editor-type control inside this tab
++---------------------------------------------------------------------+
+```
+
+### When the sound indicator is shown
+
+```
++---------------------------------------------------------------------+
+| [page-tab] [title] [sound indicator]                  [close]       |  audible or muted tab with its edge action
++---------------------------------------------------------------------+
+```
+
+### Drawn controls without `elements`
+
+- Tab title text — no entry: title is content, not an interactive control.
+- Tab right-click menu — no entry: transient popup outside the shell contract.
+
+Evidence: `PageTabView.ts:136-158,370-403` and `ui-element-contract.md:98-124`.
+
 ## Tab controls and states
 
 | Element | What it is for | Selector |
@@ -59,4 +112,3 @@ pages and groupings before command-line file or URL arguments are handled.
 
 `window.close-to-tray` is unrelated: it controls whether closing the last window hides Persephone
 in the notification tray or quits it. It does not turn session restoration on or off.
-

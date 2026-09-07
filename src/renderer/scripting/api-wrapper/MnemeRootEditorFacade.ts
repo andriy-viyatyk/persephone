@@ -6,15 +6,15 @@ import { activatePageAndWaitForLayout, pageScopeSelector } from "../ai-vision/pa
 import type { MnemeRootEditorModel, WikiSearchHit } from "../../editors/mneme-root/MnemeRootEditorModel";
 
 const MNEME_ROOT_ELEMENTS: readonly IAiElementDeclaration[] = [
-    { name: "mneme-search-input", purpose: "Locate the Mneme search query input." },
-    { name: "mneme-search-mode", purpose: "Locate the Mneme text/vector/hybrid search-mode selector." },
-    { name: "mneme-filters-toggle", purpose: "Locate the Mneme search filters toggle." },
-    { name: "mneme-search-run", purpose: "Locate the Mneme search submit control." },
-    { name: "mneme-filter-tags", purpose: "Locate the included-tag filter." },
-    { name: "mneme-filter-exclude-tags", purpose: "Locate the excluded-tag filter." },
-    { name: "mneme-filter-date-from", purpose: "Locate the inclusive lower date filter." },
-    { name: "mneme-filter-date-to", purpose: "Locate the inclusive upper date filter." },
-    { name: "mneme-filters-clear", purpose: "Locate the visible clear-filters control." },
+    { name: "mneme-search-input", purpose: "Locate the Mneme search query input.", where: "left side of the Mneme search toolbar" },
+    { name: "mneme-search-mode", purpose: "Locate the Mneme text/vector/hybrid search-mode selector.", where: "search toolbar, after the query field" },
+    { name: "mneme-filters-toggle", purpose: "Locate the Mneme search filters toggle.", where: "search toolbar, after the search mode" },
+    { name: "mneme-search-run", purpose: "Locate the Mneme search submit control.", where: "right side of the Mneme search toolbar" },
+    { name: "mneme-filter-tags", purpose: "Locate the included-tag filter.", where: "expanded Filters panel, first filter row" },
+    { name: "mneme-filter-exclude-tags", purpose: "Locate the excluded-tag filter.", where: "expanded Filters panel, second filter row" },
+    { name: "mneme-filter-date-from", purpose: "Locate the inclusive lower date filter.", where: "expanded Filters panel, date range left side" },
+    { name: "mneme-filter-date-to", purpose: "Locate the inclusive upper date filter.", where: "expanded Filters panel, date range right side" },
+    { name: "mneme-filters-clear", purpose: "Locate the visible clear-filters control.", where: "expanded Filters panel, bottom-right" },
 ];
 
 const MNEME_ROOT_MEMBERS: readonly IAiMember[] = [

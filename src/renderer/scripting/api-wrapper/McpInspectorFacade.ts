@@ -31,18 +31,18 @@ import { activatePageAndWaitForLayout, pageScopeSelector } from "../ai-vision/pa
 import type { IAiElementDeclaration, IAiMember, IAiVisible, IAiVisionDescriptor } from "../../../shared/ai-vision/types";
 
 const MCP_INSPECTOR_ELEMENTS: readonly IAiElementDeclaration[] = [
-    { name: "mcp-transport", purpose: "Choose the HTTP or stdio connection transport." },
-    { name: "mcp-saved-connections", purpose: "Choose a saved connection to fill the connection bar." },
-    { name: "mcp-url", purpose: "Edit the HTTP endpoint before the user connects." },
-    { name: "mcp-command", purpose: "Edit the stdio command before the user connects." },
-    { name: "mcp-args", purpose: "Edit stdio arguments before the user connects." },
-    { name: "mcp-connect", purpose: "Connect or disconnect the configured MCP server." },
-    { name: "mcp-panel-switch", purpose: "Switch between Info, Tools, Resources, Prompts, and History." },
-    { name: "mcp-call-tool", purpose: "Call the selected MCP tool from the Tools panel." },
-    { name: "mcp-read-resource", purpose: "Read the selected resource or expanded resource template." },
-    { name: "mcp-get-prompt", purpose: "Get the selected prompt with its entered arguments." },
-    { name: "mcp-open-history", purpose: "Open recorded MCP history in a Log View page." },
-    { name: "mcp-clear-history", purpose: "Clear recorded MCP request history." },
+    { name: "mcp-transport", purpose: "Choose the HTTP or stdio connection transport.", where: "connection bar, after Saved connections" },
+    { name: "mcp-saved-connections", purpose: "Choose a saved connection to fill the connection bar.", where: "left side of the connection bar" },
+    { name: "mcp-url", purpose: "Edit the HTTP endpoint before the user connects.", where: "connection bar, after the transport selector, for HTTP" },
+    { name: "mcp-command", purpose: "Edit the stdio command before the user connects.", where: "connection bar, after the transport selector, for Stdio" },
+    { name: "mcp-args", purpose: "Edit stdio arguments before the user connects.", where: "connection bar, after the Stdio command" },
+    { name: "mcp-connect", purpose: "Connect or disconnect the configured MCP server.", where: "right side of the connection bar" },
+    { name: "mcp-panel-switch", purpose: "Switch between Info, Tools, Resources, Prompts, and History.", where: "server status bar, after server identity" },
+    { name: "mcp-call-tool", purpose: "Call the selected MCP tool from the Tools panel.", where: "Tools panel, beside the selected tool arguments" },
+    { name: "mcp-read-resource", purpose: "Read the selected resource or expanded resource template.", where: "Resources panel, beside the selected resource" },
+    { name: "mcp-get-prompt", purpose: "Get the selected prompt with its entered arguments.", where: "Prompts panel, beside the selected prompt arguments" },
+    { name: "mcp-open-history", purpose: "Open recorded MCP history in a Log View page.", where: "center of the History panel, beside the request count" },
+    { name: "mcp-clear-history", purpose: "Clear recorded MCP request history.", where: "History panel actions, after Open in Log View" },
 ];
 
 const MCP_INSPECTOR_MEMBERS: readonly IAiMember[] = [

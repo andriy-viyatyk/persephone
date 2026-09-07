@@ -19,6 +19,76 @@ selector.
 
 ## Layout
 
+```
++---------------------------------------------------------------------+
+| [active page content]                                               |  permanent page behind the transient surfaces
+| [Find Bar]                                                          |  Find Bar overlay at the editor's top-right
+| [modal question]                                                    |  application modal body while an action is waiting
+| [modal answer controls]                                             |  modal choices at the bottom of the dialog
++---------------------------------------------------------------------+
+```
+
+### User-facing label → `elements` name
+
+- Find input → `find-input` (editor-local contractual selector)
+- Find previous → `find-prev` (editor-local contractual selector)
+- Find next → `find-next` (editor-local contractual selector)
+- Find close → `find-close` (editor-local contractual selector)
+- Find Bar → `find-bar` (editor-local contractual selector)
+- Modal question and answers → no entry: transient application modal outside the shell `elements` list
+- Open URL dialog → no entry: transient application dialog
+- Native file picker → no entry: OS surface cannot receive an app `data-name`
+- Log View question controls → no entry: editor-local transient question surface
+
+### When the Find Bar is open
+
+```
++---------------------------------------------------------------------+
+| [Find input] [matches] [Prev] [Next]                        [Close] |  Find Bar controls in a single top-right overlay row
++---------------------------------------------------------------------+
+```
+
+### When an application modal is present
+
+```
++---------------------------------------------------------------------+
+| [modal question]                                                    |  modal dialog body while an action is waiting
+| [modal answer controls]                                             |  modal choices at the bottom of the dialog
++---------------------------------------------------------------------+
+```
+
+### When Open URL is followed by the native file picker
+
+```
++---------------------------------------------------------------------+
+| [Open URL dialog]                                                   |  first stage of the URL-to-OS picker flow
+| [native picker]                                                     |  second stage of the URL-to-OS picker flow
++---------------------------------------------------------------------+
+```
+
+### When Unsaved Changes is open
+
+```
++---------------------------------------------------------------------+
+| [Save] [Don't save] [Cancel]                                        |  Unsaved Changes modal choice row
++---------------------------------------------------------------------+
+```
+
+### When Log View asks an inline question
+
+```
++---------------------------------------------------------------------+
+| [Log View output]                                                   |  Log View output surface
+| [inline question]                                                   |  inline question below the output surface
++---------------------------------------------------------------------+
+```
+
+### Drawn controls without `elements`
+
+- Modal internals, Log View question controls, and the native OS picker — no entry: transient surfaces are outside the contract, and the OS surface cannot receive an app `data-name`.
+
+Evidence: `FindBarView.ts:33-87,127-135`, `DialogsView.ts:19-29,38-91`, and the Open URL/Unsaved Changes callers cited in the plan.
+
 ## Find and replace surfaces
 
 The shared app-owned Find Bar is an absolute overlay used by editors such as Markdown and Browser.
@@ -73,4 +143,3 @@ user chooses a URL or a file path. A File choice then opens the native operating
 picker, which can select one or multiple files. The OS picker is not given an app `data-name`
 selector; it is outside the renderer contract. Describe the two-stage flow and use the active
 dialog or native picker rather than presenting either as a permanent shell layout anchor.
-

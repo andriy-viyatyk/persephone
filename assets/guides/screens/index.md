@@ -2,6 +2,8 @@
 title: "Persephone Screens"
 audience: both
 summary: "A catalogue of Persephone's screen guides, with the window model and agent guidance for finding and highlighting elements."
+screen: "index"
+editorId: ["about-view", "tools-hub-view"]
 ---
 
 # Persephone Screens
@@ -58,6 +60,78 @@ its page-owned panels are in [Page Area and Sidebar](./sidebar.md). The Menu Bar
 browser, tab switcher, and Settings entry point; its controls and destinations are in [Menu Bar](./menu-bar.md).
 
 ## Layout
+
+```
++---------------------------------------------------------------------+
+| [About card: version, update, links]       | [Guide browser]        |  About: card left, browser right
++---------------------------------------------------------------------+
+| [contents tree]                             | [selected guide page] |  About contents or selected guide page
++---------------------------------------------------------------------+
+```
+
+```
++---------------------------------------------------------------------+
+| [Built-in] [Boards] [Search] [Tools]                                |  Tools & Editors: tabs across the top
++---------------------------------------------------------------------+
+| [active hub body]                                   [pinned rail]   |  active hub body below the tabs, pinned rail at the right
++---------------------------------------------------------------------+
+```
+
+### User-facing label → `elements` name
+
+- About page → `about-root`
+- About content → `about-content`
+- About card → `about-card`
+- Check for updates → `about-check-updates`
+- GitHub Repository → `about-github`
+- Report an issue → `about-report-issue`
+- Download → `about-update-download`
+- What's New update → `about-update-whats-new`
+- About splitter → `about-splitter`
+- Guide browser → `about-guide-browser`
+- What's New → `about-whats-new`
+- Open What's New → `about-whats-new-open`
+- Resources → `about-resources`
+- Repository → `about-resource-repository`
+- Issues → `about-resource-issues`
+- Boards → `about-resource-boards`
+- MCP setup → `about-resource-mcp-setup`
+- Show agent guides → `about-show-agent-guides`
+- Guide tree → `about-guide-tree`
+- Selected guide page → `about-guide-page`
+- Guide breadcrumbs → `about-guide-breadcrumbs`
+- Back → `about-guide-back`
+- Open in tab → `about-guide-open-in-tab`
+- Guide body → `about-guide-body`
+- Tools Hub tabs → `tools-hub-tabs`
+- Search boards filter → `search-boards-filter`
+- Search boards refresh → `search-boards-refresh`
+
+### When a selected guide page is open
+
+```
++---------------------------------------------------------------------+
+| [Back] [Breadcrumbs]                                  [Open in tab] |  selected guide page header
++---------------------------------------------------------------------+
+| [Guide body]                                                        |  selected guide body below its header
++---------------------------------------------------------------------+
+```
+
+### When the Tools & Editors hub is open
+
+```
++---------------------------------------------------------------------+
+| [Built-in] [Boards] [Search] [Tools]                                |  tab row at the top of the hub
++---------------------------------------------------------------------+
+| [active hub body]                                   [pinned rail]   |  active body below the tabs, pinned rail at the right
++---------------------------------------------------------------------+
+```
+
+### Drawn controls without `elements`
+
+- Individual guide-tree rows, breadcrumb links, and dynamic hub body rows — no entry: data-driven content; the stable tree/browser or tab-root entry is the addressable anchor.
+
+Evidence: `AboutView.ts:135-237`, `AboutGuidePageView.ts:104-150`, and `ToolsHubView.ts:45-123`.
 
 ## About guide browser
 

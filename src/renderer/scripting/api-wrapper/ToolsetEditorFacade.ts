@@ -9,9 +9,9 @@ import { activatePageAndWaitForLayout, pageScopeSelector } from "../ai-vision/pa
 import type { ToolsetEditorModel } from "../../editors/toolset/ToolsetEditorModel";
 
 const TOOLSET_ELEMENTS: readonly IAiElementDeclaration[] = [
-    { name: "toolset-refresh", purpose: "Locate the control that refreshes the registry and this toolset's manifest." },
-    { name: "toolset-open-folder", purpose: "Locate the control that opens the toolset root in an Explorer page." },
-    { name: "toolset-open-log", purpose: "Locate the control that opens the tool execution log when one exists." },
+    { name: "toolset-refresh", purpose: "Locate the control that refreshes the registry and this toolset's manifest.", where: "right side of the toolset header" },
+    { name: "toolset-open-folder", purpose: "Locate the control that opens the toolset root in an Explorer page.", where: "toolset action row, first" },
+    { name: "toolset-open-log", purpose: "Locate the control that opens the tool execution log when one exists.", where: "toolset action row, after Open Folder" },
 ];
 
 const TOOLSET_MEMBERS: readonly IAiMember[] = [
