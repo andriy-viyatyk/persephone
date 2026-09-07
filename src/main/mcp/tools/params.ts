@@ -6,12 +6,11 @@ export function createToolContext(z: Zod) {
     return {
         z,
         // ── Window parameter (shared across tools) ────────────────────
-        windowIndex: z.number().int().optional().describe(
+        windowIndex: z.number().int().min(0).optional().describe(
             "Target window index (from windows). If omitted, uses the first open window. Use windows[i].open() to reopen closed windows first.",
         ),
     };
 }
 
 export type IToolContext = ReturnType<typeof createToolContext>;
-
 

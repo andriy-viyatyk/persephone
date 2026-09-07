@@ -43,6 +43,8 @@ export interface ICallResult {
     attention?: { text: string };
     truncated?: boolean;
     totalLength?: number;
+    shown?: number;
+    total?: number;
     hint?: IHint;
     warning?: string;
     error?: string;

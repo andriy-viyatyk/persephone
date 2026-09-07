@@ -76,7 +76,8 @@ export interface IApp {
      * suppresses navigation hints, and returns only the plain bounded value.
      * Resolver failures reject with an Error. Pass either `args` to invoke the
      * final member or `value` to assign a writable property; they are mutually
-     * exclusive. `maxLength` bounds shaped string results.
+     * exclusive. `maxLength` bounds shaped string and structured results; truncated structured
+     * results report how many entries were shown and how many were available.
      *
      * @param path - AiVision path such as `page.grouped.content`.
      * @param options - Optional invocation, assignment, and result-size options.
@@ -193,7 +194,7 @@ export interface IAppCallOptions {
     args?: unknown[];
     /** JSON-compatible value assigned to the final writable property in `path`. */
     value?: unknown;
-    /** Maximum length used when shaping a string result. */
+    /** Maximum serialized length used when shaping string or structured results. */
     maxLength?: number;
 }
 

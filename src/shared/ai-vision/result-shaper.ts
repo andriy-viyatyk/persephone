@@ -25,13 +25,104 @@ export interface IShapedResult {
     result: unknown;
     truncated?: boolean;
     totalLength?: number;
+    shown?: number;
+    total?: number;
 }
 
 export function shapeResult(value: unknown, maxLength: number = DEFAULT_MAX_LENGTH): IShapedResult {
     if (typeof value === "string" && value.length > maxLength) {
         return { result: value.slice(0, maxLength), truncated: true, totalLength: value.length };
     }
-    return { result: shapeValue(value, 0, new WeakSet(), maxLength) };
+    const shaped = shapeValue(value, 0, new WeakSet(), maxLength);
+    if (!isStructuredCollection(shaped)) return { result: shaped };
+
+    const serialized = serializeJson(shaped);
+    if (serialized === undefined) return { result: serializationFallback() };
+    if (serialized.length <= maxLength) return { result: shaped };
+
+    if (Array.isArray(shaped)) {
+        const arrayInfo = arrayInfoFor(value, shaped);
+        return truncateArray(shaped, maxLength, arrayInfo.total, arrayInfo.hasMarker);
+    }
+    return truncateObject(shaped, maxLength);
+}
+
+function isStructuredCollection(value: unknown): value is unknown[] | Record<string, unknown> {
+    return Array.isArray(value) || (typeof value === "object" && value !== null && isPlainObject(value));
+}
+
+function arrayInfoFor(value: unknown, shaped: unknown[]): { total: number; hasMarker: boolean } {
+    if (Array.isArray(value)) return { total: value.length, hasMarker: value.length > MAX_ARRAY_ITEMS };
+    if (value instanceof Set) return { total: value.size, hasMarker: value.size > MAX_ARRAY_ITEMS };
+    return { total: shaped.length, hasMarker: false };
+}
+
+function truncateArray(items: unknown[], maxLength: number, total: number, hasMarker: boolean): IShapedResult {
+    const candidates = hasMarker ? items.slice(0, -1) : items;
+    const selected: unknown[] = [];
+    let serializedLength = 2;
+
+    for (const item of candidates) {
+        const itemText = serializeJson(item);
+        if (itemText === undefined) return { result: serializationFallback() };
+        const itemLength = embeddedJsonLength(itemText);
+        const nextLength = selected.length === 0
+            ? 4 + itemLength
+            : serializedLength + 2 + itemLength;
+        if (nextLength > maxLength) break;
+        selected.push(item);
+        serializedLength = nextLength;
+    }
+
+    return { result: selected, truncated: true, shown: selected.length, total };
+}
+
+function truncateObject(value: Record<string, unknown>, maxLength: number): IShapedResult {
+    const entries = Object.entries(value);
+    const selected: Record<string, unknown> = {};
+    let selectedCount = 0;
+    let serializedLength = 2;
+
+    for (const [key, item] of entries) {
+        const keyText = serializeJson(key);
+        const itemText = serializeJson(item);
+        if (keyText === undefined || itemText === undefined) return { result: serializationFallback() };
+        const entryLength = 2 + keyText.length + 2 + embeddedJsonLength(itemText);
+        const nextLength = selectedCount === 0
+            ? 4 + entryLength
+            : serializedLength + 2 + entryLength;
+        if (nextLength > maxLength) break;
+        setObjectEntry(selected, key, item);
+        selectedCount++;
+        serializedLength = nextLength;
+    }
+
+    return { result: selected, truncated: true, shown: selectedCount, total: entries.length };
+}
+
+function serializeJson(value: unknown): string | undefined {
+    try {
+        const serialized = JSON.stringify(value, null, 2);
+        return serialized === undefined ? undefined : serialized;
+    } catch {
+        return undefined;
+    }
+}
+
+function embeddedJsonLength(serialized: string): number {
+    let newlines = 0;
+    for (const character of serialized) {
+        if (character === "\n") newlines++;
+    }
+    return serialized.length + 2 * (1 + newlines);
+}
+
+function serializationFallback(): Record<string, string> {
+    return { kind: "unserializable", note: "The result could not be represented as JSON." };
+}
+
+function setObjectEntry(target: Record<string, unknown>, key: string, value: unknown): void {
+    Object.defineProperty(target, key, { value, enumerable: true, configurable: true, writable: true });
 }
 
 function shapeValue(value: unknown, depth: number, seen: WeakSet<object>, maxLength: number): unknown {
@@ -70,7 +161,7 @@ function shapeValue(value: unknown, depth: number, seen: WeakSet<object>, maxLen
         const shaped: Record<string, unknown> = {};
         for (const [key, item] of Object.entries(object)) {
             if (typeof item === "function") continue;
-            shaped[key] = shapeValue(item, depth + 1, seen, maxLength);
+            setObjectEntry(shaped, key, shapeValue(item, depth + 1, seen, maxLength));
         }
         return shaped;
     }

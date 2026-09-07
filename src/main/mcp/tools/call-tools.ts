@@ -126,7 +126,7 @@ export function callTools(ctx: IToolContext): IMcpToolDef[] {
                 args: z.array(z.unknown()).optional().describe("Arguments for the last segment when it is a method (JSON array). Use this for strings with quotes/newlines or any non-trivial value."),
                 value: z.unknown().optional().describe("Assign this value to the property named by the last segment (e.g. page.content). Mutually exclusive with args."),
                 hints: z.enum(["auto", "always", "never"]).optional().describe("auto (default): the member list for each kind of object is sent once per session, live children always; always: repeat member lists; never: no hints."),
-                maxLength: z.number().int().optional().describe("Cut string results longer than this (default 20000); the response then carries truncated: true and totalLength."),
+                maxLength: z.number().int().min(1).optional().describe("Bound string or structured results (default 20000); truncated results carry totalLength for strings or shown/total for collections."),
                 windowIndex,
             },
             handler: async (args: ToolArgs): Promise<IMcpToolResult> => {
@@ -198,6 +198,8 @@ interface ICallEnvelope {
     attention?: { text: string };
     truncated?: boolean;
     totalLength?: number;
+    shown?: number;
+    total?: number;
     warning?: string;
     error?: string;
     resolvedUpTo?: string;
@@ -260,7 +262,12 @@ function toCallResult(response: McpResponse): IMcpToolResult {
             const body = typeof rest.result === "string" ? rest.result : JSON.stringify(rest.result ?? null, null, 2);
             content.push({ type: "text", text: body });
         }
-        if (rest.truncated) content.push({ type: "text", text: `[truncated: showing ${(rest.result as string).length} of ${rest.totalLength} chars — raise maxLength or read a narrower path]` });
+        if (rest.truncated) {
+            const text = rest.shown !== undefined && rest.total !== undefined
+                ? `[truncated: showing ${rest.shown} of ${rest.total} items — raise maxLength or read a narrower path]`
+                : `[truncated: showing ${(rest.result as string).length} of ${rest.totalLength} chars — raise maxLength or read a narrower path]`;
+            content.push({ type: "text", text });
+        }
     }
     if (warning) content.push({ type: "text", text: `Warning: ${warning}` });
     if (hint) content.push({ type: "text", text: `--- hint (${hint.kind}) ---\n${hint.text}` });

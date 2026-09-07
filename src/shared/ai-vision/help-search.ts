@@ -62,7 +62,8 @@ export async function helpSearch(root: unknown, query: string, limit = 20): Prom
     }
 
     hits.sort((a, b) => Number(b.path.includes("[")) - Number(a.path.includes("[")));
-    return dedupe(hits).slice(0, limit);
+    const boundedLimit = Number.isFinite(limit) ? Math.max(1, limit) : 20;
+    return dedupe(hits).slice(0, boundedLimit);
 }
 
 function collectKindHits(path: string, descriptor: IAiVisionDescriptor, tokens: string[], hits: IHelpSearchHit[]): void {

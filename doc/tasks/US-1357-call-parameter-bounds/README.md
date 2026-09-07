@@ -1,5 +1,7 @@
 # US-1357: `call` parameter bounds — `limit`, `maxLength`, `windowIndex`
 
+**Status:** Implemented (unreviewed — epic close runs the completion skills)
+
 Epic: [EPIC-091](../../epics/EPIC-091.md), decision 6; report items 1.3, 1.6 and 1.7.
 
 ## Goal
