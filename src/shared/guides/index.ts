@@ -20,7 +20,8 @@ export interface GuideFrontMatter {
     readonly title: string;
     readonly audience: GuideAudience;
     readonly summary: string;
-    readonly editorId?: string;
+    readonly screen?: string;
+    readonly editorId?: string | readonly string[];
 }
 
 export interface GuideTreePage {
@@ -32,7 +33,8 @@ export interface GuideTreePage {
     readonly title: string;
     readonly audience: GuideAudience;
     readonly summary: string;
-    readonly editorId?: string;
+    readonly screen?: string;
+    readonly editorId?: string | readonly string[];
 }
 
 export interface GuideTreeFolder {
@@ -150,6 +152,7 @@ export function createGuideIndex(source: GuideSource): GuideIndex {
             title: parsed.frontMatter.title,
             audience: parsed.frontMatter.audience,
             summary: parsed.frontMatter.summary,
+            ...(parsed.frontMatter.screen === undefined ? {} : { screen: parsed.frontMatter.screen }),
             ...(parsed.frontMatter.editorId === undefined ? {} : { editorId: parsed.frontMatter.editorId }),
             content: parsed.content,
         };

@@ -2,6 +2,7 @@
 title: "Editors"
 audience: both
 summary: "An overview of Persephone's editors and the file types and features they support."
+editorId: "tools-hub-view"
 ---
 
 # Editors

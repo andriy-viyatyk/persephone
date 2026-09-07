@@ -130,6 +130,7 @@ Two tab shapes do not match the common case, and both occur in ordinary use:
 | Backdrop — always in the DOM; `display: none` when closed, so presence is not openness | `[data-name="menu-bar"]` |
 | Sliding panel | `[data-name="menu-bar-content"]` |
 | Open File / New Window / About / Settings | `[data-name="menubar-open-file"]`, `[data-name="menubar-new-window"]`, `[data-name="menubar-about"]`, `[data-name="menubar-settings"]` |
+| User Guide | `[data-name="menubar-user-guide"]` |
 | Category list (Open Tabs, Recent Files, Tools & Editors, Script Library, user folders) | `[data-name="menubar-folders"]` |
 | Right-hand content pane | `[data-name="menubar-content"]` |
 | Add Folder button | `[data-name="menubar-add-folder-button"]` |
@@ -165,6 +166,7 @@ unchanged, including `data-type="settings-section"` on each section root.
 
 | Element | Selector |
 |---|---|
+| Page navigation control (opens the Explorer sidebar) | `[data-name="page-nav-panel"]` |
 | Content region below the header | `[data-name="app-content"]` |
 | Page host (all pages live here) | `[data-name="pages-container"]` |
 | The active page's editor container | `[data-name="page-editor"]` |
@@ -172,6 +174,20 @@ unchanged, including `data-type="settings-section"` on each section root.
 | Sidebar panel container (only when a page has panels open) | `[data-name="secondary-views-container"]` |
 | Sidebar panel stack | `[data-name="secondary-views-stack"]` |
 | Sidebar width splitter | `[data-name="secondary-views-splitter"]` |
+
+### About guide browser
+
+About is a fixed page with the version card and the guide browser. Its contents view and selected
+guide view expose the following stable targets:
+
+| Element | Selector |
+|---|---|
+| About root / version card | `[data-name="about-root"]`, `[data-name="about-card"]` |
+| Guide browser / contents tree | `[data-name="about-guide-browser"]`, `[data-name="about-guide-tree"]` |
+| Agent-guide filter | `[data-name="about-show-agent-guides"]` |
+| What's New / Resources | `[data-name="about-whats-new"]`, `[data-name="about-resources"]` |
+| Guide page / breadcrumbs / body | `[data-name="about-guide-page"]`, `[data-name="about-guide-breadcrumbs"]`, `[data-name="about-guide-body"]` |
+| Back / Open in tab | `[data-name="about-guide-back"]`, `[data-name="about-guide-open-in-tab"]` |
 
 ### Inspectable panel roots
 

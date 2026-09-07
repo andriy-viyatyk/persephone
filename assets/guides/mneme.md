@@ -2,6 +2,7 @@
 title: "Mneme — Knowledge Base"
 audience: both
 summary: "An optional local knowledge base for full-text and semantic search over Markdown documents."
+editorId: ["mneme-config", "mneme-root"]
 ---
 
 # Mneme — Knowledge Base

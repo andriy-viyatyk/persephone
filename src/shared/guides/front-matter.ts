@@ -6,6 +6,10 @@ interface ParsedGuideFile {
 }
 
 const AUDIENCES = new Set<GuideAudience>(["user", "agent", "both"]);
+const GUIDE_KEYS = new Set(["title", "audience", "summary", "screen", "editorId"]);
+
+type GuideMetadataKey = "title" | "audience" | "summary" | "screen" | "editorId";
+type GuideValue = string | readonly string[];
 
 export function parseGuideFile(relativePath: string, text: string): ParsedGuideFile {
     const lines = text.split(/\r?\n/);
@@ -23,26 +27,35 @@ export function parseGuideFile(relativePath: string, text: string): ParsedGuideF
     const closingIndex = lines.findIndex((line, index) => index > 0 && line === "---");
     if (closingIndex === -1) return fallback;
 
-    const values: Partial<Record<"title" | "audience" | "summary" | "editorId", string>> = {};
+    const values: Partial<Record<GuideMetadataKey, GuideValue>> = {};
     const keys = new Set<string>();
     for (const line of lines.slice(1, closingIndex)) {
         const match = line.match(/^([A-Za-z][A-Za-z0-9]*):(?: (.*))?$/);
-        if (!match || keys.has(match[1])) return fallback;
-        keys.add(match[1]);
+        if (!match) return fallback;
+        const key = match[1];
+        if (!GUIDE_KEYS.has(key)) continue;
+        if (keys.has(key)) return fallback;
+        keys.add(key);
 
-        const value = parseValue(match[1], match[2]);
+        const value = parseValue(key as GuideMetadataKey, match[2]);
         if (value === undefined) return fallback;
-        values[match[1] as "title" | "audience" | "summary" | "editorId"] = value;
+        values[key as GuideMetadataKey] = value;
     }
 
-    if (!values.title || !values.summary || !values.audience || !AUDIENCES.has(values.audience as GuideAudience)) {
+    const title = values.title;
+    const summary = values.summary;
+    const audience = values.audience;
+    if (typeof title !== "string" || !title
+        || typeof summary !== "string" || !summary
+        || typeof audience !== "string" || !AUDIENCES.has(audience as GuideAudience)) {
         return fallback;
     }
 
     const frontMatter: GuideFrontMatter = {
-        title: values.title,
-        audience: values.audience as GuideAudience,
-        summary: values.summary,
+        title,
+        audience: audience as GuideAudience,
+        summary,
+        ...(typeof values.screen === "string" ? { screen: values.screen } : {}),
         ...(values.editorId === undefined ? {} : { editorId: values.editorId }),
     };
 
@@ -52,17 +65,28 @@ export function parseGuideFile(relativePath: string, text: string): ParsedGuideF
     };
 }
 
-function parseValue(key: string, rawValue: string | undefined): string | undefined {
+function parseValue(key: GuideMetadataKey, rawValue: string | undefined): GuideValue | undefined {
     if (rawValue === undefined) return undefined;
-    if (key !== "title" && key !== "summary" && key !== "editorId" && key !== "audience") return undefined;
 
     if (key === "audience") {
         const quoted = rawValue.match(/^"([^\"]*)"$/);
         return quoted?.[1] ?? (/^(?:user|agent|both)$/.test(rawValue) ? rawValue : undefined);
     }
 
+    if (key === "editorId") {
+        const quoted = rawValue.match(/^"([^\"]*)"$/);
+        if (quoted) return quoted[1] || undefined;
+
+        const list = rawValue.match(/^\[(.*)\]$/)?.[1];
+        if (list === undefined) return undefined;
+        const members = list.split(",").map(member => member.trim().match(/^"([^\"]*)"$/)?.[1]);
+        return members.length > 0 && members.every((member): member is string => member !== undefined && member.length > 0)
+            ? members
+            : undefined;
+    }
+
     const quoted = rawValue.match(/^"([^\"]*)"$/);
-    return quoted?.[1];
+    return quoted?.[1] || undefined;
 }
 
 function contentAfterLine(text: string, lines: readonly string[], lineIndex: number): string {

@@ -2,6 +2,7 @@
 title: "Boards"
 audience: both
 summary: "Custom HTML-page applications hosted by Persephone and backed by local scripts."
+editorId: "board-info"
 ---
 
 # Boards

@@ -8,7 +8,10 @@ import { guard } from "../../core/utils/guard";
 
 function findGuidePath(nodes: readonly GuideTreeNode[], editorId: string): string | undefined {
     for (const node of nodes) {
-        if (node.kind === "page" && node.editorId === editorId) return node.path;
+        if (node.kind === "page" && (
+            node.editorId === editorId
+            || (Array.isArray(node.editorId) && node.editorId.includes(editorId))
+        )) return node.path;
         if (node.kind !== "folder") continue;
 
         const path = findGuidePath(node.children, editorId);

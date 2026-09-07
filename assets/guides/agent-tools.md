@@ -2,6 +2,7 @@
 title: "Agent Tools"
 audience: both
 summary: "The Agent Tools registry is Persephone's executable memory for reusable, parameterized tools."
+editorId: "toolset-view"
 ---
 
 # Agent Tools
