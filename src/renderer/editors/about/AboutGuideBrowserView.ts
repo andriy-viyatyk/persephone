@@ -234,12 +234,20 @@ export class AboutGuideBrowserView extends VanillaView<AboutGuideBrowserProps> {
 
         const resources = createPanelElement({
             name: "about-resources",
-            direction: "column",
+            direction: "row",
+            align: "center",
             gap: "md",
+            wrap: true,
             shrink: false,
         });
-        resources.append(createTextElement("Resources", { size: "lg", bold: true }));
-        const resourceActions = createPanelElement({ direction: "row", wrap: true, gap: "lg" });
+        resources.append(createTextElement("Resources:", { size: "lg", bold: true }));
+        const resourceActions = createPanelElement({
+            direction: "row",
+            wrap: true,
+            gap: "lg",
+            align: "center",
+            minWidth: 0,
+        });
         this.appendResourceButton(resourceActions, "about-resource-repository", "Repository", () => {
             void guard("Failed to open repository", () => shell.openExternal("https://github.com/andriy-viyatyk/persephone"));
         });
