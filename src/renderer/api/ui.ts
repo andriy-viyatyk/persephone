@@ -22,6 +22,12 @@ export interface IHighlightRevealRequest {
 
 type IHighlightApi = IAiHighlightApi;
 
+export interface IDeclarationHighlightOptions {
+    readonly id: string;
+    readonly buttons: readonly string[];
+    readonly onButton: (label: string, id: string) => void;
+}
+
 declare global {
     interface Window {
         __aiVisionHighlight?: IHighlightApi;
@@ -85,28 +91,13 @@ class UserInterface implements IUserInterface {
         return { release: () => removeScreenLock(lock) };
     }
 
-    // Element highlighting uses the published package overlay.
-    private highlightLoader?: Promise<IHighlightApi>;
-
-    private loadHighlight(): Promise<IHighlightApi> {
-        if (!this.highlightLoader) {
-            this.highlightLoader = Promise.resolve()
-                .then(() => installHighlightOverlay())
-                .catch((error) => {
-                    this.highlightLoader = undefined;
-                    throw error;
-                });
-        }
-        return this.highlightLoader;
-    }
-
     async highlightElement(
         selector: string,
         text?: string,
         options?: IHighlightOptions,
         reveal?: IHighlightRevealRequest,
     ): Promise<IHighlightResult> {
-        const api = await this.loadHighlight();
+        const api = await loadHighlight();
         const highlightOptions = { ...options } as IHighlightOptions;
         // reveal is declaration-owned; do not let an undeclared runtime property on a script's
         // options object turn the public highlight method into a general-purpose style override.
@@ -125,6 +116,39 @@ class UserInterface implements IUserInterface {
         if (!api) return 0;
         return api.clear(id);
     }
+}
+
+// Element highlighting uses the published package overlay.
+let highlightLoader: Promise<IHighlightApi> | undefined;
+
+function loadHighlight(): Promise<IHighlightApi> {
+    if (!highlightLoader) {
+        highlightLoader = Promise.resolve()
+            .then(() => installHighlightOverlay())
+            .catch((error) => {
+                highlightLoader = undefined;
+                throw error;
+            });
+    }
+    return highlightLoader;
+}
+
+/** Draw a curated declaration highlight with options owned by the declaration provider. */
+export async function highlightDeclarationElement(
+    selector: string,
+    text: string | undefined,
+    options: IDeclarationHighlightOptions,
+    reveal?: IHighlightRevealRequest,
+): Promise<IHighlightResult> {
+    const api = await loadHighlight();
+    return api.show({
+        id: options.id,
+        buttons: options.buttons,
+        onButton: options.onButton,
+        selector,
+        text,
+        ...(reveal ? { reveal } : {}),
+    });
 }
 
 export const ui = new UserInterface();

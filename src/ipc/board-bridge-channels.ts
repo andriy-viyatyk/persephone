@@ -227,6 +227,7 @@ export interface BoardToHostMsg {
         | "board:var" // board requested a var.get/set/list (EPIC-046) — request/reply, needs a reqId
         | "board:filePath" // board asked for its readable local content path — request/reply, needs a reqId
         | "board:aiVision"
+        | "board:aiNotify"
         | "board:aiResult";
     /** `board:error` / `board:log` detail. */
     message?: string;
@@ -259,6 +260,8 @@ export interface BoardToHostMsg {
     /** `board:var` positional args (get: [name, env?]; set: [name, value, env?]; list: [env?];
      *  show: []). */
     varArgs?: unknown[];
+    /** `board:aiNotify` remote-authored notification text. */
+    text?: string;
 }
 
 /** Host content pushed renderer → board over `iframe.contentWindow.postMessage` (EPIC-043).
@@ -317,6 +320,11 @@ export interface BoardAiVisionRegistrationMsg {
 }
 
 /** Host renderer → board iframe; the new opposite direction on this channel. */
+export interface BoardAiVisionNotifyMsg {
+    __persephone: "board:aiNotify";
+    text: string;
+}
+
 export interface BoardAiVisionRequestMsg {
     __persephone: "ai:request";
     reqId: number;

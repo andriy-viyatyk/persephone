@@ -1,4 +1,5 @@
 import { EventLog } from "ai-vision";
+import type { IAiEvent } from "ai-vision";
 
 /** The event history shared by all AiVision calls in this renderer window. */
 export const eventLog = new EventLog({ cap: 200, hostOrigin: "persephone" });
@@ -84,11 +85,38 @@ export function logRemoteNotify(text: string, path?: string, origin: "board" | "
     });
 }
 
-/** Reserved seam for the later guided-overlay button producer. */
-export function logGuideButton(elementName: string, button: string, path?: string): void {
-    eventLog.push({
+export interface GuideButtonSignal {
+    readonly stepId: string;
+    readonly elementName: string;
+    readonly button: string;
+    readonly event: IAiEvent;
+}
+
+const guideButtonListeners = new Set<(signal: GuideButtonSignal) => void>();
+
+export function subscribeGuideButton(listener: (signal: GuideButtonSignal) => void): () => void {
+    guideButtonListeners.add(listener);
+    return () => guideButtonListeners.delete(listener);
+}
+
+/** Record a guided-overlay button press and publish its renderer-local correlation signal. */
+export function logGuideButton(
+    elementName: string,
+    button: string,
+    stepId: string,
+    path?: string,
+): void {
+    const event = eventLog.push({
         kind: "guide-button",
         ...(path ? { path } : {}),
         text: `The user pressed ${JSON.stringify(button)} on the guided step for ${JSON.stringify(elementName)}.`,
     });
+    const signal: GuideButtonSignal = { stepId, elementName, button, event };
+    for (const listener of guideButtonListeners) {
+        try {
+            listener(signal);
+        } catch {
+            // A local waiter cannot prevent the event from reaching other waiters.
+        }
+    }
 }

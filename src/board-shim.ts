@@ -29,6 +29,7 @@ import {
 import { createExecuteHandle } from "./shared/execute-handle";
 import type {
     BoardAiVisionRegistrationMsg,
+    BoardAiVisionNotifyMsg,
     BoardAiVisionRequestMsg,
     BoardAiVisionResultMsg,
     BoardBootContext,
@@ -45,6 +46,7 @@ import { AI_VISION_SCHEMA_VERSION, expose } from "ai-vision/remote";
 import { createElements as createDomElements, highlightElement } from "ai-vision/dom";
 import type {
     IAiElementDeclaration,
+    IAiHostSignal,
     IAiRemoteRequest,
     IAiRemoteResponse,
     IAiVisionShape,
@@ -428,6 +430,19 @@ function exposeAiVision(root: object): IAiVisionRemote {
     const remote = expose(root, {
         publish: false,
         onWarning: (message) => console.warn("[persephone.aiVision]", message),
+        onHostSignal: (signal: IAiHostSignal) => {
+            if (signal.type !== "notify" || viewRole !== "main"
+                || aiVisionRemote !== remote || aiVisionGeneration !== generation) return;
+            const message: BoardAiVisionNotifyMsg = {
+                __persephone: "board:aiNotify",
+                text: signal.text,
+            };
+            try {
+                window.parent.postMessage(message, hostPostTarget);
+            } catch {
+                // The host frame may have gone away while the board is being replaced.
+            }
+        },
     });
     aiVisionRemote = remote;
     postAiVisionRegistration(remote);
@@ -782,8 +797,9 @@ function createHandle(
 
 (window as unknown as { persephone: unknown }).persephone = {
     // Bridge API version — bumped when the `persephone.*` surface gains something.
-    // 1.2.0: programmatic AiVision calls (US-1296); 1.3.0 adds remote trees (US-1390).
-    version: "1.3.0",
+    // 1.2.0: programmatic AiVision calls (US-1296); 1.3.0 adds remote trees (US-1390);
+    // 1.4.0 adds the host-frame AiVision notify bridge (US-1399).
+    version: "1.4.0",
 
     aiVision: {
         schemaVersion: AI_VISION_SCHEMA_VERSION,

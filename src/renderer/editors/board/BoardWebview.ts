@@ -6,6 +6,7 @@ import { pagesModel } from "../../api/pages";
 import { isFocusInSidebar } from "../../core/utils/focus-utils";
 import type {
     BoardAiVisionRegistrationMsg,
+    BoardAiVisionNotifyMsg,
     BoardAiVisionRequestMsg,
     BoardAiVisionResultMsg,
     BoardFilePathResultMsg,
@@ -28,7 +29,7 @@ import { errMessage } from "../../../shared/utils";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import "../../uikit/Panel/Panel.css";
-import { logBoardReloaded, logShapeChanged } from "../../scripting/ai-vision/event-log";
+import { logBoardReloaded, logRemoteNotify, logShapeChanged } from "../../scripting/ai-vision/event-log";
 
 export interface BoardWebviewProps {
     model: BoardEditorModel;
@@ -36,6 +37,20 @@ export interface BoardWebviewProps {
     entry?: string;
     view?: string;
     isMain?: boolean;
+}
+
+const BOARD_NOTIFY_LIMIT = 5;
+const BOARD_NOTIFY_WINDOW_MS = 60_000;
+const acceptedBoardNotifyTimes: number[] = [];
+
+function acceptBoardNotify(now: number): boolean {
+    while (acceptedBoardNotifyTimes[0] !== undefined
+        && acceptedBoardNotifyTimes[0] <= now - BOARD_NOTIFY_WINDOW_MS) {
+        acceptedBoardNotifyTimes.shift();
+    }
+    if (acceptedBoardNotifyTimes.length >= BOARD_NOTIFY_LIMIT) return false;
+    acceptedBoardNotifyTimes.push(now);
+    return true;
 }
 
 /**
@@ -294,7 +309,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         const host = this.host;
         const frame = this.iframe;
         if (!this.live || !host || !frame) return;
-        const data = event.data as BoardToHostMsg | BoardAiVisionRegistrationMsg | BoardAiVisionResultMsg | undefined;
+        const data = event.data as BoardToHostMsg | BoardAiVisionRegistrationMsg | BoardAiVisionNotifyMsg | BoardAiVisionResultMsg | undefined;
         if (!data?.__persephone || event.origin !== `board://${host}`
             || event.source !== frame.contentWindow) return;
 
@@ -348,6 +363,9 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
                 break;
             case "board:aiVision":
                 this.handleAiVisionRegistration(data as BoardAiVisionRegistrationMsg, model, frame);
+                break;
+            case "board:aiNotify":
+                this.handleAiVisionNotify(data as BoardAiVisionNotifyMsg, model, frame);
                 break;
             case "board:aiResult":
                 this.handleAiVisionResult(data as BoardAiVisionResultMsg, frame);
@@ -405,6 +423,26 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         if (accepted && reason === "register" && model.consumeReloadRegistration() && pageId) {
             logBoardReloaded(pageId);
         }
+    }
+
+    private handleAiVisionNotify(
+        message: BoardAiVisionNotifyMsg,
+        model: BoardEditorModel,
+        frame: HTMLIFrameElement,
+    ): void {
+        if (!this.isMain || model.frames.get(BOARD_CDP_TAB) !== frame
+            || !boardTrust.isTrusted(this.props.boardRoot)
+            || typeof message.text !== "string") return;
+        const pageId = model.page?.id;
+        if (!pageId) return;
+        const normalizedText = message.text.replace(/\s+/g, " ").trim();
+        if (!normalizedText) return;
+        const text = normalizedText.length > 512
+            ? `${normalizedText.slice(0, 509)}...`
+            : normalizedText;
+        if (!acceptBoardNotify(Date.now())) return;
+        const path = `pages[${JSON.stringify(pageId)}].editor.app`;
+        logRemoteNotify(text, path, "board");
     }
 
     private readonly requestAiVision = (
