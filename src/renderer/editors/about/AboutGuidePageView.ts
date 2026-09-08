@@ -267,7 +267,7 @@ export class AboutGuidePageView extends VanillaView<AboutGuidePageViewProps> {
                 // The current page is not a link. A chip keeps it legible beside the
                 // link crumbs without borrowing their colour, and stops the trail
                 // reading as one run of text with the Back button.
-                const current = createTextElement(crumb.label, { size: "sm", truncate: true });
+                const current = createTextElement(crumb.label, { size: "base", truncate: true });
                 current.classList.add("about-guide-crumb-current");
                 this.breadcrumbs.append(current);
             }
