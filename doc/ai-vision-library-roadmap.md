@@ -337,3 +337,31 @@ to boards.
 - Automatic `data-name` generation for boards. Authors add names to the controls they want addressable,
   as the shell does.
 - `persephone.call()` (inbound) is unchanged by this roadmap except for reading the shared timeout.
+
+## Closing note — the roadmap is complete
+
+**2026-09-08.** All three epics closed the day the roadmap was written, one agent per epic, Codex
+doing the investigation and implementation. The goal at the top holds: `ai-vision` is a published
+MIT library (`1.0.1`, released through a tag-triggered trusted-publishing workflow, no token anywhere),
+Persephone consumes it and its internal engine is gone, and a board or a web page mounts its own model
+under `pages[id].editor.app`. The final gate passed on the first attempt: a Haiku agent with only the
+`call` tool drove the todo board in fourteen calls through `.app` and hints alone, never touching
+`snapshot()`.
+
+What the roadmap got right was principle 2 — shape crosses boundaries, engines do not. Every defect
+the proving board surfaced was fixed once, in the host or the library, and applied to boards and web
+pages alike; nothing had to be patched in two places. What it got wrong was believing adoption was
+mechanical: the ESM-only package needed a `moduleResolution` change and an SSR `noExternal` entry, and
+the dev app crashed twice on the way. The proving board also found two host defects unrelated to its
+own purpose — in-flight requests rejected on `refresh()`, and `board://` documents decoded as
+windows-1252 for lack of a charset — which is the argument for proving boards.
+
+### Needs user check
+
+- **Publish the todo board 1.1.0** by merging `persephone-boards` `develop` to `main`; it requires
+  `minAppVersion: 5.0.1`, so publish after Persephone 5.0.1 ships or users on 5.0.0 are not offered it.
+  Closes the "Publish the todo board" backlog item.
+- **`about:blank` staleness** in the shared CDP `evaluate` path (pre-existing, logged in the backlog).
+- **Ideas not taken up here**, recorded in `scratches/ai-vision-prior-art-and-events.md`: a
+  shape-change event from mounted remote trees, a blocking `ui.guide.step` for user walkthroughs,
+  next-action hints, and a defer signal for large subtrees. Each wants its own investigation.
