@@ -135,6 +135,7 @@ export class AboutGuidePageView extends VanillaView<AboutGuidePageViewProps> {
             minWidth: 0,
             overflow: "hidden",
         });
+        this.breadcrumbs.classList.add("about-guide-breadcrumbs");
         this.bodyHost = createPanelElement({
             name: "about-guide-body",
             direction: "column",
@@ -263,7 +264,12 @@ export class AboutGuidePageView extends VanillaView<AboutGuidePageViewProps> {
                 this.breadcrumbs.append(button.root);
                 button.mount();
             } else {
-                this.breadcrumbs.append(createTextElement(crumb.label, { size: "sm", bold: true, truncate: true }));
+                // The current page is not a link. A chip keeps it legible beside the
+                // link crumbs without borrowing their colour, and stops the trail
+                // reading as one run of text with the Back button.
+                const current = createTextElement(crumb.label, { size: "sm", truncate: true });
+                current.classList.add("about-guide-crumb-current");
+                this.breadcrumbs.append(current);
             }
         });
     }
