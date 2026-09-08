@@ -105,7 +105,11 @@ export class McpInspectorEditorView extends VanillaView<{ model: EditorModel }> 
 
     private readonly updateConnections = (connections: SavedMcpConnection[]): void => {
         this.storeConnections = connections;
-        this.syncSavedConnections(this.model.state.get());
+        // The list arrives asynchronously on the first open of a session, after the
+        // body has already rendered its empty-state message. The body chooses
+        // between that message and the saved list, so the whole surface has to
+        // re-sync here, not just the connection bar's selector.
+        this.syncState(this.model.state.get());
     };
 
     private readonly syncState = (state: McpInspectorEditorState): void => {
