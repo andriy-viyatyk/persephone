@@ -12,6 +12,9 @@
 
     .about-card-content {
         flex: 0 0 auto;
+        /* Centers the card in the pane while keeping it scrollable when it
+           overflows; justify-content: center would clip the top instead. */
+        margin-block: auto;
     }
 
     .about-guide-pane {

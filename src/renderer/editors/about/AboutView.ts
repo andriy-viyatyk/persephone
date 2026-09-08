@@ -138,8 +138,6 @@ export class AboutEditorView extends VanillaView<AboutEditorProps> {
             direction: "column",
             align: "center",
             padding: "xxxl",
-            background: "light",
-            rounded: "xl",
             width: "100%",
             maxWidth: 400,
             gap: "xl",
