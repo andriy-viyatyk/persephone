@@ -59,6 +59,15 @@
 
     /* The summary shares the title's row, so it needs its own gap: without one the
        two strings collide into "Agent ToolsThe Agent Tools registry is …". */
+    /* Only the guide link is clickable, so the row must not claim to be. */
+    .about-guide-tree [data-type="tree-item"] {
+        cursor: default;
+    }
+
+    .about-guide-link {
+        cursor: pointer;
+    }
+
     .about-guide-summary {
         display: block;
         flex: 1 1 auto;

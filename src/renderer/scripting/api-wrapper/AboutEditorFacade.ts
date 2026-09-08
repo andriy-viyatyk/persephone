@@ -28,7 +28,7 @@ export const ABOUT_ELEMENTS: readonly IAiElementDeclaration[] = [
     { name: "about-resource-boards", purpose: "In the contents pane, open the in-app Boards catalogue guide.", where: "Resources row, after Issues" },
     { name: "about-resource-mcp-setup", purpose: "In the contents pane, open the in-app MCP setup guide.", where: "Resources row, last button" },
     { name: "about-show-agent-guides", purpose: "In the contents pane, include agent-audience guides in the contents tree.", where: "guide contents pane, above the guide tree" },
-    { name: "about-guide-tree", purpose: "In the contents pane, browse the available guide pages and folders.", where: "guide contents pane, below its filters and resources" },
+    { name: "about-guide-tree", purpose: "In the contents pane, browse the available guide pages and folders; a page opens from its link-coloured title, not from anywhere on the row.", where: "guide contents pane, below its filters and resources" },
     { name: "about-guide-page", purpose: "In guide state, host the right-pane view that replaces contents for the selected guide.", where: "right pane of About, replacing guide contents" },
     { name: "about-guide-breadcrumbs", purpose: "In guide state, show the current guide's navigable folder and page trail.", where: "top of the selected guide pane" },
     { name: "about-guide-back", purpose: "In guide state, return to the previous About guide location.", where: "top-left of the selected guide pane" },

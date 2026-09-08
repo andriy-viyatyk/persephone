@@ -139,8 +139,10 @@ Evidence: `AboutView.ts:135-237`, `AboutGuidePageView.ts:104-150`, and `ToolsHub
 
 About is a fixed page with the version card on the left and the guide browser on the right. The
 contents view provides the guide tree, summaries, an optional **Show agent guides** filter, inline
-What's New, and Resources. Selecting a guide renders it in the right pane with breadcrumbs,
-**Back**, and **Open in tab**; the latter opens a read-only `persephone-guide://...` Markdown tab.
+What's New, and Resources. Each page is listed as a link-coloured title beside its summary; click
+the title, or move to the row with the arrow keys and press Enter, and the guide renders in the
+right pane with breadcrumbs, **Back**, and **Open in tab**; the latter opens a read-only
+`persephone-guide://...` Markdown tab.
 
 | Element | Selector |
 |---|---|

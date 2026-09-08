@@ -4,6 +4,7 @@ import { getGuideIndex, getGuidePage } from "../../guides";
 import type { GuideTreeNode } from "../../../shared/guides";
 import { selectReleaseNotes } from "../../../shared/guides/release-notes";
 import { guard } from "../../core/utils/guard";
+import color from "../../theme/color";
 import { ButtonView } from "../../uikit/Button/ButtonView";
 import { CheckboxView } from "../../uikit/Checkbox/CheckboxView";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
@@ -97,9 +98,16 @@ function mapGuideNodes(nodes: readonly GuideTreeNode[]): AboutGuideTreeItem[] {
                 items: mapGuideNodes(node.children),
             };
         }
+        // Page titles are styled and behave like markdown links: the same colour
+        // token, the same hover underline, and only the title itself opens the
+        // guide. The path travels on the element so one delegated listener on the
+        // tree can serve every row. Folder rows keep the plain label of a container.
+        const label = createTextElement(node.title, { color: color.misc.link, hoverUnderline: true });
+        label.classList.add("about-guide-link");
+        label.dataset.guidePath = node.path;
         return {
             value: node.path,
-            label: node.title,
+            label,
             node,
         };
     });
@@ -112,6 +120,8 @@ export class AboutGuideBrowserView extends VanillaView<AboutGuideBrowserProps> {
     private loadGeneration = 0;
     private loadedShowAgentGuides: boolean | undefined;
     private guideItems: AboutGuideTreeItem[] = [];
+    private activeIndex: number | null = null;
+    private enterActivation = false;
     private releaseNotes = "";
 
     private contentsHost: HTMLDivElement | undefined;
@@ -279,8 +289,26 @@ export class AboutGuideBrowserView extends VanillaView<AboutGuideBrowserProps> {
         this.showAgentGuidesToggle.mount();
 
         this.tree = this.child(new TreeView<AboutGuideTreeItem>(this.treeProps()));
+        this.tree.root.classList.add("about-guide-tree");
         treeSection.append(this.tree.root);
         this.tree.mount();
+
+        // Clicking anywhere on a row selects it; only the link opens the guide.
+        this.listen(this.tree.root, "click", (event) => {
+            const target = event.target as HTMLElement | null;
+            const link = target?.closest?.("[data-guide-path]") as HTMLElement | null;
+            const path = link?.dataset.guidePath;
+            if (path) void this.openGuide(path);
+        });
+        // The tree reports keyboard activation through the same onChange as a row
+        // click, so Enter is recorded here to keep it opening what a click no
+        // longer does. Capture runs before the tree's own root handler; the flag
+        // is cleared once that synchronous dispatch is over.
+        this.listen(this.tree.root, "keydown", (event) => {
+            if (event.key !== "Enter") return;
+            this.enterActivation = true;
+            setTimeout(() => { this.enterActivation = false; }, 0);
+        }, { capture: true });
 
         this.contentsHost.append(whatsNew, resources, treeSection);
         this.root.append(this.contentsHost);
@@ -365,6 +393,8 @@ export class AboutGuideBrowserView extends VanillaView<AboutGuideBrowserProps> {
             getChildren: (item) => item.items,
             onChange: this.handleGuideTreeChange,
             getTooltip: (item) => item.node.kind === "page" ? item.node.summary : undefined,
+            activeIndex: this.activeIndex,
+            onActiveChange: this.handleActiveChange,
             renderTrailing: this.renderTreeSummary,
             defaultExpandAll: false,
             keyboardNav: true,
@@ -382,7 +412,13 @@ export class AboutGuideBrowserView extends VanillaView<AboutGuideBrowserProps> {
         return summary;
     };
 
+    private readonly handleActiveChange = (index: number | null): void => {
+        this.activeIndex = index;
+        this.tree?.update(this.treeProps());
+    };
+
     private readonly handleGuideTreeChange = (item: AboutGuideTreeItem): void => {
+        if (!this.enterActivation) return; // a row click selects; its link opens
         if (item.node.kind !== "page") return;
         void this.openGuide(item.node.path);
     };
