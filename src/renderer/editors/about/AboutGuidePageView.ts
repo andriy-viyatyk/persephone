@@ -203,10 +203,10 @@ export class AboutGuidePageView extends VanillaView<AboutGuidePageViewProps> {
                 title: page.title,
             });
             this.renderBreadcrumbs(breadcrumbs);
-            const body = this.child(new MarkdownBodyView({
-                model: this.bodyModel,
-                editorConfig: { hideMinimap: true },
-            }));
+            // No editorConfig: the pane wants the editor's own defaults — the
+            // minimap, and with it a hidden scrollbar. maxEditorHeight in
+            // particular must stay unset or the body view skips link handling.
+            const body = this.child(new MarkdownBodyView({ model: this.bodyModel }));
             this.bodyHost.append(body.root);
             this.bodyView = body;
             body.mount();

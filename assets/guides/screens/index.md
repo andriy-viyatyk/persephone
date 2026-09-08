@@ -142,7 +142,8 @@ contents view provides the guide tree, summaries, an optional **Show agent guide
 What's New, and Resources. Each page is listed as a link-coloured title beside its summary; click
 the title, or move to the row with the arrow keys and press Enter, and the guide renders in the
 right pane with breadcrumbs, **Back**, and **Open in tab**; the latter opens a read-only
-`persephone-guide://...` Markdown tab.
+`persephone-guide://...` Markdown tab. A rendered guide scrolls against a minimap at the right
+edge, the same one Markdown Preview uses, and has no scrollbar of its own.
 
 | Element | Selector |
 |---|---|
