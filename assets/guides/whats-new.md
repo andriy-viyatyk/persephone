@@ -10,7 +10,13 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ---
 
-## Version 5.0.0 (Upcoming)
+## Version 5.0.1 (Upcoming)
+
+*No changes yet.*
+
+---
+
+## Version 5.0.0
 
 ### Breaking Changes
 
@@ -37,181 +43,115 @@ Release notes and changelog for Persephone (formerly js-notepad).
   pages remain unreadable to an agent**, and only a private page the agent opened itself is
   available to it. A leftover `mcp.browser-tools.enabled` line in your settings file is harmless and
   can be deleted.
-- **MCP Inspector stdio command and argument setters were removed from the facade.** An agent that
-  previously configured stdio must now open the Inspector and ask the user to enter the command
-  and arguments; this prevents an agent from starting an arbitrary process with the user's
-  privileges.
 
-### For agent integrations
+### New Features
 
-- **Toolset registration can now be revoked through `call`:** use `tools.unregisterToolset(root)` to
-  remove a registered toolset from search and execution without deleting its folder.
-- **`call` now refuses bad arguments instead of quietly doing nothing.** An independent review of
-  the `call` surface found about a dozen calls that returned an empty list, `null` or `false` when
-  their arguments were wrong — a result an agent cannot tell apart from "there was nothing there",
-  so it would report a no-op as done. Those calls now fail with a message that names the value you
-  passed, says what type it actually was, and either lists the valid values or points at the path
-  that lists them. Affected: `helpSearch`, `tools.search`, `pages.closePage`, and the grid's
-  `addRows`, `editCell` and `deleteRows`. Passing arguments to a *property* such as `version` is
-  not an error — you get the value plus a warning.
-  - **Behaviour change worth knowing about:** `pages.closePage("<id that is not open>")` now
-    **throws**, listing the open page ids, where it used to return `false`. Its sibling
-    `pages.showPage` already behaved this way with the identical input. If you have a script or a
-    board that branches on the `false` return, wrap it in a `try`. Closing a page that really is
-    open is unchanged, including the unsaved-changes prompt.
-- **`pages.logView.push("some text")` writes one line, not one line per character.** A plain string
-  is documented shorthand for a `log.info` entry, and passing one directly to `push` used to iterate
-  it — twelve characters became twelve log entries. A single entry object works too. If any entry in
-  a batch is invalid, nothing is written at all, rather than part of the batch being applied and then
-  failing.
-- **A mistyped path costs one line instead of a page.** `call` used to ignore its own `hints`
-  setting whenever a call failed, and re-sent the full member list on every repeat failure. Now a
-  near-miss gets a suggestion — `"pagez" is not a member of Persephone. Did you mean "pages" or
-  "page"?` — the member list is sent once per kind per session, and `hints: "never"` is honoured on
-  errors as well as on successes. A genuinely unknown name still gets the full list the first time,
-  because that is what makes the surface learnable.
-- **`maxLength` now bounds large lists and objects, not just long strings.** The response reports
-  `showing N of M items` and is always valid JSON — whole entries are dropped, never cut mid-value.
-  `maxLength` must be at least 1 and `windowIndex` at least 0; both are rejected up front instead of
-  producing an empty result.
-- **`helpSearch` with a negative limit no longer silently drops results off the end.** A limit below
-  1 is treated as 1.
-- **An unknown `language` is now an error rather than a silent downgrade.**
-  `pages.addEditorPage("grid-json", "not-a-language", …)` used to hand back a plain Monaco page with
-  the bogus language stored on it, and report success — the mistake only surfaced later when the grid
-  operations were not there. Read `editors.languages` for the valid ids. A *real* language that the
-  editor you asked for cannot handle still falls back to Monaco, exactly as before.
-- **Grid row keys are readable.** `editCell` and `deleteRows` take row keys, and there was no way to
-  obtain one — they are held outside the row data, so reading `rows` never showed them. The new
-  `editor.rowKeys` returns them in the same order as `editor.rows`.
-- **`pages.addEditorPage` accepts initial content again.** The fourth `content` argument was
-  implemented and documented but dropped before it reached the page, so a call that supplied it got
-  an empty page and a success result.
-- **A hint for a returned object now uses a path you can actually follow.** Creating a page
-  advertised its editor as `pages.addEditorPage().editor`, which resolves to a description of the
-  method rather than the editor. It now names the new page's real id.
-- **Script errors no longer bury your stack trace in Persephone's own.** `script.execute` returned
-  eight frames of Persephone internals around one frame of your code; it now returns your frames
-  only, as `script:line:column`. As before, an error *inside* your script comes back as a successful
-  call carrying `isError: true` — so that `consoleLogs` arrives with it — which is now stated in the
-  contract rather than left to be discovered.
-- **The `PERSEPHONE_MCP_CALL_ONLY` migration flag was removed before release.** It existed only to
-  hide `execute_tool`, the last tool still advertised alongside `call`. `execute_tool` is now
-  retired in favour of the `tools.execute(toolId, args)` path, so the manifest is `call` alone
-  unconditionally and the flag had nothing left to do. No settings key, and nothing to set before
-  launch. A leftover `PERSEPHONE_MCP_CALL_ONLY` variable in a shell or shortcut is harmless and
-  can be deleted.
+- **One `call` surface for the whole application** — AI agents (through the MCP `call` tool) and
+  scripts (through `app.call()`) now navigate Persephone's live object model by path: discover
+  pages, editor facades and application services, invoke methods, and update writable properties.
+  Start with `call` and no path for an overview of every area, or search for one with
+  `helpSearch(...)`. MCP callers can target a specific window; main-process script execution stays
+  separately gated by **Settings → MCP Server → Allow main-process scripts**. Private browser pages
+  you opened yourself remain protected from object-model access.
+
+  - **Every editor describes itself.** Text, Markdown, HTML, SVG, Mermaid, image, video, file-diff
+    and graph pages; Grid, Notebook, REST, environment-variable, Archive, Log View, Folder View and
+    Git Tree pages; Board pages, Board Info, the toolset editor, the Tools & Editors hub, the MCP
+    Inspector's Tools/Resources/Prompts panels, and the Mneme configuration and root pages — each
+    exposes its state and actions on `page.editor`, lists its on-screen controls through `elements`
+    with a plain-language purpose for each, and can point one out on screen with `highlight(...)`.
+    Controls are addressed per page, so asking about one of two open Markdown pages highlights the
+    right one, and a control that is not currently on screen reports itself as not visible instead
+    of silently succeeding. Grid column row filters and Notebook tag areas can be highlighted even
+    though they appear only on hover. Page sidebar panels are addressable through `page.panels`.
+  - **Video, file diff and compare are reachable for the first time.** A video or audio page
+    answers what is playing, its format and its live position; a file-diff page answers which two
+    revisions it is comparing; and `pages.compare` lists which pages are being compared side by
+    side and can enter or leave compare mode. Playback actions warn that they may start audio from
+    a page that is not on screen.
+  - **The application shell is discoverable.** Agents can inspect all open or persisted windows,
+    discover the live Menu Bar folders, see a page's sidebar panels, and find a setting's row in
+    Settings before highlighting it. Open renderer dialogs and popup menus are reported along with
+    the paths to answer or dismiss them; native OS dialogs are reported as requiring your response.
+  - **`pages.openUrl(url)` opens a URL in the right editor.** A URL naming an image, a Markdown
+    file or an archive goes through Persephone's content pipeline and lands in the matching editor.
+    `pages.openUrlInBrowserTab(url)` remains the way to open a web page or a search.
+  - **Mistakes are answered, not swallowed.** A bad argument fails with a message that names the
+    value you passed, says what type it actually was, and either lists the valid values or points
+    at the path that lists them. A mistyped path gets a suggestion — `"pagez" is not a member of
+    Persephone. Did you mean "pages" or "page"?` — and member-list hints are sent once per kind per
+    session, so a repeat mistake costs one line rather than a page. `maxLength` bounds large lists
+    and objects as well as long strings, reporting `showing N of M items` and always returning
+    valid JSON. A script error returns your frames only, as `script:line:column`, instead of eight
+    frames of Persephone internals.
+  - **Sensitive values.** REST and environment-variable pages expose values already present in the
+    page text; treat credentials there as sensitive. No path accepts or reveals a file password —
+    encrypting or unlocking still happens only through the password dialog. The MCP Inspector's
+    stdio command and arguments must be typed by you: no path sets them, so an agent cannot start
+    an arbitrary process with your privileges.
+
+- **One screen surface for any page, board, or the app window** — the same operations
+  (accessibility snapshot, click, hover, type, select, key press, wait, screenshot, network
+  requests) now work on a browser page, on a board's frames, and on Persephone's own window through
+  `window.screen`. An agent can point at what it means using the refs a snapshot returns instead of
+  guessing at CSS selectors, and can fall back to a snapshot of the whole window for any control no
+  descriptor has described yet — a dialog, an editor toolbar, a third-party control. A browser
+  page's own chrome (address bar, toolbar buttons, tab strip) is listed through `elements`; what is
+  inside the web page stays separate, reachable through the page snapshot.
+
+- **The Agent Tools registry through `call`** — a new `tools` node lets an agent search registered
+  tools, inspect a toolset's manifest, refresh after editing one, scaffold a new one, run one with
+  `tools.execute(toolId, args)`, and revoke one with `tools.unregisterToolset(root)` — removing it
+  from search and execution without deleting its folder. Registering a toolset still requires your
+  confirmation, exactly as before: an agent can create the folder but can never grant itself the
+  right to run its scripts.
+
+- **`boards.list()` answers "which boards do I have?"** — a single local inventory of every trusted
+  and installed board, whether an update is available, and which are open right now. It makes no
+  network call and changes nothing.
+
+- **In-app User Guide browser** — open the guide collection from Menu Bar → **About**, or press
+  `F1` outside a Monaco editor. The About page shows guide contents, release highlights, and
+  resources; select a guide to read it in-pane, use **Back** to navigate, or choose **Open in tab**
+  to keep the guide as a normal Markdown tab. About's update flow now opens What's New in the app.
+
+### Improvements
+
+- **Scripts and agents share one MCP Log page** — a script's `ui.log(...)` output and an agent's
+  log output now appear together in the same **MCP Log** page. Agents can use the non-blocking
+  `pages.logView.push(...)` path and poll `dialogResult(...)` for inline answers.
+
+- **The Tools & Editors hub and the Mneme configuration page can be opened by an agent** —
+  `pages.showToolsHubPage()` and `pages.showMnemeConfigPage()`, which previously existed internally
+  but were not reachable.
 
 ### Bug Fixes
+
+- **The MCP Inspector shows your saved connections as soon as it opens** — a freshly started
+  Persephone showed *"Enter a server URL or command above and click Connect to get started"* even
+  when connections were saved. They appeared only once you typed in the URL field, and a second
+  open of the page behaved correctly.
 
 - **The MCP Inspector's result editor now fills the RESULT panel** — calling a tool from the Inspector
   showed its result in an editor about 40 pixels tall, with the rest of the RESULT panel left empty,
   no matter how much room the panel had or how long the result was. The editor now fills the panel
   and follows it as you drag the splitter.
 
+- **The Explorer panel's Search and Boards buttons work on a newly opened folder page** — opening a
+  folder in a new page and then clicking **Boards** or **Search** in the Explorer panel header did
+  nothing. The panels appeared only after restarting Persephone, and the buttons worked from then
+  on — until the next folder was opened in a new page.
+
 - **HTML Preview no longer goes blank in installed builds** — HTML that uses browser history methods to manage its own tabs could render in development but show a blank preview in a packaged installation. The preview now remains visible.
 
 - **The Tor info button no longer appears on ordinary browser pages** — a "Tor connection info"
   button was shown in the browser toolbar of every page, whether or not the page was using Tor.
-
-- **Activating a page by id reports a bad id instead of doing nothing** — a script or agent that
-  passed a stale or mistyped page id used to get silence and the previous page, and could go on to
-  act on the wrong page. It now says which page ids are open.
-
-- **Searching with `call` no longer opens the MCP Log page** — Looking up a path with
-  `helpSearch(...)` now remains read-only. The MCP Log page is created only when an agent writes
-  output through `pages.logView.push(...)`.
 
 - **Link Editor highlights follow auto-advanced tracks again** — When a media player advances to the next link automatically, the selected item in the Collections and Tags panels now follows the new track and remains highlighted.
 
 - **The page sidebar opens on the correct side** — Opening a page sidebar after the page has already loaded now places it to the left of the editor, matching pages that opened with a sidebar.
 
 - **File Explorer icons stay visible while scrolling** — File icons no longer disappear when Explorer rows are scrolled out of view and then shown again.
-
-### Improvements
-
-- **In-app User Guide browser** — Open the guide collection from Menu Bar → **About** or
-  press `F1` outside a Monaco editor. The About page shows guide contents, release highlights, and
-  resources; select a guide to read it in-pane, use **Back** to navigate, or choose **Open in tab**
-  to keep the guide as a normal Markdown tab. About's update flow now opens What's New in the app.
-
-- **Boards and Agent Tools are now available through `call`** — Board pages, Board Info, the toolset
-  editor, the Tools & Editors hub, the MCP Inspector's Tools/Resources/Prompts panels, and the Mneme
-  configuration and root pages all expose their state and actions through `page.editor`, with
-  curated on-screen controls discoverable via `elements` and `highlight(...)`.
-- **`boards.list()` answers "which boards do I have?"** — a single local inventory of every trusted
-  and installed board, whether an update is available, and which are open right now. It makes no
-  network call and changes nothing.
-- **A new `tools` node exposes the Agent Tools registry** — search registered tools, inspect a
-  toolset's manifest, refresh after editing one, and scaffold a new one. Registering a toolset still
-  requires your confirmation, exactly as before: an agent can create the folder but can never grant
-  itself the right to run its scripts.
-- **The Tools & Editors hub and the Mneme configuration page can now be opened by an agent** —
-  `pages.showToolsHubPage()` and `pages.showMnemeConfigPage()`, which previously existed internally
-  but were not reachable.
-
-- **An agent can now see and drive any screen through one surface** — the same operations
-  (accessibility snapshot, click, hover, type, select, key press, wait, screenshot, network
-  requests) work on a browser page, on a board's frames, and on Persephone's own window through
-  `window.screen`. An agent can point at what it means using the refs a snapshot returns, instead of
-  guessing at CSS selectors, and it can fall back to a snapshot of the whole window for any control
-  no descriptor has described yet — a dialog, an editor toolbar, a third-party control.
-- **Browser page controls are discoverable** — the address bar, toolbar buttons and tab strip are
-  listed with a purpose each through `elements`, and can be pointed out to you with `highlight(...)`.
-  What is inside the web page stays separate, reachable through the page snapshot.
-- **`pages.openUrl(url)` opens a URL in the right editor** — a URL naming an image, a Markdown file
-  or an archive now goes through Persephone's content pipeline and lands in the matching editor,
-  rather than always opening a browser tab. `pages.openUrlInBrowserTab(url)` remains the way to open
-  a web page or a search.
-
-- **Data and navigation surfaces are now available through `call`** — Grid, Notebook, REST,
-  environment-variable, Archive, Log View, Folder View, and Git Tree pages expose their useful
-  state and actions through `page.editor`. Their curated on-screen controls can be discovered with
-  `elements` and pointed out with `highlight(...)`; page sidebar panels are also addressable through
-  `page.panels`.
-
-- **Agents can now point out Grid and Notebook controls** — An agent can highlight a Grid column's
-  row filter and a Notebook note's tag area, including controls that are normally shown only on
-  hover. Individual tag chips remain unaddressed.
-
-- **Scripts and agents share one MCP Log page** — A script's `ui.log(...)` output and an agent's
-  log output now appear together in the same **MCP Log** page. Agents can use the non-blocking
-  `pages.logView.push(...)` path and poll `dialogResult(...)` for inline answers; the retired
-  `ui_push` tool is no longer available.
-
-- **REST and environment-variable surfaces reflect the page text** — Their agent-facing views
-  expose values already present in the page content; they do not claim an additional redaction
-  boundary. Treat credentials and environment-variable values in those pages as sensitive.
-
-- **AI agents and scripts can navigate Persephone's live object model** — The MCP `call` tool and
-  scripting API `app.call()` can discover pages, editor facades, and application services by path,
-  invoke methods, and update writable properties. MCP callers can also target a specific window;
-  main-process script execution is separately gated by **Settings → MCP Server → Allow main-process
-  scripts**. Private browser pages opened by the user remain protected from object-model access.
-
-- **The application shell is now discoverable through `call`** — Agents can inspect all open or
-  persisted windows, discover the live Menu Bar folders, see a page's sidebar panels, and find a
-  setting's row in Settings before highlighting it. Menu Bar folder IDs and sidebar panel IDs are
-  returned by the object model so agents can act on the current UI without guessing labels.
-
-- **AI agents can recover from prompts and explain the app window** — The MCP `call` tool reports
-  open renderer dialogs and popup menus, exposes paths to answer or dismiss them, and can describe
-  curated shell controls through `ui.elements` and point at one with `ui.highlight(...)`. Native OS
-  dialogs are reported as requiring the user's response.
-
-- **The text and preview editors describe themselves to an agent** — Every text, markdown, HTML,
-  SVG, Mermaid, image, video, file-diff and graph page now lists its own on-screen controls through
-  `page.editor.elements`, each with a plain-language purpose, and can point at one on screen with
-  `page.editor.highlight(...)`. Controls are addressed per page, so asking about one of two open
-  markdown pages highlights the right one, and a control that is not currently on screen reports
-  itself as not visible instead of silently succeeding.
-
-- **Video, file diff and compare are reachable for the first time** — A video or audio page answers
-  what is playing, its format and its live position; a file-diff page answers which two revisions it
-  is comparing; and `pages.compare` lists which pages are being compared side by side and can enter
-  or leave compare mode. Playback actions warn that they may start audio from a page that is not on
-  screen, and encrypting or unlocking a file still happens only through the password dialog — no
-  path accepts or reveals a password.
 
 ---
 
