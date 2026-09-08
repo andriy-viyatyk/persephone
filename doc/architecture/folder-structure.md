@@ -730,13 +730,17 @@ vendor island under `editors/draw/`; native global styles are installed by `them
 │       ├── Markdown.ts            # Markdown helper class (returned by ui.show.markdown)
 │       ├── Mermaid.ts             # Mermaid helper class (returned by ui.show.mermaid)
 │       └── StyledTextBuilder.ts    # Fluent styled text builder + styledText() factory
-│   └── ai-vision/           # Renderer AiVision root, call/attention entry points, and descriptors
+│   └── ai-vision/           # Renderer AiVision root, call/attention entry points, event log, and descriptors
 │       ├── dialogs/         # ViewId-keyed adapters for renderer dialogs
 │       ├── menus/           # Popup-menu adapter and indexed menus node
-│       ├── namespaces/      # App namespace descriptors, including boards and Agent Tools
+│       ├── namespaces/      # App namespace descriptors, including events, boards, and Agent Tools
 │       │   ├── boards.ts    # Local board inventory and published-catalog namespace
+│       │   ├── events.ts    # Retained event reads and bounded cursor-based waits
 │       │   ├── tools.ts     # Registered Agent Tools search, execution, toolsets, and unregistration
+│       │   ├── ui-elements.ts # Curated shell-control declarations
+│       │   ├── ui-guide.ts  # Blocking one-control-at-a-time walkthroughs
 │       │   └── index.ts     # Namespace registration and descriptor wiring
+│       ├── event-log.ts     # Per-window event ring and producer helpers
 │       ├── root.ts          # Renderer object-model root
 │       ├── page-compare.ts  # pages.compare pair projection and controls
 │       └── page-panels.ts   # pages[i].editor.panels projection and controls

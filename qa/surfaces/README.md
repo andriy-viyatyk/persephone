@@ -38,6 +38,7 @@ Two things these files are for:
 | [tools.md](tools.md) | Agent Tools, the toolset editor, Tools hub, MCP Inspector and Mneme | EPIC-088 (US-1328 to US-1331) |
 | [editors/browser.md](editors/browser.md) | The three automation hosts: a browser page, a board's frames, and Persephone's own window | EPIC-089 (US-1334 to US-1339) |
 | [remote-app.md](remote-app.md) | `pages[i].editor.app` — a board's or a web page's own object model, mounted from a remote shape | EPIC-097 (US-1389 to US-1393) |
+| [events.md](events.md) | `events` — what changed since the agent last looked: the result block, the ring, the blocking `wait`, remote shape signals, and `ui.guide.step` | EPIC-099 (US-1397 to US-1400) |
 | [menus.md](menus.md) | Popup and context menus, the `menus` node | EPIC-084 (US-1299) |
 | [windows.md](windows.md) | Multiple windows, open and closed, and the redistributed application facts | EPIC-085 (US-1303) |
 

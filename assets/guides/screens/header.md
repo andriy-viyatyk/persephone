@@ -123,6 +123,8 @@ inspection is documented in [MCP Inspector](./mcp-inspector.md). The snip menu o
 page after capture.
 
 The header's conditional controls are not errors when absent. Check the current state with
-`ui.elements` or `window.screen.snapshot()` before describing one. A visible backdrop for the Menu
+`ui.elements` or `window.screen.snapshot()` before describing one. Use `ui.highlight` to point at a
+named control; `ui.guide.step` points at one and waits for the user. For a control outside the
+header, pass its CSS selector or bare `data-name` instead. A visible backdrop for the Menu
 Bar is also not proof that the Menu Bar is open; its `[data-name="menu-bar"]` element remains in the
 DOM while closed.

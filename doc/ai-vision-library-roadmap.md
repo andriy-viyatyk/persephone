@@ -362,6 +362,12 @@ windows-1252 for lack of a charset — which is the argument for proving boards.
   `minAppVersion: 5.0.1`, so publish after Persephone 5.0.1 ships or users on 5.0.0 are not offered it.
   Closes the "Publish the todo board" backlog item.
 - **`about:blank` staleness** in the shared CDP `evaluate` path (pre-existing, logged in the backlog).
-- **Ideas not taken up here**, recorded in `scratches/ai-vision-prior-art-and-events.md`: a
+- ~~**Ideas not taken up here**, recorded in `scratches/ai-vision-prior-art-and-events.md`: a
   shape-change event from mounted remote trees, a blocking `ui.guide.step` for user walkthroughs,
-  next-action hints, and a defer signal for large subtrees. Each wants its own investigation.
+  next-action hints, and a defer signal for large subtrees.~~ — **the first two shipped** in
+  [EPIC-099](epics/completed.md) on `ai-vision@1.1.0`, as one mechanism: a per-window event log the
+  agent reads by side effect on every `call`, plus one blocking `events.wait`. Its two
+  investigations (client tool-call timeouts, and a CDP `Runtime.addBinding` spike) are recorded in
+  [EPIC-099.md](epics/EPIC-099.md). **Still open, and still wanting their own investigation:**
+  next-action hints on envelopes and a defer/budget signal for large subtrees — items 1 and 2 of
+  the scratch note's section 2, plus item 4 (one-hop `_links` in hints).

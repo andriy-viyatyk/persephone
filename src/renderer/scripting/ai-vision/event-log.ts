@@ -87,7 +87,7 @@ export function logRemoteNotify(text: string, path?: string, origin: "board" | "
 
 export interface GuideButtonSignal {
     readonly stepId: string;
-    readonly elementName: string;
+    readonly target: string;
     readonly button: string;
     readonly event: IAiEvent;
 }
@@ -101,7 +101,7 @@ export function subscribeGuideButton(listener: (signal: GuideButtonSignal) => vo
 
 /** Record a guided-overlay button press and publish its renderer-local correlation signal. */
 export function logGuideButton(
-    elementName: string,
+    target: string,
     button: string,
     stepId: string,
     path?: string,
@@ -109,9 +109,9 @@ export function logGuideButton(
     const event = eventLog.push({
         kind: "guide-button",
         ...(path ? { path } : {}),
-        text: `The user pressed ${JSON.stringify(button)} on the guided step for ${JSON.stringify(elementName)}.`,
+        text: `The user pressed ${JSON.stringify(button)} on the guided step for ${JSON.stringify(target)}.`,
     });
-    const signal: GuideButtonSignal = { stepId, elementName, button, event };
+    const signal: GuideButtonSignal = { stepId, target, button, event };
     for (const listener of guideButtonListeners) {
         try {
             listener(signal);

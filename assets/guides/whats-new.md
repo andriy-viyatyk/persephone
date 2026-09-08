@@ -17,6 +17,12 @@ Release notes and changelog for Persephone (formerly js-notepad).
   writable properties, call purposeful methods, find named controls, and highlight them in the
   correct frame through the single `call` surface. The todo board (catalog version 1.1.0) is the first complete example;
   boards that do not expose a model remain usable through `snapshot()` and refs.
+- **Agents can keep up with changes:** ask your agent what changed since it last looked, or have it
+  wait for a board or web page to refresh, a dialog to be answered, or a navigation to finish before
+  it continues.
+- **Guided walkthroughs:** ask your agent to walk you through Persephone, a Settings control, a
+  board, or a browser page one control at a time. Each step highlights the target and shows a card
+  with **Skip** and **Next**, so you can move through the tour at your own pace.
 - **Board pages preserve UTF-8 text:** board documents are now served with an explicit UTF-8
   charset, so non-ASCII text in board content and agent-facing descriptions is displayed correctly.
 
@@ -629,7 +635,7 @@ Release notes and changelog for Persephone (formerly js-notepad).
   The panel header has a **New board** split-button:
   - **New board** — opens a dialog with a **Folder** input (defaults to the current Explorer root), a **Name** input, and a live **"Will be created at: …"** preview label. Both inputs are required; click **Browse…** to navigate to a different location.
   - **Create Demo board** — same dialog, same flow, but scaffolds the full annotated demo board instead.
-  
+
   A **Delete Board** option is available in the board's context menu (right-click in the panel).
 
 - **Boards — in-board toolbar** — Every open board now displays a thin toolbar above its content:

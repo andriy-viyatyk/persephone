@@ -2,8 +2,9 @@
 
 ## Status
 
-**Status:** Active
+**Status:** Completed
 **Created:** 2026-09-08
+**Completed:** 2026-09-08
 
 Follows the [AiVision library roadmap](../ai-vision-library-roadmap.md), whose closing note recorded
 three unexplored ideas from `scratches/ai-vision-prior-art-and-events.md`. This epic implements two
@@ -42,9 +43,10 @@ an MCP client surfacing server notifications to the model — no client does tod
 - A mounted remote tree signals a shape change: a board's `refresh()` registration and a browser
   page's `refresh()` through a CDP `Runtime.addBinding` function, plus lazy revalidation as the
   correctness floor.
-- `ui.guide.step(elementName, message, { buttons? })` and `ui.guide.end()` — highlight with
+- `ui.guide.step(target, message, { buttons? })` and `ui.guide.end()` — highlight with
   Skip / Next, wait, return the pressed button. The primitive a weak model handles best: one call
-  per step.
+  per step. (`target` was `elementName` when this epic was written; the weak-agent gate forced it
+  wider — see the Outcome.)
 - The library grows the shared parts (`IAiEvent`, `EventLog`, `ICallResult.events`, proxy
   `revalidate`, remote `version` / change callback / `notify`, overlay buttons) in an additive
   **`ai-vision@1.1.0`**; `schemaVersion` stays 1.
@@ -241,11 +243,11 @@ board's `notify`.
 
 | Task | Title | Status |
 |------|-------|--------|
-| US-1396 | `ai-vision@1.1.0`: `EventLog`, `ICallResult.events`, proxy `revalidate`, remote `version` / change callback / `notify`, overlay buttons | Planned |
-| US-1397 | The event log, its producers, the per-session cursor, and the `events` block on every result | Planned |
-| US-1398 | Browser-page shape signal: lazy revalidation and the CDP `Runtime.addBinding` path | Planned |
-| US-1399 | `ui.guide.step` / `ui.guide.end`, and a board's `notify` over the shim | Planned |
-| US-1400 | Guides, What's New, and the gate (`qa/surfaces/` page + `qa/runs/` entry, mechanical and weak-agent) | Planned |
+| US-1396 | `ai-vision@1.1.0`: `EventLog`, `ICallResult.events`, proxy `revalidate`, remote `version` / host signal / `notify`, overlay buttons | Done |
+| US-1397 | The event log, its producers, the per-session cursor, and the `events` block on every result | Done |
+| US-1398 | Browser-page shape signal: lazy revalidation and the CDP `Runtime.addBinding` path | Done |
+| US-1399 | `ui.guide.step` / `ui.guide.end`, and a board's `notify` over the shim | Done |
+| US-1400 | Guides, What's New, and the gate (`qa/surfaces/` page + `qa/runs/` entry, mechanical and weak-agent) | Done |
 
 ## Gate
 
@@ -266,3 +268,41 @@ Then the **weak-agent walkthrough test**: one `haiku` subagent with only the `ca
 walk the user through the Settings page, three controls, one at a time, waiting for the user to
 press Next. Judged on whether it reached `ui.guide.step` and `events` from hints alone. Up to three
 iterations; each iteration's failure and the descriptor text that fixed it is the evidence.
+
+## Outcome (2026-09-08)
+
+Closed the day it opened. `ai-vision@1.1.0` published through the tag-triggered trusted-publishing
+workflow; Persephone consumes it and ships the channel in four commits on `upcoming-v5.0.1`. The
+gate is [qa/runs/2026-09-08-epic-099-events.md](../../qa/runs/2026-09-08-epic-099-events.md) over
+[qa/surfaces/events.md](../../qa/surfaces/events.md); both halves pass, the weak agent on the
+second iteration.
+
+**What the design got right** was making `events` a sibling of `attention` rather than an extension
+of it. The two questions — what blocks me now, what changed since I looked — have different
+lifetimes and different cursors, and every place they touched stayed separable: one collector, one
+formatter, one per-session cursor, and no producer had to know about either.
+
+**What it got wrong** was assuming the guide's audience is the window chrome. `ui.guide.step` was
+specified against the eight curated header controls, and the weak agent's first run asked for a
+walkthrough of *Settings* — a screen whose controls live on a different node entirely. It could not
+have worked. `step` now takes a **target**: a curated shell name, a CSS selector, or a bare
+`data-name`, which is exactly what every node's `elements` listing already publishes. A feature
+that can only point at the title bar is not a walkthrough, and only running it revealed that.
+
+**Five defects were found before the run was recorded**, four of them invisible from the diff:
+
+1. Persephone's own renderer bridge cut every blocking call off at 30 s, so a 50 s wait would have
+   returned a `Request timeout` error rather than `{ pending: true }` — the design's central promise
+   broken by its own plumbing. Blocking paths now get 125 s, and the invariant is written down:
+   renderer bound < bridge timeout < client timeout.
+2. A session cursor left ahead of a restarted renderer log would have deafened that session
+   permanently, with no error and no symptom. Clamped where `lastSeq` is known.
+3. Attribution was applied to host-written text, which trains an agent to ignore the one label that
+   marks prose an untrusted remote wrote.
+4. A `notify()` immediately after a `refresh()` — the normal case — was lost to its own re-probe.
+5. A guide press with nothing waiting was discarded, and a retry re-asked a question the user had
+   already answered. Either alone makes the walkthrough loop unusable by the models it is for.
+
+**Left for the user:** nothing blocking. The `.mcp.json` `timeout` field could pin Persephone's
+per-server tool timeout explicitly rather than relying on client defaults; the current bounds are
+safe under every documented default, so it is a hardening, not a fix.

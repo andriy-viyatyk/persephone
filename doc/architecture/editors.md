@@ -73,7 +73,10 @@ The `.app` registration uses `reason: "register"` for a new remote and `reason: 
 `remote.refresh()`. It also uses two generations: `token` changes on every shape publication and
 keys the proxy cache, while `incarnation` changes only for a new remote and validates in-flight
 requests. Thus refresh rebuilds the proxy without cancelling calls already using the same live
-handlers; a reload or replacement requires the caller to read `.app` again.
+handlers; a reload or replacement requires the caller to read `.app` again. Refresh also records a
+renderer event for the agent. A trusted board can call `remote.notify(text)` to record a short,
+rate-limited board-authored event; this is distinct from `persephone.notify`, which displays a
+toast.
 
 ## Rendering Architecture
 

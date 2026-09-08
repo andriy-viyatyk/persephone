@@ -148,6 +148,11 @@ confined to `.app` and cannot shadow the browser facade, the page, or the root. 
 page opened by the user is refused before Persephone probes it. If a page exposes no model, `.app`
 is absent; use `snapshot()` and its refs as the fallback.
 
+The page's model can change without navigation. When a `shape-changed` event names this
+`pages[pageId].editor.app`, read that path again before using the model. The old proxy is rejected
+after a detected version change, and the page is re-probed in the background so the next read gets
+the current shape.
+
 Remote `.app` calls use the same four-level host timeout policy: a per-call `timeoutMs`, the
 remote method's declared `timeoutMs`, the session-only in-memory `boards.callTimeoutMs`, then the
 30-second built-in fallback. The selected level and full path are included in a timeout error;

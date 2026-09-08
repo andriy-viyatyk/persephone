@@ -1,3 +1,49 @@
+## EPIC-099 — The agent event channel
+
+Completed 2026-09-08. [Epic document](EPIC-099.md). Follows the
+[AiVision library roadmap](../ai-vision-library-roadmap.md), taking up two of the three ideas its
+closing note recorded.
+
+- [x] US-1396: `ai-vision@1.1.0` — `EventLog`, `ICallResult.events`, proxy `revalidate`, remote `version` / host signal / `notify`, overlay buttons
+- [x] US-1397: The event log, its producers, the per-session cursor, and the `events` block on every result
+- [x] US-1398: Browser-page shape signal — lazy revalidation and the CDP `Runtime.addBinding` path
+- [x] US-1399: `ui.guide.step` / `ui.guide.end`, and a board's `notify` over the shim
+- [x] US-1400: Guides, What's New, and the gate
+
+**`attention` says what blocks the agent now; `events` says what changed since it last looked.**
+Keeping them siblings rather than merging them is what made the epic small: one per-window ring of
+200 entries, one per-MCP-session cursor beside the existing `seenKinds` closure, and every forwarded
+`call` result carrying the newest three unseen entries plus a `+N earlier events` line. Two sessions
+see independent unseen sets; the causing session sees its own event too, which is correct. Producers
+are a board's `refresh()` and reload, a navigation in a browser tab that has registered a model, an
+answered dialog, a guide button, and a `notify(text)` from a board or a page. Only remote-authored
+prose is stamped `board` / `page` — a host-written sentence never is, or the untrusted-text label
+would stop meaning anything.
+
+**A browser page can now say its model changed**, through a CDP `Runtime.addBinding` function the
+host installs at probe time — the first CDP *event* path in the app, since `cdp-service.ts` had only
+request/response — backed by lazy revalidation of `window.__aiVision.version` before every remote
+request, so correctness never depends on a signal arriving. Both layers ship because only one of
+them is correct alone.
+
+**`ui.guide.step(target, message)` points at a control and waits for the user.** The weak-agent gate
+rewrote its contract: it was specified against the eight curated header controls, and the first run
+asked for a walkthrough of *Settings*, which it could not have delivered. `target` is now a shell
+name, a CSS selector, or a bare `data-name` — the form every node's `elements` listing already
+publishes. Iteration 2 passed: a Haiku agent with only `call` walked three Settings sections, one
+per call, waiting each time. Record:
+[qa/runs/2026-09-08-epic-099-events.md](../../qa/runs/2026-09-08-epic-099-events.md), surface
+[qa/surfaces/events.md](../../qa/surfaces/events.md).
+
+**Five defects were found before the run was recorded, four of them invisible from the diff:**
+Persephone's own renderer bridge cut every blocking call off at 30 s, so a 50 s wait would have
+returned an error instead of `{ pending: true }`; a session cursor left ahead of a restarted log
+would have deafened that session permanently and silently; attribution was applied to host-written
+text; a `notify()` immediately after a `refresh()` was lost to its own re-probe; and a guide press
+with nothing waiting was discarded while a retry re-asked a question already answered. The last pair
+is the one that mattered most — either alone makes the walkthrough loop unusable by exactly the
+models it exists for.
+
 ## EPIC-098 — The todo board exposes its model
 
 Completed 2026-09-08. [Epic document](EPIC-098.md). Epic 3 of 3 — the last — in the

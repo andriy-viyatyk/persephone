@@ -20,8 +20,13 @@ For editor capabilities, see the [Editors catalogue](../editors/index.md). For c
 reading pages as an agent, see [Pages & Windows](../agents/pages.md); for driving the application
 window, see [Browser automation](../agents/browser.md). When the MCP `call` tool is available,
 `ui.elements` provides the curated shell controls with their purposes, resolved selectors, and
-current visibility. `ui.highlight(name, message?)` points at one of those controls. The list is
-curated rather than an exhaustive DOM inventory.
+current visibility. `ui.highlight(name, message?)` points at one of those controls and returns when
+the highlight is drawn. `ui.guide.step(target, message, options?)` points at one **and waits for the
+user** to press Skip or Next. Use one guide step per control, then call `ui.guide.end()`.
+The `target` may be a curated shell name, a CSS selector, or a bare `data-name` value, so the
+walkthrough can point at a control in Settings, a dialog, a board, or a browser page as well as the
+header. Read that owning node's `elements` when you need its selector.
+The list is curated rather than an exhaustive DOM inventory.
 
 When a selector is needed instead of a curated name, `app.ui.highlightElement(selector, ...)` is
 still reachable from `script.execute(code)`. Prefer the named highlight when possible because it

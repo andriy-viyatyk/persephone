@@ -11,6 +11,9 @@ cross-origin `<iframe>` and gives it a single bridge object, `window.persephone`
 create one, open it, and develop it end-to-end through **`script.execute`** calling
 the `app` API — no user clicks required.
 
+The board bridge is version **1.4.0** in this build. Check `persephone.version` before using a
+bridge member that may not exist in an older app.
+
 ## What a board is
 
 - **Frontend** — `index.html` + `app.js` (+ any CSS/assets). Owns *all* UI and *all* state;
@@ -317,12 +320,24 @@ tags, items, actions, and named controls in both the main view and a secondary v
 `expose()` probes `index(0)` once to derive the shape of an indexed item. If a board registers while
 an asynchronous load still leaves its collections empty, it must call the returned remote's
 `refresh()` when they first become non-empty; otherwise `items[0]` (and other indexed items) will
-not resolve for an agent. Agent-facing methods must also complete without waiting for an in-board
-confirm dialog; use an immediate method path and leave confirmation to the interactive UI.
+not resolve for an agent. `refresh()` republishes the shape and tells the host that the board's
+model changed, so read `pages[pageId].editor.app` again after the resulting `shape-changed` event.
+The returned remote also provides `notify(text)` for a short board-authored message:
+
+```js
+const remote = persephone.aiVision.expose(model);
+remote.notify("The import finished.");
+```
+
+Only trusted boards can deliver this message to the agent. It is one line, at most 512 characters,
+and accepted board notifications are limited to five per rolling minute in the renderer window.
+The event is shown to the agent as board-written. `notify(text)` is separate from
+`persephone.notify(text, type)`, which remains a board toast. Agent-facing methods must also
+complete without waiting for an in-board confirm dialog; use an immediate method path and leave
+confirmation to the interactive UI.
 
 The `.app` member is optional. If the board exposes nothing, use `snapshot()` and the returned refs
-as the fallback for driving its rendered UI. A shape is a snapshot too; the board can republish it
-with the remote's `refresh()` after changing its descriptor.
+as the fallback for driving its rendered UI.
 
 - `persephone.host.*` — for a **content-host** editor board (`"editorKind": "content-host"` in the
   manifest) Persephone owns the file (pipe, encoding, encryption, auto-save, dirty tracking) and the

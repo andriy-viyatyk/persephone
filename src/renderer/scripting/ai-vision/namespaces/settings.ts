@@ -300,7 +300,7 @@ export function describeSettings(instance: unknown): IAiVisionDescriptor {
             }
             return settingsElements.provide(name);
         },
-        help: `The Settings page has 13 fixed-order sections. Read sections to find the hand-written setting-key catalog, and use highlight(key) to open or activate Settings and point at a supported key's section. The five real settings without a Settings-page row remain available through get/set. browserProfiles and defaultBrowserProfile are convenient read-only projections for choosing browser profiles. Use set only when you intend to persist an application change.`,
+        help: `The Settings page has 13 fixed-order sections. Read sections to find the hand-written setting-key catalog, and use highlight(key) to open or activate Settings and point at a supported key's section. highlight points and returns; to point and wait for the user, pass the selector from settings.elements to ui.guide.step. The five real settings without a Settings-page row remain available through get/set. browserProfiles and defaultBrowserProfile are convenient read-only projections for choosing browser profiles. Use set only when you intend to persist an application change.`,
         summarize: () => ({ kind: "Settings", theme: settings.theme }),
     };
 }

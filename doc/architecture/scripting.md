@@ -687,6 +687,24 @@ The package also provides `dom` and `remote` entry points for UI element wiring 
 hosts. Persephone imports the package's root and `dom` entry points; the internal engine and local
 element helper are no longer part of the application.
 
+The renderer owns one AiVision event log per window in
+`/src/renderer/scripting/ai-vision/event-log.ts`. The root `events` node is described by
+`/src/renderer/scripting/ai-vision/namespaces/events.ts`; it reads retained events and waits using
+the MCP call's cursor. Each forwarded `call` result is formatted against a cursor owned by the
+main-process MCP server instance: it carries the newest three unseen entries and a count for older
+unseen entries, then advances that session/window cursor. `recent()` reads newest-first history,
+`since(seq)` reads the retained sequence range, and `wait(timeoutMs?)` waits for a newer entry with
+a 50-second default and a 110-second maximum. Blocking renderer paths use a 125-second bridge
+timeout, preserving the invariant renderer bound < bridge timeout < client timeout; a restarted
+renderer clamps an old cursor back to the new log's sequence space.
+
+The `ui.guide` node is implemented by
+`/src/renderer/scripting/ai-vision/namespaces/ui-guide.ts` and provided by the UI namespace in
+`/src/renderer/scripting/ai-vision/namespaces/ui.ts`; it draws a curated control highlight and
+waits for the user's button choice. Its target can be a curated shell name, a CSS selector, or a
+bare `data-name`, so controls owned by a page or settings node can be guided after reading that
+node's live `elements` declarations.
+
 ### Remote AiVision trees
 
 Remote object models are mounted only at `pages[i].editor.app`. A board's main frame publishes a
@@ -701,8 +719,10 @@ reload or second `expose()` arrive as `BoardAiVisionRegistrationMsg.reason: "reg
 remote's `remote.refresh()` arrives as `reason: "refresh"`. The host stores two generations: `token`
 changes for every registration and is the proxy-cache/shape-generation key, while `incarnation`
 changes only for a new remote and validates requests that are already in flight. Consequently a
-refresh rebuilds `pages[i].editor.app` from the new shape but does not reject a request using the
-same live remote; a reload or replacement rejects it and the caller must read `.app` again.
+refresh rebuilds `pages[i].editor.app` from the new shape, records a `shape-changed` event, and does
+not reject a request using the same live remote; a reload or replacement rejects it and the caller
+must read `.app` again. A trusted board's `remote.notify(text)` records a rate-limited
+`remote-notify` event with board attribution; it is separate from the board's user-facing toast.
 
 A browser page may publish the same package remote through `window.__aiVision`. After a completed
 cross-document load, `BrowserWebviewModel` probes only pages allowed by the existing private-page
@@ -710,6 +730,12 @@ gate and caches a shape by browser tab and document generation. `BrowserEditorFa
 `.app` when present; navigation, reload, tab switching, closing, and disposal invalidate the cached
 binding. Page-authored nodes are labelled with a `page:` kind prefix and an origin note, and remain
 confined to `.app` rather than the page or application overview.
+
+For participating browser pages, the CDP service installs the AiVision binding only for the
+access-gated browser probe. `/src/main/cdp-service.ts` filters `Runtime.bindingCalled` to the
+AiVision binding before the signal enters the existing browser event route. The binding makes a
+page's `refresh()` visible; lazy version revalidation remains the correctness check before each
+remote request.
 
 Both transports use the same host-side timeout precedence: per-call `timeoutMs`, the remote method's
 declared `timeoutMs`, the session-only `boards.callTimeoutMs`, then the 30-second built-in fallback.

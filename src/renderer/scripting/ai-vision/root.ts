@@ -59,7 +59,7 @@ const ROOT_MEMBERS: IAiVisionDescriptor["members"] = [
     { name: "version", kind: "property", summary: "Persephone version string." },
     { name: "settings", kind: "property", node: true, summary: "Application settings (read/write)." },
     { name: "fs", kind: "property", node: true, summary: "File system access (read/write files, list folders).", caution: "writes touch the user's disk" },
-    { name: "ui", kind: "property", node: true, summary: "Dialogs, notifications, progress overlays, screen locks — and ui.elements, which names the on-screen shell controls and what each is for. Asked WHERE something is, or to SHOW the user something, start there and point at it with ui.highlight; a writable property that changes the same thing is a different question." },
+    { name: "ui", kind: "property", node: true, summary: "Dialogs, notifications, progress overlays, screen locks — and ui.elements, which names the on-screen shell controls and what each is for. Asked WHERE something is, or to SHOW the user something, start there and point at it with ui.highlight. Asked to WALK the user THROUGH a screen, use ui.guide.step, which points at a control and then waits for them. A writable property that changes the same thing is a different question." },
     { name: "dialogs", kind: "property", node: true, summary: "Open renderer dialogs in live display order; use dialogs[i] to inspect and answer one." },
     { name: "menus", kind: "property", node: true, summary: "The open application popup menu; use menus[0] to inspect items, click an action, or close it." },
     { name: "shell", kind: "property", node: true, summary: "Open URLs, capture screen snippets, encrypt/decrypt text, and inspect runtime/update versions.", caution: "runs processes with the user's privileges" },
@@ -132,6 +132,7 @@ helpSearch - search the live descriptor graph for object-model paths; use guides
 settings - read or persist application configuration; e.g. settings.set("theme", "monokai")
 fs - read/write files, directories, and OS file integration; e.g. fs.read("path")
 ui - dialogs, notifications, progress, locks, and curated controls; e.g. ui.elements
+ui.guide.step(target, message) - walk the user through the UI one control at a time, waiting for Skip or Next
 dialogs - inspect and answer open renderer dialogs; e.g. dialogs[0].buttons
 menus - inspect and act on the open popup menu; e.g. menus[0].items
 shell - URLs, screen capture, encryption, and runtime/update services; e.g. shell.version

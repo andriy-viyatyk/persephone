@@ -5,6 +5,9 @@ plain HTML page, backed by scripts you write in any language. Persephone hosts t
 page in a locked-down, cross-origin `<iframe>` and injects a single bridge object,
 `window.persephone`.
 
+The board bridge is version **1.4.0** in this build. Check `persephone.version` before using a
+bridge member that may not exist in an older app.
+
 > ## 📌 Agent: rewrite this file once the board is built
 >
 > **This is the generic authoring guide, copied into every new board. When you finish
@@ -339,11 +342,23 @@ const model = { aiVision: {
     elements: declarations,
     provide: elements.provide,
 } };
-persephone.aiVision.expose(model);
+const remote = persephone.aiVision.expose(model);
 ```
 
 Only the main frame registers the model with Persephone. The published shape is a snapshot, so call
-the returned remote's `refresh()` after changing its structure or metadata. A board's exposed state
+the returned remote's `refresh()` after changing its structure or metadata. `refresh()` also tells
+the host that the board shape changed; the agent should read `pages[i].editor.app` again after the
+resulting `shape-changed` event. A board can send a short board-authored message with the same
+remote:
+
+```js
+remote.notify("The import finished.");
+```
+
+Only trusted boards deliver `notify(text)` to the agent. The text is one line, at most 512
+characters, and accepted notifications are limited to five per rolling minute in the renderer
+window. The agent sees the event labelled as board-written. This does not replace
+`persephone.notify(text, type)`, which remains a toast. A board's exposed state
 is as visible to an agent as what the board already shows on screen; never expose secrets. The todo
 board is the worked example for this `aiVision` surface: `expose()` probes `index(0)` once to derive
 the shape of an indexed item, so a board whose collections are empty during asynchronous

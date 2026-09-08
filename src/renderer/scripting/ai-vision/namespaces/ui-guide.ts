@@ -13,18 +13,18 @@ import { HEADER_ELEMENTS } from "./ui-elements";
 const DEFAULT_BUTTONS: readonly string[] = ["Skip", "Next"];
 const DEFAULT_TIMEOUT_MS = 50_000;
 const MAX_TIMEOUT_MS = 110_000;
-const PENDING_MESSAGE = (elementName: string): string =>
+const PENDING_MESSAGE = (target: string): string =>
     "The guide card may have been dismissed without a button press. "
-    + `Call ui.guide.step(...) again for the same element ${JSON.stringify(elementName)} `
+    + `Call ui.guide.step(...) again for the same target ${JSON.stringify(target)} `
     + "to re-draw it in place.";
 
 const STEP_ARGUMENTS = [
-    stringRule("elementName", 'ui.guide.step("persephone-menu", "This opens the Menu Bar.")'),
+    stringRule("target", 'ui.guide.step("persephone-menu", "This opens the Menu Bar.")'),
     stringRule("message", 'ui.guide.step("persephone-menu", "This opens the Menu Bar.")'),
 ] as const;
 
 const GUIDE_MEMBERS: readonly IAiMember[] = [
-    { name: "step", kind: "method", signature: "step(elementName: string, message: string, options?: { buttons?: string[]; timeoutMs?: number })", summary: "Point at one curated shell control and wait for the user to press Skip or Next.", caution: "changes the visible UI and waits for user input" },
+    { name: "step", kind: "method", signature: "step(target: string, message: string, options?: { buttons?: string[]; timeoutMs?: number })", summary: "Point at one UI target and wait for the user to press Skip or Next.", caution: "changes the visible UI and waits for user input" },
     { name: "end", kind: "method", signature: "end()", summary: "Clear the current guide overlay and finish the walkthrough.", caution: "changes the visible UI" },
 ];
 
@@ -35,7 +35,7 @@ interface GuideOptions {
 
 interface PendingStep {
     readonly stepId: string;
-    readonly elementName: string;
+    readonly target: string;
 }
 
 interface UnconsumedPress {
@@ -44,14 +44,14 @@ interface UnconsumedPress {
 }
 
 type GuideStepResult =
-    | { readonly pressed: string; readonly elementName: string }
-    | { readonly pending: true; readonly waitedMs: number; readonly elementName: string; readonly message: string; readonly timeoutMs?: number; readonly clampedFrom?: number }
-    | { readonly ended: true; readonly elementName: string }
-    | { readonly superseded: true; readonly elementName: string };
+    | { readonly pressed: string; readonly target: string }
+    | { readonly pending: true; readonly waitedMs: number; readonly target: string; readonly message: string; readonly timeoutMs?: number; readonly clampedFrom?: number }
+    | { readonly ended: true; readonly target: string }
+    | { readonly superseded: true; readonly target: string };
 
 interface ActiveStep {
     readonly stepId: string;
-    readonly elementName: string;
+    readonly target: string;
     readonly message: string;
     readonly startedAt: number;
     readonly resolve: (result: GuideStepResult) => void;
@@ -102,11 +102,11 @@ export class GuideNode {
     private pendingStep: PendingStep | undefined;
     // A button press is a user fact: the event log records it durably, while this handoff lets a
     // later retry consume the same answer without making the user press a newly drawn card.
-    private readonly lastPressByElement = new Map<string, UnconsumedPress>();
-    private readonly issuedStepIdsByElement = new Map<string, Set<string>>();
+    private readonly lastPressByTarget = new Map<string, UnconsumedPress>();
+    private readonly issuedStepIdsByTarget = new Map<string, Set<string>>();
 
     async step(...args: unknown[]): Promise<GuideStepResult> {
-        const [elementName, message] = validateCallArguments(
+        const [target, message] = validateCallArguments(
             "ui.guide.step",
             args,
             STEP_ARGUMENTS,
@@ -120,37 +120,37 @@ export class GuideNode {
 
         const activeStep = this.activeStep;
         const pendingStep = this.pendingStep;
-        const previousElementName = activeStep?.elementName ?? pendingStep?.elementName;
-        if (previousElementName !== undefined && previousElementName !== elementName) {
+        const previousTarget = activeStep?.target ?? pendingStep?.target;
+        if (previousTarget !== undefined && previousTarget !== target) {
             this.clearPressRecords();
-        } else if ([...this.lastPressByElement.keys()].some((name) => name !== elementName)) {
+        } else if ([...this.lastPressByTarget.keys()].some((name) => name !== target)) {
             this.clearPressRecords();
         }
         if (activeStep) {
-            this.settle(activeStep, { superseded: true, elementName: activeStep.elementName }, "superseded");
+            this.settle(activeStep, { superseded: true, target: activeStep.target }, "superseded");
             void ui.clearHighlights(activeStep.stepId);
         }
 
-        if (pendingStep && pendingStep.elementName !== elementName) {
+        if (pendingStep && pendingStep.target !== target) {
             this.pendingStep = undefined;
             void ui.clearHighlights(pendingStep.stepId);
         }
-        const stepId = pendingStep?.elementName === elementName
+        const stepId = pendingStep?.target === target
             ? pendingStep.stepId
             : `ui-guide-step-${++nextStepId}`;
         this.pendingStep = undefined;
-        this.issueStepId(elementName, stepId);
+        this.issueStepId(target, stepId);
 
-        const unconsumedPress = this.consumePress(elementName, stepId);
+        const unconsumedPress = this.consumePress(target, stepId);
         if (unconsumedPress) {
             void ui.clearHighlights(stepId);
-            return { pressed: unconsumedPress.label, elementName };
+            return { pressed: unconsumedPress.label, target };
         }
 
         return new Promise<GuideStepResult>((resolve, reject) => {
             const state: ActiveStep = {
                 stepId,
-                elementName,
+                target,
                 message,
                 startedAt: Date.now(),
                 resolve,
@@ -160,18 +160,18 @@ export class GuideNode {
             this.activeStep = state;
             state.unsubscribe = subscribeGuideButton((signal) => {
                 if (this.activeStep !== state || state.status !== "active") return;
-                if (signal.stepId !== state.stepId || signal.elementName !== state.elementName) return;
-                this.consumePress(state.elementName, state.stepId);
-                this.settle(state, { pressed: signal.button, elementName }, "pressed");
+                if (signal.stepId !== state.stepId || signal.target !== state.target) return;
+                this.consumePress(state.target, state.stepId);
+                this.settle(state, { pressed: signal.button, target }, "pressed");
             });
             state.timer = setTimeout(() => {
                 if (this.activeStep !== state || state.status !== "active") return;
-                this.pendingStep = { stepId, elementName };
+                this.pendingStep = { stepId, target };
                 this.settle(state, {
                     pending: true,
                     waitedMs: Math.max(0, Date.now() - state.startedAt),
-                    elementName,
-                    message: PENDING_MESSAGE(elementName),
+                    target,
+                    message: PENDING_MESSAGE(target),
                     ...metadata,
                 }, "pending");
             }, timeoutMs);
@@ -192,7 +192,7 @@ export class GuideNode {
         const stepId = activeStep?.stepId ?? this.pendingStep?.stepId;
         this.pendingStep = undefined;
         this.clearPressRecords();
-        if (activeStep) this.settle(activeStep, { ended: true, elementName: activeStep.elementName }, "ended");
+        if (activeStep) this.settle(activeStep, { ended: true, target: activeStep.target }, "ended");
         if (stepId) await ui.clearHighlights(stepId);
         return { ended: true };
     }
@@ -202,36 +202,48 @@ export class GuideNode {
     }
 
     private async draw(state: ActiveStep, buttons: readonly string[]): Promise<void> {
-        const elements = createElements(
-            HEADER_ELEMENTS,
-            (selector, text, _options, reveal) => highlightDeclarationElement(
-                selector,
-                text,
-                {
-                    id: state.stepId,
-                    buttons,
-                    onButton: (label, _id) => {
-                        this.lastPressByElement.set(state.elementName, { stepId: state.stepId, label });
-                        logGuideButton(state.elementName, label, state.stepId, "ui.guide.step");
-                    },
-                },
-                reveal,
-            ),
-        );
-        const provider = elements.provide("highlight");
-        if (!provider || typeof provider.value !== "function") {
-            throw new Error("ui.guide.step could not create the curated UI highlight provider.");
+        const highlightOptions = {
+            id: state.stepId,
+            buttons,
+            onButton: (label: string): void => {
+                this.lastPressByTarget.set(state.target, { stepId: state.stepId, label });
+                logGuideButton(state.target, label, state.stepId, "ui.guide.step");
+            },
+        };
+        let result: IAiHighlightResult;
+        if (HEADER_ELEMENTS.some((element) => element.name === state.target)) {
+            const elements = createElements(
+                HEADER_ELEMENTS,
+                (selector, text, _options, reveal) => highlightDeclarationElement(
+                    selector,
+                    text,
+                    highlightOptions,
+                    reveal,
+                ),
+            );
+            const provider = elements.provide("highlight");
+            if (!provider || typeof provider.value !== "function") {
+                throw new Error("ui.guide.step could not create the curated UI highlight provider.");
+            }
+            result = await (provider.value as (name: string, text: string) => Promise<IAiHighlightResult>)(
+                state.target,
+                state.message,
+            );
+        } else {
+            const selector = state.target.startsWith("[")
+                || state.target.startsWith("#")
+                || state.target.startsWith(".")
+                ? state.target
+                : `[data-name=${JSON.stringify(state.target)}]`;
+            result = await highlightDeclarationElement(selector, state.message, highlightOptions);
         }
-        const result = await (provider.value as (name: string, text: string) => Promise<IAiHighlightResult>)(
-            state.elementName,
-            state.message,
-        );
         if (!result.found && state.status === "active" && this.activeStep === state) {
             this.fail(
                 state,
                 new Error(
-                    `Could not find curated UI element ${JSON.stringify(state.elementName)}. `
-                    + "Re-read ui.elements and choose a currently available control.",
+                    `Could not find guide target ${JSON.stringify(state.target)}. `
+                    + "Use a curated shell name, a CSS selector beginning with [, #, or ., or a bare data-name value. "
+                    + "For non-shell controls, read the owning node's elements for its selector.",
                 ),
             );
         }
@@ -243,7 +255,7 @@ export class GuideNode {
         this.cleanup(state);
         if (this.activeStep === state) this.activeStep = undefined;
         if (status !== "pending") this.pendingStep = undefined;
-        if (status !== "pending") this.retireStepId(state.elementName, state.stepId);
+        if (status !== "pending") this.retireStepId(state.target, state.stepId);
         state.resolve(result);
     }
 
@@ -253,41 +265,41 @@ export class GuideNode {
         this.cleanup(state);
         if (this.activeStep === state) this.activeStep = undefined;
         this.pendingStep = undefined;
-        this.retireStepId(state.elementName, state.stepId);
-        this.lastPressByElement.delete(state.elementName);
+        this.retireStepId(state.target, state.stepId);
+        this.lastPressByTarget.delete(state.target);
         void ui.clearHighlights(state.stepId);
         state.reject(error);
     }
 
-    private issueStepId(elementName: string, stepId: string): void {
-        const issuedStepIds = this.issuedStepIdsByElement.get(elementName) ?? new Set<string>();
+    private issueStepId(target: string, stepId: string): void {
+        const issuedStepIds = this.issuedStepIdsByTarget.get(target) ?? new Set<string>();
         issuedStepIds.add(stepId);
-        this.issuedStepIdsByElement.set(elementName, issuedStepIds);
+        this.issuedStepIdsByTarget.set(target, issuedStepIds);
     }
 
-    private consumePress(elementName: string, stepId: string): UnconsumedPress | undefined {
-        const press = this.lastPressByElement.get(elementName);
+    private consumePress(target: string, stepId: string): UnconsumedPress | undefined {
+        const press = this.lastPressByTarget.get(target);
         if (!press) return undefined;
-        const issuedStepIds = this.issuedStepIdsByElement.get(elementName);
+        const issuedStepIds = this.issuedStepIdsByTarget.get(target);
         if (!issuedStepIds?.has(press.stepId) || press.stepId !== stepId) {
-            this.lastPressByElement.delete(elementName);
+            this.lastPressByTarget.delete(target);
             return undefined;
         }
-        this.lastPressByElement.delete(elementName);
-        this.retireStepId(elementName, press.stepId);
+        this.lastPressByTarget.delete(target);
+        this.retireStepId(target, press.stepId);
         return press;
     }
 
-    private retireStepId(elementName: string, stepId: string): void {
-        const issuedStepIds = this.issuedStepIdsByElement.get(elementName);
+    private retireStepId(target: string, stepId: string): void {
+        const issuedStepIds = this.issuedStepIdsByTarget.get(target);
         if (!issuedStepIds) return;
         issuedStepIds.delete(stepId);
-        if (issuedStepIds.size === 0) this.issuedStepIdsByElement.delete(elementName);
+        if (issuedStepIds.size === 0) this.issuedStepIdsByTarget.delete(target);
     }
 
     private clearPressRecords(): void {
-        this.lastPressByElement.clear();
-        this.issuedStepIdsByElement.clear();
+        this.lastPressByTarget.clear();
+        this.issuedStepIdsByTarget.clear();
     }
 
     private cleanup(state: ActiveStep): void {
@@ -302,7 +314,7 @@ const GUIDE_DESCRIPTOR: IAiVisionDescriptor = {
     kind: "UiGuide",
     summary: "A guided, one-control-at-a-time walkthrough that waits for the user's choice.",
     members: GUIDE_MEMBERS,
-    help: "Use ui.elements to learn the curated control names and their purposes. Use ui.highlight to point at one control and return when it is drawn. Use ui.guide.step to point at one control and wait for the user to press Skip or Next; call one step per control. When step returns pending, including after the user dismissed the card without pressing a button, call ui.guide.step(...) again for the same element to re-draw it in place. Call ui.guide.end() after a step has returned to clear the final guide overlay and finish the walkthrough. end() cannot interrupt a step call currently blocked in the same one-call-at-a-time MCP client; the timeout is the escape from that blocked call.",
+    help: "Use ui.elements to learn the curated control names and their purposes. Use ui.highlight to point at one control and return when it is drawn. The step target may be a curated shell name, a CSS selector beginning with [, #, or ., or a bare data-name value. For non-shell controls, read the owning node's elements for its selector. Use ui.guide.step(target, message) to point at one control and wait for the user to press Skip or Next; call one step per control. When step returns pending, including after the user dismissed the card without pressing a button, call ui.guide.step(...) again for the same target to re-draw it in place. Call ui.guide.end() after a step has returned to clear the final guide overlay and finish the walkthrough. end() cannot interrupt a step call currently blocked in the same one-call-at-a-time MCP client; the timeout is the escape from that blocked call.",
     summarize: () => ({ kind: "UiGuide" }),
 };
 

@@ -289,7 +289,7 @@ the host's `state.version`. It is mounted in both `BlankPageLinksView` and `Book
 | `src/renderer/editors/browser/BrowserEditor.ts` | Renderer | Editor coordinator: restore/persistence, navigation normalization, profile presentation, keyboard shortcuts, and composed sub-model lifecycle |
 | `src/renderer/editors/browser/BrowserTabsModel.ts` | Renderer | Internal-tab lifecycle, current URL and favicon caches, mute/panel operations, and bookmark resource ownership |
 | `src/renderer/editors/browser/BrowserTorModel.ts` | Renderer | Per-page Tor partition IDs, proxy arming, daemon listeners/reconnect, and cleanup |
-| `src/renderer/editors/browser/BrowserWebviewModel.ts` | Renderer | Webview refs, `browser:event` IPC handling, navigation updates, find-in-page, keyboard shortcuts |
+| `src/renderer/editors/browser/BrowserWebviewModel.ts` | Renderer | Webview refs, `browser:event` IPC handling including AiVision shape/notify signals, navigation updates, find-in-page, keyboard shortcuts |
 | `src/renderer/editors/browser/webview-context-menu.ts` | Renderer | Browser webview context-menu construction and bounded DOM/SVG/resource probes |
 | `src/renderer/editors/browser/BrowserTargetModel.ts` | Renderer | Automation adapter sub-model — implements `IBrowserTarget` for Object Model call paths |
 | `src/renderer/editors/browser/BrowserTabsPanel.ts` | Renderer | Native left-side internal tabs panel with compact floating preview and drag-to-reorder |
@@ -312,7 +312,7 @@ the host's `state.version`. It is mounted in both `BlankPageLinksView` and `Book
 | `src/renderer/scripting/ai-vision/namespaces/window-screen.ts` | Renderer | `window.screen` descriptor, help, summary, and active-private-page restriction |
 | `src/renderer/automation/types.ts` | Renderer | `IBrowserTarget` interface — what automation needs from browser editor |
 | `src/main/browser-service.ts` | Main | Attaches to webContents, relays events via IPC, audio state, hotkeys, cache cleanup, DOM collection (incl. iframes) |
-| `src/main/cdp-service.ts` | Main | CDP session management — debugger attach/detach/send via IPC |
+| `src/main/cdp-service.ts` | Main | CDP session management — debugger attach/detach/send via IPC, plus the browser-only AiVision binding and filtered runtime event path |
 | `src/main/network-logger.ts` | Main | Per-page HTTP request/response logging via `session.webRequest`, circular buffer, IPC access |
 | `src/main/tor-service.ts` | Main | Tor process lifecycle: spawn/kill tor.exe, restart, per-partition SOCKS5 proxy (armed before the daemon starts so the partition fails closed), torrc generation, exit-IP lookup |
 | `src/main/tor-src-protocol.ts` | Main | `tor-src://` handler — fetches an `http(s)` URL through a Tor partition's session |
@@ -815,9 +815,14 @@ The facade has an optional page-authored `.app` child. After `did-stop-loading` 
 refuses the page. A valid serialized shape is retained per internal tab and document generation;
 `BrowserEditorFacade` mounts it through `createRemoteProxy` only for the active tab. A navigation,
 reload, tab switch, close, or model disposal invalidates that binding, so a prior document cannot
-answer a request for a new one. The proxy sender invokes the page's remote handler through CDP with
-the shared timeout policy and labels the page-authored subtree as data. The `.app` subtree does not
-contribute to the page or `pages` overview descriptors.
+answer a request for a new one. The proxy revalidates the page's live `version` through CDP before
+each remote request, so lazy revalidation remains correct even if a signal is missed. For a
+registered model, the probe also installs the package's `Runtime.addBinding` host signal. The main
+CDP service listens only for that binding's `Runtime.bindingCalled` message and routes it over the
+browser IPC event channel; a shape signal records a host event and triggers a background re-probe,
+while a page `notify(text)` becomes a rate-limited, page-attributed event. The proxy sender invokes
+the page's remote handler through CDP with the shared timeout policy and labels the page-authored
+subtree as data. The `.app` subtree does not contribute to the page or `pages` overview descriptors.
 
 ## Browser Automation (MCP)
 

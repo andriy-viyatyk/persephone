@@ -50,6 +50,7 @@ guide to read for which task. It is intentionally short — read it once per ses
 | Inspect main-process state or use gated main scripting | `call` (path `"main"`) | `main.$help` and `persephone://guides/scripting` |
 | Look around, read a page, activate a tab, simple edits — with no guide | `call` (path `""` first) | nothing — the hints are the guide |
 | Show results, logs, progress; ask the user something | `pages.logView.push(entry)` or `pages.logView.push([...])` | `pages.logView.$help` and `persephone://guides/ui-push` |
+| Learn what changed or what the user did since the last call | `call` result `events` or `events.*` | [Agent events](./events.md) / `guides.agents.events` |
 | Open text/code for the user | `pages.addEditorPage(...)` (editor `monaco`) | `pages.$help` |
 | Show a mermaid diagram | `pages.addEditorPage(...)` (`mermaid-view`, language `mermaid`) | `pages.$help` |
 | Show tabular data | `pages.addEditorPage(...)` (`grid-json` / `grid-csv`) | `pages.$help` and `persephone://guides/pages` |
@@ -72,6 +73,8 @@ the Settings → MCP Server toggle `Allow main-process scripts`.
 Don't read everything up front. Start with `call` at `""`, then inspect the relevant node's
 `$help`. Read a focused resource such as `persephone://guides/browser` or
 `persephone://guides/boards` when you need its document-sized format or authoring reference.
+When you need to know what changed or what the user did between calls, read
+[`Agent events`](./events.md) or call `guides.agents.events`.
 
 ## Three habits that prevent most failures
 
