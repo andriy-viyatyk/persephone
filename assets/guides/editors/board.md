@@ -90,7 +90,10 @@ After narrowing `page.editor.id` to `board-view`, the `BoardEditor` facade expos
 manifest metadata, reload, status, declared secondary views, snapshots, clicks, typing, evaluation,
 screenshots, network requests, and frame selection. Verified chrome elements include
 `board-toolbar-explorer`, `board-toolbar-reload`, `board-toolbar-log`, `board-toolbar-properties`,
-and `board-trust`. Board iframe content is reached through snapshots rather than the chrome inventory.
+and `board-trust`. A trusted board that publishes `persephone.aiVision.expose(root)` also exposes
+its optional named model at `page.editor.app`, with help, hints, state, methods, elements, and
+highlighting in the owning frame. Board iframe content without that model is reached through
+snapshots rather than the chrome inventory.
 
 The app's `board-info` id is a separate screen-owned content-host exception: the page lifecycle can
 accept it through `pages.addEditorPage` because its registration has `hasContentHost: true`. This does

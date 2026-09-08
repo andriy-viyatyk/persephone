@@ -10,10 +10,10 @@ persephone/
 │   ├── main/               # Electron main process
 │   ├── renderer/           # Native VanillaView frontend plus the Excalidraw React island (see below)
 │   ├── ipc/                # IPC communication layer
-│   ├── shared/             # Shared types, constants and cross-process helpers (errMessage, the execute() handle state machine, AiVision resolver/types)
+│   ├── shared/             # Shared types, constants and cross-process helpers (errMessage, the execute() handle state machine, remote-call timeout policy)
 │   ├── renderer.ts          # Async bootstrap; calls renderer/index.ts mount(container)
 │   ├── preload.ts          # Preload script (main renderer)
-│   ├── board-shim.ts       # Board bridge shim entry — browser IIFE inlined into board HTML; boot, host trust gate, MessagePort plumbing, window.persephone
+│   ├── board-shim.ts       # Board bridge shim entry — browser IIFE inlined into board HTML; boot, host trust gate, MessagePort plumbing, window.persephone and AiVision remote registration
 │   ├── board-context-menu.ts # Browser-safe Board context menu, image and editable-field clipboard support
 │   └── board-console-mirror.ts # Browser-safe Board error and console warning/error reporting to the host frame
 ├── launcher/               # Rust launcher (Named Pipe client)
@@ -35,8 +35,6 @@ persephone/
 │   │   ├── screens/        # User-facing per-screen chrome and layout guides
 │   │   ├── formats/        # Structured editor formats
 │   │   └── scripting/      # Scripting guide and API reference
-│   ├── agent/              # Standalone modules injected into a page by an agent (not part of the renderer bundle)
-│   │   └── ui-highlight.js # Highlight-and-tooltip overlay for board frames
 │   ├── board-base.css      # Shared board stylesheet copied into every board — theme defaults + the opt-in .p-* chrome layer
 │   ├── board-template/     # Scaffold copied into every new board
 │   │   └── CLAUDE.md       # Board authoring guide (bridge surface, --p-* contract, chrome classes, reload, MCP debug)
@@ -710,7 +708,7 @@ vendor island under `editors/draw/`; native global styles are installed by `them
 │       ├── GridEditorFacade.ts     # IGridEditor facade
 │       ├── NotebookEditorFacade.ts # INotebookEditor facade
 │       ├── LinkEditorFacade.ts     # ILinkEditor facade
-│       ├── BrowserEditorFacade.ts  # IBrowserEditor facade + shared automation members
+│       ├── BrowserEditorFacade.ts  # IBrowserEditor facade + shared automation members + optional page-authored .app proxy
 │       ├── MarkdownEditorFacade.ts # IMarkdownEditor facade
 │       ├── AboutEditorFacade.ts     # IAboutEditor facade (guide-browser navigation and elements)
 │       ├── SvgEditorFacade.ts      # ISvgEditor facade
@@ -719,7 +717,7 @@ vendor island under `editors/draw/`; native global styles are installed by `them
 │       ├── GraphEditorFacade.ts   # IGraphEditor facade (graph query/analysis, designed for MCP)
 │       ├── VideoEditorFacade.ts    # IVideoEditor facade (playback and media state)
 │       ├── FileDiffEditorFacade.ts # IFileDiffEditor facade (revision state)
-│       ├── BoardEditorFacade.ts    # IBoardEditor facade (metadata, trust state, automation, panels, reload)
+│       ├── BoardEditorFacade.ts    # IBoardEditor facade (metadata, trust state, automation, panels, conditional .app proxy, reload)
 │       ├── BoardInfoEditorFacade.ts # IBoardInfoEditor facade (install/properties state)
 │       ├── ToolsetEditorFacade.ts  # IToolsetEditor facade (registered toolset state/actions)
 │       ├── ToolsHubEditorFacade.ts # IToolsHubEditor facade (hub tab state)
@@ -741,7 +739,7 @@ vendor island under `editors/draw/`; native global styles are installed by `them
 │       │   └── index.ts     # Namespace registration and descriptor wiring
 │       ├── root.ts          # Renderer object-model root
 │       ├── page-compare.ts  # pages.compare pair projection and controls
-│       └── elements.ts      # Curated element visibility and highlight protocol
+│       └── page-panels.ts   # pages[i].editor.panels projection and controls
 │
 ├── automation/             # Browser-like automation used by Object Model call paths
 │   ├── types.ts            # IBrowserTarget interface

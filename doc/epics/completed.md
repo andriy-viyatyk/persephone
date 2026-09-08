@@ -1,3 +1,68 @@
+## EPIC-097 — Persephone adopts the library and mounts remote trees
+
+Completed 2026-09-08. [Epic document](EPIC-097.md). Epic 2 of 3 in the
+[AiVision library roadmap](../ai-vision-library-roadmap.md).
+
+- [x] US-1389: Adopt the `ai-vision` package and delete the internal copies
+- [x] US-1390: Board bridge — `board:aiVision`, `ai:*`, the `.app` proxy, and the timeout policy
+- [x] US-1391: In-frame elements and highlight, with `view` routing to secondary frames
+- [x] US-1392: Browser-page proxy — probe `window.__aiVision` over CDP and mount `.app`
+- [x] US-1393: Guides, What's New, and `board-api.d.ts`
+
+**Persephone no longer ships an AiVision engine.** `src/shared/ai-vision/`,
+`src/renderer/scripting/ai-vision/elements.ts` and `assets/agent/ui-highlight.js` are gone; the
+application depends on `ai-vision@^1.0.1` from npm. The adoption itself was an import-path sweep
+across 83 files — nothing was renamed, by EPIC-096's design — but it needed two build-level changes
+that are easy to mistake for accidents later: `moduleResolution` moved from `node` to `bundler`
+(node10 resolution cannot read an `exports` map), with one `paths` entry restoring Excalidraw's
+unexported `dist/types/**`; and the main-process SSR build gained `noExternal: ["ai-vision"]`,
+because an SSR build externalizes every dependency and the ESM-only package has no `require`
+condition — an externalized `require("ai-vision")` took Electron down at startup once before this
+was understood.
+
+**A board or a web page can now contribute its own object model to the `call` tree**, at
+`pages[i].editor.app`. A board calls `persephone.aiVision.expose(root)` (bridge `1.3.0`) and the
+shim posts a serialized *shape* over the existing frame channel; a web page calls the package's
+`expose()`, which publishes `window.__aiVision`, and Persephone probes for it after each completed
+navigation. Both mount the same `createRemoteProxy`, so the one resolver walks a tree it did not
+author and `$help`, `helpSearch`, hints, argument validation, `elements` and `highlight` all work
+with no extra host code. Shape crosses the boundary; the engine does not, which is why hint paths
+are correct by construction and nothing rewrites strings.
+
+**The `.app` proxy needed one thing the roadmap did not anticipate**: a board's controls live in
+documents the host cannot query, so `persephone.aiVision.createElements(declarations)` hands a board
+the same curated-controls helper Persephone's own facades use, bound to an in-frame overlay. A
+declaration may name a secondary `view`; the host mounts that panel and routes the request to that
+frame. The gate confirmed two independent overlay hosts — one in the main board frame, one in
+`board-secondary:notes`.
+
+**Four timeout levels, and the composed policy was the bug.** Per-call `timeoutMs`, remote-declared,
+the in-memory `boards.callTimeoutMs`, and a 30 s built-in. Each level was individually correct and
+the whole was wrong: the runtime knob was seeded with `30_000`, so level 3 applied to every call and
+level 4 — the fallback the policy rests on — was unreachable. Only the end-to-end run showed it. The
+knob now starts unset, its getter still reports the effective value, and a separate accessor supplies
+level 3's input.
+
+**Trust is asymmetric on purpose.** A board is trusted by the user, so registration and every leaf
+request go through the existing Trust-this-Board gate. A web page is not trusted and never will be:
+the existing private-page refusal runs before any probe, and page-authored content is labelled by
+prefixing its node kind `page:` — one host-controlled transformation that shows up in the hint
+header and, crucially, in a `helpSearch` hit's `kind`, which is displayed without its surrounding
+node. Prefixing every summary and element purpose was considered and rejected as noise. A page
+populates only its own `.app` subtree and contributes nothing to the `pages` overview.
+
+**Gate:** 7 PASS, 1 PARTIAL, 0 FAIL —
+[qa/runs/2026-09-08-epic-097-remote-app.md](../../qa/runs/2026-09-08-epic-097-remote-app.md) against
+[qa/surfaces/remote-app.md](../../qa/surfaces/remote-app.md). The PARTIAL is a pre-existing CDP
+execution-context staleness after an `about:blank` navigation, visible identically through
+`editor.evaluate` and logged in [tasks/backlog.md](../tasks/backlog.md); it is the automation layer's
+to fix, not this epic's.
+
+Library work continued upstream: the one inherited quirk EPIC-096 deliberately left — `shapeValue`
+not awaiting a nested node's `summarize()` — was fixed in `ai-vision` and released as `1.0.1` before
+adoption, so the engine never forked. EPIC-098 (the todo board exposes its model) is the roadmap's
+final step and its gate is the weak-agent run this epic deliberately did not do.
+
 ## EPIC-096 — The `ai-vision` library
 
 Completed 2026-09-08. [Epic document](EPIC-096.md). Epic 1 of 3 in the

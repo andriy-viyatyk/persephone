@@ -810,6 +810,15 @@ const tabs = browser.tabs;                  // list of internal tabs
 **Interface:** [`IBrowserEditor`](../../src/renderer/api/types/browser-editor.d.ts) — navigation, query (getText, getValue, exists), interaction (click, type, select, check), wait methods, tab management, CDP access, accessibility snapshot
 **Implementation:** [`BrowserEditorFacade`](../../src/renderer/scripting/api-wrapper/BrowserEditorFacade.ts)
 
+The facade has an optional page-authored `.app` child. After `did-stop-loading` for a real document,
+`BrowserWebviewModel` evaluates a null-safe `window.__aiVision` probe unless the existing privacy gate
+refuses the page. A valid serialized shape is retained per internal tab and document generation;
+`BrowserEditorFacade` mounts it through `createRemoteProxy` only for the active tab. A navigation,
+reload, tab switch, close, or model disposal invalidates that binding, so a prior document cannot
+answer a request for a new one. The proxy sender invokes the page's remote handler through CDP with
+the shared timeout policy and labels the page-authored subtree as data. The `.app` subtree does not
+contribute to the page or `pages` overview descriptors.
+
 ## Browser Automation (MCP)
 
 Browser automation for AI agents lives in `src/renderer/automation/`. The target-neutral operation

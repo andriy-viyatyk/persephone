@@ -119,6 +119,14 @@ means its state-backed diagram has not rendered yet or rendered with an error.
 
 Every facade's `$help` describes access through `page.editor` and gives its id-narrowing example.
 
+The browser and board facades may also expose an optional remote model at `page.editor.app`. A
+trusted board publishes it with `persephone.aiVision.expose(root)`; a participating web page
+publishes it with the `ai-vision` package. The model provides its own `$help`, `helpSearch(...)`,
+hints, writable properties, methods, `elements`, and `highlight(...)`. Board highlighting runs in
+the selected owning frame, including a secondary view; browser-page kinds use the `page:` prefix
+and remain confined to `.app`. User-opened private pages are rejected before probing. See the
+[Boards](../../boards.md) and [Browser](../../editors/browser.md) guides for the workflows.
+
 ### Board, Tools & Editors, and Mneme facades
 
 These pages are available through the same `page.editor` object model used by the built-in editors.

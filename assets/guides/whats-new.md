@@ -46,6 +46,13 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### New Features
 
+- **Named models for boards and web pages** — An agent can now drive a trusted board or a
+  participating web page through its own named model at `pages[i].editor.app`, instead of guessing
+  at the DOM. Models can expose readable and writable state, methods, named controls, and in-frame
+  highlighting; a board that exposes nothing still works through `snapshot()` and refs. Remote
+  calls use per-call, remote-declared, session `boards.callTimeoutMs`, and 30-second fallback
+  timeouts; user-opened private browser pages are refused before probing.
+
 - **One `call` surface for the whole application** — AI agents (through the MCP `call` tool) and
   scripts (through `app.call()`) now navigate Persephone's live object model by path: discover
   pages, editor facades and application services, invoke methods, and update writable properties.

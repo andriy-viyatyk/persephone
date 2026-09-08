@@ -67,6 +67,8 @@ All editor code lives in `/src/renderer/editors/`.
 >
 > **Image URL support:** `ImageEditor` can display images from external URLs (e.g. browser context menu "Open Image in New Tab"). For HTTP URLs, an `HttpProvider` pipe is created (serializable, re-fetches on restart). The image binary is also cached to disk as a fallback. For blob URLs (REST client, drawing export), the binary is cached to disk immediately since blob URLs don't survive restart. URL-based images show a "Save Image to File" toolbar button.
 
+> **Board AiVision:** The main board frame can publish one serializable object-model shape with `persephone.aiVision.expose(root)`. `BoardWebview` forwards the registration and brokers host-initiated `ai:*` requests; `BoardEditorFacade` exposes the resulting `createRemoteProxy` only as the conditional `app` member after the existing trust gate succeeds. `elements` and `highlight` execute in the frame that owns the controls, and a declaration tagged with a secondary-view id mounts/routes through that board frame. The shape is cleared on reload and teardown, while secondary frames share the board's root rather than registering their own.
+
 ## Rendering Architecture
 
 The board editor follows the same native page path: `BoardEditorView` owns the board's four-way

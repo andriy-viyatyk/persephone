@@ -296,6 +296,26 @@ srv.write(JSON.stringify({ id: 1, sql }) + "\n");   // per query — db stays op
   runs with the user's privileges and returns environment-variable names only. Trust, board
   registration, and toolset registration remain user-mediated actions, so a call can request them
   but never silently grants them.
+
+Remote `.app` calls use the same four-level host timeout policy: a per-call `timeoutMs`, the
+remote method's declared `timeoutMs`, the session-only in-memory `boards.callTimeoutMs`, then the
+30-second built-in fallback. The selected level and full path are included in a timeout error;
+`boards.callTimeoutMs` is not persisted. The per-call option applies only to a remote `.app` leaf.
+
+#### A board's own model: `.app`
+
+A trusted board may publish an AiVision model with `persephone.aiVision.expose(root)`. When it does,
+the model appears at `pages[pageId].editor.app`. This is the board's own named model, not another
+view of Persephone's page or editor facade: use its `$help` or `helpSearch(...)` to discover the
+board's members and normal hints, then read or write its declared properties, call its methods,
+inspect `elements`, or use `highlight(...)`. A declaration made with
+`persephone.aiVision.createElements(...)` can
+name a secondary `view`; highlighting it opens that board panel and runs in the panel's frame.
+
+The `.app` member is optional. If the board exposes nothing, use `snapshot()` and the returned refs
+as the fallback for driving its rendered UI. A shape is a snapshot too; the board can republish it
+with the remote's `refresh()` after changing its descriptor.
+
 - `persephone.host.*` — for a **content-host** editor board (`"editorKind": "content-host"` in the
   manifest) Persephone owns the file (pipe, encoding, encryption, auto-save, dirty tracking) and the
   board works with the content instead of a path: `host.getContent()` → `Promise<string>`,

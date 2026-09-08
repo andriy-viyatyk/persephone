@@ -165,30 +165,19 @@ Describing a small grey indicator in the corner rarely lands. Draw a highlight i
 ring around the element and a card with your text and a **Close** button. The look is fixed in every
 theme and context, so the user can tell that the callout came from their agent.
 
-### In a board
+### In a board or participating browser page
 
-`app.ui` cannot reach other frames, so inject the overlay module into the board. Read its source
-once from the renderer:
-
-```js
-return await (await fetch("app-asset://agent/ui-highlight.js")).text();
-```
-
-Then use that text as `CODE` in a board-page `editor.evaluate` call:
+A trusted board that exposes an AiVision model, or a web page that uses the `ai-vision` package's
+`expose(root)`, can be highlighted through its own model:
 
 ```js
-() => { CODE; return window.__persephoneHighlight.show({ selector: "#submit", text: "This is the button that submits the form." }); }
+pages[pageId].editor.app.highlight("submit", "This is the button that submits the form.");
 ```
 
-The module installs `window.__persephoneHighlight` with `show(options)`, `showMany([options])`,
-and `clear(id?)`, with the same behavior and appearance as `app.ui.highlightElement`. Injecting it
-twice is safe because an existing installation is reused.
-
-### In a browser page — not supported
-
-Persephone has no highlight overlay for web pages by design. Browser pages run in their own
-sessions and cannot load app assets. Do not look for a way around this security boundary or tell
-the user that the feature exists.
+The board or page declares the control and its selector; Persephone runs the overlay in the frame
+that owns it. A board declaration may name a secondary view, which Persephone mounts before
+highlighting there. If `.app` is absent, use `snapshot()` and its refs instead. On a browser page,
+an outline set with `evaluate()` remains a page-owned temporary style, not a Persephone overlay.
 
 If a web page needs an explanation, style one element directly and explain the change in chat:
 
@@ -219,7 +208,7 @@ unlike the app-window overlay, so keep it to one element and restore it when fin
 | `{ found: false, error: "invalid CSS selector: …" }` | The selector is malformed | Fix the selector; it is reported, not thrown |
 | `count` is larger than `highlighted` | `all: true` matched more than the 20-ring cap | Narrow the selector |
 | Highlight vanished | Its target left the screen after a page switch, Menu Bar close, or panel collapse | Re-highlight after restoring the UI state |
-| `highlight` throws `ui-highlight.js: HTTP …` | The overlay asset could not be loaded | Report the incomplete installation and explain in chat |
+| `.app` is absent | The board or page has not published an AiVision model | Use `snapshot()` and its returned refs, or explain that the model is unavailable |
 | `fetch("app-asset://…")` fails in a browser page | Browser pages cannot access app assets | Use the plain-border form above |
 | A tab has no language button | Its editor declares no language | Say that there is no syntax-highlighting language to change |
 | A tab has no title | It is pinned and shows only icons | Read its title from `pages` |

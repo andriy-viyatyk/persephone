@@ -132,6 +132,10 @@ screenshots, network requests, and tab selection. The verified chrome elements i
 `url-navigate`, `url-bookmark-toggle`, `toolbar-back`, `toolbar-forward`, `toolbar-reload`,
 `toolbar-home`, `toolbar-bookmarks`, `toolbar-tor-info`, `toolbar-downloads`, `toolbar-more`,
 `toolbar-devtools`, `toolbar-close`, `tabs-panel-host`, and `popup-blocked-bar`.
+Participating web pages may additionally publish a page-authored model at `page.editor.app`; it
+offers the page's help, hints, state, methods, elements, and in-frame `highlight(...)`. Its kinds
+are prefixed `page:` and its content remains confined to `.app`. User-opened private pages are
+refused before this model is probed. See [Browser automation](../agents/browser.md) for details.
 
 ## Errors and limits
 

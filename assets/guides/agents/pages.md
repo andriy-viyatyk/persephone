@@ -149,6 +149,8 @@ the document is ready, so wait before the first action.
 ### Privacy
 
 Incognito and Tor pages are **never automatable**: they are never matched by `profileName`, a direct `pageId` at one still gets a privacy-refusal error, and their `url` is never exposed.
+That refusal happens before Persephone probes a page for a page-authored `.app` model; see the
+[Browser guide](./browser.md) for the optional model and its `page:` origin label.
 
 ## The `page` Object
 

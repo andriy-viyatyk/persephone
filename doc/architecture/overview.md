@@ -74,7 +74,7 @@ Type definitions live in `/src/renderer/api/types/*.d.ts` and serve triple duty:
 2. Monaco IntelliSense for user scripts (auto-copied to `assets/editor-types/`)
 3. Documentation via JSDoc comments
 
-The shared AiVision layer (`src/shared/ai-vision/`) describes this live object model for path-based
+The `ai-vision` npm package describes this live object model for path-based
 callers without creating a second hierarchy. Renderer wrappers and editor facades expose descriptors
 next to the objects they describe; the shared resolver walks those descriptors, including dynamic
 page/editor children, restricted nodes, assignments, and bounded result shaping. The MCP `call`

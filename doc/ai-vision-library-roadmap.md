@@ -29,9 +29,9 @@ one place and runs once, on the host.
 
 ## Principles
 
-1. **One engine.** The library is the only implementation. Persephone's `src/shared/ai-vision/`,
-   `src/renderer/scripting/ai-vision/elements.ts` and `assets/agent/ui-highlight.js` are replaced by
-   package imports, not mirrored. No fork, no vendored copy.
+1. **One engine.** The library is the only implementation. Persephone imports the package and has
+   deleted its former `src/shared/ai-vision/`, `src/renderer/scripting/ai-vision/elements.ts` and
+   `assets/agent/ui-highlight.js` copies. No fork, no vendored copy.
 2. **Shape crosses boundaries; engines do not.** A board or page publishes its descriptor tree as
    serializable data plus leaf handlers. The host runs its own resolver over a proxy built from that
    shape. Hint paths are therefore correct by construction; nothing string-rewrites them.
@@ -152,7 +152,7 @@ Two transports, one proxy:
   `postMessage` path. `reload()` clears the shape; the reloaded frame re-registers. Secondary frames do
   not register — one board, one root, shared through `persephone.state`.
 - **Browser page:** the page's `expose` publishes `window.__aiVision` (`schemaVersion`, `describe()`,
-  leaf handlers). After each completed navigation `BrowserEditorFacade` probes for it over CDP, caches
+  leaf handlers). After each completed navigation `BrowserWebviewModel` probes for it over CDP, caches
   the shape on the browser model, and mounts the same proxy. Leaf requests are CDP `evaluate` calls.
   A page without the global costs one `evaluate` per navigation and looks as it does today.
 
@@ -166,8 +166,9 @@ gains one line pointing at `.app` when a shape is registered. Because the proxy 
 ### Elements and highlight
 
 The host cannot query inside a cross-origin frame or a web page, so visibility and the overlay run
-remotely. The library's dom entry ships the same overlay Persephone lazy-loads today and the same
-`offsetParent !== null` rule. An element declaration may name a `view` (`"main"` or a secondary view
+remotely. The library's `dom` entry supplies the overlay that Persephone installs in its own renderer
+contexts, using the same `offsetParent !== null` visibility rule. An element declaration may name a
+`view` (`"main"` or a secondary view
 id); the host routes `ai:highlight` to that frame and auto-mounts its panel through the existing
 `BoardTargetModel.ensureReady` path. Remote controls adopt `data-name`, matching
 [architecture/ui-element-contract.md](architecture/ui-element-contract.md).
@@ -245,9 +246,9 @@ this is an agent-facing object model over an application, not computer vision.
   its agent (Persephone's wording, generalized), and the versioning rules above.
 - Publish `1.0.0`.
 
-**Gate:** Persephone builds against the package with `src/shared/ai-vision` replaced by imports and no
-behavioural difference on the AiVision QA surfaces (`qa/surfaces/`), run before Epic 2 deletes
-anything. The demo page's tree resolves through the library's own resolver in a browser.
+**Gate:** Persephone builds against the package with `src/shared/ai-vision` replaced by imports
+and no behavioural difference on the AiVision QA surfaces (`qa/surfaces/`). The demo page's tree
+resolves through the library's own resolver in a browser.
 
 ### EPIC-097 — Persephone adopts the library and mounts remote trees
 

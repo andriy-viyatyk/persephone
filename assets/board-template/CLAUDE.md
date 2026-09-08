@@ -311,6 +311,41 @@ Board under `assets/board-call-regex/` for a complete Run/Write example.
   Materialized files are **read-only**: writing to the cache path does not write back to the
   original source.
 
+### Expose a board model to agents
+
+Give the board a named model by attaching an AiVision descriptor to an object and publishing it
+through `persephone.aiVision.expose(root)`. The descriptor supplies the shape an agent can discover:
+`kind`, `summary`, `members`, and optionally `help`, `elements`, `provide`, and `summarize`.
+Persephone then provides `$help`, `helpSearch`, hints, argument validation, property writes, method
+calls, `elements`, and `highlight` over `pages[i].editor.app`.
+
+Use `createElements` for the board's curated controls. A declaration can name a secondary `view`; a
+highlight for that control opens and targets the corresponding view's frame:
+
+```js
+const declarations = [
+    { name: "save", purpose: "Save the current item.", selector: '[data-name="save"]', view: "main" },
+    { name: "notes", purpose: "Edit notes.", selector: '[data-name="notes"]', view: "notes" },
+];
+const elements = persephone.aiVision.createElements(declarations);
+
+const model = { aiVision: {
+    kind: "ProjectBoard",
+    summary: "The board's project model.",
+    members: [
+        { name: "items", kind: "property", summary: "Current project items." },
+        ...elements.members,
+    ],
+    elements: declarations,
+    provide: elements.provide,
+} };
+persephone.aiVision.expose(model);
+```
+
+Only the main frame registers the model with Persephone. The published shape is a snapshot, so call
+the returned remote's `refresh()` after changing its structure or metadata. A board's exposed state
+is as visible to an agent as what the board already shows on screen; never expose secrets.
+
 ### Content-host boards — `persephone.host.*`
 
 When your board sets `"editorKind": "content-host"` in the manifest, **Persephone owns the file**,

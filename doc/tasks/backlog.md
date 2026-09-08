@@ -239,6 +239,24 @@ written; the doc carries the research notes.
 
 ## Architecture Improvements
 
+### A browser tab's CDP session keeps the old document after an `about:blank` navigation
+
+Navigate a browser page to `about:blank` and `pages[i].editor.evaluate("[location.href, document.title]")`
+still answers from the **previous** document, even though `editor.url` correctly reports
+`about:blank`. The CDP execution context the automation layer holds is not re-resolved for that
+navigation; a navigation to a real URL invalidates correctly, so it is specific to `about:blank`
+(and possibly to other same-process synthetic documents). **Found 2026-09-08** by EPIC-097's gate
+run ([qa/runs/2026-09-08-epic-097-remote-app.md](../../qa/runs/2026-09-08-epic-097-remote-app.md),
+test A.7), where it made a page's `.app` keep answering with the old page's model after the tab was
+navigated away.
+
+It is pre-existing and not an escalation of privilege — the old document's DOM is equally readable
+through `evaluate` and `snapshot` today — but it is a correctness bug in a path every browser tool
+shares, so the fix belongs in the automation layer (`renderer/automation/CdpSession.ts` and the
+target/session bookkeeping around it), not in any one consumer. Reproduce with the two `evaluate`
+calls above; the fix is to invalidate or re-resolve the session's execution context on every
+`did-navigate`, not only on a cross-document load the target layer happens to notice.
+
 ### The three focus-after-page-focus races (deferred out of EPIC-081)
 
 `editors/base/TextChromeView.ts:492`, `editors/board/BoardWebview.ts:154`, and

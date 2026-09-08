@@ -7,17 +7,19 @@
 **Completed:** 2026-09-08
 
 **Repository:** https://github.com/andriy-viyatyk/ai-vision (public, pushed).
-**Local:** `C:\projects\ai-vision`. **npm:** `ai-vision` is still unpublished — see "Publishing".
+**Local:** `C:\projects\ai-vision`. **npm:** `ai-vision@1.0.1` is published; the later adoption is
+tracked by EPIC-097.
 
 Epic 1 of 3 in the [AiVision library roadmap](../ai-vision-library-roadmap.md). It is independent:
-nothing in Persephone changes here. Adoption is EPIC-097.
+nothing in Persephone changed as part of this extraction. EPIC-097 subsequently adopted the package.
 
 ## Overview
 
 Extract the AiVision engine out of Persephone into its own MIT-licensed npm package, `ai-vision`,
 in a new public repository at `C:\projects\ai-vision`. The package is the *only* implementation
-from EPIC-097 onward: Persephone will import it and delete `src/shared/ai-vision/`,
-`src/renderer/scripting/ai-vision/elements.ts` and `assets/agent/ui-highlight.js`.
+EPIC-097 subsequently adopted it: Persephone imports the package and deleted
+`src/shared/ai-vision/`, `src/renderer/scripting/ai-vision/elements.ts` and
+`assets/agent/ui-highlight.js`.
 
 The package ships more than the extraction. It adds the two halves the roadmap's remote-tree design
 needs: a **remote** entry a board or a web page calls to publish its object model as serializable
@@ -26,7 +28,8 @@ resolver can walk. Shape crosses the boundary; the engine does not.
 
 ## Goals
 
-- `ai-vision@1.0.0` published, ESM + `.d.ts`, zero runtime dependencies, three entry points.
+- `ai-vision@1.0.0` published, ESM + `.d.ts`, zero runtime dependencies, three entry points; the
+  compatible `1.0.1` fix release is now the version consumed by Persephone.
 - Byte-faithful behaviour for the extracted core — Persephone must be able to swap imports in
   EPIC-097 with no observable difference on the AiVision QA surfaces.
 - A remote contract with a `schemaVersion` and additive-within-a-major rules, documented well
@@ -72,7 +75,7 @@ Work happens in the `ai-vision` repository; there are no `doc/tasks/` folders fo
 | US-1385 | `remote` entry: `expose`, `describe`, `ai:*` handlers, `window.__aiVision` | Done |
 | US-1386 | Host-side proxy builder over a shape and a `send` function | Done |
 | US-1387 | `examples/demo-page` — the browser proof and EPIC-097's test surface | Done |
-| US-1388 | README (contract, tool description, versioning), pack check, publish | Done except publish |
+| US-1388 | README (contract, tool description, versioning), pack check, publish | Done |
 
 ## Scope in detail
 
@@ -107,7 +110,7 @@ A single barrel `src/core/index.ts` re-exports everything; the internal files st
   with the Persephone naming generalized (see decision 4).
 - `installHighlightOverlay()` — installs the overlay in the current document and returns its API.
 - `highlightOverlaySource` — the overlay's source as a string, so a host can inject it into a frame
-  it does not own (Persephone does exactly this over CDP today). Generated at build time from the
+  it does not own. Generated at build time from the
   `.js` file by `scripts/generate-highlight-source.mjs`; one file, one source of truth.
 - `highlightElement(selector, message?, options?, reveal?)` — a ready-made highlight function over
   the installed overlay, so a remote party wiring `createElements` writes no glue.
@@ -248,8 +251,8 @@ the only place the property's real current value exists. Reads still work — th
    draws the overlay.
 4. `window.__aiVision` present on the demo page with `schemaVersion === 1`.
 5. Optional and non-blocking: a scratch copy of Persephone compiles against a `file:` install with
-   `src/shared/ai-vision` replaced by package imports. Persephone itself is left unmodified — the
-   roadmap's "Persephone builds against the package" gate is EPIC-097's first step.
+   `src/shared/ai-vision` replaced by package imports. This compatibility compile was deferred from
+   EPIC-096; EPIC-097 subsequently adopted the published package in Persephone.
 
 **12. Four review findings fixed; one inherited quirk deliberately left.** `/review` compared the
 package against this document and the roadmap and found six things. Four were real and are fixed:
@@ -287,21 +290,15 @@ candidate for a follow-up in EPIC-097, where both copies change together.
    | `additem` (typo) | `"additem" is not a member of DemoApp. Did you mean "addItem"?` |
 
 4. **`window.__aiVision`** present with `schemaVersion === 1`.
-5. Not run: the optional scratch-copy compile of Persephone against a `file:` install. Persephone is
-   unmodified, as this epic requires; EPIC-097's first step is that compile.
+5. Not run: the optional scratch-copy compile of Persephone against a `file:` install. EPIC-097
+   subsequently adopted the published package in Persephone.
 
 ## Publishing
 
-`npm whoami` reports **not logged in** on this machine (`E401`), so `1.0.0` was not published. The
-name is confirmed still free (`npm view ai-vision` → 404). To publish:
+`ai-vision@1.0.1` is published on npm. The release includes the nested-summary fix required by
+Persephone's adoption; the package remains maintained from `C:\projects\ai-vision`.
 
-```
-npm login
-cd C:\projects\ai-vision
-npm publish --access public
-```
-
-`prepublishOnly` rebuilds, so no separate build step is needed.
+The package's `prepublishOnly` script rebuilds before a release.
 
 ## Notes
 
@@ -309,9 +306,9 @@ npm publish --access public
 
 - Epic opened, implemented and closed the same day. Codex wrote the package in two threads
   (core/dom/remote/proxy, then demo page and README); the plan, the four correction findings that
-  produced decisions 9–11, and the browser gate run are Claude's. `npm whoami` reports no logged-in user on this machine, so publishing `1.0.0` may
-  have to be done by the user; everything else is independent of it.
+  produced decisions 9–11, and the browser gate run are Claude's. The package was subsequently
+  released as `1.0.1`; Persephone's adoption is tracked separately.
 - The name `ai-vision` was checked free on npm on 2026-09-08 including the punctuation variants npm
-  treats as equivalent. Not reserved until published.
+  treats as equivalent, then published as `1.0.1` after the package release was configured.
 - Deliberately out of scope: any Persephone source change, the board bridge protocol, and the
   `windows[i].` hint-prefix tax — all EPIC-097.

@@ -70,6 +70,11 @@ await app.call("page.grouped.content", {
 const result = await app.call("page.editor.getCell", { args: [0, "name"] });
 ```
 
+For a remote board or browser-page model under `pages[i].editor.app`, `options.timeoutMs` is the
+per-call timeout. The host then falls back to the remote method's declared timeout, the session-only
+`boards.callTimeoutMs`, and the built-in 30-second default. The per-call value does not affect
+ordinary local object-model paths.
+
 The shell nodes are available through the MCP `call` path as well. Use `window.menuBar.folders`
 to discover the live built-in and user-folder IDs, then `window.menuBar.open(id)` to open one;
 the legacy `window.openMenuBar()` remains available. `page.panels.items` is a live projection of

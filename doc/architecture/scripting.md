@@ -677,20 +677,40 @@ It is fully type-erased (no runtime cost) and names the offender on failure: `Ty
 
 ### AiVision path calls
 
-`src/shared/ai-vision/` contains the process-neutral descriptor interfaces, path parser, resolver,
+The `ai-vision` npm package contains the process-neutral descriptor interfaces, path parser, resolver,
 hint builder, help search, and result shaper used by path callers. Renderer wrappers and editor
 facades implement `IAiVisible` with descriptors beside their public members; dynamic pages and
 facades enumerate their own children so discovery does not probe side-effecting getters. Namespace
 objects that cannot carry a descriptor use the shared instance registry.
 
-The same process-neutral engine is available as the standalone MIT npm package
-[`ai-vision`](https://github.com/andriy-viyatyk/ai-vision), which also provides `dom` and `remote`
-entry points for UI element wiring and shape-based hosts. Persephone still runs the internal copy
-at `/src/shared/ai-vision/`; package adoption is EPIC-097, so this application does not consume the
-npm package yet.
+The package also provides `dom` and `remote` entry points for UI element wiring and shape-based
+hosts. Persephone imports the package's root and `dom` entry points; the internal engine and local
+element helper are no longer part of the application.
 
-Positional arguments for shared call-surface operations are checked by the process-neutral
-`argument-validation.ts` module. It reports the rejected value and runtime type, validates required
+### Remote AiVision trees
+
+Remote object models are mounted only at `pages[i].editor.app`. A board's main frame publishes a
+serializable shape through `persephone.aiVision.expose(root)`; `BoardWebview` forwards the shape and
+routes `ai:*` requests to the owning frame. `BoardEditorFacade` builds the host-side proxy only after
+the board is trusted and registered. Board element declarations are answered inside their owning
+frame, and a declaration with a secondary-view `view` causes that frame to be mounted before the
+request is sent. Secondary frames do not publish separate roots.
+
+A browser page may publish the same package remote through `window.__aiVision`. After a completed
+cross-document load, `BrowserWebviewModel` probes only pages allowed by the existing private-page
+gate and caches a shape by browser tab and document generation. `BrowserEditorFacade` exposes it as
+`.app` when present; navigation, reload, tab switching, closing, and disposal invalidate the cached
+binding. Page-authored nodes are labelled with a `page:` kind prefix and an origin note, and remain
+confined to `.app` rather than the page or application overview.
+
+Both transports use the same host-side timeout precedence: per-call `timeoutMs`, the remote method's
+declared `timeoutMs`, the session-only `boards.callTimeoutMs`, then the 30-second built-in fallback.
+The shared helper in `/src/shared/ai-vision-timeout.ts` resolves the level, while the host emits the
+timeout error with the full agent path. The `boards.callTimeoutMs` setting is in renderer memory and
+also bounds browser-page `.app` calls; it is not persisted.
+
+Positional arguments for shared call-surface operations are checked by the package's
+process-neutral `argument-validation` module. It reports the rejected value and runtime type, validates required
 and optional parameters, numeric bounds, and live choices, and supplies a copy-paste usage example.
 Array choice rules validate both the array itself and each element before a mutation is delegated.
 Domain-specific validators remain at boundaries where they carry richer local invariants; they are

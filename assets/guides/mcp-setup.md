@@ -59,7 +59,7 @@ The manifest advertises exactly one tool:
 
 | Tool | Description |
 |------|-------------|
-| **call** | Read or act on the live object model with a path. Start with no path for the overview; use `args` for method arguments, `value` for assignments, and `maxLength` to bound long strings or structured results. |
+| **call** | Read or act on the live object model with a path. Start with no path for the overview; use `args` for method arguments, `value` for assignments, `maxLength` to bound long strings or structured results, and `timeoutMs` for a slow remote `.app` call. |
 
 Everything Persephone can do is a path under `call` — pages, editors, windows, boards, settings,
 browser automation, Agent Tools, and scripting. The thirteen guide resources are separate from the
@@ -106,6 +106,20 @@ Use the live object-model paths for browser automation: open a page with
 > **Privacy guard:** User-opened incognito and Tor pages are refused by the browser host and by
 > `window.screen` while that page is active. A private page opened by the agent remains available
 > to that agent. Use a normal page when the guard refuses a user-opened private page.
+
+### Optional models from boards and web pages
+
+A trusted board or a participating web page may publish its own named model at
+`pages[pageId].editor.app`. Use that node's `$help`, `helpSearch(...)`, hints, writable properties,
+methods, `elements`, and `highlight(...)`; a board's highlight runs in the owning board frame,
+including a declared secondary view. Browser-page model kinds carry a `page:` prefix, and page
+content stays confined to `.app`. User-opened private pages are refused before Persephone probes
+for a model. See the [Boards](./agents/boards.md) and [Browser](./agents/browser.md) references
+for authoring and targeting details.
+
+Calls under `.app` use timeout precedence of per-call `timeoutMs`, remote-declared `timeoutMs`,
+the session-only in-memory `boards.callTimeoutMs`, then the built-in 30-second fallback. The
+selected level and full path appear in timeout errors; the session knob is not persisted.
 
 ### Automating Persephone's own UI
 

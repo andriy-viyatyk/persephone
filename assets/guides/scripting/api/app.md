@@ -79,6 +79,7 @@ if (panels.length) {
 | `options.args` | `unknown[]` | Arguments for the final method. Cannot be combined with `value`. |
 | `options.value` | `unknown` | Value for the final writable property. Cannot be combined with `args`. |
 | `options.maxLength` | `number` | Maximum serialized length for a shaped string or structured result. |
+| `options.timeoutMs` | `number` | Per-call timeout for a remote board or browser-page `.app` leaf. Timeout precedence continues with the remote declaration, session-only `boards.callTimeoutMs`, then the 30-second default. |
 
 `app.call()` is rooted in the current script's window. It can address pages, editor
 facades, and application services exposed to scripts, including the local `boards` inventory and

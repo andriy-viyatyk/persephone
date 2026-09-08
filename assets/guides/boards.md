@@ -321,6 +321,21 @@ mutually exclusive. Calls reject as `Error` on resolver, transport, timeout, or 
 Trust is checked at resolution time, and existing descriptor restrictions still apply. Calls remain
 anchored to the Board's hosting page even when another tab becomes active.
 
+Remote `.app` calls use four timeout levels, in order: per-call `timeoutMs`, the remote method's
+declared `timeoutMs`, the session-only in-memory `boards.callTimeoutMs`, and the built-in 30-second
+fallback. Timeout errors name the selected level and full path. `boards.callTimeoutMs` is not
+persisted, and the per-call option affects only a remote `.app` leaf.
+
+### A board's own model: `page.editor.app`
+
+A trusted board may publish an AiVision model with `persephone.aiVision.expose(root)`. It then
+appears to an agent at `pages[pageId].editor.app`, with its own `$help`, `helpSearch(...)`, normal
+hints, writable properties, methods, `elements`, and `highlight(...)`. A declaration made with
+`persephone.aiVision.createElements(...)` can name a secondary `view`; highlighting it opens that
+board panel and runs in the panel's frame. If no model is published, use the board editor's
+`snapshot()` and refs instead. See the [agent board guide](./agents/boards.md) for the authoring
+reference.
+
 Use `readFile`/`writeFile` to persist small board state (last filter, column layout, selected item) or load a board-local config — no backend script needed:
 
 ```js
