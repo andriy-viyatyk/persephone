@@ -382,7 +382,14 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             this.appendLog("warn", "Ignored invalid or untrusted AiVision registration.");
             return;
         }
-        this.rejectPendingAiVision(new Error("Board AiVision registration was replaced."));
+        // A refresh is the SAME remote re-publishing its structure (the board added its first
+        // item, so an indexed member finally has an item shape). The handlers behind the frame
+        // are unchanged, so a request already on the wire — very often the very call that
+        // triggered the refresh — must be allowed to complete. Only a new remote invalidates.
+        const reason = message.reason === "refresh" ? "refresh" : "register";
+        if (reason !== "refresh") {
+            this.rejectPendingAiVision(new Error("Board AiVision registration was replaced."));
+        }
         warnUnknownAiVisionViews(message.shape, model, (warning) => this.appendLog("warn", warning));
         model.setAiVisionRegistration(
             message.shape,
@@ -390,6 +397,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             this.generation,
             this.requestAiVision,
             (warning) => this.appendLog("warn", warning),
+            reason,
         );
     }
 

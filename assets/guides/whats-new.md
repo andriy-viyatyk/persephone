@@ -12,7 +12,13 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ## Version 5.0.1 (Upcoming)
 
-*No changes yet.*
+- **Named models for boards and web pages are ready to use:** trusted boards and participating web
+  pages can expose a discoverable model at `pages[i].editor.app`. Agents can inspect state, update
+  writable properties, call purposeful methods, find named controls, and highlight them in the
+  correct frame through the single `call` surface. The todo board (catalog version 1.1.0) is the first complete example;
+  boards that do not expose a model remain usable through `snapshot()` and refs.
+- **Board pages preserve UTF-8 text:** board documents are now served with an explicit UTF-8
+  charset, so non-ASCII text in board content and agent-facing descriptions is displayed correctly.
 
 ---
 

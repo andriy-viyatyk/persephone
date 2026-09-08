@@ -54,8 +54,11 @@ one place and runs once, on the host.
 (`src/renderer/editors/board/BoardWebview.ts`). The protocol handler
 (`src/main/board-protocol-service.ts`) inlines `src/board-shim.ts` into the served HTML before any
 board script, so `window.persephone` is always the host's own version — shim and host cannot drift.
+Text responses from the handler declare `charset=utf-8`, including injected HTML, so the shim's
+non-ASCII descriptor text is decoded consistently even when the injected head precedes the author's
+`<meta charset>`.
 The shim talks to main over a `MessagePort` (`src/main/board-bridge.ts`) and to the host renderer over
-`postMessage`; wire types live in `src/ipc/board-bridge-channels.ts`. Bridge version `1.2.0`.
+`postMessage`; wire types live in `src/ipc/board-bridge-channels.ts`. Bridge version `1.3.0`.
 
 **Inbound direction exists.** `persephone.call(path, options)` (`board-shim.ts`, `runBoardCall` in
 `board-bridge.ts`, `src/renderer/api/mcp/board-call-command.ts`) resolves against the hosting page's
@@ -151,6 +154,9 @@ Two transports, one proxy:
   `BoardWebview` validates and stores it on `BoardEditorModel`; leaf requests travel over the existing
   `postMessage` path. `reload()` clears the shape; the reloaded frame re-registers. Secondary frames do
   not register — one board, one root, shared through `persephone.state`.
+  The message also carries `reason: "register"` for a new remote or `reason: "refresh"` for the same
+  remote's `remote.refresh()`; the host's `token` tracks proxy-cache/shape generation, while
+  `incarnation` tracks the remote identity used to validate in-flight requests.
 - **Browser page:** the page's `expose` publishes `window.__aiVision` (`schemaVersion`, `describe()`,
   leaf handlers). After each completed navigation `BrowserWebviewModel` probes for it over CDP, caches
   the shape on the browser model, and mounts the same proxy. Leaf requests are CDP `evaluate` calls.

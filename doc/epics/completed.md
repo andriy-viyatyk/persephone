@@ -1,3 +1,42 @@
+## EPIC-098 — The todo board exposes its model
+
+Completed 2026-09-08. [Epic document](EPIC-098.md). Epic 3 of 3 — the last — in the
+[AiVision library roadmap](../ai-vision-library-roadmap.md).
+
+- [x] US-1394: Expose the todo board's model through `persephone.aiVision.expose`
+- [x] US-1395: Run the roadmap gate — mechanical verification and the weak-agent test
+
+**The roadmap's closing gate passed on the first attempt.** A haiku-class agent whose only tool is
+`call`, told to ignore every project file and given no paths, added a tagged, completed item to a
+list it had to create and then highlighted a control for the user — in 14 calls, with no dead ends
+and without ever falling back to `snapshot()` or `evaluate()`. The claim the whole roadmap rested on
+— that a board can be made as drivable as a built-in editor by publishing a data contract while the
+engine stays on the host — is now demonstrated rather than argued. Record:
+[qa/runs/2026-09-08-epic-098-todo-app.md](../../qa/runs/2026-09-08-epic-098-todo-app.md).
+
+**The code change is in `persephone-boards`, not here.** `boards/todo/app.js` lifts its module state
+and thirteen action functions into an exposed `TodoApp` object (lists, tags and the filtered item
+view as indexable nodes; three writable selection properties; seven `data-name` controls across both
+frames), bumped to `1.1.0` / `minAppVersion 5.0.1`. Publishing it is a push the user makes, and the
+"Publish the todo board" backlog item stays open until then. Three board-side lessons are worth
+carrying to the other built-in editors planned to move to boards: an agent-facing delete must not
+block on an in-board confirm dialog (hence the `*Core` split); a UI action whose affordance is "pick
+a list first" needs an explicit argument for an agent (hence `addItem(title, list?)`); and a
+descriptor's prose is search text, so member summaries must use the words a person would type —
+`helpSearch("add a todo item")` could not find `addItem` until its summary said "todo item".
+
+**Two host defects, both shipped green two hours earlier.** EPIC-097 verified `.app` against a
+synthetic scratch board; the first *real* board broke it twice. (1) `remote.refresh()` — which any
+board with an async load must call, because `expose()` probes `index(0)` once to derive an indexed
+item's shape — was indistinguishable from a new registration, so it rejected every in-flight leaf
+request, which was invariably the very call that had triggered the refresh; the registration message
+now carries `reason`, and the stored registration separates `token` (shape generation) from
+`incarnation` (remote identity). (2) `board://` served documents with no charset, and the injected
+head fragment pushes the author's `<meta charset>` past the 1024-byte sniffing window, so every
+board document was decoded as windows-1252 and the shim's own em dashes reached agents mojibaked;
+text responses now declare `charset=utf-8`. The general lesson matches EPIC-097's own: each piece
+was individually correct and only an end-to-end run against something real exposed the composition.
+
 ## EPIC-097 — Persephone adopts the library and mounts remote trees
 
 Completed 2026-09-08. [Epic document](EPIC-097.md). Epic 2 of 3 in the

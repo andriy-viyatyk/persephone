@@ -312,6 +312,14 @@ inspect `elements`, or use `highlight(...)`. A declaration made with
 `persephone.aiVision.createElements(...)` can
 name a secondary `view`; highlighting it opens that board panel and runs in the panel's frame.
 
+The todo board from the board catalog (1.1.0 and later) is the worked example for this pattern: its `.app` model exposes lists,
+tags, items, actions, and named controls in both the main view and a secondary view. Remember that
+`expose()` probes `index(0)` once to derive the shape of an indexed item. If a board registers while
+an asynchronous load still leaves its collections empty, it must call the returned remote's
+`refresh()` when they first become non-empty; otherwise `items[0]` (and other indexed items) will
+not resolve for an agent. Agent-facing methods must also complete without waiting for an in-board
+confirm dialog; use an immediate method path and leave confirmation to the interactive UI.
+
 The `.app` member is optional. If the board exposes nothing, use `snapshot()` and the returned refs
 as the fallback for driving its rendered UI. A shape is a snapshot too; the board can republish it
 with the remote's `refresh()` after changing its descriptor.

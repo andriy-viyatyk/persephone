@@ -344,7 +344,12 @@ persephone.aiVision.expose(model);
 
 Only the main frame registers the model with Persephone. The published shape is a snapshot, so call
 the returned remote's `refresh()` after changing its structure or metadata. A board's exposed state
-is as visible to an agent as what the board already shows on screen; never expose secrets.
+is as visible to an agent as what the board already shows on screen; never expose secrets. The todo
+board is the worked example for this `aiVision` surface: `expose()` probes `index(0)` once to derive
+the shape of an indexed item, so a board whose collections are empty during asynchronous
+registration must call the returned remote's `refresh()` when they first become non-empty, or
+`items[0]` will not resolve for an agent. Agent-facing methods must not block on an in-board confirm
+dialog; keep confirmation in the interactive UI and make the exposed method complete immediately.
 
 ### Content-host boards — `persephone.host.*`
 

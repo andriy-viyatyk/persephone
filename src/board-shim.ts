@@ -404,12 +404,16 @@ function isPositiveInteger(value: unknown): value is number {
     return typeof value === "number" && Number.isFinite(value) && Number.isInteger(value) && value > 0;
 }
 
-function postAiVisionRegistration(remote: IAiVisionRemote): void {
+function postAiVisionRegistration(
+    remote: IAiVisionRemote,
+    reason: "register" | "refresh" = "register",
+): void {
     if (viewRole !== "main") return;
     const message: BoardAiVisionRegistrationMsg = {
         __persephone: "board:aiVision",
         schemaVersion: remote.schemaVersion,
         shape: decorateAiVisionShape(remote.describe()),
+        reason,
     };
     try {
         window.parent.postMessage(message, hostPostTarget);
@@ -440,7 +444,7 @@ function exposeAiVision(root: object): IAiVisionRemote {
         refresh: () => {
             if (aiVisionRemote !== remote || aiVisionGeneration !== generation) return;
             remote.refresh();
-            postAiVisionRegistration(remote);
+            postAiVisionRegistration(remote, "refresh");
         },
         dispose: () => {
             if (aiVisionRemote !== remote || aiVisionGeneration !== generation) return;

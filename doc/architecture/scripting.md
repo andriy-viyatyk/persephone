@@ -696,6 +696,14 @@ the board is trusted and registered. Board element declarations are answered ins
 frame, and a declaration with a secondary-view `view` causes that frame to be mounted before the
 request is sent. Secondary frames do not publish separate roots.
 
+The board registration has an explicit lifecycle. The initial `expose()` and any new remote after a
+reload or second `expose()` arrive as `BoardAiVisionRegistrationMsg.reason: "register"`; the same
+remote's `remote.refresh()` arrives as `reason: "refresh"`. The host stores two generations: `token`
+changes for every registration and is the proxy-cache/shape-generation key, while `incarnation`
+changes only for a new remote and validates requests that are already in flight. Consequently a
+refresh rebuilds `pages[i].editor.app` from the new shape but does not reject a request using the
+same live remote; a reload or replacement rejects it and the caller must read `.app` again.
+
 A browser page may publish the same package remote through `window.__aiVision`. After a completed
 cross-document load, `BrowserWebviewModel` probes only pages allowed by the existing private-page
 gate and caches a shape by browser tab and document generation. `BrowserEditorFacade` exposes it as

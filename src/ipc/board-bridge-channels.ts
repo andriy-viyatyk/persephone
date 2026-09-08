@@ -307,6 +307,13 @@ export interface BoardAiVisionRegistrationMsg {
     __persephone: "board:aiVision";
     schemaVersion: number;
     shape: IAiVisionShape;
+    /** Why the shape arrived. `"register"` (the default when absent, so an older shim still
+     *  reads correctly) is a *new* remote — a fresh document, or a second `expose()` — and
+     *  invalidates every proxy and in-flight request built against the previous one.
+     *  `"refresh"` is the *same* remote re-publishing its structure after the board changed
+     *  it (`remote.refresh()`); the frame and the handlers behind it are unchanged, so
+     *  in-flight requests must survive and only the cached shape is stale. */
+    reason?: "register" | "refresh";
 }
 
 /** Host renderer → board iframe; the new opposite direction on this channel. */

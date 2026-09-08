@@ -346,10 +346,13 @@ export class BoardEditorFacade implements IAiVisible, IBoardEditor {
     private getAiVisionProxy(registration: NonNullable<ReturnType<BoardEditorModel["getAiVisionRegistration"]>>): IAiVisible {
         if (this.aiVisionProxy?.token === registration.token) return this.aiVisionProxy.value;
         // The proxy is built from ONE registration's shape, so every request it later emits must be
-        // checked against that registration — a reload re-registers a new shape under a new token,
-        // and a proxy handed out before it must fail loudly rather than address the new document.
-        const token = registration.token;
-        const value = createRemoteProxy(registration.shape, (request) => this.sendAiVision(request, token), {
+        // checked against that registration's *remote* — a reload re-registers under a new
+        // incarnation, and a proxy handed out before it must fail loudly rather than address the
+        // new document. A `refresh()` from the same live remote keeps the incarnation and only
+        // bumps the token, so the proxy is rebuilt for the new shape while requests already on the
+        // wire still complete.
+        const incarnation = registration.incarnation;
+        const value = createRemoteProxy(registration.shape, (request) => this.sendAiVision(request, incarnation), {
             restricted: () => this.restricted(),
             onWarning: (message) => this.editor.appendAiVisionWarning(message),
             onError: (error) => this.editor.appendAiVisionWarning(errMessage(error)),
@@ -358,9 +361,9 @@ export class BoardEditorFacade implements IAiVisible, IBoardEditor {
         return value;
     }
 
-    private async sendAiVision(request: IAiRemoteRequest, token: number): Promise<IAiRemoteResponse> {
+    private async sendAiVision(request: IAiRemoteRequest, incarnation: number): Promise<IAiRemoteResponse> {
         const current = this.editor.getAiVisionRegistration();
-        if (!current || current.token !== token) {
+        if (!current || current.incarnation !== incarnation) {
             return {
                 ok: false,
                 error: "This board re-registered its AiVision model (a reload, or a second expose()). "

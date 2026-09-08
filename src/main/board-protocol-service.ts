@@ -206,6 +206,28 @@ function boardMimeType(file: string): string {
     }
 }
 
+/** Text MIME types served with an explicit `charset=utf-8`.
+ *
+ *  Board sources are read and re-encoded as UTF-8, but a bare `text/html` leaves the
+ *  encoding to the document's `<meta charset>` — and the injected head fragment (theme
+ *  style + boot + the ~100 kB shim) lands *before* that meta and pushes it well past the
+ *  1024-byte sniffing window, so the whole document was being decoded as windows-1252 and
+ *  every non-ASCII character in the shim (the em dashes in the AiVision member cautions,
+ *  found by the todo board in EPIC-098) reached the agent mojibaked. The header wins over
+ *  the meta, so stating it here fixes the document and its scripts, which inherit it. */
+const UTF8_MIME_TYPES = new Set([
+    "text/html",
+    "text/javascript",
+    "text/css",
+    "application/json",
+    "image/svg+xml",
+    "text/plain",
+]);
+
+function boardContentType(mime: string): string {
+    return UTF8_MIME_TYPES.has(mime) ? `${mime}; charset=utf-8` : mime;
+}
+
 /** Log a missing board **document** to the board's `ui.log` (EPIC-037 / US-774 C11,
  *  mode A). A `board://` handler that returns a 404 `Response` is a *completed* load to
  *  Electron, so `did-fail-load` never fires for a renamed/missing `index.html` — log it
@@ -247,7 +269,7 @@ async function serveBoardFile(url: string): Promise<Response> {
     }
 
     const headers = new Headers();
-    headers.set("Content-Type", mime);
+    headers.set("Content-Type", boardContentType(mime));
     headers.set("Cache-Control", "no-store"); // boards are local; keeps edit→reload instant
     if (mime === "text/html") {
         headers.set("Content-Security-Policy", BOARD_CSP);

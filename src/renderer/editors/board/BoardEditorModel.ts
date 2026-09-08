@@ -29,7 +29,14 @@ export interface BoardAiVisionRegistration {
     readonly shape: IAiVisionShape;
     readonly iframe: HTMLIFrameElement;
     readonly generation: number;
+    /** Bumped on every registration, refreshes included — the cache key for a built proxy,
+     *  because a refresh means the shape itself changed and the proxy must be rebuilt. */
     readonly token: number;
+    /** Bumped only when a *new* remote registers (a reload, or a second `expose()`), never by
+     *  `remote.refresh()`. This is what a request built against an earlier proxy is checked
+     *  against: a refresh leaves the same live handlers behind the same frame, so a request
+     *  already on the wire is still addressed correctly and must not be failed. */
+    readonly incarnation: number;
     readonly request: BoardAiVisionRequestHandler;
     readonly warning: (message: string) => void;
 }
@@ -152,6 +159,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
 
     private aiVisionRegistration: BoardAiVisionRegistration | undefined;
     private aiVisionRegistrationToken = 0;
+    private aiVisionIncarnation = 0;
     private readonly aiVisionTransports = new Map<string, BoardAiVisionTransport>();
 
     /** Live `<iframe>` elements of the currently-mounted board frames, keyed by
@@ -227,14 +235,21 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
         generation: number,
         request: BoardAiVisionRequestHandler,
         warning: (message: string) => void,
+        reason: "register" | "refresh" = "register",
     ): void {
         const boardRoot = this.state.get().boardRoot;
         if (!boardRoot || !boardTrust.isTrusted(boardRoot) || this.frames.get(BOARD_CDP_TAB) !== iframe) return;
+        const current = this.aiVisionRegistration;
+        // A refresh only keeps its incarnation when it really is the same live remote: same
+        // frame element, same webview generation. Anything else is a new remote.
+        const sameRemote = reason === "refresh" && current !== undefined
+            && current.iframe === iframe && current.generation === generation;
         this.aiVisionRegistration = {
             shape,
             iframe,
             generation,
             token: ++this.aiVisionRegistrationToken,
+            incarnation: sameRemote ? current.incarnation : ++this.aiVisionIncarnation,
             request,
             warning,
         };

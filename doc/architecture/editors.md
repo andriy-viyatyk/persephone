@@ -69,6 +69,12 @@ All editor code lives in `/src/renderer/editors/`.
 
 > **Board AiVision:** The main board frame can publish one serializable object-model shape with `persephone.aiVision.expose(root)`. `BoardWebview` forwards the registration and brokers host-initiated `ai:*` requests; `BoardEditorFacade` exposes the resulting `createRemoteProxy` only as the conditional `app` member after the existing trust gate succeeds. `elements` and `highlight` execute in the frame that owns the controls, and a declaration tagged with a secondary-view id mounts/routes through that board frame. The shape is cleared on reload and teardown, while secondary frames share the board's root rather than registering their own.
 
+The `.app` registration uses `reason: "register"` for a new remote and `reason: "refresh"` for
+`remote.refresh()`. It also uses two generations: `token` changes on every shape publication and
+keys the proxy cache, while `incarnation` changes only for a new remote and validates in-flight
+requests. Thus refresh rebuilds the proxy without cancelling calls already using the same live
+handlers; a reload or replacement requires the caller to read `.app` again.
+
 ## Rendering Architecture
 
 The board editor follows the same native page path: `BoardEditorView` owns the board's four-way
