@@ -10,10 +10,11 @@ import { ui } from "../../api/ui";
 
 import { globalPopupRateLimiter } from "../../../ipc/popup-rate-limiter";
 import { browserUrlChanged } from "../../core/state/events";
-import type { BrowserEditorModel } from "./BrowserEditorModel";
+import { DEFAULT_URL, type BrowserEditorModel } from "./BrowserEditorModel";
 import { showBrowserContextMenu } from "./webview-context-menu";
 import { agentMayAccessBrowserPage } from "./agent-access";
 import { evaluateInTarget, ensureTargetReady } from "../../automation/operations";
+import { logBrowserNavigated } from "../../scripting/ai-vision/event-log";
 
 const AI_VISION_PROBE = `(() => {
     const remote = window.__aiVision;
@@ -219,12 +220,20 @@ export class BrowserWebviewModel {
 
         switch (type) {
             case "did-navigate": {
+                const touched = this.model.hasAiVisionRegisteredTab(internalTabId);
                 this.model.clearAiVisionRegistration(internalTabId);
                 this.applyNavigation(internalTabId, data, false);
+                if (touched && data.url !== DEFAULT_URL && this.model.page?.id) {
+                    logBrowserNavigated(this.model.page.id);
+                }
                 break;
             }
             case "did-navigate-in-page": {
                 this.applyNavigation(internalTabId, data, true);
+                if (this.model.hasAiVisionRegisteredTab(internalTabId)
+                    && data.url !== DEFAULT_URL && this.model.page?.id) {
+                    logBrowserNavigated(this.model.page.id);
+                }
                 break;
             }
             case "did-start-loading":

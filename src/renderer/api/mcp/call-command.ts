@@ -17,9 +17,14 @@ export async function handleCall(params: McpParams): Promise<McpResponse> {
         return { error: { code: -32602, message: "timeoutMs must be a positive integer." } };
     }
     const seenKinds = new Set(Array.isArray(params?.seenKinds) ? (params.seenKinds as string[]) : []);
+    const eventCursor = typeof params?.eventCursor === "number"
+        && Number.isFinite(params.eventCursor)
+        && params.eventCursor >= 0
+        ? params.eventCursor
+        : 0;
     const request = { path, args, hints, maxLength, timeoutMs, ...(params && "value" in params ? { value: params.value } : {}) };
 
     const { aiCall } = await import("../../scripting/ai-vision/call");
-    const result = await aiCall(request, seenKinds);
+    const result = await aiCall(request, seenKinds, eventCursor);
     return { result };
 }

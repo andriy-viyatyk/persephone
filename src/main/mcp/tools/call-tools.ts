@@ -98,9 +98,32 @@ function prefixAttentionPaths(text: string, prefix: string): string {
     return text;
 }
 
+/**
+ * Renderer calls that deliberately block until the user acts. They need a bridge timeout longer
+ * than the renderer's own wait bound, so `{ pending: true }` is always the host's decision and
+ * never `sendToRenderer`'s 30 s default firing first. The invariant the whole long-poll rests on
+ * is: renderer bound (50 s default, 110 s clamp) < bridge timeout (125 s) < client tool timeout.
+ *
+ * Matched on the leading segments, because the same call arrives spelled either as
+ * `events.wait` with `args: []` or as `events.wait()` written into the path itself.
+ */
+const BLOCKING_RENDERER_PATHS = ["events.wait", "ui.guide.step", "ui.guide.end"] as const;
+
+export function isBlockingRendererCall(path: string): boolean {
+    const normalized = path.trim();
+    return BLOCKING_RENDERER_PATHS.some(blocking =>
+        normalized === blocking || normalized.startsWith(`${blocking}(`));
+}
+
+/** Event text is renderer-relative until a forwarded response is returned to the caller. */
+function prefixEventPaths(text: string, prefix: string): string {
+    return text.replaceAll("pages[", `${prefix}pages[`);
+}
+
 export function callTools(ctx: IToolContext): IMcpToolDef[] {
     const { z, windowIndex } = ctx;
     const seenKinds = new Set<string>();
+    const eventCursors = new Map<number, number>();
     const mainRoot = new MainAiRoot();
 
     return [
@@ -156,13 +179,23 @@ export function callTools(ctx: IToolContext): IMcpToolDef[] {
                     response = { result };
                 } else {
                     const forward = route.forward!;
-                    response = await sendToRenderer("call", { ...params, path: forward.path, seenKinds: [...seenKinds] }, forward.windowIndex);
-                    if (route.parseError && response.error) {
-                        response = { result: { path, error: `Invalid path: ${route.parseError}` } };
-                    }
                     const targetWindowData = forward.windowIndex !== undefined
                         ? openWindows.windows.find(windowData => windowData.index === forward.windowIndex)
                         : openWindows.windows.find(windowData => windowData.window);
+                    const targetWindowIndex = targetWindowData?.index;
+                    const eventCursor = targetWindowIndex === undefined
+                        ? 0
+                        : eventCursors.get(targetWindowIndex) ?? 0;
+                    const bridgeTimeoutMs = isBlockingRendererCall(forward.path) ? 125_000 : undefined;
+                    response = await sendToRenderer(
+                        "call",
+                        { ...params, path: forward.path, seenKinds: [...seenKinds], eventCursor },
+                        forward.windowIndex,
+                        bridgeTimeoutMs,
+                    );
+                    if (route.parseError && response.error) {
+                        response = { result: { path, error: `Invalid path: ${route.parseError}` } };
+                    }
                     const targetBrowserWindow = targetWindowData?.window?.window;
                     const nativeAttention = getNativeDialogAttention(
                         targetBrowserWindow,
@@ -173,6 +206,13 @@ export function callTools(ctx: IToolContext): IMcpToolDef[] {
                         response = { result: { path, pending: true, attention: nativeAttention } };
                     } else {
                         const result = response.result as ICallResult | undefined;
+                        const returnedCursor = result?.events?.cursor;
+                        if (targetWindowIndex !== undefined
+                            && typeof returnedCursor === "number"
+                            && Number.isFinite(returnedCursor)
+                            && returnedCursor >= 0) {
+                            eventCursors.set(targetWindowIndex, returnedCursor);
+                        }
                         if (result && nativeAttention) {
                             const existingAttention = result.attention;
                             result.attention = existingAttention
@@ -191,6 +231,10 @@ export function callTools(ctx: IToolContext): IMcpToolDef[] {
                         if (envelope.resolvedUpTo !== undefined) envelope.resolvedUpTo = prefix + envelope.resolvedUpTo;
                         if (envelope.hint) envelope.hint.text = prefixHintPaths(envelope.hint.text, relativeRoot, prefix);
                         if (envelope.attention) envelope.attention.text = prefixAttentionPaths(envelope.attention.text, prefix);
+                        if (envelope.events) envelope.events = {
+                            ...envelope.events,
+                            text: prefixEventPaths(envelope.events.text, prefix),
+                        };
                     }
                 }
                 const hint = (response.result as { hint?: { kind?: string } } | undefined)?.hint;
@@ -206,6 +250,7 @@ interface ICallEnvelope {
     result?: unknown;
     pending?: boolean;
     attention?: { text: string };
+    events?: { text: string; cursor: number; shown: number; unseen: number; dropped: boolean };
     truncated?: boolean;
     totalLength?: number;
     shown?: number;
@@ -253,12 +298,15 @@ function toCallResult(response: McpResponse): IMcpToolResult {
     if (response.error) return toToolResult(response);
     const envelope = response.result as ICallEnvelope | undefined;
     if (!envelope) return toToolResult(response);
-    const { hint, attention, warning, ...rest } = envelope;
+    const { hint, attention, events, warning, ...rest } = envelope;
     const content: IMcpToolResult["content"] = [];
     if (rest.pending) {
         content.push({ type: "text", text: "Pending: the action is waiting on a dialog. Answer it, then re-read state." });
     }
     if (attention) content.push({ type: "text", text: attention.text });
+    // Delimited like the hint block: content blocks arrive concatenated in some clients, and an
+    // event line ending in a path followed immediately by the result body reads as one path.
+    if (events) content.push({ type: "text", text: `--- events ---\n${events.text}\n--- end events ---` });
     if (!rest.pending && rest.error !== undefined) {
         const where = rest.resolvedUpTo ? ` (resolved up to "${rest.resolvedUpTo}")` : "";
         content.push({ type: "text", text: `Error: ${rest.error}${where}` });

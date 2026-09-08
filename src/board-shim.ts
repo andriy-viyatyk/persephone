@@ -434,6 +434,7 @@ function exposeAiVision(root: object): IAiVisionRemote {
 
     return {
         schemaVersion: remote.schemaVersion,
+        get version(): number { return remote.version; },
         describe: () => decorateAiVisionShape(remote.describe()),
         handle: async (request: IAiRemoteRequest): Promise<IAiRemoteResponse> => {
             const response = await remote.handle(request);
@@ -445,6 +446,11 @@ function exposeAiVision(root: object): IAiVisionRemote {
             if (aiVisionRemote !== remote || aiVisionGeneration !== generation) return;
             remote.refresh();
             postAiVisionRegistration(remote, "refresh");
+        },
+        notify: (text: string): void => {
+            if (aiVisionRemote !== remote || aiVisionGeneration !== generation) return;
+            // US-1399 owns the board notify transport; this only delegates to ai-vision.
+            remote.notify(text);
         },
         dispose: () => {
             if (aiVisionRemote !== remote || aiVisionGeneration !== generation) return;

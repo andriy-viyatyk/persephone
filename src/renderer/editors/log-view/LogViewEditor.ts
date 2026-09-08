@@ -5,6 +5,7 @@ import { ComponentQueue } from "../../core/state/ComponentQueue";
 import { TextFileModel } from "../text/TextEditorModel";
 import { tryParseJson } from "../../core/utils/parse-utils";
 import { debounce, errMessage } from "../../../shared/utils";
+import { logLogViewDialogAnswered } from "../../scripting/ai-vision/event-log";
 import {
     isDialogEntry,
     isDialogResolved,
@@ -403,6 +404,7 @@ export class LogViewEditor extends TextHostEditorModel<LogViewEditorState, void,
         const entry = this.entries.find((e) => e.id === id);
         if (entry) {
             entry.button = button;
+            logLogViewDialogAnswered(this.page?.id, entry.id, button);
             const index = this.entries.indexOf(entry);
             this.state.update((s) => {
                 s.renderChange = [index];

@@ -28,6 +28,7 @@ import { errMessage } from "../../../shared/utils";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import "../../uikit/Panel/Panel.css";
+import { logBoardReloaded, logShapeChanged } from "../../scripting/ai-vision/event-log";
 
 export interface BoardWebviewProps {
     model: BoardEditorModel;
@@ -391,7 +392,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             this.rejectPendingAiVision(new Error("Board AiVision registration was replaced."));
         }
         warnUnknownAiVisionViews(message.shape, model, (warning) => this.appendLog("warn", warning));
-        model.setAiVisionRegistration(
+        const accepted = model.setAiVisionRegistration(
             message.shape,
             frame,
             this.generation,
@@ -399,6 +400,11 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             (warning) => this.appendLog("warn", warning),
             reason,
         );
+        const pageId = model.page?.id;
+        if (accepted && pageId && reason === "refresh") logShapeChanged(pageId);
+        if (accepted && reason === "register" && model.consumeReloadRegistration() && pageId) {
+            logBoardReloaded(pageId);
+        }
     }
 
     private readonly requestAiVision = (

@@ -1,6 +1,8 @@
 import "./namespaces";
 import { DialogsNode } from "./dialogs";
 import { MenusNode } from "./menus";
+import { eventLog } from "./event-log";
+import { EventsNode } from "./namespaces/events";
 import { toolsNode } from "./namespaces/tools";
 
 import type { AppWrapper } from "../api-wrapper/AppWrapper";
@@ -31,6 +33,7 @@ export interface AiRootOptions {
 
 export interface IAiCallContext {
     readonly timeoutMs?: number;
+    readonly eventCursor?: number;
 }
 
 /**
@@ -69,6 +72,7 @@ const ROOT_MEMBERS: IAiVisionDescriptor["members"] = [
     { name: "recent", kind: "property", node: true, summary: "Recently opened files." },
     { name: "downloads", kind: "property", node: true, summary: "Download manager." },
     { name: "menuFolders", kind: "property", node: true, summary: "Configured folders shown in the sidebar." },
+    { name: "events", kind: "property", node: true, summary: "What changed in this renderer window; call events.wait(), and call it again when pending." },
     // Answered by the main process before the path reaches this window — listed here so the root
     // hint is complete. See RESERVED_ROOT_NAMES.
     { name: "windows", kind: "property", summary: "All Persephone windows (open and closed). windows[i] is one window; prefix any path with windows[i]. to target it — without the prefix you are talking to the main window." },
@@ -140,6 +144,7 @@ editors - inspect available editors and file-language matches; e.g. editors.getA
 recent - access recently opened file paths; e.g. recent.files
 downloads - inspect and manage download entries; e.g. downloads.downloads
 menuFolders - inspect configured sidebar folders; e.g. menuFolders.folders
+events - recent changes in this renderer window; e.g. events.recent()
 windows - inspect open/closed application windows; e.g. windows[0].status
 main - process-wide diagnostics and gated scripting; e.g. main.runtime
 guides - documentation tree and text search for how to do something or where it is; show a guide by opening it with pages.openUrl("persephone-guide://<path>") or pages["about-page"].editor.open("<path>"); e.g. guides.editors.grid
@@ -162,6 +167,7 @@ Common paths:
   pages[0].tab.highlight("tab-language")  point the user at one page's tab control ("where is …?", "show me …")
   script.execute(code)        run renderer JavaScript or TypeScript; see script.$help
   main.script.execute(code)   run the separate settings-gated main-process scripting path
+  events.recent()             read recent changes, or events.wait() and call it again when pending
   <path>.$help                long-form help for any node
 
 Rules: arguments for the last segment go in "args" (a JSON array); assignments go in "value";
@@ -185,6 +191,10 @@ export class AiRoot implements IAiVisible {
 
     private readonly dialogsNode = new DialogsNode();
     private readonly menusNode = new MenusNode();
+    private readonly eventsNode = new EventsNode(
+        eventLog,
+        () => this.options.callContext?.eventCursor ?? 0,
+    );
     private readonly scriptNode = new ScriptNode();
 
     get pages(): PageCollectionWrapper {
@@ -215,6 +225,7 @@ export class AiRoot implements IAiVisible {
     get ui() { return this.app.ui; }
     get dialogs(): DialogsNode { return this.dialogsNode; }
     get menus(): MenusNode { return this.menusNode; }
+    get events(): EventsNode { return this.eventsNode; }
     get shell() { return this.app.shell; }
     get window() { return this.app.window; }
     get proc() { return this.app.proc; }

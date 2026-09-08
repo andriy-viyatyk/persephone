@@ -6,6 +6,7 @@ import {
     type DialogViewProps,
     type IDialogViewData,
 } from "./dialog-view-registry";
+import { logDialogAnswered } from "../../scripting/ai-vision/event-log";
 
 export const dialogsState = new TGlobalState<IDialogViewData[]>([]);
 
@@ -134,6 +135,7 @@ export async function showDialog<R>(data: IDialogViewData): Promise<R> {
     data.model.result = new Promise<R>(resolve => {
         data.model.onClose = res => {
             dialogsState.set(oldState => oldState.filter(item => item !== data));
+            logDialogAnswered();
             resolve(res as R);
         };
         dialogsState.set(oldState => [...oldState, data]);

@@ -7,6 +7,7 @@ import { dialogsState } from "../../ui/dialogs/DialogsView";
 import { getVisibleAppPopupMenu } from "../../ui/dialogs/poppers/showPopupMenu";
 import { DialogsNode, type DialogAdapter } from "./dialogs";
 import { MenusNode, type MenuItemInfo } from "./menus";
+import { eventLog } from "./event-log";
 
 export const PENDING_DIALOG_GRACE_MS = 250;
 
@@ -77,6 +78,7 @@ function watchForPendingDialog(): DialogWatcher {
 export async function resolveWithAttention(
     request: ICallRequest,
     resolve: () => Promise<ICallResult>,
+    eventCursor = 0,
 ): Promise<ICallResult> {
     const watcher = watchForPendingDialog();
     try {
@@ -86,21 +88,29 @@ export async function resolveWithAttention(
         void original.catch((): undefined => undefined);
         const raced = await Promise.race([original, watcher.pending]);
         if ("pending" in raced && raced.pending === true) {
-            return {
+            return withEvents({
                 path: request.path,
                 pending: true,
                 attention: collectAttention() ?? { text: DIALOG_FALLBACK_TEXT },
-            };
+            }, eventCursor);
         }
-        return withAttention(raced);
+        return withAttentionAndEvents(raced, eventCursor);
     } finally {
         watcher.dispose();
     }
 }
 
-function withAttention(result: ICallResult): ICallResult {
+function withAttentionAndEvents(result: ICallResult, cursor: number): ICallResult {
     const attention = collectAttention();
-    return attention ? { ...result, attention } : result;
+    return withEvents(attention ? { ...result, attention } : result, cursor);
+}
+
+function withEvents(result: ICallResult, cursor: number): ICallResult {
+    // A renderer restart creates a fresh EventLog whose sequence starts at 1; an old main-side
+    // cursor ahead of this log can otherwise suppress every new event forever.
+    const effectiveCursor = cursor > eventLog.lastSeq ? 0 : cursor;
+    const events = eventLog.format(effectiveCursor);
+    return events ? { ...result, events } : result;
 }
 
 /** Collect a JSON-safe snapshot of blocking dialogs and the visible application popup. */

@@ -11,7 +11,7 @@ import { version } from "../../../api/shell/version";
 import { settings } from "../../../api/settings";
 import { ui } from "../../../api/ui";
 import { appWindow } from "../../../api/window";
-import { registerAiVisionFor } from "ai-vision";
+import { registerAiVision, registerAiVisionFor } from "ai-vision";
 import { describeBoardVars } from "./board-vars";
 import { describeBoards } from "./boards";
 import { describeDownloads } from "./downloads";
@@ -28,6 +28,9 @@ import { describeWindowScreen } from "./window-screen";
 import { describeProcess } from "./proc";
 import { proc } from "../../../api/proc";
 import { describeTools, toolsNode } from "./tools";
+import { EventsNode, describeEvents } from "./events";
+
+registerAiVision(EventsNode, describeEvents);
 
 registerAiVisionFor(fs, describeFileSystem);
 registerAiVisionFor(settings, describeSettings);

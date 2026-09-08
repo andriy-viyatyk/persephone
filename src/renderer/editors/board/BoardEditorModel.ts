@@ -160,6 +160,8 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
     private aiVisionRegistration: BoardAiVisionRegistration | undefined;
     private aiVisionRegistrationToken = 0;
     private aiVisionIncarnation = 0;
+    private reloadAwaitingRegistration = false;
+    private aiVisionDisposed = false;
     private readonly aiVisionTransports = new Map<string, BoardAiVisionTransport>();
 
     /** Live `<iframe>` elements of the currently-mounted board frames, keyed by
@@ -236,9 +238,10 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
         request: BoardAiVisionRequestHandler,
         warning: (message: string) => void,
         reason: "register" | "refresh" = "register",
-    ): void {
+    ): boolean {
         const boardRoot = this.state.get().boardRoot;
-        if (!boardRoot || !boardTrust.isTrusted(boardRoot) || this.frames.get(BOARD_CDP_TAB) !== iframe) return;
+        if (this.aiVisionDisposed || !boardRoot || !boardTrust.isTrusted(boardRoot)
+            || this.frames.get(BOARD_CDP_TAB) !== iframe) return false;
         const current = this.aiVisionRegistration;
         // A refresh only keeps its incarnation when it really is the same live remote: same
         // frame element, same webview generation. Anything else is a new remote.
@@ -253,6 +256,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
             request,
             warning,
         };
+        return true;
     }
 
     clearAiVisionRegistration(): void {
@@ -266,6 +270,12 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
             return undefined;
         }
         return this.aiVisionRegistration;
+    }
+
+    consumeReloadRegistration(): boolean {
+        if (!this.reloadAwaitingRegistration) return false;
+        this.reloadAwaitingRegistration = false;
+        return true;
     }
 
     appendAiVisionWarning(message: string): void {
@@ -669,6 +679,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
     /** Select the board (its folder name) so it renders, or `undefined` to deselect
      *  (→ not-found). Single board, so `name` is always this board's own name. */
     selectBoard(name: string | undefined): void {
+        if (this.state.get().selectedBoard !== name) this.reloadAwaitingRegistration = false;
         // `iconKey` drives the tab's icon refresh (it observes iconKey, not
         // selectedBoard) so the tab shows the board's icon.
         this.state.update((s) => {
@@ -685,6 +696,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
     reloadBoard(): void {
         const boardRoot = this.state.get().boardRoot;
         if (boardRoot) invalidateBoardIcon(boardRoot);
+        this.reloadAwaitingRegistration = true;
         this.clearAiVisionRegistration();
         this.state.update((s) => { s.reloadToken++; });
     }
@@ -716,6 +728,8 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
      *  `reapBoardOwner` tree-kills every job this board owner kept alive while busy —
      *  page close overrides busy ("page closed → kill anyway"). */
     override async dispose(): Promise<void> {
+        this.aiVisionDisposed = true;
+        this.reloadAwaitingRegistration = false;
         // A custom-editor board opened via openRawLink is handed a FileProvider pipe by the
         // open-handler — dispose it for hygiene (EPIC-042 CC8). `ensureContentPath` may have read
         // it since; disposing is correct either way.

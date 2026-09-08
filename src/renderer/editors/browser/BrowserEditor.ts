@@ -71,6 +71,7 @@ export class BrowserEditor extends EditorModel<
 
     private keyDownSub: () => void;
     private readonly aiVisionByTab = new Map<string, BrowserAiVisionRegistration>();
+    private readonly aiVisionRegisteredTabs = new Set<string>();
     private readonly aiVisionGenerationByTab = new Map<string, number>();
     private aiVisionToken = 0;
     private aiVisionBindingVersion = 0;
@@ -108,6 +109,8 @@ export class BrowserEditor extends EditorModel<
         internalTabId = this.state.get().activeTabId,
     ): BrowserAiVisionRegistration | undefined => this.aiVisionByTab.get(internalTabId);
 
+    hasAiVisionRegisteredTab = (internalTabId: string): boolean => this.aiVisionRegisteredTabs.has(internalTabId);
+
     getAiVisionDocumentGeneration = (internalTabId: string): number | undefined => {
         if (!this.state.get().tabs.some((tab) => tab.id === internalTabId)) return undefined;
         return this.aiVisionGenerationByTab.get(internalTabId) ?? 0;
@@ -129,6 +132,7 @@ export class BrowserEditor extends EditorModel<
             token: ++this.aiVisionToken,
         };
         this.aiVisionByTab.set(internalTabId, registration);
+        this.aiVisionRegisteredTabs.add(internalTabId);
         return true;
     };
 
@@ -159,6 +163,7 @@ export class BrowserEditor extends EditorModel<
         this.aiVisionDisposed = true;
         this.clearAllAiVisionRegistrations();
         this.aiVisionGenerationByTab.clear();
+        this.aiVisionRegisteredTabs.clear();
         this.bookmarksUI.dispose();
 
         const s = this.state.get();
