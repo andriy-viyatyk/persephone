@@ -3,7 +3,7 @@
  * Sends Chrome DevTools Protocol commands via IPC to the main process,
  * which forwards them through Electron's webContents.debugger API.
  */
-import { BrowserChannel } from "../../ipc/browser-ipc";
+import { BrowserChannel, type CdpAttachOptions } from "../../ipc/browser-ipc";
 
 const { ipcRenderer } = require("electron");
 
@@ -15,8 +15,8 @@ export class CdpSession {
         return this.regKey;
     }
 
-    async attach(): Promise<boolean> {
-        return ipcRenderer.invoke(BrowserChannel.cdpAttach, this.regKey);
+    async attach(options?: CdpAttachOptions): Promise<boolean> {
+        return ipcRenderer.invoke(BrowserChannel.cdpAttach, this.regKey, options);
     }
 
     async detach(): Promise<void> {

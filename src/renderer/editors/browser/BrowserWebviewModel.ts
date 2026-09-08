@@ -3,7 +3,7 @@ import {
     BrowserChannel,
     BrowserEvent,
 } from "../../../ipc/browser-ipc";
-import type { IAiVisionShape } from "ai-vision";
+import type { IAiHostSignal, IAiVisionShape } from "ai-vision";
 import type { MenuItem } from "../../uikit/Menu";
 import { pagesModel } from "../../api/pages";
 import { ui } from "../../api/ui";
@@ -14,13 +14,23 @@ import { DEFAULT_URL, type BrowserEditorModel } from "./BrowserEditorModel";
 import { showBrowserContextMenu } from "./webview-context-menu";
 import { agentMayAccessBrowserPage } from "./agent-access";
 import { evaluateInTarget, ensureTargetReady } from "../../automation/operations";
-import { logBrowserNavigated } from "../../scripting/ai-vision/event-log";
+import { tryParseJson } from "../../core/utils/parse-utils";
+import {
+    logBrowserNavigated,
+    logBrowserShapeChanged,
+    logRemoteNotify,
+} from "../../scripting/ai-vision/event-log";
 
 const AI_VISION_PROBE = `(() => {
     const remote = window.__aiVision;
-    return remote ? JSON.stringify(remote.describe()) : null;
+    return remote
+        ? JSON.stringify({ shape: remote.describe(), version: remote.version })
+        : null;
 })()`;
 const MAX_AI_VISION_SHAPE_BYTES = 262_144;
+const MAX_AI_VISION_NOTIFY_LENGTH = 512;
+const AI_VISION_NOTIFY_LIMIT = 5;
+const AI_VISION_NOTIFY_WINDOW_MS = 60_000;
 
 /**
  * Manages webview references, IPC event handling, context menu,
@@ -40,6 +50,7 @@ export class BrowserWebviewModel {
     private prevActiveUrl = "";
     private readonly warnedAiVisionShapes = new Set<string>();
     private readonly probedAiVisionGenerations = new Set<string>();
+    private readonly aiVisionNotifyTimes: number[] = [];
 
     constructor(model: BrowserEditorModel) {
         this.model = model;
@@ -287,6 +298,9 @@ export class BrowserWebviewModel {
                     this.closeFind();
                 }
                 break;
+            case "ai-vision-signal":
+                this.handleAiVisionSignal(internalTabId, data);
+                break;
             case "context-menu": {
                 const webview = this.webviewRefs.get(internalTabId);
                 if (!webview) break;
@@ -304,6 +318,15 @@ export class BrowserWebviewModel {
         void this.probeAiVision(internalTabId);
     }
 
+    reprobeAiVision(internalTabId: string, generation: number, token: number): void {
+        const registration = this.model.getAiVisionRegistration(internalTabId);
+        if (!registration
+            || registration.generation !== generation
+            || registration.token !== token) return;
+        this.model.clearAiVisionRegistrationIfCurrent(internalTabId, generation);
+        void this.probeAiVision(internalTabId);
+    }
+
     private async probeAiVision(internalTabId: string): Promise<void> {
         if (!agentMayAccessBrowserPage(this.model.state.get())) {
             this.model.clearAiVisionRegistration(internalTabId);
@@ -318,6 +341,8 @@ export class BrowserWebviewModel {
 
         let serialized: unknown;
         try {
+            const cdp = this.model.target.cdp(internalTabId);
+            if (!await cdp.attach({ aiVisionBinding: true })) return;
             await ensureTargetReady(this.model.target, internalTabId);
             serialized = await evaluateInTarget(this.model.target, AI_VISION_PROBE, internalTabId);
         } catch {
@@ -341,19 +366,62 @@ export class BrowserWebviewModel {
             return;
         }
 
-        let shape: IAiVisionShape;
-        try {
-            const parsed: unknown = JSON.parse(serialized);
-            if (!isAiVisionShape(parsed)) return;
-            shape = parsed;
-        } catch {
-            return;
-        }
+        const parsed = tryParseJson<unknown>(serialized, undefined);
+        const probe = isAiVisionProbeResult(parsed)
+            ? parsed
+            : isAiVisionShape(parsed)
+                ? { shape: parsed, version: undefined }
+                : undefined;
+        if (!probe) return;
         if (this.webviewRefs.get(internalTabId) !== webview
             || !this.webviewReady.has(internalTabId)
             || !this.model.state.get().tabs.some((tab) => tab.id === internalTabId)
             || this.model.getAiVisionDocumentGeneration(internalTabId) !== generation) return;
-        this.model.setAiVisionRegistration(internalTabId, generation, shape);
+        this.model.setAiVisionRegistration(internalTabId, generation, probe.shape, probe.version);
+    }
+
+    private handleAiVisionSignal(
+        internalTabId: string,
+        data: { registrationKey?: string; payload?: string },
+    ): void {
+        if (!agentMayAccessBrowserPage(this.model.state.get())) return;
+        if (data.registrationKey !== `${this.model.id}/${internalTabId}`
+            || typeof data.payload !== "string") return;
+        const webview = this.webviewRefs.get(internalTabId);
+        if (!webview || !this.webviewReady.has(internalTabId)
+            || !this.model.state.get().tabs.some((tab) => tab.id === internalTabId)) return;
+
+        const signal = tryParseJson<unknown>(data.payload, undefined);
+        if (!isAiHostSignal(signal)) return;
+        if (signal.type === "shape") {
+            const registration = this.model.getAiVisionRegistration(internalTabId);
+            if (!registration) return;
+            if (registration.version === signal.version) return;
+            const pageId = this.model.page?.id;
+            if (pageId) logBrowserShapeChanged(pageId);
+            this.reprobeAiVision(internalTabId, registration.generation, registration.token);
+            return;
+        }
+
+        // Notify signals may arrive while a shape signal has cleared the live registration and
+        // its replacement probe is still running. Historical registration preserves the
+        // anti-injection boundary without dropping that normal refresh-then-notify sequence.
+        if (!this.model.hasAiVisionRegisteredTab(internalTabId)) return;
+        const text = signal.text.replace(/\s+/g, " ").trim();
+        if (!text) return;
+        const now = Date.now();
+        while (this.aiVisionNotifyTimes.length > 0
+            && now - this.aiVisionNotifyTimes[0] >= AI_VISION_NOTIFY_WINDOW_MS) {
+            this.aiVisionNotifyTimes.shift();
+        }
+        if (this.aiVisionNotifyTimes.length >= AI_VISION_NOTIFY_LIMIT) return;
+        this.aiVisionNotifyTimes.push(now);
+        const boundedText = text.length > MAX_AI_VISION_NOTIFY_LENGTH
+            ? `${text.slice(0, MAX_AI_VISION_NOTIFY_LENGTH - 3)}...`
+            : text;
+        const pageId = this.model.page?.id;
+        const path = pageId ? `pages[${JSON.stringify(pageId)}].editor.app` : undefined;
+        logRemoteNotify(boundedText, path, "page");
     }
 
     // =====================================================================
@@ -461,4 +529,25 @@ function isAiVisionShape(value: unknown): value is IAiVisionShape {
     if (!isSchemaMajorOne(shape.schemaVersion) || !shape.root || typeof shape.root !== "object") return false;
     const root = shape.root as { kind?: unknown; summary?: unknown; members?: unknown };
     return typeof root.kind === "string" && typeof root.summary === "string" && Array.isArray(root.members);
+}
+
+function isAiVisionProbeResult(
+    value: unknown,
+): value is { shape: IAiVisionShape; version?: number } {
+    if (!value || typeof value !== "object") return false;
+    const result = value as { shape?: unknown; version?: unknown };
+    if (!isAiVisionShape(result.shape)) return false;
+    return result.version === undefined
+        || (typeof result.version === "number" && Number.isFinite(result.version));
+}
+
+function isAiHostSignal(value: unknown): value is IAiHostSignal {
+    if (!value || typeof value !== "object") return false;
+    const signal = value as { type?: unknown; version?: unknown; schemaVersion?: unknown; text?: unknown };
+    if (signal.type === "shape") {
+        return typeof signal.version === "number"
+            && Number.isFinite(signal.version)
+            && isSchemaMajorOne(signal.schemaVersion);
+    }
+    return signal.type === "notify" && typeof signal.text === "string";
 }

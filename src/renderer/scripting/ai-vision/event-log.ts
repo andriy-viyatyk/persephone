@@ -14,7 +14,16 @@ export function logShapeChanged(pageId: string): void {
         kind: "shape-changed",
         path,
         text: `The board shape changed; re-read ${path}.`,
-        origin: "board",
+    });
+}
+
+/** Record a browser page publishing a changed object-model shape. */
+export function logBrowserShapeChanged(pageId: string): void {
+    const path = pagePath(pageId, ".editor.app");
+    eventLog.push({
+        kind: "shape-changed",
+        path,
+        text: `The browser page's shape changed; re-read ${path}.`,
     });
 }
 
@@ -61,14 +70,17 @@ export function logLogViewDialogAnswered(
     });
 }
 
-/** Reserved seam for the later board notify producer. */
-export function logRemoteNotify(text: string, path?: string): void {
+/**
+ * The only event producer that stamps remote-authored prose with a board/page origin.
+ * Shape and navigation text is host-authored and keeps EventLog's default origin.
+ */
+export function logRemoteNotify(text: string, path?: string, origin: "board" | "page" = "board"): void {
     const singleLineText = text.replace(/\s+/g, " ").trim();
     eventLog.push({
         kind: "remote-notify",
         ...(path ? { path } : {}),
         text: singleLineText,
-        origin: "board",
+        origin,
     });
 }
 

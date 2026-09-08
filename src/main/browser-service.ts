@@ -644,6 +644,19 @@ export function initBrowserHandlers(): void {
     initCdpHandlers((key: string) => {
         const reg = registrations.get(key);
         return reg && !reg.webContents.isDestroyed() ? reg.webContents : undefined;
+    }, (webContents, payload) => {
+        for (const [key, registration] of registrations) {
+            if (registration.webContents !== webContents) continue;
+            if (registration.webContents.isDestroyed()) return;
+            sendEvent(
+                registration.senderWebContents,
+                registration.tabId,
+                registration.internalTabId,
+                "ai-vision-signal",
+                { registrationKey: key, payload },
+            );
+            return;
+        }
     });
 
     // Network request logging

@@ -22,7 +22,7 @@ export const BrowserChannel = {
     collectDom: "browser:collect-dom",
     /** Renderer → Main (invoke): get network request log for a browser tab. Args: (key: string) */
     getNetworkLog: "browser:get-network-log",
-    /** Renderer → Main (invoke): attach CDP debugger to a webview. Args: (key: string) */
+    /** Renderer → Main (invoke): attach CDP debugger to a webview. Args: (key: string, options?) */
     cdpAttach: "browser:cdp-attach",
     /** Renderer → Main (invoke): detach CDP debugger. Args: (key: string) */
     cdpDetach: "browser:cdp-detach",
@@ -46,6 +46,10 @@ export interface BrowserRegisterRequest {
     webContentsId: number;
 }
 
+export interface CdpAttachOptions {
+    aiVisionBinding?: boolean;
+}
+
 // Main → Renderer: event payload
 export interface BrowserEvent {
     tabId: string;
@@ -67,7 +71,8 @@ export type BrowserEventType =
     | "audio-state-changed"
     | "popups-blocked"
     | "show-find-bar"
-    | "hide-find-bar";
+    | "hide-find-bar"
+    | "ai-vision-signal";
 
 export interface BrowserEventData {
     url?: string;
@@ -89,6 +94,10 @@ export interface BrowserEventData {
     y?: number;
     /** Whether the webview is currently emitting audio. */
     audible?: boolean;
+    /** Exact browser registration key that owns a page-authored AiVision signal. */
+    registrationKey?: string;
+    /** Raw JSON text authored by the page. */
+    payload?: string;
 }
 
 /** A logged network request/response pair. */

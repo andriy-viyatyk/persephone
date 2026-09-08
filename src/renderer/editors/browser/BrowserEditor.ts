@@ -41,6 +41,7 @@ export type BrowserQueueRequest = never;
 export interface BrowserAiVisionRegistration {
     readonly internalTabId: string;
     readonly shape: IAiVisionShape;
+    readonly version?: number;
     readonly generation: number;
     readonly token: number;
 }
@@ -122,12 +123,14 @@ export class BrowserEditor extends EditorModel<
         internalTabId: string,
         generation: number,
         shape: IAiVisionShape,
+        version?: number,
     ): boolean => {
         if (this.aiVisionDisposed
             || this.getAiVisionDocumentGeneration(internalTabId) !== generation) return false;
         const registration: BrowserAiVisionRegistration = {
             internalTabId,
             shape,
+            version,
             generation,
             token: ++this.aiVisionToken,
         };

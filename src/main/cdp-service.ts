@@ -19,11 +19,24 @@
  *    session (the app UI) with no frame routing.
  */
 import { ipcMain, WebContents } from "electron";
-import { BrowserChannel } from "../ipc/browser-ipc";
+import { BrowserChannel, type CdpAttachOptions } from "../ipc/browser-ipc";
 import { APP_WINDOW_CDP_KEY } from "../ipc/api-types";
+import { AI_VISION_HOST_SIGNAL } from "ai-vision";
 
 /** Track which webContents have an attached debugger. */
 const attachedDebuggers = new WeakSet<WebContents>();
+type DebuggerMessageHandler = (
+    event: Electron.Event,
+    method: string,
+    params: unknown,
+    sessionId: string,
+) => void;
+interface AiVisionBindingState {
+    handler: DebuggerMessageHandler;
+    installed: boolean;
+    installing?: Promise<void>;
+}
+const aiVisionBindingStates = new WeakMap<WebContents, AiVisionBindingState>();
 
 /**
  * Board frame registrations (EPIC-037 / US-773). Kept SEPARATE from the browser's
@@ -66,7 +79,56 @@ function ensureAttached(wc: WebContents): void {
     attachedDebuggers.add(wc);
     wc.debugger.on("detach", () => {
         attachedDebuggers.delete(wc);
+        clearAiVisionBinding(wc);
     });
+}
+
+function clearAiVisionBinding(wc: WebContents): void {
+    const state = aiVisionBindingStates.get(wc);
+    if (!state) return;
+    try {
+        if (!wc.isDestroyed()) wc.debugger.removeListener("message", state.handler);
+    } catch {
+        // WebContents may already be destroyed.
+    }
+    aiVisionBindingStates.delete(wc);
+}
+
+async function ensureAiVisionBinding(
+    wc: WebContents,
+    onAiVisionSignal: (webContents: WebContents, payload: string) => void,
+): Promise<void> {
+    const existing = aiVisionBindingStates.get(wc);
+    if (existing?.installed) return;
+    if (existing?.installing) return existing.installing;
+
+    const state: AiVisionBindingState = existing || {
+        handler: (_event, method, params) => {
+            if (method !== "Runtime.bindingCalled") return;
+            if (!params || typeof params !== "object") return;
+            const binding = params as { name?: unknown; payload?: unknown };
+            if (binding.name !== AI_VISION_HOST_SIGNAL) return;
+            if (typeof binding.payload !== "string") return;
+            onAiVisionSignal(wc, binding.payload);
+        },
+        installed: false,
+    };
+    if (!existing) {
+        aiVisionBindingStates.set(wc, state);
+        wc.debugger.on("message", state.handler);
+    }
+
+    const installing = (async () => {
+        await wc.debugger.sendCommand("Runtime.enable");
+        await wc.debugger.sendCommand("Runtime.addBinding", { name: AI_VISION_HOST_SIGNAL });
+        if (aiVisionBindingStates.get(wc) === state) state.installed = true;
+    })().catch(() => {
+        if (aiVisionBindingStates.get(wc) === state) clearAiVisionBinding(wc);
+    }).finally(() => {
+        if (aiVisionBindingStates.get(wc) === state) state.installing = undefined;
+    });
+    state.installing = installing;
+    return installing;
 }
 
 /**
@@ -176,8 +238,9 @@ async function boardSend(reg: BoardReg, method: string, params: object | undefin
  */
 export function initCdpHandlers(
     getWebContents: (key: string) => WebContents | undefined,
+    onAiVisionSignal: (webContents: WebContents, payload: string) => void,
 ): void {
-    ipcMain.handle(BrowserChannel.cdpAttach, async (event, key: string) => {
+    ipcMain.handle(BrowserChannel.cdpAttach, async (event, key: string, options?: CdpAttachOptions) => {
         if (key === APP_WINDOW_CDP_KEY) {
             if (event.sender.isDestroyed()) return false;
             try {
@@ -199,9 +262,11 @@ export function initCdpHandlers(
         }
         const wc = getWebContents(key);
         if (!wc || wc.isDestroyed()) return false;
-        if (attachedDebuggers.has(wc)) return true;
         try {
             ensureAttached(wc);
+            if (options?.aiVisionBinding === true) {
+                await ensureAiVisionBinding(wc, onAiVisionSignal);
+            }
             return true;
         } catch {
             return false;
@@ -229,6 +294,7 @@ export function initCdpHandlers(
         } catch {
             // already detached
         }
+        clearAiVisionBinding(wc);
         attachedDebuggers.delete(wc);
     });
 

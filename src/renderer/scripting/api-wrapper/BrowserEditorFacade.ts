@@ -21,7 +21,7 @@ import {
     waitFor,
 } from "../../automation/operations";
 import type { WaitMode } from "../../automation/operations";
-import { createRemoteProxy, type IAiElementDeclaration, type IAiMember, type IAiNodeShape, type IAiRemoteRequest, type IAiRemoteResponse, type IAiVisible, type IAiVisionDescriptor, type IAiVisionShape } from "ai-vision";
+import { createRemoteProxy, STALE_REMOTE_SHAPE_MESSAGE, type IAiElementDeclaration, type IAiMember, type IAiNodeShape, type IAiRemoteRequest, type IAiRemoteResponse, type IAiVisible, type IAiVisionDescriptor, type IAiVisionShape } from "ai-vision";
 import type { IBrowserElementLocator, IBrowserNetworkRequest, IBrowserScreenshot, IBrowserTab } from "../../api/types/browser-editor";
 import { ui } from "../../api/ui";
 import { createElements } from "ai-vision/dom";
@@ -31,6 +31,7 @@ import { explicitBoardCallTimeoutMs } from "../../api/boards";
 import { isPositiveIntegerTimeout, resolveBoardCallTimeout } from "../../../shared/ai-vision-timeout";
 import type { IAiCallContext } from "../ai-vision/root";
 import { errMessage } from "../../../shared/utils";
+import { agentMayAccessBrowserPage, privateBrowserRefusal } from "../../editors/browser/agent-access";
 
 const APP_MEMBER: IAiMember = {
     name: "app",
@@ -168,7 +169,10 @@ export class BrowserEditorFacade implements IAiVisible {
         const value = createRemoteProxy(
             labelPageShape(registration.shape),
             (request) => this.sendAiVision(request, registration),
-            { originNote: PAGE_ORIGIN_NOTE },
+            {
+                originNote: PAGE_ORIGIN_NOTE,
+                revalidate: () => this.revalidateAiVision(registration),
+            },
         );
         this.aiVisionProxy = { token, value };
         return value;
@@ -178,12 +182,16 @@ export class BrowserEditorFacade implements IAiVisible {
         request: IAiRemoteRequest,
         registration: BrowserAiVisionRegistration,
     ): Promise<IAiRemoteResponse> {
-        const activeTabId = this.model.state.get().activeTabId;
+        const state = this.model.state.get();
+        if (!agentMayAccessBrowserPage(state)) {
+            return { ok: false, error: privateBrowserRefusal(state, "call") };
+        }
+        const activeTabId = state.activeTabId;
         const current = this.model.getAiVisionRegistration(registration.internalTabId);
         if (activeTabId !== registration.internalTabId
             || current?.generation !== registration.generation
             || current?.token !== registration.token) {
-            return { ok: false, error: "The browser page's AiVision document is no longer active." };
+            return { ok: false, error: this.aiVisionDocumentRefusal() };
         }
         const timeout = resolveBoardCallTimeout(
             isPositiveIntegerTimeout(this.callContext?.timeoutMs) ? this.callContext?.timeoutMs : undefined,
@@ -199,9 +207,10 @@ export class BrowserEditorFacade implements IAiVisible {
             `AiVision request timed out at level ${timeout.level} (${timeout.label}) for path ${JSON.stringify(agentPath)}.`,
         );
         const requestJson = JSON.stringify(request);
+        const missingRemoteError = JSON.stringify(this.aiVisionMissingRefusal());
         const expression = `(() => {
     const remote = window.__aiVision;
-    if (!remote) return { ok: false, error: "The page has no AiVision remote." };
+    if (!remote) return { ok: false, error: ${missingRemoteError} };
     return remote.handle(JSON.parse(${JSON.stringify(requestJson)}));
 })()`;
         let timer: ReturnType<typeof setTimeout> | undefined;
@@ -224,6 +233,83 @@ export class BrowserEditorFacade implements IAiVisible {
         } finally {
             if (timer !== undefined) clearTimeout(timer);
         }
+    }
+
+    // This deliberate extra Runtime.evaluate is one CDP round trip on every remote request.
+    // A bounded staleness window was considered and rejected because correctness must not depend
+    // on a signal arriving; the binding is only an optimization on top of this source-of-truth check.
+    private async revalidateAiVision(
+        registration: BrowserAiVisionRegistration,
+    ): Promise<boolean | string | undefined> {
+        const state = this.model.state.get();
+        if (!agentMayAccessBrowserPage(state)) return privateBrowserRefusal(state, "call");
+        const current = this.model.getAiVisionRegistration(registration.internalTabId);
+        if (state.activeTabId !== registration.internalTabId
+            || current?.generation !== registration.generation
+            || current?.token !== registration.token) {
+            return this.aiVisionDocumentRefusal();
+        }
+
+        const expression = `(() => {
+    const remote = window.__aiVision;
+    return remote ? { present: true, version: remote.version } : null;
+})()`;
+        try {
+            await ensureTargetReady(this.model.target, registration.internalTabId);
+            const result = await evaluateInTarget(this.model.target, expression, registration.internalTabId);
+            if (result === null) return this.aiVisionMissingRefusal();
+            if (!isAiVisionVersionResult(result)) return this.aiVisionUnavailableRefusal();
+            const version = typeof result.version === "number" && Number.isFinite(result.version)
+                ? result.version
+                : undefined;
+            const versionsMatch = registration.version === undefined && version === undefined
+                || registration.version !== undefined && version !== undefined && registration.version === version;
+            if (!versionsMatch) {
+                this.model.webview.reprobeAiVision(
+                    registration.internalTabId,
+                    registration.generation,
+                    registration.token,
+                );
+                return this.aiVisionChangedRefusal();
+            }
+            return undefined;
+        } catch (error) {
+            console.warn(`[browser] AiVision version revalidation failed: ${errMessage(error)}`);
+            return this.aiVisionUnavailableRefusal();
+        }
+    }
+
+    private aiVisionPath(): string | undefined {
+        const pageId = this.model.page?.id;
+        return pageId ? `pages[${JSON.stringify(pageId)}].editor.app` : undefined;
+    }
+
+    private aiVisionDocumentRefusal(): string {
+        const path = this.aiVisionPath();
+        return path
+            ? `The browser page's AiVision document is no longer active; read ${path} again.`
+            : STALE_REMOTE_SHAPE_MESSAGE;
+    }
+
+    private aiVisionChangedRefusal(): string {
+        const path = this.aiVisionPath();
+        return path
+            ? `The browser page's AiVision model changed; read ${path} again to pick up the new one.`
+            : STALE_REMOTE_SHAPE_MESSAGE;
+    }
+
+    private aiVisionMissingRefusal(): string {
+        const path = this.aiVisionPath();
+        return path
+            ? `The browser page no longer exposes an AiVision model; read ${path} again.`
+            : STALE_REMOTE_SHAPE_MESSAGE;
+    }
+
+    private aiVisionUnavailableRefusal(): string {
+        const path = this.aiVisionPath();
+        return path
+            ? `The browser page's AiVision document is unavailable; read ${path} again.`
+            : STALE_REMOTE_SHAPE_MESSAGE;
     }
 
     /**
@@ -553,4 +639,12 @@ function isAiVisionResponse(value: unknown): value is IAiRemoteResponse {
     const response = value as { ok?: unknown; error?: unknown };
     if (response.ok === true) return true;
     return response.ok === false && typeof response.error === "string";
+}
+
+function isAiVisionVersionResult(value: unknown): value is { present: true; version?: number } {
+    if (!value || typeof value !== "object") return false;
+    const result = value as { present?: unknown; version?: unknown };
+    return result.present === true
+        && (result.version === undefined
+            || (typeof result.version === "number" && Number.isFinite(result.version)));
 }
