@@ -1,7 +1,7 @@
 import { ui } from "../../../api/ui";
-import { createElements } from "../elements";
+import { createElements } from "ai-vision/dom";
 import type { IMenuBar } from "../../../api/types/window";
-import type { IAiElementDeclaration, IAiMember, IAiVisionDescriptor } from "../../../../shared/ai-vision/types";
+import type { IAiElementDeclaration, IAiMember, IAiVisionDescriptor } from "ai-vision";
 
 const MENU_BAR_MEMBERS: readonly IAiMember[] = [
     { name: "isOpen", kind: "property", summary: "Whether the Menu Bar is open; the backdrop remains in the DOM while closed and is CSS-hidden, so use this property rather than element presence." },

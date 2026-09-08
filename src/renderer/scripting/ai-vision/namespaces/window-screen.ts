@@ -1,7 +1,7 @@
 import { pagesModel } from "../../../api/pages";
 import type { IBrowserAccessFlags } from "../../../editors/browser/agent-access";
 import { BROWSER_AUTOMATION_MEMBERS } from "../browser-automation-members";
-import type { IAiVisionDescriptor } from "../../../../shared/ai-vision/types";
+import type { IAiVisionDescriptor } from "ai-vision";
 
 const WINDOW_SCREEN_HELP = `Persephone's own application window, not a browser page. The ten shared
 automation operations act on the complete current app-window accessibility tree, including the
@@ -17,7 +17,7 @@ iframe rather than a blank preview. The app window has no elements inventory of 
 
 summarize() returns host identity only ({ kind: "WindowScreen" }). Because a terminal
 window.screen walk ends before this descriptor's restricted() is consulted by the per-hop resolver
-(src/shared/ai-vision/resolver.ts:85-87), it never exposes active-page content, title, URL, editor id,
+(node_modules/ai-vision/dist/core/resolver.js:85-87), it never exposes active-page content, title, URL, editor id,
 or privacy state. screenshot() may return undefined when its CDP session is unavailable, and
 unavailable object fields are omitted from call answers rather than represented by undefined or null.
 As verified live by US-1335, snapshots returned no password or ordinary input value; US-1336 found

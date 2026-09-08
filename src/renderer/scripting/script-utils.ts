@@ -1,7 +1,7 @@
 const RENDERER_INTERNAL_STACK_PATHS = [
     "src/renderer/scripting/ScriptRunnerBase.ts",
     "src/renderer/scripting/ScriptRunner.ts",
-    "src/shared/ai-vision/resolver.ts",
+    "node_modules/ai-vision/dist/core/resolver.js",
 ] as const;
 
 /**

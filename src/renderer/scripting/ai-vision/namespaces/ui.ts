@@ -1,6 +1,6 @@
 import { ui } from "../../../api/ui";
-import { createElements } from "../elements";
-import type { IAiElementDeclaration, IAiMember, IAiVisionDescriptor } from "../../../../shared/ai-vision/types";
+import { createElements } from "ai-vision/dom";
+import type { IAiElementDeclaration, IAiMember, IAiVisionDescriptor } from "ai-vision";
 
 const HEADER_ELEMENTS: readonly IAiElementDeclaration[] = [
     { name: "app-header", purpose: "The always-present top shell strip containing tabs, status indicators, and window controls.", where: "top application strip" },

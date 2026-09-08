@@ -4,8 +4,7 @@ import { IMcpToolDef, IMcpToolResult, McpResponse, ToolArgs } from "../types";
 import { IToolContext } from "./params";
 import { openWindows } from "../../open-windows";
 import { MainAiRoot, WINDOW_MEMBER_NAMES } from "../ai-vision/main-root";
-import { formatPath, parsePath, PathSegment, PathSyntaxError } from "../../../shared/ai-vision/path-parser";
-import { HintMode, ICallResult, resolveCall } from "../../../shared/ai-vision/resolver";
+import { formatPath, HintMode, ICallResult, parsePath, PathSegment, PathSyntaxError, resolveCall } from "ai-vision";
 import { errMessage } from "../../../shared/utils";
 import { getNativeDialogAttention } from "../../native-dialog-tracker";
 
@@ -134,6 +133,7 @@ export function callTools(ctx: IToolContext): IMcpToolDef[] {
                 value: z.unknown().optional().describe("Assign this value to the property named by the last segment (e.g. page.content). Mutually exclusive with args."),
                 hints: z.enum(["auto", "always", "never"]).optional().describe("auto (default): the member list for each kind of object is sent once per session, live children always; always: repeat member lists; never: no hints."),
                 maxLength: z.number().int().min(1).optional().describe("Bound string or structured results (default 20000); truncated results carry totalLength for strings or shown/total for collections."),
+                timeoutMs: z.number().int().positive().optional().describe("How long to wait for a call under pages[i].editor.app — a board's or a web page's own model. Raise it for an operation you know is slow (default 30000). It has no effect on any other path."),
                 windowIndex,
             },
             handler: async (args: ToolArgs): Promise<IMcpToolResult> => {

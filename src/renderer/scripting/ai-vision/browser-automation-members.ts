@@ -1,4 +1,4 @@
-import type { IAiMember } from "../../../shared/ai-vision/types";
+import type { IAiMember } from "ai-vision";
 
 /** Shared automation members for browser-like editor hosts. */
 export const BROWSER_AUTOMATION_MEMBERS: readonly IAiMember[] = [

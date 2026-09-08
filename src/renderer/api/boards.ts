@@ -14,10 +14,26 @@ import { boardTrust, pathCovers } from "./board-trust";
 import { boardInstallRegistry, InstalledBoardEntry } from "./board-install-registry";
 import { publishedBoards } from "./published-boards";
 import { boardPagesForRoot, getBoardUpdate } from "./board-updates";
+import { api } from "../../ipc/renderer/api";
+import { errMessage } from "../../shared/utils";
 
 export const BOARDS_ASSETS_BASE_URL =
     "https://raw.githubusercontent.com/andriy-viyatyk/persephone/main/boards-assets/";
 export const BOARDS_MANIFEST_URL = BOARDS_ASSETS_BASE_URL + "manifest.json";
+
+const BOARD_CALL_TIMEOUT_MIN_MS = 1_000;
+const BOARD_CALL_TIMEOUT_MAX_MS = 3_600_000;
+/** Unset until an agent assigns `boards.callTimeoutMs`. Staying `undefined` is what keeps the
+ *  built-in fallback reachable as timeout level 4; a pre-seeded 30_000 would make level 3 apply
+ *  to every call and level 4 unreachable. The getter still reports the effective value. */
+let boardCallTimeoutMs: number | undefined;
+const BOARD_CALL_TIMEOUT_DEFAULT_MS = 30_000;
+
+/** The knob's value only when an agent actually set it — timeout level 3's input. The public
+ *  `boards.callTimeoutMs` getter reports the EFFECTIVE timeout and so cannot answer this. */
+export function explicitBoardCallTimeoutMs(): number | undefined {
+    return boardCallTimeoutMs;
+}
 
 /**
  * `app.boards` — board lifecycle for scripts / agents (EPIC-035 / US-750).
@@ -227,6 +243,19 @@ async function enumerateBoardListings(): Promise<BoardListing[]> {
 }
 
 export const boards: IBoards = {
+    get callTimeoutMs(): number {
+        return boardCallTimeoutMs ?? BOARD_CALL_TIMEOUT_DEFAULT_MS;
+    },
+    set callTimeoutMs(value: number) {
+        if (!Number.isFinite(value) || !Number.isInteger(value)
+            || value < BOARD_CALL_TIMEOUT_MIN_MS || value > BOARD_CALL_TIMEOUT_MAX_MS) {
+            throw new TypeError(`boards.callTimeoutMs must be an integer from ${BOARD_CALL_TIMEOUT_MIN_MS} to ${BOARD_CALL_TIMEOUT_MAX_MS}.`);
+        }
+        boardCallTimeoutMs = value;
+        void api.setBoardCallTimeout(value).catch((error: unknown) => {
+            console.error(`Failed to apply boards.callTimeoutMs: ${errMessage(error)}`);
+        });
+    },
     createBoard: (name, dir) => create(name, dir, "board-template"),
     createDemoBoard: (name, dir) => create(name, dir, "demo-board"),
     openBoard: async (boardRoot: string) => {

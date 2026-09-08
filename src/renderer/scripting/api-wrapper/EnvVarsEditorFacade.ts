@@ -6,9 +6,9 @@ import type {
 } from "../../api/types/env-vars-editor";
 import type { EnvVarsEditor, EnvVarsEditorState } from "../../editors/env-vars/EnvVarsEditor";
 import { ui } from "../../api/ui";
-import { createElements } from "../ai-vision/elements";
+import { createElements } from "ai-vision/dom";
 import { activatePageAndWaitForLayout, pageScopeSelector } from "../ai-vision/page-elements";
-import type { IAiElementDeclaration, IAiMember, IAiVisible, IAiVisionDescriptor } from "../../../shared/ai-vision/types";
+import type { IAiElementDeclaration, IAiMember, IAiVisible, IAiVisionDescriptor } from "ai-vision";
 
 const ENV_VARS_ELEMENTS: readonly IAiElementDeclaration[] = [
     { name: "env-vars-grid", purpose: "Locate the editable variable grid for the selected namespace and profile.", where: "center of the selected profile pane, below the profile controls" },

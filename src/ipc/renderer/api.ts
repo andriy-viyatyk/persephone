@@ -412,6 +412,10 @@ class ApiCalls implements Api {
         return executeOnce<void>(Endpoint.setBoardBusy, ownerId, busy);
     };
 
+    setBoardCallTimeout = async (timeoutMs: number) => {
+        return executeOnce<void>(Endpoint.setBoardCallTimeout, timeoutMs);
+    };
+
     reapBoardOwner = async (ownerId: string) => {
         return executeOnce<void>(Endpoint.reapBoardOwner, ownerId);
     };

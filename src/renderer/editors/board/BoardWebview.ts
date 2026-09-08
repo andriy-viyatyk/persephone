@@ -5,10 +5,14 @@ import { fpJoin, isPlainLocalPath } from "../../core/utils/file-path";
 import { pagesModel } from "../../api/pages";
 import { isFocusInSidebar } from "../../core/utils/focus-utils";
 import type {
+    BoardAiVisionRegistrationMsg,
+    BoardAiVisionRequestMsg,
+    BoardAiVisionResultMsg,
     BoardFilePathResultMsg,
     BoardHostContentMsg,
     BoardPortInitMsg,
     BoardStateSyncMsg,
+    BoardToHostMsg,
     BoardVarResultMsg,
 } from "../../../ipc/board-bridge-channels";
 import { resolveBoardNamespace, resolveBoardVarRequest } from "../../api/board-vars";
@@ -18,6 +22,8 @@ import { BOARD_TOKEN_VARS, computeBoardThemePalette, ensureBoardThemeSubscriptio
 import { boardSecondaryPanelId } from "./board-secondary";
 import type { BoardEditorModel } from "./BoardEditorModel";
 import type { BoardContentEditorModel } from "./BoardContentEditorModel";
+import type { IAiRemoteRequest, IAiRemoteResponse, IAiVisionShape } from "ai-vision";
+import { boardTrust } from "../../api/board-trust";
 import { errMessage } from "../../../shared/utils";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
@@ -53,6 +59,15 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
     private sharedStateUnsubscribe: (() => void) | undefined;
     private focusUnsubscribe: (() => void) | undefined;
     private focusTimer: ReturnType<typeof setTimeout> | undefined;
+    private readonly pendingAiVision = new Map<number, {
+        resolve: (response: IAiRemoteResponse) => void;
+        reject: (error: Error) => void;
+        timer: ReturnType<typeof setTimeout>;
+        generation: number;
+        iframe: HTMLIFrameElement;
+        contentWindow: Window;
+    }>();
+    private aiVisionRequestId = 0;
 
     public constructor(props: BoardWebviewProps) {
         super(props, createPanelElement({
@@ -68,6 +83,11 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
 
     protected onMount(): void {
         this.live = true;
+        this.ownSubscription(boardTrust.subscribePaths(() => {
+            if (!boardTrust.isTrusted(this.props.boardRoot)) {
+                this.rejectPendingAiVision(new Error("The board is no longer trusted."));
+            }
+        }));
         ensureBoardThemeSubscription();
         void this.registerBoard();
     }
@@ -80,6 +100,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
     protected onDispose(): void {
         this.live = false;
         this.generation++;
+        this.rejectPendingAiVision(new Error("Board frame was replaced."));
         if (this.focusTimer !== undefined) {
             clearTimeout(this.focusTimer);
             this.focusTimer = undefined;
@@ -143,6 +164,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         iframe.style.backgroundColor = color.background.default;
         this.iframe = iframe;
         this.props.model.setIframe(iframe, this.tabId);
+        this.props.model.setAiVisionTransport(this.tabId, iframe, this.generation, this.requestAiVision);
         this.listen(iframe, "load", this.handleLoad);
         window.addEventListener("message", this.handleMessage);
         this.ownSubscription(() => window.removeEventListener("message", this.handleMessage));
@@ -271,32 +293,33 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         const host = this.host;
         const frame = this.iframe;
         if (!this.live || !host || !frame) return;
-        const data = event.data as {
-            __persephone?: string; message?: string; level?: string; busy?: boolean; content?: string;
-            state?: Record<string, unknown>; partial?: Record<string, unknown>;
-            defaults?: Record<string, unknown>; restorableKeys?: string[]; views?: unknown;
-            statusText?: string; direction?: 1 | -1; reqId?: number;
-            varMethod?: "get" | "set" | "list" | "show"; varArgs?: unknown[];
-        } | undefined;
+        const data = event.data as BoardToHostMsg | BoardAiVisionRegistrationMsg | BoardAiVisionResultMsg | undefined;
         if (!data?.__persephone || event.origin !== `board://${host}`
             || event.source !== frame.contentWindow) return;
 
         const model = this.props.model;
+        const legacy = data as BoardToHostMsg & {
+            message?: string; level?: string; busy?: boolean; content?: string;
+            state?: Record<string, unknown>; partial?: Record<string, unknown>;
+            defaults?: Record<string, unknown>; restorableKeys?: string[]; views?: unknown;
+            statusText?: string; direction?: 1 | -1; reqId?: number;
+            varMethod?: "get" | "set" | "list" | "show"; varArgs?: unknown[];
+        };
         switch (data.__persephone) {
             case "board:interact":
                 document.body.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
                 break;
             case "board:error":
-                if (data.message) this.appendLog("error", data.message);
+                if (legacy.message) this.appendLog("error", legacy.message);
                 break;
             case "board:log":
-                if (data.message) this.appendLog(data.level === "warn" ? "warn" : "error", data.message);
+                if (legacy.message) this.appendLog(legacy.level === "warn" ? "warn" : "error", legacy.message);
                 break;
             case "board:busy":
-                model.setBusy(!!data.busy);
+                model.setBusy(!!legacy.busy);
                 break;
             case "board:setContent": {
-                const content = typeof data.content === "string" ? data.content : "";
+                const content = typeof legacy.content === "string" ? legacy.content : "";
                 this.lastBoardContent = content;
                 (model as BoardContentEditorModel).hostChangeContent?.(content);
                 break;
@@ -305,32 +328,38 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
                 (model as BoardContentEditorModel).hostSave?.();
                 break;
             case "board:setState":
-                model.setSharedState(data.state ?? {});
+                model.setSharedState(legacy.state ?? {});
                 break;
             case "board:mergeState":
-                model.mergeSharedState(data.partial ?? {});
+                model.mergeSharedState(legacy.partial ?? {});
                 break;
             case "board:stateInit":
-                model.initSharedState(data.defaults ?? {}, data.restorableKeys);
+                model.initSharedState(legacy.defaults ?? {}, legacy.restorableKeys);
                 break;
             case "board:setSecondaryViews":
-                model.setSecondaryViews(data.views);
+                model.setSecondaryViews(legacy.views);
                 break;
             case "board:setStatusText":
-                if (this.isMain) model.setStatusText(typeof data.statusText === "string" ? data.statusText : "");
+                if (this.isMain) model.setStatusText(typeof legacy.statusText === "string" ? legacy.statusText : "");
                 break;
             case "board:cycleTheme":
-                cycleAppTheme(data.direction === 1 ? 1 : -1);
+                cycleAppTheme(legacy.direction === 1 ? 1 : -1);
+                break;
+            case "board:aiVision":
+                this.handleAiVisionRegistration(data as BoardAiVisionRegistrationMsg, model, frame);
+                break;
+            case "board:aiResult":
+                this.handleAiVisionResult(data as BoardAiVisionResultMsg, frame);
                 break;
             case "board:filePath":
-                if (typeof data.reqId === "number") void this.resolveFilePath(data.reqId, model, host, frame);
+                if (typeof legacy.reqId === "number") void this.resolveFilePath(legacy.reqId, model, host, frame);
                 break;
             case "board:var":
-                if (typeof data.reqId === "number") {
+                if (typeof legacy.reqId === "number") {
                     void this.resolveVariable(
-                        data.reqId,
-                        data.varMethod as "get" | "set" | "list" | "show",
-                        Array.isArray(data.varArgs) ? data.varArgs : [],
+                        legacy.reqId,
+                        legacy.varMethod as "get" | "set" | "list" | "show",
+                        Array.isArray(legacy.varArgs) ? legacy.varArgs : [],
                         model,
                         host,
                         frame,
@@ -339,6 +368,79 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
                 break;
         }
     };
+
+    private handleAiVisionRegistration(
+        message: BoardAiVisionRegistrationMsg,
+        model: BoardEditorModel,
+        frame: HTMLIFrameElement,
+    ): void {
+        if (!this.isMain || model.frames.get(BOARD_CDP_TAB) !== frame
+            || !boardTrust.isTrusted(this.props.boardRoot)
+            || !isAiVisionShape(message.shape)
+            || !isSchemaMajorOne(message.schemaVersion)
+            || !isSchemaMajorOne(message.shape.schemaVersion)) {
+            this.appendLog("warn", "Ignored invalid or untrusted AiVision registration.");
+            return;
+        }
+        this.rejectPendingAiVision(new Error("Board AiVision registration was replaced."));
+        warnUnknownAiVisionViews(message.shape, model, (warning) => this.appendLog("warn", warning));
+        model.setAiVisionRegistration(
+            message.shape,
+            frame,
+            this.generation,
+            this.requestAiVision,
+            (warning) => this.appendLog("warn", warning),
+        );
+    }
+
+    private readonly requestAiVision = (
+        request: IAiRemoteRequest,
+        timeoutMs: number,
+        timeoutError: Error,
+    ): Promise<IAiRemoteResponse> => {
+        const host = this.host;
+        const frame = this.iframe;
+        const contentWindow = frame?.contentWindow;
+        if (!this.live || !host || !frame || !contentWindow
+            || this.props.model.frames.get(this.tabId) !== frame
+            || !boardTrust.isTrusted(this.props.boardRoot)) {
+            return Promise.reject(new Error("The board frame is unavailable or untrusted."));
+        }
+        const generation = this.generation;
+        const reqId = ++this.aiVisionRequestId;
+        return new Promise<IAiRemoteResponse>((resolve, reject) => {
+            const timer = setTimeout(() => {
+                this.pendingAiVision.delete(reqId);
+                reject(timeoutError);
+            }, timeoutMs);
+            this.pendingAiVision.set(reqId, { resolve, reject, timer, generation, iframe: frame, contentWindow });
+            const message: BoardAiVisionRequestMsg = { __persephone: "ai:request", reqId, request };
+            try {
+                contentWindow.postMessage(message, `board://${host}`);
+            } catch (error) {
+                clearTimeout(timer);
+                this.pendingAiVision.delete(reqId);
+                reject(new Error(errMessage(error, "The board frame is unavailable.")));
+            }
+        });
+    };
+
+    private handleAiVisionResult(message: BoardAiVisionResultMsg, frame: HTMLIFrameElement): void {
+        const pending = this.pendingAiVision.get(message.reqId);
+        if (!pending || pending.generation !== this.generation || pending.iframe !== frame
+            || pending.contentWindow !== frame.contentWindow) return;
+        this.pendingAiVision.delete(message.reqId);
+        clearTimeout(pending.timer);
+        pending.resolve(message.response);
+    }
+
+    private rejectPendingAiVision(error: Error): void {
+        for (const pending of this.pendingAiVision.values()) {
+            clearTimeout(pending.timer);
+            pending.reject(error);
+        }
+        this.pendingAiVision.clear();
+    }
 
     private async resolveFilePath(
         reqId: number,
@@ -399,4 +501,45 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         this.pendingPort?.close();
         this.pendingPort = null;
     }
+}
+
+function isSchemaMajorOne(value: unknown): value is number {
+    return typeof value === "number" && Number.isFinite(value) && Math.floor(value) === 1;
+}
+
+function isAiVisionShape(value: unknown): value is IAiVisionShape {
+    if (!value || typeof value !== "object") return false;
+    const shape = value as { schemaVersion?: unknown; root?: unknown };
+    if (!isSchemaMajorOne(shape.schemaVersion) || !shape.root || typeof shape.root !== "object") return false;
+    const root = shape.root as { kind?: unknown; summary?: unknown; members?: unknown };
+    return typeof root.kind === "string" && typeof root.summary === "string" && Array.isArray(root.members);
+}
+
+function warnUnknownAiVisionViews(
+    shape: IAiVisionShape,
+    model: BoardEditorModel,
+    warning: (message: string) => void,
+): void {
+    const knownViews = new Set((model.state.get().secondaryViewDefs ?? []).map((view) => view.id));
+    const visited = new Set<object>();
+    const visit = (node: IAiVisionShape["root"]): void => {
+        if (visited.has(node)) return;
+        visited.add(node);
+        for (const element of node.elements ?? []) {
+            const view = (element as IAiElementWithView).view;
+            if (view !== undefined && (typeof view !== "string" || (view !== "main" && !knownViews.has(view)))) {
+                warning(`Unknown AiVision element view ${JSON.stringify(view)} for ${JSON.stringify(element.name)}.`);
+            }
+        }
+        for (const member of node.members) {
+            if (member.node) visit(member.node);
+            if (member.item) visit(member.item);
+        }
+        if (node.item) visit(node.item);
+    };
+    visit(shape.root);
+}
+
+interface IAiElementWithView {
+    readonly view?: unknown;
 }

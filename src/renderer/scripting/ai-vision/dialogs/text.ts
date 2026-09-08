@@ -1,4 +1,4 @@
-import type { IAiVisionDescriptor } from "../../../../shared/ai-vision/types";
+import type { IAiVisionDescriptor } from "ai-vision";
 import type { TextDialogModel, TextDialogProps } from "../../../ui/dialogs/TextDialog";
 import { cancelDialog, closeWithResult, descriptor, dialogState, requireButton, modelWith, type DialogAdapter, type DialogEntry } from "./shared";
 

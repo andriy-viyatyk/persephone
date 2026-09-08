@@ -1,11 +1,11 @@
 import { withEditorGuideHelp } from "./editor-guide-help";
 import type { IToolsetEditor } from "../../api/types/toolset-editor";
-import type { IAiElementDeclaration, IAiMember, IAiVisible, IAiVisionDescriptor } from "../../../shared/ai-vision/types";
+import type { IAiElementDeclaration, IAiMember, IAiVisible, IAiVisionDescriptor } from "ai-vision";
 import { fpNormalizeForCompare } from "../../core/utils/file-path";
 import { toolsTrust } from "../../api/tools/tools-trust";
 import { registeredTools } from "../../api/tools/registered-tools";
 import { ui } from "../../api/ui";
-import { createElements } from "../ai-vision/elements";
+import { createElements } from "ai-vision/dom";
 import { activatePageAndWaitForLayout, pageScopeSelector } from "../ai-vision/page-elements";
 import type { ToolsetEditorModel } from "../../editors/toolset/ToolsetEditorModel";
 

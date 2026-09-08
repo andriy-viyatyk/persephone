@@ -1,5 +1,5 @@
 import type { MenuItem } from "../../../core/events/context-menu";
-import type { IAiChild, IAiVisionDescriptor, IAiVisible } from "../../../../shared/ai-vision/types";
+import type { IAiChild, IAiVisionDescriptor, IAiVisible } from "ai-vision";
 import {
     activateAppPopupMenuItem,
     closeAppPopupMenu,

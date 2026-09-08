@@ -1,6 +1,6 @@
 import type { IPageHost } from "../../api/pages/IPageHost";
 import { getEditorSwitchOptions } from "../../editors/base/editor-switch-options";
-import { createElements } from "./elements";
+import { createElements } from "ai-vision/dom";
 import { activatePageAndWaitForLayout, pageScopeSelector } from "./page-elements";
 import { ui } from "../../api/ui";
 import type {
@@ -8,7 +8,7 @@ import type {
     IAiMember,
     IAiVisible,
     IAiVisionDescriptor,
-} from "../../../shared/ai-vision/types";
+} from "ai-vision";
 import type { IEditorSwitchOption } from "../../api/types/page-editor-switches";
 
 const SWITCH_ELEMENTS: readonly IAiElementDeclaration[] = [

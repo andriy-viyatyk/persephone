@@ -3,6 +3,7 @@ import {
     BrowserChannel,
     BrowserEvent,
 } from "../../../ipc/browser-ipc";
+import type { IAiVisionShape } from "ai-vision";
 import type { MenuItem } from "../../uikit/Menu";
 import { pagesModel } from "../../api/pages";
 import { ui } from "../../api/ui";
@@ -11,6 +12,14 @@ import { globalPopupRateLimiter } from "../../../ipc/popup-rate-limiter";
 import { browserUrlChanged } from "../../core/state/events";
 import type { BrowserEditorModel } from "./BrowserEditorModel";
 import { showBrowserContextMenu } from "./webview-context-menu";
+import { agentMayAccessBrowserPage } from "./agent-access";
+import { evaluateInTarget, ensureTargetReady } from "../../automation/operations";
+
+const AI_VISION_PROBE = `(() => {
+    const remote = window.__aiVision;
+    return remote ? JSON.stringify(remote.describe()) : null;
+})()`;
+const MAX_AI_VISION_SHAPE_BYTES = 262_144;
 
 /**
  * Manages webview references, IPC event handling, context menu,
@@ -28,6 +37,8 @@ export class BrowserWebviewModel {
 
     /** Tracks the previous active tab URL for navigation change detection. */
     private prevActiveUrl = "";
+    private readonly warnedAiVisionShapes = new Set<string>();
+    private readonly probedAiVisionGenerations = new Set<string>();
 
     constructor(model: BrowserEditorModel) {
         this.model = model;
@@ -208,6 +219,7 @@ export class BrowserWebviewModel {
 
         switch (type) {
             case "did-navigate": {
+                this.model.clearAiVisionRegistration(internalTabId);
                 this.applyNavigation(internalTabId, data, false);
                 break;
             }
@@ -216,10 +228,16 @@ export class BrowserWebviewModel {
                 break;
             }
             case "did-start-loading":
+                this.model.clearAiVisionRegistration(internalTabId);
                 this.model.updateTab(internalTabId, { loading: true });
                 break;
             case "did-stop-loading":
                 this.model.updateTab(internalTabId, { loading: false });
+                if (!agentMayAccessBrowserPage(this.model.state.get())) {
+                    this.model.clearAiVisionRegistration(internalTabId);
+                    break;
+                }
+                void this.probeAiVision(internalTabId);
                 break;
             case "audio-state-changed":
                 this.model.updateTab(internalTabId, { audible: !!data.audible });
@@ -268,6 +286,58 @@ export class BrowserWebviewModel {
             }
         }
     };
+
+    private async probeAiVision(internalTabId: string): Promise<void> {
+        if (!agentMayAccessBrowserPage(this.model.state.get())) {
+            this.model.clearAiVisionRegistration(internalTabId);
+            return;
+        }
+        const generation = this.model.getAiVisionDocumentGeneration(internalTabId);
+        const webview = this.webviewRefs.get(internalTabId);
+        if (generation === undefined || !webview || !this.webviewReady.has(internalTabId)) return;
+        const probeKey = `${internalTabId}:${generation}`;
+        if (this.probedAiVisionGenerations.has(probeKey)) return;
+        this.probedAiVisionGenerations.add(probeKey);
+
+        let serialized: unknown;
+        try {
+            await ensureTargetReady(this.model.target, internalTabId);
+            serialized = await evaluateInTarget(this.model.target, AI_VISION_PROBE, internalTabId);
+        } catch {
+            return;
+        }
+
+        if (typeof serialized !== "string") {
+            this.model.clearAiVisionRegistrationIfCurrent(internalTabId, generation);
+            return;
+        }
+        if (new TextEncoder().encode(serialized).byteLength > MAX_AI_VISION_SHAPE_BYTES) {
+            const warningKey = `${internalTabId}:${generation}`;
+            if (!this.warnedAiVisionShapes.has(warningKey)) {
+                this.warnedAiVisionShapes.add(warningKey);
+                console.warn(
+                    `[browser] AiVision shape exceeded ${MAX_AI_VISION_SHAPE_BYTES} UTF-8 bytes `
+                    + `for tab ${internalTabId}.`,
+                );
+            }
+            this.model.clearAiVisionRegistrationIfCurrent(internalTabId, generation);
+            return;
+        }
+
+        let shape: IAiVisionShape;
+        try {
+            const parsed: unknown = JSON.parse(serialized);
+            if (!isAiVisionShape(parsed)) return;
+            shape = parsed;
+        } catch {
+            return;
+        }
+        if (this.webviewRefs.get(internalTabId) !== webview
+            || !this.webviewReady.has(internalTabId)
+            || !this.model.state.get().tabs.some((tab) => tab.id === internalTabId)
+            || this.model.getAiVisionDocumentGeneration(internalTabId) !== generation) return;
+        this.model.setAiVisionRegistration(internalTabId, generation, shape);
+    }
 
     // =====================================================================
     // Context Menu
@@ -362,4 +432,16 @@ export class BrowserWebviewModel {
 
         pagesModel.openLinks(links, title + " \u2014 Resources");
     };
+}
+
+function isSchemaMajorOne(value: unknown): value is number {
+    return typeof value === "number" && Number.isFinite(value) && Math.floor(value) === 1;
+}
+
+function isAiVisionShape(value: unknown): value is IAiVisionShape {
+    if (!value || typeof value !== "object") return false;
+    const shape = value as { schemaVersion?: unknown; root?: unknown };
+    if (!isSchemaMajorOne(shape.schemaVersion) || !shape.root || typeof shape.root !== "object") return false;
+    const root = shape.root as { kind?: unknown; summary?: unknown; members?: unknown };
+    return typeof root.kind === "string" && typeof root.summary === "string" && Array.isArray(root.members);
 }

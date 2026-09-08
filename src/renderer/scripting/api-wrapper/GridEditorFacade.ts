@@ -5,17 +5,10 @@ import type {
     IGridFilter,
     IGridSort,
 } from "../../api/types/grid-editor";
-import type { IAiMember, IAiVisible, IAiVisionDescriptor } from "../../../shared/ai-vision/types";
+import { IAiMember, IAiVisible, IAiVisionDescriptor, arrayOfChoicesRule, choiceRule, numberRule, validateCallArguments, valueRule } from "ai-vision";
 import { ui } from "../../api/ui";
-import { createElements } from "../ai-vision/elements";
+import { createElements } from "ai-vision/dom";
 import { activatePageAndWaitForLayout, pageScopeSelector } from "../ai-vision/page-elements";
-import {
-    arrayOfChoicesRule,
-    choiceRule,
-    numberRule,
-    validateCallArguments,
-    valueRule,
-} from "../../../shared/ai-vision/argument-validation";
 
 const GRID_ELEMENTS = [
     {

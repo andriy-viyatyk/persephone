@@ -6,11 +6,11 @@ import type {
     ILogPushResult,
 } from "../../api/types/log-view-editor";
 import type { LogViewEditor } from "../../editors/log-view/LogViewEditor";
-import type { IAiElementDeclaration, IAiMember, IAiVisible, IAiVisionDescriptor } from "../../../shared/ai-vision/types";
+import type { IAiElementDeclaration, IAiMember, IAiVisible, IAiVisionDescriptor } from "ai-vision";
 import { ui } from "../../api/ui";
 import { invalidUiPushEntryError, normalizeUiPushEntry } from "../../api/mcp/ui-push-validation";
 import type { NormalizedUiPushEntry } from "../../api/mcp/ui-push-validation";
-import { createElements } from "../ai-vision/elements";
+import { createElements } from "ai-vision/dom";
 import { activatePageAndWaitForLayout, pageScopeSelector } from "../ai-vision/page-elements";
 
 const LOG_VIEW_ELEMENTS: readonly IAiElementDeclaration[] = [

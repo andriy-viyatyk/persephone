@@ -1,12 +1,12 @@
 import { withEditorGuideHelp } from "./editor-guide-help";
 import type { AboutEditor, AboutGuideLocation } from "../../editors/about/AboutEditor";
 import { getGuideIndex } from "../../guides";
-import type { IAiElementDeclaration, IAiMember, IAiVisible, IAiVisionDescriptor } from "../../../shared/ai-vision/types";
+import type { IAiElementDeclaration, IAiMember, IAiVisible, IAiVisionDescriptor } from "ai-vision";
 import type { GuidePage, GuideTreeFolder, GuideTreeNode } from "../../../shared/guides";
 import { parseGuideUrl, PERSEPHONE_GUIDE_PREFIX } from "../../../shared/guides/guide-links";
 import { errMessage } from "../../../shared/utils";
 import { ui } from "../../api/ui";
-import { createElements } from "../ai-vision/elements";
+import { createElements } from "ai-vision/dom";
 import { activatePageAndWaitForLayout, pageScopeSelector } from "../ai-vision/page-elements";
 
 export const ABOUT_ELEMENTS: readonly IAiElementDeclaration[] = [

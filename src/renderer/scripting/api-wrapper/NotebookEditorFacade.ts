@@ -3,9 +3,9 @@ import type { NotebookEditor } from "../../editors/notebook";
 import type { NoteItem } from "../../editors/notebook/notebookTypes";
 import type { INote } from "../../api/types/notebook-editor";
 import { ui } from "../../api/ui";
-import { createElements } from "../ai-vision/elements";
+import { createElements } from "ai-vision/dom";
 import { activatePageAndWaitForLayout, pageScopeSelector } from "../ai-vision/page-elements";
-import type { IAiElementDeclaration, IAiMember, IAiVisible, IAiVisionDescriptor } from "../../../shared/ai-vision/types";
+import type { IAiElementDeclaration, IAiMember, IAiVisible, IAiVisionDescriptor } from "ai-vision";
 
 const NOTEBOOK_ELEMENTS: readonly IAiElementDeclaration[] = [
     { name: "notebook-breadcrumb", purpose: "Select the current notebook category or tag filter.", where: "left side of the Notebook toolbar" },

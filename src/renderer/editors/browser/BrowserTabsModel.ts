@@ -134,6 +134,10 @@ export class BrowserTabsModel {
     };
 
     closeTab = (internalTabId: string) => {
+        const state = this.model.state.get();
+        const isActive = state.activeTabId === internalTabId;
+        this.model.clearAiVisionRegistration(internalTabId);
+        if (isActive) this.model.invalidateAiVisionBinding();
         this.model.state.update((s) => {
             const idx = s.tabs.findIndex((t) => t.id === internalTabId);
             if (idx < 0) return;
@@ -167,9 +171,14 @@ export class BrowserTabsModel {
     };
 
     closeOtherTabs = (internalTabId: string) => {
+        const state = this.model.state.get();
+        const tab = state.tabs.find((candidate) => candidate.id === internalTabId);
+        if (!tab) return;
+        for (const candidate of state.tabs) {
+            if (candidate.id !== internalTabId) this.model.clearAiVisionRegistration(candidate.id);
+        }
+        if (state.activeTabId !== internalTabId) this.model.invalidateAiVisionBinding();
         this.model.state.update((s) => {
-            const tab = s.tabs.find((t) => t.id === internalTabId);
-            if (!tab) return;
             for (const t of s.tabs) if (t.id !== internalTabId) this.currentUrls.delete(t.id);
             s.tabs = [tab];
             s.activeTabId = tab.id;
@@ -179,9 +188,13 @@ export class BrowserTabsModel {
     };
 
     closeTabsBelow = (internalTabId: string) => {
+        const state = this.model.state.get();
+        const idx = state.tabs.findIndex((t) => t.id === internalTabId);
+        if (idx < 0 || idx >= state.tabs.length - 1) return;
+        const removed = state.tabs.slice(idx + 1);
+        for (const tab of removed) this.model.clearAiVisionRegistration(tab.id);
+        if (removed.some((tab) => tab.id === state.activeTabId)) this.model.invalidateAiVisionBinding();
         this.model.state.update((s) => {
-            const idx = s.tabs.findIndex((t) => t.id === internalTabId);
-            if (idx < 0 || idx >= s.tabs.length - 1) return;
             const removed = s.tabs.splice(idx + 1);
             const removedIds = new Set(removed.map((t) => t.id));
             for (const t of removed) this.currentUrls.delete(t.id);
@@ -209,8 +222,10 @@ export class BrowserTabsModel {
     };
 
     switchTab = (internalTabId: string) => {
+        const state = this.model.state.get();
+        if (state.activeTabId === internalTabId || !state.tabs.some((tab) => tab.id === internalTabId)) return;
+        this.model.invalidateAiVisionBinding();
         this.model.state.update((s) => {
-            if (s.activeTabId === internalTabId) return;
             const tab = s.tabs.find((t) => t.id === internalTabId);
             if (!tab) return;
             this.activeTabHistory.push(s.activeTabId);

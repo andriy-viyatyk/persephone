@@ -16,6 +16,7 @@
  * types are pulled type-only from the already-dependency-free `api-param-types.ts`;
  * runner message shapes from `runner-channels.ts`.
  */
+import type { IAiRemoteRequest, IAiRemoteResponse, IAiVisionShape } from "ai-vision";
 import type {
     OpenFileDialogParams,
     OpenFolderDialogParams,
@@ -135,6 +136,7 @@ export interface BoardCallRequest {
     args?: unknown[];
     value?: unknown;
     maxLength?: number;
+    timeoutMs?: number;
 }
 
 /** Correlated result for `persephone.call()`. */
@@ -223,7 +225,9 @@ export interface BoardToHostMsg {
         | "board:setStatusText" // persephone.setStatusText — content-host footer status (US-892)
         | "board:cycleTheme" // Ctrl+Alt+[ / ] pressed inside the frame — cycle the app theme
         | "board:var" // board requested a var.get/set/list (EPIC-046) — request/reply, needs a reqId
-        | "board:filePath"; // board asked for its readable local content path — request/reply, needs a reqId
+        | "board:filePath" // board asked for its readable local content path — request/reply, needs a reqId
+        | "board:aiVision"
+        | "board:aiResult";
     /** `board:error` / `board:log` detail. */
     message?: string;
     /** `board:log` severity: `"warn"` or `"error"` (the mirrored console method). */
@@ -297,6 +301,25 @@ export interface BoardVarResultMsg {
     reqId: number;
     result?: unknown;
     error?: string;
+}
+
+export interface BoardAiVisionRegistrationMsg {
+    __persephone: "board:aiVision";
+    schemaVersion: number;
+    shape: IAiVisionShape;
+}
+
+/** Host renderer → board iframe; the new opposite direction on this channel. */
+export interface BoardAiVisionRequestMsg {
+    __persephone: "ai:request";
+    reqId: number;
+    request: IAiRemoteRequest;
+}
+
+export interface BoardAiVisionResultMsg {
+    __persephone: "board:aiResult";
+    reqId: number;
+    response: IAiRemoteResponse;
 }
 
 // Re-export the dialog param shapes so the shim + bridge import one place.

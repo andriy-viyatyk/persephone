@@ -102,6 +102,7 @@ export enum Endpoint {
     requestBoardPort = "requestBoardPort",
     disposeBoardPort = "disposeBoardPort",
     setBoardBusy = "setBoardBusy",
+    setBoardCallTimeout = "setBoardCallTimeout",
     reapBoardOwner = "reapBoardOwner",
     registerBoardFrame = "registerBoardFrame",
     unregisterBoardFrame = "unregisterBoardFrame",
@@ -243,6 +244,7 @@ export type Api = {
     // Busy retention (US-799): mirror the renderer's busy flag / tree-kill every
     // job (kept + current) of a board owner on final teardown (model dispose).
     [Endpoint.setBoardBusy]: (ownerId: string, busy: boolean) => Promise<void>;
+    [Endpoint.setBoardCallTimeout]: (timeoutMs: number) => Promise<void>;
     [Endpoint.reapBoardOwner]: (ownerId: string) => Promise<void>;
     // `frameNonce` (the iframe's ?v= value) pins CDP automation to THIS tab's specific
     // board frame — disambiguating multiple tabs of the same board + the pre-reload

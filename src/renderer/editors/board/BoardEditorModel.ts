@@ -16,6 +16,29 @@ import { BoardTargetModel } from "./BoardTargetModel";
 import { createBoardGlyphElement } from "./board-glyph-element";
 import { invalidateBoardIcon } from "./board-icon-cache";
 import { markBoardBusy } from "./busy-boards";
+import type { IState } from "../../core/state/state";
+import type { IAiRemoteRequest, IAiRemoteResponse, IAiVisionShape } from "ai-vision";
+
+export type BoardAiVisionRequestHandler = (
+    request: IAiRemoteRequest,
+    timeoutMs: number,
+    timeoutError: Error,
+) => Promise<IAiRemoteResponse>;
+
+export interface BoardAiVisionRegistration {
+    readonly shape: IAiVisionShape;
+    readonly iframe: HTMLIFrameElement;
+    readonly generation: number;
+    readonly token: number;
+    readonly request: BoardAiVisionRequestHandler;
+    readonly warning: (message: string) => void;
+}
+
+interface BoardAiVisionTransport {
+    readonly iframe: HTMLIFrameElement;
+    readonly generation: number;
+    readonly request: BoardAiVisionRequestHandler;
+}
 
 export interface BoardEditorState extends EditorStateBase {
     /** State-type discriminator. */
@@ -127,11 +150,23 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
      *  frame (EPIC-034 / US-730; re-homed onto the `<iframe>` in EPIC-037 / US-773). */
     readonly target = new BoardTargetModel(this);
 
+    private aiVisionRegistration: BoardAiVisionRegistration | undefined;
+    private aiVisionRegistrationToken = 0;
+    private readonly aiVisionTransports = new Map<string, BoardAiVisionTransport>();
+
     /** Live `<iframe>` elements of the currently-mounted board frames, keyed by
      *  automation tab id (`"main"` + one `board-secondary:<viewId>` per open secondary
      *  view — EPIC-044 / US-858). Set on each frame's mount effect (the ELEMENT, for
      *  automation focus), cleared on unmount. Transient (not persisted). */
     readonly frames = new Map<string, HTMLIFrameElement>();
+
+    constructor(modelState: IState<BoardEditorState>) {
+        super(modelState);
+        this.own(boardTrust.subscribePaths(() => {
+            const boardRoot = this.state.get().boardRoot;
+            if (boardRoot && !boardTrust.isTrusted(boardRoot)) this.clearAiVisionRegistration();
+        }));
+    }
 
     /** Tab ids whose frame has finished loading AND registered for CDP in main
      *  (BoardWebview's handleLoad, after `registerBoardFrame` resolves). This — NOT
@@ -145,6 +180,11 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
     activeTabId = BOARD_CDP_TAB;
 
     setIframe(el: HTMLIFrameElement, tab: string = BOARD_CDP_TAB): void {
+        if (this.frames.get(tab) !== el) {
+            this.aiVisionTransports.delete(tab);
+            this.loadedTabs.delete(tab);
+            if (tab === BOARD_CDP_TAB) this.clearAiVisionRegistration();
+        }
         this.frames.set(tab, el);
     }
 
@@ -154,10 +194,93 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
      *  command can't target a dead frame (a fresh switch/ensureReady re-mounts). */
     clearIframe(el: HTMLIFrameElement, tab: string = BOARD_CDP_TAB): void {
         if (this.frames.get(tab) === el) {
+            if (tab === BOARD_CDP_TAB) this.clearAiVisionRegistration();
+            this.aiVisionTransports.delete(tab);
             this.frames.delete(tab);
             this.loadedTabs.delete(tab);
             if (this.activeTabId === tab) this.activeTabId = BOARD_CDP_TAB;
         }
+    }
+
+    setAiVisionTransport(
+        tab: string,
+        iframe: HTMLIFrameElement,
+        generation: number,
+        request: BoardAiVisionRequestHandler,
+    ): void {
+        const boardRoot = this.state.get().boardRoot;
+        if (!boardRoot || !boardTrust.isTrusted(boardRoot) || this.frames.get(tab) !== iframe) return;
+        this.aiVisionTransports.set(tab, { iframe, generation, request });
+    }
+
+    isAiVisionTransportReady(tab: string): boolean {
+        const boardRoot = this.state.get().boardRoot;
+        const transport = this.aiVisionTransports.get(tab);
+        return !!boardRoot && boardTrust.isTrusted(boardRoot)
+            && this.frames.get(tab) === transport?.iframe
+            && this.loadedTabs.has(tab);
+    }
+
+    setAiVisionRegistration(
+        shape: IAiVisionShape,
+        iframe: HTMLIFrameElement,
+        generation: number,
+        request: BoardAiVisionRequestHandler,
+        warning: (message: string) => void,
+    ): void {
+        const boardRoot = this.state.get().boardRoot;
+        if (!boardRoot || !boardTrust.isTrusted(boardRoot) || this.frames.get(BOARD_CDP_TAB) !== iframe) return;
+        this.aiVisionRegistration = {
+            shape,
+            iframe,
+            generation,
+            token: ++this.aiVisionRegistrationToken,
+            request,
+            warning,
+        };
+    }
+
+    clearAiVisionRegistration(): void {
+        this.aiVisionRegistration = undefined;
+    }
+
+    getAiVisionRegistration(): BoardAiVisionRegistration | undefined {
+        const boardRoot = this.state.get().boardRoot;
+        if (!this.aiVisionRegistration || !boardRoot || !boardTrust.isTrusted(boardRoot)) {
+            if (this.aiVisionRegistration) this.clearAiVisionRegistration();
+            return undefined;
+        }
+        return this.aiVisionRegistration;
+    }
+
+    appendAiVisionWarning(message: string): void {
+        this.aiVisionRegistration?.warning(message);
+    }
+
+    requestAiVision(
+        request: IAiRemoteRequest,
+        timeoutMs: number,
+        timeoutError: Error,
+    ): Promise<IAiRemoteResponse> {
+        const view = request.view;
+        if (view !== undefined && view !== "main") {
+            const knownView = (this.state.get().secondaryViewDefs ?? []).some((definition) => definition.id === view);
+            if (!knownView) return Promise.reject(new Error(`Unknown board view '${view}'.`));
+            const tab = boardSecondaryPanelId(view);
+            const transport = this.aiVisionTransports.get(tab);
+            const boardRoot = this.state.get().boardRoot;
+            if (!transport || this.frames.get(tab) !== transport.iframe || !boardRoot
+                || !boardTrust.isTrusted(boardRoot)) {
+                return Promise.reject(new Error(`The board view '${view}' is unavailable or untrusted.`));
+            }
+            return transport.request(request, timeoutMs, timeoutError);
+        }
+        const registration = this.getAiVisionRegistration();
+        if (!registration) return Promise.reject(new Error("The board has no trusted AiVision root."));
+        if (this.frames.get(BOARD_CDP_TAB) !== registration.iframe) {
+            return Promise.reject(new Error("The board main frame is unavailable."));
+        }
+        return registration.request(request, timeoutMs, timeoutError);
     }
 
     /** The live frame for a tab (defaults to the active automation tab). */
@@ -547,6 +670,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
     reloadBoard(): void {
         const boardRoot = this.state.get().boardRoot;
         if (boardRoot) invalidateBoardIcon(boardRoot);
+        this.clearAiVisionRegistration();
         this.state.update((s) => { s.reloadToken++; });
     }
 
@@ -590,6 +714,8 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
         }
         markBoardBusy(this.id, undefined, false);
         void api.reapBoardOwner(this.id);
+        this.clearAiVisionRegistration();
+        this.aiVisionTransports.clear();
         this.frames.clear();
         this.loadedTabs.clear();
         for (const w of this.frameLoadWaiters) w.resolve(false);

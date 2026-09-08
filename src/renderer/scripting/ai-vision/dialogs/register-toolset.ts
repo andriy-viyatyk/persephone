@@ -1,4 +1,4 @@
-import type { IAiVisionDescriptor } from "../../../../shared/ai-vision/types";
+import type { IAiVisionDescriptor } from "ai-vision";
 import type { RegisterToolsetDialogProps } from "../../../ui/dialogs/RegisterToolsetDialog";
 import { cancelDialog, closeWithResult, descriptor, dialogState, requireButton, type DialogAdapter, type DialogEntry } from "./shared";
 

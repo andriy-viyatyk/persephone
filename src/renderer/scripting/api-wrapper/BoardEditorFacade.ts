@@ -12,9 +12,9 @@ import type {
     IBrowserScreenshot,
     IBrowserTab,
 } from "../../api/types/browser-editor";
-import type { IAiElementDeclaration, IAiMember, IAiVisible, IAiVisionDescriptor } from "../../../shared/ai-vision/types";
+import { createRemoteProxy, parsePath, type IAiElement, type IAiElementDeclaration, type IAiMember, type IAiNodeShape, type IAiRemoteRequest, type IAiRemoteResponse, type IAiVisible, type IAiVisionDescriptor } from "ai-vision";
 import { ui } from "../../api/ui";
-import { createElements } from "../ai-vision/elements";
+import { createElements } from "ai-vision/dom";
 import { activatePageAndWaitForLayout, pageScopeSelector } from "../ai-vision/page-elements";
 import { BOARD_CDP_TAB } from "../../../ipc/api-types";
 import type { BoardEditorModel } from "../../editors/board/BoardEditorModel";
@@ -38,6 +38,10 @@ import { boardTrust } from "../../api/board-trust";
 import { boardSecondaryPanelId } from "../../editors/board/board-secondary";
 import type { BoardManifest, SecondaryViewDecl } from "../../editors/board/board-manifest";
 import { BROWSER_AUTOMATION_MEMBERS } from "../ai-vision/browser-automation-members";
+import { explicitBoardCallTimeoutMs } from "../../api/boards";
+import { isPositiveIntegerTimeout, resolveBoardCallTimeout } from "../../../shared/ai-vision-timeout";
+import type { IAiCallContext } from "../ai-vision/root";
+import { errMessage } from "../../../shared/utils";
 
 const BOARD_ELEMENTS: readonly IAiElementDeclaration[] = [
     { name: "board-toolbar-explorer", purpose: "Locate the toolbar control that toggles the board's Explorer navigator.", where: "left edge of the board toolbar" },
@@ -68,6 +72,13 @@ const BOARD_AUTOMATION_TAB_MEMBERS: readonly IAiMember[] = [
     { name: "switchTab", kind: "method", signature: "switchTab(tabId: string): Promise<void>", summary: "Select the main frame or a declared board-secondary:<viewId> frame and wait until it is attachable." },
 ];
 
+const APP_MEMBER: IAiMember = {
+    name: "app",
+    kind: "property",
+    node: true,
+    summary: "The trusted board-owned remote object model exposed through AiVision.",
+};
+
 const BOARD_HELP = `Access via pages[i].editor after narrowing editor.id to "board-view" or
 "board-editor:<root>". This facade describes board chrome, trust state, manifest metadata, reload,
 statusText, busy state, and declared secondary panels. It does not accept or return a trust decision:
@@ -84,6 +95,8 @@ expansion and closure belong to page.panels. statusText, busy, renderState, cont
 frameReady are model-backed and never read from the footer or board iframe. reload() uses the shared
 model waiter and returns frameReady: false when a trusted frame times out or is disposed; untrusted
 and not-found boards return immediately with frameReady: false.
+
+When a trusted board registers an AiVision shape, app is its board-owned remote tree; use app.$help or helpSearch to discover it.
 
 Board content is rendered in a cross-origin iframe, and the shared automation members reach that
 content. Use snapshot() for the iframe's complete accessibility content and pass its returned refs
@@ -106,6 +119,7 @@ export class BoardEditorFacade implements IAiVisible, IBoardEditor {
         private readonly editor: BoardEditorModel,
         readonly id: "board-view" | `board-editor:${string}`,
         readonly name: string,
+        private readonly callContext?: IAiCallContext,
     ) {}
 
     get aiVision(): IAiVisionDescriptor {
@@ -115,6 +129,8 @@ export class BoardEditorFacade implements IAiVisible, IBoardEditor {
             beforeHighlight: pageId ? () => activatePageAndWaitForLayout(pageId) : undefined,
             highlightOptions: { all: true },
         });
+        const registration = this.editor.getAiVisionRegistration();
+        const app = registration ? this.getAiVisionProxy(registration) : undefined;
         return {
             kind: "BoardEditor",
             summary: "Board chrome, trust, metadata, frame automation, panels, and reload facade.",
@@ -122,11 +138,12 @@ export class BoardEditorFacade implements IAiVisible, IBoardEditor {
                 ...BROWSER_AUTOMATION_MEMBERS,
                 ...BOARD_AUTOMATION_TAB_MEMBERS,
                 ...BOARD_MEMBERS,
+                ...(app ? [APP_MEMBER] : []),
                 ...elements.members,
             ],
             help: withEditorGuideHelp(this.id, BOARD_HELP),
             elements: BOARD_ELEMENTS,
-            provide: elements.provide,
+            provide: (name) => name === "app" && app ? { value: app } : elements.provide(name),
             restricted: () => this.restricted(),
             summarize: () => ({
                 kind: "BoardEditor",
@@ -323,7 +340,200 @@ export class BoardEditorFacade implements IAiVisible, IBoardEditor {
             ? "This board's content is restricted until the user answers the Trust-this-Board dialog (shown as \"Trust this board?\"). The facade reports trust state but never grants trust or accepts a trust decision."
             : undefined;
     }
+
+    private aiVisionProxy?: { token: number; value: IAiVisible };
+
+    private getAiVisionProxy(registration: NonNullable<ReturnType<BoardEditorModel["getAiVisionRegistration"]>>): IAiVisible {
+        if (this.aiVisionProxy?.token === registration.token) return this.aiVisionProxy.value;
+        // The proxy is built from ONE registration's shape, so every request it later emits must be
+        // checked against that registration — a reload re-registers a new shape under a new token,
+        // and a proxy handed out before it must fail loudly rather than address the new document.
+        const token = registration.token;
+        const value = createRemoteProxy(registration.shape, (request) => this.sendAiVision(request, token), {
+            restricted: () => this.restricted(),
+            onWarning: (message) => this.editor.appendAiVisionWarning(message),
+            onError: (error) => this.editor.appendAiVisionWarning(errMessage(error)),
+        });
+        this.aiVisionProxy = { token: registration.token, value };
+        return value;
+    }
+
+    private async sendAiVision(request: IAiRemoteRequest, token: number): Promise<IAiRemoteResponse> {
+        const current = this.editor.getAiVisionRegistration();
+        if (!current || current.token !== token) {
+            return {
+                ok: false,
+                error: "This board re-registered its AiVision model (a reload, or a second expose()). "
+                    + "Read pages[i].editor.app again to pick up the new one.",
+            };
+        }
+        const timeout = resolveBoardCallTimeout(
+            isPositiveIntegerTimeout(this.callContext?.timeoutMs) ? this.callContext?.timeoutMs : undefined,
+            isPositiveIntegerTimeout(request.timeoutMs) ? request.timeoutMs : undefined,
+            explicitBoardCallTimeoutMs(),
+        );
+        const pageId = this.editor.page?.id;
+        const path = request.path || "<root>";
+        const agentPath = pageId
+            ? `pages[${JSON.stringify(pageId)}].editor.app.${path}`
+            : `app.${path}`;
+        const timeoutError = new Error(
+            `AiVision request timed out at level ${timeout.level} (${timeout.label}) for path ${JSON.stringify(agentPath)}.`,
+        );
+        const route = this.resolveBoardElementRoute(request);
+        if (route.kind === "elements") {
+            return this.readElementsAcrossMountedViews(request, route.declarations, timeout);
+        }
+        return this.sendToViewAfterReady({ ...request, view: route.view }, route.view, timeout.ms, timeoutError);
+    }
+
+    private resolveBoardElementRoute(request: IAiRemoteRequest):
+        | { kind: "elements"; declarations: readonly BoardElementDeclaration[] }
+        | { kind: "view"; view: string } {
+        if (request.action === "ai:elements") {
+            const declarations = this.getBoardElementNode(request.path)?.elements;
+            if (!declarations) throw new Error(`AiVision elements are not available at ${JSON.stringify(request.path)}.`);
+            const boardDeclarations = declarations as readonly BoardElementDeclaration[];
+            this.validateElementViews(boardDeclarations);
+            return { kind: "elements", declarations: boardDeclarations };
+        }
+        if (request.action === "ai:highlight") {
+            const declaration = this.getBoardElementNode(request.path)?.elements
+                ?.find((element) => element.name === request.name) as BoardElementDeclaration | undefined;
+            if (!declaration) {
+                throw new Error(`Unknown AiVision element ${JSON.stringify(request.name ?? "")}.`);
+            }
+            const view = declaration.view ?? "main";
+            this.validateElementView(view);
+            return { kind: "view", view };
+        }
+        const view = request.view ?? "main";
+        this.validateElementView(view);
+        return { kind: "view", view };
+    }
+
+    private getBoardElementNode(path: string): IAiNodeShape | undefined {
+        let node = this.editor.getAiVisionRegistration()?.shape.root;
+        if (!node) return undefined;
+        try {
+            for (const segment of parsePath(path)) {
+                if (segment.type === "member") {
+                    node = node.members.find((member) => member.name === segment.name)?.node;
+                } else if (segment.type === "index") {
+                    node = node?.item;
+                } else {
+                    return undefined;
+                }
+                if (!node) return undefined;
+            }
+        } catch {
+            return undefined;
+        }
+        return node;
+    }
+
+    private validateElementViews(declarations: readonly BoardElementDeclaration[]): void {
+        for (const declaration of declarations) this.validateElementView(declaration.view ?? "main");
+    }
+
+    private validateElementView(view: string): void {
+        if (view === "main") return;
+        const known = (this.editor.state.get().secondaryViewDefs ?? []).some((definition) => definition.id === view);
+        if (!known) throw new Error(`Unknown board view '${view}'.`);
+    }
+
+    private async sendToViewAfterReady(
+        request: IAiRemoteRequest,
+        view: string,
+        timeoutMs: number,
+        timeoutError: Error,
+    ): Promise<IAiRemoteResponse> {
+        const deadline = Date.now() + timeoutMs;
+        if (view !== "main") {
+            await this.awaitBeforeDeadline(
+                this.editor.target.ensureReady(boardSecondaryPanelId(view)),
+                deadline,
+                timeoutError,
+            );
+        }
+        const remaining = deadline - Date.now();
+        if (remaining <= 0) throw timeoutError;
+        return this.editor.requestAiVision(request, remaining, timeoutError);
+    }
+
+    private async readElementsAcrossMountedViews(
+        request: IAiRemoteRequest,
+        declarations: readonly BoardElementDeclaration[],
+        timeout: ReturnType<typeof resolveBoardCallTimeout>,
+    ): Promise<IAiRemoteResponse> {
+        const views = [...new Set(declarations.map((declaration) => declaration.view ?? "main"))];
+        const aggregateTimeoutError = new Error(
+            `AiVision elements aggregation timed out at level ${timeout.level} (${timeout.label}) while querying views: ${views.join(", ")}.`,
+        );
+        const deadline = Date.now() + timeout.ms;
+        const resultsByView = new Map<string, readonly IAiElement[]>();
+        const unqueriedViews = new Set<string>();
+        for (const view of views) {
+            const tabId = view === "main" ? BOARD_CDP_TAB : boardSecondaryPanelId(view);
+            if (view !== "main" && !this.editor.isAiVisionTransportReady(tabId)) {
+                unqueriedViews.add(view);
+                continue;
+            }
+            const remaining = deadline - Date.now();
+            if (remaining <= 0) throw aggregateTimeoutError;
+            const response = await this.editor.requestAiVision(
+                { ...request, view },
+                remaining,
+                aggregateTimeoutError,
+            );
+            if (!response.ok) return response;
+            if (!Array.isArray(response.result)) {
+                throw new Error(`AiVision elements response for view '${view}' was not an array.`);
+            }
+            resultsByView.set(view, response.result as readonly IAiElement[]);
+        }
+
+        const result = declarations.map((declaration) => {
+            const view = declaration.view ?? "main";
+            const frameResult = resultsByView.get(view)?.find((element) => element.name === declaration.name);
+            if (frameResult) return frameResult;
+            if (unqueriedViews.has(view)) {
+                return {
+                    name: declaration.name,
+                    purpose: declaration.purpose,
+                    ...(declaration.where !== undefined ? { where: declaration.where } : {}),
+                    selector: declaration.selector ?? `[data-name="${declaration.name}"]`,
+                    visible: false,
+                    visibilityNote: `View "${view}" is not mounted; it was not queried. highlight mounts it.`,
+                };
+            }
+            throw new Error(`AiVision element ${JSON.stringify(declaration.name)} was missing from view '${view}'.`);
+        });
+        return { ok: true, result };
+    }
+
+    private async awaitBeforeDeadline(
+        promise: Promise<void>,
+        deadline: number,
+        timeoutError: Error,
+    ): Promise<void> {
+        const remaining = deadline - Date.now();
+        if (remaining <= 0) throw timeoutError;
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        try {
+            await Promise.race([
+                promise,
+                new Promise<never>((_, reject) => {
+                    timer = setTimeout(() => reject(timeoutError), remaining);
+                }),
+            ]);
+        } finally {
+            if (timer !== undefined) clearTimeout(timer);
+        }
+    }
 }
+
+type BoardElementDeclaration = IAiElementDeclaration & { readonly view?: string };
 
 function copyManifest(manifest: BoardManifest): IBoardManifest | undefined {
     if (typeof manifest.schemaVersion !== "number") return undefined;

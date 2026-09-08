@@ -196,6 +196,8 @@ export interface IAppCallOptions {
     value?: unknown;
     /** Maximum serialized length used when shaping string or structured results. */
     maxLength?: number;
+    /** Host-side timeout in milliseconds for a remote board leaf call. */
+    timeoutMs?: number;
 }
 
 /**

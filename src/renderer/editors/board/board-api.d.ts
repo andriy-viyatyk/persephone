@@ -4,11 +4,12 @@
  * inlined into the board iframe by the `board://` handler and talking to main over
  * a per-board MessagePort; this is the ONLY Persephone surface a board sees.
  *
- * This file is the canonical author-facing reference. It is intentionally NOT under
- * `src/renderer/api/types/` (that folder is flat-copied into the Persephone *script*
- * IntelliSense surface — `persephone` is a board-page global, not a script global).
- * US-726 ships this shape into the board template + dev-shim. Self-contained on
- * purpose; mirrors the handle contract in `src/ipc/runner-channels.ts`.
+ * This is a legacy IntelliSense snapshot, not the maintained author reference. It is intentionally
+ * NOT under `src/renderer/api/types/` (that folder is flat-copied into the Persephone *script*
+ * IntelliSense surface — `persephone` is a board-page global, not a script global). The complete
+ * board authoring reference is `assets/board-template/CLAUDE.md` and
+ * `assets/guides/agents/boards.md`; keep this file self-contained when adding high-value hints.
+ * It is not copied into a board folder or loaded as a Monaco extra-lib by the current scaffold.
  */
 
 /** Options for `persephone.execute()`. */
@@ -157,9 +158,40 @@ interface PersephoneVarApi {
     show(): Promise<void>;
 }
 
+interface PersephoneAiVisionElementDeclaration {
+    name: string;
+    purpose: string;
+    where?: string;
+    selector?: string;
+    view?: string;
+    reveal?: { selector: string; display: string };
+}
+
+interface PersephoneAiVisionElements {
+    readonly members: readonly unknown[];
+    provide(name: string): { value: unknown } | undefined;
+}
+
+interface PersephoneAiVisionRemote {
+    readonly schemaVersion: number;
+    describe(): unknown;
+    refresh(): void;
+    dispose(): void;
+}
+
+interface PersephoneAiVisionApi {
+    /** Bridge schema version 1, available from board bridge version 1.3.0. */
+    readonly schemaVersion: 1;
+    expose(root: object): PersephoneAiVisionRemote;
+    createElements(declarations: readonly PersephoneAiVisionElementDeclaration[]): PersephoneAiVisionElements;
+}
+
 interface PersephoneBoardApi {
-    /** Bridge version. */
+    /** Bridge version, e.g. "1.3.0" — the release that added the AiVision board surface. Compare
+     *  it before using a newer member; do not narrow it to a literal, it moves with the app. */
     readonly version: string;
+    /** Publish the board's serializable AiVision model shape. Main frame only. */
+    readonly aiVision: PersephoneAiVisionApi;
     /** Spawn a command line on the host machine; returns a process handle. */
     execute(command: string, options?: PersephoneExecuteOptions): PersephoneExecuteHandle;
     /** Run a Node script on Persephone's bundled Node runtime (no Node install

@@ -1,8 +1,8 @@
 import { pagesModel } from "../../api/pages";
 import type { IPageHost } from "../../api/pages/IPageHost";
 import { ui } from "../../api/ui";
-import type { IAiElementDeclaration, IAiMember, IAiVisible, IAiVisionDescriptor } from "../../../shared/ai-vision/types";
-import { createElements } from "./elements";
+import type { IAiElementDeclaration, IAiMember, IAiVisible, IAiVisionDescriptor } from "ai-vision";
+import { createElements } from "ai-vision/dom";
 import { pageScopeSelector } from "./page-elements";
 
 const TAB_ELEMENTS: readonly IAiElementDeclaration[] = [

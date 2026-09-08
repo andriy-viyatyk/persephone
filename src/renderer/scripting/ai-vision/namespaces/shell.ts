@@ -1,4 +1,4 @@
-import type { IAiMember, IAiVisionDescriptor } from "../../../../shared/ai-vision/types";
+import type { IAiMember, IAiVisionDescriptor } from "ai-vision";
 
 const SHELL_MEMBERS: readonly IAiMember[] = [
     { name: "openExternal", kind: "method", signature: "openExternal(url: string)", summary: "Open a URL in the OS default browser.", caution: "opens or focuses an external application" },

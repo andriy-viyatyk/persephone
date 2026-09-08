@@ -1,6 +1,6 @@
 import { openWindows } from "../../open-windows";
 import { windowStates } from "../../window-states";
-import { IAiChild, IAiMember, IAiVisible, IAiVisionDescriptor } from "../../../shared/ai-vision/types";
+import { IAiChild, IAiMember, IAiVisible, IAiVisionDescriptor } from "ai-vision";
 import { createGuideIndex } from "../../../shared/guides";
 import { GuidesNode } from "./guides";
 import { MainGuideSource } from "./guide-source";

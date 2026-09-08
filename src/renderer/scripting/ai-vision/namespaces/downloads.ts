@@ -1,5 +1,5 @@
 import type { IDownloads } from "../../../api/types/downloads";
-import type { IAiMember, IAiVisionDescriptor } from "../../../../shared/ai-vision/types";
+import type { IAiMember, IAiVisionDescriptor } from "ai-vision";
 
 const DOWNLOADS_MEMBERS: readonly IAiMember[] = [
     { name: "downloads", kind: "property", summary: "Current download entries as plain data." },

@@ -8,9 +8,7 @@ import type { PageCollectionWrapper } from "../api-wrapper/PageCollectionWrapper
 import type { PageWrapper } from "../api-wrapper/PageWrapper";
 import { scriptRunner } from "../ScriptRunner";
 import { resolveRendererScriptEditor } from "../renderer-script-target";
-import { helpSearch as searchHelp, IHelpSearchHit } from "../../../shared/ai-vision/help-search";
-import { numberRule, stringRule, validateCallArguments } from "../../../shared/ai-vision/argument-validation";
-import { IAiChild, IAiMember, IAiVisible, IAiVisionDescriptor } from "../../../shared/ai-vision/types";
+import { helpSearch as searchHelp, IAiChild, IAiMember, IAiVisible, IAiVisionDescriptor, IHelpSearchHit, numberRule, stringRule, validateCallArguments } from "ai-vision";
 
 interface IHelpSearchEmptyResult {
     kind: "HelpSearch";
@@ -27,6 +25,12 @@ export interface AiRootOptions {
     page?: PageWrapper;
     /** Additional root gate evaluated by the shared resolver for each call. */
     restricted?: () => string | undefined;
+    /** Renderer-only context carried to per-call board facade transports. */
+    callContext?: IAiCallContext;
+}
+
+export interface IAiCallContext {
+    readonly timeoutMs?: number;
 }
 
 /**
@@ -184,11 +188,12 @@ export class AiRoot implements IAiVisible {
     private readonly scriptNode = new ScriptNode();
 
     get pages(): PageCollectionWrapper {
-        return this.app.pages;
+        return this.app.pages.withCallContext(this.options.callContext);
     }
 
     get page(): PageWrapper | undefined {
-        return this.options.page ?? this.app.pages.activePage;
+        const page = this.options.page ?? this.app.pages.activePage;
+        return page ? this.app.pages.withCallContext(this.options.callContext).findPage(page.id) : undefined;
     }
 
     async helpSearch(...args: unknown[]): Promise<HelpSearchResult> {

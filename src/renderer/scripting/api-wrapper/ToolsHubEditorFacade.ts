@@ -1,8 +1,8 @@
 import { withEditorGuideHelp } from "./editor-guide-help";
 import type { HubTab, IToolsHubEditor } from "../../api/types/tools-hub-editor";
-import type { IAiElementDeclaration, IAiMember, IAiVisible, IAiVisionDescriptor } from "../../../shared/ai-vision/types";
+import type { IAiElementDeclaration, IAiMember, IAiVisible, IAiVisionDescriptor } from "ai-vision";
 import { ui } from "../../api/ui";
-import { createElements } from "../ai-vision/elements";
+import { createElements } from "ai-vision/dom";
 import { activatePageAndWaitForLayout, pageScopeSelector } from "../ai-vision/page-elements";
 import type { ToolsHubEditor } from "../../editors/tools-hub/ToolsHubEditor";
 

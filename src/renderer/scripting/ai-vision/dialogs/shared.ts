@@ -1,5 +1,5 @@
 import type { IDialogViewData } from "../../../ui/dialogs/dialog-view-registry";
-import type { IAiVisionDescriptor, IAiVisible } from "../../../../shared/ai-vision/types";
+import type { IAiVisionDescriptor, IAiVisible } from "ai-vision";
 
 export type DialogEntry = IDialogViewData;
 

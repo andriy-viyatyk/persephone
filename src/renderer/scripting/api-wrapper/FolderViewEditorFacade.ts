@@ -1,8 +1,8 @@
 import { withEditorGuideHelp } from "./editor-guide-help";
 import type { IFolderItem, IFolderViewEditor, IFolderViewMode } from "../../api/types/folder-view-editor";
-import type { IAiMember, IAiVisible, IAiVisionDescriptor } from "../../../shared/ai-vision/types";
+import type { IAiMember, IAiVisible, IAiVisionDescriptor } from "ai-vision";
 import { ui } from "../../api/ui";
-import { createElements } from "../ai-vision/elements";
+import { createElements } from "ai-vision/dom";
 import { activatePageAndWaitForLayout, pageScopeSelector } from "../ai-vision/page-elements";
 import type { CategoryEditorModel } from "../../editors/category/CategoryEditorModel";
 

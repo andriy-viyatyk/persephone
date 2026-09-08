@@ -24,7 +24,7 @@ import type { FileDiffEditor } from "../../editors/file-diff/FileDiffEditor";
 import type { BrowserEditorModel } from "../../editors/browser/BrowserEditorModel";
 import type { McpInspectorEditorModel } from "../../editors/mcp-inspector/McpInspectorEditorModel";
 import type { ScriptOutputFlags } from "../ScriptContext";
-import type { IAiChild, IAiMember, IAiVisible, IAiVisionDescriptor } from "../../../shared/ai-vision/types";
+import type { IAiChild, IAiMember, IAiVisible, IAiVisionDescriptor } from "ai-vision";
 import { agentMayAccessBrowserPage, privateBrowserRefusal } from "../../editors/browser/agent-access";
 import { BrowserEditorFacade } from "./BrowserEditorFacade";
 import { DrawEditorFacade } from "./DrawEditorFacade";
@@ -36,6 +36,7 @@ import { ImageEditorFacade } from "./ImageEditorFacade";
 import { LinkEditorFacade } from "./LinkEditorFacade";
 import { MarkdownEditorFacade } from "./MarkdownEditorFacade";
 import { AboutEditorFacade } from "./AboutEditorFacade";
+import type { IAiCallContext } from "../ai-vision/root";
 import { McpInspectorFacade } from "./McpInspectorFacade";
 import { MermaidEditorFacade } from "./MermaidEditorFacade";
 import { NotebookEditorFacade } from "./NotebookEditorFacade";
@@ -77,10 +78,11 @@ type EditorFacade =
     | LogViewEditorFacade | FolderViewEditorFacade | GitTreeEditorFacade | BoardEditorFacade
     | BoardInfoEditorFacade | ToolsetEditorFacade | ToolsHubEditorFacade
     | MnemeConfigEditorFacade | MnemeRootEditorFacade | GenericEditorFacade;
-type EditorFacadeFactory = (editor: EditorModel, id: string, name: string) => EditorFacade;
+type EditorFacadeFactory =
+    (editor: EditorModel, id: string, name: string, callContext?: IAiCallContext) => EditorFacade;
 
-const BOARD_FACADE_FACTORY: EditorFacadeFactory = (editor, id, name) =>
-    new BoardEditorFacade(editor as BoardEditorModel, id as "board-view" | `board-editor:${string}`, name);
+const BOARD_FACADE_FACTORY: EditorFacadeFactory = (editor, id, name, callContext) =>
+    new BoardEditorFacade(editor as BoardEditorModel, id as "board-view" | `board-editor:${string}`, name, callContext);
 
 const BOARD_INFO_FACADE_FACTORY: EditorFacadeFactory = (editor, id, name) =>
     new BoardInfoEditorFacade(editor as BoardInfoEditorModel, id as "board-info", name);
@@ -102,7 +104,7 @@ const FACADE_FOR_EDITOR: Record<string, EditorFacadeFactory> = {
     "mermaid-view": (editor, id, name) => new MermaidEditorFacade(editor as MermaidEditor, id, name),
     "graph-view": (editor, id, name) => new GraphEditorFacade(editor as GraphEditor, id, name),
     "draw-view": (editor, id, name) => new DrawEditorFacade(editor as DrawEditor, id, name),
-    "browser-view": (editor, id, name) => new BrowserEditorFacade(editor as unknown as BrowserEditorModel, id, name),
+    "browser-view": (editor, id, name, callContext) => new BrowserEditorFacade(editor as unknown as BrowserEditorModel, id, name, callContext),
     "mcp-view": (editor, id, name) => new McpInspectorFacade(editor as unknown as McpInspectorEditorModel, id, name),
     "image-view": (editor, id, name) => new ImageEditorFacade(editor as unknown as ImageEditor, id, name),
     "video-view": (editor, id, name) => new VideoEditorFacade(editor as unknown as VideoEditor, id, name),
@@ -162,6 +164,7 @@ export class PageWrapper implements IAiVisible {
         private readonly model: EditorOrHost,
         private readonly releaseList: Array<() => void>,
         private readonly outputFlags?: ScriptOutputFlags,
+        private readonly callContext?: IAiCallContext,
     ) {}
 
     private get mainEditor(): EditorModel | null {
@@ -207,7 +210,7 @@ export class PageWrapper implements IAiVisible {
             ? FACADE_FOR_EDITOR[id]
                 ?? (isBoardEditorId(id) ? BOARD_FACADE_FACTORY : undefined)
             : undefined;
-        return factory ? factory(editor, id, name) : new GenericEditorFacade(id, name);
+        return factory ? factory(editor, id, name, this.callContext) : new GenericEditorFacade(id, name);
     }
 
     get editorSwitches(): PageEditorSwitchesNode {
@@ -223,7 +226,7 @@ export class PageWrapper implements IAiVisible {
         const pageId = this.model.page?.id ?? this.model.id;
         const groupedPage = pagesModel.getGroupedPage(pageId);
         const editor = groupedPage?.mainEditor ?? pagesModel.requireGroupedText(pageId);
-        return new GroupedPageWrapper(editor, this.releaseList, this.outputFlags);
+        return new GroupedPageWrapper(editor, this.releaseList, this.outputFlags, this.callContext);
     }
 
     get aiVision(): IAiVisionDescriptor {
@@ -290,8 +293,13 @@ export class PageWrapper implements IAiVisible {
 }
 
 class GroupedPageWrapper extends PageWrapper {
-    constructor(model: EditorOrHost, releaseList: Array<() => void>, private readonly flags?: ScriptOutputFlags) {
-        super(model, releaseList);
+    constructor(
+        model: EditorOrHost,
+        releaseList: Array<() => void>,
+        private readonly flags?: ScriptOutputFlags,
+        callContext?: IAiCallContext,
+    ) {
+        super(model, releaseList, flags, callContext);
     }
 
     set content(value: string) {

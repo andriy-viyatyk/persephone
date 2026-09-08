@@ -22,6 +22,7 @@ import { BrowserBookmarksUIModel } from "./BrowserBookmarksUIModel";
 import { BrowserTargetModel } from "./BrowserTargetModel";
 import { BrowserTabsModel } from "./BrowserTabsModel";
 import { BrowserTorModel } from "./BrowserTorModel";
+import type { IAiVisionShape } from "ai-vision";
 import {
     BrowserEditorState,
     BrowserTabData,
@@ -36,6 +37,13 @@ import {
 
 export type BrowserQueueEvent = { type: "focus" };
 export type BrowserQueueRequest = never;
+
+export interface BrowserAiVisionRegistration {
+    readonly internalTabId: string;
+    readonly shape: IAiVisionShape;
+    readonly generation: number;
+    readonly token: number;
+}
 
 export class BrowserEditor extends EditorModel<
     BrowserEditorState,
@@ -62,6 +70,11 @@ export class BrowserEditor extends EditorModel<
     readonly typedQueue: ComponentQueue<BrowserQueueEvent, BrowserQueueRequest>;
 
     private keyDownSub: () => void;
+    private readonly aiVisionByTab = new Map<string, BrowserAiVisionRegistration>();
+    private readonly aiVisionGenerationByTab = new Map<string, number>();
+    private aiVisionToken = 0;
+    private aiVisionBindingVersion = 0;
+    private aiVisionDisposed = false;
 
     constructor(state: TComponentState<BrowserEditorState>) {
         super(state);
@@ -91,7 +104,61 @@ export class BrowserEditor extends EditorModel<
     showTorInfoDialog = async (): Promise<void> => this.tor.showInfoDialog();
     toggleTorOverlay = () => this.tor.toggleOverlay();
 
+    getAiVisionRegistration = (
+        internalTabId = this.state.get().activeTabId,
+    ): BrowserAiVisionRegistration | undefined => this.aiVisionByTab.get(internalTabId);
+
+    getAiVisionDocumentGeneration = (internalTabId: string): number | undefined => {
+        if (!this.state.get().tabs.some((tab) => tab.id === internalTabId)) return undefined;
+        return this.aiVisionGenerationByTab.get(internalTabId) ?? 0;
+    };
+
+    getAiVisionBindingVersion = (): number => this.aiVisionBindingVersion;
+
+    setAiVisionRegistration = (
+        internalTabId: string,
+        generation: number,
+        shape: IAiVisionShape,
+    ): boolean => {
+        if (this.aiVisionDisposed
+            || this.getAiVisionDocumentGeneration(internalTabId) !== generation) return false;
+        const registration: BrowserAiVisionRegistration = {
+            internalTabId,
+            shape,
+            generation,
+            token: ++this.aiVisionToken,
+        };
+        this.aiVisionByTab.set(internalTabId, registration);
+        return true;
+    };
+
+    clearAiVisionRegistration = (internalTabId: string): void => {
+        const generation = this.aiVisionGenerationByTab.get(internalTabId) ?? 0;
+        this.aiVisionGenerationByTab.set(internalTabId, generation + 1);
+        this.aiVisionByTab.delete(internalTabId);
+    };
+
+    clearAiVisionRegistrationIfCurrent = (internalTabId: string, generation: number): void => {
+        if (this.getAiVisionDocumentGeneration(internalTabId) === generation) {
+            this.clearAiVisionRegistration(internalTabId);
+        }
+    };
+
+    invalidateAiVisionBinding = (): void => {
+        this.aiVisionBindingVersion++;
+    };
+
+    private clearAllAiVisionRegistrations(): void {
+        for (const internalTabId of this.aiVisionByTab.keys()) {
+            this.clearAiVisionRegistration(internalTabId);
+        }
+        this.aiVisionByTab.clear();
+    }
+
     async dispose(): Promise<void> {
+        this.aiVisionDisposed = true;
+        this.clearAllAiVisionRegistrations();
+        this.aiVisionGenerationByTab.clear();
         this.bookmarksUI.dispose();
 
         const s = this.state.get();

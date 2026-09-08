@@ -1,5 +1,5 @@
 import type { IRecentFiles } from "../../../api/types/recent";
-import type { IAiMember, IAiVisionDescriptor } from "../../../../shared/ai-vision/types";
+import type { IAiMember, IAiVisionDescriptor } from "ai-vision";
 
 const RECENT_FILES_MEMBERS: readonly IAiMember[] = [
     { name: "files", kind: "property", summary: "Loaded recent paths, most recent first; empty until load runs." },

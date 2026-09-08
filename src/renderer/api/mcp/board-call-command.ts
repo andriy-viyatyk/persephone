@@ -2,9 +2,9 @@ import { pagesModel } from "../pages";
 import { boardTrust } from "../board-trust";
 import { ScriptContext } from "../../scripting/ScriptContext";
 import { resolveAiCall } from "../../scripting/ai-vision/call";
-import type { ICallRequest } from "../../../shared/ai-vision/resolver";
 import { errMessage } from "../../../shared/utils";
 import type { McpParams, McpResponse } from "./types";
+import { isPositiveIntegerTimeout } from "../../../shared/ai-vision-timeout";
 
 /** Internal renderer command used only by the Board MessagePort call envelope. */
 export async function handleBoardCall(params: McpParams): Promise<McpResponse> {
@@ -21,13 +21,17 @@ export async function handleBoardCall(params: McpParams): Promise<McpResponse> {
     if (requestData.args !== undefined && !Array.isArray(requestData.args)) {
         return { error: { code: -32602, message: "Board call args must be an array." } };
     }
+    if (requestData.timeoutMs !== undefined && !isPositiveIntegerTimeout(requestData.timeoutMs)) {
+        return { error: { code: -32602, message: "Board call timeoutMs must be a positive integer." } };
+    }
 
-    const request: ICallRequest = {
+    const request = {
         path: requestData.path,
-        hints: "never",
+        hints: "never" as const,
         ...(requestData.args !== undefined ? { args: requestData.args as unknown[] } : {}),
         ...(Object.prototype.hasOwnProperty.call(requestData, "value") ? { value: requestData.value } : {}),
         ...(typeof requestData.maxLength === "number" ? { maxLength: requestData.maxLength } : {}),
+        ...(requestData.timeoutMs !== undefined ? { timeoutMs: requestData.timeoutMs } : {}),
     };
     const page = pagesModel.findPage(ownerId);
     if (!page) {

@@ -2,8 +2,8 @@ import { pagesModel } from "../../../api/pages";
 import { ui } from "../../../api/ui";
 import type { BrowserProfile } from "../../../api/settings";
 import type { ISettings } from "../../../api/types/settings";
-import { createElements } from "../elements";
-import type { IAiElementDeclaration, IAiMember, IAiVisionDescriptor } from "../../../../shared/ai-vision/types";
+import { createElements } from "ai-vision/dom";
+import type { IAiElementDeclaration, IAiMember, IAiVisionDescriptor } from "ai-vision";
 
 interface SettingsCatalogRow {
     readonly key: string;

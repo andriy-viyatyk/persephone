@@ -18,9 +18,9 @@ import type {
     RestResponse,
 } from "../../editors/rest-client/restClientTypes";
 import { ui } from "../../api/ui";
-import { createElements } from "../ai-vision/elements";
+import { createElements } from "ai-vision/dom";
 import { activatePageAndWaitForLayout, pageScopeSelector } from "../ai-vision/page-elements";
-import type { IAiElementDeclaration, IAiMember, IAiVisible, IAiVisionDescriptor } from "../../../shared/ai-vision/types";
+import type { IAiElementDeclaration, IAiMember, IAiVisible, IAiVisionDescriptor } from "ai-vision";
 
 const REST_CLIENT_ELEMENTS: readonly IAiElementDeclaration[] = [
     { name: "body-language", purpose: "Choose the raw request body language.", where: "right side of the Body section header, for raw bodies" },

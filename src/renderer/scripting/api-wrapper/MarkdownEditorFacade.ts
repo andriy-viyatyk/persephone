@@ -1,8 +1,8 @@
 import { withEditorGuideHelp } from "./editor-guide-help";
 import type { MarkdownEditor } from "../../editors/markdown";
-import type { IAiMember, IAiVisible, IAiVisionDescriptor } from "../../../shared/ai-vision/types";
+import type { IAiMember, IAiVisible, IAiVisionDescriptor } from "ai-vision";
 import { ui } from "../../api/ui";
-import { createElements } from "../ai-vision/elements";
+import { createElements } from "ai-vision/dom";
 import { activatePageAndWaitForLayout, pageScopeSelector } from "../ai-vision/page-elements";
 
 const MARKDOWN_ELEMENTS = [

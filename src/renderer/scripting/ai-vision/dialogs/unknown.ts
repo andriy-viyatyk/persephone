@@ -1,4 +1,4 @@
-import type { IAiVisionDescriptor } from "../../../../shared/ai-vision/types";
+import type { IAiVisionDescriptor } from "ai-vision";
 import { cancelDialog, descriptor, requireButton, type DialogAdapter, type DialogEntry } from "./shared";
 
 /**

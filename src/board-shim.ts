@@ -28,6 +28,9 @@ import {
 } from "./ipc/runner-channels";
 import { createExecuteHandle } from "./shared/execute-handle";
 import type {
+    BoardAiVisionRegistrationMsg,
+    BoardAiVisionRequestMsg,
+    BoardAiVisionResultMsg,
     BoardBootContext,
     BoardFireMethod,
     BoardHostContentMsg,
@@ -38,6 +41,15 @@ import type {
     BoardToMain,
     MainToBoard,
 } from "./ipc/board-bridge-channels";
+import { AI_VISION_SCHEMA_VERSION, expose } from "ai-vision/remote";
+import { createElements as createDomElements, highlightElement } from "ai-vision/dom";
+import type {
+    IAiElementDeclaration,
+    IAiRemoteRequest,
+    IAiRemoteResponse,
+    IAiVisionShape,
+} from "ai-vision";
+import type { IAiVisionRemote } from "ai-vision/remote";
 import { installBoardDiagnostics } from "./board-console-mirror";
 import { installBoardContextMenu } from "./board-context-menu";
 import { errMessage } from "./shared/utils";
@@ -199,7 +211,96 @@ const pendingRpc = new Map<number, { resolve: (v: unknown) => void; reject: (e: 
 let rpcId = 0;
 const pendingCalls = new Map<number, { resolve: (v: unknown) => void; reject: (e: Error) => void; timer: ReturnType<typeof setTimeout> }>();
 let callId = 0;
-const BOARD_CALL_TIMEOUT_MS = 30_000;
+// This is only a dead-port guard. It must exceed every host-side call limit, including the
+// public boards.callTimeoutMs maximum, so the host remains the single policy owner.
+const BOARD_CALL_DEAD_PORT_GUARD_MS = 2_147_000_000;
+
+let aiVisionRemote: IAiVisionRemote | null = null;
+let aiVisionGeneration = 0;
+type BoardElementDeclaration = IAiElementDeclaration & { readonly view?: string };
+type BoardElementProvider = (name: string) => { value: unknown } | undefined;
+
+interface BoardElementsRegistry {
+    readonly declarations: readonly BoardElementDeclaration[];
+    readonly provide: BoardElementProvider;
+}
+
+let boardElementsRegistry: BoardElementsRegistry | undefined;
+
+function registerFrameElements(
+    declarations: readonly BoardElementDeclaration[],
+    provide: BoardElementProvider,
+): void {
+    const names = new Set<string>();
+    for (const declaration of declarations) {
+        if (names.has(declaration.name)) {
+            throw new Error(`Duplicate AiVision element name ${JSON.stringify(declaration.name)}.`);
+        }
+        names.add(declaration.name);
+    }
+    if (boardElementsRegistry) {
+        throw new Error("Only one complete AiVision element declaration set may be registered per frame.");
+    }
+    boardElementsRegistry = {
+        declarations: declarations.map((declaration) => ({ ...declaration })),
+        provide,
+    };
+}
+
+function decorateAiVisionShape(shape: IAiVisionShape): IAiVisionShape {
+    const registry = boardElementsRegistry;
+    if (!registry) return shape;
+    const viewByName = new Map(registry.declarations.map((declaration) => [declaration.name, declaration.view]));
+    const decorateNode = (node: IAiVisionShape["root"]): IAiVisionShape["root"] => ({
+        ...node,
+        ...(node.elements
+            ? {
+                elements: node.elements.map((element) => {
+                    const view = viewByName.get(element.name);
+                    return view === undefined ? element : { ...element, view };
+                }),
+            }
+            : {}),
+        members: node.members.map((member) => ({
+            ...member,
+            ...(member.node ? { node: decorateNode(member.node) } : {}),
+            ...(member.item ? { item: decorateNode(member.item) } : {}),
+        })),
+        ...(node.item ? { item: decorateNode(node.item) } : {}),
+    });
+    return { ...shape, root: decorateNode(shape.root) };
+}
+
+function createBoardElements(declarations: readonly BoardElementDeclaration[]) {
+    const result = createDomElements(declarations, highlightElement);
+    registerFrameElements(declarations, result.provide);
+    return result;
+}
+
+function handleLocalAiVisionRequest(request: IAiRemoteRequest): Promise<IAiRemoteResponse> {
+    const registry = boardElementsRegistry;
+    if (!registry || request.path !== "") {
+        return Promise.resolve({ ok: false, error: "The board has no unambiguous root element provider." });
+    }
+    try {
+        if (request.action === "ai:elements") {
+            const provided = registry.provide("elements");
+            if (!provided) throw new Error("AiVision elements are not available on the board root.");
+            return Promise.resolve({ ok: true, result: provided.value });
+        }
+        if (request.action === "ai:highlight") {
+            const provided = registry.provide("highlight");
+            if (!provided || typeof provided.value !== "function") {
+                throw new Error("AiVision highlight is not available on the board root.");
+            }
+            return Promise.resolve(provided.value(request.name ?? "", request.message))
+                .then((result) => ({ ok: true, result }));
+        }
+        return Promise.resolve({ ok: false, error: `Unsupported local AiVision action ${request.action}.` });
+    } catch (error) {
+        return Promise.reject(error);
+    }
+}
 /** Per-job runner routers (an execute handle registers/unregisters its jobId). */
 const runnerHandlers = new Map<
     string,
@@ -265,17 +366,20 @@ function rpc(method: BoardRpcMethod, args: unknown[]): Promise<unknown> {
     });
 }
 
-function call(path: string, options?: { args?: unknown[]; value?: unknown; maxLength?: number }): Promise<unknown> {
+function call(path: string, options?: { args?: unknown[]; value?: unknown; maxLength?: number; timeoutMs?: number }): Promise<unknown> {
     if (typeof path !== "string" || !path) return Promise.reject(new Error("persephone.call() needs a non-empty path."));
     if (options?.args !== undefined && !Array.isArray(options.args)) {
         return Promise.reject(new Error("persephone.call() options.args must be an array."));
+    }
+    if (options?.timeoutMs !== undefined && !isPositiveInteger(options.timeoutMs)) {
+        return Promise.reject(new Error("persephone.call() options.timeoutMs must be a positive integer."));
     }
     return new Promise<unknown>((resolve, reject) => {
         const id = ++callId;
         const timer = setTimeout(() => {
             pendingCalls.delete(id);
             reject(new Error("persephone.call() timed out."));
-        }, BOARD_CALL_TIMEOUT_MS);
+        }, BOARD_CALL_DEAD_PORT_GUARD_MS);
         pendingCalls.set(id, { resolve, reject, timer });
         const request = {
             path,
@@ -284,6 +388,7 @@ function call(path: string, options?: { args?: unknown[]; value?: unknown; maxLe
                 ? { value: options.value }
                 : {}),
             ...(options?.maxLength !== undefined ? { maxLength: options.maxLength } : {}),
+            ...(options?.timeoutMs !== undefined ? { timeoutMs: options.timeoutMs } : {}),
         };
         try {
             post({ kind: "call", id, request });
@@ -293,6 +398,57 @@ function call(path: string, options?: { args?: unknown[]; value?: unknown; maxLe
             reject(new Error(errMessage(error, "Persephone host is unavailable.")));
         }
     });
+}
+
+function isPositiveInteger(value: unknown): value is number {
+    return typeof value === "number" && Number.isFinite(value) && Number.isInteger(value) && value > 0;
+}
+
+function postAiVisionRegistration(remote: IAiVisionRemote): void {
+    if (viewRole !== "main") return;
+    const message: BoardAiVisionRegistrationMsg = {
+        __persephone: "board:aiVision",
+        schemaVersion: remote.schemaVersion,
+        shape: decorateAiVisionShape(remote.describe()),
+    };
+    try {
+        window.parent.postMessage(message, hostPostTarget);
+    } catch {
+        // The host frame may have gone away while the board is being replaced.
+    }
+}
+
+function exposeAiVision(root: object): IAiVisionRemote {
+    aiVisionRemote?.dispose();
+    const generation = ++aiVisionGeneration;
+    const remote = expose(root, {
+        publish: false,
+        onWarning: (message) => console.warn("[persephone.aiVision]", message),
+    });
+    aiVisionRemote = remote;
+    postAiVisionRegistration(remote);
+
+    return {
+        schemaVersion: remote.schemaVersion,
+        describe: () => decorateAiVisionShape(remote.describe()),
+        handle: async (request: IAiRemoteRequest): Promise<IAiRemoteResponse> => {
+            const response = await remote.handle(request);
+            return aiVisionRemote === remote && aiVisionGeneration === generation
+                ? response
+                : { ok: false, error: "The AiVision remote has been replaced." };
+        },
+        refresh: () => {
+            if (aiVisionRemote !== remote || aiVisionGeneration !== generation) return;
+            remote.refresh();
+            postAiVisionRegistration(remote);
+        },
+        dispose: () => {
+            if (aiVisionRemote !== remote || aiVisionGeneration !== generation) return;
+            remote.dispose();
+            aiVisionRemote = null;
+            aiVisionGeneration++;
+        },
+    };
 }
 
 function fire(method: BoardFireMethod, args: unknown[]): void {
@@ -349,7 +505,16 @@ function onPortMessage(data: MainToBoard): void {
 }
 
 function attachPort(p: MessagePort): void {
-    if (port) return; // already connected (ignore a duplicate handshake)
+    if (port === p) return; // already connected (ignore a duplicate handshake)
+    if (port) {
+        port.close();
+        const bridgeReplaced = new Error("Persephone bridge was replaced.");
+        for (const pending of pendingCalls.values()) {
+            clearTimeout(pending.timer);
+            pending.reject(bridgeReplaced);
+        }
+        pendingCalls.clear();
+    }
     port = p;
     p.onmessage = (ev: MessageEvent) => onPortMessage(ev.data as MainToBoard);
     // Flush queued outgoing messages in order.
@@ -415,6 +580,52 @@ onHostMessage((event) => {
     const data = event.data as BoardStateSyncMsg | undefined;
     if (!data || data.__persephone !== "state:sync") return;
     applyStateSync(data.state ?? {}, typeof data.seq === "number" ? data.seq : 0);
+});
+
+// Host-initiated AiVision leaf request. The remote generation is captured before the await so a
+// board that replaces its exposed root cannot send an old result into the host's new registration.
+onHostMessage((event) => {
+    const data = event.data as BoardAiVisionRequestMsg | undefined;
+    if (!data || data.__persephone !== "ai:request" || typeof data.reqId !== "number") return;
+    const remote = aiVisionRemote;
+    const generation = aiVisionGeneration;
+    const isLocalElementAction = viewRole !== "main"
+        && (data.request.action === "ai:elements" || data.request.action === "ai:highlight");
+    const responsePromise: Promise<IAiRemoteResponse> = isLocalElementAction
+        ? handleLocalAiVisionRequest(data.request)
+        : remote
+          ? remote.handle(data.request)
+          : Promise.resolve({ ok: false, error: "The board has not exposed an AiVision root." });
+    void responsePromise
+        .then((response) => {
+            if (aiVisionRemote !== remote || aiVisionGeneration !== generation) return;
+            const message: BoardAiVisionResultMsg = {
+                __persephone: "board:aiResult",
+                reqId: data.reqId,
+                response,
+            };
+            try {
+                window.parent.postMessage(message, hostPostTarget);
+            } catch {
+                // The host frame may have gone away while the remote was handling the request.
+            }
+        })
+        .catch((error: unknown) => {
+            if (aiVisionRemote !== remote || aiVisionGeneration !== generation) return;
+            const message: BoardAiVisionResultMsg = {
+                __persephone: "board:aiResult",
+                reqId: data.reqId,
+                response: {
+                    ok: false,
+                    error: errMessage(error, "The AiVision request failed."),
+                },
+            };
+            try {
+                window.parent.postMessage(message, hostPostTarget);
+            } catch {
+                // The host frame may have gone away while the remote was handling the request.
+            }
+        });
 });
 
 // Content-path request reply — renderer → board. Same trust gate as host:content/state:sync.
@@ -561,8 +772,14 @@ function createHandle(
 
 (window as unknown as { persephone: unknown }).persephone = {
     // Bridge API version — bumped when the `persephone.*` surface gains something.
-    // 1.2.0: programmatic AiVision calls (US-1296).
-    version: "1.2.0",
+    // 1.2.0: programmatic AiVision calls (US-1296); 1.3.0 adds remote trees (US-1390).
+    version: "1.3.0",
+
+    aiVision: {
+        schemaVersion: AI_VISION_SCHEMA_VERSION,
+        expose: exposeAiVision,
+        createElements: createBoardElements,
+    },
 
     /** This frame's view role (EPIC-044): "main" for the board's main view, or the id of a
      *  declared secondary view. Branch on it to render every view from one HTML file. */

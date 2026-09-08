@@ -10,6 +10,8 @@ import type {
     IHighlightResult,
     NotificationType,
 } from "./types/ui";
+import type { IAiHighlightApi } from "ai-vision/dom";
+import { installHighlightOverlay } from "ai-vision/dom";
 import { alertsBarModel } from "../uikit";
 
 /** Internal renderer request for a declaration-scoped temporary reveal. */
@@ -18,16 +20,11 @@ export interface IHighlightRevealRequest {
     readonly display: string;
 }
 
-/** Surface installed on `window` by `assets/ui-highlight.js`. */
-interface IHighlightApi {
-    version: number;
-    show(options: IHighlightOptions & { selector: string; reveal?: IHighlightRevealRequest }): IHighlightResult;
-    clear(id?: string): number;
-}
+type IHighlightApi = IAiHighlightApi;
 
 declare global {
     interface Window {
-        __persephoneHighlight?: IHighlightApi;
+        __aiVisionHighlight?: IHighlightApi;
     }
 }
 
@@ -88,35 +85,14 @@ class UserInterface implements IUserInterface {
         return { release: () => removeScreenLock(lock) };
     }
 
-    // ── Element highlighting ────────────────────────────────────────────
-    //
-    // The overlay lives in `assets/agent/ui-highlight.js` rather than here, because the same file
-    // is evaluated through a page editor path to highlight elements inside boards and browser pages —
-    // contexts the renderer's module graph cannot reach. One implementation, three targets.
-    //
-    // It sits in a subfolder because the `app-asset://` handler maps the URL's HOST to a
-    // directory under `assets/` (`app-asset://<dir>/<file>`); a top-level asset file has no
-    // reachable URL.
-
+    // Element highlighting uses the published package overlay.
     private highlightLoader?: Promise<IHighlightApi>;
 
     private loadHighlight(): Promise<IHighlightApi> {
         if (!this.highlightLoader) {
-            this.highlightLoader = fetch("app-asset://agent/ui-highlight.js")
-                .then((response) => {
-                    if (!response.ok) throw new Error(`ui-highlight.js: HTTP ${response.status}`);
-                    return response.text();
-                })
-                .then((code) => {
-                    // Same mechanism the script runner uses; the app CSP grants 'unsafe-eval'
-                    // and the source is a packaged asset, not remote content.
-                    new Function(code)();
-                    const api = window.__persephoneHighlight;
-                    if (!api) throw new Error("ui-highlight.js did not install its API");
-                    return api;
-                })
+            this.highlightLoader = Promise.resolve()
+                .then(() => installHighlightOverlay())
                 .catch((error) => {
-                    // Drop the cached promise so a later call can retry.
                     this.highlightLoader = undefined;
                     throw error;
                 });
@@ -132,7 +108,7 @@ class UserInterface implements IUserInterface {
     ): Promise<IHighlightResult> {
         const api = await this.loadHighlight();
         const highlightOptions = { ...options } as IHighlightOptions;
-        // `reveal` is declaration-owned; do not let an undeclared runtime property on a script's
+        // reveal is declaration-owned; do not let an undeclared runtime property on a script's
         // options object turn the public highlight method into a general-purpose style override.
         delete (highlightOptions as IHighlightOptions & { reveal?: unknown }).reveal;
         return api.show({
@@ -144,8 +120,8 @@ class UserInterface implements IUserInterface {
     }
 
     async clearHighlights(id?: string): Promise<number> {
-        const api = window.__persephoneHighlight;
-        // Nothing loaded means nothing highlighted — don't fetch the module just to clear.
+        const api = window.__aiVisionHighlight;
+        // Nothing loaded means nothing highlighted; do not install the module just to clear.
         if (!api) return 0;
         return api.clear(id);
     }

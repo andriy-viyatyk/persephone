@@ -1,9 +1,9 @@
 import type { IComparePair } from "../../api/types/compare";
 import type { PagesModel } from "../../api/pages/PagesModel";
 import { ui } from "../../api/ui";
-import { createElements } from "./elements";
+import { createElements } from "ai-vision/dom";
 import { activatePageAndWaitForLayout, pageScopeSelector } from "./page-elements";
-import type { IAiMember, IAiVisible, IAiVisionDescriptor } from "../../../shared/ai-vision/types";
+import type { IAiMember, IAiVisible, IAiVisionDescriptor } from "ai-vision";
 
 const COMPARE_ELEMENTS = [
     { name: "compare-root", purpose: "The mounted compare surface containing the side-by-side diff and toolbar.", where: "active page area, replacing the normal editor content" },

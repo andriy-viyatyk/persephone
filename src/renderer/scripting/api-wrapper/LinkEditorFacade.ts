@@ -1,7 +1,7 @@
 import { withEditorGuideHelp } from "./editor-guide-help";
 import type { LinkEditor } from "../../editors/link-editor";
 import type { LinkItem } from "../../editors/link-editor/linkTypes";
-import type { IAiMember, IAiVisible, IAiVisionDescriptor } from "../../../shared/ai-vision/types";
+import type { IAiMember, IAiVisible, IAiVisionDescriptor } from "ai-vision";
 
 const LINK_EDITOR_MEMBERS: readonly IAiMember[] = [
     { name: "id", kind: "property", summary: "The concrete current editor id." },

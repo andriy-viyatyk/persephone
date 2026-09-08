@@ -1,4 +1,4 @@
-import type { IAiMember, IAiVisible, IAiVisionDescriptor } from "../../../shared/ai-vision/types";
+import type { IAiMember, IAiVisible, IAiVisionDescriptor } from "ai-vision";
 
 const GENERIC_EDITOR_MEMBERS: readonly IAiMember[] = [
     { name: "id", kind: "property", summary: "The concrete current editor id." },

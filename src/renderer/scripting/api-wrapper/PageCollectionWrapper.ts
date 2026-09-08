@@ -3,7 +3,7 @@ import type { PageModel } from "../../api/pages/PageModel";
 import { PageWrapper } from "./PageWrapper";
 import { EditorView } from "../../../shared/types";
 import type { ILink } from "../../api/types/io.tree";
-import type { IAiChild, IAiMember, IAiVisible, IAiVisionDescriptor } from "../../../shared/ai-vision/types";
+import type { IAiChild, IAiMember, IAiVisible, IAiVisionDescriptor } from "ai-vision";
 import { CompareModeNode } from "../ai-vision/page-compare";
 import { LogViewEditorFacade } from "./LogViewEditorFacade";
 import { getMcpLogViewEditor, getOrCreateMcpLogViewEditor } from "../../api/mcp/log-view-access";
@@ -12,7 +12,8 @@ import {
     validateBrowserOpenInput,
     validatePipelineOpenInput,
 } from "../../api/pages/open-url-validation";
-import { choiceRule, validateCallArguments } from "../../../shared/ai-vision/argument-validation";
+import { choiceRule, validateCallArguments } from "ai-vision";
+import type { IAiCallContext } from "../ai-vision/root";
 
 // AiVision (EPIC-083): the kind-level description of this wrapper. Kept next to the members it
 // describes so a new method and its descriptor entry land in the same diff.
@@ -103,6 +104,7 @@ export class PageCollectionWrapper implements IAiVisible {
         private readonly releaseList: Array<() => void>,
         /** MCP-originated context: browser pages opened here are marked as the agent's own. */
         private readonly openedByAgent = false,
+        private readonly callContext?: IAiCallContext,
     ) {}
 
     get aiVision(): IAiVisionDescriptor {
@@ -147,7 +149,12 @@ export class PageCollectionWrapper implements IAiVisible {
 
     private wrap(page: PageModel | null | undefined): PageWrapper | undefined {
         const editor = page?.mainEditor;
-        return editor ? new PageWrapper(editor, this.releaseList) : undefined;
+        return editor ? new PageWrapper(editor, this.releaseList, undefined, this.callContext) : undefined;
+    }
+
+    withCallContext(callContext?: IAiCallContext): PageCollectionWrapper {
+        if (callContext === this.callContext) return this;
+        return new PageCollectionWrapper(this.pages, this.releaseList, this.openedByAgent, callContext);
     }
 
     // ── Queries ───────────────────────────────────────────────────────
@@ -155,7 +162,7 @@ export class PageCollectionWrapper implements IAiVisible {
     get all(): PageWrapper[] {
         return this.pages.pages
             .filter((p) => p.mainEditor)
-            .map((p) => new PageWrapper(p.mainEditor, this.releaseList));
+            .map((p) => new PageWrapper(p.mainEditor, this.releaseList, undefined, this.callContext));
     }
 
     get activePage(): PageWrapper | undefined {

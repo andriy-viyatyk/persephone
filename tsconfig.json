@@ -9,7 +9,17 @@
         "sourceMap": true,
         "baseUrl": ".",
         "outDir": "dist",
-        "moduleResolution": "node",
+        // "bundler", not "node": every entry point is bundled by Vite/rolldown, and node10
+        // resolution cannot read a package's `exports` map — which is the only way `ai-vision`
+        // and `ai-vision/dom` resolve (US-1389).
+        "moduleResolution": "bundler",
+        // Excalidraw's `exports` map does not list its `dist/types/**` declaration files, which the
+        // draw island imports directly. node10 resolution found them by walking the folder; bundler
+        // resolution honours `exports` and cannot, so map them back explicitly. Vite resolves these
+        // as types only — they carry no runtime import.
+        "paths": {
+            "@excalidraw/excalidraw/dist/types/*": ["node_modules/@excalidraw/excalidraw/dist/types/*"]
+        },
         "resolveJsonModule": true,
         "jsx": "react-jsx"
     },

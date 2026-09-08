@@ -104,6 +104,11 @@ export interface BoardListing {
  * await app.boards.openBoard(root);
  */
 export interface IBoards {
+    /** Session-only host timeout in milliseconds for every remote `.app` call — a trusted board's
+     *  model and a browser page's alike. Renderer memory: it resets on reload and is never persisted.
+     *  Accepts 1,000 through 3,600,000; reads back the effective value (30,000) before it is set. */
+    callTimeoutMs: number;
+
     /**
      * Create a **blank** board named `name` inside the container folder `dir`,
      * and return the new board's absolute root path (`<dir>/<name>`).

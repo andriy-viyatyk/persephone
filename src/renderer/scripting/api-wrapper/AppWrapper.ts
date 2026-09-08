@@ -3,8 +3,9 @@ import { PageCollectionWrapper } from "./PageCollectionWrapper";
 import type { PageWrapper } from "./PageWrapper";
 import type { EventChannel, EventHandler } from "../../api/events/EventChannel";
 import type { IApp, IAppCallOptions } from "../../api/types/app";
-import { resolveCall } from "../../../shared/ai-vision/resolver";
+import { resolveCall } from "ai-vision";
 import { AiRoot } from "../ai-vision/root";
+import { isPositiveIntegerTimeout } from "../../../shared/ai-vision-timeout";
 
 /**
  * Wrap an EventChannel to auto-track subscriptions in the releaseList.
@@ -140,6 +141,9 @@ export class AppWrapper {
     }
 
     async call(path: string, options?: IAppCallOptions): Promise<unknown> {
+        if (options?.timeoutMs !== undefined && !isPositiveIntegerTimeout(options.timeoutMs)) {
+            throw new TypeError("app.call() options.timeoutMs must be a positive integer.");
+        }
         const request = {
             path,
             hints: "never" as const,
@@ -149,7 +153,11 @@ export class AppWrapper {
                 : {}),
             ...(options?.maxLength !== undefined ? { maxLength: options.maxLength } : {}),
         };
-        const result = await resolveCall(new AiRoot(this, { page: this.contextPage }), request);
+        const callContext = { timeoutMs: options?.timeoutMs };
+        const result = await resolveCall(new AiRoot(this, {
+            page: this.contextPage,
+            callContext,
+        }), request);
         if (result.error) throw new Error(result.error);
         return result.result;
     }

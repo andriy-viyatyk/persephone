@@ -1,5 +1,5 @@
 import type { IWindow } from "../../../api/types/window";
-import type { IAiMember, IAiVisionDescriptor } from "../../../../shared/ai-vision/types";
+import type { IAiMember, IAiVisionDescriptor } from "ai-vision";
 
 const WINDOW_MEMBERS: readonly IAiMember[] = [
     { name: "minimize", kind: "method", signature: "minimize()", summary: "Minimize this window.", caution: "changes the visible application window" },

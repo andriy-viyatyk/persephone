@@ -1,5 +1,5 @@
 import type { IBoardVars } from "../../../api/types/board-vars";
-import type { IAiMember, IAiVisionDescriptor } from "../../../../shared/ai-vision/types";
+import type { IAiMember, IAiVisionDescriptor } from "ai-vision";
 
 const BOARD_VARS_MEMBERS: readonly IAiMember[] = [
     { name: "namespaceFor", kind: "method", signature: "namespaceFor(boardRoot: string)", summary: "Resolve the namespace key used by a board's environment store.", caution: "the first use can block on storage setup" },

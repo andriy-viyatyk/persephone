@@ -9,9 +9,9 @@ import type {
     IGitRefsSnapshot,
     IGitTreeEditor,
 } from "../../api/types/git-tree-editor";
-import type { IAiMember, IAiVisible, IAiVisionDescriptor } from "../../../shared/ai-vision/types";
+import type { IAiMember, IAiVisible, IAiVisionDescriptor } from "ai-vision";
 import { ui } from "../../api/ui";
-import { createElements } from "../ai-vision/elements";
+import { createElements } from "ai-vision/dom";
 import { activatePageAndWaitForLayout, pageScopeSelector } from "../ai-vision/page-elements";
 import type { GitTreeEditorModel } from "../../editors/git-tree/GitTreeEditorModel";
 

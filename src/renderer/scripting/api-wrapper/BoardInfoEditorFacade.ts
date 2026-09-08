@@ -12,9 +12,9 @@ import { boardTrust } from "../../api/board-trust";
 import { publishedBoards } from "../../api/published-boards";
 import { ui } from "../../api/ui";
 import { compareVersions } from "../../../shared/version-utils";
-import { createElements } from "../ai-vision/elements";
+import { createElements } from "ai-vision/dom";
 import { activatePageAndWaitForLayout, pageScopeSelector } from "../ai-vision/page-elements";
-import type { IAiElementDeclaration, IAiMember, IAiVisible, IAiVisionDescriptor } from "../../../shared/ai-vision/types";
+import type { IAiElementDeclaration, IAiMember, IAiVisible, IAiVisionDescriptor } from "ai-vision";
 
 const BOARD_INFO_ELEMENTS: readonly IAiElementDeclaration[] = [
     { name: "board-info-browse", purpose: "Locate the install-location folder picker.", where: "install mode, beside the install-location field" },

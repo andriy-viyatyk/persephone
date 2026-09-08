@@ -26,9 +26,9 @@ import type {
 import type { McpTransportType } from "../../editors/mcp-inspector/McpConnectionManager";
 import type { McpRequestEntry } from "../../editors/log-view/logTypes";
 import { ui } from "../../api/ui";
-import { createElements } from "../ai-vision/elements";
+import { createElements } from "ai-vision/dom";
 import { activatePageAndWaitForLayout, pageScopeSelector } from "../ai-vision/page-elements";
-import type { IAiElementDeclaration, IAiMember, IAiVisible, IAiVisionDescriptor } from "../../../shared/ai-vision/types";
+import type { IAiElementDeclaration, IAiMember, IAiVisible, IAiVisionDescriptor } from "ai-vision";
 
 const MCP_INSPECTOR_ELEMENTS: readonly IAiElementDeclaration[] = [
     { name: "mcp-transport", purpose: "Choose the HTTP or stdio connection transport.", where: "connection bar, after Saved connections" },

@@ -40,7 +40,11 @@ await build({
         // environment reads silently become undefined and `{ ...process.env }` spreads to
         // nothing — which stripped the parent environment from every spawned child process.
         // Found by EPIC-090's gate, where PERSEPHONE_MCP_CALL_ONLY could never turn on.
-    ssr: { target: "node" },
+    // `ai-vision` must be BUNDLED, not externalized. An SSR build externalizes every
+    // node_modules dependency by default, and the package is ESM-only with no `require`
+    // condition, so an externalized `require("ai-vision")` fails at Electron startup with
+    // ERR_PACKAGE_PATH_NOT_EXPORTED (EPIC-097, US-1389).
+    ssr: { target: "node", noExternal: ["ai-vision"] },
     build: {
         ssr: true,
         outDir: ".vite/build",

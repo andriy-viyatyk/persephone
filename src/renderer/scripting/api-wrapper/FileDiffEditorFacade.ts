@@ -1,8 +1,8 @@
 import { withEditorGuideHelp } from "./editor-guide-help";
-import type { IAiMember, IAiVisible, IAiVisionDescriptor } from "../../../shared/ai-vision/types";
+import type { IAiMember, IAiVisible, IAiVisionDescriptor } from "ai-vision";
 import { ui } from "../../api/ui";
 import type { FileDiffEditor } from "../../editors/file-diff/FileDiffEditor";
-import { createElements } from "../ai-vision/elements";
+import { createElements } from "ai-vision/dom";
 import { activatePageAndWaitForLayout, pageScopeSelector } from "../ai-vision/page-elements";
 
 const FILE_DIFF_ELEMENTS = [

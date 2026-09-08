@@ -7,7 +7,7 @@ import { getNetworkLogMetadata, getNetworkLogSnapshot, clearNetworkLog } from ".
 import { getRuntimeVersions, getAppVersion } from "../../version-service";
 import { torService } from "../../tor-service";
 import { getAppRootPath, getAssetPath } from "../../utils";
-import { IAiChild, IAiMember, IAiVisible, IAiVisionDescriptor } from "../../../shared/ai-vision/types";
+import { IAiChild, IAiMember, IAiVisible, IAiVisionDescriptor } from "ai-vision";
 import { MAIN_SCRIPT_DISABLED_MESSAGE, isMainScriptsEnabled } from "./main-script-gate";
 import { executeMainScript, MAIN_SCRIPT_TIMEOUT_MS } from "./main-script";
 import type { WindowsNode } from "./main-root";

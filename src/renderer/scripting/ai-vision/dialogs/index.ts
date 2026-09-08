@@ -12,7 +12,7 @@ import { textDialogId } from "../../../ui/dialogs/TextDialog";
 import { torInfoDialogId } from "../../../ui/dialogs/TorInfoDialog";
 import { trustBoardDialogId } from "../../../ui/dialogs/TrustBoardDialog";
 import { dialogsState } from "../../../ui/dialogs/DialogsView";
-import type { IAiChild, IAiVisionDescriptor } from "../../../../shared/ai-vision/types";
+import type { IAiChild, IAiVisionDescriptor } from "ai-vision";
 import { CommitDialogAdapter } from "./commit";
 import { ConfirmationDialogAdapter } from "./confirmation";
 import { CreateBoardDialogAdapter } from "./create-board";

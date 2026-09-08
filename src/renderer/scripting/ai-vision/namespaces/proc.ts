@@ -1,4 +1,4 @@
-import type { IAiMember, IAiVisionDescriptor } from "../../../../shared/ai-vision/types";
+import type { IAiMember, IAiVisionDescriptor } from "ai-vision";
 
 const PROCESS_MEMBERS: readonly IAiMember[] = [
     { name: "execute", kind: "method", signature: "execute(command: string, options?: IExecuteOptions)", summary: "Spawn a shell or direct child process and return a streaming/one-shot handle.", caution: "runs an external process with the user's privileges" },

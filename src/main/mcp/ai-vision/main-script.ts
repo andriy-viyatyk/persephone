@@ -1,5 +1,5 @@
 import * as electron from "electron";
-import { shapeResult } from "../../../shared/ai-vision/result-shaper";
+import { shapeResult } from "ai-vision";
 import { errMessage } from "../../../shared/utils";
 import { boardDownloadService } from "../../board-download-service";
 import { getBoardRegistrationSnapshot } from "../../board-protocol-service";

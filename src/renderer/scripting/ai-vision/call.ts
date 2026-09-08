@@ -1,7 +1,7 @@
 import { ScriptContext } from "../ScriptContext";
-import { ICallRequest, ICallResult, resolveCall, SeenKinds } from "../../../shared/ai-vision/resolver";
+import { ICallRequest, ICallResult, resolveCall, SeenKinds } from "ai-vision";
 import { AiRoot } from "./root";
-import type { AiRootOptions } from "./root";
+import type { AiRootOptions, IAiCallContext } from "./root";
 import { resolveWithAttention } from "./attention";
 
 /**
@@ -32,5 +32,10 @@ export function resolveAiCall(
     seenKinds?: SeenKinds,
     rootOptions?: AiRootOptions,
 ): Promise<ICallResult> {
-    return resolveCall(new AiRoot(context.app, rootOptions), request, seenKinds);
+    const timeoutMs = (request as ICallRequest & { timeoutMs?: number }).timeoutMs;
+    const callContext: IAiCallContext = { timeoutMs };
+    return resolveCall(new AiRoot(context.app, {
+        ...rootOptions,
+        callContext,
+    }), request, seenKinds);
 }

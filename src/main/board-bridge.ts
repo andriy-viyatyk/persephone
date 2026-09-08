@@ -59,6 +59,7 @@ import {
     writeJobStdin,
 } from "./command-runner";
 import { errMessage } from "../shared/utils";
+import { isPositiveIntegerTimeout, resolveBoardCallTimeout } from "../shared/ai-vision-timeout";
 import { sendToRendererForWebContents } from "./mcp/renderer-bridge";
 
 interface BoardPortEntry {
@@ -82,6 +83,10 @@ interface BoardPortEntry {
 
 /** Live board ports keyed by the per-mount boardId minted at the handshake. */
 const boardPorts = new Map<string, BoardPortEntry>();
+const BOARD_CALL_TIMEOUT_MIN_MS = 1_000;
+const BOARD_CALL_TIMEOUT_MAX_MS = 3_600_000;
+/** Unset until the renderer pushes one; see the same reasoning in `src/renderer/api/boards.ts`. */
+let boardCallTimeoutMs: number | undefined;
 
 // ── Busy owners — job retention across mounts (US-799) ────────────────────────
 // A board that called `persephone.setBoardBusy(true)` keeps its spawned jobs when
@@ -133,13 +138,20 @@ export function setBoardBusy(ownerId: string, busy: boolean): void {
     if (!hasLivePort) reapBoardOwner(ownerId);
 }
 
+export function setBoardCallTimeout(timeoutMs: number): void {
+    if (!Number.isFinite(timeoutMs) || !Number.isInteger(timeoutMs)
+        || timeoutMs < BOARD_CALL_TIMEOUT_MIN_MS || timeoutMs > BOARD_CALL_TIMEOUT_MAX_MS) {
+        throw new TypeError(`boards.callTimeoutMs must be an integer from ${BOARD_CALL_TIMEOUT_MIN_MS} to ${BOARD_CALL_TIMEOUT_MAX_MS}.`);
+    }
+    boardCallTimeoutMs = timeoutMs;
+}
+
 /** Host webContents we've wired load-failure + crash/destroy reaping on (once each). */
 const wiredHosts = new Set<number>();
 
 /** Mode-D (C11) handshake watchdog window: a healthy board connects in tens of ms; this
  *  is generous against a slow first paint while still catching a dead bridge. */
 const BOARD_HANDSHAKE_TIMEOUT_MS = 5000;
-const BOARD_CALL_TIMEOUT_MS = 30_000;
 
 /**
  * The BrowserWindow that owns a board's host renderer. With the iframe model the
@@ -250,11 +262,15 @@ function jsonSafe(value: unknown): unknown {
 
 async function runBoardCall(boardId: string, entry: BoardPortEntry, id: number, request: BoardCallRequest): Promise<void> {
     try {
+        if (request.timeoutMs !== undefined && !isPositiveIntegerTimeout(request.timeoutMs)) {
+            throw new Error("Board call timeoutMs must be a positive integer.");
+        }
+        const timeout = resolveBoardCallTimeout(request.timeoutMs, undefined, boardCallTimeoutMs);
         const response = await sendToRendererForWebContents(
             "board_call",
             { ownerId: entry.ownerId, request },
             entry.hostWebContents,
-            BOARD_CALL_TIMEOUT_MS,
+            timeout.ms,
         );
         if (boardPorts.get(boardId) !== entry) return;
         if (response.error) throw new Error(response.error.message);

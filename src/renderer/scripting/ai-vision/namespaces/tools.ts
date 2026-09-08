@@ -9,8 +9,8 @@ import {
     handleSearchTools,
 } from "../../../api/mcp/tool-commands";
 import type { McpResponse } from "../../../api/mcp/types";
-import type { IAiChild, IAiMember, IAiVisionDescriptor } from "../../../../shared/ai-vision/types";
-import { choiceRule, stringRule, validateCallArguments } from "../../../../shared/ai-vision/argument-validation";
+import type { IAiChild, IAiMember, IAiVisionDescriptor } from "ai-vision";
+import { choiceRule, stringRule, validateCallArguments } from "ai-vision";
 
 const REGISTRY_NOT_INITIALIZED = "Agent Tools registry is not initialized.";
 

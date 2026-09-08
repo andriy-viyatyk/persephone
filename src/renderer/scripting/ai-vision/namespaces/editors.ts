@@ -1,5 +1,5 @@
 import type { IEditorRegistry } from "../../../api/types/editors";
-import type { IAiMember, IAiVisionDescriptor } from "../../../../shared/ai-vision/types";
+import type { IAiMember, IAiVisionDescriptor } from "ai-vision";
 
 const EDITOR_REGISTRY_MEMBERS: readonly IAiMember[] = [
     { name: "languages", kind: "property", summary: "All language IDs accepted by Monaco and the built-in language-aware editors." },

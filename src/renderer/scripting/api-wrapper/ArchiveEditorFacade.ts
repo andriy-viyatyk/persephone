@@ -2,9 +2,9 @@ import { withEditorGuideHelp } from "./editor-guide-help";
 import type { IArchiveEditor, IArchiveEntry } from "../../api/types/archive-editor";
 import type { ArchiveEditor } from "../../editors/archive/ArchiveEditor";
 import { ui } from "../../api/ui";
-import { createElements } from "../ai-vision/elements";
+import { createElements } from "ai-vision/dom";
 import { activatePageAndWaitForLayout, pageScopeSelector } from "../ai-vision/page-elements";
-import type { IAiElementDeclaration, IAiMember, IAiVisible, IAiVisionDescriptor } from "../../../shared/ai-vision/types";
+import type { IAiElementDeclaration, IAiMember, IAiVisible, IAiVisionDescriptor } from "ai-vision";
 
 const ARCHIVE_ELEMENTS: readonly IAiElementDeclaration[] = [
     { name: "archive-refresh", purpose: "Locate the visible archive refresh control; refresh remains a view-owned operation.", where: "left side of the archive toolbar, after Collapse all" },

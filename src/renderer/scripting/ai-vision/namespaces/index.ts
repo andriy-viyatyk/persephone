@@ -11,7 +11,7 @@ import { version } from "../../../api/shell/version";
 import { settings } from "../../../api/settings";
 import { ui } from "../../../api/ui";
 import { appWindow } from "../../../api/window";
-import { registerAiVisionFor } from "../../../../shared/ai-vision/types";
+import { registerAiVisionFor } from "ai-vision";
 import { describeBoardVars } from "./board-vars";
 import { describeBoards } from "./boards";
 import { describeDownloads } from "./downloads";

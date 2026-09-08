@@ -1,5 +1,5 @@
 import { errMessage } from "../../../shared/utils";
-import type { ICallRequest, ICallResult } from "../../../shared/ai-vision/resolver";
+import type { ICallRequest, ICallResult } from "ai-vision";
 import { pagesModel } from "../../api/pages";
 import { LogViewEditor } from "../../editors/log-view";
 import { isDialogEntry } from "../../editors/log-view/logTypes";

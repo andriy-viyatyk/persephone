@@ -11,6 +11,7 @@ export type BoardEndpoint =
     | Endpoint.requestBoardPort
     | Endpoint.disposeBoardPort
     | Endpoint.setBoardBusy
+    | Endpoint.setBoardCallTimeout
     | Endpoint.reapBoardOwner
     | Endpoint.registerBoardFrame
     | Endpoint.unregisterBoardFrame
@@ -50,6 +51,9 @@ export function initBoardHandlers(): void {
     });
     bindEndpoint(Endpoint.setBoardBusy, async (_event, ownerId: string, busy: boolean): Promise<void> => {
         (await import("../../main/board-bridge")).setBoardBusy(ownerId, busy);
+    });
+    bindEndpoint(Endpoint.setBoardCallTimeout, async (_event, timeoutMs: number): Promise<void> => {
+        (await import("../../main/board-bridge")).setBoardCallTimeout(timeoutMs);
     });
     bindEndpoint(Endpoint.reapBoardOwner, async (_event, ownerId: string): Promise<void> => {
         (await import("../../main/board-bridge")).reapBoardOwner(ownerId);

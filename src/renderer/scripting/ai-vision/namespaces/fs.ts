@@ -1,4 +1,4 @@
-import type { IAiMember, IAiVisionDescriptor } from "../../../../shared/ai-vision/types";
+import type { IAiMember, IAiVisionDescriptor } from "ai-vision";
 
 const FILE_SYSTEM_MEMBERS: readonly IAiMember[] = [
     { name: "read", kind: "method", signature: "read(filePath: string, encoding?: string)", summary: "Read text with auto-detected or specified encoding." },

@@ -1,5 +1,5 @@
 import type { IMenuFolders } from "../../../api/types/menu-folders";
-import type { IAiMember, IAiVisionDescriptor } from "../../../../shared/ai-vision/types";
+import type { IAiMember, IAiVisionDescriptor } from "ai-vision";
 
 const MENU_FOLDERS_MEMBERS: readonly IAiMember[] = [
     { name: "folders", kind: "property", summary: "Current configured sidebar folders as plain data." },

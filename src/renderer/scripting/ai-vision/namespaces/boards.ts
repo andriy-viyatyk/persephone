@@ -4,9 +4,10 @@ import {
     getCurrentBoardListingAt,
     getCurrentBoardListings,
 } from "../../../api/boards";
-import type { IAiChild, IAiMember, IAiVisionDescriptor } from "../../../../shared/ai-vision/types";
+import type { IAiChild, IAiMember, IAiVisionDescriptor } from "ai-vision";
 
 const BOARDS_MEMBERS: readonly IAiMember[] = [
+    { name: "callTimeoutMs", kind: "property", writable: true, summary: "Session-only host timeout in milliseconds for every remote .app call, including trusted boards and browser pages; from 1,000 through 3,600,000." },
     { name: "createBoard", kind: "method", signature: "createBoard(name: string, dir: string)", summary: "Scaffold and auto-trust a blank board.", caution: "writes a board to disk and grants its creation trust" },
     { name: "createDemoBoard", kind: "method", signature: "createDemoBoard(name: string, dir: string)", summary: "Scaffold and auto-trust the bundled Demo board; use main.runtime.demoBoardDir as the bundled template directory reference.", caution: "writes a board to disk and grants its creation trust" },
     { name: "openBoard", kind: "method", signature: "openBoard(boardRoot: string)", summary: "Open an existing board in a new or reused tab.", caution: "opens a visible page and may invoke board trust flow" },
@@ -54,7 +55,7 @@ export function describeBoards(_instance: unknown): IAiVisionDescriptor {
             if (name === "manifestUrl") return { value: BOARDS_MANIFEST_URL };
             return undefined;
         },
-        help: "Call boards.list() for this machine's trusted/installed/open local roots, take a returned root, then call boards.openBoard(root). Use boards.searchPublished() and boards.getPublishedVersions(id) for the remote catalog, then use boards.downloadPublished() or boards.installPublished() to place a board on disk. Review downloaded files before calling boards.registerBoard(root); listing, download, and install never grant trust, and registerBoard(root) remains the only trust path through the existing user dialog. Use boards.checkPublishedUpdates() for catalog updates and boards.uninstallBoard(id) only when removal is intended.",
+        help: "callTimeoutMs is the session-only host timeout for every remote .app call, including trusted boards and browser pages. Call boards.list() for this machine's trusted/installed/open local roots, take a returned root, then call boards.openBoard(root). Use boards.searchPublished() and boards.getPublishedVersions(id) for the remote catalog, then use boards.downloadPublished() or boards.installPublished() to place a board on disk. Review downloaded files before calling boards.registerBoard(root); listing, download, and install never grant trust, and registerBoard(root) remains the only trust path through the existing user dialog. Use boards.checkPublishedUpdates() for catalog updates and boards.uninstallBoard(id) only when removal is intended.",
         summarize: () => ({ kind: "Boards", boardCount: getCurrentBoardListings().length }),
     };
 }

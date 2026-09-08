@@ -4,7 +4,7 @@ import type { MIME_TYPES } from "@excalidraw/excalidraw";
 import type { DataURL } from "@excalidraw/excalidraw/dist/types/excalidraw/types";
 import type { FileId } from "@excalidraw/excalidraw/dist/types/excalidraw/element/types";
 import type { ExcalidrawElementSkeleton } from "@excalidraw/excalidraw/dist/types/excalidraw/data/transform";
-import type { IAiMember, IAiVisible, IAiVisionDescriptor } from "../../../shared/ai-vision/types";
+import type { IAiMember, IAiVisible, IAiVisionDescriptor } from "ai-vision";
 
 const DRAW_EDITOR_MEMBERS: readonly IAiMember[] = [
     { name: "id", kind: "property", summary: "The concrete current editor id." },

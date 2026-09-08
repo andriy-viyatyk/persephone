@@ -1,9 +1,8 @@
 import { app as electronApp } from "electron";
 
-import { ArgumentValidationError, numberRule, stringRule, validateCallArguments } from "../../../shared/ai-vision/argument-validation";
 import type { GuideIndex, GuideTreeFolder, GuideTreeNode, GuideTreePage } from "../../../shared/guides";
 import { selectReleaseNotes } from "../../../shared/guides/release-notes";
-import { IAiChild, IAiMember, IAiVisible, IAiVisionDescriptor } from "../../../shared/ai-vision/types";
+import { ArgumentValidationError, IAiChild, IAiMember, IAiVisible, IAiVisionDescriptor, numberRule, stringRule, validateCallArguments } from "ai-vision";
 import { MainGuideSource } from "./guide-source";
 
 const NO_LAYOUT_MESSAGE = "This page is a catalogue or API/format reference rather than a screen layout, so it has no ## Layout schema. Screen and editor schemas live in the corresponding pages under guides/screens, guides/editors, or the top-level screen guides.";
