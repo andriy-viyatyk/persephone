@@ -20,7 +20,7 @@ it. `Ctrl+F` searches inside the selected folder category.
 +---------------------------------------------------------------------+
 | [Menu Bar overlay]                                                  |  full-window overlay over the page area below the header, when open
 +---------------------------------------------------------------------+
-| [Open File] [New Window]   [About] [User Guide] [Guide ?] [Settings]|  top action row of the left category column; file actions at the left, app actions at the right end, Settings last
+| [Open File] [New Window]   [About] [Settings]                       |  top action row of the left category column; file actions at the left, About and Settings at the right end
 | [Folders]                                      | [selected content] |  left category column beside the right content pane
 | [Add Folder]                                   | [splitter]         |  Add Folder at the bottom of the left column; splitter between the panes
 +---------------------------------------------------------------------+
@@ -35,8 +35,6 @@ it. `Ctrl+F` searches inside the selected folder category.
 - Open File → `menubar-open-file`
 - New Window → `menubar-new-window`
 - About → `menubar-about`
-- User Guide → `menubar-user-guide`
-- Guide for this page → `menubar-guide-for-page`
 - Settings → `menubar-settings`
 - Folders → `menubar-folders`
 - Content → `menubar-content`
@@ -50,7 +48,7 @@ it. `Ctrl+F` searches inside the selected folder category.
 +---------------------------------------------------------------------+
 | [Menu Bar overlay]                                                  |  full-window overlay over the page area below the header, when open
 +---------------------------------------------------------------------+
-| [Open File] [New Window]   [About] [User Guide] [Guide ?] [Settings]|  top action row of the left category column; file actions at the left, app actions at the right end, Settings last
+| [Open File] [New Window]   [About] [Settings]                       |  top action row of the left category column; file actions at the left, About and Settings at the right end
 | [Folders]                                      | [Content]          |  open Menu Bar panes with the category list at left
 | [Add Folder]                                   | [selected content] |  Add Folder at the bottom of the category column and selected content on the right
 +---------------------------------------------------------------------+
@@ -62,9 +60,9 @@ it. `Ctrl+F` searches inside the selected folder category.
 +---------------------------------------------------------------------+
 | [Menu Bar overlay]                                                  |  full-window overlay over the page area below the header, when open
 +---------------------------------------------------------------------+
-| [Open File] [New Window]   [About] [User Guide] [Guide ?] [Settings]|  top action row of the left category column; file actions at the left, app actions at the right end, Settings last
+| [Open File] [New Window]   [About] [Settings]                       |  top action row of the left category column; file actions at the left, About and Settings at the right end
 | [Folders]                                      | [selected folder]  |  selected folder in the left category column
-|                                                 | [dynamic content] |  selected category content in the right pane
+|                                                | [dynamic content]  |  selected category content in the right pane
 | [Add Folder]                                   | [splitter]         |  Add Folder at the bottom of the left column; splitter between the panes
 +---------------------------------------------------------------------+
 ```
@@ -87,8 +85,6 @@ Evidence: `MenuBarView.ts:89-143,177-205,224-245,455-467` and `MenuBar.css:2-29`
 | New Window | Opens another Persephone window (`Ctrl+Shift+N`) | `[data-name="menubar-new-window"]` |
 | About | Opens the About guide browser while preserving its location | `[data-name="menubar-about"]` |
 | Settings | Opens Settings as an ordinary page in a tab | `[data-name="menubar-settings"]` |
-| User Guide | Opens About at the guide contents | `[data-name="menubar-user-guide"]` |
-| Guide for this page | Opens the active page's guide, or About at the guide contents when unmapped | `[data-name="menubar-guide-for-page"]` |
 | Category list | Built-in categories and the user's pinned folders | `[data-name="menubar-folders"]` |
 | Content pane | Shows the selected category | `[data-name="menubar-content"]` |
 | Add Folder region | The bottom region of the category column | `[data-name="menubar-add-folder"]` |
@@ -114,7 +110,7 @@ screens. [Boards](../boards.md) owns the `board-info` editor ID, and [Agent Tool
 owns `toolset-view`. Similarly, the [Mneme](../mneme.md) guide owns its two editor screens; the
 Menu Bar is only their entry point.
 
-The Menu Bar's **User Guide** item and `F1` open the in-app guide browser. `F1` selects a mapped
+**About** and `F1` open the in-app guide browser. `F1` selects a mapped
 guide for the active editor and otherwise opens About at contents. The separate [About guide
 browser](./index.md#about-guide-browser) explains the tree, filter, breadcrumbs, and Open in tab
 controls.

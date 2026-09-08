@@ -36,11 +36,11 @@ When you first open persephone, you'll see a clean, simple interface:
 - Tab bar at the top
 - An empty text editor
 
-The application looks like a simple notepad by default. To access additional features (recent files, folder bookmarks, settings, About, and the User Guide), click the **persephone icon** at the top-left corner of the tab bar — the Menu Bar slides in from the left. Click anywhere outside it to dismiss it.
+The application looks like a simple notepad by default. To access additional features (recent files, folder bookmarks, settings, and About with its guide browser), click the **persephone icon** at the top-left corner of the tab bar — the Menu Bar slides in from the left. Click anywhere outside it to dismiss it.
 
 ## Basic Operations
 
-To browse the shipped guides in the About page, choose **User Guide** from the Menu Bar. You can
+To browse the shipped guides in the About page, choose **About** from the Menu Bar, or press `F1`. You can
 also press `F1` when focus is outside a Monaco editor; it opens the matching guide for the active
 editor when available, or the guide contents otherwise.
 

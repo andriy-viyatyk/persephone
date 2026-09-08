@@ -151,7 +151,7 @@ What's New, and Resources. Selecting a guide renders it in the right pane with b
 | Guide page / breadcrumbs / body | `[data-name="about-guide-page"]`, `[data-name="about-guide-breadcrumbs"]`, `[data-name="about-guide-body"]` |
 | Back / Open in tab | `[data-name="about-guide-back"]`, `[data-name="about-guide-open-in-tab"]` |
 
-The Menu Bar's **User Guide** item and the global `F1` shortcut open this browser at guide
+The Menu Bar's **About** item and the global `F1` shortcut open this browser at guide
 contents. `F1` opens the guide matching the active editor when one is mapped; with no match it
 opens About at contents. The ordinary About item preserves an existing guide-browser location,
 while User Guide explicitly returns to contents.

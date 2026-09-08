@@ -151,7 +151,7 @@ nulled, and an impossible action erroring rather than lying.
 
 **Request:** none — drive this one directly, then look at the screen.
 
-**Call:** click `menubar-user-guide` (Menu Bar), and press `F1` on a browser page and on a page with
+**Call:** click `menubar-about` (Menu Bar), and press `F1` on a browser page and on a page with
 no matching guide.
 
 **Verify:** the Menu Bar item opens About at **contents** even when the pane was showing a guide;

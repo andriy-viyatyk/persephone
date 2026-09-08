@@ -198,7 +198,6 @@ The right panel shows the contents of the selected folder:
 | Open File | Opens file dialog (`Ctrl+O`) |
 | New Window | Opens a new persephone window (`Ctrl+Shift+N`) |
 | About | Opens the About page (version info, update check) |
-| User Guide | Opens the About page at the guide contents |
 | Settings | Opens the Settings page (themes, preferences) |
 
 If a standalone page cannot be opened because its editor fails to load, Persephone reports the failure with an error notification instead of silently doing nothing.
@@ -211,7 +210,7 @@ resources. Turn on **Show agent guides** to include guides intended for AI agent
 
 Select a guide to read it in the right pane. Use **Back** to return to the previous guide location,
 or **Open in tab** to open the guide as a normal Markdown tab while leaving the About page available.
-The **User Guide** Menu Bar item returns to the guide contents; the ordinary **About** item preserves
+Pressing `F1` opens the guide contents (or the active editor's guide); the **About** Menu Bar item preserves
 the current guide-browser location.
 
 ### Tools & Editors

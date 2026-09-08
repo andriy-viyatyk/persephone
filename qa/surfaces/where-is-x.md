@@ -76,7 +76,7 @@ schema says so.
 
 Expected: the Menu Bar opens from the Persephone glyph at the far left of the header strip; the
 Settings icon is the **last icon in the action row at the top of the left-hand category column**,
-immediately right of *Guide for this page*; `highlight("menubar-settings")`.
+immediately right of *About*; `highlight("menubar-settings")`.
 
 This is the scenario most likely to expose a stale phrase, because US-1378 inserted a new icon into
 that row and shifted every icon after it.

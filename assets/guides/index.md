@@ -23,7 +23,7 @@ persephone is a Windows Notepad replacement designed for developers. It combines
 2. **Edit**: Just like any text editor
 3. **Save**: Ctrl+S to save
 
-To browse this guide collection inside Persephone, open the Menu Bar and choose **User Guide**.
+To browse this guide collection inside Persephone, open the Menu Bar and choose **About**, or press `F1`.
 You can also press `F1` when focus is outside a Monaco editor; it opens the guide for the active
 editor when one is available, or the guide contents otherwise.
 
@@ -73,6 +73,6 @@ editor when one is available, or the guide contents otherwise.
 
 ## Getting Help
 
-- Open the in-app guide browser from Menu Bar → **User Guide** or with `F1`
+- Open the in-app guide browser from Menu Bar → **About** or with `F1`
 - [GitHub Issues](https://github.com/andriy-viyatyk/persephone/issues) - Report bugs
 - [What's New](./whats-new.md) - Latest changes

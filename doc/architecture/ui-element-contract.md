@@ -131,8 +131,6 @@ Two tab shapes do not match the common case, and both occur in ordinary use:
 | Backdrop — always in the DOM; `display: none` when closed, so presence is not openness | `[data-name="menu-bar"]` |
 | Sliding panel | `[data-name="menu-bar-content"]` |
 | Open File / New Window / About / Settings | `[data-name="menubar-open-file"]`, `[data-name="menubar-new-window"]`, `[data-name="menubar-about"]`, `[data-name="menubar-settings"]` |
-| User Guide | `[data-name="menubar-user-guide"]` |
-| Guide for this page | `[data-name="menubar-guide-for-page"]` |
 | Category column / action row | `[data-name="menubar-categories"]`, `[data-name="menubar-toolbar"]` |
 | Category list (Open Tabs, Recent Files, Tools & Editors, Script Library, user folders) | `[data-name="menubar-folders"]` |
 | Right-hand content pane | `[data-name="menubar-content"]` |

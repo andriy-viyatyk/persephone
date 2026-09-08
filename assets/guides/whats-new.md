@@ -130,7 +130,7 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### Improvements
 
-- **In-app User Guide browser** — Open the guide collection from Menu Bar → **User Guide** or
+- **In-app User Guide browser** — Open the guide collection from Menu Bar → **About** or
   press `F1` outside a Monaco editor. The About page shows guide contents, release highlights, and
   resources; select a guide to read it in-pane, use **Back** to navigate, or choose **Open in tab**
   to keep the guide as a normal Markdown tab. About's update flow now opens What's New in the app.
