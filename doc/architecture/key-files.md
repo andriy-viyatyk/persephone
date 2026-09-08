@@ -92,6 +92,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Script execution (core)  | `/src/renderer/scripting/ScriptRunnerBase.ts`     |
 | Script execution         | `/src/renderer/scripting/ScriptRunner.ts`         |
 | Shared AiVision contracts, registry, path parser/resolver, hints, help search, and result shaping | `/src/shared/ai-vision/` |
+| Standalone AiVision npm library (not yet consumed by Persephone) | [andriy-viyatyk/ai-vision](https://github.com/andriy-viyatyk/ai-vision) |
 | Shared AiVision argument validation and member suggestions | `/src/shared/ai-vision/argument-validation.ts`, `/src/shared/ai-vision/member-suggestion.ts` |
 | Renderer AiVision root and namespace descriptors (the renderer side of path calls) | `/src/renderer/scripting/ai-vision/` |
 | AiVision descriptor extensions (descriptor-owned `provide` for computed members, returned-node identity, and curated UI-element declarations with optional spatial phrases) | `/src/shared/ai-vision/types.ts`, `/src/shared/ai-vision/resolver.ts`, `/src/shared/ai-vision/help-search.ts` |

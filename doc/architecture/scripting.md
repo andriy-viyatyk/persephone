@@ -683,6 +683,12 @@ facades implement `IAiVisible` with descriptors beside their public members; dyn
 facades enumerate their own children so discovery does not probe side-effecting getters. Namespace
 objects that cannot carry a descriptor use the shared instance registry.
 
+The same process-neutral engine is available as the standalone MIT npm package
+[`ai-vision`](https://github.com/andriy-viyatyk/ai-vision), which also provides `dom` and `remote`
+entry points for UI element wiring and shape-based hosts. Persephone still runs the internal copy
+at `/src/shared/ai-vision/`; package adoption is EPIC-097, so this application does not consume the
+npm package yet.
+
 Positional arguments for shared call-surface operations are checked by the process-neutral
 `argument-validation.ts` module. It reports the rejected value and runtime type, validates required
 and optional parameters, numeric bounds, and live choices, and supplies a copy-paste usage example.

@@ -115,12 +115,11 @@ three surfaces we already register — backed by a COM server (`code_explorer_co
 
 ## Follow-ups from the in-app guides roadmap (complete)
 
-The [in-app guides roadmap](../in-app-guides-roadmap.md) closed 2026-09-07 with EPIC-092..095;
-`docs/` is gone and `assets/guides/` ships inside the app. The document is kept rather than retired
-to git history because its **closing note carries the consolidated Needs-user-check list for all
-four epics** — every open question the programme recorded, in one place. Two of those are shaped as
-their own tasks rather than user questions, and both are fixes at a shared surface rather than in
-the guides:
+The in-app guides roadmap (`doc/in-app-guides-roadmap.md`, retired to git history 2026-09-08 once
+implemented) closed 2026-09-07 with EPIC-092..095; `docs/` is gone and `assets/guides/` ships inside
+the app. Its closing note's consolidated **Needs user check** list is carried here so nothing stays
+buried in a deleted document. Two items are shaped as tasks rather than user questions, and both are
+fixes at a shared surface rather than in the guides:
 
 - **`helpSearch` does not descend into the `guides` node** (EPIC-095 gate). The root's `guides`
   member line is searchable but the node is never entered, so `guides.whatsNew` and `guides.search`
@@ -129,12 +128,45 @@ the guides:
 - **`PathSyntaxError` does not suggest bracket syntax for a hyphenated segment** (EPIC-092 gate).
   Fixing it at the parser fixes hyphenated paths at every root rather than per tree.
 
+The remaining items are one user sentence each from being settled; none is blocking:
+
+- **Front matter in the GitHub preview** (EPIC-092). A `---` block renders as a table or literal
+  text depending on the viewer. Accepted because the in-app copy is canonical.
+- **The API reference's long-term fate** (EPIC-092, EPIC-095). Kept, audience `user`, 16 pages, no
+  usage evidence. An About-page guide-open counter would settle it and wants its own task (privacy
+  shape).
+- **External links to `docs/` now 404** (EPIC-095). Accepted; two one-line redirect stubs can come
+  back if a published link is known.
+- **Whether *Show agent guides* should be sticky** (EPIC-093). Browser state today; a persisted
+  `app.settings` entry is a small follow-up.
+- **Whether the guide browser needs its own search box** (EPIC-093). Deferred so the pane could
+  prove itself first.
+- **`pages` and `pages.closePage` do not see folder pages** (EPIC-093). `PageCollectionWrapper.all`
+  filters on `mainEditor`; admitting an editor-less page raises what `pages[i].editor` should be for
+  a folder tab. Unrelated to guides.
+- **Screenshots stay out of the guides** (EPIC-094). Additive over finished pages if wanted.
+- **`editors/index.md` shrank to a table** (EPIC-094). A bookmark to the long catalogue lands
+  somewhere different.
+- **The per-toolbar "?" button is declined** (EPIC-095). Additive if wanted anyway.
+
 ## Recorded Epics (not currently planned)
 
 Epics with a written design that are **not** scheduled work — recorded ideas kept out of the
 dashboard so it only shows what is actually being worked on. Each doc keeps its full breakdown;
 the task ids below are reserved. To pick one up, move its entry back to the **Planned** section
 of [`active-work.md`](../active-work.md) along with its task list.
+
+### AiVision library roadmap — EPIC-096 … EPIC-098 (provisional numbers)
+
+**Roadmap:** [doc/ai-vision-library-roadmap.md](../ai-vision-library-roadmap.md) (2026-09-08). Three
+epics; **[EPIC-096](../epics/completed.md) is done** — the library exists at
+[andriy-viyatyk/ai-vision](https://github.com/andriy-viyatyk/ai-vision) — and EPIC-097 and EPIC-098
+are recorded, not scheduled: the AiVision engine is published as an MIT library from its own repository
+(`C:\projects\ai-vision`, core / dom / remote entry points plus a demo page); Persephone adopts it,
+deletes the internal copy, and mounts a remote party's descriptor **shape** as a proxy node under
+`pages[id].editor.app` — boards over the shim port, browser pages over CDP, one proxy for both,
+page-origin results labelled untrusted; the todo board in `persephone-boards` exposes its model as the
+final test. No remote party ever ships an engine; the contract is versioned like `board-manifest.json`.
 
 ### De-React package 8 — teardown-rebuild renders, `{state,setState}` props, ref drilling
 

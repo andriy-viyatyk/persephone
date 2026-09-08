@@ -1,3 +1,54 @@
+## EPIC-096 — The `ai-vision` library
+
+Completed 2026-09-08. [Epic document](EPIC-096.md). Epic 1 of 3 in the
+[AiVision library roadmap](../ai-vision-library-roadmap.md).
+
+- [x] US-1383: Repository scaffold, license, build, and core extraction
+- [x] US-1384: `dom` entry — generalized `createElements` and the highlight overlay
+- [x] US-1385: `remote` entry — `expose`, `describe`, `ai:*` handlers, `window.__aiVision`
+- [x] US-1386: Host-side proxy builder over a shape and a `send` function
+- [x] US-1387: `examples/demo-page` — the browser proof and EPIC-097's test surface
+- [x] US-1388: README (contract, tool description, versioning), pack check, publish *(publish pending
+      an npm login — see the epic document)*
+
+**The engine now lives outside this repository**, at
+[andriy-viyatyk/ai-vision](https://github.com/andriy-viyatyk/ai-vision): MIT, ESM, zero runtime
+dependencies, three entry points (`ai-vision`, `/dom`, `/remote`). Nothing in Persephone consumes it
+yet — adoption and deletion of the internal copy are EPIC-097, per roadmap principle 5 (retire
+nothing until the replacement passes the same gate). No Persephone source changed here.
+
+**The package is more than the extraction.** The eight core files moved with only four mechanical
+edits (inlined `errMessage`, `.js` import extensions, de-Persephoned comments, nothing renamed), but
+the epic also built the two halves the remote-tree design needs: a `remote` entry whose `expose(root)`
+serializes **shape only** and answers six leaf actions, and a host-side `createRemoteProxy(shape,
+send)` that turns a shape back into ordinary AiVision nodes the one resolver walks. Because the
+proxy's nodes are ordinary nodes, hint paths are correct by construction — the `windows[i].` string
+rewriting the main process pays today has no equivalent here.
+
+**Three findings came out of building the proxy, and they are contract shape, not code detail.**
+`members` must be synchronous, so an indexable node's *item* shape has to be in the serialized
+shape — there is nowhere to fetch it lazily; `describeNode` therefore probes `index(0)` at describe
+time, which is the first thing in the system that depends on the existing rule that `index()` is a
+cheap, side-effect-free lookup. Reading a node through the proxy must run the *remote* node's
+`summarize()`, or the live model object crosses the boundary. And a writable proxy member gets a
+setter and no getter, because the resolver's pre-assignment read would otherwise be a stray round
+trip returning a Promise — so the string-coercion rule moved to the remote side, where the property's
+real value is.
+
+**The gate ran in a real browser.** The demo page, opened from `file://` in a Persephone browser tab,
+resolves every path class through the package's own `resolveCall` over a loopback proxy: root
+summary and hint, `$help`, `helpSearch`, an indexed item, a writable round-trip, a method call,
+five elements with live visibility, the highlight overlay drawn in the page, and `additem` →
+*"Did you mean \"addItem\"?"*. That page is also EPIC-097's browser-transport test surface, which is
+why it publishes `window.__aiVision` and why it was worth building properly rather than as a stub.
+
+Two roadmap open questions closed early: the proxy builder lives in **core** (so a host that only
+mounts shapes never pulls in `window`), and lenient shape validation belongs to the **library**, not
+to EPIC-097 — `createRemoteProxy` skips a malformed member or element and reports it through
+`onWarning`, leaving EPIC-097 only the job of wiring `ui.log` into that callback.
+
+---
+
 ## EPIC-095 — Retire `docs/`
 
 Completed 2026-09-07. [Epic document](EPIC-095.md),
