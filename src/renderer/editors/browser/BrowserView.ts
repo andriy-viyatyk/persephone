@@ -122,6 +122,12 @@ export class BrowserWebviewItemView extends VanillaView<BrowserWebviewItemProps>
             if (this.model.state.get().pageMuted) {
                 ipcRenderer.send(BrowserChannel.setAudioMuted, `${this.model.id}/${this.tabId}`, true);
             }
+            // Probe here as well as on `did-stop-loading`: a tab restored with the page (a session
+            // restore, or a tab mounted lazily) has already finished loading, so the load events the
+            // probe normally rides never fire for it and its `.app` would stay missing until the
+            // user navigated. The probe dedupes per tab and document generation, so this costs at
+            // most the one evaluate it would have cost anyway.
+            this.model.webview.probeAiVisionOnReady(this.tabId);
         };
         this.listenNative("dom-ready", onDomReady);
 

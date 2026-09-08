@@ -287,6 +287,14 @@ export class BrowserWebviewModel {
         }
     };
 
+    /** Called from `dom-ready`, for a tab whose document finished loading before its load events
+     *  could reach this model (a session restore). Same gate and same per-generation dedupe as the
+     *  `did-stop-loading` path, so a tab probed by either route is not probed twice. */
+    probeAiVisionOnReady(internalTabId: string): void {
+        if (!agentMayAccessBrowserPage(this.model.state.get())) return;
+        void this.probeAiVision(internalTabId);
+    }
+
     private async probeAiVision(internalTabId: string): Promise<void> {
         if (!agentMayAccessBrowserPage(this.model.state.get())) {
             this.model.clearAiVisionRegistration(internalTabId);
