@@ -1,6 +1,6 @@
 # US-1401: Git Tree — the Commit and Diff panels stay empty when a commit is selected
 
-**Type:** user-reported bug (visual defect). **Status:** queued behind EPIC-099.
+**Type:** user-reported bug (visual defect). **Status:** completed.
 **Reported:** 2026-09-08.
 
 ## Goal
@@ -44,7 +44,7 @@ introduced the regression, then `git bisect`-style reading rather than guessing.
 
 ## Acceptance criteria
 
-- [ ] Selecting a commit fills the Commit tab (message, author, date) and the Diff tab (changed files).
-- [ ] Changing the selection updates both tabs; a restored page behaves the same as a fresh one.
-- [ ] No console errors on selection; `tsc` and `lint` clean.
-- [ ] What's New entry present.
+- [x] Selecting a commit fills the Commit tab (message, author, date) and the Diff tab (changed files).
+- [x] Changing the selection updates both tabs; a restored page behaves the same as a fresh one.
+- [x] No console errors on selection; `tsc` and `lint` clean.
+- [x] What's New entry present.

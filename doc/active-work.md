@@ -13,8 +13,6 @@ Overview of all active and planned epics and tasks.
 ## Planned
 
 - *(no epic)*
-  - [ ] [US-1401: Git Tree — the Commit and Diff panels stay empty when a commit is selected](tasks/US-1401-gittree-commit-panels-empty/README.md)
-    — user-reported bug, queued to run right after EPIC-099 completes.
   - [ ] [US-1131: Close the remaining gaps in the VanillaView lifecycle lint rules](tasks/US-1131-vanillaview-lint-gaps/README.md)
     — tooling, not a defect: the guard itself shipped as US-1142 in EPIC-071 and this is the
     residue. Deferred by user decision (2026-08-29). It carries **five** clause candidates,

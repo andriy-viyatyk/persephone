@@ -26,6 +26,12 @@ Release notes and changelog for Persephone (formerly js-notepad).
 - **Board pages preserve UTF-8 text:** board documents are now served with an explicit UTF-8
   charset, so non-ASCII text in board content and agent-facing descriptions is displayed correctly.
 
+### Bug Fixes
+
+- **Git Tree shows the commit you select again** — selecting a commit in the history grid left the
+  **Commit** and **Diff** tabs of the bottom panel empty. Both tabs now fill in as before: the
+  commit's author, date, refs and full message, and the list of files it changed with their diff.
+
 ---
 
 ## Version 5.0.0

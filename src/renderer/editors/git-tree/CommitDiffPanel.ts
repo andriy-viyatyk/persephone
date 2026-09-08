@@ -65,6 +65,9 @@ export class CommitDiffPanelView extends VanillaView<CommitDiffPanelProps> {
     private readonly filePanel: HTMLDivElement;
     private readonly viewPanel: HTMLDivElement;
     private emptyDiffPanel: HTMLDivElement | undefined;
+    /** The "select a commit" placeholder, kept so building the commit surface can
+     *  drop it — the surface panels are appended, not replaced in. */
+    private placeholder: HTMLSpanElement | undefined;
     private fileList: FileListView | undefined;
     private splitter: SplitterView | undefined;
     private diffHost: MonacoDiffEditorHostView | undefined;
@@ -198,9 +201,12 @@ export class CommitDiffPanelView extends VanillaView<CommitDiffPanelProps> {
         if (!commit) {
             this.releaseCommitSurface();
             applyPanelAttributes(this.root, resolvePanelAttributes({ padding: "md", align: "center", justify: "center", flex: 1 }));
-            this.root.replaceChildren(createTextElement("Select a commit to view its changes.", { color: "light" }));
+            this.placeholder = createTextElement("Select a commit to view its changes.", { color: "light" });
+            this.root.replaceChildren(this.placeholder);
             return;
         }
+        this.placeholder?.remove();
+        this.placeholder = undefined;
 
         applyPanelAttributes(this.root, resolvePanelAttributes({ name: "commit-diff", direction: "row", flex: 1, overflow: "hidden" }));
         this.ensureCommitSurface(state);

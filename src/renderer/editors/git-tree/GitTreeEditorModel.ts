@@ -206,9 +206,13 @@ export class GitTreeEditorModel extends EditorModel<GitTreeEditorState> {
         return hash ? this.gitTree.state.get().commits.find(commit => commit.hash === hash) : undefined;
     }
 
-    selectCommit(hash: string): void {
+    /** Select a commit in the history grid. Bound so the view can hand it
+     *  straight to `<GitTree onSelectCommit>` — the grid invokes the prop as
+     *  `props.onSelectCommit?.(hash)`, which would otherwise call it with the
+     *  props object as `this` and throw before the selection ever lands. */
+    selectCommit = (hash: string): void => {
         this.selectionState.update((state) => { state.selectedHash = hash; });
-    }
+    };
 
     /** Persist the commit grid's column layout (width + order) into editor state
      *  so it round-trips through the page descriptor (US-623). Bound so the view
