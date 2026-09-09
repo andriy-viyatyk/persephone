@@ -10,27 +10,39 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ---
 
-## Version 5.0.1 (Upcoming)
+## Version 5.0.2 (Upcoming)
 
-- **Named models for boards and web pages are ready to use:** trusted boards and participating web
-  pages can expose a discoverable model at `pages[i].editor.app`. Agents can inspect state, update
-  writable properties, call purposeful methods, find named controls, and highlight them in the
-  correct frame through the single `call` surface. The todo board (catalog version 1.1.0) is the first complete example;
-  boards that do not expose a model remain usable through `snapshot()` and refs.
-- **Agents can keep up with changes:** ask your agent what changed since it last looked, or have it
-  wait for a board or web page to refresh, a dialog to be answered, or a navigation to finish before
-  it continues.
-- **Guided walkthroughs:** ask your agent to walk you through Persephone, a Settings control, a
-  board, or a browser page one control at a time. Each step highlights the target and shows a card
-  with **Skip** and **Next**, so you can move through the tour at your own pace.
-- **Board pages preserve UTF-8 text:** board documents are now served with an explicit UTF-8
-  charset, so non-ASCII text in board content and agent-facing descriptions is displayed correctly.
+*No changes yet.*
+
+---
+
+## Version 5.0.1
+
+### New Features
+
+- **Boards and web pages can expose their own model to agents:** a trusted board, or a web page that
+  uses the [`ai-vision`](https://github.com/andriy-viyatyk/ai-vision) library, publishes a
+  discoverable model at `pages[i].editor.app`. Through the single `call` surface an agent inspects its
+  state, updates writable properties, calls named actions, finds the page's controls and highlights
+  them in the right frame. The todo board (catalog version 1.1.0) is the first complete example; a
+  board that exposes no model remains usable through `snapshot()` and refs as before.
+- **Agents keep up with what changed:** every `call` result now carries the events an agent has not
+  seen since its last call, such as a board or web page refreshing its model, a dialog being answered,
+  or a page navigating. An agent can read the full list with `events.recent()` or wait for the next
+  event instead of polling.
+- **Guided walkthroughs:** ask your agent to walk you through Persephone, a Settings section, a board
+  or a browser page one control at a time. Each step highlights the target and shows a card with
+  **Skip** and **Next**, so you move through the tour at your own pace and the agent continues when
+  you are ready.
 
 ### Bug Fixes
 
 - **Git Tree shows the commit you select again** — selecting a commit in the history grid left the
   **Commit** and **Diff** tabs of the bottom panel empty. Both tabs now fill in as before: the
   commit's author, date, refs and full message, and the list of files it changed with their diff.
+- **Board pages display non-ASCII text correctly** — board documents were served without a charset,
+  so characters outside ASCII, such as dashes and accented letters in board content, could render as
+  garbled text. Boards are now served as UTF-8.
 
 ---
 
