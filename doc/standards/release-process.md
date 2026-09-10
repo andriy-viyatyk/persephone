@@ -68,6 +68,27 @@ When the user says **"let's publish new build"** (or similar), follow the steps 
 
 7. **Wait** for the user to confirm that the GitHub build is complete and the release is published.
 
+7.5 **Close the GitHub issues this release fixes.** A fix is not delivered until it is
+   downloadable, so issues are held open until now rather than closed when the code merges.
+
+   ```bash
+   gh issue list --repo andriy-viyatyk/persephone --label "awaiting release" --state open
+   ```
+
+   For each issue actually fixed in this version, comment with the release link and close it:
+
+   ```bash
+   gh issue comment <n> --repo andriy-viyatyk/persephone --body "Released in vX.Y.Z: https://github.com/andriy-viyatyk/persephone/releases/tag/vX.Y.Z"
+   gh issue edit <n> --repo andriy-viyatyk/persephone --remove-label "awaiting release"
+   gh issue close <n> --repo andriy-viyatyk/persephone
+   ```
+
+   Write the comment for the reporter, in their own terms, naming what changed and the
+   version to download. Never put internal task ids or file paths in a public comment. An
+   issue on the list that this version did *not* fix keeps its label and stays open — the
+   label means "waiting for a release", not "waiting for this one". Full policy lives in the
+   [`github-issues`](../../.claude/skills/github-issues/SKILL.md) skill.
+
 ### Phase 2: Prepare Next Version (after user confirms)
 
 8. **Bump version** in `package.json` to `X.Y.{Z+1}`:
