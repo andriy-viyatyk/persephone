@@ -12,7 +12,17 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ## Version 5.0.2 (Upcoming)
 
-*No changes yet.*
+### New Features
+
+- **Word Wrap in the Text Editor:** a toolbar button wraps long lines to the width of the page, so
+  you can read a minified file or a long paragraph without scrolling sideways. Wrapping only
+  changes how the text is displayed, never the file itself, and you can still tell the difference
+  at a glance: a real line break gets a line number, a wrapped continuation does not.
+
+  Each page remembers its own setting, and keeps it when you restart Persephone, switch editors, or
+  drag the tab into another window. Word wrap starts off; turn it on for every new page with
+  **Enable Word Wrap by default** in **Settings → Editor Behavior**, which changes the starting point for
+  pages you open from then on and leaves the pages you already have alone.
 
 ---
 

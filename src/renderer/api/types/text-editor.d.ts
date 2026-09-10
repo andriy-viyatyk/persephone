@@ -30,6 +30,12 @@ export interface ITextEditor {
     /** Open Monaco's native find-and-replace widget. */
     openReplace(): void;
 
+    /** Whether word wrapping is enabled for this Text Editor page. */
+    readonly wordWrap: boolean;
+
+    /** Toggle word wrapping for this Text Editor page. */
+    toggleWordWrap(): void;
+
     /** Whether the text content is encrypted, or undefined while no text host is attached. */
     readonly encrypted: boolean | undefined;
 

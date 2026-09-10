@@ -151,6 +151,7 @@ unchanged, including `data-type="settings-section"` on each section root.
 | View Settings File button | `[data-name="settings-view-file"]` |
 | Theme section | `[data-name="settings-section-theme"]` |
 | Window Behavior section | `[data-name="settings-section-window-behavior"]` |
+| Editor Behavior section | `[data-name="settings-section-editor"]` |
 | Browser Profiles section | `[data-name="settings-section-browser-profiles"]` |
 | Links section | `[data-name="settings-section-link-behavior"]` |
 | Default Browser section | `[data-name="settings-section-default-browser"]` |

@@ -83,7 +83,7 @@ the current sidebar panels; `page.panels.expand(id)` takes a bare panel ID and
 are no panels or a non-Explorer panel keeps it open. There is no uniform `page.panels.close(id)`
 because individual panel owners have different hide/dispose lifecycles.
 
-Use `settings.sections` to find the fixed-order Settings catalog (13 sections, 25 rows), then
+Use `settings.sections` to find the fixed-order Settings catalog (14 sections, 25 rows), then
 `settings.highlight(key)` to open or activate Settings and point at the containing section.
 `settings.set` remains the mutation operation. Through the AiVision `call` seam only,
 `mcp.enabled` and `mcp.port` are refused because changing them disconnects the caller;
@@ -151,7 +151,7 @@ app.fs.showFolder(folderPath)                         // Open folder
 const theme = app.settings.theme                      // Current theme name
 const value = app.settings.get("editor.fontSize")     // Get any setting
 app.settings.set("theme", "monokai")                  // Set a setting
-app.settings.set("editor.wordWrap", "on")
+app.settings.set("editor.word-wrap", true)                 // default for newly shown Text Editor pages only
 
 app.settings.settingsFilePath                         // Path of the settings file on disk
 
@@ -166,6 +166,10 @@ save, so an external edit applies immediately and fires `onChanged` just like `s
 gets turned on in the first place). Persephone regenerates the file's comments on every save, so
 comments added by hand are lost. Keys, defaults, and accepted values are documented in the file
 itself and summarised in `persephone://guides/ui`.
+
+`editor.word-wrap` is read only when a newly shown Text Editor page has no saved page state. Each
+page then retains its own persisted `wordWrap` value, so changing the application default does not
+change existing Text Editor pages.
 
 ### app.ui
 
@@ -256,6 +260,8 @@ text.replaceSelection("x")  // Replace selection
 text.revealLine(42)         // Scroll to line
 text.setHighlightText("q")  // Highlight occurrences
 text.getCursorPosition()    // { lineNumber, column }
+text.wordWrap              // boolean — page-local persisted wrapping state
+text.toggleWordWrap()      // Toggle wrapping for this Text Editor page
 ```
 
 ### `page.editor` when `id` is `"grid-json"`, `"grid-csv"`, or `"grid-jsonl"` — Grid data editor

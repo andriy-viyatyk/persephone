@@ -12,8 +12,8 @@ Settings opens as an ordinary page from the Menu Bar gear icon, `[data-name="men
 It is a fixed-order editor. The page shows the settings that have UI controls, while the settings
 object and its file also contain a few values that are intentionally get/set-only.
 
-When connected over MCP, read `settings.sections` for the fixed-order catalogue of 13 sections and
-24 setting rows plus one page action. Use `settings.highlight(key)` to open or activate Settings and point at the
+When connected over MCP, read `settings.sections` for the fixed-order catalogue of 14 sections and
+25 setting rows plus one page action. Use `settings.highlight(key)` to open or activate Settings and point at the
 containing section; `key` is a settings key, not a DOM selector.
 
 ## Layout
@@ -23,6 +23,7 @@ containing section; `key` is a settings key, not a DOM selector.
 | [Settings content]                                                  |  centered Settings content below the page toolbar
 | [Theme]                                                             |  Settings content, Theme section
 | [Window Behavior]                                                   |  Settings content, Window Behavior section
+| [Editor Behavior]                                                   |  Settings content, Editor Behavior section
 | [Browser Profiles]                                                  |  Settings content, Browser Profiles section
 | [Links]                                                             |  Settings content, Links section
 | [Default Browser]                                                   |  Settings content, Default Browser section
@@ -44,6 +45,7 @@ containing section; `key` is a settings key, not a DOM selector.
 - Settings content → no entry: region container; section anchors are addressable
 - Theme → `theme`
 - Window Behavior → `window.close-to-tray`
+- Editor Behavior → `editor.word-wrap`
 - Browser Profiles → `browser-profiles`, `browser-default-profile`, `browser-default-bookmarks-file`, `browser-incognito-bookmarks-file`, `tor.exe-path`, `tor.socks-port`, `tor.bookmarks-file`
 - Links → `link-open-behavior`
 - Default Browser → no entry: section has no catalog setting row
@@ -66,12 +68,19 @@ containing section; `key` is a settings key, not a DOM selector.
 +---------------------------------------------------------------------+
 ```
 
+## Editor Behavior
+
+The **Editor Behavior** section contains **Enable Word Wrap by default**, which is off by default.
+It controls the initial wrapping state only when a newly shown Text Editor page has no saved page
+state. Existing Text Editor pages keep their own persisted Word Wrap choice; use the Text Editor's
+toolbar toggle to change one of those pages.
+
 ### Drawn controls without `elements`
 
 - Settings root and content containers — no entry: structural regions; the Settings elements list exposes catalog keys and the page action.
-- Section roots — no entry as separate Settings elements: the 24 generated key entries use each section root's selector and inherit its section phrase.
+- Section roots — no entry as separate Settings elements: the 25 generated key entries use each section root's selector and inherit its section phrase.
 
-Evidence: `SettingsView.ts:48-106`, `settings.ts:22-176`, and `ui-element-contract.md:139-163`.
+Evidence: `SettingsView.ts:48-109`, `settings.ts:22-188`, and `ui-element-contract.md:139-164`.
 
 ## Settings sections and stable targets
 
@@ -85,6 +94,7 @@ names are containers for highlighting rather than individual setting controls.
 | View Settings File | `[data-name="settings-view-file"]` |
 | Theme | `[data-name="settings-section-theme"]` |
 | Window Behavior | `[data-name="settings-section-window-behavior"]` |
+| Editor Behavior | `[data-name="settings-section-editor"]` |
 | Browser Profiles | `[data-name="settings-section-browser-profiles"]` |
 | Links | `[data-name="settings-section-link-behavior"]` |
 | Default Browser | `[data-name="settings-section-default-browser"]` |
@@ -110,6 +120,7 @@ rows and their labels instead of relying on a visual position that may change.
 | `mneme.enabled` | Off by default; enables the separate Mneme service, whose port is `mneme.port` |
 | `theme` | Applies when saved; the settings file comments list the accepted theme names |
 | `window.close-to-tray` | On by default; controls whether closing the last window hides to the tray or quits |
+| `editor.word-wrap` | Off by default; selects the initial wrapping state for newly shown Text Editor pages, while existing pages keep their persisted choice |
 
 Session restoration is not a Settings option. See [Page Tabs → Session restore](./tabs.md#session-restore)
 for the fact that a valid saved session is always attempted and there is no setting to disable it.

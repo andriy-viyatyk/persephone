@@ -129,6 +129,14 @@ history. Consumers must not duplicate that policy against the raw Monaco editor.
 defined/applied by `api/setup/configure-monaco.ts`, while sizing belongs to CSS. Each host has its
 own root class and child-width rule because Monaco can collapse to zero width as a flex child.
 
+The Text Editor's `MonacoBodyView` supplies its page-local `wordWrap` state as host options,
+mapping it to Monaco's `"on"`/`"off"` values and setting `wrappingIndent: "same"`. Word-wrap
+changes update the host with `update()` so they do not pass through the content synchronization
+path or write an undo stop. The state is mirrored in the host's editor-settings slot; when that
+slot is absent, `editor.word-wrap` is read once to seed the newly shown page, and later setting
+changes do not affect an existing page. The Text Editor also registers a focused-instance Monaco
+Command Palette action (`text.toggleWordWrap`) alongside its toolbar toggle.
+
 Models created through a host are owned by it. `setModel(model, "owned" | "borrowed")` releases an
 owned model it displaces; borrowed models are never disposed. The host detaches the widget before
 disposing owned models, and defers that disposal to a macrotask so Monaco has finished releasing its
@@ -210,6 +218,11 @@ lifecycle those editors would otherwise each reimplement:
   state from `host.getEditorState(editorId)` and mirrors later changes back with
   `setEditorState`, so per-editor view settings (Markdown `compactMode`, Mermaid
   `lightMode`, Grid columns/filters, …) survive both editor switches and app restarts.
+
+When a view setting has an application default, the editor may seed the host slot before
+installing the mirror, but the host value is authoritative once the slot exists. Monaco's Text
+Editor uses this shape for `wordWrap`: it reads `editor.word-wrap` only for a newly shown page,
+then preserves the page-local choice across editor switches and restarts.
 
 Subclass hooks: `displayName` (error/notify strings), `adoptHost` override (call `super`
 first, then wire domain subscriptions / kick an in-adoption parse), `onHostAttached(host)`

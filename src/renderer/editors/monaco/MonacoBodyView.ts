@@ -43,6 +43,7 @@ export class MonacoBodyView extends VanillaView<{ model: MonacoEditor }> {
     private hostCleanups: Array<() => void> = [];
 
     private hostSubscription: (() => void) | undefined;
+    private modelSubscription: (() => void) | undefined;
     private queueSubscription: (() => void) | undefined;
     private requestSubscription: (() => void) | undefined;
 
@@ -60,6 +61,7 @@ export class MonacoBodyView extends VanillaView<{ model: MonacoEditor }> {
     protected onMount(): void {
         this.model = this.props.model;
         this.mountHostIfPresent();
+        this.subscribeToCurrentModel();
         this.subscribeToCurrentHost();
         this.subscribeToCurrentQueue();
     }
@@ -70,10 +72,15 @@ export class MonacoBodyView extends VanillaView<{ model: MonacoEditor }> {
         const hostChanged = nextHost !== this.host;
 
         if (modelChanged || hostChanged) {
-            if (modelChanged) this.releaseQueueSubscriptions();
+            if (modelChanged) {
+                this.releaseQueueSubscriptions();
+                this.modelSubscription?.();
+                this.modelSubscription = undefined;
+            }
             this.releaseCurrentHost();
             this.model = props.model;
             this.mountHostIfPresent();
+            if (modelChanged) this.subscribeToCurrentModel();
             this.subscribeToCurrentHost();
             if (modelChanged || !this.queueSubscription) this.subscribeToCurrentQueue();
             return;
@@ -84,6 +91,8 @@ export class MonacoBodyView extends VanillaView<{ model: MonacoEditor }> {
 
     protected onDispose(): void {
         this.releaseQueueSubscriptions();
+        this.modelSubscription?.();
+        this.modelSubscription = undefined;
         this.releaseCurrentHost();
         this.decorations?.clear();
         this.decorations = undefined;
@@ -127,6 +136,25 @@ export class MonacoBodyView extends VanillaView<{ model: MonacoEditor }> {
         this.syncHost(selectHostSlice(host.state.get()));
     }
 
+    private subscribeToCurrentModel(): void {
+        const model = this.model;
+        const unsubscribe = model.state.subscribe<boolean>(
+            () => {
+                if (this.isDisposed) return;
+                const host = this.host;
+                const hostView = this.hostView;
+                if (this.model !== model || !host || !hostView?.isReady) return;
+                hostView.update(this.hostViewProps(selectHostSlice(host.state.get())));
+            },
+            (state) => state.wordWrap,
+        );
+        const release = this.ownSubscription(() => {
+            unsubscribe();
+            if (this.modelSubscription === release) this.modelSubscription = undefined;
+        });
+        this.modelSubscription = release;
+    }
+
     private syncHost(slice: HostSlice): void {
         const view = this.hostView;
         if (!view?.isReady) return;
@@ -146,6 +174,8 @@ export class MonacoBodyView extends VanillaView<{ model: MonacoEditor }> {
                 // OS file drops are handled app-wide (open as tab / import into trees);
                 // don't let Monaco insert a dropped file into the editor text.
                 dropIntoEditor: { enabled: false },
+                wordWrap: this.model.wordWrap ? "on" : "off",
+                wrappingIndent: "same",
             },
         };
     }
@@ -204,6 +234,7 @@ export class MonacoBodyView extends VanillaView<{ model: MonacoEditor }> {
             this.registerHostCleanup(setupWheelZoom(ed)),
             this.registerHostCleanup(setupSelectionListener(ed, this.model)),
             this.registerHostCleanup(setupRichPaste(ed, this.host)),
+            this.registerHostCleanup(setupWordWrapAction(ed, this.model)),
         ];
         // Mount-autofocus lets the user type right after opening/switching to
         // this page — but sidebar-driven navigation (Explorer click) must not
@@ -363,6 +394,20 @@ function setupRichPaste(
                     { range: selection, text, forceMoveMarkers: true },
                 ]);
             }
+        },
+    });
+    return () => action.dispose();
+}
+
+function setupWordWrapAction(
+    ed: monaco.editor.IStandaloneCodeEditor,
+    model: MonacoEditor,
+): () => void {
+    const action = ed.addAction({
+        id: "text.toggleWordWrap",
+        label: "Toggle Word Wrap",
+        run: () => {
+            model.toggleWordWrap();
         },
     });
     return () => action.dispose();

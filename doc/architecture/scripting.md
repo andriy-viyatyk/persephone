@@ -479,7 +479,7 @@ an operation facade still return a `GenericEditorFacade` with their `id` and dis
 
 | Facade access | Facade | Wraps | Key Operations |
 |--------|--------|-------|----------------|
-| `page.editor` | `TextEditorFacade` | `MonacoEditor` | `getSelectedText()`, `insertText()`, `replaceSelection()`, `revealLine()`, cursor position |
+| `page.editor` | `TextEditorFacade` | `MonacoEditor` | `getSelectedText()`, `insertText()`, `replaceSelection()`, `revealLine()`, cursor position, `wordWrap`, `toggleWordWrap()` |
 | `page.editor` | `GridEditorFacade` | `GridEditor` | `rows`, `columns`, `editCell()`, `addRows()`, `deleteRows()`, `addColumns()`, `deleteColumns()` |
 | `page.editor` | `NotebookEditorFacade` | `NotebookEditor` | `notes`, `categories`, `tags`, `addNote()`, `deleteNote()`, `updateNoteTitle()` |
 | `page.editor` | `LinkEditorFacade` | `LinkEditor` | `links`, `categories`, `tags`, `addLink()`, `deleteLink()`, `updateLink()` |
@@ -650,7 +650,7 @@ selection: `folders` contains the four built-in folders and configured user fold
 `open(folderId?)` accepts a folder ID and rejects unknown IDs. The older `openMenuBar(panelId?)`
 remains a lenient compatibility operation; it does not replace the strict model surface.
 
-The Settings descriptor adds a computed `sections` catalog with 13 fixed-order sections and 25
+The Settings descriptor adds a computed `sections` catalog with 14 fixed-order sections and 25
 rows, plus key-named `elements` and `highlight(key)`. Highlighting opens or activates the Settings
 page, waits for its named box-bearing section wrapper, and then delegates to the shared overlay;
 the section roots themselves retain `display: contents`. Five real settings have no Settings-page

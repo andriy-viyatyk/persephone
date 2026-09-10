@@ -75,7 +75,8 @@ ids preserve the registry's existing rejection. The page toolbar is available as
 The current `page.editor` value exposes the following existing operation surfaces when its id is
 narrowed:
 
-- `monaco`: selection, cursor, insertion, replacement, line reveal, and highlighting.
+- `monaco`: selection, cursor, insertion, replacement, line reveal, highlighting, and the
+  page-local `wordWrap` / `toggleWordWrap()` controls.
 - `grid-json`, `grid-csv`, `grid-jsonl`: rows, columns, cell editing, search, and row/column changes.
 - `notebook-view`: notes, categories, tags, and note editing.
 - `link-view`: links, categories, tags, and link editing.

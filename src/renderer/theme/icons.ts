@@ -500,6 +500,10 @@ export const ViewListIcon = createIcon(24)(
     "<path d=\"M3,5h18 M3,9h18 M3,13h18 M3,17h18 M3,21h18\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" fill=\"none\" />",
 );
 
+export const WrapTextIcon = createIcon(24)(
+    "<g fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M3 5h18\" /><path d=\"M3 11h13a3 3 0 0 1 0 6h-2\" /><path d=\"m17 14-3 3 3 3\" /><path d=\"M3 21h18\" /></g>",
+);
+
 // "log" in a bordered box — used for the Open-Log toolbar action. Sized to fill
 // the viewBox so it reads clearly at small toolbar sizes.
 export const LogIcon = createIcon(24)(

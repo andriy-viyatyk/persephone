@@ -118,6 +118,39 @@ export class WindowBehaviorSectionView extends VanillaView<Record<string, never>
     }
 }
 
+export class EditorBehaviorSectionView extends VanillaView<Record<string, never>> {
+    private checkbox: CheckboxView | undefined;
+
+    public constructor(props: Record<string, never>) {
+        super(props, createSectionRoot("settings-section"));
+    }
+
+    protected onMount(): void {
+        sectionHeader(this.root, "Editor Behavior", "Default word wrapping for newly shown Text Editor pages. Existing pages keep their own persisted choice.");
+        const row = panel({ direction: "row", align: "center", gap: "md", paddingBottom: "lg" });
+        this.checkbox = this.child(new CheckboxView(this.checkboxProps()));
+        row.append(this.checkbox.root);
+        this.checkbox.mount();
+        this.root.append(row);
+        const subscription = settings.onChanged.subscribe(({ key }) => {
+            if (key === "editor.word-wrap") this.checkbox?.update(this.checkboxProps());
+        });
+        this.own(subscription);
+    }
+
+    protected onDispose(): void {
+        this.checkbox = undefined;
+    }
+
+    private checkboxProps(): CheckboxProps {
+        return {
+            checked: settings.get("editor.word-wrap"),
+            onChange: (checked) => settings.set("editor.word-wrap", checked),
+            children: "Enable Word Wrap by default",
+        };
+    }
+}
+
 interface GitIntegrationState { probe: { installed: boolean; version?: string } | null; }
 
 class GitIntegrationModel extends TComponentModel<GitIntegrationState, { gitEnabled: boolean }> {
@@ -497,4 +530,4 @@ export class TerminalSectionView extends VanillaView<Record<string, never>> {
     }
 }
 
-export { LinkBehaviorSectionView as LinkBehaviorSection, WindowBehaviorSectionView as WindowBehaviorSection, GitIntegrationSectionView as GitIntegrationSection, BoardVarsSectionView as BoardVarsSection, ScriptLibrarySectionView as ScriptLibrarySection, DrawingLibrarySectionView as DrawingLibrarySection, VideoPlayerSectionView as VideoPlayerSection, TerminalSectionView as TerminalSection };
+export { LinkBehaviorSectionView as LinkBehaviorSection, WindowBehaviorSectionView as WindowBehaviorSection, EditorBehaviorSectionView as EditorBehaviorSection, GitIntegrationSectionView as GitIntegrationSection, BoardVarsSectionView as BoardVarsSection, ScriptLibrarySectionView as ScriptLibrarySection, DrawingLibrarySectionView as DrawingLibrarySection, VideoPlayerSectionView as VideoPlayerSection, TerminalSectionView as TerminalSection };

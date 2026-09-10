@@ -49,6 +49,7 @@ export type AppSettingsKey =
     | "audio-shuffle"
     | "git.enabled"
     | "window.close-to-tray"
+    | "editor.word-wrap"
     | "board-vars.file";
 
 // =============================================================================
@@ -119,6 +120,7 @@ const settingsComments: Partial<Record<AppSettingsKey, string>> = {
     "audio-shuffle": "Shuffle mode for audio playback across a folder, category, or tag set.\nBoolean. Default: false. Toggled by the Shuffle button in the player.",
     "git.enabled": "Enable Git integration — the Git Tree and Git Diff editors.\nBoolean. Default: false, and with it off Persephone performs no git activity at all.\nRequires git installed and on PATH. This is usually why a user cannot find git features.",
     "window.close-to-tray": "Keep Persephone running in the notification tray after its last window is closed.\nBoolean. Default: true — closing the last window only hides it, and the app is\nrestored from the tray icon. Background services (MCP server, Mneme, the launcher\npipe that makes \"Open with persephone\" instant) stay up, which is the point.\nSet false to make closing the last window quit the app outright. The tray icon is\nstill there while the app runs; Quit from it always exits regardless of this setting.",
+    "editor.word-wrap": "Default word wrapping for newly shown Text Editor pages.\nBoolean. Default: false. This is read when a Text Editor page is first shown\nwithout saved page state; existing pages keep their own persisted choice.",
     "board-vars.file": "Absolute path to the board environment-variables file (.env.json).\nHolds per-board variables and secrets, deliberately OUTSIDE board folders so a board\nfolder can be shared without its secrets. May be password-encrypted via the file's\nencryption menu, in which case its values cannot be read until the user unlocks it.",
 };
 
@@ -152,6 +154,7 @@ const defaultAppSettingsState = {
         "audio-shuffle": false,
         "git.enabled": false,
         "window.close-to-tray": true,
+        "editor.word-wrap": false,
         "board-vars.file": "",
     },
 };

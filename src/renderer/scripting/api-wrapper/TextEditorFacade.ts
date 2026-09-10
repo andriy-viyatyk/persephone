@@ -11,6 +11,7 @@ const TEXT_ELEMENTS = [
     { name: "text-run-script", purpose: "Run the current script, when this text page uses a script language.", where: "left side of the text toolbar, after Compare, for script languages" },
     { name: "text-run-all-script", purpose: "Run all script content when a selection is present.", where: "left side of the text toolbar, after Run, when text is selected" },
     { name: "text-show-resources", purpose: "Show extracted HTML resources when this text page uses the html language.", where: "right side of the text toolbar, for HTML language" },
+    { name: "text-word-wrap-toggle", purpose: "Toggle word wrapping for this Text Editor page.", where: "right side of the text toolbar" },
     { name: "text-toggle-script", purpose: "Open or close the related script panel.", where: "right side of the text footer, when a related script exists" },
     { name: "script-panel-splitter", purpose: "Resize the open related script panel.", where: "between the editor and the open script panel" },
     { name: "script-run", purpose: "Run the related script or its selection.", where: "top-left of the open script panel" },
@@ -25,6 +26,7 @@ const TEXT_EDITOR_MEMBERS: readonly IAiMember[] = [
     { name: "id", kind: "property", summary: "The concrete current editor id." },
     { name: "name", kind: "property", summary: "The editor's registry display name." },
     { name: "editorMounted", kind: "property", summary: "True when the Monaco editor is visible and mounted. The queue layer defers commands until mount, so this is informational - consumers no longer need to gate calls on it." },
+    { name: "wordWrap", kind: "property", summary: "Whether word wrapping is enabled for this Text Editor page." },
     { name: "getSelectedText", kind: "method", signature: "getSelectedText(): Promise<string>", summary: "Get currently selected text, or empty string if no selection." },
     { name: "revealLine", kind: "method", signature: "revealLine(lineNumber: number): void", summary: "Scroll to reveal a specific line in the center of the editor." },
     { name: "setHighlightText", kind: "method", signature: "setHighlightText(text?: string): void", summary: "Highlight all occurrences of text with find-match decorations." },
@@ -33,6 +35,7 @@ const TEXT_EDITOR_MEMBERS: readonly IAiMember[] = [
     { name: "replaceSelection", kind: "method", signature: "replaceSelection(text: string): Promise<void>", summary: "Replace current selection with text.", caution: "changes text content" },
     { name: "openFind", kind: "method", signature: "openFind(): void", summary: "Open Monaco's native find widget." },
     { name: "openReplace", kind: "method", signature: "openReplace(): void", summary: "Open Monaco's native find-and-replace widget.", caution: "opens a UI that can mutate editor content" },
+    { name: "toggleWordWrap", kind: "method", signature: "toggleWordWrap(): void", summary: "Toggle word wrapping for this Text Editor page." },
     { name: "encrypted", kind: "property", summary: "Whether the text content is encrypted." },
     { name: "decrypted", kind: "property", summary: "Whether this encrypted file is currently unlocked." },
     { name: "withEncryption", kind: "property", summary: "Whether this text file has encryption state." },
@@ -61,7 +64,7 @@ const TEXT_EDITOR_HELP = `Access via pages[i].editor after narrowing editor.id t
 Monaco text editor operations for selection, cursor, insertion, replacement, line navigation,
 file actions, script execution, related scripts, encryption, and Monaco's native find/replace
 widget. The native find/replace widget has no persistent page element or app-owned selector.
-elements is a page-scoped curated inventory of the four existing text-toolbar controls plus the
+elements is a page-scoped curated inventory of the five existing text-toolbar controls plus the
 related script-panel controls. Most text elements are conditional, so a majority report
 visible: false on an ordinary text page; that is expected and means the control is absent, not
 available. Reading elements reports literal current visibility without activating a page, while
@@ -121,6 +124,14 @@ export class TextEditorFacade implements IAiVisible {
 
     openReplace(): void {
         this.editor.openReplace();
+    }
+
+    get wordWrap(): boolean {
+        return this.editor.wordWrap;
+    }
+
+    toggleWordWrap(): void {
+        this.editor.toggleWordWrap();
     }
 
     // ── View-context queries (async — queue.execute returns a Promise) ──

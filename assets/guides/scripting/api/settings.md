@@ -30,6 +30,7 @@ Get a setting value by key. Returns `undefined` for unknown keys.
 const searchExtensions = app.settings.get("search-extensions");
 const searchExclusions = app.settings.get("search-exclude");
 const mcpEnabled = app.settings.get("mcp.enabled");
+const wordWrapByDefault = app.settings.get("editor.word-wrap");
 ```
 
 ### set(key, value)
@@ -40,7 +41,12 @@ Set a setting value. Changes are persisted automatically (debounced).
 app.settings.set("theme", "monokai");
 app.settings.set("search-exclude", ["node_modules", ".git", "dist"]);
 app.settings.set("mcp.enabled", true);
+app.settings.set("editor.word-wrap", true);
 ```
+
+`editor.word-wrap` is a boolean and is off by default. It is read only when a newly shown Text
+Editor page has no saved page state; each page then keeps its own persisted choice, so changing the
+setting does not alter existing pages.
 
 `app.settings.set()` is the regular script API and can change the MCP settings. When the same
 operation is reached through `app.call("settings.set", ...)`, attempts to disable the MCP server
@@ -59,12 +65,13 @@ const sections = await app.call("settings.sections");
 await app.call("settings.highlight", { args: ["mcp.enabled"] });
 ```
 
-The catalog has 13 sections and 24 Settings-page rows:
+The catalog has 14 sections and 25 Settings-page rows:
 
 | Section | Rows |
 |---------|------|
 | Theme | `theme` |
 | Window Behavior | `window.close-to-tray` |
+| Editor Behavior | `editor.word-wrap` |
 | Browser Profiles | `browser-profiles`, `browser-default-profile`, `browser-default-bookmarks-file`, `browser-incognito-bookmarks-file`, `tor.exe-path`, `tor.socks-port`, `tor.bookmarks-file` |
 | Links | `link-open-behavior` |
 | Default Browser | *(no setting row)* |
@@ -89,6 +96,7 @@ Five real settings have no Settings-page row because their controls live elsewhe
 | `mcp.enabled` | `boolean` | `false` | Enable the MCP HTTP server for AI agent integration. When `true`, external tools (e.g., Claude Desktop, Claude Code, ChatGPT) can connect to persephone and run scripts, read content, and list open tabs. The server listens on `http://127.0.0.1:{mcp.port}/mcp`. See [What's New](../../whats-new.md) for details. |
 | `mcp.port` | `number` | `7865` | Port for the MCP HTTP server. The server URL will be `http://127.0.0.1:{port}/mcp`. Changing this setting requires toggling `mcp.enabled` off and on to take effect. |
 | `main.scripting.enabled` | `boolean` | `false` in packaged builds | Allow the MCP `call` tool to run code in Persephone's main process. This can freeze the app; enable it only for trusted MCP clients. Development builds enable it by default. |
+| `editor.word-wrap` | `boolean` | `false` | Default Word Wrap for newly shown Text Editor pages; existing pages retain their persisted choice. |
 | `script-library.path` | `string` | `""` | Path to the Script Library folder. When set, a "Script Library" entry appears in the sidebar for quick access to reusable scripts. |
 | `board-vars.file` | `string` | `""` | Path to the board environment-variables file (`.env.json`) — stores per-board variables/secrets outside board folders. Empty means not configured yet. May be encrypted with a password via the file's own encryption menu. See [Boards — Environment variables](../../boards.md#environment-variables--secrets-outside-the-board-folder). |
 

@@ -1,6 +1,8 @@
 import { TComponentState } from "../../core/state/state";
+import { settings } from "../../api/settings";
 import type { EditorStateBase, RestoreData } from "../base/EditorModel";
 import { TextHostEditorModel } from "../base/TextHostEditorModel";
+import type { TextFileModel } from "../text/TextEditorModel";
 import { ComponentQueue, type ComponentQueueEvent } from "../../core/state/ComponentQueue";
 
 export type MonacoQueueEvent =
@@ -21,6 +23,11 @@ export interface MonacoEditorState extends EditorStateBase {
      *  listener, read by `<TextChrome>`'s Run-all visibility gate. Non-
      *  persisted (defaults to false on restore). */
     hasSelection: boolean;
+    wordWrap: boolean;
+}
+
+interface MonacoViewSettings {
+    wordWrap?: boolean;
 }
 
 export const defaultMonacoEditorState: MonacoEditorState = {
@@ -29,6 +36,7 @@ export const defaultMonacoEditorState: MonacoEditorState = {
     modified: false,
     secondaryView: undefined,
     hasSelection: false,
+    wordWrap: false,
 };
 
 export class MonacoEditor extends TextHostEditorModel<
@@ -68,6 +76,40 @@ export class MonacoEditor extends TextHostEditorModel<
     hasTextSelection(): boolean {
         return this.state.get().hasSelection;
     }
+
+    get wordWrap(): boolean {
+        return this.state.get().wordWrap;
+    }
+
+    adoptHost(host: TextFileModel): void {
+        super.adoptHost(host);
+
+        if (host.getEditorState<MonacoViewSettings>(this.editorId) === undefined) {
+            const wordWrap = settings.get("editor.word-wrap");
+            this.state.update((state) => {
+                state.wordWrap = wordWrap;
+            });
+            host.setEditorState<MonacoViewSettings>(this.editorId, { wordWrap });
+        }
+
+        this.mirrorHostSettings<MonacoViewSettings>(
+            (saved) => {
+                if (saved.wordWrap !== undefined) {
+                    this.state.update((state) => {
+                        state.wordWrap = saved.wordWrap;
+                    });
+                }
+            },
+            (state) => ({ wordWrap: state.wordWrap }),
+            (state) => state.wordWrap,
+        );
+    }
+
+    toggleWordWrap = (): void => {
+        this.state.update((state) => {
+            state.wordWrap = !state.wordWrap;
+        });
+    };
 
     focus(): void {
         this.typedQueue.send({ type: "focus" });

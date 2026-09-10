@@ -13,6 +13,7 @@ import { ThemeSectionView } from "./sections/ThemeSection";
 import {
     BoardVarsSectionView,
     DrawingLibrarySectionView,
+    EditorBehaviorSectionView,
     GitIntegrationSectionView,
     LinkBehaviorSectionView,
     ScriptLibrarySectionView,
@@ -63,6 +64,8 @@ export class SettingsView extends VanillaView<SettingsEditorProps> {
         this.appendSection(new ThemeSectionView({}), content, "settings-section-theme");
         this.appendDivider(content);
         this.appendSection(new WindowBehaviorSectionView({}), content, "settings-section-window-behavior");
+        this.appendDivider(content);
+        this.appendSection(new EditorBehaviorSectionView({}), content, "settings-section-editor");
         this.appendDivider(content);
         this.appendSection(new BrowserProfilesSectionView({}), content, "settings-section-browser-profiles");
         this.appendDivider(content);
