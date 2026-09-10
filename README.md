@@ -14,13 +14,20 @@ Any file a developer meets during the day opens in place — in three tiers:
 
 ## A workspace shared with AI agents
 
-Persephone ships a built-in [MCP](https://modelcontextprotocol.io/) server — enabled with one checkbox in Settings ([setup guide](assets/guides/mcp-setup.md)). Through it the whole app is transparent to an agent, and the agent works in the same UI you are looking at:
+Persephone ships a built-in [MCP](https://modelcontextprotocol.io/) server — enabled with one checkbox in Settings ([setup guide](assets/guides/mcp-setup.md)). It exposes a single tool, `call`, and behind it the whole application as one object model: pages and their editors, files, settings, dialogs, the browser, boards, Git, the window itself. The agent works in the same UI you are looking at:
 
 - **It shows you things.** An agent opens pages with rendered Markdown, diagrams, sortable grids, and highlighted code — instead of dumping walls of text into a chat.
-- **It sees what you see.** Snapshot, click, and type — browser-style MCP tools work on the app itself and on the built-in web browser, so an agent can find something online for you or summarize the page you have open.
-- **It works your content.** The full application API (`app.*` — pages, files, settings, dialogs) is scriptable, so an agent reads and edits documents right alongside you.
+- **It sees what you see.** Every open page is addressable — `pages[2].editor` is the grid, the Markdown preview, the browser tab, or the board you are looking at — with its content, selection, and controls. Snapshot, click, and type work on the app itself and on web pages in the built-in browser.
+- **It does what you can do.** Anything reachable from the UI is reachable from a path: read and edit documents, switch editors, open files, run scripts, stage and commit in Git, install a board. Boards and web pages can publish their own model too, so a viewer an agent built this morning is as transparent to it as a built-in editor.
+- **It keeps up.** Every result carries the events the agent has not seen yet — a page you opened, a selection you changed — and it can walk you through the app step by step with highlighted controls and Skip / Next tooltips.
 
 Content lives in one place and both of you operate on it: the agent drafts, you correct; you paste, the agent transforms.
+
+### Why this is easy: "AI vision"
+
+This transparency is not hundreds of hand-written MCP tools — one per screen and action, all charged to the agent's context on every turn. Instead every object in Persephone carries a small self-description: what it is, what its members are, one line of help each. The agent starts with `call` and no path, reads a short overview, and descends only into the branch the task is about. Each result hints at what lies below, and a wrong path answers with the right names. The agent looks at the one part of the application the task concerns — hence *vision* — and everything else costs nothing. A small model that got lost choosing among individual tools drives the same app through paths with few mistakes.
+
+The engine is published as the standalone **[ai-vision](https://github.com/andriy-viyatyk/ai-vision)** library ([npm](https://www.npmjs.com/package/ai-vision)), so any application can describe itself the same way — and when such an app runs as a board or in Persephone's browser, its model plugs straight into the same tree.
 
 ## Boards — a platform for mini apps
 
@@ -33,7 +40,7 @@ The practical loop: describe the tool you need to your agent — it scaffolds th
 - **Web browser** — tabs with profiles, incognito mode, Tor routing, bookmarks, and DRM video support. Links from Markdown and code open in the nearest browser tab.
 - **Git integration** *(off by default)* — a commit-graph editor across all branches, staging and committing, push/pull, and revision diffs for any tracked file.
 - **Mneme — vector memory** *(off by default)* — turns any folder of Markdown notes into a locally indexed knowledge base with hybrid full-text + semantic search, exposed over MCP so agents remember across sessions. See the [Mneme guide](assets/guides/mneme.md).
-- **Scripting** — the same `app.*` API agents use is available to you in a JavaScript/TypeScript tab with full Node.js access. See the [Scripting guide](assets/guides/scripting/index.md).
+- **Scripting** — the `app.*` API behind the agent's object model is yours too, in a JavaScript/TypeScript tab with full Node.js access. See the [Scripting guide](assets/guides/scripting/index.md).
 
 ## Download (Windows)
 
