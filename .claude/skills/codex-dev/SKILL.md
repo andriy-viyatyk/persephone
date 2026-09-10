@@ -1,7 +1,7 @@
 ---
 name: codex-dev
 description: The default way to do task work in this repo. Delegate investigation, planning, implementation, and the completion skills to Codex (gpt-5.6-luna, high effort) over MCP; Claude spends its budget on epic docs, reviewing Codex's plans, and fixing reported bugs. Use for any task big enough to need a document, and whenever the user says "use codex".
-allowed-tools: mcp__codex__codex, mcp__codex__codex-reply, mcp__persephone__browser_snapshot, Read, Grep, Glob, Bash, Edit, Write
+allowed-tools: mcp__codex__codex, mcp__codex__codex-reply, mcp__persephone__call, Read, Grep, Glob, Bash, Edit, Write
 ---
 
 # Codex-delegated development
@@ -160,19 +160,6 @@ mcp__codex__codex
 - Model and effort are already pinned to `gpt-5.6-luna` / `high` in the MCP server
   registration. Do not pass `model` unless the user asks for a different one.
 
-**Immediately after the call returns or is backgrounded, open the thread's rollout in Persephone**
-(user request, 2026-09-05 — the user wants to watch Codex work). Codex writes
-`~/.codex/sessions/<yyyy>/<mm>/<dd>/rollout-<timestamp>-<threadId>.jsonl` live from the first
-turn. The thread id is unknown until completion, so take the newest file in today's folder:
-
-```
-ls -t ~/.codex/sessions/$(date +%Y/%m/%d)/ | head -1
-mcp__persephone__call  path: "pages.openFile"  args: ["C:/Users/<user>/.codex/sessions/<yyyy>/<mm>/<dd>/<file>"]
-```
-
-Persephone activates the page if the file is already open and its file watcher refreshes the
-content, so this is idempotent. Not needed for `codex-reply` — the thread's page is already open.
-
 The `threadId` comes back in the result's `structuredContent.threadId`. Record thread A's
 and keep it through step 3. If you lose it, `codex exec resume --last` is the fallback, but
 a lost thread means Codex re-reads the codebase — wasteful, though only of the cheap budget.
@@ -294,8 +281,9 @@ line by line unless they ask.
    construction, and it is where a defect would actually be.
 4. **Confirm the app still renders.** A green build does not prove the renderer survived —
    a vanilla-view conversion can compile perfectly and mount a blank page. If Persephone is
-   running, take one `mcp__persephone__browser_snapshot` of a page that exercises the
-   converted code and confirm it is not empty. That is the whole check: *did we brick it?*
+   running, take one `mcp__persephone__call` snapshot (`window.screen.snapshot`) of a
+   page that exercises the converted code and confirm it is not empty. That is the whole
+   check: *did we brick it?*
    Do not walk the UI, do not verify layout details, do not screenshot several states —
    snapshots are large and full UI verification is exactly the token sink this workflow
    exists to avoid. If Persephone is not running, say so rather than starting it — but if it *is*
