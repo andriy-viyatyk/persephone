@@ -18,6 +18,12 @@ Overview of all active and planned epics and tasks.
     — user-reported gap found while verifying US-1407: an editorless page renders as a real
     "Empty" tab, but `PageCollectionWrapper.all` filters it out, so the agent cannot see it,
     `pages.activePage` is null while it is active, and `pages.closePage` refuses its id.
+  - [ ] US-1409: host menus stay open on a click inside a board
+    — user-reported. The board shim has posted `board:interact` on every capture-phase
+    pointerdown since US-773, but the host handler still dispatched a `mousedown`, which
+    PopoverView stopped listening for. US-1286 converted the browser guest and the HTML
+    iframe to `dismissOverlays()` and missed the board — and a second stale dispatch on the
+    browser webview's `focus`. Both now go through the shared helper.
 
 ## Planned
 

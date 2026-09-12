@@ -31,6 +31,7 @@ import { boardTrust } from "../../api/board-trust";
 import { errMessage } from "../../../shared/utils";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
+import { dismissOverlays } from "../../uikit/shared/overlayLayer";
 import "../../uikit/Panel/Panel.css";
 import { logBoardReloaded, logRemoteNotify, logShapeChanged } from "../../scripting/ai-vision/event-log";
 
@@ -327,7 +328,12 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         };
         switch (data.__persephone) {
             case "board:interact":
-                document.body.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+                // The shim posts this on every capture-phase pointerdown inside the board.
+                // It must dismiss host overlays through the shared helper: dispatching a
+                // `mousedown` here stopped working when PopoverView moved to `pointerdown`
+                // (US-1286 converted the browser guest and the HTML iframe, and missed this
+                // third frame — the menu stayed open over the board being clicked).
+                dismissOverlays();
                 break;
             case "board:error":
                 if (legacy.message) this.appendLog("error", legacy.message);

@@ -815,8 +815,9 @@ installBoardContextMenu({ fire, rpc });
 // don't bubble to the host, so an open Persephone menu/popover/command-palette wouldn't
 // close when the user clicks into the board. Post a capture-phase interaction ping to
 // the host frame (this is the board→host-frame channel — NOT the board↔main C1 port);
-// the host turns it into the same `document` mousedown its own webviews use to tear
-// down overlays. Capture phase so it fires even when the board already has focus.
+// the host replays it as a `document` pointerdown through `dismissOverlays()`, the same
+// helper its webview guest and HTML iframe use. Capture phase so it fires even when the
+// board already has focus.
 window.addEventListener(
     "pointerdown",
     () => {

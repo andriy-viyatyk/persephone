@@ -102,8 +102,11 @@ export class BrowserWebviewItemView extends VanillaView<BrowserWebviewItemProps>
             }
         });
 
+        // Focus can reach the guest without a press in it (keyboard traversal, a
+        // programmatic focus), so this is a second dismissal trigger alongside the
+        // `guest-pointerdown` ping below — and it carried the same dead `mousedown`.
         const onFocus = (): void => {
-            document.body.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+            dismissOverlays();
         };
         this.listenNative("focus", onFocus);
 
