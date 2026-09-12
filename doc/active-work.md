@@ -14,6 +14,10 @@ Overview of all active and planned epics and tasks.
     for deletion on Windows, so the final `rmdir` fails), and both delete paths take the
     board off its open pages first. `ensureBoardIdle` detaches and disposes the board editor
     instead of closing the page, so the tab stays open and goes empty (user request).
+  - [ ] [US-1408: AiVision cannot see or act on a page with no main editor](tasks/US-1408-ai-vision-empty-pages/README.md)
+    — user-reported gap found while verifying US-1407: an editorless page renders as a real
+    "Empty" tab, but `PageCollectionWrapper.all` filters it out, so the agent cannot see it,
+    `pages.activePage` is null while it is active, and `pages.closePage` refuses its id.
 
 ## Planned
 

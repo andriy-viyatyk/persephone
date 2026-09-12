@@ -32,9 +32,14 @@ export class PageEditorSwitchesNode implements IAiVisible {
         return this.host?.mainEditorInstance ?? null;
     }
 
+    /** Empty when the page has no editor at all (a tab left open after its editor was closed,
+     *  US-1408). Reporting "monaco" there would contradict `page.editor`, which reports no
+     *  editor, and would invite a switchTo() against a page with nothing to rebuild over. */
     get current(): string {
+        const host = this.host;
+        if (host && !host.mainEditorInstance && !host.mainEditor) return "";
         return this.mainEditor?.editorId
-            ?? (this.host?.mainEditor?.state.get() as { editor?: string } | undefined)?.editor
+            ?? (host?.mainEditor?.state.get() as { editor?: string } | undefined)?.editor
             ?? "monaco";
     }
 
@@ -68,7 +73,7 @@ export class PageEditorSwitchesNode implements IAiVisible {
             members: [...SWITCH_MEMBERS, ...elements.members],
             provide: elements.provide,
             elements: SWITCH_ELEMENTS,
-            help: "current is the page's main editor id. options is the exact merged candidate list shown by the toolbar, including compatible editors, trusted board matches, and the install entry. switchTo(id) accepts any registered editor id rather than being limited to options; it awaits the switch and verifies mainEditorInstance.editorId. A same-id call is a silent no-op. If the switch returns without changing the id, the release prompt may have been declined or the page may have no file to rebuild over. Unknown ids preserve the registry's rejection.",
+            help: "current is the page's main editor id, or empty when the page has no editor (a tab left open after its editor was closed) — options is then empty too, and pages.navigatePageTo is what gives the tab content again. options is the exact merged candidate list shown by the toolbar, including compatible editors, trusted board matches, and the install entry. switchTo(id) accepts any registered editor id rather than being limited to options; it awaits the switch and verifies mainEditorInstance.editorId. A same-id call is a silent no-op. If the switch returns without changing the id, the release prompt may have been declined or the page may have no file to rebuild over. Unknown ids preserve the registry's rejection.",
             summarize: () => ({ kind: "PageEditorSwitches", current: this.current, options: this.options }),
         };
     }

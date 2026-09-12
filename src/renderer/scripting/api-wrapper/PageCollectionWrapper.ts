@@ -128,10 +128,11 @@ export class PageCollectionWrapper implements IAiVisible {
         children.push(...this.all.map((page, i) => {
             const restricted = page.aiVision.restricted?.();
             const active = page.id === activeId ? " ← active" : "";
+            const editorId = page.editor.id || "no editor";
             return {
                 segment: `[${i}]`,
                 kind: "Page",
-                summary: `"${page.title}" id=${page.id} (${page.editor.id}${page.modified ? ", modified" : ""})${active}`,
+                summary: `"${page.title}" id=${page.id} (${editorId}${page.modified ? ", modified" : ""})${active}`,
                 ...(restricted ? { restricted } : {}),
             };
         }));
@@ -147,9 +148,14 @@ export class PageCollectionWrapper implements IAiVisible {
         return new LogViewEditorFacade(getMcpLogViewEditor, "log-view", "Log View", getOrCreateMcpLogViewEditor);
     }
 
+    /** A wrapper for any OPEN page, editor or not (US-1408). A page whose main editor was
+     *  detached is still a tab the user sees, so `undefined` here means "no such page" and
+     *  nothing else — it must never mean "this page has no editor". */
     private wrap(page: PageModel | null | undefined): PageWrapper | undefined {
-        const editor = page?.mainEditor;
-        return editor ? new PageWrapper(editor, this.releaseList, undefined, this.callContext) : undefined;
+        if (!page) return undefined;
+        return new PageWrapper(
+            page.mainEditor ?? null, this.releaseList, undefined, this.callContext, page,
+        );
     }
 
     withCallContext(callContext?: IAiCallContext): PageCollectionWrapper {
@@ -159,10 +165,14 @@ export class PageCollectionWrapper implements IAiVisible {
 
     // ── Queries ───────────────────────────────────────────────────────
 
+    /** Every open page, in tab order — including one whose editor was closed while the tab
+     *  stayed open. Filtering those out is what made the agent's page list disagree with the
+     *  user's tab strip, shifted every numeric index past the hidden page, and made
+     *  `closePage` refuse an id the user can close with one click (US-1408). */
     get all(): PageWrapper[] {
-        return this.pages.pages
-            .filter((p) => p.mainEditor)
-            .map((p) => new PageWrapper(p.mainEditor, this.releaseList, undefined, this.callContext));
+        return this.pages.pages.map((p) => new PageWrapper(
+            p.mainEditor ?? null, this.releaseList, undefined, this.callContext, p,
+        ));
     }
 
     get activePage(): PageWrapper | undefined {

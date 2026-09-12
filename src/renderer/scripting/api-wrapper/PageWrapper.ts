@@ -1,4 +1,6 @@
 import { pagesModel } from "../../api/pages";
+import type { PageModel } from "../../api/pages/PageModel";
+import type { IPageHost } from "../../api/pages/IPageHost";
 import { editorRegistry } from "../../editors/base/editorRegistry";
 import type { EditorModel } from "../../editors/base/EditorModel";
 import { isTextFileModel, type TextFileModel } from "../../editors/text/TextEditorModel";
@@ -126,7 +128,7 @@ const PAGE_MEMBERS: readonly IAiMember[] = [
     { name: "content", kind: "property", writable: true, summary: "The page's text (text-based editors only; empty for browser/image pages). Assign with \"value\"." },
     { name: "language", kind: "property", writable: true, summary: "Language id. Assigning changes it and returns { ok: true }; use page.tab.highlight(\"tab-language\") when the user asks where it is changed." },
     { name: "tab", kind: "property", node: true, summary: "This page's tab-strip entry and its visible controls." },
-    { name: "editor", kind: "property", node: true, summary: "Current editor facade; inspect its id to discover the available operations." },
+    { name: "editor", kind: "property", node: true, summary: "Current editor facade; inspect its id to discover the available operations. A tab left open after its editor was closed reports an empty id and no .editor child — open a file into it with pages.navigatePageTo, or close it." },
     { name: "editorSwitches", kind: "property", node: true, summary: "The current editor, toolbar-identical switch options, and unrestricted editor switching." },
     { name: "data", kind: "property", summary: "Free-form per-page data bag shared between scripts." },
     { name: "panels", kind: "property", node: true, summary: "Live sidebar panels, read-only open/width state, bare-id expansion, and whole-sidebar toggle." },
@@ -145,7 +147,10 @@ actions. The panels node is a live view of the page's sidebar. Grouped is a side
 creates one when none exists. A successful content read or assignment reports the raw source, not
 that a structured editor rendered it successfully. Parse JSON before writing notebook or links,
 or REST content, then activate the page and use window.screen.snapshot() when you need to verify the
-rendered editor.
+rendered editor. A page can have NO editor: a tab stays open when its editor is closed under it (for
+example after its board is deleted), rendering as an "Empty" tab. Such a page is listed here like any
+other and can be activated, pinned, moved and closed; its editor id is empty, content and language
+read empty, and pages.navigatePageTo(pageId, filePath) opens a file into it.
 `;
 
 interface IBrowserPrivacyState {
@@ -156,49 +161,77 @@ interface IBrowserPrivacyState {
     url?: string;
 }
 
+/**
+ * One open page for the agent. Identified by its PAGE, not by its editor: a page whose main
+ * editor has been detached (`mainEditorId === null`) is a real tab the user sees — it renders
+ * the empty-page state and is titled "Empty" — so it must be visible and actionable here too
+ * (US-1408). `model` is therefore nullable, and every member falls back to what such a page
+ * genuinely has rather than throwing or pretending an editor is present.
+ */
 export class PageWrapper implements IAiVisible {
     constructor(
-        private readonly model: EditorOrHost,
+        private readonly model: EditorOrHost | null,
         private readonly releaseList: Array<() => void>,
         private readonly outputFlags?: ScriptOutputFlags,
         private readonly callContext?: IAiCallContext,
+        /** The page this wrapper stands for. Optional so editor-first call sites keep working;
+         *  required to represent a page that has no editor to derive it from. */
+        private readonly pageModel?: PageModel | null,
     ) {}
 
+    private get page(): IPageHost | PageModel | null {
+        return this.pageModel ?? this.model?.page ?? null;
+    }
+
     private get mainEditor(): EditorModel | null {
-        const pageId = this.model.page?.id;
+        const pageId = this.page?.id;
         if (!pageId) return null;
         return pagesModel.findPage(pageId)?.mainEditorInstance ?? null;
     }
 
+    /** The empty id is meaningful: this page has no editor at all. Never fall back to "monaco"
+     *  for such a page — an agent reading `page.editor.id === "monaco"` would go on to write
+     *  text into a tab with nothing to write into. */
     private currentEditorId(): string {
+        if (!this.model && !this.mainEditor) return "";
         return this.mainEditor?.editorId
-            ?? (this.model.state.get() as { editor?: string }).editor
+            ?? (this.model?.state.get() as { editor?: string } | undefined)?.editor
             ?? "monaco";
     }
 
-    get id(): string { return this.model.page?.id ?? this.model.id; }
-    get title(): string { return this.model.title; }
-    get modified(): boolean { return this.model.modified; }
-    get pinned(): boolean { return this.model.page?.pinned ?? false; }
-    get filePath(): string | undefined { return this.model.filePath; }
+    /** False for a page whose editor was closed while the tab stayed open. */
+    get hasEditor(): boolean { return !!this.model || !!this.mainEditor; }
+
+    get id(): string { return this.page?.id ?? this.model?.id ?? ""; }
+    get title(): string { return this.model?.title ?? "Empty"; }
+    get modified(): boolean { return this.model?.modified ?? false; }
+    get pinned(): boolean { return this.page?.pinned ?? false; }
+    get filePath(): string | undefined { return this.model?.filePath; }
 
     get content(): string {
-        return isTextFileModel(this.model) ? this.model.state.get().content : "";
+        return this.model && isTextFileModel(this.model) ? this.model.state.get().content : "";
     }
 
     set content(value: string) {
-        if (isTextFileModel(this.model)) this.model.changeContent(value);
+        if (this.model && isTextFileModel(this.model)) this.model.changeContent(value);
     }
 
-    get language(): string { return this.model.state.get().language ?? ""; }
+    get language(): string { return this.model?.state.get().language ?? ""; }
 
     set language(value: string) {
         editorRegistry.assertKnownLanguage(value);
+        if (!this.model) {
+            throw new Error(
+                `Page ${JSON.stringify(this.id)} has no editor, so it has no language. Open a `
+                + "file into this empty tab with pages.navigatePageTo(pageId, filePath).",
+            );
+        }
         if (!this.model.noLanguage) this.model.changeLanguage(value);
     }
 
     get editor(): EditorFacade {
         const id = this.currentEditorId();
+        if (!id) return new GenericEditorFacade("", "None");
         const name = editorRegistry.getById(id)?.name
             ?? customEditorRegistry.entries.find((entry) => entry.editorId === id)?.name
             ?? id;
@@ -211,16 +244,18 @@ export class PageWrapper implements IAiVisible {
     }
 
     get editorSwitches(): PageEditorSwitchesNode {
-        return new PageEditorSwitchesNode(() => this.model.page ?? null);
+        return new PageEditorSwitchesNode(() => this.page);
     }
 
-    get tab(): PageTabNode { return new PageTabNode(() => this.model.page ?? null); }
+    get tab(): PageTabNode { return new PageTabNode(() => this.page); }
 
-    get data(): Record<string, unknown> { return this.model.scriptData; }
-    get panels(): PagePanelsNode { return new PagePanelsNode(() => this.model.page); }
+    // An editorless page has no editor to hold a script data bag. Hand back a fresh object so a
+    // read or write is harmless rather than a TypeError mid-iteration; it does not persist.
+    get data(): Record<string, unknown> { return this.model?.scriptData ?? {}; }
+    get panels(): PagePanelsNode { return new PagePanelsNode(() => this.page); }
 
     get grouped(): PageWrapper {
-        const pageId = this.model.page?.id ?? this.model.id;
+        const pageId = this.id;
         const groupedPage = pagesModel.getGroupedPage(pageId);
         const editor = groupedPage?.mainEditor ?? pagesModel.requireGroupedText(pageId);
         return new GroupedPageWrapper(editor, this.releaseList, this.outputFlags, this.callContext);
@@ -240,7 +275,7 @@ export class PageWrapper implements IAiVisible {
     }
 
     private browserState(): IBrowserPrivacyState | undefined {
-        return this.currentEditorId() === "browser-view"
+        return this.model && this.currentEditorId() === "browser-view"
             ? this.model.state.get() as IBrowserPrivacyState
             : undefined;
     }
@@ -252,10 +287,16 @@ export class PageWrapper implements IAiVisible {
 
     private aiChildren(): IAiChild[] {
         const editor = this.editor;
-        const children: IAiChild[] = [
-            { segment: ".editor", kind: editor.aiVision.kind, summary: `facade for the current editor (${editor.id})` },
-        ];
-        const pageId = this.model.page?.id ?? this.model.id;
+        // No `.editor` child on an empty page: there is nothing to drive, and offering one would
+        // read as "this page has an editor". `navigatePageTo` is what makes the tab useful again.
+        const children: IAiChild[] = editor.id
+            ? [{
+                segment: ".editor",
+                kind: editor.aiVision.kind,
+                summary: `facade for the current editor (${editor.id})`,
+            }]
+            : [];
+        const pageId = this.id;
         if (pagesModel.isGrouped(pageId)) {
             const grouped = pagesModel.getGroupedPage(pageId);
             if (grouped) children.push({ segment: ".grouped", kind: "Page", summary: `grouped beside this page: "${grouped.title}"` });
@@ -264,11 +305,16 @@ export class PageWrapper implements IAiVisible {
     }
 
     private aiSummary(): Record<string, unknown> {
+        const editorId = this.editor.id;
         const summary: Record<string, unknown> = {
-            kind: "Page", id: this.id, title: this.title, editor: this.editor.id,
+            kind: "Page", id: this.id, title: this.title, editor: editorId || null,
             language: this.language, filePath: this.filePath, modified: this.modified,
             pinned: this.pinned, active: pagesModel.activePage?.id === this.id,
         };
+        if (!editorId) {
+            summary.note = "This tab is open but has no editor. Open a file into it with "
+                + "pages.navigatePageTo(pageId, filePath), or close it with pages.closePage(pageId).";
+        }
         const state = this.browserState();
         if (state) {
             summary.profileName = state.profileName ?? "";
@@ -281,6 +327,9 @@ export class PageWrapper implements IAiVisible {
     }
 
     async runScript(): Promise<string> {
+        if (!this.model) {
+            throw new Error(`Page ${JSON.stringify(this.id)} has no editor, so there is no script to run.`);
+        }
         const language = this.model.state.get().language ?? "";
         const { isScriptLanguage } = await import("../transpile");
         if (!isScriptLanguage(language)) throw new Error("runScript() is only available for javascript/typescript pages");
@@ -291,12 +340,13 @@ export class PageWrapper implements IAiVisible {
 
 class GroupedPageWrapper extends PageWrapper {
     constructor(
-        model: EditorOrHost,
+        model: EditorOrHost | null,
         releaseList: Array<() => void>,
         private readonly flags?: ScriptOutputFlags,
         callContext?: IAiCallContext,
+        pageModel?: PageModel | null,
     ) {
-        super(model, releaseList, flags, callContext);
+        super(model, releaseList, flags, callContext, pageModel);
     }
 
     set content(value: string) {
