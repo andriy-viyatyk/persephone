@@ -44,6 +44,10 @@ The catalogue families are **Text and code**, **Structured data**, **Viewers and
 Open a file and its extension normally selects the editor. You can also use the arrow beside **+**
 to choose a pinned editor or **Show All...** for the **Tools & Editors** hub, or open that hub from
 the Menu Bar. Files with more than one applicable editor expose switch buttons in the page toolbar.
+On a new or extensionless page, choose a language from the tab's language menu to make its matching
+editor switch available. Markdown, JSON, CSV, JSONL, HTML, and Mermaid use their selected language;
+an untitled or extensionless XML page can use **SVG Preview**. A named `.xml` file remains in
+**Text Editor**.
 The [screen catalogue](../screens/index.md) documents the surrounding Explorer, tabs, sidebar, and
 [Menu Bar](../screens/menu-bar.md) chrome. Window-owned [Screen Snip](../screens/header.md) is
 documented with the header; the Drawing guide covers the handoff from a snip into a canvas.

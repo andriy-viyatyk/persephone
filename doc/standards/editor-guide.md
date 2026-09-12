@@ -312,6 +312,15 @@ explicit `accepts` on their row. Row order matters — it breaks priority ties i
 
 `acceptFile` and `switchOption` answer different questions and are independently optional. `acceptFile` decides which editor a file *opens* in (`editorRegistry.resolve` / `resolveId` consult nothing else); `switchOption` decides which editors appear in the switch widget for a *language*. An editor may declare either or both — `md-view` declares both (so Markdown opens in Preview *and* is switchable), while `html-view` and `mermaid-view` declare only `switchOption` (so they are reachable by switching but never claim a file on open).
 
+The default `makeAccepts` implementation checks `acceptFile(fileName)` first, then
+`switchOption(language, fileName)`, and finally `detectsContent` when a host is available. A
+text-host switch list supplies the host's language and uses its file path, falling back to the
+page title for extensionless or untitled pages. Therefore language-only matchers can offer
+Markdown, JSON, CSV, JSONL, HTML, or Mermaid views without a file extension, while specialized
+JSON editors and `draw-view` keep their filename/content safeguards. `svg-view` additionally
+accepts `xml` only when the page name has no file extension, so an untitled XML page can show SVG
+Preview but a real `.xml` file remains text-only.
+
 ### Priority Guidelines
 
 The `acceptFile` ladder as actually registered — highest wins, and ties go to whichever editor the registry iterates first, so avoid ties:

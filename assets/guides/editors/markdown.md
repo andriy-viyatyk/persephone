@@ -15,7 +15,8 @@ Mermaid diagrams.
 
 Open `.md`, `.markdown`, `.mkd`, `.mdown`, `.mkdn`, `.mdwn`, or another recognized Markdown file.
 Preview is the default; choose **Text Editor** in the toolbar to edit the source. A script-created
-page can use `pages.addEditorPage("md-view", "markdown", title, content)`.
+page can use `pages.addEditorPage("md-view", "markdown", title, content)`. On a new or extensionless
+page, choose **Markdown** from the tab's language menu and then choose **Preview** in the toolbar.
 
 ## Layout
 

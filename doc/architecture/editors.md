@@ -607,7 +607,7 @@ Every editor follows this pattern:
 Text-bearing editors (those with `IContentHost` + `CONTENT_HOST_TRAIT`) support switching views (e.g., JSON text ↔ Grid view):
 
 ```typescript
-// Get available switch options for current language
+// Get available switch options for current language and optional file path
 const opts = editorRegistry.getSwitchOptions(language, filePath);
 if (opts.options.length > 1) {
     // Render switch buttons in the toolbar
@@ -616,7 +616,19 @@ if (opts.options.length > 1) {
 
 The page-level switch invokes `PageModel.switchMainEditor(newEditorId)`, which transfers the host through the new editor's `switchFrom(oldEditor)` (see [Owner-Orchestrated Switching](#owner-orchestrated-switching)).
 
-**Host-state-driven switch offers:** an editor's `accepts(input)` receives the candidate `input.host`, so a switch can be offered conditionally on host state — not just file type. The `file-diff` editor uses this: `accepts` returns a positive priority only when `input.host.state.gitRepo` is set (the file lives in a git repo), otherwise `-1`. Because the `SwitchWidgetView` (`PageToolbarView.ts`) also subscribes to `host.state`, the "Git Diff" switch appears the moment async git detection lands on the shared host (see [state-management.md](state-management.md#host-centric-git-detection)). This is how every text editor inherits the File Diff switch with zero per-editor code.
+For a text-host page, the native toolbar starts with `model.findCompatibleEditors()`, which calls
+`editorRegistry.findEditorsAccepting(host)`. The registry passes the live host language and the
+host's file path, falling back to its title when there is no path, to each editor's acceptance
+matcher. The default `makeAccepts` order is `acceptFile(fileName)` first, then
+`switchOption(language, fileName)`, then host-content detection. This means a language-only
+switcher can appear on an extensionless or untitled page, while a matcher can use the optional
+file name to keep a specialized editor tied to its filename pattern. For example, Markdown,
+JSON, CSV, JSONL, HTML, and Mermaid switchers can be selected from their language alone; the
+specialized JSON editors and `draw-view` retain filename/content-specific safeguards. `svg-view`
+is the one XML exception: it accepts `xml` for an extensionless page (including an untitled page)
+but not for a named `.xml` file, which is not assumed to be SVG.
+
+**Host-state-driven switch offers:** an editor's `accepts(input)` receives the candidate `input.host`, so a switch can be offered conditionally on host state — not just file type. The `file-diff` editor uses this: `accepts` returns a positive priority only when `input.host.state.gitRepo` is set (the file lives in a git repo), otherwise `-1`. Because the `SwitchWidgetView` (`PageToolbarView.ts`) also subscribes to `host.state`, including its language, changing a host language re-evaluates the switch list immediately; the "Git Diff" switch appears the moment async git detection lands on the shared host (see [state-management.md](state-management.md#host-centric-git-detection)). This is how every text editor inherits the File Diff switch with zero per-editor code.
 
 ### Content-Based Editor Detection
 

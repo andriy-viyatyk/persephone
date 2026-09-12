@@ -14,7 +14,9 @@ updates, zoom and pan, PNG export, clipboard copy, and annotation handoff.
 
 Open an `.svg` file and choose **Preview** in the page toolbar. The file opens in Text Editor first
 so source edits can be made before switching to the preview. A script-created page can use
-`pages.addEditorPage("svg-view", "xml", title, content)`.
+`pages.addEditorPage("svg-view", "xml", title, content)`. On a new or extensionless page, choose
+**XML** from the tab's language menu and then choose **SVG Preview** in the toolbar. A named `.xml`
+file remains in Text Editor.
 
 ## Layout
 

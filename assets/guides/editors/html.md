@@ -14,7 +14,8 @@ capturing its current appearance, and collecting the resources it references.
 
 Open an `.html`, `.htm`, or `.xhtml` file and choose **Preview** in the page toolbar. The source
 remains available in Text Editor; agents can create an HTML content page with
-`pages.addEditorPage("html-view", "html", title, content)`.
+`pages.addEditorPage("html-view", "html", title, content)`. On a new or extensionless page, choose
+**HTML** from the tab's language menu and then choose **Preview** in the toolbar.
 
 ## Layout
 

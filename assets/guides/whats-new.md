@@ -24,6 +24,14 @@ Release notes and changelog for Persephone (formerly js-notepad).
   **Enable Word Wrap by default** in **Settings → Editor Behavior**, which changes the starting point for
   pages you open from then on and leaves the pages you already have alone.
 
+### Bug Fixes
+
+- **Editor switches appear after changing the language:** On a new or extensionless page, choosing
+  Markdown, JSON, CSV, JSONL, HTML, or Mermaid from the language menu now immediately shows the
+  matching editor option in the page toolbar — **Preview**, **Grid**, or **Mermaid** as appropriate.
+  Choosing XML also shows **SVG Preview** on an untitled or extensionless page; named `.xml` files
+  remain in **Text Editor**.
+
 ---
 
 ## Version 5.0.1

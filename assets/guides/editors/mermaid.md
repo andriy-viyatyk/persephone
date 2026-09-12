@@ -13,7 +13,8 @@ and two different Drawing Editor handoffs.
 ## How to Open
 
 Open a `.mmd` or `.mermaid` file and choose **Mermaid** in the toolbar. A content page can use
-`pages.addEditorPage("mermaid-view", "mermaid", title, content)`.
+`pages.addEditorPage("mermaid-view", "mermaid", title, content)`. On a new or extensionless page,
+choose **Mermaid** from the tab's language menu and then choose **Mermaid** in the toolbar.
 
 ## Layout
 

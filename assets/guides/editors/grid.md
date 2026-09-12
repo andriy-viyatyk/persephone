@@ -17,6 +17,9 @@ ids share one surface: `grid-json`, `grid-csv`, and `grid-jsonl`.
 - Files named `.grid.json`, `.grid.csv`, or `.grid.jsonl` open directly in the matching Grid module.
 - Use the arrow beside **+** and choose **Grid (JSON)**, **Grid (CSV)**, or **Grid (JSONL)**.
 
+On a new or extensionless page, choose **JSON**, **CSV**, or **JSONL** from the tab's language menu,
+then choose the matching **Grid** option in the page toolbar.
+
 ## Layout
 
 ```

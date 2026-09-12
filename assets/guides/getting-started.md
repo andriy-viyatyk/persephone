@@ -79,6 +79,12 @@ To manually change the language:
 - Click the language icon button on the left side of the tab
 - Select the desired language from the dropdown list
 
+On a page with no file extension in its name — a new `untitled` page, for example — the language
+you choose here also decides which editors the page toolbar offers. Markdown and HTML offer
+**Preview**, JSON, CSV and JSONL offer the matching **Grid**, Mermaid offers **Mermaid**, and XML
+offers **SVG Preview**. A named file keeps using its extension, so a `.xml` file stays in the
+Text Editor.
+
 ## Checking for Updates
 
 persephone automatically checks for updates once every 24 hours. When a new version is available, you'll see a notification.

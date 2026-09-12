@@ -1,5 +1,5 @@
 import type { AcceptanceInput, EditorMatcher } from "./editorRegistry";
-import { isArchiveFile } from "../../core/utils/file-path";
+import { fpExtname, isArchiveFile } from "../../core/utils/file-path";
 import { getLanguageByExtension } from "../../core/utils/language-mapping";
 
 // ── Shared helpers (relocated from register-editors.ts) ──────────────────────
@@ -28,6 +28,12 @@ const isMarkdownFile = (fileName: string): boolean => {
     const dot = fileName.lastIndexOf(".");
     return dot >= 0 && getLanguageByExtension(fileName.slice(dot))?.id === "markdown";
 };
+
+// An unsaved page is named by its title ("untitled"), which carries no extension, so the
+// extension-keyed switch options below have nothing to match on. For those names the Monaco
+// language is the only signal of what the content is, and matchers fall back to it.
+// A named file keeps extension-only matching: a `.xml` file is not offered an SVG preview.
+const hasFileExtension = (fileName?: string): boolean => Boolean(fileName && fpExtname(fileName));
 
 const IMAGE_EXTENSIONS = [".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".ico"];
 const VIDEO_EXTENSIONS = [
@@ -89,7 +95,10 @@ export const EDITOR_MATCHERS: Record<string, EditorMatcher> = {
             && content.includes('"notes"'),
     },
     "svg-view": {
-        switchOption: (_lang, fn) => (!!fn && matchesExtension(fn, [".svg"]) ? 10 : -1),
+        switchOption: (lang, fn) => {
+            if (!!fn && matchesExtension(fn, [".svg"])) return 10;
+            return lang === "xml" && !hasFileExtension(fn) ? 10 : -1;
+        },
         validForLanguage: (lang) => lang === "xml",
     },
     "html-view": {
