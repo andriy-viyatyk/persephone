@@ -156,7 +156,6 @@ const EDITORS: EditorRow[] = [
     { id: "svg-view", name: "Preview", guidePath: "editors/svg", hasContentHost: true, load: async () => (await import("./svg")).svgModule },
     { id: "html-view", name: "Preview", guidePath: "editors/html", hasContentHost: true, load: async () => (await import("./html")).htmlModule },
     { id: "mermaid-view", name: "Mermaid", guidePath: "editors/mermaid", hasContentHost: true, load: async () => (await import("./mermaid")).mermaidModule },
-    { id: "graph-view", name: "Graph", guidePath: "editors/graph", hasContentHost: true, load: async () => (await import("./graph")).graphModule },
     { id: "draw-view", name: "Drawing", guidePath: "editors/draw", hasContentHost: true, load: async () => (await import("./draw")).drawModule },
     { id: "link-view", name: "Links", guidePath: "editors/links", hasContentHost: true, load: async () => (await import("./link-editor")).linkModule },
     { id: "rest-client", name: "Rest Client", guidePath: "editors/rest-client", hasContentHost: true, load: async () => (await import("./rest-client")).restClientModule },

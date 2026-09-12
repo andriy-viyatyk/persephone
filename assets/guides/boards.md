@@ -297,11 +297,33 @@ These handle in-app effects that `execute()` cannot express:
 |--------|-------------|
 | `persephone.notify(message, type)` | Show a toast. `type`: `"info"`, `"success"`, `"warning"`, or `"error"`. Errors are also appended to `ui.log`. |
 | `persephone.openRawLink(href, options?)` | Open a file or URL in a new Persephone tab. Pass `{ editor }` (e.g. `{ editor: "md-view" }`) to request a specific editor — for example, render a Markdown doc instead of opening its source; falls back to the default editor when omitted. |
+| `persephone.openContent(options)` | Create a new in-memory page in another content-host editor and return its page id. Use this for content held by the board rather than a file or URL. |
 | `persephone.openFileDialog(params?)` | Show a native Open File dialog; returns the selected path. |
 | `persephone.saveFileDialog(params?)` | Show a native Save File dialog; returns the chosen path. |
 | `persephone.openFolderDialog(params?)` | Show a native Open Folder dialog; returns the selected path. |
 | `persephone.readFile(path, options?)` | Read a file and return its contents (Promise). A relative `path` resolves against the board folder; absolute reads anywhere. Text by default; `{ encoding: "binary" }` returns a `Uint8Array` (the right choice for binary files — app 4.0.21+), `{ encoding: "base64" }` a base64 string. |
 | `persephone.writeFile(path, data, options?)` | Write a file (Promise); creates parent folders. A relative `path` resolves against the board folder. Text by default; `{ encoding: "binary" }` takes a `Uint8Array`, `{ encoding: "base64" }` a base64 string. |
+
+### `persephone.openContent(options)`
+
+Use `openContent` when the board has generated content in memory — for example, a Markdown
+summary, an extracted graph, or a table — and wants to show it in a new Persephone page:
+
+```js
+const pageId = await persephone.openContent({
+    editor: "md-view",
+    language: "markdown",
+    title: "Node report",
+    content: markdown,
+});
+```
+
+`editor` is a registered content-host editor such as `"monaco"`, `"grid-json"`, `"md-view"`,
+`"mermaid-view"`, or `"draw-view"`. `language` defaults to `"plaintext"` and `title` to
+`"untitled"`. The call creates the page and returns its id; it does not provide a way for the
+board to read, navigate, close, or modify other pages. It rejects for an unknown editor or
+language, a standalone editor, another board, or content over 16 million characters, so handle
+the returned Promise.
 
 ### `persephone.call(path, options?)`
 
@@ -389,6 +411,7 @@ The app's theme shortcuts — **Ctrl+Alt+]** (next theme) and **Ctrl+Alt+[** (pr
 | Group | Variables |
 |-------|-----------|
 | Colors | `--p-bg`, `--p-panel`, `--p-bg-dark`, `--p-overlay`, `--p-hover`, `--p-tree-selection`, `--p-border`, `--p-border-light`, `--p-text`, `--p-text-muted`, `--p-text-strong`, `--p-accent`, `--p-accent-text`, `--p-accent-hover`, `--p-selection-bg`, `--p-selection-text`, `--p-link`, `--p-error`, `--p-success`, `--p-warning`, `--p-scrollbar`, `--p-scrollbar-thumb`, `--p-shadow` |
+| Graph colors | `--p-graph-bg`, `--p-graph-node-default`, `--p-graph-node-highlight`, `--p-graph-node-selected`, `--p-graph-node-special`, `--p-graph-border-default`, `--p-graph-border-highlight`, `--p-graph-border-selected`, `--p-graph-border-special`, `--p-graph-link-default`, `--p-graph-link-selected`, `--p-graph-label-bg`, `--p-graph-label-text`, `--p-graph-group-border` |
 | Spacing | `--p-space-xs`, `--p-space-sm`, `--p-space-md`, `--p-space-lg`, `--p-space-xl`, `--p-space-xxl` |
 | Gap | `--p-gap-xs`, `--p-gap-sm`, `--p-gap-md`, `--p-gap-lg` |
 | Radius | `--p-radius-sm`, `--p-radius-md`, `--p-radius-lg` |
@@ -411,6 +434,22 @@ persephone.onThemeChange(newPalette => {
     chart.update({ backgroundColor: newPalette["--p-accent"] });
 });
 ```
+
+For a canvas-based graph or another drawing that needs concrete colors, use the shaped `graph`
+palette. It has `bg`, `nodeDefault`, `nodeHighlight`, `nodeSelected`, `nodeSpecial`, the four
+matching `border*` colors, `linkDefault`, `linkSelected`, `labelBg`, `labelText`, and
+`groupBorder`. The callback receives the new graph colors too:
+
+```js
+persephone.onThemeChange(theme => {
+    ctx.fillStyle = theme.graph.nodeDefault;
+    ctx.strokeStyle = theme.graph.linkDefault;
+    repaint();
+});
+```
+
+Read `getTheme()` or the `onThemeChange` argument again after every theme switch; the initial
+`persephone.theme` value is only a load-time snapshot.
 
 > **Important:** `persephone.theme` is a snapshot taken at page load. After an in-session theme switch it goes stale. Always re-read from the `onThemeChange` callback argument or call `persephone.getTheme()`.
 
@@ -511,18 +550,29 @@ Declare the association with fields in `board-manifest.json`:
 | Field | Purpose |
 |-------|---------|
 | `fileMasks` | One or more glob masks matched against the file's name — `*` matches any run of characters, `?` matches a single character. A bare extension (e.g. `drawio` or `.drawio`) is treated the same as `*.drawio`. A mask with no wildcard but a dot inside it is an **exact file name** — `"DASHBOARD.md"` claims files named exactly that, not every `.md` file. Masks also support compound extensions, e.g. `*.grid.json`. |
+| `contentMasks` | Optional regular-expression sources tested case-insensitively against the page's text. A match adds the board to the editor switch, including on an untitled in-memory page. Content detection is a switch option only: it never chooses the editor that opens a file. A board may use `contentMasks` alone or together with `fileMasks`; only the first 64 KB is checked and invalid expressions are ignored. |
 | `folderMasks` | Optional — one or more glob masks matched against the file's *parent folder*, narrowing where `fileMasks` applies. See [Scoping to a folder](#scoping-to-a-folder--foldermasks) below. |
 | `editorPriority` | A number that decides whether the board also becomes the **default** editor for matching files (not just a switch option). Persephone's built-in editors each sit at their own priority level; set a value higher than the built-in editor for that file type to make the board the one that opens automatically. Ties go to the built-in editor. Omit it (or leave it `0`) and the board is offered only as a switch option — the built-in editor keeps opening by default. Built-in priority levels: Text Editor `0`, Markdown Preview `10`, compound-name editors such as `*.grid.json`/`*.note.json` `20`, Drawing `50`, PDF/image/archive/video viewers `100`. For example, a board claiming `.md` files (like the `folderMasks` example below, which uses `fileMasks: ["DASHBOARD.md"]`) needs `editorPriority` **above 10** to open by default — Markdown Preview now claims that slot, not the Text Editor's floor of `0`. |
 | `editorName` | The label shown for the board in the editor-switch control. Falls back to the board's folder name if omitted. |
 | `editorKind` | Optional — `"simple"` (default, if omitted) or `"content-host"`. Decides *how* the board gets the file's content. See [Simple editors](#simple-editors--reading-the-file-directly) and [Content-host editors](#content-host-editors--sharing-persephones-file-with-the-board) below. |
 | `editorSources` | Optional — `"local"` (default, if omitted) or `"any"`. A **simple** board only handles a plain local file by default; set `"any"` to also have it offered for a file inside an archive (e.g. `archive.zip!doc.pdf`) or at an `http(s)` URL. Persephone materializes those non-local sources to a local cache file first, so the board's own code is unchanged — it still just calls `persephone.getFilePath()` and reads the returned path. Ignored by content-host boards, which already support non-local sources through `persephone.host.*`. The published **PDF Viewer** board uses this to open archive-embedded and remote PDFs the same way it opens local ones. |
 
+For example, a board that recognizes force-graph JSON by its content can offer itself for both
+saved files and untitled JSON pages without taking over normal file opening:
+
+```json
+{
+  "contentMasks": ["\"type\"\\s*:\\s*\"force-graph\""],
+  "editorName": "Force Graph"
+}
+```
+
 **Requirements and behavior:**
 
 - **The board must be trusted.** An untrusted board's file association is completely ignored — no switch option, no default-editor behavior — until you trust it. Un-trusting a board removes the association immediately.
 - **The tab and icon follow the file, not the board.** When a board is opened as a file's editor, the page tab shows the **file's name** (not the board's folder name). Wherever that board wins as the file's *default* editor, its icon also replaces the generic file icon — in the File Explorer tree, other file lists, and page tabs (see [Board icon](#board-icon)).
 - **Unsaved changes are protected.** Switching away from a modified built-in editor to a **simple** board runs the usual "Save changes?" prompt (Save / Don't Save / Cancel) before the switch happens, the same prompt used when navigating away from unsaved changes anywhere else in Persephone. A **content-host** board doesn't need this — its content transfers directly with nothing to lose (see below).
-- A change to `fileMasks` / `folderMasks` / `editorPriority` / `editorName` / `editorKind` in the manifest takes effect the next time the board or trust list is refreshed, not while a page is already showing the board.
+- A change to `fileMasks` / `contentMasks` / `folderMasks` / `editorPriority` / `editorName` / `editorKind` in the manifest takes effect the next time the board or trust list is refreshed, not while a page is already showing the board.
 - **The full set of switch buttons stays visible while the board is active.** Whichever editor is currently showing — the board or one of the file's built-in editors — the same switch buttons appear in the same order, so you can jump directly from the board to any other available editor (e.g. Preview) without detouring through the Text Editor first.
 
 ### Scoping to a folder — `folderMasks`

@@ -2,7 +2,8 @@
 
 ## Status
 
-**Status:** Active
+**Status:** Completed
+**Completed:** 2026-09-12
 **Created:** 2026-09-12
 
 ## Overview
@@ -120,14 +121,14 @@ App-side tasks are `US-` in this repo; board-side tasks are `BT-` in `persephone
 
 | Task | Repo | Title | Status |
 |------|------|-------|--------|
-| US-1404 | persephone | Board object model: cross-editor page creation, graph color tokens, manifest content detection | **Implemented** (unreviewed) |
+| US-1404 | persephone | Board object model: cross-editor page creation, graph color tokens, manifest content detection | **Completed** |
 | BT-014 | boards | Force Graph board — models, renderer, canvas, content host (v1 spike) | **Implemented** |
 | BT-015 | boards | Force Graph board — panels, grids, menus, dialogs, AiVision surface (v2) | **Implemented** |
 | BT-016 | boards | Parity verification against the built-in editor, over the §1.3 checklist | **Implemented** |
-| US-1405 | persephone | Remove the built-in Force Graph editor | **Blocked — awaiting owner testing of the board** |
+| US-1405 | persephone | Remove the built-in Force Graph editor | **Completed** |
 | BT-017 | boards | Detail panel resizer — owner-reported defect from hands-on testing | **Fixed** |
 | BT-018 | boards | Colored tab icon — owner-reported defect from hands-on testing | **Fixed** |
-| US-1406 | persephone | Boards supply their own documentation to the guide system | **Implemented** (unreviewed) |
+| US-1406 | persephone | Boards supply their own documentation to the guide system | **Completed** |
 | BT-019 | boards | Force Graph board — ship its own user and agent documentation | **Implemented** |
 | BT-020 | boards | Todo board — backfill the documentation deleted with the built-in editor | Planned |
 | BT-021 | boards | Move the `greek-gods.fg.json` example into the board | In Progress |

@@ -31,7 +31,6 @@ Two things these files are for:
 | [editors/preview.md](editors/preview.md) | Markdown, HTML, SVG, and Mermaid preview elements, actions, and boundaries | EPIC-086 (US-1313) |
 | [editors/media.md](editors/media.md) | Image and video/audio editor elements, facades, media state, and dialogs | EPIC-086 (US-1314) |
 | [editors/diff.md](editors/diff.md) | File-diff revision state, controls, and compare-mode pairs | EPIC-086 (US-1315) |
-| [editors/graph.md](editors/graph.md) | Graph editor chrome, canvas boundary, panels, state, and menus | EPIC-086 (US-1316) |
 | [editors/data.md](editors/data.md) | Grid, notebook, REST client, env vars, archive and the Log View output channel | EPIC-087 (US-1318 to US-1322) |
 | [panels.md](panels.md) | Sidebar panel nodes under `page.panels`, Folder View and Git Tree | EPIC-087 (US-1323) |
 | [editors/boards.md](editors/boards.md) | The board page, Board Info, and the `boards` node's local enumeration | EPIC-088 (US-1325 to US-1327) |

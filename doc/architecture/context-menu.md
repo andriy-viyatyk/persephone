@@ -93,8 +93,6 @@ class ContextMenuEvent<T> extends BaseEvent {
 | `"browser-url-bar"` | URL bar | — |
 | `"browser-tab"` | Browser tab | — |
 | `"grid-cell"` | Grid cell | — |
-| `"graph-node"` | Graph node | — |
-| `"graph-area"` | Graph empty area | — |
 | `"link-item"` | Link editor item | — |
 | `"link-pinned"` | Pinned link item | — |
 | `"generic"` | Generic list/component | — |
@@ -130,7 +128,7 @@ const items: MenuItem[] = [ ... ];
 showAppPopupMenu(clientX, clientY, items);
 ```
 
-**Used by:** BrowserWebviewModel (IPC from webview), GraphViewModel (canvas events), and the DataGrid host (imperative grid events). These handlers call `e.stopPropagation()` to prevent `GlobalEventService` from showing a duplicate menu.
+**Used by:** BrowserWebviewModel (IPC from webview) and the DataGrid host (imperative grid events). These handlers call `e.stopPropagation()` to prevent `GlobalEventService` from showing a duplicate menu.
 
 ## EventChannel Integration (Script Extension)
 
@@ -233,7 +231,7 @@ of `navigatePageTo`.
 app.events.fileExplorer.itemContextMenu.subscribe((event) => {
     if (event.target.name === "package.json") {
         event.items.push({
-            label: "Generate Deps Graph",
+            label: "Generate Dependency Report",
             onClick: () => { /* run script */ },
         });
     }

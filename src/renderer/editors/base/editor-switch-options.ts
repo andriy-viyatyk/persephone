@@ -19,7 +19,8 @@ export function getEditorSwitchOptions(model: EditorModel): IEditorSwitchOption[
     const hostState = host?.state.get();
     const editorState = model.state.get();
     const filePath = hostState?.filePath ?? model.filePath;
-    const local = Boolean(filePath) && isPlainLocalPath(filePath);
+    // An untitled page is an in-memory local source, not a non-local URL/archive.
+    const local = !filePath || isPlainLocalPath(filePath);
     const fileName = filePath ?? hostState?.title ?? editorState.title ?? "";
 
     // Boards claim a page by file name (`fileMasks`) or by CONTENT (`contentMasks`, US-1404 — the

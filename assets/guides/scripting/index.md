@@ -73,7 +73,6 @@ editors.
 ```javascript
 const editor = page.editor;
 if (editor.id === "grid-json") editor.addRows(5);
-if (editor.id === "graph-view") console.log(editor.nodes);
 await page.editorSwitches.switchTo("monaco");
 ```
 

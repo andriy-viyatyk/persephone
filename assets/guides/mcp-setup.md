@@ -62,7 +62,7 @@ The manifest advertises exactly one tool:
 | **call** | Read or act on the live object model with a path. Start with no path for the overview; use `args` for method arguments, `value` for assignments, `maxLength` to bound long strings or structured results, and `timeoutMs` for a slow remote `.app` call. |
 
 Everything Persephone can do is a path under `call` — pages, editors, windows, boards, settings,
-browser automation, Agent Tools, and scripting. The thirteen guide resources are separate from the
+browser automation, Agent Tools, and scripting. The twelve guide resources are separate from the
 tool manifest and remain available by URI.
 ### Discovering the application shell with `call`
 
@@ -225,7 +225,6 @@ MCP resources are read-only documents that AI clients can discover and read to g
 | **pages.logView.push Guide** | `persephone://guides/ui-push` | Log View output channel — entry types, dialogs, examples. Read when showing output to the user. |
 | **Pages Guide** | `persephone://guides/pages` | Pages & windows — page properties, editor types, creating pages, multi-window support. Read when working with tabs or documents. |
 | **Scripting Guide** | `persephone://guides/scripting` | Full scripting API — `app` object, editor facades, TypeScript, Node.js access. Read when using `script.execute`. |
-| **Graph Guide** | `persephone://guides/graph` | Graph editor data format and scripting API — node/link schema, `page.editor` facade, query and traversal methods. Read when working with force-graph pages. |
 | **Notebook Guide** | `persephone://guides/notebook` | Notebook editor JSON format — NoteItem structure, content types (text, markdown, code, mermaid, grid). Read before creating or editing notebook pages. |
 | **Links Guide** | `persephone://guides/links` | Links editor JSON format — LinkItem structure, categories, tags. Read before creating or editing links pages. |
 | **Boards Guide** | `persephone://guides/boards` | Board authoring/automation reference — bridge API, theme contract, local vendoring, `pages[pageId].editor` testing. Read before building or opening a board. |

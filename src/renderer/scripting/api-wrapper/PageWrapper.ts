@@ -16,7 +16,6 @@ import { MarkdownEditor } from "../../editors/markdown/MarkdownEditor";
 import { SvgEditor } from "../../editors/svg/SvgEditor";
 import { HtmlEditor } from "../../editors/html/HtmlEditor";
 import { MermaidEditor } from "../../editors/mermaid/MermaidEditor";
-import { GraphEditor } from "../../editors/graph/GraphEditor";
 import { DrawEditor } from "../../editors/draw/DrawEditor";
 import type { ImageEditor } from "../../editors/image/ImageEditor";
 import type { VideoEditor } from "../../editors/video/VideoEditor";
@@ -29,7 +28,6 @@ import { agentMayAccessBrowserPage, privateBrowserRefusal } from "../../editors/
 import { BrowserEditorFacade } from "./BrowserEditorFacade";
 import { DrawEditorFacade } from "./DrawEditorFacade";
 import { GenericEditorFacade } from "./GenericEditorFacade";
-import { GraphEditorFacade } from "./GraphEditorFacade";
 import { GridEditorFacade } from "./GridEditorFacade";
 import { HtmlEditorFacade } from "./HtmlEditorFacade";
 import { ImageEditorFacade } from "./ImageEditorFacade";
@@ -72,7 +70,7 @@ type EditorOrHost = EditorModel | TextFileModel;
 type EditorFacade =
     | TextEditorFacade | GridEditorFacade | NotebookEditorFacade | LinkEditorFacade
     | MarkdownEditorFacade | AboutEditorFacade | SvgEditorFacade | HtmlEditorFacade | MermaidEditorFacade
-    | GraphEditorFacade | DrawEditorFacade | BrowserEditorFacade | McpInspectorFacade
+    | DrawEditorFacade | BrowserEditorFacade | McpInspectorFacade
     | ImageEditorFacade | VideoEditorFacade | FileDiffEditorFacade | RestClientEditorFacade
     | EnvVarsEditorFacade | ArchiveEditorFacade
     | LogViewEditorFacade | FolderViewEditorFacade | GitTreeEditorFacade | BoardEditorFacade
@@ -102,7 +100,6 @@ const FACADE_FOR_EDITOR: Record<string, EditorFacadeFactory> = {
     "svg-view": (editor, id, name) => new SvgEditorFacade(editor as SvgEditor, id, name),
     "html-view": (editor, id, name) => new HtmlEditorFacade(editor as HtmlEditor, id, name),
     "mermaid-view": (editor, id, name) => new MermaidEditorFacade(editor as MermaidEditor, id, name),
-    "graph-view": (editor, id, name) => new GraphEditorFacade(editor as GraphEditor, id, name),
     "draw-view": (editor, id, name) => new DrawEditorFacade(editor as DrawEditor, id, name),
     "browser-view": (editor, id, name, callContext) => new BrowserEditorFacade(editor as unknown as BrowserEditorModel, id, name, callContext),
     "mcp-view": (editor, id, name) => new McpInspectorFacade(editor as unknown as McpInspectorEditorModel, id, name),
@@ -146,7 +143,7 @@ tab is this page's tab-strip entry and its curated controls; its title remains a
 pinned tab hides title text. Use pages.showPage, closePage, pinTab, unpinTab, and moveTab for tab
 actions. The panels node is a live view of the page's sidebar. Grouped is a side-by-side page and
 creates one when none exists. A successful content read or assignment reports the raw source, not
-that a structured editor rendered it successfully. Parse JSON before writing notebook, links, graph,
+that a structured editor rendered it successfully. Parse JSON before writing notebook or links,
 or REST content, then activate the page and use window.screen.snapshot() when you need to verify the
 rendered editor.
 `;

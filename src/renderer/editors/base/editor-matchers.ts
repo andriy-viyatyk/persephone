@@ -16,7 +16,6 @@ const matchesPattern = (fileName: string, pattern: RegExp): boolean =>
 const SPECIALIZED_JSON_PATTERNS = [
     /\.note\.json$/i,
     /\.link\.json$/i,
-    /\.fg\.json$/i,
     /\.excalidraw$/i,
 ];
 
@@ -130,17 +129,6 @@ export const EDITOR_MATCHERS: Record<string, EditorMatcher> = {
             && content.includes('"type"')
             && /"type"\s*:\s*"link-editor"/.test(content)
             && content.includes('"links"'),
-    },
-    "graph-view": {
-        acceptFile: (fn) => (matchesPattern(fn, /\.fg\.json$/i) ? 20 : -1),
-        switchOption: (lang, fn) =>
-            lang === "json" && !!fn && matchesPattern(fn, /\.fg\.json$/i) ? 10 : -1,
-        validForLanguage: (lang) => lang === "json",
-        detectsContent: (lang, content) =>
-            lang === "json"
-            && content.includes('"type"')
-            && /"type"\s*:\s*"force-graph"/.test(content)
-            && content.includes('"nodes"'),
     },
     "draw-view": {
         acceptFile: (fn) => (matchesExtension(fn, [".excalidraw"]) ? 50 : -1),

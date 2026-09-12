@@ -2,7 +2,7 @@ import { pagesModel } from "../../api/pages";
 import { fs } from "../../api/fs";
 import { BrowserProfile } from "../../api/settings";
 import {
-    DrawIcon, GraphIcon, GridIcon, IncognitoIcon, RestClientIcon, TorIcon,
+    DrawIcon, GridIcon, IncognitoIcon, RestClientIcon, TorIcon,
     JavascriptIcon, LinkIcon, NotebookIcon, TypescriptIcon,
 } from "../../theme/language-icons";
 import { DEFAULT_BROWSER_COLOR, MEMORY_ICON_COLOR } from "../../theme/palette-colors";
@@ -116,13 +116,6 @@ const staticItems: CreatableItem[] = [
         label: "Links",
         icon: LinkIcon.createElement(),
         create: () => pagesModel.addEditorPage("link-view", "json", "untitled.link.json"),
-        category: "editor",
-    },
-    {
-        id: "graph-view",
-        label: "Force Graph",
-        icon: GraphIcon.createElement(),
-        create: () => pagesModel.addEditorPage("graph-view", "json", "untitled.fg.json"),
         category: "editor",
     },
     {

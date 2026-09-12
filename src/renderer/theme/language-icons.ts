@@ -200,10 +200,6 @@ export const TorIcon = createIconWithViewBox("0 0 32 32")(
     `<g><ellipse cx="16" cy="17" rx="10" ry="11" fill="#7D4698" /><ellipse cx="16" cy="17" rx="6.5" ry="7.5" fill="#A06AB4" /><ellipse cx="16" cy="17" rx="3" ry="3.5" fill="#C49ED2" /><path d="M16 6V3" stroke="#7D4698" stroke-width="1.5" stroke-linecap="round" fill="none" /><path d="M16 5c2-2 4.5-2 5-1s-1 3-3 3" stroke="#7D4698" stroke-width="1.2" stroke-linecap="round" fill="none" /></g>`,
 );
 
-export const GraphIcon = createIconWithViewBox("0 0 32 32")(
-    `<g><line x1="10" y1="10" x2="22" y2="10" stroke="#4DD0E1" stroke-width="1.5" opacity="0.5" /><line x1="10" y1="10" x2="8" y2="22" stroke="#4DD0E1" stroke-width="1.5" opacity="0.5" /><line x1="22" y1="10" x2="24" y2="22" stroke="#4DD0E1" stroke-width="1.5" opacity="0.5" /><line x1="8" y1="22" x2="24" y2="22" stroke="#4DD0E1" stroke-width="1.5" opacity="0.5" /><line x1="10" y1="10" x2="16" y2="27" stroke="#4DD0E1" stroke-width="1.5" opacity="0.4" /><circle cx="10" cy="10" r="3.5" fill="#4DD0E1" /><circle cx="22" cy="10" r="3" fill="#4DD0E1" opacity="0.85" /><circle cx="8" cy="22" r="2.5" fill="#4DD0E1" opacity="0.7" /><circle cx="24" cy="22" r="2.5" fill="#4DD0E1" opacity="0.7" /><circle cx="16" cy="27" r="2" fill="#4DD0E1" opacity="0.55" /></g>`
-);
-
 export const GridIcon = createIconWithViewBox("0 0 32 32")(
     `<g><rect x="4" y="5" width="7" height="6" rx="1" fill="#4DD0E1" /><rect x="12.5" y="5" width="7" height="6" rx="1" fill="#4DD0E1" opacity="0.85" /><rect x="21" y="5" width="7" height="6" rx="1" fill="#4DD0E1" opacity="0.7" /><rect x="4" y="13" width="7" height="6" rx="1" fill="#4DD0E1" opacity="0.85" /><rect x="12.5" y="13" width="7" height="6" rx="1" fill="#4DD0E1" opacity="0.7" /><rect x="21" y="13" width="7" height="6" rx="1" fill="#4DD0E1" opacity="0.55" /><rect x="4" y="21" width="7" height="6" rx="1" fill="#4DD0E1" opacity="0.7" /><rect x="12.5" y="21" width="7" height="6" rx="1" fill="#4DD0E1" opacity="0.55" /><rect x="21" y="21" width="7" height="6" rx="1" fill="#4DD0E1" opacity="0.4" /></g>`,
 );

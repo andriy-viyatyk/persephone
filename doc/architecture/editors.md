@@ -15,7 +15,7 @@ All editor code lives in `/src/renderer/editors/`.
 
 ## Editor Catalog
 
-29 editor classes (33 registered editor IDs — `GridEditor` serves three IDs). The `IContentHost?` column indicates whether the editor composes an `IContentHost` (text-bearing) — these can switch between each other on the same page. The `Trait?` column indicates whether the editor exposes `CONTENT_HOST_TRAIT` — these participate in owner-orchestrated switching.
+28 editor classes (32 registered editor IDs — `GridEditor` serves three IDs). The `IContentHost?` column indicates whether the editor composes an `IContentHost` (text-bearing) — these can switch between each other on the same page. The `Trait?` column indicates whether the editor exposes `CONTENT_HOST_TRAIT` — these participate in owner-orchestrated switching.
 
 | Editor ID | Class | File types | IContentHost? | Trait? |
 |-----------|-------|------------|---------------|--------|
@@ -30,7 +30,6 @@ All editor code lives in `/src/renderer/editors/`.
 | `notebook-view` | `NotebookEditor` | `.note.json` | ✓ | ✓ |
 | `link-view` | `LinkEditor` | `.link.json` | ✓ | ✓ |
 | `log-view` | `LogViewEditor` | `.log.jsonl` | ✓ | ✓ |
-| `graph-view` | `GraphEditor` | `.fg.json` | ✓ | ✓ |
 | `draw-view` | `DrawEditor` | `.excalidraw` | ✓ | ✓ |
 | `rest-client` | `RestClientEditor` | `.rest.json` | ✓ | ✓ |
 | `env-vars-view` | `EnvVarsEditor` | `.env.json` | ✓ | ✓ |
@@ -105,7 +104,7 @@ miss can therefore fail during synchronous `attachEditorToPage`, while a later v
 is reported by the native error host. A guard around `createEditorFromFile` cannot be treated as
 coverage for either later boundary; each caller or view owner must handle the boundary it owns.
 
-The graph, rest-client, env-vars, and file-diff editor bodies are native `VanillaView`s. The draw
+The rest-client, env-vars, and file-diff editor bodies are native `VanillaView`s. The draw
 editor is native around its vendor boundary: `DrawBodyView` owns the chrome, model bindings, and
 teardown, while `ExcalidrawIsland.tsx` is the named React island required by the Excalidraw
 package. A vendor host introduced by a native view must have explicit geometry in its scoped CSS
@@ -195,7 +194,7 @@ abstract class EditorModel<TState extends IEditorState = IEditorState> {
 
 Every text-bearing editor that wraps a `TextFileModel` host extends
 `TextHostEditorModel` (`/src/renderer/editors/base/TextHostEditorModel.ts`), a layer between
-`EditorModel` and the concrete editors (Monaco, Grid, Markdown, Mermaid, SVG, HTML, Graph,
+`EditorModel` and the concrete editors (Monaco, Grid, Markdown, Mermaid, SVG, HTML,
 Link, Notebook, Rest Client, Draw, EnvVars, FileDiff, LogView). It owns the host-adoption
 lifecycle those editors would otherwise each reimplement:
 
@@ -441,7 +440,6 @@ operation facade use `GenericEditorFacade`, which exposes only identity metadata
 | `page.editor` | `SvgEditorFacade` | `SvgEditor` |
 | `page.editor` | `HtmlEditorFacade` | `HtmlEditor` |
 | `page.editor` | `MermaidEditorFacade` | `MermaidEditor` |
-| `page.editor` | `GraphEditorFacade` | `GraphEditor` |
 | `page.editor` | `DrawEditorFacade` | `DrawEditor` |
 | `page.editor` | `BrowserEditorFacade` | `BrowserEditorModel` |
 | `page.editor` | `McpInspectorFacade` | `McpInspectorEditorModel` |
@@ -485,7 +483,7 @@ File path → editorRegistry.resolve(filePath) → EditorModule → createEditor
 |----------|-----------|------------|
 | 0 | `monaco` | everything — the floor that guarantees a file always resolves |
 | 10 | `md-view` | any extension the Monaco language table maps to `markdown` |
-| 20 | `grid-json`, `grid-csv`, `grid-jsonl`, `log-view`, `notebook-view`, `rest-client`, `link-view`, `graph-view`, `env-vars-view` | compound file-name patterns (`*.note.json`, `*.grid.csv`, …) |
+| 20 | `grid-json`, `grid-csv`, `grid-jsonl`, `log-view`, `notebook-view`, `rest-client`, `link-view`, `env-vars-view` | compound file-name patterns (`*.note.json`, `*.grid.csv`, …) |
 | 50 | `draw-view` | `.excalidraw` |
 | 100 | `image-view`, `archive-view`, `video-view` | binary-format extensions |
 | 200 | `category-view` | `tree-category://` links |
@@ -501,6 +499,7 @@ All editor registration is in `/src/renderer/editors/register-editors.ts`; the m
 A trusted **Board** can register itself as the editor for a file type, so it appears in the editor switch next to Monaco (and can become the default open target) — the same extensibility the built-in editors have, but authored entirely outside Persephone's code. A board declares the association in its `board-manifest.json`:
 
 - `fileMasks` — glob masks (`*`, `?`) matched against the file **basename** (e.g. `["*.drawio"]`, `["*.grid.json"]`). A wildcard-free entry is read by shape: one that starts with a dot or contains none at all is an **extension** (`"drawio"`, `".drawio"` → `*.drawio`), while one with a dot inside it is a whole **file name** kept exact (`"DASHBOARD.md"`, `"package.json"`) — that is how a board claims one specific file rather than a file type.
+- `contentMasks` — case-insensitive regular-expression sources tested against the first 64 KiB of page content. A match adds the board to the editor-switch options, including for untitled pages; it never selects the default editor when a file opens. This axis is independent of `fileMasks`, and malformed or oversized expressions are ignored.
 - `folderMasks` — optional folder globs that **narrow** `fileMasks` to certain locations (e.g. `fileMasks: ["DASHBOARD.md"]` + `folderMasks: ["*/tasks"]` claims only a dashboard that sits in a `tasks` folder, not every `DASHBOARD.md`).
 - `editorPriority` — the board's slot on the same numeric resolution ladder the built-in editors use (monaco 0 / markdown 10 / compound names 20 / draw 50 / viewers 100 / category 200 — see [Editor Resolution](#editor-resolution)). The board becomes the **default** editor for its masks only when this strictly exceeds the best built-in claimant; omitted/`0` makes it a switch option only. Note the floor is not always 0: a board claiming a Markdown file competes with `md-view` at 10, so it needs `editorPriority` above **10** — not merely above 0 — to open by default.
 - `editorName` — the switch-widget label (falls back to the manifest `name`, then the folder name).
@@ -632,13 +631,12 @@ but not for a named `.xml` file, which is not assumed to be SVG.
 
 ### Content-Based Editor Detection
 
-Structured JSON editors (notebook, link, graph, rest-client) embed a `"type"` property in their JSON content:
+Structured JSON editors (notebook, link, rest-client) embed a `"type"` property in their JSON content:
 - `"type": "note-editor"` → notebook-view
 - `"type": "link-editor"` → link-view
-- `"type": "force-graph"` → graph-view
 - `"type": "rest-client"` → rest-client
 
-This allows the correct switch button to appear even when the file name doesn't match the expected pattern (e.g., `.note.json`). Detection uses fast regex checks (no JSON parsing) via the `isEditorContent()` hook on `EditorModule`.
+This allows the correct switch button to appear even when the file name doesn't match the expected pattern (e.g., `.note.json`). Detection uses fast regex checks (no JSON parsing) via the `isEditorContent()` hook on `EditorModule`. Trusted boards can provide the same switch-only behavior through `contentMasks`; board content detection never participates in file-open resolution.
 
 `TextFileModel` runs detection:
 - **Immediately** on `restore()` and `changeEditor()`

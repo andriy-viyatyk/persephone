@@ -48,7 +48,8 @@ async function resolve(): Promise<readonly ResolvedBoardGuides[]> {
         const baseId = boardGuideIdFromRoot(boardRoot);
         if (!baseId) continue;
         const guidesRoot = fpJoin(boardRoot, ...folder.split("/"));
-        if (!(await appFs.exists(guidesRoot))) continue;
+        const guidesStat = await appFs.stat(guidesRoot);
+        if (!guidesStat.exists || !guidesStat.isDirectory) continue;
         resolved.push({ id: uniqueMountId(baseId, taken), boardRoot, guidesRoot });
     }
     return resolved;

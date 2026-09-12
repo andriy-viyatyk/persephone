@@ -19,7 +19,6 @@ folder-view-editor.d.ts
 fs.d.ts
 generic-editor.d.ts
 git-tree-editor.d.ts
-graph-editor.d.ts
 grid-editor.d.ts
 html-editor.d.ts
 image-editor.d.ts

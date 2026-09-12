@@ -12,6 +12,13 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ## Version 5.0.2 (Upcoming)
 
+### Breaking Changes
+
+- **The built-in Force Graph editor is now a board** — Install the **Force Graph** board from the
+  **persephone-boards** catalog for interactive force-graph editing. Without it, `.fg.json` files
+  still open as raw JSON in the Text Editor. Open **Tools & Editors → Search boards**, find
+  **Force Graph**, choose **Install**, and trust it when prompted.
+
 ### New Features
 
 - **Word Wrap in the Text Editor:** a toolbar button wraps long lines to the width of the page, so

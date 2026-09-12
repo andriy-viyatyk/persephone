@@ -327,7 +327,7 @@ The `acceptFile` ladder as actually registered — highest wins, and ties go to 
 
 - `0` — Fallback: monaco, the floor that guarantees every file resolves
 - `10` — Rendered view preferred over source: markdown preview
-- `20` — Compound file names: `*.grid.json`, `*.note.json`, `*.rest.json`, `*.link.json`, `*.fg.json`, `*.log.jsonl`, `*.env.json`, `*.grid.csv`
+- `20` — Compound file names: `*.grid.json`, `*.note.json`, `*.rest.json`, `*.link.json`, `*.log.jsonl`, `*.env.json`, `*.grid.csv`
 - `50` — Dedicated format editors: `.excalidraw` → drawing
 - `100` — Exclusive viewers with no text view: image, archive, video
 - `200` — Pseudo-paths: `tree-category://` links

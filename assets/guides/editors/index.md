@@ -23,7 +23,6 @@ The catalogue families are **Text and code**, **Structured data**, **Viewers and
 | Link Editor | `link-view` | `.link.json` link collections | [Links](./links.md) |
 | REST Client | `rest-client` | `.rest.json` HTTP collections | [REST Client](./rest-client.md) |
 | Environment Variables | `env-vars-view` | Board environment profiles | [Environment Variables](./env-vars.md) |
-| Graph View | `graph-view` | `.fg.json` force graphs | [Graph View](./graph.md) |
 | Log View | `log-view` | `.log.jsonl` structured log output | [Log View](./log-view.md) |
 | Markdown Preview | `md-view` | Markdown documents | [Markdown Preview](./markdown.md) |
 | HTML Preview | `html-view` | HTML documents | [HTML Preview](./html.md) |
@@ -55,15 +54,14 @@ documented with the header; the Drawing guide covers the handoff from a snip int
 ## Switching editors
 
 The default and switchable combinations include JSON with Grid, Markdown with Preview, `.note.json`
-with Notebook, `.link.json` with Links, `.fg.json` with Graph, `.rest.json` with REST Client,
+with Notebook, `.link.json` with Links, `.rest.json` with REST Client,
 `.excalidraw` with Drawing, `.svg` and `.html` with Preview, and `.mmd`/`.mermaid` with Mermaid.
 CSV, JSONL, and NDJSON can use Grid; Git Diff is offered for text files in a repository when Git
 integration is enabled. Archives, images, and audio/video normally have one specialized editor.
 
 Content detection can add a switch without a special filename: Notebook requires JSON with
 `"type": "note-editor"` and `"notes"`; Links requires `"type": "link-editor"` and `"links"`;
-REST Client requires `"type": "rest-client"` and `"requests"`; and Graph requires
-`"type": "force-graph"` and `"nodes"`. Log View is narrower: it accepts `.log.jsonl`, or JSONL
+REST Client requires `"type": "rest-client"` and `"requests"`. Log View is narrower: it accepts `.log.jsonl`, or JSONL
 content carrying a `"type": "log.*"` marker, not arbitrary JSONL.
 
 App and tool pages are not editor pages in this catalogue. Open their dedicated routes from the

@@ -284,7 +284,7 @@ the queue is for transient DOM or view operations, not a second state store.
 
 ## EditorModel Pattern
 
-Located in `/src/renderer/editors/base/`. Every editor (Monaco, Grid, Markdown, Notebook, Link, Log View, SVG, HTML, Mermaid, Graph, Draw, RestClient, Browser, PDF, Image, Video, etc.) subclasses `EditorModel<TState>`.
+Located in `/src/renderer/editors/base/`. Every editor (Monaco, Grid, Markdown, Notebook, Link, Log View, SVG, HTML, Mermaid, Draw, RestClient, Browser, PDF, Image, Video, Board, etc.) subclasses `EditorModel<TState>`.
 
 ### EditorModel\<TState\>
 

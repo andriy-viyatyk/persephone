@@ -173,7 +173,7 @@ The current page (tab). Available as a global in scripts.
 **Creatable with `pages.addEditorPage`** (content-hosting editors — see the table below for the
 required `language` and title suffix):
 
-`"monaco"` · `"grid-json"` · `"grid-csv"` · `"grid-jsonl"` · `"md-view"` · `"notebook-view"` · `"link-view"` · `"graph-view"` · `"draw-view"` · `"svg-view"` · `"html-view"` · `"mermaid-view"` · `"log-view"` · `"rest-client"`
+`"monaco"` · `"grid-json"` · `"grid-csv"` · `"grid-jsonl"` · `"md-view"` · `"notebook-view"` · `"link-view"` · `"draw-view"` · `"svg-view"` · `"html-view"` · `"mermaid-view"` · `"log-view"` · `"rest-client"`
 
 **Standalone editors** — `pages.addEditorPage` rejects these with a hint; open them the way listed:
 
@@ -202,7 +202,6 @@ optional initial content as its fourth positional argument.
 | `link-view` | **`json`** | `.link.json` (**required**) | `"Bookmarks.link.json"` |
 | `svg-view` | **`xml`** | `.svg` (**required**) | `"Logo.svg"` |
 | `html-view` | **`html`** | — | `"Page.html"` |
-| `graph-view` | **`json`** | `.fg.json` (**required**) | `"Network.fg.json"` |
 | `draw-view` | **`json`** | `.excalidraw` (**required**) | `"Sketch.excalidraw"` |
 | `mermaid-view` | **`mermaid`** | — | `"Diagram"` |
 | `grid-jsonl` | **`jsonl`** | — | `"Logs"` |
@@ -212,17 +211,7 @@ optional initial content as its fourth positional argument.
 **Initial content:** Structured editors expect valid JSON content on creation. **Read the dedicated resource guide BEFORE creating pages with these editors** — incorrect JSON will crash the editor:
 - **Notebook:** Read `persephone://guides/notebook` for NoteItem format. Empty: `{"notes":[],"state":{}}`
 - **Links:** Read `persephone://guides/links` for LinkItem format. Empty: `{"links":[],"state":{}}`
-- **Graph:** Read `persephone://guides/graph` for node/link format. Empty: `{"nodes":[],"links":[],"options":{}}`
 - **Rest Client:** Empty: `{"type":"rest-client","requests":[]}`
-
-### Graph Editor Format (`graph-view`)
-
-The graph editor renders an interactive force-directed graph. The full data format (node/link
-properties, options and their defaults, group nodes, legend) and the `page.editor` scripting
-API live in **`persephone://guides/graph`** — read it before creating or editing graph pages. The
-minimum you need here: content is JSON with `"type": "force-graph"`, `nodes`, `links`, and
-`options`; the empty page is `{"type":"force-graph","nodes":[],"links":[],"options":{}}`; the
-`.fg.json` title suffix enables the JSON/Graph editor switch.
 
 ### Rest Client Format (`rest-client`)
 
@@ -302,7 +291,7 @@ Access `page.grouped` to auto-create a grouped page. Set `page.grouped.language`
 What failures actually look like, and how to check your work (verified against the app):
 
 - **`pages.addEditorPage` does NOT validate content.** Creating a structured-editor page (notebook,
-  links, graph, rest-client) with broken content returns a normal `{ id, title }` success — the
+  links, rest-client) with broken content returns a normal `{ id, title }` success — the
   failure happens at render time, in the editor:
   - **Unparseable JSON** → the editor shows a parse error in place of content (e.g.
     `Unexpected token 'h', "this is not"… is not valid JSON`).

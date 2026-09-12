@@ -43,6 +43,7 @@ interface HostSwitchProjection {
     gitRepo: TextFileEditorModelState["gitRepo"];
     filePath?: string;
     title?: string;
+    content: string;
     /** The switch candidates are language-derived for any page whose name
      *  carries no extension (an untitled page), so a language change must
      *  re-sync the widget. The editor-state projection cannot cover this:
@@ -65,6 +66,7 @@ function selectHostSwitchProjection(state: TextFileEditorModelState): HostSwitch
         gitRepo: state.gitRepo,
         filePath: state.filePath,
         title: state.title,
+        content: state.content,
         language: state.language,
     };
 }

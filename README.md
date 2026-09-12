@@ -66,7 +66,6 @@ The practical loop: describe the tool you need to your agent — it scaffolds th
 | **Audio / Video Player** | `.mp4`, `.mkv`, `.webm`, `.mov`, `.mp3`, `.flac`, `.wav`, `.m3u8` | Plays local and streamed media, with HLS support and an audio spectrum visualizer |
 | **Archive** | `.zip`, `.rar`, `.7z`, `.tar`, `.docx`, `.xlsx`, `.epub`, `.iso` | Browse archive contents as a file tree; open entries inline (ZIP-based formats are writable) |
 | **Notebook** | `.note.json` | Structured notes with categories, tags, and search |
-| **Force Graph** | `.fg.json` | Interactive force-directed graph with node editing, search, and BFS expansion |
 | **Drawing** | `.excalidraw` | Excalidraw-based drawing editor with library persistence, export, and screen snip |
 | **Links** | `.link.json` | Bookmark/link manager with tiles, list view, categories, and pinned links |
 | **Rest Client** | `.rest.json` | HTTP request builder with collections, body types, and response viewer |

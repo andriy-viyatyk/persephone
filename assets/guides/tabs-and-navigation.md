@@ -206,7 +206,8 @@ If a standalone page cannot be opened because its editor fails to load, Persepho
 
 The About page keeps the application information card on the left and the guide browser on the
 right. The contents view lists the available guides with summaries, release highlights, and
-resources. Turn on **Show agent guides** to include guides intended for AI agents.
+resources. Documentation supplied by trusted installed boards appears under the
+**installed-boards** branch. Turn on **Show agent guides** to include guides intended for AI agents.
 
 Select a guide to read it in the right pane. Use **Back** to return to the previous guide location,
 or **Open in tab** to open the guide as a normal Markdown tab while leaving the About page available.
@@ -228,7 +229,7 @@ Click any item to create a new page (or open the board/toolset) with that editor
 
 **Open Folder** — The first entry in the default pinned set. Clicking it shows a native Select Folder dialog; once you pick a folder, a new tab opens with the File Explorer panel rooted at that folder. This is identical to right-clicking a folder in the Explorer sidebar and choosing **"Open in New Tab"**. Existing users can pin it from the **Built-in Editors** tab.
 
-Items include all standard editors (Script, Grid, Notebook, Links, Drawing, Force Graph, Browser, Video Player) as well as MCP Inspector and individual browser profiles (Incognito and named profiles).
+Items include all standard editors (Script, Grid, Notebook, Links, Drawing, Browser, Video Player) as well as MCP Inspector and individual browser profiles (Incognito and named profiles).
 
 ### Script Library
 

@@ -88,6 +88,10 @@ persephone/
 The user-facing pages in `/assets/guides/` are the canonical in-app copy; users read them in the
 About page or with `F1`.
 
+Guide indexing is shared across processes: `/src/shared/guides/` owns the corpus contract and
+mounted-source composition, `/src/main/mcp/ai-vision/` resolves trusted-board guide mounts for MCP,
+and `/src/renderer/guides/` resolves the corresponding mounts for the About browser and `F1`.
+
 ## Renderer Structure
 
 The renderer entry is `src/renderer.ts`: after asynchronous application bootstrap it calls
@@ -223,7 +227,6 @@ vendor island under `editors/draw/`; native global styles are installed by `them
 │       ├── svg-editor.d.ts     # ISvgEditor
 │       ├── html-editor.d.ts    # IHtmlEditor
 │       ├── mermaid-editor.d.ts # IMermaidEditor
-│       ├── graph-editor.d.ts  # IGraphEditor, IGraphNode, IGraphComponent, IGraphSearchResult
 │       ├── rest-client-editor.d.ts # IRestClientEditor — REST request/response surface
 │       ├── env-vars-editor.d.ts # IEnvVarsEditor — environment-variable state and actions
 │       ├── archive-editor.d.ts # IArchiveEditor — archive entries and extraction
@@ -466,36 +469,6 @@ vendor island under `editors/draw/`; native global styles are installed by `them
 │   │   ├── MermaidBodyView.ts         # Native preview body
 │   │   ├── render-mermaid.ts         # Rendering utilities (shared with Markdown)
 │   │   └── index.ts
-│   ├── graph/              # Force graph viewer (text-bearing, IContentHost + TRAIT)
-│   │   ├── GraphEditor.ts            # EditorModel — JSON parsing, orchestration, sub-models
-│   │   ├── GraphBodyView.ts          # Native canvas graph body and interaction wiring
-│   │   ├── GraphDataModel.ts         # Source data ownership + node/link CRUD + legend data
-│   │   ├── GraphSearchModel.ts       # Search query matching + result computation
-│   │   ├── GraphGroupModel.ts        # Group membership analysis + link pre-processing
-│   │   ├── GraphGroupActionsModel.ts # Interactive grouping + membership operations
-│   │   ├── GraphMutationModel.ts     # Graph edits, exports + rebuild/persist orchestration
-│   │   ├── GraphTooltipModel.ts      # Tooltip timers, hover state + status hints
-│   │   ├── GraphConnectivityModel.ts # Read-only query layer
-│   │   ├── GraphHighlightModel.ts    # Highlight layers + selection/hover state
-│   │   ├── GraphContextMenu.ts       # Context menu item builders
-│   │   ├── ForceGraphRenderer.ts     # D3 force simulation + canvas rendering
-│   │   ├── GraphVisibilityModel.ts   # BFS-based visibility filtering
-│   │   ├── GraphDetailPanelView.ts    # Collapsible detail panel overlay
-│   │   ├── GraphDetailPanel.css      # Scoped graph-detail presentation
-│   │   ├── GraphTuningSlidersView.ts
-│   │   ├── GraphExpansionSettingsView.ts
-│   │   ├── GraphLegendPanelView.ts
-│   │   ├── GraphIcons.ts
-│   │   ├── GraphTooltipView.ts
-│   │   ├── GraphBody.css              # Canvas/body geometry and native graph presentation
-│   │   ├── GraphExpansionSettings.css
-│   │   ├── GraphLegendPanel.css
-│   │   ├── GraphTooltip.css
-│   │   ├── GraphTuningSliders.css
-│   │   ├── shapeGeometry.ts
-│   │   ├── types.ts
-│   │   ├── constants.ts
-│   │   └── index.ts
 │   ├── draw/               # Excalidraw drawing editor (text-bearing, IContentHost + TRAIT)
 │   │   ├── DrawEditor.ts             # EditorModel — JSON parsing, fingerprint change detection
 │   │   ├── DrawBodyView.ts            # Native chrome, model binding, and vendor-host lifecycle
@@ -714,7 +687,6 @@ vendor island under `editors/draw/`; native global styles are installed by `them
 │       ├── SvgEditorFacade.ts      # ISvgEditor facade
 │       ├── HtmlEditorFacade.ts     # IHtmlEditor facade
 │       ├── MermaidEditorFacade.ts  # IMermaidEditor facade
-│       ├── GraphEditorFacade.ts   # IGraphEditor facade (graph query/analysis, designed for MCP)
 │       ├── VideoEditorFacade.ts    # IVideoEditor facade (playback and media state)
 │       ├── FileDiffEditorFacade.ts # IFileDiffEditor facade (revision state)
 │       ├── BoardEditorFacade.ts    # IBoardEditor facade (metadata, trust state, automation, panels, conditional .app proxy, reload)

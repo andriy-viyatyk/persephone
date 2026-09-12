@@ -488,7 +488,6 @@ an operation facade still return a `GenericEditorFacade` with their `id` and dis
 | `page.editor` | `SvgEditorFacade` | `SvgEditor` | `svg` (read-only), `savePngToFile()` |
 | `page.editor` | `HtmlEditorFacade` | `HtmlEditor` | `html` (read-only) |
 | `page.editor` | `MermaidEditorFacade` | `MermaidEditor` | `svgUrl`, `loading`, `error` (read-only), `savePngToFile()` |
-| `page.editor` | `GraphEditorFacade` | `GraphEditor` | `nodes`, `links`, `search()`, `bfs()`, `getComponents()`, `select()`, selection, groups, neighbors |
 | `page.editor` | `DrawEditorFacade` | `DrawEditor` | `addImage()`, `exportAsSvg()`, `exportAsPng()`, `elementCount`, `editorIsMounted` |
 | `page.editor` | `BrowserEditorFacade` | `BrowserEditorModel` | `url`, `title`, shared snapshot/click/hover/type/select/key/evaluate/wait/screenshot/network operations, navigation, and inner-tab management |
 | `page.editor` | `McpInspectorFacade` | `McpInspectorEditorModel` | `connect()`, `disconnect()`, connection params, server info (title, description, websiteUrl, instructions), `history`, `clearHistory()`, `showHistory()` |
@@ -664,7 +663,7 @@ as setting keys.
 
 Wraps the `app` singleton and mirrors `IApp`. Delegates most properties directly. Wraps `pages` in `PageCollectionWrapper`. `fetch` delegates directly to `app.fetch` (Node.js HTTP client with full header control — see `src/renderer/api/node-fetch.ts`).
 
-None of the wrappers carry an `implements` clause, and they cannot: they intentionally return richer concrete types than the script-facing interfaces (`PageCollectionWrapper` for `pages`, `PageWrapper` for each page, an `unknown`-typed lazy proxy for `events`), and the editor facades are structurally narrower than their interfaces — `GraphEditorFacade.nodes` is `GraphNode[]`, while `IGraphEditor.nodes` is `IGraphNode[]` with an index signature `GraphNode` does not declare. A structural assertion therefore fails on mismatches that are deliberate.
+None of the wrappers carry an `implements` clause, and they cannot: they intentionally return richer concrete types than the script-facing interfaces (`PageCollectionWrapper` for `pages`, `PageWrapper` for each page, and an `unknown`-typed lazy proxy for `events`). A structural assertion therefore fails on mismatches that are deliberate.
 
 The consequence is that nothing stopped a namespace from being added to `App` and `IApp` while being silently omitted from the wrapper, leaving it `undefined` for every script. `AppWrapper` closes that gap with a **member-name** check at the bottom of the file:
 
@@ -769,6 +768,9 @@ the body of its `## Layout` section or an explicit no-schema message. `guides.se
 the same corpus independently of descriptor help search. Guide front matter accepts `title`,
 `audience`, `summary`, optional `screen`, and either one `editorId` or a list of editor IDs. The
 editor mapping is used by the active-page guide entry points, while `screen` remains page metadata.
+Trusted installed boards that declare a safe `guides` folder are mounted under
+`guides.installed-boards.<board-id>`; each mount is contained within that board's folder and is
+resolved dynamically so trust, installation, and removal are reflected without an app restart.
 
 The renderer root includes live transient-surface nodes: `dialogs` adapts the registered dialog
 view entries by `viewId`, exposing safe fields plus `click(button)` and `cancel()`, while
@@ -1018,7 +1020,6 @@ Script API types are defined in `/src/renderer/api/types/`:
 | `svg-editor.d.ts` | `ISvgEditor` |
 | `html-editor.d.ts` | `IHtmlEditor` |
 | `mermaid-editor.d.ts` | `IMermaidEditor` |
-| `graph-editor.d.ts` | `IGraphEditor`, `IGraphNode`, `IGraphComponent`, `IGraphSearchResult` |
 | `video-editor.d.ts` | `IVideoEditor` |
 | `file-diff-editor.d.ts` | `IFileDiffEditor` |
 | `compare.d.ts` | `ICompareMode`, `IComparePair` |
@@ -1054,7 +1055,6 @@ These files serve dual purpose: TypeScript type checking **and** IDE IntelliSens
     ├── SvgEditorFacade.ts       # SVG preview (read-only)
     ├── HtmlEditorFacade.ts      # HTML preview (read-only)
     ├── MermaidEditorFacade.ts   # Mermaid diagram (read-only + savePngToFile)
-    ├── GraphEditorFacade.ts     # Graph query/analysis (read-only, designed for MCP)
     ├── ImageEditorFacade.ts     # Image viewer (savePngToFile)
     ├── VideoEditorFacade.ts     # Video/audio playback and media state
     ├── FileDiffEditorFacade.ts  # File Diff revision state
@@ -1101,7 +1101,6 @@ These files serve dual purpose: TypeScript type checking **and** IDE IntelliSens
 ├── svg-editor.d.ts              # ISvgEditor
 ├── html-editor.d.ts             # IHtmlEditor
 ├── mermaid-editor.d.ts          # IMermaidEditor
-├── graph-editor.d.ts            # IGraphEditor, IGraphNode, IGraphComponent, IGraphSearchResult
 ├── video-editor.d.ts             # IVideoEditor
 ├── file-diff-editor.d.ts         # IFileDiffEditor
 ├── compare.d.ts                  # ICompareMode, IComparePair

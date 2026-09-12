@@ -3359,3 +3359,11 @@ Single-hierarchy editor rewrite via strangler-fig migration over 37 tasks. All 2
   - [x] US-1074: `mneme-tree`
   - [x] US-1075: `explorer`'s two (`explorer`, `boards`) + `BoardsTree`, `ToolsTree`
   - [x] US-1076: Delete the contract — registry single-armed, `LazySecondaryView.tsx` / `SideBarPanelHeader.tsx` / `SecondaryViews`' React child path / `EditorIcon.tsx` removed; re-measure E5-3
+## EPIC-100 — [Move the Force Graph editor out of the app into a board](EPIC-100.md)
+
+Completed 2026-09-12. The three app-side tasks were reviewed at epic scope; board-side work remains
+tracked in `persephone-boards`.
+
+- [x] US-1404: Board object model — cross-editor page creation, graph color tokens, manifest content detection
+- [x] US-1405: Remove the built-in Force Graph editor
+- [x] US-1406: Boards supply their own documentation to the guide system

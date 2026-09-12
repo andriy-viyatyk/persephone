@@ -535,10 +535,11 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         host: string,
         frame: HTMLIFrameElement,
     ): void {
+        const generation = this.generation;
         const reply = boardTrust.isTrusted(this.props.boardRoot)
             ? resolveBoardOpenContent(request)
             : { error: "This board is not trusted." };
-        if (!frame.contentWindow) return;
+        if (!this.live || generation !== this.generation || this.iframe !== frame || !frame.contentWindow) return;
         const message: BoardOpenContentResultMsg = {
             __persephone: "openContent:result", reqId, pageId: reply.pageId, error: reply.error,
         };

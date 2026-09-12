@@ -10,7 +10,7 @@ export interface IEditorInfo {
     readonly name: string;
     /**
      * `true` for text-bearing editors (Monaco, Grid, Markdown, Notebook, Todo,
-     * Link, SVG, HTML, Mermaid, Log View, Graph, Draw, Rest Client) — share a
+     * Link, SVG, HTML, Mermaid, Log View, Draw, Rest Client) — share a
      * common text content and can switch between each other.
      * `false` for standalone editors (PDF, Image, Browser, Archive, Video, MCP
      * Inspector, Storybook, About, Settings, Category) — own their own state

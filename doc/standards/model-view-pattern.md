@@ -35,7 +35,7 @@ native child views and DOM slots. The Excalidraw body is the sole exception: it 
 React vendor island under `editors/draw/`.
 
 The native main-view shape is used by the text-bearing editor set, including `svg`, `html`,
-`markdown`, `grid`, `mermaid`, `log-view`, and `notebook`; the graph, rest-client, env-vars, and
+`markdown`, `grid`, `mermaid`, `log-view`, and `notebook`; the rest-client, env-vars, board, and
 file-diff bodies follow the same `VanillaView` shape. The draw editor also uses a native body, with
 one bounded `ExcalidrawIsland.tsx` inside it because the vendor package requires React. A vendor
 island is a deliberate implementation boundary, not a second page shell. The five embeddable

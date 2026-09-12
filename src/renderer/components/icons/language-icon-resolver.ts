@@ -23,7 +23,6 @@ import {
     FshartIcon,
     GoIcon,
     GraphqlIcon,
-    GraphIcon,
     GridIcon,
     HclIcon,
     HtmlIcon,
@@ -133,7 +132,6 @@ const filePatternIcons: Array<{ pattern: RegExp; icon: SvgIconComponent }> = [
     { pattern: /\.grid\.csv$/i, icon: GridIcon },
     { pattern: /\.link\.json$/i, icon: LinkIcon },
     { pattern: /\.env\.json$/i, icon: EnvVarsIcon },
-    { pattern: /\.fg\.json$/i, icon: GraphIcon },
     { pattern: /\.rest\.json$/i, icon: RestClientIcon },
     { pattern: /\.excalidraw$/i, icon: DrawIcon },
     // Archive-specific extensions (not ZIP-based documents like .docx, .xlsx, .epub)

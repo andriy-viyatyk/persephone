@@ -76,6 +76,6 @@ opts.options.forEach(id =>
 | `name` | `string` | Display name (e.g., `"Text Editor"`, `"JSON Grid"`). |
 | `hasContentHost` | `boolean` | `true` for text-bearing editors that share text content and can switch between each other; `false` for standalone editors with their own page model. |
 
-Text-bearing editors (`hasContentHost === true`) — Monaco, Grid (JSON/CSV/JSONL), Markdown, Notebook, Link, SVG, HTML, Mermaid, Log View, Graph, Draw, Rest Client — share the same underlying text content and can switch between each other (e.g., JSON text ↔ Grid).
+Text-bearing editors (`hasContentHost === true`) — Monaco, Grid (JSON/CSV/JSONL), Markdown, Notebook, Link, SVG, HTML, Mermaid, Log View, Draw, Rest Client — share the same underlying text content and can switch between each other (e.g., JSON text ↔ Grid).
 
 Standalone editors (`hasContentHost === false`) — Image Viewer, Browser, Archive, Video Player, MCP Inspector, Storybook, About, Settings, Compare — own their own state and do not participate in content-based editor switching. (Persephone no longer ships a built-in PDF viewer — see [Editors — PDF Viewer](../../editors/index.md#pdf-viewer). The `"pdf-view"` editor id no longer exists.)

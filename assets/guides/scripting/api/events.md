@@ -295,4 +295,4 @@ The `targetKind` field identifies the source of a context menu event. Currently 
 - `"file-explorer-item"` — file/folder in the file explorer
 
 Other values exist internally but are not yet exposed as subscribable channels:
-`"page-tab"` · `"file-explorer-background"` · `"sidebar-folder"` · `"sidebar-background"` · `"markdown-link"` · `"browser-webview"` · `"browser-url-bar"` · `"browser-tab"` · `"grid-cell"` · `"graph-node"` · `"graph-area"` · `"link-item"` · `"link-pinned"` · `"generic"`
+`"page-tab"` · `"file-explorer-background"` · `"sidebar-folder"` · `"sidebar-background"` · `"markdown-link"` · `"browser-webview"` · `"browser-url-bar"` · `"browser-tab"` · `"grid-cell"` · `"link-item"` · `"link-pinned"` · `"generic"`
