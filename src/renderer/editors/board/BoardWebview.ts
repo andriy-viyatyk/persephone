@@ -11,12 +11,15 @@ import type {
     BoardAiVisionResultMsg,
     BoardFilePathResultMsg,
     BoardHostContentMsg,
+    BoardOpenContentRequest,
+    BoardOpenContentResultMsg,
     BoardPortInitMsg,
     BoardStateSyncMsg,
     BoardToHostMsg,
     BoardVarResultMsg,
 } from "../../../ipc/board-bridge-channels";
 import { resolveBoardNamespace, resolveBoardVarRequest } from "../../api/board-vars";
+import { resolveBoardOpenContent } from "./board-open-content";
 import { cycleAppTheme } from "../../api/cycle-app-theme";
 import { BOARD_CDP_TAB } from "../../../ipc/api-types";
 import { BOARD_TOKEN_VARS, computeBoardThemePalette, ensureBoardThemeSubscription } from "./board-theme";
@@ -320,6 +323,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             defaults?: Record<string, unknown>; restorableKeys?: string[]; views?: unknown;
             statusText?: string; direction?: 1 | -1; reqId?: number;
             varMethod?: "get" | "set" | "list" | "show"; varArgs?: unknown[];
+            openContent?: BoardOpenContentRequest;
         };
         switch (data.__persephone) {
             case "board:interact":
@@ -372,6 +376,11 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
                 break;
             case "board:filePath":
                 if (typeof legacy.reqId === "number") void this.resolveFilePath(legacy.reqId, model, host, frame);
+                break;
+            case "board:openContent":
+                if (typeof legacy.reqId === "number") {
+                    this.resolveOpenContent(legacy.reqId, legacy.openContent, host, frame);
+                }
                 break;
             case "board:var":
                 if (typeof legacy.reqId === "number") {
@@ -510,6 +519,28 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
         if (!this.live || generation !== this.generation || this.iframe !== frame || !frame.contentWindow) return;
         const message: BoardFilePathResultMsg = {
             __persephone: "filePath:result", reqId, path: reply.path, error: reply.error,
+        };
+        frame.contentWindow.postMessage(message, `board://${host}`);
+    }
+
+    /**
+     * `persephone.openContent(...)` (US-1404) — create an in-memory page in another editor and hand
+     * the board back its page id. Trust is re-checked here, like every board-initiated effect, so
+     * revoking trust blocks an already-mounted board. Synchronous work, but the reply is posted the
+     * same way as the other request/reply resolvers.
+     */
+    private resolveOpenContent(
+        reqId: number,
+        request: BoardOpenContentRequest | undefined,
+        host: string,
+        frame: HTMLIFrameElement,
+    ): void {
+        const reply = boardTrust.isTrusted(this.props.boardRoot)
+            ? resolveBoardOpenContent(request)
+            : { error: "This board is not trusted." };
+        if (!frame.contentWindow) return;
+        const message: BoardOpenContentResultMsg = {
+            __persephone: "openContent:result", reqId, pageId: reply.pageId, error: reply.error,
         };
         frame.contentWindow.postMessage(message, `board://${host}`);
     }

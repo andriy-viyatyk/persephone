@@ -11,7 +11,7 @@ cross-origin `<iframe>` and gives it a single bridge object, `window.persephone`
 create one, open it, and develop it end-to-end through **`script.execute`** calling
 the `app` API — no user clicks required.
 
-The board bridge is version **1.4.0** in this build. Check `persephone.version` before using a
+The board bridge is version **1.5.0** in this build. Check `persephone.version` before using a
 bridge member that may not exist in an older app.
 
 ## What a board is
@@ -245,6 +245,23 @@ srv.write(JSON.stringify({ id: 1, sql }) + "\n");   // per query — db stays op
   - **Default context menu is built in.** Right-click gives Open/Copy Link (links), Open Image in
     New Tab / Copy Image / Save Image As… (images), Cut/Copy/Paste (text fields), and Copy
     (selection) with no board code. Call `e.preventDefault()` on `contextmenu` to render your own.
+- `persephone.openContent({ editor, language, title, content })` → `Promise<string>` — create a
+  **new in-memory, untitled Persephone page in another editor** and resolve to its page id. This is
+  the board equivalent of the script API's `pages.addEditorPage(...)`, and the right call whenever
+  the content lives in the board's memory rather than in a file `openRawLink` could point at (a
+  rendered Markdown summary, an extracted subgraph, a table to open in the JSON grid). `editor` is a
+  registered editor id (`"md-view"`, `"grid-json"`, `"monaco"`, `"mermaid-view"`, `"draw-view"`, …);
+  `language` defaults to `"plaintext"`, `title` to `"untitled"`.
+  ```js
+  const pageId = await persephone.openContent({
+      editor: "md-view", language: "markdown", title: "Node report", content: markdown,
+  });
+  ```
+  It **rejects** with a readable message for an unknown editor id or language, a standalone editor
+  that cannot be built this way, another board's id, or content over 16 M characters — handle the
+  rejection, don't fire and forget. It is **create-only**: the id it returns belongs to a page the
+  board just made, and there is no counterpart call to read, list, navigate, close, or modify any
+  other page, so `persephone.call` keeps its scoping to the page hosting this board.
 - `persephone.notify(message, type)` — toast (`"info"|"success"|"warning"|"error"`); errors are
   also appended to **`ui.log`** in the board folder (an on-board indicator opens it). `ui.log` also
   receives, automatically: load failures, CSP violations, uncaught errors / unhandled rejections,
@@ -443,6 +460,29 @@ constants. To match **Persephone's own chrome** (title bar / sidebar / grid head
 with focus inside the board frame — Persephone forwards them out — so a theme pass over a board needs
 no clicking back into the app; a board binding either combo opts out with `preventDefault()`.
 
+**Graph colors (`--p-graph-*`).** Persephone also publishes its 14 force-graph colors — canvas
+background, node / border / link fills in default, highlight, selected and special variants, the
+label plate and text, and the group outline — as `--p-graph-bg`, `--p-graph-node-default`,
+`--p-graph-node-highlight`, `--p-graph-node-selected`, `--p-graph-node-special`,
+`--p-graph-border-default`, `--p-graph-border-highlight`, `--p-graph-border-selected`,
+`--p-graph-border-special`, `--p-graph-link-default`, `--p-graph-link-selected`,
+`--p-graph-label-bg`, `--p-graph-label-text` and `--p-graph-group-border`. They are per-theme
+values tuned across all ten themes — a palette derived from the general `--p-*` set loses that
+fidelity. Because a `<canvas>` cannot consume `var(...)`, the same values arrive as concrete
+strings on `persephone.getTheme().graph`, keyed by the camelCased suffix (`bg`, `nodeDefault`,
+`nodeHighlight`, `nodeSelected`, `nodeSpecial`, `borderDefault`, `borderHighlight`,
+`borderSelected`, `borderSpecial`, `linkDefault`, `linkSelected`, `labelBg`, `labelText`,
+`groupBorder`). `onThemeChange` delivers the graph family too — re-read it on every fire and
+repaint, never cache it across a switch.
+
+```js
+persephone.onThemeChange((theme) => {
+    ctx.fillStyle = theme.graph.nodeDefault;
+    ctx.strokeStyle = theme.graph.linkDefault;
+    repaint();
+});
+```
+
 ### Toolbars and buttons — use the `.p-*` classes
 
 `board-base.css` also carries an **opt-in chrome layer** with the app's exact control metrics.
@@ -538,6 +578,11 @@ the manifest's `loadOrder`.
   + `"folderMasks": ["*/tasks"]` claims only `…/dev/tasks/DASHBOARD.md`; matched against the parent
   folder as a case-insensitive path *suffix* — `*`/`?` stop at a separator, `**` crosses them; omit
   for any folder; the file **icon** deliberately ignores it, since icon lookups have no path),
+  optional `contentMasks` (**regex** sources tested against the page's text *content* — the way to
+  claim an **untitled, in-memory** page that no file name can match, e.g.
+  `["\"type\"\s*:\s*\"force-graph\""]`; case-insensitive, tested against the first 64 KB,
+  uncompilable masks ignored, switch-option scope only so content never decides which editor *opens
+  a file*; usable with or without `fileMasks`),
   optional `editorPriority` (a number; makes the board the *default* editor for those masks when it
   strictly outranks the built-in that also claims the file — omit/`0` = switch option only. Built-in
   ladder: Monaco `0`, Markdown Preview `10`, compound-name editors like `*.grid.json` `20`, Drawing
@@ -550,6 +595,19 @@ the manifest's `loadOrder`.
   offered only for real local files; `"any"` → also for an archive entry or an `http(s)` URL, where
   `getFilePath()` still returns a readable local path (see the bridge section). Ignored for
   content-host boards, which always get every source.
+- Optional `guides` — a board-relative folder (conventionally `"guides"`) holding the board's own
+  Markdown documentation. Persephone mounts every `.md` under it at
+  `installed-boards/<board-folder-name>/…`, so the pages appear in the About guide tree under the
+  top-level **installed-boards** branch, answer `F1` from the board's own pages, are found by
+  `guides.search(...)`, and are readable at `guides["installed-boards/<board>/<page>"]`. Each page
+  carries the app's own front matter — `title`, `summary`, `audience` (`user` / `agent` / `both`,
+  where `agent` pages stay behind the About page's *Show agent guides* toggle), optional `screen`,
+  and `editorId: "board"` to mark the page as **this board's** guide for `F1` (a fixed token: the
+  board's real editor id embeds an absolute path and differs per machine). Name the entry page
+  `index.md`. Absolute paths, drive letters and `..` segments are rejected, and only a **trusted**
+  board contributes documentation — untrusting or removing it drops the pages from the tree and
+  from search with no restart. Document the board here rather than in the app, so the docs version
+  with the board.
 - Optional `icon.svg` / `icon.png` / `icon.ico` in the board folder sets the board's icon (SVG
   preferred). Without one, a default glyph is used.
 - **Reload model:** boards do **not** auto-reload on file changes. After editing a board's files,

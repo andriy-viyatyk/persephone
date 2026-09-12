@@ -134,6 +134,41 @@ interface PersephoneOpenFolderDialogParams {
  * Metric vars (theme-independent constants): --p-space-*, --p-gap-*, --p-radius-*,
  *   --p-size-* (icon/control), --p-font-* — e.g. --p-space-md, --p-radius-sm, --p-font-base.
  */
+/** The `--p-graph-*` family as CONCRETE values (EPIC-100 / US-1404). Styling reads the CSS
+ *  variables as usual (`var(--p-graph-node-default)`); this object exists because a `<canvas>`
+ *  cannot consume `var(...)`. Keys are the camelCased CSS suffix, so each maps 1:1 onto
+ *  `--p-graph-<kebab>`. Re-read it on every `onThemeChange` — never cache it across a switch. */
+interface PersephoneGraphPalette {
+    /** `--p-graph-bg` — the graph canvas background. */
+    bg: string;
+    /** `--p-graph-node-default` — node fill. */
+    nodeDefault: string;
+    /** `--p-graph-node-highlight` — hovered / search-hit node fill. */
+    nodeHighlight: string;
+    /** `--p-graph-node-selected` — selected node fill. */
+    nodeSelected: string;
+    /** `--p-graph-node-special` — node fill for a distinguished kind (e.g. a root). */
+    nodeSpecial: string;
+    /** `--p-graph-border-default` — node outline. */
+    borderDefault: string;
+    /** `--p-graph-border-highlight` — hovered / search-hit node outline. */
+    borderHighlight: string;
+    /** `--p-graph-border-selected` — selected node outline. */
+    borderSelected: string;
+    /** `--p-graph-border-special` — outline matching `nodeSpecial`. */
+    borderSpecial: string;
+    /** `--p-graph-link-default` — edge stroke. */
+    linkDefault: string;
+    /** `--p-graph-link-selected` — edge stroke on a selected path. */
+    linkSelected: string;
+    /** `--p-graph-label-bg` — label plate behind node text. */
+    labelBg: string;
+    /** `--p-graph-label-text` — node label text. */
+    labelText: string;
+    /** `--p-graph-group-border` — group / cluster outline. */
+    groupBorder: string;
+}
+
 interface PersephoneThemePalette {
     /** Active theme id, e.g. "default-dark". */
     id: string;
@@ -141,6 +176,9 @@ interface PersephoneThemePalette {
     isDark: boolean;
     /** Color `--p-*` name → concrete CSS value. */
     vars: Record<string, string>;
+    /** The 14 graph colors as concrete values, for canvas drawing. See
+     *  {@link PersephoneGraphPalette}. */
+    graph: PersephoneGraphPalette;
 }
 
 /** Board environment variables (EPIC-046) — per-board secret/config storage kept OUTSIDE
@@ -187,7 +225,8 @@ interface PersephoneAiVisionApi {
 }
 
 interface PersephoneBoardApi {
-    /** Bridge version, e.g. "1.3.0" — the release that added the AiVision board surface. Compare
+    /** Bridge version, e.g. "1.5.0" — the release that added `openContent()`, the `--p-graph-*`
+     *  family and manifest `contentMasks`. Compare
      *  it before using a newer member; do not narrow it to a literal, it moves with the app. */
     readonly version: string;
     /** Publish the board's serializable AiVision model shape. Main frame only. */
@@ -203,8 +242,28 @@ interface PersephoneBoardApi {
         args?: string[],
         options?: PersephoneExecuteOptions,
     ): PersephoneExecuteHandle;
-    /** Open a link (file path or URL) in a new Persephone page. */
-    openRawLink(href: string): void;
+    /** Open a link (file path or URL) in a new Persephone page. Pass `{ editor }` to request a
+     *  specific editor id (e.g. `"md-view"`); falls back to the default editor when omitted or
+     *  when that editor does not accept the file. */
+    openRawLink(href: string, options?: { editor?: string }): void;
+    /** Create a NEW in-memory, untitled Persephone page in another editor and resolve to its page
+     *  id — the board equivalent of the script API's `pages.addEditorPage(...)`, for content the
+     *  board holds in memory rather than a file `openRawLink` could point at.
+     *
+     *  `editor` must be a registered content-host editor id (`"md-view"`, `"grid-json"`,
+     *  `"monaco"`, `"draw-view"`, …); `language` defaults to `"plaintext"`; `title` defaults to
+     *  `"untitled"`. Rejects with a readable message for an unknown editor or language, a
+     *  standalone editor, another board's id, or content over 16 M characters.
+     *
+     *  Create-only by design: the returned id is a page the board just made, and there is no
+     *  counterpart verb to read, list, navigate, close, or modify any other page — `persephone.call`
+     *  stays rooted at the page hosting this board. */
+    openContent(options: {
+        editor: string;
+        language?: string;
+        title?: string;
+        content?: string;
+    }): Promise<string>;
     /** Show a Persephone toast. */
     notify(message: string, type?: PersephoneNotifyType): void;
     /** Set the footer status text for a **content-host** board (e.g. a Todo board's "N items"

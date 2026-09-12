@@ -5,6 +5,8 @@ import { McpServerInstance, requireSdk } from "./sdk";
 import { callTools } from "./tools/call-tools";
 import { createToolContext } from "./tools/params";
 import { createGuideIndex } from "../../shared/guides";
+import { createMountedGuideSource } from "../../shared/guides/mounted-source";
+import { resolveMainBoardGuideMounts } from "./ai-vision/board-guide-mounts";
 import type { GuideTreeNode } from "../../shared/guides";
 
 /**
@@ -21,7 +23,10 @@ export function createMcpServer(): McpServerInstance {
 
     const ctx = createToolContext(z);
     registerTools(server, callTools(ctx));
-    const guideIndex = createGuideIndex(new MainGuideSource());
+    const guideIndex = createGuideIndex(createMountedGuideSource(
+        new MainGuideSource(),
+        resolveMainBoardGuideMounts,
+    ));
 
     // ── MCP Resources (focused guides) ─────────────────────────────────
     for (const res of resourceFiles) {

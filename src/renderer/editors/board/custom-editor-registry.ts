@@ -21,6 +21,7 @@ import { boardTrust } from "../../api/board-trust";
 import {
     getBoardEditorAssociation,
     matchesBoardMasks,
+    matchesContentMasks,
     readBoardManifest,
 } from "./board-manifest";
 
@@ -42,7 +43,7 @@ export function parseBoardEditorId(editorId: string): string | null {
 }
 
 /** A trusted, file-associated board resolved from its manifest. One per trusted board that
- *  declares usable `fileMasks`. */
+ *  declares usable `fileMasks` or `contentMasks`. */
 export interface CustomEditorMatch {
     /** Virtual editor id: `board-editor:<boardRoot>` (original-case root). */
     editorId: string;
@@ -57,6 +58,9 @@ export interface CustomEditorMatch {
     /** The board's normalized folder globs, narrowing `fileMasks` to certain locations.
      *  Empty = any folder (the default for boards that declare no `folderMasks`). */
     folderMasks: string[];
+    /** The board's normalized content-detection regex sources (US-1404). Empty = none. Consumed
+     *  ONLY by `getBoardsForContent` (the editor-switch path); content never opens a file. */
+    contentMasks: string[];
     /** Board editor kind (US-843): "simple" (EPIC-042, direct file I/O) or "content-host"
      *  (EPIC-043, Persephone owns the content host). Consumed by the construction path (US-845). */
     editorKind: "simple" | "content-host";
@@ -109,7 +113,7 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
         for (const root of roots) {
             const manifest = await readBoardManifest(root);
             const assoc = getBoardEditorAssociation(manifest);
-            if (!assoc) continue; // no fileMasks → not a custom editor
+            if (!assoc) continue; // neither fileMasks nor contentMasks → not a custom editor
             const name =
                 assoc.editorName ||
                 (manifest && typeof manifest.name === "string" && manifest.name.trim()) ||
@@ -121,6 +125,7 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
                 priority: assoc.editorPriority,
                 fileMasks: assoc.fileMasks,
                 folderMasks: assoc.folderMasks,
+                contentMasks: assoc.contentMasks,
                 editorKind: assoc.editorKind,
                 editorSources: assoc.editorSources,
             });
@@ -150,6 +155,22 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
         return this.state
             .get()
             .entries.filter((e) => matchesBoardMasks(fileName, e.fileMasks, e.folderMasks));
+    }
+
+    /**
+     * Boards whose `contentMasks` match this page's CONTENT (SYNC — safe for a toolbar render).
+     *
+     * The board counterpart of a built-in matcher's `detectsContent`, and scoped identically: this
+     * feeds the editor-SWITCH widget only, so a board can claim an untitled, in-memory page (an
+     * agent-generated graph, a script's output, pasted JSON) that no file mask can ever match.
+     * Nothing here participates in `resolveEditorIdForFile`, so content can never take a file away
+     * from the editor that would otherwise open it.
+     */
+    getBoardsForContent(content: string): CustomEditorMatch[] {
+        if (!content) return [];
+        return this.state
+            .get()
+            .entries.filter((e) => matchesContentMasks(content, e.contentMasks));
     }
 
     dispose(): void {

@@ -5,7 +5,7 @@ plain HTML page, backed by scripts you write in any language. Persephone hosts t
 page in a locked-down, cross-origin `<iframe>` and injects a single bridge object,
 `window.persephone`.
 
-The board bridge is version **1.4.0** in this build. Check `persephone.version` before using a
+The board bridge is version **1.5.0** in this build. Check `persephone.version` before using a
 bridge member that may not exist in an older app.
 
 > ## 📌 Agent: rewrite this file once the board is built
@@ -75,6 +75,19 @@ fields that let the board act as a file editor:
   `folderMasks` (icon lookups have only a file name, no path), so every name-matching file
   shows this board's icon even outside the folder scope; only the editor that actually *opens*
   the file respects the scope.
+- `contentMasks` (optional) — **regex** sources tested against the page's text **content**, so a
+  board can claim a page that has no file name at all. `fileMasks` can only match a name; an
+  **untitled, in-memory** page (an agent-generated document, a script's output, pasted JSON) has
+  none, and content detection is how the built-in editors handle exactly that case. Declare the
+  marker your format always carries, e.g.
+  `"contentMasks": ["\"type\"\s*:\s*\"force-graph\""]`, and the board appears in the editor
+  **switch** for any page whose content matches. Matching is case-insensitive, tested against the
+  first 64 KB of the page, and a mask that is not a valid regex is silently ignored — so keep the
+  pattern a short, distinctive marker rather than a full-document grammar.
+  **Switch-option scope only:** content never decides which editor *opens a file*, so
+  `editorPriority` does not apply here and a content match can never take a file away from its
+  built-in editor. Independent of `fileMasks` — a board may declare `contentMasks` alone (and
+  then claims no file names at all), or both.
 - `editorPriority` (optional) — number; makes the board the **default** editor for its masks
   when it **strictly outranks** the built-in editor that also claims the file. Omit or `0` → the
   board is a switch option only and the built-in editor stays the default. The built-in ladder:
@@ -102,6 +115,16 @@ fields that let the board act as a file editor:
 
 Don't put secrets or trust flags here — a board is trusted by the user inside Persephone,
 never by the manifest. (The board icon is **not** set here; see *Board icon* below.)
+
+**Documentation field (optional)** — also only honored when the board is **trusted**:
+
+- `guides` (optional) — a board-relative folder holding this board's own Markdown documentation,
+  conventionally `"guides"`. Persephone mounts every `.md` under it into its guide system at
+  `installed-boards/<board-folder-name>/…`, so the pages appear in the About guide tree under the
+  top-level **installed-boards** branch, answer `F1` from the board's own pages, turn up in guide
+  search, and are readable by an agent at `guides["installed-boards/<board>/<page>"]`. See
+  *Ship your own documentation* below. An absolute path, a drive letter or a `..` segment is
+  rejected — the folder must live inside the board.
 
 ## Mental model: frontend + backend + the `execute()` channel
 
@@ -237,6 +260,23 @@ Pass `args` to invoke the final method, `value` to assign a writable property, o
 bound string shaping. `args` and `value` cannot be combined. See the bundled regex verification
 Board under `assets/board-call-regex/` for a complete Run/Write example.
 
+- `persephone.openContent({ editor, language, title, content })` → `Promise<string>` — create a
+  **new in-memory, untitled Persephone page in another editor** and resolve to its page id. This is
+  the board equivalent of the script API's `pages.addEditorPage(...)`, and the right call whenever
+  the content lives in the board's memory rather than in a file `openRawLink` could point at (a
+  rendered Markdown summary, an extracted subgraph, a table to open in the JSON grid). `editor` is a
+  registered editor id (`"md-view"`, `"grid-json"`, `"monaco"`, `"mermaid-view"`, `"draw-view"`, …);
+  `language` defaults to `"plaintext"`, `title` to `"untitled"`.
+  ```js
+  const pageId = await persephone.openContent({
+      editor: "md-view", language: "markdown", title: "Node report", content: markdown,
+  });
+  ```
+  It **rejects** with a readable message for an unknown editor id or language, a standalone editor
+  that cannot be built this way, another board's id, or content over 16 M characters — handle the
+  rejection, don't fire and forget. It is **create-only**: the id it returns belongs to a page the
+  board just made, and there is no counterpart call to read, list, navigate, close, or modify any
+  other page, so `persephone.call` keeps its scoping to the page hosting this board.
 - `persephone.openRawLink(href, options?)` — open a file/URL in a new Persephone page. Pass
   `{ editor }` (e.g. `{ editor: "md-view" }`) to request a specific editor — useful to open a
   Markdown doc rendered rather than as source; falls back to the default editor when omitted/unmatched.
@@ -633,6 +673,29 @@ themes to check your styling without clicking out to the app first. Persephone f
 out of the frame for you; if your board binds either combo itself, call `preventDefault()` in
 your own handler and the forwarding stands down (same opt-out as `Ctrl+S` and the context menu).
 
+**Graph colors (`--p-graph-*`).** Persephone also publishes its 14 force-graph colors — canvas
+background, node / border / link fills in default, highlight, selected and special variants, the
+label plate and text, and the group outline — as `--p-graph-bg`, `--p-graph-node-default`,
+`--p-graph-node-highlight`, `--p-graph-node-selected`, `--p-graph-node-special`,
+`--p-graph-border-default`, `--p-graph-border-highlight`, `--p-graph-border-selected`,
+`--p-graph-border-special`, `--p-graph-link-default`, `--p-graph-link-selected`,
+`--p-graph-label-bg`, `--p-graph-label-text` and `--p-graph-group-border`. They are per-theme
+values tuned across all ten themes — a palette derived from the general `--p-*` set loses that
+fidelity. Because a `<canvas>` cannot consume `var(...)`, the same values arrive as concrete
+strings on `persephone.getTheme().graph`, keyed by the camelCased suffix (`bg`, `nodeDefault`,
+`nodeHighlight`, `nodeSelected`, `nodeSpecial`, `borderDefault`, `borderHighlight`,
+`borderSelected`, `borderSpecial`, `linkDefault`, `linkSelected`, `labelBg`, `labelText`,
+`groupBorder`). `onThemeChange` delivers the graph family too — re-read it on every fire and
+repaint, never cache it across a switch.
+
+```js
+persephone.onThemeChange((theme) => {
+    ctx.fillStyle = theme.graph.nodeDefault;
+    ctx.strokeStyle = theme.graph.linkDefault;
+    repaint();
+});
+```
+
 **Re-theming a JS-colored component (charts, diagrams):** read the palette from the
 `onThemeChange` argument (or `getTheme()`) and re-apply on each fire — never cache
 `persephone.theme.vars` and reuse it across a switch, or your colors will go stale.
@@ -772,6 +835,38 @@ read the Demo board's files (`index.html`, `app.js`, `style.css`, `board-base.cs
   the bundled demo board) and `resourcesDir`, so you never have to guess the install location.
 - **Installed app:** under the Persephone install's `resources/assets/demo-board/`.
 - **From source (dev):** `assets/demo-board/` in the repository.
+
+## Ship your own documentation — the `guides` folder
+
+Put the board's user and agent documentation **in the board**, not in the app: it then versions and
+ships with the board and cannot drift out of sync with a Persephone release.
+
+1. Add `"guides": "guides"` to `board-manifest.json`.
+2. Create `guides/index.md` (the entry page) and any further `.md` files, nested folders included.
+3. Start every page with the front-matter block Persephone's own guides use:
+
+```markdown
+---
+title: "Using My Board"
+audience: user
+summary: "One sentence, shown beside the page in the About guide tree."
+editorId: "board"
+---
+
+# Using My Board
+...
+```
+
+- `title` and `summary` are required. `audience` is `user`, `agent` or `both`; `agent` pages stay
+  hidden until the reader turns on **Show agent guides**, so a user guide and an agent reference can
+  live side by side.
+- `editorId: "board"` marks the page as the documentation **for this board** — that is what `F1` on
+  one of the board's pages opens. Use the literal token `board`; the board's real editor id embeds
+  its absolute path and differs on every machine, so it can never be written into a shipped guide.
+- A `## Layout` section is read back by `guides[...].layout`, the same as for built-in guides.
+
+Only a **trusted** board contributes documentation, and untrusting or removing the board drops its
+pages from the tree and from search immediately.
 
 ## Docs
 

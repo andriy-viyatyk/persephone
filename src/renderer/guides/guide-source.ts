@@ -4,9 +4,17 @@ import { fs as appFs } from "../api/fs";
 import { fpJoin } from "../core/utils/file-path";
 import { isSafeGuidePath } from "../../shared/guides/guide-links";
 
-/** Renderer-side adapter for the packaged guide corpus. */
+/**
+ * Renderer-side adapter for a guide corpus rooted at one folder. The default root is the packaged
+ * `assets/guides`; US-1406 also instantiates one per mounted board, rooted at that board's own
+ * guides folder, so containment is PER INSTANCE rather than measured against `assets/guides`.
+ */
 export class RendererGuideSource implements GuideSource {
-    private readonly rootPromise = api.getAssetsPath("guides");
+    private readonly rootPromise: Promise<string>;
+
+    constructor(root?: string) {
+        this.rootPromise = root === undefined ? api.getAssetsPath("guides") : Promise.resolve(root);
+    }
 
     async readDirectory(relativeDirectory: string): Promise<readonly GuideSourceEntry[]> {
         const directoryPath = await this.resolvePath(relativeDirectory, true);

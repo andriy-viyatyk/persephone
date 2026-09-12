@@ -43,6 +43,12 @@ export interface BoardThemePalette {
     isDark: boolean;
     /** `--p-*` name → concrete CSS color value. */
     vars: Record<string, string>;
+    /** The `--p-graph-*` family as concrete values, keyed by the camelCased CSS suffix
+     *  (`--p-graph-node-default` → `nodeDefault`) — a `<canvas>` cannot consume `var(...)`
+     *  (EPIC-100 / US-1404). Optional ON THE WIRE only: the renderer ships the family inside
+     *  `vars` like every other color, and the board SHIM derives this field from it, so the
+     *  palette a board actually observes always carries it. */
+    graph?: Record<string, string>;
 }
 
 /** The board context baked into served HTML by the `board://` handler as
@@ -74,6 +80,32 @@ export interface BoardOpenRawLinkMsg {
      *  Falls back to the default editor when omitted or when the editor doesn't
      *  accept the file (US-756 C6). */
     editor?: string;
+}
+
+/** `persephone.openContent(...)` — the board equivalent of `pages.addEditorPage` (EPIC-100 /
+ *  US-1404). CREATE-ONLY by design: it builds one new in-memory, untitled page in the board's own
+ *  window and returns that page's id. It carries no handle to any pre-existing page, so it does not
+ *  widen `persephone.call`'s deliberate page scoping. */
+export interface BoardOpenContentRequest {
+    /** Target editor id (e.g. "md-view", "grid-json"). Must be a registered content-host editor;
+     *  a `board-editor:<root>` id is rejected. */
+    editor?: string;
+    /** Monaco language id for the new page. Defaults to "plaintext". */
+    language?: string;
+    /** Page title. Trimmed and length-capped; empty → "untitled". */
+    title?: string;
+    /** Initial page content. */
+    content?: string;
+}
+
+/** Reply to a board `board:openContent` request, pushed renderer → board and matched by `reqId`. */
+export interface BoardOpenContentResultMsg {
+    __persephone: "openContent:result";
+    reqId: number;
+    /** Id of the newly created page. */
+    pageId?: string;
+    /** Set instead of `pageId` when the request was rejected. */
+    error?: string;
 }
 
 /** Encoding for the board file bridge (US-756 C4). "utf8" returns/accepts a plain
@@ -226,6 +258,7 @@ export interface BoardToHostMsg {
         | "board:cycleTheme" // Ctrl+Alt+[ / ] pressed inside the frame — cycle the app theme
         | "board:var" // board requested a var.get/set/list (EPIC-046) — request/reply, needs a reqId
         | "board:filePath" // board asked for its readable local content path — request/reply, needs a reqId
+        | "board:openContent" // persephone.openContent — create a page in another editor; request/reply, needs a reqId
         | "board:aiVision"
         | "board:aiNotify"
         | "board:aiResult";
@@ -262,6 +295,8 @@ export interface BoardToHostMsg {
     varArgs?: unknown[];
     /** `board:aiNotify` remote-authored notification text. */
     text?: string;
+    /** `board:openContent` payload — the requested editor/language/title/content. */
+    openContent?: BoardOpenContentRequest;
 }
 
 /** Host content pushed renderer → board over `iframe.contentWindow.postMessage` (EPIC-043).

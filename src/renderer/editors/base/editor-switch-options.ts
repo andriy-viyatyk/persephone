@@ -22,7 +22,18 @@ export function getEditorSwitchOptions(model: EditorModel): IEditorSwitchOption[
     const local = Boolean(filePath) && isPlainLocalPath(filePath);
     const fileName = filePath ?? hostState?.title ?? editorState.title ?? "";
 
-    const boardMatchesAll = customEditorRegistry.getBoardsForFile(fileName);
+    // Boards claim a page by file name (`fileMasks`) or by CONTENT (`contentMasks`, US-1404 — the
+    // manifest counterpart of a built-in matcher's `detectsContent`). The content path is what lets
+    // a board be offered on an UNTITLED, in-memory page, whose "file name" is just its title. Both
+    // sets then pass the same locality gate, so a content match on a non-local source still needs a
+    // content-host board.
+    const content = hostState?.content ?? "";
+    const boardMatchesAll = [...customEditorRegistry.getBoardsForFile(fileName)];
+    for (const board of customEditorRegistry.getBoardsForContent(content)) {
+        if (!boardMatchesAll.some((existing) => existing.editorId === board.editorId)) {
+            boardMatchesAll.push(board);
+        }
+    }
     const boardMatches = local
         ? boardMatchesAll
         : boardMatchesAll.filter((board) => board.editorKind === "content-host");

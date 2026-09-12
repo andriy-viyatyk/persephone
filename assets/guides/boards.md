@@ -439,6 +439,60 @@ My Board/                  ← board root folder (display name = folder name)
 
 ---
 
+## A board's own documentation — the `guides` folder
+
+A board can ship its **own user and agent documentation** and have Persephone treat it exactly like
+the built-in guides. Declare a board-relative folder in `board-manifest.json`:
+
+```json
+{
+  "schemaVersion": 1,
+  "name": "Force Graph",
+  "guides": "guides"
+}
+```
+
+Every `.md` file under that folder is mounted into the app's guide system under
+`installed-boards/<board-folder-name>/…`, which means the board's pages show up:
+
+- in the **About page's guide tree**, under the top-level **installed-boards** branch;
+- on **F1** from one of the board's own pages (see `editorId` below);
+- in **guide search**, so `guides.search("…")` finds the board's text;
+- over MCP at `guides["installed-boards/<board>/<page>"]`.
+
+Each page starts with the same front-matter block the app's own guides use:
+
+```markdown
+---
+title: "Using the Force Graph board"
+audience: user
+summary: "One sentence shown beside the page in the guide tree."
+editorId: "board"
+---
+```
+
+- `title` and `summary` are required; a page missing them is still shown, but it falls back to its
+  file name and an empty summary.
+- `audience` is `user`, `agent`, or `both`. `agent` pages are hidden from the guide tree until the
+  reader turns on **Show agent guides**, exactly as for the app's own pages — so a board can ship a
+  user guide and an agent reference side by side.
+- `editorId: "board"` marks the page as the documentation **for this board**, which is what `F1`
+  on one of the board's pages opens. It is a fixed token, not the board's real editor id: that id
+  embeds the board's absolute path, which differs on every machine.
+- `screen` and multi-id `editorId` arrays work the same way as in the app's own guides.
+
+Some rules worth knowing:
+
+- **Trust gates it.** Only a trusted board contributes documentation. Untrusting or removing a
+  board drops its pages from the tree and from search immediately, with no restart.
+- **The folder must stay inside the board.** An absolute path, a drive letter, or a `..` segment in
+  `guides` is rejected and the board simply contributes nothing.
+- Name the entry page `index.md` — a folder path opens its index page.
+- Documentation shipped this way **versions with the board**, which is the point: it cannot drift
+  out of sync with an app release.
+
+---
+
 ## Custom editors — associate a board with a file type
 
 A board can register itself as an **editor for a file type**. When you open a matching file, the board appears in the toolbar's editor-switch control right next to the file's normal editor(s) (Text Editor, Grid, Preview, …) — click it to flip between them, exactly like switching between any other pair of editors. Depending on the board's settings, it can also become the **default** editor that opens automatically for that file type.

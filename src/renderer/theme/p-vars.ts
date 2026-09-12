@@ -42,6 +42,26 @@ export const P_VAR_SOURCES: Record<string, string> = {
     "--p-scrollbar": "--color-bg-scrollbar",
     "--p-scrollbar-thumb": "--color-bg-scrollbar-thumb",
     "--p-shadow": "--color-shadow-default",
+
+    // Graph family (EPIC-100 / US-1404) — the 14 dedicated force-graph colors, exposed so a
+    // board can render a force graph with the app's per-theme fidelity instead of deriving a
+    // palette from the general set. A board drawing on a <canvas> cannot consume `var(...)`,
+    // so the same values also reach it as concrete strings on `persephone.getTheme().graph`,
+    // which the board shim derives from these very entries (see `withGraphPalette`).
+    "--p-graph-bg": "--color-graph-bg",
+    "--p-graph-node-default": "--color-graph-node-default",
+    "--p-graph-node-highlight": "--color-graph-node-highlight",
+    "--p-graph-node-selected": "--color-graph-node-selected",
+    "--p-graph-node-special": "--color-graph-node-special",
+    "--p-graph-border-default": "--color-graph-border-default",
+    "--p-graph-border-highlight": "--color-graph-border-highlight",
+    "--p-graph-border-selected": "--color-graph-border-selected",
+    "--p-graph-border-special": "--color-graph-border-special",
+    "--p-graph-link-default": "--color-graph-link-default",
+    "--p-graph-link-selected": "--color-graph-link-selected",
+    "--p-graph-label-bg": "--color-graph-label-bg",
+    "--p-graph-label-text": "--color-graph-label-text",
+    "--p-graph-group-border": "--color-graph-group-border",
 };
 
 /**

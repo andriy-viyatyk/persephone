@@ -8,7 +8,11 @@ Overview of all active and planned epics and tasks.
 
 ## Active
 
-*(no active epic)*
+- **EPIC-100** — [Move the Force Graph editor out of the app into a board](epics/EPIC-100.md)
+  - [ ] [US-1404: Board object model — cross-editor page creation, graph color tokens, manifest content detection](tasks/US-1404-board-object-model-graph/README.md)
+  - [ ] [US-1406: Boards supply their own documentation to the guide system](tasks/US-1406-board-guides/README.md)
+  - [ ] US-1405: Remove the built-in Force Graph editor — **gated on owner testing of the board**
+  - Board-side work is tracked in `persephone-boards` as BT-014 / BT-015 / BT-016 / BT-019 / BT-020.
 
 ## Planned
 

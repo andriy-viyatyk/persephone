@@ -3,12 +3,22 @@ import path from "node:path";
 
 import { getAssetPath } from "../../utils";
 import type { GuideSource, GuideSourceEntry } from "../../../shared/guides";
+import type { GuideEntryKind, GuideEntryKindProbe } from "../../../shared/guides/mounted-source";
 
-export type GuideEntryKind = "directory" | "file";
+export type { GuideEntryKind };
 
-/** Main-process adapter for the packaged, outside-the-asar guide corpus. */
-export class MainGuideSource implements GuideSource {
-    readonly guideRoot = path.resolve(getAssetPath("guides"));
+/**
+ * Main-process adapter for a guide corpus rooted at one folder. The default root is the packaged,
+ * outside-the-asar `assets/guides`; US-1406 also instantiates one per mounted board, rooted at that
+ * board's own guides folder. Containment is therefore PER INSTANCE — a board source measures
+ * escapes against the board's folder, never against `assets/guides`.
+ */
+export class MainGuideSource implements GuideSource, GuideEntryKindProbe {
+    readonly guideRoot: string;
+
+    constructor(root?: string) {
+        this.guideRoot = path.resolve(root ?? getAssetPath("guides"));
+    }
 
     async readDirectory(relativeDirectory: string): Promise<readonly GuideSourceEntry[]> {
         const directoryPath = this.resolveContainedPath(relativeDirectory);

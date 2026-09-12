@@ -36,6 +36,7 @@ import type {
     BoardFireMethod,
     BoardHostContentMsg,
     BoardJobInfo,
+    BoardOpenContentRequest,
     BoardRpcMethod,
     BoardStateSyncMsg,
     BoardThemePalette,
@@ -91,7 +92,26 @@ try {
     // location unavailable — keep "main"
 }
 
-let currentTheme: BoardThemePalette = boot.theme;
+/** CSS-variable prefix of the graph color family (EPIC-100 / US-1404). */
+const P_GRAPH_PREFIX = "--p-graph-";
+
+/** Derive `palette.graph` from the `--p-graph-*` entries of `vars`: the CSS suffix, camelCased
+ *  (`--p-graph-node-default` → `nodeDefault`). A `<canvas>` cannot consume `var(...)`, so a board
+ *  drawing a graph reads concrete values here; the CSS family stays the single source of truth, and
+ *  a token added to it later shows up with no shim change. */
+function withGraphPalette(palette: BoardThemePalette): BoardThemePalette {
+    const graph: Record<string, string> = {};
+    for (const [name, value] of Object.entries(palette.vars || {})) {
+        if (!name.startsWith(P_GRAPH_PREFIX)) continue;
+        const key = name
+            .slice(P_GRAPH_PREFIX.length)
+            .replace(/-([a-z])/g, (_m, c: string) => c.toUpperCase());
+        graph[key] = value;
+    }
+    return { ...palette, graph };
+}
+
+let currentTheme: BoardThemePalette = withGraphPalette(boot.theme);
 const tokens: Record<string, string> = boot.tokens;
 const themeCbs: Array<(t: BoardThemePalette) => void> = [];
 
@@ -355,6 +375,39 @@ function varRpc(method: "get" | "set" | "list" | "show", args: unknown[]): Promi
     });
 }
 
+/** Pending openContent request/reply promises keyed by reqId (host-frame channel, US-1404). */
+const pendingOpenContent = new Map<
+    number,
+    { resolve: (v: string) => void; reject: (e: Error) => void }
+>();
+let openContentReqId = 0;
+
+/**
+ * Ask the host page to create a new in-memory page in another editor and hand back its page id.
+ *
+ * SCOPE — this is a CREATE-ONLY verb, deliberately. It returns the id of a page the board itself
+ * just made and exposes no handle to any page that already existed: it cannot read, enumerate,
+ * navigate, close or mutate one. The request rides the page-scoped host-frame channel (the same one
+ * `getFilePath()` and `var.*` use), so it is gated on the board's own origin + source frame and on a
+ * live trust check, and the page lands in the board's own window. `persephone.call` therefore keeps
+ * exactly the scoping it has today — this adds one constructor, not a page-model escape hatch.
+ */
+function openContentRpc(request: BoardOpenContentRequest): Promise<string> {
+    return new Promise<string>((resolve, reject) => {
+        const reqId = ++openContentReqId;
+        pendingOpenContent.set(reqId, { resolve, reject });
+        try {
+            window.parent.postMessage(
+                { __persephone: "board:openContent", reqId, openContent: request },
+                hostPostTarget,
+            );
+        } catch {
+            pendingOpenContent.delete(reqId);
+            reject(new Error("Persephone host is unavailable."));
+        }
+    });
+}
+
 function post(msg: BoardToMain): void {
     if (port) port.postMessage(msg);
     else sendQueue.push(msg);
@@ -517,11 +570,11 @@ function onPortMessage(data: MainToBoard): void {
         return;
     }
     if (data.kind === "theme") {
-        currentTheme = data.palette;
-        applyVars(data.palette.vars);
+        currentTheme = withGraphPalette(data.palette);
+        applyVars(currentTheme.vars);
         for (const cb of themeCbs) {
             try {
-                cb(data.palette);
+                cb(currentTheme);
             } catch (e) {
                 console.error("persephone.onThemeChange callback error:", e);
             }
@@ -679,6 +732,20 @@ onHostMessage((event) => {
     else p.resolve(data.result);
 });
 
+// openContent request reply (US-1404) — renderer → board. Same trust gate as host:content/state:sync.
+onHostMessage((event) => {
+    const data = event.data as
+        { __persephone?: string; reqId?: number; pageId?: string; error?: string }
+        | undefined;
+    if (!data || data.__persephone !== "openContent:result" || typeof data.reqId !== "number") return;
+    const p = pendingOpenContent.get(data.reqId);
+    if (!p) return;
+    pendingOpenContent.delete(data.reqId);
+    if (data.error != null) p.reject(new Error(data.error));
+    else if (typeof data.pageId === "string") p.resolve(data.pageId);
+    else p.reject(new Error("Malformed persephone.openContent() response."));
+});
+
 // Automatic save (EPIC-043 / CH3) — a content-host board saves through Persephone's pipe on
 // Ctrl/Cmd+S with zero board code. `window` bubble phase, so a board handler on document/an element
 // runs FIRST and can opt out via preventDefault(). Harmless on a plain board (main ignores it).
@@ -798,8 +865,9 @@ function createHandle(
 (window as unknown as { persephone: unknown }).persephone = {
     // Bridge API version — bumped when the `persephone.*` surface gains something.
     // 1.2.0: programmatic AiVision calls (US-1296); 1.3.0 adds remote trees (US-1390);
-    // 1.4.0 adds the host-frame AiVision notify bridge (US-1399).
-    version: "1.4.0",
+    // 1.4.0 adds the host-frame AiVision notify bridge (US-1399); 1.5.0 adds `openContent()`,
+    // the `--p-graph-*` family + `getTheme().graph`, and manifest `contentMasks` (US-1404).
+    version: "1.5.0",
 
     aiVision: {
         schemaVersion: AI_VISION_SCHEMA_VERSION,
@@ -858,6 +926,25 @@ function createHandle(
 
     openRawLink(href: string, options?: { editor?: string }): void {
         fire("openRawLink", [href, options?.editor]);
+    },
+
+    openContent(options: {
+        editor: string;
+        language?: string;
+        title?: string;
+        content?: string;
+    }): Promise<string> {
+        if (!options || typeof options !== "object") {
+            return Promise.reject(
+                new Error('openContent() expects an options object, e.g. { editor: "md-view" }.'),
+            );
+        }
+        return openContentRpc({
+            editor: options.editor,
+            language: options.language,
+            title: options.title,
+            content: options.content,
+        });
     },
 
     notify(message: string, type?: "info" | "success" | "warning" | "error"): void {

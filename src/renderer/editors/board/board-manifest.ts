@@ -1,5 +1,8 @@
 import { fs } from "../../api/fs";
 import { fpBasename, fpDirname, fpJoin } from "../../core/utils/file-path";
+import { normalizeBoardGuidesFolder } from "../../../shared/guides/mounted-source";
+
+export { normalizeBoardGuidesFolder };
 
 /** File name of the board-identity manifest, at the board folder root. */
 export const BOARD_MANIFEST_FILE = "board-manifest.json";
@@ -87,6 +90,21 @@ export interface BoardManifest {
      */
     folderMasks?: string[];
     /**
+     * CONTENT detection (EPIC-100 / US-1404) — regular-expression sources tested against the page's
+     * text content, the board-manifest counterpart of a built-in matcher's `detectsContent`. A board
+     * declaring `"contentMasks": ["\"type\"\s*:\s*\"force-graph\""]` is offered as an editor-switch
+     * option for any page whose content matches, including an UNTITLED, in-memory page that no
+     * `fileMasks` glob can ever claim (an agent-generated page, a script's output, pasted JSON).
+     *
+     * Switch-option scope ONLY, exactly like `detectsContent`: content never decides which editor
+     * OPENS a file, so `editorPriority` does not apply on this path and a content match can never
+     * take a file away from its built-in editor.
+     *
+     * Case-insensitive; a mask that fails to compile is dropped at normalization. Independent of
+     * `fileMasks` — a board may declare content detection alone. Honored only when TRUSTED.
+     */
+    contentMasks?: string[];
+    /**
      * File-open resolution priority on Persephone's editor ladder (monaco 0 / grid 20 /
      * draw 50 / viewers 100 / category 200). The board becomes the DEFAULT editor for its
      * masks when this exceeds the best built-in claimant's priority for the file.
@@ -128,6 +146,23 @@ export interface BoardManifest {
      * Read via `readBoardSecondaryViews` (NOT `getBoardEditorAssociation`).
      */
     secondaryViews?: SecondaryViewDecl[];
+
+    /**
+     * Board-relative folder holding the board's own documentation (EPIC-100 D7 / US-1406). When
+     * present and the board is TRUSTED, every `.md` file under it is mounted into Persephone's
+     * guide index at `installed-boards/<board-id>/…` — the About guide tree, `F1`,
+     * `guides.search()` and `guides["installed-boards/<id>/<page>"]` over MCP all pick it up with
+     * no further declaration. Pages use the app's own front-matter contract
+     * (`title`, `audience`, `summary`, `screen`, `editorId`).
+     *
+     * A single relative folder name/path, validated by `normalizeBoardGuidesFolder`: absolute
+     * paths, drive letters, `..` segments and backslashes are rejected. Absent → the board
+     * contributes no documentation, which is what every board built before US-1406 does.
+     * Honored only when the board is TRUSTED, like every other capability-bearing field: an
+     * untrusted board renders nothing at all, and its Markdown (which may carry raw HTML) is
+     * never read into Persephone's own About page.
+     */
+    guides?: string;
 }
 
 /** Absolute path to a board's manifest. */
@@ -298,12 +333,70 @@ export function matchesBoardMasks(
     return folderMasks.some((m) => matchesFolderMask(folder, m));
 }
 
+/** Longest accepted `contentMasks` entry. A content marker is a short regex; anything longer is
+ *  a mistake, and an unbounded author-supplied pattern is not worth compiling. */
+const MAX_CONTENT_MASK_CHARS = 500;
+
+/** How much of a page's content a content mask is tested against. Markers live at the top of a
+ *  document, and the built-in `detectsContent` matchers are documented as fast marker regexes — so
+ *  a huge page costs a bounded scan, not a full one. */
+const CONTENT_MATCH_LIMIT = 64 * 1024;
+
+/**
+ * Normalize a raw `contentMasks` value into usable regex sources: trimmed, non-empty,
+ * de-duplicated, length-capped, and **compilable** (an entry `new RegExp(mask, "i")` rejects is
+ * dropped, so an author's typo degrades to "no content detection" instead of breaking the
+ * registry). Non-array / absent → []. Never throws.
+ */
+export function normalizeContentMasks(raw: unknown): string[] {
+    if (!Array.isArray(raw)) return [];
+    const out: string[] = [];
+    for (const entry of raw) {
+        if (typeof entry !== "string") continue;
+        const mask = entry.trim();
+        if (!mask || mask.length > MAX_CONTENT_MASK_CHARS) continue;
+        if (out.includes(mask)) continue;
+        if (!compileContentMask(mask)) continue;
+        out.push(mask);
+    }
+    return out;
+}
+
+/** Compiled-mask cache, keyed by the mask source. A board's masks are stable for the life of its
+ *  trust, and the switch-options path runs on every toolbar render. `null` marks an uncompilable
+ *  source so a bad mask is never re-attempted. */
+const contentMaskCache = new Map<string, RegExp | null>();
+
+function compileContentMask(mask: string): RegExp | null {
+    const cached = contentMaskCache.get(mask);
+    if (cached !== undefined) return cached;
+    let compiled: RegExp | null;
+    try {
+        compiled = new RegExp(mask, "i");
+    } catch {
+        compiled = null;
+    }
+    contentMaskCache.set(mask, compiled);
+    return compiled;
+}
+
+/** True iff any mask matches the leading {@link CONTENT_MATCH_LIMIT} characters of `content`.
+ *  `masks` is assumed already normalized (and therefore compilable) by `normalizeContentMasks`. */
+export function matchesContentMasks(content: string, masks: string[]): boolean {
+    if (!content || masks.length === 0) return false;
+    const head = content.length > CONTENT_MATCH_LIMIT ? content.slice(0, CONTENT_MATCH_LIMIT) : content;
+    return masks.some((mask) => compileContentMask(mask)?.test(head) ?? false);
+}
+
 /** A board's parsed, validated file-editor association (Custom Editor axis). */
 export interface BoardEditorAssociation {
     /** Normalized, lowercase glob masks (e.g. "*.drawio", "*.grid.json"). Guaranteed non-empty. */
     fileMasks: string[];
     /** Normalized folder globs narrowing `fileMasks` to certain locations. Empty = any folder. */
     folderMasks: string[];
+    /** Normalized, compilable content-detection regex sources (US-1404). Empty = no content
+     *  detection. Switch-option scope only — never consulted when opening a file. */
+    contentMasks: string[];
     /** Resolution priority (>= 0). Non-finite / negative input → 0. */
     editorPriority: number;
     /** Optional switch-widget display name (trimmed; empty → undefined). */
@@ -315,8 +408,8 @@ export interface BoardEditorAssociation {
 }
 
 /**
- * Extract the file-editor association from a manifest, or null if the board declares no
- * usable `fileMasks`. Pure — does NOT check trust (the caller gates on trust). This is the
+ * Extract the file-editor association from a manifest, or null if the board declares neither
+ * usable `fileMasks` nor usable `contentMasks`. Pure — does NOT check trust (the caller gates on trust). This is the
  * single source of truth for how a manifest maps to an editor association.
  */
 export function getBoardEditorAssociation(
@@ -324,9 +417,12 @@ export function getBoardEditorAssociation(
 ): BoardEditorAssociation | null {
     if (!manifest) return null;
     const fileMasks = normalizeFileMasks(manifest.fileMasks);
-    // Folder masks only NARROW file masks — masks-free means no association at all, even when
-    // `folderMasks` is present, so the check stays on `fileMasks` alone.
-    if (fileMasks.length === 0) return null;
+    const contentMasks = normalizeContentMasks(manifest.contentMasks);
+    // Folder masks only NARROW file masks, so they never create an association on their own.
+    // `contentMasks` DO (US-1404): a board may detect its format by content alone and appear as a
+    // switch option on untitled pages without claiming any file name. `matchesBoardMasks` still
+    // requires a file-mask hit, so an empty `fileMasks` can never take a file from a built-in.
+    if (fileMasks.length === 0 && contentMasks.length === 0) return null;
     const folderMasks = normalizeFolderMasks(manifest.folderMasks);
     const rawPriority = manifest.editorPriority;
     const editorPriority =
@@ -339,6 +435,7 @@ export function getBoardEditorAssociation(
     return {
         fileMasks,
         folderMasks,
+        contentMasks,
         editorPriority,
         editorName: name || undefined,
         editorKind,

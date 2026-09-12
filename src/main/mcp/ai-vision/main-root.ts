@@ -2,8 +2,10 @@ import { openWindows } from "../../open-windows";
 import { windowStates } from "../../window-states";
 import { IAiChild, IAiMember, IAiVisible, IAiVisionDescriptor } from "ai-vision";
 import { createGuideIndex } from "../../../shared/guides";
+import { createMountedGuideSource } from "../../../shared/guides/mounted-source";
 import { GuidesNode } from "./guides";
 import { MainGuideSource } from "./guide-source";
+import { resolveMainBoardGuideMounts } from "./board-guide-mounts";
 import { MainNode } from "./main-services";
 
 /**
@@ -170,7 +172,8 @@ export class MainAiRoot implements IAiVisible {
     readonly guides: GuidesNode;
 
     constructor() {
-        const source = new MainGuideSource();
+        // The app's own corpus plus one mount per trusted board shipping a `guides` folder (US-1406).
+        const source = createMountedGuideSource(new MainGuideSource(), resolveMainBoardGuideMounts);
         this.guides = new GuidesNode(createGuideIndex(source), source);
     }
 
