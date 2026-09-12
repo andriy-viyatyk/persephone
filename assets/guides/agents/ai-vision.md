@@ -28,14 +28,17 @@ call  pages["<id>"].editor.app.addItem  args ["Buy milk"]
 call  pages["<id>"].editor.app.highlight  args ["save", "Press this to save"]
 ```
 
-Without a model, the inside of your app is reachable only as `snapshot()` text plus opaque refs.
-That is the right surface for an arbitrary web page and a poor one for an app you wrote yourself:
-snapshot text has no types, no methods, no writable properties, and no stable names.
+Without a model, the inside of your app is reachable only as `snapshot()` text, the opaque refs it
+returns, and `evaluate()`. That is the right surface for an arbitrary web page and a poor one for
+an app you wrote yourself: snapshot text has no types, no methods, no writable properties and no
+stable names, and `evaluate()` asks the agent to guess at your internals.
 
 **The engine stays on the host.** You publish a *data contract* — a description of your object's
-shape plus the functions behind it — and Persephone runs the resolver, the hints, the argument
-validation and `helpSearch` over it. So the paths in hints are correct by construction, and there
-is nothing to keep in sync on your side.
+shape plus the functions behind it — and Persephone runs the resolver, the hints and `helpSearch`
+over it. Hint paths are built from the shape you published, so they are correct by construction and
+there is nothing to keep in sync on your side. What the host does *not* do is validate your
+arguments: `args` are passed to your function as given, so check them yourself and throw a readable
+error.
 
 ## Boards
 
@@ -61,9 +64,9 @@ if (aiVision) { /* everything below */ }
 
 ### 1. Describe an ordinary object
 
-There is no class to extend and no registration API. Take the object your UI already drives, and
-add an `aiVision` descriptor to it. Reflection is never used — the `members` list is an allow-list,
-and anything you do not declare is invisible.
+There is no class to extend and no registration call: take the object your UI already drives and
+add an `aiVision` descriptor to it. The `members` list is an allow-list — anything you do not
+declare is invisible, and nothing is discovered by reflection.
 
 ```js
 const app = {
@@ -135,8 +138,8 @@ Exposing replaces any previous registration: call it once, after your DOM is wir
 
 `expose()` derives the shape of an indexed item by probing `index(0)` **once**. If your
 collections are still empty at that moment — an async file load, a fresh board with no data —
-the item shape is empty, and `items[0]` will not resolve for an agent no matter how many items
-appear later.
+the item shape is empty, so `items[0]` has no described child members for an agent to traverse even
+if items appear later.
 
 Call `remote.refresh()` when a collection first becomes non-empty (or empty again):
 
@@ -217,8 +220,9 @@ by the board. Trusted boards only, at most 512 characters, five per rolling minu
 - **Mind the timeout.** A remote call is bounded by, in order: the caller's `timeoutMs`, the
   member's declared `timeoutMs`, the session knob `boards.callTimeoutMs`, then a 30-second
   fallback. A long-running action should start work and return, not block.
-- **Results are shaped and bounded.** A read goes through the host's result shaping (20,000
-  characters by default), with `truncated`/`shown`/`total` metadata. Return summaries, not dumps.
+- **Results are shaped and bounded.** A leaf result is shaped inside your own frame before it
+  crosses to the host (20,000 characters by default), carrying `truncated`/`shown`/`total`
+  metadata. Return summaries, not dumps.
 
 ## Web pages in the browser editor
 
@@ -231,14 +235,22 @@ import { expose } from "ai-vision/remote";
 const remote = expose(root);   // publishes window.__aiVision
 ```
 
-Everything about the descriptor is identical. The differences are on the host side:
+Everything about the descriptor is identical. Because you import the package here, you also get
+`registerAiVision(ctor, describe)` and `registerAiVisionFor(instance, describe)` — the way to
+describe a class- or prototype-based model without putting an `aiVision` property on it. A board
+cannot use these: the shim publishes only `expose` and `createElements`, so a board's descriptor
+goes on the object.
+
+The rest of the differences are on the host side:
 
 - **Discovery is a probe, not a handshake.** Persephone looks for `window.__aiVision` after a
   completed navigation. Publish it as part of page startup rather than behind a user action.
 - **The model may change without navigation.** `remote.version` starts at 1 and increments on
-  every `refresh()`. The host revalidates before each request; on a version change it rejects the
-  stale proxy, logs a `shape-changed` event naming `pages[id].editor.app`, and re-probes in the
-  background.
+  every `refresh()`, which also emits a signal to the host; the host logs a `shape-changed` event
+  naming `pages[id].editor.app` and re-probes. There is a second path for when that signal never
+  arrives: the host revalidates the version before every request, and a mismatch refuses the stale
+  proxy and re-probes in the background without logging an event. Either way the agent's move is
+  the same — read `pages[id].editor.app` again.
 - **Page-authored content is untrusted.** Node kinds are prefixed `page:` so a hint shows whose
   content it is, everything is confined to `.app`, and it cannot shadow the browser facade, the
   page, or the root. A private (Incognito/Tor) browser page is refused before Persephone probes it.
@@ -263,10 +275,24 @@ common failure, and it shows up immediately.
 
 ## Worked examples
 
-The board catalog ships three, in increasing order of size: **PDF Viewer** (small, single view),
-**Todo** (lists, tags, indexed items, a secondary view, the `refresh()` pattern), and
-**Force Graph** (large surface, and the `…Core` no-blocking-dialog convention). Install one and
-read its source — it is a folder of plain files on disk.
+Persephone's board catalog is a public repository —
+**<https://github.com/andriy-viyatyk/persephone-boards>** — so you can read working models without
+installing anything, wherever you are running:
+
+| Board | Source file | What it shows |
+|---|---|---|
+| Todo | `boards/todo/app.js` | Lists, tags, indexed items, a secondary view, and the `refresh()` pattern. |
+| Force Graph | `boards/force-graph/graph-aivision.js` | A large surface, and the `…Core` no-blocking-dialog convention. |
+
+Fetch one raw:
+
+```text
+https://raw.githubusercontent.com/andriy-viyatyk/persephone-boards/main/boards/todo/app.js
+```
+
+More catalog boards are gaining models over time; to find them, look for
+`aiVision.expose` under `boards/` in that repository. A board installed from the catalog is also a
+folder of plain files on disk, so you can read an installed one locally.
 
 The `ai-vision` package README is the contract reference: the full descriptor and member tables,
 `helpSearch`, the remote wire protocol, result shaping, and versioning.

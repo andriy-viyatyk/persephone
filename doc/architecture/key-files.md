@@ -432,6 +432,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Unified pin model (`PinnedRef` over `pinned-editors`; editors + `board:<root>`) | `/src/renderer/ui/sidebar/pinned-items.ts` |
 | Board authoring guide (bridge surface, reload, MCP debugging, --p-* contract, chrome classes) | `/assets/board-template/CLAUDE.md` |
 | Agent-facing boards resource | `/assets/guides/agents/boards.md` |
+| Agent-facing AI Vision authoring resource | `/assets/guides/agents/ai-vision.md` |
 | Shared board stylesheet, copied into every board at creation (theme defaults + the opt-in `.p-*` chrome layer) | `/assets/board-base.css` |
 | Recommended-components catalog (manifest + 11 components, 10 skins) | `/boards-assets/` |
 | Toolset manifest module (`tools-manifest.json` read/validate/write; `isToolsetFolder`; `defaultToolsManifest`) | `/src/renderer/api/tools/tools-manifest.ts` |

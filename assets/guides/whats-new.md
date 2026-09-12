@@ -31,6 +31,9 @@ Release notes and changelog for Persephone (formerly js-notepad).
   **Enable Word Wrap by default** in **Settings → Editor Behavior**, which changes the starting point for
   pages you open from then on and leaves the pages you already have alone.
 
+- **AI Vision authoring guide:** Board and web-app builders can now read a built-in reference for
+  publishing an agent-drivable model at `pages[i].editor.app`, linked from the Boards and Browser guides.
+
 ### Bug Fixes
 
 - **Editor switches appear after changing the language:** On a new or extensionless page, choosing
