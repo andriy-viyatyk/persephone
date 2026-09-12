@@ -472,10 +472,11 @@ When no library is linked, actions that need the library (sidebar "Select Folder
 
 ## Editor Facades
 
-Facades provide safe, typed access to editor-specific features. Each facade wraps the page's current
-`mainEditor` (`EditorModel` subclass) and is exposed synchronously as `page.editor`. The value is a
-discriminated union: narrow on `editor.id` before calling editor-specific operations. Editors without
-an operation facade still return a `GenericEditorFacade` with their `id` and display `name`.
+Facades provide safe, typed access to editor-specific features. When a page has a main editor, its
+facade wraps that `mainEditor` (`EditorModel` subclass) and is exposed synchronously as
+`page.editor`. The value is a discriminated union: narrow on `editor.id` before calling
+editor-specific operations. Editors without an operation facade still return a
+`GenericEditorFacade` with their `id` and display `name`.
 
 | Facade access | Facade | Wraps | Key Operations |
 |--------|--------|-------|----------------|
@@ -583,15 +584,24 @@ Three wrapper classes provide safe script access to the application:
 
 ### PageWrapper
 
-Wraps `EditorModel`, implements `IPage`. Created per-page:
+Wraps one open `PageModel`, implements `IPage`, and keeps the current editor as an optional
+implementation detail. This page-first identity is required because a tab can remain open after
+its main editor is detached:
 
 ```typescript
 class PageWrapper {
-    constructor(model: EditorModel, releaseList: Array<() => void>, outputFlags?: ScriptOutputFlags);
+    constructor(
+        model: EditorModel | null,
+        releaseList: Array<() => void>,
+        outputFlags?: ScriptOutputFlags,
+        callContext?: IAiCallContext,
+        pageModel?: PageModel | null,
+    );
 
-    // IPage properties delegate to model
-    get content(): string { return model.state.get().content; }
-    set content(v: string) { model.changeContent(v); }
+    // Page identity remains available even when model is null
+    get id(): string { return page?.id ?? model?.id ?? ""; }
+    get content(): string { return model && isTextFileModel(model) ? model.state.get().content : ""; }
+    set content(v: string) { if (model && isTextFileModel(model)) model.changeContent(v); }
 
     // Grouped page auto-creation (returns GroupedPageWrapper)
     get grouped(): PageWrapper {
@@ -618,6 +628,16 @@ class GroupedPageWrapper extends PageWrapper {
     }
 }
 ```
+
+For an editorless page, `PageCollectionWrapper.all`, `activePage`, `findPage`, and grouped-page
+queries still return a wrapper. Its page properties remain readable and actionable: the title is
+`"Empty"`, `content` and `language` read as empty, `editor.id` is empty and there is no `.editor`
+child, while tab actions, panels, and page identity continue to work. `editorSwitches.current` and
+`options` are also empty. The page can be made useful again with
+`pages.navigatePageTo(pageId, filePath)`, or closed with `pages.closePage(pageId)`; it is not omitted
+from the collection, so numeric indices now include it and indices after it differ from the old
+editor-only projection. The editorless `data` value is
+a fresh non-persistent object because no editor owns a script data bag.
 
 `PageWrapper.panels` is a live `PagePanelsNode` for the page's secondary-view sidebar. Its
 `items` projection follows the current `panelEditors` order and reads each owner's current
@@ -810,7 +830,10 @@ values; absent optional fields are omitted during shaping rather than emitted as
 
 ### PageCollectionWrapper
 
-Wraps `PagesModel` and mirrors `IPageCollection`. Returns `PageWrapper` instances instead of raw `EditorModel` for all query methods.
+Wraps `PagesModel` and mirrors `IPageCollection`. Its `all` projection follows the open
+`PageModel` list in tab order, including pages whose `mainEditor` is `null`; all page query methods
+return `PageWrapper` instances instead of raw `EditorModel` values. This keeps the scripting page
+surface aligned with the visible tab strip.
 
 ## Script Execution
 
@@ -1044,7 +1067,7 @@ These files serve dual purpose: TypeScript type checking **and** IDE IntelliSens
 │   └── WorkerRunner.ts          # Renderer-side: IPC to main, proxy dispatch
 └── api-wrapper/                 # Facade layer
     ├── AppWrapper.ts            # Wraps app singleton
-    ├── PageWrapper.ts           # Wraps EditorModel → IPage
+    ├── PageWrapper.ts           # Wraps PageModel → IPage; current editor is optional
     ├── PageCollectionWrapper.ts # Wraps PagesModel → IPageCollection
     ├── TextEditorFacade.ts      # Monaco operations
     ├── GridEditorFacade.ts      # Grid data operations

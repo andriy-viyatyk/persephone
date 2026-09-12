@@ -26,6 +26,12 @@ editor switching is available as `page.editorSwitches`.
 `page.editor` never returns `undefined`. Editors without operations yet return an identity facade
 with `kind: "Editor"`, `id`, and `name`, whose help explains that no operations are available yet.
 
+An empty tab can remain open after its editor is closed, for example when an open board is deleted.
+It still appears in `app.pages.all`, but its identity facade has `id === ""`; its
+`page.editorSwitches.current` and `page.editorSwitches.options` are empty. Use
+`app.pages.navigatePageTo(page.id, filePath)` to open a file in it, or
+`app.pages.closePage(page.id)` to close it.
+
 ```javascript
 const editor = page.editor;
 if (editor.id === "grid-json") {

@@ -108,7 +108,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Async worker (renderer)  | `/src/renderer/scripting/worker/WorkerRunner.ts`  |
 | Async worker (main)      | `/src/main/worker-host.ts`                        |
 | Script API types         | `/src/renderer/api/types/*.d.ts`                  |
-| Script-facing page wrapper and current-editor facade factory (read-only discriminated facade union with a GenericEditorFacade fallback) | `/src/renderer/scripting/api-wrapper/PageWrapper.ts`, `/src/renderer/scripting/api-wrapper/GenericEditorFacade.ts` |
+| Script-facing page wrapper and current-editor facade factory (page-identified wrapper for every open tab, including editorless pages; read-only discriminated facade union with a GenericEditorFacade fallback) | `/src/renderer/scripting/api-wrapper/PageWrapper.ts`, `/src/renderer/scripting/api-wrapper/GenericEditorFacade.ts` |
 | Video/audio editor facade (model state, live media state, playback and source actions) | `/src/renderer/scripting/api-wrapper/VideoEditorFacade.ts` |
 | File Diff editor facade (revision identity and shared text controls) | `/src/renderer/scripting/api-wrapper/FileDiffEditorFacade.ts` |
 | REST client editor facade (collection, selected request, response, send; no member accepts a header/body value) | `/src/renderer/scripting/api-wrapper/RestClientEditorFacade.ts` |

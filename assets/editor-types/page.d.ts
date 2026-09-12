@@ -41,8 +41,13 @@ export type IFacadeEditorId =
     | "board-view" | `board-editor:${string}` | "board-info" | "toolset-view" | "tools-hub-view"
     | "mneme-config" | "mneme-root" | "about-view";
 
-/** Built-in editors without an operation facade, plus runtime custom board ids. */
+/**
+ * Built-in editors without an operation facade, plus runtime custom board ids, plus `""` for a
+ * page that has NO editor at all — a tab left open after its editor was closed (US-1408). The
+ * empty id is a real value `page.editor.id` can hold, so comparing against it must type-check.
+ */
 export type IGenericEditorId = Exclude<EditorView, IFacadeEditorId>
+    | ""
     | (string & { readonly __genericEditorId: unique symbol });
 
 export type IEditorFacade =

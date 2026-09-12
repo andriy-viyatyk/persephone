@@ -1,6 +1,6 @@
 graph TD
     CTX["ScriptContext"] --> AW["AppWrapper<br/><i>mirrors IApp</i>"]
-    CTX --> PW["PageWrapper<br/><i>mirrors IPage</i>"]
+    CTX --> PW["PageWrapper<br/><i>page identity; editor optional</i>"]
 
     AW --> |"app.pages"| PCW["PageCollectionWrapper<br/><i>mirrors IPageCollection</i>"]
     AW --> |"app.settings"| SET["settings (direct)"]
@@ -9,9 +9,9 @@ graph TD
     AW --> |"app.window"| WIN["window (direct)"]
     AW --> |"app.shell"| SH["shell (direct)"]
 
-    PCW --> |"returns"| PW2["PageWrapper<br/><i>for each page</i>"]
+    PCW --> |"returns"| PW2["PageWrapper<br/><i>for each open page</i>"]
 
-    PW --> |"page.editor"| EF["current editor's facade<br/><i>TextEditorFacade, GridEditorFacade, …<br/>GenericEditorFacade when none</i>"]
+    PW --> |"page.editor"| EF["current editor's facade<br/><i>TextEditorFacade, GridEditorFacade, …<br/>empty GenericEditorFacade when no editor</i>"]
     PW --> |"page.editorSwitches"| ES["PageEditorSwitchesNode<br/><i>current, options, switchTo</i>"]
     PW --> |"page.panels"| PP["PagePanelsNode"]
 

@@ -8,23 +8,6 @@ Overview of all active and planned epics and tasks.
 
 ## Active
 
-- *(no epic)*
-  - [ ] US-1407: "Delete board" leaves an empty folder behind (ENOTEMPTY on Windows)
-    — user-reported. `fs.removeDir` now retries (a child still held open is only marked
-    for deletion on Windows, so the final `rmdir` fails), and both delete paths take the
-    board off its open pages first. `ensureBoardIdle` detaches and disposes the board editor
-    instead of closing the page, so the tab stays open and goes empty (user request).
-  - [ ] [US-1408: AiVision cannot see or act on a page with no main editor](tasks/US-1408-ai-vision-empty-pages/README.md)
-    — user-reported gap found while verifying US-1407: an editorless page renders as a real
-    "Empty" tab, but `PageCollectionWrapper.all` filters it out, so the agent cannot see it,
-    `pages.activePage` is null while it is active, and `pages.closePage` refuses its id.
-  - [ ] US-1409: host menus stay open on a click inside a board
-    — user-reported. The board shim has posted `board:interact` on every capture-phase
-    pointerdown since US-773, but the host handler still dispatched a `mousedown`, which
-    PopoverView stopped listening for. US-1286 converted the browser guest and the HTML
-    iframe to `dismissOverlays()` and missed the board — and a second stale dispatch on the
-    browser webview's `focus`. Both now go through the shared helper.
-
 ## Planned
 
 - *(no epic)*

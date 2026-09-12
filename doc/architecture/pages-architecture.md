@@ -69,7 +69,9 @@ The gate tracks *restore in progress* and nothing else, and is released in a `fi
 
 **Diagram:** [`diagrams/6-page-architecture.mmd`](diagrams/6-page-architecture.mmd)
 
-Every tab is a `PageModel` — a stable container that owns the browsing context (sidebar, secondary views) and contains an `EditorModel` as its main content.
+Every tab is a `PageModel` — a stable container that owns the browsing context (sidebar, secondary
+views) and may contain an `EditorModel` as its main content. The page remains a real tab when its
+main editor is absent.
 
 ```
 PageModel (one per tab — stable identity, never changes during navigation)
@@ -101,6 +103,15 @@ EditorModel (the content inside a page — replaceable during navigation)
 ```
 
 **Source:** [`PageModel.ts`](../../src/renderer/api/pages/PageModel.ts), [`EditorModel.ts`](../../src/renderer/editors/base/EditorModel.ts)
+
+An editorless page is a first-class, session-only tab: `mainEditor` and `mainEditorId` are `null`,
+the tab title is `"Empty"`, and the page can still be shown, moved, pinned, grouped, navigated, or
+closed. `PageModel.detach(editor)` removes the current main editor and nulls `mainEditorId` while
+preserving the page and its sidebar — it deliberately does NOT dispose, so the caller decides
+(`ensureBoardIdle` detaches and then disposes); a later `navigatePageTo(pageId, filePath)` can
+attach content again.
+Consumers that operate on tabs must therefore use the `PageModel` identity rather than treating a
+missing main editor as a missing page.
 
 Three page concerns live in their own modules rather than in `PageModel`:
 [`editor-switch.ts`](../../src/renderer/editors/base/editor-switch.ts) implements the

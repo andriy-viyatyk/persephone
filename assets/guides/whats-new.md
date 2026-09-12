@@ -39,6 +39,13 @@ Release notes and changelog for Persephone (formerly js-notepad).
   Choosing XML also shows **SVG Preview** on an untitled or extensionless page; named `.xml` files
   remain in **Text Editor**.
 
+- **Deleting an open board no longer leaves an empty folder:** Persephone now releases an open board
+  before removing its folder, so **Delete Board** fully removes it, including on Windows. The board's
+  tab stays open as **Empty**, ready for another file.
+
+- **Menus close when you click inside a board:** Clicking board content now dismisses open menus,
+  popovers, and other Persephone overlays, just like clicking elsewhere in the app.
+
 ---
 
 ## Version 5.0.1
