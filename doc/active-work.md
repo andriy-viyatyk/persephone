@@ -8,6 +8,11 @@ Overview of all active and planned epics and tasks.
 
 ## Active
 
+- *(no epic)*
+  - [ ] US-1410: An "AI Vision" guide for agents building a board or web app — how to publish an
+    object model at `pages[i].editor.app`. Documentation only; the authoring material existed
+    only in the `ai-vision` package README and scattered across consumer-side guide sections.
+
 ## Planned
 
 - *(no epic)*

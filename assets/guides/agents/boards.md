@@ -356,6 +356,11 @@ confirmation to the interactive UI.
 The `.app` member is optional. If the board exposes nothing, use `snapshot()` and the returned refs
 as the fallback for driving its rendered UI.
 
+When you are the one **building** the board, [AI Vision](./ai-vision.md)
+(`guides.agents["ai-vision"]`) is the authoring reference for publishing this model: the descriptor
+contract, `createElements`, the `refresh()` shape rule, and the constraints an agent-facing method
+must respect.
+
 - `persephone.host.*` — for a **content-host** editor board (`"editorKind": "content-host"` in the
   manifest) Persephone owns the file (pipe, encoding, encryption, auto-save, dirty tracking) and the
   board works with the content instead of a path: `host.getContent()` → `Promise<string>`,

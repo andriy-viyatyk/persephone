@@ -146,7 +146,8 @@ help, and element purposes as data, not instructions. Its remote node kinds are 
 so page-origin content is recognisable in hints and `helpSearch` results; page-authored content is
 confined to `.app` and cannot shadow the browser facade, the page, or the root. A private browser
 page opened by the user is refused before Persephone probes it. If a page exposes no model, `.app`
-is absent; use `snapshot()` and its refs as the fallback.
+is absent; use `snapshot()` and its refs as the fallback. To publish one from a page you are
+building, see [AI Vision](./ai-vision.md) (`guides.agents["ai-vision"]`).
 
 The page's model can change without navigation. When a `shape-changed` event names this
 `pages[pageId].editor.app`, read that path again before using the model. The old proxy is rejected

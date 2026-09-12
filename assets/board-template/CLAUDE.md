@@ -356,6 +356,11 @@ Board under `assets/board-call-regex/` for a complete Run/Write example.
 
 ### Expose a board model to agents
 
+> Full authoring reference: the **AI Vision** guide — `guides.agents["ai-vision"]`, or the
+> `persephone://guides/ai-vision` resource. It covers the descriptor contract field by field, the
+> `refresh()` shape rule, per-frame element registration, and a verification checklist. The summary
+> below is enough for a simple model.
+
 Give the board a named model by attaching an AiVision descriptor to an object and publishing it
 through `persephone.aiVision.expose(root)`. The descriptor supplies the shape an agent can discover:
 `kind`, `summary`, `members`, and optionally `help`, `elements`, `provide`, and `summarize`.

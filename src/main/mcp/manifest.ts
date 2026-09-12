@@ -83,6 +83,12 @@ export const resourceFiles: IGuideResource[] = [
         description: "Boards authoring reference: board lifecycle, the execute channel, theme contract, local vendoring, and automation.",
     },
     {
+        name: "ai-vision-guide",
+        uri: "persephone://guides/ai-vision",
+        file: "guides/agents/ai-vision.md",
+        description: "AI Vision authoring reference: publish a board's or web page's own object model at pages[i].editor.app — descriptors, elements, highlight, refresh, and notify.",
+    },
+    {
         name: "tools-guide",
         uri: "persephone://guides/tools",
         file: "guides/agents/tools.md",

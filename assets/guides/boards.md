@@ -355,8 +355,8 @@ appears to an agent at `pages[pageId].editor.app`, with its own `$help`, `helpSe
 hints, writable properties, methods, `elements`, and `highlight(...)`. A declaration made with
 `persephone.aiVision.createElements(...)` can name a secondary `view`; highlighting it opens that
 board panel and runs in the panel's frame. If no model is published, use the board editor's
-`snapshot()` and refs instead. See the [agent board guide](./agents/boards.md) for the authoring
-reference.
+`snapshot()` and refs instead. See the [AI Vision guide](./agents/ai-vision.md) for how to publish
+one, and the [agent board guide](./agents/boards.md) for the rest of the board authoring surface.
 
 Use `readFile`/`writeFile` to persist small board state (last filter, column layout, selected item) or load a board-local config — no backend script needed:
 
