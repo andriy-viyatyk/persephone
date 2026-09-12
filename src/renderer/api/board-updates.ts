@@ -84,12 +84,43 @@ export function isBoardIdle(root: string): boolean {
 }
 
 /**
- * Ensure the board is idle, closing its open pages with the user's consent. A busy board is
- * a hard stop — we never auto-kill running processes. Returns true when clear to swap.
+ * Take the board off a page without closing the tab: confirm any unsaved content-host changes
+ * (exactly what `page.close()` would have asked), then detach and dispose the board editor.
+ * `detach` nulls the page's `mainEditorId`, so the tab stays open and renders the empty-page
+ * state — the user keeps their tab and can reopen the board into it.
+ *
+ * Detaching explicitly rather than calling `setMainEditor(null)` is deliberate: that path only
+ * disposes an old main that fails its survival criteria, and it skips `beforeNavigateAway` when
+ * the new main is null — so a board declaring secondary views would still count as a panel
+ * contributor and live on in the sidebar, webview and all. The whole point here is that nothing
+ * of the board survives, because its folder is about to be renamed or deleted.
+ *
+ * Returns false only when the user cancels the unsaved-changes prompt.
  */
-export async function ensureBoardIdle(root: string): Promise<boolean> {
+async function releaseBoardFromPage(page: PageModel): Promise<boolean> {
+    const editor = page.mainEditorInstance;
+    if (!editor) return true;
+    if (editor.modified && !(await editor.confirmRelease())) return false;
+    page.detach(editor);
+    await editor.dispose();
+    return true;
+}
+
+/**
+ * Ensure the board is idle, taking it off its open pages with the user's consent. A busy board
+ * is a hard stop — we never auto-kill running processes. Returns true when clear to swap.
+ *
+ * `action` only words the prompts. Both callers need the same guarantee: no live board editor
+ * may hold the folder, because an update renames it and a delete removes it. On Windows a file
+ * still open anywhere under the folder is only marked for deletion rather than removed, which
+ * is what left an empty folder behind after "Delete board" (US-1407).
+ */
+export async function ensureBoardIdle(
+    root: string,
+    action: "updating" | "deleting" = "updating",
+): Promise<boolean> {
     if (isBoardRootBusy(root)) {
-        void ui.notify("This board is currently running. Stop it before updating.", "warning");
+        void ui.notify(`This board is currently running. Stop it before ${action}.`, "warning");
         return false;
     }
     const pages = boardPagesForRoot(root);
@@ -98,15 +129,15 @@ export async function ensureBoardIdle(root: string): Promise<boolean> {
         const choice = await showConfirmationDialog({
             title: "Board is open",
             message:
-                `This board is open in ${pages.length} page(s) and must be closed before ` +
-                `updating. Close them and continue?`,
-            buttons: ["Close pages & continue", "Cancel"],
+                `This board is open in ${pages.length} page(s) and must be closed before `
+                + `${action}. The page(s) stay open and go empty. Continue?`,
+            buttons: ["Close board & continue", "Cancel"],
         });
-        if (choice !== "Close pages & continue") return false;
-        // Close via the normal page-close flow so a content-host board's unsaved-changes
-        // prompt still gets its say; a vetoed close (close() → false) aborts the update.
+        if (choice !== "Close board & continue") return false;
+        // A content-host board's unsaved-changes prompt still gets its say, and a cancelled
+        // prompt aborts the whole operation — same contract the old `page.close()` loop had.
         for (const p of pages) {
-            if (!(await p.close())) return false;
+            if (!(await releaseBoardFromPage(p))) return false;
         }
     }
     return true;

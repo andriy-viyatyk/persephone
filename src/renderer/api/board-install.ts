@@ -137,7 +137,7 @@ export async function uninstallCatalogBoard(args: {
     if (choice !== "Delete") return false;
 
     const { ensureBoardIdle } = await import("./board-updates");
-    if (!(await ensureBoardIdle(args.root))) return false;
+    if (!(await ensureBoardIdle(args.root, "deleting"))) return false;
 
     try {
         await fs.removeDir(args.root, true);

@@ -431,7 +431,19 @@ class FileSystem implements IFileSystem {
             await archiveService.removeDir(archivePath, innerPath);
             return;
         }
-        nodefs.rmSync(dirPath, { recursive: !!recursive, force: true });
+        // `maxRetries` matters on Windows. Deleting a file that some process still has a
+        // handle on succeeds but only marks it for deletion — the name survives until the
+        // last handle closes. A recursive remove therefore reports every child deleted and
+        // then fails the final `rmdir` with ENOTEMPTY, leaving an empty folder behind.
+        // Observed deleting an OPEN board folder, where a child under `scripts/` was still
+        // in that state; it was gone a moment later. Retrying past the window is exactly
+        // what Node's retry options exist for, and they are a no-op elsewhere.
+        await nodefs.promises.rm(dirPath, {
+            recursive: !!recursive,
+            force: true,
+            maxRetries: 5,
+            retryDelay: 100,
+        });
     }
 
     // ── IFileSystem — Path resolution ─────────────────────────────────

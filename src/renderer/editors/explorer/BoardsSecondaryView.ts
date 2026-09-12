@@ -430,10 +430,19 @@ export default class BoardsSecondaryView extends VanillaView<SecondaryViewProps>
             buttons: [onDisk ? "Delete" : "Remove", "Cancel"],
         });
         if (confirmed === "Cancel" || !confirmed) return;
+        if (onDisk) {
+            // Nothing may hold the folder open: on Windows a live handle inside it makes the
+            // files delete but the folder itself fail with ENOTEMPTY.
+            const { ensureBoardIdle } = await import("../../api/board-updates");
+            if (!(await ensureBoardIdle(root, "deleting"))) return;
+        }
         try {
             if (onDisk) await fs.removeDir(root, true);
         } catch (error) {
-            ui.notify(errMessage(error), "error");
+            ui.notify(
+                errMessage(error, "Failed to delete the board folder."),
+                "error",
+            );
             return;
         }
         await boardTrust.untrust(root);

@@ -8,6 +8,13 @@ Overview of all active and planned epics and tasks.
 
 ## Active
 
+- *(no epic)*
+  - [ ] US-1407: "Delete board" leaves an empty folder behind (ENOTEMPTY on Windows)
+    — user-reported. `fs.removeDir` now retries (a child still held open is only marked
+    for deletion on Windows, so the final `rmdir` fails), and both delete paths take the
+    board off its open pages first. `ensureBoardIdle` detaches and disposes the board editor
+    instead of closing the page, so the tab stays open and goes empty (user request).
+
 ## Planned
 
 - *(no epic)*
