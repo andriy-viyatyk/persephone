@@ -65,8 +65,12 @@ export function getEditorSwitchOptions(model: EditorModel): IEditorSwitchOption[
     const boardNameById = new Map(boardMatches.map((board) => [board.editorId, board.name]));
     return merged.map((id) => ({
         id,
+        // Non-breaking spaces, written as escapes on purpose: the label is rendered as ordinary
+        // text, so plain spaces around the "+" collapse and the segment comes out barely wider
+        // than the glyph. Literal U+00A0 characters here are fragile - a reformat or a re-save
+        // silently turns them back into plain spaces, and the button narrows again.
         label: id === BOARD_INFO_EDITOR_ID
-            ? "  +  "
+            ? "\u00A0\u00A0+\u00A0\u00A0"
             : boardNameById.get(id) ?? editorRegistry.getById(id)?.name ?? id,
         title: id === BOARD_INFO_EDITOR_ID
             ? "Install an editor for this file type…"
