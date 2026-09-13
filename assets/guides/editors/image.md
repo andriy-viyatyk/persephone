@@ -11,9 +11,10 @@ Image Viewer opens raster images with zoom, pan, fit-to-window, clipboard copy, 
 
 ## How to Open
 
-Open `.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`, `.bmp`, or `.ico`. A script can use
-`app.pages.openFile(path)` to open an image; Image Viewer is a specialized route rather than a
-general `pages.addEditorPage` target.
+Open `.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`, `.bmp`, or `.ico`. HTTP(S) image URLs also open in
+Image Viewer through **Open URL** (`Ctrl+O`), `app.pages.openUrl(url)`, or **Open Image in New Tab**
+from the built-in browser. A script can use `app.pages.openFile(path)` for a local image; Image
+Viewer is a specialized route rather than a general `pages.addEditorPage` target.
 
 ## Layout
 
@@ -63,5 +64,6 @@ write PNG data to a file.
 
 ## Errors and limits
 
-Unsupported or corrupt image data cannot be rendered. Saving as PNG changes the encoding; use Save
-original when byte-for-byte preservation matters.
+Unsupported or corrupt image data cannot be rendered. If a remote image cannot be fetched and no
+cached copy is available, Persephone shows a load-failure notification. Saving as PNG changes the
+encoding; use Save original when byte-for-byte preservation matters.

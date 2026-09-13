@@ -96,6 +96,12 @@ export class ImageEditor extends EditorModel<ImageEditorState> implements IImage
         }
     }
 
+    /** True once the editor has an image to show — the cache fallback may have
+     *  supplied one after the source read failed. */
+    private get hasImage(): boolean {
+        return !!this.state.get().url;
+    }
+
     async restore(): Promise<void> {
         await super.restore();
         const { filePath, url } = this.state.get();
@@ -128,9 +134,20 @@ export class ImageEditor extends EditorModel<ImageEditorState> implements IImage
                     ) {
                         await this.cacheImageBuffer(buffer);
                     }
-                } catch {
+                } catch (err) {
                     // Pipe read failed — try cache file fallback
                     await this.tryRestoreFromCache();
+                    // Swallowing this left the view showing its alt text and nothing else:
+                    // a blank page that looks identical to an unsupported format, with no
+                    // way to tell a 404 from a 403 from an offline machine. The editor is
+                    // still usable (the path and the menu actions work), so a toast is the
+                    // right weight — but it has to say something.
+                    if (!this.hasImage) {
+                        ui.notify(
+                            `Failed to load image: ${errMessage(err)}`,
+                            "error",
+                        );
+                    }
                 }
             } else if (this.pipe.provider.type !== "file") {
                 // URL already set (HTTP image) — cache in background for
