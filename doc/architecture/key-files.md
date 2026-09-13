@@ -14,7 +14,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Purpose                  | File                                              |
 |--------------------------|---------------------------------------------------|
 | Shared types (IEditorState)| `/src/shared/types.ts`                            |
-| ILinkData helpers        | `/src/shared/link-data.ts`                        |
+| ILinkData helpers (pipeline fields and persistence-safe `cleanForStorage()` boundary) | `/src/shared/link-data.ts` |
 | Cross-process helpers (`debounce` with idempotent `cancel()`; `concatChunks`; `errMessage(e, fallback?)` — the one way to turn a caught `unknown` into a message, in `shared/` because main, renderer and the board shim all need it) | `/src/shared/utils.ts` |
 | App object model         | `/src/renderer/api/app.ts`                        |
 | Page/tab management      | `/src/renderer/api/pages/PagesModel.ts`           |
@@ -82,7 +82,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Pipe resolvers (Layer 2; the HTTP resolver's content-extension set decides browser-vs-content, then normal registry matching and eligible board resolution choose the editor; `.pdf` retains its browser fallback) | `/src/renderer/content/resolvers.ts` |
 | Link resolution utils    | `/src/renderer/content/link-utils.ts`             |
 | Open handler (Layer 3)   | `/src/renderer/content/open-handler.ts`           |
-| HTTP provider            | `/src/renderer/content/providers/HttpProvider.ts`  |
+| HTTP provider (content-only default User-Agent; `nodeFetch` remains header-neutral) | `/src/renderer/content/providers/HttpProvider.ts` |
 | cURL/fetch parser        | `/src/renderer/core/utils/curl-parser.ts`         |
 | Open URL dialog          | `/src/renderer/ui/dialogs/OpenUrlDialog.ts`       |
 | Script `io` namespace    | `/src/renderer/scripting/api-wrapper/IoNamespace.ts` |
@@ -108,7 +108,8 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Async worker (renderer)  | `/src/renderer/scripting/worker/WorkerRunner.ts`  |
 | Async worker (main)      | `/src/main/worker-host.ts`                        |
 | Script API types         | `/src/renderer/api/types/*.d.ts`                  |
-| Script-facing page wrapper and current-editor facade factory (page-identified wrapper for every open tab, including editorless pages; read-only discriminated facade union with a GenericEditorFacade fallback) | `/src/renderer/scripting/api-wrapper/PageWrapper.ts`, `/src/renderer/scripting/api-wrapper/GenericEditorFacade.ts` |
+| Script-facing page wrapper and current-editor facade factory (page-identified wrapper for every open tab, including editorless pages; `workspaceFolder`; read-only discriminated facade union with a GenericEditorFacade fallback) | `/src/renderer/scripting/api-wrapper/PageWrapper.ts`, `/src/renderer/scripting/api-wrapper/GenericEditorFacade.ts` |
+| Script-facing page collection wrapper (tab-ordered page projection and folder/workspace-aware page summaries) | `/src/renderer/scripting/api-wrapper/PageCollectionWrapper.ts` |
 | Video/audio editor facade (model state, live media state, playback and source actions) | `/src/renderer/scripting/api-wrapper/VideoEditorFacade.ts` |
 | File Diff editor facade (revision identity and shared text controls) | `/src/renderer/scripting/api-wrapper/FileDiffEditorFacade.ts` |
 | REST client editor facade (collection, selected request, response, send; no member accepts a header/body value) | `/src/renderer/scripting/api-wrapper/RestClientEditorFacade.ts` |

@@ -69,6 +69,8 @@ export interface IPage {
     readonly modified: boolean;
     readonly pinned: boolean;
     readonly filePath?: string;
+    /** The project folder this page's Explorer is rooted at, or undefined without a folder Explorer or while browsing an archive. */
+    readonly workspaceFolder?: string;
     content: string;
     language: string;
     /** The current editor facade. Narrow on editor.id before using operations. */

@@ -67,6 +67,7 @@ import type { ToolsHubEditor } from "../../editors/tools-hub/ToolsHubEditor";
 import type { MnemeConfigEditorModel } from "../../editors/mneme-config/MnemeConfigEditorModel";
 import type { MnemeRootEditorModel } from "../../editors/mneme-root/MnemeRootEditorModel";
 import type { AboutEditor } from "../../editors/about/AboutEditor";
+import { isArchiveFile, isArchivePath, isPlainLocalPath } from "../../core/utils/file-path";
 
 type EditorOrHost = EditorModel | TextFileModel;
 type EditorFacade =
@@ -123,6 +124,7 @@ const PAGE_MEMBERS: readonly IAiMember[] = [
     { name: "id", kind: "property", summary: "Stable page id (use in pages[\"<id>\"])." },
     { name: "title", kind: "property", summary: "Tab title." },
     { name: "filePath", kind: "property", summary: "Backing file path, or nothing for an unsaved page." },
+    { name: "workspaceFolder", kind: "property", summary: "The project folder this page's Explorer is rooted at — this page's workspace (Persephone's equivalent of a VS Code workspace folder). Nothing when the page has no folder Explorer." },
     { name: "modified", kind: "property", summary: "Whether there are unsaved changes." },
     { name: "pinned", kind: "property", summary: "Whether the tab is pinned." },
     { name: "content", kind: "property", writable: true, summary: "The page's text (text-based editors only; empty for browser/image pages). Assign with \"value\"." },
@@ -207,6 +209,22 @@ export class PageWrapper implements IAiVisible {
     get modified(): boolean { return this.model?.modified ?? false; }
     get pinned(): boolean { return this.page?.pinned ?? false; }
     get filePath(): string | undefined { return this.model?.filePath; }
+
+    /** The folder this page's Explorer is rooted at — Persephone's equivalent of a VS Code
+     * workspace folder; undefined when the page has no Explorer or is browsing an archive. */
+    get workspaceFolder(): string | undefined {
+        const explorer = (this.page as PageModel | null)?.findExplorer?.();
+        if (!explorer) return undefined;
+        const state = explorer.state.get() as { type?: string; rootPath?: string };
+        const rootPath = state.rootPath;
+        // Archive pages use the raw archive file as the Explorer root, so reject both archive
+        // entries and archive files while retaining the required plain-local-path gate.
+        if (state.type !== "fileExplorer" || !rootPath || !isPlainLocalPath(rootPath)
+            || isArchivePath(rootPath) || isArchiveFile(rootPath)) {
+            return undefined;
+        }
+        return rootPath;
+    }
 
     get content(): string {
         return this.model && isTextFileModel(this.model) ? this.model.state.get().content : "";
@@ -306,14 +324,25 @@ export class PageWrapper implements IAiVisible {
 
     private aiSummary(): Record<string, unknown> {
         const editorId = this.editor.id;
+        const workspaceFolder = this.workspaceFolder;
         const summary: Record<string, unknown> = {
             kind: "Page", id: this.id, title: this.title, editor: editorId || null,
             language: this.language, filePath: this.filePath, modified: this.modified,
             pinned: this.pinned, active: pagesModel.activePage?.id === this.id,
         };
+        if (workspaceFolder) summary.workspaceFolder = workspaceFolder;
         if (!editorId) {
-            summary.note = "This tab is open but has no editor. Open a file into it with "
-                + "pages.navigatePageTo(pageId, filePath), or close it with pages.closePage(pageId).";
+            // A folder-browsing page is editorless BY DESIGN — `openFile(folderPath)` opens
+            // exactly this, an empty page whose Explorer panel is rooted at the folder. The
+            // generic note below reads as a failure there and tells the caller to close the
+            // page it just successfully opened, so name what the page actually is instead.
+            summary.note = workspaceFolder
+                ? `This tab has no editor because it is a workspace page: its Explorer `
+                    + `panel is rooted at ${workspaceFolder}. Browse it through `
+                    + `pages["${this.id}"].panels.explorer, or open one of its files into this `
+                    + `tab with pages.navigatePageTo(pageId, filePath).`
+                : "This tab is open but has no editor. Open a file into it with "
+                    + "pages.navigatePageTo(pageId, filePath), or close it with pages.closePage(pageId).";
         }
         const state = this.browserState();
         if (state) {

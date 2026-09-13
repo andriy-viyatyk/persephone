@@ -14,6 +14,7 @@ editor switching is available as `page.editorSwitches`.
 | Property | Description |
 |---|---|
 | `id`, `title`, `filePath`, `modified`, `pinned` | Page and tab metadata |
+| `workspaceFolder` | The project folder at the root of this page's Explorer, or `undefined` without a folder Explorer or while browsing an archive |
 | `content` | Read or assign text content for text-based editors |
 | `language` | Read or assign the language id |
 | `editor` | Read-only current editor facade; narrow on `editor.id` |
@@ -26,11 +27,16 @@ editor switching is available as `page.editorSwitches`.
 `page.editor` never returns `undefined`. Editors without operations yet return an identity facade
 with `kind: "Editor"`, `id`, and `name`, whose help explains that no operations are available yet.
 
-An empty tab can remain open after its editor is closed, for example when an open board is deleted.
-It still appears in `app.pages.all`, but its identity facade has `id === ""`; its
-`page.editorSwitches.current` and `page.editorSwitches.options` are empty. Use
-`app.pages.navigatePageTo(page.id, filePath)` to open a file in it, or
-`app.pages.closePage(page.id)` to close it.
+Persephone has no separate workspace feature, workspace files, workspace settings, or multi-root
+workspaces. A workspace is a page whose Explorer panel is rooted at a project folder. Opening a
+folder with `app.pages.openFile(folderPath)` intentionally returns an editorless page: use
+`page.workspaceFolder` for its root and `page.panels` to browse it. It still appears in
+`app.pages.all`, but has no main editor.
+
+An unrelated empty tab can also remain open after its editor is closed, for example when an open
+board is deleted. Its identity facade has `id === ""`; its `page.editorSwitches.current` and
+`page.editorSwitches.options` are empty. Use `app.pages.navigatePageTo(page.id, filePath)` to open
+a file in it, or `app.pages.closePage(page.id)` to close it.
 
 ```javascript
 const editor = page.editor;

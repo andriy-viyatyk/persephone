@@ -12,7 +12,7 @@ Manage open pages (tabs) in the current window.
 // Get active page
 const current = app.pages.activePage;
 
-// Open a file
+// Open a file or folder
 await app.pages.openFile("C:/data.json");
 
 // Add an empty page
@@ -35,11 +35,17 @@ app.pages.addEmptyPage();
 
 ### openFile(filePath) → `Promise<IPage | undefined>`
 
-Open a file in a new or existing tab. Returns the page, or `undefined` if the file could not be opened.
+Open a file or folder in a new or existing tab. A folder opens an editorless page whose Explorer
+panel is rooted at that folder. Persephone has no separate workspace feature, workspace files,
+workspace settings, or multi-root workspaces: this page is the workspace for that project folder.
+Returns the page, or `undefined` if the path could not be opened.
 
 ```javascript
 const p = await app.pages.openFile("C:/projects/data.json");
 console.log(p?.title);
+
+const workspacePage = await app.pages.openFile("C:/projects/my-app");
+console.log(workspacePage?.workspaceFolder); // "C:/projects/my-app"
 ```
 
 ### openFileWithDialog() → `Promise<void>`

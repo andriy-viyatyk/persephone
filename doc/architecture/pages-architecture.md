@@ -299,7 +299,7 @@ import { pagesModel } from "../api/pages";
 ### Public (in IPageCollection, exposed to scripts)
 
 - `all`, `activePage`, `find()`, `getGrouped()` — queries
-- `openFile()`, `addEmpty()`, `addEditor()` — lifecycle
+- `openFile()`, `addEmpty()`, `addEditor()` — lifecycle. `openFile(filePath)` accepts files and folders and returns the opened page when the path resolves. A folder produces an editorless page with an Explorer rooted at that folder; because that page has no file path, `PagesModel.openFile()` uses the resolver's ephemeral `ILinkData.openedPageId` to return it.
 - `show()`, `showNext()`, `showPrevious()` — navigation
 - `moveTab()`, `pin()`, `unpin()`, `group()`, `ungroup()` — layout
 

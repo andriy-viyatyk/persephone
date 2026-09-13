@@ -168,6 +168,15 @@ The current page (tab). Available as a global in scripts.
 | `data` | `object` | In-memory storage, persists across script runs |
 | `grouped` | `IPage` | Grouped (side-by-side) partner page — auto-creates if none exists |
 
+### Workspaces
+
+Persephone has no separate workspace feature, workspace files, workspace settings, or multi-root
+workspaces. A workspace is a page whose Explorer panel is rooted at a project folder; that page is
+Persephone's equivalent of a VS Code workspace. Open such a workspace page with
+`pages.openFile(folderPath)`. Several such workspace pages may be open at once, one per page. Read
+`pages[i].workspaceFolder` to find each page's workspace root; it is absent when the page has no
+folder Explorer or is browsing an archive.
+
 ### Editor Types
 
 **Creatable with `pages.addEditorPage`** (content-hosting editors — see the table below for the

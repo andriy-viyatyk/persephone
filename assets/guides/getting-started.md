@@ -16,7 +16,7 @@ summary: "Installation and first steps for Persephone."
 
 The installer's **Additional Options** page offers three checkboxes:
 - **Add "Open with persephone" for files to Explorer context menu** (checked by default)
-- **Add "Open with persephone" for folders to Explorer context menu** (checked by default) — lets you open a folder straight into persephone from Explorer; it opens as a new tab with the File Explorer panel rooted at that folder
+- **Add "Open with persephone" for folders to Explorer context menu** (checked by default) — lets you open a folder straight into persephone from Explorer; it opens as a new tab with the File Explorer panel rooted at that folder. Such a page is Persephone's equivalent of a VS Code workspace
 - **Register as default browser** (unchecked by default)
 
 Passing a folder path on the command line opens the same way. If you're upgrading from an older version that had the (now removed) "Set as default app for text files" option checked, that upgrade releases those file associations — each extension reverts to whatever app previously handled it.
@@ -47,7 +47,7 @@ editor when available, or the guide contents otherwise.
 ### Creating a New File
 - Press `Ctrl+N` or click the + button in the tab bar
 - Click the dropdown arrow (▾) next to the + button to create a page with a specific editor. The default items are:
-  - **Open Folder** — Pick a folder; opens a new tab with the File Explorer panel rooted at that folder
+  - **Open Folder** — Pick a folder; opens a new tab with the File Explorer panel rooted at that folder. Such a page is Persephone's equivalent of a VS Code workspace
   - **Script (JS)** — JavaScript file for scripting
   - **Script (TS)** — TypeScript file for scripting
   - **Drawing** — Excalidraw-based drawing canvas

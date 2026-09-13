@@ -227,7 +227,7 @@ Click any item to create a new page (or open the board/toolset) with that editor
 
 **Open in new tab** — A button in the panel header opens the same content as a full page instead of a slide-out panel — handy when you want more room, or want to keep browsing while doing something else in the app. The full-page **Tools & Editors hub** has the same **Pinned** rail plus four tabs: **Built-in**, **Registered boards**, **Search boards**, and **Tools**. **Search boards** is hub-only — it browses the catalog of boards published by the project and lets you install one directly, without needing a matching file open. See [Boards — Published boards catalog](./boards.md#published-boards-catalog--discover-install-update).
 
-**Open Folder** — The first entry in the default pinned set. Clicking it shows a native Select Folder dialog; once you pick a folder, a new tab opens with the File Explorer panel rooted at that folder. This is identical to right-clicking a folder in the Explorer sidebar and choosing **"Open in New Tab"**. Existing users can pin it from the **Built-in Editors** tab.
+**Open Folder** — The first entry in the default pinned set. Clicking it shows a native Select Folder dialog; once you pick a folder, a new tab opens with the File Explorer panel rooted at that folder — Persephone's equivalent of a VS Code workspace. This is identical to right-clicking a folder in the Explorer sidebar and choosing **"Open in New Tab"**. Existing users can pin it from the **Built-in Editors** tab.
 
 Items include all standard editors (Script, Grid, Notebook, Links, Drawing, Browser, Video Player) as well as MCP Inspector and individual browser profiles (Incognito and named profiles).
 

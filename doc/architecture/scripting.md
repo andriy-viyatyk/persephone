@@ -79,6 +79,8 @@ interface IPage {
     readonly modified: boolean;
     readonly pinned: boolean;
     readonly filePath: string | undefined;
+    // Local project folder at the root of this page's Explorer, or undefined without one/archive
+    readonly workspaceFolder: string | undefined;
 
     // Mutable properties
     content: string;
@@ -842,7 +844,11 @@ values; absent optional fields are omitted during shaping rather than emitted as
 Wraps `PagesModel` and mirrors `IPageCollection`. Its `all` projection follows the open
 `PageModel` list in tab order, including pages whose `mainEditor` is `null`; all page query methods
 return `PageWrapper` instances instead of raw `EditorModel` values. This keeps the scripting page
-surface aligned with the visible tab strip.
+surface aligned with the visible tab strip. `pages.openFile(path)` accepts a folder as well as a
+file; a folder opens an editorless page whose Explorer is rooted there. Persephone has no separate
+workspace feature, workspace files, workspace settings, or multi-root workspaces: a page with a
+project-folder Explorer root is the equivalent workspace, exposed as `page.workspaceFolder` (and
+omitted for pages without a local-folder Explorer or for archive browsing).
 
 ## Script Execution
 

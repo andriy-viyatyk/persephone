@@ -26,7 +26,7 @@ const PAGES_MEMBERS: readonly IAiMember[] = [
     { name: "getGroupedPage", kind: "method", signature: "getGroupedPage(withPageId: string)", summary: "The page grouped with the given page, if any." },
     { name: "isGrouped", kind: "method", signature: "isGrouped(pageId: string)", summary: "Whether the page is part of a side-by-side group." },
     { name: "isLastPage", kind: "method", signature: "isLastPage(pageId?: string)", summary: "Whether the page is the only one open." },
-    { name: "openFile", kind: "method", signature: "openFile(filePath: string)", summary: "Open a file from disk in a new page (or focus it if already open); returns the page." },
+    { name: "openFile", kind: "method", signature: "openFile(filePath: string)", summary: "Open a path from disk in a new page (or focus it if already open); returns the page. A FOLDER is valid too and is not an error: it opens an empty page whose Explorer panel is rooted at that folder; that page is Persephone's equivalent of opening a VS Code workspace, for browsing the tree." },
     { name: "closePage", kind: "method", signature: "closePage(pageId: string)", summary: "Close a page; returns true when closed and false when closing is refused, such as cancelling an unsaved-changes prompt.", caution: "unsaved changes prompt the user; a discarded page is gone" },
     { name: "openFileWithDialog", kind: "method", signature: "openFileWithDialog()", summary: "Show the OS open-file dialog to the user." },
     { name: "navigatePageTo", kind: "method", signature: "navigatePageTo(pageId, newFilePath, options?: { revealLine?, highlightText?, forceTextEditor? })", summary: "Point an existing page at another file." },
@@ -61,7 +61,15 @@ Ids are stable while the page is open; positions change when tabs move.
 Read a page's text with pages[i].content, replace it by assigning "value" to the same path, switch
 editors with pages[i].editor; narrow its id for editor-specific operations, then use
 pages[i].editorSwitches.switchTo(id) to switch. Create pages with addEmptyPage(), addEditorPage(...)
-or openFile(path). For a non-monaco editor, pass the editor's required language; structured pages
+or openFile(path). openFile accepts a folder as well as a file: a folder opens an empty page whose
+Explorer panel is rooted there, which is how you give the user a browsable tree (to read a folder's
+entries yourself instead, use fs.listDir / fs.listDirWithTypes).
+Workspaces: Persephone has no separate workspace feature, workspace files, workspace settings, or
+multi-root workspaces: a workspace is a page whose Explorer is rooted at a project folder
+(Persephone's equivalent of a VS Code workspace); open one with pages.openFile(folderPath). Several
+such workspace pages may be open at once, one per page; find them by reading workspaceFolder across
+pages.
+For a non-monaco editor, pass the editor's required language; structured pages
 also need the documented title suffix when the editor-switch button depends on it. The editor
 registry and the pages resource provide the complete editor/language/suffix table.
 
@@ -137,10 +145,11 @@ export class PageCollectionWrapper implements IAiVisible {
             const restricted = page.aiVision.restricted?.();
             const active = page.id === activeId ? " ← active" : "";
             const editorId = page.editor.id || "no editor";
+            const workspace = page.workspaceFolder ? ` — workspace ${page.workspaceFolder}` : "";
             return {
                 segment: `[${i}]`,
                 kind: "Page",
-                summary: `"${page.title}" id=${page.id} (${editorId}${page.modified ? ", modified" : ""})${active}`,
+                summary: `"${page.title}" id=${page.id} (${editorId}${page.modified ? ", modified" : ""})${workspace}${active}`,
                 ...(restricted ? { restricted } : {}),
             };
         }));

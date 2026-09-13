@@ -21,6 +21,15 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### New Features
 
+- **Your open project folders are now called workspaces:** if you keep a few projects open at
+  once — each in its own tab with the File Explorer rooted at the project folder — that tab is
+  now named for what it already was: a workspace, Persephone's equivalent of a VS Code workspace.
+  Nothing changed about how you open one (**Open Folder**, or dropping a folder on the window).
+  What changed is that an AI agent can now see them: it can tell which tab holds which project,
+  and open a folder as a workspace when you ask it to. There is still no workspace file, no
+  workspace settings, and no multi-root workspace — a workspace is just a tab with a rooted
+  Explorer, which is what it has always been.
+
 - **Word Wrap in the Text Editor:** a toolbar button wraps long lines to the width of the page, so
   you can read a minified file or a long paragraph without scrolling sideways. Wrapping only
   changes how the text is displayed, never the file itself, and you can still tell the difference
@@ -46,6 +55,11 @@ Release notes and changelog for Persephone (formerly js-notepad).
   before relying on visibility or screen geometry. See [Agent events](./agents/events.md).
 
 ### Bug Fixes
+
+- **External images load more reliably:** image URLs now send the content request's default
+  User-Agent, fixing hosts that reject requests with no User-Agent. If the URL still cannot be
+  loaded and no cached copy is available, Persephone reports the failure instead of leaving only
+  the image's alt text.
 
 - **Switching from a simple board works again:** The editor switcher's **+** entry now opens Board
   Info even when the current editor is a simple board, such as the PDF Viewer. The file keeps its
