@@ -57,6 +57,7 @@ export function cleanForStorage(data: ILinkData): StoredLinkData {
         handled,
         pipe,
         pageId,
+        openedPageId,
         revealLine,
         highlightText,
         fragment,

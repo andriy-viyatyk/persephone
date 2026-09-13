@@ -134,8 +134,12 @@ export function registerResolvers(): void {
             const stat = await app.fs.stat(data.url);
             if (stat.isDirectory) {
                 const { pagesModel } = await import("../api/pages");
-                await pagesModel.addEmptyPageWithNavPanel(data.url);
+                const folderPage = await pagesModel.addEmptyPageWithNavPanel(data.url);
                 pagesModel.closeFirstPageIfEmpty();
+                // The page is an empty page with an Explorer panel, not a page bound to the
+                // folder, so the caller cannot find it by file path afterwards. Hand the id
+                // back explicitly (see ILinkData.openedPageId).
+                data.openedPageId = folderPage.id;
                 data.handled = true;
                 return;
             }

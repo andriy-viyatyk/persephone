@@ -93,7 +93,8 @@ export interface IFileSystem {
     // ── File I/O — simple (for scripts) ──────────────────────────────
 
     /**
-     * Read a text file with auto-detected encoding.
+     * Read a FILE's text with auto-detected encoding. A directory path fails with EISDIR; use
+     * listDir or listDirWithTypes to browse a directory.
      * @param filePath Absolute path to file.
      * @param encoding Optional encoding override.
      * @returns File content as string.
@@ -175,7 +176,8 @@ export interface IFileSystem {
     // ── Directory operations ────────────────────────────────────────
 
     /**
-     * List files and directories in a folder.
+     * List the entry NAMES of files and directories in a folder. This does not include full paths
+     * or type flags; use listDirWithTypes when you need to distinguish files from subfolders.
      * @param dirPath Absolute path to directory.
      * @param pattern Optional extension filter (e.g., ".json") or RegExp.
      * @returns Array of file/directory names (not full paths). Empty array if directory doesn't exist.
@@ -189,7 +191,8 @@ export interface IFileSystem {
     mkdir(dirPath: string): Promise<void>;
 
     /**
-     * List directory contents with type information.
+     * List directory contents with type information. This takes no filter pattern; use listDir
+     * when you need filtered names.
      * @param dirPath Absolute path to directory.
      * @returns Array of entries with name and isDirectory flag. Empty array if directory doesn't exist.
      */

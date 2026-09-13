@@ -231,8 +231,16 @@ export class PagesModel extends TModel<OpenFilesState> {
     openFile = async (filePath?: string) => {
         if (!filePath) return undefined;
         const { app } = await import("../app");
-        await app.events.openRawLink.sendAsync(createLinkData(filePath));
-        return this.query.findPageByFilePath(filePath);
+        const data = createLinkData(filePath);
+        await app.events.openRawLink.sendAsync(data);
+        // A folder opens an empty page carrying an Explorer panel rooted at it, which is not
+        // bound to the folder as a file path — so the lookup below misses and this returned
+        // `undefined` for an open that had in fact succeeded. The handler hands that page's
+        // id back through `openedPageId`; prefer the path lookup, which is the normal case.
+        return this.query.findPageByFilePath(filePath)
+            ?? (data.openedPageId
+                ? this.query.findPage(data.openedPageId)
+                : undefined);
     };
     openFileAsArchive = (filePath: string) =>
         this.lifecycle.openFileAsArchive(filePath);

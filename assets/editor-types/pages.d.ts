@@ -50,7 +50,11 @@ export interface IPageCollection {
 
     // ── Lifecycle ────────────────────────────────────────────────────
 
-    /** Open a file in a new or existing tab. Returns the page. */
+    /**
+     * Open a file or folder in a new or existing tab. A folder opens an empty page whose Explorer
+     * panel is rooted there (Persephone's equivalent of a workspace). Returns the page, or
+     * undefined if the path could not be opened.
+     */
     openFile(filePath: string): Promise<IPage | undefined>;
 
     /** Close a page by ID. Returns true if closed, false if cancelled (e.g. unsaved changes). */

@@ -54,7 +54,9 @@ Write operations read the full archive, modify the entry, and write it back. For
 
 ### read(filePath, encoding?) → `Promise<string>`
 
-Read a text file with auto-detected encoding. Simplest way to read files in scripts.
+Read a FILE's text with auto-detected encoding. A directory path fails with `EISDIR`; use
+`listDir` or `listDirWithTypes` to browse a directory. This is the simplest way to read files in
+scripts.
 
 ```javascript
 const content = await app.fs.read("C:/data/config.json");
@@ -142,7 +144,9 @@ if (info.exists) {
 
 ### listDir(dirPath, pattern?) → `Promise<string[]>`
 
-List files and directories inside a folder. Returns entry names only, not full paths. Returns an empty array if the directory does not exist.
+List files and directories inside a folder. Returns entry NAMES only, not full paths or type flags;
+use `listDirWithTypes` when you need to distinguish files from subfolders. Returns an empty array
+if the directory does not exist.
 
 The optional `pattern` argument filters results by extension string (e.g. `".json"`) or a `RegExp`.
 
@@ -172,7 +176,9 @@ for (const name of files) {
 
 ### listDirWithTypes(dirPath) → `Promise<IDirEntry[]>`
 
-List files and directories inside a folder, including type information. Each entry has `name` (string) and `isDirectory` (boolean). Returns an empty array if the directory does not exist.
+List files and directories inside a folder, including type information. Each entry has `name`
+(string) and `isDirectory` (boolean). This method takes no filter pattern; use `listDir` when you
+need filtered names. Returns an empty array if the directory does not exist.
 
 ```javascript
 const entries = await app.fs.listDirWithTypes("C:/data/exports");

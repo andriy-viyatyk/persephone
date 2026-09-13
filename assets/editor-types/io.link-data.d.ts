@@ -64,6 +64,13 @@ export interface ILinkPipeline {
     pipe?: IContentPipe;
     /** Open in this specific page instead of a new tab. */
     pageId?: string;
+    /** OUT: the page a handler created, when it created one the caller cannot find again
+     *  by file path. Set by the directory branch, whose page is an empty page carrying an
+     *  Explorer panel rather than a page bound to the folder — without this, `openFile()`
+     *  reported `undefined` for a folder it had just opened successfully. Never an input:
+     *  `pageId` above is the "navigate this page" request, and conflating the two would
+     *  persist a bogus page id into `sourceLink`. */
+    openedPageId?: string;
     /** Scroll to this line after opening. */
     revealLine?: number;
     /** Highlight occurrences of this text after opening. */
