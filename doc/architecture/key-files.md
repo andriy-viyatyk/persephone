@@ -288,8 +288,11 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Main-process board guide mounts (trusted-board discovery and isolated guide roots for MCP) | `/src/main/mcp/ai-vision/board-guide-mounts.ts` |
 | Renderer board guide mounts (trusted-board discovery and isolated guide roots for About/F1) | `/src/renderer/guides/board-guide-mounts.ts` |
 | Packaged guide corpus and MCP resource aliases | `/assets/guides/`, `/src/main/mcp/manifest.ts` |
-| Renderer AiVision event log (one 200-entry ring per renderer window; producer helpers for shape changes, navigation, dialogs, guide buttons, and remote notifications) | `/src/renderer/scripting/ai-vision/event-log.ts` |
+| Board security-review guide (trust capabilities, code-review checklist, and update/inherited-trust cautions) | `/assets/guides/agents/board-review.md` |
+| Renderer AiVision event log (one 200-entry ring per renderer window; producer helpers for shape changes, navigation, page activation, dialogs, guide buttons, and remote notifications) | `/src/renderer/scripting/ai-vision/event-log.ts` |
 | Renderer AiVision `events` namespace (`recent`, `since`, `count`, and bounded cursor-based `wait`) | `/src/renderer/scripting/ai-vision/namespaces/events.ts` |
+| Renderer AiVision page-attention state (agent-addressed page tracking, closed-page pruning, and synchronous activation suppression) | `/src/renderer/scripting/ai-vision/page-attention.ts` |
+| Renderer AiVision page-activation observer (mount-scoped page-model subscription and `page-activated` producer) | `/src/renderer/scripting/ai-vision/page-activation.ts` |
 | Renderer AiVision UI walkthrough (`ui.guide.step` / `end`) and its curated-control provider | `/src/renderer/scripting/ai-vision/namespaces/ui-guide.ts`, `/src/renderer/scripting/ai-vision/namespaces/ui.ts` |
 | Agent highlight overlay (the package's dependency-free ring and explanation card; `window.__aiVisionHighlight`; fixed accent palette; visibility-based removal keeps rings from surviving hidden controls; the source remains ASCII-only for injection into contexts without a module graph) | `ai-vision/dom` |
 | Highlight API (`app.ui.highlightElement` / `clearHighlights`; lazily installs and caches the package overlay, resetting the loader promise on failure so a retry is possible) | `/src/renderer/api/ui.ts` |

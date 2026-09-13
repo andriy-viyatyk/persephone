@@ -33,6 +33,12 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 - **AI Vision authoring guide:** Board and web-app builders can now read a built-in reference for
   publishing an agent-drivable model at `pages[i].editor.app`, linked from the Boards and Browser guides.
+- **Review boards before trusting them:** A new [board-review checklist](./agents/board-review.md)
+  helps an agent inspect a board it did not write before asking you to trust it, including what
+  trust grants and why updates need another review.
+- **Agents learn when the active page changes:** When an agent is working with a page and another
+  page becomes active, it receives a `page-activated` event so it can re-activate the intended page
+  before relying on visibility or screen geometry. See [Agent events](./agents/events.md).
 
 ### Bug Fixes
 

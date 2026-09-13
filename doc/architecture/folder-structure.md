@@ -713,6 +713,8 @@ vendor island under `editors/draw/`; native global styles are installed by `them
 │       │   ├── ui-guide.ts  # Blocking one-control-at-a-time walkthroughs
 │       │   └── index.ts     # Namespace registration and descriptor wiring
 │       ├── event-log.ts     # Per-window event ring and producer helpers
+│       ├── page-attention.ts # Agent-addressed page tracking and activation suppression
+│       ├── page-activation.ts # Mount-scoped active-page observer and event producer
 │       ├── root.ts          # Renderer object-model root
 │       ├── page-compare.ts  # pages.compare pair projection and controls
 │       └── page-panels.ts   # pages[i].editor.panels projection and controls

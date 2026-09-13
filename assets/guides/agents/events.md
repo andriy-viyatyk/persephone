@@ -43,9 +43,14 @@ walkthrough is over.
 ## What is recorded
 
 The log records board refreshes and reloads, navigation in a browser tab that has registered a
-model, answered dialogs, and guide-card button presses. It also records `notify(text)` from a
-trusted board or a participating page. Remote text is marked as board-written or page-written and
-shown with an attribution suffix. Text written by Persephone has no remote attribution.
+model, answered dialogs, guide-card button presses, and relevant active-page changes. When a page
+you have addressed becomes hidden, a `page-activated` event tells you which page is active now —
+re-activate yours before reading anything geometry-dependent, because a hidden page has no layout
+box. Switches you asked for yourself are not reported, and neither is moving between two pages
+grouped side by side, since both stay on screen. It
+also records `notify(text)` from a trusted board or a participating page. Remote text is marked as
+board-written or page-written and shown with an attribution suffix. Text written by Persephone has
+no remote attribution.
 
 When an event says that a shape changed, read the named `pages["<id>"].editor.app` path again
 before using that model. A guide-button event tells you which control the user skipped or advanced.

@@ -717,6 +717,15 @@ a 50-second default and a 110-second maximum. Blocking renderer paths use a 125-
 timeout, preserving the invariant renderer bound < bridge timeout < client timeout; a restarted
 renderer clamps an old cursor back to the new log's sequence space.
 
+The renderer producers currently record `shape-changed`, `board-reloaded`, `navigated`,
+`page-activated`, `dialog-answered`, `remote-notify`, and `guide-button`. Page activation is
+installed with the native renderer mount lifecycle by
+`/src/renderer/scripting/ai-vision/page-activation.ts`; it observes the page model's `onShow`
+channel, prunes closed page ids, and reports a switch only when the old or new page was addressed
+by the agent. Synchronous activation requested by the agent is suppressed, while the subscription
+and its attention state are reset when the renderer mount is disposed. The event points at the
+previous page and tells callers to reactivate it before geometry-dependent reads.
+
 The `ui.guide` node is implemented by
 `/src/renderer/scripting/ai-vision/namespaces/ui-guide.ts` and provided by the UI namespace in
 `/src/renderer/scripting/ai-vision/namespaces/ui.ts`; it draws a curated control highlight and
@@ -1100,6 +1109,8 @@ These files serve dual purpose: TypeScript type checking **and** IDE IntelliSens
 /src/renderer/scripting/ai-vision/
 ├── root.ts                      # Renderer object-model root and root namespaces
 ├── browser-automation-members.ts # Shared automation members for browser-like hosts
+├── page-attention.ts             # Agent-addressed page tracking and activation suppression
+├── page-activation.ts            # Mount-scoped active-page observer and event producer
 ├── namespaces/                  # App namespace descriptors
 │   ├── boards.ts                # Local board inventory and published-catalog namespace
 │   ├── tools.ts                 # Registered Agent Tools search, execution, toolsets, and unregistration
