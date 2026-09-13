@@ -89,6 +89,12 @@ export const resourceFiles: IGuideResource[] = [
         description: "AI Vision authoring reference: publish a board's or web page's own object model at pages[i].editor.app — descriptors, elements, highlight, refresh, and notify.",
     },
     {
+        name: "board-review-guide",
+        uri: "persephone://guides/board-review",
+        file: "guides/agents/board-review.md",
+        description: "Security review checklist for a board the user did not write: what trust grants, what to read and grep for, supply chain, and why runtime-downloaded code defeats the review.",
+    },
+    {
         name: "tools-guide",
         uri: "persephone://guides/tools",
         file: "guides/agents/tools.md",

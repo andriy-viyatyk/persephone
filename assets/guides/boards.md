@@ -110,8 +110,11 @@ Because `persephone.execute()` runs programs with your full user privileges, **e
 
 - **Trust is per board** (per board root folder), remembered across app restarts. Once trusted you are not prompted again. Trust is stored in `%AppData%\persephone\data\trustedBoards.txt`.
 - **Inherited trust** — when a folder is trusted, every board nested inside it is trusted automatically. You are never prompted for a board that lives within an already-trusted folder.
+- **Updates keep the trust you already gave.** Updating an installed board replaces its files under its existing trust, with no new prompt — so a board worth reviewing is worth re-reviewing after an update.
 
 > Only trust boards you created or fully understand — trusting lets the board's scripts run programs and access files with your Windows user account's privileges.
+
+**How to have it reviewed:** [Reviewing a board before you trust it](./agents/board-review.md) is the checklist to hand your AI agent — what trusting actually grants, what to look for in the board's scripts, and why a board that downloads code and runs it cannot be reviewed at all.
 
 ---
 
@@ -696,7 +699,7 @@ The same trust rule that governs every board applies here without exception: **a
 
 ### Driving it from a script or AI agent
 
-An AI agent can perform the whole discover → download → review → install → update lifecycle through the scripting API, with the same one-click trust rule holding throughout — the agent can never trust a board on your behalf.
+An AI agent can perform the whole discover → download → review → install → update lifecycle through the scripting API, with the same one-click trust rule holding throughout — nothing is trusted without the trust dialog, and a well-behaved agent reviews and reports rather than deciding for you. It should trust a board only when you have asked it to.
 
 | Method | Description |
 |--------|-------------|

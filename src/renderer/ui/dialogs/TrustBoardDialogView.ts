@@ -32,7 +32,8 @@ export class TrustBoardDialogView extends VanillaView<DialogViewProps> {
                 ),
                 createTextElement("Only trust boards you created or fully understand."),
                 createTextElement(
-                    "If you're not sure about a board, ask your AI agent to review its scripts before trusting it.",
+                    "If you're not sure about a board, ask your AI agent to review its scripts before trusting it. "
+                    + "The review checklist is in the guides (F1): \"Reviewing a board before you trust it\".",
                     { color: "warning" },
                 ),
                 boardPathElement,

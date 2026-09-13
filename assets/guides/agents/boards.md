@@ -57,10 +57,10 @@ Three `app.boards` calls manage an **existing** board's lifecycle — for boards
 create (a folder the user points you at, or one you downloaded for review):
 
 - **`app.boards.registerBoard(boardRoot)`** → `Promise<boolean>` — trust a board so it renders
-  and runs. Shows the **user** a trust dialog; you can never trust a board on their behalf
-  without that click. Returns `true` if trusted (or already trusted), `false` if the user
-  declines. Typical review flow: read the board's scripts/HTML, report to the user, then call
-  this and let them decide at the dialog.
+  and runs. Shows the **user** a trust dialog — trust is never granted without that click, and
+  the decision behind it is theirs, never yours. Returns `true` if trusted (or already trusted),
+  `false` if the user declines. Typical review flow: read the board's scripts/HTML, report to the
+  user, then call this and let them answer the dialog.
 - **`app.boards.unregisterBoard(boardRoot)`** → `Promise<void>` — untrust the board and remove
   its pin. No dialog (it only reduces privilege). The board stops running.
 - **`app.boards.renameBoard(boardRoot, newName)`** → `Promise<string>` — rename the board's
@@ -115,9 +115,17 @@ author), **review it before `registerBoard`**:
    OS processes with the user's privileges and are NOT sandboxed** — that is where risk lives.
 3. Flag: data exfiltration (unexpected network hosts / uploads), credential or filesystem access
    beyond the board's stated purpose, destructive `persephone.execute` usage (deletes, overwrites,
-   shelling out to dangerous commands), and obfuscated/minified logic that hides intent.
-4. Report your findings to the user, then call `app.boards.registerBoard(root)` — they make the
-   final call at the trust dialog. You can never trust a board on their behalf.
+   shelling out to dangerous commands), obfuscated/minified logic that hides intent, and above all
+   **anything that downloads code and runs it** — that is code the user has not seen and which can
+   change after they trust it.
+4. Report your findings to the user, then call `app.boards.registerBoard(root)` — the trust
+   decision is theirs. Never trust a board on your own judgement; when they have asked for it to be
+   trusted, answering the dialog carries out their decision.
+
+The full checklist — what trust actually grants, what to grep for and why, vendored-library
+supply chain, command injection, and when to re-review (an update keeps the board's existing
+trust) — is [Reviewing a board before you trust it](./board-review.md),
+`guides.agents["board-review"]`.
 
 All six calls are reached through **`script.execute`** — there are no separate board call paths for them.
 

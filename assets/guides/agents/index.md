@@ -62,6 +62,7 @@ guide to read for which task. It is intentionally short — read it once per ses
 | Drive a web page / board / the app UI | `pages[i].editor` / `window.screen` | node `$help` and `persephone://guides/browser` |
 | Build a custom dashboard/tool/editor | `boards.createBoard`, `boards.openBoard`, `pages[i].editor` | `boards.$help` and `persephone://guides/boards` |
 | Give the board or web app you are building its own agent-drivable object model | `persephone.aiVision.expose(root)` in the board | [AI Vision](./ai-vision.md) / `guides.agents["ai-vision"]` |
+| Decide whether a board the user did not write is safe to trust | read the board folder, then `boards.registerBoard` | [Reviewing a board](./board-review.md) / `guides.agents["board-review"]` |
 | Recurring external-system task (ADO, SQL, email, CLI) | `tools.search` → `tools.execute` | `tools.$help` and `persephone://guides/tools` |
 
 `main` is resolved locally by the main process, alongside root `windows`. Use `main.windows` for
