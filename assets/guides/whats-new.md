@@ -47,6 +47,11 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### Bug Fixes
 
+- **Switching from a simple board works again:** The editor switcher's **+** entry now opens Board
+  Info even when the current editor is a simple board, such as the PDF Viewer. The file keeps its
+  name, and you can switch back to the board afterward; a failed switch now reports an error
+  instead of appearing to do nothing.
+
 - **Editor switches appear after changing the language:** On a new or extensionless page, choosing
   Markdown, JSON, CSV, JSONL, HTML, or Mermaid from the language menu now immediately shows the
   matching editor option in the page toolbar — **Preview**, **Grid**, or **Mermaid** as appropriate.

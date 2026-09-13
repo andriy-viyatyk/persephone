@@ -1,4 +1,5 @@
 import { boardInstallRegistry } from "../../api/board-install-registry";
+import { guard } from "../../core/utils/guard";
 import type { IPageHost } from "../../api/pages/IPageHost";
 import { publishedBoards } from "../../api/published-boards";
 import type { EditorModel, EditorStateBase } from "./EditorModel";
@@ -333,8 +334,14 @@ export class SwitchWidgetView extends VanillaView<SwitchWidgetViewProps> {
         this.segmented = undefined;
     }
 
+    // Guarded, not floated: a rejected switch used to vanish entirely, so a broken switch looked
+    // to the user exactly like a button that does nothing (the "+" install entry did this for any
+    // page whose editor was a simple board). A toast is the right outcome — the old editor is
+    // still installed and usable, so there is nothing to roll back.
     private readonly onSwitch = (newEditorId: string): void => {
-        void this.model.page?.switchMainEditor(newEditorId);
+        const page = this.model.page;
+        if (!page) return;
+        void guard("Failed to switch editor", () => page.switchMainEditor(newEditorId));
     };
 }
 

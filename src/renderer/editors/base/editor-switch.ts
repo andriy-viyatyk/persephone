@@ -63,6 +63,23 @@ export async function switchMainEditor(
     // (CE4) and rebuilds the target FRESH over the file (dispose-and-rebuild). The
     // board writes the file directly, so a rebuilt built-in reads current disk
     // content — no stale-cache handling needed.
+    // The "+" install target is host-TOLERANT in both directions: `BoardInfoEditorModel.switchFrom`
+    // adopts a shared content host when the source holds one and otherwise captures the source's
+    // file path (the shape it was written for — the host-less Archive viewer). That makes it exempt
+    // from the board branch below, which would dispose-and-rebuild it over the file: `board-info`
+    // declares `hasContentHost`, so the rebuild produces a bare text host and `attachEditorToPage`
+    // then throws "does not wrap a text host". The toolbar floats that promise, so the "+" click
+    // did nothing at all whenever the outgoing editor was a SIMPLE board (a content-host board took
+    // the host-transfer branch and worked, which is why this only showed up with boards like the
+    // PDF viewer). Handling it here also merges three identical createEditor + switchFrom paths.
+    if (newEditorId === BOARD_INFO_EDITOR_ID) {
+        const boardInfo = await editorRegistry.createEditor(newEditorId);
+        boardInfo.switchFrom(oldEditor);
+        await boardInfo.restore();
+        await page.setMainEditor(boardInfo);
+        return;
+    }
+
     const newBoardRoot = parseBoardEditorId(newEditorId);
     const boardInvolved =
         newBoardRoot !== null
@@ -127,9 +144,9 @@ export async function switchMainEditor(
     // adopted a host, or the host-less Archive viewer for a zip-based file (US-864/US-876) —
     // has nothing to hand over, and a real file editor's `switchFrom` would throw. When the
     // target is such a file editor, dispose-and-rebuild it over the file instead (mirrors the
-    // simple-board branch above). The "+" install target (Board Info) is exempt: its tolerant
-    // `switchFrom` captures the file path itself, so it stays on the createEditor path below.
-    if (!oldEditor.contentHost && newEditorId !== BOARD_INFO_EDITOR_ID) {
+    // simple-board branch above). The "+" install target needs no exemption here: it is
+    // handled at the top of this function, before either branch can claim it.
+    if (!oldEditor.contentHost) {
         const filePath = oldEditor.filePath;
         if (!filePath) return;
         await rebuildEditorOverFile(page, oldEditor, filePath, newEditorId);
