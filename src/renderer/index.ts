@@ -4,10 +4,12 @@ import { DialogsView } from "./ui/dialogs/DialogsView";
 import { PoppersView } from "./ui/dialogs/poppers/PoppersView";
 import { MainPageView } from "./ui/app/MainPageView";
 import { installGlobalStyles } from "./theme/global-styles";
+import { installPageActivationEvents } from "./scripting/ai-vision/page-activation";
 import "./editors/register-editors";
 
 export function mount(container: HTMLElement): () => void {
     const disposeGlobalStyles = installGlobalStyles();
+    const disposePageActivationEvents = installPageActivationEvents();
 
     const mainPage = new MainPageView({});
     container.append(mainPage.root);
@@ -33,6 +35,7 @@ export function mount(container: HTMLElement): () => void {
     poppers.mount();
 
     return () => {
+        disposePageActivationEvents();
         poppers.dispose();
         poppers.root.remove();
         alerts.dispose();

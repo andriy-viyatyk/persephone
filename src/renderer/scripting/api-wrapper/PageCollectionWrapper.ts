@@ -5,6 +5,7 @@ import { EditorView } from "../../../shared/types";
 import type { ILink } from "../../api/types/io.tree";
 import type { IAiChild, IAiMember, IAiVisible, IAiVisionDescriptor } from "ai-vision";
 import { CompareModeNode } from "../ai-vision/page-compare";
+import { markPageAttended, withAgentNavigation } from "../ai-vision/page-attention";
 import { LogViewEditorFacade } from "./LogViewEditorFacade";
 import { getMcpLogViewEditor, getOrCreateMcpLogViewEditor } from "../../api/mcp/log-view-access";
 import type { HubTab } from "../../api/types/tools-hub-editor";
@@ -114,7 +115,14 @@ export class PageCollectionWrapper implements IAiVisible {
             members: PAGES_MEMBERS,
             help: PAGES_HELP,
             children: () => this.aiChildren(),
-            index: (key) => (typeof key === "number" ? this.all[key] : this.findPage(key)),
+            index: (key) => {
+                if (typeof key === "number") {
+                    const page = this.pages.pages[key];
+                    markPageAttended(page?.id);
+                    return this.all[key];
+                }
+                return this.findPage(key);
+            },
             summarize: () => ({ kind: "Pages", count: this.all.length, activePageId: this.pages.activePage?.id ?? null }),
         };
     }
@@ -176,7 +184,9 @@ export class PageCollectionWrapper implements IAiVisible {
     }
 
     get activePage(): PageWrapper | undefined {
-        return this.wrap(this.pages.activePage);
+        const page = this.pages.activePage;
+        markPageAttended(page?.id);
+        return this.wrap(page);
     }
 
     get groupedPage(): PageWrapper | undefined {
@@ -184,7 +194,9 @@ export class PageCollectionWrapper implements IAiVisible {
     }
 
     findPage(pageId: string): PageWrapper | undefined {
-        return this.wrap(this.pages.findPage(pageId));
+        const page = this.pages.findPage(pageId);
+        markPageAttended(page?.id);
+        return this.wrap(page);
     }
 
     getGroupedPage(withPageId: string): PageWrapper | undefined {
@@ -227,6 +239,7 @@ export class PageCollectionWrapper implements IAiVisible {
             forceTextEditor?: boolean;
         },
     ): Promise<boolean> {
+        markPageAttended(pageId);
         return this.pages.navigatePageTo(pageId, newFilePath, options);
     }
 
@@ -343,15 +356,18 @@ export class PageCollectionWrapper implements IAiVisible {
                 `No page with id ${JSON.stringify(pageId)}. Open page ids are: ${known || "(none)"}.`,
             );
         }
-        this.pages.showPage(pageId);
+        markPageAttended(pageId);
+        withAgentNavigation(() => this.pages.showPage(pageId));
     }
 
+    // Suppressed like `showPage`: these reach `pagesModel.showPage` by another route, so without
+    // the wrapper the agent's own tab-stepping would come back to it as an activation event.
     showNext(): void {
-        this.pages.showNext();
+        withAgentNavigation(() => this.pages.showNext());
     }
 
     showPrevious(): void {
-        this.pages.showPrevious();
+        withAgentNavigation(() => this.pages.showPrevious());
     }
 
     // ── Layout ────────────────────────────────────────────────────────

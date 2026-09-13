@@ -48,6 +48,29 @@ export function logBrowserNavigated(pageId: string): void {
     });
 }
 
+/**
+ * Record the active page changing under an agent that was working with one of the two.
+ *
+ * Deliberately does NOT say the user did it. Switches the agent itself asks for are suppressed
+ * where they are synchronous, but an agent that OPENS a page activates it asynchronously, past
+ * the suppression flag — so attributing the change to the user would be wrong a good share of the
+ * time. What the agent needs is the consequence, not the culprit.
+ */
+export function logPageActivated(previousPageId: string, activePageId: string): void {
+    const previous = pagePath(previousPageId, "");
+    eventLog.push({
+        kind: "page-activated",
+        path: previous,
+        // "hidden" rather than "no longer active" is exact: the one case where a non-active page
+        // keeps rendering — the other half of a side-by-side group — is filtered out before this
+        // is called, so anything reported here really has lost its layout box.
+        text: `The active page is now ${pagePath(activePageId, "")}; ${previous} is hidden, so its `
+            + "elements report not visible and window.screen.snapshot() shows the active page. "
+            + `Re-activate it with pages.showPage(${JSON.stringify(previousPageId)}) before `
+            + "geometry-dependent reads.",
+    });
+}
+
 /** Record a native renderer dialog reaching its resolution callback. */
 export function logDialogAnswered(): void {
     eventLog.push({
