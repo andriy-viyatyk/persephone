@@ -8,6 +8,7 @@ import { defineCSVLanguage } from "./monaco-languages/csv";
 import { defineMermaidLanguage } from "./monaco-languages/mermaid";
 import { defineJsonlLanguage } from "./monaco-languages/jsonl";
 import { defineLogLanguage } from "./monaco-languages/log";
+import { definePatchLanguage } from "./monaco-languages/patch";
 import { loadLibraryIntelliSense } from "./library-intellisense";
 
 
@@ -79,6 +80,14 @@ const customTokenRules: monaco.editor.ITokenThemeRule[] = [
     { token: "constant.log", foreground: "569cd6" },
     { token: "constant.guid.log", foreground: "b5cea8" },
     { token: "constant.url.log", foreground: "4fc1ff" },
+
+    // Patch/diff colors
+    { token: "inserted.patch", foreground: "2fa84f" },
+    { token: "deleted.patch", foreground: "e5534b" },
+    { token: "meta.range.patch", foreground: "c586c0" },
+    { token: "meta.file.patch", foreground: "569cd6" },
+    { token: "meta.header.patch", foreground: "569cd6", fontStyle: "bold" },
+    { token: "meta.patch", foreground: "808080" },
 ];
 
 export const MONACO_THEME_NAME = "custom-dark";
@@ -229,6 +238,7 @@ export async function initMonaco() {
     defineMermaidLanguage(monaco);
     defineJsonlLanguage(monaco);
     defineLogLanguage(monaco);
+    definePatchLanguage(monaco);
 
     await loadEditorTypes(monaco);
     loadLibraryIntelliSense();

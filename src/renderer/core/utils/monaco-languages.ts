@@ -25,6 +25,11 @@ const extraLanguages: MonacoLanguage[] = [
         "aliases": ['Log', 'log'],
         "extensions": [".log"],
         "id": "log"
+    },
+    {
+        "aliases": ['Patch', 'patch', 'Diff', 'diff'],
+        "extensions": [".patch", ".diff"],
+        "id": "patch"
     }
 ];
 

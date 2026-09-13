@@ -197,6 +197,7 @@ vendor island under `editors/draw/`; native global styles are installed by `them
 │   │       ├── jsonl.ts            # JSONL (JSON Lines) syntax highlighting
 │   │       ├── log.ts              # Log file syntax highlighting
 │   │       ├── mermaid.ts           # Mermaid syntax highlighting
+│   │       ├── patch.ts            # Patch/diff structural syntax highlighting
 │   │       └── reg.ts              # Windows Registry file syntax
 │   │
 │   └── types/              # TypeScript interfaces (.d.ts)

@@ -31,6 +31,11 @@ Release notes and changelog for Persephone (formerly js-notepad).
   **Enable Word Wrap by default** in **Settings → Editor Behavior**, which changes the starting point for
   pages you open from then on and leaves the pages you already have alone.
 
+- **Patch/diff syntax highlighting:** `.patch` and `.diff` files are recognized automatically and
+  receive structural coloring: added lines are green, removed lines are red, file and hunk headers
+  use distinct colors, and other diff metadata is muted while unchanged context keeps the normal
+  text color.
+
 - **AI Vision authoring guide:** Board and web-app builders can now read a built-in reference for
   publishing an agent-drivable model at `pages[i].editor.app`, linked from the Boards and Browser guides.
 - **Review boards before trusting them:** A new [board-review checklist](./agents/board-review.md)
