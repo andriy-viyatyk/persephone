@@ -314,6 +314,28 @@ srv.write(JSON.stringify({ id: 1, sql }) + "\n");   // per query — db stays op
       value: JSON.stringify(matches, null, 2),
   });
   ```
+  Append `.$describe` to any path to return the node's descriptor as the call result rather than
+  prose: `{ path, kind, summary, members[], children[], overview?, help?, identity?, restricted? }`.
+  `members[]` contains the raw `IAiMember` entries (`name`, `kind`, `summary`, and optional
+  `signature`, `caution`, `writable`, and `node`); `children[]` contains raw `IAiChild` entries
+  plus an absolute `path` for each child. A function-valued `help` is resolved and trimmed.
+  `$describe` follows the same walk as `$help`, must be the final segment (anything after it is a
+  path syntax error), and is answered before the node's `restricted()` gate: a restricted node
+  describes itself and includes its `restricted` text, while descendants remain blocked. A node
+  without an AiVision descriptor returns the same error as `$help`, with its value shown.
+  `$help` remains the right call for prose; `$describe` is for programmatic board consumers such
+  as a tree view or generated client. Expanding a tree with `$describe` is side-effect free by
+  contract, but a board that offers to invoke members must surface each member's `caution` text
+  and require explicit confirmation for every such invocation. A trusted board reaches `proc`,
+  `fs`, `shell`, and `script`, so treat that confirmation as a privilege boundary.
+  ```js
+  const node = await persephone.call("page.editor.$describe");
+  const rows = node.children.map((child) => ({ label: child.segment, path: child.path }));
+  ```
+  Describe a NODE, not a leaf value: `page.editor.$describe` works, `page.content.$describe` does
+  not, because a string carries no descriptor.
+  `$describe` also resolves on a published remote model at `pages[i].editor.app`, allowing one
+  board to browse another board's model or a web page's model.
   The hosting page is identified from the Board editor's owner id, not from the active tab, so
   switching tabs does not retarget the call. The resolver's existing descriptor restrictions still
   apply, including the private incognito/Tor browser-page guard. No renderer object or method crosses
@@ -334,7 +356,7 @@ remote method's declared `timeoutMs`, the session-only in-memory `boards.callTim
 
 A trusted board may publish an AiVision model with `persephone.aiVision.expose(root)`. When it does,
 the model appears at `pages[pageId].editor.app`. This is the board's own named model, not another
-view of Persephone's page or editor facade: use its `$help` or `helpSearch(...)` to discover the
+view of Persephone's page or editor facade: use its `$help`, `$describe`, or `helpSearch(...)` to discover the
 board's members and normal hints, then read or write its declared properties, call its methods,
 inspect `elements`, or use `highlight(...)`. A declaration made with
 `persephone.aiVision.createElements(...)` can

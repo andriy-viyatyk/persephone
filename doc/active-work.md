@@ -8,6 +8,11 @@ Overview of all active and planned epics and tasks.
 
 ## Active
 
+- **EPIC-101** — [Structured descriptor access and the AiVision Explorer board](epics/EPIC-101.md)
+  - [ ] US-1421: `$describe` — structured descriptor access in the ai-vision resolver
+  - [ ] US-1422: Document `$describe` for board and library authors — guide updated; awaiting epic review
+  - Board work (BT-022, BT-023) is tracked in the `persephone-boards` repo dashboard.
+
 ## Planned
 
 - *(no epic)*
