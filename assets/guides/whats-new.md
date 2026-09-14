@@ -12,7 +12,19 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ## Version 5.0.3 (Upcoming)
 
-*No changes yet.*
+### Improvements
+
+- **The Boards panel highlights the board you clicked:** board rows now carry the same selection
+  and hover highlight as files in the File Explorer, and they are the same height, so the two
+  panels line up when you switch between them. The board list in a board's own toolbar and the
+  one on the **Tools & Editors** tab match as well.
+
+### Bug Fixes
+
+- **Closing the Git Tree no longer means expanding its panel first:** the Git panel's **Close**
+  button now stays on the panel header even when the panel is collapsed to a strip, so you can
+  close the Git Tree without opening the panel to reach it. **Refresh** still appears only while
+  the panel is open, since it refreshes the list you are looking at.
 
 ---
 

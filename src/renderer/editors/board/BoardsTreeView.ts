@@ -23,6 +23,11 @@ export interface BoardsTreeViewProps {
 export class BoardsTreeView extends VanillaView<BoardsTreeViewProps> {
     private readonly iconElements = new Map<string, Node>();
     private readonly handleChange = (node: BoardTreeNode): void => {
+        // Paint the clicked row as selected, the way the Explorer file tree does. Only the
+        // node's `value` is read back, so keeping the node itself is safe even after the
+        // boards list is rebuilt and the stored object is no longer one of `this.nodes`.
+        this.selectedNode = node;
+        this.tree?.update(this.treeProps());
         if (node.kind === "board" && node.root) this.props.onOpenBoard(node.root);
     };
     private readonly handleActiveChange = (index: number | null): void => {
@@ -58,6 +63,7 @@ export class BoardsTreeView extends VanillaView<BoardsTreeViewProps> {
             : "always";
 
     private tree: TreeView<BoardTreeNode> | undefined;
+    private selectedNode: BoardTreeNode | null = null;
     private activeIndex: number | null = null;
     private nodes: BoardTreeNode[] = [];
     private nodesBoards: string[] | undefined;
@@ -94,7 +100,12 @@ export class BoardsTreeView extends VanillaView<BoardsTreeViewProps> {
             name: this.props.name,
             items: this.projectNodes(),
             defaultExpandAll: true,
-            rowHeight: 28,
+            // No rowHeight override: the Tree default (22) is what the Explorer file tree
+            // uses, and the two panels sit side by side.
+            value: this.selectedNode,
+            // Explorer selection look — grey while the tree is blurred, blue + outline when
+            // focused — without taking over the arrow keys.
+            focusSelection: true,
             activeIndex: this.activeIndex,
             onActiveChange: this.handleActiveChange,
             onChange: this.handleChange,

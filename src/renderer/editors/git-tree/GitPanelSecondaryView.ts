@@ -305,12 +305,16 @@ export default class GitPanelSecondaryView extends VanillaView<SecondaryViewProp
             this.titleCount = this.fileCount;
             this.titleNode = this.createTitleElement(this.fileCount);
         }
+        // Close stays reachable on the collapsed header strip so the Git Tree can be
+        // dismissed without expanding the panel first; Refresh only makes sense while
+        // the list it refreshes is visible.
+        if (this.refreshButton) this.refreshButton.root.hidden = props.expanded === false;
         this.header.update({
             headerHost: props.headerHost,
             icon: props.iconElement,
             badge: this.repoBadge.root,
             title: this.titleNode,
-            actions: props.expanded === false ? undefined : this.headerActions,
+            actions: this.headerActions,
             showMainTitle: "Show Git Tree",
             showMainActive: model.isMain,
             onShowMain: this.showMain,
