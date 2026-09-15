@@ -8,11 +8,13 @@ Overview of all active and planned epics and tasks.
 
 ## Active
 
-- *(no epic)*
-  - [ ] US-1427: Mneme Wiki panel — keep the Close button visible while the panel is collapsed
-
 ## Planned
 
+- **EPIC-103** — [Boards as folder editors](epics/EPIC-103.md)
+  - [ ] US-1429: Folder claims in the manifest: `folderEditorMasks`, catalog transport, and merged trusted folder resolution
+  - [ ] US-1430: Constructing a folder board: the generic `folder-editor://` link, the lifecycle path, and `getFolderPath()`
+  - [ ] US-1431: The folder editor switch and folder-board persistence
+  - [ ] US-1432: The folder-keyed catalog and the "+" install flow through Board Info
 - *(no epic)*
   - [ ] [US-1131: Close the remaining gaps in the VanillaView lifecycle lint rules](tasks/US-1131-vanillaview-lint-gaps/README.md)
     — tooling, not a defect: the guard itself shipped as US-1142 in EPIC-071 and this is the

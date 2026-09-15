@@ -38,6 +38,9 @@ Release notes and changelog for Persephone (formerly js-notepad).
   button now stays on the panel header even when the panel is collapsed to a strip, so you can
   close the Git Tree without opening the panel to reach it. **Refresh** still appears only while
   the panel is open, since it refreshes the list you are looking at.
+- **Closing the Mneme Wiki no longer means expanding its panel first:** the Wiki panel's
+  **Close** button now stays on the panel header even when the panel is collapsed to a strip, so
+  you can close the Mneme editor without opening the panel to reach it.
 
 ---
 
