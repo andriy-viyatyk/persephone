@@ -21,6 +21,11 @@ export const categoryModule: EditorModule = {
         }
         return model as unknown as EditorModel;
     },
+    newEditorModelForFolder: async (anchorFolder: string) => {
+        const model = new CategoryEditorModel();
+        model.initFromLink({ type: "file", url: anchorFolder, category: anchorFolder });
+        return model as unknown as EditorModel;
+    },
 };
 
 export {

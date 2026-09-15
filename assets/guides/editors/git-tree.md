@@ -12,9 +12,11 @@ working-tree changes, and Git actions in panels around the main view.
 
 ## How to Open
 
-Enable **Git Integration** in [Settings](../screens/settings.md), then use the **Open Git Tree**
-action on a repository's `.git` row in File Explorer. Clicking the row itself expands the folder;
-the action opens Git Tree. Git integration is off by default.
+Enable **Git Integration** in [Settings](../screens/settings.md), then click a recognized repository's
+`.git` row in File Explorer. The row opens Git Tree directly; its separate **Open Git Tree** button
+is no longer needed. Use the Editor switch in the page toolbar to choose **Folder View** when you
+need to browse the `.git` folder's own contents, then switch back to Git Tree. Git integration is
+off by default.
 
 ## Layout
 

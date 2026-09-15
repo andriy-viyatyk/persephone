@@ -12,6 +12,7 @@ import { DateInputView } from "../../uikit/DateInput/DateInputView";
 import { MarkdownBlockView } from "../markdown/MarkdownBlockView";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import type { EditorModel } from "../base/EditorModel";
+import { PageToolbarView, type PageToolbarViewProps } from "../base/PageToolbarView";
 import {
     MnemeRootEditorModel,
     type MnemeRootEditorState,
@@ -252,6 +253,7 @@ export class MnemeRootEditorView extends VanillaView<MnemeRootEditorViewProps> {
     private stateSubscription: (() => void) | undefined;
     private live = false;
     private filtersOpen = false;
+    private pageToolbar: PageToolbarView | undefined;
     private toolbar: HTMLDivElement | undefined;
     private filtersHost: HTMLDivElement | undefined;
     private statusHost: HTMLDivElement | undefined;
@@ -273,7 +275,11 @@ export class MnemeRootEditorView extends VanillaView<MnemeRootEditorViewProps> {
     protected onMount(): void {
         const model = this.model;
         if (!model) return;
-        this.live = true; this.buildShell(); this.subscribeToModel(model); this.sync(projectState(model.state.get()));
+        this.live = true;
+        this.pageToolbar = this.child(new PageToolbarView(this.pageToolbarProps()));
+        this.root.append(this.pageToolbar.root);
+        this.pageToolbar.mount();
+        this.buildShell(); this.subscribeToModel(model); this.sync(projectState(model.state.get()));
     }
 
     protected onUpdate(props: MnemeRootEditorViewProps): void {
@@ -286,6 +292,7 @@ export class MnemeRootEditorView extends VanillaView<MnemeRootEditorViewProps> {
         this.live = false;
         this.stateSubscription?.(); this.stateSubscription = undefined;
         this.model = undefined;
+        this.pageToolbar = undefined;
         this.toolbar = undefined; this.filtersHost = undefined;
         this.statusHost = undefined; this.resultsHost = undefined;
         this.queryInput = undefined; this.modeSelect = undefined;
@@ -312,6 +319,15 @@ export class MnemeRootEditorView extends VanillaView<MnemeRootEditorViewProps> {
         this.root.append(this.toolbar, this.statusHost, this.resultsHost);
     }
 
+    private pageToolbarProps(): PageToolbarViewProps {
+        if (!this.model) throw new Error("Mneme root toolbar has no editor model.");
+        return {
+            name: "mneme-root-toolbar",
+            model: this.model,
+            borderBottom: true,
+        };
+    }
+
     private subscribeToModel(model: MnemeRootEditorModel): void {
         this.stateSubscription?.();
         this.stateSubscription = this.ownSubscription(model.state.subscribe(
@@ -332,6 +348,7 @@ export class MnemeRootEditorView extends VanillaView<MnemeRootEditorViewProps> {
         const { queryInput, modeSelect, filtersButton, searchButton, statusHost, resultsHost } = this;
         const model = this.model;
         if (!model || !queryInput || !modeSelect || !filtersButton || !searchButton || !statusHost || !resultsHost) return;
+        this.pageToolbar?.update(this.pageToolbarProps());
         const busy = state.resolving || state.searching;
         queryInput.update(this.queryProps(state, busy)); modeSelect.update(this.modeProps(state, busy));
         filtersButton.update(this.filterButtonProps(state)); searchButton.update(this.searchButtonProps(state, busy));

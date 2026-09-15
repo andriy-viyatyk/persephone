@@ -25,6 +25,9 @@ type EditorModuleCommon = {
      *  or reading the target (archive). Editors without it open through the
      *  default text-host flow. */
     newEditorModel?(filePath?: string): Promise<EditorModel>;
+    /** Folder-open factory for standalone editors whose construction depends on
+     *  the Explorer-named directory rather than an encoded link. */
+    newEditorModelForFolder?(anchorFolder: string): Promise<EditorModel>;
     /** Chrome-free body — the editor content WITHOUT `<TextChrome>`. Supplied
      *  by editors that can be embedded inside another editor — notebook per-note
      *  dispatch mounts `module.BodyView` so each note's editor has no page
@@ -41,6 +44,8 @@ export interface EditorMatcher {
     /** File-open resolution priority for this file name (highest wins;
      *  monaco is the 0 floor). */
     acceptFile?(fileName: string): number;
+    /** Folder-open resolution priority for this directory (highest wins). */
+    acceptFolder?(folderPath: string): number;
     /** Switch-widget offer priority for this language/file (ascending sort;
      *  monaco = 0 first). */
     switchOption?(language: string, fileName?: string): number;
@@ -76,6 +81,9 @@ export interface EditorDefinition {
     /** MCP-specific recovery guidance when this standalone editor is passed to
      *  `pages.addEditorPage`, which only constructs content-host editors. */
     readonly mcpHint?: string;
+
+    /** Icon token used for a directory claimed by this editor. */
+    readonly folderIcon?: string;
 
     /** Granular matching rules. Absent for pure standalone editors
      *  (browser / settings / about / mcp / storybook) that never match a file
@@ -134,6 +142,33 @@ class EditorRegistry {
             }
         }
         return bestId;
+    }
+
+    /** Resolve the best editor id for opening a folder. Category View is the
+     *  priority-0 fallback for every directory. */
+    resolveForFolder(folderPath: string): string {
+        let bestId = "category-view";
+        let bestPriority = 0;
+        for (const def of this.definitions.values()) {
+            const p = def.match?.acceptFolder?.(folderPath) ?? -1;
+            if (p > bestPriority) {
+                bestPriority = p;
+                bestId = def.id;
+            }
+        }
+        return bestId;
+    }
+
+    /** All folder editors that accept this directory, in ascending priority
+     *  order so Category View is the floor option. */
+    getFolderEditors(folderPath: string): string[] {
+        const results: { id: string; priority: number }[] = [];
+        for (const def of this.definitions.values()) {
+            const priority = def.match?.acceptFolder?.(folderPath) ?? -1;
+            if (priority >= 0) results.push({ id: def.id, priority });
+        }
+        results.sort((a, b) => a.priority - b.priority);
+        return results.map((result) => result.id);
     }
 
     /** All editor ids that accept the current host. Used by the page-level

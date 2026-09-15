@@ -8,6 +8,8 @@ import { mnemeConnection } from "../../api/mneme-connection";
 import { decodeMnemeFolderLink } from "../../content/mneme-folder-link";
 import { parseToolResult } from "../mneme-config/mnemeTypes";
 import { MnemeTreeProvider } from "../../content/tree-providers/MnemeTreeProvider";
+import { fpJoin } from "../../core/utils/file-path";
+import { editorRegistry } from "../base/editorRegistry";
 
 /** Search mode passed to `search`. Hybrid (FTS + vector) is the default; it
  *  degrades to text until the embedding model is provisioned. */
@@ -144,6 +146,22 @@ export class MnemeRootEditorModel extends EditorModel<MnemeRootEditorState> {
     private _statusSub: (() => void) | null = null;
 
     getIconElement = (): SVGElement | undefined => MemoryIcon.createElement({ color: MEMORY_ICON_COLOR });
+
+    /** The `.mneme` directory represented by this editor, only while the
+     *  current marker still resolves to Mneme Root. */
+    get folderAnchor(): string | undefined {
+        const rootFolder = this.state.get().rootFolder;
+        if (!rootFolder) return undefined;
+        const anchorFolder = fpJoin(rootFolder, ".mneme");
+        return editorRegistry.resolveForFolder(anchorFolder) === this.editorId
+            ? anchorFolder
+            : undefined;
+    }
+
+    findCompatibleEditors(): string[] {
+        const anchorFolder = this.folderAnchor;
+        return anchorFolder ? editorRegistry.getFolderEditors(anchorFolder) : [];
+    }
 
     /** Register the read-only "Wiki" tree panel when attached to a page
      *  (Pattern B — the editor is its own surviving secondary view). */

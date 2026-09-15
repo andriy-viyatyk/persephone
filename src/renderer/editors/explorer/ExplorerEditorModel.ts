@@ -14,9 +14,6 @@ import type { IPageHost } from "../../api/pages/IPageHost";
 import { fpBasename, fpDirname } from "../../core/utils/file-path";
 import { createFolderIconElement } from "../../components/icons/icon-elements";
 import { createLinkData } from "../../../shared/link-data";
-import { encodeCategoryLink } from "../../content/tree-providers/tree-provider-link";
-import { encodeGitTreeLink } from "../../content/git-tree-link";
-import { encodeMnemeFolderLink } from "../../content/mneme-folder-link";
 import { encodePersephoneBoardLink } from "../../content/persephone-board-link";
 import { openToolset as openToolsetLink } from "../../content/persephone-toolset-link";
 import { boardTrust } from "../../api/board-trust";
@@ -115,9 +112,7 @@ export class ExplorerEditor extends EditorModel<ExplorerEditorState> {
         const current = this.selectionState.get().selectedHref;
         if (current?.toLowerCase() === item.href.toLowerCase()) return;
         this.setSelectedHref(item.href);
-        const url = item.target === "git-tree" || item.target === "mneme-root"
-            ? encodeCategoryLink({ type: "file", url: this.rootPath, category: item.href })
-            : this.treeProvider.getNavigationUrl(item);
+        const url = this.treeProvider.getNavigationUrl(item);
         await app.events.openRawLink.sendAsync(createLinkData(url, {
             pageId: this.page.id,
             sourceId: "explorer",
@@ -262,24 +257,6 @@ export class ExplorerEditor extends EditorModel<ExplorerEditorState> {
             await registeredTools.refresh();
         }
         openToolsetLink(root, { pageId: page.id, sourceId: "explorer" });
-    }
-
-    openGitTree(root: string): void {
-        const page = this.page;
-        if (!page) throw new Error("Explorer action unavailable: no page host attached.");
-        void app.events.openRawLink.sendAsync(createLinkData(encodeGitTreeLink(root), {
-            pageId: page.id,
-            sourceId: "explorer",
-        }));
-    }
-
-    openMneme(root: string): void {
-        const page = this.page;
-        if (!page) throw new Error("Explorer action unavailable: no page host attached.");
-        void app.events.openRawLink.sendAsync(createLinkData(encodeMnemeFolderLink(root), {
-            pageId: page.id,
-            sourceId: "explorer",
-        }));
     }
 
     // ── Root navigation ──────────────────────────────────────────────

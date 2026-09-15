@@ -21,6 +21,9 @@ Release notes and changelog for Persephone (formerly js-notepad).
 - **MCP discovery recovers after lost context:** a `call` with no path returns the
   application overview and resets the session's remembered member-list hints. Use it again after a
   context compaction or whenever the earlier hints are no longer available.
+- **Special folders open their editors directly:** clicking a recognized `.git` or `.mneme` row in
+  File Explorer now opens Git Tree or Mneme instead of the folder contents. Use the page toolbar's
+  Editor switch to move between that editor and **Folder View**; ordinary folders are unchanged.
 
 ### Improvements
 

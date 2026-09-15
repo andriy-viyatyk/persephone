@@ -19,6 +19,7 @@ import { decodeGitTreeLink, encodeGitTreeLink } from "../../content/git-tree-lin
 import type { GitFileChange, GitSwitchTarget, GitPullOptions } from "../../../ipc/git-ipc";
 import type { ILinkDiffRevision } from "../../api/types/io.link-data";
 import { createIconElement } from "../../uikit/shared/slots";
+import { editorRegistry } from "../base/editorRegistry";
 
 export interface GitTreeEditorState extends EditorStateBase {
     /** State-type discriminator. */
@@ -195,6 +196,22 @@ export class GitTreeEditorModel extends EditorModel<GitTreeEditorState> {
      *  open and never changes for a given instance. */
     get repoName(): string {
         return repoFolderName(this.state.get().repoRoot);
+    }
+
+    /** The `.git` directory represented by this editor, only while the
+     *  current marker still resolves to Git Tree. */
+    get folderAnchor(): string | undefined {
+        const repoRoot = this.state.get().repoRoot;
+        if (!repoRoot) return undefined;
+        const anchorFolder = fpJoin(repoRoot, ".git");
+        return editorRegistry.resolveForFolder(anchorFolder) === this.editorId
+            ? anchorFolder
+            : undefined;
+    }
+
+    findCompatibleEditors(): string[] {
+        const anchorFolder = this.folderAnchor;
+        return anchorFolder ? editorRegistry.getFolderEditors(anchorFolder) : [];
     }
 
     get selectedCommitHash(): string | undefined {

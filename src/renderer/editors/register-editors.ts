@@ -125,6 +125,7 @@ interface EditorRow {
     guidePath?: string;
     hasContentHost?: boolean;
     mcpHint?: string;
+    folderIcon?: string;
     /** Explicit acceptance override (monaco, file-diff). */
     accepts?: EditorDefinition["accepts"];
     load: () => Promise<EditorModule>;
@@ -175,8 +176,8 @@ const EDITORS: EditorRow[] = [
     // Importer touched for the Storybook editor's .tsx -> .ts native-view conversion.
     { id: "storybook-view", name: "Storybook", load: async () => (await import("./storybook")).storybookModule },
     { id: "category-view", name: "Folder View", guidePath: "editors/folder", load: async () => (await import("./category")).categoryModule },
-    { id: "git-tree", name: "Git Tree", guidePath: "editors/git-tree", load: async () => (await import("./git-tree")).gitTreeModule },
-    { id: "mneme-root", name: "Mneme", guidePath: "mneme", mcpHint: 'Use the "mneme-root" editor facade for root and search state; use the Mneme MCP server for document contents and document operations. This facade does not expose transport credentials.', load: async () => (await import("./mneme-root")).mnemeRootModule },
+    { id: "git-tree", name: "Git Tree", guidePath: "editors/git-tree", folderIcon: "git", load: async () => (await import("./git-tree")).gitTreeModule },
+    { id: "mneme-root", name: "Mneme", guidePath: "mneme", folderIcon: "mneme", mcpHint: 'Use the "mneme-root" editor facade for root and search state; use the Mneme MCP server for document contents and document operations. This facade does not expose transport credentials.', load: async () => (await import("./mneme-root")).mnemeRootModule },
     { id: "board-view", name: "Boards", guidePath: "editors/board", load: async () => (await import("./board")).boardModule },
     { id: "toolset-view", name: "Agent Tool", guidePath: "agent-tools", load: async () => (await import("./toolset")).toolsetModule },
     {
@@ -213,6 +214,7 @@ for (const e of EDITORS) {
         guidePath: e.guidePath,
         hasContentHost: e.hasContentHost ?? false,
         mcpHint: e.mcpHint,
+        folderIcon: e.folderIcon,
         accepts: e.accepts ?? (match ? makeAccepts(match) : () => -1),
         match,
         loadModule: e.load,

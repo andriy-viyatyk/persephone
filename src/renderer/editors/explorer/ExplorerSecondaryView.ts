@@ -19,7 +19,6 @@ import type { IconButtonProps } from "../../uikit/IconButton/IconButtonView";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import type { Cleanup } from "../../core/utils/DisposableStore";
 import { createIconElement } from "../../uikit/shared/slots";
-import { MEMORY_ICON_COLOR } from "../../theme/palette-colors";
 import { fpBasename, fpDirname } from "../../core/utils/file-path";
 import { BOARD_MANIFEST_FILE } from "../board/board-manifest";
 import type { ExplorerEditor } from "./ExplorerEditorModel";
@@ -247,7 +246,7 @@ export default class ExplorerSecondaryView extends VanillaView<SecondaryViewProp
     };
 
     private readonly renderTrailingAction = (item: ITreeProviderItem): Node | undefined => {
-        let icon: "board" | "tools" | "git" | undefined;
+        let icon: "board" | "tools" | undefined;
         let name = "";
         let title = "";
         let onClick: IconButtonProps["onClick"] | undefined;
@@ -271,22 +270,6 @@ export default class ExplorerSecondaryView extends VanillaView<SecondaryViewProp
                     void this.model.openToolset(fpDirname(item.href));
                 };
             }
-        } else if (item.target === "git-tree") {
-            icon = "git";
-            name = "explorer-open-git";
-            title = "Open Git Tree";
-            onClick = (event) => {
-                event.stopPropagation();
-                this.model.openGitTree(fpDirname(item.href));
-            };
-        } else if (item.target === "mneme-root") {
-            name = "explorer-open-mneme";
-            title = "Open Mneme Root";
-            onClick = (event) => {
-                event.stopPropagation();
-                this.model.openMneme(fpDirname(item.href));
-            };
-            return this.getTrailingButton(item.href, name, title, "memory", onClick);
         }
         return icon && onClick
             ? this.getTrailingButton(item.href, name, title, icon, onClick)
@@ -297,14 +280,11 @@ export default class ExplorerSecondaryView extends VanillaView<SecondaryViewProp
         href: string,
         name: string,
         title: string,
-        icon: "board" | "tools" | "git" | "memory",
+        icon: "board" | "tools",
         onClick: NonNullable<IconButtonProps["onClick"]>,
     ): Node {
         let button = this.trailingButtons.get(href);
-        const iconNode = icon === "memory"
-            ? createIconElement("memory", { color: MEMORY_ICON_COLOR })
-            : icon;
-        const props = { name, size: "sm" as const, title, icon: iconNode, onClick };
+        const props = { name, size: "sm" as const, title, icon, onClick };
         if (!button) {
             button = this.child(new IconButtonView(props));
             this.trailingButtons.set(href, button);

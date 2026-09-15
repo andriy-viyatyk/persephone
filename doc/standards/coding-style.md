@@ -314,6 +314,7 @@ const nodefs = require("fs");
 - `content/providers/FileProvider.ts` — low-level binary I/O provider that intentionally bypasses `app.fs` archive transparency
 - `content/providers/CacheFileProvider.ts` — low-level cache I/O provider for content pipe cache files
 - `content/tree-providers/FileTreeProvider.ts` — filesystem tree provider that intentionally bypasses `app.fs` archive transparency (archive browsing is handled by ArchiveTreeProvider)
+- `editors/base/folder-markers.ts` — synchronous local marker probe used by the folder matcher; path operations still go through `file-path`
 - `content/tree-providers/ArchiveTreeProvider.ts` — archive tree provider, uses `path.basename`/`path.extname` on plain filenames (not archive-aware path operations)
 - `library-require.ts` — custom `require()` transpiler that uses `fs.readFileSync` for module compilation
 - `themes/index.ts` — uses `fs.readFileSync` at startup before `app.fs` is initialized

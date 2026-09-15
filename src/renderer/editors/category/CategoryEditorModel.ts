@@ -9,11 +9,13 @@ import {
     type EditorStateBase,
 } from "../base/EditorModel";
 import { createFolderIconElement } from "../../components/icons/icon-elements";
-import { fpBasename } from "../../core/utils/file-path";
+import { fpBasename, fpNormalizeForCompare } from "../../core/utils/file-path";
 import { LinkEditor } from "../link-editor/LinkEditor";
 import { ExplorerEditor } from "../explorer/ExplorerEditorModel";
 import { ArchiveEditor } from "../archive/ArchiveEditor";
 import { createLinkData } from "../../../shared/link-data";
+import { editorRegistry } from "../base/editorRegistry";
+import type { IPageHost } from "../../api/pages/IPageHost";
 import {
     decodeCategoryLink,
     encodeCategoryLink,
@@ -61,6 +63,29 @@ function findTreeProviderHost(
     return null;
 }
 
+function pathContainsFolder(rootPath: string, folderPath: string): boolean {
+    const normalizedRoot = fpNormalizeForCompare(rootPath);
+    const normalizedFolder = fpNormalizeForCompare(folderPath);
+    if (normalizedRoot === normalizedFolder) return true;
+    const separator = normalizedRoot.endsWith("/") ? "" : "/";
+    return normalizedFolder.startsWith(normalizedRoot + separator);
+}
+
+/** Build a filesystem Category link that preserves the page's matching tree provider. */
+export function buildFolderCategoryLink(page: IPageHost, anchorFolder: string): ITreeProviderLink {
+    for (const editor of page.panelEditors) {
+        if (!isCategoryTreeProviderHost(editor)) continue;
+        const provider = editor.treeProvider;
+        if (!provider || !pathContainsFolder(provider.rootPath, anchorFolder)) continue;
+        return {
+            type: provider.type,
+            url: provider.sourceUrl,
+            category: anchorFolder,
+        };
+    }
+    return { type: "file", url: anchorFolder, category: anchorFolder };
+}
+
 function copyItem(item: ILink): ILink {
     return {
         ...item,
@@ -90,6 +115,18 @@ export class CategoryEditorModel extends EditorModel<CategoryEditorModelState> {
     get categoryPath(): string | undefined {
         const link = this.decodedLink;
         return link?.category;
+    }
+
+    /** The category folder this editor represents, when its link is a local
+     *  filesystem category that can participate in folder resolution. */
+    get folderAnchor(): string | undefined {
+        const link = this.decodedLink;
+        return link?.type === "file" ? link.category : undefined;
+    }
+
+    findCompatibleEditors(): string[] {
+        const anchorFolder = this.folderAnchor;
+        return anchorFolder ? editorRegistry.getFolderEditors(anchorFolder) : [];
     }
 
     get providerHost(): CategoryTreeProviderHostEditor | null {

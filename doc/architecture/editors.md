@@ -36,14 +36,15 @@ All editor code lives in `/src/renderer/editors/`.
 | `file-diff` | `FileDiffEditor` | (switch — "Git Diff", offered for files in a git repo) | ✓ | ✓ |
 | `image-view` | `ImageEditor` | `.png`, `.jpg`, `.gif`, `.webp`, `.bmp`, `.ico` | — | — |
 | `archive-view` | `ArchiveEditor` | `.zip`, `.epub`, `.docx`, `.xlsx`, etc. | — | — |
-| `category-view` | `CategoryEditor` | `tree-category://` links | — | — |
+| `category-view` | `CategoryEditor` | `tree-category://` links and unclaimed directories | — | — |
+| `git-tree` | `GitTreeEditorModel` | `.git` directories (resolved folder links) | — | — |
+| `mneme-root` | `MnemeRootEditorModel` | `.mneme` directories (resolved folder links) | — | — |
 | `browser-view` | `BrowserEditorModel` | (none — opened via UI) | — | — |
 | `mcp-view` | `McpInspectorEditorModel` | (none — opened via UI) | — | — |
 | `about-view` | `AboutEditor` | (none — opened via UI) | — | — |
 | `settings-view` | `SettingsEditor` | (none — opened via UI) | — | — |
 | `video-view` | `VideoEditorModel` | `.mp4`, `.mkv`, `.webm`, `.mp3`, `.flac`, `.wav`, `.ogg`, `.m3u8`, `.hls` | — | — |
 | `storybook-view` | `StorybookEditorModel` | (none — opened via UI) | — | — |
-| `git-tree` | `GitTreeEditorModel` | (none — opened via the `.git` node's trailing button in Explorer) | — | — |
 | `compare` | `CompareEditor` | (triggered) | — | — |
 | `board-view` | `BoardEditorModel` | folders carrying `board-manifest.json` (opened via `persephone-board://`; also acts as a custom editor for files it associates via `fileMasks` — see "Custom-Editor Boards") | — | — |
 | `toolset-view` | `ToolsetEditorModel` | folders carrying `tools-manifest.json` (opened via `persephone-toolset://`) | — | — |
@@ -364,6 +365,16 @@ For non-text editors (Image, Browser, etc.) without `CONTENT_HOST_TRAIT`, there 
 
 When the **source** is host-less but the **target** is a built-in file editor, a plain create+swap is not enough — the target has no host to adopt and its `switchFrom` would have nothing to build over. This happens when switching back from the Board Info install page ("+"), or from the host-less Archive viewer that claims zip-based files (`.xlsx`/`.docx`/`.pptx`). In that case `switchMainEditor` dispose-and-rebuilds the target over the file (`createEditorFromFile(filePath, …)`), reading the source editor's `filePath` (which host-less editors like Archive expose via a getter override). The Board Info target itself is exempt — its tolerant `switchFrom` captures the source's `filePath` so the install page can still match catalog editors and keep the file name.
 
+Folder editors are a second host-less switching case. `category-view`, `git-tree`, and
+`mneme-root` expose a verified `folderAnchor` and return the registered folder candidates for
+that directory from `findCompatibleEditors()`. When switching between those candidates, the
+switcher asks the target module's `newEditorModelForFolder(anchorFolder)` factory to preserve
+the editor-specific interpretation of the same directory. Switching to Folder View builds its
+category link from the page's matching Explorer provider, preserving the provider type and
+source URL needed by the category editor; a self-rooted file provider is the fallback outside
+Explorer pages. An editor whose marker no longer resolves simply has no compatible folder
+switch options.
+
 ## EditorModule Interface & Registration
 
 Each editor folder's `index.ts` exports an `EditorModule` — the lazily-loaded half of the
@@ -376,6 +387,9 @@ interface EditorModule {
         // file-open factory for standalone (no-host) editors whose construction depends on
         // the opened path — decoding a link (git-tree, mneme-root, board, toolset, category),
         // seeding path-derived state (image, video), or reading the target (archive)
+    newEditorModelForFolder?(anchorFolder: string): Promise<EditorModel>;
+        // folder-open/switch factory for editors that claim a filesystem directory;
+        // the editor derives its own state from the verified folder anchor
     // The required native main editor arm.
     View: VanillaViewCtor<{ model: EditorModel }>;
     // Chrome-free embedded arm: vanilla BodyView.
@@ -493,6 +507,17 @@ Markdown sits at 10 rather than sharing monaco's floor because Persephone is use
 Content-based detection is **not** part of this path: `acceptFile` never sees content. It belongs to `accepts()` (priority 60 when a `detectsContent` matcher fires) and reaches the user through the switch widget and `detectContentEditor` — see [Content-Based Editor Detection](#content-based-editor-detection).
 
 All editor registration is in `/src/renderer/editors/register-editors.ts`; the matchers themselves are in `/src/renderer/editors/base/editor-matchers.ts`.
+
+Folder matchers live beside the file matchers and are synchronous: `category-view` accepts every
+directory at priority 0, while Git Tree and Mneme claim only enabled, marker-verified `.git` and
+`.mneme` directories at priority 20. The marker probe is isolated in
+`/src/renderer/editors/base/folder-markers.ts` because the registry contract is synchronous.
+
+`editorRegistry.resolveForFolder(folderPath)` selects the highest-priority folder claimant and
+falls back to `category-view`; `getFolderEditors(folderPath)` returns all non-negative claimants
+in ascending priority for the switch widget. `FileTreeProvider` uses the resolved id and its
+optional `folderIcon` metadata for tree rows, while `folder-editor-link.ts` maps the id and
+anchor to the existing category, Git Tree, or Mneme link scheme.
 
 ## Custom-Editor Boards
 

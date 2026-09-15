@@ -8,7 +8,8 @@ Overview of all active and planned epics and tasks.
 
 ## Active
 
-*(nothing active)*
+- *(no epic)*
+  - [ ] US-1427: Mneme Wiki panel — keep the Close button visible while the panel is collapsed
 
 ## Planned
 

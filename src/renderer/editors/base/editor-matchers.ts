@@ -1,6 +1,8 @@
 import type { AcceptanceInput, EditorMatcher } from "./editorRegistry";
-import { fpExtname, isArchiveFile } from "../../core/utils/file-path";
+import { isGitRepoDir } from "./folder-markers";
+import { fpBasename, fpExtname, isArchiveFile } from "../../core/utils/file-path";
 import { getLanguageByExtension } from "../../core/utils/language-mapping";
+import { settings } from "../../api/settings";
 
 // ── Shared helpers (relocated from register-editors.ts) ──────────────────────
 
@@ -147,6 +149,14 @@ export const EDITOR_MATCHERS: Record<string, EditorMatcher> = {
     },
     "category-view": {
         acceptFile: (fn) => (fn.startsWith("tree-category://") ? 200 : -1),
+        acceptFolder: () => 0,
+    },
+    "git-tree": {
+        acceptFolder: (folderPath) => (isGitRepoDir(folderPath) ? 20 : -1),
+    },
+    "mneme-root": {
+        acceptFolder: (folderPath) =>
+            fpBasename(folderPath) === ".mneme" && !!settings.get("mneme.enabled") ? 20 : -1,
     },
     "env-vars-view": {
         acceptFile: (fn) => (matchesPattern(fn, /\.env\.json$/i) ? 20 : -1),

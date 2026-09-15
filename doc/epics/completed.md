@@ -1,3 +1,19 @@
+## EPIC-102 — Folder editors — a registered editor for a folder, with a switch back to its content
+
+Completed 2026-09-15. [Epic document](EPIC-102.md).
+
+- [x] US-1424: Folder-editor registration: `acceptFolder`, `resolveForFolder`, and the anchor-folder contract
+- [x] US-1425: Explorer: one click opens the folder's editor; drop the trailing buttons
+- [x] US-1426: The editor switch on a folder page, and a page toolbar for the Mneme root editor
+
+`.git` and `.mneme` rows now resolve to their registered editors and open them on a single click;
+their duplicate trailing actions are gone. The normal editor switch exposes Folder View and preserves
+the Explorer provider context, while ordinary folders remain unchanged. The registry, matcher,
+folder-link, Explorer, editor-model, and Mneme-toolbar changes were verified in a live window.
+Completion review found no architecture concerns; developer and user documentation were updated by
+the completion skills. The separate US-1427 Mneme panel fix remains active and is not part of this
+epic.
+
 ## EPIC-101 — Structured descriptor access and the AiVision Explorer board
 
 Completed 2026-09-15. [Epic document](EPIC-101.md).

@@ -266,6 +266,8 @@ export const myEditorModule: EditorModule = {
     // Only for standalone (no-host) editors that open FROM a file path
     // (link decode / path-derived state) — text-bearing editors never need it:
     // newEditorModel: async (filePath?: string) => { ... },
+    // Only for standalone editors that claim a filesystem folder:
+    // newEditorModelForFolder: async (anchorFolder: string) => { ... },
     // Only for embeddable editors (rendered inside Notebook notes):
     // BodyView: MyEditorEmbeddedView,
 };
@@ -306,11 +308,20 @@ explicit `accepts` on their row. Row order matters — it breaks priority ties i
 | `accepts(input)` | row (override) | Returns priority ≥ 0 if this editor accepts the input, -1 otherwise; default derived from the matcher |
 | `load()` | row | Module importer (literal dynamic `import`) |
 | `acceptFile(fileName)` | matcher | Returns priority ≥ 0 if this editor should **open** the file by default, -1 otherwise. File **name** only — no language, no content |
+| `acceptFolder(folderPath)` | matcher | Returns priority >= 0 if this editor should open the directory by default, -1 otherwise |
 | `validForLanguage(lang)` | matcher | Returns `true` if the editor is valid for the language |
 | `switchOption(lang, filePath?)` | matcher | Returns priority ≥ 0 to show in the switch dropdown, -1 to hide |
 | `detectsContent(lang, content)` | matcher | Returns `true` if content matches this editor (regex-based, no JSON parsing) |
 
 `acceptFile` and `switchOption` answer different questions and are independently optional. `acceptFile` decides which editor a file *opens* in (`editorRegistry.resolve` / `resolveId` consult nothing else); `switchOption` decides which editors appear in the switch widget for a *language*. An editor may declare either or both — `md-view` declares both (so Markdown opens in Preview *and* is switchable), while `html-view` and `mermaid-view` declare only `switchOption` (so they are reachable by switching but never claim a file on open).
+
+Folder editors use the parallel `acceptFolder` contract. `editorRegistry.resolveForFolder` selects
+the highest-priority claimant, with `category-view` as the priority-0 fallback for every directory;
+`getFolderEditors` returns all non-negative claimants in ascending priority for the switch widget.
+A folder editor that participates in this flow should expose a verified `folderAnchor`, return
+the same candidates from `findCompatibleEditors()`, and provide
+`newEditorModelForFolder(anchorFolder)` so switching preserves its editor-specific path
+interpretation. Keep marker and setting gates in the matcher, not in Explorer views or providers.
 
 The default `makeAccepts` implementation checks `acceptFile(fileName)` first, then
 `switchOption(language, fileName)`, and finally `detectsContent` when a host is available. A
@@ -335,6 +346,10 @@ The `acceptFile` ladder as actually registered — highest wins, and ties go to 
 Content-based detection is **not** on this ladder — it scores `60` inside `accepts()` and never reaches `acceptFile`, so it influences the switch widget and `detectContentEditor`, not which editor opens a file.
 
 A trusted board declaring `editorPriority` in its `board-manifest.json` competes on this same ladder and must **strictly** exceed the best built-in claimant to become the default. See [Custom-Editor Boards](../architecture/editors.md#custom-editor-boards).
+
+Folder resolution uses a separate ladder: `0` is the `category-view` floor for every directory;
+specialized folder editors such as Git Tree and Mneme use `20` only for their enabled, verified
+marker directories.
 
 ## Step 6: Update Shared Types (if introducing new IDs)
 
@@ -392,7 +407,7 @@ views. Do not register a replaced record view with `this.child()`.
 - [ ] `getRestoreData()` returns persisted state (stripped of runtime-only fields) — text-bearing editors inherit the identity-only base and extend it only for extra durable fields
 - [ ] `dispose()` calls `super.dispose()` and cleans up domain-only resources (host subscriptions registered via `registerHostSubscription` are torn down by the base)
 - [ ] For text-bearing editors: `displayName` set; host content writes go through `writeToHost`; view settings ride `mirrorHostSettings`
-- [ ] `EditorModule` exports `createEditor` + required native `View` (plus `newEditorModel` for standalone file-open editors, `BodyView` for embeddable ones)
+- [ ] `EditorModule` exports `createEditor` + required native `View` (plus `newEditorModel` for standalone file-open editors, `newEditorModelForFolder` for standalone folder editors, and `BodyView` for embeddable ones)
 - [ ] Row added to the `EDITORS` table in `register-editors.ts`; matcher added to `EDITOR_MATCHERS` in `editor-matchers.ts` if the editor matches files/languages
 - [ ] User-facing editor has a guide page under `assets/guides/editors/` or the appropriate screen guide and the row's `guidePath` points to its canonical path; development-only editors may omit the mapping
 - [ ] The row's `load` keeps a literal `import("./…")` — preserves code splitting

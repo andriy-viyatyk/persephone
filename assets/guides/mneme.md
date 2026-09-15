@@ -30,6 +30,8 @@ Mneme is **off by default** and runs as a separate local service (`mneme.exe`) t
 
 ```
 +---------------------------------------------------------------------+
+| [Page nav]                                  [Editor switch]          |  page toolbar: navigation at left and switch at right
++---------------------------------------------------------------------+
 | [Search query] [Text/Vector/Hybrid] [Filters]             [Search]  |  Mneme search toolbar, query and mode at left, Search at right
 +---------------------------------------------------------------------+
 | [include tags]                                                      |  expanded Filters panel, first filter row
@@ -59,6 +61,7 @@ Mneme is **off by default** and runs as a separate local service (`mneme.exe`) t
 - Date from → `mneme-filter-date-from`
 - Date to → `mneme-filter-date-to`
 - Clear filters → `mneme-filters-clear`
+- Page navigation and Editor switch → no entry: shell-owned controls
 
 ### When Mneme Config is stopped
 
@@ -101,6 +104,7 @@ Mneme is **off by default** and runs as a separate local service (`mneme.exe`) t
 
 ### Drawn controls without `elements`
 
+- Page navigation and Editor switch — no entry: shell-owned controls are addressed by the shared chrome.
 - Per-root dynamic reindex/remove/filter configuration controls and wiki tree rows — no entry: repeated data controls are owned by dynamic root/tree state; stable Mneme config/root facade anchors are the declared entries.
 
 Evidence: `MnemeConfigView.ts:54-87`, `ModelPanel.ts:87-113`, `RootsPanel.ts:46-68`, and `MnemeRootEditorView.ts:296-415`.
@@ -138,7 +142,7 @@ Toolbar buttons:
 
 ## Searching a knowledge base
 
-In the **File Explorer**, any folder that is a Mneme root shows a **`.mneme`** entry — visible only while Mneme is enabled, mirroring the `.git` entry shown for git repositories. To open the **Mneme root** editor, click the small **Open Mneme Root** button (memory icon) that appears on the right side of the `.mneme` row. Clicking the row itself selects it and opens its plain contents; use the chevron (or `ArrowRight`/`ArrowLeft` on the keyboard) to expand or collapse it — the trailing button is what opens the search editor.
+In the **File Explorer**, any folder that is a Mneme root shows a **`.mneme`** entry — visible only while Mneme is enabled, mirroring the `.git` entry shown for git repositories. Click the `.mneme` row to open the **Mneme** editor directly; its separate **Open Mneme Root** button is no longer needed. Use the Editor switch in the page toolbar to choose **Folder View** when you need to browse the `.mneme` folder's own contents, then switch back to Mneme. Use the chevron (or `ArrowRight`/`ArrowLeft` on the keyboard) to expand or collapse the row. Ordinary folders still open in Folder View and do not show an editor switch.
 
 **Search modes** (selector next to the search box):
 

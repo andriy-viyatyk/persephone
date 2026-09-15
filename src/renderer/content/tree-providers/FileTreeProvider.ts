@@ -7,9 +7,8 @@ import type {
 } from "../../api/types/io.tree";
 import { copyPathsInto } from "../../core/utils/copy-files";
 import { encodeCategoryLink } from "./tree-provider-link";
-import { encodeGitTreeLink } from "../git-tree-link";
-import { encodeMnemeFolderLink } from "../mneme-folder-link";
-import { settings } from "../../api/settings";
+import { folderEditorLinkFor } from "../folder-editor-link";
+import { editorRegistry } from "../../editors/base/editorRegistry";
 import { debounce } from "../../../shared/utils";
 
 // Direct Node.js imports — FileTreeProvider is a low-level filesystem provider
@@ -60,21 +59,15 @@ export class FileTreeProvider implements ITreeProvider {
             const isDir = entry.isDirectory();
 
             if (isDir) {
-                // A real `.git` repo dir → Git Tree entry point (EPIC-030 / US-612).
-                const isGit = entry.name === ".git" && this.isGitRepoDir(fullPath);
-                // A `.mneme` dir (a Mneme root's per-root store) → Mneme root editor
-                // (EPIC-032 / US-663). Name-only detection, gated on `mneme.enabled`.
-                const isMneme = !isGit
-                    && entry.name === ".mneme"
-                    && !!settings.get("mneme.enabled");
+                const target = editorRegistry.resolveForFolder(fullPath);
                 folders.push({
                     title: entry.name,
                     href: fullPath,
                     category: dirPath,
                     tags: [],
                     isDirectory: true,
-                    ...(isGit ? { target: "git-tree", icon: "git" } : {}),
-                    ...(isMneme ? { target: "mneme-root", icon: "mneme" } : {}),
+                    target,
+                    icon: editorRegistry.getById(target)?.folderIcon,
                 });
             } else {
                 const ext = path.extname(entry.name).toLowerCase();
@@ -135,28 +128,8 @@ export class FileTreeProvider implements ITreeProvider {
     }
 
     getNavigationUrl(item: ITreeProviderItem): string {
-        // `.git` repo dir → open the Git Tree editor (repoRoot = parent of .git).
-        if (item.target === "git-tree") {
-            return encodeGitTreeLink(path.dirname(item.href));
-        }
-        // `.mneme` dir → open the Mneme root editor (rootFolder = parent of .mneme).
-        if (item.target === "mneme-root") {
-            return encodeMnemeFolderLink(path.dirname(item.href));
-        }
         if (!item.isDirectory) return item.href;
-        return encodeCategoryLink({ type: this.type, url: this.sourceUrl, category: item.href });
-    }
-
-    /** Cheap, `git.enabled`-gated marker check for a real `.git` repo directory
-     *  (HEAD + objects present). No git spawn. (EPIC-030 Concern 2B / US-612.) */
-    private isGitRepoDir(gitPath: string): boolean {
-        if (!settings.get("git.enabled")) return false;
-        try {
-            return nodefs.existsSync(path.join(gitPath, "HEAD"))
-                && nodefs.existsSync(path.join(gitPath, "objects"));
-        } catch {
-            return false;
-        }
+        return folderEditorLinkFor(item.target ?? "category-view", item.href, this.sourceUrl);
     }
 
     async getNavigationUrlByHref(href: string): Promise<string> {

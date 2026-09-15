@@ -8,7 +8,16 @@ import { parseBoardEditorId, customEditorRegistry } from "../board/custom-editor
 import { BOARD_INFO_EDITOR_ID } from "../board-info/board-info-id";
 import type { PageModel } from "../../api/pages/PageModel";
 import { guard } from "../../core/utils/guard";
-import { fpBasename } from "../../core/utils/file-path";
+import { fpBasename, fpNormalizeForCompare } from "../../core/utils/file-path";
+
+function isFolderEditor(editorId: string): boolean {
+    return !!editorRegistry.getById(editorId)?.match?.acceptFolder;
+}
+
+function getFolderAnchor(editor: EditorModel): string | undefined {
+    const candidate = (editor as EditorModel & { readonly folderAnchor?: string }).folderAnchor;
+    return candidate || undefined;
+}
 
 // ============================================================================
 // editor-switch — the switch-widget "open this file in editor X" transition.
@@ -57,6 +66,55 @@ export async function switchMainEditor(
     const oldEditor = page.mainEditorInstance;
     if (!oldEditor) return;
     if (oldEditor.editorId === newEditorId) return;
+
+    // Folder editors have no filePath and cannot use the regular host-transfer or
+    // dispose-and-rebuild paths. Reuse a surviving Pattern B instance first, then
+    // build the target from the exact Explorer anchor before those paths can observe
+    // the old editor's undefined filePath.
+    if (isFolderEditor(oldEditor.editorId) && isFolderEditor(newEditorId)) {
+        const anchorFolder = getFolderAnchor(oldEditor);
+        if (!anchorFolder) {
+            throw new Error(
+                `Folder switch unavailable: this page has no resolvable folder for "${newEditorId}".`,
+            );
+        }
+        if (!editorRegistry.getFolderEditors(anchorFolder).includes(newEditorId)) {
+            throw new Error(
+                `Folder switch unavailable: "${newEditorId}" is not offered for "${anchorFolder}".`,
+            );
+        }
+
+        const anchorKey = fpNormalizeForCompare(anchorFolder);
+        const existing = page.editors.find((editor) => {
+            if (editor.editorId !== newEditorId) return false;
+            const editorAnchor = getFolderAnchor(editor);
+            return !!editorAnchor && fpNormalizeForCompare(editorAnchor) === anchorKey;
+        });
+        if (existing) {
+            await page.setMainEditor(existing);
+            existing.onNavigationReuse?.();
+            return;
+        }
+
+        const module = await editorRegistry.getModule(newEditorId);
+        const next = await module.newEditorModelForFolder?.(anchorFolder);
+        if (!next) {
+            throw new Error(
+                `Folder switch unavailable: editor "${newEditorId}" has no folder factory.`,
+            );
+        }
+        if (newEditorId === "category-view") {
+            const { buildFolderCategoryLink, CategoryEditorModel } = await import(
+                "../category/CategoryEditorModel"
+            );
+            if (next instanceof CategoryEditorModel) {
+                next.initFromLink(buildFolderCategoryLink(page, anchorFolder));
+            }
+        }
+        await next.restore();
+        await page.setMainEditor(next);
+        return;
+    }
 
     // A board editor (either side) has no shared content host to hand over via
     // `switchFrom`, so a board-boundary switch confirms release of the old editor

@@ -4,6 +4,7 @@ import { GitTreeEditorView } from "./GitTreeEditorView";
 import { decodeGitTreeLink } from "../../content/git-tree-link";
 import type { EditorModule } from "../base/editorRegistry";
 import type { EditorModel } from "../base/EditorModel";
+import { fpDirname } from "../../core/utils/file-path";
 
 export const gitTreeModule: EditorModule = {
     createEditor: () =>
@@ -17,6 +18,13 @@ export const gitTreeModule: EditorModule = {
             const link = decodeGitTreeLink(filePath);
             if (link) model.initFromRepoRoot(link.repoRoot);
         }
+        return model as unknown as EditorModel;
+    },
+    newEditorModelForFolder: async (anchorFolder: string) => {
+        const model = new GitTreeEditorModel(
+            new TComponentState(getDefaultGitTreeEditorState()),
+        );
+        model.initFromRepoRoot(fpDirname(anchorFolder));
         return model as unknown as EditorModel;
     },
 };

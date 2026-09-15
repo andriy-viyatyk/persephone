@@ -13,7 +13,10 @@ thumbnails, and file operations appropriate to the location.
 ## How to Open
 
 Click a folder in File Explorer or an Archive panel. Archive folders are read-only and single-select;
-local folders provide the writable operations and selection behavior.
+local folders provide the writable operations and selection behavior. Ordinary local folders open in
+Folder View and have no editor switch. A recognized `.git` or `.mneme` folder opens Git Tree or
+Mneme instead; use the Editor switch in that page's toolbar to open the folder's own contents in
+Folder View and switch back.
 
 ## Layout
 
