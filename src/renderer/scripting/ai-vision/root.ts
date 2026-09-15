@@ -124,31 +124,34 @@ resolve the MCP router's main.* or windows[i].* paths. It returns a bounded plai
 args or value (not both), and never returns hints or resolver metadata.
 `.trim();
 
+/**
+ * The root hint's orientation block. Deliberately NOT a member list: the members block follows it
+ * in the same hint, with the cautions and signatures, so enumerating them here said everything
+ * twice. What this says instead is what the members cannot — what Persephone IS, and what an agent
+ * can do with it.
+ */
 const ROOT_OVERVIEW = `
-pages - open pages/tabs and the agent output channel; e.g. pages.logView.push([...])
-page - the active page and its editor; e.g. page.content
-script - execute renderer JavaScript or TypeScript; e.g. script.execute("1 + 1")
-helpSearch - search the live descriptor graph for object-model paths; use guides.search for documentation text; e.g. helpSearch("add rows")
-settings - read or persist application configuration; e.g. settings.set("theme", "monokai")
-fs - read/write files, directories, and OS file integration; e.g. fs.read("path")
-ui - dialogs, notifications, progress, locks, and curated controls; e.g. ui.elements
-ui.guide.step(target, message) - walk the user through the UI one control at a time, waiting for Skip or Next
-dialogs - inspect and answer open renderer dialogs; e.g. dialogs[0].buttons
-menus - inspect and act on the open popup menu; e.g. menus[0].items
-shell - URLs, screen capture, encryption, and runtime/update services; e.g. shell.version
-window - this window's state, sidebar, zoom, and multi-window actions; e.g. window.zoomLevel
-proc - spawn and manage child processes; no safe example - inspect its cautioned member below
-boards - local boards and their lifecycle/catalog operations; e.g. boards.list()
-tools - search/execute registered Agent Tools, inspect toolsets, and unregister one; e.g. tools.search()
-boardVars - administer board environment variables and secrets; no safe example - inspect its cautioned members below
-editors - inspect available editors and file-language matches; e.g. editors.getAll()
-recent - access recently opened file paths; e.g. recent.files
-downloads - inspect and manage download entries; e.g. downloads.downloads
-menuFolders - inspect configured sidebar folders; e.g. menuFolders.folders
-events - recent changes in this renderer window; e.g. events.recent()
-windows - inspect open/closed application windows; e.g. windows[0].status
-main - process-wide diagnostics and gated scripting; e.g. main.runtime
-guides - documentation tree and text search for how to do something or where it is; show a guide by opening it with pages.openUrl("persephone-guide://<path>") or pages["about-page"].editor.open("<path>"); e.g. guides.editors.grid
+Persephone is a developer notepad on the user's desktop: tabbed pages, each with a specialized
+editor (Monaco text, JSON/CSV grids, markdown, notebooks, compare, browser). Every path here has
+the same name in scripts, so a hint doubles as a scripting tutorial. Paths address this window;
+prefix windows[i]. to target another, and main is process-wide.
+
+What you can do here:
+  SHOW the user something, or ASK them a question - pages.logView.push([...]) renders markdown,
+    grids, mermaid, code and progress into a page and raises dialogs; it is your output channel.
+  Open and edit content - pages.openFile("C:/path"), then page.content or pages[0].content.
+  Drive a real browser - pages.openUrlInBrowserTab(url), then pages[i].editor.click / type /
+    waitFor / snapshot: Playwright-like automation over a tab the user can watch.
+  Build the user a small app - boards are sandboxed offline web-apps you author
+    (boards.createBoard); once open, you drive the board's own model at pages[i].editor.app.
+  Run code - script.execute("1 + 1") in the renderer, with the app, page, io and ai globals.
+  Point at Persephone's own UI - ui.elements names the on-screen controls, ui.highlight points at
+    one, and ui.guide.step(target, message) walks the user through a screen one control at a time.
+  Reach the machine - fs, proc and shell; all cautioned, because they act with the user's rights.
+  Find things - helpSearch("add rows") searches this live model; guides.* is the documentation.
+
+The members below are the full list. Any of them opens up: call "<name>.$help" for its long-form
+help, or just resolve it.
 `.trim();
 
 const ROOT_HELP = `

@@ -64,6 +64,12 @@ The manifest advertises exactly one tool:
 Everything Persephone can do is a path under `call` — pages, editors, windows, boards, settings,
 browser automation, Agent Tools, and scripting. The twelve guide resources are separate from the
 tool manifest and remain available by URI.
+
+Member-list hints are sent once per object kind in an MCP session, while live children continue to
+update. If the client loses those hints after a context compaction, call with no `path` again: the
+overview is returned and the session's hint memory is reset. A node's `$help` remains available for
+prose details at any time.
+
 ### Discovering the application shell with `call`
 
 The `call` tool is the discoverable route for the live application shell. Start with an empty path

@@ -23,6 +23,7 @@ A published model appears at **`pages[pageId].editor.app`** — a live subtree o
 ```text
 call  pages["<id>"].editor.app                 -> your summarize() output + a hint listing members
 call  pages["<id>"].editor.app.$help           -> your help text
+call  pages["<id>"].editor.app.$describe       -> your descriptor as structured data
 call  pages["<id>"].editor.app.items[2].title  -> a live value
 call  pages["<id>"].editor.app.addItem  args ["Buy milk"]
 call  pages["<id>"].editor.app.highlight  args ["save", "Press this to save"]
@@ -39,6 +40,12 @@ over it. Hint paths are built from the shape you published, so they are correct 
 there is nothing to keep in sync on your side. What the host does *not* do is validate your
 arguments: `args` are passed to your function as given, so check them yourself and throw a readable
 error.
+
+The structured descriptor path, `$describe`, is available in `ai-vision` 1.2.0 and later. It is
+the programmatic counterpart to `$help`: consumers can read `members` and `children` as data
+without parsing prose. Boards do not install this package — Persephone supplies the matching host
+shim — but a web app that publishes and resolves its own model should use `ai-vision` 1.2.0 or
+later. `$describe` only describes a node; it does not invoke its members.
 
 ## Boards
 

@@ -179,6 +179,18 @@
             }, null, 2));
             print("main.* and windows[i].* are MCP-only paths.");
         },
+        async describeHostPage() {
+            header("persephone.call → $describe");
+            const descriptor = await P.call("page.editor.$describe");
+            print(JSON.stringify({
+                path: descriptor.path,
+                kind: descriptor.kind,
+                summary: descriptor.summary,
+                members: descriptor.members,
+                children: descriptor.children,
+            }, null, 2));
+            print("$describe returns structured descriptor data; $help returns prose.");
+        },
 
         // --- theme (introspection) -----------------------------------------
         showTheme() {

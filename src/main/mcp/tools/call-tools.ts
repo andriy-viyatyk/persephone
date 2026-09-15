@@ -52,7 +52,7 @@ export function routeCallPath(path: string, explicitWindow: number | undefined):
     const index = segments[1];
     if (!index || index.type !== "index") return { local: true };
     const third = segments[2];
-    if (!third || third.type === "help") return { local: true };
+    if (!third || third.type === "help" || third.type === "describe") return { local: true };
     if (typeof index.key !== "number") return { error: `windows[...] takes a window index (a number), got ${JSON.stringify(index.key)}.` };
     if (third.type === "member" || third.type === "call") {
         if (third.name === "main") {
@@ -140,7 +140,7 @@ export function callTools(ctx: IToolContext): IMcpToolDef[] {
                 "  path: \"pages.showPage\", args: [\"<id>\"]  → activate a page",
                 "  path: \"pages[0].editor.rowCount\"      → rows in a grid page",
                 "  path: \"helpSearch\", args: [\"add rows\"]  → find where something lives",
-                "  path: \"pages[0].$help\"                  → long-form help for a node",
+                "  path: \"pages[0].$help\"                  → long-form help for a node; safe on ANY path (a plain value returns its value, a method its signature)",
                 "  path: \"windows\"                         → all windows; prefix any path with windows[i]. to target one (default: the main window)",
                 "",
                 "  path: \"main\"                            -> main-process diagnostics and gated scripting",
@@ -149,6 +149,8 @@ export function callTools(ctx: IToolContext): IMcpToolDef[] {
                 "",
                 "Paths use the same names as the scripting API. Put method arguments in `args` and assignments in `value`; the path itself takes only short JSON literals like pages[2] or pages[\"id\"]. An unknown member returns the valid member list instead of failing.",
                 "To CALL a method, pass `args` — even when it takes none: `args: []`. A method path with no `args` only describes the method (writing the parentheses in the path, e.g. \"boards.list()\", calls it too).",
+                "",
+                "A kind's member list is sent once per session, so a long session stops repeating it. Calling with NO path RESETS that memory as well as returning the overview — do it whenever you have lost the earlier hints (after a context compaction, for instance) and the member lists will be sent again. `<path>.$help` gives the same detail for one node at any time.",
             ].join("\n"),
             schema: {
                 path: z.string().optional().describe("Path into the object model; omit for the overview."),
@@ -162,6 +164,11 @@ export function callTools(ctx: IToolContext): IMcpToolDef[] {
             handler: async (args: ToolArgs): Promise<IMcpToolResult> => {
                 const { windowIndex: targetWindow, ...params } = args as { windowIndex?: number } & Record<string, unknown>;
                 const path = typeof params.path === "string" ? params.path : "";
+                // A root call is an agent orienting itself — at the start of a session, or after
+                // losing the earlier hints. The MCP session (and this set with it) outlives any
+                // client-side context rewrite such as a compaction, so without this reset an agent
+                // that has forgotten a kind's members would never be sent them again.
+                if (path.trim() === "") seenKinds.clear();
                 const route = routeCallPath(path, targetWindow);
 
                 let response: McpResponse;

@@ -274,7 +274,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Main-process AiVision roots and service descriptors, including the settings-gated main script node | `/src/main/mcp/ai-vision/` |
 | MCP tool definitions (the `call` tool — the whole manifest — as data) | `/src/main/mcp/tools/` |
 | MCP server factory (manifest assembly and guide-resource registration) | `/src/main/mcp/server-factory.ts` |
-| MCP `call` routing and result formatting (renderer forwarding, timeout/attention handling, path prefixing, and native image content blocks) | `/src/main/mcp/tools/call-tools.ts`, `/src/main/mcp/renderer-bridge.ts` |
+| MCP `call` routing and result formatting (renderer forwarding, per-session hint dedupe/reset, timeout/attention handling, path prefixing, and native image content blocks) | `/src/main/mcp/tools/call-tools.ts`, `/src/main/mcp/renderer-bridge.ts` |
 | Per-window native dialog tracking and attention snapshots | `/src/main/native-dialog-tracker.ts` |
 | Audio/Video player editor view | `/src/renderer/editors/video/VideoView.ts` |
 | Video playback view (video.js + hls.js and stable media nodes) | `/src/renderer/editors/video/VPlayer.ts` |

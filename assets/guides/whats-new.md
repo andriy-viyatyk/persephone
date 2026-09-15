@@ -12,6 +12,16 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ## Version 5.0.3 (Upcoming)
 
+### New Features
+
+- **Structured descriptors for board and web-app models:** append `.$describe` to a live model path
+  to receive its members and children as data instead of parsing `$help` prose. This is useful for
+  model browsers and generated clients; it follows the existing trust and privacy boundaries and
+  does not invoke the described node.
+- **MCP discovery recovers after lost context:** a `call` with no path returns the
+  application overview and resets the session's remembered member-list hints. Use it again after a
+  context compaction or whenever the earlier hints are no longer available.
+
 ### Improvements
 
 - **The Boards panel highlights the board you clicked:** board rows now carry the same selection

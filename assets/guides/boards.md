@@ -346,6 +346,13 @@ mutually exclusive. Calls reject as `Error` on resolver, transport, timeout, or 
 Trust is checked at resolution time, and existing descriptor restrictions still apply. Calls remain
 anchored to the Board's hosting page even when another tab becomes active.
 
+Append `.$describe` to a node path when a board needs the descriptor as structured data rather than
+the prose returned by `$help`. The result includes the node's kind, summary, members, and live
+children, so a programmatic viewer can build a tree without parsing help text. `$describe` is
+available through the same call path and does not invoke the node's methods; use `$help` for the
+human-readable explanation. See the [agent board guide](./agents/boards.md) for the descriptor
+shape, restrictions, and confirmation rules for boards that expose actions.
+
 Remote `.app` calls use four timeout levels, in order: per-call `timeoutMs`, the remote method's
 declared `timeoutMs`, the session-only in-memory `boards.callTimeoutMs`, and the built-in 30-second
 fallback. Timeout errors name the selected level and full path. `boards.callTimeoutMs` is not

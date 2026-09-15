@@ -196,12 +196,15 @@
             <h2><code>persephone.call()</code> — inspect the hosting page</h2>
             <p class="muted">
                 A trusted Board can resolve the page-scoped AiVision tree through its hosting page.
-                The result is JSON-safe and the hosting page stays fixed if another tab becomes active;
+                Results are JSON-safe; append <code>.$describe</code> to a node path for its structured
+                descriptor, while <code>$help</code> remains the prose form. The hosting page stays fixed
+                if another tab becomes active;
                 process-wide <code>main.*</code> and <code>windows[i].*</code> paths belong to the MCP
                 <code>call</code> tool instead.
             </p>
             <div class="row">
                 <button class="p-btn primary" data-test="callHostPage">read page.title + editor metadata</button>
+                <button class="p-btn primary" data-test="describeHostPage">describe page.editor</button>
             </div>
         </section>
 

@@ -260,6 +260,13 @@ Pass `args` to invoke the final method, `value` to assign a writable property, o
 bound string shaping. `args` and `value` cannot be combined. See the bundled regex verification
 Board under `assets/board-call-regex/` for a complete Run/Write example.
 
+Append `.$describe` to a node path when a program needs the descriptor as data rather than prose:
+`{ path, kind, summary, members[], children[], overview?, help?, identity?, restricted? }`.
+It follows the same walk as `$help`, must be the final segment, and describes a restricted node
+itself while still blocking its descendants. `$help` remains the better path for agent prose;
+`$describe` is for a tree view, generated client, or test harness. Describe a node, not a leaf
+value: `page.editor.$describe` works, while `page.content.$describe` does not.
+
 - `persephone.openContent({ editor, language, title, content })` → `Promise<string>` — create a
   **new in-memory, untitled Persephone page in another editor** and resolve to its page id. This is
   the board equivalent of the script API's `pages.addEditorPage(...)`, and the right call whenever
@@ -364,8 +371,8 @@ Board under `assets/board-call-regex/` for a complete Run/Write example.
 Give the board a named model by attaching an AiVision descriptor to an object and publishing it
 through `persephone.aiVision.expose(root)`. The descriptor supplies the shape an agent can discover:
 `kind`, `summary`, `members`, and optionally `help`, `elements`, `provide`, and `summarize`.
-Persephone then provides `$help`, `helpSearch`, hints, argument validation, property writes, method
-calls, `elements`, and `highlight` over `pages[i].editor.app`.
+Persephone then provides `$help`, `$describe`, `helpSearch`, hints, argument validation, property
+writes, method calls, `elements`, and `highlight` over `pages[i].editor.app`.
 
 Use `createElements` for the board's curated controls. A declaration can name a secondary `view`; a
 highlight for that control opens and targets the corresponding view's frame:

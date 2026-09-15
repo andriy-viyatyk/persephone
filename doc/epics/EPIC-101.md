@@ -2,9 +2,9 @@
 
 ## Status
 
-**Status:** Active
+**Status:** Complete
 **Created:** 2026-09-14
-**Completed:**
+**Completed:** 2026-09-15
 
 ## Overview
 
@@ -151,10 +151,11 @@ Explorer must render the `page:` prefix and origin stamp rather than normalising
 
 | Task | Repo | Title | Status |
 |------|------|-------|--------|
-| US-1421 | persephone / ai-vision | `$describe`: structured descriptor access in the ai-vision resolver | Done (unpublished) |
+| US-1421 | persephone / ai-vision | `$describe`: structured descriptor access in the ai-vision resolver | Done — `ai-vision@1.2.0` published |
 | US-1422 | persephone | Document `$describe` for board and library authors | Done |
-| BT-022 | persephone-boards | AiVision Explorer board — tree, path resolution, help and events | Planned |
-| BT-023 | persephone-boards | AiVision Explorer — root picker for board and web-page models | Planned |
+| US-1423 | persephone | Root hint: prose overview, and a per-session hint reset on a root call | Done |
+| BT-022 | persephone-boards | AiVision Explorer board — tree, path resolution, help and events | Done — published `aivision-explorer` v1.0.0 |
+| BT-023 | persephone-boards | AiVision Explorer — one unified tree over every member (root picker dropped) | Done — published v1.0.3 |
 
 ### US-1421 — `$describe` in ai-vision
 
@@ -207,6 +208,39 @@ likely by-product worth capturing.
 
 ## Notes
 
+### 2026-09-15 — Epic closed
+
+**`$describe` shipped as a path segment and cost Persephone nothing on the board path**, exactly as
+D1 predicted: `board-call-command.ts` returns `result.result`, so the projection flowed through the
+bridge with no host wiring. One gap turned up at review — `routeCallPath` peeled `windows[i].` off
+for every terminal segment *except* `describe`, so `windows[i].$describe` was forwarded to the
+renderer instead of being answered by the main-process `WindowNode` the way `windows[i].$help` is.
+One line in `call-tools.ts`; verified live against `windows[0].$describe`.
+
+**D3 held.** `$describe` is documented for board and library authors (`assets/guides/boards.md`,
+`assets/guides/agents/ai-vision.md`, `assets/board-template/CLAUDE.md`, and a demo-board button) and
+stays out of the MCP `call` tool description and the root `$help`, so an agent is still pointed at
+prose. A `windows[i].$describe` paragraph added to the agent-facing `agents/pages.md` during
+`/document` was removed for the same reason.
+
+**US-1423 was not in the original plan** and came out of using the board: the root hint rendered
+`ROOT_OVERVIEW` and `ROOT_MEMBERS` back to back — the same 24 entries, twice, ~4.5 KB. The overview
+is now prose about what Persephone is and what an agent can do with it; the members block keeps the
+cautions and signatures. The second half was a real recovery defect: `seenKinds` lives in the
+`callTools` closure, one set per MCP transport session, and a session outlives any client-side
+context compaction — so an agent that lost its hints could never be sent a member list again. A
+`call` with an empty path now clears the set, and the tool description says so, and says that
+`<path>.$help` is safe on any path.
+
+**The board is the artifact.** `aivision-explorer` is published (v1.0.3) and is the thing that
+proves `$describe` is sufficient: it browses Persephone's own model, another board's, and a web
+page's through the same tree walker. Its per-board notes live with it in `persephone-boards`.
+
+**Concern 1 is still open, deliberately.** The board `call` envelope still swallows `warning`,
+`truncated`, `shown` and `total`. Having built the viewer, it never hurt enough to fix — the
+Explorer shows what it was given and does not claim completeness. It stays recorded here rather
+than migrating to a task.
+
 ### 2026-09-14 — US-1421 landed (unpublished)
 
 Implemented in `C:\projectsi-vision`, built clean, bumped to `1.2.0`:
@@ -228,9 +262,9 @@ segment, `$help` unchanged), then against the running app — `pages.$describe` 
 `pages[0].editor.app.$describe`. Persephone `npm run typecheck` passes with the new `PathSegment`
 variant.
 
-**Not published.** Persephone's `package.json` is bumped to `^1.2.0` and `node_modules/ai-vision`
-holds a hand-copied build. Until `1.2.0` is on the registry, an `npm install` or `npm ci` reverts
-Persephone to a package without `$describe` and the build breaks. Publishing is the next step.
+~~**Not published.**~~ **Published 2026-09-15.** `ai-vision@1.2.0` is on the registry and
+`package-lock.json` resolves it from there with an integrity hash, so `npm ci` reproduces the build.
+The hand-copied `node_modules` state this note described is gone.
 
 ### 2026-09-14
 - Epic created from the investigation in this session. The REST-client-to-board blocker (the

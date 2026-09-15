@@ -708,6 +708,13 @@ The package also provides `dom` and `remote` entry points for UI element wiring 
 hosts. Persephone imports the package's root and `dom` entry points; the internal engine and local
 element helper are no longer part of the application.
 
+The package's `$describe` path segment is the structured sibling of `$help`: it follows the same
+resolver walk and returns a node descriptor as data (`path`, `kind`, `summary`, `members`, live
+`children`, and any optional overview/help/identity/restriction fields). It must be the terminal
+segment, is side-effect free, and can describe a restricted node without opening its descendants.
+The local renderer root, remote board/page models, and main-side routing all pass this result through
+the normal call result; `$help` remains the prose-oriented path for agents.
+
 The renderer owns one AiVision event log per window in
 `/src/renderer/scripting/ai-vision/event-log.ts`. The root `events` node is described by
 `/src/renderer/scripting/ai-vision/namespaces/events.ts`; it reads retained events and waits using
@@ -825,6 +832,14 @@ results; it does not route `main.*` or `windows[i]`.
 The Board `persephone.call()` surface is similarly page-scoped to the Board's hosting page, checks
 trust for every request, and returns only shaped values. Use the MCP call path for main-process
 diagnostics or the settings-gated `main.script.execute(code)` branch.
+
+The MCP call tool keeps its `seenKinds` hint-deduplication set in the MCP server closure, so it is
+shared by calls in one session while the renderer remains stateless. With automatic hints, a
+descriptor kind's member list is sent once per session; live children and explicitly requested
+hints are still handled by the resolver. A call with an omitted or empty path clears that set
+before resolving, making the root call an orientation/reset operation after a client-side context
+compaction. The root's overview is prose orientation, while its member list comes from the normal
+descriptor hint, so it is not duplicated in `AiRoot`'s root overview.
 
 Returned AiVision nodes provide a live canonical identity when one exists, so hints for a newly
 created page address `pages["<id>"]` rather than the method that returned it. Identity-less nodes

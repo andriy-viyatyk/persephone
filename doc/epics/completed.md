@@ -1,3 +1,46 @@
+## EPIC-101 — Structured descriptor access and the AiVision Explorer board
+
+Completed 2026-09-15. [Epic document](EPIC-101.md).
+
+- [x] US-1421: `ai-vision@1.2.0` — the `$describe` path segment, `buildDescription()`, and the same branch in the remote host
+- [x] US-1422: Document `$describe` for board and library authors
+- [x] US-1423: Root hint — prose overview instead of a second member list, and a per-session hint reset on a root call
+- [x] BT-022 / BT-023 (`persephone-boards`): the AiVision Explorer board, published as `aivision-explorer` v1.0.3
+
+**`$describe` is `$help`'s walk ending in data instead of prose.** Making it a path segment rather
+than a host method meant every `ai-vision` host got it for free and Persephone needed no code change
+on the board path at all — `board-call-command.ts` returns the bare `result`, so the projection flows
+through the bridge untouched. It answers ahead of the landing node's `restricted()` gate, exactly as
+`$help` does, so a restricted node describes itself and still resolves nothing underneath: it can
+never see more than `$help` could. One routing gap found at review — `routeCallPath` recognised
+`help` but not `describe` as a terminal segment, so `windows[i].$describe` was forwarded to the
+renderer instead of the main-process `WindowNode`.
+
+**The agent was deliberately not told about it.** Prose is the better artifact for an LLM and
+advertising two discovery verbs invites it to pick the worse one, so `$describe` is documented for
+board and library authors and stays out of the `call` tool description and the root `$help`.
+
+**The board is what proves the feature.** `aivision-explorer` browses Persephone's own model,
+another board's published model, and a web page's — one tree walker, three roots, no root picker,
+because `pages[i].editor.app` is just another node you expand in place. Its Agent tab shows what a
+`call` actually hands an agent, which means the board had to *rebuild* the hint: the bridge hardcodes
+`hints: "never"`, so the Explorer reconstructs it from the same `$describe` payload in `buildHint`'s
+format, and never deduplicates it. The read rule that came out of that is the board's one real
+safety invariant: everything reads on selection **except** a descriptor declaring a `caution`, because
+reading is an ordinary resolve and reading a method path returns its descriptor rather than calling
+it — but a caution on a property is exactly the statement that reading *acts* (`pages[i].grouped`
+CREATES a grouped page).
+
+**Using the board found a defect in the host.** The root hint rendered its overview and its member
+list back to back — the same 24 entries twice — and, worse, `seenKinds` (one set per MCP transport
+session, in the `callTools` closure) outlives any client-side context compaction, so an agent that
+lost its hints could never be sent a member list again. The overview is now prose about what
+Persephone *is*; a `call` with an empty path resets the dedupe memory, and the tool description says
+so.
+
+**Left open on purpose:** the board `call` envelope still drops `warning`, `truncated`, `shown` and
+`total`. Building the viewer was the test of whether that hurts, and it did not.
+
 ## EPIC-099 — The agent event channel
 
 Completed 2026-09-08. [Epic document](EPIC-099.md). Follows the

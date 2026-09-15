@@ -133,7 +133,8 @@ Every facade's `$help` describes access through `page.editor` and gives its id-n
 
 The browser and board facades may also expose an optional remote model at `page.editor.app`. A
 trusted board publishes it with `persephone.aiVision.expose(root)`; a participating web page
-publishes it with the `ai-vision` package. The model provides its own `$help`, `helpSearch(...)`,
+publishes it with the `ai-vision` package. The model provides its own `$help`, `$describe`,
+`helpSearch(...)`,
 hints, writable properties, methods, `elements`, and `highlight(...)`. Board highlighting runs in
 the selected owning frame, including a secondary view; browser-page kinds use the `page:` prefix
 and remain confined to `.app`. User-opened private pages are rejected before probing. See the
