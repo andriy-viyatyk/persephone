@@ -55,6 +55,7 @@ const BOARD_MEMBERS: readonly IAiMember[] = [
     { name: "id", kind: "property", summary: "The concrete board editor id: board-view or board-editor:<root>." },
     { name: "name", kind: "property", summary: "The board editor's registry display name." },
     { name: "boardRoot", kind: "property", summary: "The board root path, or undefined before a board root is attached." },
+    { name: "folderPath", kind: "property", summary: "The absolute folder claimed by the board, or undefined for plain/file-only boards." },
     { name: "boardName", kind: "property", summary: "The resolved board folder name, or undefined when the board is not found." },
     { name: "renderState", kind: "property", summary: "Model-backed trusted, untrusted, or not-found state." },
     { name: "getManifest", kind: "method", signature: "getManifest(): Promise<IBoardManifest | undefined>", summary: "Read a copied board manifest snapshot, or undefined when it is absent or malformed." },
@@ -150,6 +151,7 @@ export class BoardEditorFacade implements IAiVisible, IBoardEditor {
                 id: this.id,
                 name: this.name,
                 ...(this.boardRoot !== undefined ? { boardRoot: this.boardRoot } : {}),
+                ...(this.folderPath !== undefined ? { folderPath: this.folderPath } : {}),
                 ...(this.boardName !== undefined ? { boardName: this.boardName } : {}),
                 renderState: this.renderState,
                 ...(this.frameReady !== undefined ? { frameReady: this.frameReady } : {}),
@@ -257,6 +259,10 @@ export class BoardEditorFacade implements IAiVisible, IBoardEditor {
 
     get boardRoot(): string | undefined {
         return this.editor.state.get().boardRoot;
+    }
+
+    get folderPath(): string | undefined {
+        return this.editor.state.get().folderPath;
     }
 
     get boardName(): string | undefined {
@@ -550,6 +556,8 @@ function copyManifest(manifest: BoardManifest): IBoardManifest | undefined {
     if (typeof manifest.minAppVersion === "string") copy.minAppVersion = manifest.minAppVersion;
     if (Array.isArray(manifest.fileMasks)) copy.fileMasks = manifest.fileMasks.filter(isString);
     if (Array.isArray(manifest.folderMasks)) copy.folderMasks = manifest.folderMasks.filter(isString);
+    if (Array.isArray(manifest.folderEditorMasks)) copy.folderEditorMasks = manifest.folderEditorMasks.filter(isString);
+    if (typeof manifest.folderEditorPriority === "number") copy.folderEditorPriority = manifest.folderEditorPriority;
     if (typeof manifest.editorPriority === "number") copy.editorPriority = manifest.editorPriority;
     if (typeof manifest.editorName === "string") copy.editorName = manifest.editorName;
     if (manifest.editorKind === "simple" || manifest.editorKind === "content-host") copy.editorKind = manifest.editorKind;

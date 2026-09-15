@@ -298,6 +298,11 @@ srv.write(JSON.stringify({ id: 1, sql }) + "\n");   // per query — db stays op
   download — build your UI in parallel rather than awaiting first) and it can **reject** (missing
   archive entry, HTTP failure), which is different from `undefined`. Report a rejection; never leave a
   blank frame.
+- `persephone.getFolderPath()` → `Promise<string | undefined>` — for a direct-folder editor, the
+  absolute directory claimed by the board; `undefined` for plain boards and file-only openings. It
+  waits for the same handshake as `getFilePath()`. `boardRoot` is where the board app is installed,
+  while `folderPath` is the claimed directory it operates on. Folder mode never supplies a file path,
+  and `editorKind: "content-host"` applies only to the file association.
 - `persephone.call(path, options?)` — resolve the same bounded AiVision descriptor tree as the MCP
   `call` tool, rooted at the page hosting this Board. The Board must be trusted; trust is checked
   again when each call resolves, so revoking trust also blocks an already-mounted Board. The call
@@ -630,6 +635,10 @@ the manifest's `loadOrder`.
   offered only for real local files; `"any"` → also for an archive entry or an `http(s)` URL, where
   `getFilePath()` still returns a readable local path (see the bridge section). Ignored for
   content-host boards, which always get every source.
+- For a direct-folder editor, use `folderEditorMasks` and `folderEditorPriority`, for example
+  `{ "folderEditorMasks": ["*/projects/*"], "folderEditorPriority": 200 }`. These match the
+  folder itself, not a file's parent gate. The board receives that absolute claim through
+  `await persephone.getFolderPath()`; `boardRoot` remains the installed board root.
 - Optional `guides` — a board-relative folder (conventionally `"guides"`) holding the board's own
   Markdown documentation. Persephone mounts every `.md` under it at
   `installed-boards/<board-folder-name>/…`, so the pages appear in the About guide tree under the

@@ -77,6 +77,8 @@ export interface BoardEditorState extends EditorStateBase {
      *  `state.sourceLink.filePath` instead. Read both via `currentFilePath()`. Served to the
      *  board via `persephone.getFilePath()`. Undefined for a plain board. */
     filePath?: string;
+    /** The absolute folder claimed by this board; distinct from the installed board root. */
+    folderPath?: string;
     /** A readable LOCAL path holding this board's content — what `persephone.getFilePath()`
      *  actually hands the board. Equals `filePath` for a plain local file; for a non-local source
      *  (archive entry / `http(s)` URL) it is a cache file materialized from the content pipe, so
@@ -146,7 +148,9 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
      *  regardless (see `getRestoreData`) so restore keys on the stable id. */
     get editorId(): string {
         const root = this.state.get().boardRoot;
-        return root && this.currentFilePath() ? boardEditorId(root) : "board-view";
+        return root && (this.currentFilePath() || this.state.get().folderPath)
+            ? boardEditorId(root)
+            : "board-view";
     }
 
     noLanguage = true;
@@ -441,6 +445,11 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
         return this.state.get().boardRoot;
     }
 
+    /** Absolute folder claimed by this board, or undefined for plain/file-only boards. */
+    get folderPath(): string | undefined {
+        return this.state.get().folderPath;
+    }
+
     /** The file path this board edits, from either entry point (switch → `state.filePath`;
      *  openRawLink → `sourceLink.filePath`). Undefined for a plain, non-custom-editor board. */
     currentFilePath(): string | undefined {
@@ -530,7 +539,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
 
     /** Persist the STABLE `"board-view"` id so restore + cross-window keys on it
      *  (`NO_HOST_EDITOR_IDS` + the zombie guard); the virtual `board-editor:<root>` id is
-     *  re-derived from the persisted `state.filePath` / `state.boardRoot` on restore. */
+     *  re-derived from the persisted file/folder path and `state.boardRoot` on restore. */
     override getRestoreData() {
         const data = super.getRestoreData();
         data.editorId = "board-view";
@@ -564,14 +573,20 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
     /** Single-board init — opened by a `persephone-board://` link (US-748) or the
      *  MCP `openBoard` (US-750). `filePath` is passed only on the custom-editor SWITCH path
      *  (US-839); on the openRawLink path it rides `state.sourceLink` instead. */
-    initFromBoardRoot(boardRoot: string, filePath?: string): void {
+    initFromBoardRoot(boardRoot: string, filePath?: string, folderPath?: string): void {
         const name = fpBasename(boardRoot);
         this.state.update((s) => {
             s.boardRoot = boardRoot;
+            s.filePath = filePath;
+            s.folderPath = folderPath;
             // Custom-editor mode → show the file name in the tab (the board's own
-            // name isn't useful when it's editing a file); plain board → board name.
-            s.title = filePath ? fpBasename(filePath) : name;
-            if (filePath) s.filePath = filePath;
+            // name isn't useful when it's editing a file); folder mode shows the claimed
+            // folder name; plain board → board name.
+            s.title = filePath
+                ? fpBasename(filePath)
+                : folderPath
+                    ? fpBasename(folderPath)
+                    : name;
         });
         void boardTrust.load();
         this.selectBoard(name);

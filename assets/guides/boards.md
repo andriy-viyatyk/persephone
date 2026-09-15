@@ -567,6 +567,22 @@ Declare the association with fields in `board-manifest.json`:
 | `editorKind` | Optional — `"simple"` (default, if omitted) or `"content-host"`. Decides *how* the board gets the file's content. See [Simple editors](#simple-editors--reading-the-file-directly) and [Content-host editors](#content-host-editors--sharing-persephones-file-with-the-board) below. |
 | `editorSources` | Optional — `"local"` (default, if omitted) or `"any"`. A **simple** board only handles a plain local file by default; set `"any"` to also have it offered for a file inside an archive (e.g. `archive.zip!doc.pdf`) or at an `http(s)` URL. Persephone materializes those non-local sources to a local cache file first, so the board's own code is unchanged — it still just calls `persephone.getFilePath()` and reads the returned path. Ignored by content-host boards, which already support non-local sources through `persephone.host.*`. The published **PDF Viewer** board uses this to open archive-embedded and remote PDFs the same way it opens local ones. |
 
+### Direct-folder boards
+
+Use a manifest such as:
+
+```json
+{
+  "folderEditorMasks": ["*/projects/*"],
+  "folderEditorPriority": 200
+}
+```
+
+This claims the matching folder itself. In folder mode, `boardRoot` is the folder where the board
+app is installed and `folderPath` is the absolute directory the board claims and operates on. Use
+`await persephone.getFolderPath()` to read the latter. `getFilePath()` remains `undefined` in folder
+mode, and `editorKind: "content-host"` still applies only to a board's file association.
+
 For example, a board that recognizes force-graph JSON by its content can offer itself for both
 saved files and untitled JSON pages without taking over normal file opening:
 

@@ -35,6 +35,7 @@ export interface NavigatePageToOptions {
     sourceLink?: ILinkData;
     pipe?: IContentPipe;
     target?: string;
+    folderPath?: string;
     title?: string;
     diffFrom?: ILinkDiffRevision;
     diffTo?: ILinkDiffRevision;
@@ -146,6 +147,18 @@ async function buildEditor(
         });
         await legacy.restore();
         return legacy;
+    }
+    if (options?.folderPath !== undefined) {
+        if (!options.target) throw new Error("Folder editor link has no target editor.");
+        try {
+            return await model.lifecycle.createEditorFromFolder(
+                options.target,
+                options.folderPath,
+            );
+        } catch (err) {
+            ui.notify(`Failed to open folder: ${errMessage(err)}`, "error");
+            throw err;
+        }
     }
     try {
         return await model.lifecycle.createEditorFromFile(

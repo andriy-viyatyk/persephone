@@ -91,6 +91,8 @@ export interface ILinkPipeline {
     browserTabMode?: "navigate" | "addTab";
     /** Fallback editor target when URL has no recognized extension. */
     fallbackTarget?: string;
+    /** Decoded claimed folder for one folder-board open; never persisted. */
+    folderPath?: string;
 }
 
 /**

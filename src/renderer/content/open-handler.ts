@@ -33,7 +33,7 @@ export function registerOpenHandler(): void {
             // Navigate existing page to the new file — pass pipe through
             // On success the page owns the pipe; on error we must dispose it
             try {
-                await pagesModel.lifecycle.navigatePageTo(pageId, filePath, {
+                const navigated = await pagesModel.lifecycle.navigatePageTo(pageId, filePath, {
                     revealLine: data.revealLine,
                     highlightText: data.highlightText,
                     fragment: data.fragment,
@@ -41,9 +41,11 @@ export function registerOpenHandler(): void {
                     sourceLink,
                     pipe: data.pipe,
                     target: data.target,
+                    folderPath: data.folderPath,
                     diffFrom: data.diffFrom,
                     diffTo: data.diffTo,
                 });
+                if (!navigated || data.folderPath !== undefined) data.pipe.dispose();
             } catch (err) {
                 data.pipe.dispose();
                 throw err;
@@ -56,6 +58,7 @@ export function registerOpenHandler(): void {
                     sourceLink,
                     fragment: data.fragment,
                     target: data.target,
+                    folderPath: data.folderPath,
                     diffFrom: data.diffFrom,
                     diffTo: data.diffTo,
                 });

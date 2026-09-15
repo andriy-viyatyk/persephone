@@ -227,6 +227,9 @@ export interface BoardPortInitMsg {
     /** The file a custom-editor board edits (EPIC-042) — carried at handshake so the board
      *  can read `persephone.getFilePath()`. Undefined for a board opened plainly. */
     filePath?: string;
+    /** The absolute directory claimed by a folder editor; distinct from the board root and
+     *  from the file-only `filePath` axis. Read through `persephone.getFolderPath()`. */
+    folderPath?: string;
     /** True when this board is a content-host editor (EPIC-043): Persephone owns the content
      *  host and pushes `host:content`. Gates `persephone.host.getContent/getLanguage` in the shim
      *  (a plain board rejects instead of hanging). */

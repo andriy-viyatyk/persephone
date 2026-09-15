@@ -110,7 +110,7 @@ read goes through ONE accessor returning `{ path, kind: "file" | "folder" }` rat
 | Task | Title | Status |
 |------|-------|--------|
 | [US-1429](../tasks/US-1429-folder-claims-in-manifest/README.md) | Folder claims in the manifest: `folderEditorMasks`, catalog transport, and merged trusted folder resolution | Active |
-| US-1430 | Constructing a folder board: the generic `folder-editor://` link, the lifecycle path, and `getFolderPath()` | Planned |
+| [US-1430](../tasks/US-1430-folder-board-construction/README.md) | Constructing a folder board: the generic `folder-editor://` link, the lifecycle path, and `getFolderPath()` | Active |
 | US-1431 | The folder editor switch and folder-board persistence | Planned |
 | US-1432 | The folder-keyed catalog and the "+" install flow through Board Info | Planned |
 

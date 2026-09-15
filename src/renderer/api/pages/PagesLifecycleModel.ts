@@ -117,6 +117,7 @@ export class PagesLifecycleModel {
     private buildEditorById = async (
         editorId: string,
         filePath?: string,
+        folderPath?: string,
     ): Promise<EditorOrHost> => {
         // Custom-editor board (EPIC-042): a `board-editor:<root>` id has no static
         // registry def, so branch BEFORE the `!def` text fallback (which would else
@@ -124,6 +125,19 @@ export class PagesLifecycleModel {
         // it edits (→ persephone.getFilePath()).
         const boardRoot = parseBoardEditorId(editorId);
         if (boardRoot !== null) {
+            if (folderPath !== undefined) {
+                const match = customEditorRegistry.entries.find(
+                    (entry) => entry.editorId === editorId && entry.boardRoot === boardRoot,
+                );
+                const claimsFolder = customEditorRegistry
+                    .getBoardsForFolder(folderPath)
+                    .some((entry) => entry.editorId === editorId);
+                if (!match || !claimsFolder) {
+                    throw new Error(`Board does not claim folder: ${folderPath}`);
+                }
+                const { createBoardEditorForFolder } = await import("../../editors/board");
+                return createBoardEditorForFolder(boardRoot, folderPath) as unknown as EditorOrHost;
+            }
             // Content-host board (EPIC-043): build the subclass WITH an adopted host so
             // Persephone owns the pipe/encoding/encryption/cache/dirty state. The host's
             // pipe is assigned by `createEditorFromFile` and restored below.
@@ -200,6 +214,19 @@ export class PagesLifecycleModel {
                 s.title = title;
             });
         }
+        await editor.restore();
+        return editor;
+    };
+
+    /** Construct and restore a trusted board for a claimed folder. */
+    createEditorFromFolder = async (
+        editorId: string,
+        folderPath: string,
+    ): Promise<EditorOrHost> => {
+        if (parseBoardEditorId(editorId) === null) {
+            throw new Error(`Invalid folder board editor id: ${editorId}`);
+        }
+        const editor = await this.buildEditorById(editorId, undefined, folderPath);
         await editor.restore();
         return editor;
     };
@@ -359,16 +386,19 @@ export class PagesLifecycleModel {
         options?: {
             sourceLink?: ILinkData;
             target?: string;
+            folderPath?: string;
             diffFrom?: ILinkDiffRevision;
             diffTo?: ILinkDiffRevision;
             fragment?: string;
         },
     ): Promise<PageModel | undefined> => {
-        if (!filePath) return undefined;
+        if (!filePath && options?.folderPath === undefined) return undefined;
         // Existing-page dedupe is deliberately left intact (US-637): an already-
         // open file just activates its page and the diff metadata is dropped.
         // "Open in new Tab" preselection therefore applies only on a fresh open.
-        const existingPage = this.model.query.findPageByFilePath(filePath);
+        const existingPage = filePath
+            ? this.model.query.findPageByFilePath(filePath)
+            : undefined;
         if (existingPage) {
             pipe?.dispose();
             this.model.navigation.showPage(existingPage.id);
@@ -385,14 +415,19 @@ export class PagesLifecycleModel {
         // unguarded the rejection escaped into an un-awaited promise and the click did
         // nothing at all — US-1163's shape, one path over. `undefined` is already this
         // method's "did not open" answer, so no caller changes.
-        const editor = await guard(`Failed to open ${fpBasename(filePath)}`, () =>
-            this.createEditorFromFile(filePath, pipe, options?.target));
+        const editor = await guard(
+            `Failed to open ${fpBasename(filePath ?? options?.folderPath ?? "folder")}`,
+            () => options?.folderPath !== undefined
+                ? this.createEditorFromFolder(options.target ?? "", options.folderPath)
+                : this.createEditorFromFile(filePath as string, pipe, options?.target),
+        );
         if (!editor) {
             // `createEditorFromFile` assigns the pipe to the editor it builds; that
             // editor is being discarded, so the pipe would otherwise leak.
             pipe?.dispose();
             return undefined;
         }
+        if (options?.folderPath !== undefined) pipe?.dispose();
         if (options?.sourceLink) {
             editor.state.update((s) => { s.sourceLink = options.sourceLink; });
         }
@@ -402,7 +437,7 @@ export class PagesLifecycleModel {
         const explicitTarget = options?.target;
         if (
             editor.state.get().type === "textFile" &&
-            isExplicitHostTarget(explicitTarget, filePath)
+            filePath !== undefined && isExplicitHostTarget(explicitTarget, filePath)
         ) {
             editor.state.update((s) => { s.editor = explicitTarget as EditorView; });
         }
@@ -425,7 +460,7 @@ export class PagesLifecycleModel {
             const panelId = adapter.secondaryView?.[0];
             if (panelId) page.expandPanel(panelId);
         }
-        recent.add(filePath);
+        if (filePath) recent.add(filePath);
 
         this.model.closeFirstPageIfEmpty();
         return page;

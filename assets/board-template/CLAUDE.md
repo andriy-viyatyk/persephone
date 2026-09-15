@@ -113,6 +113,21 @@ fields that let the board act as a file editor:
   source-specific code** — see *Opened as a custom editor* below for the two consequences you must
   handle. Ignored for `"content-host"` boards, which always get every source.
 
+**Direct-folder editor example:**
+
+```json
+{
+  "folderEditorMasks": ["*/projects/*"],
+  "folderEditorPriority": 200
+}
+```
+
+`folderEditorMasks` claims the folder itself, not files inside it. When this board opens from a
+matching Explorer folder, `boardRoot` is the board app's installed root, while `folderPath` is the
+absolute directory the board claims and operates on. Await `persephone.getFolderPath()` for that
+directory. Folder mode always leaves `getFilePath()` undefined; `editorKind: "content-host"` applies
+only to the board's file association and does not create a content host for a folder claim.
+
 Don't put secrets or trust flags here — a board is trusted by the user inside Persephone,
 never by the manifest. (The board icon is **not** set here; see *Board icon* below.)
 
@@ -360,6 +375,11 @@ value: `page.editor.$describe` works, while `page.content.$describe` does not.
   ```
   Materialized files are **read-only**: writing to the cache path does not write back to the
   original source.
+
+- `persephone.getFolderPath()` → `Promise<string | undefined>` — the absolute directory claimed by
+  a direct-folder editor, or `undefined` for plain boards and file-only openings. It waits for the
+  same host handshake as `getFilePath()`. This is separate from `boardRoot`, the folder containing
+  the board app, and from the file-only `getFilePath()` value.
 
 ### Expose a board model to agents
 

@@ -9,6 +9,7 @@ import { copyPathsInto } from "../../core/utils/copy-files";
 import { encodeCategoryLink } from "./tree-provider-link";
 import { folderEditorLinkFor } from "../folder-editor-link";
 import { editorRegistry } from "../../editors/base/editorRegistry";
+import { resolveEditorIdForFolder } from "../../editors/board/custom-editor-registry";
 import { debounce } from "../../../shared/utils";
 
 // Direct Node.js imports — FileTreeProvider is a low-level filesystem provider
@@ -59,7 +60,7 @@ export class FileTreeProvider implements ITreeProvider {
             const isDir = entry.isDirectory();
 
             if (isDir) {
-                const target = editorRegistry.resolveForFolder(fullPath);
+                const target = resolveEditorIdForFolder(fullPath);
                 folders.push({
                     title: entry.name,
                     href: fullPath,

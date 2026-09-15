@@ -138,6 +138,7 @@ function settleBusy(value: boolean): void {
 let filePathSettled = false;
 let filePathValue: string | undefined;
 const filePathResolvers: Array<(p: string | undefined) => void> = [];
+let folderPathValue: string | undefined;
 
 // True when the handshake `filePath` is NOT directly readable — its real source is an archive entry
 // or an `http(s)` URL. `getFilePath()` then resolves through a `board:filePath` request, so the
@@ -623,7 +624,7 @@ onHostMessage((event) => {
     const data = event.data as
         {
             __persephoneInit?: boolean; busy?: boolean; filePath?: string;
-            contentHost?: boolean; materialize?: boolean;
+            folderPath?: string; contentHost?: boolean; materialize?: boolean;
         }
         | undefined;
     if (!data || data.__persephoneInit !== true) return;
@@ -636,6 +637,7 @@ onHostMessage((event) => {
         // Non-local source flag — read BEFORE settling, since settling releases waiting
         // `getFilePath()` calls and they branch on it.
         filePathNeedsMaterialize = !!data.materialize;
+        folderPathValue = typeof data.folderPath === "string" ? data.folderPath : undefined;
         settleFilePath(data.filePath);
     }
     // Content-host flag (EPIC-043) — gates the persephone.host content API.
@@ -1034,6 +1036,12 @@ function createHandle(
             );
         }
         return materializedPromise;
+    },
+
+    /** The absolute folder claimed by this board, or undefined for plain/file-only boards. */
+    async getFolderPath(): Promise<string | undefined> {
+        await whenHandshake();
+        return folderPathValue;
     },
 
     /** Content-host bridge (EPIC-043). Meaningful only when this board is a content-host editor

@@ -68,6 +68,7 @@ export function cleanForStorage(data: ILinkData): StoredLinkData {
         browserPageId,
         browserTabMode,
         fallbackTarget,
+        folderPath,
         ...stored
     } = data;
     return Object.fromEntries(

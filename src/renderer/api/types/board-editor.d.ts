@@ -54,6 +54,8 @@ export interface IBoardEditor {
     readonly id: "board-view" | `board-editor:${string}`;
     readonly name: string;
     readonly boardRoot: string | undefined;
+    /** The absolute folder claimed by this board, distinct from its installed board root. */
+    readonly folderPath: string | undefined;
     readonly boardName: string | undefined;
     readonly renderState: BoardRenderState;
     getManifest(): Promise<IBoardManifest | undefined>;

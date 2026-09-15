@@ -23,5 +23,15 @@ export const boardModule: EditorModule = {
     },
 };
 
+/** Construct the plain board model for a trusted direct-folder claim. */
+export function createBoardEditorForFolder(
+    boardRoot: string,
+    folderPath: string,
+): BoardEditorModel {
+    const model = new BoardEditorModel(new TComponentState(getDefaultBoardEditorState()));
+    model.initFromBoardRoot(boardRoot, undefined, folderPath);
+    return model;
+}
+
 export { BoardEditorModel, getDefaultBoardEditorState } from "./BoardEditorModel";
 export type { BoardEditorState } from "./BoardEditorModel";

@@ -4,6 +4,7 @@ import { parseHttpRequest } from "../core/utils/curl-parser";
 import { TREE_CATEGORY_PREFIX } from "./tree-providers/tree-provider-link";
 import { GIT_TREE_PREFIX } from "./git-tree-link";
 import { MNEME_FOLDER_PREFIX } from "./mneme-folder-link";
+import { decodeFolderEditorLink, FOLDER_EDITOR_PREFIX } from "./folder-editor-link";
 import { PERSEPHONE_BOARD_PREFIX } from "./persephone-board-link";
 import { PERSEPHONE_TOOLSET_PREFIX } from "./persephone-toolset-link";
 import { parseGuideUrl, PERSEPHONE_GUIDE_PREFIX } from "../../shared/guides/guide-links";
@@ -141,6 +142,24 @@ export function registerRawLinkParsers(): void {
         if (!data.href.startsWith(MNEME_FOLDER_PREFIX)) return;
         data.url = data.href;
         data.target ??= "mneme-root";
+        data.handled = false;
+        await app.events.openLink.sendAsync(data);
+        data.handled = true;
+    });
+
+    // folder-editor:// parser — opens a trusted board for its claimed folder.
+    app.events.openRawLink.subscribe(async (data) => {
+        if (!data.href.startsWith(FOLDER_EDITOR_PREFIX)) return;
+        const parsed = decodeFolderEditorLink(data.href);
+        if (!parsed) {
+            const { ui } = await import("../api/ui");
+            ui.notify(`Invalid folder editor link: ${data.href}`, "warning");
+            data.handled = true;
+            return;
+        }
+        data.url = data.href;
+        data.target = parsed.editorId;
+        data.folderPath = parsed.anchorFolder;
         data.handled = false;
         await app.events.openLink.sendAsync(data);
         data.handled = true;

@@ -269,6 +269,7 @@ export class BoardWebview extends VanillaView<BoardWebviewProps> {
             __persephoneInit: true,
             busy: !!this.props.model.state.get().busy,
             filePath,
+            folderPath: this.props.model.folderPath,
             contentHost: !!this.props.model.contentHost,
             materialize: !!filePath && !isPlainLocalPath(filePath),
         };
