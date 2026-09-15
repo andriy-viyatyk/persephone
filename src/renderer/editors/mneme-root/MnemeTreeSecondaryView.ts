@@ -218,7 +218,10 @@ export default class MnemeTreeSecondaryView extends VanillaView<SecondaryViewPro
             icon: props.iconElement,
             badge: this.rootTag?.root,
             title: "Wiki",
-            actions: props.expanded === false ? undefined : this.closeButton?.root,
+            // Shown collapsed too, unlike the refresh/save actions on the other panels: those
+            // act on content the collapsed panel is not showing, while Close disposes the whole
+            // editor. Hiding it meant expanding a panel purely to close it.
+            actions: this.closeButton?.root,
             showMainTitle: "Open Mneme search",
             showMainActive: this.mnemeModel.isMain,
             onShowMain: this.showMain,
