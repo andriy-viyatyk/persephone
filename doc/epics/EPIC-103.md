@@ -111,7 +111,7 @@ read goes through ONE accessor returning `{ path, kind: "file" | "folder" }` rat
 |------|-------|--------|
 | [US-1429](../tasks/US-1429-folder-claims-in-manifest/README.md) | Folder claims in the manifest: `folderEditorMasks`, catalog transport, and merged trusted folder resolution | Active |
 | [US-1430](../tasks/US-1430-folder-board-construction/README.md) | Constructing a folder board: the generic `folder-editor://` link, the lifecycle path, and `getFolderPath()` | Active |
-| US-1431 | The folder editor switch and folder-board persistence | Planned |
+| [US-1431](../tasks/US-1431-folder-switch-and-persistence/README.md) | The folder editor switch and folder-board persistence | Active |
 | US-1432 | The folder-keyed catalog and the "+" install flow through Board Info | Planned |
 
 The split follows the investigation notes' Concern 1. US-1429 is the data layer and lands inert.

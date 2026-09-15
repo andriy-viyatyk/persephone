@@ -450,6 +450,11 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
         return this.state.get().folderPath;
     }
 
+    /** Folder identity shared by folder-aware editor switch consumers. */
+    override get folderAnchor(): string | undefined {
+        return this.folderPath;
+    }
+
     /** The file path this board edits, from either entry point (switch → `state.filePath`;
      *  openRawLink → `sourceLink.filePath`). Undefined for a plain, non-custom-editor board. */
     currentFilePath(): string | undefined {
@@ -561,8 +566,12 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
         // would resurrect on restore before the board re-sets it. `undefined` is dropped by JSON.
         // `contentPath` is transient too: a persisted cache path would point at a file the cache may
         // have GC'd, and the source could have changed — `ensureContentPath` re-materializes.
+        // `boardRoot` and `folderPath` are independent durable fields. Copy the claimed folder
+        // exactly as persisted; never derive it from the installed board root.
         data.state = {
             ...(data.state as Record<string, unknown>),
+            boardRoot: s.boardRoot,
+            folderPath: s.folderPath,
             sharedState,
             statusText: undefined,
             contentPath: undefined,

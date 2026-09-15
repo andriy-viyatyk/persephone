@@ -153,6 +153,8 @@ export interface ILink {
     target?: string;
     /** Optional semantic icon hint (e.g., "git") overriding the default folder/file icon. */
     icon?: string;
+    /** Icon-cache root for a claimed board; not a navigation target or board claim. */
+    boardIconRoot?: string;
 }
 
 /** @deprecated Use ILink instead. */

@@ -20,7 +20,13 @@ import { app } from "../app";
 import { createLinkData } from "../../../shared/link-data";
 import { parsePanelKey } from "../../ui/secondary-views/panel-key";
 import type { BoardEditorState } from "../../editors/board";
+import { customEditorRegistry } from "../../editors/board/custom-editor-registry";
+import { fpNormalizeForCompare } from "../../core/utils/file-path";
 import { PageModel } from "./PageModel";
+
+function sameBoardRoot(left: string, right: string): boolean {
+    return fpNormalizeForCompare(left) === fpNormalizeForCompare(right);
+}
 
 /**
  * EditorIds of NO-HOST editors that restore via
@@ -83,6 +89,7 @@ export class PagesPersistenceModel {
         const page = new PageModel(desc.id);
         page.pinned = desc.pinned;
         page.seedNavBack(desc.navBack);
+        let invalidFolderBoard: { editorId: string; folderPath: string } | undefined;
 
         const editors = await Promise.all(
             desc.editors.map(async (d) => {
@@ -94,13 +101,32 @@ export class PagesPersistenceModel {
                     if (d.editorId === "board-view" && d.id !== desc.mainEditorId) {
                         return null;
                     }
+                    const boardState = d.state as Partial<BoardEditorState>;
+                    const folderPath = boardState.folderPath;
+                    const hasPersistedFolderClaim =
+                        d.editorId === "board-view" && folderPath !== undefined;
+                    if (hasPersistedFolderClaim && typeof folderPath === "string") {
+                        invalidFolderBoard = { editorId: d.id, folderPath };
+                        await customEditorRegistry.ensureInitialized();
+                        const boardRoot = boardState.boardRoot;
+                        const current = boardRoot && folderPath
+                            ? customEditorRegistry.entries.find((entry) =>
+                                sameBoardRoot(entry.boardRoot, boardRoot)
+                                && customEditorRegistry.getBoardsForFolder(folderPath)
+                                    .some((folderEntry) =>
+                                        folderEntry.boardRoot === entry.boardRoot,
+                                    ))
+                            : undefined;
+                        if (!current) return null;
+                        invalidFolderBoard = undefined;
+                    }
                     // Content-host board (EPIC-043): persisted `board-view` + a host
                     // descriptor. Rebuild the subclass, apply the board state (boardRoot /
                     // filePath live in `d.state`, NOT the host descriptor), reconstruct the
                     // host from `d.host`, then restore. MUST precede the generic `if (d.host)`
                     // branch, which would else build a plain BoardEditorModel that throws
                     // "legacy project-mode board editor" on restore.
-                    if (d.editorId === "board-view" && d.host) {
+                    if (d.editorId === "board-view" && d.host && !hasPersistedFolderClaim) {
                         const { getDefaultBoardEditorState } = await import(
                             "../../editors/board"
                         );
@@ -180,6 +206,34 @@ export class PagesPersistenceModel {
 
         for (const editor of editors) {
             if (editor) page.attach(editor);
+        }
+
+        if (invalidFolderBoard) {
+            if (!page.findExplorer()) {
+                const explorer = new ExplorerEditor(new TComponentState({
+                    ...getDefaultExplorerEditorState(),
+                    rootPath: invalidFolderBoard.folderPath,
+                }));
+                page.attach(explorer);
+                await explorer.restore();
+            }
+
+            const { editorRegistry } = await import("../../editors/base/editorRegistry");
+            const { buildFolderCategoryLink, CategoryEditorModel } = await import(
+                "../../editors/category/CategoryEditorModel"
+            );
+            const category = await editorRegistry.createEditor(
+                "category-view",
+                invalidFolderBoard.editorId,
+            );
+            if (!(category instanceof CategoryEditorModel)) {
+                throw new Error("Folder View fallback created an unexpected editor.");
+            }
+            category.initFromLink(
+                buildFolderCategoryLink(page, invalidFolderBoard.folderPath),
+            );
+            await category.restore();
+            page.attach(category);
         }
 
         if (

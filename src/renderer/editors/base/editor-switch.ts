@@ -4,19 +4,18 @@ import { editorRegistry } from "./editorRegistry";
 // customEditorRegistry is deliberately static: the module is already required
 // statically for parseBoardEditorId, so a nested dynamic import of it would be
 // redundant (this whole module is only reached via PageModel's dynamic import).
-import { parseBoardEditorId, customEditorRegistry } from "../board/custom-editor-registry";
+import {
+    getFolderEditorsForFolder,
+    parseBoardEditorId,
+    customEditorRegistry,
+} from "../board/custom-editor-registry";
 import { BOARD_INFO_EDITOR_ID } from "../board-info/board-info-id";
 import type { PageModel } from "../../api/pages/PageModel";
 import { guard } from "../../core/utils/guard";
 import { fpBasename, fpNormalizeForCompare } from "../../core/utils/file-path";
 
-function isFolderEditor(editorId: string): boolean {
-    return !!editorRegistry.getById(editorId)?.match?.acceptFolder;
-}
-
-function getFolderAnchor(editor: EditorModel): string | undefined {
-    const candidate = (editor as EditorModel & { readonly folderAnchor?: string }).folderAnchor;
-    return candidate || undefined;
+function isFolderEditor(editor: EditorModel): boolean {
+    return editor.folderAnchor !== undefined;
 }
 
 // ============================================================================
@@ -71,14 +70,9 @@ export async function switchMainEditor(
     // dispose-and-rebuild paths. Reuse a surviving Pattern B instance first, then
     // build the target from the exact Explorer anchor before those paths can observe
     // the old editor's undefined filePath.
-    if (isFolderEditor(oldEditor.editorId) && isFolderEditor(newEditorId)) {
-        const anchorFolder = getFolderAnchor(oldEditor);
-        if (!anchorFolder) {
-            throw new Error(
-                `Folder switch unavailable: this page has no resolvable folder for "${newEditorId}".`,
-            );
-        }
-        if (!editorRegistry.getFolderEditors(anchorFolder).includes(newEditorId)) {
+    const anchorFolder = oldEditor.folderAnchor;
+    if (anchorFolder !== undefined && isFolderEditor(oldEditor)) {
+        if (!getFolderEditorsForFolder(anchorFolder).includes(newEditorId)) {
             throw new Error(
                 `Folder switch unavailable: "${newEditorId}" is not offered for "${anchorFolder}".`,
             );
@@ -87,12 +81,22 @@ export async function switchMainEditor(
         const anchorKey = fpNormalizeForCompare(anchorFolder);
         const existing = page.editors.find((editor) => {
             if (editor.editorId !== newEditorId) return false;
-            const editorAnchor = getFolderAnchor(editor);
+            const editorAnchor = editor.folderAnchor;
             return !!editorAnchor && fpNormalizeForCompare(editorAnchor) === anchorKey;
         });
         if (existing) {
             await page.setMainEditor(existing);
             existing.onNavigationReuse?.();
+            return;
+        }
+
+        if (parseBoardEditorId(newEditorId) !== null) {
+            const { pagesModel } = await import("../../api/pages");
+            const next = await pagesModel.lifecycle.createEditorFromFolder(
+                newEditorId,
+                anchorFolder,
+            );
+            await page.setMainEditor(next as EditorModel);
             return;
         }
 

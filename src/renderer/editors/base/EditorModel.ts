@@ -47,6 +47,11 @@ export abstract class EditorModel<
      *  (`EditorDescriptor.editorId`). Replaces today's `state.type` discriminator. */
     abstract readonly editorId: string;
 
+    /** The folder this editor is anchored at, or undefined for a non-folder editor. */
+    get folderAnchor(): string | undefined {
+        return undefined;
+    }
+
     /** Mailbox for model → view commands and view-context queries. Subclasses
      *  narrow E to their own event union. Disposed by `dispose()`. */
     readonly queue: ComponentQueue<E> = new ComponentQueue<E>();

@@ -1,6 +1,6 @@
 import type { ITreeProviderItem } from "../../api/types/io.tree";
 import { createBoardGlyphElement } from "../../editors/board/board-glyph-element";
-import { GitIcon, MemoryIcon, BoardIcon, type SvgIconComponent, type SvgIconProps } from "../../theme/icons";
+import { GitIcon, MemoryIcon, type SvgIconComponent, type SvgIconProps } from "../../theme/icons";
 import { DefaultIcon } from "../../theme/language-icons";
 import { MEMORY_ICON_COLOR } from "../../theme/palette-colors";
 import { fpExtname, fpBasename } from "../../core/utils/file-path";
@@ -99,7 +99,7 @@ export function createTreeProviderItemIconElement(item: ITreeProviderItem): Elem
     if (item.icon === "mneme") {
         return createSvg(MemoryIcon, { width: 16, height: 16, color: MEMORY_ICON_COLOR });
     }
-    if (item.icon === "board") return createSvg(BoardIcon, { width: 16, height: 16 });
+    if (item.icon === "board") return createBoardGlyphElement(item.boardIconRoot, 16);
     if (item.isDirectory) return createFolderIconElement();
 
     const httpExt = getHttpPathExtension(item.href);

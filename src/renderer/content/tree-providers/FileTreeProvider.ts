@@ -9,7 +9,10 @@ import { copyPathsInto } from "../../core/utils/copy-files";
 import { encodeCategoryLink } from "./tree-provider-link";
 import { folderEditorLinkFor } from "../folder-editor-link";
 import { editorRegistry } from "../../editors/base/editorRegistry";
-import { resolveEditorIdForFolder } from "../../editors/board/custom-editor-registry";
+import {
+    customEditorRegistry,
+    resolveEditorIdForFolder,
+} from "../../editors/board/custom-editor-registry";
 import { debounce } from "../../../shared/utils";
 
 // Direct Node.js imports — FileTreeProvider is a low-level filesystem provider
@@ -61,6 +64,9 @@ export class FileTreeProvider implements ITreeProvider {
 
             if (isDir) {
                 const target = resolveEditorIdForFolder(fullPath);
+                const board = customEditorRegistry
+                    .getBoardsForFolder(fullPath)
+                    .find((entry) => entry.editorId === target);
                 folders.push({
                     title: entry.name,
                     href: fullPath,
@@ -68,7 +74,8 @@ export class FileTreeProvider implements ITreeProvider {
                     tags: [],
                     isDirectory: true,
                     target,
-                    icon: editorRegistry.getById(target)?.folderIcon,
+                    icon: board ? "board" : editorRegistry.getById(target)?.folderIcon,
+                    boardIconRoot: board?.boardRoot,
                 });
             } else {
                 const ext = path.extname(entry.name).toLowerCase();

@@ -1,7 +1,11 @@
 import { boardInstallRegistry } from "../../api/board-install-registry";
 import { publishedBoards } from "../../api/published-boards";
 import { fpNormalizeForCompare, isPlainLocalPath } from "../../core/utils/file-path";
-import { customEditorRegistry } from "../board/custom-editor-registry";
+import {
+    customEditorRegistry,
+    getFolderEditorsForFolder,
+    parseBoardEditorId,
+} from "../board/custom-editor-registry";
 import { BOARD_INFO_EDITOR_ID } from "../board-info/board-info-id";
 import { isTextFileModel, type TextFileModel } from "../text/TextEditorModel";
 import type { EditorModel } from "./EditorModel";
@@ -15,6 +19,26 @@ export interface IEditorSwitchOption {
 
 /** The exact candidate projection used by the page toolbar and page scripting node. */
 export function getEditorSwitchOptions(model: EditorModel): IEditorSwitchOption[] {
+    const folderPath = model.folderAnchor;
+    if (folderPath !== undefined) {
+        const boardMatches = customEditorRegistry.getBoardsForFolder(folderPath);
+        const merged = [...getFolderEditorsForFolder(folderPath)];
+        const currentBoardId = parseBoardEditorId(model.editorId) !== null
+            ? model.editorId
+            : undefined;
+        if (currentBoardId && !merged.includes(currentBoardId)) merged.push(currentBoardId);
+
+        const boardNameById = new Map(boardMatches.map((board) => [board.editorId, board.name]));
+        if (currentBoardId && !boardNameById.has(currentBoardId)) {
+            const selectedBoard = (model.state.get() as { selectedBoard?: string }).selectedBoard;
+            if (selectedBoard) boardNameById.set(currentBoardId, selectedBoard);
+        }
+        return merged.map((id) => ({
+            id,
+            label: boardNameById.get(id) ?? editorRegistry.getById(id)?.name ?? id,
+        }));
+    }
+
     const host = getTextHost(model);
     const hostState = host?.state.get();
     const editorState = model.state.get();
