@@ -816,7 +816,8 @@ finished loading, so `pages[pageId].editor.snapshot()` right after it sees the n
 
 **`board-manifest.json` is the exception — a reload does not pick it up.** Persephone reads a
 board's manifest when the board becomes trusted and caches it from then on, so a manifest edit
-(new `fileMasks`, a changed `editorPriority`, adding `editorSources`) takes effect only after
+(new `fileMasks` or `folderEditorMasks`, changed `folderMasks`, `editorPriority`, or
+`folderEditorPriority`, or adding `editorSources`) takes effect only after
 toggling the board's trust off and on, or restarting the app. A reload that appears to ignore a
 manifest change is this, not a broken manifest.
 

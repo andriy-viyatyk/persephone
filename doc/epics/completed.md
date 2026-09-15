@@ -1,3 +1,38 @@
+## EPIC-103 — Boards as folder editors
+
+Completed 2026-09-15. [Epic document](EPIC-103.md).
+
+- [x] US-1429: Folder claims in the manifest: `folderEditorMasks`, catalog transport, and merged trusted folder resolution
+- [x] US-1430: Constructing a folder board: the generic `folder-editor://` link, the lifecycle path, and `getFolderPath()`
+- [x] US-1431: The folder editor switch and folder-board persistence
+- [x] US-1432: The folder-keyed catalog and the "+" install flow through Board Info
+
+EPIC-102 let an editor register for a folder; this epic opened that door to boards. A trusted board
+declares `folderEditorMasks` plus a `folderEditorPriority`, wins or shares the folder against the
+three built-ins by explicit priority, receives the claimed folder through a new
+`persephone.getFolderPath()` distinct from its own install root, appears on the folder page's editor
+switch beside Folder View, and is offered through the existing **+** install entry when a published
+board matches a folder the user has no board for.
+
+The four tasks were deliberately sequenced so the first two landed inert: US-1429 is the data layer,
+US-1430 makes a folder board constructible, US-1431 makes it reachable and restorable, and US-1432
+adds the install path last because it is the most fragile. Decisions D1–D8 are recorded in the epic
+document; the load-bearing ones are a distinct manifest axis rather than an overloaded `folderMasks`,
+a merge beside the custom registry rather than inside `EditorRegistry` (which would create the cycle
+the file-side merge exists to avoid), and one `{ path, kind }` accessor in Board Info rather than a
+file-versus-folder branch at each of five sites.
+
+Verified live with a temporary board claiming `.claude`: Explorer resolution picked the board while
+`.git` kept Git Tree (priority 20 undisplaced) and neighbouring dot-folders kept Folder View; the row
+rendered the board's icon; the board received its claimed folder and no file path through the bridge;
+the toolbar switched both ways; and revoking trust left the page a recovery path back to Folder View.
+No concrete board was added to this repository (Concern 6) — the deliverable is the contract.
+
+Completion review found no architecture concerns. One defect surfaced during live verification and
+was fixed: `folder-editor` was registered with the content-pipeline parser but never added to the
+scripting/MCP `pages.openUrl` allowlist, so the new scheme was rejected where every sibling scheme
+was accepted.
+
 ## EPIC-102 — Folder editors — a registered editor for a folder, with a switch back to its content
 
 Completed 2026-09-15. [Epic document](EPIC-102.md).

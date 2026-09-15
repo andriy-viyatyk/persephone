@@ -2,9 +2,9 @@
 
 ## Status
 
-**Status:** Active
+**Status:** Completed
 **Created:** 2026-09-15
-**Completed:**
+**Completed:** 2026-09-15
 
 ## Overview
 
@@ -109,10 +109,10 @@ read goes through ONE accessor returning `{ path, kind: "file" | "folder" }` rat
 
 | Task | Title | Status |
 |------|-------|--------|
-| [US-1429](../tasks/US-1429-folder-claims-in-manifest/README.md) | Folder claims in the manifest: `folderEditorMasks`, catalog transport, and merged trusted folder resolution | Active |
-| [US-1430](../tasks/US-1430-folder-board-construction/README.md) | Constructing a folder board: the generic `folder-editor://` link, the lifecycle path, and `getFolderPath()` | Active |
-| [US-1431](../tasks/US-1431-folder-switch-and-persistence/README.md) | The folder editor switch and folder-board persistence | Active |
-| [US-1432](../tasks/US-1432-folder-catalog-and-install/README.md) | The folder-keyed catalog and the "+" install flow through Board Info | Active |
+| [US-1429](../tasks/US-1429-folder-claims-in-manifest/README.md) | Folder claims in the manifest: `folderEditorMasks`, catalog transport, and merged trusted folder resolution | Completed |
+| [US-1430](../tasks/US-1430-folder-board-construction/README.md) | Constructing a folder board: the generic `folder-editor://` link, the lifecycle path, and `getFolderPath()` | Completed |
+| [US-1431](../tasks/US-1431-folder-switch-and-persistence/README.md) | The folder editor switch and folder-board persistence | Completed |
+| [US-1432](../tasks/US-1432-folder-catalog-and-install/README.md) | The folder-keyed catalog and the "+" install flow through Board Info | Completed |
 
 The split follows the investigation notes' Concern 1. US-1429 is the data layer and lands inert.
 US-1430 makes a folder board openable. US-1431 makes it reachable from the toolbar and restorable.
@@ -148,3 +148,24 @@ US-1432 adds the install path, which is the most fragile part and benefits from 
   subsystems. The task id was retired rather than padded; the four tasks above replace it.
 - D7 corrects the investigation's only finding that conflicted with a standing decision: board API
   surface is documented in prose, never in the unwired `board-api.d.ts`.
+
+### 2026-09-15 — epic close
+- All four tasks implemented, reviewed and documented. Completion review found no architecture
+  concerns.
+- Verified live with a throwaway board claiming `.claude`, built outside this repository and
+  unregistered afterwards (Concern 6 holds: no concrete board ships here). Explorer resolution
+  picked the board for `.claude` while `.git` kept Git Tree — priority 1 takes an ordinary folder
+  and does not displace 20 — and `.vscode`, `.github`, `.agents` and `.persephone` kept Folder
+  View, so the mask did not over-match. The row rendered the board's own icon. Clicking the folder
+  opened the board, which received `getFolderPath()` = the claimed folder and `getFilePath()` =
+  undefined; `boardRoot` and `folderPath` were distinct on the facade. The toolbar switched both
+  ways. Revoking trust left the board as a recovery-only option labelled from its folder name, with
+  Folder View still reachable — Concern 2 in practice.
+- One defect surfaced and was fixed: `folder-editor` was registered with the content-pipeline parser
+  in US-1430 but never added to `PIPELINE_SCHEMES` in
+  `src/renderer/api/pages/open-url-validation.ts`, so `pages.openUrl` rejected the new scheme while
+  accepting every sibling (`git-tree`, `mneme-folder`, `tree-category`, `persephone-board`).
+  Explorer clicks were unaffected; only scripting and MCP callers hit it.
+- Still unexercised: the "+" install round trip (Download → Register → switch) and restart restore
+  of a folder board. Both need a published folder-claiming board in the catalog, which does not
+  exist yet.

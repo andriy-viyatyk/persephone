@@ -279,6 +279,14 @@ graph TD
 | Persistence | [`PagesPersistenceModel.ts`](../../src/renderer/api/pages/PagesPersistenceModel.ts) | save/restore window state to disk |
 | Query | [`PagesQueryModel.ts`](../../src/renderer/api/pages/PagesQueryModel.ts) | find (by any ID: page, mainEditor, or secondary), findPageByFilePath, activePage, getGrouped, isLastPage |
 
+Folder boards are the persistence exception among no-host board pages. Their descriptor keeps the
+stable `board-view` editor id but stores the installed `boardRoot` and claimed `folderPath` as
+independent durable fields. Restore checks the current trusted custom-editor registry still maps
+that board root to the claimed folder before constructing the board; a stale trust or manifest
+claim is rejected in favor of a usable Folder View path rather than deriving a folder from the
+board installation root. The same folder identity is carried by a host-less Board Info install
+page so Download → Register can return to the folder context.
+
 Two lifecycle concerns live in their own modules rather than in `PagesLifecycleModel`:
 [`PageNavigator.ts`](../../src/renderer/api/pages/PageNavigator.ts) implements `navigatePageTo`
 as named steps (the lifecycle keeps a one-line delegate), and

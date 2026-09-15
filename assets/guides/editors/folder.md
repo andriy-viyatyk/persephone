@@ -16,7 +16,11 @@ Click a folder in File Explorer or an Archive panel. Archive folders are read-on
 local folders provide the writable operations and selection behavior. Ordinary local folders open in
 Folder View and have no editor switch. A recognized `.git` or `.mneme` folder opens Git Tree or
 Mneme instead; use the Editor switch in that page's toolbar to open the folder's own contents in
-Folder View and switch back.
+Folder View and switch back. If a trusted board declares a matching `folderEditorMasks` claim, the
+folder's Explorer row uses that board's icon and opens the board instead; use the page toolbar's
+Editor switch to move between the board and Folder View. A published folder editor appears as **+**
+in that switch until you install and register it through Board Info. See [Boards — Direct-folder
+boards](../boards.md#direct-folder-boards).
 
 ## Layout
 

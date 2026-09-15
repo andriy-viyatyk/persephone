@@ -14,7 +14,9 @@ Boards can be dashboards, viewers, tools, or custom editors associated with file
 
 Open a trusted board from the Explorer **Boards** panel, a `board-manifest.json` row, or the Boards
 tab in **Tools & Editors**. Published boards can be installed from the catalog. A trusted board
-declaring `fileMasks` can appear in the editor switch for matching files.
+declaring `fileMasks` can appear in the editor switch for matching files; a board declaring
+`folderEditorMasks` can open as the editor for matching folders. See [Boards](../boards.md) for
+the file and folder association details.
 
 ## Layout
 
@@ -86,7 +88,7 @@ scaffold and auto-trust their board; the installed/published-board path still us
 
 ## Agent API
 
-After narrowing `page.editor.id` to `board-view`, the `BoardEditor` facade exposes trust/render state,
+After narrowing `page.editor.id` to `board-view` or `board-editor:<root>`, the `BoardEditor` facade exposes trust/render state,
 manifest metadata, reload, status, declared secondary views, snapshots, clicks, typing, evaluation,
 screenshots, network requests, and frame selection. Verified chrome elements include
 `board-toolbar-explorer`, `board-toolbar-reload`, `board-toolbar-log`, `board-toolbar-properties`,

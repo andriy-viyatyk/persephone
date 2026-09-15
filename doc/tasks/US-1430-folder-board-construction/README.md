@@ -392,6 +392,7 @@ above are deliberate task sequencing, not TBD implementation decisions.
 | `src/shared/link-data.ts` | Strip transient `folderPath` from persisted source links. |
 | `src/renderer/api/pages/PageNavigator.ts` | Carry folder construction options through page navigation. |
 | `src/renderer/api/pages/PagesLifecycleModel.ts` | Validate trusted folder board ids and build/restore folder boards without a file host. |
+| `src/renderer/api/pages/open-url-validation.ts` | Retain the scripting/MCP `pages.openUrl` allowlist entry for the new `folder-editor` scheme. |
 | `src/renderer/editors/board/BoardEditorModel.ts` | Store/expose claimed folder state, extend initialization, and retain file-only path semantics. |
 | `src/renderer/editors/board/index.ts` | Add the plain folder-board factory used by lifecycle construction. |
 | `src/renderer/editors/board/BoardWebview.ts` | Send the claimed folder in the handshake. |

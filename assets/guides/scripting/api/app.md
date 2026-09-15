@@ -130,7 +130,12 @@ const result = await res.json();
 
 ### openRawLink(href, options?)
 
-Open any link through Persephone's navigation pipeline — a local file path, a URL, or an in-app scheme (`persephone-board://`, etc.). Opens a new tab or reuses a matching one if it already exists.
+Open any link through Persephone's navigation pipeline — a local file path, a URL, or an in-app scheme
+(`persephone-board://`, `persephone-toolset://`, `persephone-guide://`, `tree-category://`,
+`git-tree://`, `mneme://`, `mneme-folder://`, or `folder-editor://`). The Explorer creates
+`folder-editor://` links for trusted boards that claim a folder; scripts should normally use the
+Explorer or `page.editorSwitches.switchTo(...)` rather than constructing that link
+themselves. Opens a new tab or reuses a matching one if it already exists.
 
 ```javascript
 // Open a local file in a new tab

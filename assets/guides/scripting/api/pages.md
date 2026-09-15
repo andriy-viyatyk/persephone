@@ -244,7 +244,9 @@ source, use [`openUrl`](./pages.md#openurlurl-options--promisevoid) so the norma
 
 Open a supported URL or file path through Persephone's content-delivery pipeline. The pipeline may
 choose an editor or fall back to a browser; pass `editor` to request a specific editor. The method
-does not return the opened page ID, so inspect `app.pages.all` after awaiting it.
+does not return the opened page ID, so inspect `app.pages.all` after awaiting it. It also accepts
+registered in-app links such as `tree-category://`, `git-tree://`, `mneme-folder://`, and
+`folder-editor://`; the Explorer creates the last form for a trusted board claiming a folder.
 
 ```javascript
 await app.pages.openUrl("file:///C:/notes/readme.md");

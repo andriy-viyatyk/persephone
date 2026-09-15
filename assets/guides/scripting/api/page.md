@@ -67,7 +67,10 @@ uses an id such as `board-editor:details`. Each facade also exposes its registry
 ## `page.editorSwitches`
 
 `current` is the current main editor id. `options` is the exact merged projection shown by the
-toolbar, including compatible built-in editors, trusted board matches, and the install entry.
+toolbar, including compatible built-in editors, trusted board matches, and the install entry. On a
+folder page, this includes Folder View, trusted boards whose `folderEditorMasks` match the folder,
+and `+` when a compatible published folder editor is available. If the current folder board no longer
+matches or is no longer trusted, it can remain as a recovery-only option until you switch away.
 
 ```javascript
 console.log(page.editorSwitches.current);
@@ -75,8 +78,9 @@ console.log(page.editorSwitches.options); // [{ id, label }]
 await page.editorSwitches.switchTo("grid-json");
 ```
 
-`switchTo(id)` accepts any registered editor id; it is not restricted to `options`. A same-id call
-is a silent no-op. The operation awaits the switch and then verifies
+`switchTo(id)` accepts any registered editor id on a file page; on a folder page, use an id present in
+`options` because the switch must be a currently available folder editor. A same-id call is a silent
+no-op. The operation awaits the switch and then verifies
 `mainEditorInstance.editorId`. If the call returns without switching, it throws a diagnostic that
 the release prompt may have been declined or the page may have no file to rebuild over. Unknown
 ids preserve the registry's existing rejection. The page toolbar is available as
@@ -104,7 +108,9 @@ narrowed:
   Prompts panel state. `command` and `args` are read-only; the `url` setter rejects embedded
   credentials, fragments, and credential-like query parameters.
 - `board-view` and `board-editor:<id>`: board identity, trust/render state, manifest, secondary
-  views, busy/frame status, and `reload()` for the open board.
+  views, busy/frame status, and `reload()` for the open board. A folder board also exposes
+  `folderPath`, the claimed folder; its installed `boardRoot` is a separate value, and
+  the board bridge's `getFilePath()` remains undefined for folder mode.
 - `board-info`: published-board matches, install/properties state, version history, and the
   install-directory picker or download cancellation. Trust and registration remain user actions.
 - `toolset-view`: registered toolset identity, validity and errors, plus `refresh()`, `openFolder()`

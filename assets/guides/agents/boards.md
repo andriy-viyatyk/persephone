@@ -659,7 +659,8 @@ the manifest's `loadOrder`.
   as an agent, `pages[pageId].editor.reload()`. The path returns after the reloaded main frame has
   finished loading, so an iterate loop is race-free: edit files → `reload()` → `snapshot()`.
 - **`board-manifest.json` is not covered by a reload.** Persephone caches a board's manifest from the
-  moment the board is trusted, so a manifest edit (`fileMasks`, `editorPriority`, `editorSources`)
+  moment the board is trusted, so a manifest edit (`fileMasks`, `folderMasks`, `folderEditorMasks`,
+  `editorPriority`, `folderEditorPriority`, `editorSources`)
   applies only after toggling the board's trust off and on, or restarting the app — not after
   `pages[pageId].editor.reload()`.
 
@@ -747,7 +748,8 @@ The debugging surfaces, in the order to check them:
   `board-manifest.json`; name collision on create). `boards.openBoard` success returns
   `{ opened, pageId, title }` — use that `pageId` for `pages[pageId].editor`; boards are never
   reached by the untargeted browser-page fallback unless they are the active page.
-- **Manifest edits don't apply on refresh** — `fileMasks`/`editorPriority`/`editorSources` are
+- **Manifest edits don't apply on refresh** — `fileMasks`/`folderMasks`/`folderEditorMasks`/
+  `editorPriority`/`folderEditorPriority`/`editorSources` are
   cached from trust time; toggle trust or restart the app (see "Manifest, icon, reload").
 - **`getJson()` rejections** carry `exitCode` + captured `stderr` from the backend script —
   surface them in the board UI rather than leaving a blank panel.

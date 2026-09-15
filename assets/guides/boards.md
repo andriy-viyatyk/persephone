@@ -583,6 +583,12 @@ app is installed and `folderPath` is the absolute directory the board claims and
 `await persephone.getFolderPath()` to read the latter. `getFilePath()` remains `undefined` in folder
 mode, and `editorKind: "content-host"` still applies only to a board's file association.
 
+When a trusted board claims a folder, its board icon appears on that folder's File Explorer row and
+clicking the row opens the board for the folder. The page toolbar's editor switch offers **Folder
+View** and the matching board(s) in the documented order, so you can browse the folder and return to
+the board without opening another tab. If the board is later untrusted, an already-open page keeps a
+recovery-only switch entry so you can return to Folder View; the board does not run while untrusted.
+
 For example, a board that recognizes force-graph JSON by its content can offer itself for both
 saved files and untitled JSON pages without taking over normal file opening:
 
@@ -598,7 +604,7 @@ saved files and untitled JSON pages without taking over normal file opening:
 - **The board must be trusted.** An untrusted board's file association is completely ignored — no switch option, no default-editor behavior — until you trust it. Un-trusting a board removes the association immediately.
 - **The tab and icon follow the file, not the board.** When a board is opened as a file's editor, the page tab shows the **file's name** (not the board's folder name). Wherever that board wins as the file's *default* editor, its icon also replaces the generic file icon — in the File Explorer tree, other file lists, and page tabs (see [Board icon](#board-icon)).
 - **Unsaved changes are protected.** Switching away from a modified built-in editor to a **simple** board runs the usual "Save changes?" prompt (Save / Don't Save / Cancel) before the switch happens, the same prompt used when navigating away from unsaved changes anywhere else in Persephone. A **content-host** board doesn't need this — its content transfers directly with nothing to lose (see below).
-- A change to `fileMasks` / `contentMasks` / `folderMasks` / `editorPriority` / `editorName` / `editorKind` in the manifest takes effect the next time the board or trust list is refreshed, not while a page is already showing the board.
+- A change to `fileMasks` / `contentMasks` / `folderMasks` / `folderEditorMasks` / `editorPriority` / `folderEditorPriority` / `editorName` / `editorKind` in the manifest takes effect the next time the board or trust list is refreshed, not while a page is already showing the board.
 - **The full set of switch buttons stays visible while the board is active.** Whichever editor is currently showing — the board or one of the file's built-in editors — the same switch buttons appear in the same order, so you can jump directly from the board to any other available editor (e.g. Preview) without detouring through the Text Editor first.
 
 ### Scoping to a folder — `folderMasks`
@@ -682,6 +688,7 @@ Persephone maintains a small **catalog of boards published by the project** — 
 ### Discovering a board
 
 - **From a file** — open a file whose type has no editor installed yet, but that matches a published board's file type. The editor-switch control at the top of the page shows an extra **+** entry next to **Text** (`Text | +`). Click it to open the **Board Info** screen for that board (or, if more than one published board matches the file type, a screen listing all of them).
+- **From a folder** — open a folder whose path matches a published board's direct-folder claim. The folder page's editor-switch control shows **+** after the available folder editors. Click it to open **Board Info**, which lists the matching board and its folder mask. The folder remains in Folder View until you download and register the board.
 - **From the hub** — open the **Tools & Editors** panel (App menu) and click **Open in new tab**, or open its **Search boards** tab directly. This full-page **Search boards** tab browses the whole catalog — filter by name, description, or file type — and works without any matching file open. A **Refresh catalog** button forces an immediate check instead of waiting for the next automatic cycle.
 
 Each board's card in the **Search boards** tab shows a **screenshot** of the board alongside its name, version, size, description, and file types, so browsing the catalog looks like a gallery rather than a text list. The **Board Info** screen shows the same screenshot, in both its install and its properties view. A board with no screenshot — or a screenshot that can't be loaded (for example while offline) — shows a neutral placeholder in its place, so cards stay the same size either way. The catalog listing itself is cached and browsable offline, but screenshots are loaded from the internet on demand, so they fall back to the placeholder until you're back online.
@@ -690,8 +697,8 @@ Each board's card in the **Search boards** tab shows a **screenshot** of the boa
 
 Installing a published board is always two separate, explicit steps — nothing is ever trusted or executed on your behalf:
 
-1. **Download** — the Board Info screen shows the board's name, version, description, file types, and download size, plus an install-location field (defaults to a Persephone data folder; **Browse…** to choose another). Clicking **Download** fetches the ZIP with a byte-progress bar, verifies its checksum, and extracts it to disk. **Nothing is trusted yet** — the downloaded board sits inert on disk, exactly like any other folder of files. This is the point at which you (or your AI agent) can open the folder and read its scripts before deciding to trust it.
-2. **Register board** — once downloaded, the screen shows **"Downloaded — not registered"** with the folder's path and a reminder that you can ask your AI agent to review the board's files first. Clicking **Register board** shows the same **Trust board** dialog every board shows on first use (see [Board trust gate](#board-trust-gate) above). Only after you accept does the board become active — the file you opened switches to the new editor automatically, and the switch control now shows it (`Text | <Board Name>`) instead of `+`.
+1. **Download** — the Board Info screen shows the board's name, version, description, file types or folder claim, and download size, plus an install-location field (defaults to a Persephone data folder; **Browse…** to choose another). Clicking **Download** fetches the ZIP with a byte-progress bar, verifies its checksum, and extracts it to disk. **Nothing is trusted yet** — the downloaded board sits inert on disk, exactly like any other folder of files. This is the point at which you (or your AI agent) can open the folder and read its scripts before deciding to trust it.
+2. **Register board** — once downloaded, the screen shows **"Downloaded — not registered"** with the folder's path and a reminder that you can ask your AI agent to review the board's files first. Clicking **Register board** shows the same **Trust board** dialog every board shows on first use (see [Board trust gate](#board-trust-gate) above). Only after you accept does the board become active — the file or folder you opened switches to the new editor automatically, and the switch control now shows it (`Text | <Board Name>` or `Folder View | <Board Name>`) instead of `+`.
 
 You can delete a downloaded-but-not-yet-registered board directly from this screen — nothing was ever trusted, so there's nothing to untrust.
 

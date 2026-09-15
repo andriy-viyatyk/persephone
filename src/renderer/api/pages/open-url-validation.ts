@@ -1,5 +1,6 @@
 const PIPELINE_SCHEMES = new Set([
     "data",
+    "folder-editor",
     "git-tree",
     "mneme",
     "mneme-folder",

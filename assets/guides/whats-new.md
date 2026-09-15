@@ -24,6 +24,11 @@ Release notes and changelog for Persephone (formerly js-notepad).
 - **Special folders open their editors directly:** clicking a recognized `.git` or `.mneme` row in
   File Explorer now opens Git Tree or Mneme instead of the folder contents. Use the page toolbar's
   Editor switch to move between that editor and **Folder View**; ordinary folders are unchanged.
+- **Boards can edit folders directly:** a trusted board can declare `folderEditorMasks` and become
+  the editor for matching folders. The Explorer row uses the board's icon, the page toolbar switches
+  between the board and **Folder View**, and the same **+** install flow in **Board Info** is available
+  when a published folder editor matches. If trust is removed, the open page keeps a recovery path
+  back to Folder View. See [Boards — Direct-folder boards](./boards.md#direct-folder-boards).
 
 ### Improvements
 

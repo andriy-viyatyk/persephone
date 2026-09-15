@@ -132,7 +132,7 @@ vendor island under `editors/draw/`; native global styles are installed by `them
 │   ├── terminal.ts         # openTerminalAt(dir) helper — reads terminal.command, auto-detects pwsh→powershell→cmd on first use and saves it, then launches ("Open Terminal here")
 │   ├── board-trust.ts      # Per-board trust registry — persists trusted board roots (trustedBoards.txt); untrusted boards block rendering. This list IS the known-boards registry
 │   ├── boards.ts           # IBoards implementation (app.boards) — board lifecycle (create/open/register/rename) + published-catalog ops (search/download/install/uninstall/updates)
-│   ├── published-boards.ts # Reactive published-catalog model — useCatalog / useCatalogBoardsForFile / isCompatible / getVersions / updatesAvailable / refresh(force)
+│   ├── published-boards.ts # Reactive published-catalog model — useCatalog / useCatalogBoardsForFile / catalogBoardsForFolder / folder subscription / isCompatible / getVersions / updatesAvailable / refresh(force)
 │   ├── board-install.ts    # Install engine — downloadBoard (download→extract→validate→registry, traversal-guarded) + installVersion/updateBoard folder-swap + uninstallCatalogBoard
 │   ├── board-install-registry.ts # installedBoards.json reactive registry (record/remove/getByRoot/getById/useInstalled; one entry per catalog id; stale-entry reconciliation)
 │   ├── board-updates.ts    # Update detection + safe re-install — getBoardUpdate/useBoardUpdates/listBoardUpdates, runBoardUpdate/runBoardVersionInstall, ensureBoardIdle
@@ -248,11 +248,12 @@ vendor island under `editors/draw/`; native global styles are installed by `them
 │   ├── PipePair.ts         # Paired TextFile source/cache pipe ownership and disposal
 │   ├── registry.ts         # Provider/transformer registries, createPipeFromDescriptor()
 │   ├── encoding.ts         # Text encoding detection (BOM, jschardet) and conversion (iconv-lite)
-│   ├── parsers.ts          # Layer 1: raw link parsers (file, HTTP/cURL, archive, data:, guide:) on openRawLink
+│   ├── parsers.ts          # Layer 1: raw link parsers (file, HTTP/cURL, archive, data:, folder-editor, built-in folder links, board/toolset/guide) on openRawLink
 │   ├── resolvers.ts        # Layer 2: pipe resolvers (file, HTTP, archive, guide) on openLink
 │   ├── link-utils.ts       # URL → pipe descriptor resolution (used by resolvers + tree providers)
 │   ├── rebuild-pipe.ts     # pipeFromSourcePath() — rebuild a pipe from a persisted source path (plain, archive-bang, http); shared by the Image editor, board file materialization and page restore
 │   ├── open-handler.ts     # Layer 3: open handler on openContent — creates/navigates pages
+│   ├── folder-editor-link.ts # folder-editor:// UTF-8-safe board-folder link; maps built-in folder ids to their existing links
 │   ├── persephone-board-link.ts # persephone-board:// link encode/decode (addresses a board root); parsed in parsers.ts → target "board-view"
 │   ├── persephone-toolset-link.ts # persephone-toolset:// link encode/decode (addresses a toolset root) + openToolset() helper; parsed in parsers.ts → target "toolset-view"
 │   ├── mneme-folder-link.ts # mneme-folder:// link encode/decode (addresses a Mneme root)
@@ -614,15 +615,15 @@ vendor island under `editors/draw/`; native global styles are installed by `them
 │   │   ├── results-to-markdown.ts    # Render search hits as markdown
 │   │   └── index.ts
 │   ├── board/              # Board editor (non-text, Pattern B survive-navigation)
-│   │   ├── BoardEditorModel.ts       # EditorModel — single-board lifecycle, per-board trust gate, live iframe ref, icon; opens any board root; busy keep-alive (survives navigation as an invisible ownership handle while its processes run)
+│   │   ├── BoardEditorModel.ts       # EditorModel — single-board lifecycle, per-board trust gate, live iframe ref, icon; file/folder sources keep boardRoot separate from filePath/folderPath; busy keep-alive
 │   │   ├── BoardEditorView.ts        # Native four-way board branch host
 │   │   ├── BoardToolbar.ts           # In-board toolbar — Reload / Show-log / board path + switcher popover / File Explorer button
 │   │   ├── BoardWebview.ts            # Locked-down cross-origin <iframe src="board://<host>/index.html"> (no sandbox attr); brokers the MessagePort bridge handshake + ui.log reset
 │   │   ├── BoardsTreeView.ts         # Reusable native boards tree (single-root + multi-root; folder-compacted; click / trailing / context-menu slots)
 │   │   ├── boards-tree-build.ts      # Pure builder: board path list → compacted folder/board node tree
 │   │   ├── BoardTargetModel.ts       # Automation adapter (IBrowserTarget for Object Model call paths)
-│   │   ├── board-manifest.ts         # board-manifest.json identity file — read/ensure; a folder is a board iff it carries one; Custom Editor fields (fileMasks/folderMasks/editorPriority/editorName) + matcher/accessor helpers
-│   │   ├── custom-editor-registry.ts # Reactive mask → trusted-board map; board-editor:<root> virtual ids; resolveEditorIdForFile (merges built-in + board at file-open); isBoardEditorId
+│   │   ├── board-manifest.ts         # board-manifest.json identity file — read/ensure; a folder is a board iff it carries one; Custom Editor fields (fileMasks/folderMasks/folderEditorMasks/editorPriority/folderEditorPriority/editorName) + matcher/accessor helpers
+│   │   ├── custom-editor-registry.ts # Reactive mask → trusted-board map; board-editor:<root> virtual ids; resolveEditorIdForFile/resolveEditorIdForFolder (merge built-in + trusted board); isBoardEditorId
 │   │   ├── board-icon-cache.ts       # Module-level icon cache (SVG/PNG/ICO → data URL, per board path)
 │   │   ├── board-usage-cache.ts      # Reactive board-standalone metadata cache (mirrors the icon cache; gates pin affordances)
 │   │   ├── busy-boards.ts            # Reactive registry of busy board roots (drives the Boards panel "running" dot)
@@ -633,7 +634,7 @@ vendor island under `editors/draw/`; native global styles are installed by `them
 │   │   ├── BoardNotFoundView.ts       # Shown when a board root no longer exists on disk (e.g. stale trusted/pinned path)
 │   │   └── index.ts                   # boardModule + native EditorModule factory
 │   ├── board-info/         # Board Info editor ("board-info") — install + properties over one host-capable holder
-│   │   ├── BoardInfoEditorModel.ts   # EditorModel — install/properties modes; adopts/yields CONTENT_HOST_TRAIT without rendering (lossless Text↔+↔board switch)
+│   │   ├── BoardInfoEditorModel.ts   # EditorModel — install/properties modes; file- or folder-keyed catalog matches; preserves folderPath through Download→Register; adopts/yields CONTENT_HOST_TRAIT without rendering
 │   │   ├── BoardInfoEditorView.ts     # Download→Register install UI + properties/versions UI (UIKit only)
 │   │   ├── BoardScreenshotView.ts      # Catalog screenshot at a fixed 16:10 footprint — remote <img>, placeholder on no-URL/404; also used by the hub's Search boards tab
 │   │   ├── board-info-id.ts          # BOARD_INFO_EDITOR_ID constant (avoids an import cycle with PageToolbarView)

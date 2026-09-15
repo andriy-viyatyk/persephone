@@ -245,7 +245,7 @@
         <section class="panel" data-panel="build">
             <h2>Anatomy of a board</h2>
             <ul>
-                <li><code>board-manifest.json</code> — the board-identity file (<code>schemaVersion: 1</code> + optional metadata: name, description, author, repository). Its presence is what marks the folder as a board. Do not add trust flags or behavior fields.</li>
+                <li><code>board-manifest.json</code> — the board-identity file (<code>schemaVersion: 1</code> + optional metadata: name, description, author, repository). Its presence is what marks the folder as a board. Custom-editor behavior fields are optional and trust-gated; see the authoring guide for <code>fileMasks</code>, <code>folderMasks</code>, and direct-folder <code>folderEditorMasks</code>.</li>
                 <li><code>index.html</code> — your page. Edit it, then hit <strong>Reload</strong> in the board toolbar to apply.</li>
                 <li><code>app.js</code> / <code>style.css</code> — your logic and styling (reference relatively, e.g. <code>./app.js</code>). Boards don't auto-reload — use the <strong>Reload</strong> button in the board toolbar (or <code>call</code> at <code>pages[i].editor.reload()</code> when an agent is driving) to apply edits.</li>
                 <li><code>scripts/</code> — backend scripts in any language, invoked via <code>persephone.execute("scripts/thing.js")</code>. <code>cwd</code> defaults to the board folder, so relative paths just work. For a <strong>Node</strong> script that must run on any machine, use <code>persephone.executeNode("scripts/thing.mjs")</code> — it runs on Persephone's bundled Node (no install needed).</li>

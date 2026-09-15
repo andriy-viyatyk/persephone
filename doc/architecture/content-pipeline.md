@@ -40,11 +40,23 @@ Registered in `parsers.ts` via `registerRawLinkParsers()`. Each parser receives 
 |--------|---------|---------------|
 | cURL/fetch | `curl ` or `fetch(` prefix | `curl -H "Auth: x" https://api.com/data.json` |
 | tree-category | `tree-category://` prefix | `tree-category://base64...` (folder navigation) |
+| mneme | `mneme://` prefix | `mneme://{root}/{path}` (Mneme document or attachment) |
+| git-tree | `git-tree://` prefix | `git-tree://...` (Git history view) |
+| mneme-folder | `mneme-folder://` prefix | `mneme-folder://...` (Mneme root view) |
+| folder-editor | `folder-editor://` prefix | `folder-editor://base64...` (trusted board for a claimed folder) |
+| Persephone board | `persephone-board://` prefix | `persephone-board://...` (board root) |
+| Persephone toolset | `persephone-toolset://` prefix | `persephone-toolset://...` (toolset root) |
 | Persephone guide | `persephone-guide://` prefix | `persephone-guide://editors/grid#sorting` |
 | data: URL | `data:` prefix | `data:text/javascript;base64,Y29uc3Q...` (inline content) |
 | HTTP | `http://` or `https://` prefix | `https://example.com/file.json` |
 | Archive | `!` separator (via `isArchivePath`) | `C:\docs.zip!data/report.json` |
 | File | Everything else (fallback) | `C:\Users\file.txt`, `file:///path` |
+
+The scripting/MCP `pages.openUrl` boundary applies the same pipeline-input validation before
+dispatch. In addition to HTTP(S), `file://`, Windows/UNC paths, and `data:` URLs, it accepts the
+registered schemes `folder-editor`, `git-tree`, `mneme`, `mneme-folder`, `persephone-board`,
+`persephone-guide`, `persephone-toolset`, and `tree-category`. A scheme must be listed here and in
+`api/pages/open-url-validation.ts` before `pages.openUrl` will accept it.
 
 **Fragment extraction.** A trailing `#fragment` on an incoming href is an in-document anchor, not part of the path, so the file, archive, `mneme://`, and `persephone-guide://` parsers split it off into the ephemeral `data.fragment` hint (URL-decoded, without the `#`) before resolving. This is done **only for real URLs** (`file://`, `mneme://`, `persephone-guide://`), never for a bare filesystem path: in a URL a literal `#` must be percent-encoded as `%23`, which makes the split unambiguous, whereas `#` is a legal character in Windows file and folder names (`C:\notes\C#\readme.md`). The HTTP parser leaves fragments in the URL, where the browser handles them.
 
