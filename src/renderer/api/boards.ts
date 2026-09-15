@@ -399,6 +399,8 @@ export const boards: IBoards = {
                     version: b.version,
                     fileMasks: b.fileMasks,
                     folderMasks: b.folderMasks,
+                    folderEditorMasks: b.folderEditorMasks,
+                    folderEditorPriority: b.folderEditorPriority,
                     editorName: b.editorName,
                     editorKind: b.editorKind,
                     standalone: b.standalone,

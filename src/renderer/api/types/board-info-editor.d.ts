@@ -15,6 +15,10 @@ export interface IBoardInfoCatalogMatch {
     readonly description?: string;
     readonly fileMasks?: readonly string[];
     readonly folderMasks?: readonly string[];
+    /** Direct folder claims matching the folder itself; unlike `folderMasks`, not a file gate. */
+    readonly folderEditorMasks?: readonly string[];
+    /** Direct folder resolution priority for `folderEditorMasks`. */
+    readonly folderEditorPriority?: number;
     readonly editorName?: string;
     readonly editorKind?: "simple" | "content-host";
     readonly standalone?: boolean;
@@ -37,6 +41,10 @@ export interface IBoardInfoProperties {
     readonly manifestVersion?: string;
     readonly fileMasks?: readonly string[];
     readonly folderMasks?: readonly string[];
+    /** Direct folder claims matching the folder itself; unlike `folderMasks`, not a file gate. */
+    readonly folderEditorMasks?: readonly string[];
+    /** Direct folder resolution priority for `folderEditorMasks`. */
+    readonly folderEditorPriority?: number;
     readonly editorName?: string;
     readonly editorKind?: "simple" | "content-host";
     readonly root: string;

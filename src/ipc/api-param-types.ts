@@ -87,7 +87,8 @@ export interface PublishedBoardArchive {
 
 /**
  * One board entry in the catalog `boards-manifest.json` (EPIC-045). The association
- * fields (fileMasks/folderMasks/editorName/editorKind/standalone) are copied by the publish
+ * fields (fileMasks/folderMasks/folderEditorMasks/folderEditorPriority/editorName/editorKind/
+ * standalone) are copied by the publish
  * automation from the board's own board-manifest.json so the client can advertise a
  * board (the "+" switch entry, the catalog list) WITHOUT downloading it.
  */
@@ -98,6 +99,10 @@ export interface PublishedBoardInfo {
     description?: string;
     fileMasks?: string[];
     folderMasks?: string[];
+    /** Direct folder claims; unlike folderMasks, these match the folder itself. */
+    folderEditorMasks?: string[];
+    /** Direct folder resolution priority; normalized by the renderer on ingress. */
+    folderEditorPriority?: number;
     editorName?: string;
     editorKind?: "simple" | "content-host";
     standalone?: boolean;

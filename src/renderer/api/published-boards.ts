@@ -36,6 +36,29 @@ function matchesCatalogMasks(board: PublishedBoardInfo, fileName: string): boole
     );
 }
 
+/** Normalize copied association fields at every catalog ingress. The direct folder axis stays
+ * separate from `folderMasks`, which remains the file predicate's narrowing-only field. */
+function normalizeCatalog(catalog: PublishedBoardsCatalog | null): PublishedBoardsCatalog | null {
+    if (!catalog) return null;
+    return {
+        ...catalog,
+        boards: catalog.boards.map((board) => {
+            const rawFolderEditorPriority = board.folderEditorPriority;
+            const folderEditorPriority =
+                typeof rawFolderEditorPriority === "number"
+                && Number.isFinite(rawFolderEditorPriority)
+                && rawFolderEditorPriority > 0
+                    ? rawFolderEditorPriority
+                    : 0;
+            return {
+                ...board,
+                folderEditorMasks: normalizeFolderMasks(board.folderEditorMasks),
+                folderEditorPriority,
+            };
+        }),
+    };
+}
+
 class PublishedBoards {
     private readonly state = new TGlobalState<CatalogState>({ catalog: null, loaded: false });
     private subscribed = false;
@@ -51,7 +74,7 @@ class PublishedBoards {
             // listener; individual catalog views only consume its state.
             rendererEvents[EventEndpoint.ePublishedBoardsUpdated].subscribe((catalog) => {
                 this.state.update((s) => {
-                    s.catalog = catalog;
+                    s.catalog = normalizeCatalog(catalog);
                     s.loaded = true;
                 });
             });
@@ -61,7 +84,7 @@ class PublishedBoards {
         }
         const result = await api.getPublishedBoards();
         this.state.update((s) => {
-            s.catalog = result.catalog;
+            s.catalog = normalizeCatalog(result.catalog);
             s.loaded = true;
         });
     }
@@ -76,7 +99,7 @@ class PublishedBoards {
     async refresh(): Promise<void> {
         const result = await api.getPublishedBoards(true);
         this.state.update((s) => {
-            s.catalog = result.catalog;
+            s.catalog = normalizeCatalog(result.catalog);
             s.loaded = true;
         });
     }

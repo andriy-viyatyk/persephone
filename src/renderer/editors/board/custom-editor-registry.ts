@@ -22,6 +22,7 @@ import {
     getBoardEditorAssociation,
     matchesBoardMasks,
     matchesContentMasks,
+    matchesFolderEditorMasks,
     readBoardManifest,
 } from "./board-manifest";
 
@@ -42,8 +43,8 @@ export function parseBoardEditorId(editorId: string): string | null {
         : null;
 }
 
-/** A trusted, file-associated board resolved from its manifest. One per trusted board that
- *  declares usable `fileMasks` or `contentMasks`. */
+/** A trusted board association resolved from its manifest. One per trusted board that declares
+ *  usable file, content, or direct-folder claims; it may be file-only, folder-only, or both. */
 export interface CustomEditorMatch {
     /** Virtual editor id: `board-editor:<boardRoot>` (original-case root). */
     editorId: string;
@@ -51,13 +52,18 @@ export interface CustomEditorMatch {
     boardRoot: string;
     /** Switch-widget display name: editorName ?? manifest.name ?? basename(root). */
     name: string;
-    /** Resolution priority (>= 0) from the manifest (US-836 `editorPriority`). */
+    /** File resolution priority (>= 0) from the manifest (US-836 `editorPriority`). */
     priority: number;
-    /** The board's normalized glob masks (for matching + introspection). */
+    /** The board's normalized glob masks (for file matching + introspection); empty for a
+     *  folder-only association. */
     fileMasks: string[];
     /** The board's normalized folder globs, narrowing `fileMasks` to certain locations.
      *  Empty = any folder (the default for boards that declare no `folderMasks`). */
     folderMasks: string[];
+    /** The board's normalized direct folder-claim globs, matching the folder itself. */
+    folderEditorMasks: string[];
+    /** Folder resolution priority from `folderEditorPriority`. */
+    folderEditorPriority: number;
     /** The board's normalized content-detection regex sources (US-1404). Empty = none. Consumed
      *  ONLY by `getBoardsForContent` (the editor-switch path); content never opens a file. */
     contentMasks: string[];
@@ -71,7 +77,7 @@ export interface CustomEditorMatch {
 }
 
 interface CustomEditorRegistryState {
-    /** Every trusted, file-associated board, in trusted-list (registration) order. */
+    /** Every trusted board association, in trusted-list (registration) order. */
     entries: CustomEditorMatch[];
 }
 
@@ -125,6 +131,8 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
                 priority: assoc.editorPriority,
                 fileMasks: assoc.fileMasks,
                 folderMasks: assoc.folderMasks,
+                folderEditorMasks: assoc.folderEditorMasks,
+                folderEditorPriority: assoc.folderEditorPriority,
                 contentMasks: assoc.contentMasks,
                 editorKind: assoc.editorKind,
                 editorSources: assoc.editorSources,
@@ -155,6 +163,14 @@ class CustomEditorRegistry extends TModel<CustomEditorRegistryState> {
         return this.state
             .get()
             .entries.filter((e) => matchesBoardMasks(fileName, e.fileMasks, e.folderMasks));
+    }
+
+    /** Boards whose distinct direct folder claims match `folderPath`, in trusted-list order. */
+    getBoardsForFolder(folderPath: string): CustomEditorMatch[] {
+        if (!folderPath) return [];
+        return this.state
+            .get()
+            .entries.filter((e) => matchesFolderEditorMasks(folderPath, e.folderEditorMasks));
     }
 
     /**
@@ -226,6 +242,29 @@ export function resolveEditorIdForFile(
     }
     if (best && best.priority > builtinPriority) return best.editorId;
     return builtinId;
+}
+
+/** Resolve the winning editor id for a folder, merging built-ins with trusted direct-folder
+ * board claims. Built-ins win exact priority ties; trusted-list order wins board ties. */
+export function resolveEditorIdForFolder(folderPath: string): string {
+    const builtinId = editorRegistry.resolveForFolder(folderPath);
+    const builtinPriority =
+        editorRegistry.getById(builtinId)?.match?.acceptFolder?.(folderPath) ?? 0;
+    let best: CustomEditorMatch | undefined;
+    for (const board of customEditorRegistry.getBoardsForFolder(folderPath)) {
+        if (!best || board.folderEditorPriority > best.folderEditorPriority) best = board;
+    }
+    if (best && best.folderEditorPriority > builtinPriority) return best.editorId;
+    return builtinId;
+}
+
+/** Return built-in folder candidates in registry order, followed by every matching trusted board
+ * in trusted-list order. Priority affects only the default resolver, never this list. */
+export function getFolderEditorsForFolder(folderPath: string): string[] {
+    return [
+        ...editorRegistry.getFolderEditors(folderPath),
+        ...customEditorRegistry.getBoardsForFolder(folderPath).map((board) => board.editorId),
+    ];
 }
 
 /**

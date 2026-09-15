@@ -13,6 +13,10 @@ export interface PublishedBoardResult {
     fileMasks?: string[];
     /** Folder globs narrowing `fileMasks` to certain locations (absent = any folder). */
     folderMasks?: string[];
+    /** Direct folder claims matching the folder itself; unlike `folderMasks`, not a file gate. */
+    folderEditorMasks?: string[];
+    /** Direct folder resolution priority for `folderEditorMasks`. */
+    folderEditorPriority?: number;
     editorName?: string;
     editorKind?: "simple" | "content-host";
     /** True when the board can be pinned / opened empty (tool/dashboard-style). */

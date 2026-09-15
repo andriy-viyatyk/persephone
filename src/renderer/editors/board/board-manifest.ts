@@ -90,6 +90,12 @@ export interface BoardManifest {
      */
     folderMasks?: string[];
     /**
+     * Direct folder claims for the folder itself, not a file's parent folder. Unlike
+     * `folderMasks`, these masks create a folder association even when `fileMasks` and
+     * `contentMasks` are absent. Honored only when the board is TRUSTED.
+     */
+    folderEditorMasks?: string[];
+    /**
      * CONTENT detection (EPIC-100 / US-1404) — regular-expression sources tested against the page's
      * text content, the board-manifest counterpart of a built-in matcher's `detectsContent`. A board
      * declaring `"contentMasks": ["\"type\"\s*:\s*\"force-graph\""]` is offered as an editor-switch
@@ -112,6 +118,12 @@ export interface BoardManifest {
      * a switch option regardless of this value.
      */
     editorPriority?: number;
+    /**
+     * Folder-open resolution priority for `folderEditorMasks`. A folder board wins the default
+     * folder editor only when this exceeds the matching built-in priority. Omitted/0 keeps the
+     * built-in default, while the board remains a folder switch candidate.
+     */
+    folderEditorPriority?: number;
     /**
      * Display name shown on the editor-switch widget for this board. Falls back to `name`,
      * then the board folder name.
@@ -277,6 +289,12 @@ export function normalizeFolderMasks(raw: unknown): string[] {
     return out;
 }
 
+/** Normalize direct folder-claim masks with the same separator and glob rules as `folderMasks`.
+ * This is a separate manifest axis; callers must not use it as a file-association gate. */
+export function normalizeFolderEditorMasks(raw: unknown): string[] {
+    return normalizeFolderMasks(raw);
+}
+
 /** Stands in for `**` while the single-`*` pass runs. NUL cannot occur in a path (nor in any
  *  sane mask), so it can never collide with authored text — unlike a printable stand-in such
  *  as a space, which is perfectly legal in a folder name. */
@@ -305,6 +323,15 @@ export function matchesFolderMask(folderPath: string, mask: string): boolean {
     const normalized = folderPath.replace(/\\/g, "/").replace(/\/+$/, "");
     if (!normalized) return false;
     return folderMaskToRegExp(mask).test(normalized);
+}
+
+/** True iff the absolute folder being resolved matches one of the direct folder claims. */
+export function matchesFolderEditorMasks(
+    folderPath: string,
+    folderEditorMasks: string[],
+): boolean {
+    if (!folderPath) return false;
+    return folderEditorMasks.some((mask) => matchesFolderMask(folderPath, mask));
 }
 
 /**
@@ -388,9 +415,11 @@ export function matchesContentMasks(content: string, masks: string[]): boolean {
     return masks.some((mask) => compileContentMask(mask)?.test(head) ?? false);
 }
 
-/** A board's parsed, validated file-editor association (Custom Editor axis). */
+/** A board's parsed, validated custom-editor association, which may be file-only, folder-only,
+ * or both. */
 export interface BoardEditorAssociation {
-    /** Normalized, lowercase glob masks (e.g. "*.drawio", "*.grid.json"). Guaranteed non-empty. */
+    /** Normalized, lowercase glob masks (e.g. "*.drawio", "*.grid.json"). Empty only for a
+     * folder-only association; whenever the file axis is used, this remains non-empty. */
     fileMasks: string[];
     /** Normalized folder globs narrowing `fileMasks` to certain locations. Empty = any folder. */
     folderMasks: string[];
@@ -399,6 +428,10 @@ export interface BoardEditorAssociation {
     contentMasks: string[];
     /** Resolution priority (>= 0). Non-finite / negative input → 0. */
     editorPriority: number;
+    /** Normalized folder globs matching the folder itself for direct folder resolution. */
+    folderEditorMasks: string[];
+    /** Folder resolution priority (>= 0). Non-finite / non-positive input → 0. */
+    folderEditorPriority: number;
     /** Optional switch-widget display name (trimmed; empty → undefined). */
     editorName?: string;
     /** Normalized board editor kind. Any value other than "content-host" → "simple". */
@@ -408,9 +441,10 @@ export interface BoardEditorAssociation {
 }
 
 /**
- * Extract the file-editor association from a manifest, or null if the board declares neither
- * usable `fileMasks` nor usable `contentMasks`. Pure — does NOT check trust (the caller gates on trust). This is the
- * single source of truth for how a manifest maps to an editor association.
+ * Extract a custom-editor association from a manifest, or null if the board declares no usable
+ * `fileMasks`, `contentMasks`, or `folderEditorMasks`. The result may be file-only, folder-only,
+ * or both. Pure — does NOT check trust (the caller gates on trust). This is the single source of
+ * truth for how a manifest maps to an editor association.
  */
 export function getBoardEditorAssociation(
     manifest: BoardManifest | null | undefined,
@@ -418,16 +452,29 @@ export function getBoardEditorAssociation(
     if (!manifest) return null;
     const fileMasks = normalizeFileMasks(manifest.fileMasks);
     const contentMasks = normalizeContentMasks(manifest.contentMasks);
-    // Folder masks only NARROW file masks, so they never create an association on their own.
+    const folderEditorMasks = normalizeFolderEditorMasks(manifest.folderEditorMasks);
+    // `folderMasks` only NARROW file masks, so it alone still creates nothing. `folderEditorMasks`
+    // deliberately creates a folder association on its own.
     // `contentMasks` DO (US-1404): a board may detect its format by content alone and appear as a
     // switch option on untitled pages without claiming any file name. `matchesBoardMasks` still
     // requires a file-mask hit, so an empty `fileMasks` can never take a file from a built-in.
-    if (fileMasks.length === 0 && contentMasks.length === 0) return null;
+    if (
+        fileMasks.length === 0
+        && contentMasks.length === 0
+        && folderEditorMasks.length === 0
+    ) return null;
     const folderMasks = normalizeFolderMasks(manifest.folderMasks);
     const rawPriority = manifest.editorPriority;
     const editorPriority =
         typeof rawPriority === "number" && Number.isFinite(rawPriority) && rawPriority > 0
             ? rawPriority
+            : 0;
+    const rawFolderEditorPriority = manifest.folderEditorPriority;
+    const folderEditorPriority =
+        typeof rawFolderEditorPriority === "number"
+        && Number.isFinite(rawFolderEditorPriority)
+        && rawFolderEditorPriority > 0
+            ? rawFolderEditorPriority
             : 0;
     const name = typeof manifest.editorName === "string" ? manifest.editorName.trim() : "";
     const editorKind = manifest.editorKind === "content-host" ? "content-host" : "simple";
@@ -437,6 +484,8 @@ export function getBoardEditorAssociation(
         folderMasks,
         contentMasks,
         editorPriority,
+        folderEditorMasks,
+        folderEditorPriority,
         editorName: name || undefined,
         editorKind,
         editorSources,

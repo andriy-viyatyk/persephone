@@ -115,6 +115,13 @@ function validateBoard(entry: unknown): PublishedBoardInfo | null {
         folderMasks: Array.isArray(e.folderMasks)
             ? e.folderMasks.filter((m): m is string => typeof m === "string")
             : undefined,
+        folderEditorMasks: Array.isArray(e.folderEditorMasks)
+            ? e.folderEditorMasks.filter((m): m is string => typeof m === "string")
+            : undefined,
+        folderEditorPriority:
+            typeof e.folderEditorPriority === "number" && Number.isFinite(e.folderEditorPriority)
+                ? e.folderEditorPriority
+                : undefined,
         editorName: typeof e.editorName === "string" ? e.editorName : undefined,
         editorKind,
         standalone: typeof e.standalone === "boolean" ? e.standalone : undefined,
