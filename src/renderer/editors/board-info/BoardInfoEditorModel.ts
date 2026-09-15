@@ -6,7 +6,11 @@ import type { IContentHost } from "../base/IContentHost";
 import { editorRegistry } from "../base/editorRegistry";
 import type { EditorDescriptor, HostDescriptor } from "../../../shared/persistence";
 import { TextFileModel, isTextFileModel } from "../text/TextEditorModel";
-import { boardEditorId, customEditorRegistry } from "../board/custom-editor-registry";
+import {
+    boardEditorId,
+    customEditorRegistry,
+    getFolderEditorsForFolder,
+} from "../board/custom-editor-registry";
 import { isBoardFolder, readBoardManifest, getBoardEditorAssociation } from "../board/board-manifest";
 import { BOARD_INFO_EDITOR_ID } from "./board-info-id";
 import { publishedBoards } from "../../api/published-boards";
@@ -18,7 +22,7 @@ import { fs } from "../../api/fs";
 import { ui } from "../../api/ui";
 import { createLinkData } from "../../../shared/link-data";
 import { encodePersephoneBoardLink } from "../../content/persephone-board-link";
-import { fpBasename, fpJoin } from "../../core/utils/file-path";
+import { fpBasename, fpJoin, fpNormalizeForCompare } from "../../core/utils/file-path";
 import { api } from "../../../ipc/renderer/api";
 import rendererEvents from "../../../ipc/renderer/renderer-events";
 import { EventEndpoint } from "../../../ipc/api-types";
@@ -49,6 +53,10 @@ export interface BoardPropsInfo {
     fileMasks?: string[];
     /** Folder globs narrowing `fileMasks` to certain locations (absent/empty = any folder). */
     folderMasks?: string[];
+    /** Direct folder globs matching the folder itself. */
+    folderEditorMasks?: string[];
+    /** Direct folder resolution priority for `folderEditorMasks`. */
+    folderEditorPriority?: number;
     editorName?: string;
     editorKind?: "simple" | "content-host";
     root: string;
@@ -75,6 +83,8 @@ export interface BoardInfoEditorState extends EditorStateBase {
      *  A content-host source carries the file via its adopted host instead, so this stays unset
      *  there. Drives the switch widget's file peers + the "Open board" return path. */
     filePath?: string;
+    /** Claimed folder when Board Info was opened from a folder editor. */
+    folderPath?: string;
     /** Catalog match tiles (install mode), derived from the host file name + catalog. */
     matches: PublishedBoardInfo[];
     /** Install-path parent dir (default `<userData>/data/boards`); user-changeable. */
@@ -97,6 +107,8 @@ export const getDefaultBoardInfoEditorState = (): BoardInfoEditorState => ({
     matches: [],
     installUi: {},
 });
+
+type BoardInfoSource = { path: string; kind: "file" | "folder" };
 
 /**
  * Board Info editor — install mode (EPIC-045 / US-864).
@@ -197,6 +209,14 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
     /** Tolerant transfer: adopt the old editor's host if it has one; otherwise (host-less
      *  standalone open) keep no host. */
     override switchFrom(oldEditor: EditorModel): void {
+        const folderPath = oldEditor.folderAnchor;
+        if (folderPath !== undefined && !oldEditor.contentHost) {
+            this.state.update((s) => {
+                s.folderPath = folderPath;
+                s.title = fpBasename(folderPath);
+            });
+            return;
+        }
         const trait = oldEditor.traits.get(CONTENT_HOST_TRAIT);
         if (!trait) {
             // Host-less source (e.g. the built-in Archive viewer for a zip-based .xlsx / .docx /
@@ -224,17 +244,34 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
 
     // ── Switch-widget support ────────────────────────────────────────────
 
+    /** Claimed folder identity used by folder-aware switch consumers. */
+    override get folderAnchor(): string | undefined {
+        return this.state.get().folderPath;
+    }
+
+    /** Resolve Board Info's identity once: held host file, persisted folder, persisted file,
+     *  then the existing file-shaped title fallback. */
+    private currentSource(): BoardInfoSource {
+        const hostState = this._host?.state.get();
+        if (hostState?.filePath) return { path: hostState.filePath, kind: "file" };
+        const state = this.state.get();
+        if (state.folderPath) return { path: state.folderPath, kind: "folder" };
+        if (state.filePath) return { path: state.filePath, kind: "file" };
+        return { path: hostState?.title ?? this.title, kind: "file" };
+    }
+
     private currentFileName(): string {
-        const hs = this._host?.state.get();
         // Prefer the held host's file, then a host-less simple board's captured `filePath`
         // (US-876), then titles — so the switch resolves the file's real built-in peer.
-        return hs?.filePath ?? this.state.get().filePath ?? hs?.title ?? this.title;
+        return this.currentSource().path;
     }
 
     /** The file's natural built-in editor (to switch back) plus this editor, so the switch keeps
      *  rendering `Text | +` while Board Info is active (mirrors BoardContentEditorModel). */
     override findCompatibleEditors(): string[] {
-        const builtin = editorRegistry.resolveId(this.currentFileName()) ?? "monaco";
+        const source = this.currentSource();
+        if (source.kind === "folder") return getFolderEditorsForFolder(source.path);
+        const builtin = editorRegistry.resolveId(source.path) ?? "monaco";
         return [builtin, BOARD_INFO_EDITOR_ID];
     }
 
@@ -301,6 +338,8 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
             manifestVersion: manifest?.version,
             fileMasks: assoc?.fileMasks,
             folderMasks: assoc?.folderMasks,
+            folderEditorMasks: assoc?.folderEditorMasks,
+            folderEditorPriority: assoc?.folderEditorPriority,
             editorName: assoc?.editorName,
             editorKind: assoc?.editorKind,
             root,
@@ -401,7 +440,8 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
     async openBoard(): Promise<void> {
         const root = this.state.get().props?.root ?? this.state.get().boardRoot;
         if (!root) return;
-        if (this._host || this.state.get().filePath) {
+        const source = this.currentSource();
+        if (source.kind === "folder" || this._host || source.path !== this.title) {
             // Content-host: lossless host transfer. Host-less simple board (US-876): the
             // captured `filePath` (this editor's `filePath`) lets `switchMainEditor` rebuild the
             // board over the file, returning to the file-viewing board rather than a plain board.
@@ -434,7 +474,10 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
      *  `catalogId` entry when one was set by a direct opener (hub / toast / `installPublished`) —
      *  a standalone install page has no file to match, so the requested board is added directly. */
     recomputeMatches(): void {
-        const matches = publishedBoards.catalogBoardsForFile(this.currentFileName());
+        const source = this.currentSource();
+        const matches = source.kind === "folder"
+            ? publishedBoards.catalogBoardsForFolder(source.path)
+            : publishedBoards.catalogBoardsForFile(this.currentFileName());
         const catalogId = this.state.get().catalogId;
         if (catalogId && !matches.some((m) => m.id === catalogId)) {
             const entry = publishedBoards.getCatalog().find((b) => b.id === catalogId);
@@ -533,6 +576,7 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
      *  switch, else the board is misclassified as "simple" and dispose-rebuilt), then switches
      *  the page to the installed board. */
     async register(entry: PublishedBoardInfo): Promise<void> {
+        const source = this.currentSource();
         const root = boardInstallRegistry.getById(entry.id)?.root;
         if (!root) return;
         const { showTrustBoardDialog } = await import("../../ui/dialogs/TrustBoardDialog");
@@ -541,9 +585,26 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
         const { confirmNamespaceNotColliding } = await import("../../api/board-vars/namespace");
         if (!(await confirmNamespaceNotColliding(root))) return;
         await boardTrust.trust(root);
-        this.installed.send(root); // resolves app.boards.installPublished's interactive flow
         await customEditorRegistry.refresh();
-        if (this._host) {
+        if (source.kind === "folder") {
+            const trustedEntry = customEditorRegistry.entries.find((candidate) =>
+                fpNormalizeForCompare(candidate.boardRoot) === fpNormalizeForCompare(root),
+            );
+            const claimsFolder = customEditorRegistry.getBoardsForFolder(source.path).some(
+                (candidate) => fpNormalizeForCompare(candidate.boardRoot) === fpNormalizeForCompare(root),
+            );
+            if (!trustedEntry || !claimsFolder) {
+                void ui.notify(
+                    "This board is trusted but no longer claims the current folder.",
+                    "warning",
+                );
+                return;
+            }
+        }
+        this.installed.send(root); // resolves app.boards.installPublished's interactive flow
+        if (source.kind === "folder") {
+            await this.page?.switchMainEditor(boardEditorId(root));
+        } else if (this._host) {
             // File page ("+"): lossless host transfer into the board editor.
             await this.page?.switchMainEditor(boardEditorId(root));
         } else {
@@ -582,13 +643,21 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
      *  back to the file's natural built-in editor so nothing is stranded on an empty screen.
      *  Triggered from the view (safe — the editor is mounted + attached by then). */
     shouldAutoSwitch(): boolean {
-        return this.state.get().matches.length === 0 && !!this._host?.state.get().filePath;
+        const source = this.currentSource();
+        const hasFileSource = this._host !== null && source.path !== this.title;
+        return this.state.get().matches.length === 0
+            && (source.kind === "folder" || hasFileSource);
     }
 
     async autoSwitchToNatural(): Promise<void> {
-        const fp = this._host?.state.get().filePath;
-        if (!fp) return;
-        const id = editorRegistry.resolveId(fp) ?? "monaco";
+        const source = this.currentSource();
+        if (source.kind === "folder") {
+            const id = getFolderEditorsForFolder(source.path)[0];
+            if (id) await this.page?.switchMainEditor(id);
+            return;
+        }
+        if (this._host === null || source.path === this.title) return;
+        const id = editorRegistry.resolveId(source.path) ?? "monaco";
         await this.page?.switchMainEditor(id);
     }
 
@@ -620,6 +689,7 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
                 catalogId: s.catalogId,
                 boardRoot: s.boardRoot,
                 filePath: s.filePath,
+                folderPath: s.folderPath,
                 installDir: s.installDir,
             } as Record<string, unknown>,
             // Persist the held host so a "+"-opened install returns its file across a restart.
@@ -638,6 +708,7 @@ export class BoardInfoEditorModel extends EditorModel<BoardInfoEditorState> {
                 if (st.catalogId !== undefined) s.catalogId = st.catalogId;
                 if (st.boardRoot !== undefined) s.boardRoot = st.boardRoot;
                 if (st.filePath !== undefined) s.filePath = st.filePath;
+                if (st.folderPath !== undefined) s.folderPath = st.folderPath;
                 if (st.installDir !== undefined) s.installDir = st.installDir;
             });
         }

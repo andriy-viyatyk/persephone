@@ -17,6 +17,7 @@ import {
     normalizeFileMasks,
     normalizeFolderMasks,
     matchesBoardMasks,
+    matchesFolderEditorMasks,
 } from "../editors/board/board-manifest";
 
 interface CatalogState {
@@ -144,6 +145,21 @@ class PublishedBoards {
         );
     }
 
+    /** Compatible catalog boards whose direct folder masks match the given absolute folder. */
+    catalogBoardsForFolder(folderPath: string): PublishedBoardInfo[] {
+        return this.selectCatalogBoardsForFolder(this.state.get(), folderPath);
+    }
+
+    subscribeCatalogBoardsForFolder(
+        folderPath: string,
+        listener: () => void,
+    ): () => void {
+        return this.state.subscribe(
+            listener,
+            (state) => this.selectCatalogBoardsForFolder(state, folderPath),
+        );
+    }
+
     private selectCatalogBoardsForFile(
         state: CatalogState,
         fileName: string,
@@ -152,6 +168,17 @@ class PublishedBoards {
         return boards.filter((board) => {
             if (!this.isCompatible(board.minAppVersion)) return false;
             return matchesCatalogMasks(board, fileName);
+        });
+    }
+
+    private selectCatalogBoardsForFolder(
+        state: CatalogState,
+        folderPath: string,
+    ): PublishedBoardInfo[] {
+        const boards = state.catalog?.boards ?? [];
+        return boards.filter((board) => {
+            if (!this.isCompatible(board.minAppVersion)) return false;
+            return matchesFolderEditorMasks(folderPath, board.folderEditorMasks ?? []);
         });
     }
 

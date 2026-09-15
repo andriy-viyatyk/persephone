@@ -30,11 +30,13 @@ export async function openBoardInfo(
     // hand over, so capture its file path directly. Board Info's switch widget then offers the
     // file's real peers (e.g. Archive | Excel | +) and a working path back to the board (US-876).
     const filePath = old && !hostTrait ? old.filePath : undefined;
+    const folderPath = old && !old.contentHost ? old.folderAnchor : undefined;
     const model = new BoardInfoEditorModel(
         new TComponentState({
             ...getDefaultBoardInfoEditorState(),
             ...opts,
             ...(filePath ? { filePath } : {}),
+            ...(folderPath ? { folderPath } : {}),
         }),
     );
     if (old && hostTrait) model.switchFrom(old); // lossless host transfer (tolerant of host-less)

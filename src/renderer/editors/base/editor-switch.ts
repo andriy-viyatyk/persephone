@@ -66,6 +66,32 @@ export async function switchMainEditor(
     if (!oldEditor) return;
     if (oldEditor.editorId === newEditorId) return;
 
+    // The "+" install target is host-TOLERANT in every direction: `BoardInfoEditorModel.switchFrom`
+    // adopts a shared content host when the source holds one, and otherwise captures the source's
+    // file path (the shape it was written for — the host-less Archive viewer) or, since US-1432,
+    // its `folderAnchor`. It is therefore dispatched FIRST, ahead of both branches that would
+    // otherwise claim it:
+    //
+    //  - the board branch below would dispose-and-rebuild it over the file. `board-info` declares
+    //    `hasContentHost`, so the rebuild produces a bare text host and `attachEditorToPage` then
+    //    throws "does not wrap a text host". The toolbar floats that promise, so the "+" click did
+    //    nothing at all whenever the outgoing editor was a SIMPLE board (a content-host board took
+    //    the host-transfer branch and worked, which is why this only showed up with boards like the
+    //    PDF viewer).
+    //  - the folder branch below rejects any target absent from the merged folder candidate list,
+    //    and Board Info is an install UI target rather than a trusted folder candidate — so on a
+    //    folder page it would throw instead of opening. Same bug shape as the one above, one
+    //    branch over, which is why the ordering is load-bearing rather than incidental.
+    //
+    // Handling it here also merges three identical createEditor + switchFrom paths.
+    if (newEditorId === BOARD_INFO_EDITOR_ID) {
+        const boardInfo = await editorRegistry.createEditor(newEditorId);
+        boardInfo.switchFrom(oldEditor);
+        await boardInfo.restore();
+        await page.setMainEditor(boardInfo);
+        return;
+    }
+
     // Folder editors have no filePath and cannot use the regular host-transfer or
     // dispose-and-rebuild paths. Reuse a surviving Pattern B instance first, then
     // build the target from the exact Explorer anchor before those paths can observe
@@ -125,23 +151,6 @@ export async function switchMainEditor(
     // (CE4) and rebuilds the target FRESH over the file (dispose-and-rebuild). The
     // board writes the file directly, so a rebuilt built-in reads current disk
     // content — no stale-cache handling needed.
-    // The "+" install target is host-TOLERANT in both directions: `BoardInfoEditorModel.switchFrom`
-    // adopts a shared content host when the source holds one and otherwise captures the source's
-    // file path (the shape it was written for — the host-less Archive viewer). That makes it exempt
-    // from the board branch below, which would dispose-and-rebuild it over the file: `board-info`
-    // declares `hasContentHost`, so the rebuild produces a bare text host and `attachEditorToPage`
-    // then throws "does not wrap a text host". The toolbar floats that promise, so the "+" click
-    // did nothing at all whenever the outgoing editor was a SIMPLE board (a content-host board took
-    // the host-transfer branch and worked, which is why this only showed up with boards like the
-    // PDF viewer). Handling it here also merges three identical createEditor + switchFrom paths.
-    if (newEditorId === BOARD_INFO_EDITOR_ID) {
-        const boardInfo = await editorRegistry.createEditor(newEditorId);
-        boardInfo.switchFrom(oldEditor);
-        await boardInfo.restore();
-        await page.setMainEditor(boardInfo);
-        return;
-    }
-
     const newBoardRoot = parseBoardEditorId(newEditorId);
     const boardInvolved =
         newBoardRoot !== null

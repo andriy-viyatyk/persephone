@@ -146,6 +146,22 @@ export class PagesPersistenceModel {
                         await model.restore();
                         return model;
                     }
+                    const persistedBoardInfoFolder =
+                        (d.state as { folderPath?: unknown }).folderPath;
+                    if (
+                        d.editorId === "board-info"
+                        && typeof persistedBoardInfoFolder === "string"
+                    ) {
+                        const { editorRegistry } = await import(
+                            "../../editors/base"
+                        );
+                        const editor = await editorRegistry.createEditor(d.editorId, d.id);
+                        editor.applyRestoreData(
+                            d as unknown as Parameters<typeof editor.applyRestoreData>[0],
+                        );
+                        await editor.restore();
+                        return editor;
+                    }
                     if (d.host) {
                         const { editorRegistry } = await import(
                             "../../editors/base"

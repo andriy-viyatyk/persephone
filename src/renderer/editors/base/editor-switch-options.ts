@@ -33,9 +33,31 @@ export function getEditorSwitchOptions(model: EditorModel): IEditorSwitchOption[
             const selectedBoard = (model.state.get() as { selectedBoard?: string }).selectedBoard;
             if (selectedBoard) boardNameById.set(currentBoardId, selectedBoard);
         }
+        const trustedRoots = new Set(
+            boardMatches.map((board) => fpNormalizeForCompare(board.boardRoot)),
+        );
+        const catalogMatches = publishedBoards.catalogBoardsForFolder(folderPath).filter((board) => {
+            const installedEntry = boardInstallRegistry.listInstalled()
+                .find((entry) => entry.id === board.id);
+            return !installedEntry
+                || !trustedRoots.has(fpNormalizeForCompare(installedEntry.root));
+        });
+        if (catalogMatches.length > 0 && !merged.includes(BOARD_INFO_EDITOR_ID)) {
+            merged.push(BOARD_INFO_EDITOR_ID);
+        }
+        const plusIndex = merged.indexOf(BOARD_INFO_EDITOR_ID);
+        if (plusIndex !== -1 && plusIndex !== merged.length - 1) {
+            merged.splice(plusIndex, 1);
+            merged.push(BOARD_INFO_EDITOR_ID);
+        }
         return merged.map((id) => ({
             id,
-            label: boardNameById.get(id) ?? editorRegistry.getById(id)?.name ?? id,
+            label: id === BOARD_INFO_EDITOR_ID
+                ? "\u00A0\u00A0+\u00A0\u00A0"
+                : boardNameById.get(id) ?? editorRegistry.getById(id)?.name ?? id,
+            title: id === BOARD_INFO_EDITOR_ID
+                ? "Install an editor for this folder"
+                : undefined,
         }));
     }
 
@@ -47,7 +69,7 @@ export function getEditorSwitchOptions(model: EditorModel): IEditorSwitchOption[
     const local = !filePath || isPlainLocalPath(filePath);
     const fileName = filePath ?? hostState?.title ?? editorState.title ?? "";
 
-    // Boards claim a page by file name (`fileMasks`) or by CONTENT (`contentMasks`, US-1404 — the
+    // Boards claim a page by file name (`fileMasks`) or by CONTENT (`contentMasks`, US-1404 â€” the
     // manifest counterpart of a built-in matcher's `detectsContent`). The content path is what lets
     // a board be offered on an UNTITLED, in-memory page, whose "file name" is just its title. Both
     // sets then pass the same locality gate, so a content match on a non-local source still needs a

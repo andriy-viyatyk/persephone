@@ -229,7 +229,7 @@ class NavPanelButtonView extends VanillaView<{ model: EditorModel }> {
 export class SwitchWidgetView extends VanillaView<SwitchWidgetViewProps> {
     private model: EditorModel;
     private host: TextFileModel | null = null;
-    private catalogFileName: string | undefined;
+    private catalogSubscriptionKey: { kind: "file" | "folder"; path: string } | undefined;
     private hostStateUnsubscribe: (() => void) | undefined;
     private catalogUnsubscribe: (() => void) | undefined;
     private segmented: SegmentedControlView | undefined;
@@ -261,7 +261,7 @@ export class SwitchWidgetView extends VanillaView<SwitchWidgetViewProps> {
         this.catalogUnsubscribe?.();
         this.catalogUnsubscribe = undefined;
         this.host = null;
-        this.catalogFileName = undefined;
+        this.catalogSubscriptionKey = undefined;
         this.segmented = undefined;
     }
 
@@ -285,21 +285,37 @@ export class SwitchWidgetView extends VanillaView<SwitchWidgetViewProps> {
         }
     }
 
-    private ensureCatalogSubscription(fileName: string): void {
-        if (fileName === this.catalogFileName) return;
+    private ensureCatalogSubscription(
+        key: { kind: "file" | "folder"; path: string },
+    ): void {
+        if (
+            key.kind === this.catalogSubscriptionKey?.kind
+            && key.path === this.catalogSubscriptionKey.path
+        ) return;
 
         this.catalogUnsubscribe?.();
-        this.catalogFileName = fileName;
-        this.catalogUnsubscribe = this.ownSubscription(publishedBoards.subscribeCatalogBoardsForFile(
-            fileName,
-            () => this.syncSegments(),
-        ));
+        this.catalogSubscriptionKey = key;
+        this.catalogUnsubscribe = this.ownSubscription(
+            key.kind === "folder"
+                ? publishedBoards.subscribeCatalogBoardsForFolder(
+                    key.path,
+                    () => this.syncSegments(),
+                )
+                : publishedBoards.subscribeCatalogBoardsForFile(
+                    key.path,
+                    () => this.syncSegments(),
+                ),
+        );
     }
 
     private syncSegments(): void {
         this.ensureHostSubscription();
-        const fileName = getEditorSwitchFileName(this.model);
-        this.ensureCatalogSubscription(fileName);
+        const folderPath = this.model.folderAnchor;
+        this.ensureCatalogSubscription(
+            folderPath !== undefined
+                ? { kind: "folder", path: folderPath }
+                : { kind: "file", path: getEditorSwitchFileName(this.model) },
+        );
 
         const options = getEditorSwitchOptions(this.model);
         if (options.length < 2 || !options.some((option) => option.id === this.model.editorId)) {

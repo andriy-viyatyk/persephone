@@ -38,6 +38,7 @@ type TileStatus =
 
 const selectSurfaceState = (state: BoardInfoEditorState) => ({
     boardRoot: state.boardRoot,
+    folderPath: state.folderPath,
     matches: state.matches,
     installDir: state.installDir,
     installUi: state.installUi,
@@ -185,7 +186,12 @@ class BoardInfoBodyView extends VanillaView<BoardInfoBodyProps> {
     }
 
     private renderInstall(props: BoardInfoBodyProps): void {
-        this.root.append(text("Install an editor for this file", { size: "lg", bold: true }));
+        this.root.append(text(
+            props.folderPath !== undefined
+                ? "Install an editor for this folder"
+                : "Install an editor for this file",
+            { size: "lg", bold: true },
+        ));
 
         const location = panel({ direction: "column", gap: "xs", align: "stretch" },
             text("Install location", { size: "sm", color: "light" }));
@@ -202,10 +208,15 @@ class BoardInfoBodyView extends VanillaView<BoardInfoBodyProps> {
         this.root.append(location);
 
         if (props.matches.length === 0) {
-            this.root.append(text("No installable editor is published for this file type.", {
-                size: "sm",
-                color: "light",
-            }));
+            this.root.append(text(
+                props.folderPath !== undefined
+                    ? "No installable editor is published for this folder."
+                    : "No installable editor is published for this file type.",
+                {
+                    size: "sm",
+                    color: "light",
+                },
+            ));
             return;
         }
 
@@ -233,6 +244,16 @@ class BoardInfoBodyView extends VanillaView<BoardInfoBodyProps> {
             const masks = panel({ direction: "row", align: "center", gap: "xs", wrap: true },
                 text("Files:", { size: "sm", color: "light" }));
             for (const mask of entry.fileMasks ?? []) masks.append(this.maskChip(mask));
+            if ((entry.folderMasks?.length ?? 0) > 0) {
+                masks.append(text("in", { size: "sm", color: "light" }));
+                for (const mask of entry.folderMasks ?? []) masks.append(this.maskChip(mask));
+            }
+            details.append(masks);
+        }
+        if ((entry.folderEditorMasks?.length ?? 0) > 0) {
+            const masks = panel({ direction: "row", align: "center", gap: "xs", wrap: true },
+                text("Folder:", { size: "sm", color: "light" }));
+            for (const mask of entry.folderEditorMasks ?? []) masks.append(this.maskChip(mask));
             details.append(masks);
         }
 
@@ -363,7 +384,19 @@ class BoardInfoBodyView extends VanillaView<BoardInfoBodyProps> {
                 for (const mask of info.folderMasks ?? []) masks.append(this.maskChip(mask));
             }
             if (info.editorKind) masks.append(text(`(${info.editorKind})`, { size: "sm", color: "light" }));
-            metadata.append(this.infoRow("Editor for", masks));
+            metadata.append(this.infoRow("File editor for", masks));
+        }
+        if ((info.folderEditorMasks?.length ?? 0) > 0) {
+            const masks = panel({ direction: "row", align: "center", gap: "xs", wrap: true });
+            if (info.editorName) masks.append(text(info.editorName, { size: "sm" }));
+            for (const mask of info.folderEditorMasks ?? []) masks.append(this.maskChip(mask));
+            if (info.folderEditorPriority !== undefined) {
+                masks.append(text(`(priority ${info.folderEditorPriority})`, {
+                    size: "sm",
+                    color: "light",
+                }));
+            }
+            metadata.append(this.infoRow("Folder editor", masks));
         }
         if (info.isCatalogInstall && info.catalogId) {
             metadata.append(this.infoRow("Catalog id", text(info.catalogId, { size: "sm" })));

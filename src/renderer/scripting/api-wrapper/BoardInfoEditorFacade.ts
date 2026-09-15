@@ -138,6 +138,12 @@ export class BoardInfoEditorFacade implements IAiVisible, IBoardInfoEditor {
             ...(properties.manifestVersion !== undefined ? { manifestVersion: properties.manifestVersion } : {}),
             ...(properties.fileMasks !== undefined ? { fileMasks: [...properties.fileMasks] } : {}),
             ...(properties.folderMasks !== undefined ? { folderMasks: [...properties.folderMasks] } : {}),
+            ...(properties.folderEditorMasks !== undefined
+                ? { folderEditorMasks: [...properties.folderEditorMasks] }
+                : {}),
+            ...(properties.folderEditorPriority !== undefined
+                ? { folderEditorPriority: properties.folderEditorPriority }
+                : {}),
             ...(properties.editorName !== undefined ? { editorName: properties.editorName } : {}),
             ...(properties.editorKind !== undefined ? { editorKind: properties.editorKind } : {}),
             root: properties.root,
@@ -192,6 +198,8 @@ export class BoardInfoEditorFacade implements IAiVisible, IBoardInfoEditor {
             description?: string;
             fileMasks?: string[];
             folderMasks?: string[];
+            folderEditorMasks?: string[];
+            folderEditorPriority?: number;
             editorName?: string;
             editorKind?: "simple" | "content-host";
             standalone?: boolean;
@@ -221,6 +229,12 @@ export class BoardInfoEditorFacade implements IAiVisible, IBoardInfoEditor {
             ...(entry.description !== undefined ? { description: entry.description } : {}),
             ...(entry.fileMasks !== undefined ? { fileMasks: [...entry.fileMasks] } : {}),
             ...(entry.folderMasks !== undefined ? { folderMasks: [...entry.folderMasks] } : {}),
+            ...(entry.folderEditorMasks !== undefined
+                ? { folderEditorMasks: [...entry.folderEditorMasks] }
+                : {}),
+            ...(entry.folderEditorPriority !== undefined
+                ? { folderEditorPriority: entry.folderEditorPriority }
+                : {}),
             ...(entry.editorName !== undefined ? { editorName: entry.editorName } : {}),
             ...(entry.editorKind !== undefined ? { editorKind: entry.editorKind } : {}),
             ...(entry.standalone !== undefined ? { standalone: entry.standalone } : {}),
