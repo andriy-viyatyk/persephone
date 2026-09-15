@@ -39,6 +39,12 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### Bug Fixes
 
+- **Edit Columns headers no longer drag out of place:** the Grid editor's **Edit Columns** popover
+  pinned its three headers before, then briefly allowed them to be dragged. They are fixed again;
+  the popover's own layout was never saved, so a drag only lasted until it closed.
+- **Grid headers stay clean when scrolling:** Grid, Git Tree, File Grid, Environment Variables,
+  and Log View grid output no longer show a previous column header's tooltip, accessibility label,
+  or text in a data cell after scrolling. Fixed in av-grid 2.11.1 and 2.11.2.
 - **Closing the Git Tree no longer means expanding its panel first:** the Git panel's **Close**
   button now stays on the panel header even when the panel is collapsed to a strip, so you can
   close the Git Tree without opening the panel to reach it. **Refresh** still appears only while

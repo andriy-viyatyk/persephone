@@ -765,7 +765,11 @@ to fetch. Prefer a catalog component over an arbitrary one you pick yourself.
 For **anything grid-shaped**, the default is **[av-grid](https://github.com/andriy-viyatyk/av-grid)**
 (npm `av-grid`), not Tabulator. It is a port of Persephone's own internal grid (VAGrid), so
 it is native to the app: it matches the built-in grid editors' look and keyboard behaviour,
-and it renders more smoothly than Tabulator — noticeably so **even on small datasets**.
+and it renders more smoothly than Tabulator — noticeably so **even on small datasets**. The
+catalog is verified against av-grid 2.11.2: its text filters support per-column operators
+(`contains`, `equals`, `startsWith`, `blank`, `notBlank`), hosts can own filtering and sorting,
+`treeColumn` provides a gutter over flat rows, and `pinned: "left"` / `"right"` provides
+leading/trailing sticky data columns.
 
 - **No skin to fetch, no theme code.** Every `--avg-*` token falls back to its `--p-*`
   counterpart, so the grid is themed on arrival and a live theme switch re-tints it with
@@ -782,10 +786,12 @@ and it renders more smoothly than Tabulator — noticeably so **even on small da
   with no height renders blank; `getState().viewport.width === 0` says so), and with
   `filterBar: true` give `.avg-grid-wrap` `height: 100%`.
 - **Reach for Tabulator only** when the board genuinely needs something av-grid does not
-  have: variable row heights, row grouping, tree/nested rows, nested column headers,
-  pagination, footer calculations, built-in export (CSV/XLSX/PDF/print), remote-ajax data,
-  drag-to-reorder **rows**, responsive column collapse, undo/redo, freezing arbitrary data
-  columns, or Tabulator's ready-made formatters (progress bar, star rating, traffic light).
+  have: variable row heights, row grouping, a true tree-data engine or nested rows,
+  three-or-more-level nested column headers (av-grid's `Column.group` supplies one group band),
+  pagination or server-side paging, remote data transport/fetching, footer calculations,
+  built-in export (CSV/XLSX/PDF/print), drag-to-reorder **rows**, responsive column collapse,
+  undo/redo, arbitrary or interleaved data-column freezing, or Tabulator's ready-made formatters
+  (progress bar, star rating, traffic light).
 
 ## Errors & the log
 

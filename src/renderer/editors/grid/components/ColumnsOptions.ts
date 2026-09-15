@@ -30,8 +30,8 @@ const maxHeight = 300;
  * is editing these three fields — read-only. The header intent that still matters is expressed
  * directly with `resizable`.
  *
- * What is lost is that the user can now drag these three headers around. It is cosmetic: this
- * grid's column layout is not persisted, so a reorder lasts until the popover closes.
+ * The av-grid migration initially lost header dragging, but `disableColumnReorder: true` restores
+ * the old no-drag behavior; the popover's column layout remains intentionally unpersisted.
  */
 const getColumns = (isCsv: boolean): Column[] => [
     {
@@ -243,7 +243,6 @@ class ColumnsOptionsModel extends TPopperModel<ColumnsOptionsState, undefined> {
                     ...(existing
                         ? {}
                         : {
-                              resizible: true,
                               filterType: "options",
                           }),
                 };
@@ -403,6 +402,7 @@ class ColumnsOptionsContentView extends VanillaView<undefined> {
             getRowKey,
             rowNoun: "column",
             disableSorting: true,
+            disableColumnReorder: true,
             editable: true,
             canAddRows: true,
             canDeleteRows: true,

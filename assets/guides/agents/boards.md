@@ -586,21 +586,26 @@ each skin from the raw base URL (also returned by `main.boardsManifestUrl` /
   `baseUrl` is the manifest's top-level `baseUrl` field. A component with `skin.file: null`
   (`"type": "none"`) has **no skin to fetch** — it reads `--p-*` itself.
 
-**Tabular data → use `av-grid`.** It is the catalog's default grid and a port of Persephone's own
+**Tabular data → use `av-grid` 2.11.2.** It is the catalog's default grid and a port of Persephone's own
 internal grid (VAGrid), so it is native to the app: it matches the built-in grid editors, needs **no
 skin and no theme code** (its `--avg-*` tokens fall back to `--p-*`, so a theme switch re-tints it
 with zero JS), and it renders more smoothly than Tabulator — noticeably so even on small datasets.
-It covers sorting, checklist filters + a chip bar, search with in-cell highlighting, range select +
-clipboard, virtualization, editing, and add/delete rows and columns. Vendor `av-grid.css` +
+It covers sorting, checklist filters + a chip bar, built-in text filters with per-column operators
+(`contains`, `equals`, `startsWith`, `blank`, `notBlank`), search with in-cell highlighting, range
+select + clipboard, virtualization, editing, and add/delete rows and columns. Hosts can own
+filtering and sorting; `treeColumn` supplies a gutter over flat rows; `pinned: "left"` / `"right"`
+provides leading/trailing sticky data columns. Vendor `av-grid.css` +
 `av-grid.umd.cjs` (rename the `.cjs` to `.js`; it exposes `window.AVGrid`, class `AVGrid.AVGrid`),
 link its CSS **before** your own `<style>` and pass `injectStyles: false`, and give the host a
 definite height. Read its API doc first — one complete file written for an agent, including a
   *"Driving the grid from an agent"* section on the `pages[pageId].editor` path:
 `https://raw.githubusercontent.com/andriy-viyatyk/av-grid/main/docs/api.md`.
 Choose **Tabulator** instead only for a feature av-grid lacks: variable row heights, row grouping,
-tree/nested rows, nested column headers, pagination, footer calculations, built-in export, remote-ajax
-data, drag-to-reorder rows, responsive collapse, undo/redo, frozen data columns, or its ready-made
-formatters (progress bar, star rating, traffic light).
+a true tree-data engine or nested rows, three-or-more-level nested column headers (av-grid's
+`Column.group` supplies one group band), pagination or server-side paging, remote data
+transport/fetching, footer calculations, built-in export, drag-to-reorder rows, responsive collapse,
+undo/redo, arbitrary or interleaved data-column freezing, or its ready-made formatters (progress
+bar, star rating, traffic light).
 
 Vendor flow on any machine: **GET the manifest → read the component's `vendor` URLs (the third-party
 library, from a CDN) and its `skin.file` → GET `baseUrl + skin.file` → write both into the board folder**

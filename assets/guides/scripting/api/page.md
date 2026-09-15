@@ -182,6 +182,10 @@ columns, and CSV options. Use `rowKeys[i]` with `rows[i]` when calling `editCell
 `setCsvDelimiter` and `setCsvWithColumns`. Data-changing methods are caution-marked in the `call`
 tree.
 
+The `filters` property is read-only. Built-in text filters have `type: "text"`; their `value` is
+`{ op, text }` for `contains`, `equals`, or `startsWith`, and `{ op }` for `blank` or `notBlank`.
+Custom filter values are not prescribed and should be treated as `unknown`.
+
 The Notebook facade exposes copied notes, categories, tags, counts, filters, expanded-note state,
 and parse errors. It supports adding, removing, and updating notes, comments, categories, tags,
 language, and embedded editor, as well as search and category/tag filtering. Notebook sidebar

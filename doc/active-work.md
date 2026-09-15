@@ -13,6 +13,7 @@ Overview of all active and planned epics and tasks.
 ## Planned
 
 - *(no epic)*
+  - [ ] [US-1434: Grid editor text filters](tasks/US-1434-grid-editor-text-filters/README.md)
   - [ ] [US-1131: Close the remaining gaps in the VanillaView lifecycle lint rules](tasks/US-1131-vanillaview-lint-gaps/README.md)
     — tooling, not a defect: the guard itself shipped as US-1142 in EPIC-071 and this is the
     residue. Deferred by user decision (2026-08-29). It carries **five** clause candidates,

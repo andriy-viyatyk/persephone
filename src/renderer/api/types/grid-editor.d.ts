@@ -83,8 +83,13 @@ export interface IGridSort {
 
 export interface IGridFilter {
     readonly columnKey: string;
+    /**
+     * For a text filter, `value` is either `{ op, text }` for `contains`, `equals`, or
+     * `startsWith`, or `{ op }` for `blank` or `notBlank`. Custom filter values remain unknown.
+     */
     readonly value?: unknown;
     readonly columnName?: string;
+    /** The filter kind; built-in text filters use `"text"`. */
     readonly type?: string;
     readonly displayFormat?: string;
 }
