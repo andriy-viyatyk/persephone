@@ -39,6 +39,11 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### Bug Fixes
 
+- **Grid column names stay consistent:** pasting data wider than the current grid or inserting
+  several columns at once no longer creates duplicate columns. Header-free CSV columns now use
+  spreadsheet-style names (`a`, `b`, `c`, …), matching columns added later and preserving names
+  when you switch between Grid and the Text Editor. CSV files with a header row still use their
+  actual header names. See [Grid Editor](./editors/grid.md#data-and-editing).
 - **Edit Columns headers no longer drag out of place:** the Grid editor's **Edit Columns** popover
   pinned its three headers before, then briefly allowed them to be dragged. They are fixed again;
   the popover's own layout was never saved, so a drag only lasted until it closed.

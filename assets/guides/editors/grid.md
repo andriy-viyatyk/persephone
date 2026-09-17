@@ -64,6 +64,10 @@ switch to another editor and return to Grid or restart Persephone. Applied filte
 the Grid view too. Changing a column's filter mode clears only that column's incompatible filter;
 filters on other columns remain active.
 
+Column settings, filters, and sorting are remembered by column name. If you customized a
+header-free CSV in an older version, its columns may have been saved as `0`, `1`, `2`, and so on;
+those old settings are not migrated to the current letter names, so you may need to set them again.
+
 ### When the CSV Options popup is open
 
 ```
@@ -92,7 +96,9 @@ filters on other columns remain active.
 JSON arrays of objects become rows and their properties become columns. A single JSON object is also
 accepted and becomes one row. Types are inferred as strings, numbers, or booleans; cell edits and
 paste operations validate those types. JSONL/NDJSON reads one object per line, while CSV detects its
-delimiter and can be configured with the CSV options button.
+delimiter and can be configured with the CSV options button. A CSV without a header row uses
+spreadsheet-style column names (`a`, `b`, `c`, …); a CSV with headers uses the names from its first
+row.
 
 Use **Search** to find text across cells. Column-header filters use an options checklist by default;
 choose **Text** for a column in **Edit Columns** to filter with **contains**, **equals**, **starts
@@ -109,8 +115,8 @@ add one when editing is enabled. Sorting or filtering disables row insertion and
 
 `Ctrl+C` copies one raw value or a selected range as tab-delimited data. `Ctrl+Shift+C` includes
 headers. The context menu can copy the selection as headers, JSON, or an HTML table. `Ctrl+V` pastes
-tab-delimited values, growing rows as needed; pasting one value into a selected range fills the range.
-The same workflow works with Excel.
+tab-delimited values, growing rows and columns as needed; pasting one value into a selected range
+fills the range. The same workflow works with Excel.
 
 ## Agent API
 

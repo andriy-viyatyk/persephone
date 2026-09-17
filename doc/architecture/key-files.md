@@ -177,7 +177,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Monaco editor            | `/src/renderer/editors/monaco/MonacoEditor.ts`    |
 | Monaco editor body (native `VanillaView`, host lifecycle and text-editor queue projection) | `/src/renderer/editors/monaco/MonacoBodyView.ts` |
 | Monaco editor view and word-wrap toolbar contribution | `/src/renderer/editors/monaco/index.ts` |
-| Grid editor              | `/src/renderer/editors/grid/GridEditor.ts`        |
+| Grid editor model and column-key utilities | `/src/renderer/editors/grid/GridEditor.ts`, `/src/renderer/editors/grid/utils/grid-utils.ts` |
 | Native grid body (embedded or inside the native `TextChromeView` shell; mounts UIKit `DataGridView` directly) | `/src/renderer/editors/grid/GridBodyView.ts` |
 | Native HTML preview body (sandboxed iframe, guarded `srcdoc`, host-content binding) | `/src/renderer/editors/html/HtmlBodyView.ts` |
 | Native SVG preview body (host-content binding and `ImageViewportView`) | `/src/renderer/editors/svg/SvgBodyView.ts` |

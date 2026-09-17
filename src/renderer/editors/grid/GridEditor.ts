@@ -22,6 +22,7 @@ import {
 import { parseObject } from "../../core/utils/parse-utils";
 import { csvToRecords } from "../../core/utils/csv-utils";
 import {
+    columnLetters,
     getGridDataWithColumns,
     getRowKey,
     nextColumnKeys,
@@ -213,6 +214,9 @@ export class GridEditor extends TextHostEditorModel<GridEditorState, void, GridQ
      */
     private _columnSettings: GridColumnSetting[] = [];
 
+    /** Keys `newColumn` has minted but that no `onColumnsChange` has reported back yet. */
+    private readonly _pendingColumnKeys = new Set<string>();
+
     /** Narrowed queue typed for Grid's event union. */
     readonly typedQueue: ComponentQueue<GridQueueEvent, GridQueueRequest>;
 
@@ -239,8 +243,12 @@ export class GridEditor extends TextHostEditorModel<GridEditorState, void, GridQ
         this._grid = grid ?? undefined;
         if (!grid) return;
 
-        const { sortColumn, focus } = this.state.get();
-        if (sortColumn) grid.setSort(sortColumn);
+        // Same guard the filters get in `GridBodyView`: `setSort` rejects a column that is not
+        // there, and a remembered sort outlives its column whenever the columns are renamed.
+        const { sortColumn, focus, columns } = this.state.get();
+        if (sortColumn && columns.some((c) => String(c.key) === sortColumn.key)) {
+            grid.setSort(sortColumn);
+        }
         if (focus) grid.setFocus(focus);
         this.setRowCount(grid.getRows().length);
     };
@@ -561,9 +569,20 @@ export class GridEditor extends TextHostEditorModel<GridEditorState, void, GridQ
                     (e) => (err = e),
                 );
                 if (Array.isArray(rows) && !csvWithColumns) {
-                    // Spread `string[]` → `{ "0": "a", "1": "b", ... }` so the grid
-                    // can index cells by column name (its numeric ordinal).
-                    rows = (rows as string[][]).map((r) => ({ ...r })) as unknown as Record<string, string>[];
+                    // `string[]` → `{ a: "…", b: "…", … }` so the grid can index cells by
+                    // column name. Spreadsheet letters, not the row's ordinals: they are what
+                    // `newColumn` mints, so a header-free file keeps one naming scheme whether
+                    // a column arrived by parse, by paste, or by Insert Column.
+                    const keys = columnLetters(
+                        (rows as string[][]).reduce((max, r) => Math.max(max, r.length), 0),
+                    );
+                    rows = (rows as string[][]).map((r) => {
+                        const record: Record<string, string> = {};
+                        r.forEach((value, i) => {
+                            record[keys[i]] = value;
+                        });
+                        return record;
+                    });
                 }
                 res = rows;
                 break;
@@ -616,6 +635,7 @@ export class GridEditor extends TextHostEditorModel<GridEditorState, void, GridQ
      * settings are re-derived here, which is what makes a resize or a reorder survive a restart.
      */
     onColumnsChange = (columns: Column[]): void => {
+        this._pendingColumnKeys.clear();
         this._columnSettings = columns.map(toColumnSetting);
         this.state.update((s) => {
             s.columns = columns;
@@ -678,9 +698,23 @@ export class GridEditor extends TextHostEditorModel<GridEditorState, void, GridQ
         return row;
     };
 
-    /** What a blank column looks like — the next unused spreadsheet-style letter. */
+    /**
+     * What a blank column looks like — the next unused spreadsheet-style letter.
+     *
+     * The minted key is remembered until `onColumnsChange` reports the new set, because
+     * av-grid builds a whole batch before adding any of it: `addBlankColumns(count)` calls
+     * this `count` times against an unchanged `options.columns`, so a batch would otherwise
+     * mint the same letter every time. A paste two columns wider than the grid is the way
+     * users hit it — it lands as one `addBlankColumns(2)` — and "Insert N columns" from the
+     * context menu takes the same path.
+     */
     newColumn = (): Column => {
-        const [key] = nextColumnKeys(this.state.get().columns, 1);
+        const taken = [
+            ...this.state.get().columns,
+            ...[...this._pendingColumnKeys].map((key) => ({ key }) as Column),
+        ];
+        const [key] = nextColumnKeys(taken, 1);
+        this._pendingColumnKeys.add(key);
         return {
             key,
             name: key,

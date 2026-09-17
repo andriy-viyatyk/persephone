@@ -78,6 +78,27 @@ renderer event for the agent. A trusted board can call `remote.notify(text)` to 
 rate-limited board-authored event; this is distinct from `persephone.notify`, which displays a
 toast.
 
+### Grid column identity
+
+Grid uses each column's `key` as its identity. Generated blank columns use the next available
+spreadsheet-style name (`a` through `z`, then `aa`, `ab`, and so on). `GridEditor` also remembers
+keys minted during an av-grid batch until `onColumnsChange` reports the committed column set;
+av-grid may call `newColumn` several times before publishing the batch, so committed state alone
+is not sufficient to allocate unique keys. Header-free CSV rows are normalized to the same letter
+sequence, while headered CSV keeps the header names.
+
+Column settings, filters, and sorting refer to these keys. When a file's detected keys change,
+unmatched persisted column settings are discarded rather than applied to another column. There is
+deliberately no migration from the former numeric ordinal keys: a numeric key can also be a valid
+CSV header, so it does not identify which naming scheme produced it.
+
+A persisted filter or sort naming a column that is gone is therefore routine — toggling the CSV
+header row renames every column at once — and av-grid validates both loudly, failing the whole
+grid over one casualty (`Unknown column "0" in filters[0]`). So `GridBodyView` passes only the
+filters whose column is live, and `setGrid` applies a remembered sort only when its column is
+there. Both prune on the way to av-grid rather than in state, so a filter whose column comes back
+— the same header toggle, undone — is still there when it does.
+
 ## Rendering Architecture
 
 The board editor follows the same native page path: `BoardEditorView` owns the board's four-way

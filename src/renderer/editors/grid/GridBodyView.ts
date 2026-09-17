@@ -75,7 +75,14 @@ function gridProps(props: GridBodyViewProps, onGrid: DataGridProps["onGrid"]): D
         // semantic reason stands on its own.
         searchString: state.search,
         highlightString: editorConfig?.highlightText,
-        filters: state.filters,
+        // Only filters naming a live column reach av-grid — it validates the option loudly and
+        // takes the whole grid down over a filter whose column is gone. Persisted filters outlive
+        // their columns routinely: toggling the CSV header row renames every column, and US-1436
+        // renamed header-free CSV's columns once and for all. Pruned here rather than in state, so
+        // a filter whose column comes back is still there when it does.
+        filters: state.filters.filter((f) =>
+            state.columns.some((c) => String(c.key) === f.columnKey),
+        ),
         filterBar: true,
         editable: true,
         canAddRows: true,

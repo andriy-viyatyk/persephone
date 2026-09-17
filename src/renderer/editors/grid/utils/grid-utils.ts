@@ -235,6 +235,20 @@ function* columnNamesGenerator(): Generator<string, string, unknown> {
     }
 }
 
+/**
+ * The first `count` spreadsheet-style column names: a, b, … z, aa, ab, …
+ *
+ * Headerless CSV names its columns with these rather than the ordinals it used to, so that one
+ * file uses one naming scheme: the letters a re-parse produces are the letters `newColumn` goes
+ * on to mint from. The old ordinals also had a latent ordering trap — integer-like keys sort
+ * ahead of every other key in `Object.keys`, so a numerically-named column could never sit after
+ * a named one.
+ */
+export function columnLetters(count: number): string[] {
+    const generator = columnNamesGenerator();
+    return Array.from({ length: count }, () => generator.next().value);
+}
+
 export function nextColumnKeys(currentColumns: Column[], count: number): string[] {
     const namesSet = new Set<string>(
         currentColumns.map((col) => String(col.key))
