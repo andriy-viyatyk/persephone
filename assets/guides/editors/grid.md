@@ -51,10 +51,18 @@ then choose the matching **Grid** option in the page toolbar.
 
 ```
 +---------------------------------------------------------------------+
-| [Column options]                                                    |  Columns popup options
+| [Column options: Visibility | Type | Filter | Key]                  |  Columns popup options
 | [Cancel] [Apply]                                                    |  Columns popup answer buttons at bottom-right
 +---------------------------------------------------------------------+
 ```
+
+In **Edit Columns**, every column uses the **Options** filter by default. Choose **Text** in the
+**Filter** column when you want to enter a text condition instead of selecting distinct values.
+Text filters provide **contains**, **equals**, **starts with**, **is empty**, and **is not empty**.
+Apply the change to keep the selected filter mode with the column; it remains selected when you
+switch to another editor and return to Grid or restart Persephone. Applied filters are saved with
+the Grid view too. Changing a column's filter mode clears only that column's incompatible filter;
+filters on other columns remain active.
 
 ### When the CSV Options popup is open
 
@@ -86,9 +94,11 @@ accepted and becomes one row. Types are inferred as strings, numbers, or boolean
 paste operations validate those types. JSONL/NDJSON reads one object per line, while CSV detects its
 delimiter and can be configured with the CSV options button.
 
-Use **Search** to find text across cells. Column-header filters support text/number values and lists
-of unique values; multiple filters combine. Click a header to sort ascending or descending. **Columns**
-can show, hide, reorder, and resize columns. The status bar shows visible and total row counts.
+Use **Search** to find text across cells. Column-header filters use an options checklist by default;
+choose **Text** for a column in **Edit Columns** to filter with **contains**, **equals**, **starts
+with**, **is empty**, or **is not empty**. Multiple column filters combine. Click a header to sort
+ascending or descending. **Columns** can show, hide, reorder, and resize columns. The status bar
+shows visible and total row counts.
 
 Double-click a cell or press **Enter** or **F2** to edit; **Escape** cancels. Boolean cells toggle
 with their checkbox, **Space**, or **Enter**. Row and column insertion/deletion use `Ctrl+Insert`,

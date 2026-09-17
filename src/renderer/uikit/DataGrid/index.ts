@@ -84,8 +84,11 @@ export type {
     SortColumn,
     SortDirection,
     SortState,
+    TextFilterOp,
+    TextFilterValue,
 } from "./types";
 export type { CallbackOptionKey } from "./types";
+export { TEXT_FILTER_OPS } from "./types";
 
 /**
  * Library helpers a consumer needs and must not reimplement.

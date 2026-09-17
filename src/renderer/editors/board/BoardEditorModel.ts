@@ -14,6 +14,8 @@ import { isBoardFolder, normalizeSecondaryViews, readBoardManifest, readBoardSec
 import { boardSecondaryPanelId } from "./board-secondary";
 import { BoardTargetModel } from "./BoardTargetModel";
 import { createBoardGlyphElement } from "./board-glyph-element";
+import { createIconElement } from "../../uikit/shared/slots";
+import type { MenuItem } from "../../uikit";
 import { invalidateBoardIcon } from "./board-icon-cache";
 import { markBoardBusy } from "./busy-boards";
 import type { IState } from "../../core/state/state";
@@ -362,6 +364,26 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
     }
 
     getIconElement = (): Element => createBoardGlyphElement(this.currentBoardRoot(), 16);
+
+    /** Page-tab context-menu items for a board page: copy the board's own folder path,
+     *  the same action the Boards sidebar panel and the Explorer Boards tree offer on a
+     *  board row. Appended AFTER `super` so a content-host board keeps the text-file items
+     *  its host contributes, in their own group. Uses `boardRoot` rather than
+     *  `currentBoardRoot()`: a board whose folder is missing still has a path worth
+     *  copying — that is the path the user wants to go look at. */
+    override onGetMenuItems(): MenuItem[] {
+        const boardRoot = this.state.get().boardRoot;
+        return [
+            ...super.onGetMenuItems(),
+            {
+                label: "Copy Board Path",
+                icon: createIconElement("copy"),
+                onClick: () => { void navigator.clipboard.writeText(boardRoot ?? ""); },
+                disabled: !boardRoot,
+                startGroup: true,
+            },
+        ];
+    }
 
     // ── Busy retention (US-799) ──────────────────────────────────────────
 

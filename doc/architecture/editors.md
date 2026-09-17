@@ -279,7 +279,7 @@ onGetMenuItems(): MenuItem[] {           // EditorModel default
 The default routes to the content host, which is the extensibility seam:
 
 - **Text-bearing editors** get the full text-file menu for free — `TextFileModel.onGetMenuItems()` returns it, and every editor that wraps a `TextFileModel` host inherits it without per-editor code.
-- **Non-text editors** override `onGetMenuItems()` to contribute their own items (Git Tree → "Open Git Root Folder" / "Copy Remote URL"; Image/Archive → the file-path items).
+- **Non-text editors** override `onGetMenuItems()` to contribute their own items (Git Tree → "Open Git Root Folder" / "Copy Remote URL"; Image/Archive → the file-path items; Board → "Copy Board Path"). The Board editor appends its item after the base result so a content-host board retains its inherited text-file menu.
 - An editor with nothing to add inherits the base default and a null content host, returning `[]` — so no disabled/irrelevant items appear.
 
 The menu items themselves live in [`editors/shared/editor-menu-items.ts`](../../src/renderer/editors/shared/editor-menu-items.ts):

@@ -43,7 +43,13 @@ export type {
     SortColumn,
     SortDirection,
     SortState,
+    TextFilterOp,
+    TextFilterValue,
 } from "av-grid";
+
+/** The five operators of the built-in text filter, for a column opted into `filterType: "text"`.
+ *  Re-exported as a VALUE (not just its type) so a consumer never rewrites the list. */
+export { TEXT_FILTER_OPS } from "av-grid";
 
 export { CALLBACK_OPTION_KEYS, PAINT_PATH_CALLBACK_KEYS } from "av-grid";
 export type { CallbackOptionKey } from "av-grid";

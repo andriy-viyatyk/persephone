@@ -1,4 +1,42 @@
-import { detectColumnWidth, type Column } from "../../../uikit/DataGrid";
+import { detectColumnWidth, TEXT_FILTER_OPS, type Column } from "../../../uikit/DataGrid";
+
+/**
+ * Which filter body a column's funnel opens, as the Grid editor models it.
+ *
+ * Only two of av-grid's `FilterType` values are offered: the options checklist and the built-in
+ * text filter. The checklist is the default for EVERY column, including strings — `detectColumns`
+ * below runs on every file opened without persisted settings, so inferring text from the data
+ * type or a distinct-value count would silently replace the checklist on the common
+ * low-cardinality categorical column (`status`, `type`, `country`), where ticking known values
+ * beats typing a predicate. Text is an explicit per-column choice made in Edit Columns.
+ */
+export type GridFilterMode = "options" | "text";
+
+/** A column's effective mode. Anything that is not an explicit `"text"` is the checklist. */
+export function resolveFilterMode(column: Pick<Column, "filterType">): GridFilterMode {
+    return column.filterType === "text" ? "text" : "options";
+}
+
+/**
+ * Stamp a mode onto a column, with the operator list that goes with it.
+ *
+ * `textFilterOps` and `filterType: "text"` travel together in both directions: av-grid's
+ * validation rejects the field on any other column, and a text column without it would offer
+ * only the three comparing chips instead of all five. The options arm therefore deletes both
+ * fields rather than setting them to a default — an explicit `filterType: "options"` is
+ * identical to an absent one, and the absent form is what the persisted setting stores.
+ */
+export function withFilterMode(column: Column, mode: GridFilterMode): Column {
+    const next = { ...column };
+    if (mode === "text") {
+        next.filterType = "text";
+        next.textFilterOps = TEXT_FILTER_OPS;
+    } else {
+        delete next.filterType;
+        delete next.textFilterOps;
+    }
+    return next;
+}
 
 export interface GridData {
     columns: Column[];

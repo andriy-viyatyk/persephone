@@ -27,6 +27,9 @@ import {
     nextColumnKeys,
     registerRow,
     registerRows,
+    resolveFilterMode,
+    withFilterMode,
+    type GridFilterMode,
 } from "./utils/grid-utils";
 import { formatFromEditorId, type GridFormat, type GridEditorId } from "./util";
 import { errMessage } from "../../../shared/utils";
@@ -47,7 +50,7 @@ export type GridQueueRequest = never;
  * function-valued hook onto a `JSON.stringify` path, which would fail asymmetrically: surviving
  * a Grid↔Monaco switch, vanishing after a restart.
  *
- * These five fields are all the editor has ever actually written. Everything else on a column
+ * These fields are all the editor has ever actually written. Everything else on a column
  * is either derived from the data (width detection, data type) or a default.
  *
  * Legacy note: descriptors written before US-1020 carry the old grid's misspelled
@@ -60,6 +63,16 @@ export interface GridColumnSetting {
     width?: number | `${number}%`;
     hidden?: boolean;
     dataType?: DataType;
+    /**
+     * The column's filter mode, written ONLY for an explicit `"text"` opt-in (US-1434).
+     *
+     * Absent means the options checklist, which is both av-grid's default and this editor's, so
+     * a setting written before this field existed needs no migration and no legacy branch: it
+     * already says what it meant. `"options"` is accepted on the way in and resolves
+     * identically; it is never written, because the absent form is the same answer with less
+     * on disk.
+     */
+    filterType?: GridFilterMode;
 }
 
 /**
@@ -86,6 +99,7 @@ function toColumnSetting(column: Column): GridColumnSetting {
     if (column.width !== undefined) setting.width = column.width;
     if (column.hidden !== undefined) setting.hidden = column.hidden;
     if (column.dataType !== undefined) setting.dataType = column.dataType;
+    if (resolveFilterMode(column) === "text") setting.filterType = "text";
     return setting;
 }
 
@@ -104,7 +118,12 @@ function buildColumns(detected: Column[], settings: GridColumnSetting[]): Column
     const byKey = new Map(detected.map((c) => [String(c.key), c]));
     const merged = settings.flatMap((s) => {
         const detectedColumn = byKey.get(s.key);
-        return detectedColumn ? [{ ...detectedColumn, ...s } as Column] : [];
+        if (!detectedColumn) return [];
+        // `withFilterMode` rather than the spread alone: the setting carries the mode but not
+        // `textFilterOps`, and the two have to travel together (see `withFilterMode`). It also
+        // makes an absent field resolve to the checklist explicitly, rather than by inheriting
+        // whatever the detected column happened to carry.
+        return [withFilterMode({ ...detectedColumn, ...s } as Column, resolveFilterMode(s))];
     });
     // A remembered set that has gone entirely stale is not a reason to show no columns.
     return merged.length ? merged : detected;

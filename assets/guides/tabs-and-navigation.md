@@ -122,6 +122,15 @@ Each editor contributes only the actions that are relevant to it. Editors with n
 | Show in File Explorer | Open the file's folder in Windows Explorer |
 | Copy File Path | Copy the full file path to clipboard |
 
+*Board tabs:*
+
+| Action | Description |
+|--------|-------------|
+| Copy Board Path | Copy the board's folder path to the clipboard |
+
+A board that is also editing a file can show the file editor's actions as well. In that case,
+**Copy Board Path** appears after those file actions.
+
 ## Tab Grouping (Side-by-Side View)
 
 You can display two files side-by-side by grouping their tabs.

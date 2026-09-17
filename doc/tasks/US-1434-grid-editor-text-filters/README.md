@@ -1,7 +1,7 @@
 # US-1434: Grid editor text filters
 
-Status: planned; split from US-1433. This document defines the implementation scope. It does not
-implement the feature.
+Status: implemented (2026-09-17), unreviewed. Split from US-1433. Implemented by Claude rather than
+through `codex-dev`, because the Codex MCP was `CONNECTION_CLOSED` for the whole session.
 
 ## Goal
 
@@ -185,19 +185,53 @@ The design decisions are resolved as follows:
 
 ## Acceptance Criteria
 
-- [ ] `filterType` is persisted in the app-owned `GridColumnSetting`; missing means options.
-- [ ] Every newly opened column defaults to the options checklist, including string columns.
-- [ ] Edit Columns provides an explicit options/text selector and persists a text opt-in.
-- [ ] Text columns use `TextFilterOp`, `TextFilterValue`, and `TEXT_FILTER_OPS` through the local
+- [x] `filterType` is persisted in the app-owned `GridColumnSetting`; missing means options.
+- [x] Every newly opened column defaults to the options checklist, including string columns.
+- [x] Edit Columns provides an explicit options/text selector and persists a text opt-in.
+- [x] Text columns use `TextFilterOp`, `TextFilterValue`, and `TEXT_FILTER_OPS` through the local
       DataGrid boundary; options columns do not receive `textFilterOps`.
-- [ ] All five text operators work, including `blank` and `notBlank`.
-- [ ] Mode changes clear only incompatible active filters and preserve unrelated filters.
-- [ ] The existing checklist search remains available; the plan does not claim that text filtering
+- [x] All five text operators work, including `blank` and `notBlank`.
+- [x] Mode changes clear only incompatible active filters and preserve unrelated filters.
+- [x] The existing checklist search remains available; the plan does not claim that text filtering
       replaces a missing search facility.
-- [ ] Legacy settings and options-array filters continue to work without a migration distinction.
-- [ ] No `externalFilter`, `externalSort`, or distinct-count auto-default is introduced.
-- [ ] The implementation-time typecheck, lint, production build, and `git diff --check` pass;
+- [x] Legacy settings and options-array filters continue to work without a migration distinction.
+- [x] No `externalFilter`, `externalSort`, or distinct-count auto-default is introduced.
+- [x] The implementation-time typecheck, lint, production build, and `git diff --check` pass;
       no unit-test or harness files are added.
+
+## What was actually built
+
+One helper pair carries the whole feature, in `src/renderer/editors/grid/utils/grid-utils.ts`:
+`resolveFilterMode(column)` (anything not an explicit `"text"` is the checklist) and
+`withFilterMode(column, mode)`, which owns `filterType` and `textFilterOps` **together** — they
+have to travel as a pair, because av-grid rejects `textFilterOps` on a non-text column and a text
+column without it offers only three chips instead of five. The options arm *deletes* both fields
+rather than writing `filterType: "options"`, so the absent form is the one that reaches disk.
+
+Three call sites use it: `buildColumns` (restore), `ColumnsOptions.updateColumns` (Apply), and
+`toColumnSetting`, which writes `filterType` only for a text column.
+
+`ColumnsOptions.dropFiltersForModeChanges` runs **before** `setColumns` on Apply. av-grid
+re-validates filters when it restores them, not when a host replaces the columns, so without this
+a stale options filter would keep matching by its old predicate behind a text popover the user
+cannot use to clear it. It matches on `oldKey`, because the filters name the columns as they are
+before any rename in the same Apply.
+
+## Verification (live, in the running app)
+
+- A newly opened JSON showed `options` for all five columns, including the three string ones.
+- Edit Columns gained a **Filter** column; setting `message` to `text` and applying made its funnel
+  open the text body with all five chips (`contains`, `equals`, `starts with`, `is empty`,
+  `is not empty`) and no checklist. `status` still opened the checklist.
+- The applied filters normalized to av-grid's own shapes and coexisted:
+  `{op: "contains", text: "timeout"}` with `type: "text"` beside the options array on `status`.
+- `is empty` committed as `{op: "blank"}` — the text-free shape — and narrowed to 0 rows.
+- Reverting `message` to options cleared **only** its filter; the `status` options filter stayed
+  applied.
+- Persistence held across Grid→Monaco→Grid **and** a full renderer restart. On disk, only
+  `message` carries `filterType: "text"`; no column carries `"options"`, and `textFilterOps` is
+  not persisted at all.
+- Typecheck, lint, `npm run build-prod` and `git diff --check` all pass. No test files added.
 
 ## Files Changed
 

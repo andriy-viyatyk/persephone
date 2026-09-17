@@ -1,5 +1,6 @@
 import { TComponentState } from "../../../core/state/state";
 import type { CellEditEvent, Column, DataGridInstance, DataType } from "../../../uikit/DataGrid/types";
+import { resolveFilterMode, withFilterMode, type GridFilterMode } from "../utils/grid-utils";
 import { DataGridView } from "../../../uikit/DataGrid/DataGridView";
 import { PopoverView } from "../../../uikit/Popover/PopoverView";
 import type { PopoverViewProps } from "../../../uikit/Popover/PopoverView";
@@ -50,6 +51,13 @@ const getColumns = (isCsv: boolean): Column[] => [
         hidden: isCsv,
     },
     {
+        key: "newFilterType",
+        name: "Filter",
+        options: ["options", "text"],
+        width: 90,
+        resizable: true,
+    },
+    {
         key: "newKey",
         name: "Key*",
         resizable: true,
@@ -67,6 +75,8 @@ interface EditColumnRow {
     newName?: string;
     oldDataType?: DataType;
     newDataType?: DataType;
+    oldFilterType?: GridFilterMode;
+    newFilterType?: GridFilterMode;
 }
 
 const getRowKey = (row: EditColumnRow) => row.idx;
@@ -114,6 +124,8 @@ class ColumnsOptionsModel extends TPopperModel<ColumnsOptionsState, undefined> {
             newName: col.name,
             oldDataType: col.dataType,
             newDataType: col.dataType,
+            oldFilterType: resolveFilterMode(col),
+            newFilterType: resolveFilterMode(col),
         }));
     };
 
@@ -168,6 +180,7 @@ class ColumnsOptionsModel extends TPopperModel<ColumnsOptionsState, undefined> {
         idx: (this.rowIndex++).toString(),
         visible: true,
         newDataType: "string" as DataType,
+        newFilterType: "options",
     });
 
     onDeleteRows = (e: { rows: readonly EditColumnRow[] }) => {
@@ -234,19 +247,48 @@ class ColumnsOptionsModel extends TPopperModel<ColumnsOptionsState, undefined> {
             .filter((r) => r.newKey)
             .map((row) => {
                 const existing = columns.find((c) => c.key === row.oldKey);
-                return {
-                    ...existing,
-                    key: row.newKey,
-                    name: row.newName || row.newKey,
-                    dataType: row.newDataType,
-                    hidden: !row.visible,
-                    ...(existing
-                        ? {}
-                        : {
-                              filterType: "options",
-                          }),
-                };
+                // `withFilterMode` owns both `filterType` and `textFilterOps`, which have to
+                // travel together; it also normalizes the options arm to the ABSENT form, which
+                // is what the persisted setting stores and what av-grid already defaults to.
+                return withFilterMode(
+                    {
+                        ...existing,
+                        key: row.newKey,
+                        name: row.newName || row.newKey,
+                        dataType: row.newDataType,
+                        hidden: !row.visible,
+                    } as Column,
+                    row.newFilterType ?? "options",
+                );
             });
+    };
+
+    /**
+     * Drop the active filter of every column whose filter mode just changed — and only those.
+     *
+     * The two shapes cannot be converted into each other: a checklist filter's value is an array
+     * of display options, a text filter's is an operator object. Neither is meaningful as the
+     * other, so a mode change either discards that column's filter or leaves a filter the user
+     * can no longer see or remove, because the funnel now opens the other body.
+     *
+     * It has to happen BEFORE `setColumns`. av-grid re-validates filters when it restores them,
+     * not when the host replaces the columns, so a stale filter would simply keep matching by its
+     * old predicate behind the new popover. Going through `setFilters` also means the editor's
+     * own `onFiltersChange` records the narrowed list, so the persisted filters follow.
+     *
+     * Filters are matched on `oldKey`: they name the column as it is right now, which is before
+     * any rename in this same Apply.
+     */
+    private dropFiltersForModeChanges = (grid: DataGridInstance<any>): void => {
+        const changed = new Set(
+            this.liveRows()
+                .filter((r) => r.oldKey && (r.oldFilterType ?? "options") !== (r.newFilterType ?? "options"))
+                .map((r) => r.oldKey as string),
+        );
+        if (!changed.size) return;
+        const filters = grid.getFilters();
+        const kept = filters.filter((f) => !changed.has(String(f.columnKey)));
+        if (kept.length !== filters.length) grid.setFilters(kept);
     };
 
     private validate = () => {
@@ -282,7 +324,10 @@ class ColumnsOptionsModel extends TPopperModel<ColumnsOptionsState, undefined> {
         // key is in the data by the time the columns arrive.
         this.onUpdateRows?.(this.updateRows);
         const grid = this.gridModel;
-        if (grid) grid.setColumns(this.updateColumns(grid.getColumns()));
+        if (grid) {
+            this.dropFiltersForModeChanges(grid);
+            grid.setColumns(this.updateColumns(grid.getColumns()));
+        }
         this.close(undefined);
     };
 }
