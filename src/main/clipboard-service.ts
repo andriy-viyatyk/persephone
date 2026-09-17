@@ -24,13 +24,19 @@ const DEAF_AHEAD_PONG_THRESHOLD = 3;
 const UINT32_HALF_RANGE = 0x80000000;
 const MAX_INDEX_ITEMS = 1000;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
-const PAYLOAD_EXTENSIONS: Record<ClipboardFlavor, string> = {
+// A file-list payload is written as one absolute path per line so that selecting the item
+// opens a readable list in the text editor. It cannot share the plain `txt` suffix: a copy
+// can carry both a file list and text, and both payloads of one item would collide on a
+// single file name. `json` is still recognized for cleanup and still readable on load —
+// it is the suffix earlier builds used for file lists.
+const PAYLOAD_SUFFIXES: Record<ClipboardFlavor, string> = {
     text: "txt",
     html: "html",
     image: "png",
-    files: "json",
+    files: "files.txt",
 };
-const RECOGNIZED_PAYLOAD_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(?:txt|html|png|json)$/;
+const LEGACY_FILES_SUFFIX = "json";
+const RECOGNIZED_PAYLOAD_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(?:files\.txt|txt|html|png|json)$/;
 
 interface ClipboardFormat {
     id: number;
@@ -248,10 +254,18 @@ function isClipboardPong(value: unknown): value is ClipboardPong {
         (candidate.lastEmittedSequence === null || isUint32(candidate.lastEmittedSequence));
 }
 
+function getPayloadPath(id: string, suffix: string): string {
+    return path.join(getClipboardDirectory(), `${id}.${suffix}`);
+}
+
+function isSamePath(left: string, right: string): boolean {
+    return path.resolve(left).toLowerCase() === path.resolve(right).toLowerCase();
+}
+
 function isExpectedPayloadPath(filePath: string, id: string, flavor: ClipboardFlavor): boolean {
     if (!UUID_PATTERN.test(id) || !path.isAbsolute(filePath)) return false;
-    const expectedPath = path.join(getClipboardDirectory(), `${id}.${PAYLOAD_EXTENSIONS[flavor]}`);
-    return path.resolve(filePath).toLowerCase() === path.resolve(expectedPath).toLowerCase();
+    if (isSamePath(filePath, getPayloadPath(id, PAYLOAD_SUFFIXES[flavor]))) return true;
+    return flavor === "files" && isSamePath(filePath, getPayloadPath(id, LEGACY_FILES_SUFFIX));
 }
 
 function isValidIndexItem(value: unknown): value is ClipboardIndexItem {
@@ -264,6 +278,7 @@ function isValidIndexItem(value: unknown): value is ClipboardIndexItem {
         typeof item.preview !== "string" ||
         typeof item.hash !== "string" ||
         !/^[0-9a-f]{64}$/.test(item.hash) ||
+        (item.dropEffect !== undefined && !isDropEffect(item.dropEffect)) ||
         !item.payloads ||
         typeof item.payloads !== "object") {
         return false;
@@ -467,7 +482,7 @@ async function stagePayloads(id: string, payloads: CapturedPayload[]): Promise<R
     try {
         await fs.mkdir(getClipboardDirectory(), { recursive: true });
         for (const payload of payloads) {
-            const target = path.join(getClipboardDirectory(), `${id}.${PAYLOAD_EXTENSIONS[payload.flavor]}`);
+            const target = getPayloadPath(id, PAYLOAD_SUFFIXES[payload.flavor]);
             const temporaryPath = `${target}.tmp`;
             await fs.writeFile(temporaryPath, payload.bytes);
             staged.push(temporaryPath);
@@ -493,7 +508,7 @@ async function captureChange(event: ClipboardChangeEvent): Promise<void> {
         files = event.files;
         payloads.push({
             flavor: "files",
-            bytes: Buffer.from(JSON.stringify(files), "utf8"),
+            bytes: Buffer.from(files.paths.join("\r\n"), "utf8"),
         });
     }
 
@@ -532,7 +547,10 @@ async function captureChange(event: ClipboardChangeEvent): Promise<void> {
     const primaryPayload = payloads.find((payload) => payload.flavor === primary);
     if (!primaryPayload) return;
 
-    const hash = createHash("sha256").update(primaryPayload.bytes).digest("hex");
+    // The flavour is part of the identity: a file list is now stored as its plain paths, so
+    // copying a path as text would otherwise hash identically to copying the file itself and
+    // silently replace it in the history.
+    const hash = createHash("sha256").update(primary).update("\0").update(primaryPayload.bytes).digest("hex");
     const duplicateItems = historyItems.filter((item) => item.hash === hash);
     const id = randomUUID();
     let payloadPaths: Record<ClipboardFlavor, string> | undefined;
@@ -545,6 +563,7 @@ async function captureChange(event: ClipboardChangeEvent): Promise<void> {
             preview: getPreview(payloads, files),
             payloads: payloadPaths,
             hash,
+            ...(files ? { dropEffect: files.dropEffect } : {}),
         };
         const duplicateIds = new Set(duplicateItems.map((item) => item.id));
         const remaining = historyItems.filter((item) => !duplicateIds.has(item.id));
@@ -808,6 +827,28 @@ async function decodeUtf8(bytes: Buffer): Promise<string> {
     return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
 }
 
+function parseFileListPayload(
+    text: string,
+    filePath: string,
+    dropEffect: ClipboardDropEffect | undefined,
+): ClipboardFileListWire | null {
+    if (filePath.toLowerCase().endsWith(`.${LEGACY_FILES_SUFFIX}`)) {
+        // Written by an earlier build as {"paths":[...],"dropEffect":"..."}.
+        let parsed: unknown;
+        try {
+            parsed = JSON.parse(text);
+        } catch (err) {
+            log(`Clipboard file-list JSON is malformed: ${errMessage(err)}`);
+            return null;
+        }
+        return isValidFileList(parsed) ? parsed : null;
+    }
+
+    const paths = text.split(/\r?\n/).map((line) => line.trim()).filter((line) => line.length > 0);
+    const candidate = { paths, dropEffect: dropEffect ?? "copy" };
+    return isValidFileList(candidate) ? candidate : null;
+}
+
 async function loadPayloads(item: ClipboardIndexItem): Promise<LoadedPayloads | null> {
     const loaded: LoadedPayloads = { bytes: {}, images: {} };
     try {
@@ -823,15 +864,8 @@ async function loadPayloads(item: ClipboardIndexItem): Promise<LoadedPayloads | 
                 if (image.isEmpty()) return null;
                 loaded.images[flavor] = image;
             } else {
-                const text = await decodeUtf8(bytes);
-                let parsed: unknown;
-                try {
-                    parsed = JSON.parse(text);
-                } catch (err) {
-                    log(`Clipboard file-list JSON is malformed: ${errMessage(err)}`);
-                    return null;
-                }
-                if (!isValidFileList(parsed)) return null;
+                const parsed = parseFileListPayload(await decodeUtf8(bytes), filePath, item.dropEffect);
+                if (!parsed) return null;
                 loaded.files = parsed;
             }
         }

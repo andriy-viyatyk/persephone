@@ -23,6 +23,9 @@ export interface ClipboardHistoryItem {
     primary: ClipboardFlavor;
     preview: string;
     payloads: Partial<Record<ClipboardFlavor, string>>;
+    /** Only on a `files` item: its payload holds the paths alone, one per line, so the
+     *  copy/cut distinction needed to put the list back on the clipboard is carried here. */
+    dropEffect?: ClipboardDropEffect;
 }
 
 export interface ClipboardHistorySnapshot {

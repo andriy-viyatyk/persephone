@@ -1,11 +1,9 @@
 import { api } from "../../../../ipc/renderer/api";
 import type {
     ClipboardFlavor,
-    ClipboardFileList,
     ClipboardHistoryItem,
     ClipboardHistorySnapshot,
 } from "../../../../ipc/clipboard-ipc";
-import { errMessage } from "../../../../shared/utils";
 import type { AppWrapper } from "../../api-wrapper/AppWrapper";
 import {
     choiceRule,
@@ -49,8 +47,8 @@ later pages; offset is zero-based and limit is at most 100. Each list result inc
 revision so you can detect changes while paging.
 
 read(id, flavor?) reads only the matching stored payload. Without flavor it reads the item's
-primary flavour. Text and HTML return strings, files return the validated { paths, dropEffect }
-path list, and images return stored PNG data as an image record. Raise call.maxLength if a long
+primary flavour. Text and HTML return strings, files return the stored absolute paths as a string
+array, and images return stored PNG data as an image record. Raise call.maxLength if a long
 text value or PNG base64 value is reported as truncated.
 
 Excluded clipboard changes were never stored and cannot be reached here. Stored non-excluded
@@ -78,13 +76,24 @@ function isAbsoluteWindowsPath(value: string): boolean {
     return /^[A-Za-z]:[\\/]/.test(value) || /^\\\\[^\\/]+[\\/]/.test(value);
 }
 
-function isStoredFileList(value: unknown): value is ClipboardFileList {
-    if (!value || typeof value !== "object" || Array.isArray(value)) return false;
-    const candidate = value as { paths?: unknown; dropEffect?: unknown };
-    return Array.isArray(candidate.paths)
-        && candidate.paths.length > 0
-        && candidate.paths.every((path): path is string => typeof path === "string" && isAbsoluteWindowsPath(path))
-        && (candidate.dropEffect === "copy" || candidate.dropEffect === "cut" || candidate.dropEffect === "none");
+function parseStoredFileList(stored: string, payloadPath: string): string[] | null {
+    // A file list is stored as one absolute path per line. Earlier builds wrote the watcher's
+    // {"paths":[...],"dropEffect":"..."} JSON under a `.json` suffix; those payloads stay readable.
+    const lines = payloadPath.toLowerCase().endsWith(".json")
+        ? readLegacyFileListJson(stored)
+        : stored.split(/\r?\n/);
+    const paths = lines.map((line) => line.trim()).filter((line) => line.length > 0);
+    return paths.length > 0 && paths.every(isAbsoluteWindowsPath) ? paths : null;
+}
+
+function readLegacyFileListJson(stored: string): string[] {
+    try {
+        const parsed: unknown = JSON.parse(stored);
+        const paths = (parsed as { paths?: unknown } | null)?.paths;
+        return Array.isArray(paths) ? paths.filter((entry): entry is string => typeof entry === "string") : [];
+    } catch {
+        return [];
+    }
 }
 
 export class ClipboardHistoryNode implements IAiVisible {
@@ -112,7 +121,7 @@ export class ClipboardHistoryNode implements IAiVisible {
         return this.readPage(offset, limit);
     }
 
-    async read(...args: unknown[]): Promise<string | ClipboardFileList | ClipboardImageResult> {
+    async read(...args: unknown[]): Promise<string | string[] | ClipboardImageResult> {
         const [id, flavor] = validateCallArguments("clipboard.read", args, READ_ARGUMENTS, { maxArgs: 2 });
         const snapshot = await api.getClipboardHistory();
         const item = snapshot.items.find((candidate) => candidate.id === id);
@@ -129,17 +138,11 @@ export class ClipboardHistoryNode implements IAiVisible {
         }
 
         if (selectedFlavor === "files") {
-            const stored = await this.app.fs.read(payloadPath, "utf8");
-            let parsed: unknown;
-            try {
-                parsed = JSON.parse(stored);
-            } catch (error) {
-                throw new Error(`Stored clipboard file list for ${JSON.stringify(id)} is malformed: ${errMessage(error)}.`);
-            }
-            if (!isStoredFileList(parsed)) {
+            const paths = parseStoredFileList(await this.app.fs.read(payloadPath, "utf8"), payloadPath);
+            if (!paths) {
                 throw new Error(`Stored clipboard file list for ${JSON.stringify(id)} has an invalid shape.`);
             }
-            return parsed;
+            return paths;
         }
 
         const image = await this.app.fs.readBinary(payloadPath);

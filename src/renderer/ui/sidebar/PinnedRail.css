@@ -77,9 +77,11 @@
         white-space: nowrap;
     }
 
+    /* `[data-part="icon"]` is absent here on purpose: a ListBox row's icon host carries
+       `display: contents` as an inline style, so it generates no box and box properties set
+       from a stylesheet can never reach it. Its `svg` child is sized by the rule below. */
     .tools-editor-row > .item-icon,
-    .tools-board-row > .item-icon,
-    .tools-editor-row > [data-part="icon"] {
+    .tools-board-row > .item-icon {
         display: inline-flex;
         width: 18px;
         height: 18px;
@@ -106,13 +108,4 @@
         opacity: 1;
     }
 
-    .tools-editor-row > [data-part="trailing"] {
-        display: inline-flex;
-        flex-shrink: 0;
-        opacity: 0;
-    }
-
-    .tools-editor-row:hover > [data-part="trailing"] {
-        opacity: 1;
-    }
 }

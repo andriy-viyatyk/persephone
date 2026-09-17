@@ -61,6 +61,10 @@ class SideBarPanelHeaderDom implements SideBarPanelHeaderHandle {
             gap: "xs",
             shrink: false,
         });
+        // CollapsiblePanelStack toggles a panel on any header click except inside
+        // [data-part="header-buttons"], so a panel's own header actions carry that marker
+        // too: pressing one acts on the panel instead of collapsing it.
+        this.actionsGroup.dataset.part = "header-buttons";
         this.showMainButton = document.createElement("button");
         this.showMainButton.type = "button";
         this.showMainButton.dataset.type = "sidebar-show-main";

@@ -100,9 +100,16 @@ feature that gets uninstalled.
 text flavour too. These are one item — a primary flavour that determines the stored extension and
 what opens on selection, plus optional siblings — rather than two rows for one Ctrl+C.
 
-**D8 — Files with real extensions; no new editor.** `.txt`, `.html`, `.png`, and a JSON form for
+**D8 — Files with real extensions; no new editor.** `.txt`, `.html`, `.png`, and `.files.txt` for
 file lists. Selecting an item hands the payload path to the ordinary content pipeline and the
 existing extension routing does the rest. The panel is a list, not a viewer.
+
+A file list is stored as one absolute path per line, not as the watcher's `{ paths, dropEffect }`
+JSON — selecting it should show a readable list, and the JSON blob was the first thing a user saw
+and asked about (user report, 2026-09-17). The `dropEffect` moved to the index item, which is the
+only consumer that needs it (copy-back). The double suffix is deliberate: a copy can carry both a
+file list and text, and a bare `.txt` would make the two payloads of one item collide on a single
+file name. Payloads written as `.json` by earlier builds are still read.
 
 Selection **navigates the host page** rather than opening a new one — `openRawLink` with the
 panel's own `pageId`, the same route `ExplorerEditor.openSearchResult` uses. The first
