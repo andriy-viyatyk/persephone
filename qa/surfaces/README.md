@@ -115,7 +115,7 @@ The only unattended answer exception is the low-privilege inline Log View questi
 - **Transcript review.** The output that matters is not pass/fail, it
   is *what to change* — a reworded member summary, a clearer `$help`, a hint that pointed the
   wrong way. That judgement lives in the transcript, so the agent that reads the transcript has
-  to be the one that decides. (Recorded in `.claude/skills/codex-dev/SKILL.md`.)
+  to be the one that decides. (Recorded in `.claude/skills/persephone-codex-dev/SKILL.md`.)
 - **A PARTIAL is a finding, not a failure.** If the agent reached the goal but only after four
   wrong paths, the discovery surface is what needs fixing. Write down the wrong paths it tried —
   they are the most useful output of the whole run.

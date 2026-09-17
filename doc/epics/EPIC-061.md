@@ -89,7 +89,7 @@ withdrawn E3-6 gave.
 <!-- CODEX: the block below is not addressed to you. Skip to "Decisions". -->
 
 Same as EPIC-060. Investigation and implementation go to Codex via the
-[`codex-dev`](../../.claude/skills/codex-dev/SKILL.md) skill; Claude's budget is spent on this
+[`codex-dev`](../../.claude/skills/persephone-codex-dev/SKILL.md) skill; Claude's budget is spent on this
 document, on **reviewing each task plan against the source**, and on live verification. Per-task
 commits. `/review`, `/document` and `/userdoc` run once at epic close, through Codex.
 

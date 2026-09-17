@@ -377,7 +377,7 @@ cost of being honest here was three one-line edits, one of which the compiler di
 The `.tsx` → `.ts` rename left the renderer blank with renderer-side MCP calls timing out while
 main-process calls still answered. A main-process rebuild did not recover it; a full restart did, and
 the code then worked on the first cold start. This is the failure mode `CLAUDE.md` §7 describes, and
-`.claude/skills/codex-dev/SKILL.md` §5a's rule applied exactly as written: **a wedged renderer is not
+`.claude/skills/persephone-codex-dev/SKILL.md` §5a's rule applied exactly as written: **a wedged renderer is not
 a defect until a cold start reproduces it.** Expect it once per task in US-1094 … US-1098, since each
 carries at least one rename.
 

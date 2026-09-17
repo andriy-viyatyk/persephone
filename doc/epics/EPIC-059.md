@@ -182,7 +182,7 @@ Work the **first `Planned` task** in [Linked Tasks](#linked-tasks) that has no b
    if epic context is needed, the **Decisions** section specifically. The fence at the top of this
    section exists for the case where it reads the whole file anyway. Never tell Codex to "read
    EPIC-059.md in full."
-1. **Delegate investigation to Codex** — thread A, per [`.claude/skills/codex-dev`](../../.claude/skills/codex-dev/SKILL.md).
+1. **Delegate investigation to Codex** — thread A, per [`.claude/skills/persephone-codex-dev`](../../.claude/skills/persephone-codex-dev/SKILL.md).
    Codex writes `doc/tasks/US-XXXX-short-name/README.md` following `.claude/rules/task-docs.md`.
    Always pass the `developer-instructions` that make it read `CLAUDE.md` in full; `AGENTS.md` is the
    only thing it gets for free. `approval-policy: never`, `sandbox: workspace-write`.
@@ -226,7 +226,7 @@ Work the **first `Planned` task** in [Linked Tasks](#linked-tasks) that has no b
   adopt Codex's answer without checking it.
 - **Persephone is under your full control while this runs.** Nothing unsaved is in it, and the user can
   reopen any page including pinned ones. If it is unreachable over MCP, run the recovery in
-  [`codex-dev` §5a](../../.claude/skills/codex-dev/SKILL.md): touch a main-process file to force a Vite
+  [`codex-dev` §5a](../../.claude/skills/persephone-codex-dev/SKILL.md): touch a main-process file to force a Vite
   rebuild and main-window restart; if that fails, kill Vite and `npm start` fresh. Two attempts is the
   budget — then stop and wait. **Do not report a wedged renderer as a defect until a cold start
   reproduces it.**

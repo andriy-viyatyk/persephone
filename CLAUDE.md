@@ -12,8 +12,10 @@ must ignore this file.)
 
 ### Delegate by default (IMPORTANT)
 
-Use the [`codex-dev`](.claude/skills/codex-dev/SKILL.md) skill for task investigation,
-planning, implementation, and the completion skills. Spend your own budget on:
+Use the [`persephone-codex-dev`](.claude/skills/persephone-codex-dev/SKILL.md) skill for task
+investigation, planning, implementation, and the completion skills. It carries this project's
+delegation policy and layers on the user-level `codex-dev` skill, which owns the mechanics of
+driving the Codex CLI. Spend your own budget on:
 
 - epic-level plans and epic documents
 - reviewing Codex's task documents (verify claims against the source)
@@ -27,7 +29,7 @@ native skills. The entries under `.claude/skills/` for these three are thin poin
 so they still work as normal Claude slash commands.
 
 Per the delegation rule above, at task/epic completion these are normally delegated to Codex
-through `codex-dev`. **Fallback:** if Codex is unavailable (MCP server down, quota, etc.),
-run them yourself via the slash commands — the wrappers point at the canonical instructions
+through `persephone-codex-dev`. **Fallback:** if Codex is unavailable (CLI missing, quota
+exhausted, a run that will not complete), run them yourself via the slash commands — the wrappers point at the canonical instructions
 in `.agents/skills/<name>/SKILL.md`. Never run them as forked Claude subagents beyond what
 each skill's own frontmatter specifies.

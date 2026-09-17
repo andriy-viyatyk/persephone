@@ -722,7 +722,7 @@ and — the diagnostic detail worth keeping — **the `?t=` timestamp never chan
 cache-busting timestamp means nothing in the chain re-resolved the specifier; the stale resolution
 lived in the dev server's own module graph, not in the renderer's.
 
-So the recovery ladder in [`codex-dev`](../../.claude/skills/codex-dev/SKILL.md) §5a needed its
+So the recovery ladder in [`codex-dev`](../../.claude/skills/persephone-codex-dev/SKILL.md) §5a needed its
 step 2: kill the dev server and `npm start`. **The rule is narrower than EPIC-068 stated**: touching
 the importer clears a stale *renderer* module, but a renamed module that is reached through a
 **dynamic** `import()` from the editor registry needs the server restarted. A frozen `?t=` is how to

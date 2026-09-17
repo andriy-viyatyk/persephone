@@ -197,7 +197,7 @@ npm run lint        # ESLint
 /.agents
   /skills            # Canonical shared skills: review, document, userdoc (native Codex skills)
 /.claude
-  /skills            # Claude-only skills (codex-dev, mcp-test-agent, …) + thin pointer wrappers
+  /skills            # Claude-only skills (persephone-codex-dev, mcp-test-agent, …) + thin pointer wrappers
                      # for the three shared skills above
 ```
 

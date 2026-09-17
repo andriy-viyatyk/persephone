@@ -85,7 +85,7 @@ rules above for every run.
 The runner does not delete pages or accept user trust/destructive dialogs on the user's behalf.
 The only unattended answer exception is a low-privilege inline Log View question as defined in
 [`surfaces/gate.md`](surfaces/gate.md). QA runs belong to Claude as recorded in
-`.claude/skills/codex-dev/SKILL.md`.
+`.claude/skills/persephone-codex-dev/SKILL.md`.
 
 
 ### What to Check

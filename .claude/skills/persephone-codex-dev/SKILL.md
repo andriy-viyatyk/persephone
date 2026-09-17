@@ -1,10 +1,10 @@
 ---
-name: codex-dev
-description: The default way to do task work in this repo. Delegate investigation, planning, implementation, and the completion skills to Codex (gpt-5.6-luna, high effort) over MCP; Claude spends its budget on epic docs, reviewing Codex's plans, and fixing reported bugs. Use for any task big enough to need a document, and whenever the user says "use codex".
-allowed-tools: mcp__codex__codex, mcp__codex__codex-reply, mcp__persephone__call, Read, Grep, Glob, Bash, Edit, Write
+name: persephone-codex-dev
+description: The default way to do task work in the Persephone repo. Delegate investigation, planning, implementation, and the completion skills to Codex (gpt-5.6-luna, high effort); Claude spends its budget on epic docs, reviewing Codex's plans, and fixing reported bugs. Use for any task big enough to need a document, and whenever the user says "use codex". Layers Persephone's delegation policy on top of the generic `codex-dev` skill, which owns the mechanics.
+allowed-tools: mcp__persephone__call, Read, Grep, Glob, Bash, Edit, Write
 ---
 
-# Codex-delegated development
+# Persephone Codex-delegated development
 
 Codex does the reading and the typing. You do the thinking about whether the plan is
 right. That division exists because the user's Claude budget is scarce and their Codex
@@ -13,6 +13,16 @@ budget is not — `gpt-5.6-luna` at high effort is cheap for them and competent 
 **Target: you do 5–10% of the work.** If you are doing more, you are doing the wrong work.
 Delegate by default and treat "should I just do this myself?" as a question that almost
 always answers no.
+
+> **Mechanics live in the user-level `codex-dev` skill** (`~/.claude/skills/codex-dev/SKILL.md`) —
+> how to start a run, resume a session, keep the transcript out of context, and the CLI traps
+> that bite if you call `codex` directly. Read it first if you have not this session. **This**
+> document is Persephone's policy: what to delegate, who reviews, and the house rules.
+>
+> In short: `bash ~/.claude/skills/codex-dev/scripts/codex-run.sh -C C:/projects/persephone "<prompt>"`
+> starts a run and prints only Codex's final message; `-r <session-id>` continues one.
+> Codex is **no longer available over MCP** — `codex mcp-server` was removed in Codex CLI 0.154.0,
+> so any `mcp__codex__*` tool is gone for good.
 
 ## Who owns what
 
@@ -23,7 +33,7 @@ always answers no.
 | Reviewing that document, and the corrections sent back | **You** |
 | Task implementation | Codex |
 | `/review`, `/document`, `/userdoc` at epic close | Codex |
-| Confirming the app still renders | **You**, shallowly — see step 6 |
+| Confirming the app still renders | **You**, shallowly — see step 5 |
 | A bug or visual defect the user reports | **You**, directly — see below |
 | Running the QA tests and acting on what they show | **You**, directly — see below |
 
@@ -58,8 +68,8 @@ a file and reply with the path and a ≤10-line summary.
 
 ## What Codex starts with — and what it does not
 
-Tested, not assumed: with `cwd` set to the repo, Codex **auto-loads `AGENTS.md`** into
-every MCP session. It answered AGENTS.md questions correctly with zero file reads.
+Tested, not assumed: with the working root set to the repo, Codex **auto-loads `AGENTS.md`**
+into every session. It answered AGENTS.md questions correctly with zero file reads.
 
 It does **not** auto-load the shared guidelines, `doc/agents-common.md` (tested against the
 pre-split `CLAUDE.md`, whose shared content now lives there). Asked about three rules that live
@@ -74,133 +84,84 @@ that actually governs the code — coding standards, the colour and path and err
 dynamic imports for editors, task workflow, dashboard rules — is in `doc/agents-common.md` and is
 absent until something makes Codex read it.
 
-So **every** thread you create must be told to read it, in two places:
+So **every** run you start must be told to read it, as the literal **first line of the prompt**
+— which is also the one place that survives a resume:
 
-1. `developer-instructions` on the `codex` call (a developer-role message, so it outranks
-   ordinary prompt text):
+> Before doing anything else, read `doc/agents-common.md` in full and follow it. It is the canonical
+> project context and its coding standards are mandatory. `AGENTS.md` only points at it.
 
-   > Before doing anything else, read `doc/agents-common.md` in full and follow it. It is the canonical
-   > project context and its coding standards are mandatory. `AGENTS.md` only points at it.
+(The old MCP `developer-instructions` channel is gone with the MCP server; `codex exec` takes
+the prompt and nothing else. Do not try to substitute `-c` config overrides for it.)
 
-2. As the first line of the prompt itself, so it survives if the thread is ever resumed.
-
-Never use `base-instructions` for this — it *replaces* Codex's default instructions rather
-than adding to them, and would strip its own operating rules. `developer-instructions` is
-additive and is the right home.
-
-Reading `doc/agents-common.md` costs thread A a couple hundred lines up front. That is the cheapest
+Reading `doc/agents-common.md` costs session A a couple hundred lines up front. That is the cheapest
 context in the whole run, and far cheaper than reworking an implementation that hardcoded a
 hex colour or added a test suite.
 
-## Two threads, split at implementation
+## Two sessions, split at implementation
 
 Codex runs out of context. A single investigation of a real task takes it to nearly 100%,
-and there is **no way to compact it over MCP** — `/compact` is a TUI command; sent as a
+and there is **no way to compact it from outside** — `/compact` is a TUI command; sent as a
 prompt it is treated as literal text and does nothing. Verified, not assumed.
 
-So the context boundary is a **thread boundary**, and that is better than compacting
+So the context boundary is a **session boundary**, and that is better than compacting
 anyway. Compaction is lossy and non-deterministic — you do not control what survives. A
-fresh thread pointed at the corrected task document starts near zero holding the
+fresh session pointed at the corrected task document starts near zero holding the
 *authoritative, reviewed plan*, and loses nothing that matters, because the plan is
 complete by construction. That is exactly what `doc/agents-common.md`'s task-doc rule exists for:
 *"A detailed plan with resolved concerns lets the agent implement correctly even after
-context compaction."* What the investigation thread still holds by then is mostly
+context compaction."* What the investigation session still holds by then is mostly
 exploration debris — files read and rejected, dead ends, superseded hypotheses — which is
 precisely what you do not want carried into implementation.
 
-| Thread | Steps | Why |
+| Session | Steps | Why |
 |---|---|---|
 | **A** — investigation | 1 investigate → 3 apply corrections | Still holds the code context, so corrections are cheap and accurate |
 | **B** — implementation | 4 implement | Fresh context, reading the corrected document from disk |
 
-Keep step 3 in thread A. It is a small delta against context Codex already has, which is
-why it usually lands without auto-compacting. Start thread B for implementation — that is
-where the manual `/compact` used to go.
+Keep step 3 in session A (`codex-run.sh -r <session-id>`). It is a small delta against context
+Codex already has, which is why it usually lands without auto-compacting. Start a new session
+for implementation.
 
-### Keeping thread A from filling up
+### Keeping session A from filling up
 
 1. **Scope the brief.** Name the files, folders, and epic decisions you already know are
    relevant. You often know this from the epic document at zero extra cost, and it saves
    Codex a great deal of blind searching — the single largest source of its context burn.
 2. **Make it write as it goes.** Require findings to be recorded into the task document
-   *as they are verified*, not composed at the end. If Codex auto-compacts mid-investigation,
+   *as they are verified*, not composed at the end. If Codex compacts mid-investigation,
    the verified claims are already durable on disk. This is the main defense.
-3. **Set `compact-prompt` when creating thread A.** It configures the summarization used if
-   auto-compaction fires, so bias it toward what you need to survive:
-
-   > Preserve: the task document path, all verified file/line findings, and unresolved
-   > questions. Discard: file contents already recorded in the document.
-
-4. **Escape hatch.** If the correction round comes back thin, vague, or confused about code
-   it cited earlier, it compacted and lost the code context. Start a fresh thread with the
+3. **Escape hatch.** If the correction round comes back thin, vague, or confused about code
+   it cited earlier, it compacted and lost the code context. Start a fresh session with the
    document plus your review and have it re-verify the specific claims — do not accept the
    thin answer.
 
-Codex keeps its own context across a thread, which is what makes step 3 cheap: it already
+Codex keeps its own context across a session, which is what makes step 3 cheap: it already
 knows the task, so your review is the only new input it needs.
 
-`codex-reply` accepts **only** `threadId` and `prompt`. Sandbox, model, approval policy,
-and cwd are fixed when the thread is created — so create it correctly the first time:
+Always pass `-s workspace-write` — required even for the investigation step, because Codex
+writes the task document, and read-only would fail at the last moment. Model and effort
+already default to `gpt-5.6-luna` / `high`; do not override unless the user asks. `codex exec`
+never prompts for approval, which is what makes an unattended run safe — and also means a
+sandbox set too wide runs unattended too.
 
-```
-mcp__codex__codex
-  prompt:                 <the investigation brief>
-  cwd:                    C:\projects\persephone
-  sandbox:                workspace-write
-  approval-policy:        never
-  developer-instructions: <the read-agents-common standing rule above>
-  compact-prompt:         <what must survive auto-compaction, see below>
-```
+`codex-run.sh` prints the session id and saves it in the run directory. Record session A's and
+keep it through step 3. If you lose it, `codex-status.sh --list` shows recent runs; a lost
+session means Codex re-reads the codebase — wasteful, though only of the cheap budget.
 
-- `sandbox: workspace-write` — required even for the investigation step, because Codex
-  writes the task document. Read-only would fail at the last moment.
-- `approval-policy: never` — mandatory. There is no interactive channel over MCP, so
-  `on-request` or `untrusted` will hang the call waiting for an approval that can never
-  arrive.
-- Model and effort are already pinned to `gpt-5.6-luna` / `high` in the MCP server
-  registration. Do not pass `model` unless the user asks for a different one.
+## Long runs
 
-The `threadId` comes back in the result's `structuredContent.threadId`. Record thread A's
-and keep it through step 3. If you lose it, `codex exec resume --last` is the fallback, but
-a lost thread means Codex re-reads the codebase — wasteful, though only of the cheap budget.
+Start `codex-run.sh` with `run_in_background: true` and carry on with other work; the harness
+notifies you when it exits and the final message is in the result. Do **not** poll, and do not
+resend a prompt you think was lost — that starts a second, duplicate run. To look in on a run
+mid-flight, `codex-status.sh --last --tail 40`.
 
-## When the MCP call aborts but Codex keeps working
-
-`mcp__codex__codex` and `codex-reply` abort after **30 idle minutes** without progress. Codex does
-not stop — it keeps working and its final message is simply lost to you. Do **not** resend the
-prompt (that starts a second, duplicate run). Instead use the two scripts in
-`.claude/skills/codex-dev/scripts/`, which read the rollout log directly:
-
-```
-# block until the thread's open turn ends (task_complete / turn_aborted), then print the final message
-python .claude/skills/codex-dev/scripts/codex-wait.py --thread <threadId>     # run in the background
-
-# status + last agent message(s) of a thread, any time
-python .claude/skills/codex-dev/scripts/codex-last.py --thread <threadId>     # -n 3, --full, --subagents
-python .claude/skills/codex-dev/scripts/codex-last.py --list                  # recent threads with status
-```
-
-- The rollout log has a definitive end marker: `event_msg/task_complete` carrying
-  `last_agent_message` (or `turn_aborted`). `codex-wait.py` returns on that, so there is no need to
-  guess from silence. Exit 0 = complete (final message printed), 3 = aborted, 2 = stalled (no log
-  growth — including the thread's sub-agent logs — for `--idle` seconds, default 240), 4 = `--timeout`.
-- It watches file **size**, never mtime: Windows does not update mtime while Codex holds the handle,
-  so an mtime-based watcher fires early.
-- Always pass `--thread`. Without it the newest top-level thread is used, which may be a QA or
-  sub-agent thread rather than yours. If the abort lost the id, `codex-last.py --list` shows it.
-- Run `codex-wait.py` with `run_in_background` and continue with other work; the notification
-  brings the final message. Then proceed exactly as if the MCP call had returned it.
-- `codex-last.py` also shows the thread's context usage (`context: n / window`), which tells you
-  whether thread A can still take the correction round or needs the escape hatch above.
-
-Codex streams progress as `codex/event` notifications while it works. Those do **not**
-enter your context — only the final message does. That is precisely why the output contract
-is the whole game: a thirty-minute Codex investigation costs you exactly the ten lines you
-asked it to reply with.
+Codex's reasoning stream never enters your context — only the final message does. That is
+precisely why the output contract is the whole game: a thirty-minute Codex investigation
+costs you exactly the ten lines you asked it to reply with.
 
 ## The six steps
 
-### 1. Delegate investigation (thread A)
+### 1. Delegate investigation (session A)
 
 Codex reads the code and writes the task document. Only `AGENTS.md` arrives for free —
 `doc/agents-common.md` and everything under `.claude/` must be named explicitly, so point at both the
@@ -239,9 +200,9 @@ must-fix first, each naming the file and line that proves it.
 Show the review to the user in the response. They may want to paste it themselves, or
 adjust it before it goes to Codex.
 
-### 3. Send corrections back to Codex (thread A)
+### 3. Send corrections back to Codex (session A)
 
-`mcp__codex__codex-reply` with the retained `threadId` and the review text, plus:
+`codex-run.sh -r <session-id>` with the review text, plus:
 
 > Apply these corrections to the task document. For each finding, either fix it or reply
 > saying why it does not apply — do not silently skip one. Do not implement yet. Reply with
@@ -252,12 +213,12 @@ again. Re-reading a 400-line document to check ten edits is the most common way 
 workflow leaks Claude budget. If Codex pushed back on a finding, judge the pushback; it is
 sometimes right, and it has been right before.
 
-### 4. Delegate implementation — in a fresh thread
+### 4. Delegate implementation — in a fresh session
 
-Start a **new** `mcp__codex__codex` thread with the same `cwd`, `sandbox: workspace-write`,
-`approval-policy: never`, and the same `developer-instructions` — a fresh thread has none of
-thread A's context, including its `doc/agents-common.md` read. Do not continue thread A: by now it is
-near its context limit, and the corrected document on disk is the complete handoff.
+Start a **new** run with the same working root and `-s workspace-write` — a fresh session has
+none of session A's context, including its `doc/agents-common.md` read, so the read-it-first line
+goes back at the top of the prompt. Do not resume session A: by now it is near its context
+limit, and the corrected document on disk is the complete handoff.
 
 Name the document path explicitly and tell it to read the document first:
 
@@ -340,7 +301,7 @@ instructions do the rest:
 
 Timing follows `doc/agents-common.md`, not convenience: for an **epic task** these are deferred to
 epic close, so do not run them per task. For a **standalone task** they are mandatory at
-completion. Use a fresh thread — completion work reads broadly and deserves clean context.
+completion. Use a fresh session — completion work reads broadly and deserves clean context.
 
 Your job on the way back is to read the *findings*, not the doc diffs. If `/review`
 surfaced something real, that is a plan-level judgement and therefore yours.

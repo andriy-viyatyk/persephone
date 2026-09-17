@@ -107,7 +107,7 @@ Work the first `Planned` task in [Linked Tasks](#linked-tasks) with no unmet ord
 0. **Scope what Codex is allowed to read.** Codex reads whatever you point it at, and the section
    above reads like instructions — so name the task document and, if epic context is needed, the
    **Decisions** section specifically. Never tell Codex to read this file in full.
-1. **Delegate investigation** — thread A, per [`codex-dev`](../../.claude/skills/codex-dev/SKILL.md).
+1. **Delegate investigation** — thread A, per [`codex-dev`](../../.claude/skills/persephone-codex-dev/SKILL.md).
    Codex writes `doc/tasks/US-XXXX-short-name/README.md` per `.claude/rules/task-docs.md`. Always pass
    the `developer-instructions` that make it read `CLAUDE.md` in full — `AGENTS.md` is the only thing
    it gets for free. `approval-policy: never`, `sandbox: workspace-write`.
@@ -145,7 +145,7 @@ Work the first `Planned` task in [Linked Tasks](#linked-tasks) with no unmet ord
   different starting point and has been right before in this programme. Do not defer to the user, and
   do not adopt Codex's answer without checking it.
 - **Persephone is under your full control while this runs.** If it is unreachable over MCP, run the
-  recovery in [`codex-dev` §5a](../../.claude/skills/codex-dev/SKILL.md): touch a main-process file to
+  recovery in [`codex-dev` §5a](../../.claude/skills/persephone-codex-dev/SKILL.md): touch a main-process file to
   force a Vite rebuild and window restart; failing that, kill Vite and `npm start`. Two attempts is
   the budget. **Do not report a wedged renderer as a defect until a cold start reproduces it.**
 
@@ -206,7 +206,7 @@ the exception. A later epic inherits the default, not the exception.)*
 The user's instruction: *"please proceed with epic implementation autonomously. Use codex havily."*
 So E2 runs like E1 did — per-task commits, no per-step review, decisions made and recorded here rather
 than deferred upward — with one added emphasis: **delegate more, and delegate earlier.** Investigation
-and implementation both go to Codex per [`codex-dev`](../../.claude/skills/codex-dev/SKILL.md). The
+and implementation both go to Codex per [`codex-dev`](../../.claude/skills/persephone-codex-dev/SKILL.md). The
 Claude budget is spent on reviewing plans against the source, on the decisions in this section, and on
 the defects the user reports — nothing else.
 
