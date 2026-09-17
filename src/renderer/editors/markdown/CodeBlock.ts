@@ -1,8 +1,10 @@
 import { createComponentModelDriver, TComponentModel, type ComponentModelDriver } from "../../core/state/model";
 import { monacoLanguages } from "../../core/utils/monaco-languages";
+import { toClipboard } from "../../core/utils/utils";
 import { pagesModel } from "../../api/pages";
 import { CopyIcon, OpenLinkIcon } from "../../theme/icons";
 import { renderMermaidSvg, svgToDataUrl } from "../mermaid/render-mermaid";
+import { copyPngBlobToClipboard } from "../shared/image-export";
 import { ColorizedCodeView, type ColorizedCodeProps } from "../shared/ColorizedCodeView";
 import { errMessage } from "../../../shared/utils";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
@@ -85,9 +87,7 @@ export async function copyImageToClipboard(img: HTMLImageElement): Promise<void>
         canvas.toBlob(resolve, "image/png")
     );
     if (!blob) return;
-    await navigator.clipboard.write([
-        new ClipboardItem({ "image/png": blob }),
-    ]);
+    await copyPngBlobToClipboard(blob);
 }
 
 interface MermaidBlockProps {
@@ -293,7 +293,7 @@ class CodePreBlockView extends VanillaView<CodePreBlockProps> {
         this.listen(copyButton, "click", () => {
             const pre = this.pre;
             if (!pre) return;
-            void navigator.clipboard.writeText(pre.textContent || "");
+            toClipboard(pre.textContent || "");
             this.driver.model.setCopied(true);
             if (this.copiedTimer !== undefined) clearTimeout(this.copiedTimer);
             this.copiedTimer = setTimeout(() => this.driver.model.setCopied(false), 750);

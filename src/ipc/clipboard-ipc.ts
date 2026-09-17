@@ -14,3 +14,33 @@ export interface ClipboardFileList {
     paths: string[];
     dropEffect: ClipboardDropEffect;
 }
+
+export type ClipboardFlavor = "text" | "html" | "image" | "files";
+
+export interface ClipboardHistoryItem {
+    id: string;
+    capturedAt: number;
+    primary: ClipboardFlavor;
+    preview: string;
+    payloads: Partial<Record<ClipboardFlavor, string>>;
+}
+
+export interface ClipboardHistorySnapshot {
+    revision: number;
+    items: ClipboardHistoryItem[];
+}
+
+export interface ClipboardHistoryChanged {
+    revision: number;
+    reason: "captured" | "removed" | "cleared" | "reconciled";
+}
+
+export type ClipboardHealth = "disabled" | "starting" | "running" | "healthy" | "deaf" | "error";
+
+export interface ClipboardStatus {
+    enabled: boolean;
+    running: boolean;
+    health: ClipboardHealth;
+    monitoring: boolean;
+    error?: string;
+}

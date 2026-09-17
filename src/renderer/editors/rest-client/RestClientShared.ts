@@ -1,5 +1,6 @@
 import universalColors from "../../theme/universal-colors";
 import { TraitSet } from "../../core/traits/traits";
+import { toClipboard } from "../../core/utils/utils";
 import { TREE_ITEM_KEY } from "../../uikit/Tree/types";
 import { applyPanelAttributes, createPanelElement, resolvePanelAttributes } from "../../uikit/Panel/panel-style";
 import { createTextElement } from "../../uikit/Text/text-style";
@@ -368,7 +369,7 @@ export class RestDetailView extends VanillaView<RestDetailProps> {
             label,
             onClick: async () => {
                 const serializers = await import("./serializeRequest");
-                await navigator.clipboard.writeText(serializers[method as keyof typeof serializers](request) as string);
+                toClipboard(serializers[method as keyof typeof serializers](request) as string);
             },
         }));
     }

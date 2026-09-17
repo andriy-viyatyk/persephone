@@ -33,6 +33,8 @@ export type AppSettingsKey =
     | "link-open-behavior"
     | "mcp.enabled"
     | "mcp.port"
+    | "clipboard.enabled"
+    | "clipboard.max-items"
     | "main.scripting.enabled"
     | "mneme.enabled"
     | "mneme.port"
@@ -104,6 +106,8 @@ const settingsComments: Partial<Record<AppSettingsKey, string>> = {
     "link-open-behavior": "Where external links open from editors.\nOne of: \"default-browser\" (the OS default browser), \"internal-browser\" (the nearest\nPersephone Browser tab). Default: default-browser.",
     "mcp.enabled": "Enable the MCP (Model Context Protocol) HTTP server, so AI agents can drive Persephone.\nBoolean. Default: false. Setting it true here starts the server immediately — no restart.\nThe agent connects to http://127.0.0.1:<mcp.port>/mcp and should start with a bare call for the overview.\nThe server listens on loopback only and is never reachable from another machine.",
     "mcp.port": "Port for the MCP HTTP server.\nNumber. Default: 7865. Changing this alone does NOT move a running server —\nset \"mcp.enabled\": false, save, then set it back to true.",
+    "clipboard.enabled": "Enable the clipboard history tracker.\nBoolean. Default: false. When enabled, clipboard content is recorded for the history feature.\nOccasionally-copied secrets may remain on disk in readable form.",
+    "clipboard.max-items": "Maximum number of clipboard history items to retain.\nOnly integers from 1 through 1000 are accepted; any other stored value falls back to 100.\nDefault: 100. This item count limits history retention, including content that may remain readable on disk.",
     "main.scripting.enabled": "Allow call → main.script.execute to run code in Persephone's main process.\nBoolean. Default: on in development and off in packaged builds. Main-process code can freeze or crash the entire app.",
     "mneme.enabled": "Enable Mneme, the local markdown knowledge base with full-text and semantic search.\nBoolean. Default: false. Persephone runs mneme.exe as a sidecar and connects over loopback HTTP.\nMneme exposes its OWN MCP server on \"mneme.port\" — separate from \"mcp.port\" above.",
     "mneme.port": "Port for the Mneme HTTP (MCP) server.\nNumber. Default: 7700. Changing this alone does NOT move a running server —\nset \"mneme.enabled\": false, save, then set it back to true.",
@@ -138,6 +142,8 @@ const defaultAppSettingsState = {
         "link-open-behavior": "default-browser" as "default-browser" | "internal-browser",
         "mcp.enabled": false,
         "mcp.port": 7865,
+        "clipboard.enabled": false,
+        "clipboard.max-items": 100,
         "main.scripting.enabled": import.meta.env.DEV,
         "mneme.enabled": false,
         "mneme.port": 7700,
@@ -160,6 +166,12 @@ const defaultAppSettingsState = {
 };
 
 type AppSettingsState = typeof defaultAppSettingsState;
+
+export function normalizeClipboardMaxItems(value: unknown): number {
+    return typeof value === "number" && Number.isInteger(value) && value >= 1 && value <= 1000
+        ? value
+        : 100;
+}
 
 /**
  * Value comparison for change detection on reload. Settings hold arrays and objects

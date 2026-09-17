@@ -6,6 +6,7 @@ import { VanillaView } from "../../../uikit/shared/vanilla-view";
 import { pagesModel } from "../../../api/pages";
 import { themeState } from "../../../theme/theme-state";
 import { renderMermaidSvg, svgToDataUrl } from "../../mermaid/render-mermaid";
+import { copyPngBlobToClipboard } from "../../shared/image-export";
 import type { MermaidOutputEntry } from "../logTypes";
 import { DialogHeaderView } from "./DialogHeader";
 
@@ -20,7 +21,7 @@ async function copyImageToClipboard(image: HTMLImageElement): Promise<void> {
     context.drawImage(image, 0, 0);
     const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
     if (!blob) return;
-    await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+    await copyPngBlobToClipboard(blob);
 }
 
 export class MermaidOutputView extends VanillaView<MermaidOutputViewProps> {

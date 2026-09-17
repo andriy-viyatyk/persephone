@@ -9,6 +9,7 @@ import { encodePersephoneBoardLink } from "../../content/persephone-board-link";
 import { showCreateBoardDialog } from "../../ui/dialogs/CreateBoardDialog";
 import { showConfirmationDialog } from "../../ui/dialogs/ConfirmationDialog";
 import { fpBasename, fpNormalizeForCompare } from "../../core/utils/file-path";
+import { toClipboard } from "../../core/utils/utils";
 import { removePin } from "../../ui/sidebar/pinned-items";
 import { errMessage } from "../../../shared/utils";
 import type { MenuItem } from "../../uikit/Menu";
@@ -395,7 +396,7 @@ export default class BoardsSecondaryView extends VanillaView<SecondaryViewProps>
             {
                 label: "Copy board path",
                 icon: createIconElement("copy", { width: 14, height: 14 }),
-                onClick: () => { void navigator.clipboard.writeText(root); },
+                onClick: () => { toClipboard(root); },
             },
             {
                 // The board's own root is not claimed by any folder editor, so this opens the

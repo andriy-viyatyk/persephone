@@ -239,7 +239,7 @@ webContents                      BrowserChannel          BrowserEditorView
 |-----------|------------|
 | `linkURL` present | Open Link in New Tab, Copy Link Address |
 | `srcURL` + `mediaType === "image"` | Open Image in New Tab, Copy Image Address |
-| `selectionText` present | Copy (uses `navigator.clipboard.writeText`) |
+| `selectionText` present | Copy (uses the renderer's Electron-native clipboard helper) |
 | `isEditable` | Cut, Copy, Paste (uses `webview.cut/copy/paste()` with `webview.focus()`) |
 | SVG probe finds `<svg>` ancestor | Open SVG in Editor |
 | Always | Back, Forward, Reload, View Source, View Actual DOM, Show Resources, Inspect Element |
@@ -256,7 +256,7 @@ webContents                      BrowserChannel          BrowserEditorView
 
 The budget is per call site: a context-menu item that merely appears or disappears can afford 250 ms, while a dialog gathering image suggestions is given 1 s.
 - **View Actual DOM / Show Resources:** Uses `ipcRenderer.invoke(BrowserChannel.collectDom, key)` to collect the full DOM from the main process. The main process iterates `webContents.mainFrame.framesInSubtree` to collect DOM from all frames (including cross-origin iframes), then uses cheerio to inject each iframe's DOM inside the corresponding `<iframe>` element in the parent HTML.
-- **Copy for selections:** Uses `navigator.clipboard.writeText(selectionText)` instead of `webview.copy()` because the webview loses focus when the popup menu opens.
+- **Copy for selections:** Uses the renderer's Electron-native clipboard helper instead of `webview.copy()` because the webview loses focus when the popup menu opens. Renderer-owned writes must use the native clipboard path so Chromium's Web API exclusion marker does not keep them out of clipboard history; see [Clipboard writes](../standards/coding-style.md#clipboard-writes).
 - **Popup dismissal:** Webview clicks don't bubble to the renderer DOM. A transparent overlay (`webview-click-overlay`) is rendered over the webview area while a popup menu is open, allowing clicks to reach the renderer's `document` and trigger the popup's dismiss handler.
 - **skipInspect:** The browser context menu provides its own "Inspect Element" item, so `showAppPopupMenu` is called with `{ skipInspect: true }` to suppress the app's default "Inspect" item.
 

@@ -55,6 +55,12 @@ logic, loops, or Node.js.
 | `app.openRawLink(href, options?)` | Open any link (file path, URL, or in-app scheme) in a new/reused tab and make it active. `options.editor` requests a specific editor (e.g. `{ editor: "md-view" }` for rendered Markdown); falls back to the default when omitted/unmatched |
 | `app.call(path, options?)` | Resolve the live AiVision tree from the script's own page context; returns a plain bounded value and rejects `Error` on resolver failure |
 
+The MCP `call` root also exposes `clipboard` only when `clipboard.enabled` is true. It is stored
+history, not the live Windows clipboard: use `clipboard.items` or `clipboard.list(offset, limit)`
+for newest-first previews, `clipboard.read(id, flavor?)` for a stored text, HTML, image, or file-list
+payload, and `clipboard.remove(id)` or `clipboard.clear()` only when the user explicitly asks for
+deletion. The feature is opt-in, and stored non-excluded content may remain readable on disk.
+
 ### `app.call(path, options?)`
 
 For the script-side call seam, inspect `script.$help` and use `app.call(path)` inside
@@ -83,7 +89,7 @@ the current sidebar panels; `page.panels.expand(id)` takes a bare panel ID and
 are no panels or a non-Explorer panel keeps it open. There is no uniform `page.panels.close(id)`
 because individual panel owners have different hide/dispose lifecycles.
 
-Use `settings.sections` to find the fixed-order Settings catalog (14 sections, 25 rows), then
+Use `settings.sections` to find the fixed-order Settings catalog (15 sections, 27 rows), then
 `settings.highlight(key)` to open or activate Settings and point at the containing section.
 `settings.set` remains the mutation operation. Through the AiVision `call` seam only,
 `mcp.enabled` and `mcp.port` are refused because changing them disconnects the caller;

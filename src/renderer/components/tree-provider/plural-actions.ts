@@ -9,6 +9,7 @@ import type { ILink, ITreeProvider } from "../../api/types/io.tree";
 import type { MenuItem } from "../../uikit/Menu";
 import { ui } from "../../api/ui";
 import { isUrlOrCurl } from "../../content/link-utils";
+import { toClipboard } from "../../core/utils/utils";
 import { CopyIcon, CutIcon, DeleteIcon } from "../../theme/icons";
 import { copyPathsToOsClipboard, supportsOsClipboard } from "./os-clipboard";
 
@@ -61,7 +62,7 @@ export function buildMultiItemMenuItems(
             ? `Copy Hrefs (${n})`
             : `Copy Paths (${n})`,
         icon: CopyIcon.createElement(),
-        onClick: () => navigator.clipboard.writeText(hrefs.join("\n")),
+        onClick: () => toClipboard(hrefs.join("\n")),
     });
 
     // OS file clipboard — Windows Explorer interop, file provider only. No Cut when the

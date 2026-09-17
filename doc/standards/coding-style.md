@@ -46,6 +46,15 @@ function process(data: any): void {
 }
 ```
 
+### Clipboard writes
+
+Renderer-owned clipboard writes must use Electron's native `clipboard` API, normally through
+`toClipboard()` in `src/renderer/core/utils/utils.ts` or the shared image-export helper for PNG
+data. Do not use `navigator.clipboard.writeText()` or `navigator.clipboard.write()` for app-owned
+writes: Chromium marks Web API writes with `CanIncludeInClipboardHistory = 0`, so Windows clipboard
+history—and Persephone's opt-in clipboard tracker—excludes them. Clipboard Web API reads remain
+appropriate where a feature needs to read external clipboard content.
+
 ## React island
 
 React is confined to the Excalidraw vendor island under `src/renderer/editors/draw/`. New renderer

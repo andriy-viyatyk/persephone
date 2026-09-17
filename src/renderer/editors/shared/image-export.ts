@@ -1,3 +1,5 @@
+const { clipboard: electronClipboard, nativeImage } = require("electron"); // eslint-disable-line @typescript-eslint/no-var-requires
+
 import { fs as appFs } from "../../api/fs";
 import { ui } from "../../api/ui";
 import type { IImageExport } from "../base/IImageExport";
@@ -38,11 +40,18 @@ export async function blobToBuffer(blob: Blob): Promise<Buffer> {
     return Buffer.from(await blob.arrayBuffer());
 }
 
-/** Copy an already-rasterised PNG blob to the system clipboard. */
+/**
+ * Copy an already-rasterised PNG blob to the system clipboard.
+ *
+ * Uses Electron's native clipboard rather than `navigator.clipboard.write` for
+ * the reason documented on `toClipboard` in `core/utils/utils.ts`: Chromium
+ * marks Web-API clipboard writes `CanIncludeInClipboardHistory = 0`, so an
+ * image copied that way is excluded from clipboard history — including
+ * Persephone's own tracker (EPIC-104 D6). The native write carries no such
+ * format, and needs no document focus.
+ */
 export async function copyPngBlobToClipboard(blob: Blob): Promise<void> {
-    await navigator.clipboard.write([
-        new ClipboardItem({ "image/png": blob }),
-    ]);
+    electronClipboard.writeImage(nativeImage.createFromBuffer(await blobToBuffer(blob)));
 }
 
 /** Render an image-export-capable editor and copy its PNG representation. */

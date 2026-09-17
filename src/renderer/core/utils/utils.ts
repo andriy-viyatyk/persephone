@@ -1,3 +1,5 @@
+const { clipboard: electronClipboard } = require("electron"); // eslint-disable-line @typescript-eslint/no-var-requires
+
 type SetStateAction<S> = S | ((previous: S) => S);
 
 export const isNullOrUndefined = (v: unknown) => v === null || v === undefined;
@@ -15,8 +17,20 @@ export const range = (from: number, to: number) => from <= to
     ? Array.from({ length: to - from + 1 }, (_, i) => from + i)
     : Array.from({ length: from - to + 1 }, (_, i) => to + i);
 
+/**
+ * Copy text to the OS clipboard through Electron's native clipboard.
+ *
+ * Deliberately NOT `navigator.clipboard.writeText`. Chromium stamps every
+ * Web-API clipboard write with the registered `CanIncludeInClipboardHistory`
+ * format set to 0 — "do not put this in clipboard history" — which Windows
+ * clipboard-history tools honour, Persephone's own Clipboard tracker included
+ * (EPIC-104 D6). So a Web-API copy silently never reaches the history the user
+ * turned on. Electron's native write sets no such format. It is also
+ * synchronous and, unlike the Web API, does not require document focus, which
+ * removes a class of "Document is not focused" copy failures.
+ */
 export function toClipboard(text: string): void {
-    navigator.clipboard.writeText(text);
+    electronClipboard.writeText(text);
 }
 
 /** Format an ISO date string as YYYY-MM-DD */

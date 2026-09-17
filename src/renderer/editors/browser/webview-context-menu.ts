@@ -3,7 +3,7 @@ import { BrowserChannel } from "../../../ipc/browser-ipc";
 import { pagesModel } from "../../api/pages";
 import { showAppPopupMenu } from "../../ui/dialogs/poppers/showPopupMenu";
 import type { MenuItem } from "../../uikit/Menu";
-import { withTimeout } from "../../core/utils/utils";
+import { toClipboard, withTimeout } from "../../core/utils/utils";
 import type { BrowserEditorModel } from "./BrowserEditorModel";
 
 const SVG_PROBE_TIMEOUT = 250;
@@ -90,7 +90,7 @@ export async function showBrowserContextMenu({
             });
             items.push({
                 label: "Copy Link Address",
-                onClick: () => navigator.clipboard.writeText(linkURL),
+                onClick: () => toClipboard(linkURL),
             });
             items.push({
                 label: "Add to Bookmarks",
@@ -140,7 +140,7 @@ export async function showBrowserContextMenu({
             });
             items.push({
                 label: "Copy Image Address",
-                onClick: () => navigator.clipboard.writeText(srcURL),
+                onClick: () => toClipboard(srcURL),
             });
             items.push({
                 label: "Use Image for Bookmark",
@@ -157,7 +157,7 @@ export async function showBrowserContextMenu({
                 label: "Copy",
                 startGroup: items.length > 0,
                 onClick: () => {
-                    navigator.clipboard.writeText(selectionText);
+                    toClipboard(selectionText);
                     webview.focus();
                 },
             });

@@ -8,6 +8,7 @@ import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { createIconComponentElement } from "../../theme/icons";
 import { DrawIcon } from "../../theme/language-icons";
 import { exportAsSvgText, exportAsPngBlob, getImageDimensions, IMAGE_OFFSET_X, IMAGE_OFFSET_Y } from "./drawExport";
+import { copyPngBlobToClipboard } from "../shared/image-export";
 import { convertToExcalidrawElements, MIME_TYPES } from "@excalidraw/excalidraw";
 import type { DataURL } from "@excalidraw/excalidraw/dist/types/excalidraw/types";
 import type { FileId } from "@excalidraw/excalidraw/dist/types/excalidraw/element/types";
@@ -191,9 +192,7 @@ class DrawToolbarView extends VanillaView<{ model: DrawEditor }> {
         const api = this.model.excalidrawApi;
         if (!api || !this.hasElements()) return;
         const blob = await exportAsPngBlob(api);
-        await navigator.clipboard.write([
-            new ClipboardItem({ "image/png": blob }),
-        ]);
+        await copyPngBlobToClipboard(blob);
         await new Promise((resolve) => setTimeout(resolve, 300));
     }
 

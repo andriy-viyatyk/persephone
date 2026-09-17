@@ -42,6 +42,13 @@ secondaryViewRegistry.register({
 });
 
 secondaryViewRegistry.register({
+    id: "clipboard",
+    label: "Clipboard",
+    icon: "paste",
+    loadView: () => import("./explorer/ClipboardSecondaryView"),
+});
+
+secondaryViewRegistry.register({
     id: "link-category",
     label: "Categories",
     loadView: () => import("./link-editor/panels/LinkCategorySecondaryView"),

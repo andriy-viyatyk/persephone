@@ -3,7 +3,7 @@ import type { EditorStateBase } from "../base/EditorModel";
 import { TextHostEditorModel } from "../base/TextHostEditorModel";
 import { ComponentQueue } from "../../core/state/ComponentQueue";
 import type { IImageExport } from "../base/IImageExport";
-import { rasterToPngBlob } from "../shared/image-export";
+import { copyPngBlobToClipboard, rasterToPngBlob } from "../shared/image-export";
 import { pagesModel } from "../../api/pages";
 import { buildExcalidrawJsonWithImage, getImageDimensions } from "../draw/drawExport";
 import { errMessage } from "../../../shared/utils";
@@ -77,9 +77,7 @@ export class SvgEditor extends TextHostEditorModel<SvgEditorState, void, SvgQueu
     async copyImageToClipboard(): Promise<void> {
         try {
             const blob = await this.exportPng();
-            await navigator.clipboard.write([
-                new ClipboardItem({ "image/png": blob }),
-            ]);
+            await copyPngBlobToClipboard(blob);
         } catch (error) {
             throw new Error(`SVG preview cannot copy an image: ${errMessage(error)}`);
         }

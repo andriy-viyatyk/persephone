@@ -29,6 +29,11 @@ Release notes and changelog for Persephone (formerly js-notepad).
   between the board and **Folder View**, and the same **+** install flow in **Board Info** is available
   when a published folder editor matches. If trust is removed, the open page keeps a recovery path
   back to Folder View. See [Boards — Direct-folder boards](./boards.md#direct-folder-boards).
+- **Opt-in clipboard history:** enable it in Settings to capture copied text, HTML, images, and file
+  lists in the Explorer's **Clipboard** panel. Open or copy an item, remove individual entries, clear
+  the history, and restart the listener if its health badge reports a problem. History is off by
+  default because stored content may remain readable on disk; while it is enabled, the stored
+  history is also readable by agents through the `clipboard` call namespace.
 
 ### Improvements
 

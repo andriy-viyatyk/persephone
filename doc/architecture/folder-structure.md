@@ -45,9 +45,11 @@ persephone/
 │   │   ├── .gitignore      # Ignores .env
 │   │   └── CLAUDE.md       # Toolset authoring guide (manifest, stdin/stdout contract, .env, requirements)
 │   └── demo-board/         # Bundled Demo board — exercises the full board surface
-├── snip-tool/              # Rust native screen snip tool + Windows file-clipboard helper (persephone-snip.exe; `clipboard-read`/`clipboard-write` subcommands for CF_HDROP interop)
-│   ├── src/main.rs         # Entry point, PNG encoding, stdout output
+├── snip-tool/              # Rust native screen snip tool + Windows clipboard helper (persephone-snip.exe; `clipboard-read`/`clipboard-write`/`clipboard-watch` subcommands)
+│   ├── src/main.rs         # Entry point, PNG encoding, stdout output, subcommand dispatch
 │   ├── src/capture.rs      # Monitor enumeration + GDI screen capture
+│   ├── src/clipboard.rs    # CF_HDROP file-list read/write interop
+│   ├── src/clipboard_watch.rs # Win32 clipboard listener and JSON-lines change/health protocol
 │   ├── src/overlay.rs      # Fullscreen overlay windows, selection UI
 │   ├── build.rs
 │   └── Cargo.toml
@@ -91,6 +93,11 @@ About page or with `F1`.
 Guide indexing is shared across processes: `/src/shared/guides/` owns the corpus contract and
 mounted-source composition, `/src/main/mcp/ai-vision/` resolves trusted-board guide mounts for MCP,
 and `/src/renderer/guides/` resolves the corresponding mounts for the About browser and `F1`.
+
+The renderer dev server ignores `snip-tool/target/`, `mneme/target/`, `launcher/target/`, and
+`release/` in its Vite watcher. These are build outputs rather than import sources; watching them
+can race a concurrent Cargo or packaging build, surface `EBUSY` from chokidar, and bring down the
+dev server.
 
 ## Renderer Structure
 
@@ -553,6 +560,8 @@ vendor island under `editors/draw/`; native global styles are installed by `them
 │   │   │   ├── McpSection.ts
 │   │   │   ├── McpSectionModel.ts    # MCP/Mneme status, validation + actions
 │   │   │   ├── FileSearchSection.ts
+│   │   │   ├── ClipboardSection.ts    # Opt-in clipboard history and item-cap settings
+│   │   │   ├── ClipboardSectionModel.ts
 │   │   │   ├── ThemeSection.ts
 │   │   │   ├── SettingsSections.ts
 │   │   │   └── settings-native.ts   # Shared native settings helpers
@@ -600,6 +609,7 @@ vendor island under `editors/draw/`; native global styles are installed by `them
 │   │   ├── ExplorerSecondaryView.ts   # "explorer" panel — tree view with native header
 │   │   ├── SearchSecondaryView.ts  # "search" panel — file search with native header
 │   │   ├── BoardsSecondaryView.ts # "boards" panel — Boards/Tools body switch: trusted boards (BoardsTree) or registered toolsets (ToolsTree) under the Explorer root; "+ New board" in the switch row
+│   │   ├── ClipboardSecondaryView.ts # "clipboard" panel — opt-in history, copy/remove/clear, and listener health
 │   │   └── index.ts
 │   ├── mneme-config/       # Mneme config & monitoring editor (non-text, no trait)
 │   │   ├── MnemeConfigEditorModel.ts # EditorModel — roots, include/ignore, reindex + progress, model, status polling
@@ -912,7 +922,8 @@ vendor island under `editors/draw/`; native global styles are installed by `them
 ├── board-bridge.ts         # Per-board MessagePort bridge — execute(), page-scoped call(), dialogs/readFile/writeFile, openRawLink/notify, theme push; busy-owner job retention (a busy board's jobs survive its unload, reaped on final teardown/page close/crash)
 ├── cdp-service.ts          # CDP session service for call-path automation — attaches the debugger to webContents; board frames registered/resolved by their ?v= nonce
 ├── mneme-service.ts        # Mneme concerns on top of sidecar-process: port/config wiring and MnemeStatus broadcasts for the knowledge-base service
-├── snip-service.ts         # Screen snip (spawns persephone-snip.exe, reads PNG from stdout; exports getSnipToolPath for clip-service)
+├── snip-service.ts         # Screen snip (spawns persephone-snip.exe, reads PNG from stdout; exports getSnipToolPath for clipboard services)
+├── clipboard-service.ts    # Opt-in clipboard history — watcher sidecar, payload files/index, duplicate promotion, retention, and status broadcasts
 ├── clip-service.ts         # Windows file-clipboard (CF_HDROP) read/write via the snip exe's clipboard subcommands — Explorer copy/paste interop; degrades to empty result when the exe is missing
 ├── version-service.ts      # Version checking (runs in main, not renderer)
 ├── published-boards-service.ts # Published-boards catalog — net.fetch raw boards-manifest.json (24h-gated, cached, isSafeBoardId/isSafeAssetName-guarded), getBoardVersions(id) on demand, ePublishedBoardsUpdated broadcast; screenshotUrl derived on the way out (never cached); PERSEPHONE_BOARDS_BRANCH dev override
@@ -938,7 +949,7 @@ vendor island under `editors/draw/`; native global styles are installed by `them
 ├── browser-ipc.ts          # Browser-specific IPC channels
 ├── tor-ipc.ts              # Tor service IPC channels (start, stop, log, check-ip, restart, status) + TorStatus/TorIpInfo types
 ├── git-ipc.ts              # Git service IPC channel names + request/response types
-├── clipboard-ipc.ts        # File-clipboard DTOs (ClipboardFileList — CF_HDROP paths + drop effect)
+├── clipboard-ipc.ts        # Clipboard history/status DTOs plus file-clipboard DTOs (CF_HDROP paths + drop effect)
 ├── search-ipc.ts           # Search IPC channels + wire types; also the batch-flush bounds, the matched-line result cap, and the default exclude patterns that seed the search-exclude setting
 ├── worker-channels.ts      # Worker thread IPC channels (app.runAsync)
 ├── runner-channels.ts      # Streaming command-runner IPC channels + wire types (RunnerChannel, inbound/outbound message unions, IExecuteHandle contract — implemented once in shared/execute-handle.ts for proc.ts and board-shim.ts)

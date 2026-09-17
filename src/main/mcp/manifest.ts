@@ -27,6 +27,7 @@ export const SERVER_INSTRUCTIONS = [
     "For editor choices, start with `guides.editors.index` or `guides.editors.<editor>`; reading returns text for your use, while showing a guide means opening it — not copying its text into a new page — with `pages.openUrl(\"persephone-guide://editors/<editor>\")` for an ordinary Markdown tab or `pages[\"about-page\"].editor.open(\"editors/<editor>\")` for the About guide browser next to the version card; for notebook or links JSON use `guides.formats.<page>` (the matching resources remain available as an alternative).",
     "For boards, use `boards.*` and `guides.agents.boards`; the `persephone://guides/boards` resource is an alternative.",
     "For Agent Tools, find registered tools with `tools.search()` and run one with `tools.execute(id, args)`.",
+    "Clipboard history is opt-in: when `clipboard.enabled` is true, discover stored history under `clipboard` with `call`; when it is false, that node is absent. This reads stored history only and never the live OS clipboard.",
     "For Persephone controls, start with `guides.screens` or `guides.screens.index`; for browser automation use `guides.agents.browser`. The focused `persephone://guides/*` resources remain available as an alternative.",
 ].join("\n");
 

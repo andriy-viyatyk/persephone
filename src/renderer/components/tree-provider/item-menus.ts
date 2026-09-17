@@ -1,6 +1,7 @@
 import type { ITreeProvider, ITreeProviderItem } from "../../api/types/io.tree";
 import type { MenuItem } from "../../uikit/Menu";
 import { isUrlOrCurl } from "../../content/link-utils";
+import { toClipboard } from "../../core/utils/utils";
 import {
     CopyIcon,
     CutIcon,
@@ -30,7 +31,7 @@ export function getFileMenuItems(
     const items: MenuItem[] = [{
         label: isUrlOrCurl(item.href) ? "Copy Href" : "Copy Path",
         icon: CopyIcon.createElement(),
-        onClick: () => navigator.clipboard.writeText(item.href),
+        onClick: () => toClipboard(item.href),
     }];
 
     if (supportsOsClipboard(provider)) {
@@ -104,7 +105,7 @@ export function getFolderMenuItems(options: FolderMenuOptions): MenuItem[] {
         startGroup: items.length > 0,
         label: isUrlOrCurl(item.href) ? "Copy Href" : "Copy Path",
         icon: CopyIcon.createElement(),
-        onClick: () => navigator.clipboard.writeText(item.href),
+        onClick: () => toClipboard(item.href),
     });
 
     if (supportsOsClipboard(provider)) {

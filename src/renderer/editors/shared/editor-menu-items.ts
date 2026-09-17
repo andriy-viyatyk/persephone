@@ -1,5 +1,6 @@
 import { api } from "../../../ipc/renderer/api";
 import { createLinkData } from "../../../shared/link-data";
+import { toClipboard } from "../../core/utils/utils";
 import { createIconElement } from "../../uikit/shared/slots";
 import type { MenuItem } from "../../uikit/Menu/types";
 import type { TextFileModel } from "../text/TextEditorModel";
@@ -50,7 +51,7 @@ export function filePathMenuItems(filePath: string | undefined): MenuItem[] {
             label: "Copy File Path",
             icon: createIconElement("copy"),
             onClick: () => {
-                if (filePath) navigator.clipboard.writeText(filePath);
+                if (filePath) toClipboard(filePath);
             },
             disabled: !filePath,
         },

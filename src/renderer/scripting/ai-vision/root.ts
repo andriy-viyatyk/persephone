@@ -4,6 +4,7 @@ import { MenusNode } from "./menus";
 import { eventLog } from "./event-log";
 import { EventsNode } from "./namespaces/events";
 import { toolsNode } from "./namespaces/tools";
+import { ClipboardHistoryNode } from "./namespaces/clipboard";
 
 import type { AppWrapper } from "../api-wrapper/AppWrapper";
 import type { PageCollectionWrapper } from "../api-wrapper/PageCollectionWrapper";
@@ -80,6 +81,13 @@ const ROOT_MEMBERS: IAiVisionDescriptor["members"] = [
     { name: "guides", kind: "property", node: true, summary: "Documentation tree and text search for how to do something or where it is; use guides paths before resources." },
     { name: "script", kind: "property", node: true, summary: "Execute JavaScript or TypeScript in the renderer with the user's privileges." },
 ];
+
+const CLIPBOARD_ROOT_MEMBER: IAiMember = {
+    name: "clipboard",
+    kind: "property",
+    node: true,
+    summary: "Stored clipboard history, available only when clipboard.enabled is true.",
+};
 
 const SCRIPT_EXECUTION_CAUTION = "runs arbitrary renderer code with the user's privileges; it can read and write files, spawn processes, access the network, and affect the app";
 
@@ -188,10 +196,14 @@ existing user confirmation; a declined registration can be offered again with th
 `;
 
 export class AiRoot implements IAiVisible {
+    private readonly clipboardNode: ClipboardHistoryNode;
+
     constructor(
         private readonly app: AppWrapper,
         private readonly options: AiRootOptions = {},
-    ) {}
+    ) {
+        this.clipboardNode = new ClipboardHistoryNode(this.app);
+    }
 
     private readonly dialogsNode = new DialogsNode();
     private readonly menusNode = new MenusNode();
@@ -200,7 +212,6 @@ export class AiRoot implements IAiVisible {
         () => this.options.callContext?.eventCursor ?? 0,
     );
     private readonly scriptNode = new ScriptNode();
-
     get pages(): PageCollectionWrapper {
         return this.app.pages.withCallContext(this.options.callContext);
     }
@@ -241,12 +252,16 @@ export class AiRoot implements IAiVisible {
     get downloads() { return this.app.downloads; }
     get menuFolders() { return this.app.menuFolders; }
     get script(): ScriptNode { return this.scriptNode; }
+    get clipboard(): ClipboardHistoryNode { return this.clipboardNode; }
 
     get aiVision(): IAiVisionDescriptor {
+        const members = this.clipboardEnabled()
+            ? [...ROOT_MEMBERS, CLIPBOARD_ROOT_MEMBER]
+            : ROOT_MEMBERS;
         return {
             kind: "Persephone",
             summary: "the root of the object model — a developer notepad with tabbed pages, specialized editors and scripting.",
-            members: ROOT_MEMBERS,
+            members,
             overview: ROOT_OVERVIEW,
             help: ROOT_HELP,
             children: () => this.children(),
@@ -264,7 +279,14 @@ export class AiRoot implements IAiVisible {
             const restricted = active.aiVision.restricted?.();
             children.push({ segment: ".page", kind: "Page", summary: `active: "${active.title}" (${active.editor.id})`, ...(restricted ? { restricted } : {}) });
         }
+        if (this.clipboardEnabled()) {
+            children.push({ segment: ".clipboard", kind: "ClipboardHistory", summary: "stored clipboard history" });
+        }
         return children;
+    }
+
+    private clipboardEnabled(): boolean {
+        return !!this.app.settings.get("clipboard.enabled");
     }
 }
 

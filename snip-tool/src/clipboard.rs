@@ -26,7 +26,7 @@ use windows_sys::Win32::System::Memory::{
 
 /// Standard clipboard format for shell file lists. Defined locally to avoid
 /// pulling the whole Win32_System_Ole feature for one constant.
-const CF_HDROP: u32 = 15;
+pub(crate) const CF_HDROP: u32 = 15;
 
 /// DROPFILES header preceding the path list in a CF_HDROP block (shellapi.h).
 /// 20 bytes; `p_files` is the offset from the start of the block to the path
@@ -57,7 +57,7 @@ fn drop_effect_format() -> u32 {
 
 /// The clipboard is a shared resource — another process may hold it open for a
 /// moment. Retry briefly before giving up.
-fn open_clipboard_retry() -> bool {
+pub(crate) fn open_clipboard_retry() -> bool {
     for attempt in 0..10 {
         if unsafe { OpenClipboard(0) } != 0 {
             return true;
@@ -99,7 +99,7 @@ fn read_clipboard() -> Option<(Vec<String>, &'static str)> {
     result
 }
 
-unsafe fn read_clipboard_locked() -> Option<(Vec<String>, &'static str)> {
+pub(crate) unsafe fn read_clipboard_locked() -> Option<(Vec<String>, &'static str)> {
     if IsClipboardFormatAvailable(CF_HDROP) == 0 {
         return None;
     }
@@ -187,7 +187,7 @@ fn parse_ansi_list(ptr: *const u8, max_bytes: usize) -> Vec<String> {
     paths
 }
 
-fn json_escape(s: &str) -> String {
+pub(crate) fn json_escape(s: &str) -> String {
     let mut out = String::with_capacity(s.len() + 8);
     for c in s.chars() {
         match c {

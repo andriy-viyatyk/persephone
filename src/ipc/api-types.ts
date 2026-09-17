@@ -16,7 +16,12 @@ import {
 } from "./api-param-types";
 import { GitAheadBehind, GitCommit, GitFetchOptions, GitFileChange, GitIdentity, GitLogOptions, GitMutationResult, GitProbeResult, GitPullOptions, GitPullResult, GitPushOptions, GitPushResult, GitRefs, GitRepoInfo, GitStatusResult, GitSwitchTarget } from "./git-ipc";
 import type { BoardThemePalette } from "./board-bridge-channels";
-import type { ClipboardFileList } from "./clipboard-ipc";
+import type {
+    ClipboardFileList,
+    ClipboardHistoryChanged,
+    ClipboardHistorySnapshot,
+    ClipboardStatus,
+} from "./clipboard-ipc";
 
 export enum Endpoint {
     getAppRootPath = "getAppRootPath",
@@ -65,6 +70,14 @@ export enum Endpoint {
     setMnemeEnabled = "setMnemeEnabled",
     restartMneme = "restartMneme",
     getMnemeStatus = "getMnemeStatus",
+    setClipboardEnabled = "setClipboardEnabled",
+    getClipboardHistory = "getClipboardHistory",
+    removeClipboardItem = "removeClipboardItem",
+    clearClipboardHistory = "clearClipboardHistory",
+    copyClipboardItem = "copyClipboardItem",
+    getClipboardStatus = "getClipboardStatus",
+    setClipboardHealthMonitoring = "setClipboardHealthMonitoring",
+    restartClipboard = "restartClipboard",
     startScreenSnip = "startScreenSnip",
     clipboardReadFilePaths = "clipboardReadFilePaths",
     clipboardWriteFilePaths = "clipboardWriteFilePaths",
@@ -201,6 +214,14 @@ export type Api = {
     [Endpoint.setMnemeEnabled]: (enabled: boolean, port?: number) => Promise<MnemeStatus>;
     [Endpoint.restartMneme]: (port?: number) => Promise<MnemeStatus>;
     [Endpoint.getMnemeStatus]: () => Promise<MnemeStatus>;
+    [Endpoint.setClipboardEnabled]: (enabled: boolean, maxItems: number) => Promise<ClipboardStatus>;
+    [Endpoint.getClipboardHistory]: () => Promise<ClipboardHistorySnapshot>;
+    [Endpoint.removeClipboardItem]: (id: string) => Promise<void>;
+    [Endpoint.clearClipboardHistory]: () => Promise<void>;
+    [Endpoint.copyClipboardItem]: (id: string) => Promise<boolean>;
+    [Endpoint.getClipboardStatus]: () => Promise<ClipboardStatus>;
+    [Endpoint.setClipboardHealthMonitoring]: (active: boolean) => Promise<ClipboardStatus>;
+    [Endpoint.restartClipboard]: (maxItems: number) => Promise<ClipboardStatus>;
     [Endpoint.startScreenSnip]: (hideWindows: boolean) => Promise<string | null>;
     [Endpoint.clipboardReadFilePaths]: () => Promise<ClipboardFileList>;
     [Endpoint.clipboardWriteFilePaths]: (paths: string[], cut: boolean) => Promise<boolean>;
@@ -276,6 +297,8 @@ export enum EventEndpoint {
     eDownloadCleared = "eDownloadCleared",
     eMcpStatusChanged = "eMcpStatusChanged",
     eMnemeStatusChanged = "eMnemeStatusChanged",
+    eClipboardHistoryChanged = "eClipboardHistoryChanged",
+    eClipboardStatusChanged = "eClipboardStatusChanged",
     eBoardNotify = "eBoardNotify",
     eBoardOpenRawLink = "eBoardOpenRawLink",
     // Main → host renderer: delivers a per-board MessagePort (EPIC-037 / US-771).
@@ -313,6 +336,8 @@ export type EventApi = {
     [EventEndpoint.eDownloadCleared]: EventObject<DownloadEntry[]>;
     [EventEndpoint.eMcpStatusChanged]: EventObject<McpStatus>;
     [EventEndpoint.eMnemeStatusChanged]: EventObject<MnemeStatus>;
+    [EventEndpoint.eClipboardHistoryChanged]: EventObject<ClipboardHistoryChanged>;
+    [EventEndpoint.eClipboardStatusChanged]: EventObject<ClipboardStatus>;
     // Board `persephone.notify()` → host renderer toast (US-724). Union
     // inlined to keep this shared module free of renderer-type imports.
     [EventEndpoint.eBoardNotify]: EventObject<{

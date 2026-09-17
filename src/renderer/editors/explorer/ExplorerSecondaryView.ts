@@ -1,4 +1,5 @@
 import { ContextMenuEvent } from "../../api/events/events";
+import { settings } from "../../api/settings";
 import { TOOLS_MANIFEST_FILE } from "../../api/tools/tools-manifest";
 import { openWithDefaultApp } from "../../content/open-with-default-app";
 import { FileTreeProvider } from "../../content/tree-providers/FileTreeProvider";
@@ -34,6 +35,7 @@ export default class ExplorerSecondaryView extends VanillaView<SecondaryViewProp
     private upButton: IconButtonView | undefined;
     private searchButton: IconButtonView | undefined;
     private boardsButton: IconButtonView | undefined;
+    private clipboardButton: IconButtonView | undefined;
     private collapseButton: IconButtonView | undefined;
     private closeButton: IconButtonView | undefined;
     private readonly trailingButtons = new Map<string, IconButtonView>();
@@ -81,6 +83,12 @@ export default class ExplorerSecondaryView extends VanillaView<SecondaryViewProp
             (version) => this.scheduleReveal(version),
         );
         this.own(() => this.cancelReveal());
+        this.setClipboardButton(settings.get("clipboard.enabled"));
+        this.own(settings.onChanged.subscribe(({ key, value }) => {
+            if (key !== "clipboard.enabled") return;
+            this.setClipboardButton(value === true);
+            this.updateHeader(this.props);
+        }));
         this.updateHeader(this.props);
     }
 
@@ -103,6 +111,7 @@ export default class ExplorerSecondaryView extends VanillaView<SecondaryViewProp
         this.upButton = undefined;
         this.searchButton = undefined;
         this.boardsButton = undefined;
+        this.clipboardButton = undefined;
         this.collapseButton = undefined;
         this.closeButton = undefined;
         this.trailingButtons.clear();
@@ -171,6 +180,28 @@ export default class ExplorerSecondaryView extends VanillaView<SecondaryViewProp
         this.boardsButton.mount();
         this.collapseButton.mount();
         this.closeButton.mount();
+    }
+
+    private setClipboardButton(enabled: boolean): void {
+        if (enabled) {
+            if (this.clipboardButton) return;
+            this.clipboardButton = this.child(new IconButtonView({
+                name: "explorer-clipboard",
+                size: "sm",
+                title: "Clipboard",
+                icon: "paste",
+                onClick: (event) => {
+                    event.stopPropagation();
+                    this.model.openClipboard();
+                },
+            }));
+            this.clipboardButton.mount();
+            return;
+        }
+        if (this.clipboardButton) {
+            this.releaseChild(this.clipboardButton);
+            this.clipboardButton = undefined;
+        }
     }
 
     private replaceProvider(rootPath: string): void {
@@ -353,6 +384,7 @@ export default class ExplorerSecondaryView extends VanillaView<SecondaryViewProp
             ...(provider?.navigable && this.upButton ? [this.upButton.root] : []),
             ...(this.searchButton ? [this.searchButton.root] : []),
             ...(this.boardsButton ? [this.boardsButton.root] : []),
+            ...(this.clipboardButton ? [this.clipboardButton.root] : []),
             ...(this.collapseButton ? [this.collapseButton.root] : []),
             ...(this.model.page?.sidebarMandatory || !this.closeButton ? [] : [this.closeButton.root]),
         );

@@ -2,6 +2,7 @@ import { createFileTypeIconElement } from "../../components/icons/icon-elements"
 import { app } from "../../api/app";
 import { pagesModel } from "../../api/pages";
 import { createComponentModelDriver, TComponentModel, type ComponentModelDriver } from "../../core/state/model";
+import { toClipboard } from "../../core/utils/utils";
 import { createDepsGate, type DepsGate } from "../../uikit/shared/deps-gate";
 import { SubtreeSwap } from "../../uikit/shared/subtree-swap";
 import { KeyedList } from "../../uikit/shared/keyed-list";
@@ -386,7 +387,7 @@ class ResponseBranchView extends VanillaView<ResponseBranchProps> {
     };
     private readonly copyHeaders = async (): Promise<void> => {
         if (!this.props.response) return;
-        await navigator.clipboard.writeText(this.props.derived.headersAsJson);
+        toClipboard(this.props.derived.headersAsJson);
         await new Promise((resolve) => setTimeout(resolve, 200));
     };
     private readonly saveBinary = async (): Promise<void> => {

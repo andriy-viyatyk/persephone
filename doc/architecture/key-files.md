@@ -16,6 +16,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Shared types (IEditorState)| `/src/shared/types.ts`                            |
 | ILinkData helpers (pipeline fields and persistence-safe `cleanForStorage()` boundary) | `/src/shared/link-data.ts` |
 | Cross-process helpers (`debounce` with idempotent `cancel()`; `concatChunks`; `errMessage(e, fallback?)` — the one way to turn a caught `unknown` into a message, in `shared/` because main, renderer and the board shim all need it) | `/src/shared/utils.ts` |
+| Renderer Vite dev-server watch policy (fixed port plus ignored Cargo/package output trees so concurrent builds cannot take down chokidar) | `/vite.renderer.config.ts` |
 | App object model         | `/src/renderer/api/app.ts`                        |
 | Page/tab management      | `/src/renderer/api/pages/PagesModel.ts`           |
 | Page container (tab)     | `/src/renderer/api/pages/PageModel.ts`            |
@@ -32,6 +33,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Node.js HTTP client      | `/src/renderer/api/node-fetch.ts`                 |
 | Path utilities           | `/src/renderer/core/utils/file-path.ts`           |
 | Element-wise identity comparison for freshly allocated model arrays (`sameItems`) | `/src/renderer/core/utils/utils.ts` |
+| Renderer-native clipboard writes (text and PNG; required for app-owned writes to remain visible to clipboard history) | `/src/renderer/core/utils/utils.ts`, `/src/renderer/editors/shared/image-export.ts` |
 | State primitives         | `/src/renderer/core/state/`                        |
 | Vanilla view lifecycle and ownership (`VanillaView`, `IOwnedView`, guarded `bind`/`listen` with early-release handles, owner-bound scheduling, `ownSubscription`, FIFO cleanup, and single-owner claims) | `/src/renderer/uikit/shared/vanilla-view.ts` |
 | Keyed DOM reconciliation (duplicate-safe keyed records, cursor-based minimal moves, reusable `clear`, and inert `dispose`) | `/src/renderer/uikit/shared/keyed-list.ts` |
@@ -100,6 +102,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Renderer popup-menu AiVision adapter (`menus[0]`, nested item paths, click/close) | `/src/renderer/scripting/ai-vision/menus/` |
 | Menu Bar AiVision descriptor (live folders/selection, strict ID-based open, and curated Menu Bar elements) | `/src/renderer/scripting/ai-vision/namespaces/menu-bar.ts` |
 | Settings AiVision descriptor (catalog sections/keys, lifecycle-aware highlighting, browser-profile projections, and call-only self-severing guards) | `/src/renderer/scripting/ai-vision/namespaces/settings.ts` |
+| Clipboard AiVision namespace (opt-in stored history discovery, paged previews, payload reads, and explicit destructive removal) | `/src/renderer/scripting/ai-vision/namespaces/clipboard.ts` |
 | Page sidebar-panels AiVision node (live panel projection, bare-ID expansion, sidebar state/actions, and curated elements) | `/src/renderer/scripting/ai-vision/page-panels.ts` |
 | Page editor-switches AiVision node (current editor, toolbar-identical options, verified switching, and switch control elements) | `/src/renderer/scripting/ai-vision/page-editor-switches.ts` |
 | Page compare-mode AiVision node (active pairs, enter/exit actions, and page-scoped compare controls) | `/src/renderer/scripting/ai-vision/page-compare.ts` |
@@ -148,6 +151,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Native editor error view (message + optional stack for failures in the native editor path) | `/src/renderer/ui/app/NativeEditorErrorView.ts`, `/src/renderer/ui/app/NativeEditorErrorView.css` |
 | UI element addressing contract (the `data-name` convention, `data-name` vs `data-type`/`data-part`/state attributes, and the shell selector table that MCP UI guides quote — renaming a listed name is a documentation change) | [`ui-element-contract.md`](ui-element-contract.md) |
 | Secondary view registry (single native `VanillaView` panel loader; exact and prefix resolution) | `/src/renderer/ui/secondary-views/secondary-view-registry.ts` |
+| Clipboard secondary view (stored-item list, native copy/open/remove/clear actions, listener health and restart) | `/src/renderer/editors/explorer/ClipboardSecondaryView.ts` |
 | Composite panel keys (sidebar) | `/src/renderer/ui/secondary-views/panel-key.ts` |
 | Native shared sidebar panel header (DOM title/badge/actions adoption, show-main control, and late `headerHost` reparenting) | `/src/renderer/ui/secondary-views/SideBarPanelHeaderView.ts` |
 | Native secondary-panel loader (cancellable dynamic import, vanilla panel mount, semantic error host, and explicit retirement cleanup) | `/src/renderer/ui/secondary-views/LazySecondaryViewView.ts` |
@@ -204,6 +208,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Note item edit model     | `/src/renderer/editors/notebook/note-editor/NoteItemEditModel.ts` |
 | Settings page composition and section models | `/src/renderer/editors/settings/` |
 | Native settings page and section composition (settings controls, model-backed branches, and lifecycle ownership) | `/src/renderer/editors/settings/SettingsView.ts`, `/src/renderer/editors/settings/sections/` |
+| Clipboard settings section (enable toggle, item cap, and on-disk storage warning) | `/src/renderer/editors/settings/sections/ClipboardSection.ts`, `/src/renderer/editors/settings/sections/ClipboardSectionModel.ts` |
 | Native link editor body and chrome (list/tiles switching, pinned links, tooltip content, and direct TextChrome composition) | `/src/renderer/editors/link-editor/LinkBody.ts`, `/src/renderer/editors/link-editor/index.ts`, `/src/renderer/editors/link-editor/PinnedLinksPanelView.ts` |
 | Browser editor coordinator (restore/persistence, navigation normalization, profile presentation, privacy-safe page-title projection for incognito/Tor, keyboard shortcuts, and composed browser sub-model lifecycle) | `/src/renderer/editors/browser/BrowserEditor.ts` |
 | Browser webview interaction model (webview refs, guest IPC, navigation commands, context menus, find bar, host-side keyboard shortcuts, completed-load page-model probing, and AiVision shape/notify signal handling) | `/src/renderer/editors/browser/BrowserWebviewModel.ts` |
@@ -256,7 +261,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | File/language icon resolver (language, compound-extension, system, board, and default precedence) | `/src/renderer/components/icons/language-icon-resolver.ts`, `/src/renderer/components/icons/icon-elements.ts` |
 | App theme cycling (`cycleAppTheme(direction)` — cycle + persist to settings; shared by the host `KeyboardService` shortcut and the `board:cycleTheme` message forwarded out of a board frame, so both paths behave identically) | `/src/renderer/api/cycle-app-theme.ts` |
 | Theme definitions        | `/src/renderer/theme/themes/`                     |
-| Sidecar process lifecycle (main; shared spawn → stdout-readiness → stop machinery for helper exes — tor.exe, mneme.exe. Owns the parts that are easy to get subtly wrong: in-flight start dedupe (`pending` registered synchronously, so concurrent restarts join one attempt instead of racing two daemons onto the same on-disk state), readiness timeout, the stale-child guard on `close` (a replaced process's late close must not null out its healthy successor), `onUnexpectedExit` for post-readiness deaths only, and stop-and-wait before respawn. Services keep every domain concern and feed `log`/`isReady`/status callbacks) | `/src/main/sidecar-process.ts` |
+| Sidecar process lifecycle (main; shared spawn → stdout-readiness → stop machinery for helper exes — tor.exe, mneme.exe, and the clipboard watcher. Owns the parts that are easy to get subtly wrong: in-flight start dedupe (`pending` registered synchronously, so concurrent restarts join one attempt instead of racing two daemons onto the same on-disk state), readiness timeout, the stale-child guard on `close` (a replaced process's late close must not null out its healthy successor), `onUnexpectedExit` for post-readiness deaths only, and stop-and-wait before respawn. Services keep every domain concern and feed `log`/`isReady`/status callbacks) | `/src/main/sidecar-process.ts` |
 | Tor service (main; tor.exe lifecycle + restart-based reconnect, per-partition SOCKS5 proxy, exit-IP/geo lookup through the partition's session. **Fails closed**: `armPartition` applies the proxy *before* the daemon exists — awaited from `BrowserEditor.restore()`, the one path every Tor page takes (session restore included) and always ahead of `addPage`, because an unproxied Electron session is DIRECT and the first webview mounts with `src` already set, so the bootstrap window would otherwise leak the opening navigation; `settleStart` re-applies it on failure too, so a daemon that never bootstraps can't leave a page browsing normally; `armTorProxy` is idempotent because `restore()`/`showBrowserPage`/`reconnectTor` each must guarantee it independently. Arming stays out of `activePartitions` — `isActiveTorPartition` means "live and *bootstrapped*" for `tor-src://`/`checkIp`) | `/src/main/tor-service.ts` |
 | `tor-src://` scheme handler (main; fetches an `http(s)` URL through a Tor partition's session so the SOCKS proxy applies — the app renderer is unproxied, so a Tor page's Link-editor images would otherwise leak direct. Three guards required together: partition-shape regex, live-partition check, `http(s)`-only target; target travels in `?u=` because Chromium canonicalizes standard-scheme paths) | `/src/main/tor-src-protocol.ts` |
 | Tor image-src resolver (renderer; rewrites remote `src` → `tor-src://`, passes local schemes through, renders nothing when the circuit is down. Lives in `link-editor/` to keep the `browser → link-editor` dependency arrow one-way) | `/src/renderer/editors/link-editor/tor-src.ts` |
@@ -313,8 +318,9 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | App-window automation adapter (`IBrowserTarget` for the app's own UI through `window.screen`; `APP_WINDOW_CDP_KEY` sentinel routed to the calling window's own webContents in `cdp-service`; explicit-only in `getTarget`; snapshot shows only the active page — hidden pages excluded by the AX tree) | `/src/renderer/automation/AppTargetModel.ts` |
 | CDP service (main; three target kinds — browser webContents, board frame, and the app window itself via the `APP_WINDOW_CDP_KEY` sentinel → `event.sender`; browser-only AiVision binding installation and filtered `Runtime.bindingCalled` event path) | `/src/main/cdp-service.ts` |
 | Rust launcher            | `/launcher/src/main.rs`                           |
-| Rust screen snip tool + file-clipboard helper (`clipboard-read`/`clipboard-write` CF_HDROP subcommands) | `/snip-tool/src/main.rs` |
+| Rust screen snip tool + clipboard helper (`clipboard-read`/`clipboard-write`/`clipboard-watch` subcommands; CF_HDROP interop and JSON-lines watcher protocol) | `/snip-tool/src/main.rs`, `/snip-tool/src/clipboard.rs`, `/snip-tool/src/clipboard_watch.rs` |
 | Screen snip service (main; spawns the snip exe, returns PNG data URL; optionally hides windows for the capture) | `/src/main/snip-service.ts` |
+| Clipboard history service (main; opt-in watcher sidecar, on-disk index/payload retention, duplicate promotion, renderer events, health monitoring, and native copy-back) | `/src/main/clipboard-service.ts` |
 | File-clipboard service (main; Windows-Explorer copy/paste interop — CF_HDROP read/write via the snip exe; degrades to empty when the exe is missing) | `/src/main/clip-service.ts` |
 | Native OS file drag-out service (main; `startOsFileDrag` via `webContents.startDrag` — real CF_HDROP so Windows Explorer / Teams accept the dragged file; win32-only, shell icon via `app.getFileIcon` + fallback) | `/src/main/os-drag-service.ts` |
 | Provider-backed tree view model (the Explorer, Archive, Mneme, Script-library and link-category trees; lazy `list()` per expanded folder, `buildTree` refresh, expansion persisted as `expandedPaths`. `buildTree` re-lists children ONLY for currently-expanded paths, so a collapsed folder's subtree is dropped on every refresh — which is why the view opts into `Tree`'s `collapseDescendants`) | `/src/renderer/components/tree-provider/TreeProviderViewModel.ts` |
@@ -347,6 +353,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | VMP signing (build hook) | `/scripts/vmp-sign.mjs`                           |
 | Git service (main)       | `/src/main/git-service.ts`                        |
 | Git IPC types            | `/src/ipc/git-ipc.ts`                             |
+| Clipboard IPC types and renderer event payloads | `/src/ipc/clipboard-ipc.ts` |
 | Git renderer API         | `/src/renderer/api/git.ts`                        |
 | Native Git Tree view | `/src/renderer/components/git-tree/GitTreeView.ts` |
 | Git Tree native view       | `/src/renderer/components/git-tree/GitTreeView.ts` |

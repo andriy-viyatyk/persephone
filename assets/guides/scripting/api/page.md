@@ -232,6 +232,10 @@ Boards, and Git provide state and model-backed actions; other panels expose thei
 state, elements, and available close operation. A child is `undefined` when its panel is not
 currently rendered.
 
+When enabled, the Clipboard sibling is available as `page.panels["clipboard"]`. It exposes the
+generic panel identity and its live `elements`; use the panel's visible controls for history
+actions.
+
 ```javascript
 const panels = page.panels;
 console.log(panels.items.map(panel => `${panel.id}: ${panel.label}`));

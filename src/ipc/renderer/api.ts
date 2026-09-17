@@ -16,7 +16,11 @@ import {
 import { Api, CaptureRect, Endpoint, EventEndpoint, McpStatus, MnemeStatus } from "../api-types";
 import { GitAheadBehind, GitCommit, GitFetchOptions, GitFileChange, GitIdentity, GitLogOptions, GitMutationResult, GitProbeResult, GitPullOptions, GitPullResult, GitPushOptions, GitPushResult, GitRefs, GitRepoInfo, GitStatusResult, GitSwitchTarget } from "../git-ipc";
 import type { BoardThemePalette } from "../board-bridge-channels";
-import type { ClipboardFileList } from "../clipboard-ipc";
+import type {
+    ClipboardFileList,
+    ClipboardHistorySnapshot,
+    ClipboardStatus,
+} from "../clipboard-ipc";
 
 let idGen = 0;
 const idGenMax = 2000000000;
@@ -248,6 +252,38 @@ class ApiCalls implements Api {
 
     getMnemeStatus = async () => {
         return executeOnce<MnemeStatus>(Endpoint.getMnemeStatus);
+    }
+
+    setClipboardEnabled = async (enabled: boolean, maxItems: number): Promise<ClipboardStatus> => {
+        return executeOnce<ClipboardStatus>(Endpoint.setClipboardEnabled, enabled, maxItems);
+    }
+
+    getClipboardHistory = async (): Promise<ClipboardHistorySnapshot> => {
+        return executeOnce<ClipboardHistorySnapshot>(Endpoint.getClipboardHistory);
+    }
+
+    removeClipboardItem = async (id: string): Promise<void> => {
+        return executeOnce<void>(Endpoint.removeClipboardItem, id);
+    }
+
+    clearClipboardHistory = async (): Promise<void> => {
+        return executeOnce<void>(Endpoint.clearClipboardHistory);
+    }
+
+    copyClipboardItem = async (id: string): Promise<boolean> => {
+        return executeOnce<boolean>(Endpoint.copyClipboardItem, id);
+    }
+
+    getClipboardStatus = async (): Promise<ClipboardStatus> => {
+        return executeOnce<ClipboardStatus>(Endpoint.getClipboardStatus);
+    }
+
+    setClipboardHealthMonitoring = async (active: boolean): Promise<ClipboardStatus> => {
+        return executeOnce<ClipboardStatus>(Endpoint.setClipboardHealthMonitoring, active);
+    }
+
+    restartClipboard = async (maxItems: number): Promise<ClipboardStatus> => {
+        return executeOnce<ClipboardStatus>(Endpoint.restartClipboard, maxItems);
     }
 
     startScreenSnip = async (hideWindows: boolean): Promise<string | null> => {

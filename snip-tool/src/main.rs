@@ -12,7 +12,10 @@
 
 mod capture;
 mod clipboard;
+mod clipboard_watch;
 mod overlay;
+
+// clipboard-watch emits change events and health-check responses as JSON lines.
 
 use std::io::Write;
 
@@ -26,6 +29,7 @@ fn main() {
     match std::env::args().nth(1).as_deref() {
         Some("clipboard-read") => clipboard::read(),
         Some("clipboard-write") => clipboard::write(std::env::args().any(|a| a == "--cut")),
+        Some("clipboard-watch") => clipboard_watch::run(),
         _ => run_snip(),
     }
 }

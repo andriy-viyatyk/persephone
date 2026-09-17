@@ -1,3 +1,38 @@
+## EPIC-104 — Clipboard tracker
+
+Completed 2026-09-17. [Epic document](EPIC-104.md).
+
+- [x] US-1438: `clipboard-watch` subcommand in persephone-snip
+- [x] US-1439: Main-process clipboard capture service, store and IPC
+- [x] US-1440: Clipboard settings — enable toggle, item cap, on-disk warning
+- [x] US-1441: Clipboard sidebar panel — list, Copy, Remove, Clear, health badge
+- [x] US-1443: Agent access — ai-vision clipboard namespace and MCP instruction line
+- [x] US-1444: Route Persephone's own clipboard writes through Electron's native clipboard
+
+An opt-in clipboard history, off by default. A `clipboard-watch` subcommand on the existing
+`persephone-snip.exe` registers a Win32 clipboard format listener and reports each change as one
+JSON line; the main process captures the payload, stores it as a real file under
+`<userData>/data/clipboard`, and caps the history at a configurable item count. A **Clipboard**
+panel in the Explorer sidebar family lists items newest-first, opens one by navigating the host
+page, copies one back, and removes or clears them; an ai-vision `clipboard` namespace gives an
+agent the same read access, so "I copied something, take a look" resolves without a path.
+
+No new crate, no new dependency, no packaging or CI change — the subcommand ships inside the
+binary the installer already carries (D1).
+
+Three findings shaped it, and none came from reading code:
+
+- Re-copying promotes instead of duplicating (D5), which also absorbs the several
+  `WM_CLIPBOARDUPDATE` messages one Ctrl+C raises as Windows stages the formats.
+- Deaf-listener detection had to be debounced: a copy legitimately leaves the watcher up to 500 ms
+  behind through its clipboard open-retry budget, so an undebounced check painted a false failure
+  badge during ordinary use (D12).
+- Persephone's own copies never reached the history, and the tracker was not at fault. Chromium
+  stamps every `navigator.clipboard.write*` with `CanIncludeInClipboardHistory = 0`, which D6
+  correctly honours; the fix belonged at the write, so renderer code now uses Electron's native
+  clipboard (D14). That also removed a pre-existing silent failure — the Web API throws
+  `Document is not focused` when the window is not focused.
+
 ## EPIC-103 — Boards as folder editors
 
 Completed 2026-09-15. [Epic document](EPIC-103.md).

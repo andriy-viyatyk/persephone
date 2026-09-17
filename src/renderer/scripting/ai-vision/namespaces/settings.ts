@@ -98,6 +98,17 @@ const SETTINGS_CATALOG: readonly SettingsCatalogSection[] = [
         ],
     },
     {
+        id: "clipboard",
+        title: "Clipboard",
+        description: "Configure the opt-in clipboard history tracker and its item limit.",
+        elementName: "settings-section-clipboard",
+        where: "Settings content, Clipboard section",
+        rows: [
+            { key: "clipboard.enabled", label: "Clipboard history", purpose: "Whether copied clipboard content is recorded for the history feature; disabled by default." },
+            { key: "clipboard.max-items", label: "Maximum clipboard items", purpose: "The number of clipboard history items to retain, from 1 through 1000; invalid stored values fall back to 100." },
+        ],
+    },
+    {
         id: "mcp",
         title: "MCP Server / Mneme",
         description: "Configure MCP, main-process scripting, and Mneme services.",
@@ -310,7 +321,7 @@ export function describeSettings(instance: unknown): IAiVisionDescriptor {
             }
             return settingsElements.provide(name);
         },
-        help: `The Settings page has 14 fixed-order sections. Read sections to find the hand-written setting-key catalog, and use highlight(key) to open or activate Settings and point at a supported key's section. highlight points and returns; to point and wait for the user, pass the selector from settings.elements to ui.guide.step. The five real settings without a Settings-page row remain available through get/set. browserProfiles and defaultBrowserProfile are convenient read-only projections for choosing browser profiles. Use set only when you intend to persist an application change.`,
+        help: `The Settings page has 15 fixed-order sections and 27 catalogued setting rows. Read sections to find the hand-written setting-key catalog, and use highlight(key) to open or activate Settings and point at a supported key's section. highlight points and returns; to point and wait for the user, pass the selector from settings.elements to ui.guide.step. The five real settings without a Settings-page row remain available through get/set. browserProfiles and defaultBrowserProfile are convenient read-only projections for choosing browser profiles. Use set only when you intend to persist an application change.`,
         summarize: () => ({ kind: "Settings", theme: settings.theme }),
     };
 }

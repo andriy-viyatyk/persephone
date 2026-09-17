@@ -15,6 +15,16 @@ import { setMainScriptsEnabled } from "../../main/mcp/ai-vision/main-script-gate
 import { startMcpHttpServer, stopMcpHttpServer, isMcpHttpServerRunning, getMcpUrl, getMcpClientCount } from "../../main/mcp-http-server";
 import { startMneme, stopMneme, restartMneme, getMnemeStatus as getMnemeServiceStatus } from "../../main/mneme-service";
 import type { ClipboardFileList } from "../clipboard-ipc";
+import {
+    clearClipboardHistory as clearClipboardHistoryService,
+    copyClipboardItem as copyClipboardItemService,
+    getClipboardHistory as getClipboardHistoryService,
+    getClipboardStatus as getClipboardStatusService,
+    removeClipboardItem as removeClipboardItemService,
+    restartClipboard as restartClipboardService,
+    setClipboardEnabled as setClipboardEnabledService,
+    setClipboardHealthMonitoring as setClipboardHealthMonitoringService,
+} from "../../main/clipboard-service";
 import { bindEndpoint, type MainApi } from "./endpoint-registry";
 import type { BoardEndpoint } from "./board-handlers";
 import type { GitEndpoint } from "./git-handlers";
@@ -235,6 +245,38 @@ class Controller implements Omit<MainApi, BoardEndpoint | GitEndpoint> {
         return getMnemeServiceStatus();
     }
 
+    setClipboardEnabled = async (_event: IpcMainEvent, enabled: boolean, maxItems: number) => {
+        return setClipboardEnabledService(enabled, maxItems);
+    }
+
+    getClipboardHistory = async (_event: IpcMainEvent) => {
+        return getClipboardHistoryService();
+    }
+
+    removeClipboardItem = async (_event: IpcMainEvent, id: string): Promise<void> => {
+        return removeClipboardItemService(id);
+    }
+
+    clearClipboardHistory = async (_event: IpcMainEvent): Promise<void> => {
+        return clearClipboardHistoryService();
+    }
+
+    copyClipboardItem = async (_event: IpcMainEvent, id: string): Promise<boolean> => {
+        return copyClipboardItemService(id);
+    }
+
+    getClipboardStatus = async (_event: IpcMainEvent) => {
+        return getClipboardStatusService();
+    }
+
+    setClipboardHealthMonitoring = async (event: IpcMainEvent, active: boolean) => {
+        return setClipboardHealthMonitoringService(event.sender.id, active);
+    }
+
+    restartClipboard = async (_event: IpcMainEvent, maxItems: number) => {
+        return restartClipboardService(maxItems);
+    }
+
     startScreenSnip = async (event: IpcMainEvent, hideWindows: boolean): Promise<string | null> => {
         const { startScreenSnip } = await import("../../main/snip-service");
         return startScreenSnip(hideWindows);
@@ -356,6 +398,14 @@ export function initCoreHandlers(): void {
     bindEndpoint(Endpoint.setMnemeEnabled, controllerInstance.setMnemeEnabled);
     bindEndpoint(Endpoint.restartMneme, controllerInstance.restartMneme);
     bindEndpoint(Endpoint.getMnemeStatus, controllerInstance.getMnemeStatus);
+    bindEndpoint(Endpoint.setClipboardEnabled, controllerInstance.setClipboardEnabled);
+    bindEndpoint(Endpoint.getClipboardHistory, controllerInstance.getClipboardHistory);
+    bindEndpoint(Endpoint.removeClipboardItem, controllerInstance.removeClipboardItem);
+    bindEndpoint(Endpoint.clearClipboardHistory, controllerInstance.clearClipboardHistory);
+    bindEndpoint(Endpoint.copyClipboardItem, controllerInstance.copyClipboardItem);
+    bindEndpoint(Endpoint.getClipboardStatus, controllerInstance.getClipboardStatus);
+    bindEndpoint(Endpoint.setClipboardHealthMonitoring, controllerInstance.setClipboardHealthMonitoring);
+    bindEndpoint(Endpoint.restartClipboard, controllerInstance.restartClipboard);
     bindEndpoint(Endpoint.startScreenSnip, controllerInstance.startScreenSnip);
     bindEndpoint(Endpoint.clipboardReadFilePaths, controllerInstance.clipboardReadFilePaths);
     bindEndpoint(Endpoint.clipboardWriteFilePaths, controllerInstance.clipboardWriteFilePaths);

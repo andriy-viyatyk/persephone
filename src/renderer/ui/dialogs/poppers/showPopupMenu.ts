@@ -8,6 +8,7 @@ import type { MenuItem } from "../../../uikit/Menu";
 import { CopyIcon, CursorIcon, EmptyIcon } from "../../../theme/icons";
 import { VanillaView } from "../../../uikit/shared/vanilla-view";
 import { TComponentState } from "../../../core/state/state";
+import { toClipboard } from "../../../core/utils/utils";
 import { overlayRegistry } from "../../../uikit/shared/overlayRegistry";
 import { restoreFocus } from "../../../uikit/shared/focus-restore";
 import { api } from "../../../../ipc/renderer/api";
@@ -101,7 +102,7 @@ class AppPopupMenuModel extends TPopperModel<AppPopupMenuState, void> {
                 s.items.unshift({
                     label: "Copy",
                     onClick: () => {
-                        navigator.clipboard.writeText(selText ?? "");
+                        toClipboard(selText ?? "");
                     },
                     icon: CopyIcon.createElement({}),
                     startGroup: true,

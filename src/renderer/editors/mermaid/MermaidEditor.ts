@@ -6,7 +6,7 @@ import { TextFileModel } from "../text/TextEditorModel";
 import { themeState } from "../../theme/theme-state";
 import { renderMermaid } from "./render-mermaid";
 import type { IImageExport } from "../base/IImageExport";
-import { rasterToPngBlob } from "../shared/image-export";
+import { copyPngBlobToClipboard, rasterToPngBlob } from "../shared/image-export";
 import { pagesModel } from "../../api/pages";
 import {
     buildExcalidrawJsonWithImage,
@@ -247,9 +247,7 @@ export class MermaidEditor
     async copyImageToClipboard(): Promise<void> {
         try {
             const blob = await this.exportPng();
-            await navigator.clipboard.write([
-                new ClipboardItem({ "image/png": blob }),
-            ]);
+            await copyPngBlobToClipboard(blob);
         } catch (error) {
             throw new Error(`Mermaid preview cannot copy an image: ${errMessage(error)}`);
         }

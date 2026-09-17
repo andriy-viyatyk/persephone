@@ -332,7 +332,7 @@ individual panel header controls remain with their owning editors because Patter
 editors have different hide/dispose lifecycles. The node exposes the four curated sidebar shell
 elements (`page-nav-panel`, `secondary-views-container`, `secondary-views-stack`, and
 `secondary-views-splitter`) and their `highlight(name, message?)` surface. It also provides
-optional live child nodes for the fixed aliases `explorer`, `search`, `boards`, `git`,
+optional live child nodes for the fixed aliases `explorer`, `search`, `boards`, `clipboard`, `git`,
 `notebookCategories`, `notebookTags`, `rest`, `archive`, and `fileHistory`. A child exists only
 while its registered panel is present on that page; its `id` remains the registered panel ID and
 its `ownerEditorId` identifies the contributing editor instance. Specialized Explorer, Search,
@@ -345,7 +345,7 @@ and lookup read existing page state only and never create a sidebar or an absent
 
 | Model | Panel IDs | Pattern | Survival | Created by |
 |-------|-----------|---------|----------|-----------|
-| `ExplorerEditorModel` | `["explorer"]` or `["explorer", "search"]` | A (separate) | Always survives navigation | `PageModel.createExplorer()` or restore |
+| `ExplorerEditorModel` | `["explorer"]`, plus optional `search`, `boards`, and `clipboard` panels | A (separate) | Always survives navigation | `PageModel.createExplorer()` or restore |
 | `ArchiveEditorModel` | `["archive-tree"]` | B (mainEditor) | Survives if new editor was opened from this archive | `_openArchive()` in PagesLifecycleModel |
 | `LinkEditor` (links) | `["link-category", "link-tags", "link-hostnames"]` (always all 3) | B (mainEditor) | Survives own-link navigation (`sourceId` = editor id / `link-category` / `link-tag` / `link-hostname`) **or while modified** (a dirty collection survives any navigation so unsaved work is never lost); otherwise removed on external navigation. Overrides `beforeNavigateAway` / `onMainEditorChanged`; the same `modified \|\| own-source` predicate drives `survivesNavigation` (skips the save-prompt). | `adoptHost()` sets `secondaryView = LINK_PANELS` |
 | `NotebookEditor` | `["notebook-categories", "notebook-tags"?]` | B (mainEditor) | Removed on navigation (default `beforeNavigateAway`). Removed when SecondaryViews closes, re-registered when it opens. "notebook-tags" only when tags exist. | `NotebookEditor.adoptHost()` sets the panel list; PageModel observes the editor state slice |
@@ -356,6 +356,15 @@ and lookup read existing page state only and never create a sidebar or an absent
 | `BoardEditorModel` (+ subclasses) | `["board-secondary:<viewId>", …]` (declared) | Board (see note) | Removed on navigation — base `beforeNavigateAway` clears the derived list; `secondaryViewDefs` is retained so a re-promoted **busy** board re-derives its panels (`onNavigationReuse()`) | Derived from `board-manifest.json` `secondaryViews` and/or `persephone.setSecondaryViews([...])` at runtime |
 
 **Board secondary views** are a distinct mechanism layered on this system: a board declares zero-or-more views, each mapped to a `board-secondary:<viewId>` panel id (an id *family*, not a fixed set). Unlike the built-in editors above — where one registration serves one panel id — the registry resolves the **whole `board-secondary:*` family to one generic component** (`BoardSecondaryView`, prefix-aware `has()`/`get()`), and every panel renders over the **same** board model (so they share `persephone.state.*` and, for content-host boards, the content host). See [editors.md → Board Secondary Views & Shared State](editors.md#board-secondary-views--shared-state) for the full model (frames, `isMain`, shared-state bridge, automation).
+
+### Clipboard panel
+
+The Clipboard panel is an Explorer-owned Pattern A panel. It lists stored history metadata and
+routes a selected payload through the host page's normal `openRawLink` pipeline, so `.txt`,
+`.html`, `.png`, and the file-list `.json` payload use existing editors rather than a new
+clipboard-specific editor. If the panel has no page host, it falls back to opening the payload in a
+new page. Copy-back, removal, clearing, and listener-health/restart actions remain owned by the
+panel view and the main clipboard service.
 
 ### Git Tree panel
 

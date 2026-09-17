@@ -271,7 +271,7 @@ class App {
         initMcpHandler();
 
         // Ensure settings are loaded from disk before checking mcp.enabled
-        const { settings: settingsInstance } = await import("./settings");
+        const { settings: settingsInstance, normalizeClipboardMaxItems } = await import("./settings");
         await settingsInstance.wait();
         api.setMainScriptsEnabled(!!this._settings.get("main.scripting.enabled"));
 
@@ -292,6 +292,16 @@ class App {
                     }
                 });
             }
+
+            const clipboardEnabled = !!this._settings.get("clipboard.enabled");
+            const clipboardMaxItems = normalizeClipboardMaxItems(
+                this._settings.get("clipboard.max-items"),
+            );
+            void api.setClipboardEnabled(clipboardEnabled, clipboardMaxItems).then((status) => {
+                if (clipboardEnabled && status.error) {
+                    this._ui.notify(`Clipboard tracker failed to start: ${status.error}`, "error");
+                }
+            });
 
             // Initialize the shared Mneme health model that drives the header
             // indicator (and is read by the Mneme config editor).
@@ -334,6 +344,13 @@ class App {
                         this._ui.notify(`Mneme failed to start: ${status.error ?? "unknown error"}`, "error");
                     }
                 });
+            }
+            if (key === "clipboard.enabled" || key === "clipboard.max-items") {
+                const clipboardEnabled = !!this._settings.get("clipboard.enabled");
+                const clipboardMaxItems = normalizeClipboardMaxItems(
+                    this._settings.get("clipboard.max-items"),
+                );
+                void api.setClipboardEnabled(clipboardEnabled, clipboardMaxItems);
             }
         });
 

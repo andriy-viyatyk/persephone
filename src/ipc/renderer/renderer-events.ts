@@ -1,6 +1,7 @@
 import { PageDescriptor } from "../../shared/types";
 import { DownloadEntry, PublishedBoardsCatalog, UpdateCheckResult } from "../api-param-types";
 import { EventApi, EventEndpoint, EventObject, McpStatus, MnemeStatus } from "../api-types";
+import type { ClipboardHistoryChanged, ClipboardStatus } from "../clipboard-ipc";
 
 class RendererEventObject<T> implements EventObject<T> {
     private subscribers: Array<(data: T) => void> = [];
@@ -115,6 +116,14 @@ class RendererEvents implements EventApi {
 
     [EventEndpoint.eMnemeStatusChanged] = new RendererEventObject<MnemeStatus>(
         EventEndpoint.eMnemeStatusChanged
+    );
+
+    [EventEndpoint.eClipboardHistoryChanged] = new RendererEventObject<ClipboardHistoryChanged>(
+        EventEndpoint.eClipboardHistoryChanged
+    );
+
+    [EventEndpoint.eClipboardStatusChanged] = new RendererEventObject<ClipboardStatus>(
+        EventEndpoint.eClipboardStatusChanged
     );
 
     [EventEndpoint.eBoardNotify] = new RendererEventObject<{

@@ -18,6 +18,7 @@ import { disposeAllBoardPorts } from "./board-bridge";
 import { startPipeServer, stopPipeServer } from "./pipe-server";
 import { stopMcpHttpServer } from "./mcp-http-server";
 import { shutdownMneme } from "./mneme-service";
+import { shutdownClipboard } from "./clipboard-service";
 import { stopVideoStreamServer } from "./video-stream-server";
 import { downloadService } from "./download-service";
 import { reconstructWindowsEnv } from "./windows-env";
@@ -140,6 +141,7 @@ export function setupMainProcess() {
         stopMcpHttpServer();
         stopVideoStreamServer();
         shutdownMneme();
+        shutdownClipboard();
     });
 
     app.on("window-all-closed", () => {

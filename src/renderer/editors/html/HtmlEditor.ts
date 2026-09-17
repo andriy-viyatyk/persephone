@@ -6,7 +6,7 @@ import { fpBasename } from "../../core/utils/file-path";
 import { ui } from "../../api/ui";
 import { pagesModel } from "../../api/pages";
 import { api } from "../../../ipc/renderer/api";
-import { blobToDataUrl } from "../shared/image-export";
+import { blobToDataUrl, copyPngBlobToClipboard } from "../shared/image-export";
 import type { IImageExport } from "../base/IImageExport";
 import { errMessage } from "../../../shared/utils";
 
@@ -115,7 +115,7 @@ export class HtmlEditor extends TextHostEditorModel<HtmlEditorState, void, HtmlQ
     /** Copy the rendered page to the clipboard as a PNG. */
     copyImageToClipboard(): Promise<void> {
         return this.withCapture(async (blob) => {
-            await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+            await copyPngBlobToClipboard(blob);
             ui.notify("Image copied to clipboard", "success");
         }, "Failed to copy image");
     }

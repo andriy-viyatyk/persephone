@@ -2,6 +2,7 @@ import color from "../../theme/color";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { createIconElement } from "../../uikit/shared/slots";
 import { spacing } from "../../uikit/tokens";
+import { toClipboard } from "../../core/utils/utils";
 import type { ILink } from "../../api/types/io.tree";
 import { resolveTorSrc, type TorProxyInfo } from "./tor-src";
 import "../../uikit/Panel/Panel.css";
@@ -56,7 +57,7 @@ export function createLinkTooltipContent({
         copy.title = "Copy link as JSON";
         copy.append(createIconElement("copy", { width: 14, height: 14 }));
         copy.addEventListener("click", () => {
-            void navigator.clipboard.writeText(JSON.stringify(link, null, 4));
+            toClipboard(JSON.stringify(link, null, 4));
         });
         header.append(copy);
     }

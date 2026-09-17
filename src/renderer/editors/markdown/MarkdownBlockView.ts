@@ -10,6 +10,7 @@ import { themeState } from "../../theme/theme-state";
 import { CopyIcon, OpenFileIcon } from "../../theme/icons";
 import { appendLinkOpenMenuItems } from "../shared/link-open-menu";
 import { detectGitRoot } from "./detect-git-root";
+import { toClipboard } from "../../core/utils/utils";
 import type { MarkdownBodyQueue, MarkdownQueueRequest } from "./MarkdownBodyModel";
 import { PERSEPHONE_GUIDE_PREFIX } from "../../../shared/guides/guide-links";
 import { rehypeHeadingIds, slugifyHeading } from "./rehypeHeadingIds";
@@ -284,7 +285,7 @@ export class MarkdownBlockView extends VanillaView<MarkdownBlockProps> {
         contextEvent.items.push({
             label: "Copy Link",
             icon: CopyIcon.createElement(),
-            onClick: () => { void navigator.clipboard.writeText(href); },
+            onClick: () => { toClipboard(href); },
         });
         if (isExternal) appendLinkOpenMenuItems(contextEvent.items, href);
     }

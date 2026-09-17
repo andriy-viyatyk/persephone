@@ -4,6 +4,7 @@ import { api } from "../../../ipc/renderer/api";
 import { BOARD_CDP_TAB } from "../../../ipc/api-types";
 import { fpBasename, fpExtname, fpJoin, fpNormalizeForCompare, isPlainLocalPath } from "../../core/utils/file-path";
 import { getLanguageByExtension } from "../../core/utils/language-mapping";
+import { toClipboard } from "../../core/utils/utils";
 import { fs as appFs } from "../../api/fs";
 import { boardTrust } from "../../api/board-trust";
 import { createPipeFromDescriptor } from "../../content/registry";
@@ -379,7 +380,7 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
             {
                 label: "Copy Board Path",
                 icon: createIconElement("copy"),
-                onClick: () => { void navigator.clipboard.writeText(boardRoot ?? ""); },
+                onClick: () => { toClipboard(boardRoot ?? ""); },
                 disabled: !boardRoot,
                 startGroup: true,
             },

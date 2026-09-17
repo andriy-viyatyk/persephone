@@ -6,6 +6,7 @@ import { DividerView } from "../../uikit/Divider/DividerView";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { BrowserProfilesSectionView } from "./sections/BrowserProfilesSection";
+import { ClipboardSectionView } from "./sections/ClipboardSection";
 import { DefaultBrowserSectionView } from "./sections/DefaultBrowserSection";
 import { FileSearchSectionView } from "./sections/FileSearchSection";
 import { McpSectionView } from "./sections/McpSection";
@@ -81,6 +82,8 @@ export class SettingsView extends VanillaView<SettingsEditorProps> {
         this.appendSection(new DefaultBrowserSectionView({}), content, "settings-section-default-browser");
         this.appendDivider(content);
         this.appendSection(new FileSearchSectionView({}), content, "settings-section-file-search");
+        this.appendDivider(content);
+        this.appendSection(new ClipboardSectionView({}), content, "settings-section-clipboard");
         this.appendDivider(content);
         this.appendSection(new McpSectionView({}), content, "settings-section-mcp");
         this.appendDivider(content);

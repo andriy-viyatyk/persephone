@@ -1,5 +1,6 @@
 import { TComponentState, TOneState } from "../../core/state/state";
 import { app } from "../../api/app";
+import { settings } from "../../api/settings";
 import {
     EditorModel,
     type EditorStateBase,
@@ -39,6 +40,8 @@ export interface ExplorerEditorState extends EditorStateBase {
      *  survives restart and page-move-between-windows; Search has no analogue because its
      *  visibility is derived from `searchState`. */
     boardsOpen?: boolean;
+    /** Persisted like Boards so the Clipboard sibling survives restart and page moves. */
+    clipboardOpen?: boolean;
 }
 
 export function getDefaultExplorerEditorState(): ExplorerEditorState {
@@ -85,6 +88,11 @@ export class ExplorerEditor extends EditorModel<ExplorerEditorState> {
         super(state);
         this.noLanguage = true;
         this.skipSave = true;
+        this.own(settings.onChanged.subscribe(({ key }) => {
+            if (key === "clipboard.enabled") {
+                this.secondaryView = this.composeSecondaryView();
+            }
+        }));
         // Folder glyph for the "Explorer" sidebar panel — the same icon the
         // explorer tree shows for folders. Explorer is sidebar-only, so this
         // essentially only ever appears on the panel header, not a page tab.
@@ -137,12 +145,15 @@ export class ExplorerEditor extends EditorModel<ExplorerEditorState> {
     // ── Secondary-view composition ─────────────────────────────────────
 
     /** Canonical sidebar panel set for the Explorer-backed panels, always in display order:
-     *  Explorer → Search (iff `searchState`) → Boards (iff `boardsOpen`). Drives every
+     *  Explorer → Search (iff `searchState`) → Boards (iff `boardsOpen`) → Clipboard (iff
+     *  `clipboardOpen` and the feature is enabled). Drives every
      *  `secondaryView` assignment so Search and Boards compose instead of clobbering each other. */
     private composeSecondaryView(): string[] {
         const ids = ["explorer"];
         if (this.searchState) ids.push("search");
-        if (this.state.get().boardsOpen) ids.push("boards");
+        const state = this.state.get();
+        if (state.boardsOpen) ids.push("boards");
+        if (state.clipboardOpen && settings.get("clipboard.enabled")) ids.push("clipboard");
         return ids;
     }
 
@@ -199,6 +210,18 @@ export class ExplorerEditor extends EditorModel<ExplorerEditorState> {
 
     closeBoards(): void {
         this.state.update((s) => { s.boardsOpen = false; });
+        this.secondaryView = this.composeSecondaryView();
+        this.page?.expandPanel("explorer");
+    }
+
+    openClipboard(): void {
+        this.state.update((s) => { s.clipboardOpen = true; });
+        this.secondaryView = this.composeSecondaryView();
+        if (settings.get("clipboard.enabled")) this.page?.expandPanel("clipboard");
+    }
+
+    closeClipboard(): void {
+        this.state.update((s) => { s.clipboardOpen = false; });
         this.secondaryView = this.composeSecondaryView();
         this.page?.expandPanel("explorer");
     }

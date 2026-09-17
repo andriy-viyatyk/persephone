@@ -1,4 +1,5 @@
 import { TComponentModel } from "../../../core/state/model";
+import { toClipboard } from "../../../core/utils/utils";
 import { settings } from "../../../api/settings";
 import { api } from "../../../../ipc/renderer/api";
 import rendererEvents from "../../../../ipc/renderer/renderer-events";
@@ -129,7 +130,7 @@ export class McpSectionModel extends TComponentModel<McpSectionState, McpSection
     };
 
     handleCopy = (text: string, label: string) => {
-        navigator.clipboard.writeText(text);
+        toClipboard(text);
         this.state.update((state) => { state.copied = label; });
         if (this.copiedTimer !== undefined) clearTimeout(this.copiedTimer);
         this.copiedTimer = setTimeout(() => {

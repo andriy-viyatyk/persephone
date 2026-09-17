@@ -74,6 +74,22 @@ export class SidecarProcess {
         return this.pendingStart;
     }
 
+    /** Write one newline-delimited command to the current child. */
+    writeLine(line: string): boolean {
+        const stdin = this.proc?.stdin;
+        if (!stdin || stdin.destroyed || stdin.writableEnded) return false;
+
+        try {
+            stdin.write(`${line}\n`);
+            return true;
+        } catch (err) {
+            this.options.log(
+                `Failed to write to ${this.options.name} process: ${errMessage(err)}`,
+            );
+            return false;
+        }
+    }
+
     /**
      * Start the sidecar. Resolves `{ success: true }` immediately when already
      * running, joins an in-flight start/restart when one is pending, and never
@@ -166,6 +182,62 @@ export class SidecarProcess {
         return exited.then(() => wasRunning);
     }
 
+    /**
+     * Detach the current child before closing stdin so a clean watcher exit
+     * cannot be mistaken for an unexpected death.
+     */
+    stopAndWaitGracefully(): Promise<boolean> {
+        const proc = this.proc;
+        if (!proc) return Promise.resolve(this.stop());
+
+        const wasRunning = this.runningFlag;
+        this.proc = null;
+        this.runningFlag = false;
+
+        const exited = new Promise<void>((resolve) => {
+            let done = false;
+            const finish = () => {
+                if (done) return;
+                done = true;
+                clearTimeout(timer);
+                resolve();
+            };
+            const timer = setTimeout(() => {
+                this.options.log(
+                    `${this.options.name} did not exit in time; killing it.`
+                );
+                try {
+                    proc.kill();
+                } catch (err) {
+                    this.options.log(
+                        `Failed to kill ${this.options.name} process: ${errMessage(err)}`,
+                    );
+                }
+                finish();
+            }, this.options.exitTimeoutMs ?? DEFAULT_EXIT_TIMEOUT_MS);
+            proc.once("close", finish);
+            proc.once("exit", finish);
+        });
+
+        this.options.log(`Stopping ${this.options.name} process gracefully...`);
+        try {
+            proc.stdin.end();
+        } catch (err) {
+            this.options.log(
+                `Failed to close ${this.options.name} stdin: ${errMessage(err)}`,
+            );
+            try {
+                proc.kill();
+            } catch (killErr) {
+                this.options.log(
+                    `Failed to kill ${this.options.name} process: ${errMessage(killErr)}`,
+                );
+            }
+        }
+
+        return exited.then(() => wasRunning);
+    }
+
     /** Register `p` as the pending attempt and clear it once settled. */
     private track(p: Promise<SidecarStartResult>): Promise<SidecarStartResult> {
         const tracked = p.finally(() => {
@@ -215,8 +287,12 @@ export class SidecarProcess {
                 finish({ success: false, error: msg });
             }, this.options.readinessTimeoutMs);
 
+            let stdoutRemainder = "";
             proc.stdout.on("data", (data: Buffer) => {
-                for (const rawLine of data.toString().split(/\r?\n/)) {
+                stdoutRemainder += data.toString();
+                const lines = stdoutRemainder.split(/\r?\n/);
+                stdoutRemainder = lines.pop() ?? "";
+                for (const rawLine of lines) {
                     const line = rawLine.trim();
                     if (!line) continue;
                     log(line);

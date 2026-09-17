@@ -14,6 +14,7 @@ import { ui } from "../../api/ui";
 import { settings } from "../../api/settings";
 import { createLinkData } from "../../../shared/link-data";
 import { fpJoin } from "../../core/utils/file-path";
+import { toClipboard } from "../../core/utils/utils";
 import { DirectoryWatcher } from "../../core/utils/file-watcher";
 import { decodeGitTreeLink, encodeGitTreeLink } from "../../content/git-tree-link";
 import type { GitFileChange, GitSwitchTarget, GitPullOptions } from "../../../ipc/git-ipc";
@@ -153,7 +154,7 @@ export class GitTreeEditorModel extends EditorModel<GitTreeEditorState> {
                 icon: createIconElement("copy"),
                 onClick: async () => {
                     const url = await git.getRemoteUrl(repoRoot, remote);
-                    if (url) navigator.clipboard.writeText(url);
+                    if (url) toClipboard(url);
                 },
                 disabled: !remote,
             },

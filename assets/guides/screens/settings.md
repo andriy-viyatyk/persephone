@@ -12,8 +12,8 @@ Settings opens as an ordinary page from the Menu Bar gear icon, `[data-name="men
 It is a fixed-order editor. The page shows the settings that have UI controls, while the settings
 object and its file also contain a few values that are intentionally get/set-only.
 
-When connected over MCP, read `settings.sections` for the fixed-order catalogue of 14 sections and
-25 setting rows plus one page action. Use `settings.highlight(key)` to open or activate Settings and point at the
+When connected over MCP, read `settings.sections` for the fixed-order catalogue of 15 sections and
+27 setting rows plus one page action. Use `settings.highlight(key)` to open or activate Settings and point at the
 containing section; `key` is a settings key, not a DOM selector.
 
 ## Layout
@@ -28,6 +28,7 @@ containing section; `key` is a settings key, not a DOM selector.
 | [Links]                                                             |  Settings content, Links section
 | [Default Browser]                                                   |  Settings content, Default Browser section
 | [File Search]                                                       |  Settings content, File Search section
+| [Clipboard]                                                         |  Settings content, Clipboard section
 | [MCP Server / Mneme]                                                |  Settings content, MCP Server / Mneme section
 | [Git Integration]                                                   |  Settings content, Git Integration section
 | [Board Environment Variables]                                       |  Settings content, Board Environment Variables section
@@ -50,6 +51,7 @@ containing section; `key` is a settings key, not a DOM selector.
 - Links → `link-open-behavior`
 - Default Browser → no entry: section has no catalog setting row
 - File Search → `search-extensions`, `search-exclude`
+- Clipboard → `clipboard.enabled`, `clipboard.max-items`
 - MCP Server / Mneme → `mcp.enabled`, `mcp.port`, `main.scripting.enabled`, `mneme.enabled`, `mneme.port`
 - Git Integration → `git.enabled`
 - Board Environment Variables → `board-vars.file`
@@ -75,10 +77,18 @@ It controls the initial wrapping state only when a newly shown Text Editor page 
 state. Existing Text Editor pages keep their own persisted Word Wrap choice; use the Text Editor's
 toolbar toggle to change one of those pages.
 
+## Clipboard history
+
+The **Clipboard** section contains an opt-in **Enable clipboard history** toggle and a **Maximum
+history items** limit. History is off by default. When enabled, Persephone records supported copied
+text, HTML, images, and file lists for the [Clipboard panel](./sidebar.md#clipboard), retaining
+between 1 and 1000 items (100 by default). The section warns that occasionally-copied secrets may
+remain on disk in readable form; disable the feature or clear its history when that matters.
+
 ### Drawn controls without `elements`
 
 - Settings root and content containers — no entry: structural regions; the Settings elements list exposes catalog keys and the page action.
-- Section roots — no entry as separate Settings elements: the 25 generated key entries use each section root's selector and inherit its section phrase.
+- Section roots — no entry as separate Settings elements: the 27 generated key entries use each section root's selector and inherit its section phrase.
 
 Evidence: `SettingsView.ts:48-109`, `settings.ts:22-188`, and `ui-element-contract.md:139-164`.
 
@@ -99,6 +109,7 @@ names are containers for highlighting rather than individual setting controls.
 | Links | `[data-name="settings-section-link-behavior"]` |
 | Default Browser | `[data-name="settings-section-default-browser"]` |
 | File Search | `[data-name="settings-section-file-search"]` |
+| Clipboard | `[data-name="settings-section-clipboard"]` |
 | MCP Server / Mneme | `[data-name="settings-section-mcp"]` |
 | Git Integration | `[data-name="settings-section-git-integration"]` |
 | Board Environment Variables | `[data-name="settings-section-board-vars"]` |
@@ -117,6 +128,8 @@ rows and their labels instead of relying on a visual position that may change.
 | `mcp.enabled` | Off by default; enables the MCP server and starts it immediately when saved |
 | `mcp.port` | Defaults to 7865; changing it requires disabling and re-enabling MCP to move a running server |
 | `git.enabled` | Off by default; controls whether Git Tree and Git Diff features appear |
+| `clipboard.enabled` | Off by default; records supported clipboard items for the Clipboard sidebar panel |
+| `clipboard.max-items` | Defaults to 100; retains between 1 and 1000 clipboard history items |
 | `mneme.enabled` | Off by default; enables the separate Mneme service, whose port is `mneme.port` |
 | `theme` | Applies when saved; the settings file comments list the accepted theme names |
 | `window.close-to-tray` | On by default; controls whether closing the last window hides to the tray or quits |

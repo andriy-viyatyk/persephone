@@ -1,6 +1,7 @@
 import { app } from "../../api/app";
 import { createFileTypeIconElement } from "../../components/icons/icon-elements";
 import { createComponentModelDriver, TComponentModel, type ComponentModelDriver } from "../../core/state/model";
+import { toClipboard } from "../../core/utils/utils";
 import { createDepsGate, type DepsGate } from "../../uikit/shared/deps-gate";
 import { KeyedList } from "../../uikit/shared/keyed-list";
 import { SubtreeSwap } from "../../uikit/shared/subtree-swap";
@@ -244,7 +245,7 @@ export class RequestBuilderView extends VanillaView<RequestBuilderProps> {
     private readonly openBodyLanguageMenu = (): void => { this.bodyLanguageMenu?.dispose(); this.bodyLanguageMenu = openMenu(this.languageBranch?.root ?? this.root, { items: RAW_LANGUAGES.map((language) => ({ label: language, icon: createFileTypeIconElement({ language, width: 16, height: 16 }), selected: language === this.props.request.bodyLanguage, onClick: () => this.props.vm.updateBodyLanguage(this.props.request.id, language) })), onClose: () => { this.bodyLanguageMenu = undefined; } }); };
     private readonly handleUrlKeyDown = (event: KeyboardEvent): void => { if (event.key === "Enter") { event.preventDefault(); this.props.vm.sendRequest(); } };
     private readonly handleUrlPaste = (event: ClipboardEvent): void => { const text = event.clipboardData?.getData("text") ?? ""; const trimmed = text.trim(); if (trimmed.startsWith("fetch(") || /^curl\s/i.test(trimmed)) { event.preventDefault(); this.props.vm.pasteRequest(text); } };
-    private readonly copyHeaders = async (): Promise<void> => { const obj: Record<string, string> = {}; for (const header of this.props.request.headers) if (header.enabled && header.key.trim()) obj[header.key.trim()] = header.value; await navigator.clipboard.writeText(JSON.stringify(obj, null, 2)); await new Promise((resolve) => setTimeout(resolve, 200)); };
+    private readonly copyHeaders = async (): Promise<void> => { const obj: Record<string, string> = {}; for (const header of this.props.request.headers) if (header.enabled && header.key.trim()) obj[header.key.trim()] = header.value; toClipboard(JSON.stringify(obj, null, 2)); await new Promise((resolve) => setTimeout(resolve, 200)); };
     private readonly handleMonacoBodyChange = (value: string): void => { this.props.vm.updateRequest(this.props.request.id, { body: value }); };
 }
 

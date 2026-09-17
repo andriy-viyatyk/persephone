@@ -271,7 +271,23 @@ See [trait-system.md](./trait-system.md).
 - **Persephone-side integration (renderer).** Content flows through the standard delivery pipeline: `MnemeProvider` reads/writes/edits a document over the shared connection (with live-refresh), and `MnemeTreeProvider` browses a root like a filesystem. They back two link schemes — `mneme://{root}/{path}` for documents/attachments and `mneme-folder://` for a root. The UI surface is a config & monitoring editor (roots, include/ignore, reindex progress, model update, log), a root **search** editor with an Explorer-like sidebar tree (create/rename/delete, drag-drop import), and a provider indicator in the editor chrome. Relative `mneme://` image links open in the Image viewer.
 - **Crate detail lives in the crate.** This section is only an architectural pointer; the crate's own [`mneme/README.md`](../../mneme/README.md) (module layout, MCP surface, build/test, invariants) is the primary reference. Mneme is kept self-contained / extraction-ready, so it follows its own Rust conventions, not the renderer coding standards.
 
-### 9. Board Subsystem
+### 9. Clipboard History
+
+Clipboard history is an opt-in, off-by-default main-process service. When enabled, it starts the
+Rust `clipboard-watch` sidecar, validates its JSON-lines change protocol, captures text, HTML, PNG,
+and Windows file-list payloads, and stores an index plus payload files below the application data
+directory. Captures are serialized through one mutation queue, duplicate primary payloads are
+promoted rather than repeated, and the configured item cap evicts the oldest payload files.
+
+The renderer reaches the service through typed IPC. The Explorer contributes a Clipboard secondary
+panel with copy/open/remove/clear actions and listener-health monitoring; the Settings page owns
+`clipboard.enabled` and `clipboard.max-items`. The AiVision root exposes `.clipboard` only when
+history is enabled, and that namespace reads stored payloads through `app.fs` rather than the live
+OS clipboard. The service uses Electron's native clipboard for copy-back and renderer-owned writes
+must use the same native path so Chromium's Web API exclusion marker cannot silently exclude a copy
+from clipboard history.
+
+### 10. Board Subsystem
 
 A **Board** is a small local web application (plain HTML + JS) owned by the user, hosted in an in-DOM cross-origin `<iframe>`. A board is any folder carrying a `board-manifest.json` identity file — it can live anywhere on disk. The Create-board dialog defaults the target to the current Explorer root (when one is open); a board can be created at any path.
 

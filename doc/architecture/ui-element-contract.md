@@ -156,6 +156,7 @@ unchanged, including `data-type="settings-section"` on each section root.
 | Links section | `[data-name="settings-section-link-behavior"]` |
 | Default Browser section | `[data-name="settings-section-default-browser"]` |
 | File Search section | `[data-name="settings-section-file-search"]` |
+| Clipboard section | `[data-name="settings-section-clipboard"]` |
 | MCP Server / Mneme section | `[data-name="settings-section-mcp"]` |
 | Git Integration section | `[data-name="settings-section-git-integration"]` |
 | Board Environment Variables section | `[data-name="settings-section-board-vars"]` |

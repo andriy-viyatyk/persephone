@@ -11,8 +11,9 @@ Everything below the header is the page area. The active page is rendered by its
 page-owned secondary panels can appear in a sidebar on the left. Switching tabs can therefore
 change the sidebar: panels belong to a page, not to the application window.
 
-The same frame hosts Explorer, Search, and Boards. Keep those panels together when explaining the
-sidebar; their editor-specific panel bodies and controls are not shell layout anchors.
+The same frame hosts Explorer, Search, Boards, and the opt-in Clipboard panel. Keep those panels
+together when explaining the sidebar; their editor-specific panel bodies and controls are not shell
+layout anchors.
 
 ## Layout
 
@@ -61,6 +62,23 @@ sidebar; their editor-specific panel bodies and controls are not shell layout an
 +---------------------------------------------------------------------+
 ```
 
+### When Clipboard is enabled and open
+
+```
++---------------------------------------------------------------------+
+| [Clipboard] [health badge]       [Clear] [Restart] [Close]            |  Clipboard panel header; badge and Restart appear when unavailable
++---------------------------------------------------------------------+
+| [clipboard history list]                                           |  newest-first captured items
+| [Copy]                                                             |  per-item action on each history row
++---------------------------------------------------------------------+
+```
+
+Click a history item to open its stored content in the current page. Right-click an item for
+**Remove**; **Clear** removes the complete history after confirmation. The **Clipboard** header
+button appears in Explorer only while clipboard history is enabled in Settings. The health badge
+and **Restart** action appear only when the listener is unavailable; **Clear** appears when the
+panel is expanded and has items.
+
 ### When Git is open
 
 ```
@@ -80,6 +98,7 @@ sidebar; their editor-specific panel bodies and controls are not shell layout an
 - Up → `explorer-up`
 - Search → `explorer-search`
 - Boards → `explorer-boards`
+- Clipboard → `explorer-clipboard`
 - Collapse all → `explorer-collapse-all`
 - Explorer close → `explorer-close`
 - Matching board → `explorer-open-board`
@@ -95,6 +114,13 @@ sidebar; their editor-specific panel bodies and controls are not shell layout an
 - Boards panel body → `boards-secondary-view`
 - Boards/Tools switch bar → `boards-tools-switch-bar`
 - Boards close → `boards-close`
+- Clipboard panel body → `clipboard-secondary-view`
+- Clipboard header actions → `clipboard-header-actions`
+- Clipboard close → `clipboard-close`
+- Clipboard clear → `clipboard-clear`
+- Clipboard history list → `clipboard-history`
+- Clipboard health badge → `clipboard-health` (unavailable state only)
+- Clipboard restart → `clipboard-restart` (unavailable state only)
 - Boards/Tools switch → `boards-tools-switch`
 - Create board → `boards-create`
 - Boards list → `explorer-boards`
@@ -131,7 +157,7 @@ sidebar; their editor-specific panel bodies and controls are not shell layout an
 
 - Browser Home, Back, Forward, Reload, address bar, Navigate, Bookmarks, Downloads, More, DevTools, and Close — no entry in this sidebar list: Browser owns its custom toolbar; see the [Browser editor guide](../editors/browser.md) for its editor facade.
 - Board-specific toolbar controls — no entry: custom board content; the embedded switch is the supported anchor.
-- File, board, tool, ref, and changed-file rows — no entry: repeated data rows are addressed through panel state/actions; the dynamic declarations cover stable roots and actions.
+- File, board, tool, ref, changed-file, and clipboard history rows — no entry: repeated data rows are addressed through panel state/actions; the dynamic declarations cover stable roots and actions. Clipboard row Copy buttons are repeated controls.
 
 Evidence: `PageContentView.ts:91-125`, `SecondaryViewsView.ts:69-80`, `PageToolbarView.ts:180-205`, and the Explorer, Search, Boards, and Git panel views cited in the plan.
 
@@ -154,8 +180,16 @@ Explorer shows the current page's file or folder context. Its root can be a dire
 another provider-backed location. Persephone has no separate workspace feature, workspace files,
 workspace settings, or multi-root workspaces: a page whose Explorer is rooted at a project folder
 is that project's workspace. Use the Explorer panel's own actions to select and open items,
-navigate upward, search the root, or switch to Boards. An Explorer panel can be closed from its
-header; its dynamic editor-specific names are deliberately not part of this shell contract.
+navigate upward, search the root, switch to Boards, or open Clipboard when clipboard history is
+enabled. An Explorer panel can be closed from its header; its dynamic editor-specific names are
+deliberately not part of this shell contract.
+
+### Clipboard
+
+Clipboard is a page-owned sibling panel of Explorer. It lists captured text, HTML, images, and file
+lists newest first. Select an item to open it, use its **Copy** action to put it back on the Windows
+clipboard, right-click for **Remove**, or use **Clear** in the panel header to remove all items.
+Clipboard history is opt-in and is configured in [Settings](./settings.md#clipboard-history).
 
 ### Search
 

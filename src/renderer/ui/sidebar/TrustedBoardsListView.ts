@@ -10,6 +10,7 @@ import { encodePersephoneBoardLink } from "../../content/persephone-board-link";
 import { getBoardUsageSync, resolveBoardUsage } from "../../editors/board/board-usage-cache";
 import { BoardsTreeView } from "../../editors/board/BoardsTreeView";
 import { fpDirname, fpNormalizeForCompare } from "../../core/utils/file-path";
+import { toClipboard } from "../../core/utils/utils";
 import { IconButtonView } from "../../uikit/IconButton/IconButtonView";
 import type { MenuItem } from "../../uikit/Menu";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
@@ -125,7 +126,7 @@ export class TrustedBoardsListView extends VanillaView<TrustedBoardsListProps> {
             });
         }
         items.push(
-            { label: "Copy board path", onClick: () => { void navigator.clipboard.writeText(root); } },
+            { label: "Copy board path", onClick: () => { toClipboard(root); } },
             { label: "Open board folder", onClick: () => { void app.pages.openFile(root); } },
             {
                 label: "Remove",
