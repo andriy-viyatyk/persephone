@@ -291,9 +291,13 @@ The selected row is persistent page-navigation state, the row Copy action appear
 and a successful copy follows the recaptured item to its new top row. The Settings page owns
 `clipboard.enabled` and `clipboard.max-items`. The AiVision root exposes `.clipboard` only when
 history is enabled, reads file-list payloads as `string[]`, and never reads the live OS clipboard.
-The service uses Electron's native clipboard for copy-back and renderer-owned writes must use the
-same native path so Chromium's Web API exclusion marker cannot silently exclude a copy from
-clipboard history.
+The service uses Electron's native clipboard for copy-back, and renderer-owned writes should use
+the same native path for focus independence and compatibility with other history tools. Chromium
+renderer writes that do reach the OS clipboard carry `CanIncludeInClipboardHistory = 0` and are
+owned there by Electron's main process; the watcher is given that process id as its sole trusted
+owner and ignores only that marker for that owner. `ExcludeClipboardContentFromMonitorProcessing`
+remains an unconditional exclusion. This captures copies from Monaco and internal browser tabs
+without making capture depend on the source editor or page.
 
 ### 10. Board Subsystem
 

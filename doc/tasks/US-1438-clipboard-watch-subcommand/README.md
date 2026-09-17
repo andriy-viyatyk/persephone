@@ -71,9 +71,11 @@ the settled EPIC-104 decisions D1, D2, D3, D6, or D12.
     data value.
   - `CanIncludeInClipboardHistory` is a registered format whose data is a serialized DWORD. Read
     its `HGLOBAL` with `GetClipboardData`, check that the locked block contains at least four bytes,
-    and decode the DWORD. `0` means do not include the clipboard item in history; `1` explicitly
-    requests inclusion. A present value other than `0` or `1`, an unreadable handle, or a short
-    block is malformed and will be treated as excluded for this security-sensitive feature.
+    and decode the DWORD. For an untrusted owner, `0` means do not include the clipboard item in
+    history and `1` explicitly requests inclusion. A present value other than `0` or `1`, an
+    unreadable handle, or a short block is malformed and will be treated as excluded for this
+    security-sensitive feature. The optional `--trusted-pid` owner may bypass this marker so
+    Chromium writes made by the application can be captured.
   - `CanUploadToCloudClipboard` is a separate Windows format with cloud-sync semantics; it is not
     one of the two D6 flags and is not part of this subcommand's exclusion contract.
 - `RegisterClipboardFormatW` returns the existing ID when the named format is already registered,
@@ -135,6 +137,8 @@ shape:
   "exclusion": {
     "excludeClipboardContentFromMonitorProcessing": true,
     "canIncludeInClipboardHistory": {"present": true, "value": 0},
+    "ownerPid": 1234,
+    "ownerTrusted": false,
     "inspectionFailed": false,
     "excluded": true
   },
@@ -162,13 +166,20 @@ Field contract:
 - `exclusion.canIncludeInClipboardHistory.present` reports whether that registered format is
   present. When false, `value` is `null`. When true and the data is a readable four-byte DWORD,
   `value` is the raw unsigned DWORD; otherwise `value` is `null` and `inspectionFailed` is true.
+- `exclusion.ownerPid` is the process id returned by `GetClipboardOwner` and
+  `GetWindowThreadProcessId`, or `null` when the clipboard has no usable owner window.
+  `exclusion.ownerTrusted` is true only when that owner matches the optional pid supplied through
+  `--trusted-pid`; it is false when no trusted pid was supplied or the owner cannot be resolved.
 - `exclusion.inspectionFailed` is true when the watcher could not safely inspect the clipboard
   format list or either D6 format, including failure to open the clipboard after the existing
   retry policy. `formats` is then `[]`, and the event's authoritative `excluded` field is true.
 - `exclusion.excluded` is the authoritative capture decision: it is true if the presence flag is
-  true, if `CanIncludeInClipboardHistory` is present with any value other than exactly `1`, or if
-  inspection failed. US-1439 must skip the event entirely when this field is true. This fail-closed
-  rule prevents malformed or unreadable privacy metadata from becoming a plaintext history item.
+  true, if inspection failed, or if `CanIncludeInClipboardHistory` is present with any value other
+  than exactly `1` while `ownerTrusted` is false. A trusted owner does not exempt the explicit
+  `ExcludeClipboardContentFromMonitorProcessing` marker. US-1439 must skip the event entirely when
+  this field is true. This fail-closed rule prevents malformed or unreadable privacy metadata from
+  becoming a plaintext history item while allowing Chromium writes made by the trusted
+  Persephone process.
 - `files` is `null` when the event is excluded, when `CF_HDROP` is absent, or when no usable file
   list can be parsed. Otherwise it is the existing file-list shape:
 
@@ -262,6 +273,9 @@ present that path as an unexpected stop.
      with `CreateWindowExW(..., HWND_MESSAGE, ...)`, and use no visible window style. The procedure
      only handles `WM_CLOSE`/`WM_DESTROY`; the main loop handles `WM_CLIPBOARDUPDATE` directly so
      it can access the output state without a global mutable callback pointer.
+   - Parse an optional `--trusted-pid <pid>` argument and use the clipboard owner's process id to
+     compute `ownerPid` and `ownerTrusted`; this pid is the only exemption from the
+     `CanIncludeInClipboardHistory` marker.
    - Call `AddClipboardFormatListener` and check its BOOL result before printing the exact
      readiness line. Do not print readiness before registration succeeds.
    - Start the stdin reader only after the listener is ready. Give it the window handle and the
@@ -330,8 +344,10 @@ All design questions for this task are resolved by EPIC-104 D1, D2, D3, D6, and 
 below are implementation risks to preserve, not questions requiring a new design decision.
 
 - **Fail-closed privacy behavior.** Reading a malformed `CanIncludeInClipboardHistory` block as an
-  allow signal would risk writing secrets. The plan makes only an exact DWORD `1` an allow signal;
-  presence with `0`, another value, a short block, or an unreadable handle excludes the event.
+  allow signal would risk writing secrets. The plan makes only an exact DWORD `1` an allow signal
+  for untrusted owners; a trusted owner may bypass Chromium's `0` marker, but never the explicit
+  `ExcludeClipboardContentFromMonitorProcessing` marker. Short blocks and unreadable handles still
+  exclude the event.
 - **Clipboard contention.** `WM_CLIPBOARDUPDATE` can arrive while the producer is finishing its
   clipboard transaction. The existing 10 × 50 ms retry is reused. If it still cannot inspect the
   clipboard, the event is delivered with `inspectionFailed: true` and is not captured.
@@ -363,12 +379,14 @@ below are implementation risks to preserve, not questions requiring a new design
 - [ ] The process has no visible/taskbar window. The readiness sentinel is emitted exactly once,
       only after listener registration and before any event.
 - [ ] Every handled clipboard update emits one valid JSON line with `type`, 32-bit `sequence`,
-      Unix-millisecond `timestampMs`, ordered available `formats`, both D6 decisions, and the
-      optional parsed `CF_HDROP` file list. Text/HTML/image payloads are never read.
+      Unix-millisecond `timestampMs`, ordered available `formats`, both D6 decisions, the
+      clipboard `ownerPid`/`ownerTrusted` fields, and the optional parsed `CF_HDROP` file list.
+      Text/HTML/image payloads are never read.
 - [ ] `ExcludeClipboardContentFromMonitorProcessing` is a presence check; its data is not read.
-      `CanIncludeInClipboardHistory` is decoded as a serialized DWORD, with only exact value `1`
-      allowing capture. Missing, zero, non-one, malformed, and inspection-failure cases follow the
-      documented fail-closed behavior.
+      `CanIncludeInClipboardHistory` is decoded as a serialized DWORD; only exact value `1`
+      allows capture for untrusted owners, while the configured trusted owner may bypass that
+      marker. Missing, malformed, and inspection-failure cases follow the documented fail-closed
+      behavior.
 - [ ] The stdin reader is on a second thread. Each exact ping gets a pong containing a fresh OS
       sequence and the last fully emitted event sequence; both threads produce whole, non-interleaved
       stdout lines safely.

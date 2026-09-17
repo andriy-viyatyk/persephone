@@ -193,6 +193,31 @@ silently before the tracker existed.
 (`src/renderer/editors/shared/image-export.ts`) are converted; US-1444 sweeps the remaining direct
 `navigator.clipboard.*` call sites onto them.
 
+**D15 — Our own copies are exempt from `CanIncludeInClipboardHistory`, by clipboard owner.**
+D14 fixed the writes Persephone performs itself, but it cannot reach the copies Chromium performs
+*for* the user: Ctrl+C in a Monaco editor, Monaco's own Copy menu item, a copy inside a browser
+tab. Those are Chromium editing commands, not our code, and they carry the same
+`CanIncludeInClipboardHistory` = `0` marker — so the user copied in Persephone and nothing appeared
+in the history they turned on (US-1446).
+
+So the watcher now takes `--trusted-pid <pid>` and ignores that one marker when the clipboard's
+owner window belongs to that process. Persephone passes its main-process pid, which is where
+Chromium performs every renderer's clipboard write — measured: a `navigator.clipboard.writeText`
+from a renderer reports `ownerPid` = the Electron main pid, marker present with value `0`.
+
+This is not the D14-rejected weakening of D6, and not origin-sniffing:
+
+- The exemption is keyed on *one* pid, our own, which Persephone tells the watcher. Every other
+  process — the password manager D6 exists for — is unaffected, marker honoured.
+- `ExcludeClipboardContentFromMonitorProcessing` is never exempted, for anyone. That marker is an
+  explicit "this content is sensitive" from the writer; `CanIncludeInClipboardHistory` = 0 as
+  Chromium sets it is a blanket policy about web content, not a statement about this content.
+- It follows D4: what is captured still depends only on the copy reaching the OS clipboard, never
+  on which editor or page the user copied from. A copy inside a browser tab is tracked like any
+  other in-app copy.
+
+D14 still stands for our own code — a native write is synchronous and needs no document focus.
+
 ## Linked Tasks
 
 | Task | Title | Status |

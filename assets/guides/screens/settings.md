@@ -81,8 +81,10 @@ toolbar toggle to change one of those pages.
 
 The **Clipboard** section contains an opt-in **Enable clipboard history** toggle and a **Maximum
 history items** limit. History is off by default. When enabled, Persephone records supported copied
-text, HTML, images, and file lists for the [Clipboard panel](./sidebar.md#clipboard), retaining
-between 1 and 1000 items (100 by default). The section warns that occasionally-copied secrets may
+text, HTML, images, and file lists—including copies made in Persephone's Text Editor/Monaco and
+Browser tabs—for the [Clipboard panel](./sidebar.md#clipboard), retaining between 1 and 1000 items
+(100 by default). Capture depends on the copy reaching the Windows clipboard, not on which editor or
+page supplied it. The section warns that occasionally-copied secrets may
 remain on disk in readable form; disable the feature or clear its history when that matters.
 
 ### Drawn controls without `elements`

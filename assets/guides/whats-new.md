@@ -37,6 +37,10 @@ Release notes and changelog for Persephone (formerly js-notepad).
   row. File lists open as readable absolute paths rather than watcher metadata. History is off by default because
   stored content may remain readable on disk; while it is enabled, stored history is also readable by
   agents through the `clipboard` call namespace.
+- **Clipboard history includes in-app copies:** When history is enabled, copies made inside Persephone—
+  including `Ctrl+C` or **Copy** in the Text Editor and copies made inside a Persephone Browser tab—
+  are recorded like copies from elsewhere. Capture depends on the copy reaching the Windows clipboard,
+  not on which editor or page supplied it.
 
 ### Improvements
 

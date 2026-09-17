@@ -51,6 +51,11 @@ interface ClipboardChangeEvent {
     exclusion: {
         excludeClipboardContentFromMonitorProcessing: boolean;
         canIncludeInClipboardHistory: { present: boolean; value: number | null };
+        /** Which process owns the copied content, and whether that is us. A copy made
+         *  by Persephone itself is history material even when Chromium marked it
+         *  otherwise - see the watcher's `parse_trusted_pid` for why. */
+        ownerPid: number | null;
+        ownerTrusted: boolean;
         inspectionFailed: boolean;
         excluded: boolean;
     };
@@ -225,6 +230,8 @@ function isClipboardChange(value: unknown): value is ClipboardChangeEvent {
 
     const decision = exclusion.canIncludeInClipboardHistory;
     if (typeof exclusion.excludeClipboardContentFromMonitorProcessing !== "boolean" ||
+        typeof exclusion.ownerTrusted !== "boolean" ||
+        (exclusion.ownerPid !== null && !isUint32(exclusion.ownerPid)) ||
         typeof exclusion.inspectionFailed !== "boolean" ||
         typeof exclusion.excluded !== "boolean" ||
         !decision ||
@@ -742,7 +749,14 @@ function resetHealthForStart(): void {
 
 async function startWatcher(): Promise<ClipboardStatus> {
     resetHealthForStart();
-    const result = await sidecar.start(getSnipToolPath(), ["clipboard-watch"], { windowsHide: true });
+    // The watcher exempts our own copies from Chromium's "not history material" marker,
+    // which it stamps on every Ctrl+C and Copy performed in a renderer. Chromium writes the
+    // clipboard from the main process, so this pid is the owner such a copy carries.
+    const result = await sidecar.start(
+        getSnipToolPath(),
+        ["clipboard-watch", "--trusted-pid", String(process.pid)],
+        { windowsHide: true },
+    );
     if (!result.success) {
         health = "error";
         lastError = result.error ?? "Clipboard watcher failed to start";

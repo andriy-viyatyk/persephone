@@ -201,8 +201,10 @@ lists newest first. Select an item to open it in the host page, use its **Copy**
 on the Windows clipboard, right-click for **Remove**, or use **Clear** in the panel header to remove
 all items. The selection marks the item currently shown; while history is enabled, copying it creates
 a new top row and keeps the selection with that content. File-list items open as one absolute path per line. Clipboard
-history is opt-in and is configured in [Settings](./settings.md#clipboard-history), but stored rows
-remain available for browsing and cleanup while the feature is disabled.
+history is opt-in and is configured in [Settings](./settings.md#clipboard-history). When enabled, copies
+made anywhere inside Persephone—including the Text Editor/Monaco and a Browser tab—appear here too;
+capture depends on the copy reaching the Windows clipboard, not on which editor or page supplied it.
+Stored rows remain available for browsing and cleanup while the feature is disabled.
 
 ### Search
 

@@ -26,9 +26,12 @@ typed IPC boundary that the panel will consume.
   by ping/pong evidence rather than process liveness alone.
 - [US-1438](../US-1438-clipboard-watch-subcommand/README.md) is the wire contract. Readiness is
   exactly `clipboard-watch: ready`; change lines have `type: "clipboard-change"`, a dispatch-time
-  `sequence`, `timestampMs`, ordered format metadata, fail-closed `exclusion.excluded`, and an
-  optional `files` object; pings are `{"type":"ping"}` and pongs contain `sequence` and
-  `lastEmittedSequence`; stdin EOF is the watcher's graceful shutdown path.
+  `sequence`, `timestampMs`, ordered format metadata, `exclusion.ownerPid`,
+  `exclusion.ownerTrusted`, fail-closed `exclusion.excluded`, and an optional `files` object;
+  pings are `{"type":"ping"}` and pongs contain `sequence` and `lastEmittedSequence`; stdin EOF
+  is the watcher's graceful shutdown path. The watcher accepts `--trusted-pid <pid>`; the
+  configured owner may bypass Chromium's `CanIncludeInClipboardHistory = 0`, but never the
+  explicit `ExcludeClipboardContentFromMonitorProcessing` marker.
 - [US-1440](../US-1440-clipboard-settings/README.md) defines `clipboard.enabled`, the integer
   `clipboard.max-items` range of 1 through 1000 with fallback 100, and the renderer helper
   `normalizeClipboardMaxItems`. The current renderer source already contains those settings and
@@ -137,7 +140,9 @@ Create one module-level `SidecarProcess` configured as follows:
 - `onReady` updates/broadcasts the status. `onUnexpectedExit` marks the enabled service as an
   error with the exit code and broadcasts it; do not auto-restart, because the panel must show a
   visible failure and provide the Restart action.
-- Start with `getSnipToolPath()`, `['clipboard-watch']`, and `{ windowsHide: true }`.
+- Start with `getSnipToolPath()`, `['clipboard-watch', '--trusted-pid', String(process.pid)]`, and
+  `{ windowsHide: true }`. Chromium performs renderer clipboard writes through the Electron main
+  process, so this is the owner pid used for the narrow marker exemption.
 
 Expose service functions for the IPC layer:
 

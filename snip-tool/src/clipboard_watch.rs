@@ -9,15 +9,15 @@ use windows_sys::Win32::Foundation::{
 };
 use windows_sys::Win32::System::DataExchange::{
     AddClipboardFormatListener, CloseClipboard, EnumClipboardFormats, GetClipboardData,
-    GetClipboardFormatNameW, GetClipboardSequenceNumber, IsClipboardFormatAvailable,
-    RegisterClipboardFormatW, RemoveClipboardFormatListener,
+    GetClipboardFormatNameW, GetClipboardOwner, GetClipboardSequenceNumber,
+    IsClipboardFormatAvailable, RegisterClipboardFormatW, RemoveClipboardFormatListener,
 };
 use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows_sys::Win32::System::Memory::{GlobalLock, GlobalSize, GlobalUnlock};
 use windows_sys::Win32::UI::WindowsAndMessaging::{
     CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, GetMessageW,
-    PostMessageW, PostQuitMessage, RegisterClassExW, WNDCLASSEXW, HWND_MESSAGE,
-    WM_CLIPBOARDUPDATE, WM_CLOSE, WM_DESTROY,
+    GetWindowThreadProcessId, PostMessageW, PostQuitMessage, RegisterClassExW, WNDCLASSEXW,
+    HWND_MESSAGE, WM_CLIPBOARDUPDATE, WM_CLOSE, WM_DESTROY,
 };
 
 use crate::clipboard;
@@ -60,6 +60,49 @@ struct ClipboardSnapshot {
     can_include_value: Option<u32>,
     inspection_failed: bool,
     files: Option<(Vec<String>, &'static str)>,
+    owner_pid: Option<u32>,
+    owner_trusted: bool,
+}
+
+/// The process whose clipboard writes are exempt from the
+/// `CanIncludeInClipboardHistory` marker, passed as `--trusted-pid <pid>`.
+///
+/// Chromium stamps every write it performs — Ctrl+C in an editor, a renderer's own
+/// Copy menu, a copy inside a browser tab — with that marker set to 0. It is a
+/// blanket "web content does not belong in clipboard history" policy, not a
+/// statement about this particular content, and honouring it inside Persephone means
+/// the user copies in the app and nothing reaches the history they turned on
+/// (US-1446). Chromium performs those writes in the Electron **main** process, so the
+/// owner window of such a copy belongs to the pid Persephone passes here.
+///
+/// `ExcludeClipboardContentFromMonitorProcessing` is never exempted: that marker is an
+/// explicit "this content is sensitive" from the writer, which password managers set,
+/// and it means the same thing whoever wrote it.
+fn parse_trusted_pid() -> Option<u32> {
+    let mut args = std::env::args().skip(1);
+    while let Some(arg) = args.next() {
+        if arg == "--trusted-pid" {
+            return args.next().and_then(|value| value.parse::<u32>().ok());
+        }
+        if let Some(value) = arg.strip_prefix("--trusted-pid=") {
+            return value.parse::<u32>().ok();
+        }
+    }
+    None
+}
+
+/// The pid that owns the current clipboard content, or `None` when Windows reports no
+/// owner window — a writer that has since exited, or a delayed-render owner.
+unsafe fn clipboard_owner_pid() -> Option<u32> {
+    let hwnd = GetClipboardOwner();
+    if hwnd == 0 {
+        return None;
+    }
+    let mut pid: u32 = 0;
+    if GetWindowThreadProcessId(hwnd, &mut pid) == 0 || pid == 0 {
+        return None;
+    }
+    Some(pid)
 }
 
 pub(crate) fn run() -> ! {
@@ -76,6 +119,7 @@ pub(crate) fn run() -> ! {
 fn run_inner() -> Result<i32, String> {
     let exclude_format = register_format(EXCLUDE_FORMAT_NAME)?;
     let can_include_format = register_format(CAN_INCLUDE_FORMAT_NAME)?;
+    let trusted_pid = parse_trusted_pid();
 
     let class_name: Vec<u16> = WINDOW_CLASS_NAME
         .encode_utf16()
@@ -167,7 +211,12 @@ fn run_inner() -> Result<i32, String> {
             let sequence = unsafe { GetClipboardSequenceNumber() };
             let timestamp_ms = unix_timestamp_ms();
             let snapshot =
-                snapshot_clipboard_retrying(exclude_format, can_include_format, sequence);
+                snapshot_clipboard_retrying(
+                    exclude_format,
+                    can_include_format,
+                    sequence,
+                    trusted_pid,
+                );
             let event = serialize_event(sequence, timestamp_ms, &snapshot);
             if let Err(error) = write_protocol_line(&output, event.as_bytes(), Some(sequence)) {
                 report_cleanup_failure(hwnd);
@@ -310,27 +359,33 @@ fn snapshot_clipboard_retrying(
     exclude_format: u32,
     can_include_format: u32,
     sequence: u32,
+    trusted_pid: Option<u32>,
 ) -> ClipboardSnapshot {
-    let mut snapshot = snapshot_clipboard(exclude_format, can_include_format);
+    let mut snapshot = snapshot_clipboard(exclude_format, can_include_format, trusted_pid);
     let mut attempt = 0;
     while snapshot.inspection_failed && attempt < INSPECT_RETRY_ATTEMPTS {
         if unsafe { GetClipboardSequenceNumber() } != sequence {
             break;
         }
         thread::sleep(std::time::Duration::from_millis(INSPECT_RETRY_DELAY_MS));
-        snapshot = snapshot_clipboard(exclude_format, can_include_format);
+        snapshot = snapshot_clipboard(exclude_format, can_include_format, trusted_pid);
         attempt += 1;
     }
     snapshot
 }
 
-fn snapshot_clipboard(exclude_format: u32, can_include_format: u32) -> ClipboardSnapshot {
+fn snapshot_clipboard(
+    exclude_format: u32,
+    can_include_format: u32,
+    trusted_pid: Option<u32>,
+) -> ClipboardSnapshot {
     if !clipboard::open_clipboard_retry() {
         return failed_snapshot();
     }
 
-    let mut snapshot = match unsafe { inspect_clipboard_locked(exclude_format, can_include_format) }
-    {
+    let mut snapshot = match unsafe {
+        inspect_clipboard_locked(exclude_format, can_include_format, trusted_pid)
+    } {
         Ok(snapshot) => snapshot,
         Err(()) => failed_snapshot(),
     };
@@ -345,6 +400,7 @@ fn snapshot_clipboard(exclude_format: u32, can_include_format: u32) -> Clipboard
 unsafe fn inspect_clipboard_locked(
     exclude_format: u32,
     can_include_format: u32,
+    trusted_pid: Option<u32>,
 ) -> Result<ClipboardSnapshot, ()> {
     let mut formats = Vec::new();
     let mut current = 0;
@@ -364,6 +420,11 @@ unsafe fn inspect_clipboard_locked(
         current = next;
     }
 
+    let owner_pid = clipboard_owner_pid();
+    let owner_trusted = match (owner_pid, trusted_pid) {
+        (Some(owner), Some(trusted)) => owner == trusted,
+        _ => false,
+    };
     let exclude_present = IsClipboardFormatAvailable(exclude_format) != 0;
     let can_include_present = IsClipboardFormatAvailable(can_include_format) != 0;
     let can_include_value = if can_include_present {
@@ -377,6 +438,8 @@ unsafe fn inspect_clipboard_locked(
                     can_include_value: None,
                     inspection_failed: true,
                     files: None,
+                    owner_pid,
+                    owner_trusted,
                 });
             }
         }
@@ -385,7 +448,7 @@ unsafe fn inspect_clipboard_locked(
     };
 
     let excluded = exclude_present
-        || (can_include_present && can_include_value != Some(1));
+        || (!owner_trusted && can_include_present && can_include_value != Some(1));
     let has_hdrop = formats.iter().any(|format| format.id == clipboard::CF_HDROP);
     let files = if !excluded && has_hdrop {
         clipboard::read_clipboard_locked()
@@ -400,6 +463,8 @@ unsafe fn inspect_clipboard_locked(
         can_include_value,
         inspection_failed: false,
         files,
+        owner_pid,
+        owner_trusted,
     })
 }
 
@@ -476,7 +541,9 @@ fn serialize_event(
 ) -> String {
     let excluded = snapshot.inspection_failed
         || snapshot.exclude_present
-        || (snapshot.can_include_present && snapshot.can_include_value != Some(1));
+        || (!snapshot.owner_trusted
+            && snapshot.can_include_present
+            && snapshot.can_include_value != Some(1));
     let mut json = format!(
         "{{\"type\":\"clipboard-change\",\"sequence\":{sequence},\"timestampMs\":{timestamp_ms},\"formats\":["
     );
@@ -500,7 +567,14 @@ fn serialize_event(
         Some(value) => json.push_str(&value.to_string()),
         None => json.push_str("null"),
     }
-    json.push_str("},\"inspectionFailed\":");
+    json.push_str("},\"ownerPid\":");
+    match snapshot.owner_pid {
+        Some(pid) => json.push_str(&pid.to_string()),
+        None => json.push_str("null"),
+    }
+    json.push_str(",\"ownerTrusted\":");
+    json.push_str(if snapshot.owner_trusted { "true" } else { "false" });
+    json.push_str(",\"inspectionFailed\":");
     json.push_str(if snapshot.inspection_failed { "true" } else { "false" });
     json.push_str(",\"excluded\":");
     json.push_str(if excluded { "true" } else { "false" });
@@ -547,6 +621,8 @@ fn failed_snapshot() -> ClipboardSnapshot {
         can_include_value: None,
         inspection_failed: true,
         files: None,
+        owner_pid: None,
+        owner_trusted: false,
     }
 }
 

@@ -23,11 +23,12 @@ export const range = (from: number, to: number) => from <= to
  * Deliberately NOT `navigator.clipboard.writeText`. Chromium stamps every
  * Web-API clipboard write with the registered `CanIncludeInClipboardHistory`
  * format set to 0 — "do not put this in clipboard history" — which Windows
- * clipboard-history tools honour, Persephone's own Clipboard tracker included
- * (EPIC-104 D6). So a Web-API copy silently never reaches the history the user
- * turned on. Electron's native write sets no such format. It is also
- * synchronous and, unlike the Web API, does not require document focus, which
- * removes a class of "Document is not focused" copy failures.
+ * clipboard-history tools honour (EPIC-104 D6). Persephone's own tracker no
+ * longer drops those, because the watcher exempts copies our own process owns
+ * (EPIC-104 D15), but every other history tool on the machine still does.
+ * Electron's native write sets no such format. It is also synchronous and,
+ * unlike the Web API, does not require document focus, which removes a class of
+ * "Document is not focused" copy failures.
  */
 export function toClipboard(text: string): void {
     electronClipboard.writeText(text);

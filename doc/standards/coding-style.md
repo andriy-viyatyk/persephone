@@ -51,9 +51,13 @@ function process(data: any): void {
 Renderer-owned clipboard writes must use Electron's native `clipboard` API, normally through
 `toClipboard()` in `src/renderer/core/utils/utils.ts` or the shared image-export helper for PNG
 data. Do not use `navigator.clipboard.writeText()` or `navigator.clipboard.write()` for app-owned
-writes: Chromium marks Web API writes with `CanIncludeInClipboardHistory = 0`, so Windows clipboard
-history—and Persephone's opt-in clipboard tracker—excludes them. Clipboard Web API reads remain
-appropriate where a feature needs to read external clipboard content.
+writes: Chromium marks Web API writes with `CanIncludeInClipboardHistory = 0`. Other Windows
+clipboard-history tools still exclude those writes, and the Persephone tracker ignores the marker
+only when the clipboard owner is the trusted Persephone main-process pid — it is honoured for
+every other owner. The explicit
+`ExcludeClipboardContentFromMonitorProcessing` marker remains an exclusion for every owner.
+Clipboard Web API reads remain appropriate where a feature needs to read external clipboard
+content.
 
 ## React island
 

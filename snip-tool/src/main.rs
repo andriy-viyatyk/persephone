@@ -9,6 +9,10 @@
 // Subcommands (US-807):
 //   clipboard-read           — CF_HDROP file list + drop effect as JSON to stdout
 //   clipboard-write [--cut]  — set CF_HDROP from stdin path list (see clipboard.rs)
+//   clipboard-watch [--trusted-pid <pid>]
+//                            — clipboard change events as JSON lines; copies owned by
+//                              <pid> keep Chromium's CanIncludeInClipboardHistory marker
+//                              from excluding them (see clipboard_watch.rs)
 
 mod capture;
 mod clipboard;
