@@ -398,6 +398,13 @@ export default class BoardsSecondaryView extends VanillaView<SecondaryViewProps>
                 onClick: () => { void navigator.clipboard.writeText(root); },
             },
             {
+                // The board's own root is not claimed by any folder editor, so this opens the
+                // workspace page with an Explorer rooted at the folder — not the board again.
+                label: "Open board folder",
+                icon: createIconElement("folder-open", { width: 14, height: 14 }),
+                onClick: () => { void app.pages.openFile(root); },
+            },
+            {
                 label: "Delete Board",
                 icon: createIconElement("delete", { width: 14, height: 14 }),
                 onClick: () => { void this.deleteBoard(root); },

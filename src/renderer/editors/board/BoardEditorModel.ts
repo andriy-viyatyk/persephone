@@ -15,6 +15,7 @@ import { boardSecondaryPanelId } from "./board-secondary";
 import { BoardTargetModel } from "./BoardTargetModel";
 import { createBoardGlyphElement } from "./board-glyph-element";
 import { createIconElement } from "../../uikit/shared/slots";
+import { app } from "../../api/app";
 import type { MenuItem } from "../../uikit";
 import { invalidateBoardIcon } from "./board-icon-cache";
 import { markBoardBusy } from "./busy-boards";
@@ -365,12 +366,12 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
 
     getIconElement = (): Element => createBoardGlyphElement(this.currentBoardRoot(), 16);
 
-    /** Page-tab context-menu items for a board page: copy the board's own folder path,
-     *  the same action the Boards sidebar panel and the Explorer Boards tree offer on a
-     *  board row. Appended AFTER `super` so a content-host board keeps the text-file items
-     *  its host contributes, in their own group. Uses `boardRoot` rather than
-     *  `currentBoardRoot()`: a board whose folder is missing still has a path worth
-     *  copying — that is the path the user wants to go look at. */
+    /** Page-tab context-menu items for a board page: copy the board's own folder path, and
+     *  open that folder as a workspace page — the same two actions the Boards sidebar panel
+     *  and the Registered boards tab offer on a board row. Appended AFTER `super` so a
+     *  content-host board keeps the text-file items its host contributes, in their own group.
+     *  Uses `boardRoot` rather than `currentBoardRoot()`: a board whose folder is missing
+     *  still has a path worth copying — that is the path the user wants to go look at. */
     override onGetMenuItems(): MenuItem[] {
         const boardRoot = this.state.get().boardRoot;
         return [
@@ -381,6 +382,12 @@ export class BoardEditorModel extends EditorModel<BoardEditorState> {
                 onClick: () => { void navigator.clipboard.writeText(boardRoot ?? ""); },
                 disabled: !boardRoot,
                 startGroup: true,
+            },
+            {
+                label: "Open Board Folder",
+                icon: createIconElement("folder-open"),
+                onClick: () => { if (boardRoot) void app.pages.openFile(boardRoot); },
+                disabled: !boardRoot,
             },
         ];
     }

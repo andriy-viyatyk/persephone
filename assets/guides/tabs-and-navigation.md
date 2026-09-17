@@ -127,9 +127,10 @@ Each editor contributes only the actions that are relevant to it. Editors with n
 | Action | Description |
 |--------|-------------|
 | Copy Board Path | Copy the board's folder path to the clipboard |
+| Open Board Folder | Open the board's folder as a new workspace page with the File Explorer panel rooted at that folder |
 
 A board that is also editing a file can show the file editor's actions as well. In that case,
-**Copy Board Path** appears after those file actions.
+**Copy Board Path** and **Open Board Folder** appear after those file actions.
 
 ## Tab Grouping (Side-by-Side View)
 

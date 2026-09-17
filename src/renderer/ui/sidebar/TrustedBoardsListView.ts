@@ -126,6 +126,7 @@ export class TrustedBoardsListView extends VanillaView<TrustedBoardsListProps> {
         }
         items.push(
             { label: "Copy board path", onClick: () => { void navigator.clipboard.writeText(root); } },
+            { label: "Open board folder", onClick: () => { void app.pages.openFile(root); } },
             {
                 label: "Remove",
                 onClick: () => { void this.removeBoard(root); },
