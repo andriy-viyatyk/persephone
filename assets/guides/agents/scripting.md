@@ -59,7 +59,10 @@ The MCP `call` root also exposes `clipboard` only when `clipboard.enabled` is tr
 history, not the live Windows clipboard: use `clipboard.items` or `clipboard.list(offset, limit)`
 for newest-first previews, `clipboard.read(id, flavor?)` for a stored text, HTML, image, or file-list
 payload, and `clipboard.remove(id)` or `clipboard.clear()` only when the user explicitly asks for
-deletion. The feature is opt-in, and stored non-excluded content may remain readable on disk.
+deletion. A file-list read returns a plain `string[]` of absolute paths; its `dropEffect` remains
+metadata on the history item for copy-versus-cut semantics. Older file-list payloads written as
+JSON are still read, but new payloads are stored as one path per line. The feature is opt-in, and
+stored non-excluded content may remain readable on disk.
 
 ### `app.call(path, options?)`
 

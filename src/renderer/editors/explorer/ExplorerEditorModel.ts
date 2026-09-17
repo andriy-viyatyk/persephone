@@ -42,6 +42,8 @@ export interface ExplorerEditorState extends EditorStateBase {
     boardsOpen?: boolean;
     /** Persisted like Boards so the Clipboard sibling survives restart and page moves. */
     clipboardOpen?: boolean;
+    /** Explicitly hides Explorer, Search, and Boards for the dedicated Clipboard page. */
+    hideExplorer?: boolean;
 }
 
 export function getDefaultExplorerEditorState(): ExplorerEditorState {
@@ -146,14 +148,14 @@ export class ExplorerEditor extends EditorModel<ExplorerEditorState> {
 
     /** Canonical sidebar panel set for the Explorer-backed panels, always in display order:
      *  Explorer → Search (iff `searchState`) → Boards (iff `boardsOpen`) → Clipboard (iff
-     *  `clipboardOpen` and the feature is enabled). Drives every
+     *  `clipboardOpen`). A dedicated Clipboard host explicitly omits the other panels. Drives every
      *  `secondaryView` assignment so Search and Boards compose instead of clobbering each other. */
     private composeSecondaryView(): string[] {
-        const ids = ["explorer"];
-        if (this.searchState) ids.push("search");
         const state = this.state.get();
-        if (state.boardsOpen) ids.push("boards");
-        if (state.clipboardOpen && settings.get("clipboard.enabled")) ids.push("clipboard");
+        const ids = state.hideExplorer ? [] : ["explorer"];
+        if (!state.hideExplorer && this.searchState) ids.push("search");
+        if (!state.hideExplorer && state.boardsOpen) ids.push("boards");
+        if (state.clipboardOpen) ids.push("clipboard");
         return ids;
     }
 
@@ -217,13 +219,12 @@ export class ExplorerEditor extends EditorModel<ExplorerEditorState> {
     openClipboard(): void {
         this.state.update((s) => { s.clipboardOpen = true; });
         this.secondaryView = this.composeSecondaryView();
-        if (settings.get("clipboard.enabled")) this.page?.expandPanel("clipboard");
+        this.page?.expandPanel("clipboard");
     }
 
     closeClipboard(): void {
         this.state.update((s) => { s.clipboardOpen = false; });
         this.secondaryView = this.composeSecondaryView();
-        this.page?.expandPanel("explorer");
     }
 
     get boardsTab(): ExplorerBoardsTab { return this.boardsTabState.get().value; }
@@ -392,14 +393,16 @@ export class ExplorerEditor extends EditorModel<ExplorerEditorState> {
 
     async restore(): Promise<void> {
         await super.restore();
-        if (this.rootPath && this.page) {
+        const state = this.state.get();
+        if (this.page && (this.rootPath || state.hideExplorer || state.clipboardOpen)) {
             this.secondaryView = this.composeSecondaryView();
         }
     }
 
     setPage(page: IPageHost | null): void {
         super.setPage(page);
-        if (page && this.rootPath && !this.secondaryView?.length) {
+        const state = this.state.get();
+        if (page && (this.rootPath || state.hideExplorer || state.clipboardOpen) && !this.secondaryView?.length) {
             this.secondaryView = this.composeSecondaryView();
         }
     }

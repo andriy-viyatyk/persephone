@@ -70,6 +70,13 @@ const staticItems: CreatableItem[] = [
         category: "tool",
     },
     {
+        id: "clipboard",
+        label: "Clipboard",
+        icon: createIconElement("paste"),
+        create: () => { void pagesModel.showClipboardPage(); },
+        category: "tool",
+    },
+    {
         id: "script-js",
         label: "Script (JS)",
         icon: JavascriptIcon.createElement(),

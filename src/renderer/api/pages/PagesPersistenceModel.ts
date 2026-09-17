@@ -18,7 +18,7 @@ import { signalReadyToQuit } from "../window";
 import { fs as appFs } from "../fs";
 import { app } from "../app";
 import { createLinkData } from "../../../shared/link-data";
-import { parsePanelKey } from "../../ui/secondary-views/panel-key";
+import { panelKey, parsePanelKey } from "../../ui/secondary-views/panel-key";
 import type { BoardEditorState } from "../../editors/board";
 import { customEditorRegistry } from "../../editors/board/custom-editor-registry";
 import { fpNormalizeForCompare } from "../../core/utils/file-path";
@@ -270,13 +270,15 @@ export class PagesPersistenceModel {
             // when composite — require the named editor to still exist.
             const panel = desc.sidebar.activePanel;
             const { editorId, panelId } = parsePanelKey(panel);
-            const valid =
-                panelId === "explorer" ||
-                panelId === "search" ||
-                (editorId
-                    ? page.editors.some((e) => e.id === editorId && e.secondaryView?.includes(panelId))
-                    : page.editors.some((e) => e.secondaryView?.includes(panelId)));
-            page.activePanel = valid ? panel : "explorer";
+            const composedPanels = page.panelEditors.flatMap((editor) =>
+                (editor.secondaryView ?? []).map((id) => ({ key: panelKey(editor.id, id), panelId: id }))
+            );
+            const valid = editorId
+                ? composedPanels.some((p) => p.key === panel)
+                : composedPanels.some((p) => p.panelId === panelId);
+            const firstPanel = composedPanels[0]?.key ?? "";
+            page.activePanel = firstPanel ? (valid ? panel : firstPanel) : "";
+            if (!firstPanel) nav.setStateQuiet({ open: false, activePanel: "" });
         }
 
         if (page.editors.length === 0 && !desc.sidebar) return null;

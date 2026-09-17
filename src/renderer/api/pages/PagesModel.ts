@@ -284,6 +284,7 @@ export class PagesModel extends TModel<OpenFilesState> {
     }) => this.lifecycle.showBrowserPage(options);
     showMcpInspectorPage = (options?: { url?: string; name?: string; autoConnect?: boolean }) =>
         this.lifecycle.showMcpInspectorPage(options);
+    showClipboardPage = () => this.lifecycle.showClipboardPage();
     showMnemeConfigPage = () => this.lifecycle.showMnemeConfigPage();
     showStorybookPage = () => this.lifecycle.showStorybookPage();
     showToolsHubPage = (opts?: { tab?: HubTab }) => this.lifecycle.showToolsHubPage(opts);

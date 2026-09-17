@@ -36,6 +36,8 @@ import { ContentPipe } from "../../content/ContentPipe";
 import { HttpProvider } from "../../content/providers/HttpProvider";
 import { pipeFromSourcePath } from "../../content/rebuild-pipe";
 
+const CLIPBOARD_PAGE_ID = "clipboard-page";
+
 /** Attach an `EditorModel` or `TextFileModel` host to a `PageModel`.
  *  - `EditorModel` input: returned unchanged.
  *  - `TextFileModel` host input: construct a fresh editor over the host
@@ -281,6 +283,30 @@ export class PagesLifecycleModel {
         await explorer.restore();
         page.ensureSecondaryViewsModel();
         return this.addPage(null, page);
+    };
+
+    showClipboardPage = async (): Promise<void> => {
+        const existing = this.model.query.findPage(CLIPBOARD_PAGE_ID);
+        if (existing) {
+            this.model.navigation.showPage(existing.id);
+            const explorer = existing.findExplorer();
+            if (explorer instanceof ExplorerEditor) explorer.openClipboard();
+            return;
+        }
+
+        const page = new PageModel(CLIPBOARD_PAGE_ID);
+        const state = new TComponentState({
+            ...getDefaultExplorerEditorState(),
+            rootPath: "",
+            hideExplorer: true,
+            clipboardOpen: true,
+        });
+        const explorer = new ExplorerEditor(state);
+        page.attach(explorer);
+        await explorer.restore();
+        page.ensureSecondaryViewsModel();
+        page.expandPanel("clipboard");
+        this.addPage(null, page);
     };
 
     addEditorPage = (

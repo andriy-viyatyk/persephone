@@ -11,7 +11,7 @@ Everything below the header is the page area. The active page is rendered by its
 page-owned secondary panels can appear in a sidebar on the left. Switching tabs can therefore
 change the sidebar: panels belong to a page, not to the application window.
 
-The same frame hosts Explorer, Search, Boards, and the opt-in Clipboard panel. Keep those panels
+The same frame hosts Explorer, Search, Boards, and the Clipboard panel. Keep those panels
 together when explaining the sidebar; their editor-specific panel bodies and controls are not shell
 layout anchors.
 
@@ -62,22 +62,29 @@ layout anchors.
 +---------------------------------------------------------------------+
 ```
 
-### When Clipboard is enabled and open
+### When Clipboard is open
 
 ```
 +---------------------------------------------------------------------+
-| [Clipboard] [health badge]       [Clear] [Restart] [Close]            |  Clipboard panel header; badge and Restart appear when unavailable
+| [Clipboard] [health badge]       [Clear] [Restart] [Close]            |  Clipboard panel header; badge appears when disabled or unavailable
 +---------------------------------------------------------------------+
 | [clipboard history list]                                           |  newest-first captured items
-| [Copy]                                                             |  per-item action on each history row
+| [disabled warning] [Open Settings]                                  |  disabled state only
+| [Copy]                                                             |  per-item action, shown on row hover or focus
 +---------------------------------------------------------------------+
 ```
 
-Click a history item to open its stored content in the current page. Right-click an item for
-**Remove**; **Clear** removes the complete history after confirmation. The **Clipboard** header
-button appears in Explorer only while clipboard history is enabled in Settings. The health badge
-and **Restart** action appear only when the listener is unavailable; **Clear** appears when the
-panel is expanded and has items.
+Clipboard can be opened from **Tools & Editors** even while history is disabled. In that state the
+panel shows a **Disabled** badge and a top warning with **Open Settings**; **Restart** is not shown.
+Stored rows remain usable: click a row to open its content in the current page, right-click for
+**Remove**, use **Clear** to remove all history after confirmation, or use the row's **Copy** action.
+The current row has a persistent selection highlight. **Copy** appears only when its row is hovered
+or focused; copying returns the content as a new newest row and the selection follows it. File-list
+rows open as a readable list of the stored absolute paths, rather than the watcher's metadata JSON.
+The **Clipboard** header button in Explorer remains available only while history is enabled; use
+**Tools & Editors** for the dedicated Clipboard page in either state. The health badge and
+**Restart** action appear for enabled-listener failures; **Clear** appears when the panel is expanded
+and has items.
 
 ### When Git is open
 
@@ -118,9 +125,11 @@ panel is expanded and has items.
 - Clipboard header actions → `clipboard-header-actions`
 - Clipboard close → `clipboard-close`
 - Clipboard clear → `clipboard-clear`
+- Clipboard disabled warning → `clipboard-notification` (disabled state only)
+- Open Settings → `clipboard-open-settings` (disabled state only)
 - Clipboard history list → `clipboard-history`
-- Clipboard health badge → `clipboard-health` (unavailable state only)
-- Clipboard restart → `clipboard-restart` (unavailable state only)
+- Clipboard health badge → `clipboard-health` (disabled or unavailable state only)
+- Clipboard restart → `clipboard-restart` (enabled-listener failure only)
 - Boards/Tools switch → `boards-tools-switch`
 - Create board → `boards-create`
 - Boards list → `explorer-boards`
@@ -182,14 +191,18 @@ workspace settings, or multi-root workspaces: a page whose Explorer is rooted at
 is that project's workspace. Use the Explorer panel's own actions to select and open items,
 navigate upward, search the root, switch to Boards, or open Clipboard when clipboard history is
 enabled. An Explorer panel can be closed from its header; its dynamic editor-specific names are
-deliberately not part of this shell contract.
+deliberately not part of this shell contract. The dedicated Clipboard page is opened from
+**Tools & Editors** and does not depend on that Explorer shortcut.
 
 ### Clipboard
 
 Clipboard is a page-owned sibling panel of Explorer. It lists captured text, HTML, images, and file
-lists newest first. Select an item to open it, use its **Copy** action to put it back on the Windows
-clipboard, right-click for **Remove**, or use **Clear** in the panel header to remove all items.
-Clipboard history is opt-in and is configured in [Settings](./settings.md#clipboard-history).
+lists newest first. Select an item to open it in the host page, use its **Copy** action to put it back
+on the Windows clipboard, right-click for **Remove**, or use **Clear** in the panel header to remove
+all items. The selection marks the item currently shown; while history is enabled, copying it creates
+a new top row and keeps the selection with that content. File-list items open as one absolute path per line. Clipboard
+history is opt-in and is configured in [Settings](./settings.md#clipboard-history), but stored rows
+remain available for browsing and cleanup while the feature is disabled.
 
 ### Search
 

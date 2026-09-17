@@ -19,10 +19,11 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Renderer Vite dev-server watch policy (fixed port plus ignored Cargo/package output trees so concurrent builds cannot take down chokidar) | `/vite.renderer.config.ts` |
 | App object model         | `/src/renderer/api/app.ts`                        |
 | Page/tab management      | `/src/renderer/api/pages/PagesModel.ts`           |
-| Page container (tab)     | `/src/renderer/api/pages/PageModel.ts`            |
+| Page container (tab; sidebar composition, composite active-panel fallback, and automatic close of editorless pages whose last panel is removed) | `/src/renderer/api/pages/PageModel.ts` |
 | Editor↔owner contract    | `/src/renderer/api/pages/IPageHost.ts`            |
 | Well-known pages         | `/src/renderer/api/pages/well-known-pages.ts`     |
-| Window session save/restore (`openFiles{windowIndex}.json`; saves gated off while a restore is in flight, released in a `finally` so a rejected descriptor never disables persistence; folder-board descriptors retain independent `boardRoot`/`folderPath` and revalidate the trusted claim before construction) | `/src/renderer/api/pages/PagesPersistenceModel.ts` |
+| Page creation/opening (including the fixed-ID Clipboard sidebar singleton) | `/src/renderer/api/pages/PagesLifecycleModel.ts` |
+| Window session save/restore (`openFiles{windowIndex}.json`; saves gated off while a restore is in flight, released in a `finally` so a rejected descriptor never disables persistence; folder-board descriptors retain independent `boardRoot`/`folderPath` and revalidate the trusted claim before construction; persisted active panels are validated against composed composite keys and fall back to the first panel) | `/src/renderer/api/pages/PagesPersistenceModel.ts` |
 | Page navigation (`navigatePageTo` as named steps: confirm-release-unless-survives, singleton-target reuse, same-file reuse, build with missing-file/error fallbacks, preview-vs-explicit-target selection, shared show/focus-unless-sidebar/save exit) | `/src/renderer/api/pages/PageNavigator.ts` |
 | Browser page opening (`showBrowserPage` — Tor gate + arm-before-mount fail-closed sequence; `openUrlInBrowserTab` — profile matching + nearest-tab reuse. Lives beside the browser editor so the startup-loaded pages model has no static import of the browser chunk; the lifecycle reaches it via dynamic import) | `/src/renderer/editors/browser/browser-pages.ts` |
 | Editor switch (`switchMainEditor` — host transfer via `switchFrom` when both sides are host-capable; folder-editor switches rebuild through `newEditorModelForFolder` using a verified anchor; dispose-and-rebuild over the file for other host-less boundaries; reached via dynamic import from `PageModel`) | `/src/renderer/editors/base/editor-switch.ts` |
@@ -151,9 +152,9 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Native editor error view (message + optional stack for failures in the native editor path) | `/src/renderer/ui/app/NativeEditorErrorView.ts`, `/src/renderer/ui/app/NativeEditorErrorView.css` |
 | UI element addressing contract (the `data-name` convention, `data-name` vs `data-type`/`data-part`/state attributes, and the shell selector table that MCP UI guides quote — renaming a listed name is a documentation change) | [`ui-element-contract.md`](ui-element-contract.md) |
 | Secondary view registry (single native `VanillaView` panel loader; exact and prefix resolution) | `/src/renderer/ui/secondary-views/secondary-view-registry.ts` |
-| Clipboard secondary view (stored-item list, native copy/open/remove/clear actions, listener health and restart) | `/src/renderer/editors/explorer/ClipboardSecondaryView.ts` |
+| Clipboard secondary view (stored-item list, persistent shown-item selection, hover/focus copy that follows recapture, disabled-state controls, native open/remove/clear actions, listener health and restart) | `/src/renderer/editors/explorer/ClipboardSecondaryView.ts` |
 | Composite panel keys (sidebar) | `/src/renderer/ui/secondary-views/panel-key.ts` |
-| Native shared sidebar panel header (DOM title/badge/actions adoption, show-main control, and late `headerHost` reparenting) | `/src/renderer/ui/secondary-views/SideBarPanelHeaderView.ts` |
+| Native shared sidebar panel header (DOM title/badge/actions adoption, `data-part="header-buttons"` action protection, show-main control, and late `headerHost` reparenting) | `/src/renderer/ui/secondary-views/SideBarPanelHeaderView.ts` |
 | Native secondary-panel loader (cancellable dynamic import, vanilla panel mount, semantic error host, and explicit retirement cleanup) | `/src/renderer/ui/secondary-views/LazySecondaryViewView.ts` |
 | Native sidebar/menu views (Menu Bar, panels, lists, pinned rail, and folder rows) | `/src/renderer/ui/sidebar/*View.ts` |
 | Shared global overlay host | `/src/renderer/uikit/shared/overlayLayer.ts` |
@@ -320,7 +321,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Rust launcher            | `/launcher/src/main.rs`                           |
 | Rust screen snip tool + clipboard helper (`clipboard-read`/`clipboard-write`/`clipboard-watch` subcommands; CF_HDROP interop and JSON-lines watcher protocol) | `/snip-tool/src/main.rs`, `/snip-tool/src/clipboard.rs`, `/snip-tool/src/clipboard_watch.rs` |
 | Screen snip service (main; spawns the snip exe, returns PNG data URL; optionally hides windows for the capture) | `/src/main/snip-service.ts` |
-| Clipboard history service (main; opt-in watcher sidecar, on-disk index/payload retention, duplicate promotion, renderer events, health monitoring, and native copy-back) | `/src/main/clipboard-service.ts` |
+| Clipboard history service (main; opt-in watcher sidecar, `.files.txt` path-list payloads with legacy `.json` reads, flavour-aware hashes, on-disk retention, duplicate promotion, renderer events, health monitoring, and native copy-back) | `/src/main/clipboard-service.ts` |
 | File-clipboard service (main; Windows-Explorer copy/paste interop — CF_HDROP read/write via the snip exe; degrades to empty when the exe is missing) | `/src/main/clip-service.ts` |
 | Native OS file drag-out service (main; `startOsFileDrag` via `webContents.startDrag` — real CF_HDROP so Windows Explorer / Teams accept the dragged file; win32-only, shell icon via `app.getFileIcon` + fallback) | `/src/main/os-drag-service.ts` |
 | Provider-backed tree view model (the Explorer, Archive, Mneme, Script-library and link-category trees; lazy `list()` per expanded folder, `buildTree` refresh, expansion persisted as `expandedPaths`. `buildTree` re-lists children ONLY for currently-expanded paths, so a collapsed folder's subtree is dropped on every refresh — which is why the view opts into `Tree`'s `collapseDescendants`) | `/src/renderer/components/tree-provider/TreeProviderViewModel.ts` |
@@ -353,7 +354,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | VMP signing (build hook) | `/scripts/vmp-sign.mjs`                           |
 | Git service (main)       | `/src/main/git-service.ts`                        |
 | Git IPC types            | `/src/ipc/git-ipc.ts`                             |
-| Clipboard IPC types and renderer event payloads | `/src/ipc/clipboard-ipc.ts` |
+| Clipboard IPC types and renderer event payloads (`ClipboardHistoryItem.dropEffect` for file lists) | `/src/ipc/clipboard-ipc.ts` |
 | Git renderer API         | `/src/renderer/api/git.ts`                        |
 | Native Git Tree view | `/src/renderer/components/git-tree/GitTreeView.ts` |
 | Git Tree native view       | `/src/renderer/components/git-tree/GitTreeView.ts` |
@@ -441,7 +442,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Published-catalog search tab (native hub "Search boards" view; cached-catalog filter/grouping and Board Info actions) | `/src/renderer/editors/tools-hub/SearchBoardsTab.ts` |
 | Board Info folder-source flow (folder-keyed catalog matches; preserves the claimed `folderPath` through Download → Register; validates the refreshed trusted claim before switching; exposes folder metadata separately from file masks) | `/src/renderer/editors/board-info/BoardInfoEditorModel.ts`, `/src/renderer/editors/board-info/BoardInfoEditorView.ts` |
 | Catalog board screenshot (shared by the Search boards cards and both Board Info modes; a plain remote `<img>` at a fixed 200×125 16:10 footprint — no URL, a 404 or no network all fall back to a same-size placeholder so card heights never jump. Loaded straight from the catalog repo over `https` (the app renderer sets no `img-src`/`default-src` CSP) and deliberately NOT fetched through main or disk-cached, so screenshots are the one part of the catalog that does not work offline. A raw `<img>` rather than a UIKit primitive — Rule 7 governs Emotion in app code and `style`/`className` on UIKit *components*, not raw elements) | `/src/renderer/editors/board-info/BoardScreenshotView.ts` |
-| Creatable-items registry (`CreatableItem` list shared by the Tools & Editors panel and the `+` new-page dropdown; `DEFAULT_PINNED_EDITORS`) | `/src/renderer/ui/sidebar/tools-editors-registry.ts` |
+| Creatable-items registry (`CreatableItem` list shared by the Tools & Editors panel and the `+` new-page dropdown; always-available Clipboard item; `DEFAULT_PINNED_EDITORS`) | `/src/renderer/ui/sidebar/tools-editors-registry.ts` |
 | Trusted-boards sidebar tab (native list with open/pin/remove and catalog update actions) | `/src/renderer/ui/sidebar/TrustedBoardsListView.ts` |
 | Human-readable byte size (`formatBytes`) | `/src/renderer/core/utils/format-bytes.ts` |
 | Unified pin model (`PinnedRef` over `pinned-editors`; editors + `board:<root>`) | `/src/renderer/ui/sidebar/pinned-items.ts` |

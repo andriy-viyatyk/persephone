@@ -650,7 +650,8 @@ instance is expanded. Board-prefix labels are resolved from the owning board's c
 declarations (`title`, then view id, then `"View"`).
 
 The node also exposes optional live children for the addressable panel aliases `explorer`, `search`,
-`boards`, `git`, `notebookCategories`, `notebookTags`, `rest`, `archive`, and `fileHistory`.
+`boards`, `clipboard`, `git`, `notebookCategories`, `notebookTags`, `rest`, `archive`, and
+`fileHistory`.
 Children are returned only when the corresponding panel is currently contributed to that page;
 their `state`, curated `elements`, and model-backed actions are supplied by the owning panel
 model. Dynamic board-secondary panel IDs remain discoverable by their exact registered IDs. Panel
@@ -681,6 +682,13 @@ history is enabled. Five real settings have no Settings-page row (`tab-recent-la
 available through `get`/`set`. The AiVision descriptor's `set` seam refuses only the self-severing
 `mcp.enabled` and `mcp.port` changes; direct `app.settings.set` is unchanged. Computed catalog
 lookups use own-property checks so prototype names are not treated as setting keys.
+
+The ClipboardHistory AiVision node is read-only for stored payload access and exists only while
+`clipboard.enabled` is true. `clipboard.read(id, flavor?)` returns text and HTML as strings, file
+items as `string[]` of absolute paths, and images as PNG image records. File lists are read from
+one path per line in the current `.files.txt` payload; the reader also accepts the earlier
+`.json` watcher payload. The node reads stored files through `app.fs`, never the live OS clipboard;
+`remove` and `clear` remain explicit destructive operations.
 
 ### AppWrapper
 

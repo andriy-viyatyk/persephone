@@ -1,0 +1,19 @@
+@layer app {
+    /* The per-row Copy button is a hover affordance, not row content: showing one on every
+       row turns the history into a column of icons. `:focus-within` keeps it reachable by
+       keyboard, and `opacity` rather than `display` keeps the row's layout identical whether
+       the button shows or not, so running the pointer down the list cannot shift the labels.
+
+       The rule targets the BUTTON, not the `[data-part="trailing"]` host around it: that host
+       is given `display: contents` as an INLINE style by `ListItemView`, so it generates no
+       box at all and `opacity` on it has nothing to apply to (no stylesheet rule can take the
+       display back — an inline style outranks it). */
+    .clipboard-row [data-part="trailing"] [data-type="icon-button"] {
+        opacity: 0;
+    }
+
+    .clipboard-row:hover [data-part="trailing"] [data-type="icon-button"],
+    .clipboard-row:focus-within [data-part="trailing"] [data-type="icon-button"] {
+        opacity: 1;
+    }
+}

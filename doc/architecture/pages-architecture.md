@@ -131,6 +131,11 @@ back-navigation stack the page owns, mirrors into `navBackCount`, and persists.
 - **Navigation:** `await page.setMainEditor(newEditor)` — full lifecycle swap (beforeNavigateAway, dispose old, notify secondaries)
 - **Closed:** `page.close()` → checks unsaved → `onClose()` → `detachPage` → `removePage` → `page.dispose()`
 
+An editorless page that has contributed panels is closed automatically when its composed panel set
+transitions from non-empty to empty. The check runs after the current dispatch settles, and is
+guarded by both a new main editor and a panel reappearing during that boundary. This is a general
+sidebar-only page invariant; an editorless page that never had a panel is not closed by this rule.
+
 ### Close flow detail
 
 1. `page.close()` — on PageModel
@@ -320,6 +325,7 @@ import { pagesModel } from "../api/pages";
 - `fixGrouping()` — invariant repair
 - `checkEmptyPage()` — auto-create empty page when last one closes
 - `addEmptyPageWithNavPanel(folderPath)` — creates a PageModel with `mainEditor = null` and an initialized sidebar (Explorer panel). Used by sidebar double-click, archive browsing, the "Open Folder" menu, the "Open Folder" item in the Tools & Editors list, the folder-tree context menu, opening a link that points to a directory, and a folder path arriving from the command line or Explorer's "Open with persephone" folder context menu. The page renders just the sidebar with an empty content area.
+- `showClipboardPage()` — reuses or creates the fixed-ID editorless Clipboard singleton with an Explorer host whose persisted composition contains only the Clipboard panel.
 - `openFileAsArchive(filePath)` — opens an archive for browsing. Creates a PageModel with sidebar root set to the archive root. Reuses existing tab if the archive is already open. ZIP archives use `!` separator (e.g., `doc.zip!word/document.xml`) via `archive-service.ts`; `.asar` archives use the regular path directly (e.g., `app.asar`) via Electron's native fs patching — see `file-path.ts`.
 - `openLinks(links, title?)` — creates a link collection page. A `LinkEditor` with `.link.json` content is added as a Pattern A secondary view (never mainEditor). The Categories panel appears in the sidebar; clicking a link navigates the page's main area to that file. Accepts `(ILink | string)[]` — strings are converted to LinkItems with auto-generated titles.
 - `save()` / `restore()` — persistence (called by bootstrap, not by scripts)
@@ -426,6 +432,12 @@ stable while the right pane switches between the guide contents tree and a selec
 guide history and agent-guide filter are runtime state rather than persisted page content. The
 `about-view` scripting facade exposes `open`, `back`, `current`, `elements`, and `highlight` for
 this fixed page; opening a guide in a tab uses the normal content pipeline.
+
+The Clipboard entry in Tools & Editors uses a separate fixed-ID singleton page rather than the
+well-known editor registry. `showClipboardPage()` reuses and shows that page when it exists;
+otherwise it creates an editorless page with an Explorer host configured with persisted
+`hideExplorer` and `clipboardOpen`, then expands the Clipboard panel. Closing that only panel
+invokes the general editorless sidebar-page auto-close rule described above.
 
 ### When to use well-known pages
 

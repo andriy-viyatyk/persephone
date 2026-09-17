@@ -203,7 +203,7 @@ Editor ids are UUIDs and panel-type ids are kebab-case, so `"::"` is an unambigu
 | `onPanelExpanded(panelId)` + the `panelExpanded` event | **bare** | Editors/subscribers reason about panel *type*, not instances. `setSecondaryViewsState` extracts the bare id from the composite before notifying. |
 | `activePanelId` getter | **bare** | Convenience for "is panel X expanded" checks (Explorer/Archive use `this.page?.activePanelId === "explorer"`). |
 
-**Seed/legacy resolution:** the default `activePanel` seed (`"explorer"`) and any legacy persisted bare value are resolved to their composite at render time in `SecondaryViews` (a bare value is matched against the rendered panels' bare ids). After any accordion click, `activePanel` is already composite.
+**Seed/legacy resolution:** the default `activePanel` seed (`"explorer"`) and any legacy persisted bare value are resolved to their composite at render time in `SecondaryViews` (a bare value is matched against the rendered panels' bare ids). When a detached owner or a restore descriptor names a panel that is no longer composed, PageModel selects the first currently composed panel's composite key; if none exists it leaves the active key empty. After any accordion click, `activePanel` is already composite.
 
 **Same-type dedup is a model-level concern, not a render-level one.** Re-clicking the *same* repo's `.git` reuses the existing `GitTreeEditorModel` via `matchesNavigationTarget` (see [pages-architecture.md §9](pages-architecture.md)), so no duplicate model is created. Different repos correctly produce distinct models, and the sidebar renders a `"git-changes"` panel for each. `CollapsiblePanelStack` (UIKit) is untouched — it operates on whatever id string it is given, so feeding it composite keys needs no change.
 
@@ -246,6 +246,7 @@ The stable view key stays `${model.id}-${panelId}`; the accordion identity is th
 - the **icon** is rendered first and unwrapped so it stays a direct child of the header `<div>` — the stack's `[data-part="header"] > svg { width: 14; height: 14 }` rule sizes only direct-child SVGs;
 - the **title group** (`badge` + `title`) is a flex-grow `Panel` with `width={0}` + `overflow: hidden`, so the title (`<Text truncate size="md">`) and a `truncate` `Tag` badge ellipsize as the sidebar narrows;
 - the **actions** region is a `Panel` with `shrink={false}`, so the buttons stay pinned and fully visible — the label group is what gives way, never the buttons;
+- the actions region is marked `data-part="header-buttons"`; `CollapsiblePanelStack` excludes that region from its header-toggle handler, so pressing a panel action does not collapse the panel;
 - the **show-main zone** is a standardized right-edge button (chevron-right icon, separated by a vertical divider) that appears when the `onShowMain` prop is provided. Clicking it promotes the editor to the page's main view (`stopPropagation` prevents panel toggle). Pass `showMainTitle` to override the tooltip (default: `"Show in main view"`) and `showMainActive={true}` to tint the chevron blue when this editor is already the main view. The zone is always visible — it does not hide when already main; the active tint is the indicator instead.
 
 This replaces per-panel hand-rolled portal + layout. Native children are directly owned by the header host, so no portal or framework-specific header root is needed. The show-main zone (`data-type="sidebar-show-main"`) remains in the `pointer-events: auto` allowlist and guards the header's hover-lighten with `:not(:has([data-type="sidebar-show-main"]:hover))` so the header bar and the zone light up independently.
@@ -359,12 +360,27 @@ and lookup read existing page state only and never create a sidebar or an absent
 
 ### Clipboard panel
 
-The Clipboard panel is an Explorer-owned Pattern A panel. It lists stored history metadata and
-routes a selected payload through the host page's normal `openRawLink` pipeline, so `.txt`,
-`.html`, `.png`, and the file-list `.json` payload use existing editors rather than a new
-clipboard-specific editor. If the panel has no page host, it falls back to opening the payload in a
-new page. Copy-back, removal, clearing, and listener-health/restart actions remain owned by the
-panel view and the main clipboard service.
+The Clipboard panel is an Explorer-owned Pattern A panel. The normal Explorer composition is
+Explorer, Search, Boards, then Clipboard as each feature is present. The dedicated Clipboard page
+uses the same Explorer host with persisted `hideExplorer`, so its composition contains only the
+Clipboard panel. The Tools & Editors registry entry is unconditional and pinnable; opening it
+reuses the fixed-ID page rather than creating another tab.
+
+It lists stored history metadata and routes a selected payload through the host page's normal
+`openRawLink` pipeline, so `.txt`, `.html`, `.png`, and `.files.txt` payloads use existing editors
+rather than a clipboard-specific editor. A file list is one absolute path per line in
+`<id>.files.txt`; its `dropEffect` is carried by `ClipboardHistoryItem`, and earlier `.json`
+payloads remain readable. The AiVision `clipboard.read(id)` contract returns file items as
+`string[]`.
+
+The selected row is persistent navigation state (`selectionStyle: "focus"`) identifying the item
+shown by the host page. Per-row Copy appears on hover or focus. Copy-back triggers a fresh capture,
+so the panel follows the copied content to the new top row. Removal, clearing, and
+listener-health/restart actions remain owned by the panel view and the main clipboard service.
+When history is disabled, the panel shows the Settings affordance and suppresses Restart while
+stored rows and their clear/remove/copy/navigation actions remain available. Closing the panel
+clears the Explorer contribution; if this leaves an editorless page with no composed panels,
+PageModel closes that sidebar-only page after the dispatch completes.
 
 ### Git Tree panel
 

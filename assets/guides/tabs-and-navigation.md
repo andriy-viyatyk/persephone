@@ -229,7 +229,7 @@ the current guide-browser location.
 The **Tools & Editors** entry appears between Recent Files and Script Library. It opens as a slide-out panel with a **Pinned** rail at the top and a row of tabs below it:
 
 - **Pinned** — Your favorite editors and boards, shown at the top. Drag to reorder. These are also the items that appear in the **+** dropdown menu in the tab bar.
-- **Built-in Editors** — Every standard editor/tool, sorted alphabetically. Click the pin button to add an item to your pinned list.
+- **Built-in Editors** — Every standard editor/tool, including **Clipboard**, sorted alphabetically. Click the pin button to add an item to your pinned list.
 - **Boards** — All trusted [boards](./boards.md) across every location, grouped by folder.
 - **Tools** — All registered [Agent Tools](./agent-tools.md) toolsets.
 
@@ -239,7 +239,12 @@ Click any item to create a new page (or open the board/toolset) with that editor
 
 **Open Folder** — The first entry in the default pinned set. Clicking it shows a native Select Folder dialog; once you pick a folder, a new tab opens with the File Explorer panel rooted at that folder — Persephone's equivalent of a VS Code workspace. This is identical to right-clicking a folder in the Explorer sidebar and choosing **"Open in New Tab"**. Existing users can pin it from the **Built-in Editors** tab.
 
-Items include all standard editors (Script, Grid, Notebook, Links, Drawing, Browser, Video Player) as well as MCP Inspector and individual browser profiles (Incognito and named profiles).
+Items include all standard editors (Script, Grid, Notebook, Links, Drawing, Browser, Video Player) and tools such as **Clipboard** and MCP Inspector, as well as individual browser profiles (Incognito and named profiles). Clipboard is always listed and can be pinned regardless of the clipboard-history setting.
+
+**Clipboard** — Opens one dedicated page whose sidebar contains the Clipboard history panel. If
+history is disabled, the panel shows a **Disabled** badge, an explanation, and an **Open Settings**
+button; existing rows can still be opened, copied, removed, or cleared. The panel closes with its
+page when you close the last panel. See [Page Area and Sidebar](./screens/sidebar.md#clipboard).
 
 ### Script Library
 

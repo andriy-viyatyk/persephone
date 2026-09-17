@@ -84,6 +84,8 @@ export class PageModel implements IPageHost {
     /** Pre-model seed for `activePanel`, used before the sidebar model is lazily
      *  created (and to carry the value into it on creation). */
     private _activePanel = "explorer";
+    private hadPanels = false;
+    private emptyPanelCloseScheduled = false;
 
     /** Which panel is currently active/expanded.
      *  Values: "explorer", "search", or a secondary panel ID.
@@ -310,7 +312,7 @@ export class PageModel implements IPageHost {
             ? active.editorId === editor.id
             : (editor.secondaryView?.includes(active.panelId) ?? false);
         if (ownedByDetached) {
-            this.activePanel = "explorer";
+            this.activePanel = this.composedPanels()[0]?.key ?? "";
         }
         this.state.update((s) => {
             s.version++;
@@ -593,6 +595,34 @@ export class PageModel implements IPageHost {
         }
         this._maybeAutoInitExplorer();
         this._enforceActivePanelExpanded();
+        this._enforceEmptyPanelPageClose();
+    }
+
+    private composedPanels(): { key: string; panelId: string }[] {
+        const panels: { key: string; panelId: string }[] = [];
+        for (const editor of this.panelEditors) {
+            const views = (editor.state.get() as { secondaryView?: string[] }).secondaryView ?? [];
+            for (const panelId of views) {
+                panels.push({ key: panelKey(editor.id, panelId), panelId });
+            }
+        }
+        return panels;
+    }
+
+    private _enforceEmptyPanelPageClose(): void {
+        const panels = this.composedPanels();
+        if (panels.length) {
+            this.hadPanels = true;
+            return;
+        }
+        if (!this.hadPanels || this.mainEditorInstance || this.emptyPanelCloseScheduled) return;
+
+        this.emptyPanelCloseScheduled = true;
+        afterDispatch(() => {
+            this.emptyPanelCloseScheduled = false;
+            if (this.mainEditorInstance || this.composedPanels().length) return;
+            void this.close();
+        });
     }
 
     /** Invariant: whenever the sidebar has panels, exactly one is expanded — no
@@ -604,11 +634,7 @@ export class PageModel implements IPageHost {
      *  No-op when there are no panels — leaving the seed untouched so a last-panel
      *  detach doesn't resurrect the sidebar. */
     private _enforceActivePanelExpanded(): void {
-        const panels: { key: string; panelId: string }[] = [];
-        for (const e of this.panelEditors) {
-            const views = (e.state.get() as { secondaryView?: string[] }).secondaryView ?? [];
-            for (const pId of views) panels.push({ key: panelKey(e.id, pId), panelId: pId });
-        }
+        const panels = this.composedPanels();
         if (!panels.length) return; // no panels — nothing to keep expanded
 
         const active = parsePanelKey(this.activePanel);

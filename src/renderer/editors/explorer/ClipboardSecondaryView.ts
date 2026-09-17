@@ -1,9 +1,11 @@
 import { app } from "../../api/app";
+import { pagesModel } from "../../api/pages";
 import { normalizeClipboardMaxItems, settings } from "../../api/settings";
 import { ui } from "../../api/ui";
 import { api } from "../../../ipc/renderer/api";
 import rendererEvents from "../../../ipc/renderer/renderer-events";
 import type {
+    ClipboardHistoryChanged,
     ClipboardHistoryItem,
     ClipboardStatus,
 } from "../../../ipc/clipboard-ipc";
@@ -30,6 +32,7 @@ import "../../uikit/Button/Button.css";
 import "../../uikit/IconButton/IconButton.css";
 import "../../uikit/Notification/Notification.css";
 import "../../uikit/Tag/Tag.css";
+import "./ClipboardSecondaryView.css";
 
 interface ClipboardListItem extends IListBoxItem {
     clipboardItem: ClipboardHistoryItem;
@@ -46,6 +49,8 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
     private restartButton: ButtonView | undefined;
     private healthBadge: TagView | undefined;
     private unavailableNotification: NotificationView | undefined;
+    private notificationHost: HTMLDivElement | undefined;
+    private openSettingsButton: ButtonView | undefined;
     private list: ListBoxView<ClipboardListItem> | undefined;
     private readonly copyButtons = new Map<string, IconButtonView>();
     private items: ClipboardHistoryItem[] = [];
@@ -58,6 +63,8 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
     private statusRequestGeneration = 0;
     private statusEventGeneration = 0;
     private restarting = false;
+    private selectedId: string | undefined;
+    private selectNextCapture = false;
 
     public constructor(props: SecondaryViewProps) {
         super(props, createPanelElement({
@@ -101,13 +108,32 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
             tone: "warning",
             size: "sm",
         }));
+        // Column, not row: the sidebar is narrow, and putting the message beside the
+        // button squeezed the notification into a few words per line and pushed the
+        // button past the panel edge.
+        this.notificationHost = createPanelElement({
+            name: "clipboard-notification",
+            direction: "column",
+            align: "stretch",
+            gap: "xs",
+            paddingX: "sm",
+            paddingY: "xs",
+            shrink: false,
+        });
+        this.openSettingsButton = this.child(new ButtonView({
+            name: "clipboard-open-settings",
+            size: "sm",
+            children: "Open Settings",
+            onClick: () => { void pagesModel.showSettingsPage(); },
+        }));
 
         this.list = this.child(new ListBoxView<ClipboardListItem>(this.listProps()));
-        this.root.append(this.list.root);
+        this.root.append(this.notificationHost, this.list.root);
         this.closeButton.mount();
         this.clearButton.mount();
         this.restartButton.mount();
         this.healthBadge.mount();
+        this.openSettingsButton.mount();
         this.list.mount();
 
         this.headerActions = createPanelElement({
@@ -125,10 +151,10 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
         });
         this.own(() => this.header?.dispose());
 
-        this.own(rendererEvents.eClipboardHistoryChanged.subscribe(({ revision }) => {
+        this.own(rendererEvents.eClipboardHistoryChanged.subscribe(({ revision, reason }) => {
             if (revision < this.latestRevision) return;
             this.latestRevision = revision;
-            this.queryHistory();
+            this.queryHistory(reason);
         }));
         this.own(rendererEvents.eClipboardStatusChanged.subscribe((status) => {
             this.statusEventGeneration++;
@@ -158,6 +184,8 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
         this.restartButton = undefined;
         this.healthBadge = undefined;
         this.unavailableNotification = undefined;
+        this.notificationHost = undefined;
+        this.openSettingsButton = undefined;
         this.list = undefined;
         this.copyButtons.clear();
     }
@@ -197,7 +225,7 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
         });
     }
 
-    private queryHistory(): void {
+    private queryHistory(reason?: ClipboardHistoryChanged["reason"]): void {
         const requestGeneration = ++this.historyRequestGeneration;
         if (!this.historyLoaded) {
             this.loading = true;
@@ -213,6 +241,7 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
             this.items = snapshot.items;
             this.historyLoaded = true;
             this.loading = false;
+            this.applyCaptureSelection(reason);
             this.rebuildRows();
             this.updatePresentation();
         }).catch((error: unknown) => {
@@ -221,6 +250,17 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
             this.updatePresentation();
             void ui.notify(errMessage(error, "Failed to load clipboard history."), "error");
         });
+    }
+
+    /** Copying an item puts its content back on the clipboard, so the watcher captures it and
+     *  the item returns at the top under a NEW id — the old row is gone and selection would be
+     *  left pointing at nothing. Follow the content to its new row instead. Only a capture can
+     *  honour the request; any other refresh means the copy produced no capture (an excluded
+     *  write, a failed one) and the request is dropped rather than left armed for later. */
+    private applyCaptureSelection(reason: ClipboardHistoryChanged["reason"] | undefined): void {
+        if (!this.selectNextCapture || reason === undefined) return;
+        this.selectNextCapture = false;
+        if (reason === "captured" && this.items.length > 0) this.selectedId = this.items[0].id;
     }
 
     private applyStatus(status: ClipboardStatus): void {
@@ -255,6 +295,7 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
             return {
                 value: item.id,
                 label: `${dateText(item.capturedAt)} — ${previewLabel(item)}`,
+                rowClass: "clipboard-row",
                 trailingElement: button.root,
                 clipboardItem: item,
             };
@@ -266,14 +307,20 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
             name: "clipboard-history",
             items: this.rows,
             variant: "browse",
+            // The selected row is the one the page is showing, which is persistent navigation
+            // state rather than a pick — the same treatment the Explorer tree gets.
+            selectionStyle: "focus",
+            value: this.rows.find((row) => row.value === this.selectedId) ?? null,
             loading: this.loading,
-            emptyMessage: this.unavailableNotification?.root ?? "No clipboard history yet.",
+            emptyMessage: "No clipboard history yet.",
             onChange: this.handleSelection,
             getContextMenu: this.getContextMenu,
         };
     }
 
     private readonly handleSelection = (row: ClipboardListItem): void => {
+        this.selectedId = row.clipboardItem.id;
+        this.list?.update(this.listProps());
         void this.openItem(row.clipboardItem);
     };
 
@@ -309,11 +356,14 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
 
     private async copyItem(id: string): Promise<void> {
         try {
+            this.selectNextCapture = !this.isDisabled();
             const copied = await api.copyClipboardItem(id);
+            if (!copied || this.isDisabled()) this.selectNextCapture = false;
             if (!copied && !this.isDisposed) {
                 void ui.notify("The clipboard item is no longer available.", "error");
             }
         } catch (error: unknown) {
+            this.selectNextCapture = false;
             if (!this.isDisposed) {
                 void ui.notify(`Failed to copy clipboard item: ${errMessage(error)}`, "error");
             }
@@ -385,20 +435,20 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
     }
 
     private updateUnavailableNotification(): void {
-        const unavailable = !this.loading && this.items.length === 0 && this.isUnavailable();
-        if (!unavailable) {
-            if (this.unavailableNotification) {
-                this.releaseChild(this.unavailableNotification);
-                this.unavailableNotification = undefined;
-            }
+        const disabled = !this.loading && this.isDisabled();
+        const unavailable = !disabled && !this.loading && this.items.length === 0 && this.isUnavailable();
+        if (!disabled && !unavailable) {
+            this.notificationHost?.replaceChildren();
             return;
         }
 
         const status = this.status;
-        const message = status?.error
-            ? `Clipboard listener is unavailable. No new items will be captured. ${status.error}`
-            : "Clipboard listener is unavailable. No new items will be captured.";
-        const type = status?.health === "error" ? "error" : "warning";
+        const message = disabled
+            ? "Clipboard history is disabled in Settings."
+            : status?.error
+                ? `Clipboard listener is unavailable. No new items will be captured. ${status.error}`
+                : "Clipboard listener is unavailable. No new items will be captured.";
+        const type = disabled || status?.health !== "error" ? "warning" : "error";
         if (!this.unavailableNotification) {
             this.unavailableNotification = this.child(new NotificationView({
                 name: "clipboard-unavailable",
@@ -413,20 +463,28 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
                 message,
             });
         }
+        this.notificationHost?.replaceChildren(
+            this.unavailableNotification.root,
+            ...(disabled && this.openSettingsButton ? [this.openSettingsButton.root] : []),
+        );
     }
 
     private updateHeader(props: SecondaryViewProps): void {
-        const unavailable = this.isUnavailable();
+        const disabled = this.isDisabled();
+        const unavailable = !disabled && this.isUnavailable();
+        const showHealth = disabled || unavailable;
         const badge = this.healthBadge;
         const status = this.status;
         if (badge) {
-            const health = status?.health === "error" ? "error" : "warning";
+            const health = disabled ? "default" : status?.health === "error" ? "error" : "warning";
             badge.update({
                 name: "clipboard-health",
-                label: status?.health === "deaf" ? "Deaf" : "Error",
+                label: disabled ? "Disabled" : status?.health === "deaf" ? "Deaf" : "Error",
                 tone: health,
                 size: "sm",
-                title: status?.error ?? "Clipboard listener is unavailable.",
+                title: disabled
+                    ? "Clipboard history is disabled in Settings."
+                    : status?.error ?? "Clipboard listener is unavailable.",
             });
         }
         this.clearButton?.update({
@@ -456,7 +514,7 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
         this.header?.update({
             headerHost: props.headerHost,
             icon: props.iconElement,
-            badge: unavailable ? this.healthBadge?.root : undefined,
+            badge: showHealth ? this.healthBadge?.root : undefined,
             title: "Clipboard",
             actions: this.headerActions,
         });
@@ -464,6 +522,10 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
 
     private isUnavailable(): boolean {
         return this.status?.health === "deaf" || this.status?.health === "error";
+    }
+
+    private isDisabled(): boolean {
+        return this.status?.enabled === false || this.status?.health === "disabled";
     }
 
     private errorStatus(error: string): ClipboardStatus {

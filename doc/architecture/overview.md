@@ -276,16 +276,24 @@ See [trait-system.md](./trait-system.md).
 Clipboard history is an opt-in, off-by-default main-process service. When enabled, it starts the
 Rust `clipboard-watch` sidecar, validates its JSON-lines change protocol, captures text, HTML, PNG,
 and Windows file-list payloads, and stores an index plus payload files below the application data
-directory. Captures are serialized through one mutation queue, duplicate primary payloads are
-promoted rather than repeated, and the configured item cap evicts the oldest payload files.
+directory. File-list payloads are written as one absolute path per line in `<id>.files.txt`; the
+copy/cut `dropEffect` is stored on the history item, while `.json` file-list payloads from older
+builds remain readable. The capture hash includes the primary flavour so text and file-list
+payloads with the same bytes do not collide. Captures are serialized through one mutation queue,
+duplicate primary payloads are promoted rather than repeated, and the configured item cap evicts
+the oldest payload files.
 
-The renderer reaches the service through typed IPC. The Explorer contributes a Clipboard secondary
-panel with copy/open/remove/clear actions and listener-health monitoring; the Settings page owns
+The renderer reaches the service through typed IPC. The always-listed and pinnable Clipboard item
+in Tools & Editors opens a fixed-ID singleton page whose Explorer host persists `hideExplorer` and
+composes only the Clipboard panel. The panel supports copy/open/remove/clear actions and
+listener-health monitoring; its disabled state offers Settings while stored rows remain usable.
+The selected row is persistent page-navigation state, the row Copy action appears on hover/focus,
+and a successful copy follows the recaptured item to its new top row. The Settings page owns
 `clipboard.enabled` and `clipboard.max-items`. The AiVision root exposes `.clipboard` only when
-history is enabled, and that namespace reads stored payloads through `app.fs` rather than the live
-OS clipboard. The service uses Electron's native clipboard for copy-back and renderer-owned writes
-must use the same native path so Chromium's Web API exclusion marker cannot silently exclude a copy
-from clipboard history.
+history is enabled, reads file-list payloads as `string[]`, and never reads the live OS clipboard.
+The service uses Electron's native clipboard for copy-back and renderer-owned writes must use the
+same native path so Chromium's Web API exclusion marker cannot silently exclude a copy from
+clipboard history.
 
 ### 10. Board Subsystem
 
