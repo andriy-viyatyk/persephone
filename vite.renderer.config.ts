@@ -72,6 +72,23 @@ export default defineConfig({
   server: {
     port: 5273,
     strictPort: true,
+    watch: {
+      // Cargo build output must not be watched. A `cargo build` running while the
+      // dev server is up churns thousands of files and briefly locks the build-script
+      // executables it is writing; chokidar then fails to watch one with EBUSY, and
+      // that error is emitted on the FSWatcher rather than swallowed — which takes
+      // the whole dev server (and therefore Persephone) down mid-session:
+      //   Error: EBUSY: resource busy or locked, watch
+      //     'snip-tool/target/release/build/serde-<hash>/build_script_build-<hash>.exe'
+      // None of these trees is an import source, so watching them buys nothing.
+      // `release/` is electron-builder's output and churns the same way.
+      ignored: [
+        '**/snip-tool/target/**',
+        '**/mneme/target/**',
+        '**/launcher/target/**',
+        '**/release/**',
+      ],
+    },
   },
   plugins: [
     editorTypesPlugin(),
