@@ -455,6 +455,7 @@ export class ListBoxView<T = IListBoxItem> extends VanillaView<ListBoxProps<T>> 
             label: item.label,
             trailing: item.trailing,
             trailingElement: item.trailingElement,
+            trailingVisibility: item.trailingVisibility,
             drag: item.drag,
             searchText: this.model.searchText,
             selected: this.model.isSelectedAt(index),

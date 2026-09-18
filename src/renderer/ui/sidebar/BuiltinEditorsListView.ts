@@ -1,10 +1,12 @@
 import { settings } from "../../api/settings";
+import { TraitTypeId, setTraitDragData } from "../../core/traits";
 import { TraitSet, traited } from "../../core/traits/traits";
 import { IconButtonView } from "../../uikit/IconButton/IconButtonView";
 import { ListBoxView } from "../../uikit/ListBox/ListBoxView";
 import { LIST_ITEM_KEY } from "../../uikit/ListBox/types";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
-import { addPin, getPinnedStrings } from "./pinned-items";
+import { endPinnedDragSession, startPinnedDragSession } from "./pinned-drag-session";
+import { addPin, getPinnedStrings, type PinnedDragData } from "./pinned-items";
 import { getCreatableItems, type CreatableItem } from "./tools-editors-registry";
 
 export interface BuiltinEditorsListProps {
@@ -30,7 +32,32 @@ function createRowTraits(getTrailing: (source: RowSource) => Node | undefined): 
     },
     rowClass: () => "tools-editor-row",
     trailingElement: (source: unknown) => getTrailing(source as RowSource),
+    // The pin button is a per-row action, not row information: showing it on every row at rest
+    // made the whole list look like a column of buttons.
+    trailingVisibility: () => "hover" as const,
     section: (source: unknown) => isSection(source as RowSource),
+    drag: (source: unknown) => {
+        const item = source as RowSource;
+        if (isSection(item)) return { draggable: false };
+
+        return {
+            draggable: true,
+            onDragStart: (event: DragEvent) => {
+                event.stopPropagation();
+                (event.currentTarget as HTMLElement).setAttribute("data-dragging", "");
+                startPinnedDragSession({ kind: "editor", id: item.id }, "pin");
+                const data: PinnedDragData = {
+                    kind: "source",
+                    ref: { kind: "editor", id: item.id },
+                };
+                setTraitDragData(event.dataTransfer, TraitTypeId.PinnedEditor, data);
+            },
+            onDragEnd: (event: DragEvent) => {
+                (event.currentTarget as HTMLElement).removeAttribute("data-dragging");
+                endPinnedDragSession();
+            },
+        };
+    },
     });
 }
 
@@ -119,6 +146,7 @@ export class BuiltinEditorsListView extends VanillaView<BuiltinEditorsListProps>
     }
 
     protected onDispose(): void {
+        endPinnedDragSession();
         for (const button of this.pinButtons.values()) {
             button.dispose();
             button.root.remove();

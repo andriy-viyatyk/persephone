@@ -17,6 +17,10 @@ export type PinnedRef =
     | { kind: "editor"; id: string }
     | { kind: "board"; root: string };
 
+export type PinnedDragData =
+    | { kind: "reorder"; index: number; ref: PinnedRef }
+    | { kind: "source"; ref: PinnedRef };
+
 const BOARD_PREFIX = "board:";
 
 /** Encode a ref to its stored string in the `pinned-editors` array. */
@@ -45,11 +49,39 @@ export function isPinned(ref: PinnedRef): boolean {
     return getPinnedStrings().includes(encodePin(ref));
 }
 
+/** Runtime guard for refs carried in serialized drag payloads. */
+export function isPinnedRef(value: unknown): value is PinnedRef {
+    if (!value || typeof value !== "object") return false;
+    const ref = value as { kind?: unknown; id?: unknown; root?: unknown };
+    if (ref.kind === "editor") return typeof ref.id === "string" && ref.id.length > 0;
+    if (ref.kind === "board") return typeof ref.root === "string" && ref.root.length > 0;
+    return false;
+}
+
 /** Append a ref to the pinned list if not already present. */
 export function addPin(ref: PinnedRef): void {
     const s = encodePin(ref);
     const cur = getPinnedStrings();
     if (!cur.includes(s)) setPinnedStrings([...cur, s]);
+}
+
+/** Insert a ref at an indexed position, moving it when it is already pinned. */
+export function insertPin(ref: PinnedRef, index: number): void {
+    const encoded = encodePin(ref);
+    const original = getPinnedStrings();
+    const current = [...original];
+    const existingIndex = current.indexOf(encoded);
+
+    for (let i = current.length - 1; i >= 0; i--) {
+        if (current[i] === encoded) current.splice(i, 1);
+    }
+
+    const adjustedIndex = existingIndex >= 0 && existingIndex < index ? index - 1 : index;
+    const boundedIndex = Math.max(0, Math.min(adjustedIndex, current.length));
+    current.splice(boundedIndex, 0, encoded);
+    if (current.length !== original.length || current.some((item, i) => item !== original[i])) {
+        setPinnedStrings(current);
+    }
 }
 
 /** Remove a ref from the pinned list (idempotent). */

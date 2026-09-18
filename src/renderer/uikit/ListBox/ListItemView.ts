@@ -120,6 +120,7 @@ export class ListItemView extends VanillaView<ListItemProps> {
             tooltipDelayShow: _tooltipDelayShow,
             trailing,
             trailingElement,
+            trailingVisibility = "always",
             drag,
             variant = "select",
             selectionStyle = "check",
@@ -142,6 +143,7 @@ export class ListItemView extends VanillaView<ListItemProps> {
         setAttr(root, "data-name", name);
         setAttr(root, "id", id);
         root.dataset.variant = variant;
+        root.dataset.trailingVisibility = trailingVisibility;
         root.dataset.selectionStyle = selectionStyle;
         toggleAttr(root, "data-selected", !!selected);
         toggleAttr(root, "data-active", !!active);
@@ -187,6 +189,7 @@ export class ListItemView extends VanillaView<ListItemProps> {
             tooltipDelayShow: _tooltipDelayShow,
             trailing: _trailing,
             trailingElement: _trailingElement,
+            trailingVisibility: _trailingVisibility,
             drag: _drag,
             variant: _variant,
             selectionStyle: _selectionStyle,

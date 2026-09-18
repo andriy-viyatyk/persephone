@@ -272,6 +272,15 @@ const handleDrop = useCallback((e: React.DragEvent) => {
 
 Some drags reorder items within a single component (tab reorder, grid column reorder, pinned editors). These don't need cross-type drops or trait resolution — the `TraitTypeId` is used only to confirm the drag originated from the right component. No `TraitSet` is registered.
 
+The Tools & Editors pin flow also uses `PinnedEditor` for source drags from built-in rows and
+registered-board leaves. Its serializable payload is discriminated as `{ kind: "source", ref }`
+for a new pin or `{ kind: "reorder", index, ref }` for an existing rail row. Source drags mutate
+the unified pin list only on `drop`, using the current row index or the rail's append position;
+existing rail-row reordering remains live on `dragover`. An app-local document event carries the
+active pinned ref and a `pin`/`unpin` mode because protected `DataTransfer` payloads are not
+available during hover. Only the rail accepts `pin`, and only the Built-in or Registered boards
+tab bodies accept `unpin`.
+
 Example from the native `BrowserTabsPanel.ts`:
 
 ```typescript
@@ -470,7 +479,7 @@ The `LINK`/`FILE_LINK` split keeps each trait single-purpose: identity lives in 
 | `PageTab` | `PageTab` | `PageTab` (reorder) | No |
 | `GridColumn` | `HeaderCell` | `HeaderCell` (reorder) | No |
 | `MenuFolder` | `FolderItem` (sidebar) | `FolderItem` (reorder) | No |
-| `PinnedEditor` | `ToolsEditorsPanel` | `ToolsEditorsPanel` (reorder) | No |
+| `PinnedEditor` | Built-in editor rows, registered-board leaves, and pinned rail rows | Pinned rail (insert/reorder); Built-in and Registered boards tab bodies (unpin) | No |
 | `OsFile` | OS desktop file drag (synthesized in the capture-phase drop handler) | `TreeProviderView` (Mneme tree, link collection import) | Yes — `FILE_LINK` trait |
 | `MnemeLink` | `TreeProviderView` (Mneme tree) | `TreeProviderView` (Mneme tree) | Yes — `LINK` + `FILE_LINK` traits |
 

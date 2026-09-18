@@ -17,7 +17,8 @@ import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { TagView } from "../../uikit/Tag/TagView";
 import { createTextElement } from "../../uikit/Text/text-style";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
-import { addPin, decodePin, getPinnedStrings, removePin } from "./pinned-items";
+import { endPinnedDragSession, startPinnedDragSession } from "./pinned-drag-session";
+import { addPin, decodePin, getPinnedStrings, removePin, type PinnedDragData } from "./pinned-items";
 
 export interface TrustedBoardsListProps {
     onClose?: () => void;
@@ -66,6 +67,7 @@ export class TrustedBoardsListView extends VanillaView<TrustedBoardsListProps> {
     }
 
     protected onDispose(): void {
+        endPinnedDragSession();
         this.alive = false;
         for (const record of this.trailingRecords.values()) record.panel?.remove();
         this.trailingRecords.clear();
@@ -108,6 +110,15 @@ export class TrustedBoardsListView extends VanillaView<TrustedBoardsListProps> {
         const ref = { kind: "board" as const, root };
         if (this.pinnedRoots.has(root)) removePin(ref);
         else addPin(ref);
+    };
+
+    private readonly getBoardDragData = (root: string): PinnedDragData => ({
+        kind: "source",
+        ref: { kind: "board", root },
+    });
+
+    private readonly onBoardDragStart = (root: string): void => {
+        startPinnedDragSession({ kind: "board", root }, "pin");
     };
 
     private readonly removeBoard = async (root: string): Promise<void> => {
@@ -234,6 +245,8 @@ export class TrustedBoardsListView extends VanillaView<TrustedBoardsListProps> {
             name: "sidebar-trusted-boards-list",
             boards: boardTrust.listPaths(),
             onOpenBoard: this.openBoard,
+            getBoardDragData: this.getBoardDragData,
+            onBoardDragStart: this.onBoardDragStart,
             trailingVisible: this.trailingVisible,
             trailingElement: this.trailingElement,
             getBoardContextMenu: this.getBoardContextMenu,

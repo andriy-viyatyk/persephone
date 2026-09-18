@@ -117,6 +117,22 @@
     }
 
     /*
+     * Hover-reveal trailing, matching `TreeItem`'s `trailingVisibility`. The opacity sits on the
+     * host's children rather than on the host itself: the trailing host is `display: contents`, so
+     * it generates no box of its own and an opacity on it would do nothing. `:focus-within` keeps
+     * a tabbed-to action button visible.
+     */
+    [data-type="list-item"][data-trailing-visibility="hover"] > [data-part="trailing"] > * {
+        opacity: 0;
+        transition: opacity 80ms ease;
+    }
+
+    [data-type="list-item"][data-trailing-visibility="hover"]:hover > [data-part="trailing"] > *,
+    [data-type="list-item"][data-trailing-visibility="hover"]:focus-within > [data-part="trailing"] > * {
+        opacity: 1;
+    }
+
+    /*
      * The leading checkbox of a `checkbox` row — translated from MultiListBox's `ItemRow`
      * `[data-part='check']` block, and shaped like `Checkbox.css`, which expresses the same look.
      *

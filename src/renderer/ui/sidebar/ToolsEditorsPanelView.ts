@@ -1,4 +1,5 @@
 import { pagesModel } from "../../api/pages";
+import { TraitTypeId, getTraitDragData, hasTraitDragData } from "../../core/traits";
 import { IconButtonView } from "../../uikit/IconButton/IconButtonView";
 import {
     SegmentedControlView,
@@ -10,6 +11,12 @@ import { BuiltinEditorsListView } from "./BuiltinEditorsListView";
 import { TrustedBoardsListView } from "./TrustedBoardsListView";
 import { TrustedToolsListView } from "./TrustedToolsListView";
 import type { HubTab } from "../../editors/tools-hub";
+import {
+    PINNED_DRAG_SESSION_EVENT,
+    endPinnedDragSession,
+    type PinnedDragSessionDetail,
+} from "./pinned-drag-session";
+import { encodePin, isPinnedRef, removePin, type PinnedRef } from "./pinned-items";
 import "./ToolsEditorsPanel.css";
 
 type PanelTab = "editors" | "boards" | "tools";
@@ -28,6 +35,7 @@ export class ToolsEditorsPanelView extends VanillaView<ToolsEditorsPanelProps> {
     private readonly onTabChange = (value: string): void => {
         const next = value as PanelTab;
         if (next === this.tab) return;
+        this.clearUnpinTarget();
         this.tab = next;
         this.tabsProps.value = this.tab;
         this.tabs.update(this.tabsProps);
@@ -52,6 +60,7 @@ export class ToolsEditorsPanelView extends VanillaView<ToolsEditorsPanelProps> {
     private readonly tabs: SegmentedControlView;
     private bodyView: VanillaView<{ onClose?: () => void }> | undefined;
     private previousOnClose: (() => void) | undefined;
+    private unpinSourceRef: PinnedRef | undefined;
 
     public constructor(props: ToolsEditorsPanelProps) {
         super(props);
@@ -72,6 +81,16 @@ export class ToolsEditorsPanelView extends VanillaView<ToolsEditorsPanelProps> {
         this.header.dataset.part = "header";
         this.tabsHost.dataset.part = "tabs";
         this.body.dataset.part = "body";
+        this.listen(this.body, "dragenter", (event) => this.onBodyDragEnter(event));
+        this.listen(this.body, "dragover", (event) => this.onBodyDragOver(event));
+        this.listen(this.body, "dragleave", (event) => this.onBodyDragLeave(event));
+        this.listen(this.body, "drop", (event) => this.onBodyDrop(event));
+        const sessionListener = (event: Event): void => {
+            this.onPinnedDragSession(event as CustomEvent<PinnedDragSessionDetail>);
+        };
+        document.addEventListener(PINNED_DRAG_SESSION_EVENT, sessionListener);
+        this.own(() => document.removeEventListener(PINNED_DRAG_SESSION_EVENT, sessionListener));
+        this.own(() => this.clearUnpinTarget());
         this.root.append(this.header, this.pinned.root, this.tabsHost, this.body);
 
         this.child(this.openButton).mount();
@@ -80,6 +99,10 @@ export class ToolsEditorsPanelView extends VanillaView<ToolsEditorsPanelProps> {
         this.child(this.tabs).mount();
         this.tabsHost.append(this.tabs.root);
         this.mountBody();
+    }
+
+    protected onDispose(): void {
+        this.clearUnpinTarget();
     }
 
     protected onUpdate(props: ToolsEditorsPanelProps): void {
@@ -106,4 +129,65 @@ export class ToolsEditorsPanelView extends VanillaView<ToolsEditorsPanelProps> {
         void pagesModel.showToolsHubPage({ tab: panelTabToHubTab(this.tab) });
         this.props.onClose?.();
     }
+
+    private isAcceptedUnpinTarget(): boolean {
+        return this.unpinSourceRef !== undefined && (this.tab === "editors" || this.tab === "boards");
+    }
+
+    private onPinnedDragSession(event: CustomEvent<PinnedDragSessionDetail>): void {
+        this.unpinSourceRef = event.detail.ref !== null && event.detail.mode === "unpin"
+            ? event.detail.ref
+            : undefined;
+        if (!this.isAcceptedUnpinTarget()) this.clearUnpinTarget();
+    }
+
+    private onBodyDragEnter(event: DragEvent): void {
+        if (!this.isAcceptedUnpinTarget() || !hasTraitDragData(event.dataTransfer)) return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect = "move";
+        this.body.setAttribute("data-unpin-target", "");
+    }
+
+    private onBodyDragOver(event: DragEvent): void {
+        if (!this.isAcceptedUnpinTarget() || !hasTraitDragData(event.dataTransfer)) return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect = "move";
+        this.body.setAttribute("data-unpin-target", "");
+    }
+
+    private onBodyDragLeave(event: DragEvent): void {
+        if (event.relatedTarget instanceof Node && this.body.contains(event.relatedTarget)) return;
+        this.clearUnpinTarget();
+    }
+
+    private onBodyDrop(event: DragEvent): void {
+        if (!this.isAcceptedUnpinTarget()) return;
+        event.preventDefault();
+        event.stopPropagation();
+        const sourceRef = this.unpinSourceRef;
+        const payload = getTraitDragData(event.dataTransfer);
+        this.clearUnpinTarget();
+        endPinnedDragSession();
+        const ref = getReorderedPinnedRef(payload);
+        if (!sourceRef || !ref || encodePin(sourceRef) !== encodePin(ref)) return;
+        removePin(ref);
+    }
+
+    private clearUnpinTarget(): void {
+        this.body.removeAttribute("data-unpin-target");
+    }
+}
+
+function getReorderedPinnedRef(payload: ReturnType<typeof getTraitDragData>): PinnedRef | undefined {
+    if (!payload || payload.typeId !== TraitTypeId.PinnedEditor) return undefined;
+    const data = payload.data;
+    if (!data || typeof data !== "object") return undefined;
+    const candidate = data as { kind?: unknown; index?: unknown; ref?: unknown };
+    if (candidate.kind !== "reorder"
+        || typeof candidate.index !== "number"
+        || !Number.isInteger(candidate.index)
+        || candidate.index < 0) {
+        return undefined;
+    }
+    return isPinnedRef(candidate.ref) ? candidate.ref : undefined;
 }

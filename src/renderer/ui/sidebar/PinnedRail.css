@@ -32,9 +32,33 @@
         letter-spacing: 0.5px;
     }
 
+    /* `flex: 1` so the empty area below the last row belongs to the scroll box and can take a
+       drag. Sized to content, that space fell to the rail root instead and nothing accepted a
+       drop there, which made the last position unreachable. */
     [data-type="tools-editors-pinned"] > [data-part="scroll"] {
+        flex: 1 1 auto;
         min-height: 0;
         overflow-y: auto;
+    }
+
+    [data-type="tools-editors-pinned"] > [data-part="scroll"]:empty {
+        min-height: var(--size-control-md, 26px);
+    }
+
+    [data-type="tools-editors-pinned"] > [data-part="scroll"][data-drag-over] {
+        border-top: 2px solid var(--color-border-active, currentColor);
+    }
+
+    [data-type="tools-hub"] [data-part="body"][data-unpin-target],
+    [data-type="tools-editors-panel"] > [data-part="body"][data-unpin-target] {
+        outline: 2px solid var(--color-border-active);
+        outline-offset: -2px;
+    }
+
+    /* Append: a line under the last row. The rows are `border-box`, so this does not reflow. */
+    .tools-editor-row[data-drag-over-end],
+    .tools-board-row[data-drag-over-end] {
+        border-bottom: 2px solid var(--color-border-active);
     }
 
     .tools-editor-row,

@@ -1,6 +1,7 @@
 import type { MenuItem } from "../../uikit/Menu";
 import type { SlotContent } from "../../uikit/shared/fill-slot";
 import type { SlotText } from "../../uikit/shared/slots";
+import { TraitTypeId } from "../../core/traits";
 import { TreeView } from "../../uikit/Tree/TreeView";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { createFolderIconElement } from "../../components/icons/icon-elements";
@@ -18,6 +19,8 @@ export interface BoardsTreeViewProps {
     emptyMessage?: SlotText | Node;
     renderTrailing?: (root: string) => SlotContent;
     trailingElement?: (root: string) => Node | undefined;
+    getBoardDragData?: (root: string) => unknown | null;
+    onBoardDragStart?: (root: string, event: DragEvent) => void;
 }
 
 export class BoardsTreeView extends VanillaView<BoardsTreeViewProps> {
@@ -56,6 +59,17 @@ export class BoardsTreeView extends VanillaView<BoardsTreeViewProps> {
         node.kind === "board" && node.root
             ? this.props.trailingElement?.(node.root)
             : undefined;
+    /** Bound once, like every other callback here: `treeProps()` is on the update path, and a
+     *  fresh identity per pump is the props-pump trap the uikit rules call out. */
+    private readonly getDragData = (node: BoardTreeNode): unknown | null =>
+        node.kind === "board" && node.root
+            ? this.props.getBoardDragData?.(node.root) ?? null
+            : null;
+    /** Fires for folder rows too, hence the `board` guard — only a board leaf announces a pin drag. */
+    private readonly onDragStartOverride = (node: BoardTreeNode, _level: number, event: DragEvent): boolean => {
+        if (node.kind === "board" && node.root) this.props.onBoardDragStart?.(node.root, event);
+        return false;
+    };
     private readonly getTrailingVisibility = (node: BoardTreeNode): "always" | "hover" =>
         node.kind === "board" && node.root && this.props.trailingVisible
             && !this.props.trailingVisible(node.root)
@@ -109,6 +123,11 @@ export class BoardsTreeView extends VanillaView<BoardsTreeViewProps> {
             activeIndex: this.activeIndex,
             onActiveChange: this.handleActiveChange,
             onChange: this.handleChange,
+            // Gated on the opt-in prop: `BoardsTreeView` also renders the explorer's Boards panel
+            // and the board toolbar, and neither should become a pin drag source.
+            traitTypeId: this.props.getBoardDragData ? TraitTypeId.PinnedEditor : undefined,
+            getDragData: this.props.getBoardDragData ? this.getDragData : undefined,
+            onDragStartOverride: this.props.getBoardDragData ? this.onDragStartOverride : undefined,
             getContextMenu: this.getContextMenu,
             getIconElement: this.getIconElement,
             renderTrailing: this.renderTrailing,

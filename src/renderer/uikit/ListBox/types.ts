@@ -28,6 +28,8 @@ export interface IListBoxItem {
     trailing?: SlotContent;
     /** Direct DOM trailing content supplied by a vanilla parent. */
     trailingElement?: Node;
+    /** `"hover"` hides the trailing content until the row is hovered or focused. Default `"always"`. */
+    trailingVisibility?: "always" | "hover";
     /** Native drag handlers for an ordinary row. */
     drag?: ListItemDragProps;
     /** Disables this item without affecting siblings. */

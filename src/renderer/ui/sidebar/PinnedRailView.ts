@@ -3,7 +3,7 @@ import { settings } from "../../api/settings";
 import { createLinkData } from "../../../shared/link-data";
 import { encodePersephoneBoardLink } from "../../content/persephone-board-link";
 import { fpBasename } from "../../core/utils/file-path";
-import { TraitTypeId, hasTraitDragData, setTraitDragData } from "../../core/traits";
+import { TraitTypeId, getTraitDragData, hasTraitDragData, setTraitDragData } from "../../core/traits";
 import { createIconElement, createIconPlaceholderElement, isIconName } from "../../uikit/shared/slots";
 import { fillSlot } from "../../uikit/shared/fill-slot";
 import { KeyedList } from "../../uikit/shared/keyed-list";
@@ -13,9 +13,17 @@ import { createBoardGlyphElement } from "../../editors/board/board-glyph-element
 import { subscribeBoardIconChanges } from "../../editors/board/board-icon-cache";
 import { getCreatableItems, type CreatableItem } from "./tools-editors-registry";
 import {
+    PINNED_DRAG_SESSION_EVENT,
+    endPinnedDragSession,
+    startPinnedDragSession,
+    type PinnedDragSessionDetail,
+} from "./pinned-drag-session";
+import {
     decodePin,
     encodePin,
     getPinnedStrings,
+    insertPin,
+    isPinnedRef,
     movePin,
     removePin,
     type PinnedRef,
@@ -47,6 +55,10 @@ export class PinnedRailView extends VanillaView<PinnedRailProps> {
     private readonly scroll = document.createElement("div");
     private readonly rows = new WeakMap<HTMLDivElement, RowRecord>();
     private list: KeyedList<PinnedRow, string, HTMLDivElement> | undefined;
+    private sourceSessionActive = false;
+    private activeSourceRef: PinnedRef | undefined;
+    private activeSourceMode: "pin" | "unpin" | undefined;
+    private foreignDropIndex: number | undefined;
 
     public constructor(props: PinnedRailProps) {
         super(props);
@@ -62,6 +74,22 @@ export class PinnedRailView extends VanillaView<PinnedRailProps> {
         this.scroll.dataset.part = "scroll";
         this.root.append(header, this.scroll);
 
+        // Bound to the rail root, not the scroll box: the empty area below the last row, the
+        // "Pinned" header, and the scroll box itself must all append. A row consumes its own
+        // foreign drag with `stopPropagation()`, and `isBackgroundTarget` rejects anything that
+        // did reach here from inside a row, so the two paths never both handle one event.
+        this.listen(this.root, "dragenter", (event) => this.onBackgroundDragEnter(event));
+        this.listen(this.root, "dragover", (event) => this.onBackgroundDragOver(event));
+        this.listen(this.root, "dragleave", (event) => this.onBackgroundDragLeave(event));
+        this.listen(this.root, "drop", (event) => this.onBackgroundDrop(event));
+        this.listen(this.root, "dragend", () => this.clearDragFlags());
+
+        const sessionListener = (event: Event): void => {
+            this.onDragSessionEvent(event as CustomEvent<PinnedDragSessionDetail>);
+        };
+        document.addEventListener(PINNED_DRAG_SESSION_EVENT, sessionListener);
+        this.own(() => document.removeEventListener(PINNED_DRAG_SESSION_EVENT, sessionListener));
+
         this.list = new KeyedList<PinnedRow, string, HTMLDivElement>(this.scroll, {
             keyOf: (row) => encodePin(row.ref),
             create: (row) => this.createRow(row),
@@ -72,10 +100,10 @@ export class PinnedRailView extends VanillaView<PinnedRailProps> {
         this.own(subscribeBoardIconChanges(() => this.refresh()));
         this.own(() => {
             draggingPinnedIndex = -1;
-            this.scroll.querySelectorAll<HTMLElement>("[data-dragging], [data-drag-over]").forEach((row) => {
-                row.removeAttribute("data-dragging");
-                row.removeAttribute("data-drag-over");
-            });
+            this.sourceSessionActive = false;
+            this.activeSourceRef = undefined;
+            this.activeSourceMode = undefined;
+            this.clearDragFlags();
         });
         const settingsSubscription = settings.onChanged.subscribe(({ key }) => {
             if (key === "browser-profiles" || key === "pinned-editors") this.refresh();
@@ -106,7 +134,7 @@ export class PinnedRailView extends VanillaView<PinnedRailProps> {
             } satisfies PinnedRow;
         }).filter((row) => row.ref.kind === "board" || row.item !== undefined);
 
-        this.root.hidden = storedPins.length === 0;
+        this.root.hidden = storedPins.length === 0 && !this.sourceSessionActive;
         this.list?.update(rows);
     }
 
@@ -148,8 +176,8 @@ export class PinnedRailView extends VanillaView<PinnedRailProps> {
         registerListener("dragend", () => this.onDragEnd());
         registerListener("dragenter", (event) => this.onDragEnter(row, event));
         registerListener("dragover", (event) => this.onDragOver(row, event));
-        registerListener("dragleave", () => this.setDragOver(row, false));
-        registerListener("drop", (event) => this.onDrop(event));
+        registerListener("dragleave", (event) => this.onDragLeave(row, event));
+        registerListener("drop", (event) => this.onDrop(row, event));
         record.listenersCleanup = () => releases.forEach((release) => release());
         return row;
     }
@@ -210,31 +238,54 @@ export class PinnedRailView extends VanillaView<PinnedRailProps> {
         const record = this.rows.get(row);
         if (!record) return;
         draggingPinnedIndex = record.rowData.index;
+        const ref = record.rowData.ref;
+        startPinnedDragSession(ref, "unpin");
         setTraitDragData(event.dataTransfer, TraitTypeId.PinnedEditor, {
+            kind: "reorder",
             index: record.rowData.index,
+            ref,
         });
         row.setAttribute("data-dragging", "");
     }
 
     private onDragEnd(): void {
         draggingPinnedIndex = -1;
+        endPinnedDragSession();
         this.clearDragFlags();
     }
 
     private onDragEnter(row: HTMLDivElement, event: DragEvent): void {
         const record = this.rows.get(row);
-        if (!record || !hasTraitDragData(event.dataTransfer) ||
+        if (!record) return;
+        if (this.isForeignSourceDrag(event)) {
+            event.preventDefault();
+            event.stopPropagation();
+            event.dataTransfer.dropEffect = "move";
+            this.setForeignDropTarget(row, record.rowData.index);
+            return;
+        }
+        if (!hasTraitDragData(event.dataTransfer) ||
             draggingPinnedIndex < 0 || draggingPinnedIndex === record.rowData.index) return;
         event.preventDefault();
+        event.stopPropagation();
         event.dataTransfer.dropEffect = "move";
         row.setAttribute("data-drag-over", "");
     }
 
     private onDragOver(row: HTMLDivElement, event: DragEvent): void {
         const record = this.rows.get(row);
-        if (!record || !hasTraitDragData(event.dataTransfer) ||
+        if (!record) return;
+        if (this.isForeignSourceDrag(event)) {
+            event.preventDefault();
+            event.stopPropagation();
+            event.dataTransfer.dropEffect = "move";
+            this.setForeignDropTarget(row, record.rowData.index);
+            return;
+        }
+        if (!hasTraitDragData(event.dataTransfer) ||
             draggingPinnedIndex < 0 || draggingPinnedIndex === record.rowData.index) return;
         event.preventDefault();
+        event.stopPropagation();
         event.dataTransfer.dropEffect = "move";
         // Read the hover index BEFORE moving. `movePin` persists synchronously, which re-runs
         // `refresh()` and replaces `record.rowData` with this row's post-move data — so reading
@@ -246,9 +297,98 @@ export class PinnedRailView extends VanillaView<PinnedRailProps> {
         draggingPinnedIndex = hoverIndex;
     }
 
-    private onDrop(event: DragEvent): void {
+    private onDragLeave(row: HTMLDivElement, event: DragEvent): void {
+        if (event.relatedTarget instanceof Node && row.contains(event.relatedTarget)) return;
+        this.setDragOver(row, false);
+        const record = this.rows.get(row);
+        if (record?.rowData.index === this.foreignDropIndex) this.foreignDropIndex = undefined;
+    }
+
+    private onDrop(row: HTMLDivElement, event: DragEvent): void {
+        const record = this.rows.get(row);
+        if (this.isForeignSourceDrag(event)) {
+            event.preventDefault();
+            event.stopPropagation();
+            this.finishForeignDrop(event, record?.rowData.index ?? this.foreignDropIndex);
+            return;
+        }
         event.preventDefault();
+        event.stopPropagation();
         this.clearDragFlags();
+    }
+
+    /** True when the event landed on the rail itself rather than on one of its pinned rows. */
+    private isBackgroundTarget(event: DragEvent): boolean {
+        const target = event.target;
+        if (!(target instanceof Element)) return false;
+        return target.closest(".tools-editor-row, .tools-board-row") === null;
+    }
+
+    private onBackgroundDragEnter(event: DragEvent): void {
+        if (!this.isBackgroundTarget(event) || !this.isForeignSourceDrag(event)) return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect = "move";
+        this.setBackgroundDropTarget();
+    }
+
+    private onBackgroundDragOver(event: DragEvent): void {
+        if (!this.isBackgroundTarget(event) || !this.isForeignSourceDrag(event)) return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect = "move";
+        this.setBackgroundDropTarget();
+    }
+
+    private onBackgroundDragLeave(event: DragEvent): void {
+        if (event.relatedTarget instanceof Node && this.root.contains(event.relatedTarget)) return;
+        this.clearDragFlags();
+    }
+
+    private onBackgroundDrop(event: DragEvent): void {
+        if (!this.isBackgroundTarget(event) || !this.isForeignSourceDrag(event)) return;
+        event.preventDefault();
+        event.stopPropagation();
+        this.finishForeignDrop(event, getPinnedStrings().length);
+    }
+
+    private onDragSessionEvent(event: CustomEvent<PinnedDragSessionDetail>): void {
+        const ref = event.detail?.ref;
+        this.sourceSessionActive = ref !== null && event.detail.mode === "pin";
+        this.activeSourceRef = ref ?? undefined;
+        this.activeSourceMode = ref === null ? undefined : event.detail.mode;
+        if (!this.sourceSessionActive) this.clearDragFlags();
+        this.refresh();
+    }
+
+    private isForeignSourceDrag(event: DragEvent): boolean {
+        return this.sourceSessionActive
+            && this.activeSourceMode === "pin"
+            && this.activeSourceRef !== undefined
+            && hasTraitDragData(event.dataTransfer);
+    }
+
+    private finishForeignDrop(event: DragEvent, dropIndex: number | undefined): void {
+        const payload = getTraitDragData(event.dataTransfer);
+        this.clearDragFlags();
+        endPinnedDragSession();
+        const ref = getSourceRef(payload);
+        if (!ref || dropIndex === undefined || !Number.isInteger(dropIndex) || dropIndex < 0) return;
+        insertPin(ref, dropIndex);
+    }
+
+    private setForeignDropTarget(row: HTMLDivElement, index: number): void {
+        this.clearDropIndicators();
+        this.foreignDropIndex = index;
+        row.setAttribute("data-drag-over", "");
+    }
+
+    private setBackgroundDropTarget(): void {
+        this.clearDropIndicators();
+        this.foreignDropIndex = getPinnedStrings().length;
+        // "Append" reads as a line under the last row, not as the row indicator's top border.
+        // With no rows at all there is nothing to underline, so the empty scroll box carries it.
+        const lastRow = this.scroll.lastElementChild;
+        if (lastRow) lastRow.setAttribute("data-drag-over-end", "");
+        else this.scroll.setAttribute("data-drag-over", "");
     }
 
     private setDragOver(row: HTMLDivElement, active: boolean): void {
@@ -257,9 +397,30 @@ export class PinnedRailView extends VanillaView<PinnedRailProps> {
     }
 
     private clearDragFlags(): void {
-        this.scroll.querySelectorAll<HTMLElement>("[data-dragging], [data-drag-over]").forEach((row) => {
+        this.scroll.querySelectorAll<HTMLElement>("[data-dragging]").forEach((row) => {
             row.removeAttribute("data-dragging");
-            row.removeAttribute("data-drag-over");
         });
+        this.clearDropIndicators();
+        this.foreignDropIndex = undefined;
     }
+
+    private clearDropIndicators(): void {
+        this.scroll.querySelectorAll<HTMLElement>("[data-drag-over], [data-drag-over-end]").forEach((row) => {
+            row.removeAttribute("data-drag-over");
+            row.removeAttribute("data-drag-over-end");
+        });
+        this.scroll.removeAttribute("data-drag-over");
+    }
+}
+
+function getSourceRef(payload: ReturnType<typeof getTraitDragData>): PinnedRef | undefined {
+    if (!payload || payload.typeId !== TraitTypeId.PinnedEditor) return undefined;
+    if (!isSourceData(payload.data)) return undefined;
+    return isPinnedRef(payload.data.ref) ? payload.data.ref : undefined;
+}
+
+function isSourceData(value: unknown): value is { kind: "source"; ref: unknown } {
+    if (!value || typeof value !== "object") return false;
+    return (value as { kind?: unknown }).kind === "source"
+        && "ref" in value;
 }

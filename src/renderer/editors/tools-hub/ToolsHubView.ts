@@ -1,10 +1,17 @@
 import type { EditorModel } from "../base/EditorModel";
 import { ToolsHubEditor, type HubTab } from "./ToolsHubEditor";
 import { SearchBoardsTabView } from "./SearchBoardsTab";
+import { TraitTypeId, getTraitDragData, hasTraitDragData } from "../../core/traits";
 import { BuiltinEditorsListView } from "../../ui/sidebar/BuiltinEditorsListView";
 import { PinnedRailView } from "../../ui/sidebar/PinnedRailView";
 import { TrustedBoardsListView } from "../../ui/sidebar/TrustedBoardsListView";
 import { TrustedToolsListView } from "../../ui/sidebar/TrustedToolsListView";
+import {
+    PINNED_DRAG_SESSION_EVENT,
+    endPinnedDragSession,
+    type PinnedDragSessionDetail,
+} from "../../ui/sidebar/pinned-drag-session";
+import { encodePin, isPinnedRef, removePin, type PinnedRef } from "../../ui/sidebar/pinned-items";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { SegmentedControlView } from "../../uikit/SegmentedControl/SegmentedControlView";
 import { VanillaView, type IOwnedView } from "../../uikit/shared/vanilla-view";
@@ -27,6 +34,7 @@ export class ToolsHubEditorView extends VanillaView<{ model: EditorModel }> {
     private body: HTMLDivElement | undefined;
     private activeBody: IOwnedView | undefined;
     private activeTab: HubTab | undefined;
+    private unpinSourceRef: PinnedRef | undefined;
     private modelSubscription: (() => void) | undefined;
 
     public constructor(props: { model: EditorModel }) {
@@ -46,6 +54,17 @@ export class ToolsHubEditorView extends VanillaView<{ model: EditorModel }> {
         const main = createPanelElement({ direction: "column", flex: 1, minWidth: 0, minHeight: 0 });
         const tabsHost = createPanelElement({ direction: "row", paddingX: "lg", paddingY: "md", shrink: false });
         this.body = createPanelElement({ direction: "column", flex: 1, minHeight: 0 });
+        this.body.dataset.part = "body";
+        this.listen(this.body, "dragenter", (event) => this.onBodyDragEnter(event));
+        this.listen(this.body, "dragover", (event) => this.onBodyDragOver(event));
+        this.listen(this.body, "dragleave", (event) => this.onBodyDragLeave(event));
+        this.listen(this.body, "drop", (event) => this.onBodyDrop(event));
+        const sessionListener = (event: Event): void => {
+            this.onPinnedDragSession(event as CustomEvent<PinnedDragSessionDetail>);
+        };
+        document.addEventListener(PINNED_DRAG_SESSION_EVENT, sessionListener);
+        this.own(() => document.removeEventListener(PINNED_DRAG_SESSION_EVENT, sessionListener));
+        this.own(() => this.clearUnpinTarget());
         this.tabs = this.child(new SegmentedControlView(this.tabProps()));
         tabsHost.append(this.tabs.root);
         main.append(tabsHost, this.body);
@@ -82,6 +101,7 @@ export class ToolsHubEditorView extends VanillaView<{ model: EditorModel }> {
     }
 
     protected onDispose(): void {
+        this.clearUnpinTarget();
         this.activeBody = undefined;
         this.activeTab = undefined;
         this.body?.replaceChildren();
@@ -104,6 +124,7 @@ export class ToolsHubEditorView extends VanillaView<{ model: EditorModel }> {
     private applyTab(tab: HubTab): void {
         this.tabs?.update({ ...this.tabProps(), value: tab });
         if (tab === this.activeTab) return;
+        this.clearUnpinTarget();
         this.mountBody(tab);
     }
 
@@ -121,4 +142,66 @@ export class ToolsHubEditorView extends VanillaView<{ model: EditorModel }> {
         view.mount();
         this.activeTab = tab;
     }
+
+    private isAcceptedUnpinTarget(): boolean {
+        return this.unpinSourceRef !== undefined
+            && (this.activeTab === "builtin" || this.activeTab === "boards");
+    }
+
+    private onPinnedDragSession(event: CustomEvent<PinnedDragSessionDetail>): void {
+        this.unpinSourceRef = event.detail.ref !== null && event.detail.mode === "unpin"
+            ? event.detail.ref
+            : undefined;
+        if (!this.isAcceptedUnpinTarget()) this.clearUnpinTarget();
+    }
+
+    private onBodyDragEnter(event: DragEvent): void {
+        if (!this.isAcceptedUnpinTarget() || !hasTraitDragData(event.dataTransfer)) return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect = "move";
+        this.body?.setAttribute("data-unpin-target", "");
+    }
+
+    private onBodyDragOver(event: DragEvent): void {
+        if (!this.isAcceptedUnpinTarget() || !hasTraitDragData(event.dataTransfer)) return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect = "move";
+        this.body?.setAttribute("data-unpin-target", "");
+    }
+
+    private onBodyDragLeave(event: DragEvent): void {
+        if (event.relatedTarget instanceof Node && this.body?.contains(event.relatedTarget)) return;
+        this.clearUnpinTarget();
+    }
+
+    private onBodyDrop(event: DragEvent): void {
+        if (!this.isAcceptedUnpinTarget()) return;
+        event.preventDefault();
+        event.stopPropagation();
+        const sourceRef = this.unpinSourceRef;
+        const payload = getTraitDragData(event.dataTransfer);
+        this.clearUnpinTarget();
+        endPinnedDragSession();
+        const ref = getReorderedPinnedRef(payload);
+        if (!sourceRef || !ref || encodePin(sourceRef) !== encodePin(ref)) return;
+        removePin(ref);
+    }
+
+    private clearUnpinTarget(): void {
+        this.body?.removeAttribute("data-unpin-target");
+    }
+}
+
+function getReorderedPinnedRef(payload: ReturnType<typeof getTraitDragData>): PinnedRef | undefined {
+    if (!payload || payload.typeId !== TraitTypeId.PinnedEditor) return undefined;
+    const data = payload.data;
+    if (!data || typeof data !== "object") return undefined;
+    const candidate = data as { kind?: unknown; index?: unknown; ref?: unknown };
+    if (candidate.kind !== "reorder"
+        || typeof candidate.index !== "number"
+        || !Number.isInteger(candidate.index)
+        || candidate.index < 0) {
+        return undefined;
+    }
+    return isPinnedRef(candidate.ref) ? candidate.ref : undefined;
 }

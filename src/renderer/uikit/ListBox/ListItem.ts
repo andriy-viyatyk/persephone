@@ -42,6 +42,13 @@ export interface ListItemProps
     trailing?: SlotContent;
     /** Direct DOM trailing content supplied by a vanilla parent. */
     trailingElement?: Node;
+    /**
+     * Whether the trailing content is visible at rest. `"always"` (default) keeps it painted,
+     * which is what a status badge or the default selection icon wants. `"hover"` hides it until
+     * the row is hovered or holds focus — for a per-row action button that would otherwise shout
+     * on every row. Mirrors `TreeItem`'s prop of the same name.
+     */
+    trailingVisibility?: "always" | "hover";
     /** Native drag handlers for an ordinary row. */
     drag?: ListItemDragProps;
     /**

@@ -45,6 +45,10 @@ Release notes and changelog for Persephone (formerly js-notepad).
   **Snip Persephone**, and live switches for MCP, Mneme, and the clipboard listener. Service rows
   toggle in place, so the popover stays open while you change more than one setting; the snip actions
   still close it after activation.
+- **Drag-and-drop pinning:** In **Tools & Editors**, hover a built-in editor row to reveal **Pin to
+  menu**, or drag a built-in editor or registered board to the **Pinned** rail. Drop before a pinned
+  row to place it there, or on the rail background to append it. Drag a pinned item onto the
+  **Built-in Editors** or **Registered boards** tab body to unpin it.
 
 ### Improvements
 
