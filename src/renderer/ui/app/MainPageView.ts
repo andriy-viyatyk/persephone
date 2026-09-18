@@ -1,6 +1,4 @@
 import { IconButtonView } from "../../uikit/IconButton/IconButtonView";
-import { openMenu, type MenuHandle } from "../../uikit/Menu/attach-menu";
-import type { MenuItem } from "../../uikit/Menu/types";
 import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { createIconElement } from "../../uikit/shared/slots";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
@@ -14,12 +12,8 @@ import { errMessage } from "../../../shared/utils";
 import { PageTabsView } from "../tabs/PageTabsView";
 import { MenuBarView } from "../sidebar/MenuBarView";
 import { PagesView } from "./PagesView";
+import { HeaderQuickSettingsPopoverView } from "./HeaderQuickSettingsPopover";
 import "./MainPage.css";
-
-const SNIP_MENU_ITEMS: MenuItem[] = [
-    { label: "Snip Screen", icon: createIconElement("snip"), onClick: (): void => { void runSnip(true); } },
-    { label: "Snip Persephone", icon: createIconElement("snip"), onClick: (): void => { void runSnip(false); } },
-];
 
 async function runSnip(hideWindows: boolean): Promise<void> {
     try {
@@ -56,7 +50,16 @@ export class MainPageView extends VanillaView<object> {
     private readonly snipButton = document.createElement("button");
     private readonly toggleMenuBar = (): void => app.window.toggleMenuBar();
     private readonly closeMenuBar = (): void => app.window.menuBar.close();
-    private snipMenu: MenuHandle | undefined;
+    private quickSettingsOpen = false;
+    private readonly quickSettingsPopover: HeaderQuickSettingsPopoverView;
+    /** Bound once: the props pump must not hand the popover a fresh callback identity on every
+     *  update (see the props-pump convention in `uikit/CLAUDE.md`). */
+    private readonly runQuickSettingsSnip = (hideWindows: boolean): void => { void runSnip(hideWindows); };
+    private readonly closeQuickSettingsPopover = (): void => {
+        if (!this.quickSettingsOpen) return;
+        this.quickSettingsOpen = false;
+        this.quickSettingsPopover.update(this.quickSettingsPopoverProps());
+    };
 
     public constructor(props: object) {
         super(props);
@@ -65,6 +68,13 @@ export class MainPageView extends VanillaView<object> {
         this.pages = this.child(new PagesView({}));
         this.menuBar = this.child(new MenuBarView({ open: false, onClose: this.closeMenuBar }));
         this.autoloadButton = this.child(new IconButtonView({ name: "autoload-reload", size: "sm", icon: "refresh", title: "Application scripts need to be reloaded. Click to reload.", onClick: () => autoloadService.loadScripts() }));
+        this.quickSettingsPopover = this.child(new HeaderQuickSettingsPopoverView({
+            anchor: this.snipButton,
+            open: false,
+            placement: "bottom-end",
+            onClose: this.closeQuickSettingsPopover,
+            onSnip: this.runQuickSettingsSnip,
+        }));
     }
 
     protected onMount(): void {
@@ -94,12 +104,7 @@ export class MainPageView extends VanillaView<object> {
             (state) => this.updateMneme(state),
         );
         this.bindMenuGlyphToTheme();
-        this.own(() => this.snipMenu?.dispose());
-    }
-
-    protected onDispose(): void {
-        this.snipMenu?.dispose();
-        this.snipMenu = undefined;
+        this.quickSettingsPopover.mount();
     }
 
     /** Retained so the theme binding can rebuild its glyph — see `bindMenuGlyphToTheme`. */
@@ -121,12 +126,13 @@ export class MainPageView extends VanillaView<object> {
         this.statusIndicators.dataset.name = "status-indicators";
         this.snipButton.type = "button";
         this.snipButton.dataset.name = "header-snip-button";
-        this.snipButton.className = "snip-indicator";
-        this.snipButton.title = "Snip screen or Persephone window";
+        this.snipButton.className = "quick-settings-button";
+        this.snipButton.title = "Open quick settings";
         this.snipButton.append(createIconElement("more-horiz", { width: 28, height: 28 }));
         this.listen(this.snipButton, "click", () => this.toggleSnipMenu());
         this.statusIndicators.append(this.snipButton, this.mnemeIndicator, this.mcpIndicator);
         this.header.append(this.statusIndicators);
+        this.root.append(this.quickSettingsPopover.root);
     }
 
     /**
@@ -204,11 +210,23 @@ export class MainPageView extends VanillaView<object> {
     }
 
     private toggleSnipMenu(): void {
-        if (this.snipMenu) {
-            this.snipMenu.dispose();
-            this.snipMenu = undefined;
-            return;
-        }
-        this.snipMenu = openMenu(this.snipButton, { name: "header-snip", items: SNIP_MENU_ITEMS, placement: "bottom-end", onClose: () => { this.snipMenu = undefined; } });
+        this.quickSettingsOpen = !this.quickSettingsOpen;
+        this.quickSettingsPopover.update(this.quickSettingsPopoverProps());
+    }
+
+    private quickSettingsPopoverProps(): {
+        anchor: HTMLElement;
+        open: boolean;
+        placement: "bottom-end";
+        onClose: () => void;
+        onSnip: (hideWindows: boolean) => void;
+    } {
+        return {
+            anchor: this.snipButton,
+            open: this.quickSettingsOpen,
+            placement: "bottom-end",
+            onClose: this.closeQuickSettingsPopover,
+            onSnip: this.runQuickSettingsSnip,
+        };
     }
 }

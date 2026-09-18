@@ -233,6 +233,8 @@ export async function startMcpHttpServer(port?: number): Promise<void> {
 }
 
 export async function stopMcpHttpServer(): Promise<void> {
+    const pending = startPromise;
+    if (pending) await pending.catch((): undefined => undefined);
     if (!httpServer) return;
 
     if (sessionSweepTimer) {

@@ -41,6 +41,10 @@ Release notes and changelog for Persephone (formerly js-notepad).
   including `Ctrl+C` or **Copy** in the Text Editor and copies made inside a Persephone Browser tab—
   are recorded like copies from elsewhere. Capture depends on the copy reaching the Windows clipboard,
   not on which editor or page supplied it.
+- **Quick settings in the header:** Open the **…** button in the header to reach **Snip Screen**,
+  **Snip Persephone**, and live switches for MCP, Mneme, and the clipboard listener. Service rows
+  toggle in place, so the popover stays open while you change more than one setting; the snip actions
+  still close it after activation.
 
 ### Improvements
 
@@ -676,7 +680,7 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### New Features
 
-- **Screen Snip — capture any region from the window header** — A green **…** (three-dot) button in the Persephone window header (just before the Mneme indicator) opens a snip menu with two options:
+- **Screen Snip — capture any region from the window header** — A green **…** (three-dot) button in the Persephone window header (just before the Mneme indicator) opens the capture options with two choices:
 
   - **Snip Screen** — hides all Persephone windows, shows a dimmed overlay across all monitors, and lets you drag-select any region of the desktop. Press Escape or right-click to cancel.
   - **Snip Persephone** — keeps Persephone visible so you can capture its own content (an image, a web page, a diagram shown inside the app). The same drag-select overlay appears, but the app remains on screen.

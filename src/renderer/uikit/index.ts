@@ -27,6 +27,7 @@ export type { InputProps } from "./Input/InputView";
 export type { DateInputProps } from "./DateInput";
 export type { LabelProps } from "./Label";
 export type { CheckboxProps } from "./Checkbox/CheckboxView";
+export type { SwitchProps } from "./Switch";
 export type { DividerProps } from "./Divider";
 export type { DotProps, DotColor } from "./Dot/DotView";
 export type { SegmentedControlProps } from "./SegmentedControl/SegmentedControlView";

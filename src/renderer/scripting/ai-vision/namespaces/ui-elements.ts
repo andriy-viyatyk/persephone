@@ -14,7 +14,7 @@ export const HEADER_ELEMENTS: readonly IAiElementDeclaration[] = [
     { name: "window-toggle", purpose: "Maximizes or restores the application window.", where: "top-right of the header strip, between minimize and close" },
     { name: "window-close", purpose: "Closes the application window.", where: "top-right of the header strip, far-right window control" },
     { name: "status-indicators", purpose: "Contains the shell's optional Snip, Mneme, and MCP indicators.", where: "bottom-right of the header strip" },
-    { name: "header-snip-button", purpose: "Opens the Snip Screen / Snip Persephone capture menu.", where: "bottom-right status cluster, first from the left" },
+    { name: "header-snip-button", purpose: "Opens quick settings with Snip Screen / Snip Persephone actions and service switches.", where: "bottom-right status cluster, first from the left" },
     { name: "mneme-indicator", purpose: "Shows Mneme status and opens its configuration page; only present when Mneme is enabled.", where: "bottom-right status cluster, after Snip, when Mneme is enabled" },
     { name: "mcp-indicator", purpose: "Shows MCP connection status and opens the request log; only present while the MCP server is running.", where: "bottom-right status cluster, after Mneme, when MCP is running" },
 ];

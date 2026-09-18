@@ -21,6 +21,7 @@ import { inputStory }            from "../../uikit/Input/Input.story";
 import { dateInputStory }        from "../../uikit/DateInput/DateInput.story";
 import { labelStory }            from "../../uikit/Label/Label.story";
 import { checkboxStory }         from "../../uikit/Checkbox/Checkbox.story";
+import { switchStory }           from "../../uikit/Switch/Switch.story";
 import { dividerStory }          from "../../uikit/Divider/Divider.story";
 import { dotStory }              from "../../uikit/Dot/Dot.story";
 import { segmentedControlStory } from "../../uikit/SegmentedControl/SegmentedControl.story";
@@ -65,7 +66,7 @@ import { gitTreeStory }          from "../../components/git-tree/GitTree.story";
 export const ALL_STORIES: AnyStory[] = [
     collapsiblePanelStackStory, spacerStory, splitterStory, toolbarStory,
     breadcrumbStory,
-    buttonStory, iconButtonStory, splitButtonStory, inputStory, dateInputStory, labelStory, checkboxStory, dividerStory, dotStory,
+    buttonStory, iconButtonStory, splitButtonStory, inputStory, dateInputStory, labelStory, checkboxStory, switchStory, dividerStory, dotStory,
     segmentedControlStory, radioGroupStory, sliderStory, progressBarStory, spinnerStory, textareaStory, pathInputStory,
     truncatedTextStory,
     tagStory, tagsInputStory,

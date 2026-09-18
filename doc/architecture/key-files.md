@@ -142,6 +142,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Story prop preparation (single path for managed values, empty enum cleanup, synthetic icon controls, and generated children; shared by the live preview and verification) | `/src/renderer/editors/storybook/story-props.ts` |
 | Renderer entry and application composition root (`bootstrap()` initializes services/pages/events, then returns the native `mount(container)` callback) | `/src/renderer.ts`, `/src/renderer/index.ts` |
 | App shell composition root (header strip, tab strip, page host, sidebar, status and overlay composition) | `/src/renderer/ui/app/MainPageView.ts` |
+| Header quick-settings popover (snip actions, live MCP/Mneme/clipboard switches, settings subscription, and focus/dismissal lifecycle) | `/src/renderer/ui/app/HeaderQuickSettingsPopover.ts`, `/src/renderer/ui/app/HeaderQuickSettingsPopover.css` |
 | Native page/editor views (page host, editor dispatch, async editor island, and page-content lifecycle) | `/src/renderer/ui/app/PagesView.ts`, `/src/renderer/ui/app/RenderEditorView.ts`, `/src/renderer/ui/app/AsyncEditorView.ts`, `/src/renderer/ui/app/PageContentView.ts` |
 | Native editor failure view (message + optional stack for failures in the native editor path) | `/src/renderer/ui/app/NativeEditorErrorView.ts` |
 | Native tab strip and tab view (keyed DOM reuse, drag behavior, and activation scroll projection) | `/src/renderer/ui/tabs/PageTabsView.ts`, `/src/renderer/ui/tabs/PageTabView.ts` |
@@ -240,6 +241,7 @@ Related maps: [folder-structure.md](folder-structure.md) for the directory tree,
 | Virtualized tree view (DOM rows, keyed reconciliation, DnD/keyboard integration, and `RenderGrid` integration) | `/src/renderer/uikit/Tree/TreeView.ts` |
 | Dropdown composite views (`Select`, `MultiSelect`, and `Autocomplete`) | `/src/renderer/uikit/Select/SelectView.ts`, `/src/renderer/uikit/MultiSelect/MultiSelectView.ts`, `/src/renderer/uikit/Autocomplete/AutocompleteView.ts` |
 | Native input view (controlled field projection, residual DOM attributes, and targeted live event-prop updates) | `/src/renderer/uikit/Input/InputView.ts` |
+| Controlled accessible switch primitive (role switch, keyboard activation, checked state, and compact size) | `/src/renderer/uikit/Switch/SwitchView.ts`, `/src/renderer/uikit/Switch/Switch.css` |
 | PathInput suggestion field (input model plus suggestion-popover lifecycle; click reopens a closed popover while the field remains focused) | `/src/renderer/uikit/PathInput/PathInputModel.ts`, `/src/renderer/uikit/PathInput/PathInputView.ts` |
 | Tree keyboard interaction (arrow/Home/End/Page/Enter gestures and the transient multi-selection range anchor; selection itself remains controlled by the consumer) | `/src/renderer/uikit/Tree/TreeKeyboardHandler.ts` |
 | Tree trait/native-file drag-and-drop interaction (drag state, nested enter/leave handling, and delayed hover expansion) | `/src/renderer/uikit/Tree/TreeDndModel.ts` |

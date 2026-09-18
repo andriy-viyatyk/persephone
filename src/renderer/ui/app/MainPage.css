@@ -16,8 +16,8 @@
     .app-root button.zoom-indicator { font-size: 12px; padding: 2px 6px; border: none; border-radius: 4px; background-color: var(--color-bg-light); color: var(--color-text-default); cursor: pointer; display: none; }
     .app-root button.zoom-indicator.visible { display: flex; }
     .app-root .status-indicators { position: absolute; bottom: 1px; right: 4px; display: flex; align-items: center; gap: 8px; -webkit-app-region: no-drag; pointer-events: auto; }
-    .app-root .snip-indicator { color: var(--color-misc-green); opacity: 0.85; display: flex; align-items: center; justify-content: center; height: 14px; overflow: hidden; background: none; border: none; padding: 0; line-height: 0; cursor: pointer; }
-    .app-root .snip-indicator:hover { opacity: 1; }
+    .app-root .quick-settings-button { color: var(--color-misc-green); opacity: 0.85; display: flex; align-items: center; justify-content: center; height: 14px; overflow: hidden; background: none; border: none; padding: 0; line-height: 0; cursor: pointer; }
+    .app-root .quick-settings-button:hover { opacity: 1; }
     .app-root .mcp-indicator, .app-root .mneme-indicator { font-size: 9px; line-height: 1; color: var(--color-text-light); opacity: 0.6; display: flex; align-items: center; gap: 3px; cursor: pointer; }
     .app-root .mcp-indicator:hover, .app-root .mneme-indicator:hover { opacity: 1; }
     .app-root .mcp-dot, .app-root .mneme-dot { width: 7px; height: 7px; border-radius: 50%; }

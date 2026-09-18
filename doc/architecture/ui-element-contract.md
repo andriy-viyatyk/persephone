@@ -92,7 +92,7 @@ The always-visible chrome, top to bottom.
 | Element | Selector |
 |---|---|
 | Indicator cluster | `[data-name="status-indicators"]` |
-| Snip menu trigger (the green "…") | `[data-name="header-snip-button"]` |
+| Quick settings trigger (legacy Snip name; the green "…") | `[data-name="header-snip-button"]` |
 | Mneme indicator (only when Mneme is enabled) | `[data-name="mneme-indicator"]` |
 | MCP indicator (only when the MCP server is running) | `[data-name="mcp-indicator"]` |
 

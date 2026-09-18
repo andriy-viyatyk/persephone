@@ -42,7 +42,7 @@ every state.
 - Restore → `window-toggle`
 - Close → `window-close`
 - Status indicators → `status-indicators`
-- Snip → `header-snip-button`
+- Quick settings → `header-snip-button`
 - Mneme → `mneme-indicator`
 - MCP → `mcp-indicator`
 
@@ -70,18 +70,22 @@ every state.
 +---------------------------------------------------------------------+
 ```
 
-### When the Snip menu is open
+### When quick settings is open
 
 ```
 +---------------------------------------------------------------------+
-|                                                  [Snip Screen]      |  Snip popup surface opened from the bottom-right status cluster
-|                                                  [Snip Persephone]  |
+|                                          [Snip Screen]              |  quick-settings surface opened from the bottom-right status cluster
+|                                          [Snip Persephone]          |
+|                                          ------------------------   |
+|                                          [MCP]                [on]  |
+|                                          [Mneme]              [on]  |
+|                                          [Clipboard listener] [on]  |
 +---------------------------------------------------------------------+
 ```
 
 ### Drawn controls without `elements`
 
-- Snip Screen and Snip Persephone popup items — no entry: transient popup surface, outside the shell contract.
+- Quick-settings rows and switches — no entry: transient popover surface, outside the shell contract.
 - Split primary and split caret — no entry: internal parts of the addressable `page-tabs-add` split control.
 - Header spacer — no entry: structural spacer, not a user control.
 
@@ -113,13 +117,15 @@ conditional.
 | Element | What it is for | Selector |
 |---|---|---|
 | Indicator cluster | Container for status indicators | `[data-name="status-indicators"]` |
-| Snip menu trigger | Offers **Snip Screen** and **Snip Persephone**; the capture opens in a new Image View page | `[data-name="header-snip-button"]` |
+| Quick settings trigger (legacy Snip name) | Opens quick settings with **Snip Screen**, **Snip Persephone**, and service switches; a capture opens in a new Image View page | `[data-name="header-snip-button"]` |
 | Mneme indicator | Appears when Mneme is enabled; green means an embedding model is running, yellow means semantic search is unavailable, and grey means enabled but not running | `[data-name="mneme-indicator"]` |
 | MCP indicator | Appears while the MCP server is running; it shows idle status or the connected-client count and opens the MCP request log | `[data-name="mcp-indicator"]` |
 
-The indicators are entry points, not the screen guides for their destinations. Mneme's Config &
+The indicators are entry points, not the screen guides for their destinations. Quick settings contains
+the two snip actions and live switches for MCP, Mneme, and the clipboard listener. Click anywhere on a
+service row to toggle it; the popover stays open so you can change several services at once. Mneme's Config &
 monitoring and root search editors are documented in [Mneme](../mneme.md), and MCP connection
-inspection is documented in [MCP Inspector](./mcp-inspector.md). The snip menu opens an Image View
+inspection is documented in [MCP Inspector](./mcp-inspector.md). The Snip actions open an Image View
 page after capture.
 
 The header's conditional controls are not errors when absent. Check the current state with

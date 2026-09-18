@@ -287,6 +287,7 @@ vendor island under `editors/draw/`; native global styles are installed by `them
 ├── ui/                     # Application Shell
 │   ├── app/                # Root shell
 │   │   ├── MainPageView.ts         # Native root layout (header, tabs, editors, sidebar)
+│   │   ├── HeaderQuickSettingsPopover.ts # Header snip actions and live service switches
 │   │   ├── PagesView.ts            # Native page container/router
 │   │   ├── RenderEditorView.ts      # Native editor dispatcher
 │   │   ├── AsyncEditorView.ts      # Native async editor loader and error surface
@@ -757,6 +758,7 @@ vendor island under `editors/draw/`; native global styles are installed by `them
 │   ├── Input/              # Text input
 │   ├── Textarea/           # Multi-line text input (contentEditable, auto-grow)
 │   ├── Checkbox/           # Checkbox
+│   ├── Switch/             # Controlled accessible on/off switch
 │   ├── RadioGroup/         # Radio group
 │   ├── Select/             # Single-select dropdown (replaces ComboSelect)
 │   ├── MultiSelect/        # Multi-select dropdown (replaces ListMultiselect)

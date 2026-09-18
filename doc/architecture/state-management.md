@@ -488,7 +488,9 @@ The consequence worth internalizing: **every renderer window has its own watcher
 subscribers, so a global service can be started or stopped once per open window.** Anything
 `onChanged` actuates must be idempotent — `startMneme`/`startMcpHttpServer` guard on a running
 instance *and* on an in-flight start promise (the flag alone leaves a window in which two callers
-both reach `listen()` on the same port), and the stop functions no-op when nothing is running.
+both reach `listen()` on the same port), and the stop functions no-op when nothing is running. The MCP stop path
+also awaits an in-flight start promise before its no-server guard, so disabling MCP during startup cannot leave a
+server running after `mcp.enabled` becomes false.
 This is not a new constraint introduced by file watching; every window already actuated these at
 startup. File watching only makes it easy to hit.
 
