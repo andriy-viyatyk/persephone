@@ -609,8 +609,9 @@ vendor island under `editors/draw/`; native global styles are installed by `them
 │   │   ├── ExplorerSecondaryView.ts   # "explorer" panel — tree view with native header
 │   │   ├── SearchSecondaryView.ts  # "search" panel — file search with native header
 │   │   ├── BoardsSecondaryView.ts # "boards" panel — Boards/Tools body switch: trusted boards (BoardsTree) or registered toolsets (ToolsTree) under the Explorer root; "+ New board" in the switch row
-│   │   ├── ClipboardSecondaryView.ts # "clipboard" panel — opt-in history, selection/copy-follow, disabled state, and listener health
-│   │   ├── ClipboardSecondaryView.css # Clipboard panel notification and row affordance styling
+│   │   ├── ClipboardSecondaryView.ts # "clipboard" panel — opt-in history, flavour icons, time/Copy row controls, selection/open navigation, disabled state, and listener health
+│   │   ├── ClipboardSecondaryView.css # Clipboard panel time/Copy trailing-slot swap styling
+│   │   ├── clipboard-date.ts          # Local-calendar Clipboard capture time badge and tooltip formatter
 │   │   └── index.ts
 │   ├── mneme-config/       # Mneme config & monitoring editor (non-text, no trait)
 │   │   ├── MnemeConfigEditorModel.ts # EditorModel — roots, include/ignore, reindex + progress, model, status polling

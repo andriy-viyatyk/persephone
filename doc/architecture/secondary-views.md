@@ -374,9 +374,20 @@ payloads remain readable. The AiVision `clipboard.read(id)` contract returns fil
 `string[]`.
 
 The selected row is persistent navigation state (`selectionStyle: "focus"`) identifying the item
-shown by the host page. Per-row Copy appears on hover or focus. Copy-back triggers a fresh capture,
-so the panel follows the copied content to the new top row. Removal, clearing, and
-listener-health/restart actions remain owned by the panel view and the main clipboard service.
+shown by the host page. Rows use the shared file-icon resolver with synthetic `.txt`, `.png`, and
+`.html` inputs for text, image, and HTML items; heterogeneous file lists use the resolver's generic
+extensionless file icon. The preview is the row label, followed by an outlined local-calendar time
+badge (`HH:mm` for today and `-Nd HH:mm` for older dates, with a matching tooltip). The badge and
+per-row Copy action share one trailing slot and swap on hover or focus, so the row does not shift.
+
+Arrow Up/Down are handled by a capture-phase listener on the panel: each changed press steps from
+the selected row, selects it, and opens it through the same host route as a click. The ListBox active
+index follows selection only, so hover does not open a row or leave a stale active highlight. Opens
+are serialized in strict FIFO order and ignore queued work after disposal; selection claims list
+focus and completed opens restore it. Home/End/Page keys and Enter remain on the ListBox's normal
+keyboard path. Copy-back triggers a fresh capture, so the panel follows the copied content to the
+new top row. Removal, clearing, and listener-health/restart actions remain owned by the panel view
+and the main clipboard service.
 When history is disabled, the panel shows the Settings affordance and suppresses Restart while
 stored rows and their clear/remove/copy/navigation actions remain available. Closing the panel
 clears the Explorer contribution; if this leaves an editorless page with no composed panels,

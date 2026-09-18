@@ -287,10 +287,14 @@ The renderer reaches the service through typed IPC. The always-listed and pinnab
 in Tools & Editors opens a fixed-ID singleton page whose Explorer host persists `hideExplorer` and
 composes only the Clipboard panel. The panel supports copy/open/remove/clear actions and
 listener-health monitoring; its disabled state offers Settings while stored rows remain usable.
-The selected row is persistent page-navigation state, the row Copy action appears on hover/focus,
-and a successful copy follows the recaptured item to its new top row. The Settings page owns
-`clipboard.enabled` and `clipboard.max-items`. The AiVision root exposes `.clipboard` only when
-history is enabled, reads file-list payloads as `string[]`, and never reads the live OS clipboard.
+Each row resolves a leading icon from its clipboard flavour, keeps the preview text primary, and
+uses an outlined local-calendar time badge that shares the trailing slot with the hover/focus Copy
+action. The selected row is persistent page-navigation state; Arrow Up/Down select and open from
+that row through the normal host route, while the panel serializes those opens in FIFO order and
+restores list focus after navigation. A successful copy follows the recaptured item to its new top
+row. The Settings page owns `clipboard.enabled` and `clipboard.max-items`. The AiVision root exposes
+`.clipboard` only when history is enabled, reads file-list payloads as `string[]`, and never reads
+the live OS clipboard.
 The service uses Electron's native clipboard for copy-back, and renderer-owned writes should use
 the same native path for focus independence and compatibility with other history tools. Chromium
 renderer writes that do reach the OS clipboard carry `CanIncludeInClipboardHistory = 0` and are

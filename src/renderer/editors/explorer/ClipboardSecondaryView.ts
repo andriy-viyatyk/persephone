@@ -11,7 +11,7 @@ import type {
 } from "../../../ipc/clipboard-ipc";
 import { createLinkData } from "../../../shared/link-data";
 import { errMessage } from "../../../shared/utils";
-import { dateText } from "../../components/git-tree/git-date";
+import { createFileIconElement, subscribeFileIconElements } from "../../components/icons/icon-elements";
 import type { SecondaryViewProps } from "../../ui/secondary-views/secondary-view-registry";
 import {
     createSideBarPanelHeader,
@@ -28,6 +28,7 @@ import { VanillaView } from "../../uikit/shared/vanilla-view";
 import { createIconElement } from "../../uikit/shared/slots";
 import type { MenuItem } from "../../uikit/Menu";
 import type { ExplorerEditor } from "./ExplorerEditorModel";
+import { clipboardTimeLabel } from "./clipboard-date";
 import "../../uikit/Button/Button.css";
 import "../../uikit/IconButton/IconButton.css";
 import "../../uikit/Notification/Notification.css";
@@ -36,6 +37,12 @@ import "./ClipboardSecondaryView.css";
 
 interface ClipboardListItem extends IListBoxItem {
     clipboardItem: ClipboardHistoryItem;
+}
+
+interface ClipboardRowControls {
+    host: HTMLSpanElement;
+    time: TagView;
+    copy: IconButtonView;
 }
 
 const MAX_PREVIEW_LENGTH = 200;
@@ -52,7 +59,7 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
     private notificationHost: HTMLDivElement | undefined;
     private openSettingsButton: ButtonView | undefined;
     private list: ListBoxView<ClipboardListItem> | undefined;
-    private readonly copyButtons = new Map<string, IconButtonView>();
+    private readonly rowControls = new Map<string, ClipboardRowControls>();
     private items: ClipboardHistoryItem[] = [];
     private rows: ClipboardListItem[] = [];
     private status: ClipboardStatus | undefined;
@@ -64,6 +71,9 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
     private statusEventGeneration = 0;
     private restarting = false;
     private selectedId: string | undefined;
+    private activeIndex: number | null = null;
+    private openQueue: Promise<void> = Promise.resolve();
+    private openQueueGeneration = 0;
     private selectNextCapture = false;
 
     public constructor(props: SecondaryViewProps) {
@@ -128,6 +138,12 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
         }));
 
         this.list = this.child(new ListBoxView<ClipboardListItem>(this.listProps()));
+        this.listen(this.list.root, "keydown", this.handleArrowKeys, { capture: true });
+        this.own(subscribeFileIconElements(() => {
+            if (this.isDisposed) return;
+            this.rebuildRows();
+            this.list?.update(this.listProps());
+        }));
         this.root.append(this.notificationHost, this.list.root);
         this.closeButton.mount();
         this.clearButton.mount();
@@ -174,6 +190,7 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
     protected onDispose(): void {
         this.historyRequestGeneration++;
         this.statusRequestGeneration++;
+        this.openQueueGeneration++;
         void api.setClipboardHealthMonitoring(false).catch((error: unknown) => {
             console.error("Failed to stop clipboard health monitoring", errMessage(error));
         });
@@ -187,7 +204,7 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
         this.notificationHost = undefined;
         this.openSettingsButton = undefined;
         this.list = undefined;
-        this.copyButtons.clear();
+        this.rowControls.clear();
     }
 
     private async initialize(): Promise<void> {
@@ -270,36 +287,82 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
 
     private rebuildRows(): void {
         const nextIds = new Set(this.items.map((item) => item.id));
-        for (const [id, button] of this.copyButtons) {
+        for (const [id, controls] of this.rowControls) {
             if (nextIds.has(id)) continue;
-            this.releaseChild(button);
-            this.copyButtons.delete(id);
+            this.releaseChild(controls.time);
+            this.releaseChild(controls.copy);
+            controls.host.remove();
+            this.rowControls.delete(id);
         }
 
         this.rows = this.items.map((item) => {
-            let button = this.copyButtons.get(item.id);
-            if (!button) {
-                button = this.child(new IconButtonView({
-                    name: `clipboard-copy-${item.id}`,
+            const time = clipboardTimeLabel(item.capturedAt);
+            let controls = this.rowControls.get(item.id);
+            if (!controls) {
+                controls = this.createRowControls(item, time);
+                this.rowControls.set(item.id, controls);
+            } else {
+                controls.time.update({
+                    name: `clipboard-time-${item.id}`,
+                    label: time.badge,
+                    title: time.tooltip,
+                    variant: "outlined",
                     size: "sm",
-                    title: "Copy",
-                    icon: "copy",
-                    onClick: (event) => {
-                        event.stopPropagation();
-                        void this.copyItem(item.id);
-                    },
-                }));
-                button.mount();
-                this.copyButtons.set(item.id, button);
+                });
             }
             return {
                 value: item.id,
-                label: `${dateText(item.capturedAt)} — ${previewLabel(item)}`,
+                label: previewLabel(item),
+                iconElement: createFileIconElement({
+                    path: iconPathFor(item),
+                    width: 16,
+                    height: 16,
+                }),
                 rowClass: "clipboard-row",
-                trailingElement: button.root,
+                trailingElement: controls.host,
                 clipboardItem: item,
             };
         });
+        this.reconcileSelectionAndActive();
+    }
+
+    private createRowControls(
+        item: ClipboardHistoryItem,
+        time: ReturnType<typeof clipboardTimeLabel>,
+    ): ClipboardRowControls {
+        const host = document.createElement("span");
+        host.dataset.clipboardTrailing = "";
+        const timeBadge = this.child(new TagView({
+            name: `clipboard-time-${item.id}`,
+            label: time.badge,
+            title: time.tooltip,
+            variant: "outlined",
+            size: "sm",
+        }));
+        const copyButton = this.child(new IconButtonView({
+            name: `clipboard-copy-${item.id}`,
+            size: "sm",
+            title: "Copy",
+            icon: "copy",
+            onClick: (event) => {
+                event.stopPropagation();
+                void this.copyItem(item.id);
+            },
+        }));
+        timeBadge.mount();
+        copyButton.mount();
+        timeBadge.root.dataset.clipboardTime = "";
+        copyButton.root.dataset.clipboardCopy = "";
+        host.append(timeBadge.root, copyButton.root);
+        return { host, time: timeBadge, copy: copyButton };
+    }
+
+    private reconcileSelectionAndActive(): void {
+        const selectedIndex = this.rows.findIndex((row) => row.value === this.selectedId);
+        if (this.selectedId !== undefined && selectedIndex === -1) {
+            this.selectedId = undefined;
+        }
+        this.activeIndex = this.selectedId === undefined ? null : selectedIndex;
     }
 
     private listProps(): Parameters<ListBoxView<ClipboardListItem>["update"]>[0] {
@@ -311,6 +374,14 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
             // state rather than a pick — the same treatment the Explorer tree gets.
             selectionStyle: "focus",
             value: this.rows.find((row) => row.value === this.selectedId) ?? null,
+            // `activeIndex` follows the SELECTED row and nothing else. Deliberately no
+            // `onActiveChange`: the ListBox reports hover through it, and letting hover move the
+            // active row left the last row the pointer touched painted as active after the mouse
+            // had left the list entirely — an active row is never cleared by leaving, only moved.
+            // Hover still gets its own cue from the `browse` variant's `:hover` rule, which ends
+            // the moment the pointer goes, and the keyboard cursor stays where the user left it.
+            activeIndex: this.activeIndex,
+            keyboardNav: true,
             loading: this.loading,
             emptyMessage: "No clipboard history yet.",
             onChange: this.handleSelection,
@@ -320,10 +391,70 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
 
     private readonly handleSelection = (row: ClipboardListItem): void => {
         this.selectedId = row.clipboardItem.id;
+        this.activeIndex = this.rows.findIndex((candidate) => candidate.value === row.value);
         this.list?.update(this.listProps());
-        void this.openItem(row.clipboardItem);
+        this.takeListFocus();
+        this.enqueueOpen(row.clipboardItem);
     };
 
+    /**
+     * Arrow keys belong to this panel, not to the ListBox.
+     *
+     * The ListBox's own `keyboardNav` moves an ACTIVE index and leaves selection to Enter, which
+     * is the wrong shape here: the point of this list is reviewing captured items one key press at
+     * a time, so an arrow has to select and open in a single stroke. Distinguishing an arrow-driven
+     * `onActiveChange` from the pointer-driven one the ListBox fires on hover proved unreliable, so
+     * this handler claims the two keys outright — it is registered in the CAPTURE phase before the
+     * ListBox mounts its own listener, and `stopImmediatePropagation` keeps the ListBox from also
+     * moving its active index. Everything else `keyboardNav` offers (Home, End, Page keys, Enter)
+     * is left to the ListBox untouched.
+     *
+     * Stepping is measured from the SELECTED row rather than the active one, so hovering the mouse
+     * over a distant row cannot teleport the next arrow press away from where the user is reading.
+     */
+    private readonly handleArrowKeys = (event: KeyboardEvent): void => {
+        if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+        if (this.rows.length === 0) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        const current = this.rows.findIndex((row) => row.value === this.selectedId);
+        const next = event.key === "ArrowDown"
+            ? Math.min(this.rows.length - 1, current + 1)
+            : Math.max(0, current - 1);
+        if (next === current) return;
+        this.handleSelection(this.rows[next]);
+    };
+
+    private enqueueOpen(item: ClipboardHistoryItem): void {
+        const generation = this.openQueueGeneration;
+        this.openQueue = this.openQueue.then(async () => {
+            if (this.isDisposed || generation !== this.openQueueGeneration) return;
+            await this.openItem(item);
+            this.takeListFocus();
+        }).catch((error: unknown) => {
+            if (!this.isDisposed) {
+                void ui.notify(`Failed to open clipboard item: ${errMessage(error)}`, "error");
+            }
+        });
+    }
+
+    /** The list is the keyboard target for as long as the user is browsing it, so every open the
+     *  panel itself starts ends with focus back on the list.
+     *
+     *  Two things take it away. Clicking a row does not focus the list at all — a mousedown on a
+     *  row leaves `activeElement` wherever it was — and opening the FIRST item creates the host
+     *  page's editor, which grabs focus for itself. Together those made the panel navigable only
+     *  from the second click onward: the first arrow press moved the new editor's caret instead
+     *  of stepping through the history, which is the whole point of the feature. Later opens
+     *  reuse the editor and leave focus alone, so the defect looked intermittent.
+     *
+     *  Claiming focus unconditionally is safe here because only `handleSelection` reaches this —
+     *  a click or an arrow on this panel, never a background refresh. */
+    private takeListFocus(): void {
+        const root = this.list?.root;
+        if (!root || this.isDisposed || root.contains(document.activeElement)) return;
+        root.focus({ preventScroll: true });
+    }
     private readonly getContextMenu = (row: ClipboardListItem): MenuItem[] => [{
         label: "Remove",
         icon: createIconElement("delete", { width: 14, height: 14 }),
@@ -536,6 +667,19 @@ export default class ClipboardSecondaryView extends VanillaView<SecondaryViewPro
             monitoring: true,
             error,
         };
+    }
+}
+
+function iconPathFor(item: ClipboardHistoryItem): string {
+    switch (item.primary) {
+        case "image":
+            return "clipboard.png";
+        case "html":
+            return "clipboard.html";
+        case "files":
+            return "clipboard";
+        case "text":
+            return "clipboard.txt";
     }
 }
 

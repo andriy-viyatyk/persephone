@@ -68,9 +68,9 @@ layout anchors.
 +---------------------------------------------------------------------+
 | [Clipboard] [health badge]       [Clear] [Restart] [Close]            |  Clipboard panel header; badge appears when disabled or unavailable
 +---------------------------------------------------------------------+
-| [clipboard history list]                                           |  newest-first captured items
+| [clipboard history list]                                           |  newest-first captured items; each row has an icon, preview, and time badge
 | [disabled warning] [Open Settings]                                  |  disabled state only
-| [Copy]                                                             |  per-item action, shown on row hover or focus
+| [Copy]                                                             |  per-item action, swaps with the time badge on row hover or focus
 +---------------------------------------------------------------------+
 ```
 
@@ -78,9 +78,14 @@ Clipboard can be opened from **Tools & Editors** even while history is disabled.
 panel shows a **Disabled** badge and a top warning with **Open Settings**; **Restart** is not shown.
 Stored rows remain usable: click a row to open its content in the current page, right-click for
 **Remove**, use **Clear** to remove all history after confirmation, or use the row's **Copy** action.
-The current row has a persistent selection highlight. **Copy** appears only when its row is hovered
-or focused; copying returns the content as a new newest row and the selection follows it. File-list
-rows open as a readable list of the stored absolute paths, rather than the watcher's metadata JSON.
+The current row has a persistent selection highlight. Each row begins with an icon for its content
+type, followed by its preview text. The outlined time badge shows `hh:mm` for today, `-1d hh:mm`
+for yesterday, or `-Nd hh:mm` for older items; its tooltip says `Today at hh:mm`, `1 day ago`, or
+`N days ago`. The badge swaps in place with **Copy** while the row is hovered or focused. Press
+**Arrow Up** or **Arrow Down** while the list is focused to select and open the previous or next
+row; **Home**, **End**, page navigation, and **Enter** keep their usual list behavior. Copying returns the content
+as a new newest row and the selection follows it. File-list rows open as a readable list of the
+stored absolute paths, rather than the watcher's metadata JSON.
 The **Clipboard** header button in Explorer remains available only while history is enabled; use
 **Tools & Editors** for the dedicated Clipboard page in either state. The health badge and
 **Restart** action appear for enabled-listener failures; **Clear** appears when the panel is expanded

@@ -44,6 +44,9 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### Improvements
 
+- **Clipboard panel rows are easier to scan:** rows now show a content-type icon, preview text, and
+  a compact local capture-time badge. Hovering or focusing a row swaps the badge for **Copy**;
+  while the list is focused, **Arrow Up** and **Arrow Down** select and open adjacent history items.
 - **The Boards panel highlights the board you clicked:** board rows now carry the same selection
   and hover highlight as files in the File Explorer, and they are the same height, so the two
   panels line up when you switch between them. The board list in a board's own toolbar and the

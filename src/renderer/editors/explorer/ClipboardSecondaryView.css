@@ -1,19 +1,30 @@
 @layer app {
-    /* The per-row Copy button is a hover affordance, not row content: showing one on every
-       row turns the history into a column of icons. `:focus-within` keeps it reachable by
-       keyboard, and `opacity` rather than `display` keeps the row's layout identical whether
-       the button shows or not, so running the pointer down the list cannot shift the labels.
-
-       The rule targets the BUTTON, not the `[data-part="trailing"]` host around it: that host
-       is given `display: contents` as an INLINE style by `ListItemView`, so it generates no
-       box at all and `opacity` on it has nothing to apply to (no stylesheet rule can take the
-       display back — an inline style outranks it). */
-    .clipboard-row [data-part="trailing"] [data-type="icon-button"] {
-        opacity: 0;
+    /* The per-row Copy button and time badge share one trailing slot. The ListItem trailing host
+       is given `display: contents` as an INLINE style by `ListItemView`, so the wrapper below owns
+       the actual grid box and these selectors target its descendants rather than that host. */
+    .clipboard-row [data-clipboard-trailing] {
+        display: inline-grid;
+        align-items: center;
     }
 
-    .clipboard-row:hover [data-part="trailing"] [data-type="icon-button"],
-    .clipboard-row:focus-within [data-part="trailing"] [data-type="icon-button"] {
+    .clipboard-row [data-clipboard-time],
+    .clipboard-row [data-clipboard-copy] {
+        grid-area: 1 / 1;
+    }
+
+    .clipboard-row [data-clipboard-copy] {
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    .clipboard-row:hover [data-clipboard-time],
+    .clipboard-row:focus-within [data-clipboard-time] {
+        visibility: hidden;
+    }
+
+    .clipboard-row:hover [data-clipboard-copy],
+    .clipboard-row:focus-within [data-clipboard-copy] {
         opacity: 1;
+        pointer-events: auto;
     }
 }
