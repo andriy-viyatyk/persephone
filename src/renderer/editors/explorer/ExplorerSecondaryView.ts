@@ -17,6 +17,7 @@ import type {
 import { createPanelElement } from "../../uikit/Panel/panel-style";
 import { IconButtonView } from "../../uikit/IconButton/IconButtonView";
 import type { IconButtonProps } from "../../uikit/IconButton/IconButtonView";
+import { createTextElement } from "../../uikit/Text/text-style";
 import { VanillaView } from "../../uikit/shared/vanilla-view";
 import type { Cleanup } from "../../core/utils/DisposableStore";
 import { createIconElement } from "../../uikit/shared/slots";
@@ -257,9 +258,26 @@ export default class ExplorerSecondaryView extends VanillaView<SecondaryViewProp
             onItemClick: this.handleItemClick,
             onItemDoubleClick: this.handleItemDoubleClick,
             onContextMenu: this.handleContextMenu,
+            getSecondaryLabel: this.getSecondaryLabel,
             renderTrailing: this.renderTrailingAction,
         };
     }
+
+    private readonly getSecondaryLabel = (_item: ITreeProviderItem, level: number): Node | undefined => {
+        if (level !== 0) return undefined;
+        const pathWithDisplayMarks = `\u200E${this.model.rootPath}\u200E`;
+        // `md` is one step below the tree row's own `base`: the path is context for the folder
+        // name, not a peer of it. Set here rather than on the generic secondary-label host because
+        // `createTextElement` pins `data-size`, which wins over anything the host inherits down.
+        const pathElement = createTextElement(pathWithDisplayMarks, {
+            truncate: true,
+            color: "light",
+            size: "md",
+        });
+        pathElement.dir = "rtl";
+        pathElement.dataset.name = "explorer-root-path";
+        return pathElement;
+    };
 
     private readonly handleStateChange = (state: TreeProviderViewSavedState): void => {
         this.model.setTreeState(state);

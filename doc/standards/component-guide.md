@@ -114,6 +114,15 @@ parent**, avoiding needless slot teardown and reattachment. Pooled rows can move
 different cell, so a matching node identity with a different parent must refill the host. Keep the
 node owned by the caller and do not share one node between rows simultaneously.
 
+For persistent context beside a `Tree` row's primary label, use the opt-in `getSecondaryLabel`
+callback. It receives the source item and row level and returns `SlotContent`; `undefined`, `null`,
+or `false` leaves no secondary host in the row. The default row renderer owns a separate host and
+attaches or detaches it as pooled rows are repointed, so callers returning DOM nodes must keep each
+node reusable and must not share one node between simultaneous rows. `TreeProviderViewImpl` adapts
+this callback for provider items and caches reusable non-fragment nodes by item href. Custom
+`renderItem` implementations own their complete row markup and must render secondary content
+themselves; `getSecondaryLabel` is not applied on that path.
+
 `ListBox` uses the same trailing-slot contract. Set `trailingVisibility: "hover"` when trailing
 content is a per-row action rather than persistent row information; it is hidden at rest and shown
 on row hover or focus, while the default `"always"` keeps status or selection content visible.

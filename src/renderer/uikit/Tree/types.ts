@@ -163,6 +163,8 @@ export interface TreeProps<T = ITreeItem>
      * tooltip themselves — `getTooltip` is not invoked by `Tree` in that path.
      */
     getTooltip?: (item: T, level: number) => SlotText;
+    /** Optional secondary content rendered beside the primary label. */
+    getSecondaryLabel?: (item: T, level: number) => SlotContent;
     /**
      * Optional direct DOM icon for the default row renderer. The returned node is attached as-is,
      * without rebuilding its DOM subtree. Keep its identity stable while the same row remains visible.

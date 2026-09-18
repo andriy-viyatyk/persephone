@@ -193,7 +193,9 @@ Evidence: `PageContentView.ts:91-125`, `SecondaryViewsView.ts:69-80`, `PageToolb
 Explorer shows the current page's file or folder context. Its root can be a directory, archive, or
 another provider-backed location. Persephone has no separate workspace feature, workspace files,
 workspace settings, or multi-root workspaces: a page whose Explorer is rooted at a project folder
-is that project's workspace. Use the Explorer panel's own actions to select and open items,
+is that project's workspace. The root row shows the full root path beside the folder name; narrow
+sidebars shorten the path from the left while keeping the folder name visible. Use the Explorer
+panel's own actions to select and open items,
 navigate upward, search the root, switch to Boards, or open Clipboard when clipboard history is
 enabled. An Explorer panel can be closed from its header; its dynamic editor-specific names are
 deliberately not part of this shell contract. The dedicated Clipboard page is opened from

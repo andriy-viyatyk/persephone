@@ -26,7 +26,7 @@ const defaultIndentSize = 16;
  * a four-way chevron column, N level guides and three slots — would drift, and nothing in the build
  * would catch it.
  *
- * **The root's child list is never rebuilt.** The four stable hosts are created once in `onMount`
+ * **The root's child list is never rebuilt.** The five stable hosts are created once in `onMount`
  * and the indents are inserted *before* the chevron host, because `fillSlot` caches per-host state
  * in a module-level `WeakMap` and this view holds hard references to its hosts: a
  * `root.replaceChildren()` would leave that cache pointing at detached elements, and the next
@@ -35,10 +35,9 @@ const defaultIndentSize = 16;
  * slot subtrees on detached trees and kill the chevron's listener while the row-level handlers (which
  * live on the cell wrapper, not here) kept working, so the symptom would read as "chevron bug".
  *
- * The icon and trailing hosts are real boxes rather than `display: contents`, because they were real
- * boxes in the earlier DOM (`<span className="tree-icon">` / `"tree-trailing"`) and carry their own
- * flex rules. The earlier renderer attached each only when its content was present, so both are attached and
- * detached rather than left empty in the flex flow.
+ * The icon, secondary, and trailing hosts are real boxes rather than `display: contents`, because
+ * they carry their own flex rules. The renderer attaches each only when its content is present, so
+ * they are attached and detached rather than left empty in the flex flow.
  */
 export type TreeItemViewProps = TreeItemProps;
 
@@ -48,6 +47,7 @@ export class TreeItemView extends VanillaView<TreeItemViewProps> {
     private chevronHost: HTMLSpanElement | undefined;
     private iconHost: HTMLSpanElement | undefined;
     private labelHost: HTMLSpanElement | undefined;
+    private secondaryHost: HTMLSpanElement | undefined;
     private trailingHost: HTMLSpanElement | undefined;
 
     private indents: TreeIndents | undefined;
@@ -62,12 +62,15 @@ export class TreeItemView extends VanillaView<TreeItemViewProps> {
     private iconCleanup: (() => void) | undefined;
     private directIconElement: Node | undefined;
     private labelCleanup: (() => void) | undefined;
+    private secondaryCleanup: (() => void) | undefined;
     private trailingCleanup: (() => void) | undefined;
     /** Which mechanism currently owns the label host — they must never both write to it. */
     private labelOwner: "slot" | "text" = "text";
     private iconAttached = false;
+    private secondaryAttached = false;
     private trailingAttached = false;
     private appliedTrailingElement: Node | undefined;
+    private appliedSecondaryElement: Node | undefined;
 
     private tooltip: TooltipAttachment | undefined;
 
@@ -85,6 +88,9 @@ export class TreeItemView extends VanillaView<TreeItemViewProps> {
 
         this.labelHost = document.createElement("span");
         this.labelHost.className = "label";
+
+        this.secondaryHost = document.createElement("span");
+        this.secondaryHost.dataset.part = "secondary-label";
 
         this.trailingHost = document.createElement("span");
         this.trailingHost.className = "tree-trailing";
@@ -144,6 +150,7 @@ export class TreeItemView extends VanillaView<TreeItemViewProps> {
             // The row callback is owned by this view and must not enter the residual-prop listener path.
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
             onContextMenu: _onContextMenu,
+            secondaryLabel,
             trailing,
             trailingElement,
             trailingVisibility = "always",
@@ -154,9 +161,10 @@ export class TreeItemView extends VanillaView<TreeItemViewProps> {
         const chevronHost = this.chevronHost;
         const iconHost = this.iconHost;
         const labelHost = this.labelHost;
+        const secondaryHost = this.secondaryHost;
         const trailingHost = this.trailingHost;
         const indents = this.indents;
-        if (!chevronHost || !iconHost || !labelHost || !trailingHost || !indents) return;
+        if (!chevronHost || !iconHost || !labelHost || !secondaryHost || !trailingHost || !indents) return;
 
         const root = this.root;
         root.dataset.type = "tree-item";
@@ -180,6 +188,7 @@ export class TreeItemView extends VanillaView<TreeItemViewProps> {
         this.setChevron(props);
         this.setIcon(icon, iconElement);
         this.setLabel(label, searchText);
+        this.setSecondaryLabel(secondaryLabel);
         this.setTrailing(trailing, trailingElement);
 
     }
@@ -206,6 +215,7 @@ export class TreeItemView extends VanillaView<TreeItemViewProps> {
             hideChevron: _hideChevron,
             onChevronClick: _onChevronClick,
             onContextMenu: _onContextMenu,
+            secondaryLabel: _secondaryLabel,
             trailing: _trailing,
             trailingElement: _trailingElement,
             trailingVisibility: _trailingVisibility,
@@ -360,6 +370,39 @@ export class TreeItemView extends VanillaView<TreeItemViewProps> {
         this.labelCleanup = fillSlot(this.labelHost, label);
     }
 
+    private setSecondaryLabel(secondaryLabel: SlotContent): void {
+        const secondaryHost = this.secondaryHost;
+        const trailingHost = this.trailingHost;
+        if (!secondaryHost || !trailingHost) return;
+
+        if (secondaryLabel == null || secondaryLabel === false) {
+            this.appliedSecondaryElement = undefined;
+            if (this.secondaryAttached) {
+                this.secondaryCleanup?.();
+                this.secondaryCleanup = undefined;
+                secondaryHost.remove();
+                this.secondaryAttached = false;
+            }
+            toggleAttr(this.root, "data-secondary-label", false);
+            return;
+        }
+
+        if (!this.secondaryAttached) {
+            this.root.insertBefore(secondaryHost, trailingHost.isConnected ? trailingHost : null);
+            this.secondaryAttached = true;
+        }
+        toggleAttr(this.root, "data-secondary-label", true);
+
+        if (secondaryLabel instanceof Node) {
+            if (this.appliedSecondaryElement === secondaryLabel
+                && secondaryLabel.parentNode === secondaryHost) return;
+            this.appliedSecondaryElement = secondaryLabel;
+        } else {
+            this.appliedSecondaryElement = undefined;
+        }
+        this.secondaryCleanup = fillSlot(secondaryHost, secondaryLabel);
+    }
+
     /** The earlier renderer attached `<span className="tree-trailing">…` when trailing content was present. */
     private setTrailing(trailing: SlotContent, trailingElement?: Node): void {
         // A caller-owned DOM node takes the identity-checked arm. Comparing identity first avoids
@@ -407,11 +450,14 @@ export class TreeItemView extends VanillaView<TreeItemViewProps> {
     private clearSlots(): void {
         this.iconCleanup?.();
         this.labelCleanup?.();
+        this.secondaryCleanup?.();
         this.trailingCleanup?.();
         this.iconCleanup = undefined;
         this.labelCleanup = undefined;
+        this.secondaryCleanup = undefined;
         this.trailingCleanup = undefined;
         this.directIconElement = undefined;
+        this.appliedSecondaryElement = undefined;
     }
 }
 

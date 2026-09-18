@@ -84,6 +84,8 @@ export interface TreeProviderViewProps {
     renderTrailing?: (item: ITreeProviderItem) => SlotContent;
     /** Optional per-row tooltip content. Falls back to the item's href. */
     getTooltip?: (item: ITreeProviderItem) => SlotText;
+    /** Optional secondary content rendered beside the primary label. */
+    getSecondaryLabel?: (item: ITreeProviderItem, level: number) => SlotContent;
     /** Override root node label. When omitted, uses provider.displayName. */
     rootLabel?: string;
     /** Allow Ctrl/Shift-click multi-selection and plural actions (EPIC-049).

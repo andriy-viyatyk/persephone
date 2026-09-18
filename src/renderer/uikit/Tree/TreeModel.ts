@@ -199,6 +199,7 @@ export class TreeModel<T = ITreeItem> extends TComponentModel<
     private appliedIndentSize: TreeProps<T>["indentSize"] = undefined;
     private appliedIsSelected: TreeProps<T>["isSelected"] = undefined;
     private appliedGetTooltip: TreeProps<T>["getTooltip"] = undefined;
+    private appliedGetSecondaryLabel: TreeProps<T>["getSecondaryLabel"] = undefined;
     private appliedId: TreeProps<T>["id"] = undefined;
     private appliedTraitTypeId: TreeProps<T>["traitTypeId"] = undefined;
     private appliedGetDragData: TreeProps<T>["getDragData"] = undefined;
@@ -235,6 +236,7 @@ export class TreeModel<T = ITreeItem> extends TComponentModel<
             || this.appliedIndentSize !== this.props.indentSize
             || this.appliedIsSelected !== this.props.isSelected
             || this.appliedGetTooltip !== this.props.getTooltip
+            || this.appliedGetSecondaryLabel !== this.props.getSecondaryLabel
             || this.appliedId !== this.props.id
             || this.appliedTraitTypeId !== this.props.traitTypeId
             || this.appliedGetDragData !== this.props.getDragData
@@ -264,6 +266,7 @@ export class TreeModel<T = ITreeItem> extends TComponentModel<
         this.appliedIndentSize = this.props.indentSize;
         this.appliedIsSelected = this.props.isSelected;
         this.appliedGetTooltip = this.props.getTooltip;
+        this.appliedGetSecondaryLabel = this.props.getSecondaryLabel;
         this.appliedId = this.props.id;
         this.appliedTraitTypeId = this.props.traitTypeId;
         this.appliedGetDragData = this.props.getDragData;
@@ -904,6 +907,7 @@ export class TreeModel<T = ITreeItem> extends TComponentModel<
             this.props.indentSize,
             this.props.isSelected,
             this.props.getTooltip,
+            this.props.getSecondaryLabel,
             this.props.id,
             this.props.traitTypeId,
             this.props.getDragData,

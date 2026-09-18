@@ -142,6 +142,34 @@
         text-overflow: ellipsis;
     }
 
+    [data-type="tree-item"][data-secondary-label] > .label {
+        flex: 0 1 auto;
+    }
+
+    /*
+     * `margin-left` on top of the row's 2px `gap`: at the gap alone the secondary content reads as
+     * a continuation of the label rather than a separate field. It is a margin rather than a wider
+     * row `gap` because the gap also spaces the chevron, icon and trailing, which are fine as they are.
+     *
+     * `opacity` because de-emphasis is what a secondary label IS — it carries context for the
+     * primary label, never content competing with it. It belongs here rather than in the caller's
+     * colour choice because `--color-text-light` is already the faintest text token in every theme,
+     * so a caller wanting fainter than that has nothing left to reach for; this composes with
+     * whatever colour the content chose. (US-1451 review proposed dropping it and leaning on the
+     * caller's token. That was tried and rejected in review-with-the-user: the token alone reads
+     * too strong for a path sitting beside the folder name.)
+     */
+    [data-type="tree-item"] > [data-part="secondary-label"] {
+        display: flex;
+        flex: 0 100 auto;
+        min-width: 0;
+        margin-left: var(--space-md, 8px);
+        opacity: 0.7;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
     [data-type="tree-item"] > .tree-trailing {
         display: flex;
         align-items: center;

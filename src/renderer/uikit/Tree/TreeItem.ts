@@ -23,6 +23,8 @@ export interface TreeItemProps
     iconElement?: Node;
     /** Label content. Rich tree rows remain supported; string labels are highlighted. */
     label: SlotContent;
+    /** Optional secondary content rendered beside the primary label. */
+    secondaryLabel?: SlotContent;
     /** Highlight matches in string labels. */
     searchText?: string;
     /** True when this item is the current selection of its Tree. */

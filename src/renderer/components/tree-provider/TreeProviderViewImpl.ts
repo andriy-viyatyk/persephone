@@ -15,6 +15,7 @@ import {
 import { createTreeProviderItemIconElement, subscribeFileIconElements } from "../icons/icon-elements";
 import { TREE_ITEM_KEY } from "../../uikit/Tree/types";
 import type { TreeProps } from "../../uikit/Tree/types";
+import type { SlotContent } from "../../uikit/shared/fill-slot";
 import type { SlotText } from "../../uikit/shared/slots";
 import { SubtreeSwap } from "../../uikit/shared/subtree-swap";
 import { TreeView } from "../../uikit/Tree/TreeView";
@@ -46,6 +47,7 @@ export class TreeProviderViewImpl extends VanillaView<ViewProps> {
         TreeProviderViewModel
     >;
     private readonly iconCache = new Map<string, Element>();
+    private readonly secondaryLabelCache = new Map<string, Node>();
     private selectedSet = new Set<string>();
     private readonly modelProps = (props: ViewProps): TreeProviderViewModelProps => props;
     private readonly treeSwap: SubtreeSwap<number>;
@@ -322,6 +324,7 @@ export class TreeProviderViewImpl extends VanillaView<ViewProps> {
                 return showLinks ? !!(hasSubDirectories || hasItems) : !!hasSubDirectories;
             },
             getTooltip: this.getTooltip,
+            getSecondaryLabel: this.getSecondaryLabel,
             getIconElement: this.getIconElement,
             getHideChevron: (_node, level) => level === 0,
             renderTrailing: (node) => this.props.renderTrailing?.(node.data),
@@ -401,6 +404,21 @@ export class TreeProviderViewImpl extends VanillaView<ViewProps> {
 
     private readonly getTooltip = (node: TreeProviderNode): SlotText =>
         this.props.getTooltip?.(node.data) ?? node.data.href;
+
+    private readonly getSecondaryLabel = (
+        node: TreeProviderNode,
+        level: number,
+    ): SlotContent => {
+        const getSecondaryLabel = this.props.getSecondaryLabel;
+        if (!getSecondaryLabel) return undefined;
+        const cached = this.secondaryLabelCache.get(node.data.href);
+        if (cached) return cached;
+        const content = getSecondaryLabel(node.data, level);
+        if (content instanceof Node && !(content instanceof DocumentFragment)) {
+            this.secondaryLabelCache.set(node.data.href, content);
+        }
+        return content;
+    };
 
     private readonly canCollapse = (node: TreeProviderNode): boolean =>
         node.data.href !== this.props.provider.rootPath;
