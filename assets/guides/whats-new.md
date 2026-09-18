@@ -10,7 +10,13 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ---
 
-## Version 5.0.3 (Upcoming)
+## Version 5.0.4 (Upcoming)
+
+*No changes yet.*
+
+---
+
+## Version 5.0.3
 
 ### New Features
 
@@ -31,16 +37,17 @@ Release notes and changelog for Persephone (formerly js-notepad).
   back to Folder View. See [Boards — Direct-folder boards](./boards.md#direct-folder-boards).
 - **Clipboard tool and history:** **Clipboard** is always available and pinnable in **Tools & Editors**;
   it opens a dedicated page with the history panel. Enable history in Settings to capture copied text,
-  HTML, images, and file lists. When history is disabled, stored rows remain available for opening,
-  copying, removing, and clearing, and the panel offers **Open Settings**. Rows keep a persistent
-  selection, show **Copy** on hover or focus, and, while enabled, move copied content to the top as a new
-  row. File lists open as readable absolute paths rather than watcher metadata. History is off by default because
-  stored content may remain readable on disk; while it is enabled, stored history is also readable by
-  agents through the `clipboard` call namespace.
-- **Clipboard history includes in-app copies:** When history is enabled, copies made inside Persephone—
-  including `Ctrl+C` or **Copy** in the Text Editor and copies made inside a Persephone Browser tab—
-  are recorded like copies from elsewhere. Capture depends on the copy reaching the Windows clipboard,
-  not on which editor or page supplied it.
+  HTML, images, and file lists — including copies made inside Persephone, such as `Ctrl+C` or **Copy**
+  in the Text Editor and copies made inside a Persephone Browser tab. Capture depends on the copy
+  reaching the Windows clipboard, not on which editor or page supplied it. Each row shows a
+  content-type icon, preview text, and a compact local capture-time badge; hovering or focusing a row
+  swaps the badge for **Copy**, and while the list is focused **Arrow Up** and **Arrow Down** select and
+  open adjacent history items. Rows keep a persistent selection, and copied content arrives at the top
+  as a new row. File lists open as readable absolute paths rather than watcher metadata. When history
+  is disabled, stored rows remain available for opening, copying, removing, and clearing, and the panel
+  offers **Open Settings**. History is off by default because stored content may remain readable on
+  disk; while it is enabled, stored history is also readable by agents through the `clipboard` call
+  namespace.
 - **Quick settings in the header:** Open the **…** button in the header to reach **Snip Screen**,
   **Snip Persephone**, and live switches for MCP, Mneme, and the clipboard listener. Service rows
   toggle in place, so the popover stays open while you change more than one setting; the snip actions
@@ -52,9 +59,11 @@ Release notes and changelog for Persephone (formerly js-notepad).
 
 ### Improvements
 
-- **Clipboard panel rows are easier to scan:** rows now show a content-type icon, preview text, and
-  a compact local capture-time badge. Hovering or focusing a row swaps the badge for **Copy**;
-  while the list is focused, **Arrow Up** and **Arrow Down** select and open adjacent history items.
+- **The Explorer's root row shows where the folder is:** the File Explorer tree's root used to show
+  only the folder's name, which never said where that folder lives. It now shows the full path beside
+  the name, dimmed and slightly smaller. When the sidebar is narrow the path is shortened from the
+  **left**, so the deepest part stays visible and the folder name is never cut; the row's tooltip
+  still holds the full path.
 - **The Boards panel highlights the board you clicked:** board rows now carry the same selection
   and hover highlight as files in the File Explorer, and they are the same height, so the two
   panels line up when you switch between them. The board list in a board's own toolbar and the
@@ -68,7 +77,7 @@ Release notes and changelog for Persephone (formerly js-notepad).
   when you switch between Grid and the Text Editor. CSV files with a header row still use their
   actual header names. See [Grid Editor](./editors/grid.md#data-and-editing).
 - **Edit Columns headers no longer drag out of place:** the Grid editor's **Edit Columns** popover
-  pinned its three headers before, then briefly allowed them to be dragged. They are fixed again;
+  let its three headers be dragged around, which was never intended. They are fixed in place again;
   the popover's own layout was never saved, so a drag only lasted until it closed.
 - **Grid headers stay clean when scrolling:** Grid, Git Tree, File Grid, Environment Variables,
   and Log View grid output no longer show a previous column header's tooltip, accessibility label,
